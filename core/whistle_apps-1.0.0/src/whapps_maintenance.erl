@@ -142,6 +142,7 @@ do_refresh() ->
     refresh(?WH_RATES_DB),
     refresh(?WH_ANONYMOUS_CDR_DB),
     refresh(?WH_SERVICES_DB),
+    refresh(?KZ_PORT_REQUESTS_DB),
 
     Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
@@ -210,6 +211,10 @@ refresh(?WH_PROVISIONER_DB) ->
 refresh(?WH_FAXES) ->
     couch_mgr:db_create(?WH_FAXES),
     _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'whistle_apps', ?FAXES_VIEW_FILE),
+    'ok';
+refresh(?KZ_PORT_REQUESTS_DB) ->
+    couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
     'ok';
 refresh(Account) when is_binary(Account) ->
     refresh(Account, get_all_account_views());

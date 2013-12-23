@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -67,7 +67,7 @@
                             ]}).
 
 get_props() ->
-    [resource_to_props(Resource) 
+    [resource_to_props(Resource)
      || Resource <- sort_resources(get())
     ].
 
@@ -109,7 +109,7 @@ endpoints(Number, JObj) ->
     end.
 
 -spec maybe_correct_shortdial(ne_binary(), wh_json:object()) -> wh_json:objects().
-maybe_correct_shortdial(Number, JObj) ->    
+maybe_correct_shortdial(Number, JObj) ->
     case stepswitch_util:correct_shortdial(Number, JObj) of
         'undefined' -> [];
         CorrectedNumber ->
@@ -128,14 +128,14 @@ maybe_get_endpoints(Number, JObj) ->
 maybe_get_local_endpoints(HuntAccount, Number, JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     case wh_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
-        'false' -> 
+        'false' ->
             lager:info("account ~s attempted to use local resources of ~s, but it is not allowed"
                        ,[AccountId, HuntAccount]),
             [];
         'true' ->
             lager:info("account ~s is using the local resources of ~s", [AccountId, HuntAccount]),
             get_local_endpoints(HuntAccount, Number, JObj)
-    end.    
+    end.
 
 -spec get_local_endpoints(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:objects().
 get_local_endpoints(AccountId, Number, JObj) ->
@@ -154,10 +154,10 @@ get_global_endpoints(Number, JObj) ->
 -spec sort_endpoints(wh_json:objects()) -> wh_json:objects().
 sort_endpoints(Endpoints) ->
     lists:sort(fun(P1, P2) ->
-                       props:get_value(<<"Weight">>, P1, 1) 
+                       props:get_value(<<"Weight">>, P1, 1)
                            =< props:get_value(<<"Weight">>, P2, 1)
                end, Endpoints).
-  
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -165,7 +165,7 @@ sort_endpoints(Endpoints) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reverse_lookup(wh_json:object()) -> {'ok', wh_proplist()} | {'error', 'not_found'}.
-reverse_lookup(JObj) -> 
+reverse_lookup(JObj) ->
     Realm = stepswitch_util:get_realm(JObj),
     IP = wh_json:get_first_defined([<<"From-Network-Addr">>
                                     ,<<"Orig-IP">>
@@ -260,7 +260,7 @@ filter_resources(Flags, Resources) ->
 
 -spec filter_resources(ne_binaries(), resources(), resources()) -> resources().
 filter_resources(_, [], Filtered) -> Filtered;
-filter_resources(Flags, [Resource|Resources], Filtered) -> 
+filter_resources(Flags, [Resource|Resources], Filtered) ->
     case resource_has_flags(Flags, Resource) of
         'false' -> filter_resources(Flags, Resources, Filtered);
         'true' -> filter_resources(Flags, Resources, [Resource | Filtered])
@@ -268,7 +268,7 @@ filter_resources(Flags, [Resource|Resources], Filtered) ->
 
 -spec resource_has_flags(ne_binaries(), resource()) -> boolean().
 resource_has_flags(Flags, #resrc{flags=ResourceFlags, id=Id}) ->
-    lists:all(fun(Flag) -> 
+    lists:all(fun(Flag) ->
                       case wh_util:is_empty(Flag)
                           orelse lists:member(Flag, ResourceFlags)
                       of
@@ -291,24 +291,22 @@ resources_to_endpoints(Resources, Number, JObj) ->
     resources_to_endpoints(Resources, Number, JObj, []).
 
 -spec resources_to_endpoints(resources(), ne_binary(), wh_json:object(), wh_json:objects()) -> wh_json:objects().
-resources_to_endpoints([], _, _, Endpoints) -> 
+resources_to_endpoints([], _, _, Endpoints) ->
     lager:debug("found ~p endpoints", [length(Endpoints)]),
     lists:reverse(Endpoints);
 resources_to_endpoints([Resource|Resources], Number, JObj, Endpoints) ->
-    case maybe_resource_to_endpoints(Resource, Number, JObj, Endpoints) of
-        'undefined' -> 
-            resources_to_endpoints(Resources, Number, JObj, Endpoints);
-        MoreEndpoints ->
-            resources_to_endpoints(Resources, Number, JObj, MoreEndpoints)
-    end.
+    MoreEndpoints = maybe_resource_to_endpoints(Resource, Number, JObj, Endpoints),
+    resources_to_endpoints(Resources, Number, JObj, MoreEndpoints).
 
--spec maybe_resource_to_endpoints(resource(), ne_binary(), wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec maybe_resource_to_endpoints(resource(), ne_binary(), wh_json:object(), wh_json:objects()) ->
+                                         wh_json:objects().
 maybe_resource_to_endpoints(#resrc{id=Id
                                    ,name=Name
                                    ,rules=Rules
                                    ,gateways=Gateways
                                    ,global=Global
-                                   ,weight=Weight}
+                                   ,weight=Weight
+                                  }
                             ,Number, JObj, Endpoints) ->
     case evaluate_rules(Rules, Number) of
         {'error', 'no_match'} ->
@@ -360,7 +358,7 @@ gateways_to_endpoints(_, [], _, Endpoints) -> Endpoints;
 gateways_to_endpoints(Number, [Gateway|Gateways], JObj, Endpoints) ->
     gateways_to_endpoints(Number, Gateways, JObj
                           ,[gateway_to_endpoint(Number, Gateway, JObj) | Endpoints]).
-    
+
 -spec gateway_to_endpoint(ne_binary(), gateway(), wh_json:object()) -> wh_json:object().
 gateway_to_endpoint(Number, Gateway, JObj) ->
     CCVs = props:filter_undefined(
@@ -369,7 +367,7 @@ gateway_to_endpoint(Number, Gateway, JObj) ->
               ,{<<"From-URI-Realm">>, Gateway#gateway.from_uri_realm}
              ]),
     props:filter_empty(
-      [{<<"Route">>, gateway_dialstring(Gateway, Number)}            
+      [{<<"Route">>, gateway_dialstring(Gateway, Number)}
        ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
        ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
        ,{<<"To-DID">>, wh_util:to_binary(Number)}
@@ -390,7 +388,7 @@ gateway_to_endpoint(Number, Gateway, JObj) ->
       ]).
 
 -spec gateway_emergency_resource(gateway()) -> api_binary().
-gateway_emergency_resource(#gateway{is_emergency='true'}) -> 
+gateway_emergency_resource(#gateway{is_emergency='true'}) ->
     lager:debug("gateway is part of an emergency resource"),
     <<"true">>;
 gateway_emergency_resource(_) -> 'undefined'.
@@ -437,12 +435,15 @@ fetch_global_resources() ->
             Resources
     end.
 
--spec fetch_global_cache_origin(wh_json:objects(), wh_proplist()) -> wh_proplist().
+-type cache_property() :: tuple('db', ne_binary(), ne_binary()).
+-type wh_cache_props() :: [cache_property(),...] | [].
+
+-spec fetch_global_cache_origin(wh_json:objects(), wh_cache_props()) -> wh_cache_props().
 fetch_global_cache_origin([], Props) -> Props;
-fetch_global_cache_origin([JObj|JObjs], Props) -> 
+fetch_global_cache_origin([JObj|JObjs], Props) ->
     Id = wh_json:get_value(<<"id">>, JObj),
     fetch_global_cache_origin(JObjs, [{'db', ?RESOURCES_DB, Id}|Props]).
-     
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -466,9 +467,9 @@ fetch_local_resources(AccountId) ->
             LocalResources
     end.
 
--spec fetch_global_cache_origin(wh_json:objects(), ne_binary(), wh_proplist()) -> wh_proplist().
+-spec fetch_global_cache_origin(wh_json:objects(), ne_binary(), wh_cache_props()) -> wh_cache_props().
 fetch_global_cache_origin([], _, Props) -> Props;
-fetch_global_cache_origin([JObj|JObjs], AccountDb, Props) -> 
+fetch_global_cache_origin([JObj|JObjs], AccountDb, Props) ->
     Id = wh_json:get_value(<<"id">>, JObj),
     fetch_global_cache_origin(JObjs, AccountDb, [{'db', AccountDb, Id}|Props]).
 
@@ -483,7 +484,7 @@ resources_from_jobjs(JObjs) -> resources_from_jobjs(JObjs, []).
 
 -spec resources_from_jobjs(wh_json:objects(), resources()) -> resources().
 resources_from_jobjs([], Resources) -> Resources;
-resources_from_jobjs([JObj|JObjs], Resources) -> 
+resources_from_jobjs([JObj|JObjs], Resources) ->
     case wh_json:is_true(<<"enabled">>, JObj, 'true') of
         'false' -> resources_from_jobjs(JObjs, Resources);
         'true' ->
@@ -545,7 +546,7 @@ resource_rules(JObj) ->
                 ]),
     Rules = wh_json:get_value(<<"rules">>, JObj, []),
     resource_rules(Rules, []).
-    
+
 -spec resource_rules(ne_binaries(), rules()) -> rules().
 resource_rules([], CompiledRules) -> CompiledRules;
 resource_rules([Rule|Rules], CompiledRules) ->
@@ -611,7 +612,8 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
                                ,from_uri_realm=FromRealm
                                ,t38_setting=T38
                                ,codecs=Codecs
-                               ,bypass_media=BypassMedia}) ->
+                               ,bypass_media=BypassMedia
+                              }) ->
     EndpointType = wh_json:get_ne_value(<<"endpoint_type">>, JObj, <<"sip">>),
     #gateway{endpoint_type=EndpointType
              ,server=wh_json:get_value(<<"server">>, JObj)
@@ -649,7 +651,7 @@ gateway_prefix(JObj) ->
 gateway_suffix(JObj) ->
     Default = whapps_config:get_binary(<<"stepswitch">>, <<"default_suffix">>, <<>>),
     wh_json:get_binary_value(<<"suffix">>, JObj, Default).
-    
+
 -spec gateway_caller_id_type(wh_json:object()) -> ne_binary().
 gateway_caller_id_type(JObj) ->
     Default = whapps_config:get_binary(<<"stepswitch">>, <<"default_caller_id_type">>, <<"external">>),
@@ -706,15 +708,11 @@ gateway_dialstring(#gateway{route=Route}, _) ->
 %% Get the t38 settings for an endpoint based on carrier and device
 %% @end
 %%--------------------------------------------------------------------
--spec get_outbound_t38_settings(ne_binary(), api_binary()) -> wh_proplist().
-get_outbound_t38_settings(<<"auto">>, CallerFlag) ->
-    get_outbound_t38_settings('true', CallerFlag);
+-spec get_outbound_t38_settings(boolean(), api_binary() | boolean()) -> wh_proplist().
 get_outbound_t38_settings(CarrierFlag, <<"auto">>) ->
     get_outbound_t38_settings(CarrierFlag, 'true');
 get_outbound_t38_settings(CarrierFlag, 'undefined') ->
-    get_outbound_t38_settings(wh_util:is_true(CarrierFlag));
-get_outbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CarrierFlag) ->
-    get_outbound_t38_settings(wh_util:is_true(CarrierFlag), CallerFlag);
+    get_outbound_t38_settings(CarrierFlag);
 get_outbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
     get_outbound_t38_settings(CarrierFlag, wh_util:is_true(CallerFlag));
 get_outbound_t38_settings('true', 'true') ->
@@ -742,7 +740,7 @@ get_outbound_t38_settings('false','true') ->
      ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ].
 
--spec get_outbound_t38_settings(ne_binary()) -> wh_proplist().
+-spec get_outbound_t38_settings(boolean()) -> wh_proplist().
 get_outbound_t38_settings('true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}

@@ -179,8 +179,8 @@ fetch_braintree_subscriptions(Context) ->
 %%--------------------------------------------------------------------
 -spec filter/3 :: (integer(), integer(), cb_context:context()) -> cb_context:context().
 -spec filter/4 :: (integer(), integer(), #cb_context{}, ne_binary())  -> #cb_context{}.
-filter(From, To, #cb_context{account_id=AccountId}=Context) ->
-    try wh_transactions:fetch_since(AccountId, From, To) of
+filter(From, To, Context) ->
+    try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
         Transactions ->
             JObj = wh_transactions:to_public_json(Transactions),
             JObj1 = wht_util:collapse_call_transactions(JObj),
@@ -189,8 +189,8 @@ filter(From, To, #cb_context{account_id=AccountId}=Context) ->
         _:_ ->
             send_resp({'error', <<"error while fetching transactions">>}, Context)
     end.
-filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
-    try wh_transactions:fetch_since(AccountId, From, To) of
+filter(From, To, Context, Reason) ->
+    try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
         Transactions ->
             Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
             JObj = wh_transactions:to_public_json(Filtered),
@@ -208,8 +208,8 @@ filter(From, To, #cb_context{account_id=AccountId}=Context, Reason) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
-filter_braintree_transactions(From, To, #cb_context{account_id=AccountId}=Context) ->
-    case  wh_service_transactions:current_billing_period(AccountId, 'transactions', {From, To}) of
+filter_braintree_transactions(From, To, Context) ->
+    case  wh_service_transactions:current_billing_period(cb_context:account_id(Context), 'transactions', {From, To}) of
         'not_found' ->
             send_resp({'error', <<"no data found in braintree">>}, Context);
         'unknow_error' ->
@@ -230,9 +230,10 @@ filter_braintree_transactions(From, To, #cb_context{account_id=AccountId}=Contex
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_subscriptions(cb_context:context()) -> cb_context:context().
-filter_braintree_subscriptions(#cb_context{account_id=AccountId}=Context) ->
-    case wh_service_transactions:current_billing_period(AccountId, 'subscriptions') of
+-spec filter_braintree_subscriptions(cb_context:context()) ->
+                                            cb_context:context().
+filter_braintree_subscriptions(Context) ->
+    case wh_service_transactions:current_billing_period(cb_context:account_id(Context), 'subscriptions') of
         'not_found' ->
             send_resp({'error', <<"no data found in braintree">>}, Context);
         'unknow_error' ->
@@ -249,7 +250,8 @@ filter_braintree_subscriptions(#cb_context{account_id=AccountId}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_transaction(wh_json:object()) -> wh_json:object().
+-spec filter_braintree_transaction(wh_json:object()) ->
+                                          wh_json:object().
 filter_braintree_transaction(BTransaction) ->
     Routines = [fun(BTr) -> clean_braintree_transaction(BTr) end
                 ,fun(BTr) -> correct_date_braintree_transaction(BTr) end
@@ -263,7 +265,8 @@ filter_braintree_transaction(BTransaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_subscirption(wh_json:object()) -> wh_json:object().
+-spec filter_braintree_subscirption(wh_json:object()) ->
+                                           wh_json:object().
 filter_braintree_subscirption(BSubscription) ->
     Routines = [fun(BSub) -> clean_braintree_subscription(BSub) end
                 ,fun(BSub) -> correct_date_braintree_subscription(BSub) end
@@ -277,7 +280,9 @@ filter_braintree_subscirption(BSubscription) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
+-spec is_prorated_braintree_transaction(wh_json:object()) ->
+                                               wh_json:object() |
+                                               'false'.
 is_prorated_braintree_transaction(BTransaction) ->
     wh_json:get_value(<<"subscription_id">>, BTransaction, 'false').
 

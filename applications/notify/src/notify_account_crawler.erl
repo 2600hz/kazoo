@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -119,7 +119,7 @@ handle_cast(_Msg, State) ->
 handle_info('next_account', []) ->
     Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"cycle_delay_time">>, 300000),
     erlang:send_after(Cycle, self(), 'crawl_accounts'),
-    {'noreply', []};
+    {'noreply', [], 'hibernate'};
 handle_info('next_account', [Account|Accounts]) ->
     _ = case wh_json:get_value(<<"id">>, Account) of
             <<"_design", _/binary>> -> 'ok';
@@ -136,7 +136,7 @@ handle_info('next_account', [Account|Accounts]) ->
         end,
     Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"interaccount_delay">>, 10000),
     erlang:send_after(Cycle, self(), 'next_account'),
-    {'noreply', Accounts};
+    {'noreply', Accounts, 'hibernate'};
 handle_info('crawl_accounts', _) ->
     _ = case couch_mgr:all_docs(?WH_ACCOUNTS_DB) of
             {'ok', JObjs} ->
@@ -148,6 +148,7 @@ handle_info('crawl_accounts', _) ->
                 {'noreply', []}
         end;
 handle_info(_Info, State) ->
+    lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------

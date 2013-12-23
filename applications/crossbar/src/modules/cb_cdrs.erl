@@ -123,7 +123,8 @@ load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Contex
         {'ok', ViewOptions} ->
             load_view(?CB_LIST_BY_USER
                       ,ViewOptions
-                      ,cb_context:set_query_string(Context, wh_json:new()));
+                      ,cb_context:set_query_string(Context, wh_json:new())
+                     );
         Else -> Else
     end;
 load_cdr_summary(Context) ->
@@ -257,13 +258,14 @@ maybe_add_design_doc(AccountMODb) ->
     end.
 
 -spec cdr_db_name(pos_integer(), cb_context:context()) -> ne_binary().
+-spec cdr_db_name(wh_year(), wh_month(), cb_context:context()) -> ne_binary().
+
 cdr_db_name(Timestamp, Context) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     #cb_context{req_nouns=ReqNouns} = Context,
     [AccountId] = props:get_value(<<"accounts">>, ReqNouns),
     wh_util:format_account_id(AccountId, Year, Month).
 
--spec cdr_db_name(wh_year(), wh_month(), cb_context:context()) -> ne_binary().
 cdr_db_name(Year, Month, Context) ->
     #cb_context{req_nouns=ReqNouns} = Context,
     [AccountId] = props:get_value(<<"accounts">>, ReqNouns),

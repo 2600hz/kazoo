@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : ibrowse_lb.erl
 %%% Author  : chandru <chandrashekhar.mullaparthi@t-mobile.co.uk>
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  6 Mar 2008 by chandru <chandrashekhar.mullaparthi@t-mobile.co.uk>
 %%%-------------------------------------------------------------------
@@ -15,28 +15,28 @@
 %%--------------------------------------------------------------------
 %% External exports
 -export([
-	 start_link/1,
-	 spawn_connection/5,
+         start_link/1,
+         spawn_connection/5,
          stop/1
-	]).
+        ]).
 
 %% gen_server callbacks
 -export([
-	 init/1,
-	 handle_call/3,
-	 handle_cast/2,
-	 handle_info/2,
-	 terminate/2,
-	 code_change/3
-	]).
+         init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         terminate/2,
+         code_change/3
+        ]).
 
 -record(state, {parent_pid,
-		ets_tid,
-		host,
-		port,
-		max_sessions,
-		max_pipeline_size,
-		num_cur_sessions = 0,
+                ets_tid,
+                host,
+                port,
+                max_sessions,
+                max_pipeline_size,
+                num_cur_sessions = 0,
                 proc_state
                }).
 
@@ -72,22 +72,22 @@ init([Host, Port]) ->
     put(ibrowse_trace_token, ["LB: ", Host, $:, integer_to_list(Port)]),
     Tid = ets:new(ibrowse_lb, [public, ordered_set]),
     {ok, #state{parent_pid = whereis(ibrowse),
-		host = Host,
-		port = Port,
-		ets_tid = Tid,
-		max_pipeline_size = Max_pipe_sz,
-	        max_sessions = Max_sessions}}.
+                host = Host,
+                port = Port,
+                ets_tid = Tid,
+                max_pipeline_size = Max_pipe_sz,
+                max_sessions = Max_sessions}}.
 
 spawn_connection(Lb_pid, Url,
-		 Max_sessions,
-		 Max_pipeline_size,
-		 SSL_options)
+                 Max_sessions,
+                 Max_pipeline_size,
+                 SSL_options)
   when is_pid(Lb_pid),
        is_record(Url, url),
        is_integer(Max_pipeline_size),
        is_integer(Max_sessions) ->
     gen_server:call(Lb_pid,
-		    {spawn_connection, Url, Max_sessions, Max_pipeline_size, SSL_options}).
+                    {spawn_connection, Url, Max_sessions, Max_pipeline_size, SSL_options}).
 
 stop(Lb_pid) ->
     case catch gen_server:call(Lb_pid, stop) of
@@ -119,12 +119,13 @@ handle_call(stop, _From, #state{ets_tid = Tid} = State) ->
     gen_server:reply(_From, ok),
     {stop, normal, State};
 
-handle_call(_, _From, #state{proc_state = shutting_down} = State) ->
+handle_call(_Req, _From, #state{proc_state = shutting_down} = State) ->
+    io:format("~p shutting down, ignoring req ~p", [self(), _Req]),
     {reply, {error, shutting_down}, State};
 
 %% Update max_sessions in #state with supplied value
 handle_call({spawn_connection, _Url, Max_sess, Max_pipe, _}, _From,
-	    #state{num_cur_sessions = Num} = State) 
+            #state{num_cur_sessions = Num} = State)
     when Num >= Max_sess ->
     State_1 = maybe_create_ets(State),
     Reply = find_best_connection(State_1#state.ets_tid, Max_pipe),
@@ -132,7 +133,7 @@ handle_call({spawn_connection, _Url, Max_sess, Max_pipe, _}, _From,
                                  max_pipeline_size = Max_pipe}};
 
 handle_call({spawn_connection, Url, Max_sess, Max_pipe, SSL_options}, _From,
-	    #state{num_cur_sessions = Cur} = State) ->
+            #state{num_cur_sessions = Cur} = State) ->
     State_1 = maybe_create_ets(State),
     Tid = State_1#state.ets_tid,
     {ok, Pid} = ibrowse_http_client:start_link({Tid, Url, SSL_options}),
@@ -169,17 +170,17 @@ handle_info({'EXIT', _Pid, _Reason}, #state{ets_tid = undefined} = State) ->
     {noreply, State};
 
 handle_info({'EXIT', Pid, _Reason},
-	    #state{num_cur_sessions = Cur,
-		   ets_tid = Tid} = State) ->
+            #state{num_cur_sessions = Cur,
+                   ets_tid = Tid} = State) ->
     ets:match_delete(Tid, {{'_', Pid}, '_'}),
     Cur_1 = Cur - 1,
     case Cur_1 of
-		  0 ->
-		      ets:delete(Tid),
-			  {noreply, State#state{ets_tid = undefined, num_cur_sessions = 0}, 10000};
-		  _ ->
-		      {noreply, State#state{num_cur_sessions = Cur_1}}
-	      end;
+                  0 ->
+                      ets:delete(Tid),
+                          {noreply, State#state{ets_tid = undefined, num_cur_sessions = 0}, 10000};
+                  _ ->
+                      {noreply, State#state{num_cur_sessions = Cur_1}}
+              end;
 
 handle_info({trace, Bool}, #state{ets_tid = undefined} = State) ->
     put(my_trace_flag, Bool),
@@ -187,11 +188,11 @@ handle_info({trace, Bool}, #state{ets_tid = undefined} = State) ->
 
 handle_info({trace, Bool}, #state{ets_tid = Tid} = State) ->
     ets:foldl(fun({{_, Pid}, _}, Acc) when is_pid(Pid) ->
-		      catch Pid ! {trace, Bool},
-		      Acc;
-		 (_, Acc) ->
-		      Acc
-	      end, undefined, Tid),
+                      catch Pid ! {trace, Bool},
+                      Acc;
+                 (_, Acc) ->
+                      Acc
+              end, undefined, Tid),
     put(my_trace_flag, Bool),
     {noreply, State};
 

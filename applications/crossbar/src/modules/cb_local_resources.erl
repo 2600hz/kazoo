@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for local resource documents
@@ -29,12 +29,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.local_resources">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.local_resources">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.local_resources">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.local_resources">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.local_resources">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"*.execute.delete.local_resources">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.local_resources">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.local_resources">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.local_resources">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.local_resources">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.local_resources">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.local_resources">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -140,37 +140,38 @@ summary(Context) ->
 validate_request(ResourceId, Context) ->
     check_for_registering_gateways(ResourceId, Context).
 
-check_for_registering_gateways(ResourceId, #cb_context{req_data=JObj}=Context) ->    
+check_for_registering_gateways(ResourceId, Context) ->
     case lists:any(fun(Gateway) ->
                            wh_json:is_true(<<"register">>, Gateway)
                                andalso
                                  (not wh_json:is_false(<<"enabled">>, Gateway))
-                   end, wh_json:get_value(<<"gateways">>, JObj, []))
+                   end, wh_json:get_value(<<"gateways">>, cb_context:req_data(Context), []))
     of
-        true ->
-            check_if_peer(ResourceId, cb_context:store(aggregate_resource, true, Context));
-        false ->
+        'true' ->
+            check_if_peer(ResourceId, cb_context:store(Context, 'aggregate_resource', 'true'));
+        'false' ->
             check_if_peer(ResourceId, Context)
     end.
 
-check_if_peer(ResourceId, #cb_context{req_data=JObj}=Context) ->
-    case {wh_json:is_true(<<"peer">>, JObj),
-          whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, false)}
+check_if_peer(ResourceId, Context) ->
+    case {wh_json:is_true(<<"peer">>, cb_context:req_data(Context)),
+          whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')}
     of
-        {true, true} ->
+        {'true', 'true'} ->
             check_if_gateways_have_ip(ResourceId, Context);
-        {true, false} ->
+        {'true', 'false'} ->
             C = cb_context:add_validation_error([<<"peer">>]
                                                 ,<<"forbidden">>
                                                 ,<<"Peers are currently disabled, please contact the system admin">>
-                                                 ,Context),
+                                                ,Context
+                                               ),
             check_resource_schema(ResourceId, C);
         {_, _} ->
             check_resource_schema(ResourceId, Context)
     end.
 
-check_if_gateways_have_ip(ResourceId, #cb_context{req_data=JObj}=Context) ->
-    Gateways = wh_json:get_value(<<"gateways">>, JObj, []),
+check_if_gateways_have_ip(ResourceId, Context) ->
+    Gateways = wh_json:get_value(<<"gateways">>, cb_context:req_data(Context), []),
     IPs = extract_gateway_ips(Gateways, 0, []),
     SIPAuth = get_all_sip_auth_ips(),
     ACLs = get_all_acl_ips(),
@@ -179,12 +180,13 @@ check_if_gateways_have_ip(ResourceId, #cb_context{req_data=JObj}=Context) ->
 validate_gateway_ips([], _, _, ResourceId, #cb_context{resp_status='error'}=Context) ->
     check_resource_schema(ResourceId, Context);
 validate_gateway_ips([], _, _, ResourceId, Context) ->
-    check_resource_schema(ResourceId, cb_context:store('aggregate_resource', 'true', Context));
+    check_resource_schema(ResourceId, cb_context:store(Context, 'aggregate_resource', 'true'));
 validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context) ->
     C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
                                         ,<<"required">>
                                         ,<<"Gateway server must be an IP when peering with the resource">>
-                                        ,Context),
+                                        ,Context
+                                       ),
     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C);
 validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context) ->
     case wh_network_utils:is_ipv4(ServerIP) of
@@ -196,7 +198,8 @@ validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, Resource
                     C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
                                                         ,<<"unique">>
                                                         ,<<"Gateway server ip is already in use">>
-                                                        ,Context),
+                                                        ,Context
+                                                       ),
                     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C)
             end;
         'false' ->
@@ -247,7 +250,7 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec maybe_aggregate_resource(cb_context:context()) -> boolean().
 maybe_aggregate_resource(#cb_context{resp_status='success', doc=JObj}=Context) ->
-    case wh_util:is_true(cb_context:fetch('aggregate_resource', Context)) of
+    case wh_util:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
             ResourceId = wh_json:get_value(<<"_id">>, JObj),
             maybe_remove_aggregate(ResourceId, Context);

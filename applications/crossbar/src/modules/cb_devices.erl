@@ -31,7 +31,7 @@
 -include("../crossbar.hrl").
 
 -define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
--define(QUICKCALL_URL, [{<<"devices">>, [_, <<"quickcall">>, _]}
+-define(QUICKCALL_URL, [{<<"devices">>, [_, ?QUICKCALL_PATH_TOKEN, _]}
                         ,{?WH_ACCOUNTS_DB, [_]}
                        ]).
 
@@ -103,8 +103,8 @@ resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 %%--------------------------------------------------------------------
 billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = ?HTTP_GET}=Context) ->
     Context;
-billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], account_id=AccountId}=Context) ->
-    try wh_services:allow_updates(AccountId) of
+billing(#cb_context{req_nouns=[{<<"devices">>, _}|_]}=Context) ->
+    try wh_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
@@ -137,8 +137,8 @@ authorize(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS, req_verb = ?HTTP_GET}) ->
 -spec reconcile_services(cb_context:context()) -> cb_context:context().
 reconcile_services(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     Context;
-reconcile_services(#cb_context{account_id=AccountId}=Context) ->
-    _ = wh_services:reconcile(AccountId, <<"devices">>),
+reconcile_services(#cb_context{}=Context) ->
+    _ = wh_services:reconcile(cb_context:account_id(Context), <<"devices">>),
     Context.
 
 %%--------------------------------------------------------------------
@@ -227,29 +227,30 @@ validate_request('undefined', Context) ->
 validate_request(DeviceId, Context) ->
     prepare_outbound_flags(DeviceId, Context).
 
-
 -spec changed_mac_address(cb_context:context()) -> boolean().
-changed_mac_address(#cb_context{req_data=JObj, storage=Storage, db_name=DbName}) ->
-    NewAddress = wh_json:get_ne_value(<<"mac_address">>, JObj),
-    OldAddress = wh_json:get_ne_value(<<"mac_address">>, props:get_value('db_doc', Storage)),
+changed_mac_address(Context) ->
+    NewAddress = cb_context:req_value(Context, <<"mac_address">>),
+    OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch(Context, 'db_doc')),
     case NewAddress =:= OldAddress of
         'true' -> 'true';
         'false' ->
-            unique_mac_address(NewAddress, DbName)
+            unique_mac_address(NewAddress, cb_context:account_db(Context))
     end.
 
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
-check_mac_address(DeviceId, #cb_context{req_data=JObj, db_name=DbName}=Context) ->
-    case unique_mac_address(wh_json:get_ne_value(<<"mac_address">>, JObj), DbName) of
+check_mac_address(DeviceId, #cb_context{}=Context) ->
+    case unique_mac_address(cb_context:req_value(Context, <<"mac_address">>)
+                            ,cb_context:account_db(Context)
+                           )
+    of
         'true' ->
             prepare_outbound_flags(DeviceId, Context);
         'false' ->
            error_used_mac_address(Context)
     end.
 
--spec unique_mac_address(api_binary(), cb_context:context()) -> boolean().
-unique_mac_address('undefined', _) ->
-    'true';
+-spec unique_mac_address(api_binary(), ne_binary()) -> boolean().
+unique_mac_address('undefined', _) -> 'true';
 unique_mac_address(MacAddress, DbName) ->
     not(lists:member(MacAddress, get_mac_addresses(DbName))).
 
@@ -258,67 +259,69 @@ error_used_mac_address(Context) ->
     cb_context:add_validation_error(<<"mac_address">>
                                     ,<<"unique">>
                                     ,<<"mac address already in use">>
-                                    ,Context).
+                                    ,Context
+                                   ).
 
+-spec get_mac_addresses(ne_binary()) -> ne_binaries().
 get_mac_addresses(DbName) ->
     case couch_mgr:get_all_results(DbName, ?CB_LIST_MAC) of
-        {'ok', AdJObj} ->
-            couch_mgr:get_result_keys(AdJObj);
+        {'ok', AdJObj} -> couch_mgr:get_result_keys(AdJObj);
         _ -> []
     end.
 
-
 -spec prepare_outbound_flags(api_binary(), cb_context:context()) -> cb_context:context().
-prepare_outbound_flags(DeviceId, #cb_context{req_data=JObj}=Context) ->
-    J = case wh_json:get_value(<<"outbound_flags">>, JObj) of
-            [] -> JObj;
-            Flags when is_list(Flags) ->
-                OutboundFlags = [wh_util:strip_binary(Flag)
-                                 || Flag <- Flags
-                                ],
-                wh_json:set_value(<<"outbound_flags">>, OutboundFlags, JObj);
-            _Else ->
-                wh_json:set_value(<<"outbound_flags">>, [], JObj)
-        end,
-    prepare_device_realm(DeviceId, Context#cb_context{req_data=J}).
+prepare_outbound_flags(DeviceId, #cb_context{}=Context) ->
+    JObj = case cb_context:req_value(Context, <<"outbound_flags">>) of
+               [] -> cb_context:req_data(Context);
+               Flags when is_list(Flags) ->
+                   OutboundFlags = [wh_util:strip_binary(Flag)
+                                    || Flag <- Flags
+                                   ],
+                   wh_json:set_value(<<"outbound_flags">>, OutboundFlags, cb_context:req_data(Context));
+               _Else ->
+                   wh_json:set_value(<<"outbound_flags">>, [], cb_context:req_data(Context))
+           end,
+    prepare_device_realm(DeviceId, cb_context:set_req_data(Context, JObj)).
 
 -spec prepare_device_realm(api_binary(), cb_context:context()) -> cb_context:context().
-prepare_device_realm(DeviceId, #cb_context{req_data=JObj}=Context) ->
+prepare_device_realm(DeviceId, #cb_context{}=Context) ->
     AccountRealm = crossbar_util:get_account_realm(Context),
-    Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], JObj, AccountRealm),
+    Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
     case AccountRealm =:= Realm of
         'true' ->
-            J = wh_json:delete_key([<<"sip">>, <<"realm">>], JObj),
-            validate_device_creds(Realm, DeviceId, Context#cb_context{req_data=J});
+            JObj = wh_json:delete_key([<<"sip">>, <<"realm">>], cb_context:req_data(Context)),
+            validate_device_creds(Realm, DeviceId, cb_context:set_req_data(Context, JObj));
         'false' ->
-            validate_device_creds(Realm, DeviceId, cb_context:store('aggregate_device', 'true', Context))
+            validate_device_creds(Realm, DeviceId, cb_context:store(Context, 'aggregate_device', 'true'))
     end.
 
 -spec validate_device_creds(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
-validate_device_creds(Realm, DeviceId, #cb_context{req_data=JObj}=Context) ->
-    case wh_json:get_value([<<"sip">>, <<"method">>], JObj, <<"password">>) of
+validate_device_creds(Realm, DeviceId, #cb_context{}=Context) ->
+    case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
         <<"password">> -> validate_device_password(Realm, DeviceId, Context);
         <<"ip">> ->
-            IP = wh_json:get_value([<<"sip">>, <<"ip">>], JObj),
+            IP = cb_context:req_value(Context, [<<"sip">>, <<"ip">>]),
             validate_device_ip(IP, DeviceId, Context);
         _Else ->
             C = cb_context:add_validation_error([<<"sip">>, <<"method">>]
-                                                   ,<<"enum">>
-                                                   ,<<"SIP authentication method is invalid">>
-                                                   ,Context),
+                                               ,<<"enum">>
+                                               ,<<"SIP authentication method is invalid">>
+                                               ,Context
+                                               ),
             check_device_schema(DeviceId, C)
     end.
 
 -spec validate_device_password(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
-validate_device_password(Realm, DeviceId, #cb_context{db_name=Db, req_data=JObj}=Context) ->
-    Username = wh_json:get_ne_value([<<"sip">>, <<"username">>], JObj),
-    case is_sip_creds_unique(Db, Realm, Username, DeviceId) of
+validate_device_password(Realm, DeviceId, #cb_context{}=Context) ->
+    Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
+    case is_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
         'true' -> check_device_schema(DeviceId, Context);
         'false' ->
             C = cb_context:add_validation_error([<<"sip">>, <<"username">>]
                                                 ,<<"unique">>
                                                 ,<<"SIP credentials already in use">>
-                                                ,Context),
+                                                ,Context
+                                               ),
             check_device_schema(DeviceId, C)
     end.
 
@@ -330,14 +333,15 @@ validate_device_ip(IP, DeviceId, Context) ->
             C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
                                                 ,<<"type">>
                                                 ,<<"Must be a valid IPv4 RFC 791">>
-                                                ,Context),
+                                                ,Context
+                                               ),
             check_device_schema(DeviceId, C)
     end.
 
 validate_device_ip_unique(IP, DeviceId, Context) ->
     case is_ip_unique(IP, DeviceId) of
         'true' ->
-            check_device_schema(DeviceId, cb_context:store('aggregate_device', 'true', Context));
+            check_device_schema(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
         'false' ->
             C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
                                                 ,<<"unique">>
@@ -350,9 +354,9 @@ check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
     cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
 
-on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
+on_successful_validation('undefined', #cb_context{}=Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
-    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
+    cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(DeviceId, #cb_context{}=Context) ->
     crossbar_doc:load_merge(DeviceId, Context).
 
@@ -362,12 +366,11 @@ on_successful_validation(DeviceId, #cb_context{}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-maybe_validate_quickcall(#cb_context{resp_status='success'
-                                     ,doc=JObj
-                                     ,auth_token=AuthToken
-                                    }=Context) ->
-    case (not wh_util:is_empty(AuthToken))
-          orelse wh_json:is_true(<<"allow_anoymous_quickcalls">>, JObj)
+maybe_validate_quickcall(Context) ->
+    maybe_validate_quickcall(Context, cb_context:resp_status(Context)).
+maybe_validate_quickcall(Context, 'success') ->
+    case (not wh_util:is_empty(cb_context:auth_token(Context)))
+        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anoymous_quickcalls">>))
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context
@@ -519,17 +522,20 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_aggregate_device(api_binary(), cb_context:context()) -> boolean().
-maybe_aggregate_device(DeviceId, #cb_context{resp_status='success', doc=JObj}=Context) ->
-    case wh_util:is_true(cb_context:fetch('aggregate_device', Context)) of
+-spec maybe_aggregate_device(api_binary(), cb_context:context(), crossbar_status()) -> boolean().
+maybe_aggregate_device(DeviceId, Context) ->
+    maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
+maybe_aggregate_device(DeviceId, Context, 'success') ->
+    case wh_util:is_true(cb_context:fetch(Context, 'aggregate_device')) of
         'false' ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
-            _ = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
+            _ = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
             _ = wapi_switch:publish_reload_acls(),
             'true'
     end;
-maybe_aggregate_device(_, _) -> 'false'.
+maybe_aggregate_device(_, _, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -537,9 +543,13 @@ maybe_aggregate_device(_, _) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_remove_aggregate(ne_binary(), cb_context:context()) -> boolean().
-maybe_remove_aggregate('undefined', _) -> 'false';
-maybe_remove_aggregate(DeviceId, #cb_context{resp_status='success'}) ->
+-spec maybe_remove_aggregate(api_binary(), cb_context:context()) -> boolean().
+-spec maybe_remove_aggregate(api_binary(), cb_context:context(), crossbar_status()) -> boolean().
+maybe_remove_aggregate(DeviceId, Context) ->
+    maybe_remove_aggregate(DeviceId, Context, cb_context:resp_status(Context)).
+
+maybe_remove_aggregate('undefined', _Context, _RespStatus) -> 'false';
+maybe_remove_aggregate(DeviceId, _Context, 'success') ->
     case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
         {'ok', JObj} ->
             _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
@@ -547,7 +557,7 @@ maybe_remove_aggregate(DeviceId, #cb_context{resp_status='success'}) ->
             'true';
         {'error', 'not_found'} -> 'false'
     end;
-maybe_remove_aggregate(_, _) -> 'false'.
+maybe_remove_aggregate(_, _, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private

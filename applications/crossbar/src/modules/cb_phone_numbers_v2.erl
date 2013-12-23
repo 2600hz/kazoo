@@ -178,32 +178,37 @@ find_prefix(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_locality(cb_context:context()) -> cb_context:context().
-find_locality(#cb_context{req_data=Data}=C) ->
+find_locality(#cb_context{req_data=Data}=Context) ->
     case wh_json:get_value(<<"numbers">>, Data) of
         'undefined' ->
             cb_context:add_validation_error(<<"numbers">>
                                             ,<<"required">>
                                             ,<<"list of numbers missing">>
-                                            ,C);
+                                            ,Context
+                                           );
         [] ->
            cb_context:add_validation_error(<<"numbers">>
                                             ,<<"minimum">>
                                             ,<<"minimum 1 number required">>
-                                            ,C);
+                                            ,Context
+                                          );
         Numbers when is_list(Numbers) ->
             Url = get_url(wh_json:get_value(<<"quality">>, Data)),
             case get_locality(Numbers, Url) of
                 {'error', E} ->
-                    crossbar_util:response('error', E, 500, C);
-                Localities ->
-                    cb_context:set_resp_data(cb_context:set_resp_status(C, 'success')
-                                            ,Localities)
+                    crossbar_util:response('error', E, 500, Context);
+                {'ok', Localities} ->
+                    cb_context:set_resp_data(
+                      cb_context:set_resp_status(Context, 'success')
+                      ,Localities
+                     )
             end;
         _E ->
             cb_context:add_validation_error(<<"numbers">>
                                             ,<<"type">>
                                             ,<<"numbers must be a list">>
-                                            ,C)
+                                            ,Context
+                                           )
     end.
 
 -spec get_url(any()) -> binary().
@@ -216,7 +221,9 @@ get_url(_) -> ?FREE_URL.
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec get_prefix(ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+-spec get_prefix(ne_binary()) ->
+                        {'ok', wh_json:object()} |
+                        {'error', any()}.
 get_prefix(City) ->
     Country = whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, ?FREE_URL) of
@@ -246,7 +253,8 @@ get_prefix(City) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_locality(cb_context:context()) -> cb_context:context().
+-spec maybe_update_locality(cb_context:context()) ->
+                                   cb_context:context().
 maybe_update_locality(Context) ->
     Numbers = wh_json:foldl(
                 fun(Key, Value, Acc) ->
@@ -262,19 +270,21 @@ maybe_update_locality(Context) ->
                ),
     update_locality(Context, Numbers).
 
--spec update_locality(cb_context:context(), ne_binaries()) -> cb_context:context().
+-spec update_locality(cb_context:context(), ne_binaries()) ->
+                             cb_context:context().
 update_locality(Context, []) -> Context;
 update_locality(Context, Numbers) ->
     case get_locality(Numbers, ?FREE_URL) of
         {'error', _} -> Context;
-        Localities ->
-            spawn(fun() ->
-                          update_phone_numbers_locality(Context, Localities)
-                  end),
+        {'ok', Localities} ->
+            _ = spawn(fun() ->
+                              update_phone_numbers_locality(Context, Localities)
+                      end),
             update_context_locality(Context, Localities)
     end.
 
--spec update_context_locality(cb_context:context(), wh_json:objects()) -> cb_context:context().
+-spec update_context_locality(cb_context:context(), wh_json:object()) ->
+                                     cb_context:context().
 update_context_locality(Context, Localities) ->
     JObj = wh_json:foldl(fun(Key, Value, J) ->
                                  wh_json:set_value([<<"numbers">>
@@ -284,7 +294,9 @@ update_context_locality(Context, Localities) ->
                          end, cb_context:resp_data(Context), Localities),
     cb_context:set_resp_data(Context, JObj).
 
--spec update_phone_numbers_locality(cb_context:context(), wh_json:objects()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec update_phone_numbers_locality(cb_context:context(), wh_json:object()) ->
+                                           {'ok', wh_json:object()} |
+                                           {'error', _}.
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
     DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context), <<"phone_numbers">>),
@@ -300,8 +312,9 @@ update_phone_numbers_locality(Context, Localities) ->
                                       end
                               end, JObj, Localities),
             couch_mgr:save_doc(AccountDb, J);
-        {'error', _E} ->
-            lager:error("failed to update locality for ~p in ~p", [DocId, AccountDb])
+        {'error', _E}=E ->
+            lager:error("failed to update locality for ~s in ~s: ~p", [DocId, AccountDb, _E]),
+            E
     end.
 
 %%--------------------------------------------------------------------
@@ -310,12 +323,14 @@ update_phone_numbers_locality(Context, Localities) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec get_locality(ne_binaries(), binary()) -> {'error', binary()} | wh_json:object().
+-spec get_locality(ne_binaries(), ne_binary()) ->
+                          {'error', ne_binary()} |
+                          {'ok', wh_json:object()}.
 get_locality([], _) -> {'error', <<"number missing">>};
 get_locality(Numbers, UrlType) ->
     case whapps_config:get(?PHONE_NUMBERS_CONFIG_CAT, UrlType) of
         'undefined' ->
-            lager:error("could not get number locality url", []),
+            lager:error("could not get number locality url"),
             {'error', <<"missing phonebook url">>};
         Url ->
             ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
@@ -332,10 +347,13 @@ get_locality(Numbers, UrlType) ->
             end
     end.
 
--spec handle_locality_resp(wh_json:object()) -> wh_json:object() | {'error', binary()}.
+-spec handle_locality_resp(wh_json:object()) ->
+                                  {'error', ne_binary()} |
+                                  {'ok', wh_json:object()}.
 handle_locality_resp(Resp) ->
     case wh_json:get_value(<<"status">>, Resp, <<"error">>) of
-        <<"success">> -> wh_json:get_value(<<"data">>, Resp);
+        <<"success">> ->
+            {'ok', wh_json:get_value(<<"data">>, Resp, wh_json:new())};
         _E ->
             lager:error("number locality lookup failed, status: ~p", [_E]),
             {'error', <<"number locality lookup failed">>}

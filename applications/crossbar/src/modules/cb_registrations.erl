@@ -89,7 +89,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?COUNT_PATH_TOKEN) ->
       ,Context
      ).
 
--spec lookup_regs(ne_binary()) -> wh_json:objects().
+-spec lookup_regs(cb_context:context()) -> wh_json:objects().
 lookup_regs(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
@@ -162,7 +162,7 @@ normalize_registration(JObj) ->
                ],
     wh_json:normalize(lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)).
 
--spec count_registrations(cb_context:context()) -> cb_context:context().
+-spec count_registrations(cb_context:context()) -> integer().
 count_registrations(Context) ->
     Req = [{<<"Realm">>, get_realm_for_counting(Context)}
            ,{<<"Fields">>, []}
@@ -175,7 +175,7 @@ count_registrations(Context) ->
                                            ),
     case ReqResp of
         {'error', _E} -> lager:debug("no resps found: ~p", [_E]), 0;
-        {'ok', JObj} -> wh_json:get_integer_value(<<"Count">>, JObj);
+        {'ok', JObj} -> wh_json:get_integer_value(<<"Count">>, JObj, 0);
         {'timeout', _} -> lager:debug("timed out query for counting regs"), 0
     end.
 

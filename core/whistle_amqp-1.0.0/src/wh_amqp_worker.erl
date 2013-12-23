@@ -245,17 +245,22 @@ collect_from_whapp_or_validate(Whapp, VFun) ->
 -spec handle_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value('server', Props)
-                      ,{'event', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
+                      ,{'event', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}
+                     ).
 
 -spec send_request(ne_binary(), ne_binary(), publish_fun(), wh_proplist()) ->
-                          'ok' | {'EXIT', _}.
+                          'ok' | {'error', _}.
 send_request(CallID, Self, PublishFun, ReqProp) when is_function(PublishFun, 1) ->
     put('callid', CallID),
     Prop = [{<<"Server-ID">>, Self}
             ,{<<"Call-ID">>, CallID}
             | ReqProp
            ],
-    catch PublishFun(Prop).
+    try PublishFun(Prop) of
+        'ok' -> 'ok'
+    catch
+        _:E -> {'error', E}
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -299,7 +304,9 @@ handle_call({'request', ReqProp, _, _, _}, _, #state{queue='undefined'}=State) -
     lager:debug("unable to publish request prior to queue creation: ~p", [ReqProp]),
     {'reply', {'error', 'timeout'}, reset(State)};
 handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
-            ,{ClientPid, _}=From, #state{queue=Q}=State) ->
+            ,{ClientPid, _}=From
+            ,#state{queue=Q}=State
+           ) ->
     _ = wh_util:put_callid(ReqProp),
     CallID = get('callid'),
     {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
@@ -311,18 +318,21 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
     case ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1) of
         'ok' ->
             lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
-            {'noreply', State#state{
-                          client_pid = ClientPid
-                          ,client_ref = erlang:monitor('process', ClientPid)
-                          ,client_from = From
-                          ,client_vfun = VFun
-                          ,responses = 'undefined' % how we know not to collect many responses
-                          ,neg_resp_count = 0
-                          ,current_msg_id = MsgID
-                          ,req_timeout_ref = start_req_timeout(Timeout)
-                          ,req_start_time = os:timestamp()
-                          ,callid = CallID
-                         }, 'hibernate'};
+            {'noreply'
+             ,State#state{
+                client_pid = ClientPid
+                ,client_ref = erlang:monitor('process', ClientPid)
+                ,client_from = From
+                ,client_vfun = VFun
+                ,responses = 'undefined' % how we know not to collect many responses
+                ,neg_resp_count = 0
+                ,current_msg_id = MsgID
+                ,req_timeout_ref = start_req_timeout(Timeout)
+                ,req_start_time = os:timestamp()
+                ,callid = CallID
+               }
+             ,'hibernate'
+            };
         {'EXIT', Err} ->
             lager:debug("failed to send request: ~p", [Err]),
             {'reply', {'error', Err}, reset(State), 'hibernate'}
@@ -331,7 +341,9 @@ handle_call({'call_collect', ReqProp, _, _, _}, _, #state{queue='undefined'}=Sta
     lager:debug("unable to publish collect request prior to queue creation: ~p", [ReqProp]),
     {'reply', {'error', 'timeout'}, reset(State)};
 handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
-            ,{ClientPid, _}=From, #state{queue=Q}=State) ->
+            ,{ClientPid, _}=From
+            ,#state{queue=Q}=State
+           ) ->
     _ = wh_util:put_callid(ReqProp),
     CallID = get('callid'),
     {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
@@ -343,24 +355,27 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
     case ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1) of
         'ok' ->
             lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
-            {'noreply', State#state{
-                        client_pid = ClientPid
-                        ,client_ref = erlang:monitor('process', ClientPid)
-                        ,client_from = From
-                        ,client_cfun = UntilFun
-                        ,responses = [] % how we know to collect all responses
-                        ,neg_resp_count = 0
-                        ,current_msg_id = MsgID
-                        ,req_timeout_ref = start_req_timeout(Timeout)
-                        ,req_start_time = os:timestamp()
-                        ,callid = CallID
-                       }, 'hibernate'};
+            {'noreply'
+             ,State#state{
+                client_pid = ClientPid
+                ,client_ref = erlang:monitor('process', ClientPid)
+                ,client_from = From
+                ,client_cfun = UntilFun
+                ,responses = [] % how we know to collect all responses
+                ,neg_resp_count = 0
+                ,current_msg_id = MsgID
+                ,req_timeout_ref = start_req_timeout(Timeout)
+                ,req_start_time = os:timestamp()
+                ,callid = CallID
+               }
+             ,'hibernate'
+            };
         {'EXIT', Err} ->
             lager:debug("failed to send request: ~p", [Err]),
             {'reply', {'error', Err}, reset(State), 'hibernate'}
     end;
 handle_call(_Request, _From, State) ->
-    {'reply', {'error', 'not_implemented'}, State}.
+    {'reply', {'error', 'not_implemented'}, State, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -373,7 +388,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
-    {'noreply', State#state{queue=Q}};
+    {'noreply', State#state{queue=Q}, 'hibernate'};
 handle_cast({'set_negative_threshold', NegThreshold}, State) ->
     lager:debug("set negative threshold to ~p", [NegThreshold]),
     {'noreply', State#state{neg_resp_threshold = NegThreshold}, 'hibernate'};
@@ -427,9 +442,13 @@ handle_cast({'event', _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
     {'noreply', State};
 handle_cast({'publish', ReqProp, _}, #state{queue='undefined'}=State) ->
     lager:debug("unable to publish message prior to queue creation: ~p", [ReqProp]),
-    {'noreply', reset(State)};
+    {'noreply', reset(State), 'hibernate'};
 handle_cast({'publish', ReqProp, PublishFun}, State) ->
-    catch PublishFun(ReqProp),
+    try PublishFun(ReqProp) of
+        'ok' -> 'ok'
+    catch
+        _E:_R -> lager:debug("failed to publish request: ~s:~p", [_E, _R])
+    end,
     {'noreply', reset(State)};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
@@ -437,7 +456,7 @@ handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
-    {'noreply', State}.
+    {'noreply', State, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private

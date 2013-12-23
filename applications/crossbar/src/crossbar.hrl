@@ -97,9 +97,9 @@
           ,auth_account_id :: api_binary()
           ,auth_doc :: api_object()
           ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS
-          ,req_nouns = [{<<"404">>, []}] :: [{ne_binary(), wh_json:json_strings()},...] | [] % {module, [id]} most typical
-          ,req_json = wh_json:new() :: wh_json:object() | {'malformed', binary()} %% the request JSON envelope
-          ,req_files = [] :: [{ne_binary(), wh_json:object()},...] | [] %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
+          ,req_nouns = [{<<"404">>, []}] :: req_nouns() % {module, [id]} most typical
+          ,req_json = wh_json:new() :: req_json()
+          ,req_files = [] :: req_files()
           ,req_data :: wh_json:json_term()  % the "data" from the request JSON envelope
           ,query_json = wh_json:new() :: wh_json:object()
           ,account_id :: api_binary()
@@ -110,7 +110,7 @@
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg :: wh_json:json_string()
           ,resp_error_code :: pos_integer()
-          ,resp_data :: wh_json:object() | wh_json:objects() | api_binary() | wh_json:json_term()
+          ,resp_data :: resp_data()
           ,resp_headers = [] :: wh_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,start = os:timestamp() :: wh_now()
           ,req_id = ?LOG_SYSTEM_ID :: ne_binary()

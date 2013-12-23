@@ -31,6 +31,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include("wh_json.hrl").
 
 -define(SIMPLE_TYPES, [<<"string">>,<<"array">>
                        ,<<"number">>,<<"integer">>
@@ -210,11 +211,38 @@ is_valid_attribute({<<"type">>, Type, _}, JObj, Key) when is_binary(Type) ->
 is_valid_attribute({<<"type">>, TypeSchema, _}, JObj, Key) ->
     are_valid_attributes(JObj, Key, TypeSchema);
 
-%% 5.3: ignored for the moment
-is_valid_attribute({<<"patternProperties">>, _, _}, JObj, _Key) -> {'pass', JObj};
+%% 5.3: The value of "patternProperties" MUST be an object. Each property name
+%% of this object SHOULD be a valid regular expression, according to the
+%% ECMA 262 regular expression dialect. Each property value of this object MUST
+%% be an object, and each object MUST be a valid JSON Schema.
+is_valid_attribute({<<"patternProperties">>, PatternProperties, _}, JObj, Key) ->
+    Patterns = wh_json:get_keys(PatternProperties),
+    Object = wh_json:get_value(Key, JObj),
+
+    case wh_json:is_json_object(Object)
+        andalso wh_json:filter(fun({ObjectKey, ObjectValue}) ->
+                                       not maybe_match_patterns(ObjectKey, ObjectValue, Patterns, PatternProperties)
+                               end
+                               ,Object
+                              )
+    of
+        'false' -> {'fail', {Key, <<"type:Value must be a JSON object">>}};
+        ?EMPTY_JSON_OBJECT -> {'pass', JObj};
+        _ -> {'fail', {Key, <<"patternProperties:Object keys were not all matched by patterns">>}}
+    end;
 
 %% 5.4: ignored for the moment
 is_valid_attribute({<<"additionalProperties">>, _, _}, JObj, _Key) -> {'pass', JObj};
+
+is_valid_attribute({<<"minProperties">>, MinProperties, _AttrJObj}, JObj, Key) ->
+    Min = wh_util:to_integer(MinProperties),
+    case wh_json:is_json_object(Key, JObj)
+        andalso length(wh_json:get_keys(Key, JObj))
+    of
+        'false' -> {'fail', {Key, <<"type:Value must be a JSON object">>}};
+        N when N < Min -> {'fail', {Key, <<"minProperties:Not enough keys on the object">>}};
+        _N -> {'pass', JObj}
+    end;
 
 %% 5.5
 is_valid_attribute({<<"items">>, _Items, _}, JObj, _Key) ->
@@ -453,6 +481,23 @@ is_valid_attribute({<<"$schema">>, _, _}, JObj, _) ->
 %% 5.21, 5.22,  and unknown/unhandled attributes
 is_valid_attribute(_, JObj, _) ->
     {'pass', JObj}. %% ignorable attribute, like 'title'
+
+maybe_match_patterns(ObjectKey, ObjectValue, Patterns, PatternProperties) ->
+    case [Pattern || Pattern <- Patterns,
+                     re:run(ObjectKey, Pattern) =/= 'nomatch'
+         ]
+    of
+        [] -> 'false';
+        [Pattern|_] ->
+            try is_valid(ObjectValue, wh_json:get_value(Pattern, PatternProperties, wh_json:new())) of
+                {'pass', _} -> 'true';
+                {'fail', _} -> 'false'
+            catch
+                _E:_R ->
+                    io:format("exception: ~p: ~p", [_E, _R]),
+                    'false'
+            end
+    end.
 
 %%
 %%% Helper functions

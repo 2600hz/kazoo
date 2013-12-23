@@ -129,15 +129,15 @@ validate(#cb_context{req_verb = ?HTTP_POST
                               'undefined' -> J;
                               _Else ->
                                   Id = couch_mgr:get_uuid(),
-                                  wh_json:set_value([<<"credit_card">>, <<"id">>], Id, J) 
+                                  wh_json:set_value([<<"credit_card">>, <<"id">>], Id, J)
                           end
                   end
                   ,fun(J) ->
-                           wh_json:set_value(<<"id">>, AccountId, J) 
+                           wh_json:set_value(<<"id">>, AccountId, J)
                    end
                  ],
     Customer = braintree_customer:json_to_record(lists:foldr(fun(F, J) -> F(J) end, JObj, Generators)),
-    crossbar_util:response(wh_json:new(), cb_context:store('braintree', Customer, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(Context, 'braintree', Customer));
 
 %% CARD API
 validate(#cb_context{req_verb = ?HTTP_GET
@@ -158,7 +158,7 @@ validate(#cb_context{req_verb = ?HTTP_PUT
                      ,account_id=AccountId
                     }=Context, ?CARDS_PATH_TOKEN) ->
     Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_binary(AccountId)},
-    crossbar_util:response(wh_json:new(), cb_context:store('braintree', Card, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(Context, 'braintree', Card));
 
 validate(#cb_context{req_verb = ?HTTP_GET
                      ,account_id=AccountId
@@ -178,7 +178,7 @@ validate(#cb_context{req_verb = ?HTTP_PUT
                      ,account_id=AccountId
                     }=Context, ?ADDRESSES_PATH_TOKEN) ->
     Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=AccountId},
-    crossbar_util:response(wh_json:new(), cb_context:store('braintree', Address, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(Context, 'braintree', Address));
 
 validate(#cb_context{req_verb = ?HTTP_GET
                      ,account_id=AccountId
@@ -207,7 +207,7 @@ validate(#cb_context{req_verb = ?HTTP_PUT
     Amount = wh_json:get_float_value(<<"amount">>, JObj),
     MaxCredit = whapps_config:get_float(?MOD_CONFIG_CAT, <<"max_account_credit">>, 500.00),
     case current_account_dollars(AccountId) + Amount > MaxCredit of
-        'true' -> 
+        'true' ->
             Message = <<"Available credit can not exceed $", (wh_util:to_binary(MaxCredit))/binary>>,
             cb_context:add_validation_error(<<"amount">>, <<"maximum">>, Message, Context);
         'false' ->
@@ -235,7 +235,7 @@ validate(#cb_context{req_verb = ?HTTP_POST
     Card = Card0#bt_card{customer_id=AccountId
                          ,token=CardId
                         },
-    crossbar_util:response(wh_json:new(), cb_context:store('braintree', Card, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(Context, 'braintree', Card));
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, ?CARDS_PATH_TOKEN, _) ->
     crossbar_util:response(wh_json:new(), Context);
 validate(#cb_context{req_verb = ?HTTP_GET
@@ -256,7 +256,7 @@ validate(#cb_context{req_verb = ?HTTP_POST
                      ,account_id=AccountId
                     }=Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=AccountId, id=AddressId},
-    crossbar_util:response(wh_json:new(), cb_context:store('braintree', Address, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(Context, 'braintree', Address));
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, ?ADDRESSES_PATH_TOKEN, _) ->
     crossbar_util:response(wh_json:new(), Context);
 
@@ -272,10 +272,12 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?TRANSACTIONS_PATH_TOKEN, Tr
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end.
 
--spec post(cb_context:context(), path_token()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token()) ->
+                  cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) ->
+                  cb_context:context().
 post(Context, ?CUSTOMER_PATH_TOKEN) ->
-    try braintree_customer:update(cb_context:fetch('braintree', Context)) of
+    try braintree_customer:update(cb_context:fetch(Context, 'braintree')) of
         #bt_customer{}=Customer ->
             Resp = braintree_customer:record_to_json(Customer),
             crossbar_util:response(Resp, Context)
@@ -289,7 +291,7 @@ post(Context, ?CUSTOMER_PATH_TOKEN) ->
     end.
 
 post(Context, ?CARDS_PATH_TOKEN, CardId) ->
-    try braintree_card:update(cb_context:fetch('braintree', Context)) of
+    try braintree_card:update(cb_context:fetch(Context, 'braintree')) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
             crossbar_util:response(Resp, Context)
@@ -302,7 +304,7 @@ post(Context, ?CARDS_PATH_TOKEN, CardId) ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
 post(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
-    try braintree_address:update(cb_context:fetch('braintree', Context)) of
+    try braintree_address:update(cb_context:fetch(Context, 'braintree')) of
         #bt_address{}=Address ->
             Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
@@ -345,7 +347,7 @@ put(#cb_context{req_data=ReqData
             crossbar_util:response('error', <<"transaction error">>, 500, Reason, Context)
     end;
 put(Context, ?ADDRESSES_PATH_TOKEN) ->
-    try braintree_address:create(cb_context:fetch('braintree', Context)) of
+    try braintree_address:create(cb_context:fetch(Context, 'braintree')) of
         #bt_address{}=Address ->
             Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
@@ -356,7 +358,7 @@ put(Context, ?ADDRESSES_PATH_TOKEN) ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
 put(Context, ?CARDS_PATH_TOKEN) ->
-    try braintree_card:create(cb_context:fetch('braintree', Context)) of
+    try braintree_card:create(cb_context:fetch(Context, 'braintree')) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
             crossbar_util:response(Resp, Context)
@@ -401,15 +403,15 @@ delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_braintree_customer(cb_context:context()) -> cb_context:context().
-create_braintree_customer(#cb_context{account_id=AccountId}=Context) ->
+create_braintree_customer(Context) ->
     try
-        case cb_context:fetch('braintree', Context) of
+        case cb_context:fetch(Context, 'braintree') of
             #bt_customer{}=Customer ->
                 C = braintree_customer:create(Customer),
                 Resp = braintree_customer:record_to_json(C),
                 crossbar_util:response(Resp, Context);
             _Else ->
-                C = braintree_customer:create(AccountId),
+                C = braintree_customer:create(cb_context:account_id(Context)),
                 Resp = braintree_customer:record_to_json(C),
                 crossbar_util:response(Resp, Context)
         end
@@ -429,14 +431,14 @@ current_account_dollars(Account) ->
 maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, account_id=AccountId}=Context) ->
     {'ok', MasterAccount} = whapps_util:get_master_account_id(),
     case wh_services:find_reseller_id(AccountId) of
-        AuthAccountId -> 
+        AuthAccountId ->
             lager:debug("allowing reseller to apply credit without invoking a bookkeeper", []),
             Resp = wh_json:from_list([{<<"amount">>, Amount}]),
             crossbar_util:response(Resp, Context);
-        MasterAccount -> 
+        MasterAccount ->
             lager:debug("invoking a bookkeeper to acquire requested credit", []),
             charge_billing_id(Amount, Context);
-        _Else -> 
+        _Else ->
             lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit", []),
             Message = <<"Please contact your phone provider to add credit.">>,
             cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Message, Context)

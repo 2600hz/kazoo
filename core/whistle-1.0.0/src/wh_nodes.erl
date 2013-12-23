@@ -36,7 +36,9 @@
 -define(BINDINGS, [{'nodes', []}
                    ,{'self', []}
                   ]).
--define(RESPONDERS, [{{?MODULE, 'handle_advertise'}, [{<<"nodes">>, <<"advertise">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_advertise'}
+                      ,[{<<"nodes">>, <<"advertise">>}]
+                     }]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
