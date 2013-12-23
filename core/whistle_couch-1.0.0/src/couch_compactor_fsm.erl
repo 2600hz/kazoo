@@ -1235,7 +1235,6 @@ compact_shards(AdminConn, Node, Ss, DDs) ->
     PR.
 
 -spec wait_for_pids(wh_timeout(), pid_refs()) -> 'ok'.
--spec wait_for_pids(wh_timeout(), pid_refs(), pid(), reference()) -> 'ok'.
 wait_for_pids(_, []) -> lager:debug("done waiting for compaction pids");
 wait_for_pids(MaxWait, [{P,Ref}|Ps]) ->
     lager:debug("waiting ~p for compaction pid ~p(~p)", [MaxWait, P, Ref]),
