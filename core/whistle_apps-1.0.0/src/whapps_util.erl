@@ -18,6 +18,8 @@
          ,get_all_accounts_and_mods/1
          ,get_all_account_mods/0
          ,get_all_account_mods/1
+         ,get_account_mods/1
+         ,get_account_mods/2
         ]).
 -export([is_account_db/1
         ,is_account_mod/1
@@ -191,18 +193,40 @@ get_all_accounts(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
     [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_db(Db)].
 
+-spec get_all_accounts_and_mods() -> ne_binaries().
+-spec get_all_accounts_and_mods('unencoded' | 'encoded' | 'raw') -> ne_binaries().
 get_all_accounts_and_mods() -> get_all_accounts_and_mods(?REPLICATE_ENCODING).
 
 get_all_accounts_and_mods(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
     [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_db(Db) orelse is_account_mod(Db)].
 
+-spec get_all_account_mods() -> ne_binaries().
+-spec get_all_account_mods('unencoded' | 'encoded' | 'raw') -> ne_binaries().
 get_all_account_mods() -> get_all_account_mods(?REPLICATE_ENCODING).
 
 get_all_account_mods(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
     [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_mod(Db)].
-                                                 
+
+-spec get_account_mods(ne_binary()) -> ne_binaries().
+-spec get_account_mods(ne_binary(), 'unencoded' | 'encoded' | 'raw') -> ne_binaries().
+get_account_mods(AccountId) ->
+    get_account_mods(AccountId, ?REPLICATE_ENCODING).
+
+get_account_mods(AccountId, Encoding) ->
+    MODs = get_all_account_mods(Encoding),
+    [wh_util:format_account_id(MOD, Encoding)
+     || MOD <- MODs,
+        is_account_mod(MOD),
+        is_matched_account_mod(MOD, AccountId)
+    ].
+
+-spec is_matched_account_mod(ne_binary(), ne_binary()) -> ne_binary().
+is_matched_account_mod(<<"account/", DbActId:34/binary, _/binary>>, <<"account/", SearchId/binary>>) when DbActId =:= SearchId -> true;
+is_matched_account_mod(<<"account%2F", DbActId:38/binary, _/binary>>, <<"account%2F",SearchId/binary>>) when DbActId =:= SearchId -> true;
+is_matched_account_mod(_, _) -> false.
+
 -spec is_account_mod(ne_binary()) -> boolean().
 is_account_mod(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'true';
 is_account_mod(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'true';
