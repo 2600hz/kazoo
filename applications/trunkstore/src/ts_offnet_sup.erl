@@ -18,7 +18,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILD(ID, Args), {ID, {ts_from_offnet, start_link, [Args]}, temporary, 2000, worker, [ts_from_offnet]}).
+-define(CHILD(ID, Args), {ID, {'ts_from_offnet', 'start_link', [Args]}, 'temporary', 2000, 'worker', ['ts_from_offnet']}).
 
 %%%===================================================================
 %%% API functions
@@ -32,13 +32,13 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 start_handler(CallID, RouteReqJObj) ->
     supervisor:start_child(?SERVER, ?CHILD(<<"offnet-", CallID/binary>>, RouteReqJObj)).
 
 stop_handler(CallID) ->
-    ok = supervisor:terminate_child(?SERVER, <<"offnet-", CallID/binary>>),
+    'ok' = supervisor:terminate_child(?SERVER, <<"offnet-", CallID/binary>>),
     supervisor:delete_child(?SERVER, <<"offnet-", CallID/binary>>).
 
 %%%===================================================================
@@ -59,13 +59,13 @@ stop_handler(CallID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = 'one_for_one',
     MaxRestarts = 1,
     MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, []}}.
+    {'ok', {SupFlags, []}}.
 
 %%%===================================================================
 %%% Internal functions
