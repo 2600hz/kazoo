@@ -15,7 +15,10 @@
 -export([start_link/0
          ,handle_cdr/2
          ,meter_name/1, meter_name/2
+         ,meter_prefix/0
+         ,is_hangup_meter/1
         ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -38,6 +41,9 @@
 -define(QUEUE_NAME, <<"hangups_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+
+-define(METER_PREFIX_LIST, "hangups").
+-define(METER_PREFIX, <<?METER_PREFIX_LIST>>).
 
 -define(IGNORE, [<<"NO_ANSWER">>
                  ,<<"USER_BUSY">>
@@ -309,9 +315,17 @@ start_meters(AccountId, HangupCause) ->
 -spec meter_name(ne_binary()) -> ne_binary().
 -spec meter_name(ne_binary(), ne_binary()) -> ne_binary().
 meter_name(HangupCause) ->
-    HangupCause.
+    <<?METER_PREFIX_LIST, ".", HangupCause/binary>>.
 meter_name(AccountId, HangupCause) ->
-    <<AccountId/binary, ".", HangupCause/binary>>.
+    <<?METER_PREFIX_LIST, ".", AccountId/binary, ".", HangupCause/binary>>.
+
+meter_prefix() ->
+    ?METER_PREFIX.
+
+is_hangup_meter(<<?METER_PREFIX_LIST, _/binary>>) ->
+    'true';
+is_hangup_meter(_) ->
+    'false'.
 
 -spec add_to_meters(api_binary(), api_binary()) -> 'ok'.
 add_to_meters(AccountId, HangupCause) ->

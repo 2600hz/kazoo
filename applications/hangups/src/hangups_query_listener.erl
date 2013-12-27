@@ -13,7 +13,9 @@
 
 -export([start_link/0
          ,handle_query/2
+         ,meter_resp/1
         ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -55,6 +57,10 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
+-spec handle_query(wh_json:object(), wh_proplist()) ->
+                          any().
+-spec handle_query(wh_json:object(), ne_binary(), boolean()) ->
+                          any().
 handle_query(JObj, _Props) ->
     'true' = wapi_hangups:query_req_v(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
@@ -63,27 +69,33 @@ handle_query(JObj, _Props) ->
     handle_query(JObj, N, wh_json:is_true(<<"Raw-Data">>, JObj)).
 
 handle_query(JObj, N, 'true') ->
-    raw_resp(JObj, folsom_metrics_meter:get_value(N));
+    publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                 ,raw_resp(N)
+                );
 handle_query(JObj, N, 'false') ->
-    meter_resp(JObj, folsom_metrics_meter:get_values(N)).
+    publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                 ,meter_resp(N)
+                ).
 
-raw_resp(JObj, #meter{one = OneMin
-                      ,five = FiveMin
-                      ,fifteen = FifteenMin
-                      ,day = OneDay
-                      ,count = Count
-                      ,start_time = StartTime
-                     }) ->
-    Resp = [{<<"one">>, ewma_to_json(OneMin)}
-            ,{<<"five">>, ewma_to_json(FiveMin)}
-            ,{<<"fifteen">>, ewma_to_json(FifteenMin)}
-            ,{<<"day">>, ewma_to_json(OneDay)}
-            ,{<<"count">>, Count}
-            ,{<<"start_time">>, StartTime}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+-spec raw_resp(#meter{} | ne_binary()) -> wh_proplist().
+raw_resp(#meter{one = OneMin
+                ,five = FiveMin
+                ,fifteen = FifteenMin
+                ,day = OneDay
+                ,count = Count
+                ,start_time = StartTime
+               }) ->
+    [{<<"one">>, ewma_to_json(OneMin)}
+     ,{<<"five">>, ewma_to_json(FiveMin)}
+     ,{<<"fifteen">>, ewma_to_json(FifteenMin)}
+     ,{<<"day">>, ewma_to_json(OneDay)}
+     ,{<<"count">>, Count}
+     ,{<<"start_time">>, StartTime}
+    ];
+raw_resp(Name) ->
+    raw_resp(folsom_metrics_meter:get_value(Name)).
 
+-spec ewma_to_json(#ewma{}) -> wh_json:object().
 ewma_to_json(#ewma{alpha=Alpha
                    ,interval=Interval
                    ,initialized=Init
@@ -99,21 +111,34 @@ ewma_to_json(#ewma{alpha=Alpha
          ,{<<"total">>, Total}
         ])).
 
-meter_resp(JObj, Values) ->
+-spec meter_resp(wh_proplist() | ne_binary()) -> wh_proplist().
+meter_resp([_|_]=Values) ->
     Vs = [{wh_util:to_binary(K), V}
           || {K, V} <- Values,
              K =/= 'acceleration'
          ],
-    Resp = get_accel(props:get_value('acceleration', Values))
-        ++ wh_api:default_header(?APP_NAME, ?APP_VERSION)
-        ++ Vs,
-    publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+    get_accel(props:get_value('acceleration', Values))
+        ++ Vs;
+meter_resp([]) -> [];
+meter_resp(N) ->
+    meter_resp(folsom_metrics_meter:get_values(N)).
 
+-spec publish_resp(ne_binary(), wh_proplist()) -> 'ok'.
 publish_resp(Queue, Resp) ->
-    whapps_util:amqp_pool_send(Resp, fun(API) ->
-                                             wapi_hangups:publish_query_resp(Queue, API)
-                                     end).
+    PublishFun = fun(API) ->
+                         publish_to(Queue, API)
+                 end,
+    whapps_util:amqp_pool_send(Resp
+                               ,PublishFun
+                              ).
 
+-spec publish_to(ne_binary(), wh_proplist()) -> 'ok'.
+publish_to(Queue, API) ->
+    wapi_hangups:publish_query_resp(Queue
+                                    ,wh_api:default_headers(?APP_NAME, ?APP_VERSION) ++ API
+                                   ).
+
+-spec get_accel(wh_proplist()) -> wh_proplist().
 get_accel(AccelVs) ->
     [{wh_util:to_binary(K), V}
      || {K, V} <- AccelVs
