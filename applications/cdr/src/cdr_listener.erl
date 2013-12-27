@@ -181,7 +181,7 @@ update_pvt_parameters('undefined', _, JObj) ->
             ],
     wh_doc:update_pvt_parameters(JObj, ?WH_ANONYMOUS_CDR_DB, Props);
 update_pvt_parameters(AccountId, Timestamp, JObj) ->
-    AccountMODb = wh_util:format_account_id(AccountId, Timestamp),    
+    AccountMODb = wh_util:format_account_id(AccountId, 'encoded'),    
     Props = [{'type', 'cdr'}
              ,{'crossbar_doc_vsn', 2}
             ],
