@@ -65,7 +65,7 @@ handle_query(JObj, _Props) ->
     'true' = wapi_hangups:query_req_v(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
-    N = hangups_listener:meter_name(AccountId, HangupCause),
+    N = hangups_listener:meter_name(HangupCause, AccountId),
     handle_query(JObj, N, wh_json:is_true(<<"Raw-Data">>, JObj)).
 
 handle_query(JObj, N, 'true') ->

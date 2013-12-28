@@ -15,8 +15,10 @@
 -export([start_link/0
          ,handle_cdr/2
          ,meter_name/1, meter_name/2
+         ,meter_account_id/1
+         ,meter_hangup_cause/1
          ,meter_prefix/0
-         ,is_hangup_meter/1
+         ,is_hangup_meter/1, is_hangup_meter/2, is_hangup_meter/3
         ]).
 
 -export([init/1
@@ -310,14 +312,14 @@ start_meters(HangupCause) ->
 start_meters('undefined', _) -> 'ok';
 start_meters(_, 'undefined') -> 'ok';
 start_meters(AccountId, HangupCause) ->
-    _ = folsom_metrics:new_meter(meter_name(AccountId, HangupCause)).
+    _ = folsom_metrics:new_meter(meter_name(HangupCause, AccountId)).
 
 -spec meter_name(ne_binary()) -> ne_binary().
 -spec meter_name(ne_binary(), ne_binary()) -> ne_binary().
 meter_name(HangupCause) ->
     <<?METER_PREFIX_LIST, ".", HangupCause/binary>>.
-meter_name(AccountId, HangupCause) ->
-    <<?METER_PREFIX_LIST, ".", AccountId/binary, ".", HangupCause/binary>>.
+meter_name(HangupCause, AccountId) ->
+    <<?METER_PREFIX_LIST, ".", HangupCause/binary, ".", AccountId/binary>>.
 
 meter_prefix() ->
     ?METER_PREFIX.
@@ -326,6 +328,31 @@ is_hangup_meter(<<?METER_PREFIX_LIST, _/binary>>) ->
     'true';
 is_hangup_meter(_) ->
     'false'.
+
+-spec meter_account_id(ne_binary()) -> api_binary().
+meter_account_id(Name) ->
+    case binary:split(Name, <<".">>) of
+        [?METER_PREFIX, _HC, AccountId] -> AccountId;
+        _ -> 'undefined'
+    end.
+
+meter_hangup_cause(Name) ->
+    case binary:split(Name, <<".">>) of
+        [?METER_PREFIX, HangupCause, _AccountId] -> HangupCause;
+        [?METER_PREFIX, HangupCause] -> HangupCause;
+        _ -> 'undefined'
+    end.
+
+is_hangup_meter(Name, HangupCause) ->
+    Size = byte_size(HangupCause),
+    case Name of
+        <<?METER_PREFIX_LIST, ".", HC:Size/binary, ".", _/binary>> when HC =:= HangupCause -> 'true';
+        <<?METER_PREFIX_LIST, ".", HC:Size/binary>> when HC =:= HangupCause -> 'true';
+        _ -> 'false'
+    end.
+
+is_hangup_meter(Name, HangupCause, AccountId) ->
+    meter_name(HangupCause, AccountId) =:= Name.
 
 -spec add_to_meters(api_binary(), api_binary()) -> 'ok'.
 add_to_meters(AccountId, HangupCause) ->
@@ -346,4 +373,4 @@ notify_meters(HangupCause) ->
 notify_meters('undefined', _) -> 'ok';
 notify_meters(_, 'undefined') -> 'ok';
 notify_meters(AccountId, HangupCause) ->
-    folsom_metrics_meter:mark(meter_name(AccountId, HangupCause)).
+    folsom_metrics_meter:mark(meter_name(HangupCause, AccountId)).
