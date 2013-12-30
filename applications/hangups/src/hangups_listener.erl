@@ -321,9 +321,11 @@ meter_name(HangupCause) ->
 meter_name(HangupCause, AccountId) ->
     <<?METER_PREFIX_LIST, ".", HangupCause/binary, ".", AccountId/binary>>.
 
+-spec meter_prefix() -> ne_binary().
 meter_prefix() ->
     ?METER_PREFIX.
 
+-spec is_hangup_meter(ne_binary()) -> boolean().
 is_hangup_meter(<<?METER_PREFIX_LIST, _/binary>>) ->
     'true';
 is_hangup_meter(_) ->
