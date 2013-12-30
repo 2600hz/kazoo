@@ -44,23 +44,29 @@ hangup_summary(HangupCause, AccountId) ->
     print_stats(Hangups).
 
 -define(STAT_SUMMARY_FORMAT
-        ," ~-60s | ~-10s | ~-10s | ~-10s | ~-32s |~n"
+        ," ~-30s | ~-32s | ~-10s | ~-10s | ~-10s |~n"
        ).
 
 -spec print_stats(wh_proplist()) -> 'ok'.
-print_stats([]) -> 'ok';
+print_stats([]) -> io:format("No data found for request~n", []);
 print_stats(Stats) ->
     io:format(?STAT_SUMMARY_FORMAT
-              ,["Stat", "One", "Five", "Fifteen", "AccountId"]
+              ,["Hangup Cause", "AccountId", "One", "Five", "Fifteen"]
              ),
-    lists:foreach(fun print_stat/1, Stats).
+    lists:foreach(fun print_stat/1, lists:keysort(1, Stats)).
 
 -spec print_stat({ne_binary(), wh_proplist()}) -> 'ok'.
 print_stat({Name, Stats}) ->
+    AccountId = case hangups_listener:meter_account_id(Name) of
+                    'undefined' -> <<>>;
+                    ID -> ID
+                end,
+    HangupCause = hangups_listener:meter_hangup_cause(Name),
+
     io:format(?STAT_SUMMARY_FORMAT
-              ,[Name
+              ,[HangupCause
+                ,AccountId
                 ,props:get_binary_value(<<"one">>, Stats)
                 ,props:get_binary_value(<<"five">>, Stats)
                 ,props:get_binary_value(<<"fifteen">>, Stats)
-                ,hangups_listener:meter_account_id(Name)
                ]).

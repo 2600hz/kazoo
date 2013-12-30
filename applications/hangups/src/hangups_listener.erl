@@ -331,18 +331,20 @@ is_hangup_meter(_) ->
 
 -spec meter_account_id(ne_binary()) -> api_binary().
 meter_account_id(Name) ->
-    case binary:split(Name, <<".">>) of
+    case binary:split(Name, <<".">>, ['global']) of
         [?METER_PREFIX, _HC, AccountId] -> AccountId;
         _ -> 'undefined'
     end.
 
+-spec meter_hangup_cause(ne_binary()) -> api_binary().
 meter_hangup_cause(Name) ->
-    case binary:split(Name, <<".">>) of
+    case binary:split(Name, <<".">>, ['global']) of
         [?METER_PREFIX, HangupCause, _AccountId] -> HangupCause;
         [?METER_PREFIX, HangupCause] -> HangupCause;
         _ -> 'undefined'
     end.
 
+-spec is_hangup_meter(ne_binary(), ne_binary()) -> boolean().
 is_hangup_meter(Name, HangupCause) ->
     Size = byte_size(HangupCause),
     case Name of
@@ -351,6 +353,12 @@ is_hangup_meter(Name, HangupCause) ->
         _ -> 'false'
     end.
 
+-spec is_hangup_meter(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+is_hangup_meter(Name, <<"*">>, AccountId) ->
+    case binary:split(Name, <<".">>, ['global']) of
+        [?METER_PREFIX, _HC, AccountId] -> 'true';
+        _ -> 'false'
+    end;
 is_hangup_meter(Name, HangupCause, AccountId) ->
     meter_name(HangupCause, AccountId) =:= Name.
 
