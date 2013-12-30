@@ -315,9 +315,11 @@ start_meters(AccountId, HangupCause) ->
     _ = folsom_metrics:new_meter(meter_name(HangupCause, AccountId)).
 
 -spec meter_name(ne_binary()) -> ne_binary().
--spec meter_name(ne_binary(), ne_binary()) -> ne_binary().
+-spec meter_name(ne_binary(), api_binary()) -> ne_binary().
 meter_name(HangupCause) ->
     <<?METER_PREFIX_LIST, ".", HangupCause/binary>>.
+meter_name(HangupCause, 'undefined') ->
+    meter_name(HangupCause);
 meter_name(HangupCause, AccountId) ->
     <<?METER_PREFIX_LIST, ".", HangupCause/binary, ".", AccountId/binary>>.
 

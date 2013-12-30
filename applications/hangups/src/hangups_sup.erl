@@ -19,7 +19,9 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('hangups_listener')]).
+-define(CHILDREN, [?WORKER('hangups_listener')
+                   ,?WORKER('hangups_query_listener')
+                  ]).
 
 %% ===================================================================
 %% API functions

@@ -66,14 +66,19 @@ handle_query(JObj, _Props) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
     N = hangups_listener:meter_name(HangupCause, AccountId),
+
     handle_query(JObj, N, wh_json:is_true(<<"Raw-Data">>, JObj)).
 
 handle_query(JObj, N, 'true') ->
+    lager:debug("finding raw stats for ~s", [N]),
     publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                 ,wh_json:get_value(<<"Msg-ID">>, JObj)
                  ,raw_resp(N)
                 );
 handle_query(JObj, N, 'false') ->
+    lager:debug("finding meter stats for ~s", [N]),
     publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                 ,wh_json:get_value(<<"Msg-ID">>, JObj)
                  ,meter_resp(N)
                 ).
 
@@ -123,12 +128,12 @@ meter_resp([]) -> [];
 meter_resp(N) ->
     meter_resp(folsom_metrics_meter:get_values(N)).
 
--spec publish_resp(ne_binary(), wh_proplist()) -> 'ok'.
-publish_resp(Queue, Resp) ->
+-spec publish_resp(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+publish_resp(Queue, MsgId, Resp) ->
     PublishFun = fun(API) ->
                          publish_to(Queue, API)
                  end,
-    whapps_util:amqp_pool_send(Resp
+    whapps_util:amqp_pool_send([{<<"Msg-ID">>, MsgId} | Resp]
                                ,PublishFun
                               ).
 
