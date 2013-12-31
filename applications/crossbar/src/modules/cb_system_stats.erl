@@ -83,7 +83,7 @@ maybe_authorize_by_account(_Context, _AccountId) -> 'true'.
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET].
+    [].
 
 allowed_methods(?PATH_TOKEN_HANGUPS) ->
     [?HTTP_GET];
@@ -107,7 +107,7 @@ allowed_methods(_, _) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> boolean().
 -spec resource_exists(path_token(), path_token()) -> boolean().
-resource_exists() -> 'true'.
+resource_exists() -> 'false'.
 
 resource_exists(?PATH_TOKEN_HANGUPS) -> 'true';
 resource_exists(_) -> 'false'.
