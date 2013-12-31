@@ -93,8 +93,8 @@ authorize(_) -> 'false'.
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods() | [].
--spec allowed_methods(path_token()) -> http_methods() | [].
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
