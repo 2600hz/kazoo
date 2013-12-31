@@ -71,16 +71,10 @@ handle_query(JObj, _Props) ->
 
 handle_query(JObj, N, 'true') ->
     lager:debug("finding raw stats for ~s", [N]),
-    publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                 ,wh_json:get_value(<<"Msg-ID">>, JObj)
-                 ,raw_resp(N)
-                );
+    publish_resp(JObj, raw_resp(N));
 handle_query(JObj, N, 'false') ->
     lager:debug("finding meter stats for ~s", [N]),
-    publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                 ,wh_json:get_value(<<"Msg-ID">>, JObj)
-                 ,meter_resp(N)
-                ).
+    publish_resp(JObj, meter_resp(N)).
 
 -spec raw_resp(#meter{} | ne_binary()) -> wh_proplist().
 raw_resp(#meter{one = OneMin
@@ -116,20 +110,27 @@ ewma_to_json(#ewma{alpha=Alpha
          ,{<<"total">>, Total}
         ])).
 
--spec meter_resp(wh_proplist() | ne_binary()) -> wh_proplist().
-meter_resp([_|_]=Values) ->
+-spec meter_resp(ne_binary()) -> wh_proplist().
+-spec meter_resp(ne_binary(), wh_proplist()) -> wh_proplist().
+meter_resp(N) ->
+    meter_resp(N, folsom_metrics_meter:get_values(N)).
+
+meter_resp(N, [_|_]=Values) ->
     Vs = [{wh_util:to_binary(K), V}
           || {K, V} <- Values,
              K =/= 'acceleration'
          ],
-    get_accel(props:get_value('acceleration', Values))
-        ++ Vs;
-meter_resp([]) -> [];
-meter_resp(N) ->
-    meter_resp(folsom_metrics_meter:get_values(N)).
+    [{<<"hangup_cause">>, hangups_listener:meter_hangup_cause(N)}
+     ,{<<"account_id">>, hangups_listener:meter_account_id(N)}
+     | get_accel(props:get_value('acceleration', Values))
+    ] ++ Vs;
+meter_resp(_, []) -> [].
 
--spec publish_resp(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
-publish_resp(Queue, MsgId, Resp) ->
+-spec publish_resp(wh_json:object(), wh_proplist()) -> 'ok'.
+publish_resp(JObj, Resp) ->
+    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+
     PublishFun = fun(API) ->
                          publish_to(Queue, API)
                  end,
