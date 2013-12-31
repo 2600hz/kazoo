@@ -65,7 +65,7 @@ handle_query(JObj, _Props) ->
     'true' = wapi_hangups:query_req_v(JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
-    N = hangups_listener:meter_name(HangupCause, AccountId),
+    N = hangups_util:meter_name(HangupCause, AccountId),
 
     handle_query(JObj, N, wh_json:is_true(<<"Raw-Data">>, JObj)).
 
@@ -120,8 +120,8 @@ meter_resp(N, [_|_]=Values) ->
           || {K, V} <- Values,
              K =/= 'acceleration'
          ],
-    [{<<"hangup_cause">>, hangups_listener:meter_hangup_cause(N)}
-     ,{<<"account_id">>, hangups_listener:meter_account_id(N)}
+    [{<<"hangup_cause">>, hangups_util:meter_hangup_cause(N)}
+     ,{<<"account_id">>, hangups_util:meter_account_id(N)}
      | get_accel(props:get_value('acceleration', Values))
     ] ++ Vs;
 meter_resp(_, []) -> [].
