@@ -14,11 +14,6 @@
 
 -export([start_link/0
          ,handle_cdr/2
-         ,meter_name/1, meter_name/2
-         ,meter_account_id/1
-         ,meter_hangup_cause/1
-         ,meter_prefix/0
-         ,is_hangup_meter/1, is_hangup_meter/2, is_hangup_meter/3
         ]).
 
 -export([init/1
@@ -43,9 +38,6 @@
 -define(QUEUE_NAME, <<"hangups_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
-
--define(METER_PREFIX_LIST, "hangups").
--define(METER_PREFIX, <<?METER_PREFIX_LIST>>).
 
 -define(IGNORE, [<<"NO_ANSWER">>
                  ,<<"USER_BUSY">>
@@ -307,64 +299,12 @@ find_direction(JObj) ->
 -spec start_meters(ne_binary()) -> 'ok'.
 -spec start_meters(api_binary(), api_binary()) -> 'ok'.
 start_meters(HangupCause) ->
-    _ = folsom_metrics:new_meter(meter_name(HangupCause)).
+    _ = folsom_metrics:new_meter(hangups_util:meter_name(HangupCause)).
 
 start_meters('undefined', _) -> 'ok';
 start_meters(_, 'undefined') -> 'ok';
 start_meters(AccountId, HangupCause) ->
-    _ = folsom_metrics:new_meter(meter_name(HangupCause, AccountId)).
-
--spec meter_name(ne_binary()) -> ne_binary().
--spec meter_name(ne_binary(), api_binary()) -> ne_binary().
-meter_name(HangupCause) ->
-    <<?METER_PREFIX_LIST, ".", HangupCause/binary>>.
-meter_name(HangupCause, 'undefined') ->
-    meter_name(HangupCause);
-meter_name(HangupCause, AccountId) ->
-    <<?METER_PREFIX_LIST, ".", HangupCause/binary, ".", AccountId/binary>>.
-
--spec meter_prefix() -> ne_binary().
-meter_prefix() ->
-    ?METER_PREFIX.
-
--spec is_hangup_meter(ne_binary()) -> boolean().
-is_hangup_meter(<<?METER_PREFIX_LIST, _/binary>>) ->
-    'true';
-is_hangup_meter(_) ->
-    'false'.
-
--spec meter_account_id(ne_binary()) -> api_binary().
-meter_account_id(Name) ->
-    case binary:split(Name, <<".">>, ['global']) of
-        [?METER_PREFIX, _HC, AccountId] -> AccountId;
-        _ -> 'undefined'
-    end.
-
--spec meter_hangup_cause(ne_binary()) -> api_binary().
-meter_hangup_cause(Name) ->
-    case binary:split(Name, <<".">>, ['global']) of
-        [?METER_PREFIX, HangupCause, _AccountId] -> HangupCause;
-        [?METER_PREFIX, HangupCause] -> HangupCause;
-        _ -> 'undefined'
-    end.
-
--spec is_hangup_meter(ne_binary(), ne_binary()) -> boolean().
-is_hangup_meter(Name, HangupCause) ->
-    Size = byte_size(HangupCause),
-    case Name of
-        <<?METER_PREFIX_LIST, ".", HC:Size/binary, ".", _/binary>> when HC =:= HangupCause -> 'true';
-        <<?METER_PREFIX_LIST, ".", HC:Size/binary>> when HC =:= HangupCause -> 'true';
-        _ -> 'false'
-    end.
-
--spec is_hangup_meter(ne_binary(), ne_binary(), ne_binary()) -> boolean().
-is_hangup_meter(Name, <<"*">>, AccountId) ->
-    case binary:split(Name, <<".">>, ['global']) of
-        [?METER_PREFIX, _HC, AccountId] -> 'true';
-        _ -> 'false'
-    end;
-is_hangup_meter(Name, HangupCause, AccountId) ->
-    meter_name(HangupCause, AccountId) =:= Name.
+    _ = folsom_metrics:new_meter(hangups_util:meter_name(HangupCause, AccountId)).
 
 -spec add_to_meters(api_binary(), api_binary()) -> 'ok'.
 add_to_meters(AccountId, HangupCause) ->
@@ -380,9 +320,9 @@ add_to_meters(AccountId, HangupCause) ->
 -spec notify_meters(ne_binary()) -> any().
 -spec notify_meters(api_binary(), api_binary()) -> any().
 notify_meters(HangupCause) ->
-    folsom_metrics_meter:mark(meter_name(HangupCause)).
+    folsom_metrics_meter:mark(hangups_util:meter_name(HangupCause)).
 
 notify_meters('undefined', _) -> 'ok';
 notify_meters(_, 'undefined') -> 'ok';
 notify_meters(AccountId, HangupCause) ->
-    folsom_metrics_meter:mark(meter_name(HangupCause, AccountId)).
+    folsom_metrics_meter:mark(hangups_util:meter_name(HangupCause, AccountId)).
