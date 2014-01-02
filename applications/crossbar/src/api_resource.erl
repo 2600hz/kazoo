@@ -75,7 +75,10 @@ rest_init(Req0, Opts) ->
     {Method, Req5} = cowboy_req:method(Req4),
     {{Peer, _PeerPort}, Req6} = cowboy_req:peer(Req5),
     {Version, Req7} = cowboy_req:binding('version', Req6),
-    ClientIP = wh_network_utils:iptuple_to_binary(Peer),
+    ClientIP = case cowboy_req:header(<<"x-forwarded-for">>, Req7) of
+                {'undefined', _} -> wh_network_utils:iptuple_to_binary(Peer);
+                {ForwardIP, _} -> wh_util:to_binary(ForwardIP)
+            end,
     Context0 = #cb_context{
                   req_id = ReqId
                   ,raw_host = wh_util:to_binary(Host)
