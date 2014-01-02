@@ -74,7 +74,7 @@ restart_app(App) when is_atom(App) ->
 -define(HIDDEN_APPS, ['kernel', 'stdlib', 'ibrowse', 'cowboy', 'ranch', 'crypto'
                       ,'inets', 'ssl', 'public_key', 'whistle_apps', 'whistle_couch'
                       ,'whistle_amqp', 'whistle_stats', 'sasl', 'lager', 'gproc'
-                      ,'amqp_client', 'syslog', 'asn1'
+                      ,'amqp_client', 'syslog', 'asn1', 'folsom'
                      ]).
 -spec running_apps() -> atoms() | string().
 -spec running_apps(boolean()) -> atoms() | string().
