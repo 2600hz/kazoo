@@ -39,15 +39,17 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--define(IGNORE, [<<"NO_ANSWER">>
-                 ,<<"USER_BUSY">>
-                 ,<<"NO_USER_RESPONSE">>
-                 ,<<"LOSE_RACE">>
-                 ,<<"ATTENDED_TRANSFER">>
-                 ,<<"ORIGINATOR_CANCEL">>
-                 ,<<"NORMAL_CLEARING">>
-                 ,<<"ALLOTTED_TIMEOUT">>
-                ]).
+-define(IGNORE, whapps_config:get(?APP_NAME
+                                  ,<<"ignored_hangup_causes">>
+                                  ,[<<"NO_ANSWER">>
+                                    ,<<"USER_BUSY">>
+                                    ,<<"NO_USER_RESPONSE">>
+                                    ,<<"LOSE_RACE">>
+                                    ,<<"ATTENDED_TRANSFER">>
+                                    ,<<"ORIGINATOR_CANCEL">>
+                                    ,<<"NORMAL_CLEARING">>
+                                    ,<<"ALLOTTED_TIMEOUT">>
+                                   ])).
 
 %%%===================================================================
 %%% API
@@ -174,6 +176,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
