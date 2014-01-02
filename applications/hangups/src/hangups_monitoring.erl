@@ -2,6 +2,9 @@
 %%% @copyright (C) 2013, 2600Hz Inc
 %%% @doc
 %%% Periodically checks the hangup stats for anomalies
+%%%
+%%% Config values to set for threshold checks:
+%%%   "one", "five", "fifteen", "day", "mean"
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -28,13 +31,15 @@
 
 -define(STAT_CHECK_MSG, 'stat_check').
 -define(HANGUPS_TO_MONITOR
-        ,[<<"WRONG_CALL_STATE">>
-          ,<<"NO_ROUTE_DESTINATION">>
-          ,<<"CALL_REJECT">>
-          ,<<"MANDATORY_IE_MISSING">>
-          ,<<"PROGRESS_TIMEOUT">>
-          ,<<"RECOVERY_ON_TIMER_EXPIRE">>
-         ]).
+        ,whapps_config:get(?APP_NAME
+                           ,<<"hangups_to_monitor">>
+                           ,[<<"WRONG_CALL_STATE">>
+                             ,<<"NO_ROUTE_DESTINATION">>
+                             ,<<"CALL_REJECT">>
+                             ,<<"MANDATORY_IE_MISSING">>
+                             ,<<"PROGRESS_TIMEOUT">>
+                             ,<<"RECOVERY_ON_TIMER_EXPIRE">>
+                            ])).
 
 
 -record(state, {stat_timer_ref :: reference()}).
@@ -69,6 +74,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    wh_util:put_callid(?MODULE),
     {'ok', #state{stat_timer_ref=start_timer()}}.
 
 %%--------------------------------------------------------------------
@@ -154,11 +160,16 @@ start_timer() ->
 
 -spec check_stats() -> 'ok'.
 check_stats() ->
+    wh_util:put_callid(?MODULE),
     lists:foreach(fun check_stats/1, ?HANGUPS_TO_MONITOR).
 
 check_stats(HC) ->
-    Stats = folsom_metrics_meter:get_values(hangups_util:meter_name(HC)),
-    maybe_alert(HC, Stats).
+    try folsom_metrics_meter:get_values(hangups_util:meter_name(HC)) of
+        Stats -> maybe_alert(HC, Stats)
+    catch
+        'error':{'badmatch', []} ->
+            lager:debug("no stats for hangup cause ~s, skipping", [HC])
+    end.
 
 -spec maybe_alert(ne_binary(), list()) -> 'ok'.
 -spec maybe_alert(ne_binary(), list(), atom()) -> boolean().
@@ -174,7 +185,7 @@ maybe_alert(HC, Stats) ->
 maybe_alert(_, _, 'acceleration') -> 'false';
 maybe_alert(_, _, 'count') -> 'false';
 maybe_alert(HC, Stats, Key) ->
-    case whapps_config:get_float(<<?APP_NAME/binary, ".", HC/binary>>, Key) of
+    case whapps_config:get_float(<<?APP_NAME/binary, ".", (wh_util:to_lower_binary(HC))/binary>>, Key) of
         'undefined' -> 'false';
         Threshold ->
             maybe_alert_on_threshold(props:get_value(Key, Stats), Threshold)
@@ -186,6 +197,7 @@ maybe_alert_on_threshold(Value, Threshold) ->
 
 -spec send_alert(ne_binary()) -> 'ok'.
 send_alert(HC) ->
+    lager:debug("hangup cause ~s past threshold, system alerting", [HC]),
     wh_notify:system_alert("~s alerted past configured threshold"
                            ,[wh_util:to_lower_binary(HC)]
                            ,wh_json:from_list(
