@@ -700,7 +700,7 @@ send_response(<<"stop_play">>, {'ok', Res}, _Queue, Command) ->
            ,{<<"whistle_application_name">>, <<"play-file-done">>}
            ,{<<"Application-Data">>, Res}
           ],
-    ecallmgr_fs_conferences:relay_event(Evt);
+    relay_event(Evt);
 send_response(_, _, 'undefined', _) -> lager:debug("no server-id to respond");
 send_response(_, {'ok', <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
