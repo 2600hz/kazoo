@@ -281,7 +281,7 @@ attachment_name(Filename, CT) ->
                            end
                    end
                  ],
-    lists:foldr(fun(F, A) -> F(A) end, Filename, Generators).
+    lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
 
 %%--------------------------------------------------------------------
 %% @private
