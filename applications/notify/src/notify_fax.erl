@@ -144,6 +144,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Service),
 
     {ContentType, AttachmentFileName, AttachmentBin} = get_attachment(Props),
+    [ContentTypeA,ContentTypeB] = binary:split(ContentType,<<"/">>),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -157,7 +158,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
                   ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
                  ]
                }
-               ,{<<"audio">>, <<"mpeg">>
+               ,{ContentTypeA, ContentTypeB
                      ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
                        ,{<<"Content-Type">>, list_to_binary([<<ContentType/binary, "; name=\"">>, AttachmentFileName, "\""])}
                        ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
