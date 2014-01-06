@@ -104,7 +104,6 @@ build_uri(Opts) ->
 -spec build_uri_fold({atom(), ne_binary()}, ne_binary()) -> ne_binary().
 build_uri_fold({Key, Replace}, T) ->
     Search = <<"{", (wh_util:to_binary(Key))/binary, "}">>,
-    lager:debug("search ~s replace ~s from ~s", [Search, Replace, T]),
     binary:replace(T, Search, Replace, ['global']).
 
 query_vitelity(Prefix, Quantity, URI) ->
@@ -179,7 +178,6 @@ xml_did_to_json(#xmlElement{name='did'
 xml_did_to_json(#xmlElement{name='did'
                             ,content=DIDInfo
                            }) ->
-    lager:debug("did info: ~p", [DIDInfo]),
     wh_json:from_list(xml_els_to_proplist(kz_xml:elements(DIDInfo)));
 xml_did_to_json(#xmlElement{name='number'
                            ,content=DIDInfo
@@ -188,7 +186,6 @@ xml_did_to_json(#xmlElement{name='number'
 
 -spec xml_els_to_proplist(xml_els()) -> wh_proplist().
 xml_els_to_proplist(Els) ->
-    lager:debug("did info: ~p", [Els]),
     [KV || El <- Els,
            begin
                {_, V}=KV = xml_el_to_kv_pair(El),
@@ -211,14 +208,12 @@ xml_el_to_kv_pair(#xmlElement{name=Name
 xml_el_to_kv_pair(#xmlElement{name=Name
                               ,content=Value
                              }) ->
-    lager:debug("~s: ~p", [Name, Value]),
     case kz_xml:elements(Value) of
         [] ->
             {wh_util:to_binary(Name)
              ,kz_xml:texts_to_binary(Value)
             };
         Els ->
-            lager:debug("els: ~p", [Els]),
             {wh_util:to_binary(Name)
              ,wh_json:from_list(xml_els_to_proplist(Els))
             }
