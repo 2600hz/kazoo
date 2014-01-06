@@ -1,0 +1,15 @@
+%% -*- mode: erlang -*-
+{application, folsom,
+ [
+  {description, ""},
+  {vsn, git},
+  {registered, [folsom_meter_timer_server,
+                folsom_metrics_histogram_ets,
+                folsom_sup]},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []},
+  {mod, {folsom, []}}
+ ]}.

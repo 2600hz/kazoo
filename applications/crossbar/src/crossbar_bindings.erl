@@ -445,8 +445,7 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         'error':'undef' ->
             ST = erlang:get_stacktrace(),
-            lager:debug("undefined function ~s:~s/~b", [M, F, length(Payload)]),
-            wh_util:log_stacktrace(ST),
+            log_undefined(M, F, length(Payload), ST),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         _T:_E ->
             ST = erlang:get_stacktrace(),
@@ -465,6 +464,17 @@ fold_bind_results([], Payload, Route, MFsLen, ReRunQ) ->
             lager:debug("loop detected for ~s, returning", [Route]),
             Payload
     end.
+
+-spec log_undefined(atom(), atom(), integer(), list()) -> 'ok'.
+log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_}|_]) ->
+    lager:debug("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
+    lager:debug("in call ~s:~s/~b", [M, F, Length]);
+log_undefined(M, F, Length, [{RealM, RealF, RealArgs}|_]) ->
+    lager:debug("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
+    lager:debug("in call ~s:~s/~b", [M, F, Length]);
+log_undefined(M, F, Length, ST) ->
+    lager:debug("undefined function ~s:~s/~b", [M, F, Length]),
+    wh_util:log_stacktrace(ST).
 
 %%-------------------------------------------------------------------------
 %% @doc

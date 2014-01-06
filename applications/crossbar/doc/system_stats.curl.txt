@@ -1,0 +1,13 @@
+# Credentials Hash: 4d02ff46ad889921836b706c3c0e0b36
+# Account Name: Master
+# Auth Token ID: e2d8acff868651bc7aa882c17808bc14
+# Account ID: 5b78db2f23f35aa022f5c3c0a5df1b92
+
+# Create an auth token on the master account
+curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/user_auth -d '{"data":{"credentials":"4d02ff46ad889921836b706c3c0e0b36", "account_name":"Master"}}' | pp
+
+# List hangup stats across accounts
+curl -v -X GET -H "X-Auth-Token: e2d8acff868651bc7aa882c17808bc14" http://thinky64.2600hz.com:8000/v1/system_stats/hangups/progress_timeout | pp
+
+# List hangup stats for account
+curl -v -X GET -H "X-Auth-Token: e2d8acff868651bc7aa882c17808bc14" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/system_stats/hangups/progress_timeout | pp

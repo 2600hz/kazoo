@@ -71,8 +71,11 @@ resource_exists(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
-authorize(#cb_context{req_nouns=[{<<"user_auth">>, _}]}) -> 'true';
-authorize(_) -> 'false'.
+authorize(Context) ->
+    authorize_nouns(cb_context:req_nouns(Context)).
+
+authorize_nouns([{<<"user_auth">>, _}]) -> 'true';
+authorize_nouns(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -80,9 +83,12 @@ authorize(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
-authenticate(#cb_context{req_nouns=[{<<"user_auth">>, _}]}) -> 'true';
-authenticate(#cb_context{req_nouns=[{<<"user_auth">>, [<<"recovery">>]}]}) -> 'true';
-authenticate(_) -> 'false'.
+authenticate(Context) ->
+    authenticate_nouns(cb_context:req_nouns(Context)).
+
+authenticate_nouns([{<<"user_auth">>, _}]) -> 'true';
+authenticate_nouns([{<<"user_auth">>, [<<"recovery">>]}]) -> 'true';
+authenticate_nouns(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -94,10 +100,11 @@ authenticate(_) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context) ->
     cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1).
 
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, <<"recovery">>) ->
+validate(Context, <<"recovery">>) ->
     cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -162,9 +169,10 @@ maybe_authenticate_user(Context, _, _, []) ->
     lager:debug("no account(s) specified"),
     cb_context:add_system_error('invalid_credentials', Context);
 maybe_authenticate_user(Context, Credentials, Method, [Account|Accounts]) ->
-    case maybe_authenticate_user(Context, Credentials, Method, Account) of
-        #cb_context{resp_status='success'}=Context1 -> Context1;
-        _ -> maybe_authenticate_user(Context, Credentials, Method, Accounts)
+    Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
+    case cb_context:resp_status(Context1) of
+        'success' -> Context1;
+        _ -> maybe_authenticate_user(Context1, Credentials, Method, Accounts)
     end;
 maybe_authenticate_user(Context, Credentials, <<"md5">>, Account) when is_binary(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
@@ -255,7 +263,8 @@ maybe_recover_user_password(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_load_username(ne_binary(), cb_context:context()) -> cb_context:context().
-maybe_load_username(Account, #cb_context{doc=JObj}=Context) ->
+maybe_load_username(Account, Context) ->
+    JObj = cb_context:doc(Context),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     lager:debug("attempting to load username in db: ~s", [AccountDb]),
     Username = wh_json:get_value(<<"username">>, JObj),
@@ -267,23 +276,31 @@ maybe_load_username(Account, #cb_context{doc=JObj}=Context) ->
             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                 'false' ->
                     lager:debug("the username '~s' was found and is not disabled, continue", [Username]),
-                    Context#cb_context{resp_status='success'
-                                       ,doc=wh_json:get_value(<<"doc">>, User)
-                                       ,db_name=AccountDb
-                                      };
+                    setter(Context, [{fun cb_context:set_account_db/2, Account}
+                                     ,{fun cb_context:set_doc/2, wh_json:get_value(<<"doc">>, User)}
+                                     ,{fun cb_context:set_resp_status/2, 'success'}
+                                    ]);
                 'true' ->
                     lager:debug("the username '~s' was found but is disabled", [Username]),
                     cb_context:add_validation_error(<<"username">>
                                                     ,<<"forbidden">>
                                                     ,<<"The provided username is disabled">>
-                                                    ,Context)
+                                                    ,Context
+                                                   )
             end;
         _ ->
             cb_context:add_validation_error(<<"username">>
                                             ,<<"not_found">>
                                             ,<<"The provided username was not found">>
-                                            ,Context)
+                                            ,Context
+                                           )
     end.
+
+-spec setter(cb_context:context(), [{function(), term()},...]) -> cb_context:context().
+-spec setter_fold({function(), term()}, cb_context:context()) -> cb_context:context().
+setter(Context, Funs) ->
+    lists:foldl(fun setter_fold/2, Context, Funs).
+setter_fold({F, V}, C) -> F(C, V).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -292,7 +309,8 @@ maybe_load_username(Account, #cb_context{doc=JObj}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_token(cb_context:context()) -> cb_context:context().
-create_token(#cb_context{doc=JObj}=Context) ->
+create_token(Context) ->
+    JObj = cb_context:doc(Context),
     case wh_json:is_empty(JObj) of
         'true' ->
             crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
@@ -311,9 +329,10 @@ create_token(#cb_context{doc=JObj}=Context) ->
                     lager:debug("created new local auth token ~s", [AuthToken]),
                     JObj1 = populate_resp(JObj, AccountId, OwnerId),
                     crossbar_util:response(crossbar_util:response_auth(JObj1)
-                                            ,Context#cb_context{auth_token=AuthToken
-                                                                ,auth_doc=Doc
-                                                               });
+                                           ,setter(Context, [{fun cb_context:set_auth_token/2, AuthToken}
+                                                             ,{fun cb_context:set_auth_doc/2, Doc}
+                                                            ])
+                                          );
                 {'error', R} ->
                     lager:debug("could not create new local auth token, ~p", [R]),
                     cb_context:add_system_error('invalid_credentials', Context)
@@ -389,10 +408,10 @@ reset_users_password(Context) ->
                                ], JObj),
 
     Context1 = crossbar_doc:save(
-                 cb_context:set_doc(
-                   cb_context:set_req_verb(Context, ?HTTP_POST)
-                   ,JObj1
-                  )),
+                 setter(Context, [{fun cb_context:set_doc/2, JObj1}
+                                  ,{fun cb_context:set_req_verb/2, ?HTTP_POST}
+                                 ])
+                ),
     case cb_context:resp_status(Context1) of
         'success' ->
             Notify = [{<<"Email">>, Email}
