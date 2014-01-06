@@ -38,10 +38,21 @@
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', wh_json:objects()} |
                           {'error', _}.
-find_numbers(Prefix, Quanity, Opts) ->
+find_numbers(Prefix, Quantity, Opts) ->
     case props:get_value('tollfree', Opts, 'false') of
-        'true' -> find(Prefix, Quanity, add_tollfree_options(Quanity, Opts));
-        'false' -> find(Prefix, Quanity, add_local_options(Prefix, Opts))
+        'true' -> find(Prefix, Quantity, add_tollfree_options(Quantity, Opts));
+        'false' ->
+            classify_and_find(Prefix, Quantity, Opts)
+    end.
+
+-spec classify_and_find(ne_binary(), pos_integer(), wh_proplist()) ->
+                               {'ok', wh_json:objects()} |
+                               {'error', _}.
+classify_and_find(Prefix, Quantity, Opts) ->
+    case wnm_util:classify_number(Prefix) of
+        <<"tollfree_us">> -> find(Prefix, Quantity, add_tollfree_options(Quantity, Opts));
+        <<"tollfree">> -> find(Prefix, Quantity, add_tollfree_options(Quantity, Opts));
+        _ -> find(Prefix, Quantity, add_local_options(Prefix, Opts))
     end.
 
 -spec add_tollfree_options(pos_integer(), wh_proplist()) -> wh_proplist().
@@ -123,6 +134,9 @@ query_vitelity(Prefix, Quantity, URI) ->
             E
     end.
 
+-spec process_xml_resp(ne_binary(), pos_integer(), text()) ->
+                              {'ok', wh_json:object()} |
+                              {'error', _}.
 process_xml_resp(Prefix, Quantity, XML) ->
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(Prefix, Quantity, XmlEl)
@@ -132,20 +146,26 @@ process_xml_resp(Prefix, Quantity, XML) ->
             {'error', 'xml_decode_failed'}
     end.
 
+-spec process_xml_content_tag(ne_binary(), pos_integer(), xml_el()) ->
+                                     {'ok', wh_json:object()} |
+                                     {'error', _}.
 process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
                                                       ,content=Children
                                                      }) ->
     Els = kz_xml:elements(Children),
     case xml_resp_status_msg(Els) of
-        <<"ok">> -> process_xml_numbers(Prefix, Quantity, xml_resp_numbers(Els));
         <<"fail">> ->
             {'error', xml_resp_error_msg(Els)};
-        'undefined' ->
-            {'error', xml_resp_numbers_error_msg(Els)}
+        Status when Status =:= <<"ok">>;
+                    Status =:= 'undefined' ->
+            process_xml_numbers(Prefix, Quantity, xml_resp_numbers(Els))
     end.
 
 -spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
-                                 {'ok', wh_json:objects()} |
+                                 {'ok', wh_json:object()} |
+                                 {'error', _}.
+-spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el(), wh_proplist()) ->
+                                 {'ok', wh_json:object()} |
                                  {'error', _}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
     {'error', 'no_numbers'};
@@ -155,15 +175,21 @@ process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
     process_xml_numbers(Prefix, Quantity, kz_xml:elements(Content), []).
 
 process_xml_numbers(_Prefix, 0, _Els, Acc) ->
-    lager:debug("reached quantity"),
-    {'ok', Acc};
+    lager:debug("reached quantity requested"),
+    {'ok', wh_json:from_list(Acc)};
+process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
+                                                     ,content=Reason
+                                                     }
+                                         |_], _Acc) ->
+    lager:debug("response tag found, error!"),
+    {'error', kz_xml:texts_to_binary(Reason)};
 process_xml_numbers(_Prefix, _Quantity, [], Acc) ->
     lager:debug("no more results: ~p", [_Quantity]),
-    {'ok', Acc};
+    {'ok', wh_json:from_list(Acc)};
 process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
     JObj = xml_did_to_json(El),
     case number_matches_prefix(JObj, Prefix) of
-        'true' -> process_xml_numbers(Prefix, Quantity-1, Els, [JObj|Acc]);
+        'true' -> process_xml_numbers(Prefix, Quantity-1, Els, [{wh_json:get_value(<<"number">>, JObj), JObj}|Acc]);
         'false' -> process_xml_numbers(Prefix, Quantity, Els, Acc)
     end.
 
@@ -235,27 +261,6 @@ xml_resp_error_msg(XmlEls) ->
 -spec xml_resp_numbers(xml_els()) -> xml_el() | 'undefined'.
 xml_resp_numbers(XmlEls) ->
     xml_resp_tag(XmlEls, 'numbers').
-
--spec xml_resp_numbers_error_msg(xml_els()) -> ne_binary().
-xml_resp_numbers_error_msg(XmlEls) ->
-    case xml_resp_tag(XmlEls, 'numbers') of
-        'undefined' -> <<"unkonwn error occurred">>;
-        NumbersXml ->
-            numbers_error_msg(NumbersXml)
-    end.
-
--spec numbers_error_msg(xml_el()) -> ne_binary().
-numbers_error_msg(#xmlElement{name='numbers'
-                              ,content=Response
-                             }) ->
-    case kz_xml:elements(Response, 'response') of
-        [#xmlElement{name='response'
-                     ,content=Reason
-                    }] ->
-            kz_xml:texts_to_binary(Reason);
-        _ ->
-            <<"unknown error occurred">>
-    end.
 
 -spec xml_resp_tag(xml_els(), atom()) -> xml_el() | 'undefined'.
 xml_resp_tag([#xmlElement{name=Name}=El|_], Name) -> El;
