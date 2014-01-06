@@ -40,7 +40,7 @@
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(IGNORE, whapps_config:get(?APP_NAME
-                                  ,<<"ignored_hangup_causes">>
+                                  ,<<"ignore_hangup_causes">>
                                   ,[<<"NO_ANSWER">>
                                     ,<<"USER_BUSY">>
                                     ,<<"NO_USER_RESPONSE">>
