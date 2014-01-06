@@ -106,6 +106,9 @@ build_uri_fold({Key, Replace}, T) ->
     Search = <<"{", (wh_util:to_binary(Key))/binary, "}">>,
     binary:replace(T, Search, Replace, ['global']).
 
+-spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
+                            {'ok', wh_json:objects()} |
+                            {'error', _}.
 query_vitelity(Prefix, Quantity, URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
@@ -136,7 +139,9 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
     case xml_resp_status_msg(Els) of
         <<"ok">> -> process_xml_numbers(Prefix, Quantity, xml_resp_numbers(Els));
         <<"fail">> ->
-            {'error', xml_resp_error_msg(Els)}
+            {'error', xml_resp_error_msg(Els)};
+        'undefined' ->
+            {'error', xml_resp_numbers_error_msg(Els)}
     end.
 
 -spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
@@ -230,6 +235,27 @@ xml_resp_error_msg(XmlEls) ->
 -spec xml_resp_numbers(xml_els()) -> xml_el() | 'undefined'.
 xml_resp_numbers(XmlEls) ->
     xml_resp_tag(XmlEls, 'numbers').
+
+-spec xml_resp_numbers_error_msg(xml_els()) -> ne_binary().
+xml_resp_numbers_error_msg(XmlEls) ->
+    case xml_resp_tag(XmlEls, 'numbers') of
+        'undefined' -> <<"unkonwn error occurred">>;
+        NumbersXml ->
+            numbers_error_msg(NumbersXml)
+    end.
+
+-spec numbers_error_msg(xml_el()) -> ne_binary().
+numbers_error_msg(#xmlElement{name='numbers'
+                              ,content=Response
+                             }) ->
+    case kz_xml:elements(Response, 'response') of
+        [#xmlElement{name='response'
+                     ,content=Reason
+                    }] ->
+            kz_xml:texts_to_binary(Reason);
+        _ ->
+            <<"unknown error occurred">>
+    end.
 
 -spec xml_resp_tag(xml_els(), atom()) -> xml_el() | 'undefined'.
 xml_resp_tag([#xmlElement{name=Name}=El|_], Name) -> El;
