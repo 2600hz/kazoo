@@ -38,7 +38,7 @@
 set_value(K, V, Props) ->
     [{K, V} | [KV || {Key, _}=KV <- Props, K =/= Key]].
 
--spec add_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
+-spec insert_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
                        wh_proplist().
 insert_value(K, V, Props) ->
     case get_value(K, Props) of
