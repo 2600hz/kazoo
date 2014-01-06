@@ -129,9 +129,9 @@ query_vitelity(Prefix, Quantity, URI) ->
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
             process_xml_resp(Prefix, Quantity, RespXML);
-        {'error', _R}=E ->
+        {'error', _R} ->
             lager:debug("error querying: ~p", [_R]),
-            E
+            {'error', 'not_available'}
     end.
 
 -spec process_xml_resp(ne_binary(), pos_integer(), text()) ->

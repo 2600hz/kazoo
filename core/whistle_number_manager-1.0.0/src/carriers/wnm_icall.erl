@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -22,11 +22,12 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/3 :: (ne_binary(), pos_integer(), wh_proplist()) -> {'error', _}.
+-spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+                          {'error', 'not_available'}.
 find_numbers(_Number, _Quanity, _Opts) ->
-    {error, non_available}.
+    {'error', 'non_available'}.
 
--spec is_number_billable/1 :: (wnm_number()) -> 'true' | 'false'.
+-spec is_number_billable(wnm_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -35,7 +36,7 @@ is_number_billable(_Number) -> 'true'.
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/1 :: (wnm_number()) -> wnm_number().
+-spec acquire_number(wnm_number()) -> wnm_number().
 acquire_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
@@ -44,5 +45,5 @@ acquire_number(Number) -> Number.
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number/1 :: (wnm_number()) -> wnm_number().
+-spec disconnect_number(wnm_number()) -> wnm_number().
 disconnect_number(Number) -> Number.
