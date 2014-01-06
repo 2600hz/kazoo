@@ -21,7 +21,7 @@
          ,get_keys/1
          ,get_first_defined/2, get_first_defined/3
          ,get_all_values/2, get_values/2
-         ,set_value/3
+         ,set_value/3, insert_value/3
          ,unique/1
          ,filter/2
          ,filter_empty/1
@@ -37,6 +37,14 @@
                        wh_proplist().
 set_value(K, V, Props) ->
     [{K, V} | [KV || {Key, _}=KV <- Props, K =/= Key]].
+
+-spec add_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
+                       wh_proplist().
+insert_value(K, V, Props) ->
+    case get_value(K, Props) of
+        'undefined' -> [{K, V} | Props];
+        _Value -> Props
+    end.
 
 -type filter_fun() :: fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()).
 -spec filter(filter_fun(), wh_proplist()) -> wh_proplist().
