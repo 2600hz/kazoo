@@ -1,6 +1,5 @@
 PROJECT = kazoo_translator
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
 DIALYZER = dialyzer
 
 EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
@@ -11,7 +10,7 @@ ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
 
 DIRS = . \
         $(ROOT)/core/whistle-1.0.0 \
-    	$(ROOT)/core/whistle_amqp-1.0.0 \
+	$(ROOT)/core/whistle_amqp-1.0.0 \
         $(ROOT)/core/whistle_couch-1.0.0 \
         $(ROOT)/core/whistle_apps
 
