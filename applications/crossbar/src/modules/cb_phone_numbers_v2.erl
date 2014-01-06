@@ -4,11 +4,20 @@
 -export([authorize/1]).
 -export([allowed_methods/1]).
 -export([resource_exists/1]).
--export([validate/1, validate/2]).
+-export([validate/1, validate/2, validate/3, validate/4]).
+-export([put/2, put/3, put/4]).
 -export([post/2]).
 
 -include("../crossbar.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+
+-define(PORT_DOCS, <<"docs">>).
+-define(PORT, <<"port">>).
+-define(ACTIVATE, <<"activate">>).
+-define(RESERVE, <<"reserve">>).
+-define(CLASSIFIERS, <<"classifiers">>).
+-define(IDENTIFY, <<"identify">>).
+-define(COLLECTION, <<"collection">>).
 
 -define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 10}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
 -define(DEFAULT_COUNTRY, <<"US">>).
@@ -45,7 +54,7 @@ authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[?PREFIX]}]
     'true'.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -58,7 +67,7 @@ allowed_methods(?PREFIX) -> [?HTTP_GET];
 allowed_methods(?LOCALITY) -> [?HTTP_POST].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -97,6 +106,67 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?LOCALITY) ->
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
     cb_phone_numbers:validate_request(Context).
 
+validate(Context, PathToken, PathToken1) ->
+    cb_phone_numbers:validate(Context, PathToken, PathToken1).
+
+validate(Context, PathToken, PathToken1, PathToken2) ->
+    cb_phone_numbers:validate(Context, PathToken, PathToken1, PathToken2).
+
+-spec put(cb_context:context(), path_token()) ->
+                 cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) ->
+                 cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token(), path_token()) ->
+                 cb_context:context().
+put(Context, ?COLLECTION) ->
+    Results = collection_process(Context),
+    set_response(Results, <<>>, Context);
+put(#cb_context{req_json=ReqJObj}=Context, Number) ->
+    Result = wh_number_manager:create_number(Number
+                                             ,cb_context:account_id(Context)
+                                             ,cb_context:auth_account_id(Context)
+                                             ,cb_context:doc(Context)
+                                             ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
+                                            ),
+    set_response(Result, Number, Context).
+
+put(Context, ?COLLECTION, ?ACTIVATE) ->
+    Results = collection_process(Context, ?ACTIVATE),
+    set_response(Results, <<>>, Context);
+put(#cb_context{req_json=ReqJObj}=Context, Number, ?PORT) ->
+    Result = wh_number_manager:port_in(Number
+                                       ,cb_context:account_id(Context)
+                                       ,cb_context:auth_account_id(Context)
+                                       ,cb_context:doc(Context)
+                                       ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
+                                      ),
+    set_response(Result, Number, Context);
+put(#cb_context{req_json=ReqJObj}=Context, Number, ?ACTIVATE) ->
+    Result = wh_number_manager:assign_number_to_account(Number
+                                                        ,cb_context:account_id(Context)
+                                                        ,cb_context:auth_account_id(Context)
+                                                        ,cb_context:doc(Context)
+                                                        ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
+                                                       ),
+    set_response(Result, Number, Context);
+put(#cb_context{req_json=ReqJObj}=Context, Number, ?RESERVE) ->
+    Result = wh_number_manager:reserve_number(Number
+                                              ,cb_context:account_id(Context)
+                                              ,cb_context:auth_account_id(Context)
+                                              ,cb_context:doc(Context)
+                                              ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
+                                             ),
+    set_response(Result, Number, Context);
+put(Context, Number, ?PORT_DOCS) ->
+    cb_phone_numbers:put(Context, Number, ?PORT_DOCS).
+
+put(Context, Number, ?PORT_DOCS, T) ->
+    cb_phone_numbers:put(Context, Number, ?PORT_DOCS, T).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -104,7 +174,17 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, ?LOCALITY) -> Context.
+post(Context, ?LOCALITY) -> Context;
+post(Context, ?COLLECTION) ->
+    Result = collection_process(Context),
+    set_response(Result, <<>>, Context);
+post(#cb_context{req_json=ReqJObj}=Context, Number) ->
+    Result = wh_number_manager:set_public_fields(Number
+                                                 ,cb_context:doc(Context)
+                                                 ,cb_context:auth_account_id(Context)
+                                                 ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
+                                                ),
+    set_response(Result, Number, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -270,6 +350,12 @@ maybe_update_locality(Context) ->
                ),
     update_locality(Context, Numbers).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec update_locality(cb_context:context(), ne_binaries()) ->
                              cb_context:context().
 update_locality(Context, []) -> Context;
@@ -283,6 +369,12 @@ update_locality(Context, Numbers) ->
             update_context_locality(Context, Localities)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec update_context_locality(cb_context:context(), wh_json:object()) ->
                                      cb_context:context().
 update_context_locality(Context, Localities) ->
@@ -294,6 +386,12 @@ update_context_locality(Context, Localities) ->
                          end, cb_context:resp_data(Context), Localities),
     cb_context:set_resp_data(Context, JObj).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec update_phone_numbers_locality(cb_context:context(), wh_json:object()) ->
                                            {'ok', wh_json:object()} |
                                            {'error', _}.
@@ -347,6 +445,12 @@ get_locality(Numbers, UrlType) ->
             end
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec handle_locality_resp(wh_json:object()) ->
                                   {'error', ne_binary()} |
                                   {'ok', wh_json:object()}.
@@ -358,3 +462,115 @@ handle_locality_resp(Resp) ->
             lager:error("number locality lookup failed, status: ~p", [_E]),
             {'error', <<"number locality lookup failed">>}
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_response({'ok', operation_return()} |
+                   operation_return() |
+                   {binary(), binary()}, binary()
+                   ,cb_context:context()) ->
+                          cb_context:context().
+set_response({'dry_run', Doc}, _, Context) ->
+    io:format("cb_phone_numbers_v2.erl:MARKER:478 ~p~n", [Doc]),
+    crossbar_util:response_402(Doc, Context);
+set_response({'dry_run', ?COLLECTION, Doc}, _, Context) ->
+    io:format("cb_phone_numbers_v2.erl:MARKER:481 ~p~n", [Doc]),
+    crossbar_util:response_402(Doc, Context);
+set_response(Else, Num, Context) ->
+    cb_phone_numbers:set_response(Else, Num, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec collection_process(cb_context:context()) ->
+                                operation_return() |
+                                {'ok', operation_return()}.
+-spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) ->
+                                operation_return() |
+                                {'ok', operation_return()}.
+collection_process(#cb_context{req_data=ReqJObj}=Context) ->
+    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
+    Result = collection_process(Context, Numbers, 'undefined'),
+    case (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')) of
+        'true' -> {'dry_run', ?COLLECTION, Result};
+        'false' -> {'ok', Result}
+    end.
+
+collection_process(#cb_context{req_data=ReqJObj}=Context, ?ACTIVATE) ->
+    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
+    Result = collection_process(Context, Numbers, ?ACTIVATE),
+    case (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')) of
+        'true' -> {'dry_run', ?COLLECTION, Result};
+        'false' -> {'ok', Result}
+    end.
+
+collection_process(Context, Numbers, Action) ->
+    lists:foldl(
+        fun(Number, Acc) ->
+            case collection_action(Context, Number, Action) of
+                {'ok', JObj} ->
+                    wh_json:set_value([<<"success">>, Number], JObj, Acc);
+                {'dry_run', Data} ->
+                    wh_json:set_value([<<"charges">>, Number], Data, Acc);
+                {State, _} ->
+                    JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
+                    wh_json:set_value([<<"error">>, Number], JObj, Acc)
+            end
+        end
+        ,wh_json:new()
+        ,Numbers
+     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec collection_action(cb_context:context(), ne_binary(), ne_binary()) ->
+                               operation_return().
+collection_action(#cb_context{account_id=AssignTo
+                              ,auth_account_id=AuthBy
+                              ,doc=JObj
+                              ,req_verb = ?HTTP_PUT
+                              ,req_data=ReqJObj
+                             }, Number, ?ACTIVATE) ->
+    DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')),
+    case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj, DryRun) of
+        {'ok', RJObj} ->
+            {'ok', wh_json:delete_key(<<"numbers">>, RJObj)};
+        {'dry_run', _Data}=Resp ->Resp;
+        Else -> Else
+    end;
+collection_action(#cb_context{account_id=AssignTo
+                              ,auth_account_id=AuthBy
+                              ,doc=JObj
+                              ,req_verb = ?HTTP_PUT
+                             }, Number, _) ->
+    wh_number_manager:create_number(Number, AssignTo, AuthBy, wh_json:delete_key(<<"numbers">>, JObj));
+collection_action(#cb_context{auth_account_id=AuthBy
+                              ,doc=Doc
+                              ,req_data=ReqJObj
+                              ,req_verb = ?HTTP_POST
+                             }, Number, _) ->
+    case wh_number_manager:get_public_fields(Number, AuthBy) of
+        {'ok', JObj} ->
+            Doc1 = wh_json:delete_key(<<"numbers">>, Doc),
+            DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')),
+            wh_number_manager:set_public_fields(Number, wh_json:merge_jobjs(JObj, Doc1), AuthBy, DryRun);
+        {State, Error} ->
+            lager:error("error while fetching number ~p : ~p", [Number, Error]),
+            {State, Error}
+    end;
+collection_action(#cb_context{auth_account_id=AuthBy
+                              ,req_verb = ?HTTP_DELETE
+                             }, Number, _) ->
+    wh_number_manager:release_number(Number, AuthBy).
+

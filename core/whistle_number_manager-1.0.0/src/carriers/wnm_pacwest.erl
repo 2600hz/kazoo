@@ -36,7 +36,9 @@ is_number_billable(_Number) -> 'true'.
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(wnm_number()) -> wnm_number().
+-spec acquire_number/1 :: (wnm_number()) -> wnm_number().
+acquire_number(#number{dry_run='true'}=Number) -> Number;
+
 acquire_number(Number) -> Number.
 
 %%--------------------------------------------------------------------

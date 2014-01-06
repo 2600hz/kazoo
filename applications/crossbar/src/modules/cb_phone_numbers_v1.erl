@@ -76,9 +76,3 @@ get_numbers(QueryString) ->
             ,wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(QueryString))
         )
     ).
-
-
-
-
-
-

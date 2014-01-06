@@ -25,6 +25,7 @@
          ,summary/1
          ,populate_phone_numbers/1
          ,read/2
+         ,set_response/3
         ]).
 
 -include("../crossbar.hrl").
@@ -68,12 +69,12 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>, 'cb_phone_numbers_v1', 'validate'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate.phone_numbers">>, 'cb_phone_numbers_v2', 'validate'),
-    _ = crossbar_bindings:bind(<<"*.validate.phone_numbers">>, ?MODULE, 'validate'),
+    % _ = crossbar_bindings:bind(<<"*.validate.phone_numbers">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.phone_numbers">>, 'cb_phone_numbers_v2', 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.put.phone_numbers">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, 'cb_phone_numbers_v2', 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.post.phone_numbers">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"*.execute.delete.phone_numbers">>, ?MODULE, 'delete').
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

@@ -13,18 +13,18 @@
 -export([find/1, find/2, find/3]).
 -export([lookup_account_by_number/1]).
 -export([ported/1]).
--export([create_number/3, create_number/4]).
--export([port_in/3, port_in/4]).
+-export([create_number/3, create_number/4, create_number/5]).
+-export([port_in/3, port_in/5]).
 -export([reconcile_number/3]).
 -export([free_numbers/1]).
--export([reserve_number/3, reserve_number/4]).
--export([assign_number_to_account/3, assign_number_to_account/4]).
+-export([reserve_number/3, reserve_number/5]).
+-export([assign_number_to_account/3, assign_number_to_account/4, assign_number_to_account/5]).
 -export([release_number/2]).
 -export([list_attachments/2]).
 -export([fetch_attachment/3]).
 -export([put_attachment/5]).
 -export([delete_attachment/3]).
--export([get_public_fields/2, set_public_fields/3]).
+-export([get_public_fields/2, set_public_fields/3, set_public_fields/4]).
 -export([track_assignment/2]).
 
 -include("wnm.hrl").
@@ -256,19 +256,22 @@ check_ports(#number{number=MaybePortNumber}=Number) ->
                            operation_return().
 -spec create_number(ne_binary(), api_binary(), ne_binary() | 'system', wh_json:object()) ->
                            operation_return().
+-spec create_number(ne_binary(), ne_binary(), ne_binary() | 'system', wh_json:object(), boolean()) -> operation_return().
 
 create_number(Number, AssignTo, AuthBy) ->
     create_number(Number, AssignTo, AuthBy, wh_json:new()).
 
 create_number(Number, AssignTo, AuthBy, PublicFields) ->
-    lager:debug("attempting to create number ~s for account ~s", [Number, AssignTo]),
+    create_number(Number, AssignTo, AuthBy, PublicFields, 'false').
 
+create_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
+    lager:debug("attempting to create number ~s for account ~s", [Number, AssignTo]),
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
                 ,fun({'not_found', #number{}=N}) ->
-                         lager:debug("try to create not_found number ~s", [Number]),
-                         create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N);
+                        lager:debug("try to create not_found number ~s", [Number]),
+                        create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N#number{dry_run=DryRun});
                     ({_, #number{}}=E) -> E;
-                    (#number{current_state = ?NUMBER_STATE_AVAILABLE}=N) -> N;
+                    (#number{current_state = ?NUMBER_STATE_AVAILABLE}=N) -> N#number{dry_run=DryRun};
                     (#number{}=N) -> wnm_number:error_number_exists(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
@@ -280,6 +283,10 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
+                    (#number{dry_run='true'
+                             ,services=Services
+                             ,activations=ActivationCharges}) ->
+                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("create number successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
@@ -325,19 +332,20 @@ create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N) ->
 %%--------------------------------------------------------------------
 -spec port_in(ne_binary(), ne_binary(), ne_binary()) ->
                      operation_return().
--spec port_in(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->
+-spec port_in(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), boolean()) ->
                      operation_return().
 
 port_in(Number, AssignTo, AuthBy) ->
-    port_in(Number, AssignTo, AuthBy, wh_json:new()).
+    port_in(Number, AssignTo, AuthBy, wh_json:new(), 'false').
 
-port_in(Number, AssignTo, AuthBy, PublicFields) ->
+port_in(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
     lager:debug("attempting to port_in number ~s for account ~s", [Number, AssignTo]),
     Routines = [fun({'not_found', #number{}=N}) ->
                         NewNumber = N#number{number=Number
                                              ,assign_to=AssignTo
                                              ,auth_by=AuthBy
                                              ,number_doc=PublicFields
+                                             ,dry_run=DryRun
                                             },
                         wnm_number:create_port_in(NewNumber);
                    ({_, #number{}}=E) -> E;
@@ -349,6 +357,10 @@ port_in(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
+                    (#number{dry_run='true'
+                             ,services=Services
+                             ,activations=ActivationCharges}) ->
+                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("port in number successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
@@ -438,16 +450,19 @@ free_numbers(AccountId) ->
 %%--------------------------------------------------------------------
 -spec reserve_number(ne_binary(), ne_binary(), ne_binary()) ->
                             operation_return().
--spec reserve_number(ne_binary(), ne_binary(), ne_binary(), api_object()) ->
+-spec reserve_number(ne_binary(), ne_binary(), ne_binary(), api_object(), boolean()) ->
                             operation_return().
 
 reserve_number(Number, AssignTo, AuthBy) ->
-    reserve_number(Number, AssignTo, AuthBy, 'undefined').
+    reserve_number(Number, AssignTo, AuthBy, 'undefined', 'false').
 
-reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
+reserve_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
     lager:debug("attempting to reserve ~s for account ~s", [Number, AssignTo]),
     Routines = [fun({_, #number{}}=E) -> E;
-                   (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo, auth_by=AuthBy})
+                   (#number{}=N) ->
+                        wnm_number:reserved(N#number{assign_to=AssignTo
+                                                     ,auth_by=AuthBy
+                                                     ,dry_run=DryRun})
                 end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
@@ -455,6 +470,10 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
+                    (#number{dry_run='true'
+                             ,services=Services
+                             ,activations=ActivationCharges}) ->
+                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("reserve successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
@@ -468,27 +487,36 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
 %% Assign a number to an account, aquiring the number from the provider
 %% if necessary
 %% @end
-%%--------------------------------------------------------------------
+
 -spec assign_number_to_account(ne_binary(), ne_binary(), ne_binary()) ->
                                       operation_return().
 -spec assign_number_to_account(ne_binary(), ne_binary(), ne_binary(), api_object())->
                                       operation_return().
+-spec assign_number_to_account(ne_binary(), ne_binary(), ne_binary(), wh_json:object() | 'undefined', boolean())
+                                    -> operation_return().
 
 assign_number_to_account(Number, AssignTo, AuthBy) ->
-    assign_number_to_account(Number, AssignTo, AuthBy, 'undefined').
+    assign_number_to_account(Number, AssignTo, AuthBy, 'undefined', 'false').
 
 assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
-    lager:debug("attempting to assign ~s to account ~s", [Number, AssignTo]),
+    assign_number_to_account(Number, AssignTo, AuthBy, PublicFields, 'false').
+
+assign_number_to_account(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
+    lager:debug("attempting to assign ~s to account ~s: dry run : ~p", [Number, AssignTo, DryRun]),
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
                 ,fun({'not_found', _}) ->
-                         NewNumber = #number{number=Number
-                                             ,module_name='wnm_other'
-                                             ,module_data=wh_json:new()
-                                             ,number_doc=wh_json:public_fields(PublicFields)
-                                            },
-                         wnm_number:create_discovery(NewNumber);
+                        NewNumber = #number{number=Number
+                                            ,module_name='wnm_other'
+                                            ,module_data=wh_json:new()
+                                            ,number_doc=wh_json:public_fields(PublicFields)
+                                            ,dry_run=DryRun
+                                },
+                        io:format("wh_number_manager.erl:MARKER:502 ~p~n", [yes]),
+                        wnm_number:create_discovery(NewNumber);
                     ({_, #number{}}=E) -> E;
-                    (#number{}=N) -> N
+                    (#number{}=N) ->
+                        io:format("wh_number_manager.erl:MARKER:506 ~p~n", [no]),
+                        N#number{dry_run=DryRun}
                  end
                 ,fun ({_, #number{}}=E) -> E;
                      (#number{}=N) -> wnm_number:in_service(N#number{assign_to=AssignTo, auth_by=AuthBy})
@@ -499,11 +527,16 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
+                    (#number{dry_run='true'
+                             ,services=Services
+                             ,activations=ActivationCharges}) ->
+                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
                     (#number{number_doc=JObj}) ->
-                         lager:debug("assign number to account successfully completed"),
-                         {'ok', wh_json:public_fields(JObj)}
+                        lager:debug("assign number to account successfully completed"),
+                        {'ok', wh_json:public_fields(JObj)}
                  end
                ],
+    io:format("wh_number_manager.erl:MARKER:527 ~p~n", [marker]),
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
 
 %%--------------------------------------------------------------------
@@ -704,12 +737,17 @@ get_public_fields(Number, AuthBy) ->
 %%--------------------------------------------------------------------
 -spec set_public_fields(ne_binary(), wh_json:object(), ne_binary()) ->
                                operation_return().
+-spec set_public_fields(ne_binary(), wh_json:object(), ne_binary(), boolean()) ->
+                               operation_return().
 set_public_fields(Number, PublicFields, AuthBy) ->
+    set_public_fields(Number, PublicFields, AuthBy, 'false').
+
+set_public_fields(Number, PublicFields, AuthBy, DryRun) ->
     Routines = [fun({_, #number{}}=E) -> E;
                    (#number{assigned_to=AssignedTo}=N) ->
                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
                             'false' -> wnm_number:error_unauthorized(N);
-                            'true' -> N
+                            'true' -> N#number{dry_run=DryRun}
                         end
                 end
                 ,fun({_, #number{}}=E) -> E;
@@ -718,6 +756,10 @@ set_public_fields(Number, PublicFields, AuthBy) ->
                 ,fun({E, #number{error_jobj=Reason}}) ->
                          lager:debug("create number prematurely ended: ~p", [E]),
                          {E, Reason};
+                    (#number{dry_run='true'
+                             ,services=Services
+                             ,activations=ActivationCharges}) ->
+                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("set public fields successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}

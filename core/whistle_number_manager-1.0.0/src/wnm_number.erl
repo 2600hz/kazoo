@@ -60,6 +60,7 @@ create_discovery(#number{number=Number
                          ,number_doc=Doc
                          ,module_name=ModuleName
                          ,module_data=ModuleData
+                         ,dry_run=DryRun
                         }) ->
     Num = wnm_util:normalize_number(Number),
     Updates = [{<<"_id">>, Num}
@@ -69,6 +70,7 @@ create_discovery(#number{number=Number
                ,{<<"pvt_ported_in">>, 'false'}
                ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
                ,{<<"pvt_created">>, wh_util:current_tstamp()}
+               ,{<<"dry_run">>, DryRun}
               ],
     JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
     json_to_record(JObj, 'true').
@@ -199,9 +201,11 @@ save(#number{}=Number) ->
                 ,fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
                 ,fun({_, #number{}}=E) -> E;
+                    (#number{dry_run='true'}=N) -> N;
                     (#number{}=N) -> save_number_doc(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
+                    (#number{dry_run='true'}=N) -> N;
                     (#number{}=N) -> save_phone_number_docs(N)
                  end
                 ,fun(#number{}=N) -> update_service_plans(N) end
@@ -475,6 +479,7 @@ in_service(#number{state = ?NUMBER_STATE_DISCOVERY}=Number) ->
                 ,fun(#number{}=N) -> activate_phone_number(N) end
                 ,fun(#number{module_name='undefined'}=N) ->
                          error_carrier_not_specified(N);
+                    (#number{dry_run='true'}=N) -> N;
                     (#number{module_name=Module}=N) ->
                          Module:acquire_number(N)
                  end
@@ -527,6 +532,7 @@ in_service(#number{state = ?NUMBER_STATE_RESERVED}=Number) ->
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = ?NUMBER_STATE_IN_SERVICE, assigned_to=AssignedTo, assign_to=AssignedTo}=Number) ->
+    io:format("wnm_number.erl:MARKER:535 ~p~n", [marker]),
     error_no_change_required(?NUMBER_STATE_IN_SERVICE, Number);
 in_service(#number{state = ?NUMBER_STATE_IN_SERVICE}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
@@ -682,6 +688,7 @@ json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
       ,number_doc=JObj
       ,current_number_doc=case IsNew of 'true' -> wh_json:new(); 'false' -> JObj end
       ,used_by=wh_json:get_value(<<"used_by">>, JObj, <<>>)
+      ,dry_run=wh_json:get_value(<<"dry_run">>, JObj, 'false')
      }.
 
 -spec number_from_port_doc(wnm_number(), wh_json:object()) -> wnm_number().
@@ -714,6 +721,7 @@ record_to_json(#number{number_doc=JObj}=N) ->
                ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                ,{<<"pvt_created">>, wh_json:get_value(<<"pvt_created">>, JObj, wh_util:current_tstamp())}
                ,{<<"used_by">>, N#number.used_by}
+               ,{<<"dry_run">>, N#number.dry_run}
               ],
     lists:foldl(fun({K, 'undefined'}, J) -> wh_json:delete_key(K, J);
                    ({K, V}, J) -> wh_json:set_value(K, V, J)
@@ -1078,6 +1086,16 @@ load_phone_number_doc(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_service_plans(wnm_number()) -> wnm_number().
+update_service_plans(#number{dry_run='true'
+                             ,assigned_to=AssignedTo
+                             ,phone_number_docs=Docs
+                             ,services=Services}=Number) ->
+    case dict:find(AssignedTo, Docs) of
+        error -> Number;
+        {ok, JObj} ->
+            S = wh_service_phone_numbers:reconcile(JObj, Services),
+            Number#number{services=S}
+    end;
 update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssignedTo}=N) ->
     _ = wh_services:reconcile(AssignedTo, <<"phone_numbers">>),
     _ = wh_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),

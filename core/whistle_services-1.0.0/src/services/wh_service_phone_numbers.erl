@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_phone_numbers).
 
--export([reconcile/1]).
+-export([reconcile/1, reconcile/2]).
 -export([feature_activation_charge/2]).
 -export([phone_number_activation_charge/2]).
 
@@ -56,11 +56,13 @@ reconcile(Services) ->
         {'error', _R} ->
             lager:debug("unable to get current phone_numbers in service: ~p", [_R]),
             Services;
-        {'ok', JObj} ->
-            S1 = wh_services:reset_category(<<"phone_numbers">>, Services),
-            S2 = wh_services:reset_category(<<"number_services">>, S1),
-            update_numbers(wh_json:get_keys(wh_json:public_fields(JObj)), JObj, S2)
+        {'ok', JObj} -> reconcile(JObj, Services)
     end.
+
+reconcile(PhoneNumbers, Services) ->
+    S1 = wh_services:reset_category(<<"phone_numbers">>, Services),
+    S2 = wh_services:reset_category(<<"number_services">>, S1),
+    update_numbers(wh_json:get_keys(wh_json:public_fields(PhoneNumbers)), PhoneNumbers, S2).
 
 %%--------------------------------------------------------------------
 %% @private

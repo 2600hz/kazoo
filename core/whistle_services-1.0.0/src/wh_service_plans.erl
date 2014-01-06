@@ -46,7 +46,9 @@ empty() -> [].
 -spec from_service_json(wh_json:object()) -> plans().
 from_service_json(ServicesJObj) ->
     PlanIds = wh_json:get_keys(<<"plans">>, ServicesJObj),
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
+    ResellerId = wh_json:get_first_defined([<<"pvt_reseller_id">>
+                                            ,<<"reseller_id">>
+                                           ], ServicesJObj),
     get_plans(PlanIds, ResellerId, ServicesJObj).
 
 %%--------------------------------------------------------------------

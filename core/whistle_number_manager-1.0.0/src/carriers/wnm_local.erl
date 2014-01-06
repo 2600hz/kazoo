@@ -44,7 +44,8 @@ is_number_billable(_Number) -> 'false'.
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(wnm_number()) -> wnm_number().
+-spec acquire_number/1 :: (wnm_number()) -> wnm_number().
+acquire_number(#number{dry_run='true'}=Number) -> Number;
 acquire_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
@@ -53,6 +54,7 @@ acquire_number(Number) -> Number.
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
+
 -spec disconnect_number(wnm_number()) -> wnm_number().
 disconnect_number(Number) ->
         Number#number{state = <<"released">>, hard_delete='true'}.
