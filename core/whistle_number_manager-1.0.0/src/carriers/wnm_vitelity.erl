@@ -23,10 +23,10 @@
                                                  ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}">>)).
 
 -define(NPA_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"npa_uri">>
-                                                ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}&npa={npa}">>)).
+                                                ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}&npa={npa}&xml={xml}">>)).
 
 -define(NPAXX_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"npaxx_uri">>
-                                                  ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}&npanxx={npanxx}">>)).
+                                                  ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}&npanxx={npanxx}&xml={xml}">>)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -36,12 +36,12 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
-                          {'ok', wh_json:object()} |
-                          {'error', term()}.
-find_numbers(Number, Quanity, Opts) ->
+                          {'ok', wh_json:objects()} |
+                          {'error', _}.
+find_numbers(Prefix, Quanity, Opts) ->
     case props:get_value('tollfree', Opts, 'false') of
-        'true' -> find_tollfree(Number, Quanity, add_tollfree_options(Quanity, Opts));
-        'false' -> find_local(Number, Quanity, add_local_options(Number, Opts))
+        'true' -> find(Prefix, Quanity, add_tollfree_options(Quanity, Opts));
+        'false' -> find(Prefix, Quanity, add_local_options(Prefix, Opts))
     end.
 
 -spec add_tollfree_options(pos_integer(), wh_proplist()) -> wh_proplist().
@@ -55,25 +55,25 @@ add_tollfree_options(Quantity, Opts) ->
     lists:foldl(fun add_options_fold/2, Opts, TollFreeOpts).
 
 -spec add_local_options(ne_binary(), wh_proplist()) -> wh_proplist().
-add_local_options(Number, Opts) when byte_size(Number) =< 3 ->
-    LocalOpts = [{'npa', Number}
+add_local_options(Prefix, Opts) when byte_size(Prefix) =< 3 ->
+    LocalOpts = [{'npa', Prefix}
                  ,{'cmd', <<"listnpa">>}
                  ,{'withrates', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"withrates">>)}
                  ,{'type', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"type">>)}
                  ,{'provider', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"provider">>)}
-                 ,{'as_xml', <<"yes">>}
+                 ,{'xml', <<"yes">>}
                  ,{'cnam', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"require_cnam">>)}
                  ,{'uri_template', ?NPA_URI_TEMPLATE}
                  | default_options()
                 ],
     lists:foldl(fun add_options_fold/2, Opts, LocalOpts);
-add_local_options(Number, Opts) ->
-    LocalOpts = [{'npanxx', Number}
+add_local_options(Prefix, Opts) ->
+    LocalOpts = [{'npanxx', Prefix}
                  ,{'cmd', <<"listnpanxx">>}
                  ,{'withrates', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"withrates">>)}
                  ,{'type', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"type">>)}
                  ,{'provider', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"provider">>)}
-                 ,{'as_xml', <<"yes">>}
+                 ,{'xml', <<"yes">>}
                  ,{'cnam', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"require_cnam">>)}
                  ,{'uri_template', ?NPAXX_URI_TEMPLATE}
                  | default_options()
@@ -91,21 +91,11 @@ add_options_fold({_K, 'undefined'}, Opts) -> Opts;
 add_options_fold({K, V}, Opts) ->
     props:insert_value(K, V, Opts).
 
-find_tollfree(Number, Quantity, Opts) ->
-    case query_vitelity(build_uri(Opts)) of
-        {'ok', Numbers} ->
-            Numbers;
-        {'error', _}=E ->
-            E
-    end.
-
-find_local(Number, Quantity, Opts) ->
-    case query_vitelity(build_uri(Opts)) of
-        {'ok', Numbers} ->
-            Numbers;
-        {'error', _}=E ->
-            E
-    end.
+-spec find(ne_binary(), pos_integer(), wh_proplist()) ->
+                  {'ok', wh_json:objects()} |
+                  {'error', _}.
+find(Prefix, Quantity, Opts) ->
+    query_vitelity(Prefix, Quantity, build_uri(Opts)).
 
 -spec build_uri(wh_proplist()) -> ne_binary().
 build_uri(Opts) ->
@@ -114,74 +104,149 @@ build_uri(Opts) ->
 -spec build_uri_fold({atom(), ne_binary()}, ne_binary()) -> ne_binary().
 build_uri_fold({Key, Replace}, T) ->
     Search = <<"{", (wh_util:to_binary(Key))/binary, "}">>,
+    lager:debug("search ~s replace ~s from ~s", [Search, Replace, T]),
     binary:replace(T, Search, Replace, ['global']).
 
-query_vitelity(URI) ->
+query_vitelity(Prefix, Quantity, URI) ->
     lager:debug("querying ~s", [URI]),
     case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
         {'ok', "200", _RespHeaders, RespXML} ->
             lager:debug("recv 200: ~s", [RespXML]),
-            xml_to_numbers(RespXML);
+            process_xml_resp(Prefix, Quantity, RespXML);
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
-            xml_to_error(RespXML);
+            process_xml_resp(Prefix, Quantity, RespXML);
         {'error', _R}=E ->
             lager:debug("error querying: ~p", [_R]),
             E
     end.
 
-xml_to_numbers(XML) ->
+process_xml_resp(Prefix, Quantity, XML) ->
     try xmerl_scan:string(XML) of
-        {XMLEls, _} -> xml_els_to_numbers(XMLEls)
+        {XmlEl, _} -> process_xml_content_tag(Prefix, Quantity, XmlEl)
     catch
         _E:_R ->
             lager:debug("failed to decode xml: ~s: ~p", [_E, _R]),
             {'error', 'xml_decode_failed'}
     end.
 
-xml_to_error(XML) ->
-    try xmerl_scan:string(XML) of
-        {XMLEls, _} -> xml_els_to_error(XMLEls)
-    catch
-        _E:_R ->
-            lager:debug("failed to decode xml: ~s: ~p", [_E, _R]),
-            {'error', 'xml_decode_failed'}
+process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
+                                                      ,content=Children
+                                                     }) ->
+    Els = kz_xml:elements(Children),
+    case xml_resp_status_msg(Els) of
+        <<"ok">> -> process_xml_numbers(Prefix, Quantity, xml_resp_numbers(Els));
+        <<"fail">> ->
+            {'error', xml_resp_error_msg(Els)}
     end.
 
-xml_els_to_numbers(#xmlElement{name='content'
-                               ,content=Children
-                              }) ->
-    xml_els_to_numbers(Children);
-xml_els_to_numbers([#xmlText{}|Children]) ->
-    xml_els_to_numbers(Children);
-xml_els_to_numbers([#xmlElement{name='status'
-                                ,content=Status
-                               }
-                    | Children]) ->
+-spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
+                                 {'ok', wh_json:objects()} |
+                                 {'error', _}.
+process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
+    {'error', 'no_numbers'};
+process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
+                                                  ,content=Content
+                                                 }) ->
+    process_xml_numbers(Prefix, Quantity, kz_xml:elements(Content), []).
 
-             [{xmlText,[{content,1}],1,[]," ",text},
-              {xmlElement,status,status,[],
-                          {xmlNamespace,[],[]},
-                          [{content,1}],
-                          2,[],
-                          [{xmlText,[{status,2},{content,1}],1,[],"ok",text}],
-                          [],"/home/james/local/git/2600hz/kazoo/scripts",undeclared},
-              {xmlText,[{content,1}],3,[]," ",text},
-              {xmlElement,numbers,numbers,[],
-                          {xmlNamespace,[],[]},
-                          [{content,1}],
-                          4,[],
-                          [{xmlText,[{numbers,4},{content,...}],1,[],[...],...},
-                           {xmlElement,did,did,[],...},
-                           {xmlText,[{...}|...],3,...},
-                           {xmlElement,did,...},
-                           {xmlText,...}],
-                          [],undefined,undeclared},
-              {xmlText,[{content,1}],5,[]," ",text}],
-             [],"/home/james/local/git/2600hz/kazoo/scripts",undeclared},
- []}
+process_xml_numbers(_Prefix, 0, _Els, Acc) ->
+    lager:debug("reached quantity"),
+    {'ok', Acc};
+process_xml_numbers(_Prefix, _Quantity, [], Acc) ->
+    lager:debug("no more results: ~p", [_Quantity]),
+    {'ok', Acc};
+process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
+    JObj = xml_did_to_json(El),
+    case number_matches_prefix(JObj, Prefix) of
+        'true' -> process_xml_numbers(Prefix, Quantity-1, Els, [JObj|Acc]);
+        'false' -> process_xml_numbers(Prefix, Quantity, Els, Acc)
+    end.
 
+-spec number_matches_prefix(wh_json:object(), ne_binary()) -> boolean().
+number_matches_prefix(JObj, Prefix) ->
+    PrefixLen = byte_size(Prefix),
+    case wh_json:get_value(<<"number">>, JObj) of
+        <<Prefix:PrefixLen/binary, _/binary>> -> 'true';
+        _N -> 'false'
+    end.
 
+-spec xml_did_to_json(xml_el()) -> wh_json:object().
+xml_did_to_json(#xmlElement{name='did'
+                            ,content=[#xmlText{}]=DID
+                           }) ->
+    wh_json:from_list([{<<"number">>, kz_xml:texts_to_binary(DID)}]);
+xml_did_to_json(#xmlElement{name='did'
+                            ,content=DIDInfo
+                           }) ->
+    lager:debug("did info: ~p", [DIDInfo]),
+    wh_json:from_list(xml_els_to_proplist(kz_xml:elements(DIDInfo)));
+xml_did_to_json(#xmlElement{name='number'
+                           ,content=DIDInfo
+                           }) ->
+    wh_json:from_list(xml_els_to_proplist(kz_xml:elements(DIDInfo))).
+
+-spec xml_els_to_proplist(xml_els()) -> wh_proplist().
+xml_els_to_proplist(Els) ->
+    lager:debug("did info: ~p", [Els]),
+    [KV || El <- Els,
+           begin
+               {_, V}=KV = xml_el_to_kv_pair(El),
+               V =/= 'undefined'
+           end
+    ].
+
+-spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), ne_binary()}.
+xml_el_to_kv_pair(#xmlElement{name='did'
+                              ,content=Value
+                             }) ->
+    %% due to inconsistency in listdids
+    {<<"number">>
+     ,kz_xml:texts_to_binary(Value)
+    };
+xml_el_to_kv_pair(#xmlElement{name=Name
+                              ,content=[]
+                             }) ->
+    {Name, 'undefined'};
+xml_el_to_kv_pair(#xmlElement{name=Name
+                              ,content=Value
+                             }) ->
+    lager:debug("~s: ~p", [Name, Value]),
+    case kz_xml:elements(Value) of
+        [] ->
+            {wh_util:to_binary(Name)
+             ,kz_xml:texts_to_binary(Value)
+            };
+        Els ->
+            lager:debug("els: ~p", [Els]),
+            {wh_util:to_binary(Name)
+             ,wh_json:from_list(xml_els_to_proplist(Els))
+            }
+    end.
+
+-spec xml_resp_status_msg(xml_els()) -> api_binary().
+xml_resp_status_msg(XmlEls) ->
+    xml_el_to_binary(xml_resp_tag(XmlEls, 'status')).
+
+-spec xml_resp_error_msg(xml_els()) -> api_binary().
+xml_resp_error_msg(XmlEls) ->
+    xml_el_to_binary(xml_resp_tag(XmlEls, 'error')).
+
+-spec xml_resp_numbers(xml_els()) -> xml_el() | 'undefined'.
+xml_resp_numbers(XmlEls) ->
+    xml_resp_tag(XmlEls, 'numbers').
+
+-spec xml_resp_tag(xml_els(), atom()) -> xml_el() | 'undefined'.
+xml_resp_tag([#xmlElement{name=Name}=El|_], Name) -> El;
+xml_resp_tag([_|Els], Name) ->
+    xml_resp_tag(Els, Name);
+xml_resp_tag([], _Name) ->
+    'undefined'.
+
+-spec xml_el_to_binary('undefined' | xml_el()) -> api_binary().
+xml_el_to_binary('undefined') -> 'undefined';
+xml_el_to_binary(#xmlElement{content=Content}) ->
+    kz_xml:texts_to_binary(Content).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -194,7 +259,7 @@ acquire_number(#number{auth_by=AuthBy
                        ,assigned_to=AssignedTo
                        ,module_data=Data
                       }=N) ->
-    'ok'.
+    N.
 
 %%--------------------------------------------------------------------
 %% @private
