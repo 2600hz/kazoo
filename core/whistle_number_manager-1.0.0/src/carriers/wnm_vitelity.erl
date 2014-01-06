@@ -20,7 +20,7 @@
 -define(WNM_VITELITY_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".vitelity">>).
 
 -define(TOLLFREE_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"tollfree_uri">>
-                                                 ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}">>)).
+                                                 ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}&xml={xml}">>)).
 
 -define(NPA_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"npa_uri">>
                                                 ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}&npa={npa}&xml={xml}">>)).
@@ -48,7 +48,7 @@ find_numbers(Prefix, Quanity, Opts) ->
 add_tollfree_options(Quantity, Opts) ->
     TollFreeOpts = [{'cmd', <<"listtollfree">>}
                     ,{'limit', Quantity}
-                    ,{'as_xml', <<"yes">>}
+                    ,{'xml', <<"yes">>}
                     ,{'uri_template', ?TOLLFREE_URI_TEMPLATE}
                     | default_options()
                    ],
@@ -104,7 +104,7 @@ build_uri(Opts) ->
 -spec build_uri_fold({atom(), ne_binary()}, ne_binary()) -> ne_binary().
 build_uri_fold({Key, Replace}, T) ->
     Search = <<"{", (wh_util:to_binary(Key))/binary, "}">>,
-    binary:replace(T, Search, Replace, ['global']).
+    binary:replace(T, Search, wh_util:to_binary(Replace), ['global']).
 
 -spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
                             {'ok', wh_json:objects()} |
