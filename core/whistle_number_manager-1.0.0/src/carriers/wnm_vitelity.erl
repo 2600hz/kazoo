@@ -82,8 +82,8 @@ add_local_options(Prefix, Opts) ->
 
 -spec default_options() -> wh_proplist().
 default_options() ->
-    [{'login', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"login">>)}
-     ,{'password', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"password">>)}
+    [{'login', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"login">>, <<>>)}
+     ,{'password', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"password">>, <<>>)}
     ].
 
 -spec add_options_fold({atom(), api_binary()}, wh_proplist()) -> wh_proplist().
