@@ -738,7 +738,7 @@ depreciated_is_reseller(JObj) ->
 %% definition as this will be depreciated in the future.
 %% @end
 %%--------------------------------------------------------------------
--spec populate_service_plans(wh_json:object(), ne_binary()) -> wh_json:json_object().
+-spec populate_service_plans(wh_json:object(), ne_binary()) -> wh_json:object().
 populate_service_plans(JObj, ResellerId) ->
     Plans = incorporate_default_service_plan(ResellerId, master_default_service_plan()),
     incorporate_depreciated_service_plans(Plans, JObj).
