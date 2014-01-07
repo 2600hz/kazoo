@@ -9,6 +9,9 @@
 %%%-------------------------------------------------------------------
 -module(callflow_maintenance).
 
+-export([lookup_endpoint/1
+         ,lookup_endpoint/2
+        ]).
 -export([blocking_refresh/0]).
 -export([refresh/0, refresh/1]).
 -export([migrate_menus/0, migrate_menus/1]).
@@ -17,6 +20,34 @@
 -export([flush/0]).
 
 -include("callflow.hrl").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec lookup_endpoint(ne_binary()) -> 'no_return'.
+lookup_endpoint(URI) ->
+    case binary:split(URI, <<"@">>) of
+        [Username, Realm] -> lookup_endpoint(Username, Realm);
+        _Else -> io:format("invalid SIP URI~n", [])
+    end.
+
+-spec lookup_endpoint(ne_binary(), ne_binary()) -> 'no_return'.
+lookup_endpoint(Username, Realm) ->
+    _ = case whapps_util:get_account_by_realm(Realm) of
+            {'ok', AccountDb} ->
+                case cf_util:endpoint_id_by_sip_username(AccountDb, Username) of
+                    {'ok', EndpointId} ->
+                        Endpoint = cf_endpoint:get(EndpointId, AccountDb),
+                        io:format("~p~n", [Endpoint]);
+                    _Else -> io:format("unable to find username ~s in ~s~n"
+                                       ,[Username, AccountDb])
+                end;
+            _Else -> io:format("unable to find account with realm ~s~n", [Realm])
+        end,
+    'no_return'.
 
 %%--------------------------------------------------------------------
 %% @public

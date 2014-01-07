@@ -428,7 +428,10 @@ set_caller_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
 
 -spec caller_id_name(call()) -> binary().
 caller_id_name(#whapps_call{caller_id_name=CIDName}) ->
-    CIDName.
+    case wh_util:is_empty(CIDName) of
+        'true' -> <<>>;
+        'false' -> CIDName
+    end.
 
 -spec set_caller_id_number(ne_binary(), call()) -> call().
 set_caller_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) ->
@@ -437,7 +440,10 @@ set_caller_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) -
 
 -spec caller_id_number(call()) -> binary().
 caller_id_number(#whapps_call{caller_id_number=CIDNumber}) ->
-    CIDNumber.
+    case  wh_util:is_empty(CIDNumber) of
+        'true' -> <<>>;
+        'false' -> CIDNumber
+    end.
 
 -spec set_callee_id_name(ne_binary(), call()) -> call().
 set_callee_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
