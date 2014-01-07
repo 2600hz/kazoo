@@ -9,13 +9,13 @@
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_phone_numbers).
+-module(cb_phone_numbers_v1).
 
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_accepted/4
-         ,validate/2, validate/3, validate/4
+         ,validate/1 ,validate/2, validate/3, validate/4
          ,validate_request/1
          ,authorize/1
          ,authenticate/1
@@ -24,8 +24,6 @@
          ,delete/2, delete/4
          ,summary/1
          ,populate_phone_numbers/1
-         ,read/2
-         ,set_response/3
         ]).
 
 -include("../crossbar.hrl").
@@ -50,6 +48,7 @@
                      ,{<<"application">>, <<"x-base64">>}
                     ]).
 -define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
+-define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 10}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
 
 -define(MAX_TOKENS, whapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
 
@@ -58,23 +57,17 @@
 %%%===================================================================
 init() ->
     _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'populate_phone_numbers'),
-    _ = crossbar_bindings:bind(<<"*.content_types_accepted.phone_numbers">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, 'cb_phone_numbers_v2', 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, 'cb_phone_numbers_v2', 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.phone_numbers">>, 'cb_phone_numbers_v2', 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.phone_numbers">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.phone_numbers">>, 'cb_phone_numbers_v2', 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>, 'cb_phone_numbers_v1', 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.phone_numbers">>, 'cb_phone_numbers_v2', 'validate'),
-    % _ = crossbar_bindings:bind(<<"*.validate.phone_numbers">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.phone_numbers">>, 'cb_phone_numbers_v2', 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.phone_numbers">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, 'cb_phone_numbers_v2', 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.phone_numbers">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"*.execute.delete.phone_numbers">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.phone_numbers">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete').
+
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -210,9 +203,17 @@ content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _Number, ?POR
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+-spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+
+validate(#cb_context{req_verb = ?HTTP_GET
+                     ,account_id='undefined'
+                    }=Context) ->
+    find_numbers(Context);
+validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+    summary(Context).
 
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ?COLLECTION) ->
     validate_request(Context);
@@ -224,6 +225,10 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?CLASSIFIERS) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                              ,wnm_util:available_classifiers()
                             );
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number) ->
+    read(Number, Context);
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
+    validate_request(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context, _Number) ->
     validate_request(Context);
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, _Number) ->
@@ -404,6 +409,48 @@ identify(Context, Number) ->
 read(Number, Context) ->
     Result = wh_number_manager:get_public_fields(Number, cb_context:auth_account_id(Context)),
     set_response(Result, Number, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_numbers(cb_context:context()) -> cb_context:context().
+find_numbers(Context) ->
+    AccountId = cb_context:auth_account_id(Context),
+    QueryString = wh_json:set_value(<<"Account-ID">>, AccountId, cb_context:query_string(Context)),
+    OnSuccess = fun(C) ->
+                    cb_context:set_resp_data(
+                        cb_context:set_resp_status(C, 'success')
+                        ,get_numbers(QueryString)
+                    )
+                end,
+    Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
+    cb_context:validate_request_data(Schema
+                                     ,cb_context:set_req_data(Context, QueryString)
+                                     ,OnSuccess
+                                    ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_numbers(wh_json:object()) -> ne_binaries().
+get_numbers(QueryString) ->
+    Prefix = wh_json:get_ne_value(<<"prefix">>, QueryString),
+    Quantity = wh_json:get_ne_value(<<"quantity">>, QueryString, 1),
+    lists:reverse(
+        lists:foldl(
+            fun(JObj, Acc) ->
+                [wh_json:get_value(<<"number">>, JObj)|Acc]
+            end
+            ,[]
+            ,wh_number_manager:find(Prefix, Quantity, wh_json:to_proplist(QueryString))
+        )
+    ).
 
 %%--------------------------------------------------------------------
 %% @private

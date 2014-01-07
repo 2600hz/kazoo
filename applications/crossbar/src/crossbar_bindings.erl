@@ -206,8 +206,23 @@ maybe_init_mod(ModBin) ->
         _ -> 'ok'
     catch
         _E:_R ->
-            lager:warning("failed to initialize ~s: ~p, ~p", [ModBin, _E, _R])
+            lager:warning("failed to initialize ~s: ~p, ~p. Trying other versions...", [ModBin, _E, _R]),
+            maybe_init_mod_versions(?VERSION_SUPPORTED, ModBin)
     end.
+
+maybe_init_mod_versions([], _) -> 'ok';
+maybe_init_mod_versions([Version|Versions], ModBin) ->
+    Module = <<ModBin/binary, "_", Version/binary>>,
+    try (wh_util:to_atom(Module, 'true')):init() of
+        _ -> maybe_init_mod_versions(Versions, ModBin)
+    catch
+        _E:_R ->
+            lager:warning("failed to initialize ~s: ~p, ~p", [Module, _E, _R]),
+            maybe_init_mod_versions(Versions, ModBin)
+    end.
+
+
+
 
 %%--------------------------------------------------------------------
 %% @private
