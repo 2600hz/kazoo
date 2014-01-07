@@ -20,13 +20,16 @@
 -define(WNM_VITELITY_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".vitelity">>).
 
 -define(TOLLFREE_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"tollfree_uri">>
-                                                 ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}&xml={xml}">>)).
+                                             ,<<"http://api.vitelity.net/api.php">>)).
 
 -define(NPA_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"npa_uri">>
-                                                ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}&npa={npa}&xml={xml}">>)).
+                                            ,<<"http://api.vitelity.net/api.php">>)).
 
 -define(NPAXX_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"npaxx_uri">>
-                                                  ,<<"http://api.vitelity.net/api.php?login={login}&pass={password}&cmd={cmd}&npanxx={npanxx}&xml={xml}">>)).
+                                              ,<<"http://api.vitelity.net/api.php">>)).
+
+-define(PURCHASE_LOCAL_DID_TEMPLTE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"purchase_local_did_uri">>
+                                                      ,<<"http://api.vitelity.net/api.php">>)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -57,44 +60,54 @@ classify_and_find(Prefix, Quantity, Opts) ->
 
 -spec add_tollfree_options(pos_integer(), wh_proplist()) -> wh_proplist().
 add_tollfree_options(Quantity, Opts) ->
-    TollFreeOpts = [{'cmd', <<"listtollfree">>}
-                    ,{'limit', Quantity}
-                    ,{'xml', <<"yes">>}
-                    ,{'uri_template', ?TOLLFREE_URI_TEMPLATE}
-                    | default_options()
-                   ],
+    TollFreeOpts = [{'qs', [{'cmd', <<"listtollfree">>}
+                            ,{'limit', Quantity}
+                            ,{'xml', <<"yes">>}
+                            | default_options(Opts)
+                           ]}
+                     ,{'uri_template', ?TOLLFREE_URI_TEMPLATE}
+                    ],
     lists:foldl(fun add_options_fold/2, Opts, TollFreeOpts).
 
 -spec add_local_options(ne_binary(), wh_proplist()) -> wh_proplist().
 add_local_options(Prefix, Opts) when byte_size(Prefix) =< 3 ->
-    LocalOpts = [{'npa', Prefix}
-                 ,{'cmd', <<"listnpa">>}
-                 ,{'withrates', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"withrates">>)}
-                 ,{'type', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"type">>)}
-                 ,{'provider', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"provider">>)}
-                 ,{'xml', <<"yes">>}
-                 ,{'cnam', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"require_cnam">>)}
+    LocalOpts = [{'qs', [{'npa', Prefix}
+                         ,{'cmd', <<"listnpa">>}
+                         ,{'withrates', get_query_value('withrates', Opts)}
+                         ,{'type', get_query_value('type', Opts)}
+                         ,{'provider', get_query_value('provider', Opts)}
+                         ,{'xml', <<"yes">>}
+                         ,{'cnam', get_query_value('cnam', Opts)}
+                         | default_options(Opts)
+                        ]}
                  ,{'uri_template', ?NPA_URI_TEMPLATE}
-                 | default_options()
                 ],
     lists:foldl(fun add_options_fold/2, Opts, LocalOpts);
 add_local_options(Prefix, Opts) ->
-    LocalOpts = [{'npanxx', Prefix}
-                 ,{'cmd', <<"listnpanxx">>}
-                 ,{'withrates', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"withrates">>)}
-                 ,{'type', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"type">>)}
-                 ,{'provider', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"provider">>)}
-                 ,{'xml', <<"yes">>}
-                 ,{'cnam', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"require_cnam">>)}
+    LocalOpts = [{'qs', [{'npanxx', Prefix}
+                         ,{'cmd', <<"listnpanxx">>}
+                         ,{'withrates', get_query_value('withrates', Opts)}
+                         ,{'type', get_query_value('type', Opts)}
+                         ,{'provider', get_query_value('provider', Opts)}
+                         ,{'xml', <<"yes">>}
+                         ,{'cnam', get_query_value('cnam', Opts)}
+                         | default_options(Opts)
+                        ]}
                  ,{'uri_template', ?NPAXX_URI_TEMPLATE}
-                 | default_options()
                 ],
     lists:foldl(fun add_options_fold/2, Opts, LocalOpts).
 
--spec default_options() -> wh_proplist().
-default_options() ->
-    [{'login', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"login">>, <<>>)}
-     ,{'password', whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"password">>, <<>>)}
+-spec get_query_value(atom(), wh_proplist()) -> term().
+get_query_value(Key, Opts) ->
+    case props:get_value(Key, Opts) of
+        'undefined' -> whapps_config:get(?WNM_VITELITY_CONFIG_CAT, Key);
+        Value -> Value
+    end.
+
+-spec default_options(wh_proplist()) -> wh_proplist().
+default_options(Opts) ->
+    [{'login', get_query_value('login', Opts)}
+     ,{'pass', get_query_value('pass', Opts)}
     ].
 
 -spec add_options_fold({atom(), api_binary()}, wh_proplist()) -> wh_proplist().
@@ -110,12 +123,13 @@ find(Prefix, Quantity, Opts) ->
 
 -spec build_uri(wh_proplist()) -> ne_binary().
 build_uri(Opts) ->
-    lists:foldl(fun build_uri_fold/2, props:get_value('uri_template', Opts), Opts).
-
--spec build_uri_fold({atom(), ne_binary()}, ne_binary()) -> ne_binary().
-build_uri_fold({Key, Replace}, T) ->
-    Search = <<"{", (wh_util:to_binary(Key))/binary, "}">>,
-    binary:replace(T, Search, wh_util:to_binary(Replace), ['global']).
+    URI = props:get_value('uri_template', Opts),
+    QS = wh_util:to_binary(
+           props:to_querystring(
+             props:filter_undefined(
+               props:get_value('qs', Opts)
+              ))),
+    <<URI/binary, "?", QS/binary>>.
 
 -spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
                             {'ok', wh_json:objects()} |
