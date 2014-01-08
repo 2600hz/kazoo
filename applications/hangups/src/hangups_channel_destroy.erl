@@ -34,10 +34,9 @@
 %%--------------------------------------------------------------------
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->    
-    'true' = wapi_call:event_v(JObj)
-    IgnoreCauses = whapps_config:get(<<"hangups">>, <<"ignore_hangup_causes">>, ?IGNORE),
+    'true' = wapi_call:event_v(JObj),
     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj, <<"unknown">>),
-    case lists:member(HangupCause, IgnoreCauses) of
+    case lists:member(HangupCause, ?IGNORE) of
         'true' -> 'ok';
         'false' ->
             AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),

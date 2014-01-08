@@ -33,8 +33,12 @@ start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 -spec add/1 :: (#wh_amqp_connection{}) -> {'error', _} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(), _}.
-add(#wh_amqp_connection{manager=Name}=Connection) ->
-    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS('wh_amqp_connection', Name, [Connection])).
+add(#wh_amqp_connection{}=Connection) ->
+    supervisor:start_child(?SERVER, [Connection]),
+    supervisor:start_child(?SERVER, [Connection]),
+    supervisor:start_child(?SERVER, [Connection]),
+    supervisor:start_child(?SERVER, [Connection]),
+    supervisor:start_child(?SERVER, [Connection]).    
 
 -spec remove/1 :: (#wh_amqp_connection{} | text()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 remove(#wh_amqp_connection{manager=Name}) -> remove(Name);
@@ -58,11 +62,8 @@ remove(URI) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = 'one_for_one',
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
-
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [],
-
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, [?WORKER('wh_amqp_connection')]}}.

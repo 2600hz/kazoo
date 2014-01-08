@@ -1,39 +1,30 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz INC
+%%% @copyright (C) 2011-2013, VoIP INC
 %%% @doc
 %%%
 %%% @end
+%%% @contributions
 %%%
-%%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(hangups_listener).
+-module(wh_amqp_history).
 
--behaviour(gen_listener).
+-behaviour(gen_server).
 
 -export([start_link/0]).
+-export([is_consuming/1]).
+-export([basic_consumers/1]).
+-export([command/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
-         ,handle_event/2
          ,terminate/2
          ,code_change/3
         ]).
 
--include("hangups.hrl").
+-include("amqp_util.hrl").
 
--define(RESPONDERS, [{'hangups_channel_destroy'
-                      ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-                     }
-                    ]).
--define(BINDINGS, [{'call'
-                    ,[{'restrict_to', ['CHANNEL_DESTROY']}]}
-                  ]).
--define(QUEUE_NAME, <<"hangups_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(TAB, ?MODULE).
 
 %%%===================================================================
 %%% API
@@ -46,15 +37,21 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
-start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
+is_consuming(Consumer) -> 'false'.
+%%    case lists:any(fun(#'basic.consume'{queue=Queue}) ->
+%%                           Queue =:= Q;
+%%                      (_) -> 'false'
+%%                   end, Commands)
+%%    of
+
+
+basic_consumers(Consumer) -> [].
+
+command(Assignment, Command) ->
+    'ok'.
+    
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -67,11 +64,12 @@ start_link() ->
 %% @spec init(Args) -> {ok, State} |
 %%                     {ok, State, Timeout} |
 %%                     ignore |
-%%                     {stop, Reason}
+%%                     {'stop', Reason}
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:debug("started hangups listener"),
+    put(callid, ?LOG_SYSTEM_ID),
+%%%    _ = ets:new(?TAB, ['named_table', {'keypos', #wh_amqp_assignment.created}, 'public']),
     {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
@@ -80,15 +78,15 @@ init([]) ->
 %% Handling call messages
 %%
 %% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%                                   {'reply', Reply, State} |
+%%                                   {'reply', Reply, State, Timeout} |
+%%                                   {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
+%%                                   {'stop', Reason, Reply, State} |
+%%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
+handle_call(_Msg, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
@@ -96,19 +94,12 @@ handle_call(_Request, _From, State) ->
 %% @doc
 %% Handling cast messages
 %%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%% @spec handle_cast(Msg, State) -> {'noreply', State} |
+%%                                  {'noreply', State, Timeout} |
+%%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
-handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
-    {'noreply', State};
-handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
-    {'noreply', State};
 handle_cast(_Msg, State) ->
-    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -116,25 +107,14 @@ handle_cast(_Msg, State) ->
 %% @doc
 %% Handling all non call/cast messages
 %%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%% @spec handle_info(Info, State) -> {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
+%%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:debug("unhandled msg: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
-%% @end
-%%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -148,8 +128,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("hangups listener ~p termination", [_Reason]),
-    'ok'.
+    lager:debug("AMQP history terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -165,3 +144,4 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
