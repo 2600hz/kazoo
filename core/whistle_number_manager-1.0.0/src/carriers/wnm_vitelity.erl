@@ -17,11 +17,6 @@
 
 -include("../wnm.hrl").
 
--define(WNM_VITELITY_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".vitelity">>).
-
--define(VITELITY_URI, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"api_uri">>
-                                        ,<<"http://api.vitelity.net/api.php">>)).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -54,73 +49,45 @@ add_tollfree_options(Quantity, Opts) ->
     TollFreeOpts = [{'qs', [{'cmd', <<"listtollfree">>}
                             ,{'limit', Quantity}
                             ,{'xml', <<"yes">>}
-                            | default_options(Opts)
+                            | wnm_vitelity_util:default_options(Opts)
                            ]}
-                     ,{'uri', ?VITELITY_URI}
+                     ,{'uri', wnm_vitelity_util:api_uri()}
                     ],
-    lists:foldl(fun add_options_fold/2, Opts, TollFreeOpts).
+    lists:foldl(fun wnm_vitelity_util:add_options_fold/2, Opts, TollFreeOpts).
 
 -spec add_local_options(ne_binary(), wh_proplist()) -> wh_proplist().
 add_local_options(Prefix, Opts) when byte_size(Prefix) =< 3 ->
     LocalOpts = [{'qs', [{'npa', Prefix}
                          ,{'cmd', <<"listnpa">>}
-                         ,{'withrates', get_query_value('withrates', Opts)}
-                         ,{'type', get_query_value('type', Opts)}
-                         ,{'provider', get_query_value('provider', Opts)}
+                         ,{'withrates', wnm_vitelity_util:get_query_value('withrates', Opts)}
+                         ,{'type', wnm_vitelity_util:get_query_value('type', Opts)}
+                         ,{'provider', wnm_vitelity_util:get_query_value('provider', Opts)}
                          ,{'xml', <<"yes">>}
-                         ,{'cnam', get_query_value('cnam', Opts)}
-                         | default_options(Opts)
+                         ,{'cnam', wnm_vitelity_util:get_query_value('cnam', Opts)}
+                         | wnm_vitelity_util:default_options(Opts)
                         ]}
-                 ,{'uri', ?VITELITY_URI}
+                 ,{'uri', wnm_vitelity_util:api_uri()}
                 ],
-    lists:foldl(fun add_options_fold/2, Opts, LocalOpts);
+    lists:foldl(fun wnm_vitelity_util:add_options_fold/2, Opts, LocalOpts);
 add_local_options(Prefix, Opts) ->
     LocalOpts = [{'qs', [{'npanxx', Prefix}
                          ,{'cmd', <<"listnpanxx">>}
-                         ,{'withrates', get_query_value('withrates', Opts)}
-                         ,{'type', get_query_value('type', Opts)}
-                         ,{'provider', get_query_value('provider', Opts)}
+                         ,{'withrates', wnm_vitelity_util:get_query_value('withrates', Opts)}
+                         ,{'type', wnm_vitelity_util:get_query_value('type', Opts)}
+                         ,{'provider', wnm_vitelity_util:get_query_value('provider', Opts)}
                          ,{'xml', <<"yes">>}
-                         ,{'cnam', get_query_value('cnam', Opts)}
-                         | default_options(Opts)
+                         ,{'cnam', wnm_vitelity_util:get_query_value('cnam', Opts)}
+                         | wnm_vitelity_util:default_options(Opts)
                         ]}
-                 ,{'uri', ?VITELITY_URI}
+                 ,{'uri', wnm_vitelity_util:api_uri()}
                 ],
-    lists:foldl(fun add_options_fold/2, Opts, LocalOpts).
-
--spec get_query_value(atom(), wh_proplist()) -> term().
-get_query_value(Key, Opts) ->
-    case props:get_value(Key, Opts) of
-        'undefined' -> whapps_config:get(?WNM_VITELITY_CONFIG_CAT, Key);
-        Value -> Value
-    end.
-
--spec default_options(wh_proplist()) -> wh_proplist().
-default_options(Opts) ->
-    [{'login', get_query_value('login', Opts)}
-     ,{'pass', get_query_value('pass', Opts)}
-    ].
-
--spec add_options_fold({atom(), api_binary()}, wh_proplist()) -> wh_proplist().
-add_options_fold({_K, 'undefined'}, Opts) -> Opts;
-add_options_fold({K, V}, Opts) ->
-    props:insert_value(K, V, Opts).
+    lists:foldl(fun wnm_vitelity_util:add_options_fold/2, Opts, LocalOpts).
 
 -spec find(ne_binary(), pos_integer(), wh_proplist()) ->
                   {'ok', wh_json:objects()} |
                   {'error', _}.
 find(Prefix, Quantity, Opts) ->
-    query_vitelity(Prefix, Quantity, build_uri(Opts)).
-
--spec build_uri(wh_proplist()) -> ne_binary().
-build_uri(Opts) ->
-    URI = props:get_value('uri', Opts),
-    QS = wh_util:to_binary(
-           props:to_querystring(
-             props:filter_undefined(
-               props:get_value('qs', Opts)
-              ))),
-    <<URI/binary, "?", QS/binary>>.
+    query_vitelity(Prefix, Quantity, wnm_vitelity_util:build_uri(Opts)).
 
 -spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
                             {'ok', wh_json:object()} |
@@ -158,12 +125,12 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
                                                       ,content=Children
                                                      }) ->
     Els = kz_xml:elements(Children),
-    case xml_resp_status_msg(Els) of
+    case wnm_vitelity_util:xml_resp_status_msg(Els) of
         <<"fail">> ->
-            {'error', xml_resp_error_msg(Els)};
+            {'error', wnm_vitelity_util:xml_resp_error_msg(Els)};
         Status when Status =:= <<"ok">>;
                     Status =:= 'undefined' ->
-            process_xml_numbers(Prefix, Quantity, xml_resp_numbers(Els))
+            process_xml_numbers(Prefix, Quantity, wnm_vitelity_util:xml_resp_numbers(Els))
     end.
 
 -spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
@@ -214,70 +181,17 @@ xml_did_to_json(#xmlElement{name='did'
 xml_did_to_json(#xmlElement{name='did'
                             ,content=DIDInfo
                            }) ->
-    wh_json:from_list(xml_els_to_proplist(kz_xml:elements(DIDInfo)));
+    wh_json:from_list(
+      wnm_vitelity_util:xml_els_to_proplist(
+        kz_xml:elements(DIDInfo)
+       ));
 xml_did_to_json(#xmlElement{name='number'
                            ,content=DIDInfo
                            }) ->
-    wh_json:from_list(xml_els_to_proplist(kz_xml:elements(DIDInfo))).
-
--spec xml_els_to_proplist(xml_els()) -> wh_proplist().
-xml_els_to_proplist(Els) ->
-    [KV || El <- Els,
-           begin
-               {_, V}=KV = xml_el_to_kv_pair(El),
-               V =/= 'undefined'
-           end
-    ].
-
--spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), ne_binary()}.
-xml_el_to_kv_pair(#xmlElement{name='did'
-                              ,content=Value
-                             }) ->
-    %% due to inconsistency in listdids
-    {<<"number">>
-     ,kz_xml:texts_to_binary(Value)
-    };
-xml_el_to_kv_pair(#xmlElement{name=Name
-                              ,content=[]
-                             }) ->
-    {Name, 'undefined'};
-xml_el_to_kv_pair(#xmlElement{name=Name
-                              ,content=Value
-                             }) ->
-    case kz_xml:elements(Value) of
-        [] ->
-            {wh_util:to_binary(Name)
-             ,kz_xml:texts_to_binary(Value)
-            };
-        Els ->
-            {wh_util:to_binary(Name)
-             ,wh_json:from_list(xml_els_to_proplist(Els))
-            }
-    end.
-
--spec xml_resp_status_msg(xml_els()) -> api_binary().
-xml_resp_status_msg(XmlEls) ->
-    xml_el_to_binary(xml_resp_tag(XmlEls, 'status')).
-
--spec xml_resp_error_msg(xml_els()) -> api_binary().
-xml_resp_error_msg(XmlEls) ->
-    xml_el_to_binary(xml_resp_tag(XmlEls, 'error')).
-
--spec xml_resp_numbers(xml_els()) -> xml_el() | 'undefined'.
-xml_resp_numbers(XmlEls) ->
-    xml_resp_tag(XmlEls, 'numbers').
-
--spec xml_resp_tag(xml_els(), atom()) -> xml_el() | 'undefined'.
-xml_resp_tag([#xmlElement{name=Name}=El|_], Name) -> El;
-xml_resp_tag([_|Els], Name) ->
-    xml_resp_tag(Els, Name);
-xml_resp_tag([], _Name) ->
-    'undefined'.
-
--spec xml_el_to_binary('undefined' | xml_el()) -> api_binary().
-xml_el_to_binary('undefined') -> 'undefined';
-xml_el_to_binary(#xmlElement{content=Content}) ->
-    kz_xml:texts_to_binary(Content).
+    wh_json:from_list(
+      wnm_vitelity_util:xml_els_to_proplist(
+        kz_xml:elements(DIDInfo)
+       )).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -298,26 +212,26 @@ purchase_local_options(DID) ->
                          ,{'cmd', <<"getlocaldid">>}
                          ,{'xml', <<"yes">>}
                          ,{'routesip', get_routesip()}
-                         | default_options([])
+                         | wnm_vitelity_util:default_options([])
                         ]}
-                 ,{'uri', ?VITELITY_URI}
+                 ,{'uri', wnm_vitelity_util:api_uri()}
                 ],
-    lists:foldl(fun add_options_fold/2, [], LocalOpts).
+    lists:foldl(fun wnm_vitelity_util:add_options_fold/2, [], LocalOpts).
 
 purchase_tollfree_options(DID) ->
     LocalOpts = [{'qs', [{'did', DID}
                          ,{'cmd', <<"gettollfree">>}
                          ,{'xml', <<"yes">>}
                          ,{'routesip', get_routesip()}
-                         | default_options([])
+                         | wnm_vitelity_util:default_options([])
                         ]}
-                 ,{'uri', ?VITELITY_URI}
+                 ,{'uri', wnm_vitelity_util:api_uri()}
                 ],
-    lists:foldl(fun add_options_fold/2, [], LocalOpts).
+    lists:foldl(fun wnm_vitelity_util:add_options_fold/2, [], LocalOpts).
 
 -spec get_routesip() -> api_binary().
 get_routesip() ->
-    case whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"routesip">>) of
+    case whapps_config:get(wnm_vitelity_util:config_cat(), <<"routesip">>) of
         [Route|_] -> Route;
         Route -> Route
     end.
@@ -349,9 +263,9 @@ process_xml_content_tag(Number, #xmlElement{name='content'
                                             ,content=Children
                                            }) ->
     Els = kz_xml:elements(Children),
-    case xml_resp_status_msg(Els) of
+    case wnm_vitelity_util:xml_resp_status_msg(Els) of
         <<"fail">> ->
-            Msg = xml_resp_error_msg(Els),
+            Msg = wnm_vitelity_util:xml_resp_error_msg(Els),
             lager:debug("xml status is 'fail': ~s", [Msg]),
             wnm_number:error_carrier_fault(Msg, Number);
         <<"ok">> ->
@@ -374,8 +288,8 @@ release_did_options(DID) ->
     LocalOpts = [{'qs', [{'did', DID}
                          ,{'cmd', <<"removedid">>}
                          ,{'xml', <<"yes">>}
-                         | default_options([])
+                         | wnm_vitelity_util:default_options([])
                         ]}
-                 ,{'uri', ?VITELITY_URI}
+                 ,{'uri', wnm_vitelity_util:api_uri()}
                 ],
-    lists:foldl(fun add_options_fold/2, [], LocalOpts).
+    lists:foldl(fun wnm_vitelity_util:add_options_fold/2, [], LocalOpts).
