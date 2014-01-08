@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -19,22 +19,13 @@
 
 -define(WNM_VITELITY_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".vitelity">>).
 
--define(TOLLFREE_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"tollfree_uri">>
-                                             ,<<"http://api.vitelity.net/api.php">>)).
-
--define(NPA_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"npa_uri">>
-                                            ,<<"http://api.vitelity.net/api.php">>)).
-
--define(NPAXX_URI_TEMPLATE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"npaxx_uri">>
-                                              ,<<"http://api.vitelity.net/api.php">>)).
-
--define(PURCHASE_LOCAL_DID_TEMPLTE, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"purchase_local_did_uri">>
-                                                      ,<<"http://api.vitelity.net/api.php">>)).
+-define(VITELITY_URI, whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"api_uri">>
+                                        ,<<"http://api.vitelity.net/api.php">>)).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Query the Bandwidth.com system for a quanity of available numbers
+%% Query the Vitelity system for a quanity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
@@ -65,7 +56,7 @@ add_tollfree_options(Quantity, Opts) ->
                             ,{'xml', <<"yes">>}
                             | default_options(Opts)
                            ]}
-                     ,{'uri_template', ?TOLLFREE_URI_TEMPLATE}
+                     ,{'uri', ?VITELITY_URI}
                     ],
     lists:foldl(fun add_options_fold/2, Opts, TollFreeOpts).
 
@@ -80,7 +71,7 @@ add_local_options(Prefix, Opts) when byte_size(Prefix) =< 3 ->
                          ,{'cnam', get_query_value('cnam', Opts)}
                          | default_options(Opts)
                         ]}
-                 ,{'uri_template', ?NPA_URI_TEMPLATE}
+                 ,{'uri', ?VITELITY_URI}
                 ],
     lists:foldl(fun add_options_fold/2, Opts, LocalOpts);
 add_local_options(Prefix, Opts) ->
@@ -93,7 +84,7 @@ add_local_options(Prefix, Opts) ->
                          ,{'cnam', get_query_value('cnam', Opts)}
                          | default_options(Opts)
                         ]}
-                 ,{'uri_template', ?NPAXX_URI_TEMPLATE}
+                 ,{'uri', ?VITELITY_URI}
                 ],
     lists:foldl(fun add_options_fold/2, Opts, LocalOpts).
 
@@ -123,7 +114,7 @@ find(Prefix, Quantity, Opts) ->
 
 -spec build_uri(wh_proplist()) -> ne_binary().
 build_uri(Opts) ->
-    URI = props:get_value('uri_template', Opts),
+    URI = props:get_value('uri', Opts),
     QS = wh_util:to_binary(
            props:to_querystring(
              props:filter_undefined(
@@ -132,7 +123,7 @@ build_uri(Opts) ->
     <<URI/binary, "?", QS/binary>>.
 
 -spec query_vitelity(ne_binary(), pos_integer(), ne_binary()) ->
-                            {'ok', wh_json:objects()} |
+                            {'ok', wh_json:object()} |
                             {'error', _}.
 query_vitelity(Prefix, Quantity, URI) ->
     lager:debug("querying ~s", [URI]),
@@ -178,7 +169,7 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 -spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el()) ->
                                  {'ok', wh_json:object()} |
                                  {'error', _}.
--spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_el(), wh_proplist()) ->
+-spec process_xml_numbers(ne_binary(), pos_integer(), 'undefined' | xml_els(), wh_proplist()) ->
                                  {'ok', wh_json:object()} |
                                  {'error', _}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
@@ -295,11 +286,79 @@ xml_el_to_binary(#xmlElement{content=Content}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(wnm_number()) -> wnm_number().
-acquire_number(#number{auth_by=AuthBy
-                       ,assigned_to=AssignedTo
-                       ,module_data=Data
-                      }=N) ->
-    N.
+acquire_number(#number{number=DID}=Number) ->
+    case wnm_util:classify_number(DID) of
+        <<"tollfree_us">> -> query_vitelity(Number, purchase_tollfree_options(DID));
+        <<"tollfree">> -> query_vitelity(Number, purchase_tollfree_options(DID));
+        _ -> query_vitelity(Number, purchase_local_options(DID))
+    end.
+
+purchase_local_options(DID) ->
+    LocalOpts = [{'qs', [{'did', DID}
+                         ,{'cmd', <<"getlocaldid">>}
+                         ,{'xml', <<"yes">>}
+                         ,{'routesip', get_routesip()}
+                         | default_options([])
+                        ]}
+                 ,{'uri', ?VITELITY_URI}
+                ],
+    lists:foldl(fun add_options_fold/2, [], LocalOpts).
+
+purchase_tollfree_options(DID) ->
+    LocalOpts = [{'qs', [{'did', DID}
+                         ,{'cmd', <<"gettollfree">>}
+                         ,{'xml', <<"yes">>}
+                         ,{'routesip', get_routesip()}
+                         | default_options([])
+                        ]}
+                 ,{'uri', ?VITELITY_URI}
+                ],
+    lists:foldl(fun add_options_fold/2, [], LocalOpts).
+
+-spec get_routesip() -> api_binary().
+get_routesip() ->
+    case whapps_config:get(?WNM_VITELITY_CONFIG_CAT, <<"routesip">>) of
+        [Route|_] -> Route;
+        Route -> Route
+    end.
+
+-spec query_vitelity(wnm_number(), ne_binary()) -> wnm_number().
+query_vitelity(Number, URI) ->
+    lager:debug("querying ~s", [URI]),
+    case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
+        {'ok', _RespCode, _RespHeaders, RespXML} ->
+            lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
+            process_xml_resp(Number, RespXML);
+        {'error', _R} ->
+            lager:debug("error querying: ~p", [_R]),
+            wnm_number:error_carrier_fault(<<"failed to query carrier">>, Number)
+    end.
+
+-spec process_xml_resp(wnm_number(), text()) -> wnm_number().
+process_xml_resp(Number, XML) ->
+    try xmerl_scan:string(XML) of
+        {XmlEl, _} -> process_xml_content_tag(Number, XmlEl)
+    catch
+        _E:_R ->
+            lager:debug("failed to decode xml: ~s: ~p", [_E, _R]),
+            wnm_number:error_carrier_fault(<<"failed to decode carrier response">>, Number)
+    end.
+
+-spec process_xml_content_tag(wnm_number(), xml_el()) -> wnm_number().
+process_xml_content_tag(Number, #xmlElement{name='content'
+                                            ,content=Children
+                                           }) ->
+    Els = kz_xml:elements(Children),
+    case xml_resp_status_msg(Els) of
+        <<"fail">> ->
+            Msg = xml_resp_error_msg(Els),
+            lager:debug("xml status is 'fail': ~s", [Msg]),
+            wnm_number:error_carrier_fault(Msg, Number);
+        <<"ok">> ->
+            lager:debug("successful provisioning"),
+            Number
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
