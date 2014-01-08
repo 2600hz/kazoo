@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle e911 provisioning
@@ -316,7 +316,7 @@ remove_number(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_address_to_xml_location/1 :: (wh_json:object()) -> wh_proplist().
+-spec json_address_to_xml_location(wh_json:object()) -> wh_proplist().
 json_address_to_xml_location(JObj) ->
     Props = [{'address1', [wh_json:get_string_value(<<"street_address">>, JObj)]}
              ,{'address2', [wh_json:get_string_value(<<"extended_address">>, JObj)]}
