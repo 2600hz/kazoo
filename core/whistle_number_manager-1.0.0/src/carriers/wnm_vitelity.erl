@@ -359,7 +359,6 @@ process_xml_content_tag(Number, #xmlElement{name='content'
             Number
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -367,4 +366,16 @@ process_xml_content_tag(Number, #xmlElement{name='content'
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number(wnm_number()) -> wnm_number().
-disconnect_number(Number) -> Number.
+disconnect_number(#number{number=DID}=Number) ->
+    lager:debug("attempting to disconnect ~s", [DID]),
+    query_vitelity(Number, release_did_options(DID)).
+
+release_did_options(DID) ->
+    LocalOpts = [{'qs', [{'did', DID}
+                         ,{'cmd', <<"removedid">>}
+                         ,{'xml', <<"yes">>}
+                         | default_options([])
+                        ]}
+                 ,{'uri', ?VITELITY_URI}
+                ],
+    lists:foldl(fun add_options_fold/2, [], LocalOpts).
