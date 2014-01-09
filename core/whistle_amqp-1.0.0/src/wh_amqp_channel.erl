@@ -50,11 +50,11 @@ close(Assignment) -> Assignment.
 -spec maybe_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
 maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
     case wh_amqp_assignments:find() of
-        #wh_amqp_assignment{channel=Pid, broker=_Broker} ->
-            amqp_channel:call(Pid, BasicPub, AmqpMsg),
+        #wh_amqp_assignment{channel=Channel, broker=_Broker} when is_pid(Channel) ->
+            amqp_channel:call(Channel, BasicPub, AmqpMsg),
             lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
-                        ,[_Exchange, _Broker, _RK, Pid]);
-        {'error', 'no_channel'} ->
+                        ,[_Exchange, _Broker, _RK, Channel]);
+        _Else ->
             lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
                         ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload])
     end.
@@ -63,11 +63,11 @@ maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, Am
 -spec publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
 publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
     case wh_amqp_assignments:request_float() of
-        #wh_amqp_assignment{channel=Pid, broker=_Broker} ->
-            amqp_channel:call(Pid, BasicPub, AmqpMsg),
+        #wh_amqp_assignment{channel=Channel, broker=_Broker} when is_pid(Channel) ->
+            amqp_channel:call(Channel, BasicPub, AmqpMsg),
             lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
-                        ,[_Exchange, _Broker, _RK, Pid]);
-        {'error', 'no_channel'} ->
+                        ,[_Exchange, _Broker, _RK, Channel]);
+        _Else ->
             lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
                         ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload])
     end.

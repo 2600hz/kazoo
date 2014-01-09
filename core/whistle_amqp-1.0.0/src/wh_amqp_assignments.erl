@@ -54,11 +54,9 @@ find() -> find(wh_amqp_channel:consumer_pid()).
 
 -spec find(pid()) -> wh_amqp_assignment() | {'error', 'no_channel'}.
 find(Consumer) ->
-    MatchSpec = #wh_amqp_assignment{consumer = Consumer
-                                    ,_ = '_'},
+    MatchSpec = #wh_amqp_assignment{consumer = Consumer, _ = '_'},
     case ets:match_object(?TAB, MatchSpec, 1) of
-        {[#wh_amqp_assignment{channel = Channel}=Assignment], _} 
-          when is_pid(Channel)-> Assignment;
+        {[#wh_amqp_assignment{}=Assignment], _} -> Assignment;
         _Else -> {'error', 'no_channel'}
     end.
 
@@ -108,7 +106,11 @@ add_broker(Broker) ->
 %%--------------------------------------------------------------------
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    _ = ets:new(?TAB, ['named_table', {'keypos', #wh_amqp_assignment.created}, 'public']),
+    _ = ets:new(?TAB, ['named_table'
+                       ,{'keypos', #wh_amqp_assignment.created}
+                       ,'protected'
+                       ,'ordered_set'
+                      ]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -165,6 +167,10 @@ handle_cast(_Msg, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
+    erlang:demonitor(Ref, ['flush']),
+    handle_down_msg(find_reference(Ref), Reason),
+    {'noreply', State, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -237,16 +243,23 @@ assign_or_reserve(Broker, Consumer, Type) ->
 assign_consumer(#wh_amqp_assignment{created=Created
                                     ,connection=Connection}=Assignment
                 ,Consumer, Type) ->
-    Ref = erlang:monitor('process', Consumer),
-    ets:update_element(?TAB, Created, [{#wh_amqp_assignment.consumer, Consumer}
-                                       ,{#wh_amqp_assignment.consumer_ref, Ref}
-                                       ,{#wh_amqp_assignment.type, Type}
-                                      ]),
-    gen_server:cast(Consumer, {'wh_amqp_channel', {'new_channel', 'false'}}),
-    gen_server:cast(Connection, {'wh_amqp_channel', 'channel_assigned'}),
-    Assignment#wh_amqp_assignment{consumer = Consumer
-                                  ,consumer_ref = Ref
-                                  ,type = Type}.
+    MatchSpec = #wh_amqp_assignment{consumer = Consumer, _ = '_'},
+    case ets:match_object(?TAB, MatchSpec, 1) of
+        {[#wh_amqp_assignment{}=Assignment], _} -> 
+            io:format("MARKER 1~n", []),
+            Assignment;
+        _Else ->
+            Ref = erlang:monitor('process', Consumer),
+            ets:update_element(?TAB, Created, [{#wh_amqp_assignment.consumer, Consumer}
+                                               ,{#wh_amqp_assignment.consumer_ref, Ref}
+                                               ,{#wh_amqp_assignment.type, Type}
+                                              ]),
+            gen_server:cast(Consumer, {'wh_amqp_channel', {'new_channel', 'false'}}),
+            gen_server:cast(Connection, {'wh_amqp_channel', 'channel_assigned'}),
+            Assignment#wh_amqp_assignment{consumer = Consumer
+                                          ,consumer_ref = Ref
+                                          ,type = Type}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -297,6 +310,7 @@ maybe_reassign(Broker, Connection, Channel) ->
                 ],
     case ets:select(?TAB, MatchSpec, 1) of
         {[#wh_amqp_assignment{}=Assignment], _} ->
+            io:format("MARKER 2~n", []),
             assign_channel(Assignment, Broker, Connection, Channel);
         '$end_of_table' -> 'false'
 
@@ -315,6 +329,7 @@ maybe_assign_sticky(Broker, Connection, Channel) ->
                 ],
     case ets:select(?TAB, MatchSpec, 1) of
         {[#wh_amqp_assignment{}=Assignment], _} ->
+            io:format("MARKER 3~n", []),
             assign_channel(Assignment, Broker, Connection, Channel);
         '$end_of_table' -> 'false'
 
@@ -331,6 +346,7 @@ maybe_assign(Broker, Connection, Channel) ->
                 ],
     case ets:select(?TAB, MatchSpec, 1) of
         {[#wh_amqp_assignment{}=Assignment], _} ->
+            io:format("MARKER 4 ~p~n", [Assignment]),
             assign_channel(Assignment, Broker, Connection, Channel);
         '$end_of_table' -> 'false'
 
@@ -345,7 +361,7 @@ assign_channel(#wh_amqp_assignment{created=Created
                                        ,{#wh_amqp_assignment.broker, Broker}
                                        ,{#wh_amqp_assignment.connection, Connection}
                                       ]),
-    gen_server:cast(Consumer, {'wh_amqp_channel', {'new_channel', 'false'}}),
+%%    gen_server:cast(Consumer, {'wh_amqp_channel', {'new_channel', 'false'}}),
     gen_server:cast(Connection, {'wh_amqp_channel', 'channel_assigned'}),
     'true'.
 
@@ -375,3 +391,56 @@ reserve(Broker, Consumer, Type) ->
                                     },
     ets:insert(?TAB, Assignment),
     Assignment.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-type down_match() :: {'channel' | 'consumer', wh_amqp_assignment()}.
+-type down_matches() :: [down_match(),...] | [].
+
+-spec handle_down_msg(down_matches(), _) -> 'ok'.
+handle_down_msg([], _) -> 'ok';
+handle_down_msg([_|_]=Matches, Reason) ->
+    _ = [handle_down_match(Match, Reason) || Match <- Matches],
+    'ok'.
+
+-spec handle_down_match(down_match(), _) -> any().
+handle_down_match({'consumer', #wh_amqp_assignment{created=Created}=Assignment}, Reason) ->    
+    lager:notice("consumer went down without closing channel: ~p", [Reason]),
+    ets:delete(?TAB, Created),
+    wh_amqp_channel:close(Assignment),
+    _ = log_short_lived(Assignment);
+handle_down_match({'channel', #wh_amqp_assignment{broker=Broker}}
+                  ,{'shutdown',{'connection_closing', Reason}}) ->
+    %% TODO: disconnect broker
+    lager:critical("channel died when connection to '~s' was lost: ~p"
+                   ,[Broker, Reason]);
+handle_down_match({'channel', #wh_amqp_assignment{broker=Broker}=Assignment}, Reason) ->
+    %% TODO: re-assign channel
+    lager:notice("channel went down while still connected to '~s': ~p"
+                 ,[Broker, Reason]).
+
+-spec find_reference(reference()) -> down_matches().
+find_reference(Ref) ->
+    MatchSpec = [{#wh_amqp_assignment{channel_ref = '$1'
+                                      ,_ = '_'}
+                  ,[{'=:=', '$1', Ref}]
+                  ,[{{'channel', '$_'}}]
+                 }
+                 ,{#wh_amqp_assignment{consumer_ref = '$1'
+                                       ,_ = '_'}
+                   ,[{'=:=', '$1', Ref}]
+                   ,[{{'consumer', '$_'}}]
+                  }],
+    ets:select(?TAB, MatchSpec).
+
+-spec log_short_lived(wh_amqp_assignment()) -> 'ok'.
+log_short_lived(#wh_amqp_assignment{created=Created}=Channel) ->
+    Duration = wh_util:elapsed_s(Created),
+    case Duration < 5 of
+        'false' -> 'ok';
+        'true' -> lager:info("short lived channel (~ps): ~p", [Duration, Channel])
+    end.

@@ -69,7 +69,7 @@ command(Assignment, Command) ->
 %%--------------------------------------------------------------------
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
-%%%    _ = ets:new(?TAB, ['named_table', {'keypos', #wh_amqp_assignment.created}, 'public']),
+    _ = ets:new(?TAB, ['named_table', {'keypos', #wh_amqp_assignment.created}, 'protected']),
     {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------

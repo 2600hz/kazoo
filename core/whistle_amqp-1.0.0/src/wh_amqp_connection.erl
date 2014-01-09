@@ -179,9 +179,9 @@ code_change(_OldVsn, State, _Extra) ->
 -spec connected(wh_amqp_connection()) -> wh_amqp_connection().
 connected(#wh_amqp_connection{broker=Broker}=State) ->
     wh_amqp_assignments:add_broker(Broker),
-    _ = [start_prechannel(State)
-         || _ <- lists:seq(1, 10)
-        ],
+%%    _ = [start_prechannel(State)
+%%         || _ <- lists:seq(1, 10)
+%%        ],
     State.
 
 -spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().

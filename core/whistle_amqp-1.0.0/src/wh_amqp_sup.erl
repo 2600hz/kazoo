@@ -19,7 +19,7 @@
 -define(CHILDREN, [?SUPER('wh_amqp_connection_sup')
                    ,?WORKER('wh_amqp_assignments')
                    ,?WORKER('wh_amqp_history')
-%%                   ,?WORKER('wh_amqp_bootstrap')
+                   ,?WORKER('wh_amqp_bootstrap')
                   ]).
 
 %% ===================================================================
