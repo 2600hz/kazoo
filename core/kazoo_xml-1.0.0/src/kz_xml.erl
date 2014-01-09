@@ -20,14 +20,15 @@
 elements(Els) -> [El || #xmlElement{}=El <- Els].
 elements(Els, Name) -> [El || #xmlElement{name=N}=El <- Els, N =:= Name].
 
--spec texts_to_binary(xml_texts()) -> binary().
--spec texts_to_binary(xml_texts(), pos_integer()) -> binary().
-texts_to_binary(Vs) when is_list(Vs) ->
+-spec texts_to_binary(list()) -> binary().
+-spec texts_to_binary(list(), pos_integer()) -> binary().
+texts_to_binary([]) -> <<>>;
+texts_to_binary([_|_]=Vs) ->
     lists:foldl(fun(C, B) ->
                         wh_util:strip_binary(B, C)
                 end
-                ,iolist_to_binary([V || #xmlText{value=V, type='text'} <- Vs])
-                ,[$\n, $ , $\n, $ ]
+                ,iolist_to_binary([wh_util:to_binary(V) || #xmlText{value=V, type='text'} <- Vs])
+                ,[$\n, $\s, $\n, $\s]
                ).
 
 texts_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
