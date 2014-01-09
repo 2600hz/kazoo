@@ -222,12 +222,10 @@ assign_or_reserve(Broker, Consumer, Type) ->
     %% the assignment type as it does so) or reserve an 
     %% assignment for the next channel
     MatchSpec = [{#wh_amqp_assignment{channel = '$1'
-                                      ,consumer = '$2'
+                                      ,consumer = 'undefined'
+                                      ,broker = Broker
                                       ,_ = '_'},
-                  [{'andalso'
-                    ,{is_pid, '$1'}
-                    ,{'not', {is_pid, '$2'}}
-                   }],
+                  [{'=/=', '$1', 'undefined'}],
                   ['$_']}
                 ],
     case ets:select(?TAB, MatchSpec, 1) of
@@ -293,7 +291,7 @@ maybe_reassign(Broker, Connection, Channel) ->
                                       ,_ = '_'},
                   [{'andalso'
                     ,{'=/=', '$1', Broker}
-                    ,{is_pid, '$2'}
+                    ,{'=/=', '$2', 'undefined'}
                    }],
                   ['$_']}
                 ],
@@ -309,9 +307,10 @@ maybe_assign_sticky(Broker, Connection, Channel) ->
     %% without a channel and assign this new channel to them
     MatchSpec = [{#wh_amqp_assignment{type = 'sticky'
                                       ,broker = Broker
+                                      ,channel = 'undefined'
                                       ,consumer = '$1'
                                       ,_ = '_'},
-                  [{is_pid, '$1'}],
+                  [{'=/=', '$1', 'undefined'}],
                   ['$_']}
                 ],
     case ets:select(?TAB, MatchSpec, 1) of
@@ -324,13 +323,10 @@ maybe_assign_sticky(Broker, Connection, Channel) ->
 maybe_assign(Broker, Connection, Channel) ->
     %% This will find any consumer without a channel and 
     %% assign this new channel to it
-    MatchSpec = [{#wh_amqp_assignment{consumer = '$1'
-                                      ,channel = '$2'
+    MatchSpec = [{#wh_amqp_assignment{channel = 'undefined'
+                                      ,consumer = '$1'
                                       ,_ = '_'},
-                  [{'andalso'
-                    ,{is_pid, '$1'}
-                    ,{'not', {is_pid, '$2'}}
-                   }],
+                  [{'=/=', '$1', 'undefined'}],
                   ['$_']}
                 ],
     case ets:select(?TAB, MatchSpec, 1) of
