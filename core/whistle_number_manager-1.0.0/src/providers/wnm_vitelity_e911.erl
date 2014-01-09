@@ -78,8 +78,11 @@ maybe_update_e911(#number{current_number_doc=CurrentJObj
             N1#number{number_doc=update_e911(N1, E911)}
     end.
 
+-spec remove_number(ne_binary()) ->
+                           {'ok', _} |
+                           {'error', _}.
 remove_number(DID) ->
-    case query_vitelity(wnm_vitelity_uri:build_uri(remove_e911_options(DID))) of
+    case query_vitelity(wnm_vitelity_util:build_uri(remove_e911_options(DID))) of
         {'error', _}=E -> E;
         {'ok', RespXML} -> process_xml_resp(RespXML)
     end.
@@ -94,7 +97,7 @@ remove_e911_options(DID) ->
 
 -spec update_e911(wnm_number(), wh_json:object()) -> wh_json:object().
 update_e911(#number{number=Number}=N, Address) ->
-    query_vitelity(N, wnm_vitelity_uri:build_uri(e911_options(Number, Address))).
+    query_vitelity(N, wnm_vitelity_util:build_uri(e911_options(Number, Address))).
 
 e911_options(Number, AddressJObj) ->
     [{'qs', [{'did', Number}
@@ -159,7 +162,7 @@ process_xml_resp(N, RespXML) ->
     end.
 
 -spec process_xml_resp(text()) ->
-                              {'ok', wh_json:object()} |
+                              {'ok', wh_json:object() | ne_binary()} |
                               {'error', ne_binary()}.
 process_xml_resp(RespXML) ->
     try xmerl_scan:string(RespXML) of
@@ -172,7 +175,7 @@ process_xml_resp(RespXML) ->
     end.
 
 -spec process_xml_content_tag(xml_el()) ->
-                                     {'ok', wh_json:object()} |
+                                     {'ok', wh_json:object() | ne_binary()} |
                                      {'error', ne_binary()}.
 process_xml_content_tag(#xmlElement{name='content'
                                     ,content=Children

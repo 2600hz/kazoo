@@ -104,7 +104,7 @@ xml_els_to_proplist(Els) ->
            end
     ].
 
--spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), ne_binary()}.
+-spec xml_el_to_kv_pair(xml_el()) -> {ne_binary(), api_binary() | wh_json:object()}.
 xml_el_to_kv_pair(#xmlElement{name='did'
                               ,content=Value
                              }) ->
