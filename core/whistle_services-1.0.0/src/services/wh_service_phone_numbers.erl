@@ -77,7 +77,7 @@ update_numbers([Number|Numbers], JObj, Services) ->
     case wnm_util:is_reconcilable(Number) of
         'false' -> Services;
         'true' ->
-            Routines = [fun(S) -> update_number_quantities(Number, S) end
+            Routines = [fun(S) -> update_number_quantities(Number, S, JObj) end
                         ,fun(S) ->
                                  Features = wh_json:get_value([Number, <<"features">>], JObj, []),
                                  update_feature_quantities(Features, S)
@@ -93,9 +93,10 @@ update_numbers([Number|Numbers], JObj, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_number_quantities(ne_binary(), wh_services:services()) -> wh_services:services().
-update_number_quantities(Number, Services) ->
-    case is_number_billable(Number) andalso wnm_util:classify_number(Number) of
+-spec update_number_quantities(ne_binary(), wh_services:services(), wh_json:object()) -> wh_services:services().
+update_number_quantities(Number, Services, JObj) ->
+    ModuleName = wh_json:get_value(<<"module_name">>, JObj, 'undefined'),
+    case is_number_billable(Number, ModuleName) andalso wnm_util:classify_number(Number) of
         'false' -> Services;
         'undefined' -> Services;
         Classification ->
@@ -103,23 +104,35 @@ update_number_quantities(Number, Services) ->
             wh_services:update(<<"phone_numbers">>, Classification, Quantity + 1, Services)
     end.
 
-is_number_billable(DID) ->
+is_number_billable(DID, 'undefined') ->
     case catch wnm_number:get(DID) of
         #number{module_name=Module}=Number ->
-			case catch Module:is_number_billable(Number) of
-				'true' -> 
+            case catch Module:is_number_billable(Number) of
+                'true' ->
                     lager:debug("number ~s is billable: ~s", [DID,Module]),
                     'true';
-				'false' -> 
+                'false' ->
                     lager:debug("number ~s is not billable: ~s", [DID,Module]),
                     'false';
-				Err -> 
+                Err ->
                     lager:debug("number ~s is not billable due to provider ~s error: ~p", [DID,Module,Err]),
                     'false'
-			end;
-		Other -> 
+            end;
+        Other ->
             lager:debug("number ~s is not billable due to number error: ~p", [DID,Other]),
-			'false'
+            'false'
+    end;
+is_number_billable(DID, Module) ->
+    case catch Module:is_number_billable(DID) of
+        'true' ->
+            lager:debug("number ~s is billable: ~s", [DID, Module]),
+            'true';
+        'false' ->
+            lager:debug("number ~s is not billable: ~s", [DID, Module]),
+            'false';
+        Err ->
+            lager:debug("number ~s is not billable due to provider ~s error: ~p", [DID, Module, Err]),
+            'false'
     end.
 
 %%--------------------------------------------------------------------

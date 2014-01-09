@@ -532,7 +532,6 @@ in_service(#number{state = ?NUMBER_STATE_RESERVED}=Number) ->
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = ?NUMBER_STATE_IN_SERVICE, assigned_to=AssignedTo, assign_to=AssignedTo}=Number) ->
-    io:format("wnm_number.erl:MARKER:535 ~p~n", [marker]),
     error_no_change_required(?NUMBER_STATE_IN_SERVICE, Number);
 in_service(#number{state = ?NUMBER_STATE_IN_SERVICE}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
@@ -1089,11 +1088,13 @@ load_phone_number_doc(Account) ->
 update_service_plans(#number{dry_run='true'
                              ,assigned_to=AssignedTo
                              ,phone_number_docs=Docs
+                             ,module_name=ModuleName
                              ,services=Services}=Number) ->
     case dict:find(AssignedTo, Docs) of
-        error -> Number;
-        {ok, JObj} ->
-            S = wh_service_phone_numbers:reconcile(JObj, Services),
+        'error' -> Number;
+        {'ok', JObj} ->
+            JObj1 = wh_json:set_value(<<"module_name">>, ModuleName, JObj),
+            S = wh_service_phone_numbers:reconcile(JObj1, Services),
             Number#number{services=S}
     end;
 update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssignedTo}=N) ->

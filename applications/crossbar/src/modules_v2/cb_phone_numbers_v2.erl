@@ -819,14 +819,51 @@ set_response({'ok', {'ok', Doc}}, _, Context) ->
 set_response({'ok', Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response({'dry_run', Doc}, _, Context) ->
-    crossbar_util:response_402(Doc, Context);
+    DryRunJObj = dry_run_response(Doc),
+    crossbar_util:response_402(DryRunJObj, Context);
 set_response({'dry_run', ?COLLECTION, Doc}, _, Context) ->
-    crossbar_util:response_402(Doc, Context);
+    DryRunJObj = dry_run_response(?COLLECTION, Doc),
+    crossbar_util:response_402(DryRunJObj, Context);
 set_response({Error, Reason}, _, Context) ->
     crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context);
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec dry_run_response(wh_proplist()) -> wh_json:object().
+-spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
+dry_run_response([{'services', Services}, {'activation_charges', Charges}]) ->
+    wh_services:calulate_charges(Services, Charges).
+
+dry_run_response(?COLLECTION, Data) ->
+    RespJObj = wh_json:delete_key(<<"charges">>, Data),
+    C = wh_json:foldl(
+            fun(Number, Value, Acc) ->
+                JObj = dry_run_response(Value),
+
+                TotalCharges = wh_json:get_value([<<"total">>, <<"charges">>], Acc, 0),
+                TotalActivationCharges = wh_json:get_value([<<"total">>, <<"activation_charges">>], Acc, 0),
+                Charges = wh_json:get_value(<<"charges">>, JObj),
+                ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj),
+
+                Total = wh_json:from_list([
+                    {<<"charges">>, TotalCharges+Charges}
+                    ,{<<"activation_charges">>, TotalActivationCharges+ActivationCharges}
+                ]),
+                wh_json:set_values([{Number, JObj}
+                                    ,{<<"total">>, Total}
+                                   ], Acc)
+            end
+            ,wh_json:new()
+            ,wh_json:get_value(<<"charges">>, Data, wh_json:new())
+    ),
+    wh_json:set_value(<<"charges">>, C, RespJObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -840,7 +877,7 @@ set_response(_Else, _, Context) ->
 -spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) ->
                                 operation_return() |
                                 {'ok', operation_return()}.
-collection_process(#cb_context{req_data=ReqJObj}=Context) ->
+collection_process(#cb_context{req_json=ReqJObj}=Context) ->
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     Result = collection_process(Context, Numbers, 'undefined'),
     case (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')) of
@@ -848,7 +885,7 @@ collection_process(#cb_context{req_data=ReqJObj}=Context) ->
         'false' -> {'ok', Result}
     end.
 
-collection_process(#cb_context{req_data=ReqJObj}=Context, ?ACTIVATE) ->
+collection_process(#cb_context{req_json=ReqJObj}=Context, ?ACTIVATE) ->
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     Result = collection_process(Context, Numbers, ?ACTIVATE),
     case (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')) of
@@ -885,7 +922,7 @@ collection_action(#cb_context{account_id=AssignTo
                               ,auth_account_id=AuthBy
                               ,doc=JObj
                               ,req_verb = ?HTTP_PUT
-                              ,req_data=ReqJObj
+                              ,req_json=ReqJObj
                              }, Number, ?ACTIVATE) ->
     DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')),
     case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj, DryRun) of
@@ -902,7 +939,7 @@ collection_action(#cb_context{account_id=AssignTo
     wh_number_manager:create_number(Number, AssignTo, AuthBy, wh_json:delete_key(<<"numbers">>, JObj));
 collection_action(#cb_context{auth_account_id=AuthBy
                               ,doc=Doc
-                              ,req_data=ReqJObj
+                              ,req_json=ReqJObj
                               ,req_verb = ?HTTP_POST
                              }, Number, _) ->
     case wh_number_manager:get_public_fields(Number, AuthBy) of

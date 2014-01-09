@@ -511,11 +511,9 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                                             ,number_doc=wh_json:public_fields(PublicFields)
                                             ,dry_run=DryRun
                                 },
-                        io:format("wh_number_manager.erl:MARKER:502 ~p~n", [yes]),
                         wnm_number:create_discovery(NewNumber);
                     ({_, #number{}}=E) -> E;
                     (#number{}=N) ->
-                        io:format("wh_number_manager.erl:MARKER:506 ~p~n", [no]),
                         N#number{dry_run=DryRun}
                  end
                 ,fun ({_, #number{}}=E) -> E;
@@ -536,7 +534,6 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                         {'ok', wh_json:public_fields(JObj)}
                  end
                ],
-    io:format("wh_number_manager.erl:MARKER:527 ~p~n", [marker]),
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
 
 %%--------------------------------------------------------------------
