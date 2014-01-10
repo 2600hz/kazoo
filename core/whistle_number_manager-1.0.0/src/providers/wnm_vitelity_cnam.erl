@@ -83,18 +83,38 @@ handle_outbound_cnam(#number{current_number_doc=CurrentJObj
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_inbound_cnam(wnm_number()) -> wnm_number().
-handle_inbound_cnam(#number{number_doc=JObj
-                            ,features=Features
-                           }=N) ->
+handle_inbound_cnam(#number{number_doc=JObj}=N) ->
     case wh_json:is_true([<<"cnam">>, <<"inbound_lookup">>], JObj) of
-        'false' -> N#number{features=sets:del_element(<<"inbound_cnam">>, Features)};
+        'false' -> remove_inbound_cnam(N);
         'true' -> add_inbound_cnam(N)
     end.
 
+-spec remove_inbound_cnam(wnm_number()) -> wnm_number().
+remove_inbound_cnam(#number{features=Features
+                           ,number=Number
+                          }=N) ->
+    _ = wnm_vitelity_util:query_vitelity(
+          wnm_vitelity_util:build_uri(
+            remove_inbound_options(Number))
+         ),
+    N#number{features=sets:del_element(<<"inbound_cnam">>, Features)}.
+
+-spec remove_inbound_options(ne_binary()) -> list().
+remove_inbound_options(Number) ->
+    [{'qs', [{'did', Number}
+             ,{'cmd', <<"cnamdisable">>}
+             ,{'xml', <<"yes">>}
+             | wnm_vitelity_util:default_options()
+            ]}
+     ,{'uri', wnm_vitelity_util:api_uri()}
+    ].
+
+-spec add_inbound_cnam(wnm_number()) -> wnm_number().
 add_inbound_cnam(#number{number=Number}=N) ->
-    case wnm_vitelity_util:query_vitelity(wnm_vitelity_util:build_uri(
-                                            inbound_options(Number))
-                                         )
+    case wnm_vitelity_util:query_vitelity(
+           wnm_vitelity_util:build_uri(
+             inbound_options(Number))
+          )
     of
         {'ok', XML} -> process_xml_resp(N, XML);
         {'error', _E} -> wnm_number:error_provider_fault(<<"unknown error">>, N)
