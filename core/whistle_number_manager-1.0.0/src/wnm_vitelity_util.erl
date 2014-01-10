@@ -16,6 +16,7 @@
          ,get_query_value/2
          ,default_options/1
          ,build_uri/1
+         ,query_vitelity/1
 
          ,xml_resp_status_msg/1
          ,xml_resp_error_msg/1
@@ -128,4 +129,18 @@ xml_el_to_kv_pair(#xmlElement{name=Name
             {wh_util:to_binary(Name)
              ,wh_json:from_list(xml_els_to_proplist(Els))
             }
+    end.
+
+-spec query_vitelity(ne_binary()) ->
+                            {'ok', text()} |
+                            {'error', _}.
+query_vitelity(URI) ->
+    lager:debug("querying ~s", [URI]),
+    case ibrowse:send_req(wh_util:to_list(URI), [], 'post') of
+        {'ok', _RespCode, _RespHeaders, RespXML} ->
+            lager:debug("recv ~s: ~s", [_RespCode, RespXML]),
+            {'ok', RespXML};
+        {'error', _R}=E ->
+            lager:debug("error querying: ~p", [_R]),
+            E
     end.
