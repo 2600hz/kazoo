@@ -103,11 +103,14 @@ add_inbound_cnam(#number{number=Number}=N) ->
 -spec inbound_options(ne_binary()) -> list().
 inbound_options(Number) ->
     [{'qs', [{'did', Number}
+             ,{'cmd', <<"cnamenable">>}
              ,{'xml', <<"yes">>}
+             | wnm_vitelity_util:default_options()
             ]}
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
 
+-spec process_xml_resp(wnm_number(), text()) -> wnm_number().
 process_xml_resp(N, XML) ->
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(N, XmlEl)
@@ -117,9 +120,10 @@ process_xml_resp(N, XML) ->
             wnm_number:error_provider_fault(<<"invalid response from server">>, N)
     end.
 
-process_xml_content_tag(#xmlElement{name='content'
-                                    ,content=Children
-                                   }, N) ->
+-spec process_xml_content_tag(wnm_number(), xml_el()) -> wnm_number().
+process_xml_content_tag(N, #xmlElement{name='content'
+                                       ,content=Children
+                                      }) ->
     Els = kz_xml:elements(Children),
     case wnm_vitelity_util:xml_resp_status_msg(Els) of
         <<"fail">> ->

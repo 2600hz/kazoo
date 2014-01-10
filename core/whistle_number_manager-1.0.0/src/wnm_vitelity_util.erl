@@ -14,7 +14,7 @@
          ,config_cat/0
          ,add_options_fold/2
          ,get_query_value/2
-         ,default_options/1
+         ,default_options/0, default_options/1
          ,build_uri/1
          ,query_vitelity/1
 
@@ -52,7 +52,10 @@ get_query_value(Key, Opts) ->
         Value -> Value
     end.
 
+-spec default_options() -> wh_proplist().
 -spec default_options(wh_proplist()) -> wh_proplist().
+default_options() ->
+     default_options([]).
 default_options(Opts) ->
     [{'login', wnm_vitelity_util:get_query_value('login', Opts)}
      ,{'pass', wnm_vitelity_util:get_query_value('pass', Opts)}

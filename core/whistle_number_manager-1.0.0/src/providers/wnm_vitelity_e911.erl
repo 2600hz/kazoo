@@ -92,6 +92,8 @@ remove_number(DID) ->
 remove_e911_options(DID) ->
     [{'qs', [{'did', DID}
              ,{'xml', <<"yes">>}
+             ,{'cmd', <<"e911delete">>}
+             | wnm_vitelity_util:default_options()
             ]}
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
@@ -110,6 +112,8 @@ get_location(DID) ->
 get_location_options(DID) ->
     [{'qs', [{'did', DID}
              ,{'xml', <<"yes">>}
+             ,{'cmd', <<"e911getinfo">>}
+             | wnm_vitelity_util:default_options()
             ]}
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
@@ -127,6 +131,8 @@ e911_options(Number, AddressJObj) ->
              ,{'state', wh_json:get_value(<<"region">>, AddressJObj)}
              ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
              ,{'xml', <<"yes">>}
+             ,{'cmd', <<"e911send">>}
+             | wnm_vitelity_util:default_options()
             ]}
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
@@ -148,6 +154,8 @@ location_options(AddressJObj) ->
              ,{'state', wh_json:get_value(<<"region">>, AddressJObj)}
              ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
              ,{'xml', <<"yes">>}
+             ,{'cmd', <<"e911checkaddress">>}
+             | wnm_vitelity_util:default_options()
             ]}
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
