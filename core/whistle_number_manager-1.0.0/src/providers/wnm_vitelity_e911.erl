@@ -13,6 +13,7 @@
 -export([save/1
          ,delete/1
          ,is_valid_location/1
+         ,get_location/1
         ]).
 
 -include("../wnm.hrl").
@@ -87,6 +88,7 @@ remove_number(DID) ->
         {'ok', RespXML} -> process_xml_resp(RespXML)
     end.
 
+-spec remove_e911_options(ne_binary()) -> list().
 remove_e911_options(DID) ->
     [{'qs', [{'did', DID}
              ,{'xml', <<"yes">>}
@@ -94,11 +96,29 @@ remove_e911_options(DID) ->
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
 
+-spec get_location(ne_binary() | wnm_number()) ->
+                          {'ok', wh_json:object()} |
+                          {'error', _}.
+get_location(#number{number=DID}) -> get_location(DID);
+get_location(DID) ->
+    case query_vitelity(wnm_vitelity_util:build_uri(get_location_options(DID))) of
+        {'ok', RespXML} -> process_xml_resp(RespXML);
+        {'error', _}=E -> E
+    end.
+
+-spec get_location_options(ne_binary()) -> list().
+get_location_options(DID) ->
+    [{'qs', [{'did', DID}
+             ,{'xml', <<"yes">>}
+            ]}
+     ,{'uri', wnm_vitelity_util:api_uri()}
+    ].
 
 -spec update_e911(wnm_number(), wh_json:object()) -> wh_json:object().
 update_e911(#number{number=Number}=N, Address) ->
     query_vitelity(N, wnm_vitelity_util:build_uri(e911_options(Number, Address))).
 
+-spec e911_options(ne_binary(), wh_json:object()) -> list().
 e911_options(Number, AddressJObj) ->
     [{'qs', [{'did', Number}
              ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj)}
@@ -120,6 +140,7 @@ is_valid_location(Location) ->
         {'ok', XML} -> process_xml_resp(XML)
     end.
 
+-spec location_options(wh_json:object()) -> list().
 location_options(AddressJObj) ->
     [{'qs', [{'name', wh_json:get_value(<<"customer_name">>, AddressJObj)}
              ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
@@ -131,7 +152,8 @@ location_options(AddressJObj) ->
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
 
--spec query_vitelity(wnm_number(), ne_binary()) -> wh_json:object().
+-spec query_vitelity(wnm_number(), ne_binary()) ->
+                            wh_json:object().
 query_vitelity(N, URI) ->
     case query_vitelity(URI) of
         {'ok', XML} -> process_xml_resp(N, XML);
@@ -203,5 +225,3 @@ xml_resp([#xmlElement{name='response'
           |_]) ->
     kz_xml:texts_to_binary(Content);
 xml_resp([_|T]) -> xml_resp(T).
-
-
