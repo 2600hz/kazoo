@@ -13,6 +13,7 @@
 -export([find_numbers/3
          ,acquire_number/1
          ,disconnect_number/1
+         ,should_lookup_cnam/0
         ]).
 
 -include("../wnm.hrl").
@@ -293,3 +294,6 @@ release_did_options(DID) ->
                  ,{'uri', wnm_vitelity_util:api_uri()}
                 ],
     lists:foldl(fun wnm_vitelity_util:add_options_fold/2, [], LocalOpts).
+
+-spec should_lookup_cnam() -> 'false'.
+should_lookup_cnam() -> 'false'.

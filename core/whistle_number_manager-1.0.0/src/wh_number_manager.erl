@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -168,12 +168,24 @@ number_options(#number{state=State
     [{'force_outbound', should_force_outbound(Number)}
      ,{'pending_port', State =:= ?NUMBER_STATE_PORT_IN}
      ,{'local', Module =:= 'wnm_local'}
-     ,{'inbound_cnam', sets:is_element(<<"inbound_cnam">>, Features)}
+     ,{'inbound_cnam'
+       ,sets:is_element(<<"inbound_cnam">>, Features)
+       andalso should_lookup_cnam(Module)
+      }
      ,{'ringback_media', find_early_ringback(Number)}
      ,{'transfer_media', find_transfer_ringback(Number)}
      ,{'number', Num }
      ,{'account_id', AssignedTo}
     ].
+
+%% Checks the carrier module for whether to lookup CNAM on this number
+-spec should_lookup_cnam(atom()) -> boolean().
+should_lookup_cnam(Module) ->
+    try Module:should_lookup_cnam() of
+        Boolean -> wh_util:is_true(Boolean)
+    catch
+        _E:_R -> 'false'
+    end.
 
 should_force_outbound(#number{module_name='wnm_local'}) -> 'true';
 should_force_outbound(#number{state = ?NUMBER_STATE_PORT_IN}) -> 'true';
