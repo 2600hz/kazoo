@@ -70,10 +70,71 @@ handle_outbound_cnam(#number{current_number_doc=CurrentJObj
             handle_inbound_cnam(N#number{features=sets:del_element(<<"outbound_cnam">>, Features)});
         CurrentCNAM ->
             handle_inbound_cnam(N#number{features=sets:add_element(<<"outbound_cnam">>, Features)});
-        _Else ->
+        NewCNAM ->
+            lager:debug("cnam display name changed to ~s, updating Vitelity", [NewCNAM]),
+            N1 = try_update_outbound_cnam(N, NewCNAM),
+            handle_inbound_cnam(N1)
+    end.
+
+-spec try_update_outbound_cnam(wnm_number(), ne_binary()) -> wnm_number().
+try_update_outbound_cnam(#number{number=DID}=N, NewCNAM) ->
+    case wnm_vitelity_util:query_vitelity(
+           wnm_vitelity_util:build_uri(
+             outbound_cnam_options(DID, NewCNAM)
+            ))
+    of
+        {'ok', XML} ->
+            process_outbound_xml_resp(N, XML);
+        {'error', _E} ->
+            wnm_number:error_provider_error(<<"failed to query provider">>, N)
+    end.
+
+-spec outbound_cnam_options(ne_binary(), ne_binary()) -> list().
+outbound_cnam_options(DID, NewCNAM) ->
+    [{'qs', [{'cmd', <<"lidb">>}
+             ,{'did', DID}
+             ,{'name', NewCNAM}
+             ,{'xml', <<"yes">>}
+             | wnm_vitelity_util:default_options()
+            ]}
+      ,{'uri', wnm_vitelity_util:default_options()}
+     ].
+
+-spec process_outbound_xml_resp(wnm_number(), text()) -> wnm_number().
+process_outbound_xml_resp(N, XML) ->
+    try xmerl_string:scan(XML) of
+        {#xmlElement{name='content'
+                     ,content=Children
+                    }, _} ->
+            process_outbound_resp(N, Children);
+        _ ->
+            wnm_number:error_provider_error(<<"unknown response format">>, N)
+    catch
+        _E:_R ->
+            wnm_number:error_provider_error(<<"unknown response format">>, N)
+    end.
+
+-spec process_outbound_resp(wnm_number(), xml_els()) -> wnm_number().
+process_outbound_resp(N, Children) ->
+    case wnm_vitelity_util:xml_resp_status_msg(Children) of
+        <<"ok">> ->
+            check_outbound_response_tag(N, Children);
+        <<"fail">> ->
+            wnm_number:error_provider_error(wnm_vitelity_util:xml_resp_error_msg(Children), N)
+    end.
+
+-spec check_outbound_response_tag(wnm_number(), xml_els()) -> wnm_number().
+check_outbound_response_tag(N, Children) ->
+    case wnm_vitelity_util:xml_resp_response_msg(Children) of
+        'undefined' ->
+            wnm_number:error_provider_error(<<"response tag not found">>, N);
+        <<"ok">> ->
             N1 = wnm_number:activate_feature(<<"outbound_cnam">>, N),
             _ = publish_cnam_update(N1),
-            handle_inbound_cnam(N1)
+            N1;
+        Msg ->
+            lager:debug("resp was not ok, was ~s", [Msg]),
+            wnm_number:error_provider_error(Msg, N)
     end.
 
 %%--------------------------------------------------------------------

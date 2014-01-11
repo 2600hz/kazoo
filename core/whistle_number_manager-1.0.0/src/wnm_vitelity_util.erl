@@ -20,8 +20,10 @@
 
          ,xml_resp_status_msg/1
          ,xml_resp_error_msg/1
+         ,xml_resp_response_msg/1
          ,xml_resp_numbers/1
          ,xml_resp_info/1
+         ,xml_resp_response/1
          ,xml_els_to_proplist/1
         ]).
 
@@ -79,6 +81,10 @@ xml_resp_status_msg(XmlEls) ->
 xml_resp_error_msg(XmlEls) ->
     xml_el_to_binary(xml_resp_tag(XmlEls, 'error')).
 
+-spec xml_resp_response_msg(xml_els()) -> api_binary().
+xml_resp_response_msg(XmlEls) ->
+    xml_el_to_binary(xml_resp_tag(XmlEls, 'response')).
+
 -spec xml_resp_numbers(xml_els()) -> xml_el() | 'undefined'.
 xml_resp_numbers(XmlEls) ->
     xml_resp_tag(XmlEls, 'numbers').
@@ -86,6 +92,10 @@ xml_resp_numbers(XmlEls) ->
 -spec xml_resp_info(xml_els()) -> xml_el() | 'undefined'.
 xml_resp_info(XmlEls) ->
     xml_resp_tag(XmlEls, 'info').
+
+-spec xml_resp_response(xml_els()) -> xml_el() | 'undefined'.
+xml_resp_response(XmlEls) ->
+    xml_resp_tag(XmlEls, 'response').
 
 -spec xml_resp_tag(xml_els(), atom()) -> xml_el() | 'undefined'.
 xml_resp_tag([#xmlElement{name=Name}=El|_], Name) -> El;
