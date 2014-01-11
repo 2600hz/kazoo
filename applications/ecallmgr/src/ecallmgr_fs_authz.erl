@@ -405,6 +405,7 @@ rate_channel(Props, Node) ->
                                   ,rating_req(CallId, Props)
                                   ,fun wapi_rate:publish_req/1
                                   ,fun wapi_rate:resp_v/1
+                                  ,10000
                                  ),
     case ReqResp of
         {'error', _R} -> lager:debug("rate request lookup failed: ~p", [_R]);
