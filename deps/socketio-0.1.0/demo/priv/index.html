@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+        <title>Demo Chat</title>
+
+        <link href="http://twitter.github.com/bootstrap/assets/css/bootstrap.css" rel="stylesheet">
+
+	<style>
+		body {
+			padding:20px;
+		}
+		#console {
+			height: 400px;
+			overflow: auto;
+		}
+		.username-msg {color:orange;}
+		.connect-msg {color:green;}
+		.disconnect-msg {color:red;}
+		.send-msg {color:#888}
+	</style>
+
+
+	<script src="https://raw.github.com/LearnBoost/socket.io-client/0.9.8/dist/socket.io.js"></script>
+    <script src="https://raw.github.com/timrwood/moment/1.7.2/moment.js"></script>
+    <script src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
+
+	<script>
+                var userName = 'user' + Math.floor((Math.random()*1000)+1);
+
+		var socket =  io.connect('http://localhost:8080');
+
+		socket.on('connect', function() {
+			output('<span class="connect-msg">Client has connected to the server!</span>');
+		});
+
+		socket.on('message', function(data) {
+			output('<span class="username-msg">' + data.userName + ':</span> ' + data.message);
+		});
+
+		socket.on('disconnect', function() {
+			output('<span class="disconnect-msg">The client has disconnected!</span>');
+		});
+
+                function sendDisconnect() {
+                        socket.disconnect();
+                }
+
+		function sendMessage() {
+                        var message = $('#msg').val();
+                        $('#msg').val('');
+
+                        // don't forget to define type field '@class'
+                        // it should equals to class name which used
+                        // to deserialize object on server side
+                        // via ...addJsonObjectListener() method
+                        //
+                        // TIP: you can customize type name field
+                        // via Configuration.jsonTypeFieldName property
+
+                        var jsonObject = {userName: userName,
+                                          message: message};
+                        socket.json.send(jsonObject);
+		}
+
+		function output(message) {
+                        var currentTime = "<span class='time'>" +  moment().format('HH:mm:ss.SSS') + "</span>";
+                        var element = $("<div>" + currentTime + " " + message + "</div>");
+			$('#console').prepend(element);
+		}
+
+	</script>
+</head>
+
+<body>
+
+	<h1>Socket.io-cowboy Demo Chat</h1>
+
+	<br/>
+
+	<div id="console" class="well">
+	</div>
+
+        <form class="well form-inline" onsubmit="return false;">
+           <input id="msg" class="input-xlarge" type="text" placeholder="Type something..."/>
+           <button type="button" onClick="sendMessage()" class="btn">Send</button>
+           <button type="button" onClick="sendDisconnect()" class="btn">Disconnect</button>
+        </form>
+
+
+
+</body>
+
+</html>
