@@ -8,7 +8,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(wnm_skel).
+-module(wnm_carrier_skel).
 
 -export([find_numbers/3
          ,acquire_number/1
