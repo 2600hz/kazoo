@@ -202,6 +202,34 @@ get_req_data(Context, {<<"application/base64">>, Req1}, QS) ->
 get_req_data(Context, {<<"application/x-base64">>, Req1}, QS) ->
     lager:debug("application/x-base64 content type when getting req data"),
     decode_base64(cb_context:set_query_string(Context, QS), <<"application/base64">>, Req1);
+get_req_data(Context, {<<"multipart/mixed">>, Req}, QS) ->
+    lager:debug("multipart/mixed content type when getting req data"),
+	{A,R} = acc_multipart(Req),
+	A1 = lists:nth(1,A),
+	{Headers,Body} = A1,
+	JBody = wh_json:decode(Body),
+	A2 = lists:nth(2,A),
+	{FHeaders,FBody} = A2,
+	CT = props:get_value(<<"content-type">>, FHeaders, 'undefined'),
+    {EncodedType, FileContents} = decode_base64(FBody),
+    ContentType = case EncodedType of
+                      'undefined' -> CT;
+                       <<"application/base64">> -> <<"application/octet-stream">>;
+                       Else -> Else
+                  end,
+    Headers1 = wh_json:from_list([{<<"content_type">>, ContentType}
+                                ,{<<"content_length">>, wh_util:to_binary(size(FileContents))}
+                                ]),
+    FileJObj = wh_json:from_list([{<<"headers">>, Headers1}
+                                 ,{<<"contents">>, FileContents}
+                                ]),
+    FileName = <<"uploaded_file_",(wh_util:to_binary(wh_util:current_tstamp()))/binary>>,
+	
+    {Context#cb_context{req_json=Body
+                        ,req_data=JBody
+                        ,query_json=QS
+                        ,req_files=[{FileName, FileJObj}]
+                       },Req};
 get_req_data(Context, {ContentType, Req1}, QS) ->
     lager:debug("unknown content-type: ~s", [ContentType]),
     extract_file(cb_context:set_query_string(Context, QS), ContentType, Req1).
@@ -979,3 +1007,16 @@ create_event_name(Context, Segments) when is_list(Segments) ->
 create_event_name(Context, Name) ->
     ApiVersion = cb_context:api_version(Context),
     <<ApiVersion/binary, "_resource.", Name/binary>>.
+
+
+acc_multipart(Req) ->
+        acc_multipart(cowboy_req:multipart_data(Req), []).
+acc_multipart({headers, Headers, Req}, Acc) ->
+        acc_multipart(cowboy_req:multipart_data(Req), [{Headers, []}|Acc]);
+acc_multipart({body, Data, Req}, [{Headers, BodyAcc}|Acc]) ->
+        acc_multipart(cowboy_req:multipart_data(Req), [{Headers, [Data|BodyAcc]}|Acc]);
+acc_multipart({end_of_part, Req}, [{Headers, BodyAcc}|Acc]) ->
+        acc_multipart(cowboy_req:multipart_data(Req),
+                [{Headers, list_to_binary(lists:reverse(BodyAcc))}|Acc]);
+acc_multipart({eof, Req}, Acc) ->
+        {lists:reverse(Acc), Req}.
