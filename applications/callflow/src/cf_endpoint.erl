@@ -100,12 +100,12 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
 
 -spec merge_attributes(wh_json:object()) -> wh_json:object().
 merge_attributes(Endpoint) ->
-    Keys = [<<"call_restriction">>
+    Keys = [<<"name">>
+            ,<<"call_restriction">>
             ,<<"music_on_hold">>
             ,<<"ringtones">>
             ,<<"caller_id">>
             ,<<"caller_id_options">>
-            ,<<"name">>
             ,<<"do_not_disturb">>
             ,<<"call_forward">>
             ,?CF_ATTR_LOWER_KEY
@@ -150,11 +150,10 @@ merge_attributes([?CF_ATTR_LOWER_KEY|Keys], Account, Endpoint, Owner) ->
             merge_attributes(Keys, Account, Update, Owner)
     end;
 merge_attributes([<<"name">> = Key|Keys], Account, Endpoint, Owner) ->
-    AccountName = wh_json:get_ne_value(Key, Account),
-    EndpointName = wh_json:get_ne_value(Key, Endpoint),
-    FirstName = wh_json:get_ne_value(<<"first_name">>, Owner),
-    LastName = wh_json:get_ne_value(<<"last_name">>, Owner),
-    Name = create_endpoint_name(FirstName, LastName, EndpointName, AccountName),
+    Name = create_endpoint_name(wh_json:get_ne_value(<<"first_name">>, Owner)
+                                ,wh_json:get_ne_value(<<"last_name">>, Owner)
+                                ,wh_json:get_ne_value(Key, Endpoint)
+                                ,wh_json:get_ne_value(Key, Account)),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Name, Endpoint), Owner);
 merge_attributes([<<"call_forward">> = Key|Keys], Account, Endpoint, Owner) ->
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
@@ -163,30 +162,42 @@ merge_attributes([<<"call_forward">> = Key|Keys], Account, Endpoint, Owner) ->
         'false' ->
             AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
             OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
-            Merged1 = wh_json:merge_recursive(AccountAttr, EndpointAttr),
-            Merged2 = wh_json:merge_recursive(Merged1, OwnerAttr),
-            merge_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner)
+            Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]),
+            merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner)
     end;
 merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
-    OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
-    Merged1 = wh_json:merge_recursive(AccountAttr, EndpointAttr),
-    Merged2 = wh_json:merge_recursive(Merged1, OwnerAttr),
+    OwnerAttr = caller_id_owner_attr(Owner),
+    Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
+                                     ,fun(_, V) -> wh_util:is_not_empty(V) end),
     case wh_json:get_ne_value([<<"emergency">>, <<"number">>], EndpointAttr) of
         'undefined' ->
-            merge_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner);
+            merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
         Number ->
-            Merged3 = wh_json:set_value([<<"emergency">>, <<"number">>], Number, Merged2),
-            merge_attributes(Keys, Account, wh_json:set_value(Key, Merged3, Endpoint), Owner)
+            CallerId = wh_json:set_value([<<"emergency">>, <<"number">>], Number, Merged),
+            merge_attributes(Keys, Account, wh_json:set_value(Key, CallerId, Endpoint), Owner)
     end;
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
-    Merged1 = wh_json:merge_recursive(AccountAttr, OwnerAttr),
-    Merged2 = wh_json:merge_recursive(Merged1, EndpointAttr),
-    merge_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner).
+    Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
+                                     ,fun(_, V) -> wh_util:is_not_empty(V) end),
+    merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
+
+-spec caller_id_owner_attr(wh_json:object()) -> wh_json:object().
+caller_id_owner_attr(Owner) ->
+    OwnerAttr = wh_json:get_ne_value(<<"caller_id">>, Owner, wh_json:new()),
+    case wh_json:get_value([<<"internal">>, <<"name">>], OwnerAttr) of
+        'undefined' ->
+            Name = create_endpoint_name(wh_json:get_ne_value(<<"first_name">>, Owner)
+                                        ,wh_json:get_ne_value(<<"last_name">>, Owner)
+                                        ,'undefined'
+                                        ,'undefined'),
+            wh_json:set_value([<<"internal">>, <<"name">>], Name, OwnerAttr);
+        _Else -> OwnerAttr
+    end.
 
 -spec merge_call_restrictions(ne_binaries(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:object().
 merge_call_restrictions([], _, Endpoint, _) -> Endpoint;
