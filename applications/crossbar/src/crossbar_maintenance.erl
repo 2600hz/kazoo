@@ -341,6 +341,7 @@ create_account(AccountName, Realm, Username, Password) ->
             [Db] ->
                 _ = promote_account(AccountId),
                 _ = allow_account_number_additions(AccountId),
+                _ = whistle_services_maintenance:make_reseller(AccountId),
                 'ok';
             _Else -> 'ok'
         end,
@@ -352,6 +353,8 @@ create_account(AccountName, Realm, Username, Password) ->
             wh_util:log_stacktrace(ST),
             'failed'
     end.
+
+
 
 %%--------------------------------------------------------------------
 %% @private
