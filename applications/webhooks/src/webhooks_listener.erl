@@ -64,6 +64,7 @@
                               ,{'type', <<"webhook">>}
                               ,{'id', <<"*">>}
                              ]}
+                   ,{'route', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
                       ,[{<<"configuration">>, <<"*">>}]
