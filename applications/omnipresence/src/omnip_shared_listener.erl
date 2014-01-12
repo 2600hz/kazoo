@@ -9,7 +9,9 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/0
+         ,handle_call_event/3
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -20,21 +22,24 @@
         ]).
 
 -include("omnipresence.hrl").
+-include_lib("whistle_apps/include/wh_hooks.hrl").
 
 -record(state, {subs_pid :: pid()
                 ,subs_ref :: reference()
                }).
 
+handle_call_event(_AccountId, <<"new">>, JObj) ->
+    omnip_subscriptions:handle_new_channel(JObj);
+handle_call_event(_AccountId, <<"answered">>, JObj) ->
+    omnip_subscriptions:handle_answered_channel(JObj);
+handle_call_event(_AccountId, <<"cdr">>, JObj) ->
+    omnip_subscriptions:handle_cdr(JObj);
+handle_call_event(_AccountId, <<"destroy">>, JObj) ->
+    omnip_subscriptions:handle_destroyed_channel(JObj).
+
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
                    ,{'presence', [{'restrict_to', ['update', 'reset']}]}
-                   %% channel events that toggle presence lights
-                   ,{'call', [{'restrict_to', ['new_channel'
-                                               ,'answered_channel'
-                                               ,'cdr'
-                                              ]}
-                              ,{'callid', <<"*">>}
-                             ]}
                    ,{'notifications', [{'restrict_to', ['presence_update']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_new_channel'}
@@ -98,6 +103,7 @@ start_link() ->
 init([]) ->
     put('callid', ?MODULE),
     gen_listener:cast(self(), {'find_subscriptions_srv'}),
+    wh_hooks_listener:register(),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
 
@@ -168,6 +174,9 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};
+handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
+    _ = spawn(?MODULE, 'handle_call_event', [AccountId, EventType, JObj]),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
