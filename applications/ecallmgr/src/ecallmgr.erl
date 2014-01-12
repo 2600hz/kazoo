@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -57,9 +57,9 @@ start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     _ = [wh_util:ensure_started(App) || App <- ['crypto'
                                                 ,'lager'
-                                                ,'whistle_amqp'
                                                 ,'gproc'
                                                 ,'ibrowse'
+                                                ,'whistle_amqp'
                                                 ,'whistle_stats'
                                                ]],
     'ok'.
