@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%% Call-related messages, like switch events, status requests, etc
 %%% @end
@@ -578,7 +578,7 @@ unbind_q(_Q, [], _CallId) -> 'ok'.
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:callevt_exchange(),
-    amqp_util:callmgr_exchange().    
+    amqp_util:callmgr_exchange().
 
 -spec publish_event(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_event(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
