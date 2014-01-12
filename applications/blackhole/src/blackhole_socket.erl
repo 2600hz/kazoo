@@ -48,6 +48,11 @@ handle_event(<<"calls.connect">>, Data, Pid, State) ->
     {'ok', PidListener} = blackhole_call_events_sup:start_listener(AccountId),
     gen_server:cast(PidListener, {'connect_socket', Pid}),
     State#state{listener=PidListener};
+handle_event(<<"calls.disconnect">>, Data, Pid, State) ->
+    AccountId = wh_json:get_value(<<"account_id">>, Data),
+    {'ok', PidListener} = blackhole_call_events_sup:get_listener(AccountId),
+    gen_server:cast(PidListener, {'disconnect_socket', Pid}),
+    State#state{listener = 'undefined'};
 handle_event(<<"connection">>, Data, Pid, State) ->
     lager:debug('connection happened'),
     ConfId = wh_json:get_value(<<"conference_id">>, Data),

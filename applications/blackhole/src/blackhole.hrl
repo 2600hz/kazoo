@@ -5,6 +5,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include_lib("whistle_apps/include/wh_hooks.hrl").
 
 -define(APP_NAME, <<"blackhole">>).
 -define(APP_VERSION, <<"1.0.0">>).

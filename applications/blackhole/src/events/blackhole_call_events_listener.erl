@@ -19,23 +19,16 @@
         ,code_change/3
         ]).
 
--export([handle_call_event/2]).
-
 -include("../blackhole.hrl").
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'call', [{'restrict_to', ['new_channel', 'destroy_channel', 'answered_channel']}]}]).
--define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
-                     ,[{<<"channel">>, <<"*">>}]
-                     }
-                    ]).
+-define(BINDINGS, []).
+-define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--record(state, {account_id :: api_binary()
-                ,pids :: pids()
-               }).
+-record(state, {pids, account_id}).
 
 %%%===================================================================
 %%% API
@@ -56,9 +49,6 @@ start_link(Args) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], Args).
 
-handle_call_event(JObj, _Props) ->
-    lager:debug("Handling Call Event: ~p", [JObj]).
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -74,15 +64,10 @@ handle_call_event(JObj, _Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init(AcctId) ->
-    lager:debug('new call event listener ~p', [AcctId]),
-    %%gen_listener:add_binding(self()
-    %%                         ,'conference'
-    %%                         ,[{'restrict_to', ['participant_event'
-    %%                                            ,{'conference', CallId}]}
-    %%                           ,{<<"Conference-ID">>, CallId}
-    %%                          ]),
-    {'ok', #state{account_id=AcctId, pids=[]}}.
+init(AccountId) ->
+    lager:debug('new call event listener ~p', [AccountId]),
+    wh_hooks_listener:register(AccountId),
+    {'ok', #state{account_id = AccountId, pids = sets:new()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,14 +83,6 @@ init(AcctId) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'disconnect_socket', User}, {Pid, _}, State) ->
-    case lists:delete(Pid, State) of
-        [] ->
-            {'stop', 'normal', 'ok', []};
-        NewState ->
-            blackhole_sockets:send_event(NewState, <<"disconnected">>, []),
-            {'reply', 'ok', NewState}
-    end;
 handle_call('get_socket', {Pid, _}, State) ->
     Reply = lists:member(Pid, State),
     {'reply', Reply, State};
@@ -124,10 +101,20 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'disconnect_socket', Pid}, #state{pids=Pids}=State) ->
+    NewPids = sets:del_element(Pid, Pids),
+    case sets:size(NewPids) of
+        0 ->
+            {'stop', 'normal', 'ok', State#state{pids = NewPids}};
+        _Size ->
+            blackhole_sockets:send_event(sets:to_list(Pids), <<"calls">>, [<<"ok">>]),
+            {'reply', 'ok', State#state{pids = NewPids}}
+    end;
 handle_cast({'connect_socket', Pid}, #state{pids=Pids}=State) ->
     lager:debug("connecting socket...."),
-    blackhole_sockets:send_event([Pid|Pids], <<"connected">>, []),
-    {'noreply', State#state{pids=[Pid|Pids]}};
+    NewPidSet = sets:add_element(Pid, Pids),
+    blackhole_sockets:send_event( sets:to_list(NewPidSet), <<"calls">>, []),
+    {'noreply', State#state{pids = NewPidSet}};
 handle_cast(_Message, State) ->
     io:format("got: ~p~n", [_Message]),
     {'noreply', State}.
@@ -142,6 +129,9 @@ handle_cast(_Message, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(?HOOK_EVT(AccountId, EventType, JObj), #state{pids=Pids}=State) ->
+    handle_call_event(AccountId, EventType, JObj, Pids),
+    {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -185,3 +175,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+handle_call_event(_AccountId, _Event, JObj, Pids) ->
+    CleanJObj = clean_call_event(JObj),
+    lager:debug("Event Obj: ~p", [CleanJObj]),
+    blackhole_sockets:send_event(sets:to_list(Pids)
+                                ,<<"calls">>
+                                ,[CleanJObj]).
+
+clean_call_event(JObj) ->
+    wh_api:remove_defaults(JObj).
+
+cleanup_binary(Binary) ->
+    String = binary:bin_to_list(Binary),
+    Binary1 = binary:list_to_bin(string:to_lower(String)),
+    binary:replace(Binary1, <<"-">>, <<"_">>, [global]).
