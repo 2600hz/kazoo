@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(blackhole_events_listener).
+-module(blackhole_conference_events_listener).
 
 -behaviour(gen_listener).
 
@@ -21,7 +21,7 @@
 
 -export([handle_conference_event/2]).
 
--include("blackhole.hrl").
+-include("../blackhole.hrl").
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}]).
@@ -102,13 +102,10 @@ init(ConfId) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'disconnect_socket', User}, {Pid, _}, State) ->
+handle_call({'disconnect_socket'}, {Pid, _}, State) ->
     case lists:delete(Pid, State) of
         [] ->
-            {'stop', 'normal', 'ok', []};
-        NewState ->
-            blackhole_sockets:send_event(NewState, <<"user_disconnected">>, User),
-            {'reply', 'ok', NewState}
+            {'stop', 'normal', 'ok', []}
     end;
 handle_call('get_socket', {Pid, _}, State) ->
     Reply = lists:member(Pid, State),
@@ -265,5 +262,3 @@ cleanup_binary(Binary) ->
     String = binary:bin_to_list(Binary),
     Binary1 = binary:list_to_bin(string:to_lower(String)),
     binary:replace(Binary1, <<"-">>, <<"_">>, [global]).
-
-

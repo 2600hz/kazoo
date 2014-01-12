@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(blackhole_events_sup).
+-module(blackhole_conference_events_sup).
 
 -behaviour(supervisor).
 
@@ -17,7 +17,7 @@
         ]).
 
 
--include("blackhole.hrl").
+-include("../blackhole.hrl").
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, []).
@@ -48,8 +48,8 @@ start_listener(ConfId) ->
         {'true', Pid} ->
             {'ok', Pid};
         {'false', 'not_found'} ->
-        	ChildSpec = {ConfId, {'blackhole_events_listener', 'start_link', [ConfId]}
-                         ,'temporary', 5000, 'worker', [?MODULE]
+            ChildSpec = {ConfId, {'blackhole_conference_events_listener', 'start_link', [ConfId]}
+                        ,'temporary', 5000, 'worker', [?MODULE]
                         },
             supervisor:start_child(?MODULE, ChildSpec)
     end.
@@ -63,16 +63,15 @@ start_listener(ConfId) ->
 get_listener(ConfId) ->
     Children = supervisor:which_children(?MODULE),
     lists:foldl(fun({Id, _, _, _}=Child, Acc) ->
-                    case Id =:= ConfId of
-                        'true' ->
-                            Child;
-                        'false' ->
-                            Acc
-                    end
+                        case Id =:= ConfId of
+                            'true' ->
+                                Child;
+                            'false' ->
+                                Acc
+                        end
                 end
-                ,'not_found'
-                ,Children).
-
+               ,'not_found'
+               ,Children).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -83,15 +82,15 @@ get_listener(ConfId) ->
 already_started(ConfId) ->
     Children = supervisor:which_children(?MODULE),
     lists:foldl(fun({Id, Pid, _, _}, Acc) ->
-                    case Id =:= ConfId of
-                        'true' ->
-                            {'true', Pid};
-                        'false' ->
-                            Acc
-                    end
+                        case Id =:= ConfId of
+                            'true' ->
+                                {'true', Pid};
+                            'false' ->
+                                Acc
+                        end
                 end
-                ,{'false', 'not_found'}
-                ,Children).
+               ,{'false', 'not_found'}
+               ,Children).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -111,7 +110,7 @@ init([]) ->
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
-
+    
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     {'ok', {SupFlags, ?CHILDREN}}.

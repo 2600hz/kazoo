@@ -29,7 +29,10 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() -> 'ok'.
+stop() -> 
+    cowboy:stop_listener('socketio_http_listener'),
+    exit(whereis('blackhole_sup'), 'shutdown'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -40,5 +43,15 @@ stop() -> 'ok'.
 -spec start_deps() -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    _ = [wh_util:ensure_started(App) || App <- ['sasl', 'crypto', 'whistle_amqp', 'cowboy', 'socketio']],
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                               ,'inets'
+                                               ,'lager'
+                                               ,'whistle_amqp'
+                                               ,'whistle_couch'
+                                               ,'ranch'
+                                               ,'cowboy'
+                                               ,'public_key'
+                                               ,'ssl'
+                                               ,'socketio'
+                                               ]],
     'ok'.

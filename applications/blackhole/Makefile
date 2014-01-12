@@ -10,34 +10,35 @@ ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
      # +bin_opt_info
 
 DIRS =  . \
-    $(ROOT)/core/whistle-1.0.0 \
-    $(ROOT)/core/whistle_amqp-1.0.0 \
-    $(ROOT)/core/whistle_couch-1.0.0 \
-    $(ROOT)/core/whistle_apps-1.0.0
+	$(ROOT)/core/whistle-1.0.0 \
+	$(ROOT)/core/whistle_amqp-1.0.0 \
+	$(ROOT)/core/whistle_couch-1.0.0 \
+	$(ROOT)/core/whistle_apps-1.0.0
 
 .PHONY: all compile clean
 
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+CF_MODULES = $(shell ls src/events/*.erl | sed 's/src\/events\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{events, \[\]}/{events, \[$(MODULES),$(CF_MODULES)\]}/' \
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-ebin/$(PROJECT).app: src/*.erl
+ebin/$(PROJECT).app: src/*.erl src/events/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{events, \[\]}/{events, \[$(MODULES),$(CF_MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl
+test/$(PROJECT).app: src/*.erl src/events/*.erl
 	@mkdir -p test/
 	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
 
@@ -49,7 +50,7 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	erl -noshell -pa test -eval "eunit:test([$(MODULES),$(CF_MODULES)], [verbose])" -s init stop
 
 dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \

@@ -12,12 +12,12 @@
 
 -export([send_event/3]).
 
-
 send_event(Pids, Event, Data) ->
-	lists:foldl(
-		fun(Pid, _) ->
-			socketio_session:send_event(Pid, Event, Data)
-		end
-		,'ok'
-		,Pids
-	).
+    lager:debug("going to send event data"),
+    lists:foldl(
+      fun(Pid, _) ->
+              socketio_session:send_event(Pid, Event, Data)
+      end
+               ,'ok'
+               ,Pids
+     ).

@@ -23,7 +23,7 @@
                    {'ok', pid()} |
                    {'error', startlink_err()}.
 start(_Type, _Args) ->
-	blackhole:start_link().
+    blackhole:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -33,5 +33,5 @@ start(_Type, _Args) ->
 %%--------------------------------------------------------------------
 -spec stop(term()) -> 'ok'.
 stop(_State) ->
-	cowboy:stop_listener('blackhole'),
-	blackhole:stop().
+    cowboy:stop_listener('blackhole'),
+    blackhole:stop().
