@@ -1,0 +1,15 @@
+<html>
+  <head>
+    <script src="/js/new_socket.js"></script>
+  </head>
+  <body>
+    <div id="content"></div>
+    <script>
+      var socket = io.connect('http://192.168.10.111:5555');
+      socket.emit("calls.connect", { account_id: "4b31dd1d32ce6d249897c06332375d65" });
+      socket.on("calls", function (data) {
+      console.log(data);
+      });
+    </script>
+  </body>
+</html>
