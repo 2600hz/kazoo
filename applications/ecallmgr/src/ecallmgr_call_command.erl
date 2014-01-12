@@ -820,7 +820,7 @@ bridge_handle_hold_media(DP, _Node, UUID, JObj) ->
 
 bridge_handle_secure_rtp(DP, _Node, _UUID, JObj) ->
     case wh_json:is_true(<<"Secure-RTP">>, JObj, 'false') of
-        'true' -> [{"application", "set sip_secure_media=true"}|DP];
+        'true' -> [{"application", "set zrtp_secure_media=true"}|DP];
         'false' -> DP
     end.
 
