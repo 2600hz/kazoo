@@ -24,11 +24,16 @@
                                                  ]]}
                    ,'permanent', 5000, 'worker', ['poolboy']}).
 
+-define(CHILD(I, A, Type), {I, {I, start_link, A}, permanent, 5000, Type, [I]}).
+
+ 
+
 -define(CHILDREN, [?POOL('fax_worker_pool')
                    ,?CACHE('fax_cache')
                    ,?WORKER('fax_jobs')
                    ,?SUPER('fax_requests_sup')
                    ,?WORKER('fax_listener')
+                   ,?CHILD(gen_smtp_server, [fax_smtp, [[{port,25}]]], worker)
                   ]).
 
 %% ===================================================================
