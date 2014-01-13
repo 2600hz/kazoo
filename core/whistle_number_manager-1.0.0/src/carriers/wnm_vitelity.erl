@@ -28,6 +28,8 @@
 -spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
                           {'ok', wh_json:objects()} |
                           {'error', _}.
+find_numbers(Prefix, Quantity, Opts) when not is_integer(Quantity) ->
+    find_numbers(Prefix, wh_util:to_integer(Quantity), Opts);
 find_numbers(Prefix, Quantity, Opts) ->
     case props:get_value('tollfree', Opts, 'false') of
         'true' -> find(Prefix, Quantity, add_tollfree_options(Quantity, Opts));
@@ -162,7 +164,10 @@ process_xml_numbers(_Prefix, _Quantity, [], Acc) ->
 process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
     JObj = xml_did_to_json(El),
     case number_matches_prefix(JObj, Prefix) of
-        'true' -> process_xml_numbers(Prefix, Quantity-1, Els, [{wh_json:get_value(<<"number">>, JObj), JObj}|Acc]);
+        'true' ->
+            N = wh_json:get_value(<<"number">>, JObj),
+            lager:debug("adding number ~s to accumulator", [N]),
+            process_xml_numbers(Prefix, Quantity-1, Els, [{N, JObj}|Acc]);
         'false' -> process_xml_numbers(Prefix, Quantity, Els, Acc)
     end.
 
@@ -203,32 +208,42 @@ xml_did_to_json(#xmlElement{name='number'
 -spec acquire_number(wnm_number()) -> wnm_number().
 acquire_number(#number{number=DID}=Number) ->
     case wnm_util:classify_number(DID) of
-        <<"tollfree_us">> -> query_vitelity(Number, purchase_tollfree_options(DID));
-        <<"tollfree">> -> query_vitelity(Number, purchase_tollfree_options(DID));
-        _ -> query_vitelity(Number, purchase_local_options(DID))
+        <<"tollfree_us">> ->
+            query_vitelity(Number
+                           ,wnm_vitelity_util:build_uri(
+                              purchase_tollfree_options(DID)
+                             ));
+        <<"tollfree">> ->
+            query_vitelity(Number
+                           ,wnm_vitelity_util:build_uri(
+                              purchase_tollfree_options(DID)
+                             ));
+        _ ->
+            query_vitelity(Number
+                           ,wnm_vitelity_util:build_uri(
+                              purchase_local_options(DID)
+                             ))
     end.
 
 purchase_local_options(DID) ->
-    LocalOpts = [{'qs', [{'did', DID}
-                         ,{'cmd', <<"getlocaldid">>}
-                         ,{'xml', <<"yes">>}
-                         ,{'routesip', get_routesip()}
-                         | wnm_vitelity_util:default_options([])
-                        ]}
-                 ,{'uri', wnm_vitelity_util:api_uri()}
-                ],
-    lists:foldl(fun wnm_vitelity_util:add_options_fold/2, [], LocalOpts).
+    [{'qs', [{'did', wnm_util:to_npan(DID)}
+             ,{'cmd', <<"getlocaldid">>}
+             ,{'xml', <<"yes">>}
+             ,{'routesip', get_routesip()}
+             | wnm_vitelity_util:default_options()
+            ]}
+     ,{'uri', wnm_vitelity_util:api_uri()}
+    ].
 
 purchase_tollfree_options(DID) ->
-    LocalOpts = [{'qs', [{'did', DID}
-                         ,{'cmd', <<"gettollfree">>}
-                         ,{'xml', <<"yes">>}
-                         ,{'routesip', get_routesip()}
-                         | wnm_vitelity_util:default_options([])
-                        ]}
-                 ,{'uri', wnm_vitelity_util:api_uri()}
-                ],
-    lists:foldl(fun wnm_vitelity_util:add_options_fold/2, [], LocalOpts).
+    [{'qs', [{'did', wnm_util:to_npan(DID)}
+             ,{'cmd', <<"gettollfree">>}
+             ,{'xml', <<"yes">>}
+             ,{'routesip', get_routesip()}
+             | wnm_vitelity_util:default_options([])
+            ]}
+     ,{'uri', wnm_vitelity_util:api_uri()}
+    ].
 
 -spec get_routesip() -> api_binary().
 get_routesip() ->
@@ -283,17 +298,19 @@ process_xml_content_tag(Number, #xmlElement{name='content'
 -spec disconnect_number(wnm_number()) -> wnm_number().
 disconnect_number(#number{number=DID}=Number) ->
     lager:debug("attempting to disconnect ~s", [DID]),
-    query_vitelity(Number, release_did_options(DID)).
+    query_vitelity(Number
+                   ,wnm_vitelity_util:build_uri(
+                      release_did_options(DID)
+                     )).
 
 release_did_options(DID) ->
-    LocalOpts = [{'qs', [{'did', DID}
-                         ,{'cmd', <<"removedid">>}
-                         ,{'xml', <<"yes">>}
-                         | wnm_vitelity_util:default_options([])
-                        ]}
-                 ,{'uri', wnm_vitelity_util:api_uri()}
-                ],
-    lists:foldl(fun wnm_vitelity_util:add_options_fold/2, [], LocalOpts).
+    [{'qs', [{'did', wnm_util:to_npan(DID)}
+             ,{'cmd', <<"removedid">>}
+             ,{'xml', <<"yes">>}
+             | wnm_vitelity_util:default_options([])
+            ]}
+     ,{'uri', wnm_vitelity_util:api_uri()}
+    ].
 
 -spec should_lookup_cnam() -> 'false'.
 should_lookup_cnam() -> 'false'.
