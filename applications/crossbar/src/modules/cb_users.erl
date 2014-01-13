@@ -178,7 +178,8 @@ get_channels(#cb_context{doc=Doc, account_id=AccountId}=Context) ->
                                       )
     of
         {'ok', Resp} ->
-            cb_context:set_resp_data(Context, wh_json:get_value(<<"Channels">>, Resp, []));
+            Channels = wh_json:get_value(<<"Channels">>, Resp, []),
+            crossbar_util:response(Channels, Context);
         {'error', _E} ->
             lager:error("could not reach ecallmgr channels: ~p", [_E]),
             crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context)

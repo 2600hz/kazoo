@@ -190,25 +190,17 @@ delete(Context, Account) ->
 %%--------------------------------------------------------------------
 -spec get_channels(ne_binary(), cb_context:context()) -> cb_context:context().
 get_channels(AccountId, Context) ->
-    Realm = crossbar_util:get_account_realm(AccountId),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Usernames = case couch_mgr:get_all_results(AccountDb, <<"users/list_by_username">>) of
-                    {'error', _} ->
-                        lager:error("could not get user or account ~p", [AccountId]),
-                        [];
-                    {'ok', JObjs} -> couch_mgr:get_result_keys(JObjs)
-                end,
-    Req = [{<<"Realm">>, Realm}
-            ,{<<"Usernames">>, Usernames}
+    Req = [{<<"Account-ID">>, AccountId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_call:publish_query_user_channels_req/1
-                                       ,fun wapi_call:query_user_channels_resp_v/1
+                                       ,fun wapi_call:publish_query_account_channels_req/1
+                                       ,fun wapi_call:query_account_channels_resp_v/1
                                       )
     of
         {'ok', Resp} ->
-            cb_context:set_resp_data(Context, wh_json:get_value(<<"Channels">>, Resp, []));
+            Channels = wh_json:get_value(<<"Channels">>, Resp, []),
+            crossbar_util:response(Channels, Context);
         {'error', _E} ->
             lager:error("could not reach ecallmgr channels: ~p", [_E]),
             crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context)
