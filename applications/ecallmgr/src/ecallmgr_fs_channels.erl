@@ -32,6 +32,7 @@
 
 -export([handle_query_auth_id/2]).
 -export([handle_query_user_channels/2]).
+-export([handle_query_account_channels/2]).
 -export([handle_channel_status/2]).
 
 -export([init/1
@@ -50,6 +51,9 @@
                      }
                      ,{{?MODULE, 'handle_query_user_channels'}
                        ,[{<<"call_event">>, <<"query_user_channels_req">>}]
+                      }
+                     ,{{?MODULE, 'handle_query_account_channels'}
+                       ,[{<<"call_event">>, <<"query_account_channels_req">>}]
                       }
                      ,{{?MODULE, 'handle_channel_status'}
                        ,[{<<"call_event">>, <<"channel_status_req">>}]
@@ -235,6 +239,24 @@ send_user_query_resp(JObj, Cs) ->
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     lager:debug("sending back channel data to ~s", [ServerId]),
     wapi_call:publish_query_user_channels_resp(ServerId, Resp).
+
+-spec handle_query_account_channels(wh_json:object(), ne_binary()) -> 'ok'.
+handle_query_account_channels(JObj, _) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    case find_account_channels(AccountId) of
+        {'ok', Cs} -> send_account_query_resp(JObj, Cs);
+        {'error', _E} -> lager:debug("failed to lookup channels for account ~s", [AccountId])
+    end.
+
+-spec send_account_query_resp(wh_json:object(), wh_json:objects()) -> 'ok'.
+send_account_query_resp(JObj, Cs) ->
+    Resp = [{<<"Channels">>, Cs}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    lager:debug("sending back channel data to ~s", [ServerId]),
+    wapi_call:publish_query_account_channels_resp(ServerId, Resp).
 
 -spec handle_channel_status(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
@@ -572,6 +594,18 @@ find_users_channels(Usernames, Realm) ->
                   ,['$_']
                  }],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
+        [] -> {'error', 'not_found'};
+        Channels ->
+            {'ok', [ecallmgr_fs_channel:to_json(Channel)
+                    || Channel <- Channels
+                   ]}
+    end.
+
+-spec find_account_channels(ne_binaries()) ->
+                                 {'ok', wh_json:objects()} |
+                                 {'error', 'not_found'}.
+find_account_channels(AccountId) ->
+    case ets:match_object(?CHANNELS_TBL, #channel{account_id=AccountId, _='_'}) of
         [] -> {'error', 'not_found'};
         Channels ->
             {'ok', [ecallmgr_fs_channel:to_json(Channel)
