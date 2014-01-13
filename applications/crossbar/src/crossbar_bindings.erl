@@ -466,6 +466,8 @@ fold_bind_results([], Payload, Route, MFsLen, ReRunQ) ->
     end.
 
 -spec log_undefined(atom(), atom(), integer(), list()) -> 'ok'.
+log_undefined(M, F, Length, [{M, F, _Args,_}|_]) ->
+    lager:debug("undefined function ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_}|_]) ->
     lager:debug("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
     lager:debug("in call ~s:~s/~b", [M, F, Length]);
