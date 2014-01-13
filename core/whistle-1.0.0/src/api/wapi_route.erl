@@ -244,16 +244,16 @@ win_v(JObj) ->
 %% @doc Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    Realm = props:get_value(realm, Props, <<"*">>),
-    User = props:get_value(user, Props, <<"*">>),
+    Realm = props:get_value('realm', Props, <<"*">>),
+    User = props:get_value('user', Props, <<"*">>),
     amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm, User)).
 
--spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    Realm = props:get_value(realm, Props, <<"*">>),
-    User = props:get_value(user, Props, <<"*">>),
+    Realm = props:get_value('realm', Props, <<"*">>),
+    User = props:get_value('user', Props, <<"*">>),
     amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm, User)).
 
 %%--------------------------------------------------------------------

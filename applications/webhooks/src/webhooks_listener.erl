@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(webhooks_listener).
 
@@ -11,7 +12,7 @@
 
 -export([start_link/0
          ,handle_config/2
-         ,handle_call_event/2
+         ,handle_call_event/3
          ,hooks_configured/0, hooks_configured/1
         ]).
 -export([init/1
@@ -54,11 +55,7 @@
 -type webhooks() :: [webhook(),...] | [].
 
 %% Three main call events
--define(BINDINGS, [{'call', [{'restrict_to', ['new_channel'
-                                              ,'answered_channel'
-                                              ,'destroy_channel'
-                                             ]}]}
-                   ,{'conf', [{'action', <<"*">>}
+-define(BINDINGS, [{'conf', [{'action', <<"*">>}
                               ,{'db', ?KZ_WEBHOOKS_DB}
                               ,{'type', <<"webhook">>}
                               ,{'id', <<"*">>}
@@ -67,13 +64,10 @@
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
                       ,[{<<"configuration">>, <<"*">>}]
                      }
-                     ,{{?MODULE, 'handle_call_event'}
-                       ,[{<<"channel">>, <<"*">>}]
-                      }
                     ]).
--define(QUEUE_NAME, <<"webhooks_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -99,7 +93,11 @@ start_link() ->
 table_id() -> ?MODULE.
 
 -spec table_options() -> list().
-table_options() -> ['set', 'protected', {'keypos', #webhook.id}, 'named_table'].
+table_options() -> ['set'
+                    ,'protected'
+                    ,{'keypos', #webhook.id}
+                    ,'named_table'
+                   ].
 
 -spec find_me() -> api_pid().
 find_me() -> whereis(?MODULE).
@@ -167,19 +165,16 @@ find_hook(JObj) ->
                        ,wapi_conf:get_id(JObj)
                       ).
 
--spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_call_event(JObj, _Props) ->
-    HookEvent = wh_json:get_value(<<"Event-Name">>, JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>]
-                                  ,JObj
-                                 ),
-
+-spec handle_call_event(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+handle_call_event(AccountId, HookEvent, JObj) ->
+    lager:debug("evt ~s for ~s", [HookEvent, AccountId]),
     case find_webhooks(HookEvent, AccountId) of
         [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
         Hooks -> fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
     end.
 
--spec format_event(wh_json:object(), api_binary(), ne_binary()) -> wh_json:object().
+-spec format_event(wh_json:object(), api_binary(), ne_binary()) ->
+                          wh_json:object().
 format_event(JObj, AccountId, <<"new">>) ->
     wh_json:set_value(<<"hook_event">>, <<"new_channel">>
                       ,base_hook_event(JObj, AccountId)
@@ -408,6 +403,7 @@ print_summary({[#webhook{uri=URI
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     lager:debug("started ~s", [?MODULE]),
+    wh_hooks_listener:register(),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -472,6 +468,9 @@ handle_cast(_Msg, State) ->
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:debug("write access to table '~p' available", [_TblId]),
     spawn(?MODULE, 'load_hooks', [self()]),
+    {'noreply', State};
+handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
+    _ = spawn(?MODULE, 'handle_call_event', [AccountId, EventType, JObj]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

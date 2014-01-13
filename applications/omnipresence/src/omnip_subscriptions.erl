@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -13,11 +13,11 @@
 -export([start_link/0
 
          ,handle_subscribe/2
-         ,handle_new_channel/2
-         ,handle_cdr/2
-         ,handle_answered_channel/2
+         ,handle_new_channel/1
+         ,handle_cdr/1
+         ,handle_destroyed_channel/1
+         ,handle_answered_channel/1
          ,handle_presence_update/2
-
 
          ,handle_search_req/2
          ,handle_reset/2
@@ -82,6 +82,7 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
+-spec handle_search_req(wh_json:object(), wh_proplist()) -> any().
 handle_search_req(JObj, _Props) ->
     'true' = wapi_presence:search_req_v(JObj),
     Username = wh_json:get_value(<<"Username">>, JObj, '_'),
@@ -97,6 +98,7 @@ handle_search_req(JObj, _Props) ->
             wapi_presence:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
+-spec handle_reset(wh_json:object(), wh_proplist()) -> any().
 handle_reset(JObj, _Props) ->
     'true' = wapi_presence:reset_v(JObj),
     case find_subscriptions(JObj) of
@@ -118,21 +120,37 @@ handle_subscribe(JObj, Props) ->
                       ,{'subscribe', subscribe_to_record(JObj)}
                      ).
 
+-spec handle_presence_update(wh_json:object(), wh_proplist()) -> any().
 handle_presence_update(JObj, _Props) ->
     'true' = wapi_notifications:presence_update_v(JObj),
     maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj)).
 
-handle_new_channel(JObj, _Props) ->
+-spec handle_new_channel(wh_json:object()) -> any().
+handle_new_channel(JObj) ->
     'true' = wapi_call:new_channel_v(JObj),
     wh_util:put_callid(JObj),
     maybe_send_update(JObj, ?PRESENCE_RINGING).
 
-handle_answered_channel(JObj, _Props) ->
+-spec handle_answered_channel(wh_json:object()) -> any().
+handle_answered_channel(JObj) ->
     'true' = wapi_call:answered_channel_v(JObj),
     wh_util:put_callid(JObj),
     maybe_send_update(JObj, ?PRESENCE_ANSWERED).
 
-handle_cdr(JObj, _Props) ->
+-spec handle_destroyed_channel(wh_json:object()) -> any().
+handle_destroyed_channel(JObj) ->
+    'true' = wapi_call:destroy_channel_v(JObj),
+    wh_util:put_callid(JObj),
+    maybe_send_update(JObj, ?PRESENCE_HANGUP),
+    %% When multiple omnipresence instances are in multiple
+    %% zones its possible (due to the round-robin) for the
+    %% instance closest to rabbitmq to process the terminate
+    %% before a confirm/early if both are sent immediately.
+    timer:sleep(1000),
+    maybe_send_update(JObj, ?PRESENCE_HANGUP).
+
+-spec handle_cdr(wh_json:object()) -> any().
+handle_cdr(JObj) ->
     'true' = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),
     maybe_send_update(JObj, ?PRESENCE_HANGUP),

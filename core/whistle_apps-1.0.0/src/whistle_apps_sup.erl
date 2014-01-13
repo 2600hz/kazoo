@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,16 +9,16 @@
 
 -behaviour(supervisor).
 
+-export([start_link/0
+         ,initialize_whapps/1
+         ,init/1
+         ,start_child/1
+        ]).
+
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 -include("whapps_call_command.hrl").
 -include("whistle_apps.hrl").
-
--export([start_link/0]).
--export([initialize_whapps/1]).
--export([init/1]).
-
--define(SERVER, ?MODULE).
 
 -define(POOL_SIZE, 100).
 -define(OVERFLOW_POOL_SIZE, 100).
@@ -39,8 +39,13 @@
                   ,'permanent', 5000, 'worker', ['poolboy']
                  }).
 
--define(WHAPPS(Whapps), {'whapps_sup', {'whapps_sup', 'start_link', [Whapps]}, 'permanent', 5000, 'supervisor', ['whapps_sup']}).
+-define(WHAPPS(Whapps), {'whapps_sup'
+                         ,{'whapps_sup', 'start_link', [Whapps]}
+                         ,'permanent', 5000, 'supervisor', ['whapps_sup']
+                        }).
+
 -define(CHILDREN, [?WORKER('wh_nodes')
+                   ,?WORKER('wh_hooks_listener')
                    ,?WORKER('wh_cache')
                    ,?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
                    ,?WORKER('whistle_apps_init')
@@ -64,11 +69,14 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec initialize_whapps(atoms()) -> {'error', term()} | 
-                                    {'ok','undefined' | pid()} | 
+-spec initialize_whapps(atoms()) -> {'error', term()} |
+                                    {'ok','undefined' | pid()} |
                                     {'ok','undefined' | pid(), term()}.
 initialize_whapps(Whapps) ->
-    supervisor:start_child(?SERVER, ?WHAPPS(Whapps)).    
+    supervisor:start_child(?MODULE, ?WHAPPS(Whapps)).
+
+start_child(Spec) ->
+    supervisor:start_child(?MODULE, Spec).
 
 %% ===================================================================
 %% Supervisor callbacks

@@ -1,16 +1,19 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
-%%%
+%%% Listens for a list of events and gproc-sends them out to folks who
+%%% want them
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(omnip_shared_listener).
+-module(wh_hooks_listener).
 
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,handle_call_event/3
+         ,handle_call_event/2
+         ,register/0, register/1, register/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -21,49 +24,28 @@
          ,code_change/3
         ]).
 
--include("omnipresence.hrl").
+-include("whistle_apps.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
--record(state, {subs_pid :: pid()
-                ,subs_ref :: reference()
-               }).
+-define(CACHE_NAME, 'wh_hooks_cache').
 
-handle_call_event(_AccountId, <<"new">>, JObj) ->
-    omnip_subscriptions:handle_new_channel(JObj);
-handle_call_event(_AccountId, <<"answered">>, JObj) ->
-    omnip_subscriptions:handle_answered_channel(JObj);
-handle_call_event(_AccountId, <<"cdr">>, JObj) ->
-    omnip_subscriptions:handle_cdr(JObj);
-handle_call_event(_AccountId, <<"destroy">>, JObj) ->
-    omnip_subscriptions:handle_destroyed_channel(JObj).
-
-%% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'self', []}
-                   ,{'presence', [{'restrict_to', ['update', 'reset']}]}
-                   ,{'notifications', [{'restrict_to', ['presence_update']}]}
+%% Three main call events
+-define(BINDINGS, [{'call', [{'restrict_to', ['new_channel'
+                                              ,'answered_channel'
+                                              ,'destroy_channel'
+                                             ]}
+                            ]}
+                   ,{'route', []}
                   ]).
--define(RESPONDERS, [{{'omnip_subscriptions', 'handle_new_channel'}
-                      ,[{<<"channel">>, <<"new">>}]
-                     }
-                     ,{{'omnip_subscriptions', 'handle_answered_channel'}
-                       ,[{<<"channel">>, <<"answered">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_cdr'}
-                       ,[{<<"call_detail">>, <<"cdr">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_presence_update'}
-                       ,[{<<"notification">>, <<"presence_update">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_subscribe'}
-                       ,[{<<"presence">>, <<"subscription">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_reset'}
-                       ,[{<<"presence">>, <<"reset">>}]
+-define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
+                       ,[{<<"channel">>, <<"*">>}
+                         ,{<<"dialplan">>, <<"route_req">>}
+                        ]
                       }
                     ]).
--define(QUEUE_NAME, <<"omnip_shared_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -76,14 +58,89 @@ handle_call_event(_AccountId, <<"destroy">>, JObj) ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                      %%,{'basic_qos', 1}                % only needed if prefetch controls
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
+
+-define(HOOK_REG
+        ,{'p', 'l', 'wh_hook'}).
+-define(HOOK_REG(AccountId)
+        ,{'p', 'l', {'wh_hook', AccountId}}).
+-define(HOOK_REG(AccountId, EventName)
+        ,{'p', 'l', {'wh_hook', AccountId, EventName}}).
+
+-spec register() -> 'true'.
+-spec register(ne_binary()) -> 'true'.
+-spec register(ne_binary(), ne_binary()) -> 'true'.
+register() ->
+    'true' = gproc:reg(?HOOK_REG).
+register(AccountId) ->
+    'true' = gproc:reg(?HOOK_REG(AccountId)).
+register(AccountId, EventName) ->
+    'true' = gproc:reg(?HOOK_REG(AccountId, EventName)).
+
+-spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_call_event(JObj, _Props) ->
+    HookEvent = wh_json:get_value(<<"Event-Name">>, JObj),
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                                  ,JObj
+                                 ),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+
+    wh_util:put_callid(CallId),
+
+    lager:debug("handle ~s(~s)", [HookEvent, AccountId]),
+
+    handle_call_event(JObj, AccountId, HookEvent, CallId).
+
+-spec handle_call_event(wh_json:object(), api_binary(), ne_binary(), ne_binary()) ->
+                               'ok'.
+handle_call_event(JObj, 'undefined', <<"new">>, CallId) ->
+    lager:debug("event 'new' had no account id, caching"),
+    maybe_cache_call_event(JObj, CallId);
+handle_call_event(_JObj, 'undefined', _HookEvent, _CallId) ->
+    lager:debug("event '~s' had no account id, ignoring", [_HookEvent]);
+handle_call_event(_JObj, AccountId, <<"route_req">>, CallId) ->
+    lager:debug("recv route_req with account id ~s, looking for events to relay"
+                ,[AccountId]
+               ),
+    maybe_relay_new_event(AccountId, CallId);
+handle_call_event(JObj, AccountId, HookEvent, _CallId) ->
+    Evt = ?HOOK_EVT(AccountId, HookEvent, JObj),
+    gproc:send(?HOOK_REG, Evt),
+    gproc:send(?HOOK_REG(AccountId), Evt),
+    gproc:send(?HOOK_REG(AccountId, HookEvent), Evt).
+
+-spec maybe_cache_call_event(wh_json:object(), ne_binary()) -> 'ok'.
+maybe_cache_call_event(JObj, CallId) ->
+    case wh_cache:peek_local(?CACHE_NAME, CallId) of
+        {'error', 'not_found'} ->
+            wh_cache:store_local(?CACHE_NAME, CallId, {'new', JObj}, [{'expires', 5000}]);
+        {'ok', {'account_id', AccountId}} ->
+            handle_call_event(JObj
+                              ,AccountId
+                              ,wh_json:get_value(<<"Event-Name">>, JObj)
+                              ,CallId
+                             )
+    end.
+
+-spec maybe_relay_new_event(ne_binary(), ne_binary()) -> 'ok'.
+maybe_relay_new_event(AccountId, CallId) ->
+    case wh_cache:peek_local(?CACHE_NAME, CallId) of
+        {'error', 'not_found'} ->
+            wh_cache:store_local(?CACHE_NAME, CallId, {'account_id', AccountId}, [{'expires', 5000}]);
+        {'ok', {'new', JObj}} ->
+            handle_call_event(JObj
+                              ,AccountId
+                              ,wh_json:get_value(<<"Event-Name">>, JObj)
+                              ,CallId
+                             )
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -100,12 +157,11 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', 'ok'}.
 init([]) ->
-    put('callid', ?MODULE),
-    gen_listener:cast(self(), {'find_subscriptions_srv'}),
-    wh_hooks_listener:register(),
-    lager:debug("omnipresence_listener started"),
-    {'ok', #state{}}.
+    lager:debug("started ~s", [?MODULE]),
+    _ = spawn('whistle_apps_sup', 'start_child', [?CACHE(?CACHE_NAME)]),
+    {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -134,24 +190,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'find_subscriptions_srv'}, #state{subs_pid=_Pid}=State) ->
-    case omnipresence_sup:subscriptions_srv() of
-        'undefined' ->
-            lager:debug("no subs_pid"),
-            gen_listener:cast(self(), {'find_subscriptions_srv'}),
-            {'noreply', State#state{subs_pid='undefined'}};
-        P when is_pid(P) ->
-            lager:debug("new subs pid: ~p", [P]),
-            {'noreply', State#state{subs_pid=P
-                                    ,subs_ref=erlang:monitor('process', P)
-                                   }}
-    end;
-
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
+handle_cast({'wh_amqp_channel', {'new_channel', _IsNew}}, State) ->
     {'noreply', State};
-handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
+handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
-handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -167,16 +210,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
-                                                      ,subs_ref=Ref
-                                                     }=State) ->
-    gen_listener:cast(self(), {'find_subscriptions_srv'}),
-    {'noreply', State#state{subs_pid='undefined'
-                            ,subs_ref='undefined'
-                           }};
-handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
-    _ = spawn(?MODULE, 'handle_call_event', [AccountId, EventType, JObj]),
-    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -189,8 +222,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{subs_pid=S}) ->
-    {'reply', [{'omnip_subscriptions', S}]}.
+handle_event(_JObj, _State) ->
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
