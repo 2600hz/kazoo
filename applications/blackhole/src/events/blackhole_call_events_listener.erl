@@ -176,16 +176,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 handle_call_event(_AccountId, _Event, JObj, Pids) ->
-    CleanJObj = clean_call_event(JObj),
-    lager:debug("Event Obj: ~p", [CleanJObj]),
+    lager:debug("Event Obj: ~p", [JObj]),
     blackhole_sockets:send_event(sets:to_list(Pids)
                                 ,<<"calls">>
-                                ,[CleanJObj]).
-
-clean_call_event(JObj) ->
-    wh_api:remove_defaults(JObj).
-
-cleanup_binary(Binary) ->
-    String = binary:bin_to_list(Binary),
-    Binary1 = binary:list_to_bin(string:to_lower(String)),
-    binary:replace(Binary1, <<"-">>, <<"_">>, [global]).
+                                ,[JObj]).
