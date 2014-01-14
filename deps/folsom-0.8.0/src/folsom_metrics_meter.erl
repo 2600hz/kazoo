@@ -33,7 +33,7 @@
          ,get_value/1
         ]).
 
--include_lib("folsom/include/folsom.hrl").
+-include_lib("../include/folsom.hrl").
 
 new(Name) ->
     OneMin = folsom_ewma:one_minute_ewma(),
