@@ -21,14 +21,18 @@
          ,get_keys/1
          ,get_first_defined/2, get_first_defined/3
          ,get_all_values/2, get_values/2
-         ,set_value/3
+         ,set_value/3, insert_value/3
          ,unique/1
          ,filter/2
          ,filter_empty/1
          ,filter_undefined/1
+         ,to_querystring/1
         ]).
 
 -include_lib("whistle/include/wh_types.hrl").
+
+%% don't import the get_keys/1 that fetches keys from the process dictionary
+-compile({'no_auto_import', [get_keys/1]}).
 
 -type wh_proplist_keys() :: [wh_proplist_key(),...] | [].
 -type wh_proplist_values() :: [wh_proplist_value(),...] | [].
@@ -37,6 +41,14 @@
                        wh_proplist().
 set_value(K, V, Props) ->
     [{K, V} | [KV || {Key, _}=KV <- Props, K =/= Key]].
+
+-spec insert_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
+                       wh_proplist().
+insert_value(K, V, Props) ->
+    case get_value(K, Props) of
+        'undefined' -> [{K, V} | Props];
+        _Value -> Props
+    end.
 
 -type filter_fun() :: fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()).
 -spec filter(filter_fun(), wh_proplist()) -> wh_proplist().
@@ -179,6 +191,52 @@ unique([{Key, _}=H|T], Uniques) ->
            ,[H|Uniques]
           ).
 
+get_values_and_keys(Props) ->
+    lists:foldr(fun(Key, {Vs, Ks}) ->
+                        {[get_value(Key, Props)|Vs], [Key|Ks]}
+                end, {[], []}, get_keys(Props)).
+
+to_querystring(Props) ->
+    to_querystring(Props, <<>>).
+
+to_querystring(Props, Prefix) ->
+    {Vs, Ks} = get_values_and_keys(Props),
+    fold_kvs([wh_util:to_binary(K) || K <- Ks], Vs, Prefix, []).
+
+%% foreach key/value pair, encode the key/value with the prefix and prepend the &
+%% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
+%% and reverse the list (putting the key/value at the end of the list)
+-spec fold_kvs(ne_binaries(), term(), binary() | iolist(), iolist()) -> iolist().
+fold_kvs([], [], _, Acc) -> Acc;
+fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
+fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
+    fold_kvs(Ks, Vs, Prefix, [<<"&">>, encode_kv(Prefix, K, V) | Acc]).
+
+-spec encode_kv(iolist() | binary(), ne_binary(), term()) -> iolist().
+%% If a list of values, use the []= as a separator between the key and each value
+encode_kv(Prefix, K, Vs) when is_list(Vs) ->
+    encode_kv(Prefix, wh_util:to_binary(K), Vs, <<"[]=">>, []);
+%% if the value is a "simple" value, just encode it (url-encoded)
+encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
+    encode_kv(Prefix, K, <<"=">>, mochiweb_util:quote_plus(V));
+
+% key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
+%% if no prefix is present, use just key to prefix the key/value pairs in the jobj
+encode_kv(<<>>, K, [_|_]=Props) -> to_querystring(Props, [wh_util:to_binary(K)]);
+%% if a prefix is defined, nest the key in square brackets
+encode_kv(Prefix, K, [_|_]=Props) -> to_querystring(Props, [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>]).
+
+-spec encode_kv(iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
+encode_kv(<<>>, K, Sep, V) -> [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
+encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>, Sep, wh_util:to_binary(V)].
+
+-spec encode_kv(iolist() | binary(), ne_binary(), [string(),...] | [], ne_binary(), iolist()) -> iolist().
+encode_kv(Prefix, K, [V], Sep, Acc) ->
+    lists:reverse([ encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
+    encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
+
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 
@@ -209,5 +267,21 @@ delete_test() ->
                  ,delete(c, L)),
     ?assertEqual([{a, 1}, c, {d, 3}]
                  ,delete(b, L)).
+
+to_querystring_test() ->
+    Tests = [{[], <<>>}
+             ,{[{<<"foo">>, <<"bar">>}], <<"foo=bar">>}
+             ,{[{<<"foo">>, <<"bar">>}, {<<"fizz">>, <<"buzz">>}], <<"foo=bar&fizz=buzz">>}
+             ,{[{'foo', <<"bar">>}
+                ,{<<"fizz">>, <<"buzz">>}
+                ,{<<"arr">>, [1,3,5]}
+               ], <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
+             ,{[{<<"Msg-ID">>, <<"123-abc">>}], <<"Msg-ID=123-abc">>}
+             ,{[{<<"url">>, <<"http://user:pass@host:port/">>}], <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
+            ],
+    lists:foreach(fun({Props, QS}) ->
+                          QS1 = wh_util:to_binary(to_querystring(Props)),
+                          ?assertEqual(QS, QS1)
+                  end, Tests).
 
 -endif.

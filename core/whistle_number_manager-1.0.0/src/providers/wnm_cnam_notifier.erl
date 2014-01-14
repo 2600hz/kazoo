@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
-%%% Handle publishing notification events for new port requests
 %%%
 %%% @end
-%%% Created : 27 Jan 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wnm_cnam_notifier).
 
@@ -23,7 +23,7 @@
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
--spec save/1 :: (wnm_number()) -> wnm_number().
+-spec save(wnm_number()) -> wnm_number().
 save(#number{state = <<"reserved">>} = Number) ->
     update_cnam_features(Number);
 save(#number{state = <<"in_service">>} = Number) ->
@@ -38,7 +38,7 @@ save(Number) -> Number.
 %% This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (wnm_number()) -> wnm_number().
+-spec delete(wnm_number()) -> wnm_number().
 delete(#number{features=Features}=N) ->
     N#number{features=remove_all_cnam_features(Features)}.
 
@@ -48,7 +48,7 @@ delete(#number{features=Features}=N) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_cnam_features/1 :: (wnm_number()) -> wnm_number().
+-spec update_cnam_features(wnm_number()) -> wnm_number().
 update_cnam_features(#number{}=N) ->
     handle_outbound_cnam(N).
 
@@ -58,12 +58,14 @@ update_cnam_features(#number{}=N) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_outbound_cnam/1 :: (wnm_number()) -> wnm_number().
-handle_outbound_cnam(#number{current_number_doc=CurrentJObj, number_doc=JObj
-                             ,features=Features}=N) ->
+-spec handle_outbound_cnam(wnm_number()) -> wnm_number().
+handle_outbound_cnam(#number{current_number_doc=CurrentJObj
+                             ,number_doc=JObj
+                             ,features=Features
+                            }=N) ->
     CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], CurrentJObj),
     case wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], JObj) of
-        undefined ->
+        'undefined' ->
             handle_inbound_cnam(N#number{features=sets:del_element(<<"outbound_cnam">>, Features)});
         CurrentCNAM ->
             handle_inbound_cnam(N#number{features=sets:add_element(<<"outbound_cnam">>, Features)});
@@ -79,11 +81,13 @@ handle_outbound_cnam(#number{current_number_doc=CurrentJObj, number_doc=JObj
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_inbound_cnam/1 :: (wnm_number()) -> wnm_number().
-handle_inbound_cnam(#number{number_doc=JObj, features=Features}=N) ->
+-spec handle_inbound_cnam(wnm_number()) -> wnm_number().
+handle_inbound_cnam(#number{number_doc=JObj
+                            ,features=Features
+                           }=N) ->
     N1 = case wh_json:is_true([<<"cnam">>, <<"inbound_lookup">>], JObj) of
-             false -> N#number{features=sets:del_element(<<"inbound_cnam">>, Features)};
-             true ->  wnm_number:activate_feature(<<"inbound_cnam">>, N)
+             'false' -> N#number{features=sets:del_element(<<"inbound_cnam">>, Features)};
+             'true' ->  wnm_number:activate_feature(<<"inbound_cnam">>, N)
          end,
     support_depreciated_cnam(N1).
 
@@ -93,7 +97,7 @@ handle_inbound_cnam(#number{number_doc=JObj, features=Features}=N) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec support_depreciated_cnam/1 :: (wnm_number()) -> wnm_number().
+-spec support_depreciated_cnam(wnm_number()) -> wnm_number().
 support_depreciated_cnam(#number{features=Features}=N) ->
     N#number{features=sets:del_element(<<"cnam">>, Features)}.
 
@@ -103,7 +107,7 @@ support_depreciated_cnam(#number{features=Features}=N) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_all_cnam_features/1 :: (set()) -> set().
+-spec remove_all_cnam_features(set()) -> set().
 remove_all_cnam_features(Features) ->
     Routines = [fun(F) -> sets:del_element(<<"inbound_cnam">>, F) end
                 ,fun(F) -> sets:del_element(<<"outbound_cnam">>, F) end
@@ -117,12 +121,17 @@ remove_all_cnam_features(Features) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec publish_cnam_update/1 :: (wnm_number()) -> 'ok'.
-publish_cnam_update(#number{number=Number, state=State, assigned_to=AssignedTo
-                            ,module_name=ModuleName, auth_by=AuthBy, number_doc=JObj}) ->
+-spec publish_cnam_update(wnm_number()) -> 'ok'.
+publish_cnam_update(#number{number=Number
+                            ,state=State
+                            ,assigned_to=AssignedTo
+                            ,module_name=ModuleName
+                            ,auth_by=AuthBy
+                            ,number_doc=JObj
+                           }) ->
     Notify = [{<<"Account-ID">>, AssignedTo}
               ,{<<"Number-State">>, State}
-              ,{<<"Local-Number">>, ModuleName =:= wnm_local}
+              ,{<<"Local-Number">>, ModuleName =:= 'wnm_local'}
               ,{<<"Number">>, Number}
               ,{<<"Acquired-For">>, AuthBy}
               ,{<<"Cnam">>, wh_json:get_value(<<"cnam">>, JObj, wh_json:new())}

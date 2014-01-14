@@ -95,6 +95,7 @@
                      ,switch_hostname :: api_binary() | '_'
                      ,switch_url :: api_binary() | '_'
                      ,switch_external_ip :: api_binary() | '_'
+                     ,account_id :: api_binary() | '_'
                     }).
 
 -type conference() :: #conference{}.

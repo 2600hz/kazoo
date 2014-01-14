@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle e911 provisioning
@@ -24,9 +24,7 @@
 -define(DASH_EMERG_URL, whapps_config:get_string(?WNM_DASH_CONFIG_CAT
                                                  ,<<"emergency_provisioning_url">>
                                                  ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>)).
--define(DASH_DEBUG, whapps_config:get_is_true(?WNM_DASH_CONFIG_CAT, <<"debug">>, false)).
-
--type xmlElement() :: #xmlElement{}.
+-define(DASH_DEBUG, whapps_config:get_is_true(?WNM_DASH_CONFIG_CAT, <<"debug">>, 'false')).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -35,7 +33,7 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec save/1 :: (wnm_number()) -> wnm_number().
+-spec save(wnm_number()) -> wnm_number().
 save(#number{state = <<"port_in">>} = Number) ->
     maybe_update_dash_e911(Number);
 save(#number{state = <<"reserved">>} = Number) ->
@@ -51,14 +49,14 @@ save(Number) -> delete(Number).
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (wnm_number()) -> wnm_number().
+-spec delete(wnm_number()) -> wnm_number().
 delete(#number{features=Features
                ,number=Num
                ,current_number_doc=CurrentDoc
                ,number_doc=Doc
               }=Number) ->
     case wh_json:get_ne_value(<<"dash_e911">>, CurrentDoc) of
-        undefined -> Number;
+        'undefined' -> Number;
         _Else ->
             lager:debug("removing e911 information"),
             _ = remove_number(Num),
@@ -73,7 +71,7 @@ delete(#number{features=Features
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_dash_e911/1 :: (wnm_number()) -> wnm_number().
+-spec maybe_update_dash_e911(wnm_number()) -> wnm_number().
 maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
                                ,number_doc=JObj
                                ,features=Features
@@ -83,17 +81,17 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
     E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
-        true ->
+        'true' ->
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
             N#number{features=sets:del_element(<<"dash_e911">>, Features)};
-        false when NotChanged  -> N#number{features=sets:add_element(<<"dash_e911">>, Features)};
-        false ->
+        'false' when NotChanged  -> N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+        'false' ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
             N1 = wnm_number:activate_feature(<<"dash_e911">>, N),
             case update_e911(Number, E911, JObj) of
-                {error, _}=E -> E;
-                {ok, J} -> N1#number{number_doc=J}
+                {'error', _}=E -> E;
+                {'ok', J} -> N1#number{number_doc=J}
             end
     end.
 
@@ -103,28 +101,28 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_e911/3 :: (ne_binary(), wh_json:object(), wh_json:object()) ->
-                               {'ok', wh_json:object()} |
-                               {'error', _}.
+-spec update_e911(ne_binary(), wh_json:object(), wh_json:object()) ->
+                         {'ok', wh_json:object()} |
+                         {'error', _}.
 update_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
     case add_location(Number, Location, CallerName) of
-        {error, R}=E ->
+        {'error', R}=E ->
             lager:debug("error provisioning dash e911 address: ~p", [R]),
             E;
-        {provisioned, E911} ->
+        {'provisioned', E911} ->
             lager:debug("provisioned dash e911 address"),
-            {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
-        {geocoded, E911} ->
+            {'ok', wh_json:set_value(<<"dash_e911">>, E911, JObj)};
+        {'geocoded', E911} ->
             lager:debug("added location to dash e911, attempting to provision new location"),
             case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
-                undefined ->
+                'undefined' ->
                     lager:debug("provisioning attempt moved location to status: undefined"),
-                    {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
+                    {'ok', wh_json:set_value(<<"dash_e911">>, E911, JObj)};
                 Status ->
                     lager:debug("provisioning attempt moved location to status: ~s", [Status]),
-                    {ok, wh_json:set_value(<<"dash_e911">>, wh_json:set_value(<<"status">>, Status, E911), JObj)}
+                    {'ok', wh_json:set_value(<<"dash_e911">>, wh_json:set_value(<<"status">>, Status, E911), JObj)}
             end
     end.
 
@@ -141,72 +139,75 @@ update_e911(Number, Address, JObj) ->
                                         'server_error' |
                                         'empty_response' |
                                         'unreachable'.
--spec emergency_provisioning_request/2 :: (atom(), wh_proplist()) ->
-                                                  {'ok', xmlElement()} |
-                                                  {'error', emergency_provisioning_error()}.
+-spec emergency_provisioning_request(atom(), wh_proplist()) ->
+                                            {'ok', xml_el()} |
+                                            {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
     URL = list_to_binary([?DASH_EMERG_URL, "/", wh_util:to_lower_binary(Verb)]),
     Body = xmerl:export_simple([{Verb, Props}]
-                               ,xmerl_xml
-                               ,[{prolog, ?DASH_XML_PROLOG}]),
+                               ,'xmerl_xml'
+                               ,[{'prolog', ?DASH_XML_PROLOG}]),
     Headers = [{"Accept", "*/*"}
                ,{"User-Agent", ?WNM_USER_AGENT}
-               ,{"Content-Type", "text/xml"}],
-    HTTPOptions = [{ssl,[{verify,0}]}
-                   ,{inactivity_timeout, 180000}
-                   ,{connect_timeout, 180000}
-                   ,{basic_auth, {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
+               ,{"Content-Type", "text/xml"}
+              ],
+    HTTPOptions = [{'ssl',[{'verify',0}]}
+                   ,{'inactivity_timeout', 180000}
+                   ,{'connect_timeout', 180000}
+                   ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
                   ],
     lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
     ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
-                                        ,io_lib:format("Request:~n~s ~s~n~s~n", [post, URL, Body])),
-    case ibrowse:send_req(wh_util:to_list(URL), Headers, post, unicode:characters_to_binary(Body), HTTPOptions, 180000) of
-        {ok, "401", _, _Response} ->
+                                        ,io_lib:format("Request:~n~s ~s~n~s~n", ['post', URL, Body])),
+    case ibrowse:send_req(wh_util:to_list(URL), Headers, 'post'
+                          ,unicode:characters_to_binary(Body), HTTPOptions, 180000
+                         )
+    of
+        {'ok', "401", _, _Response} ->
             ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
                                                 ,io_lib:format("Response:~n401~n~s~n", [_Response])
-                                                ,[append]),
+                                                ,['append']),
             lager:debug("dash e911 request error: 401 (unauthenticated)"),
-            {error, authentication};
-        {ok, "403", _, _Response} ->
+            {'error', 'authentication'};
+        {'ok', "403", _, _Response} ->
             ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
                                                 ,io_lib:format("Response:~n403~n~s~n", [_Response])
-                                                ,[append]),
+                                                ,['append']),
             lager:debug("dash e911 request error: 403 (unauthorized)"),
-            {error, authorization};
-        {ok, "404", _, _Response} ->
+            {'error', 'authorization'};
+        {'ok', "404", _, _Response} ->
             ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
                                                 ,io_lib:format("Response:~n404~n~s~n", [_Response])
-                                                ,[append]),
+                                                ,['append']),
             lager:debug("dash e911 request error: 404 (not found)"),
-            {error, not_found};
-        {ok, "500", _, _Response} ->
+            {'error', 'not_found'};
+        {'ok', "500", _, _Response} ->
             ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
                                                 ,io_lib:format("Response:~n500~n~s~n", [_Response])
-                                                ,[append]),
+                                                ,['append']),
             lager:debug("dash e911 request error: 500 (server error)"),
-            {error, server_error};
-        {ok, "503", _, _Response} ->
+            {'error', 'server_error'};
+        {'ok', "503", _, _Response} ->
             ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
                                                 ,io_lib:format("Response:~n503~n~s~n", [_Response])
-                                                ,[append]),
+                                                ,['append']),
             lager:debug("dash e911 request error: 503"),
-            {error, server_error};
-       {ok, Code, _, Response} ->
+            {'error', 'server_error'};
+        {'ok', Code, _, Response} ->
             ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
                                                 ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
-                                                ,[append]),
+                                                ,['append']),
             lager:debug("received response from dash e911"),
-            try
-                {Xml, _} = xmerl_scan:string(Response),
-                {ok, Xml}
+            try xmerl_scan:string(Response) of
+                {Xml, _} -> {'ok', Xml}
             catch
                 _:R ->
                     lager:debug("failed to decode xml: ~p", [R]),
-                    {error, empty_response}
+                    {'error', 'empty_response'}
             end;
-        {error, _}=E ->
+        {'error', _}=E ->
             lager:debug("dash e911 request error: ~p", [E]),
-            {error, unreachable}
+            {'error', 'unreachable'}
     end.
 
 %%--------------------------------------------------------------------
@@ -215,25 +216,25 @@ emergency_provisioning_request(Verb, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_location/1 :: (term()) ->
-                                     {'geocoded', wh_json:object()} |
-                                     {'provisioned', wh_json:object()} |
-                                     {'error', binary()}.
+-spec is_valid_location(term()) ->
+                               {'geocoded', wh_json:object()} |
+                               {'provisioned', wh_json:object()} |
+                               {'error', binary()}.
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
-        {error, Reason} -> {error, wh_util:to_binary(Reason)};
-        {ok, Response} ->
+        {'error', Reason} -> {'error', wh_util:to_binary(Reason)};
+        {'ok', Response} ->
             case wh_util:get_xml_value("//Location/status/code/text()", Response) of
                 <<"GEOCODED">> ->
-                    {geocoded, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
+                    {'geocoded', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"PROVISIONED">> ->
-                    {provisioned, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
+                    {'provisioned', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"INVALID">> ->
-                    {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'error', wh_util:get_xml_value("//Location/status/description/text()", Response)};
                 <<"ERROR">> ->
-                    {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'error', wh_util:get_xml_value("//Location/status/description/text()", Response)};
                 Else ->
-                    {error, wh_util:to_binary(Else)}
+                    {'error', wh_util:to_binary(Else)}
             end
     end.
 
@@ -243,29 +244,29 @@ is_valid_location(Location) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_location/3 :: (ne_binary(), term(), ne_binary()) ->
-                                {'geocoded', wh_json:object()} |
-                                {'provisioned', wh_json:object()} |
-                                {'error', binary()}.
+-spec add_location(ne_binary(), term(), ne_binary()) ->
+                          {'geocoded', wh_json:object()} |
+                          {'provisioned', wh_json:object()} |
+                          {'error', binary()}.
 add_location(Number, Location, CallerName) ->
     Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}
                       ,{'callername', [wh_util:to_list(CallerName)]}]}
              |Location
             ],
     case emergency_provisioning_request('addLocation', Props) of
-        {error, Reason} -> {error, wh_util:to_binary(Reason)};
-        {ok, Response} ->
+        {'error', Reason} -> {'error', wh_util:to_binary(Reason)};
+        {'ok', Response} ->
             case wh_util:get_xml_value("//Location/status/code/text()", Response) of
                 <<"GEOCODED">> ->
-                    {geocoded, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
+                    {'geocoded', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"PROVISIONED">> ->
-                    {provisioned, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
+                    {'provisioned', location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
                 <<"INVALID">> ->
-                    {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'error', wh_util:get_xml_value("//Location/status/description/text()", Response)};
                 <<"ERROR">> ->
-                    {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                    {'error', wh_util:get_xml_value("//Location/status/description/text()", Response)};
                 Else ->
-                    {error, wh_util:to_binary(Else)}
+                    {'error', wh_util:to_binary(Else)}
             end
     end.
 
@@ -275,12 +276,12 @@ add_location(Number, Location, CallerName) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec provision_location/1 :: (ne_binary()) -> api_binary().
+-spec provision_location(ne_binary()) -> api_binary().
 provision_location(LocationId) ->
     Props = [{'locationid', [wh_util:to_list(LocationId)]}],
     case emergency_provisioning_request('provisionLocation', Props) of
-        {error, _} -> undefined;
-        {ok, Response} ->
+        {'error', _} -> 'undefined';
+        {'ok', Response} ->
             wh_util:get_xml_value("//LocationStatus/code/text()", Response)
     end.
 
@@ -290,12 +291,12 @@ provision_location(LocationId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number/1 :: (ne_binary()) -> api_binary().
+-spec remove_number(ne_binary()) -> api_binary().
 remove_number(Number) ->
     lager:debug("removing dash e911 number '~s'", [Number]),
     Props = [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
-        {error, server_error} ->
+        {'error', 'server_error'} ->
             lager:debug("removed number from dash e911"),
             <<"REMOVED">>;
         Response ->
@@ -315,7 +316,7 @@ remove_number(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_address_to_xml_location/1 :: (wh_json:object()) -> wh_proplist().
+-spec json_address_to_xml_location(wh_json:object()) -> wh_proplist().
 json_address_to_xml_location(JObj) ->
     Props = [{'address1', [wh_json:get_string_value(<<"street_address">>, JObj)]}
              ,{'address2', [wh_json:get_string_value(<<"extended_address">>, JObj)]}
@@ -324,7 +325,7 @@ json_address_to_xml_location(JObj) ->
              ,{'postalcode', [wh_json:get_string_value(<<"postal_code">>, JObj)]}
              ,{'type', ["ADDRESS"]}
             ],
-    [{'location', [KV || {_, V}=KV <- Props, V =/= [undefined]]}].
+    [{'location', [KV || {_, V}=KV <- Props, V =/= ['undefined']]}].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -332,7 +333,7 @@ json_address_to_xml_location(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec location_xml_to_json_address/1 :: (term()) -> wh_json:object().
+-spec location_xml_to_json_address(term()) -> wh_json:object().
 location_xml_to_json_address([]) ->
     wh_json:new();
 location_xml_to_json_address([Xml]) ->
@@ -365,7 +366,7 @@ location_xml_to_json_address(Xml) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec legacy_data_xml_to_json/1 :: (term()) -> wh_json:object().
+-spec legacy_data_xml_to_json(term()) -> wh_json:object().
 legacy_data_xml_to_json([]) ->
     wh_json:new();
 legacy_data_xml_to_json([Xml]) ->

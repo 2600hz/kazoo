@@ -136,7 +136,6 @@ destroy(UUID) ->
 -spec node(ne_binary()) ->
                   {'ok', atom()} |
                   {'error', 'not_found'}.
-%%                  {'error', 'multiple_conferences', [atom(),...]}.
 node(Name) ->
     case ets:match_object(?CONFERENCES_TBL, #conference{name=Name, _ = '_'}) of
         %% TODO: this ignores conferences on multiple nodes until big-conferences
@@ -263,7 +262,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({'conference_create', Props, Node}, _, State) ->
-	lager:debug("created conference ~p", [Props]),
+    lager:debug("created conference ~p", [Props]),
     Conference = conference_from_props(Props, Node),
     _ = ets:insert_new(?CONFERENCES_TBL, Conference),
     {'reply', Conference, State};
@@ -272,13 +271,13 @@ handle_call({'conference_update', UUID, Update}, _, State) ->
     {'reply', 'ok', State};
 handle_call({'conference_destroy', UUID}, _, State) ->
     MatchSpecC = [{#conference{uuid='$1', _ = '_'}
-                   ,[{'=:=', '$1', {'const', UUID}}],
-                  ['true']
-                 }],
+                   ,[{'=:=', '$1', {'const', UUID}}]
+                   ,['true']
+                  }],
     _ = ets:select_delete(?CONFERENCES_TBL, MatchSpecC),
     MatchSpecP = [{#participant{conference_uuid='$1', _ = '_'}
-                   ,[{'=:=', '$1', {'const', UUID}}],
-                   ['true']
+                   ,[{'=:=', '$1', {'const', UUID}}]
+                   ,['true']
                   }],
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'reply', 'ok', State};
@@ -327,7 +326,10 @@ handle_cast({'sync_node', Node}, State) ->
     _ = sync_participants(Participants, Node),
     %% Make sure we didn't cache a conference with no participants
     _ = [maybe_destroy_conference(UUID)
-         || [UUID] <- ets:match(?CONFERENCES_TBL, #conference{node=Node, uuid='$1', _='_'})
+         || [UUID] <- ets:match(?CONFERENCES_TBL, #conference{node=Node
+                                                              ,uuid='$1'
+                                                              ,_='_'
+                                                             })
         ],
     {'noreply', State};
 handle_cast({'flush_node', Node}, State) ->
@@ -507,6 +509,7 @@ conference_to_props(#conference{name=Name
                                 ,switch_hostname=Hostname
                                 ,switch_external_ip=ExternalIP
                                 ,switch_url=SwitchURL
+                                ,account_id=AccountId
                                }) ->
     props:filter_undefined(
       [{<<"Name">>, Name}
@@ -525,6 +528,7 @@ conference_to_props(#conference{name=Name
        ,{<<"Switch-Hostname">>, Hostname}
        ,{<<"Switch-URL">>, SwitchURL}
        ,{<<"Switch-External-IP">>, ExternalIP}
+       ,{<<"Account-ID">>, AccountId}
       ]).
 
 -spec list_conferences(atom()) -> conferences() | participants().
@@ -607,8 +611,9 @@ xml_attr_to_conference(Conference, 'exit_sound', Value) ->
 xml_attr_to_conference(Conference, 'enter_sound', Value) ->
     Conference#conference{enter_sound=wh_util:is_true(Value)};
 xml_attr_to_conference(Conference, 'run_time', Value) ->
-    Conference#conference{start_time=wh_util:current_tstamp()
-                          - wh_util:to_integer(Value)};
+    Conference#conference{start_time=wh_util:decr_timeout(wh_util:current_tstamp()
+                                                          ,wh_util:to_integer(Value)
+                                                         )};
 xml_attr_to_conference(Conference, _Name, _Value) ->
     lager:debug("unhandled conference k/v ~s: ~p", [_Name, _Value]),
     Conference.
@@ -616,14 +621,15 @@ xml_attr_to_conference(Conference, _Name, _Value) ->
 -spec xml_members_to_participants(xml_els(), conference()) -> participants().
 xml_members_to_participants([], _) -> [];
 xml_members_to_participants([#xmlElement{name='members'
-                                 ,content=XmlElements
-                                }
-                     |_], #conference{name=Name, uuid=UUID, node=Node}) ->
+                                         ,content=XmlElements
+                                        }
+                             |_], #conference{name=Name, uuid=UUID, node=Node}) ->
     [xml_member_to_participant(Xml, #participant{node=Node
                                                  ,conference_name=Name
-                                                 ,conference_uuid=UUID})
-     || #xmlElement{content=Xml}=XmlElement <- XmlElements
-            ,XmlElement#xmlElement.name =:= 'member'
+                                                 ,conference_uuid=UUID
+                                                })
+     || #xmlElement{content=Xml, name=XmlName} <- XmlElements,
+        XmlName =:= 'member'
     ];
 xml_members_to_participants([_|XmlElements], Conference) ->
     xml_members_to_participants(XmlElements, Conference).
@@ -652,8 +658,9 @@ xml_member_to_participant([#xmlElement{name='uuid'
                           ], Participant) ->
     CallId = wh_util:uri_decode(xml_text_to_binary(UUID)),
     lager:debug("uuid ~s callid ~s", [xml_text_to_binary(UUID), CallId]),
-    xml_member_to_participant(XmlElements,
-                              Participant#participant{uuid=wh_util:to_binary(CallId)});
+    xml_member_to_participant(XmlElements
+                              ,Participant#participant{uuid=wh_util:to_binary(CallId)}
+                             );
 xml_member_to_participant([#xmlElement{name='energy'
                                        ,content=Energy
                                       }
@@ -807,13 +814,17 @@ print_summary(Match) ->
 print_summary('$end_of_table', Count) ->
     io:format("+----------------------------------+----------------------------------------------------+--------------+-------------+----------------------------------+~n"),
     io:format("Found ~p conferences~n", [Count]);
-print_summary({[#conference{name=Name, node=Node
-                            ,start_time=StartTime}]
+print_summary({[#conference{name=Name
+                            ,node=Node
+                            ,start_time=StartTime
+                            ,account_id=AccountId
+                           }]
                ,Continuation}
               ,Count) ->
     Participants = participants(Name),
     io:format("| ~-32s | ~-50s | ~-12B | ~-11B | ~-32s |~n"
-              ,[Name, Node, length(Participants), wh_util:current_tstamp() - StartTime, <<>>]),
+              ,[Name, Node, length(Participants), wh_util:current_tstamp() - StartTime, AccountId]
+             ),
     print_summary(ets:select(Continuation), Count + 1).
 
 print_details('$end_of_table') ->

@@ -1,34 +1,28 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
 %%%
 %%% @end
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(wnm_pacwest).
+-module(wnm_carrier_skel).
 
--export([find_numbers/3]).
--export([acquire_number/1]).
--export([disconnect_number/1]).
--export([is_number_billable/1]).
--export([should_lookup_cnam/0]).
+-export([find_numbers/3
+         ,acquire_number/1
+         ,disconnect_number/1
+         ,should_lookup_cnam/0
+        ]).
 
 -include("../wnm.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Query the local system for a quanity of available numbers
-%% in a rate center
-%% @end
-%%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) -> {'error', _}.
-find_numbers(_Number, _Quanity, _Opts) ->
-    {'error', 'non_available'}.
-
--spec is_number_billable(wnm_number()) -> 'true'.
-is_number_billable(_Number) -> 'true'.
+-spec find_numbers(ne_binary(), pos_integer(), wh_proplist()) ->
+                          {'ok', wh_json:objects()} |
+                          {'error', _}.
+find_numbers(_Prefix, _Quantity, _Options) ->
+    {'ok', wh_json:new()}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -37,22 +31,22 @@ is_number_billable(_Number) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(wnm_number()) -> wnm_number().
-acquire_number(Number) -> Number.
+acquire_number(#number{}=Number) ->
+    Number.
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnect_number(wnm_number()) -> wnm_number().
-disconnect_number(Number) -> Number.
+disconnect_number(#number{}=Number) -> Number.
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
-%% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec should_lookup_cnam() -> 'true'.
+-spec should_lookup_cnam() -> boolean().
 should_lookup_cnam() -> 'true'.

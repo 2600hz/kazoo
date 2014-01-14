@@ -267,26 +267,17 @@ get_request_vars(Call) ->
 
 -spec xml_attributes_to_proplist(xml_attribs()) -> wh_proplist().
 xml_attributes_to_proplist(L) ->
-    [{K, V} || #xmlAttribute{name=K, value=V} <- L].
+    kz_xml:attributes_to_proplist(L).
 
 -spec xml_text_to_binary(xml_texts()) -> binary().
 xml_text_to_binary(Vs) when is_list(Vs) ->
-    lists:foldl(fun(C, B) ->
-                        wh_util:strip_binary(B, C)
-                end
-                ,iolist_to_binary([V || #xmlText{value=V, type='text'} <- Vs])
-                ,[$\n, $ , $\n, $ ]
-               ).
+    kz_xml:texts_to_binary(Vs).
 
 xml_text_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
-    B = xml_text_to_binary(Vs),
-    case byte_size(B) > Size of
-        'true' -> erlang:binary_part(B, 0, Size);
-        'false' -> B
-    end.
+    kz_xml:texts_to_binary(Vs, Size).
 
 -spec xml_elements(list()) -> xml_els().
-xml_elements(Els) -> [El || #xmlElement{}=El <- Els].
+xml_elements(Els) -> kz_xml:elements(Els).
 
 -ifdef(TEST).
 

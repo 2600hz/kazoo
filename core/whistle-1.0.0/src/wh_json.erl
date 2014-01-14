@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%% proplists-like interface to json objects
 %%% @end
@@ -220,8 +220,8 @@ merge_recursive(JObj1, Value, Pred, Keys) ->
         'true' -> set_value(Syek, Value, JObj1)
     end.
 
--spec to_proplist(object() | objects()) -> json_proplist() | [json_proplist(),...].
--spec to_proplist(key(), object() | objects()) -> json_proplist() | [json_proplist(),...].
+-spec to_proplist(object() | objects()) -> json_proplist() | json_proplists().
+-spec to_proplist(key(), object() | objects()) -> json_proplist() | json_proplists().
 %% Convert a json object to a proplist
 %% only top-level conversion is supported
 to_proplist(JObjs) when is_list(JObjs) -> [to_proplist(JObj) || JObj <- JObjs];
@@ -230,7 +230,7 @@ to_proplist(?JSON_WRAPPER(Prop)) -> Prop.
 %% convert everything starting at a specific key
 to_proplist(Key, JObj) -> to_proplist(get_json_value(Key, JObj, new())).
 
--spec recursive_to_proplist(object() | proplist()) -> proplist().
+-spec recursive_to_proplist(object() | wh_proplist()) -> wh_proplist().
 recursive_to_proplist(?JSON_WRAPPER(Props)) ->
     [{K, recursive_to_proplist(V)} || {K, V} <- Props];
 recursive_to_proplist(Props) when is_list(Props) ->

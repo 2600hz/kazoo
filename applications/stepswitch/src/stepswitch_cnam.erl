@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Lookup cnam
 %%% @end
@@ -33,7 +33,6 @@
 -define(DEFAULT_USER_AGENT_HDR, <<"Kazoo Stepswitch CNAM">>).
 -define(DEFAULT_CONTENT_TYPE_HDR, <<"application/json">>).
 
-
 -define(HTTP_ACCEPT_HEADER, whapps_config:get_string(?CONFIG_CAT, <<"http_accept_header">>, ?DEFAULT_ACCEPT_HDR)).
 -define(HTTP_USER_AGENT, whapps_config:get_string(?CONFIG_CAT, <<"http_user_agent_header">>, ?DEFAULT_USER_AGENT_HDR)).
 -define(HTTP_CONTENT_TYPE, whapps_config:get_string(?CONFIG_CAT, <<"http_content_type_header">>, ?DEFAULT_CONTENT_TYPE_HDR)).
@@ -57,10 +56,11 @@ lookup(Number) when is_binary(Number) ->
     Num = wnm_util:normalize_number(Number),
     lookup(wh_json:set_value(<<"phone_number">>, wh_util:uri_encode(Num), wh_json:new()));
 lookup(JObj) ->
-    CNAM = case get_cnam(JObj) of
-               <<>> -> wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"UNKNOWN">>);
-               Else -> Else
-           end,
+    CNAM =
+        case get_cnam(JObj) of
+            <<>> -> wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"UNKNOWN">>);
+            Else -> Else
+        end,
     Props = [{<<"Caller-ID-Name">>, CNAM}
              ,{[<<"Custom-Channel-Vars">>, <<"Caller-ID-Name">>], CNAM}
             ],
@@ -209,7 +209,8 @@ normalize_proplist_element({K, V}) ->
 normalize_proplist_element(Else) ->
     Else.
 
-normalize_value(Value) -> binary:replace(wh_util:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
+normalize_value(Value) ->
+    binary:replace(wh_util:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
 
 cache_key(Number) -> {'cnam', Number}.
 

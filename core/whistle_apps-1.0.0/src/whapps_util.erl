@@ -618,11 +618,5 @@ write_tts_file(Path, Say) ->
     file:write_file(Path, Wav).
 
 -spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
-decr_timeout('infinity', _) -> 'infinity';
-decr_timeout(Timeout, Elapsed) when is_integer(Elapsed) ->
-    Diff = Timeout - Elapsed,
-    case Diff < 0 of
-        'true' -> 0;
-        'false' -> Diff
-    end;
-decr_timeout(Timeout, Start) -> decr_timeout(Timeout, wh_util:elapsed_ms(Start)).
+decr_timeout(Timeout, Elapsed) ->
+    wh_util:decr_timeout(Timeout, Elapsed).

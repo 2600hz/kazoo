@@ -144,14 +144,14 @@
 
 %% XML types
 -type xml_attrib_name() :: atom().
--type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom().
+-type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom() | number().
 -type xml_attrib() :: #xmlAttribute{}.
 -type xml_attribs() :: [xml_attrib(),...] | [].
 
 -type xml_el() :: #xmlElement{}.
 -type xml_els() :: [xml_el(),...] | [].
 
--type xml_text() :: #xmlText{}.
+-type xml_text() :: #xmlText{value :: iolist()}.
 -type xml_texts() :: [xml_text(),...] | [].
 
 -define(WHISTLE_TYPES_INCLUDED, 'true').

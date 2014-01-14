@@ -1,4 +1,4 @@
-PROJECT = kazoo_translator
+PROJECT = kazoo_xml
 ROOT = ../..
 DIALYZER = dialyzer
 
@@ -9,35 +9,31 @@ ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
 	 # +bin_opt_info
 
 DIRS = . \
-        $(ROOT)/core/whistle-1.0.0 \
-	$(ROOT)/core/whistle_amqp-1.0.0 \
-        $(ROOT)/core/whistle_couch-1.0.0 \
-        $(ROOT)/core/whistle_apps
+        $(ROOT)/core/whistle-1.0.0
 
 .PHONY: all compile clean
 
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
-CONVERTORS_MODULES = $(shell ls src/convertors/*.erl | sed 's/src\/convertors\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CONVERTORS_MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-ebin/$(PROJECT).app: src/*.erl src/convertors/*.erl
+ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CONVERTORS_MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl src/convertors/*.erl
+test/$(PROJECT).app: src/*.erl
 	@mkdir -p test/
 	erlc -v $(ERLC_OPTS) -o test/ -pa test/  $?
 
