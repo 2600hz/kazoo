@@ -184,7 +184,7 @@ should_lookup_cnam(Module) ->
     try Module:should_lookup_cnam() of
         Boolean -> wh_util:is_true(Boolean)
     catch
-        _E:_R -> 'false'
+        _E:_R -> 'true'
     end.
 
 should_force_outbound(#number{module_name='wnm_local'}) -> 'true';
