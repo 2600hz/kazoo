@@ -849,12 +849,16 @@ dry_run_response(?COLLECTION, Data) ->
 
                 TotalCharges = wh_json:get_value([<<"total">>, <<"charges">>], Acc, 0),
                 TotalActivationCharges = wh_json:get_value([<<"total">>, <<"activation_charges">>], Acc, 0),
+                TotalDiscount = wh_json:get_value([<<"total">>, <<"discount">>], Acc, 0),
+
                 Charges = wh_json:get_value(<<"charges">>, JObj),
                 ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj),
+                Discount = wh_json:get_value(<<"discount">>, JObj),
 
                 Total = wh_json:from_list([
                     {<<"charges">>, TotalCharges+Charges}
                     ,{<<"activation_charges">>, TotalActivationCharges+ActivationCharges}
+                    ,{<<"discount">>, TotalDiscount+Discount}
                 ]),
                 wh_json:set_values([{Number, JObj}
                                     ,{<<"total">>, Total}

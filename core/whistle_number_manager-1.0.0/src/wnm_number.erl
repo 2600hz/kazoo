@@ -1089,11 +1089,16 @@ update_service_plans(#number{dry_run='true'
                              ,assigned_to=AssignedTo
                              ,phone_number_docs=Docs
                              ,module_name=ModuleName
-                             ,services=Services}=Number) ->
+                             ,services=Services
+                             ,number=PhoneNumber}=Number) ->
     case dict:find(AssignedTo, Docs) of
         'error' -> Number;
         {'ok', JObj} ->
-            JObj1 = wh_json:set_value(<<"module_name">>, ModuleName, JObj),
+            NuberJObj = wh_json:set_value(<<"module_name">>
+                                          ,ModuleName
+                                          ,wh_json:get_value(PhoneNumber, JObj)
+                                         ),
+            JObj1 =  wh_json:set_value(PhoneNumber, NuberJObj, JObj),
             S = wh_service_phone_numbers:reconcile(JObj1, Services),
             Number#number{services=S}
     end;

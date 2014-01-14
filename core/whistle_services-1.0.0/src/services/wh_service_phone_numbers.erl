@@ -95,7 +95,7 @@ update_numbers([Number|Numbers], JObj, Services) ->
 %%--------------------------------------------------------------------
 -spec update_number_quantities(ne_binary(), wh_services:services(), wh_json:object()) -> wh_services:services().
 update_number_quantities(Number, Services, JObj) ->
-    ModuleName = wh_json:get_value(<<"module_name">>, JObj, 'undefined'),
+    ModuleName = wh_json:get_value([Number, <<"module_name">>], JObj, 'undefined'),
     case is_number_billable(Number, ModuleName) andalso wnm_util:classify_number(Number) of
         'false' -> Services;
         'undefined' -> Services;
