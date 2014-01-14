@@ -219,13 +219,15 @@ handle_query_user_channels(JObj, _Props) ->
 -spec handle_query_users_channels(wh_json:object(), ne_binary()) -> 'ok'.
 handle_query_users_channels(JObj, Realm) ->
     case find_users_channels(wh_json:get_value(<<"Usernames">>, JObj), Realm) of
-        {'ok', Cs} -> send_user_query_resp(JObj, Cs);
-        {'error', _E} -> lager:debug("failed to lookup channels in realm ~s", [Realm])
+        {'error', 'not_found'} -> send_user_query_resp(JObj, []);
+        {'error', _E} -> lager:debug("failed to lookup channels in realm ~s", [Realm]);
+        {'ok', Cs} -> send_user_query_resp(JObj, Cs)
     end.
 
 -spec handle_query_user_channels(wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
 handle_query_user_channels(JObj, Username, Realm) ->
     case find_by_user_realm(Username, Realm) of
+        {'error', 'not_found'} -> send_user_query_resp(JObj, []);
         {'error', _E} -> lager:debug("failed to lookup channels for ~s:~s", [Username, Realm]);
         {'ok', Cs} -> send_user_query_resp(JObj, Cs)
     end.
@@ -244,8 +246,9 @@ send_user_query_resp(JObj, Cs) ->
 handle_query_account_channels(JObj, _) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     case find_account_channels(AccountId) of
-        {'ok', Cs} -> send_account_query_resp(JObj, Cs);
-        {'error', _E} -> lager:debug("failed to lookup channels for account ~s", [AccountId])
+        {'error', 'not_found'} -> send_account_query_resp(JObj, []);
+        {'error', _E} -> lager:debug("failed to lookup channels for account ~s", [AccountId]);
+        {'ok', Cs} -> send_account_query_resp(JObj, Cs)
     end.
 
 -spec send_account_query_resp(wh_json:object(), wh_json:objects()) -> 'ok'.
