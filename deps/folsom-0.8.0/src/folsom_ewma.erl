@@ -29,7 +29,7 @@
 
 -module(folsom_ewma).
 
--include_lib("folsom/include/folsom.hrl").
+-include_lib("../include/folsom.hrl").
 
 -define(M1_ALPHA,   1 - math:exp(-5 / 60.0)).
 -define(M5_ALPHA,   1 - math:exp(-5 / 60.0 / 5)).
