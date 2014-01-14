@@ -15,6 +15,7 @@
 -export([disconnect_number/1]).
 -export([get_number_data/1]).
 -export([is_number_billable/1]).
+-export([should_lookup_cnam/0]).
 
 -include("../wnm.hrl").
 
@@ -337,3 +338,6 @@ verify_response(Xml) ->
             lager:debug("request failed"),
             {'error', wh_util:get_xml_value("/*/errors/error/message/text()", Xml)}
     end.
+
+-spec should_lookup_cnam() -> 'true'.
+should_lookup_cnam() -> 'true'.

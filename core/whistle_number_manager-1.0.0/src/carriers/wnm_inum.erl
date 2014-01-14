@@ -1,11 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
 %%%
 %%% @end
-%%% Created : 08 Jan 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wnm_inum).
 
@@ -14,6 +15,7 @@
 -export([disconnect_number/1]).
 -export([gen_numbers/3]).
 -export([is_number_billable/1]).
+-export([should_lookup_cnam/0]).
 
 -include("../wnm.hrl").
 
@@ -145,3 +147,6 @@ create_inum_db() ->
     _ = couch_mgr:db_create(?WH_INUM),
     _ = couch_mgr:revise_doc_from_file(?WH_INUM, 'whistle_apps', ?INUM_VIEW_FILE),
     'ok'.
+
+-spec should_lookup_cnam() -> 'true'.
+should_lookup_cnam() -> 'true'.

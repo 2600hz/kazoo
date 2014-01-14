@@ -13,6 +13,7 @@
 -export([find_numbers/3
          ,acquire_number/1
          ,disconnect_number/1
+         ,should_lookup_cnam/0
         ]).
 
 -include("../wnm.hrl").
@@ -41,3 +42,11 @@ acquire_number(#number{}=Number) ->
 %%--------------------------------------------------------------------
 -spec disconnect_number(wnm_number()) -> wnm_number().
 disconnect_number(#number{}=Number) -> Number.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec should_lookup_cnam() -> boolean().
+should_lookup_cnam() -> 'true'.

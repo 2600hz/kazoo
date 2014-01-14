@@ -12,6 +12,7 @@
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
 -export([is_number_billable/1]).
+-export([should_lookup_cnam/0]).
 
 -include("../wnm.hrl").
 
@@ -47,3 +48,11 @@ acquire_number(Number) -> Number.
 %%--------------------------------------------------------------------
 -spec disconnect_number(wnm_number()) -> wnm_number().
 disconnect_number(Number) -> Number.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec should_lookup_cnam() -> 'true'.
+should_lookup_cnam() -> 'true'.
