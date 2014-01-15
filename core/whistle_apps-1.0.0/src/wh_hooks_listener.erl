@@ -86,14 +86,13 @@ register(AccountId, EventName) ->
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, _Props) ->
-    'true' = wapi_call:event_v(JObj),
+    'true' = wapi_call:event_v(JObj) orelse wapi_route:req_v(JObj),
     HookEvent = wh_json:get_value(<<"Event-Name">>, JObj),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>
                                    ,<<"Account-ID">>
                                   ], JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     wh_util:put_callid(CallId),
-    lager:info("handle ~s(~s)", [HookEvent, AccountId]),
     handle_call_event(JObj, AccountId, HookEvent, CallId).
 
 -spec handle_call_event(wh_json:object(), api_binary(), ne_binary(), ne_binary()) ->

@@ -11,29 +11,22 @@
 -behaviour(gen_server).
 
 -export([start_link/0
-
          ,handle_subscribe/2
          ,handle_new_channel/1
          ,handle_answered_channel/1
          ,handle_destroyed_channel/1
-         ,handle_channel_answer/2
-
+         ,handle_presence_update/2
          ,handle_search_req/2
          ,handle_reset/2
-
          ,table_id/0
          ,table_config/0
-
          ,find_subscription/1
          ,find_subscriptions/1
-
          ,search_for_subscriptions/1
          ,search_for_subscriptions/2
-
          ,subscription_to_json/1
          ,subscriptions_to_json/1
         ]).
-
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -133,7 +126,7 @@ handle_new_channel(JObj) ->
 -spec handle_answered_channel(wh_json:object()) -> any().
 handle_answered_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JqObj),
+    wh_util:put_callid(JObj),
     maybe_send_update(JObj, ?PRESENCE_ANSWERED).
 
 -spec handle_destroyed_channel(wh_json:object()) -> any().
@@ -166,10 +159,6 @@ handle_destroyed_channel(JObj) ->
 init([]) ->
     put('callid', ?MODULE),
     {'ok', #state{expire_ref=start_expire_ref()}}.
-
--spec start_expire_ref() -> reference().
-start_expire_ref() ->
-    erlang:start_timer(?EXPIRE_SUBSCRIPTIONS, self(), ?EXPIRE_MESSAGE).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -288,6 +277,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec start_expire_ref() -> reference().
+start_expire_ref() ->
+    erlang:start_timer(?EXPIRE_SUBSCRIPTIONS, self(), ?EXPIRE_MESSAGE).
+
 -spec find_subscription(subscription()) ->
                                {'ok', subscription()} |
                                {'error', 'not_found'}.

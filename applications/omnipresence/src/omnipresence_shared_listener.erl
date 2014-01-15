@@ -120,6 +120,7 @@ handle_cast({'find_subscriptions_srv'}, #state{subs_pid=_Pid}=State) ->
         'undefined' ->
             lager:debug("no subs_pid"),
             gen_listener:cast(self(), {'find_subscriptions_srv'}),
+            timer:sleep(500),
             {'noreply', State#state{subs_pid='undefined'}};
         P when is_pid(P) ->
             lager:debug("new subs pid: ~p", [P]),
@@ -206,9 +207,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-handle_call_event(_AccountId, <<"new">>, JObj) ->
+-spec handle_call_event(ne_binary(), ne_binary(), wh_json:object()) -> any().
+handle_call_event(_AccountId, <<"CHANNEL_CREATE">>, JObj) ->
     omnip_subscriptions:handle_new_channel(JObj);
-handle_call_event(_AccountId, <<"answered">>, JObj) ->
+handle_call_event(_AccountId, <<"CHANNEL_ANSWER">>, JObj) ->
     omnip_subscriptions:handle_answered_channel(JObj);
-handle_call_event(_AccountId, <<"destroy">>, JObj) ->
+handle_call_event(_AccountId, <<"CHANNEL_DESTROY">>, JObj) ->
     omnip_subscriptions:handle_destroyed_channel(JObj).
