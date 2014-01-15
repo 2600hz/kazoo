@@ -10,7 +10,7 @@
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_devices).
+-module(cb_devices_v1).
 
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/3
@@ -44,16 +44,16 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.devices">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.devices">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.billing">>, ?MODULE, 'billing'),
-    _ = crossbar_bindings:bind(<<"*.validate.devices">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.devices">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.devices">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.devices">>, ?MODULE, 'delete'),
-    crossbar_bindings:bind(<<"*.finish_request.*.devices">>, ?MODULE, 'reconcile_services').
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.devices">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.devices">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, 'billing'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.devices">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.devices">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.devices">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.devices">>, ?MODULE, 'delete'),
+    crossbar_bindings:bind(<<"v1_resource.finish_request.*.devices">>, ?MODULE, 'reconcile_services').
 
 %%--------------------------------------------------------------------
 %% @public

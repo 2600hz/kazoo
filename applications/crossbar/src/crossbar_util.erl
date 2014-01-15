@@ -55,7 +55,7 @@ response_202(Msg, Context) ->
 -spec response_402(cb_context:context(), wh_json:json_string()) ->
                           cb_context:context().
 response_402(Data, Context) ->
-    create_response('error', <<"accecpt charges">>, 402, Data, Context).
+    create_response('error', <<"accept charges">>, 402, Data, Context).
 
 %%--------------------------------------------------------------------
 %% @public
