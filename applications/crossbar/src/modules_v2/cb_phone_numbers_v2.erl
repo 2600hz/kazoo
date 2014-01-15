@@ -842,32 +842,31 @@ dry_run_response([{'services', Services}, {'activation_charges', Charges}]) ->
     wh_services:calulate_charges(Services, Charges).
 
 dry_run_response(?COLLECTION, Data) ->
-    RespJObj = wh_json:delete_key(<<"charges">>, Data),
-    C = wh_json:foldl(
-            fun(Number, Value, Acc) ->
-                JObj = dry_run_response(Value),
+    accumulate_resp(wh_json:get_value(<<"charges">>, Data, wh_json:new())).
 
-                TotalCharges = wh_json:get_value([<<"total">>, <<"charges">>], Acc, 0),
-                TotalActivationCharges = wh_json:get_value([<<"total">>, <<"activation_charges">>], Acc, 0),
-                TotalDiscount = wh_json:get_value([<<"total">>, <<"discount">>], Acc, 0),
 
-                Charges = wh_json:get_value(<<"charges">>, JObj),
-                ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj),
-                Discount = wh_json:get_value(<<"discount">>, JObj),
-
-                Total = wh_json:from_list([
-                    {<<"charges">>, TotalCharges+Charges}
-                    ,{<<"activation_charges">>, TotalActivationCharges+ActivationCharges}
-                    ,{<<"discount">>, TotalDiscount+Discount}
-                ]),
-                wh_json:set_values([{Number, JObj}
-                                    ,{<<"total">>, Total}
-                                   ], Acc)
-            end
-            ,wh_json:new()
-            ,wh_json:get_value(<<"charges">>, Data, wh_json:new())
+-spec accumulate_resp(wh_json:object()) -> wh_json:object().
+-spec accumulate_resp(wh_json:objects(), {integer(), ne_binaries()}) -> wh_json:object().
+accumulate_resp(JObj) ->
+    L = wh_json:foldl(
+        fun(_, Value, Acc) ->
+            [dry_run_response(Value)|Acc]
+        end
+        ,[]
+        ,JObj
     ),
-    wh_json:set_value(<<"charges">>, C, RespJObj).
+    accumulate_resp(lists:reverse(L), {0, []}).
+
+accumulate_resp([JObj], {AC, D}) ->
+    ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
+    Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
+    wh_json:set_values([{<<"activation_charges">>, ActivationCharges+AC}
+                        ,{<<"activation_charges_description">>, [Description|D]}
+                       ], JObj);
+accumulate_resp([JObj|JObjs], {AC, D}) ->
+    ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
+    Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
+    accumulate_resp(JObjs, {ActivationCharges+AC, [Description|D]}).
 
 %%--------------------------------------------------------------------
 %% @private

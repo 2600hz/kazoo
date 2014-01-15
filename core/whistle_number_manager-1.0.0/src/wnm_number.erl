@@ -205,7 +205,6 @@ save(#number{}=Number) ->
                     (#number{}=N) -> save_number_doc(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{dry_run='true'}=N) -> N;
                     (#number{}=N) -> save_phone_number_docs(N)
                  end
                 ,fun(#number{}=N) -> update_service_plans(N) end
@@ -228,6 +227,11 @@ save_phone_number_docs(#number{phone_number_docs=PhoneNumberDocs}=Number) ->
     end.
 
 save_phone_number_docs([], Number) -> Number;
+save_phone_number_docs([{Account, JObj}|Props], #number{number=Num
+                                                        ,dry_run='true'
+                                                        ,module_name=ModuleName}=Number) ->
+    erlang:put({'phone_number_doc', Account}, wh_json:set_value([Num, <<"module_name">>], ModuleName, JObj)),
+    save_phone_number_docs(Props, Number);
 save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:save_doc(AccountDb, JObj) of
@@ -1016,9 +1020,10 @@ update_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumb
 -spec get_phone_number_doc(ne_binary(), wnm_number()) ->
                                   {'ok', wh_json:object()} |
                                   {'error', _}.
-get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
+get_phone_number_doc(Account, #number{phone_number_docs=Docs
+                                      ,dry_run=DryRun}) ->
     case dict:find(Account, Docs) of
-        'error' -> load_phone_number_doc(Account);
+        'error' -> load_phone_number_doc(Account, DryRun);
         {'ok', _}=Ok -> Ok
     end.
 
@@ -1059,6 +1064,14 @@ create_number_summary(_Account, #number{state=State
                                    {'ok', wh_json:object()} |
                                    {'error', _}.
 load_phone_number_doc(Account) ->
+    load_phone_number_doc(Account, 'false').
+
+load_phone_number_doc(Account, 'true') ->
+    case erlang:get({'phone_number_doc', Account}) of
+        'undefined' -> load_phone_number_doc(Account, 'false');
+        JObj -> {'ok', JObj}
+    end;
+load_phone_number_doc(Account, 'false') ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
     PVTs = [{<<"_id">>, ?WNM_PHONE_NUMBER_DOC}

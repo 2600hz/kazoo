@@ -643,24 +643,18 @@ calulate_charges(Services, Transactions) ->
     wh_json:merge_jobjs(TransactionCharges, PlansCharges).
 
 -spec calculate_services_charges(services()) -> wh_json:object().
-calculate_services_charges(#wh_services{jobj=JObj, updates=NewQuantities}=S) ->
-    OldQuantities = wh_json:get_value(<<"quantities">>, JObj, wh_json:new()),
-    Changes = get_changes(OldQuantities, NewQuantities),
-    Plans = wh_service_plans:public_json(wh_service_plans:from_service_json(JObj)),
-    lists:foldl(
-        fun({Keys, Value}, Acc) ->
-            Rate = wh_json:get_value(lists:append(Keys, [<<"rate">>]), Plans, 0),
-            Discount = wh_json:get_value(lists:append(Keys, [<<"discount">>]), Plans, 0),
-            Description = wh_json:get_value(lists:append(Keys, [<<"name">>]), Plans, <<>>),
-            wh_json:set_values([
-                {<<"charges">>, Rate*Value}
-                ,{<<"discount">>, Discount*Value}
-                ,{<<"charges_description">>, Description}
-            ], Acc)
-        end
-        ,wh_json:new()
-        ,Changes
-    ).
+calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
+    case wh_service_plans:from_service_json(ServiceJObj) of
+        [] -> wh_json:new();
+        ServicePlans ->
+            Items1 = wh_service_plans:create_items(Services, ServicePlans),
+            case wh_service_plans:create_items(ServiceJObj) of
+                {'error', _} -> wh_json:new();
+                {'ok', Items2} ->
+                    Changed = wh_service_items:get_udapted_items(Items1, Items2),
+                    wh_service_items:public_json(Changed)
+            end
+    end.
 
 -spec calculate_transactions_charges(any()) -> wh_json:object().
 calculate_transactions_charges(Transactions) ->

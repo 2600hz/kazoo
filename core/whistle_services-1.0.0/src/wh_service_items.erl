@@ -8,6 +8,7 @@
 -module(wh_service_items).
 
 -export([empty/0]).
+-export([get_udapted_items/2]).
 -export([to_list/1]).
 -export([public_json/1]).
 -export([find/3]).
@@ -27,6 +28,45 @@
 -spec empty() -> items().
 empty() ->
     dict:new().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_udapted_items(items(), items()) -> items().
+-spec get_udapted_items(any(), wh_service_item:item(), items(), items()) -> items().
+get_udapted_items(Items1, Items2) ->
+    dict:fold(
+        fun(Key, Item1, Acc) ->
+            get_udapted_items(Key, Item1, Items2, Acc)
+        end
+        ,dict:new()
+        ,Items1
+    ).
+
+get_udapted_items(Key, Item1, Items2, NewItem) ->
+    case get_item(Key, Items2) of
+        'error' -> NewItem;
+        Item2 ->
+            case compare_quantity(Item1, Item2) of
+                'true' -> NewItem;
+                'false' -> dict:store(Key, Item1, NewItem)
+            end
+    end.
+
+-spec get_item(any(), items()) -> wh_service_item:item().
+get_item(Key, Items) ->
+    case dict:find(Key, Items) of
+        'error' -> 'error';
+        {'ok', Item} -> Item
+    end.
+
+-spec compare_quantity(wh_service_item:item(), wh_service_item:item()) -> boolean().
+compare_quantity(Item1, Item2) ->
+    wh_service_item:quantity(Item1) =:= wh_service_item:quantity(Item2).
+
 
 %%--------------------------------------------------------------------
 %% @public
