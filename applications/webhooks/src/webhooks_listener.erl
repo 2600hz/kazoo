@@ -50,6 +50,7 @@
           ,hook_id :: ne_binary() | '_'
           ,retries = 3 :: hook_retries() | '_'
           ,account_id :: ne_binary() | '_' | '$1'
+          ,custom_data :: wh_json:object()
          }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook(),...] | [].
@@ -175,16 +176,16 @@ handle_call_event(AccountId, HookEvent, JObj) ->
 
 -spec format_event(wh_json:object(), api_binary(), ne_binary()) ->
                           wh_json:object().
-format_event(JObj, AccountId, <<"new">>) ->
-    wh_json:set_value(<<"hook_event">>, <<"new_channel">>
+format_event(JObj, AccountId, <<"CHANNEL_CREATE">>) ->
+    wh_json:set_value(<<"hook_event">>, <<"channel_create">>
                       ,base_hook_event(JObj, AccountId)
                      );
-format_event(JObj, AccountId, <<"answered">>) ->
-    wh_json:set_value(<<"hook_event">>, <<"answered_channel">>
+format_event(JObj, AccountId, <<"CHANNEL_ANSWER">>) ->
+    wh_json:set_value(<<"hook_event">>, <<"channel_answer">>
                       ,base_hook_event(JObj, AccountId)
                      );
-format_event(JObj, AccountId, <<"destroy">>) ->
-    wh_json:set_value(<<"hook_event">>, <<"destroy_channel">>
+format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
+    wh_json:set_value(<<"hook_event">>, <<"channel_destroy">>
                       ,base_hook_event(JObj, AccountId)
                      ).
 
@@ -200,6 +201,7 @@ base_hook_event(JObj, AccountId) ->
          ,{<<"from">>, wh_json:get_value(<<"From">>, JObj)}
          ,{<<"inception">>, wh_json:get_value(<<"Inception">>, JObj)}
          ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+         ,{<<"other_leg_call_id">>, wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)}
         ])).
 
 -spec fire_hooks(wh_json:object(), webhooks()) -> 'ok'.
@@ -213,20 +215,30 @@ fire_hooks(JObj, [Hook | Hooks]) ->
 fire_hook(JObj, #webhook{uri=URI
                          ,http_verb=Method
                          ,retries=Retries
+                         ,custom_data='undefined'
                         }=Hook) ->
-    fire_hook(JObj, Hook, wh_util:to_list(URI), Method, Retries).
+    fire_hook(JObj, Hook, wh_util:to_list(URI), Method, Retries);
+fire_hook(JObj, #webhook{uri=URI
+                         ,http_verb=Method
+                         ,retries=Retries
+                         ,custom_data=CustomData
+                        }=Hook) ->
+    fire_hook(wh_json:merge_jobjs(CustomData, JObj)
+              ,Hook
+              ,wh_util:to_list(URI)
+              ,Method
+              ,Retries).
 
 fire_hook(_JObj, Hook, _URI, _Method, 0) ->
     failed_hook(Hook),
     lager:debug("retries exhausted for ~s", [_URI]);
 fire_hook(JObj, Hook, URI, 'get', Retries) ->
     lager:debug("sending event via 'get'(~b): ~s", [Retries, URI]),
-
     fire_hook(JObj, Hook, URI, 'get', Retries
-              ,ibrowse:send_req(URI
-                                ,[{"Content-Type", "application/x-www-form-urlencoded"}]
+              ,ibrowse:send_req(URI ++ [$?|wh_json:to_querystring(JObj)]
+                                ,[]
                                 ,'get'
-                                ,wh_json:to_querystring(JObj)
+                                ,[]
                                 ,[{'connect_timeout', 1000}]
                                 ,1000
                                ));
@@ -235,9 +247,9 @@ fire_hook(JObj, Hook, URI, 'post', Retries) ->
 
     fire_hook(JObj, Hook, URI, 'post', Retries
               ,ibrowse:send_req(URI
-                                ,[{"Content-Type", "application/json"}]
+                                ,[{"Content-Type", "application/x-www-form-urlencoded"}]
                                 ,'post'
-                                ,wh_json:encode(JObj)
+                                ,wh_json:to_querystring(JObj)
                                 ,[{'connect_timeout', 1000}]
                                 ,1000
                                )).
@@ -602,6 +614,7 @@ jobj_to_rec(Hook) ->
              ,hook_id = wh_json:get_first_defined([<<"_id">>, <<"ID">>], Hook)
              ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
              ,account_id = wh_json:get_value(<<"pvt_account_id">>, Hook)
+             ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
             }.
 
 -spec hook_id(wh_json:object()) -> ne_binary().
@@ -630,9 +643,9 @@ http_verb(_) -> 'get'.
 -spec hook_event_lowered(ne_binary()) -> ne_binary().
 hook_event(Bin) -> hook_event_lowered(wh_util:to_lower_binary(Bin)).
 
-hook_event_lowered(<<"new_channel">>) -> <<"new">>;
-hook_event_lowered(<<"answered_channel">>) -> <<"answered">>;
-hook_event_lowered(<<"destroy_channel">>) -> <<"destroy">>;
+hook_event_lowered(<<"channel_create">>) -> <<"CHANNEL_CREATE">>;
+hook_event_lowered(<<"channel_answer">>) -> <<"CHANNEL_ANSWER">>;
+hook_event_lowered(<<"channel_destroy">>) -> <<"CHANNEL_DESTROY">>;
 hook_event_lowered(<<"all">>) -> <<"all">>;
 hook_event_lowered(Bin) -> throw({'bad_hook', Bin}).
 

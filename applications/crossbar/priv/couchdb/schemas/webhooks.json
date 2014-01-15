@@ -28,9 +28,9 @@
           "required":"true",
           "type":"string",
           "enum":[
-              "new_channel"
-              ,"answered_channel"
-              ,"hungup_channel"
+              "channel_create"
+              ,"channel_answer"
+              ,"channel_destroy"
               ,"all"
           ]
       }
@@ -38,6 +38,10 @@
            "description":"Retry the request this many times (if it fails)",
            "default":3,
            "type":"integer"
+       }
+      ,"custom_data":{
+         "description":"These properties will be added to the event and will overwrite existing values.",
+         "type":"object"
        }
    }
 }

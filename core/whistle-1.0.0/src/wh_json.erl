@@ -264,6 +264,10 @@ encode_kv(Prefix, K, Vs) when is_list(Vs) ->
 %% if the value is a "simple" value, just encode it (url-encoded)
 encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
     encode_kv(Prefix, K, <<"=">>, mochiweb_util:quote_plus(V));
+encode_kv(Prefix, K, 'true') ->
+    encode_kv(Prefix, K, <<"=">>, <<"true">>);
+encode_kv(Prefix, K, 'false') ->
+    encode_kv(Prefix, K, <<"=">>, <<"false">>);
 
 % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 %% if no prefix is present, use just key to prefix the key/value pairs in the jobj
