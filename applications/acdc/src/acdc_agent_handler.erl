@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Handlers for various call events, acdc events, etc
 %%% @end
@@ -60,14 +60,14 @@ maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId, JObj) ->
     lager:debug("queue login for agent ~s into ~s", [AgentId, QueueId]),
     update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
                  ,QueueId
-                 ,fun acdc_agent:add_acdc_queue/2
+                 ,fun acdc_agent_listener:add_acdc_queue/2
                  ,AcctId, AgentId, JObj
                 );
 maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId, JObj) ->
     lager:debug("queue logout for agent ~s into ~s", [AgentId, QueueId]),
     update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
                  ,QueueId
-                 ,fun acdc_agent:rm_acdc_queue/2
+                 ,fun acdc_agent_listener:rm_acdc_queue/2
                  ,JObj
                 );
 maybe_agent_queue_change(_AcctId, _AgentId, _Evt, _QueueId, _JObj) ->
@@ -168,7 +168,7 @@ maybe_stop_agent(AcctId, AgentId, JObj) ->
             case catch acdc_agent_sup:agent(Sup) of
                 APid when is_pid(APid) ->
                     maybe_update_presence(Sup, JObj, ?PRESENCE_RED_SOLID),
-                    acdc_agent:logout_agent(APid);
+                    acdc_agent_listener:logout_agent(APid);
                 _P -> lager:debug("failed to find agent listener for ~s: ~p", [AgentId, _P])
             end,
 
@@ -425,5 +425,5 @@ maybe_update_presence(Sup, JObj) ->
     maybe_update_presence(Sup, JObj, 'undefined').
 maybe_update_presence(Sup, JObj, PresenceState) ->
     APid = acdc_agent_sup:agent(Sup),
-    acdc_agent:maybe_update_presence_id(APid, presence_id(JObj)),
-    acdc_agent:presence_update(APid, presence_state(JObj, PresenceState)).
+    acdc_agent_listener:maybe_update_presence_id(APid, presence_id(JObj)),
+    acdc_agent_listener:presence_update(APid, presence_state(JObj, PresenceState)).

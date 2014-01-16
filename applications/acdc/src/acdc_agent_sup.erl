@@ -54,7 +54,7 @@ restart(Supervisor) ->
 status(Supervisor) ->
     case {agent(Supervisor), fsm(Supervisor)} of
         {LPid, FSM} when is_pid(LPid), is_pid(FSM) ->
-            {AcctId, AgentId, Q} = acdc_agent:config(LPid),
+            {AcctId, AgentId, Q} = acdc_agent_listener:config(LPid),
             Status = acdc_agent_fsm:status(FSM),
 
             lager:info("Agent ~s (Account ~s)", [AgentId, AcctId]),
@@ -73,7 +73,7 @@ status(Supervisor) ->
 
 augment_status(Status, LPid) ->
     Fs = ?AGENT_INFO_FIELDS,
-    [{F, acdc_agent:agent_info(LPid, F)} || F <- Fs] ++ Status.
+    [{F, acdc_agent_listener:agent_info(LPid, F)} || F <- Fs] ++ Status.
 
 print_status([]) -> 'ok';
 print_status([{_, 'undefined'}|T]) -> print_status(T);
@@ -86,7 +86,7 @@ print_status([{K, V}|T]) ->
 
 -spec agent(pid()) -> api_pid().
 agent(Super) ->
-    case child_of_type(Super, 'acdc_agent') of
+    case child_of_type(Super, 'acdc_agent_listener') of
         [] -> 'undefined';
         [P] -> P
     end.
@@ -126,7 +126,7 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?WORKER_ARGS('acdc_agent', [self() | Args])
+    {'ok', {SupFlags, [?WORKER_ARGS('acdc_agent_listener', [self() | Args])
                        ,?WORKER_ARGS('acdc_agent_fsm', [self() | Args])
                       ]}}.
 

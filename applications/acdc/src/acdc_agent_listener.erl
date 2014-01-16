@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(acdc_agent).
+-module(acdc_agent_listener).
 
 -behaviour(gen_listener).
 
@@ -416,7 +416,7 @@ handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
                                        }=State) ->
     lager:debug("agent logged out of last known queue ~s, logging out", [Q]),
     logout_from_queue(AcctId, AgentId, Q),
-    acdc_agent:logout_agent(self()),
+    acdc_agent_listener:logout_agent(self()),
     {'noreply', State#state{agent_queues=[]}};
 handle_cast({'queue_logout', Q}, #state{agent_queues=Qs
                                         ,acct_id=AcctId
@@ -469,7 +469,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
                      ,'hibernate'};
                 'true' ->
                     lager:debug("thief is done, going down"),
-                    acdc_agent:stop(self()),
+                    acdc_agent_listener:stop(self()),
                     {'noreply', State}
             end;
         _ ->
