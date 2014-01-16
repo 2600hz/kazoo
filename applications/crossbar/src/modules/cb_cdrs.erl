@@ -204,8 +204,8 @@ view_key_created_from(Props) ->
 create_view_options(OwnerId, Context) ->
     TStamp =  wh_util:current_tstamp(),
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
-    CreatedTo = cb_context:req_value(Context, <<"created_to">>, TStamp),
-    CreatedFrom = cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange),
+    CreatedFrom = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange)),
+    CreatedTo = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)),
     Diff = CreatedTo - CreatedFrom,
     if
         Diff < 0 ->
