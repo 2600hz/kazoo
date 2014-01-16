@@ -40,7 +40,16 @@ fetch(PlanId, VendorId, Overrides) ->
 %%--------------------------------------------------------------------
 -spec activation_charges(ne_binary(), ne_binary(), wh_json:object()) -> float().
 activation_charges(Category, Item, ServicePlan) ->
-    wh_json:get_float_value([<<"plan">>, Category, Item, <<"activation_charge">>], ServicePlan, 0.0).
+    Keys = [<<"plan">>, Category, Item, <<"activation_charge">>],
+    case wh_json:get_value(Keys, ServicePlan) of
+        'undefined' ->
+            wh_json:get_float_value([<<"plan">>
+                                     ,Category
+                                     ,<<"_all">>
+                                     ,<<"activation_charge">>
+                                    ], ServicePlan, 0.0);
+        Else -> wh_util:to_float(Else)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -17,6 +17,8 @@
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VERSION, <<"0.8.0">>).
 
+-define(VERSION_SUPPORTED, [<<"v1">>, <<"v2">>]).
+
 -define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
 
 -define(CROSSBAR_DEFAULT_CONTENT_TYPE, {<<"application">>, <<"json">>, []}).

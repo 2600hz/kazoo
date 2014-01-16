@@ -26,6 +26,7 @@
                  ,current_balance :: 'undefined' | number()
                  ,billing_id :: api_binary()
                  ,used_by = <<>> :: binary()
+                 ,dry_run = 'false' :: boolean()
                 }).
 
 -type wnm_number() :: #number{}.
