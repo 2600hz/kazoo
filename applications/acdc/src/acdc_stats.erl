@@ -1015,8 +1015,13 @@ miss_to_doc(#agent_miss{agent_id=AgentId
 -spec init_db(ne_binary()) -> 'ok'.
 init_db(AcctId) ->
     DbName = db_name(AcctId),
-    lager:debug("created db ~s: ~s", [DbName, couch_mgr:db_create(DbName)]),
-    lager:debug("revised docs in ~s: ~p", [AcctId, couch_mgr:revise_views_from_folder(DbName, 'acdc')]).
+    maybe_created_db(DbName, couch_mgr:db_create(DbName)).
+
+maybe_created_db(DbName, 'false') ->
+    lager:debug("database ~s already created", [DbName]);
+maybe_created_db(DbName, 'true') ->
+    lager:debug("created db ~s, adding views", [DbName]),
+    couch_mgr:revise_views_from_folder(DbName, 'acdc').
 
 -spec db_name(ne_binary()) -> ne_binary().
 db_name(Acct) ->
