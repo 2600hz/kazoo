@@ -234,11 +234,12 @@ handle_call_event(_, <<"CHANNEL_DESTROY">>, _, JObj, Props) ->
 handle_call_event(Category, Name, FSM, JObj, _) ->
     acdc_agent_fsm:call_event(FSM, Category, Name, JObj).
 
-handle_new_channel(JObj, _Props) ->
+handle_new_channel(JObj, AccountId) ->
     'true' = wapi_call:event_v(JObj),
     _ = wh_util:put_callid(JObj),
-    handle_new_channel_acct(JObj, wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)).
+    handle_new_channel_acct(JObj, AccountId).
 
+-spec handle_new_channel_acct(wh_json:object(), api_binary()) -> 'ok'.
 handle_new_channel_acct(_, 'undefined') -> 'ok';
 handle_new_channel_acct(JObj, AcctId) ->
     [FromUser, _FromHost] = binary:split(wh_json:get_value(<<"From">>, JObj), <<"@">>),

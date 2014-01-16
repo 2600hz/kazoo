@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%% Manages agent processes:
 %%%   starting when an agent logs in
@@ -8,6 +8,7 @@
 %%%   and more!!!
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_agent_manager).
 
@@ -27,16 +28,16 @@
         ]).
 
 -include("acdc.hrl").
+-include_lib("whistle_apps/include/wh_hooks.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
                    ,{'notifications', [{'restrict_to', ['presence_probe']}]}
-                   ,{'call', [{'restrict_to', ['new_channel']}]}
                    ,{'conf', [{'type', <<"user">>}]}
                    ,{'conf', [{'type', <<"device">>}]}
                   ]).
--define(RESPONDERS, [{{'acdc_agent_handler', 'handle_status_update'} 
+-define(RESPONDERS, [{{'acdc_agent_handler', 'handle_status_update'}
                       ,[{<<"agent">>, <<"login">>}
                         ,{<<"agent">>, <<"logout">>}
                         ,{<<"agent">>, <<"pause">>}
@@ -45,9 +46,6 @@
                         ,{<<"agent">>, <<"logout_queue">>}
                        ]
                      }
-                     ,{{'acdc_agent_handler', 'handle_new_channel'}
-                       ,[{<<"channel">>, <<"new">>}]
-                      }
                      ,{{'acdc_agent_handler', 'handle_stats_req'}
                        ,[{<<"agent">>, <<"stats_req">>}]
                       }
@@ -93,7 +91,9 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) -> {'ok', 'ok'}.
+init([]) ->
+    wh_hooks_listener:register(),
+    {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -126,6 +126,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -138,6 +139,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(?HOOK_EVT(AccountId, <<"new">>, JObj), State) ->
+    _ = spawn('acdc_agent_handler', 'handle_new_channel', [JObj, AccountId]),
+    {'noreply', State};
+handle_info(?HOOK_EVT(AccountId, <<"channel_create">>, JObj), State) ->
+    _ = spawn('acdc_agent_handler', 'handle_new_channel', [JObj, AccountId]),
+    {'noreply', State};
+handle_info(?HOOK_EVT(_AccountId, _EventName, _JObj), State) ->
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
