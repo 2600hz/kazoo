@@ -114,14 +114,15 @@
 
 -define(WH_AMQP_ETS, 'wh_amqp_ets').
 
--record(wh_amqp_assignment, {created = now() :: wh_now() | '_'
+-record(wh_amqp_assignment, {timestamp = now() :: wh_now() | '_'
                              ,consumer :: api_pid() | '_'
                              ,consumer_ref :: api_reference() | '$1' | '_'
                              ,type = 'float' :: 'sticky' | 'float'
                              ,channel :: api_pid() | '$1' | '_'
                              ,channel_ref :: api_reference() | '$1' | '_'
-                             ,connection :: api_pid()
+                             ,connection :: api_pid() | '_'
                              ,broker :: api_binary() | '$2' | '_'
+                             ,assigned :: wh_now() | '_'
                             }).
 
 -type wh_amqp_assignment() :: #wh_amqp_assignment{}.

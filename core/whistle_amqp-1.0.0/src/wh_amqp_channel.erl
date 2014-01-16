@@ -12,7 +12,9 @@
          ,consumer_pid/1
          ,remove_consumer_pid/0
         ]).
--export([remove/0]).
+-export([remove/0
+         ,remove/1
+        ]).
 -export([close/1]).
 -export([maybe_publish/2]).
 -export([publish/2]).
@@ -35,16 +37,22 @@ consumer_pid(Pid) when is_pid(Pid) -> put('$wh_amqp_consumer', Pid).
 -spec remove_consumer_pid() -> 'undefined'.
 remove_consumer_pid() -> put('$wh_amqp_consumer', 'undefined').
 
-remove() -> 'ok'.
+-spec remove() -> 'ok'.
+remove() -> 
+    remove(consumer_pid()).
+
+-spec remove(pid()) -> 'ok'.
+remove(Pid) ->
+    _ = wh_amqp_history:remove(Pid),
+    _ = wh_amqp_assignments:remove(Pid),
+    'ok'.
     
--spec close(wh_amqp_assignment()) -> wh_amqp_assignment().
-close(#wh_amqp_assignment{channel=Channel
-                          ,broker=Broker}=Assignment)
-  when is_pid(Channel) ->
-    lager:debug("closed channel ~p on ~s", [Channel, Broker]),
+-spec close(api_pid()) -> 'ok'.
+close(Channel) when is_pid(Channel) ->
     catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5000),
-    close(Assignment#wh_amqp_assignment{channel='undefined'});
-close(Assignment) -> Assignment.
+    lager:debug("closed channel ~p", [Channel]),
+    'ok';
+close(_) -> 'ok'.
 
 %% maybe publish will only publish a message if the requestor already has a channel
 -spec maybe_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
@@ -84,10 +92,10 @@ command(#wh_amqp_assignment{channel=Pid}, #'basic.nack'{}=BasicNack) ->
 command(#wh_amqp_assignment{consumer=Consumer
                             ,channel=Channel
                            }=Assignment
-        ,#'basic.consume'{queue=Q}=Command) ->
-    case wh_amqp_history:is_consuming(Consumer) of
+        ,#'basic.consume'{queue=Queue}=Command) ->
+    case wh_amqp_history:is_consuming(Consumer, Queue) of
         'true' ->
-            lager:debug("skipping existing basic consume for queue ~s", [Q]),
+            lager:debug("skipping existing basic consume for queue ~s", [Queue]),
             'ok';
         'false' ->
             Result = amqp_channel:subscribe(Channel, Command, Consumer),
@@ -103,7 +111,7 @@ command(#wh_amqp_assignment{channel=Channel
                           handle_command_result(Result, Command, Assignment);
                      (_) -> 'ok'
                   end, wh_amqp_history:basic_consumers(Consumer));
-command(_, #'exchange.declare'{exchange=_Ex, type=_Ty}=Command) ->
+command(_, #'exchange.declare'{exchange=_Ex, type=_Ty}) ->
     lager:debug("declared ~s exchange ~s", [_Ty, _Ex]),
     %% TODO: shouldn't this be declaring exchanges?
     'ok';
