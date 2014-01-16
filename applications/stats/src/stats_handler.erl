@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%    Stephen Gibberd <stephen.gibberd@2600hz.com>
@@ -16,6 +16,8 @@
          ,get_next/3
          ,handle_req/2
         ]).
+
+-include("stats.hrl").
 
 handle_req(JObj, _Props) ->
     Items = wh_json:recursive_to_proplist(JObj),
@@ -51,8 +53,8 @@ store_items(NodeName, [{<<"sip-domain">>,_} | Rest], Items) ->
     end,
     store_items(NodeName, Rest, Items);
 store_items(NodeName, [{TableName,TableField} | Rest], Items) ->
-    case lists:filter(fun({X, _}) -> 
-                              lists:keymember(X, 1, TableField) 
+    case lists:filter(fun({X, _}) ->
+                              lists:keymember(X, 1, TableField)
                       end, Items)
     of
         [{<<"nodename">>, _}] -> 'ok';
@@ -72,7 +74,7 @@ store_item2(NewItems, [ Table | Rest ], NodeName ) ->
         _ -> [Table | store_item2(NewItems, Rest, NodeName)]
     end.
 
-update_domaindb(OldSip) ->   
+update_domaindb(OldSip) ->
     NewSip = lists:foldl(fun collect_items/2, [], OldSip),
     NewSip2 = [[{<<"domain-name">>,SipDomain} | Attr]
                || {SipDomain,Attr} <- NewSip
@@ -83,11 +85,11 @@ collect_items([], Db) -> Db;
 collect_items([{<<"nodename">>,_} | Rest], Db) -> collect_items(Rest, Db);
 collect_items([{Domain, Items} | Rest], Db) ->
     DomainData = props:get_value(Domain, Db, []),
-    Fun = fun(Key, Value) -> 
-                  props:get_value(Key, DomainData, 0) + Value 
+    Fun = fun(Key, Value) ->
+                  props:get_value(Key, DomainData, 0) + Value
           end,
-    NewData = [{Key, Fun(Key,Value)} || {Key, Value} <- Items] 
-        ++ [{Key, Value} || {Key, Value} <- DomainData, 
+    NewData = [{Key, Fun(Key,Value)} || {Key, Value} <- Items]
+        ++ [{Key, Value} || {Key, Value} <- DomainData,
                             lists:keymember(Key, 1, Items) == 'false'
            ],
     collect_items(Rest, lists:keystore(Domain, 1, Db, {Domain, NewData})).
@@ -126,7 +128,7 @@ value(Row, Col, Table, Order) ->
        'true' -> Val
     end.
 
-%%% Map the OID order of the items in tables in KAZOO-MIB.mib to the tuples 
+%%% Map the OID order of the items in tables in KAZOO-MIB.mib to the tuples
 %%% in the lists. The second element is the default value is the tuple is
 %%% missing in the list.
 table_def() ->
@@ -169,5 +171,5 @@ table_def() ->
        ,{<<"INCOMPATIBLE_DESTINATION">>, 0}
       ]}].
 
-table_order(Table) -> 
+table_order(Table) ->
     props:get_value(Table, table_def(), []).

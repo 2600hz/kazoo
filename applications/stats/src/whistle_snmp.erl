@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%    Stephen Gibberd <stephen.gibberd@2600hz.com>
@@ -15,14 +15,16 @@
          ,get_oid/4
         ]).
 
-%%% get_oid - implementation function to read from a table. 
--spec get_oid('get_next' | 'get', integer(), integer(), term) -> any.
+-include("stats.hrl").
+
+%%% get_oid - implementation function to read from a table.
+-spec get_oid('get_next' | 'get', integer(), integer(), term()) -> any().
 get_oid('get_next', RowIndex, Cols, Table) ->
     lager:debug("Table: ~p Row: ~p Cols: ~p~n",[Table,RowIndex, Cols]),
     Value = stats_handler:get_next(Table,RowIndex,Cols),
     lager:debug("Result ~p~n",[Value]),
     Value.
-    
+
 -spec kazoo_ver('get') -> {'value', string()}.
 kazoo_ver('get') ->
     {'value', wh_util:to_list(wh_util:whistle_version())}.
@@ -38,9 +40,9 @@ start() ->
     snmpa:load_mibs(["KAZOO-MIB"]),
     'ok'.
 
-%% Creates the directories and configuration files needs to start snmp. 
+%% Creates the directories and configuration files needs to start snmp.
 %% The important settings are the port and community string. It supports
-%% SNMP version 2c. To test, try 
+%% SNMP version 2c. To test, try
 %% snmpwalk -v 2c -c public kazoo:4000 1.3.6.1.4.1.700001
 -spec create_config() -> 'ok'.
 create_config() ->
@@ -87,7 +89,7 @@ create_config() ->
                [["internet", [1, 3, 6, 1], 'included', 'null'],
                 ["restricted", [1, 3, 6, 1], 'included', 'null']
                ]),
-%%    SNMP Manager not needed yet.    
+%%    SNMP Manager not needed yet.
 %%    MDir = CWD ++ "/manager/conf",
 %%    filelib:ensure_dir(MDir ++ "/manager"),
 %%    MDDir = CWD ++ "/db",
@@ -118,7 +120,7 @@ create_config() ->
     lager:debug(File, "~p.", [Snmp]),
     file:close(File),
     'ok'.
-    
+
 write_conf(EFun, WFun, Dir, EList) ->
     write_conf('snmpa_conf', EFun, WFun, Dir, EList).
 
