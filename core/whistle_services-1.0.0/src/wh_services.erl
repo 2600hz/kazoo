@@ -39,6 +39,8 @@
 
 -export([is_reseller/1]).
 
+-export([calulate_charges/2]).
+
 -include("whistle_services.hrl").
 
 -record(wh_services, {account_id = 'undefined'
@@ -626,6 +628,91 @@ reset_category(Category, #wh_services{updates=JObj}=Services) ->
 is_reseller(Account) ->
     Service = public_json(Account),
     wh_json:is_true(<<"reseller">>, Service).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec calulate_charges(services(), any()) -> wh_json:object().
+calulate_charges(Services, Transactions) ->
+    TransactionCharges = calculate_transactions_charges(Transactions),
+    PlansCharges = calculate_services_charges(Services),
+
+    wh_json:merge_jobjs(TransactionCharges, PlansCharges).
+
+-spec calculate_services_charges(services()) -> wh_json:object().
+calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
+    case wh_service_plans:from_service_json(ServiceJObj) of
+        [] -> wh_json:new();
+        ServicePlans ->
+            Items1 = wh_service_plans:create_items(Services, ServicePlans),
+            case wh_service_plans:create_items(ServiceJObj) of
+                {'error', _} -> wh_json:new();
+                {'ok', Items2} ->
+                    Changed = wh_service_items:get_udapted_items(Items1, Items2),
+                    wh_service_items:public_json(Changed)
+            end
+    end.
+
+-spec calculate_transactions_charges(any()) -> wh_json:object().
+calculate_transactions_charges(Transactions) ->
+    TransactionsJobj = wh_transactions:to_json(Transactions),
+    lists:foldl(
+        fun(TransactionJobj, Acc) ->
+            Rate = wh_json:get_value(<<"pvt_amount">>, TransactionJobj, 0),
+            Description = wh_json:get_value(<<"description">>, TransactionJobj, <<>>),
+            wh_json:set_values([
+                {<<"activation_charges">>, wht_util:units_to_dollars(Rate)}
+                ,{<<"activation_charges_description">>, Description}
+            ], Acc)
+        end
+        ,wh_json:from_list([
+            {<<"activation_charges">>, 0}
+            ,{<<"activation_charges_description">>, <<>>}
+         ])
+        ,TransactionsJobj
+    ).
+
+-spec get_changes(wh_json:object(), wh_json:object()) -> wh_proplist().
+get_changes(OldQuantities, NewQuantities) ->
+    Props = wh_json:recursive_to_proplist(NewQuantities),
+    FlattenProps = flatten(Props),
+    lists:foldl(
+        fun({Keys, Value}, Acc) ->
+            OldValue = wh_json:get_value(Keys, OldQuantities, 0),
+            case Value - OldValue of
+                I when I > 0 ->
+                   [{Keys, I}];
+                _ -> Acc
+            end
+        end
+        ,[]
+        ,FlattenProps
+    ).
+
+
+-spec flatten(wh_proplist()) ->  wh_proplist().
+-spec flatten( wh_proplist(), list(), wh_proplist()) -> wh_proplist().
+flatten(Props) ->
+    flatten(Props, [], []).
+
+flatten([], _, Acc) ->
+    lists:reverse(Acc);
+flatten([{Key, Value}|Tail], Path, Acc) when is_list(Value) ->
+    Tmp = flatten(Value, [Key|Path], Acc),
+    flatten(Tail, [], Tmp);
+flatten([{Key, Value}|[]], Path, Acc) ->
+    Tmp = lists:reverse([Key|Path]),
+    [{Tmp, Value}|Acc];
+flatten([{Key, Value}|Tail], Path, Acc) ->
+    Tmp = lists:reverse([Key|Path]),
+    flatten(Tail, Path, [{Tmp, Value}|Acc]);
+flatten([Elem|Tail], Path, Acc) ->
+    Tmp = flatten(Elem, Path, Acc),
+    flatten(Tail, Path, lists:merge(Tmp, Acc)).
+
 
 %%%===================================================================
 %%% Internal functions

@@ -134,7 +134,7 @@ known_methods(Req, Context) ->
 allowed_methods(Req0, Context) ->
     Methods = cb_context:allowed_methods(Context),
     {Tokens, Req1} = cowboy_req:path_info(Req0),
-    case api_util:parse_path_tokens(Tokens) of
+    case api_util:parse_path_tokens(Context, Tokens) of
         [_|_] = Nouns ->
             %% Because we allow tunneling of verbs through the request,
             %% we have to check and see if we need to override the actual

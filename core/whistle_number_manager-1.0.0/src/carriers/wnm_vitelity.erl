@@ -206,6 +206,7 @@ xml_did_to_json(#xmlElement{name='number'
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(wnm_number()) -> wnm_number().
+acquire_number(#number{dry_run='true'}=Number) -> Number;
 acquire_number(#number{number=DID}=Number) ->
     case wnm_util:classify_number(DID) of
         <<"tollfree_us">> ->

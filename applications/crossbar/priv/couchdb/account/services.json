@@ -5,6 +5,10 @@
         "devices": {
             "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted || doc.enabled == false) return; emit(doc.device_type || 'sip_device', 1); }",
             "reduce": "_sum"
+        },
+        "users": {
+            "map": "function(doc) { if (doc.pvt_type != 'user' || doc.pvt_deleted || doc.enabled == false) return; emit(doc.priv_level || 'user', 1); }",
+            "reduce": "_sum"
         }
     }
 }

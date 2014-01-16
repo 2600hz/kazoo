@@ -15,7 +15,7 @@
          ,is_cors_request/1
          ,add_cors_headers/2
          ,allow_methods/4
-         ,parse_path_tokens/1
+         ,parse_path_tokens/2
          ,get_req_data/2
          ,get_http_verb/2
          ,is_authentic/2
@@ -468,33 +468,44 @@ get_http_verb(Method, Context) ->
 
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
 -type cb_mods_with_tokens() :: [cb_mod_with_tokens(),...] | [].
--spec parse_path_tokens(path_tokens()) -> cb_mods_with_tokens().
-parse_path_tokens(Tokens) ->
-    parse_path_tokens(Tokens, []).
+-spec parse_path_tokens(cb_context:context(), path_tokens()) -> cb_mods_with_tokens().
+parse_path_tokens(Context, Tokens) ->
+    parse_path_tokens(Context, Tokens, []).
 
--spec parse_path_tokens(wh_json:json_strings(), cb_mods_with_tokens()) ->
+-spec parse_path_tokens(cb_context:context(), wh_json:json_strings(), cb_mods_with_tokens()) ->
                                cb_mods_with_tokens().
-parse_path_tokens([], Events) -> Events;
-parse_path_tokens([<<"schemas">>=Mod|T], Events) ->
+parse_path_tokens(_, [], Events) -> Events;
+parse_path_tokens(_, [<<"schemas">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens([<<"braintree">>=Mod|T], Events) ->
+parse_path_tokens(_, [<<"braintree">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens([Mod|T], Events) ->
-    case is_cb_module(Mod) of
+parse_path_tokens(Context, [Mod|T], Events) ->
+    case is_cb_module(Context, Mod) of
         'false' -> [];
         'true' ->
-            {Params, List2} = lists:splitwith(fun(Elem) -> not is_cb_module(Elem) end, T),
-            parse_path_tokens(List2, [{Mod, Params} | Events])
+            {Params, List2} = lists:splitwith(fun(Elem) -> not is_cb_module(Context, Elem) end, T),
+            parse_path_tokens(Context, List2, [{Mod, Params} | Events])
     end.
 
--spec is_cb_module(ne_binary()) -> boolean().
-is_cb_module(Elem) ->
+-spec is_cb_module(cb_context:context(), ne_binary()) -> boolean().
+is_cb_module(Context, Elem) ->
     try (wh_util:to_atom(<<"cb_", Elem/binary>>)):module_info('imports') of
+        _ -> 'true'
+    catch
+        'error':'badarg' -> 'false'; %% atom didn't exist already
+        _E:_R -> is_cb_module_version(Context, Elem)
+    end.
+
+-spec is_cb_module_version(cb_context:context(), ne_binary()) -> boolean().
+is_cb_module_version(#cb_context{api_version=ApiVersion}, Elem) ->
+    try (wh_util:to_atom(<<"cb_", Elem/binary, "_", ApiVersion/binary>>)):module_info('imports') of
         _ -> 'true'
     catch
         'error':'badarg' -> 'false'; %% atom didn't exist already
         _E:_R -> 'false'
     end.
+
+
 
 %%--------------------------------------------------------------------
 %% @private

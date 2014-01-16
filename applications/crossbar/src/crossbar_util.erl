@@ -14,6 +14,7 @@
          ,response_redirect/3, response_redirect/4
         ]).
 -export([response_202/2]).
+-export([response_402/2]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
 -export([response_conflicting_docs/1]).
@@ -50,6 +51,11 @@ response(JTerm, Context) ->
                           cb_context:context().
 response_202(Msg, Context) ->
     create_response('success', Msg, 202, Msg, Context).
+
+-spec response_402(cb_context:context(), wh_json:json_string()) ->
+                          cb_context:context().
+response_402(Data, Context) ->
+    create_response('error', <<"accept charges">>, 402, Data, Context).
 
 %%--------------------------------------------------------------------
 %% @public

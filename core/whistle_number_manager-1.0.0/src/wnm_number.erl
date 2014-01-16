@@ -60,6 +60,7 @@ create_discovery(#number{number=Number
                          ,number_doc=Doc
                          ,module_name=ModuleName
                          ,module_data=ModuleData
+                         ,dry_run=DryRun
                         }) ->
     Num = wnm_util:normalize_number(Number),
     Updates = [{<<"_id">>, Num}
@@ -69,6 +70,7 @@ create_discovery(#number{number=Number
                ,{<<"pvt_ported_in">>, 'false'}
                ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
                ,{<<"pvt_created">>, wh_util:current_tstamp()}
+               ,{<<"dry_run">>, DryRun}
               ],
     JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
     json_to_record(JObj, 'true').
@@ -199,6 +201,7 @@ save(#number{}=Number) ->
                 ,fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
                 ,fun({_, #number{}}=E) -> E;
+                    (#number{dry_run='true'}=N) -> N;
                     (#number{}=N) -> save_number_doc(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
@@ -224,6 +227,11 @@ save_phone_number_docs(#number{phone_number_docs=PhoneNumberDocs}=Number) ->
     end.
 
 save_phone_number_docs([], Number) -> Number;
+save_phone_number_docs([{Account, JObj}|Props], #number{number=Num
+                                                        ,dry_run='true'
+                                                        ,module_name=ModuleName}=Number) ->
+    erlang:put({'phone_number_doc', Account}, wh_json:set_value([Num, <<"module_name">>], ModuleName, JObj)),
+    save_phone_number_docs(Props, Number);
 save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:save_doc(AccountDb, JObj) of
@@ -475,6 +483,7 @@ in_service(#number{state = ?NUMBER_STATE_DISCOVERY}=Number) ->
                 ,fun(#number{}=N) -> activate_phone_number(N) end
                 ,fun(#number{module_name='undefined'}=N) ->
                          error_carrier_not_specified(N);
+                    (#number{dry_run='true'}=N) -> N;
                     (#number{module_name=Module}=N) ->
                          Module:acquire_number(N)
                  end
@@ -682,6 +691,7 @@ json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
       ,number_doc=JObj
       ,current_number_doc=case IsNew of 'true' -> wh_json:new(); 'false' -> JObj end
       ,used_by=wh_json:get_value(<<"used_by">>, JObj, <<>>)
+      ,dry_run=wh_json:get_value(<<"dry_run">>, JObj, 'false')
      }.
 
 -spec number_from_port_doc(wnm_number(), wh_json:object()) -> wnm_number().
@@ -714,6 +724,7 @@ record_to_json(#number{number_doc=JObj}=N) ->
                ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                ,{<<"pvt_created">>, wh_json:get_value(<<"pvt_created">>, JObj, wh_util:current_tstamp())}
                ,{<<"used_by">>, N#number.used_by}
+               ,{<<"dry_run">>, N#number.dry_run}
               ],
     lists:foldl(fun({K, 'undefined'}, J) -> wh_json:delete_key(K, J);
                    ({K, V}, J) -> wh_json:set_value(K, V, J)
@@ -1009,9 +1020,10 @@ update_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumb
 -spec get_phone_number_doc(ne_binary(), wnm_number()) ->
                                   {'ok', wh_json:object()} |
                                   {'error', _}.
-get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
+get_phone_number_doc(Account, #number{phone_number_docs=Docs
+                                      ,dry_run=DryRun}) ->
     case dict:find(Account, Docs) of
-        'error' -> load_phone_number_doc(Account);
+        'error' -> load_phone_number_doc(Account, DryRun);
         {'ok', _}=Ok -> Ok
     end.
 
@@ -1052,6 +1064,14 @@ create_number_summary(_Account, #number{state=State
                                    {'ok', wh_json:object()} |
                                    {'error', _}.
 load_phone_number_doc(Account) ->
+    load_phone_number_doc(Account, 'false').
+
+load_phone_number_doc(Account, 'true') ->
+    case erlang:get({'phone_number_doc', Account}) of
+        'undefined' -> load_phone_number_doc(Account, 'false');
+        JObj -> {'ok', JObj}
+    end;
+load_phone_number_doc(Account, 'false') ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     AccountId = wh_util:format_account_id(Account, 'raw'),
     PVTs = [{<<"_id">>, ?WNM_PHONE_NUMBER_DOC}
@@ -1078,6 +1098,23 @@ load_phone_number_doc(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_service_plans(wnm_number()) -> wnm_number().
+update_service_plans(#number{dry_run='true'
+                             ,assigned_to=AssignedTo
+                             ,phone_number_docs=Docs
+                             ,module_name=ModuleName
+                             ,services=Services
+                             ,number=PhoneNumber}=Number) ->
+    case dict:find(AssignedTo, Docs) of
+        'error' -> Number;
+        {'ok', JObj} ->
+            NuberJObj = wh_json:set_value(<<"module_name">>
+                                          ,ModuleName
+                                          ,wh_json:get_value(PhoneNumber, JObj)
+                                         ),
+            JObj1 =  wh_json:set_value(PhoneNumber, NuberJObj, JObj),
+            S = wh_service_phone_numbers:reconcile(JObj1, Services),
+            Number#number{services=S}
+    end;
 update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssignedTo}=N) ->
     _ = wh_services:reconcile(AssignedTo, <<"phone_numbers">>),
     _ = wh_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),

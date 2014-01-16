@@ -85,6 +85,7 @@ is_number_billable(_Number) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec acquire_number(wnm_number()) -> wnm_number().
+acquire_number(#number{dry_run='true'}=Number) -> Number;
 acquire_number(#number{number=Number
                        ,assign_to=AssignTo
                        ,state=State
