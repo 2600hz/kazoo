@@ -469,9 +469,8 @@ handle_cast({'update_call', Id, Updates}, State) ->
     {'noreply', State};
 handle_cast({'remove_call', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
-    lager:debug("removing call stats from table"),
     N = ets:select_delete(call_table_id(), Match),
-    lager:debug("removed calls (or not): ~p", [N]),
+    N > 1 andalso lager:debug("removed calls: ~p", [N]),
     {'noreply', State};
 
 handle_cast({'update_status', Id, Updates}, State) ->
@@ -480,9 +479,8 @@ handle_cast({'update_status', Id, Updates}, State) ->
     {'noreply', State};
 handle_cast({'remove_status', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
-    lager:debug("removing status stats from table"),
     N = ets:select_delete(status_table_id(), Match),
-    lager:debug("removed statuses (or not): ~p", [N]),
+    N > 1 andalso lager:debug("removed statuses: ~p", [N]),
     {'noreply', State};
 
 handle_cast({'gen_listener',{'created_queue',_Q}}, State) ->

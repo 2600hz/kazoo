@@ -47,8 +47,8 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
 most_recent_status(AccountId, AgentId) ->
     case most_recent_ets_status(AccountId, AgentId) of
         {'ok', _}=OK -> OK;
-        {'error', _E} ->
-            lager:debug("failed to get ETS stats: ~p", [_E]),
+        {'error', _ErrJObj} ->
+            lager:debug("failed to get ETS stats: ~p", [wh_json:get_value(<<"Error-Reason">>, _ErrJObj)]),
             most_recent_db_status(AccountId, AgentId)
     end.
 
