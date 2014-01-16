@@ -25,8 +25,12 @@
          ,to_json/1
          ,to_props/1
         ]).
--export([handle_channel_req/3]).
--export([process_event/3]).
+-export([handle_channel_req/3
+         ,handle_channel_req/4
+        ]).
+-export([process_event/3
+         ,process_event/4
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -272,11 +276,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
-    _ = spawn(?MODULE, 'process_event', [UUID, Props, Node]),
+handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->    
+    _ = spawn(?MODULE, 'process_event', [UUID, Props, Node, self()]),
     {'noreply', State};
 handle_info({'fetch', 'channels', <<"channel">>, <<"uuid">>, UUID, FetchId, _}, #state{node=Node}=State) ->
-    spawn(?MODULE, 'handle_channel_req', [UUID, FetchId, Node]),
+    spawn(?MODULE, 'handle_channel_req', [UUID, FetchId, Node, self()]),
     {'noreply', State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
@@ -328,6 +332,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec handle_channel_req(ne_binary(), ne_binary(), atom()) -> 'ok'.
 handle_channel_req(UUID, FetchId, Node) ->
+    handle_channel_req(UUID, FetchId, Node, self()).
+
+-spec handle_channel_req(ne_binary(), ne_binary(), atom(), pid()) -> 'ok'.
+handle_channel_req(UUID, FetchId, Node, Pid) ->
+    wh_amqp_channel:consumer_pid(Pid),
     case ecallmgr_fs_channel:fetch(UUID, 'proplist') of
         {'ok', Props} ->
             ChannelNode = props:get_value(<<"node">>, Props),
@@ -347,12 +356,18 @@ handle_channel_req(UUID, FetchId, Node) ->
             freeswitch:fetch_reply(Node, FetchId, 'channels', iolist_to_binary(Resp))
     end.
 
+-spec process_event(api_binary(), wh_proplist(), atom()) -> any().
 process_event(UUID, Props, Node) ->
-    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-    process_event(EventName, UUID, Props, Node).
+    process_event(UUID, Props, Node, self()).
 
--spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
-process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
+-spec process_event(api_binary(), wh_proplist(), atom(), pid()) -> any().
+process_event(UUID, Props, Node, Pid) ->
+    wh_amqp_channel:consumer_pid(Pid),
+    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+    process_specific_event(EventName, UUID, Props, Node).
+
+-spec process_specific_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = ecallmgr_fs_channels:new(props_to_record(Props, Node)),
     _ = maybe_publish_channel_state(Props, Node),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
@@ -361,23 +376,23 @@ process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
         'true' -> ecallmgr_fs_authz:authorize(Props, UUID, Node);
         'false' -> 'ok'
     end;
-process_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
+process_specific_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
     _ = maybe_publish_channel_state(Props, Node),
     ecallmgr_fs_channels:destroy(UUID, Node);
-process_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->
+process_specific_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->
     _ = maybe_publish_channel_state(Props, Node),
     ecallmgr_fs_channels:update(UUID, #channel.answered, 'true');
-process_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
+process_specific_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
     ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
-process_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
+process_specific_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
     ecallmgr_fs_channels:update(UUID, #channel.other_leg, OtherLeg),
     ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, UUID);
-process_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
+process_specific_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
     ecallmgr_fs_channels:update(UUID, #channel.other_leg, 'undefined'),
     ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, 'undefined');
-process_event(_, _, _, _) ->
+process_specific_event(_, _, _, _) ->
     'ok'.
 
 -spec maybe_publish_channel_state(wh_proplist(), atom() | ne_binary()) -> 'ok'.
