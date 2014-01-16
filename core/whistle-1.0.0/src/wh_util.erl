@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -11,7 +11,7 @@
 
 -export([log_stacktrace/0, log_stacktrace/1
          ,format_account_id/1, format_account_id/2, format_account_id/3
-         ,format_account_mod_id/2, format_account_mod_id/3
+         ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1
@@ -202,11 +202,19 @@ format_account_id(AccountId, Year, Month) when is_integer(Year), is_integer(Mont
       ,(pad_month(Month))/binary
     >>.
 
--spec format_account_mod_id(ne_binary(), pos_integer()) -> ne_binary().
+-spec format_account_mod_id(ne_binary()) -> ne_binary().
+-spec format_account_mod_id(ne_binary(), pos_integer() | wh_now()) -> ne_binary().
 -spec format_account_mod_id(ne_binary(), wh_year(), wh_month()) -> ne_binary().
-format_account_mod_id(AccountId, Timestamp) ->
+format_account_mod_id(AccountId) ->
+    format_account_mod_id(AccountId, os:timestamp()).
+
+format_account_mod_id(AccountId, {_,_,_}=Timestamp) ->
+    {{Year, Month, _}, _} = calendar:now_to_universal_time(Timestamp),
+    format_account_id(AccountId, Year, Month);
+format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     format_account_id(AccountId, Year, Month).
+
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 

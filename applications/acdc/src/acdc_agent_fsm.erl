@@ -1782,7 +1782,7 @@ notify(Url, 'get', Data) ->
            ,[], 'get', <<>>, []
           ).
 
--spec notify(ne_binary(), [], 'get' | 'post', binary(), wh_proplist()) -> 'ok'.
+-spec notify(iolist(), [], 'get' | 'post', binary(), wh_proplist()) -> 'ok'.
 notify(Uri, Headers, Method, Body, Opts) ->
     case ibrowse:send_req(wh_util:to_list(Uri)
                           ,Headers

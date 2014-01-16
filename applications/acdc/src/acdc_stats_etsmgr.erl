@@ -24,7 +24,7 @@
 
 -include("acdc.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 
 -record(state, {table_id :: ets:tid()
                 ,etssrv :: pid()
@@ -124,6 +124,9 @@ handle_info({'EXIT', Etssrv, 'killed'}, #state{etssrv=Etssrv}=State) ->
 handle_info({'EXIT', EtsMgr, 'shutdown'}, #state{etssrv=EtsMgr}=State) ->
     lager:debug("ets mgr ~p shutdown", [EtsMgr]),
     {'noreply', State#state{etssrv='undefined'}};
+handle_info({'EXIT', EtsMgr, _Reason}, #state{etssrv=EtsMgr}=State) ->
+    lager:debug("ets mgr ~p exited: ~p", [EtsMgr, _Reason]),
+    {'noreply', State#state{etssrv='undefined'}};
 handle_info({'ETS-TRANSFER', Tbl, Etssrv, Data}, #state{table_id=Tbl
                                                         ,etssrv=Etssrv
                                                         ,give_away_ref='undefined'
@@ -149,6 +152,8 @@ handle_info({'give_away', Tbl, Data}, #state{table_id=Tbl
                                     ,give_away_ref=Ref
                                    }}
     end;
+handle_info({'EXIT', _Pid, _Reason}, State) ->
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.

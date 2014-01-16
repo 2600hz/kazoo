@@ -17,6 +17,8 @@
 
 -define(KZ_WEBHOOKS_DB, <<"webhooks">>).
 
+-define(KZ_ACDC_DB, <<"acdc">>).
+
 -define(KZ_PORT_REQUESTS_DB, <<"port_requests">>).
 
 -define(KZ_SYSTEM_DBS, [?WH_CONFIG_DB
@@ -31,6 +33,7 @@
                         ,?WH_OFFNET_DB
                         ,?WH_ANONYMOUS_CDR_DB
                         ,?KZ_PORT_REQUESTS_DB
+                        ,?KZ_ACDC_DB
                        ]).
 
 -define(WH_DATABASES_HRL, 'true').

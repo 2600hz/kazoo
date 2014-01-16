@@ -194,16 +194,16 @@ merge_jobjs(?JSON_WRAPPER(Props1)=_JObj1, ?JSON_WRAPPER(_)=JObj2) ->
 merge_recursive(JObjs) ->
     merge_recursive(JObjs, fun(_, _) -> 'true' end).
 
--spec merge_recursive(objects(), merge_pred()) -> object();
-                     (object(), object()) -> object().
+-spec merge_recursive(objects() | object(), merge_pred() | object()) -> object().
+merge_recursive([], Pred) when is_function(Pred, 2) -> new();
 merge_recursive([J|JObjs], Pred) when is_function(Pred, 2) ->
-    lists:foldl(fun(JObj2, JObj1) ->
+    lists:foldl(fun(?JSON_WRAPPER(_)=JObj2, ?JSON_WRAPPER(_)=JObj1) ->
                         merge_recursive(JObj1, JObj2, Pred)
                 end, J, JObjs);
 merge_recursive(JObj1, JObj2) ->
     merge_recursive(JObj1, JObj2, fun(_, _) -> 'true' end).
 
--spec merge_recursive(object(), object(), merge_pred()) -> object().
+-spec merge_recursive(object(), object() | json_term(), merge_pred()) -> object().
 merge_recursive(JObj1, JObj2, Pred) ->
     merge_recursive(JObj1, JObj2, Pred, []).
 

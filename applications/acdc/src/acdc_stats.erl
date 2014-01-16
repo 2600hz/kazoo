@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%% Collector of stats
 %%% @end
@@ -1020,8 +1020,7 @@ init_db(AcctId) ->
 
 -spec db_name(ne_binary()) -> ne_binary().
 db_name(Acct) ->
-    <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:format_account_id(Acct, 'raw'),
-    <<"acdc%2F",A/binary,"%2F",B/binary,"%2F", Rest/binary>>.
+    wh_util:format_account_mod_id(Acct).
 
 -spec call_stat_id(wh_json:object()) -> ne_binary().
 -spec call_stat_id(ne_binary(), ne_binary()) -> ne_binary().

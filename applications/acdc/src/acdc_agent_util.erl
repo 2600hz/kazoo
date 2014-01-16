@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -30,10 +30,10 @@
 
 -spec update_status(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec update_status(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
-update_status(AcctId, AgentId, Status) ->
-    update_status(AcctId, AgentId, Status, []).
-update_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
-    API = [{<<"Account-ID">>, AcctId}
+update_status(AccountId, AgentId, Status) ->
+    update_status(AccountId, AgentId, Status, []).
+update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
+    API = [{<<"Account-ID">>, AccountId}
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Status">>, Status}
            ,{<<"Timestamp">>, wh_util:current_tstamp()}
@@ -44,19 +44,19 @@ update_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
 -spec most_recent_status(ne_binary(), ne_binary()) ->
                                 {'ok', ne_binary()} |
                                 {'error', any()}.
-most_recent_status(AcctId, AgentId) ->
-    case most_recent_ets_status(AcctId, AgentId) of
+most_recent_status(AccountId, AgentId) ->
+    case most_recent_ets_status(AccountId, AgentId) of
         {'ok', _}=OK -> OK;
         {'error', _E} ->
             lager:debug("failed to get ETS stats: ~p", [_E]),
-            most_recent_db_status(AcctId, AgentId)
+            most_recent_db_status(AccountId, AgentId)
     end.
 
 -spec most_recent_ets_status(ne_binary(), ne_binary()) ->
                                     {'ok', ne_binary()} |
                                     {'error', any()}.
-most_recent_ets_status(AcctId, AgentId) ->
-    API = [{<<"Account-ID">>, AcctId}
+most_recent_ets_status(AccountId, AgentId) ->
+    API = [{<<"Account-ID">>, AccountId}
            ,{<<"Agent-ID">>, AgentId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
@@ -73,12 +73,12 @@ most_recent_ets_status(AcctId, AgentId) ->
     end.
 
 -spec most_recent_db_status(ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
-most_recent_db_status(AcctId, AgentId) ->
+most_recent_db_status(AccountId, AgentId) ->
     Opts = [{'startkey', [AgentId, wh_util:current_tstamp()]}
             ,{'limit', 1}
             ,'descending'
            ],
-    case couch_mgr:get_results(acdc_stats:db_name(AcctId), <<"agent_stats/status_log">>, Opts) of
+    case couch_mgr:get_results(acdc_stats:db_name(AccountId), <<"agent_stats/status_log">>, Opts) of
         {'ok', [StatusJObj]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
         {'ok', []} -> {'ok', <<"unknown">>};
         {'error', _E} ->
@@ -87,35 +87,41 @@ most_recent_db_status(AcctId, AgentId) ->
     end.
 
 -type statuses_return() :: {'ok', wh_json:object()}.
--spec most_recent_statuses(ne_binary()) -> statuses_return().
--spec most_recent_statuses(ne_binary(), ne_binary() | wh_proplist()) -> statuses_return().
--spec most_recent_statuses(ne_binary(), api_binary(), wh_proplist()) -> statuses_return().
+-spec most_recent_statuses(ne_binary()) ->
+                                  statuses_return().
+-spec most_recent_statuses(ne_binary(), api_binary() | wh_proplist()) ->
+                                  statuses_return().
+-spec most_recent_statuses(ne_binary(), api_binary(), wh_proplist()) ->
+                                  statuses_return().
 
-most_recent_statuses(AcctId) ->
-    most_recent_statuses(AcctId, 'undefined', []).
-most_recent_statuses(AcctId, ?NE_BINARY = AgentId) ->
-    most_recent_statuses(AcctId, AgentId, []);
-most_recent_statuses(AcctId, Options) when is_list(Options) ->
-    most_recent_statuses(AcctId, props:get_value(<<"Agent-ID">>, Options), Options).
+most_recent_statuses(AccountId) ->
+    most_recent_statuses(AccountId, 'undefined', []).
 
-most_recent_statuses(AcctId, AgentId, Options) ->
+most_recent_statuses(AccountId, 'undefined') ->
+    most_recent_statuses(AccountId, 'undefined', []);
+most_recent_statuses(AccountId, ?NE_BINARY = AgentId) ->
+    most_recent_statuses(AccountId, AgentId, []);
+most_recent_statuses(AccountId, Options) when is_list(Options) ->
+    most_recent_statuses(AccountId, props:get_value(<<"Agent-ID">>, Options), Options).
+
+most_recent_statuses(AccountId, AgentId, Options) ->
     Self = self(),
 
-    ETS = spawn_monitor(?MODULE, 'async_most_recent_ets_statuses', [AcctId, AgentId, Options, Self]),
+    ETS = spawn_monitor(?MODULE, 'async_most_recent_ets_statuses', [AccountId, AgentId, Options, Self]),
 
-    DB = maybe_start_db_lookup('async_most_recent_db_statuses', AcctId, AgentId, Options, Self),
+    DB = maybe_start_db_lookup('async_most_recent_db_statuses', AccountId, AgentId, Options, Self),
 
     maybe_reduce_statuses(AgentId, receive_statuses([ETS, DB])).
 
--spec maybe_start_db_lookup(atom(), ne_binary(), ne_binary(), list(), pid()) ->
+-spec maybe_start_db_lookup(atom(), ne_binary(), api_binary(), list(), pid()) ->
                                    {pid(), reference()} | 'undefined'.
-maybe_start_db_lookup(F, AcctId, AgentId, Options, Self) ->
-    case wh_cache:fetch_local(?ACDC_CACHE, db_fetch_key(F, AcctId, AgentId)) of
+maybe_start_db_lookup(F, AccountId, AgentId, Options, Self) ->
+    case wh_cache:fetch_local(?ACDC_CACHE, db_fetch_key(F, AccountId, AgentId)) of
         {'ok', _} -> 'undefined';
         {'error', 'not_found'} ->
-            spawn_monitor(?MODULE, F, [AcctId, AgentId, Options, Self])
+            spawn_monitor(?MODULE, F, [AccountId, AgentId, Options, Self])
     end.
-db_fetch_key(F, AcctId, AgentId) -> {F, AcctId, AgentId}.
+db_fetch_key(F, AccountId, AgentId) -> {F, AccountId, AgentId}.
 
 -spec maybe_reduce_statuses(api_binary(), wh_json:object()) ->
                                    {'ok', wh_json:object()}.
@@ -171,8 +177,8 @@ clear_monitor(Ref) ->
 
 -spec async_most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) ->
                                             'ok'.
-async_most_recent_ets_statuses(AcctId, AgentId, Options, Pid) ->
-    case most_recent_ets_statuses(AcctId, AgentId, Options) of
+async_most_recent_ets_statuses(AccountId, AgentId, Options, Pid) ->
+    case most_recent_ets_statuses(AccountId, AgentId, Options) of
         {'ok', Statuses} ->
             Pid ! {'statuses', Statuses, self()},
             'ok';
@@ -183,11 +189,11 @@ async_most_recent_ets_statuses(AcctId, AgentId, Options, Pid) ->
 
 -spec async_most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist(), pid()) ->
                                            'ok'.
-async_most_recent_db_statuses(AcctId, AgentId, Options, Pid) ->
-    case most_recent_db_statuses(AcctId, AgentId, Options) of
+async_most_recent_db_statuses(AccountId, AgentId, Options, Pid) ->
+    case most_recent_db_statuses(AccountId, AgentId, Options) of
         {'ok', Statuses} ->
             Pid ! {'statuses', Statuses, self()},
-            wh_cache:store_local(?ACDC_CACHE, db_fetch_key('async_most_recent_db_statuses', AcctId, AgentId), 'true'),
+            wh_cache:store_local(?ACDC_CACHE, db_fetch_key('async_most_recent_db_statuses', AccountId, AgentId), 'true'),
             'ok';
         {'error', _E} ->
             Pid ! {'statuses', wh_json:new(), self()},
@@ -200,17 +206,20 @@ async_most_recent_db_statuses(AcctId, AgentId, Options, Pid) ->
 -spec most_recent_ets_statuses(ne_binary(), api_binary(), wh_proplist()) ->
                                       statuses_return() |
                                       {'error', _}.
-most_recent_ets_statuses(AcctId) ->
-    most_recent_ets_statuses(AcctId, 'undefined', []).
-most_recent_ets_statuses(AcctId, ?NE_BINARY = AgentId) ->
-    most_recent_ets_statuses(AcctId, AgentId, []);
-most_recent_ets_statuses(AcctId, Options) when is_list(Options) ->
-    most_recent_ets_statuses(AcctId, 'undefined', Options).
-most_recent_ets_statuses(AcctId, AgentId, Options) ->
-    API = [{<<"Account-ID">>, AcctId}
-           ,{<<"Agent-ID">>, AgentId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Options
-          ],
+most_recent_ets_statuses(AccountId) ->
+    most_recent_ets_statuses(AccountId, 'undefined', []).
+
+most_recent_ets_statuses(AccountId, ?NE_BINARY = AgentId) ->
+    most_recent_ets_statuses(AccountId, AgentId, []);
+most_recent_ets_statuses(AccountId, Options) when is_list(Options) ->
+    most_recent_ets_statuses(AccountId, 'undefined', Options).
+
+most_recent_ets_statuses(AccountId, AgentId, Options) ->
+    API = props:filter_undefined(
+            [{<<"Account-ID">>, AccountId}
+             ,{<<"Agent-ID">>, AgentId}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ++ Options
+            ]),
     case whapps_util:amqp_pool_request(API
                                        ,fun wapi_acdc_stats:publish_status_req/1
                                        ,fun wapi_acdc_stats:status_resp_v/1
@@ -227,35 +236,36 @@ most_recent_ets_statuses(AcctId, AgentId, Options) ->
 -spec most_recent_db_statuses(ne_binary(), api_binary(), wh_proplist()) ->
                                       statuses_return() |
                                       {'error', _}.
-most_recent_db_statuses(AcctId) ->
-    most_recent_db_statuses(AcctId, 'undefined', []).
-most_recent_db_statuses(AcctId, ?NE_BINARY = AgentId) ->
-    most_recent_db_statuses(AcctId, AgentId, []);
-most_recent_db_statuses(AcctId, Options) when is_list(Options) ->
-    most_recent_db_statuses(AcctId, 'undefined', Options).
+most_recent_db_statuses(AccountId) ->
+    most_recent_db_statuses(AccountId, 'undefined', []).
+most_recent_db_statuses(AccountId, ?NE_BINARY = AgentId) ->
+    most_recent_db_statuses(AccountId, AgentId, []);
+most_recent_db_statuses(AccountId, Options) when is_list(Options) ->
+    most_recent_db_statuses(AccountId, 'undefined', Options).
 
-most_recent_db_statuses(AcctId, 'undefined', ReqOptions) ->
+most_recent_db_statuses(AccountId, 'undefined', ReqOptions) ->
     case props:get_value(<<"Agent-ID">>, ReqOptions) of
-        'undefined' -> most_recent_db_statuses_by_timestamp(AcctId, ReqOptions);
-        AgentId -> most_recent_db_statuses_by_agent(AcctId, AgentId, ReqOptions)
+        'undefined' -> most_recent_db_statuses_by_timestamp(AccountId, ReqOptions);
+        AgentId -> most_recent_db_statuses_by_agent(AccountId, AgentId, ReqOptions)
     end;
-most_recent_db_statuses(AcctId, AgentId, ReqOptions) ->
-    most_recent_db_statuses_by_agent(AcctId, AgentId, ReqOptions).
+most_recent_db_statuses(AccountId, AgentId, ReqOptions) ->
+    most_recent_db_statuses_by_agent(AccountId, AgentId, ReqOptions).
 
-most_recent_db_statuses_by_agent(AcctId, AgentId, ReqOptions) ->
+most_recent_db_statuses_by_agent(AccountId, AgentId, ReqOptions) ->
     ViewOptions = build_agent_view_options(AgentId, ReqOptions),
-    case couch_mgr:get_results(acdc_stats:db_name(AcctId)
+    case couch_mgr:get_results(acdc_stats:db_name(AccountId)
                                ,<<"agent_stats/most_recent_by_agent">>
                                ,ViewOptions
                               )
     of
         {'error', _}=E -> E;
-        {'ok', Stats} -> {'ok', cleanup_db_statuses(Stats, [{<<"Agent-ID">>, AgentId} | ReqOptions])}
+        {'ok', Stats} ->
+            {'ok', cleanup_db_statuses(Stats, [{<<"Agent-ID">>, AgentId} | ReqOptions])}
     end.
 
-most_recent_db_statuses_by_timestamp(AcctId, ReqOptions) ->
+most_recent_db_statuses_by_timestamp(AccountId, ReqOptions) ->
     ViewOptions = build_timestamp_view_options(ReqOptions),
-    case couch_mgr:get_results(acdc_stats:db_name(AcctId)
+    case couch_mgr:get_results(acdc_stats:db_name(AccountId)
                                ,<<"agent_stats/most_recent_by_timestamp">>
                                ,ViewOptions
                               )

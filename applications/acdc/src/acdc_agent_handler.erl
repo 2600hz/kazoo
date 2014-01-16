@@ -416,6 +416,7 @@ presence_id(JObj, AgentId) ->
     lager:debug("find presence in ~p", [JObj]),
     wh_json:get_value(<<"Presence-ID">>, JObj, AgentId).
 
+-spec presence_state(wh_json:object(), api_binary()) -> api_binary().
 presence_state(JObj, State) ->
     wh_json:get_value(<<"Presence-State">>, JObj, State).
 

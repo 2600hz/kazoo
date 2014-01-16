@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Helpers for cli commands
 %%% @end
@@ -10,12 +10,14 @@
 
 -export([current_calls/1, current_calls/2
          ,current_statuses/1
+         ,migrate_to_acdc_db/0, migrate/0
         ]).
 
 -include("acdc.hrl").
 
 -define(KEYS, [<<"Waiting">>, <<"Handled">>, <<"Processed">>, <<"Abandoned">>]).
 
+-spec current_statuses(text()) -> 'ok'.
 current_statuses(AcctId) ->
     {'ok', Agents} = acdc_agent_util:most_recent_statuses(AcctId),
     case wh_json:get_values(Agents) of
@@ -93,3 +95,51 @@ show_stats([S|Ss]) ->
          || {K, V} <- wh_json:to_proplist(wh_doc:public_fields(S))
         ],
     show_stats(Ss).
+
+migrate() ->
+    migrate_to_acdc_db().
+migrate_to_acdc_db() ->
+    [migrate_to_acdc_db(Acct) || Acct <- whapps_util:get_all_accounts('raw')].
+
+migrate_to_acdc_db(AccountId) ->
+    migrate_to_acdc_db(AccountId, 3).
+
+migrate_to_acdc_db(AccountId, 0) ->
+    lager:debug("retries exceeded, skipping account ~s", [AccountId]);
+migrate_to_acdc_db(AccountId, Retries) ->
+    case couch_mgr:get_results(?KZ_ACDC_DB
+                               ,<<"acdc/accounts_listing">>
+                               ,[{'key', AccountId}]
+                              )
+    of
+        {'ok', []} ->
+            maybe_migrate(AccountId);
+        {'ok', [_|_]} ->
+            lager:debug("account ~s already in acdc db", [AccountId]);
+        {'error', 'not_found'} ->
+            lager:debug("acdc db not found (or view is missing, restoring then trying again"),
+            acdc_init:init_db(),
+            timer:sleep(250),
+            migrate_to_acdc_db(AccountId, Retries-1);
+        {'error', _E} ->
+            lager:debug("failed to check acdc db for account: ~p", [_E]),
+            timer:sleep(250),
+            migrate_to_acdc_db(AccountId, Retries-1)
+    end.
+
+maybe_migrate(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [{'limit', 1}]) of
+        {'ok', []} ->
+            lager:debug("account ~s has no queues, skipping", [AccountId]);
+        {'ok', [_|_]} ->
+            lager:debug("account ~s has queues, adding to acdc db", [AccountId]),
+            Doc = wh_doc:update_pvt_parameters(wh_json:new()
+                                               ,?KZ_ACDC_DB
+                                               ,[{'account_id', AccountId}
+                                                 ,{'type', <<"acdc_activation">>}
+                                                ]),
+            couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc);
+        {'error', _E} ->
+            lager:debug("failed to query queue listing for account ~s: ~p", [AccountId, _E])
+    end.

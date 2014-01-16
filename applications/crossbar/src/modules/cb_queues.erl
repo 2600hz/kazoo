@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%%
 %%% CRUD for call queues
@@ -89,6 +89,9 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
+    _ = couch_mgr:db_create(?KZ_ACDC_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
+
     _ = crossbar_bindings:bind(<<"*.allowed_methods.queues">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.queues">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.queues">>, ?MODULE, 'content_types_provided'),
@@ -152,8 +155,8 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{}=Context) -> Context.
-content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
+content_types_provided(Context) -> Context.
+content_types_provided(Context, ?STATS_PATH_TOKEN) ->
     CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
             ,{'to_csv', ?CSV_CONTENT_TYPES}
            ],
@@ -169,58 +172,69 @@ content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    validate_request('undefined', Context).
+-spec validate(cb_context:context()) ->
+                      cb_context:context().
+-spec validate(cb_context:context(), path_token()) ->
+                      cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) ->
+                      cb_context:context().
+validate(Context) ->
+    validate_queues(Context, cb_context:req_verb(Context)).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATS_PATH_TOKEN) ->
+validate_queues(Context, ?HTTP_GET) -> summary(Context);
+validate_queues(Context, ?HTTP_PUT) -> validate_request('undefined', Context).
+
+validate(Context, PathToken) ->
+    validate_queue(Context, PathToken, cb_context:req_verb(Context)).
+
+validate_queue(Context, ?STATS_PATH_TOKEN, ?HTTP_GET) ->
     fetch_all_queue_stats(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, ?EAVESDROP_PATH_TOKEN) ->
+validate_queue(Context, ?EAVESDROP_PATH_TOKEN, ?HTTP_PUT) ->
     validate_eavesdrop_on_call(Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
+validate_queue(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
+validate_queue(Context, Id, ?HTTP_POST) ->
     validate_request(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
+validate_queue(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+validate(Context, Id, Token) ->
+    validate_queue_operation(Context, Id, Token, cb_context:req_verb(Context)).
+
+validate_queue_operation(Context, Id, ?ROSTER_PATH_TOKEN, ?HTTP_GET) ->
     load_agent_roster(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+validate_queue_operation(Context, Id, ?ROSTER_PATH_TOKEN, ?HTTP_POST) ->
     add_queue_to_agents(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+validate_queue_operation(Context, Id, ?ROSTER_PATH_TOKEN, ?HTTP_DELETE) ->
     rm_queue_from_agents(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context, Id, ?EAVESDROP_PATH_TOKEN) ->
+validate_queue_operation(Context, Id, ?EAVESDROP_PATH_TOKEN, ?HTTP_PUT) ->
     validate_eavesdrop_on_queue(Context, Id).
 
-validate_eavesdrop_on_call(#cb_context{req_data=Data}=Context) ->
+validate_eavesdrop_on_call(Context) ->
+    Data = cb_context:req_data(Context),
     Fs = [{fun is_valid_endpoint/2, [Context, Data]}
           ,{fun is_valid_call/2, [Context, Data]}
           ,{fun is_valid_mode/2, [Context, Data]}
          ],
     case all_true(Fs) of
-        'true' -> Context#cb_context{resp_status='success'};
+        'true' -> cb_context:set_resp_status(Context, 'success');
         {'false', Context1} -> Context1
     end.
 
-validate_eavesdrop_on_queue(#cb_context{req_data=Data}=Context, QueueId) ->
+validate_eavesdrop_on_queue(Context, QueueId) ->
+    Data = cb_context:req_data(Context),
     Fs = [{fun is_valid_endpoint/2, [Context, Data]}
           ,{fun is_valid_queue/2, [Context, QueueId]}
           ,{fun is_valid_mode/2, [Context, Data]}
          ],
     case all_true(Fs) of
-        'true' ->
-            Context#cb_context{resp_status='success'};
+        'true' -> cb_context:set_resp_status(Context, 'success');
         {'false', Context1} -> Context1
     end.
 
 -spec all_true([{fun(), list()},...]) ->
-                            'true' |
-                            {'false', cb_context:context()}.
+                      'true' |
+                      {'false', cb_context:context()}.
 all_true(Fs) ->
     lists:foldl(fun({F, Args}, 'true') -> apply(F, Args);
                    (_, Acc) -> Acc
@@ -229,12 +243,13 @@ all_true(Fs) ->
 is_valid_mode(Context, Data) ->
     case wapi_resource:is_valid_mode(wh_json:get_value(<<"mode">>, Data, <<"listen">>)) of
         'true' -> 'true';
-        'false' -> {'false'
-                    ,cb_context:add_validation_error(<<"mode">>, <<"enum">>
-                                                     ,<<"enum:Value not found in enumerated list of values">>
-                                                     ,Context
-                                                    )
-                   }
+        'false' ->
+            {'false'
+             ,cb_context:add_validation_error(<<"mode">>, <<"enum">>
+                                              ,<<"enum:Value not found in enumerated list of values">>
+                                              ,Context
+                                             )
+            }
     end.
 
 is_valid_call(Context, Data) ->
@@ -316,11 +331,14 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), path_token()) -> cb_context:context().
--spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec put(cb_context:context()) ->
+                 cb_context:context().
+-spec put(cb_context:context(), path_token()) ->
+                 cb_context:context().
+-spec put(cb_context:context(), path_token(), path_token()) ->
+                 cb_context:context().
 put(Context) ->
-    lager:debug("saving new queue"),
+    activate_account_for_acdc(Context),
     crossbar_doc:save(Context).
 
 put(Context, ?EAVESDROP_PATH_TOKEN) ->
@@ -384,9 +402,11 @@ filter_response_fields(JObj) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-post(#cb_context{}=Context, _) ->
+post(Context, _) ->
+    activate_account_for_acdc(Context),
     crossbar_doc:save(Context).
-post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+post(Context, Id, ?ROSTER_PATH_TOKEN) ->
+    activate_account_for_acdc(Context),
     read(Id, crossbar_doc:save(Context)).
 
 %%--------------------------------------------------------------------
@@ -397,9 +417,11 @@ post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-delete(#cb_context{}=Context, _) ->
+delete(Context, _) ->
+    activate_account_for_acdc(Context),
     crossbar_doc:delete(Context).
-delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+delete(Context, Id, ?ROSTER_PATH_TOKEN) ->
+    activate_account_for_acdc(Context),
     read(Id, crossbar_doc:save(Context)).
 
 %%%===================================================================
@@ -414,10 +436,10 @@ delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    case crossbar_doc:load(Id, Context) of
-        #cb_context{resp_status='success'}=Context1 ->
-            load_queue_agents(Id, Context1);
-        Context1 -> Context1
+    Context1 = crossbar_doc:load(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_queue_agents(Id, Context1);
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -434,10 +456,10 @@ check_queue_schema(QueueId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(QueueId, C) end,
     cb_context:validate_request_data(<<"queues">>, Context, OnSuccess).
 
-on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
+on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"queue">>}],
-    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
-on_successful_validation(QueueId, #cb_context{}=Context) ->
+    cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
+on_successful_validation(QueueId, Context) ->
     crossbar_doc:load_merge(QueueId, Context).
 
 %%--------------------------------------------------------------------
@@ -446,11 +468,17 @@ on_successful_validation(QueueId, #cb_context{}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
-    case load_agent_roster(Id, Context) of
-        #cb_context{resp_status='success', resp_data=Agents, doc=_D} ->
-            Context#cb_context{resp_data=wh_json:set_value(<<"agents">>, Agents, Queue)};
-        _ -> Context
+load_queue_agents(Id, Context) ->
+    Context1 = load_agent_roster(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:set_resp_data(Context
+                                     ,wh_json:set_value(<<"agents">>
+                                                        ,cb_context:resp_data(Context1)
+                                                        ,cb_context:resp_data(Context)
+                                                       )
+                                    );
+        _Status -> Context1
     end.
 
 load_agent_roster(Id, Context) ->
@@ -459,31 +487,42 @@ load_agent_roster(Id, Context) ->
                            ,fun normalize_agents_results/2
                           ).
 
-add_queue_to_agents(Id, #cb_context{req_data=[]}=Context) ->
-    lager:debug("no agents listed, removing all agents from ~s", [Id]),
-    #cb_context{resp_data=CurrAgentIds} = load_agent_roster(Id, Context),
-    rm_queue_from_agents(Id, Context#cb_context{req_data=CurrAgentIds});
+add_queue_to_agents(Id, Context) ->
+    add_queue_to_agents(Id, Context, cb_context:req_data(Context)).
 
-add_queue_to_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
+add_queue_to_agents(Id, Context, []) ->
+    lager:debug("no agents listed, removing all agents from ~s", [Id]),
+
+    Context1 = load_agent_roster(Id, Context),
+    CurrAgentIds = cb_context:resp_data(Context1),
+
+    rm_queue_from_agents(Id, cb_context:set_req_data(Context, CurrAgentIds));
+
+add_queue_to_agents(Id, Context, AgentIds) ->
     %% We need to figure out what agents are on the queue already, and remove those not
     %% in the AgentIds list
-    #cb_context{resp_data=CurrAgentIds} = load_agent_roster(Id, Context),
+    Context1 = load_agent_roster(Id, Context),
+    CurrAgentIds = cb_context:resp_data(Context1),
 
     {InQueueAgents, RmAgentIds} = lists:partition(fun(A) -> lists:member(A, AgentIds) end, CurrAgentIds),
     AddAgentIds = [A || A <- AgentIds, (not lists:member(A, InQueueAgents))],
 
     _ = maybe_rm_agents(Id, Context, RmAgentIds),
-    add_queue_to_agents(Id, Context, AddAgentIds).
+    add_queue_to_agents_diff(Id, Context, AddAgentIds).
 
-add_queue_to_agents(_Id, Context, []) ->
-    Context#cb_context{resp_status='success', doc=[]};
-add_queue_to_agents(Id, Context, AgentIds) ->
-    case crossbar_doc:load(AgentIds, Context) of
-        #cb_context{resp_status='success'
-                    ,doc=Agents
-                   }=Context1 ->
-            Context1#cb_context{doc=[maybe_add_queue_to_agent(Id, A) || A <- Agents]};
-        Context1 -> Context1
+add_queue_to_agents_diff(_Id, Context, []) ->
+    cb_context:set_doc(
+      cb_context:set_resp_status(Context, 'success')
+      ,[]
+     );
+add_queue_to_agents_diff(Id, Context, AgentIds) ->
+    Context1 =  crossbar_doc:load(AgentIds, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:set_doc(Context1
+                               ,[maybe_add_queue_to_agent(Id, A) || A <- cb_context:doc(Context1)]
+                              );
+        _Status -> Context1
     end.
 
 maybe_add_queue_to_agent(Id, A) ->
@@ -642,3 +681,24 @@ normalize_view_results(JObj, Acc) ->
 
 normalize_agents_results(JObj, Acc) ->
     [wh_json:get_value(<<"id">>, JObj) | Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Creates an entry in the acdc db of the account's participation in acdc
+%% @end
+%%--------------------------------------------------------------------
+activate_account_for_acdc(Context) ->
+    case couch_mgr:open_cache_doc(?KZ_ACDC_DB, cb_context:account_id(Context)) of
+        {'ok', _} -> 'ok';
+        {'error', 'not_found'} ->
+            lager:debug("creating account doc in acdc db"),
+            Doc = wh_doc:update_pvt_parameters(wh_json:new()
+                                               ,?KZ_ACDC_DB
+                                               ,[{'account_id', cb_context:account_id(Context)}
+                                                 ,{'type', <<"acdc_activation">>}
+                                                ]),
+            couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc);
+        {'error', _E} ->
+            lager:debug("failed to check acdc activation doc: ~p", [_E])
+    end.
