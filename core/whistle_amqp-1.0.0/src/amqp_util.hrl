@@ -103,6 +103,9 @@
 
 -type wh_amqp_commands() :: [wh_amqp_command(),...] | [].
 
+-type wh_amqp_exchange() :: #'exchange.declare'{}.
+-type wh_amqp_exchanges() :: [#'exchange.declare'{},...] | [].
+
 -type wh_command_ret_ok() :: #'basic.qos_ok'{} | #'queue.declare_ok'{} |
                              #'exchange.declare_ok'{} | #'queue.delete_ok'{} |
                              #'queue.declare_ok'{} | #'queue.unbind_ok'{} |
@@ -138,7 +141,12 @@
                              ,manager :: atom() | '_'
                              ,connection :: pid() | '_'
                              ,connection_ref :: reference() | '_'
+                             ,channel :: api_pid() | '$1' | '_'
+                             ,channel_ref :: api_reference() | '$1' | '_'
+                             ,reconnect_ref :: api_reference() | '_'
                              ,available = 'false' :: boolean()
+                             ,exchanges_initalized = 'false' :: boolean() | '_'
+                             ,prechannels_initalized = 'false' :: boolean() | '_'
                              ,started = now() :: wh_now() | '_'
                             }).
 -type wh_amqp_connection() :: #wh_amqp_connection{}.

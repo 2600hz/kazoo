@@ -12,10 +12,13 @@
 
 -export([start_link/0]).
 -export([is_consuming/2]).
+-export([update_consumer_tag/3]).
 -export([basic_consumers/1]).
 -export([command/2]).
 -export([remove/1]).
 -export([get/1]).
+-export([add_exchange/1]).
+-export([get_exchanges/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -28,11 +31,14 @@
 
 -define(TAB, ?MODULE).
 
--record(state, {consumers = sets:new()}).
+-record(state, {consumers = sets:new()
+                ,exchanges = dict:new()
+                ,connections = sets:new()}).
 
 -record(wh_amqp_history, {timestamp = now()
                           ,consumer
                           ,command}).
+-type wh_amqp_history() :: #wh_amqp_history{}.
 
 %%%===================================================================
 %%% API
@@ -83,6 +89,10 @@ command(#wh_amqp_assignment{consumer=Consumer}, Command) ->
             gen_server:cast(?MODULE, {'command', Consumer, Command})
     end.
 
+-spec update_consumer_tag(pid(), ne_binary(), ne_binary()) -> 'ok'.
+update_consumer_tag(Consumer, OldTag, NewTag) ->
+    gen_server:cast(?MODULE, {'update_consumer_tag', Consumer, OldTag, NewTag}).
+
 -spec remove(wh_amqp_assignment() | pid() | 'undefined') -> 'ok'.
 remove(#wh_amqp_assignment{consumer=Consumer}) -> remove(Consumer);
 remove(Consumer) when is_pid(Consumer) ->
@@ -97,6 +107,14 @@ get(Consumer) ->
      || #wh_amqp_history{command=Command} 
             <- ets:match_object(?TAB, Pattern)
     ].
+
+-spec add_exchange(wh_amqp_exchange()) -> 'ok'.
+add_exchange(#'exchange.declare'{}=Exchange) ->
+    gen_server:cast(?MODULE, {'add_exchange', Exchange}).
+
+-spec get_exchanges() -> wh_amqp_exchanges().
+get_exchanges() ->
+    gen_server:call(?MODULE, 'get_exchanges').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -136,6 +154,11 @@ init([]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call('get_exchanges', {Connection, _}, #state{exchanges=Exchanges
+                                                     ,connections=Connections}=State) ->
+    _Ref = monitor('process', Connection),
+    {'reply', [Exchange || {_, Exchange} <- dict:to_list(Exchanges)]
+     ,State#state{connections=sets:add_element(Connection, Connections)}};
 handle_call(_Msg, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -149,6 +172,13 @@ handle_call(_Msg, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'update_consumer_tag', Consumer, OldTag, NewTag}, State) ->
+    Pattern = #wh_amqp_history{consumer=Consumer
+                               ,command=#'basic.consume'{consumer_tag=OldTag
+                                                         ,_='_'}
+                               ,_='_'},
+    _ = update_consumer_tag(ets:match_object(?TAB, Pattern, 1), NewTag),
+    {'noreply', State};    
 handle_cast({'command', Consumer, #'queue.delete'{queue=Queue}}, State) ->
     Pattern = #wh_amqp_history{consumer=Consumer
                                ,command=#'queue.declare'{queue=Queue
@@ -187,9 +217,16 @@ handle_cast({'remove', Consumer}, #state{consumers=Consumers}=State) ->
     Pattern = #wh_amqp_history{consumer=Consumer, _='_'},
     _ = ets:match_delete(?TAB, Pattern),
     {'noreply', State#state{consumers=sets:del_element(Consumer, Consumers)}};
+handle_cast({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
+            ,#state{exchanges=Exchanges
+                    ,connections=Connections}=State) ->
+    _ = [(catch wh_amqp_connection:new_exchange(Connection, Exchange))
+         || Connection <- sets:to_list(Connections)
+        ],
+    {'noreply', State#state{exchanges=dict:store(Name, Exchange, Exchanges)}};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
-
+     
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -200,11 +237,18 @@ handle_cast(_Msg, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', _, 'process', Consumer, _Reason}, State) ->
-    lager:notice("consumer ~p went down without removing AMQP history: ~p"
-                 ,[Consumer, _Reason]),
-    _ = remove(Consumer),
-    {'noreply', State};
+handle_info({'DOWN', _, 'process', Pid, _Reason}
+            ,#state{connections=Connections}=State) ->
+    case sets:is_element(Pid) of
+        'true' -> 
+            lager:debug("connection ~p went down: ~p", [Pid, _Reason]),
+            {'noreply', State#state{connections=sets:del_element(Pid, Connections)}};
+        'false' ->
+            lager:debug("consumer ~p went down without removing AMQP history: ~p"
+                        ,[Pid, _Reason]),
+            _ = remove(Pid),
+            {'noreply', State}
+    end;
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -237,4 +281,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
+-spec update_consumer_tag({wh_amqp_history(), ets:continuation()} | '$end_of_table', ne_binary()) -> 'ok'.
+update_consumer_tag('$end_of_table', _) -> 'ok';
+update_consumer_tag({[#wh_amqp_history{timestamp=Timestamp
+                                       ,command=Command}
+                     ], Continuation}, NewTag) ->
+    Props = [{#wh_amqp_history.command, Command#'basic.consume'{consumer_tag=NewTag}}],
+    _ = ets:update_element(?TAB, Timestamp, Props),
+    update_consumer_tag(ets:match_object(Continuation), NewTag).

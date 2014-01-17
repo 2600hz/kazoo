@@ -103,6 +103,8 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg)
     end.
 
 -spec command(wh_amqp_command()) -> command_ret().
+command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
+    wh_amqp_history:add_exchange(Exchange);
 command(Command) ->
     case wh_amqp_assignments:request_float() of        
         #wh_amqp_assignment{channel=Channel}=Assignment 
@@ -118,6 +120,19 @@ command(#wh_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->
     amqp_channel:cast(Pid, BasicAck);
 command(#wh_amqp_assignment{channel=Pid}, #'basic.nack'{}=BasicNack) ->
     amqp_channel:cast(Pid, BasicNack);
+command(#wh_amqp_assignment{consumer=Consumer
+                            ,channel=Channel
+                            ,reconnect='true'
+                           }
+        ,#'basic.consume'{consumer_tag=OldTag}=Command) ->
+    C = Command#'basic.consume'{consumer_tag = <<>>},
+    case amqp_channel:subscribe(Channel, C, Consumer) of
+        #'basic.consume_ok'{consumer_tag=NewTag} ->
+            wh_amqp_history:update_consumer_tag(Consumer, OldTag, NewTag);
+        _Else -> 
+            lager:warning("failed to re-establish consumer for ~s: ~p"
+                          ,[Consumer, _Else])
+    end;
 command(#wh_amqp_assignment{consumer=Consumer
                             ,channel=Channel
                            }=Assignment
@@ -140,10 +155,6 @@ command(#wh_amqp_assignment{channel=Channel
                           handle_command_result(Result, Command, Assignment);
                      (_) -> 'ok'
                   end, wh_amqp_history:basic_consumers(Consumer));
-command(_, #'exchange.declare'{exchange=_Ex, type=_Ty}) ->
-    lager:debug("declared ~s exchange ~s", [_Ty, _Ex]),
-    %% TODO: shouldn't this be declaring exchanges?
-    'ok';
 command(#wh_amqp_assignment{channel=Channel}=Assignment, Command) ->
     Result = amqp_channel:call(Channel, Command),
     handle_command_result(Result, Command, Assignment).

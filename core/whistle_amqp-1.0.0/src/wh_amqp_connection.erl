@@ -13,6 +13,7 @@
 
 -export([start_link/1]).
 -export([get_connection/1]).
+-export([new_exchange/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -41,8 +42,13 @@
 start_link(#wh_amqp_connection{}=Connection) ->
     gen_server:start_link(?MODULE, [Connection], []).
 
+-spec get_connection(pid()) -> wh_amqp_connection().
 get_connection(Srv) ->
     gen_server:call(Srv, 'get_connection').
+
+-spec new_exchange(pid(), wh_amqp_exchange()) -> 'ok'.
+new_exchange(Srv, Exchange) ->
+    gen_server:cast(Srv, {'new_exchange', Exchange}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -62,8 +68,7 @@ get_connection(Srv) ->
 init([#wh_amqp_connection{}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
     put('callid', ?LOG_SYSTEM_ID),
-    self() ! {'connect', ?START_TIMEOUT},
-    {'ok', Connection}.
+    {'ok', disconnected(Connection)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -79,12 +84,12 @@ init([#wh_amqp_connection{}=Connection]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call('get_connection', _, State) ->
-    {'reply', State, State};
-handle_call('stop', _, State) ->
-    {'stop', 'normal', 'ok', State};
-handle_call(_Msg, _From, State) ->
-    {'reply', {'error', 'not_implemented'}, State}.
+handle_call('get_connection', _, Connection) ->
+    {'reply', Connection, Connection};
+handle_call('stop', _, Connection) ->
+    {'stop', 'normal', 'ok', disconnected(Connection)};
+handle_call(_Msg, _From, Connection) ->
+    {'reply', {'error', 'not_implemented'}, Connection}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,12 +101,26 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'wh_amqp_channel', 'channel_assigned'}
-            ,#wh_amqp_connection{available='true'}=State) ->
-    _ = start_prechannel(State),
-    {'noreply', State};
-handle_cast(_Msg, State) ->
-    {'noreply', State}.
+handle_cast('create_control_channel'
+            ,#wh_amqp_connection{available='false'}=Connection) ->
+    {'noreply', Connection, 'hibernate'};
+handle_cast('create_control_channel'
+            ,#wh_amqp_connection{available='true'}=Connection) ->
+    {'noreply', create_control_channel(Connection), 'hibernate'};
+handle_cast('create_prechannel'
+            ,#wh_amqp_connection{available='false'}=Connection) ->
+    {'noreply', Connection};
+handle_cast('create_prechannel'
+            ,#wh_amqp_connection{available='true'}=Connection) ->
+    {'noreply', create_prechannel(Connection), 'hibernate'};
+handle_cast({'new_exchange', _}
+            ,#wh_amqp_connection{available='false'}=Connection) ->
+    {'noreply', Connection, 'hibernate'};
+handle_cast({'new_exchange', Exchange}
+            ,#wh_amqp_connection{available='true'}=Connection) ->
+    {'noreply', declare_exchanges(Connection, [Exchange]), 'hibernate'};
+handle_cast(_Msg, Connection) ->
+    {'noreply', Connection}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -113,37 +132,31 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'DOWN', _Ref, 'process', _Pid, _Reason}
+            ,#wh_amqp_connection{available='false'}=Connection) ->
+    {'noreply', Connection, 'hibernate'};
 handle_info({'DOWN', Ref, 'process', _Pid, _Reason}
-            ,#wh_amqp_connection{connection_ref=Ref
-                                ,broker=_Broker}=State) ->
+            ,#wh_amqp_connection{available='true'
+                                 ,channel_ref=Ref
+                                 ,broker=_Broker}=Connection) ->
+    lager:warning("command channel to the AMQP broker ~s died: ~p"
+                  ,[_Broker, _Reason]),
+    {'noreply', create_control_channel(Connection), 'hibernate'};
+handle_info({'DOWN', Ref, 'process', _Pid, _Reason}
+            ,#wh_amqp_connection{available='true'
+                                 ,connection_ref=Ref
+                                 ,broker=_Broker}=Connection) ->
     lager:critical("connection to the AMQP broker ~s died: ~p"
                    ,[_Broker, _Reason]),
-    self() ! {'connect', ?START_TIMEOUT},
-    {'noreply', disconnected(State), 'hibernate'};
-handle_info({'connect', Timeout}, #wh_amqp_connection{broker=_Broker
-                                                      ,params=Params}=State) ->
-    case amqp_connection:start(Params) of
-        {'error', 'auth_failure'} ->
-            lager:warning("amqp authentication failure with '~s', will retry in ~p"
-                          ,[_Broker, Timeout]),
-            _Ref = erlang:send_after(Timeout, self(), {'connect', next_timeout(Timeout)}),
-            {'noreply', State, 'hibernate'};
-        {'error', _Reason} ->
-            lager:warning("failed to connect to '~s' will retry in ~p: ~p"
-                          ,[_Broker, Timeout, _Reason]),
-            _Ref = erlang:send_after(Timeout, self(), {'connect', next_timeout(Timeout)}),
-            {'noreply', State, 'hibernate'};
-        {'ok', Connection} ->
-            lager:notice("connected successfully to '~s'", [_Broker]),
-            Ref = erlang:monitor('process', Connection),
-            S = State#wh_amqp_connection{connection=Connection
-                                         ,connection_ref=Ref
-                                         ,available='true'},
-            {'noreply', connected(S), 'hibernate'}
-    end;
-handle_info(_Info, State) ->
+    {'noreply', disconnected(Connection), 'hibernate'}; 
+handle_info({'connect', Timeout}
+            ,#wh_amqp_connection{available='false'}=Connection) ->
+    {'noreply', maybe_connect(Connection, Timeout), 'hibernate'};
+handle_info({'connect', _}, #wh_amqp_connection{available='true'}=Connection) ->
+    {'noreply', Connection, 'hibernate'};
+handle_info(_Info, Connection) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {'noreply', State, 'hibernate'}.
+    {'noreply', Connection, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -157,10 +170,10 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(term(), wh_amqp_connection()) -> any().
-terminate(_Reason, #wh_amqp_connection{broker=_Broker}=State) ->
+terminate(_Reason, #wh_amqp_connection{broker=_Broker}=Connection) ->
     lager:debug("connection to amqp broker '~s' terminated: ~p"
                 ,[_Broker, _Reason]),
-    disconnected(State).
+    disconnected(Connection).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -170,28 +183,94 @@ terminate(_Reason, #wh_amqp_connection{broker=_Broker}=State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {'ok', State}.
+code_change(_OldVsn, Connection, _Extra) ->
+    {'ok', Connection}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec connected(wh_amqp_connection()) -> wh_amqp_connection().
-connected(#wh_amqp_connection{broker=Broker}=State) ->
-    wh_amqp_assignments:add_broker(Broker),
-    _ = [start_prechannel(State)
-         || _ <- lists:seq(1, 10)
-        ],
-    State.
+connected(#wh_amqp_connection{reconnect_ref=Ref}=Connection) 
+  when is_reference(Ref) ->
+    erlang:cancel_timer(Ref),
+    connected(Connection#wh_amqp_connection{reconnect_ref='undefined'});
+connected(#wh_amqp_connection{channel='undefined'}=Connection) ->
+    case create_control_channel(Connection) of
+        #wh_amqp_connection{channel=Pid}=Success
+          when is_pid(Pid)-> connected(Success);
+        #wh_amqp_connection{}=Error -> Error
+    end;
+connected(#wh_amqp_connection{exchanges_initalized='false'}=Connection) ->
+    case declare_exchanges(Connection) of
+        #wh_amqp_connection{exchanges_initalized='false'}=Error -> Error;
+        #wh_amqp_connection{exchanges_initalized='true'}=Success ->
+            connected(Success)
+    end;
+connected(#wh_amqp_connection{available='false', broker=Broker}=Connection) ->
+    _ = wh_amqp_assignments:add_broker(Broker),
+    connected(Connection#wh_amqp_connection{available='true'});
+connected(#wh_amqp_connection{prechannels_initalized='false'}=Connection) ->
+    case initalize_prechannels(Connection) of
+        #wh_amqp_connection{prechannels_initalized='false'}=Error -> Error;
+        #wh_amqp_connection{prechannels_initalized='true'}=Success ->
+            connected(Success)
+    end;
+connected(#wh_amqp_connection{broker=_Broker}=Connection) -> 
+    lager:notice("successfully connected to '~s'", [_Broker]),
+    Connection.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().
-disconnected(#wh_amqp_connection{connection_ref=Ref}=State) when is_reference(Ref) ->
-    erlang:demonitor(Ref, ['flush']),
-    disconnected(State#wh_amqp_connection{connection_ref='undefined'});
-disconnected(#wh_amqp_connection{broker=Broker}=State) ->
-    wh_amqp_assignments:remove_broker(Broker),    
-    State#wh_amqp_connection{connection='undefined', available='false'}.
+disconnected(#wh_amqp_connection{}=State) ->
+    disconnected(State, ?START_TIMEOUT).
 
+-spec disconnected(wh_amqp_connection(), ?START_TIMEOUT..?MAX_TIMEOUT) -> wh_amqp_connection().
+disconnected(#wh_amqp_connection{available='true'
+                                 ,broker=Broker}=Connection, Timeout) ->
+    _ = wh_amqp_assignments:remove_broker(Broker),
+    disconnected(Connection#wh_amqp_connection{available='false'}, Timeout);
+disconnected(#wh_amqp_connection{channel_ref=Ref}=Connection, Timeout) 
+  when is_reference(Ref) ->
+    erlang:demonitor(Ref, ['flush']),
+    disconnected(Connection#wh_amqp_connection{channel_ref='undefined'}, Timeout);
+disconnected(#wh_amqp_connection{channel=Pid}=Connection, Timeout)
+  when is_pid(Pid) ->
+    _ = (catch wh_amqp_channel:close(Pid)),
+    disconnected(Connection#wh_amqp_connection{channel='undefined'}, Timeout);
+disconnected(#wh_amqp_connection{connection_ref=Ref}=Connection, Timeout)
+  when is_reference(Ref) ->
+    erlang:demonitor(Ref, ['flush']),
+    disconnected(Connection#wh_amqp_connection{connection_ref='undefined'}, Timeout);
+disconnected(#wh_amqp_connection{connection=Pid}=Connection, Timeout)
+  when is_pid(Pid) ->
+    _ = (catch amqp_connection:close(Pid, 5000)),
+    disconnected(Connection#wh_amqp_connection{connection='undefined'}, Timeout);
+disconnected(#wh_amqp_connection{prechannels_initalized='true'}=Connection, Timeout) ->
+    disconnected(Connection#wh_amqp_connection{prechannels_initalized='false'}, Timeout);
+disconnected(#wh_amqp_connection{exchanges_initalized='true'}=Connection, Timeout) ->
+    disconnected(Connection#wh_amqp_connection{exchanges_initalized='false'}, Timeout);
+disconnected(#wh_amqp_connection{}=Connection, Timeout) ->
+    NextTimeout = next_timeout(Timeout),
+    Ref = erlang:send_after(Timeout, self(), {'connect', NextTimeout}),
+    Connection#wh_amqp_connection{reconnect_ref=Ref}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec next_timeout(pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
 next_timeout(?MAX_TIMEOUT=Timeout) ->
     Timeout;
@@ -202,17 +281,103 @@ next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
 next_timeout(Timeout) ->
     Timeout * 2.
 
--spec start_prechannel(wh_amqp_connection()) -> 'ok'.
-start_prechannel(#wh_amqp_connection{broker=Broker}=Connection) ->
-    case open_channel(Connection) of
-        {'ok', Channel} ->
-            wh_amqp_assignments:new_channel(Broker, self(), Channel);
-        {'error', _} -> 'ok'
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_connect(wh_amqp_connection(), ?START_TIMEOUT..?MAX_TIMEOUT) -> wh_amqp_connection().
+maybe_connect(#wh_amqp_connection{broker=_Broker
+                                  ,available='false'
+                                  ,params=Params}=Connection
+                  ,Timeout) ->
+    case amqp_connection:start(Params) of
+        {'error', 'auth_failure'} ->
+            lager:warning("amqp authentication failure with '~s', will retry"
+                          ,[_Broker]),
+            disconnected(Connection, Timeout);
+        {'error', _Reason} ->
+            lager:warning("failed to connect to '~s' will retry: ~p"
+                          ,[_Broker, _Reason]),
+            disconnected(Connection, Timeout);
+        {'ok', Pid} ->
+            Ref = erlang:monitor('process', Pid),
+            connected(Connection#wh_amqp_connection{connection=Pid
+                                                    ,connection_ref=Ref})
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec create_control_channel(wh_amqp_connection()) -> wh_amqp_connection().
+create_control_channel(#wh_amqp_connection{channel_ref=Ref}=Connection)
+  when is_reference(Ref) ->
+    erlang:demonitor(Ref, ['flush']),
+    create_control_channel(Connection#wh_amqp_connection{channel_ref='undefined'});
+create_control_channel(#wh_amqp_connection{channel=Pid}=Connection) 
+  when is_pid(Pid) ->
+    _ = (catch wh_amqp_channel:close(Pid)),
+    create_control_channel(Connection#wh_amqp_connection{channel='undefined'});
+create_control_channel(#wh_amqp_connection{broker=Broker}=Connection) ->
+    case open_channel(Connection) of
+        {'error', _R} ->
+            lager:critical("unable to establish command channel to ~s, assuming connection is invalid: ~p"
+                           ,[Broker, _R]),
+            disconnected(Connection);
+        {'ok', Pid} ->
+            lager:debug("created command channel ~p to ~s", [Pid, Broker]),
+            Ref = erlang:monitor('process', Pid),
+            Connection#wh_amqp_connection{channel=Pid
+                                          ,channel_ref=Ref}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec initalize_prechannels(wh_amqp_connection()) -> wh_amqp_connection().
+initalize_prechannels(#wh_amqp_connection{}=Connection) ->
+    initalize_prechannels(Connection, 10).
+
+-spec initalize_prechannels(wh_amqp_connection(), non_neg_integer()) -> wh_amqp_connection().
+initalize_prechannels(#wh_amqp_connection{}=Connection, 0) ->
+    Connection#wh_amqp_connection{prechannels_initalized='true'};
+initalize_prechannels(#wh_amqp_connection{}=Connection, Count) ->
+    case create_prechannel(Connection) of
+        #wh_amqp_connection{connection=Pid}=Success
+            when is_pid(Pid) ->
+            initalize_prechannels(Success, Count - 1);
+        #wh_amqp_connection{}=Error ->
+            Error#wh_amqp_connection{prechannels_initalized='false'}
+    end.
+
+-spec create_prechannel(wh_amqp_connection()) -> wh_amqp_connection().
+create_prechannel(#wh_amqp_connection{broker=Broker}=Connection) ->
+    case open_channel(Connection) of
+        {'error', _R} ->
+            lager:critical("unable to establish prechannel to ~s, assuming connection is invalid: ~p"
+                           ,[Broker, _R]),
+            disconnected(Connection);
+        {'ok', Pid} ->
+            wh_amqp_assignments:new_channel(Broker, self(), Pid),
+            Connection
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec open_channel(wh_amqp_connection()) -> {'ok', pid()} | {'error', _}.
-open_channel(#wh_amqp_connection{connection=Connection}) ->
-    try amqp_connection:open_channel(Connection) of
+open_channel(#wh_amqp_connection{connection=Pid}) ->
+    try amqp_connection:open_channel(Pid) of
         {'ok', Channel}=Ok ->
             %% This is not strickly necessary, but since we
             %% loose the entire CONNECTION if a single message
@@ -231,3 +396,54 @@ open_channel(#wh_amqp_connection{connection=Connection}) ->
             lager:warning("amqp connection ~p is no longer valid...", [P]),
             {'error', 'not_connected'}
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges(wh_amqp_connection()) -> wh_amqp_connection().
+declare_exchanges(#wh_amqp_connection{}=Connection) ->
+    declare_exchanges(Connection, wh_amqp_history:get_exchanges()).
+
+-spec declare_exchanges(wh_amqp_connection(), wh_amqp_exchanges()) -> wh_amqp_connection().
+declare_exchanges(#wh_amqp_connection{}=Connection, []) ->
+    Connection#wh_amqp_connection{exchanges_initalized='true'};
+declare_exchanges(#wh_amqp_connection{channel=Channel
+                                      ,broker=_Broker}=Connection
+                  ,[Exchange|Exchanges]) 
+  when is_pid(Channel) ->
+    try amqp_channel:call(Channel, Exchange) of
+        #'exchange.declare_ok'{} ->
+            lager:debug("declared ~s exchange ~s on ~s via ~p"
+                        ,[Exchange#'exchange.declare'.type
+                          ,Exchange#'exchange.declare'.exchange
+                          ,_Broker
+                          ,Channel
+                         ]),
+            declare_exchanges(Connection, Exchanges);
+        _Else ->
+            lager:critical("failed to declare ~s exchange ~s on ~s via ~p: ~p"
+                           ,[Exchange#'exchange.declare'.type
+                             ,Exchange#'exchange.declare'.exchange
+                             ,_Broker
+                             ,Channel
+                             ,_Else
+                            ]),
+            declare_exchanges(create_control_channel(Connection)
+                              ,[Exchange|Exchanges])
+    catch
+        _E:_R ->
+            lager:critical("exception while declaring ~s exchange ~s on ~s via ~p: ~p"
+                           ,[Exchange#'exchange.declare'.type
+                             ,Exchange#'exchange.declare'.exchange
+                             ,_Broker
+                             ,Channel
+                             ,_R
+                            ]),
+            declare_exchanges(create_control_channel(Connection)
+                              ,[Exchange|Exchanges])
+    end;
+declare_exchanges(#wh_amqp_connection{}=Connection, _) ->
+    Connection#wh_amqp_connection{exchanges_initalized='false'}.

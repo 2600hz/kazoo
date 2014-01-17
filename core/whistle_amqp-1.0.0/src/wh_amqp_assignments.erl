@@ -327,7 +327,7 @@ assign_consumer(#wh_amqp_assignment{channel=Channel
             ets:update_element(?TAB, ExistingAssignment#wh_amqp_assignment.timestamp, Props),
             ets:delete(?TAB, Assignment#wh_amqp_assignment.timestamp),
             gen_server:cast(Consumer, {'wh_amqp_channel', {'new_channel', 'false'}}),
-            gen_server:cast(Connection, {'wh_amqp_channel', 'channel_assigned'}),
+            gen_server:cast(Connection, 'create_prechannel'),
             lager:debug("assigned existing channel ~p on ~s to existing consumer ~p"
                         ,[Channel, _Broker, Consumer]),
             ExistingAssignment#wh_amqp_assignment{channel=Channel
@@ -344,7 +344,7 @@ assign_consumer(#wh_amqp_assignment{channel=Channel
                     ],
             ets:update_element(?TAB, Assignment#wh_amqp_assignment.timestamp, Props),
             gen_server:cast(Consumer, {'wh_amqp_channel', {'new_channel', 'false'}}),
-            gen_server:cast(Connection, {'wh_amqp_channel', 'channel_assigned'}),
+            gen_server:cast(Connection, 'create_prechannel'),
             lager:debug("assigned existing channel ~p on ~s to new consumer ~p"
                         ,[Channel, _Broker, Consumer]),
             Assignment#wh_amqp_assignment{consumer=Consumer
@@ -399,9 +399,7 @@ maybe_assign_float(Broker, Connection, Channel) ->
     case ets:select(?TAB, MatchSpec, 1) of
         '$end_of_table' -> 'false';
         {[#wh_amqp_assignment{}=Assignment], _} ->
-%%            io:format("reconnect(1): ~p~n", [Assignment]),
             assign_channel(Assignment, Broker, Connection, Channel)
-
     end.
 
 -spec maybe_assign_sticky(ne_binary(), pid(), pid()) -> boolean().
@@ -419,9 +417,7 @@ maybe_assign_sticky(Broker, Connection, Channel) ->
     case ets:select(?TAB, MatchSpec, 1) of
         '$end_of_table' -> 'false';
         {[#wh_amqp_assignment{}=Assignment], _} ->
-%%            io:format("reconnect(2): ~p~n", [Assignment]),
             assign_channel(Assignment, Broker, Connection, Channel)
-
     end.
 
 -spec assign_channel(wh_amqp_assignment(), ne_binary(), pid(), pid()) -> 'true'.
@@ -438,7 +434,7 @@ assign_channel(#wh_amqp_assignment{timestamp=Timestamp
              ,{#wh_amqp_assignment.reconnect, 'false'}
             ],
     ets:update_element(?TAB, Timestamp, Props),
-    gen_server:cast(Connection, {'wh_amqp_channel', 'channel_assigned'}),
+    gen_server:cast(Connection, 'create_prechannel'),
     _ = maybe_reconnect(Assignment#wh_amqp_assignment{channel=Channel
                                                       ,channel_ref=Ref
                                                       ,broker=Broker
@@ -459,16 +455,16 @@ cache(Broker, Connection, Channel) ->
                                          ,connection=Connection
                                         }).
 
+-spec maybe_reconnect(wh_amqp_assignment()) -> 'ok'.
 maybe_reconnect(#wh_amqp_assignment{reconnect='false'}) -> 'ok';
 maybe_reconnect(#wh_amqp_assignment{consumer=Consumer}=Assignment) ->
     reconnect(Assignment, wh_amqp_history:get(Consumer)).
 
+-spec reconnect(wh_amqp_assignment(), wh_amqp_commands()) -> 'ok'.
 reconnect(_, []) -> 'ok';
 reconnect(Assignment, [Command|Commands]) ->
-    io:format("~p~n", [Command]),
     _ = wh_amqp_channel:command(Assignment, Command),
     reconnect(Assignment, Commands).
-    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -563,7 +559,7 @@ handle_down_match({'channel', #wh_amqp_assignment{timestamp=Timestamp
              ,{#wh_amqp_assignment.reconnect, 'true'}
             ],
     ets:update_element(?TAB, Timestamp, Props),
-    %% TODO: notify connection channel is required
+    %% TODO: Attempt to assign...
     lager:debug("floating channel ~p on ~s went down: ~p"
                 ,[Channel, Broker, Reason]);
 handle_down_match({'channel', #wh_amqp_assignment{timestamp=Timestamp
@@ -577,7 +573,7 @@ handle_down_match({'channel', #wh_amqp_assignment{timestamp=Timestamp
              ,{#wh_amqp_assignment.reconnect, 'true'}
             ],
     ets:update_element(?TAB, Timestamp, Props),
-    %% TODO: notify connection channel is required
+    %% TODO: Attempt to assign...
     lager:debug("sticky channel ~p on ~s went down: ~p"
                 ,[Channel, Broker, Reason]).
 
