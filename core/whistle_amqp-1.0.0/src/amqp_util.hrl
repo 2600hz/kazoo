@@ -114,18 +114,22 @@
 
 -define(WH_AMQP_ETS, 'wh_amqp_ets').
 
+-type wh_amqp_type() :: 'sticky' | 'float'.
+
 -record(wh_amqp_assignment, {timestamp = now() :: wh_now() | '_'
                              ,consumer :: api_pid() | '_'
                              ,consumer_ref :: api_reference() | '$1' | '_'
-                             ,type = 'float' :: 'sticky' | 'float'
+                             ,type = 'float' :: wh_amqp_type()
                              ,channel :: api_pid() | '$1' | '_'
                              ,channel_ref :: api_reference() | '$1' | '_'
                              ,connection :: api_pid() | '_'
                              ,broker :: api_binary() | '$2' | '_'
                              ,assigned :: wh_now() | '_'
+                             ,reconnect = 'false' :: boolean()
                             }).
 
 -type wh_amqp_assignment() :: #wh_amqp_assignment{}.
+-type wh_amqp_assignments() :: [wh_amqp_assignment(),...] | [].
 
 -type wh_exchanges() :: [#'exchange.declare'{},...] | [].
 

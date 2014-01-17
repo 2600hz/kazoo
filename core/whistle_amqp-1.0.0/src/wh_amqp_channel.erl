@@ -8,6 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(wh_amqp_channel).
 
+-export([get/0
+         ,get/1
+        ]).
 -export([consumer_pid/0
          ,consumer_pid/1
          ,remove_consumer_pid/0
@@ -24,9 +27,27 @@
 
 -include("amqp_util.hrl").
 
+-compile({'no_auto_import', [get/1]}).
+
+-spec get() -> boolean().
+get() ->
+    case wh_amqp_assignments:request_float() of
+        #wh_amqp_assignment{channel=Channel}
+          when is_pid(Channel) -> 'true';
+        _Else -> 'false'
+    end.
+
+-spec get(ne_binary()) -> boolean().
+get(Broker) ->
+    case wh_amqp_assignments:request_sticky(Broker) of
+        #wh_amqp_assignment{channel=Channel}
+          when is_pid(Channel) -> 'true';
+        _Else -> 'false'
+    end.      
+
 -spec consumer_pid() -> pid().
 consumer_pid() ->
-    case get('$wh_amqp_consumer') of
+    case erlang:get('$wh_amqp_consumer') of
         Pid when is_pid(Pid) -> Pid;
         _Else -> self()
     end.
@@ -43,6 +64,7 @@ remove() ->
 
 -spec remove(pid()) -> 'ok'.
 remove(Pid) ->
+    lager:debug("remove consumer ~p", [Pid]),
     _ = wh_amqp_history:remove(Pid),
     _ = wh_amqp_assignments:remove(Pid),
     'ok'.
@@ -50,7 +72,7 @@ remove(Pid) ->
 -spec close(api_pid()) -> 'ok'.
 close(Channel) when is_pid(Channel) ->
     catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5000),
-    lager:debug("closed channel ~p", [Channel]),
+    lager:debug("closed amqp channel ~p", [Channel]),
     'ok';
 close(_) -> 'ok'.
 
@@ -80,9 +102,16 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg)
                         ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload])
     end.
 
--spec command(wh_amqp_command()) -> command_ret(). command(Command) ->
-    #wh_amqp_assignment{}=Assignment = wh_amqp_assignments:request_float(),
-    command(Assignment, Command).
+-spec command(wh_amqp_command()) -> command_ret().
+command(Command) ->
+    case wh_amqp_assignments:request_float() of        
+        #wh_amqp_assignment{channel=Channel}=Assignment 
+          when is_pid(Channel) -> command(Assignment, Command);
+        _Else ->
+            lager:warning("consumer ~p has no channel, dropping AMQP command: ~p~n  ~p"
+                          ,[consumer_pid(), Command, _Else]),
+            {'error', 'no_channel'}
+    end.
 
 -spec command(wh_amqp_assignment(), wh_amqp_command()) -> command_ret().
 command(#wh_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->
@@ -120,6 +149,7 @@ command(#wh_amqp_assignment{channel=Channel}=Assignment, Command) ->
     handle_command_result(Result, Command, Assignment).
 
 -spec handle_command_result(command_ret(), wh_amqp_command(), wh_amqp_assignment()) -> command_ret().
+handle_command_result(_, _, #wh_amqp_assignment{reconnect='true'}) -> 'ok';
 handle_command_result({'error', _}=Error, _, _) -> Error;
 handle_command_result({'ok', Ok}, Command, Assignment) ->
     handle_command_result(Ok, Command, Assignment);
