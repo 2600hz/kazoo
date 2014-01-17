@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -19,6 +19,7 @@
 
 -include("acdc.hrl").
 
+-spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     'true' = wapi_call:event_v(JObj),
     {Cat, Name} = wh_util:get_event_type(JObj),
@@ -27,7 +28,7 @@ handle_call_event(JObj, Props) ->
 handle_call_event(_, <<"CHANNEL_DESTROY">>, JObj, Props) ->
     case acdc_queue_fsm:cdr_url(props:get_value('fsm_pid', Props)) of
         'undefined' -> 'ok';
-        Url -> 
+        Url ->
             acdc_util:send_cdr(Url, JObj),
             Srv = props:get_value('server', Props),
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -138,3 +139,4 @@ send_probe(JObj, State) ->
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_notifications:publish_presence_update(PresenceUpdate).
+
