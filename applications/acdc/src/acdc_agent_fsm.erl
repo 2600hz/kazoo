@@ -88,7 +88,7 @@
 -define(NOTIFY_HANGUP, <<"hangup">>).
 -define(NOTIFY_CDR, <<"cdr">>).
 -define(NOTIFY_RECORDING, <<"recording">>).
--define(NOTIFY_ALL, <<"cdr">>).
+-define(NOTIFY_ALL, <<"all">>).
 
 -record(state, {
           acct_id :: ne_binary()
