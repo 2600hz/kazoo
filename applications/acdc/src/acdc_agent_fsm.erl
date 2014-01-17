@@ -488,10 +488,10 @@ sync({'pause', Timeout}, #state{acct_id=AcctId
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_RED_FLASH),
     {'next_state', 'paused', State#state{pause_ref=Ref}};
 
-sync({'call_from', CallId}, State) ->
+sync(?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("sync call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-sync({'call_to', CallId}, State) ->
+sync(?NEW_CHANNEL_TO(CallId), State) ->
     lager:debug("sync call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 
@@ -628,10 +628,10 @@ ready({'dtmf_pressed', _}, State) ->
 ready({'originate_failed', _E}, State) ->
     {'next_state', 'ready', State};
 
-ready({'call_from', CallId}, State) ->
+ready(?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("ready call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-ready({'call_to', CallId}, State) ->
+ready(?NEW_CHANNEL_TO(CallId), State) ->
     lager:debug("ready call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 
@@ -1031,10 +1031,10 @@ wrapup({'leg_destroyed', CallId}, #state{agent_proc=Srv}=State) ->
     acdc_agent_listener:channel_hungup(Srv, CallId),
     {'next_state', 'wrapup', State};
 
-wrapup({'call_from', CallId}, State) ->
+wrapup(?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("wrapup call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-wrapup({'call_to', CallId}, State) ->
+wrapup(?NEW_CHANNEL_TO(CallId), State) ->
     lager:debug("wrapup call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 
@@ -1107,10 +1107,10 @@ paused({'member_connect_win', JObj}, #state{agent_proc=Srv}=State) ->
 
     {'next_state', 'paused', State};
 
-paused({'call_from', CallId}, State) ->
+paused(?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("paused call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-paused({'call_to', CallId}, State) ->
+paused(?NEW_CHANNEL_TO(CallId), State) ->
     lager:debug("paused call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 paused({'channel_hungup', CallId, _Reason}, #state{agent_proc=Srv
@@ -1249,6 +1249,8 @@ outbound({'resume'}, #state{acct_id=AcctId
 
     {'next_state', 'ready', clear_call(State, 'ready')};
 
+outbound(?NEW_CHANNEL_TO(CallId), #state{outbound_call_id=CallId}=State) ->
+    {'next_state', 'outbound', State};
 outbound(_Msg, State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
     {'next_state', 'outbound', State}.
