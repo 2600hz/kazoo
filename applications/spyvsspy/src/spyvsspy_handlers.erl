@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -12,6 +12,7 @@
 
 -include("spyvsspy.hrl").
 
+-spec handle_eavesdrop_req(wh_json:object(), wh_proplist()) -> any().
 handle_eavesdrop_req(JObj, _Props) ->
     'true' = wapi_resource:eavesdrop_req_v(JObj),
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
@@ -24,21 +25,27 @@ handle_eavesdrop_req(JObj, _Props) ->
         {'error', E} -> respond_error(JObj, E)
     end.
 
+-spec get_endpoints(ne_binary(), ne_binary()) ->
+                           {'ok', wh_json:objects()} |
+                           {'error', _}.
 get_endpoints(AcctId, EndpointId) ->
     cf_endpoint:build(EndpointId, new_call(AcctId)).
-    
+
+-spec new_call(ne_binary()) -> whapps_call:call().
 new_call(AcctId) ->
     whapps_call:from_json(wh_json:from_list(
                             [{<<"Account-ID">>, AcctId}
                              ,{<<"Account-DB">>, wh_util:format_account_id(AcctId, 'encoded')}
                             ])).
 
+-spec get_group_and_call_id(wh_json:object()) -> {api_binary(), api_binary()}.
 get_group_and_call_id(JObj) ->
     case wh_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
         'undefined' -> {'undefined', wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)};
         GroupId -> {GroupId, wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj, <<"all">>)}
     end.
 
+-spec send_eavesdrop(wh_json:object(), wh_json:objects(), ne_binary()) -> 'ok'.
 send_eavesdrop(JObj, EPs, AcctId) ->
     {GroupId, CallId} = get_group_and_call_id(JObj),
 
@@ -98,6 +105,7 @@ send_eavesdrop(JObj, EPs, AcctId) ->
 until_callback([JObj | _]) ->
     wapi_dialplan:originate_ready_v(JObj).
 
+-spec respond_success(wh_json:object(), wh_json:object()) -> 'ok'.
 respond_success(JObj, OrigJObj) ->
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     EavesdropCallId = wh_json:get_value(<<"Call-ID">>, OrigJObj),
@@ -106,6 +114,8 @@ respond_success(JObj, OrigJObj) ->
                        ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]).
+
+-spec respond_error(wh_json:object(), ne_binary()) -> 'ok'.
 respond_error(JObj, E) ->
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     respond(ServerId, [{<<"Status">>, <<"error">>}
@@ -113,10 +123,12 @@ respond_error(JObj, E) ->
                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]).
 
+-spec respond(ne_binary(), wh_proplist()) -> 'ok'.
 respond(ServerId, Props) ->
     lager:debug("respond to ~s: ~p", [ServerId, Props]),
     wapi_resource:publish_eavesdrop_resp(ServerId, Props).
 
+-spec send_originate_execute(wh_json:object(), ne_binary()) -> 'ok'.
 send_originate_execute(JObj, Q) ->
     Prop = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -124,6 +136,10 @@ send_originate_execute(JObj, Q) ->
            ],
     wapi_dialplan:publish_originate_execute(wh_json:get_value(<<"Server-ID">>, JObj), Prop).
 
+-spec find_caller_id(wh_json:object()) ->
+                            {ne_binary(), api_binary()}.
+-spec find_caller_id(wh_json:object(), wh_proplist()) ->
+                            {ne_binary(), api_binary()}.
 find_caller_id(JObj) ->
     find_caller_id(JObj, [{<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>}
                           ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}
