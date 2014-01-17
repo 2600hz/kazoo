@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% The queue process manages two queues
@@ -67,24 +67,25 @@
           ,agent_id :: ne_binary()
           ,delivery :: #'basic.deliver'{}
          }).
+-type state() :: #state{}.
 
--define(BINDINGS, [{self, []}]).
--define(RESPONDERS, [{{acdc_queue_handler, handle_call_event}
+-define(BINDINGS, [{'self', []}]).
+-define(RESPONDERS, [{{'acdc_queue_handler', 'handle_call_event'}
                       ,[{<<"call_event">>, <<"*">>}]
                      }
-                     ,{{acdc_queue_handler, handle_call_event}
+                     ,{{'acdc_queue_handler', 'handle_call_event'}
                        ,[{<<"error">>, <<"*">>}]
                       }
-                     ,{{acdc_queue_handler, handle_member_resp}
+                     ,{{'acdc_queue_handler', 'handle_member_resp'}
                        ,[{<<"member">>, <<"connect_resp">>}]
                       }
-                     ,{{acdc_queue_handler, handle_member_accepted}
+                     ,{{'acdc_queue_handler', 'handle_member_accepted'}
                        ,[{<<"member">>, <<"connect_accepted">>}]
                       }
-                     ,{{acdc_queue_handler, handle_member_retry}
+                     ,{{'acdc_queue_handler', 'handle_member_retry'}
                        ,[{<<"member">>, <<"connect_retry">>}]
                       }
-                     ,{{acdc_queue_handler, handle_sync_req}
+                     ,{{'acdc_queue_handler', 'handle_sync_req'}
                        ,[{<<"queue">>, <<"sync_req">>}]
                       }
                     ]).
@@ -114,7 +115,9 @@ start_link(WorkerSup, MgrPid, AcctId, QueueId) ->
                             ,[WorkerSup, MgrPid, AcctId, QueueId]
                            ).
 
-accept_member_calls(Srv) -> gen_listener:cast(Srv, {'accept_member_calls'}).
+-spec accept_member_calls(pid()) -> 'ok'.
+accept_member_calls(Srv) ->
+    gen_listener:cast(Srv, {'accept_member_calls'}).
 
 -spec member_connect_req(pid(), wh_json:object(), _, api_binary()) -> 'ok'.
 member_connect_req(Srv, MemberCallJObj, Delivery, Url) ->
@@ -124,34 +127,51 @@ member_connect_req(Srv, MemberCallJObj, Delivery, Url) ->
 member_connect_re_req(Srv) ->
     gen_listener:cast(Srv, {'member_connect_re_req'}).
 
+-spec member_connect_win(pid(), wh_json:object(), wh_proplist()) -> 'ok'.
 member_connect_win(Srv, RespJObj, QueueOpts) ->
     gen_listener:cast(Srv, {'member_connect_win', RespJObj, QueueOpts}).
 
+-spec timeout_agent(pid(), wh_json:object()) -> 'ok'.
 timeout_agent(Srv, RespJObj) ->
     gen_listener:cast(Srv, {'timeout_agent', RespJObj}).
 
+-spec timeout_member_call(pid()) -> 'ok'.
 timeout_member_call(Srv) ->
     gen_listener:cast(Srv, {'timeout_member_call'}).
 exit_member_call(Srv) ->
     gen_listener:cast(Srv, {'exit_member_call'}).
 
-finish_member_call(Srv) -> gen_listener:cast(Srv, {'finish_member_call'}).
-finish_member_call(Srv, AcceptJObj) -> gen_listener:cast(Srv, {'finish_member_call', AcceptJObj}).
+-spec finish_member_call(pid()) -> 'ok'.
+-spec finish_member_call(pid(), wh_json:object()) -> 'ok'.
+finish_member_call(Srv) ->
+    gen_listener:cast(Srv, {'finish_member_call'}).
+finish_member_call(Srv, AcceptJObj) ->
+    gen_listener:cast(Srv, {'finish_member_call', AcceptJObj}).
 
-cancel_member_call(Srv) -> gen_listener:cast(Srv, {'cancel_member_call'}).
+-spec cancel_member_call(pid()) -> 'ok'.
+-spec cancel_member_call(pid(), wh_json:object()) -> 'ok'.
+-spec cancel_member_call(pid(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
+cancel_member_call(Srv) ->
+    gen_listener:cast(Srv, {'cancel_member_call'}).
 cancel_member_call(Srv, RejectJObj) ->
     gen_listener:cast(Srv, {'cancel_member_call', RejectJObj}).
 cancel_member_call(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {'cancel_member_call', MemberCallJObj, Delivery}).
 
+-spec ignore_member_call(pid(), whapps_call:call(), #'basic.deliver'{}) -> 'ok'.
 ignore_member_call(Srv, Call, Delivery) ->
     gen_listener:cast(Srv, {'ignore_member_call', Call, Delivery}).
 
 -spec send_sync_req(pid(), ne_binary()) -> 'ok'.
-send_sync_req(Srv, Type) -> gen_listener:cast(Srv, {'send_sync_req', Type}).
+send_sync_req(Srv, Type) ->
+    gen_listener:cast(Srv, {'send_sync_req', Type}).
 
-config(Srv) -> gen_listener:call(Srv, 'config').
+-spec config(pid()) ->
+                    {ne_binary(), ne_binary()}.
+config(Srv) ->
+    gen_listener:call(Srv, 'config').
 
+-spec send_sync_resp(pid(), atom(), term(), wh_json:object()) -> 'ok'.
 send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
     gen_listener:cast(Srv, {'send_sync_resp', Strategy, StrategyState, ReqJObj}).
 
@@ -222,8 +242,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-find_pid_from_supervisor({'ok', P}) when is_pid(P) -> {'ok', P};
-find_pid_from_supervisor({'error', {'already_started', P}}) when is_pid(P) -> {'ok', P};
+find_pid_from_supervisor({'ok', P}) when is_pid(P) ->
+    {'ok', P};
+find_pid_from_supervisor({'error', {'already_started', P}}) when is_pid(P) ->
+    {'ok', P};
 find_pid_from_supervisor(E) -> E.
 
 handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
@@ -234,9 +256,10 @@ handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
     case find_pid_from_supervisor(acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj)) of
         {'ok', FSMPid} ->
             lager:debug("started queue FSM: ~p", [FSMPid]),
-            {'ok', SharedPid} = find_pid_from_supervisor(
-                                  acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId)
-                                 ),
+            {'ok', SharedPid} =
+                find_pid_from_supervisor(
+                  acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId)
+                 ),
             lager:debug("started shared queue listener: ~p", [SharedPid]),
 
             {'noreply', State#state{
@@ -285,14 +308,13 @@ handle_cast({'member_connect_req', MemberCallJObj, Delivery, _Url}
                             ,member_call_queue=wh_json:get_value(<<"Server-ID">>, MemberCallJObj)
                            }
      ,'hibernate'};
-
 handle_cast({'member_connect_re_req'}, #state{my_q=MyQ
-                                                                 ,my_id=MyId
-                                                                 ,acct_id=AcctId
-                                                                 ,queue_id=QueueId
-                                                                 ,call=Call
-                                                                 ,fsm_pid=FSM
-                                                                }=State) ->
+                                              ,my_id=MyId
+                                              ,acct_id=AcctId
+                                              ,queue_id=QueueId
+                                              ,call=Call
+                                              ,fsm_pid=FSM
+                                             }=State) ->
     case is_call_alive(Call) of
         'true' ->
             send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId);
@@ -302,7 +324,6 @@ handle_cast({'member_connect_re_req'}, #state{my_q=MyQ
             acdc_queue_fsm:finish_member_call(FSM)
     end,
     {'noreply', State};
-
 handle_cast({'member_connect_win', RespJObj, QueueOpts}, #state{my_q=MyQ
                                                                 ,my_id=MyId
                                                                 ,call=Call
@@ -312,14 +333,12 @@ handle_cast({'member_connect_win', RespJObj, QueueOpts}, #state{my_q=MyQ
 
     send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId, QueueOpts),
     {'noreply', State#state{agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)}, 'hibernate'};
-
 handle_cast({'timeout_agent', RespJObj}, #state{queue_id=QueueId
                                                 ,call=Call
                                                }=State) ->
     lager:debug("timing out winning agent"),
     send_agent_timeout(RespJObj, Call, QueueId),
     {'noreply', State#state{agent_id='undefined'}, 'hibernate'};
-
 handle_cast({'timeout_member_call'}, #state{delivery=Delivery
                                             ,call=Call
                                             ,shared_pid=Pid
@@ -336,13 +355,11 @@ handle_cast({'timeout_member_call'}, #state{delivery=Delivery
     send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId),
 
     {'noreply', clear_call_state(State), 'hibernate'};
-
 handle_cast({'ignore_member_call', Call, Delivery}, #state{shared_pid=Pid}=State) ->
     lager:debug("ignoring member call ~s, moving on", [whapps_call:call_id(Call)]),
     acdc_util:unbind_from_call_events(Call),
     acdc_queue_shared:ack(Pid, Delivery),
     {'noreply', clear_call_state(State), 'hibernate'};
-
 handle_cast({'exit_member_call'}, #state{delivery=Delivery
                                          ,call=Call
                                          ,shared_pid=Pid
@@ -359,7 +376,6 @@ handle_cast({'exit_member_call'}, #state{delivery=Delivery
     send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"Caller exited the queue via DTMF">>),
 
     {'noreply', clear_call_state(State), 'hibernate'};
-
 handle_cast({'finish_member_call'}, #state{call='undefined'}=State) ->
     {'noreply', State};
 handle_cast({'finish_member_call'}, #state{delivery=Delivery
@@ -394,7 +410,6 @@ handle_cast({'finish_member_call', _AcceptJObj}, #state{delivery=Delivery
     send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, whapps_call:call_id(Call)),
 
     {'noreply', clear_call_state(State), 'hibernate'};
-
 handle_cast({'cancel_member_call'}, #state{delivery='undefined'}=State) ->
     lager:debug("empty cancel member, no delivery info"),
     {'noreply', State};
@@ -406,7 +421,6 @@ handle_cast({'cancel_member_call'}, #state{delivery=Delivery
 
     _ = maybe_nack(Call, Delivery, Pid),
     {'noreply', clear_call_state(State), 'hibernate'};
-
 handle_cast({'cancel_member_call', _RejectJObj}, #state{delivery='undefined'}=State) ->
     lager:debug("cancel a member_call that I don't have delivery info for"),
     {'noreply', State};
@@ -418,12 +432,10 @@ handle_cast({'cancel_member_call', _RejectJObj}, #state{delivery = #'basic.deliv
 
     _ = maybe_nack(Call, Delivery, Pid),
     {'noreply', clear_call_state(State), 'hibernate'};
-
 handle_cast({'cancel_member_call', _MemberCallJObj, Delivery}, #state{shared_pid=Pid}=State) ->
     lager:debug("can't handle the member_call, sending it back up"),
     acdc_queue_shared:nack(Pid, Delivery),
     {'noreply', State};
-
 handle_cast({'send_sync_req', Type}, #state{my_q=MyQ
                                             ,my_id=MyId
                                             ,acct_id=AcctId
@@ -527,7 +539,8 @@ send_agent_timeout(RespJObj, Call, QueueId) ->
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     publish(wh_json:get_value(<<"Server-ID">>, RespJObj), Prop
-            ,fun wapi_acdc_queue:publish_agent_timeout/2).
+            ,fun wapi_acdc_queue:publish_agent_timeout/2
+           ).
 
 send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, CallId) ->
     Resp = props:filter_undefined(
@@ -599,6 +612,7 @@ is_call_alive(Call) ->
         {'error', _E} -> 'false'
     end.
 
+-spec clear_call_state(state()) -> state().
 clear_call_state(#state{acct_id=AcctId
                         ,queue_id=QueueId
                        }=State) ->
