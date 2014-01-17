@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -15,7 +15,7 @@
 %% API
 -export([start_link/1, start_link/2, start_link/4
          ,restart/1
-         ,agent/1
+         ,listener/1
          ,fsm/1
          ,stop/1
          ,status/1
@@ -52,7 +52,7 @@ restart(Supervisor) ->
 
 -spec status(pid()) -> 'ok'.
 status(Supervisor) ->
-    case {agent(Supervisor), fsm(Supervisor)} of
+    case {listener(Supervisor), fsm(Supervisor)} of
         {LPid, FSM} when is_pid(LPid), is_pid(FSM) ->
             {AcctId, AgentId, Q} = acdc_agent_listener:config(LPid),
             Status = acdc_agent_fsm:status(FSM),
@@ -84,8 +84,8 @@ print_status([{K, V}|T]) ->
     lager:info("  ~s: ~p", [K, V]),
     print_status(T).
 
--spec agent(pid()) -> api_pid().
-agent(Super) ->
+-spec listener(pid()) -> api_pid().
+listener(Super) ->
     case child_of_type(Super, 'acdc_agent_listener') of
         [] -> 'undefined';
         [P] -> P

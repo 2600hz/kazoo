@@ -83,12 +83,12 @@ update_agent('undefined', QueueId, _F, AcctId, AgentId, _JObj) ->
     acdc_agents_sup:new(AcctId, AgentId, AgentJObj, [QueueId]);
 update_agent(Sup, Q, F, _, _, _) when is_pid(Sup) ->
     lager:debug("agent super ~p", [Sup]),
-    F(acdc_agent_sup:agent(Sup), Q).
+    F(acdc_agent_sup:listener(Sup), Q).
 
 update_agent('undefined', _QueueId, _F, _JObj) ->
     lager:debug("agent's supervisor not around, ignoring for queue ~s", [_QueueId]);
 update_agent(Sup, Q, F, JObj) when is_pid(Sup) ->
-    APid = acdc_agent_sup:agent(Sup),
+    APid = acdc_agent_sup:listener(Sup),
     maybe_update_presence(Sup, JObj),
     F(APid, Q).
 
@@ -165,7 +165,7 @@ maybe_stop_agent(AcctId, AgentId, JObj) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, Sup]),
             acdc_stats:agent_logged_out(AcctId, AgentId),
 
-            case catch acdc_agent_sup:agent(Sup) of
+            case catch acdc_agent_sup:listener(Sup) of
                 APid when is_pid(APid) ->
                     maybe_update_presence(Sup, JObj, ?PRESENCE_RED_SOLID),
                     acdc_agent_listener:logout_agent(APid);
@@ -424,6 +424,6 @@ presence_state(JObj, State) ->
 maybe_update_presence(Sup, JObj) ->
     maybe_update_presence(Sup, JObj, 'undefined').
 maybe_update_presence(Sup, JObj, PresenceState) ->
-    APid = acdc_agent_sup:agent(Sup),
+    APid = acdc_agent_sup:listener(Sup),
     acdc_agent_listener:maybe_update_presence_id(APid, presence_id(JObj)),
     acdc_agent_listener:presence_update(APid, presence_state(JObj, PresenceState)).

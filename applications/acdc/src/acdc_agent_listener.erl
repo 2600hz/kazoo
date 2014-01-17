@@ -43,6 +43,9 @@
          ,update_agent_status/2
         ]).
 
+%% Introspection
+-export([presence_id/1]).
+
 %% gen_server callbacks
 -export([init/1
          ,handle_call/3
@@ -303,6 +306,9 @@ presence_update(Srv, PresenceState) ->
 update_agent_status(Srv, Status) ->
     gen_listener:cast(Srv, {'update_status', Status}).
 
+presence_id(Srv) ->
+    gen_listener:call(Srv, 'presence_id').
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -349,6 +355,8 @@ init([Supervisor, Agent, Queues]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call('presence_id', _, #state{agent_presence_id=PresenceId}=State) ->
+    {'reply', PresenceId, State, 'hibernate'};
 handle_call({'agent_info', Field}, _, #state{agent=Agent}=State) ->
     {'reply', wh_json:get_value(Field, Agent), State};
 handle_call('config', _From, #state{acct_id=AcctId

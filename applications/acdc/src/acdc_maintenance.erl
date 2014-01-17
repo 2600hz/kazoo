@@ -10,6 +10,7 @@
 
 -export([current_calls/1, current_calls/2
          ,current_statuses/1
+         ,agent_presence_id/2
          ,migrate_to_acdc_db/0, migrate/0
         ]).
 
@@ -143,3 +144,14 @@ maybe_migrate(AccountId) ->
         {'error', _E} ->
             lager:debug("failed to query queue listing for account ~s: ~p", [AccountId, _E])
     end.
+
+-spec agent_presence_id(ne_binary(), ne_binary()) -> 'ok'.
+agent_presence_id(AccountId, AgentId) ->
+    case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
+        'undefined' ->
+            io:format("agent ~s(~s) not logged in or not found~n", [AgentId, AccountId]);
+        SupPid ->
+            PresenceId = acdc_agent_listener:presence_id(acdc_agent_sup:listener(SupPid)),
+            io:format("agent ~s(~s) is using presence ID ~s~n", [AgentId, AccountId, PresenceId])
+    end.
+

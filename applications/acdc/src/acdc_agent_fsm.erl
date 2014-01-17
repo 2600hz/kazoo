@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%% Tracks the agent's state, responds to messages from the corresponding
 %%% acdc_agent gen_listener process.
@@ -361,7 +361,7 @@ max_failures(AcctDb, AcctId) ->
     end.
 
 wait_for_listener(Supervisor, FSM, Props, IsThief) ->
-    case acdc_agent_sup:agent(Supervisor) of
+    case acdc_agent_sup:listener(Supervisor) of
         'undefined' ->
             lager:debug("listener not ready yet, waiting"),
             timer:sleep(100),
