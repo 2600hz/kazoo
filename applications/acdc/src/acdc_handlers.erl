@@ -64,20 +64,27 @@ handle_route_win(JObj, _Props) ->
             Call1 = whapps_call:from_route_win(JObj, Call),
             whapps_call_command:answer(Call1),
 
-            case catch update_acdc_actor(Call1) of
+            try update_acdc_actor(Call1) of
                 {'ok', P} when is_pid(P) -> 'ok';
-                {'EXIT', _R} ->
-                    lager:debug("crash starting agent: ~p", [_R]),
+                {'ok', _} ->
                     whapps_call_command:hangup(Call1);
-                _R ->
+                {'error', _E} ->
                     timer:sleep(5000),
-                    lager:debug("update resulted in ~p", [_R]),
+                    lager:debug("update resulted in ~p", [_E]),
+                    whapps_call_command:hangup(Call1)
+            catch
+                _E:_R ->
+                    lager:debug("crash starting agent: ~s: ~p", [_E, _R]),
                     whapps_call_command:hangup(Call1)
             end;
         {'error', _R} ->
             lager:debug("failed to retrieve cached call: ~p", [_R])
     end.
 
+-spec update_acdc_actor(whapps_call:call()) ->
+                               {'ok', _} |
+                               {'error', _}.
+-spec update_acdc_actor(whapps_call:call(), api_binary(), api_binary()) -> any().
 update_acdc_actor(Call) ->
     update_acdc_actor(Call
                       ,whapps_call:custom_channel_var(<<"ACDc-ID">>, Call)
@@ -95,9 +102,12 @@ update_acdc_actor(Call, AgentId, <<"user">>) ->
     AcctId = whapps_call:account_id(Call),
 
     case acdc_agent_util:most_recent_status(AcctId, AgentId) of
-        {'ok', <<"logout">>} -> update_acdc_agent(Call, AcctId, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1);
-        {'ok', <<"pause">>} -> update_acdc_agent(Call, AcctId, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1);
-        {'ok', _S} -> update_acdc_agent(Call, AcctId, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1)
+        {'ok', <<"logout">>} ->
+            update_acdc_agent(Call, AcctId, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1);
+        {'ok', <<"pause">>} ->
+            update_acdc_agent(Call, AcctId, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1);
+        {'ok', _S} ->
+            update_acdc_agent(Call, AcctId, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1)
     end.
 
 update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
