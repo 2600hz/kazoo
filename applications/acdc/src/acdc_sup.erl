@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -10,19 +10,15 @@
 
 -behaviour(supervisor).
 
--include("acdc.hrl").
-
 %% API
 -export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CACHE, {?ACDC_CACHE, {'wh_cache', 'start_link', [?ACDC_CACHE]}
-                ,'permanent', 5000, 'worker', ['wh_cache']
-               }).
+-include("acdc.hrl").
 
--define(CHILDREN, [?CACHE
+-define(CHILDREN, [?CACHE(?ACDC_CACHE)
                    ,?SUPER('acdc_agents_sup')
                    ,?SUPER('acdc_queues_sup')
                    ,?SUPER('acdc_stats_sup')

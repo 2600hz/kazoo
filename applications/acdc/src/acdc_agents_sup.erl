@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -26,10 +26,6 @@
 
 %% Supervisor callbacks
 -export([init/1]).
-
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, 'start_link', []}, Restart, Shutdown, Type, [Name]}).
 
 %%%===================================================================
 %%% API functions
