@@ -144,8 +144,6 @@ handle_cast({'gen_listener', {'created_queue', <<"ecallmgr_fs_conference">>}}, #
                   gen_listener:add_queue(Self, QueueName, Options, Bindings)
           end),
     {'noreply', State};
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->

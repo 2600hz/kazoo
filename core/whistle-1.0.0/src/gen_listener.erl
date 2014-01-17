@@ -91,9 +91,6 @@
 
 -define(BIND_WAIT, 100).
 
--define(INITIALIZE_MSG, {'$initialize_gen_listener', ?START_TIMEOUT}).
--define(INITIALIZE_MSG(T), {'$initialize_gen_listener', next_timeout(T)}).
-
 -type module_state() :: term().
 -record(state, {
           queue :: api_binary()
@@ -299,7 +296,7 @@ init(Module, Params, ModState, TimeoutRef) ->
     _ = [add_responder(self(), Mod, Events)
          || {Mod, Events} <- Responders
         ],
-    self() ! ?INITIALIZE_MSG,
+    _ = wh_amqp_channel:get(),
     {'ok', #state{module=Module
                   ,module_state=ModState
                   ,module_timeout_ref=TimeoutRef
@@ -346,19 +343,19 @@ handle_call(Request, From, #state{module=Module
         {'reply', Reply, ModState1} ->
             {'reply', Reply, State#state{module_state=ModState1
                                          ,module_timeout_ref='undefined'
-                                      }
+                                        }
              ,'hibernate'};
         {'reply', Reply, ModState1, Timeout} ->
             {'reply', Reply, State#state{module_state=ModState1
-                                       ,module_timeout_ref=start_timer(Timeout)
-                                      }
+                                         ,module_timeout_ref=start_timer(Timeout)
+                                        }
              ,'hibernate'};
         {'noreply', ModState1} ->
             {'noreply', State#state{module_state=ModState1}, 'hibernate'};
         {'noreply', ModState1, Timeout} ->
             {'noreply', State#state{module_state=ModState1
-                                  ,module_timeout_ref=start_timer(Timeout)
-                                 }
+                                    ,module_timeout_ref=start_timer(Timeout)
+                                   }
              ,'hibernate'};
         {'stop', Reason, ModState1} ->
             {'stop', Reason, State#state{module_state=ModState1}};
@@ -422,14 +419,28 @@ handle_cast({'add_binding', Binding, Props}, #state{queue=Q
             {'noreply', State#state{bindings=[{Binding, Props}|Bs]}, 'hibernate'}
     end;
 handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
-                                                 ,bindings=Bs
-                                                }=State) ->
+                                                   ,bindings=Bs
+                                                  }=State) ->
     KeepBs = lists:filter(fun({B, P}) when B =:= Binding, P =:= Props ->
                                   remove_binding(B, P, Q),
                                   'false';
                              (_) -> 'true'
                           end, Bs),
     {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
+handle_cast({'wh_amqp_channel', {'new_channel', 'true'}}, State) ->
+    {'noreply', State};
+handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}, #state{bindings=Bindings
+                                                                  ,params=Params
+                                                                 }=State) ->
+    {'ok', Q} = start_amqp(Params),
+    _ = [create_binding(Type, BindProps, Q)
+         || {Type, BindProps} <- Bindings
+        ],
+    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
+    gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
+    {'noreply', State#state{queue=Q
+                            ,is_consuming='false'
+                           }};
 handle_cast(Message, #state{module=Module
                             ,module_state=ModState
                             ,module_timeout_ref=OldRef
@@ -454,6 +465,7 @@ handle_cast(Message, #state{module=Module
             {'stop', Reason, State}
     end.
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -469,41 +481,19 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
                                               ,payload=Payload}}, State) ->
     spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]),
     {'noreply', State, 'hibernate'};
-
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
 handle_info(#'basic.consume_ok'{}, State) ->
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'true'}}),
     {'noreply', State#state{is_consuming='true'}};
-
 handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, State) ->
     lager:debug("recv a basic.cancel_ok for tag ~s", [CTag]),
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
     {'noreply', State#state{is_consuming='false'}};
-
-handle_info({'$initialize_gen_listener', Timeout}, #state{bindings=Bindings
-                                                          ,params=Params
-                                                         }=State) ->
-    case start_amqp(Params) of
-        {'error', _E} ->
-            _ = erlang:send_after(Timeout, self(), ?INITIALIZE_MSG(Timeout)),
-            {'noreply', State#state{queue='undefined'
-                                    ,is_consuming='false'
-                                   }};
-        {'ok', Q} ->
-            _ = [create_binding(Type, BindProps, Q)
-                 || {Type, BindProps} <- Bindings
-                ],
-            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
-            gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
-            {'noreply', State#state{queue=Q
-                                    ,is_consuming='false'
-                                   }}
-    end;
 handle_info('$is_gen_listener_consuming', #state{is_consuming='false'}=State) ->
-    catch wh_amqp_channels:remove(),
-    self() ! ?INITIALIZE_MSG,
+    _ = (catch wh_amqp_channels:remove()),
+    _ = wh_amqp_channels:get(),
     {'noreply', State#state{queue='undefined'}};
 handle_info('$is_gen_listener_consuming', State) ->
     {'noreply', State};
@@ -543,7 +533,7 @@ terminate(Reason, #state{module=Module
                          ,module_state=ModState
                         }) ->
     _ = (catch Module:terminate(Reason, ModState)),
-    wh_amqp_channel:remove(),
+    _ = (catch wh_amqp_channel:remove()),
     lager:debug("~s terminated cleanly, going down", [Module]).
 
 %%--------------------------------------------------------------------
@@ -689,16 +679,6 @@ create_binding(Binding, Props, Q) ->
         'error':'undef' ->
             erlang:error({'api_module_undefined', Wapi})
     end.
-
--spec next_timeout(pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
-next_timeout(?MAX_TIMEOUT=Timeout) ->
-    Timeout + random:uniform(100);
-next_timeout(Timeout) when Timeout*2 > ?MAX_TIMEOUT ->
-    ?MAX_TIMEOUT + random:uniform(100);
-next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
-    ?START_TIMEOUT;
-next_timeout(Timeout) ->
-    (Timeout * 2) + random:uniform(100).
 
 -spec stop_timer('undefined' | reference()) -> non_neg_integer() | 'false'.
 stop_timer('undefined') -> 'false';

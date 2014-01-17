@@ -493,8 +493,6 @@ handle_cast({'refresh', QueueJObj}, State) ->
 
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.

@@ -128,8 +128,6 @@ handle_cast({'find_subscriptions_srv'}, #state{subs_pid=_Pid}=State) ->
                                     ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->

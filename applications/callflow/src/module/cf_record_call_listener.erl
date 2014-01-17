@@ -203,8 +203,6 @@ handle_cast('store_failed', State) ->
 
 handle_cast({'gen_listener',{'created_queue',Queue}}, #state{call=Call}=State) ->
     {'noreply', State#state{call=whapps_call:set_controller_queue(Queue, Call)}};
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->

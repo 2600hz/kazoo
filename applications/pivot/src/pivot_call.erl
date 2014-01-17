@@ -226,8 +226,6 @@ handle_cast({'add_event_handler', Pid}, #state{response_event_handlers=Pids}=Sta
     lager:debug("adding event handler ~p", [Pid]),
     {'noreply', State#state{response_event_handlers=[Pid | Pids]}};
 
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Req, State) ->

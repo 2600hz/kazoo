@@ -457,8 +457,6 @@ handle_cast({'remove_hook', #webhook{id=Id}}, State) ->
     lager:debug("removing hook ~s", [Id]),
     ets:delete(?MODULE, Id),
     {'noreply', State};
-handle_cast({'wh_amqp_channel', {'new_channel', _IsNew}}, State) ->
-    {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->

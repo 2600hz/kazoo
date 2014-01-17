@@ -345,8 +345,6 @@ handle_cast({'flush_node', Node}, State) ->
                  ],
     _ = ets:select_delete(?PARTICIPANTS_TBL, MatchSpecP),
     {'noreply', State};
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->

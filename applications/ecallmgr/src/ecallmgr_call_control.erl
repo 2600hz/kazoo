@@ -441,8 +441,6 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{callid=CallId
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast(_, State) ->
     {'noreply', State}.
 
