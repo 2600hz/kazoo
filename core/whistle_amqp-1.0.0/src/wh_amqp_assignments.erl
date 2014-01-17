@@ -321,7 +321,7 @@ assign_consumer(#wh_amqp_assignment{channel=Channel
         {[#wh_amqp_assignment{}=ExistingAssignment], _} ->
             Props = [{#wh_amqp_assignment.channel, Channel}
                      ,{#wh_amqp_assignment.channel_ref, ChannelRef}
-                     ,{#wh_amqp_assignment.connection=Connection}
+                     ,{#wh_amqp_assignment.connection, Connection}
                      ,{#wh_amqp_assignment.assigned, now()}
                     ],
             ets:update_element(?TAB, ExistingAssignment#wh_amqp_assignment.timestamp, Props),
@@ -531,9 +531,9 @@ reserve(_, Consumer, 'float') ->
 
 -spec handle_down_msg(down_matches(), _) -> 'ok'.
 handle_down_msg([], _) -> 'ok';
-handle_down_msg([_|_]=Matches, Reason) ->
-    _ = [handle_down_match(Match, Reason) || Match <- Matches],
-    'ok'.
+handle_down_msg([Match|Matches], Reason) ->    
+    _ = handle_down_match(Match, Reason),
+    handle_down_msg(Matches, Reason).
 
 -spec handle_down_match(down_match(), _) -> any().
 handle_down_match({'consumer', #wh_amqp_assignment{consumer=Consumer}=Assignment}
