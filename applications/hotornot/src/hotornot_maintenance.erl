@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%% Helper functions for users to inspect how HotOrNot is running
 %%% @end
@@ -15,9 +15,9 @@
 
 -include("hotornot.hrl").
 
--define(LOCAL_SUMMARY_ROW_FORMAT, " ~45.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s |~n").
+-define(LOCAL_SUMMARY_ROW_FORMAT, " ~45.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s | ~15.s |~n").
 -define(LOCAL_SUMMARY_HEADER, io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"RATE NAME">>, <<"COST">>, <<"INCREMENT">>, <<"MINIMUM">>
-                                                                    ,<<"SURCHARGE">>, <<"WEIGHT">>
+                                                                    ,<<"SURCHARGE">>, <<"WEIGHT">>, <<"PREFIX">>
                                                                    ])).
 
 -spec local_summary() -> 'ok'.
@@ -41,7 +41,7 @@ rates_for_did(DID, Direction, RouteOptions) when is_list(RouteOptions) ->
 
             io:format("Matching:~n", []),
             ?LOCAL_SUMMARY_HEADER,
-            [print_rate(R) || R <- Matching]
+            [print_rate(R) || R <- hon_util:sort_rates(Matching)]
     end;
 rates_for_did(DID, Direction, Opt) ->
     rates_for_did(DID, Direction, [Opt]).
@@ -66,4 +66,5 @@ print_rate(JObj) ->
                                           ,wh_json:get_binary_value(<<"rate_minimum">>, JObj)
                                           ,wh_json:get_binary_value(<<"rate_surcharge">>, JObj)
                                           ,wh_json:get_binary_value(<<"weight">>, JObj)
+                                          ,wh_json:get_binary_value(<<"prefix">>, JObj)
                                          ]).
