@@ -2,7 +2,7 @@
   ,"language":"javascript"
   ,"views":{
     "lookup": {
-      "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(doc.prefix, {\"routes\": doc.routes, \"rate_cost\": doc.rate_cost, \"rate_increment\": doc.rate_increment, \"rate_minimum\": doc.rate_minimum, \"rate_surcharge\": doc.rate_surcharge, \"weight\": doc.weight, \"options\":doc.options, \"direction\":doc.direction, \"rate_name\":doc.rate_name}); }"
+      "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(doc.prefix.toString(), null); }"
     },
     "crossbar_listing": {
       "map":"function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(doc._id, {\"name\":doc.rate_name, \"cost\":doc.rate_cost, \"carrier\":doc.carrier}); }"
