@@ -1,0 +1,9 @@
+# Credentials Hash: 4d02ff46ad889921836b706c3c0e0b36
+# Account Name: Master
+# Account ID: 5b78db2f23f35aa022f5c3c0a5df1b92
+# Auth Token ID: 7a24c07bccdfaa43b9393124e01f3549
+
+# Create an auth token on the master account
+curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/user_auth -d '{"data":{"credentials":"4d02ff46ad889921836b706c3c0e0b36", "account_name":"Master"}}' | pp
+
+curl -v -X POST -H "content-type: text/csv" -H "X-Auth-Token: 7a24c07bccdfaa43b9393124e01f3549" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/rates --data-binary @/home/james/rates.csv
