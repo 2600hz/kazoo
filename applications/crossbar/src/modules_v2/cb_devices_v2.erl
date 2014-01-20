@@ -191,15 +191,21 @@ put(#cb_context{req_json=ReqJObj}=Context) ->
     DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')),
     put_resp(DryRun, Context).
 
-put_resp('true', Context) ->
-    dry_run(Context);
+put_resp('true', #cb_context{req_json=ReqJObj}=Context) ->
+    RespJObj = dry_run(Context),
+    case wh_json:is_empty(RespJObj) of
+        'false' -> crossbar_util:response_402(RespJObj, Context);
+        'true' ->
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj))
+    end;
 put_resp('false', Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_device('undefined', Context1),
     _ = provisioner_util:maybe_provision(Context1),
     Context1.
 
-dry_run(#cb_context{account_id=AccountId, req_data=JObj}=Context) ->
+dry_run(#cb_context{account_id=AccountId, req_data=JObj}) ->
     DeviceType = wh_json:get_value(<<"device_type">>, JObj),
     DeviceName = wh_json:get_value(<<"name">>, JObj),
 
@@ -211,8 +217,8 @@ dry_run(#cb_context{account_id=AccountId, req_data=JObj}=Context) ->
     Desc = <<"activation charges for ", DeviceType/binary , " ", DeviceName/binary>>,
     Transaction2 = wh_transaction:set_description(Desc, Transaction),
 
-    RespJObj = wh_services:calulate_charges(UpdateServices, [Transaction2]),
-    crossbar_util:response_402(RespJObj, Context).
+    wh_services:calulate_charges(UpdateServices, [Transaction2]).
+
 
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().

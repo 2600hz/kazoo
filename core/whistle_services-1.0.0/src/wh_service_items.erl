@@ -50,7 +50,7 @@ get_udapted_items(Key, Item1, Items2, NewItem) ->
     case get_item(Key, Items2) of
         'error' -> NewItem;
         Item2 ->
-            case compare_quantity(Item1, Item2) of
+            case compare(Item1, Item2) of
                 'true' -> NewItem;
                 'false' -> dict:store(Key, Item1, NewItem)
             end
@@ -63,10 +63,21 @@ get_item(Key, Items) ->
         {'ok', Item} -> Item
     end.
 
+-spec compare(wh_service_item:item(), wh_service_item:item()) -> boolean().
+compare(Item1, Item2) ->
+    case compare_quantity(Item1, Item2) of
+        'true' -> 'true';
+        'false' -> compare_rate(Item1, Item2)
+    end.
+
 -spec compare_quantity(wh_service_item:item(), wh_service_item:item()) -> boolean().
 compare_quantity(Item1, Item2) ->
     wh_service_item:quantity(Item1) =:= wh_service_item:quantity(Item2).
 
+-spec compare_rate(wh_service_item:item(), wh_service_item:item()) -> boolean().
+compare_rate(Item1, _) ->
+    Rate1 = wh_service_item:rate(Item1),
+    not(Rate1 > 0).
 
 %%--------------------------------------------------------------------
 %% @public

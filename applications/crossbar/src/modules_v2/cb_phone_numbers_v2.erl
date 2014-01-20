@@ -292,13 +292,15 @@ validate(Context, _, ?PORT_DOCS, _) ->
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) ->
                   cb_context:context().
 post(Context, ?COLLECTION) ->
-    set_response(collection_process(Context), <<>>, Context);
+    Fun = fun() -> 'ok' end,
+    set_response(collection_process(Context), <<>>, Context, Fun);
 post(Context, Number) ->
     Result = wh_number_manager:set_public_fields(Number
                                                  ,cb_context:doc(Context)
                                                  ,cb_context:auth_account_id(Context)
                                                 ),
-    set_response(Result, Number, Context).
+    Fun = fun() -> 'ok' end,
+    set_response(Result, Number, Context, Fun).
 
 post(Context, Number, ?PORT_DOCS, _) ->
     put_attachments(Number, Context, cb_context:req_files(Context)).
@@ -309,9 +311,13 @@ post(Context, Number, ?PORT_DOCS, _) ->
                  cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token(), path_token()) ->
                  cb_context:context().
-put(Context, ?COLLECTION) ->
+put(#cb_context{req_json=ReqJObj}=Context, ?COLLECTION) ->
     Results = collection_process(Context),
-    set_response(Results, <<>>, Context);
+    Fun = fun() ->
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            ?MODULE:put(Context, cb_context:set_req_json(NewReqJObj), ?COLLECTION)
+          end,
+    set_response(Results, <<>>, Context, Fun);
 put(#cb_context{req_json=ReqJObj}=Context, Number) ->
     Result = wh_number_manager:create_number(Number
                                              ,cb_context:account_id(Context)
@@ -319,11 +325,19 @@ put(#cb_context{req_json=ReqJObj}=Context, Number) ->
                                              ,cb_context:doc(Context)
                                              ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
                                             ),
-    set_response(Result, Number, Context).
+    Fun = fun() ->
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number)
+          end,
+    set_response(Result, Number, Context, Fun).
 
-put(Context, ?COLLECTION, ?ACTIVATE) ->
+put(#cb_context{req_json=ReqJObj}=Context, ?COLLECTION, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
-    set_response(Results, <<>>, Context);
+    Fun = fun() ->
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION, ?ACTIVATE)
+          end,
+    set_response(Results, <<>>, Context, Fun);
 put(#cb_context{req_json=ReqJObj}=Context, Number, ?PORT) ->
     Result = wh_number_manager:port_in(Number
                                        ,cb_context:account_id(Context)
@@ -331,7 +345,11 @@ put(#cb_context{req_json=ReqJObj}=Context, Number, ?PORT) ->
                                        ,cb_context:doc(Context)
                                        ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
                                       ),
-    set_response(Result, Number, Context);
+    Fun = fun() ->
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?PORT)
+          end,
+    set_response(Result, Number, Context, Fun);
 put(#cb_context{req_json=ReqJObj}=Context, Number, ?ACTIVATE) ->
     Result = wh_number_manager:assign_number_to_account(Number
                                                         ,cb_context:account_id(Context)
@@ -339,7 +357,11 @@ put(#cb_context{req_json=ReqJObj}=Context, Number, ?ACTIVATE) ->
                                                         ,cb_context:doc(Context)
                                                         ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
                                                        ),
-    set_response(Result, Number, Context);
+    Fun = fun() ->
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?ACTIVATE)
+          end,
+    set_response(Result, Number, Context, Fun);
 put(#cb_context{req_json=ReqJObj}=Context, Number, ?RESERVE) ->
     Result = wh_number_manager:reserve_number(Number
                                               ,cb_context:account_id(Context)
@@ -347,7 +369,11 @@ put(#cb_context{req_json=ReqJObj}=Context, Number, ?RESERVE) ->
                                               ,cb_context:doc(Context)
                                               ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
                                              ),
-    set_response(Result, Number, Context);
+    Fun = fun() ->
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            ?MODULE:put(cb_context:set_req_json(NewReqJObj), Number, ?RESERVE)
+          end,
+    set_response(Result, Number, Context, Fun);
 put(Context, Number, ?PORT_DOCS) ->
     put_attachments(Number, Context, cb_context:req_files(Context)).
 
@@ -360,15 +386,18 @@ put(Context, Number, ?PORT_DOCS, _) ->
                     cb_context:context().
 delete(Context, ?COLLECTION) ->
     Results = collection_process(Context),
-    set_response(Results, <<>>, Context);
+    Fun = fun() -> 'ok' end,
+    set_response(Results, <<>>, Context, Fun);
 delete(Context, Number) ->
     Result = wh_number_manager:release_number(Number, cb_context:auth_account_id(Context)),
-    set_response(Result, Number, Context).
+    Fun = fun() -> 'ok' end,
+    set_response(Result, Number, Context, Fun).
 
 delete(Context, Number, ?PORT_DOCS, Name) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
     Result = wh_number_manager:delete_attachment(Number, FileName, cb_context:auth_account_id(Context)),
-    set_response(Result, Number, Context).
+    Fun = fun() -> 'ok' end,
+    set_response(Result, Number, Context, Fun).
 
 %%%===================================================================
 %%% Internal functions
@@ -689,14 +718,16 @@ identify(Context, Number) ->
         {'error', 'not_reconcilable'} ->
             cb_context:add_system_error('bad_identifier', [{'details', Number}], Context);
         {'error', E} ->
-            set_response({wh_util:to_binary(E), <<>>}, Number, Context);
+            Fun = fun() -> 'ok' end,
+            set_response({wh_util:to_binary(E), <<>>}, Number, Context, Fun);
         {'ok', AccountId, Options} ->
             JObj = wh_json:set_values([{<<"account_id">>, AccountId}
                                        ,{<<"number">>, props:get_value('number', Options)}
                                       ]
                                       ,wh_json:new()
                                      ),
-            set_response({'ok', JObj}, Number, Context)
+            Fun = fun() -> 'ok' end,
+            set_response({'ok', JObj}, Number, Context, Fun)
     end.
 
 %%--------------------------------------------------------------------
@@ -708,7 +739,8 @@ identify(Context, Number) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Number, Context) ->
     Result = wh_number_manager:get_public_fields(Number, cb_context:auth_account_id(Context)),
-    set_response(Result, Number, Context).
+    Fun = fun() -> 'ok' end,
+    set_response(Result, Number, Context, Fun).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -777,7 +809,8 @@ validate_delete(Context) ->
 -spec list_attachments(ne_binary(), cb_context:context()) -> cb_context:context().
 list_attachments(Number, Context) ->
     Result = wh_number_manager:list_attachments(Number, cb_context:auth_account_id(Context)),
-    set_response(Result, Number, Context).
+    Fun = fun() -> 'ok' end,
+    set_response(Result, Number, Context, Fun).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -800,7 +833,8 @@ put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
         {'ok', NewDoc} ->
             put_attachments(Number, cb_context:set_resp_data(Context, NewDoc), Files);
         Result ->
-            set_response(Result, Number, Context)
+            Fun = fun() -> 'ok' end,
+            set_response(Result, Number, Context, Fun)
     end.
 
 %%--------------------------------------------------------------------
@@ -812,21 +846,28 @@ put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
 -spec set_response({'ok', operation_return()} |
                    operation_return() |
                    {binary(), binary()}, binary()
-                   ,cb_context:context()) ->
+                   ,cb_context:context()
+                   ,any()) ->
                           cb_context:context().
-set_response({'ok', {'ok', Doc}}, _, Context) ->
+set_response({'ok', {'ok', Doc}}, _, Context, _) ->
     crossbar_util:response(Doc, Context);
-set_response({'ok', Doc}, _, Context) ->
+set_response({'ok', Doc}, _, Context, _) ->
     crossbar_util:response(Doc, Context);
-set_response({'dry_run', Doc}, _, Context) ->
-    DryRunJObj = dry_run_response(Doc),
-    crossbar_util:response_402(DryRunJObj, Context);
-set_response({'dry_run', ?COLLECTION, Doc}, _, Context) ->
-    DryRunJObj = dry_run_response(?COLLECTION, Doc),
-    crossbar_util:response_402(DryRunJObj, Context);
-set_response({Error, Reason}, _, Context) ->
+set_response({'dry_run', Doc}, _, Context, Fun) ->
+    RespJObj = dry_run_response(Doc),
+    case wh_json:is_empty(RespJObj) of
+        'true' -> Fun();
+        'false' -> crossbar_util:response_402(RespJObj, Context)
+    end;
+set_response({'dry_run', ?COLLECTION, Doc}, _, Context, Fun) ->
+    RespJObj = dry_run_response(?COLLECTION, Doc),
+    case wh_json:is_empty(RespJObj) of
+        'true' -> Fun();
+        'false' -> crossbar_util:response_402(RespJObj, Context)
+    end;
+set_response({Error, Reason}, _, Context, _) ->
     crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context);
-set_response(_Else, _, Context) ->
+set_response(_Else, _, Context, _) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).
 
@@ -857,16 +898,30 @@ accumulate_resp(JObj) ->
     ),
     accumulate_resp(lists:reverse(L), {0, []}).
 
+accumulate_resp([JObj], {0, D}) ->
+    case wh_json:is_empty(JObj) of
+        'true' -> wh_json:new();
+        'false' ->
+            ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
+            Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
+            wh_json:set_values([{<<"activation_charges">>, ActivationCharges}
+                        ,{<<"activation_charges_description">>, [Description|D]}
+                       ], JObj)
+    end;
 accumulate_resp([JObj], {AC, D}) ->
     ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
     Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
     wh_json:set_values([{<<"activation_charges">>, ActivationCharges+AC}
                         ,{<<"activation_charges_description">>, [Description|D]}
                        ], JObj);
-accumulate_resp([JObj|JObjs], {AC, D}) ->
-    ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
-    Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
-    accumulate_resp(JObjs, {ActivationCharges+AC, [Description|D]}).
+accumulate_resp([JObj|JObjs], {AC, D}=Acc) ->
+    case wh_json:is_empty(JObj) of
+        'true' -> accumulate_resp(JObjs, Acc);
+        'false' ->
+            ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
+            Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
+            accumulate_resp(JObjs, {ActivationCharges+AC, [Description|D]})
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
