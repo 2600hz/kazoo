@@ -291,15 +291,22 @@ validate(Context, _, ?PORT_DOCS, _) ->
                   cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token(), path_token()) ->
                   cb_context:context().
-post(Context, ?COLLECTION) ->
-    Fun = fun() -> 'ok' end,
+post(#cb_context{req_json=ReqJObj}=Context, ?COLLECTION) ->
+    Fun = fun() ->
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION)
+          end,
     set_response(collection_process(Context), <<>>, Context, Fun);
-post(Context, Number) ->
+post(#cb_context{req_json=ReqJObj}=Context, Number) ->
     Result = wh_number_manager:set_public_fields(Number
                                                  ,cb_context:doc(Context)
                                                  ,cb_context:auth_account_id(Context)
+                                                 ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
                                                 ),
-    Fun = fun() -> 'ok' end,
+    Fun = fun() ->
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number)
+          end,
     set_response(Result, Number, Context, Fun).
 
 post(Context, Number, ?PORT_DOCS, _) ->
@@ -315,7 +322,7 @@ put(#cb_context{req_json=ReqJObj}=Context, ?COLLECTION) ->
     Results = collection_process(Context),
     Fun = fun() ->
             NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-            ?MODULE:put(Context, cb_context:set_req_json(NewReqJObj), ?COLLECTION)
+            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION)
           end,
     set_response(Results, <<>>, Context, Fun);
 put(#cb_context{req_json=ReqJObj}=Context, Number) ->
@@ -371,7 +378,7 @@ put(#cb_context{req_json=ReqJObj}=Context, Number, ?RESERVE) ->
                                              ),
     Fun = fun() ->
             NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-            ?MODULE:put(cb_context:set_req_json(NewReqJObj), Number, ?RESERVE)
+            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?RESERVE)
           end,
     set_response(Result, Number, Context, Fun);
 put(Context, Number, ?PORT_DOCS) ->

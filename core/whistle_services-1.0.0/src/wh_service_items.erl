@@ -76,8 +76,10 @@ compare_quantity(Item1, Item2) ->
 
 -spec compare_rate(wh_service_item:item(), wh_service_item:item()) -> boolean().
 compare_rate(Item1, _) ->
-    Rate1 = wh_service_item:rate(Item1),
-    not(Rate1 > 0).
+    case wh_service_item:rate(Item1) of
+        'undefined' -> 'true';
+        Rate -> not(Rate > 0)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
