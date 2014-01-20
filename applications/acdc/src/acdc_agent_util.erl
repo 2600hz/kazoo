@@ -78,7 +78,7 @@ most_recent_db_status(AccountId, AgentId) ->
             ,{'limit', 1}
             ,'descending'
            ],
-    case couch_mgr:get_results(acdc_stats:db_name(AccountId), <<"agent_stats/status_log">>, Opts) of
+    case couch_mgr:get_results(acdc_stats_util:db_name(AccountId), <<"agent_stats/status_log">>, Opts) of
         {'ok', [StatusJObj]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
         {'ok', []} -> {'ok', <<"unknown">>};
         {'error', _E} ->
@@ -253,7 +253,7 @@ most_recent_db_statuses(AccountId, AgentId, ReqOptions) ->
 
 most_recent_db_statuses_by_agent(AccountId, AgentId, ReqOptions) ->
     ViewOptions = build_agent_view_options(AgentId, ReqOptions),
-    case couch_mgr:get_results(acdc_stats:db_name(AccountId)
+    case couch_mgr:get_results(acdc_stats_util:db_name(AccountId)
                                ,<<"agent_stats/most_recent_by_agent">>
                                ,ViewOptions
                               )
@@ -265,7 +265,7 @@ most_recent_db_statuses_by_agent(AccountId, AgentId, ReqOptions) ->
 
 most_recent_db_statuses_by_timestamp(AccountId, ReqOptions) ->
     ViewOptions = build_timestamp_view_options(ReqOptions),
-    case couch_mgr:get_results(acdc_stats:db_name(AccountId)
+    case couch_mgr:get_results(acdc_stats_util:db_name(AccountId)
                                ,<<"agent_stats/most_recent_by_timestamp">>
                                ,ViewOptions
                               )

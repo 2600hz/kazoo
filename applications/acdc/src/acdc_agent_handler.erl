@@ -79,7 +79,7 @@ update_agent('undefined', QueueId, _F, AcctId, AgentId, _JObj) ->
                                                  ,AgentId
                                                 ),
     lager:debug("agent loaded"),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
     acdc_agents_sup:new(AcctId, AgentId, AgentJObj, [QueueId]);
 update_agent(Sup, Q, F, _, _, _) when is_pid(Sup) ->
     lager:debug("agent super ~p", [Sup]),
@@ -99,21 +99,21 @@ maybe_start_agent(AcctId, AgentId, JObj) ->
             case erlang:is_process_alive(Sup) of
                 'true' ->
                     maybe_update_presence(Sup, JObj),
-                    acdc_stats:agent_logged_in(AcctId, AgentId),
+                    acdc_agent_stats:agent_logged_in(AcctId, AgentId),
                     login_success(JObj);
                 'false' ->
-                    acdc_stats:agent_logged_out(AcctId, AgentId),
+                    acdc_agent_stats:agent_logged_out(AcctId, AgentId),
                     login_fail(JObj)
             end;
         {'exists', Sup} ->
             maybe_update_presence(Sup, JObj),
             login_success(JObj);
         {'error', _E} ->
-            acdc_stats:agent_logged_out(AcctId, AgentId),
+            acdc_agent_stats:agent_logged_out(AcctId, AgentId),
             login_fail(JObj)
     catch
         _E:_R ->
-            acdc_stats:agent_logged_out(AcctId, AgentId),
+            acdc_agent_stats:agent_logged_out(AcctId, AgentId),
             login_fail(JObj)
     end.
 
@@ -143,7 +143,7 @@ maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AcctId]),
-            acdc_stats:agent_ready(AcctId, AgentId),
+            acdc_agent_stats:agent_ready(AcctId, AgentId),
             case couch_mgr:open_doc(wh_util:format_account_id(AcctId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} -> acdc_agents_sup:new(AgentJObj);
                 {'error', _E}=E ->
@@ -160,10 +160,10 @@ maybe_stop_agent(AcctId, AgentId, JObj) ->
         'undefined' ->
             lager:debug("agent ~s(~s) not found, nothing to do", [AgentId, AcctId]),
             catch acdc_util:presence_update(AcctId, presence_id(JObj, AgentId), ?PRESENCE_RED_SOLID),
-            acdc_stats:agent_logged_out(AcctId, AgentId);
+            acdc_agent_stats:agent_logged_out(AcctId, AgentId);
         Sup when is_pid(Sup) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, Sup]),
-            acdc_stats:agent_logged_out(AcctId, AgentId),
+            acdc_agent_stats:agent_logged_out(AcctId, AgentId),
 
             case catch acdc_agent_sup:listener(Sup) of
                 APid when is_pid(APid) ->
@@ -371,7 +371,7 @@ handle_agent_change(_, AccountId, AgentId, <<"doc_deleted">>) ->
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) has been deleted, stopping ~p", [AccountId, AgentId, P]),
             _ = acdc_agent_sup:stop(P),
-            acdc_stats:agent_logged_out(AccountId, AgentId)
+            acdc_agent_stats:agent_logged_out(AccountId, AgentId)
     end.
 
 handle_presence_probe(JObj, _Props) ->

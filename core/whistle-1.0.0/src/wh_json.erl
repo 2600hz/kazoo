@@ -190,30 +190,33 @@ merge_jobjs(?JSON_WRAPPER(Props1)=_JObj1, ?JSON_WRAPPER(_)=JObj2) ->
 
 -type merge_pred() :: fun(({json_term(), json_term()}) -> boolean()).
 
+-spec merge_true(any(), any()) -> 'true'.
+merge_true(_, _) -> 'true'.
+
 -spec merge_recursive(objects()) -> object().
-merge_recursive(JObjs) ->
-    merge_recursive(JObjs, fun(_, _) -> 'true' end).
+merge_recursive(JObjs) when is_list(JObjs) ->
+    merge_recursive(JObjs, fun merge_true/2).
 
 -spec merge_recursive(objects() | object(), merge_pred() | object()) -> object().
 merge_recursive([], Pred) when is_function(Pred, 2) -> new();
-merge_recursive([J|JObjs], Pred) when is_function(Pred, 2) ->
-    lists:foldl(fun(?JSON_WRAPPER(_)=JObj2, ?JSON_WRAPPER(_)=JObj1) ->
-                        merge_recursive(JObj1, JObj2, Pred)
+merge_recursive([?JSON_WRAPPER(_)=J|JObjs], Pred) when is_function(Pred, 2) ->
+    lists:foldl(fun(?JSON_WRAPPER(_)=JObj2, ?JSON_WRAPPER(_)=JObjAcc) ->
+                        merge_recursive(JObjAcc, JObj2, Pred)
                 end, J, JObjs);
-merge_recursive(JObj1, JObj2) ->
-    merge_recursive(JObj1, JObj2, fun(_, _) -> 'true' end).
+merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
+    merge_recursive([JObj1, JObj2], fun merge_true/2).
 
 -spec merge_recursive(object(), object() | json_term(), merge_pred()) -> object().
-merge_recursive(JObj1, JObj2, Pred) ->
+merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
     merge_recursive(JObj1, JObj2, Pred, []).
 
 %% inserts values from JObj2 into JObj1
 -spec merge_recursive(object(), object() | json_term(), merge_pred(), json_strings()) -> object().
-merge_recursive(JObj1, ?JSON_WRAPPER(Prop2), Pred, Keys) ->
+merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(Prop2), Pred, Keys) when is_function(Pred, 2) ->
     lists:foldr(fun(Key, J) ->
                         merge_recursive(J, props:get_value(Key, Prop2), Pred, [Key|Keys])
                 end, JObj1, props:get_keys(Prop2));
-merge_recursive(JObj1, Value, Pred, Keys) ->
+merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),
     case Pred(get_value(Syek, JObj1), Value) of
         'false' -> JObj1;

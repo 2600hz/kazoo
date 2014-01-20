@@ -391,7 +391,7 @@ wait({'listener', AgentProc, NextState, SyncRef}, #state{acct_id=AcctId
                                                         }=State) ->
     lager:debug("setting agent proc to ~p", [AgentProc]),
     acdc_agent_listener:fsm_started(AgentProc, self()),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
     {'next_state', NextState, State#state{
                                 agent_proc=AgentProc
                                 ,sync_ref=SyncRef
@@ -420,7 +420,7 @@ sync({'timeout', Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
                                                       ,agent_proc=Srv
                                                      }=State) when is_reference(Ref) ->
     lager:debug("done waiting for sync responses"),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
 
     {'next_state', 'ready', State#state{sync_ref=Ref}};
@@ -462,7 +462,7 @@ sync({'sync_resp', JObj}, #state{sync_ref=Ref
         'ready' ->
             lager:debug("other agent is in ready state, joining"),
             _ = erlang:cancel_timer(Ref),
-            acdc_stats:agent_ready(AcctId, AgentId),
+            acdc_agent_stats:agent_ready(AcctId, AgentId),
             acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
             {'next_state', 'ready', State#state{sync_ref='undefined'}, 'hibernate'};
         {'EXIT', _} ->
@@ -484,7 +484,7 @@ sync({'pause', Timeout}, #state{acct_id=AcctId
                                }=State) ->
     lager:debug("recv status update:, pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
-    acdc_stats:agent_paused(AcctId, AgentId, Timeout),
+    acdc_agent_stats:agent_paused(AcctId, AgentId, Timeout),
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_RED_FLASH),
     {'next_state', 'paused', State#state{pause_ref=Ref}};
 
@@ -515,7 +515,7 @@ ready({'pause', Timeout}, #state{acct_id=AcctId
                                 }=State) ->
     lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
-    acdc_stats:agent_paused(AcctId, AgentId, Timeout),
+    acdc_agent_stats:agent_paused(AcctId, AgentId, Timeout),
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_RED_FLASH),
 
     {'next_state', 'paused', State#state{pause_ref=Ref}};
@@ -552,7 +552,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                 {'error', 'no_endpoints'} ->
                     lager:info("agent ~s has no endpoints assigned; logging agent out", [AgentId]),
                     acdc_agent_listener:logout_agent(Srv),
-                    acdc_stats:agent_logged_out(AcctId, AgentId),
+                    acdc_agent_stats:agent_logged_out(AcctId, AgentId),
                     acdc_agent_listener:member_connect_retry(Srv, JObj),
                     {'next_state', 'paused', State};
                 {'error', _E} ->
@@ -565,7 +565,7 @@ ready({'member_connect_win', JObj}, #state{agent_proc=Srv
                     CIDName = whapps_call:caller_id_name(Call),
                     CIDNum = whapps_call:caller_id_number(Call),
 
-                    acdc_stats:agent_connecting(AcctId, AgentId, CallId, CIDName, CIDNum),
+                    acdc_agent_stats:agent_connecting(AcctId, AgentId, CallId, CIDName, CIDNum),
                     lager:info("trying to ring agent endpoints(~p)", [length(UpdatedEPs)]),
                     lager:debug("notifications for the queue: ~p", [wh_json:get_value(<<"Notifications">>, JObj)]),
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
@@ -601,7 +601,7 @@ ready({'member_connect_req', _}, #state{max_connect_failures=Max
                                        }=State) when is_integer(Max), Fails >= Max ->
     lager:info("agent has failed to connect ~b times, logging out", [Fails]),
     acdc_agent_listener:logout_agent(Srv),
-    acdc_stats:agent_logged_out(AcctId, AgentId),
+    acdc_agent_stats:agent_logged_out(AcctId, AgentId),
     {'next_state', 'paused', State};
 
 ready({'member_connect_req', JObj}, #state{agent_proc=Srv}=State) ->
@@ -685,7 +685,7 @@ ringing({'originate_started', ACallId}, #state{agent_proc=Srv
     CIDName = whapps_call:caller_id_name(MCall),
     CIDNum = whapps_call:caller_id_number(MCall),
 
-    acdc_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
+    acdc_agent_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
@@ -749,7 +749,7 @@ ringing({'channel_bridged', MCallId}, #state{member_call_id=MCallId
     CIDName = whapps_call:caller_id_name(MCall),
     CIDNum = whapps_call:caller_id_number(MCall),
 
-    acdc_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
+    acdc_agent_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
 
     {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
                                            ,call_status_failures=0
@@ -789,7 +789,7 @@ ringing({'channel_hungup', CallId, _Cause}, #state{agent_proc=Srv
     acdc_agent_listener:channel_hungup(Srv, CallId),
 
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_HANGUP),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
 
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
     {'next_state', 'ready', clear_call(State, 'ready')};
@@ -806,7 +806,7 @@ ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
     acdc_agent_listener:channel_hungup(Srv, AgentCallId),
 
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_EXIT),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
 
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
 
@@ -827,7 +827,7 @@ ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
     CIDName = whapps_call:caller_id_name(MCall),
     CIDNum = whapps_call:caller_id_number(MCall),
 
-    acdc_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
+    acdc_agent_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
 
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_RED_SOLID),
 
@@ -893,7 +893,7 @@ answered({'dialplan_error', _App}, #state{agent_proc=Srv
     acdc_agent_listener:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId, <<"dialplan_error">>),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
 
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
     {'next_state', 'ready', clear_call(State, 'ready')};
@@ -1009,7 +1009,7 @@ wrapup({'timeout', Ref, ?WRAPUP_FINISHED}, #state{wrapup_ref=Ref
                                                   ,agent_proc=Srv
                                                  }=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
 
     {'next_state', 'ready', clear_call(State, 'ready')};
@@ -1072,7 +1072,7 @@ paused({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
 
     acdc_agent_listener:send_status_resume(Srv),
 
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
 
     {'next_state', 'ready', clear_call(State#state{sync_ref='undefined'}, 'ready')};
@@ -1087,7 +1087,7 @@ paused({'resume'}, #state{acct_id=AcctId
     acdc_agent_listener:update_agent_status(Srv, <<"resume">>),
 
     acdc_agent_listener:send_status_resume(Srv),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
 
     {'next_state', 'ready', clear_call(State, 'ready')};
@@ -1121,7 +1121,7 @@ paused({'channel_hungup', CallId, _Reason}, #state{agent_proc=Srv
     TimeLeft = time_left(Ref),
     lager:debug("channel ~s hungup: ~s with ~p left on pause", [CallId, _Reason, TimeLeft]),
     acdc_agent_listener:channel_hungup(Srv, CallId),
-    acdc_stats:agent_paused(AcctId, AgentId, TimeLeft),
+    acdc_agent_stats:agent_paused(AcctId, AgentId, TimeLeft),
     {'next_state', 'paused', State};
 
 paused(_Evt, State) ->
@@ -1162,7 +1162,7 @@ outbound({'pause', Timeout}, #state{acct_id=AcctId
                                    }=State) ->
     lager:debug("recv a pause while on outbound call; assuming agent called to pause for ~b", [Timeout]),
     Ref = start_pause_timer(Timeout),
-    acdc_stats:agent_paused(AcctId, AgentId, Timeout),
+    acdc_agent_stats:agent_paused(AcctId, AgentId, Timeout),
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_RED_FLASH),
     {'next_state', 'paused', clear_call(State#state{pause_ref=Ref}, 'paused')};
 
@@ -1178,10 +1178,10 @@ outbound({'timeout', CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
     lager:debug("outbound call status failed ~b times, call is probably down", [Failures]),
     case wrapup_left(State) of
         N when is_integer(N), N > 0 ->
-            acdc_stats:agent_wrapup(AcctId, AgentId, N),
+            acdc_agent_stats:agent_wrapup(AcctId, AgentId, N),
             {'next_state', 'wrapup', clear_call(State, 'wrapup'), 'hibernate'};
         _ ->
-            acdc_stats:agent_ready(AcctId, AgentId),
+            acdc_agent_stats:agent_ready(AcctId, AgentId),
             acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
             {'next_state', 'ready', clear_call(State, 'ready'), 'hibernate'}
     end;
@@ -1244,7 +1244,7 @@ outbound({'resume'}, #state{acct_id=AcctId
     acdc_agent_listener:update_agent_status(Srv, <<"resume">>),
 
     acdc_agent_listener:send_status_resume(Srv),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
     acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
 
     {'next_state', 'ready', clear_call(State, 'ready')};
@@ -1489,7 +1489,7 @@ clear_call(#state{connect_failures=Fails
                   ,agent_proc=Srv
                  }=State, 'failed') when is_integer(Max), (Max - Fails) =< 1 ->
     acdc_agent_listener:logout_agent(Srv),
-    acdc_stats:agent_logged_out(AcctId, AgentId),
+    acdc_agent_stats:agent_logged_out(AcctId, AgentId),
     lager:debug("agent has failed to connect ~b times, logging out", [Fails+1]),
     clear_call(State#state{connect_failures=Fails+1}, 'paused');
 clear_call(#state{connect_failures=Fails
@@ -1498,7 +1498,7 @@ clear_call(#state{connect_failures=Fails
                   ,agent_id=AgentId
                  }=State, 'failed') ->
     lager:debug("agent has failed to connect ~b times(~b)", [Fails+1, _MaxFails]),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
     clear_call(State#state{connect_failures=Fails+1}, 'ready');
 clear_call(#state{fsm_call_id=FSMCallId
                   ,call_status_ref=CSRef
@@ -1565,7 +1565,7 @@ hangup_call(#state{wrapup_timeout=WrapupTimeout
 
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
 
-    acdc_stats:agent_wrapup(AcctId, AgentId, WrapupTimeout),
+    acdc_agent_stats:agent_wrapup(AcctId, AgentId, WrapupTimeout),
     start_wrapup_timer(WrapupTimeout).
 
 -spec maybe_stop_timer(reference() | 'undefined') -> 'ok'.
@@ -1591,7 +1591,7 @@ start_outbound_call_handling(CallId, #state{agent_proc=Srv
     _ = put('callid', CallId),
     lager:debug("agent making outbound call, not receiving ACDc calls"),
     acdc_agent_listener:outbound_call(Srv, CallId),
-    acdc_stats:agent_outbound(AcctId, AgentId, CallId),
+    acdc_agent_stats:agent_outbound(AcctId, AgentId, CallId),
 
     State#state{outbound_call_id=CallId
                 ,call_status_ref=start_call_status_timer()
@@ -1608,16 +1608,16 @@ outbound_hungup(#state{agent_proc=Srv
                       }=State) ->
     case time_left(WRef) of
         N when is_integer(N), N > 0 ->
-            acdc_stats:agent_wrapup(AcctId, AgentId, N),
+            acdc_agent_stats:agent_wrapup(AcctId, AgentId, N),
             {'next_state', 'wrapup', clear_call(State, 'wrapup'), 'hibernate'};
         _W ->
             case time_left(PRef) of
                 N when is_integer(N), N > 0 ->
-                    acdc_stats:agent_paused(AcctId, AgentId, N),
+                    acdc_agent_stats:agent_paused(AcctId, AgentId, N),
                     {'next_state', 'paused', clear_call(State, 'paused'), 'hibernate'};
                 _P ->
                     lager:debug("wrapup left: ~p pause left: ~p", [_W, _P]),
-                    acdc_stats:agent_ready(AcctId, AgentId),
+                    acdc_agent_stats:agent_ready(AcctId, AgentId),
                     acdc_agent_listener:presence_update(Srv, ?PRESENCE_GREEN),
                     {'next_state', 'ready', clear_call(State, 'ready'), 'hibernate'}
             end
@@ -1699,7 +1699,7 @@ return_to_state(Fails, MaxFails, _, _) when is_integer(MaxFails), Fails >= MaxFa
     'paused';
 return_to_state(_Fails, _MaxFails, AcctId, AgentId) ->
     lager:debug("fails ~b max ~b going to pause", [_Fails, _MaxFails]),
-    acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_agent_stats:agent_ready(AcctId, AgentId),
     'ready'.
 
 %% {Add, Rm}
