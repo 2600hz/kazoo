@@ -213,11 +213,15 @@ dry_run(#cb_context{account_id=AccountId, req_data=JObj}) ->
     UpdateServices = wh_service_devices:reconcile(Services, DeviceType),
 
     Charges = wh_services:activation_charges(<<"devices">>, DeviceType, Services),
-    Transaction = wh_transaction:debit(AccountId, wht_util:dollars_to_units(Charges)),
-    Desc = <<"activation charges for ", DeviceType/binary , " ", DeviceName/binary>>,
-    Transaction2 = wh_transaction:set_description(Desc, Transaction),
 
-    wh_services:calulate_charges(UpdateServices, [Transaction2]).
+    case Charges > 0 of
+        'false' -> wh_services:calulate_charges(UpdateServices, []);
+        'true' ->
+            Transaction = wh_transaction:debit(AccountId, wht_util:dollars_to_units(Charges)),
+            Desc = <<"activation charges for ", DeviceType/binary , " ", DeviceName/binary>>,
+            Transaction2 = wh_transaction:set_description(Desc, Transaction),
+            wh_services:calulate_charges(UpdateServices, [Transaction2])
+    end.
 
 
 
