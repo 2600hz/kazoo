@@ -319,7 +319,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
                        ,{<<"prefix">>, Prefix}
                        ,{<<"weight">>, Weight}
                        ,{<<"description">>, Description}
-                       ,{<<"rate_name">>, Description}
+                       ,{<<"rate_name">>, Id}
                        ,{<<"iso_country_code">>, ISO}
                        ,{<<"pvt_rate_cost">>, InternalRate}
                        ,{<<"pvt_carrier">>, <<"default">>}
