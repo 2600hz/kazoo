@@ -95,35 +95,42 @@ content_types_accepted_by_verb(Context, ?HTTP_POST) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    summary(Context#cb_context{db_name=?WH_RATES_DB});
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    create(Context#cb_context{db_name=?WH_RATES_DB});
-validate(#cb_context{req_verb = ?HTTP_POST}=Context) ->
-    check_uploaded_file(Context#cb_context{db_name=?WH_RATES_DB}).
+validate(Context) ->
+    validate_rates(Context, cb_context:req_verb(Context)).
+validate(Context, Id) ->
+    validate_rate(Context, Id, cb_context:req_verb(Context)).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
-    read(Id, Context#cb_context{db_name=?WH_RATES_DB});
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
-    update(Id, Context#cb_context{db_name=?WH_RATES_DB});
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
-    read(Id, Context#cb_context{db_name=?WH_RATES_DB}).
+-spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
+validate_rates(Context, ?HTTP_GET) ->
+    summary(cb_context:set_account_db(Context, ?WH_RATES_DB));
+validate_rates(Context, ?HTTP_PUT) ->
+    create(cb_context:set_account_db(Context, ?WH_RATES_DB));
+validate_rates(Context, ?HTTP_POST) ->
+    check_uploaded_file(cb_context:set_account_db(Context, ?WH_RATES_DB)).
+
+-spec validate_rate(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_rate(Context, Id, ?HTTP_GET) ->
+    read(Id, cb_context:set_account_db(Context, ?WH_RATES_DB));
+validate_rate(Context, Id, ?HTTP_POST) ->
+    update(Id, cb_context:set_account_db(Context, ?WH_RATES_DB));
+validate_rate(Context, Id, ?HTTP_DELETE) ->
+    read(Id, cb_context:set_account_db(Context, ?WH_RATES_DB)).
 
 -spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(#cb_context{}=Context) ->
+post(Context) ->
     _ = init_db(),
     spawn(fun() -> upload_csv(Context) end),
     crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
-post(#cb_context{}=Context, _RateId) ->
+post(Context, _RateId) ->
     crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
-put(#cb_context{}=Context) ->
+put(Context) ->
     crossbar_doc:save(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(#cb_context{}=Context, _RateId) ->
+delete(Context, _RateId) ->
     crossbar_doc:delete(Context).
 
 %%%===================================================================
@@ -136,7 +143,7 @@ delete(#cb_context{}=Context, _RateId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
-create(#cb_context{}=Context) ->
+create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
 
@@ -158,7 +165,7 @@ read(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Id, #cb_context{}=Context) ->
+update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
 
@@ -171,7 +178,7 @@ update(Id, #cb_context{}=Context) ->
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
-                       ,wh_json:set_value(<<"pvt_type">>, <<"rate">>, cb_context:get_doc(Context))
+                       ,wh_json:set_value(<<"pvt_type">>, <<"rate">>, cb_context:doc(Context))
                        );
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
@@ -196,7 +203,10 @@ summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec check_uploaded_file(cb_context:context()) -> cb_context:context().
-check_uploaded_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
+check_uploaded_file(Context) ->
+    check_uploaded_file(Context, cb_context:req_files(Context)).
+
+check_uploaded_file(Context, [{_Name, File}|_]) ->
     lager:debug("checking file ~s", [_Name]),
     case wh_json:get_value(<<"contents">>, File) of
         'undefined' ->
@@ -206,7 +216,7 @@ check_uploaded_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
             lager:debug("file: ~s", [Bin]),
             cb_context:set_resp_status(Context, 'success')
     end;
-check_uploaded_file(Context) ->
+check_uploaded_file(Context, _ReqFiles) ->
     Message = <<"no file to process">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context).
 
@@ -232,17 +242,22 @@ upload_csv(Context) ->
     Now = erlang:now(),
     {'ok', {Count, Rates}} = process_upload_file(Context),
     lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, wh_util:elapsed_ms(Now)]),
-    _  = crossbar_doc:save(Context#cb_context{doc=Rates}, [{'publish_doc', 'false'}]),
+    _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
     lager:debug("it took ~b milli to process and save ~b rates", [wh_util:elapsed_ms(Now), Count]).
 
 -spec process_upload_file(cb_context:context()) ->
                                  {'ok', {non_neg_integer(), wh_json:objects()}}.
-process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
+process_upload_file(Context) ->
+    process_upload_file(Context, cb_context:req_files(Context)).
+process_upload_file(Context, [{_Name, File}|_]) ->
     lager:debug("converting file ~s", [_Name]),
     convert_file(wh_json:get_binary_value([<<"headers">>, <<"content_type">>], File)
                  ,wh_json:get_value(<<"contents">>, File)
                  ,Context
-                ).
+                );
+process_upload_file(Context, _ReqFiles) ->
+    Message = <<"no file to process">>,
+    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context).
 
 -spec convert_file(ne_binary(), ne_binary(), cb_context:context()) ->
                           {'ok', {non_neg_integer(), wh_json:objects()}}.
@@ -280,7 +295,7 @@ process_row(Context, Row, Count, JObjs, BulkInsert) ->
     J = case Count > 1 andalso (Count rem BulkInsert) =:= 0 of
             'false' -> JObjs;
             'true' ->
-                save_processed_rates(Context#cb_context{doc=JObjs}, Count),
+                _Pid = save_processed_rates(cb_context:set_doc(Context, JObjs), Count),
                 []
         end,
     process_row(Row, {Count, J}).
