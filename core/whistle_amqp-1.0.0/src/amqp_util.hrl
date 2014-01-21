@@ -129,6 +129,7 @@
                              ,broker :: api_binary() | '$2' | '_'
                              ,assigned :: wh_now() | '_'
                              ,reconnect = 'false' :: boolean()
+                             ,watchers = sets:new()
                             }).
 
 -type wh_amqp_assignment() :: #wh_amqp_assignment{}.

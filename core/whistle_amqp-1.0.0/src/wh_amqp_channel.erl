@@ -8,15 +8,20 @@
 %%%-------------------------------------------------------------------
 -module(wh_amqp_channel).
 
--export([get/0
-         ,get/1
-        ]).
 -export([consumer_pid/0
          ,consumer_pid/1
          ,remove_consumer_pid/0
         ]).
--export([remove/0
-         ,remove/1
+-export([consumer_broker/0
+         ,consumer_broker/1
+         ,remove_consumer_broker/0
+        ]).
+-export([requisition/0
+         ,requisition/1
+         ,requisition/2
+        ]).
+-export([release/0
+         ,release/1
         ]).
 -export([close/1]).
 -export([maybe_publish/2]).
@@ -27,56 +32,69 @@
 
 -include("amqp_util.hrl").
 
--compile({'no_auto_import', [get/1]}).
-
--spec get() -> boolean().
-get() ->
-    case wh_amqp_assignments:request_float() of
-        #wh_amqp_assignment{channel=Channel}
-          when is_pid(Channel) -> 'true';
-        _Else -> 'false'
-    end.
-
--spec get(ne_binary()) -> boolean().
-get(Broker) ->
-    case wh_amqp_assignments:request_sticky(Broker) of
-        #wh_amqp_assignment{channel=Channel}
-          when is_pid(Channel) -> 'true';
-        _Else -> 'false'
-    end.      
-
 -spec consumer_pid() -> pid().
 consumer_pid() ->
-    case erlang:get('$wh_amqp_consumer') of
+    case get('$wh_amqp_consumer_pid') of
         Pid when is_pid(Pid) -> Pid;
         _Else -> self()
     end.
 
 -spec consumer_pid(pid()) -> api_pid().
-consumer_pid(Pid) when is_pid(Pid) -> put('$wh_amqp_consumer', Pid).
+consumer_pid(Pid) when is_pid(Pid) ->
+    put('$wh_amqp_consumer_pid', Pid).
 
 -spec remove_consumer_pid() -> 'undefined'.
-remove_consumer_pid() -> put('$wh_amqp_consumer', 'undefined').
+remove_consumer_pid() -> 
+    put('$wh_amqp_consumer_pid', 'undefined').
 
--spec remove() -> 'ok'.
-remove() -> 
-    remove(consumer_pid()).
+-spec consumer_broker() -> api_binary().
+consumer_broker() ->
+    case get('$wh_amqp_consumer_broker') of
+        Broker when is_binary(Broker) -> Broker;
+        _Else -> 'undefined'
+    end.
 
--spec remove(pid()) -> 'ok'.
-remove(Pid) ->
-    lager:debug("remove consumer ~p", [Pid]),
+-spec consumer_broker(ne_binary()) -> api_binary().
+consumer_broker(Broker) when is_binary(Broker) -> 
+    put('$wh_amqp_consumer_broker', Broker).
+
+-spec remove_consumer_broker() -> 'undefined'.
+remove_consumer_broker() ->
+    put('$wh_amqp_consumer_broker', 'undefined').
+
+-spec requisition() -> boolean().
+requisition() -> requisition(consumer_pid()).
+
+-spec requisition(pid() | api_binary()) -> boolean().
+requisition(Consumer) when is_pid(Consumer) ->
+    requisition(Consumer, consumer_broker());
+requisition(Broker) ->
+    requisition(consumer_pid(), Broker).
+
+-spec requisition(pid(), api_binary()) -> boolean().
+requisition(Consumer, Broker) when is_pid(Consumer) ->
+    case wh_amqp_assignments:request_channel(Consumer, Broker) of
+        #wh_amqp_assignment{channel=Channel}
+          when is_pid(Channel) -> 'true';
+        _Else -> 'false'
+    end.
+
+-spec release() -> 'ok'.
+release() -> release(consumer_pid()).
+
+-spec release(pid()) -> 'ok'.
+release(Pid) when is_pid(Pid) ->
+    lager:debug("release consumer ~p channel assignment", [Pid]),
     _ = wh_amqp_history:remove(Pid),
-    _ = wh_amqp_assignments:remove(Pid),
-    'ok'.
-    
+    wh_amqp_assignments:release(Pid).
+
 -spec close(api_pid()) -> 'ok'.
 close(Channel) when is_pid(Channel) ->
     catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5000),
-    lager:debug("closed amqp channel ~p", [Channel]),
-    'ok';
+    lager:debug("closed amqp channel ~p", [Channel]);
 close(_) -> 'ok'.
 
-%% maybe publish will only publish a message if the requestor already has a channel
+%% maybe publish will only publish a message if there is an existing channel assignment
 -spec maybe_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
 maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
     case wh_amqp_assignments:find() of
@@ -89,10 +107,10 @@ maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, Am
                         ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload])
     end.
 
-%% publish will attempt to create or reconnect a channel if necessary prior to publish
+%% publish will wait up to 5 seconds for a valid channel before publishing
 -spec publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
 publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
-    case wh_amqp_assignments:request_float() of
+    case wh_amqp_assignments:get_channel(5000) of
         #wh_amqp_assignment{channel=Channel, broker=_Broker} when is_pid(Channel) ->
             amqp_channel:call(Channel, BasicPub, AmqpMsg),
             lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
@@ -106,14 +124,9 @@ publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg)
 command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
     wh_amqp_history:add_exchange(Exchange);
 command(Command) ->
-    case wh_amqp_assignments:request_float() of        
-        #wh_amqp_assignment{channel=Channel}=Assignment 
-          when is_pid(Channel) -> command(Assignment, Command);
-        _Else ->
-            lager:warning("consumer ~p has no channel, dropping AMQP command: ~p~n  ~p"
-                          ,[consumer_pid(), Command, _Else]),
-            {'error', 'no_channel'}
-    end.
+    %% This will wait forever for a valid channel before publishing...
+    %% all commands need to block till completion...
+    command(wh_amqp_assignments:get_channel(), Command).
 
 -spec command(wh_amqp_assignment(), wh_amqp_command()) -> command_ret().
 command(#wh_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->
@@ -168,13 +181,13 @@ handle_command_result(#'basic.qos_ok'{}
                       ,#'basic.qos'{prefetch_count=Prefetch}=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("applied QOS prefetch ~p to channel ~p", [Prefetch, Channel]),
-    _ = wh_amqp_history:command(Assignment, Command),
+    _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result(#'queue.delete_ok'{}
                       ,#'queue.delete'{queue=Q}=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("deleted queue ~s via channel ~p", [Q, Channel]),
-    _ = wh_amqp_history:command(Assignment, Command),
+    _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
                       ,#'queue.declare'{passive='true'}
@@ -185,7 +198,7 @@ handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
                       ,#'queue.declare'{}=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("declared queue ~s via channel ~p", [Q, Channel]),
-    _ = wh_amqp_history:command(Assignment, Command#'queue.declare'{queue=Q}),
+    _ = wh_amqp_history:add_command(Assignment, Command#'queue.declare'{queue=Q}),
     {'ok', Ok};
 handle_command_result(#'queue.unbind_ok'{}
                       ,#'queue.unbind'{exchange=_Exchange
@@ -194,7 +207,7 @@ handle_command_result(#'queue.unbind_ok'{}
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("unbound ~s from ~s exchange (routing key ~s) via channel ~p"
                 ,[_Q, _Exchange, _RK, Channel]),
-    _ = wh_amqp_history:command(Assignment, Command),
+    _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result(#'queue.bind_ok'{}
                       ,#'queue.bind'{exchange=_Exchange
@@ -203,24 +216,24 @@ handle_command_result(#'queue.bind_ok'{}
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("bound ~s to ~s exchange (routing key ~s) via channel ~p"
                 ,[_Q, _Exchange, _RK, Channel]),
-    _ = wh_amqp_history:command(Assignment, Command),
+    _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result(#'basic.consume_ok'{consumer_tag=CTag}
                       ,#'basic.consume'{}=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("created consumer ~s via channel ~p", [CTag, Channel]),
-    _ = wh_amqp_history:command(Assignment, Command#'basic.consume'{consumer_tag=CTag}),
+    _ = wh_amqp_history:add_command(Assignment, Command#'basic.consume'{consumer_tag=CTag}),
     'ok';
 handle_command_result(#'basic.cancel_ok'{consumer_tag=CTag}
                       ,#'basic.cancel'{}=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("canceled consumer ~s via channel ~p", [CTag, Channel]),
-    _ = wh_amqp_history:command(Assignment, Command),
+    _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result('ok', Command, #wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("executed AMQP command ~s with no_wait option via channel ~p"
                 ,[element(1, Command), Channel]),
-    _ = wh_amqp_history:command(Assignment, Command),
+    _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result(_Else, _R, _) ->
     lager:warning("unexpected AMQP command result: ~p", [_R]),

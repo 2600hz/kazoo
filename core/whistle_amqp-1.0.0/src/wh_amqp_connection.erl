@@ -14,6 +14,7 @@
 -export([start_link/1]).
 -export([get_connection/1]).
 -export([new_exchange/2]).
+-export([create_prechannel/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -49,6 +50,10 @@ get_connection(Srv) ->
 -spec new_exchange(pid(), wh_amqp_exchange()) -> 'ok'.
 new_exchange(Srv, Exchange) ->
     gen_server:cast(Srv, {'new_exchange', Exchange}).
+
+-spec create_prechannel(pid()) -> 'ok'.
+create_prechannel(Srv) ->
+    gen_server:cast(Srv, 'create_prechannel').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -112,7 +117,7 @@ handle_cast('create_prechannel'
     {'noreply', Connection};
 handle_cast('create_prechannel'
             ,#wh_amqp_connection{available='true'}=Connection) ->
-    {'noreply', create_prechannel(Connection), 'hibernate'};
+    {'noreply', establish_prechannel(Connection), 'hibernate'};
 handle_cast({'new_exchange', _}
             ,#wh_amqp_connection{available='false'}=Connection) ->
     {'noreply', Connection, 'hibernate'};
@@ -222,7 +227,7 @@ connected(#wh_amqp_connection{prechannels_initalized='false'}=Connection) ->
             connected(Success)
     end;
 connected(#wh_amqp_connection{broker=_Broker}=Connection) -> 
-    lager:notice("successfully connected to '~s'", [_Broker]),
+    lager:info("successfully connected to '~s'", [_Broker]),
     Connection.
 
 %%--------------------------------------------------------------------
@@ -349,7 +354,7 @@ initalize_prechannels(#wh_amqp_connection{}=Connection) ->
 initalize_prechannels(#wh_amqp_connection{}=Connection, 0) ->
     Connection#wh_amqp_connection{prechannels_initalized='true'};
 initalize_prechannels(#wh_amqp_connection{}=Connection, Count) ->
-    case create_prechannel(Connection) of
+    case establish_prechannel(Connection) of
         #wh_amqp_connection{connection=Pid}=Success
             when is_pid(Pid) ->
             initalize_prechannels(Success, Count - 1);
@@ -357,15 +362,15 @@ initalize_prechannels(#wh_amqp_connection{}=Connection, Count) ->
             Error#wh_amqp_connection{prechannels_initalized='false'}
     end.
 
--spec create_prechannel(wh_amqp_connection()) -> wh_amqp_connection().
-create_prechannel(#wh_amqp_connection{broker=Broker}=Connection) ->
+-spec establish_prechannel(wh_amqp_connection()) -> wh_amqp_connection().
+establish_prechannel(#wh_amqp_connection{broker=Broker}=Connection) ->
     case open_channel(Connection) of
         {'error', _R} ->
             lager:critical("unable to establish prechannel to ~s, assuming connection is invalid: ~p"
                            ,[Broker, _R]),
             disconnected(Connection);
         {'ok', Pid} ->
-            wh_amqp_assignments:new_channel(Broker, self(), Pid),
+            wh_amqp_assignments:add_channel(Broker, self(), Pid),
             Connection
     end.
 

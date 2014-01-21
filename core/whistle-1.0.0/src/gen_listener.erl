@@ -296,7 +296,7 @@ init(Module, Params, ModState, TimeoutRef) ->
     _ = [add_responder(self(), Mod, Events)
          || {Mod, Events} <- Responders
         ],
-    _ = wh_amqp_channel:get(),
+    _ = wh_amqp_channel:requisition(),
     {'ok', #state{module=Module
                   ,module_state=ModState
                   ,module_timeout_ref=TimeoutRef
@@ -427,11 +427,12 @@ handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
                              (_) -> 'true'
                           end, Bs),
     {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
-handle_cast({'wh_amqp_channel', {'new_channel', 'true'}}, State) ->
+handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
     {'noreply', State};
-handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}, #state{bindings=Bindings
-                                                                  ,params=Params
-                                                                 }=State) ->
+handle_cast({'wh_amqp_assignment', {'new_channel', 'false'}}
+            ,#state{bindings=Bindings
+                    ,params=Params
+                   }=State) ->
     {'ok', Q} = start_amqp(Params),
     _ = [create_binding(Type, BindProps, Q)
          || {Type, BindProps} <- Bindings
@@ -492,8 +493,8 @@ handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, State) ->
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
     {'noreply', State#state{is_consuming='false'}};
 handle_info('$is_gen_listener_consuming', #state{is_consuming='false'}=State) ->
-    _ = (catch wh_amqp_channels:remove()),
-    _ = wh_amqp_channels:get(),
+    _ = (catch wh_amqp_channel:release()),
+    _ = wh_amqp_channel:requisition(),
     {'noreply', State#state{queue='undefined'}};
 handle_info('$is_gen_listener_consuming', State) ->
     {'noreply', State};
@@ -533,7 +534,7 @@ terminate(Reason, #state{module=Module
                          ,module_state=ModState
                         }) ->
     _ = (catch Module:terminate(Reason, ModState)),
-    _ = (catch wh_amqp_channel:remove()),
+    _ = (catch wh_amqp_channel:release()),
     lager:debug("~s terminated cleanly, going down", [Module]).
 
 %%--------------------------------------------------------------------

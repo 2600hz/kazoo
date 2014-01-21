@@ -14,7 +14,7 @@
 -export([is_consuming/2]).
 -export([update_consumer_tag/3]).
 -export([basic_consumers/1]).
--export([command/2]).
+-export([add_command/2]).
 -export([remove/1]).
 -export([get/1]).
 -export([add_exchange/1]).
@@ -73,8 +73,8 @@ basic_consumers(Consumer) ->
      || #wh_amqp_history{command=Command} <- ets:match_object(?TAB, Pattern)
     ].
 
--spec command(wh_amqp_assignment(), wh_amqp_commands()) -> 'ok'.
-command(#wh_amqp_assignment{consumer=Consumer}, Command) ->
+-spec add_command(wh_amqp_assignment(), wh_amqp_commands()) -> 'ok'.
+add_command(#wh_amqp_assignment{consumer=Consumer}, Command) ->
     MatchSpec =[{#wh_amqp_history{consumer=Consumer
                                   ,command=Command
                                   ,_='_'}
@@ -239,12 +239,12 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _, 'process', Pid, _Reason}
             ,#state{connections=Connections}=State) ->
-    case sets:is_element(Pid) of
+    case sets:is_element(Pid, Connections) of
         'true' -> 
             lager:debug("connection ~p went down: ~p", [Pid, _Reason]),
             {'noreply', State#state{connections=sets:del_element(Pid, Connections)}};
         'false' ->
-            lager:debug("consumer ~p went down without removing AMQP history: ~p"
+            lager:debug("removing AMQP history for consumer ~p: ~p"
                         ,[Pid, _Reason]),
             _ = remove(Pid),
             {'noreply', State}
