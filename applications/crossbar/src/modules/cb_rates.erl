@@ -280,7 +280,7 @@ csv_to_rates(CSV, Context) ->
                                  ,{0, []}
                                 ).
 
-%% NOTE: Support row formates-
+%% NOTE: Support row formats-
 %%    [Prefix, ISO, Desc, Rate]
 %%    [Prefix, ISO, Desc, InternalRate, Rate]
 %%    [Prefix, ISO, Desc, Surcharge, InternalRate, Rate]
