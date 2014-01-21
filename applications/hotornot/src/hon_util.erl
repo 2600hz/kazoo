@@ -15,6 +15,10 @@
 
 -include("hotornot.hrl").
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
 -define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
 
@@ -31,12 +35,10 @@ candidate_rates(ToDID, FromDID) ->
     find_candidate_rates(E164, FromDID).
 
 find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
-    Start = get_prefix(?MIN_PREFIX_LEN, E164),
-    End = get_suffix(E164),
+    Keys = build_keys(E164),
 
-    lager:debug("searching for rates in the range ~p to ~p for ~s", [Start, End, E164]),
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{'startkey', Start}
-                                                                  ,{'endkey', End}
+    lager:debug("searching for prefixes for ~s: ~p", [E164, Keys]),
+    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{'keys', Keys}
                                                                   ,'include_docs'
                                                                  ])
     of
@@ -48,6 +50,15 @@ find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
 find_candidate_rates(DID, _) ->
     lager:debug("DID ~s is too short", [DID]),
     {'error', 'did_too_short'}.
+
+build_keys(<<"+", E164/binary>>) ->
+    build_keys(E164);
+build_keys(<<D:1/binary, Rest/binary>>) ->
+    build_keys(Rest, D, [wh_util:to_integer(D)]).
+
+build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
+    build_keys(Rest, <<Prefix/binary, D/binary>>, [wh_util:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
+build_keys(<<>>, _, Acc) -> Acc.
 
 %% Given a list of rates, return the list of rates whose routes regexes match the given E164
 %% Optionally include direction of the call and options from the client to match against the rate
@@ -84,7 +95,16 @@ matching_rate(Rate, E164, Direction, RouteOptions) ->
 %% Return true if RateA has lower weight than RateB
 -spec sort_rate(wh_json:object(), wh_json:object()) -> boolean().
 sort_rate(RateA, RateB) ->
-    wh_json:get_integer_value(<<"weight">>, RateA, 100) > wh_json:get_integer_value(<<"weight">>, RateB, 100).
+    PrefixA = byte_size(wh_json:get_binary_value(<<"prefix">>, RateA)),
+    PrefixB = byte_size(wh_json:get_binary_value(<<"prefix">>, RateB)),
+
+    case PrefixA =:= PrefixB of
+        'true' ->
+            wh_json:get_integer_value(<<"weight">>, RateA, 100) >
+                wh_json:get_integer_value(<<"weight">>, RateB, 100);
+        'false' ->
+            PrefixA > PrefixB
+    end.
 
 %% Route options come from the client device
 %% Rate options come from the carrier providing the trunk
@@ -96,10 +116,11 @@ options_match([], _) -> 'true';
 options_match(RouteOptions, RateOptions) ->
     lists:all(fun(RouteOpt) -> props:get_value(RouteOpt, RateOptions, 'false') =/= 'false' end, RouteOptions).
 
--spec get_prefix(pos_integer(), ne_binary()) -> ne_binary().
-get_prefix(MinLen, <<"+", Bin/binary>>) -> get_prefix(MinLen, Bin);
-get_prefix(MinLen, Bin) -> <<Start:MinLen/binary, _/binary>> = Bin, Start.
+-ifdef(TEST).
+build_keys_test() ->
+    ?assertEqual([1], build_keys(<<"1">>)),
+    ?assertEqual([12, 1], build_keys(<<"12">>)),
+    ?assertEqual([123, 12, 1], build_keys(<<"123">>)).
 
--spec get_suffix(ne_binary()) -> ne_binary().
-get_suffix(<<"+", End/binary>>) -> End;
-get_suffix(End) -> End.
+-endif.
+
