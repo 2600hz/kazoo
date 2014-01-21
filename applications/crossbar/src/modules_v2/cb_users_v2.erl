@@ -185,8 +185,6 @@ dry_run(#cb_context{account_id=AccountId, req_data=JObj}) ->
             wh_services:calulate_charges(UpdateServices, [Transaction2])
     end.
 
-    wh_services:calulate_charges(UpdateServices, [Transaction2]).
-
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
