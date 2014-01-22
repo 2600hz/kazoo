@@ -191,7 +191,8 @@ call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
     Req = wh_json:get_value(<<"Request">>, JObj),
 
     gen_fsm:send_event(FSM, {'dialplan_error', wh_json:get_value(<<"Application-Name">>, Req)});
-call_event(_, _C, _E, _) -> lager:debug("unhandled call event: ~s: ~s", [_C, _E]).
+call_event(_, _C, _E, _) -> 'ok'.
+%%lager:debug("unhandled call event: ~s: ~s", [_C, _E]).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -851,6 +852,32 @@ ringing({'sync_req', JObj}, #state{agent_proc=Srv}=State) ->
 ringing(?NEW_CHANNEL_TO(_CallId), #state{agent_call_id=_CallId}=State) ->
     {'next_state', 'ringing', State};
 
+ringing({'originate_resp', ACallId}, #state{agent_proc=Srv
+                                            ,member_call_id=MCallId
+                                            ,member_call=MCall
+                                            ,acct_id=AcctId
+                                            ,agent_id=AgentId
+                                            ,queue_notifications=Ns
+                                           }=State) ->
+    lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
+    acdc_agent_listener:member_connect_accepted(Srv, ACallId),
+
+    maybe_notify(Ns, ?NOTIFY_PICKUP, State),
+
+    CIDName = whapps_call:caller_id_name(MCall),
+    CIDNum = whapps_call:caller_id_number(MCall),
+
+    acdc_agent_stats:agent_connected(AcctId, AgentId, MCallId, CIDName, CIDNum),
+
+    {'next_state', 'answered', State#state{call_status_ref=start_call_status_timer()
+                                           ,call_status_failures=0
+                                           ,agent_call_id=ACallId
+                                           ,connect_failures=0
+                                          }};
+
+ringing(?NEW_CHANNEL_TO(_CallId), State) ->
+    lager:debug("new channel ~s for agent", [_CallId]),
+    {'next_state', 'ringing', State};
 ringing(_Evt, State) ->
     lager:debug("unhandled event while ringing: ~p", [_Evt]),
     {'next_state', 'ringing', State}.
