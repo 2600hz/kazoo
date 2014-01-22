@@ -15,6 +15,8 @@
          ,call_handled/1, call_handled_v/1
          ,call_processed/1, call_processed_v/1
 
+         ,call_flush/1, call_flush_v/1
+
          ,current_calls_req/1, current_calls_req_v/1
          ,current_calls_err/1, current_calls_err_v/1
          ,current_calls_resp/1, current_calls_resp_v/1
@@ -44,6 +46,8 @@
          ,publish_call_abandoned/1, publish_call_abandoned/2
          ,publish_call_handled/1, publish_call_handled/2
          ,publish_call_processed/1, publish_call_processed/2
+
+         ,publish_call_flush/1, publish_call_flush/2
 
          ,publish_current_calls_req/1, publish_current_calls_req/2
          ,publish_current_calls_err/2, publish_current_calls_err/3
@@ -92,6 +96,10 @@
 -define(PROCESS_HEADERS, [<<"Agent-ID">>, <<"Processed-Timestamp">>]).
 -define(PROCESS_VALUES, ?CALL_REQ_VALUES(<<"processed">>)).
 -define(PROCESS_TYPES, []).
+
+-define(FLUSH_HEADERS, [<<"Call-ID">>]).
+-define(FLUSH_VALUES, ?CALL_REQ_VALUES(<<"flush">>)).
+-define(FLUSH_TYPES, []).
 
 -spec call_waiting(api_terms()) ->
                           {'ok', iolist()} |
@@ -177,6 +185,23 @@ call_processed_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_REQ_HEADERS, ?PROCESS_VALUES, ?PROCESS_TYPES);
 call_processed_v(JObj) ->
     call_processed_v(wh_json:to_proplist(JObj)).
+
+-spec call_flush(api_terms()) ->
+                            {'ok', iolist()} |
+                            {'error', string()}.
+call_flush(Props) when is_list(Props) ->
+    case call_flush_v(Props) of
+        'true' -> wh_api:build_message(Props, ?CALL_REQ_HEADERS, ?FLUSH_HEADERS);
+        'false' -> {'error', "Proplist failed validation for call_flush"}
+    end;
+call_flush(JObj) ->
+    call_flush(wh_json:to_proplist(JObj)).
+
+-spec call_flush_v(api_terms()) -> boolean().
+call_flush_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CALL_REQ_HEADERS, ?FLUSH_VALUES, ?FLUSH_TYPES);
+call_flush_v(JObj) ->
+    call_flush_v(wh_json:to_proplist(JObj)).
 
 -define(CURRENT_CALLS_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_CURRENT_CALLS_REQ_HEADERS, [<<"Queue-ID">>, <<"Agent-ID">>
@@ -551,7 +576,7 @@ unbind_q(Q, AcctId, QID, AID, [_|L]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
-declare_exchanges() ->    
+declare_exchanges() ->
     amqp_util:whapps_exchange().
 
 publish_call_waiting(JObj) ->
@@ -582,6 +607,13 @@ publish_call_processed(JObj) ->
     publish_call_processed(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_processed(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PROCESS_VALUES, fun call_processed/1),
+    amqp_util:whapps_publish(call_stat_routing_key(API), Payload, ContentType).
+
+publish_call_flush(JObj) ->
+    publish_call_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_call_flush(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?FLUSH_VALUES, fun call_flush/1),
+    lager:debug("flush payload ~s: ~s", [call_stat_routing_key(API), Payload]),
     amqp_util:whapps_publish(call_stat_routing_key(API), Payload, ContentType).
 
 publish_status_update(JObj) ->
