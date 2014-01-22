@@ -12,12 +12,22 @@
          ,current_statuses/1
          ,current_queues/1
          ,current_agents/1
+         ,logout_agent/2
          ,agent_presence_id/2
          ,migrate_to_acdc_db/0, migrate/0
          ,flush_call_stat/1
         ]).
 
 -include("acdc.hrl").
+
+logout_agent(AccountId, AgentId) ->
+    io:format("Sending notice to log out agent ~s (~s)~n", [AgentId, AccountId]),
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AccountId}
+                ,{<<"Agent-ID">>, AgentId}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    whapps_util:amqp_pool_send(Update, fun wapi_acdc_agent:publish_logout/1).
 
 -define(KEYS, [<<"Waiting">>, <<"Handled">>, <<"Processed">>, <<"Abandoned">>]).
 
