@@ -363,6 +363,7 @@ save_attachment(DocId, AName, Contents, #cb_context{}=Context, Options) ->
     Opts1 = case props:get_value('rev', Options) of
                 'undefined' ->
                     {'ok', Rev} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
+                    lager:debug("looking up rev for ~s: ~s", [DocId, Rev]),
                     [{'rev', Rev} | Options];
                 O -> O
             end,
