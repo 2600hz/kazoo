@@ -16,6 +16,9 @@
          ,call_handled/4
          ,call_missed/5
          ,call_processed/4
+
+         ,find_call/1
+         ,call_stat_to_json/1
         ]).
 
 %% ETS config
@@ -121,6 +124,7 @@ call_table_opts() ->
                         ,{<<"acdc_call_stat">>, <<"abandoned">>}
                         ,{<<"acdc_call_stat">>, <<"handled">>}
                         ,{<<"acdc_call_stat">>, <<"processed">>}
+                        ,{<<"acdc_call_stat">>, <<"flush">>}
                        ]
                      }
                      ,{{'acdc_agent_stats', 'handle_status_stat'}
@@ -159,6 +163,7 @@ handle_call_stat(JObj, Props) ->
         <<"abandoned">> -> handle_abandoned_stat(JObj, Props);
         <<"handled">> -> handle_handled_stat(JObj, Props);
         <<"processed">> -> handle_processed_stat(JObj, Props);
+        <<"flush">> -> flush_call_stat(JObj, Props);
         _Name ->
             lager:debug("recv unknown call stat type ~s: ~p", [_Name, JObj])
     end.
@@ -173,6 +178,18 @@ handle_call_query(JObj, _Prop) ->
     case call_build_match_spec(JObj) of
         {'ok', Match} -> query_calls(RespQ, MsgId, Match, Limit);
         {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
+    end.
+
+find_call(CallId) ->
+    MS = [{#call_stat{call_id=CallId
+                      ,_ = '_'
+                     }
+           ,[]
+           ,['$_']
+          }],
+    case ets:select(call_table_id(), MS) of
+        [] -> 'undefined';
+        [Stat] -> call_stat_to_json(Stat)
     end.
 
 -record(state, {
@@ -219,6 +236,10 @@ handle_cast({'update_call', Id, Updates}, State) ->
     lager:debug("updating call stat ~s: ~p", [Id, Updates]),
     ets:update_element(call_table_id(), Id, Updates),
     {'noreply', State};
+handle_cast({'flush_call', Id}, State) ->
+    lager:debug("flushing call stat ~s", [Id]),
+    ets:delete(call_table_id(), Id),
+    {'noreply', State};
 handle_cast({'remove_call', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
     N = ets:select_delete(call_table_id(), Match),
@@ -257,6 +278,7 @@ handle_info(_Msg, State) ->
     {'noreply', State}.
 
 handle_event(_JObj, _State) ->
+    lager:debug("evt: ~p", [_JObj]),
     {'reply', []}.
 
 terminate(_Reason, _) ->
@@ -543,6 +565,42 @@ call_stat_to_doc(#call_stat{id=Id
         ,{'type', <<"call_stat">>}
        ]).
 
+-spec call_stat_to_json(call_stat()) -> wh_json:object().
+call_stat_to_json(#call_stat{id=Id
+                             ,call_id=CallId
+                             ,acct_id=AcctId
+                             ,queue_id=QueueId
+                             ,agent_id=AgentId
+                             ,entered_timestamp=EnteredT
+                             ,abandoned_timestamp=AbandonedT
+                             ,handled_timestamp=HandledT
+                             ,processed_timestamp=ProcessedT
+                             ,abandoned_reason=AbandonedR
+                             ,misses=Misses
+                             ,status=Status
+                             ,caller_id_name=CallerIdName
+                             ,caller_id_number=CallerIdNumber
+                            }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Id">>, Id}
+         ,{<<"Call-ID">>, CallId}
+         ,{<<"Queue-ID">>, QueueId}
+         ,{<<"Agent-ID">>, AgentId}
+         ,{<<"Account-ID">>, AcctId}
+         ,{<<"Entered-Timestamp">>, EnteredT}
+         ,{<<"Abandoned-Timestamp">>, AbandonedT}
+         ,{<<"Handled-Timestamp">>, HandledT}
+         ,{<<"Processed-Timestamp">>, ProcessedT}
+         ,{<<"Abandoned-Reason">>, AbandonedR}
+         ,{<<"Misses">>, misses_to_docs(Misses)}
+         ,{<<"Status">>, Status}
+         ,{<<"Caller-ID-Name">>, CallerIdName}
+         ,{<<"Caller-ID-Number">>, CallerIdNumber}
+         ,{<<"Wait-Time">>, wait_time(EnteredT, AbandonedT, HandledT)}
+         ,{<<"Talk-Time">>, talk_time(HandledT, ProcessedT)}
+        ])).
+
 wait_time(E, _, H) when is_integer(E), is_integer(H) -> H - E;
 wait_time(E, A, _) when is_integer(E), is_integer(A) -> A - E;
 wait_time(_, _, _) -> 'undefined'.
@@ -646,6 +704,18 @@ handle_processed_stat(JObj, Props) ->
                  ,{#call_stat.status, <<"processed">>}
                 ]),
     update_call_stat(Id, Updates, Props).
+
+-spec flush_call_stat(wh_json:ojbect(), wh_proplist()) -> 'ok'.
+flush_call_stat(JObj, Props) ->
+    'true' = wapi_acdc_stats:call_flush_v(JObj),
+
+    Id = call_stat_id(JObj),
+
+    lager:debug("flushing ~s: ~p", [Id, JObj]),
+
+    gen_listener:cast(props:get_value('server', Props)
+                      ,{'flush_call', Id}
+                     ).
 
 -spec find_call_stat(ne_binary()) -> 'undefined' | call_stat().
 find_call_stat(Id) ->
