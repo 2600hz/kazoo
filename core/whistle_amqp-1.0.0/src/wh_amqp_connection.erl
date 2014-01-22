@@ -217,8 +217,8 @@ connected(#wh_amqp_connection{exchanges_initalized='false'}=Connection) ->
         #wh_amqp_connection{exchanges_initalized='true'}=Success ->
             connected(Success)
     end;
-connected(#wh_amqp_connection{available='false', broker=Broker}=Connection) ->
-    _ = wh_amqp_assignments:add_broker(Broker),
+connected(#wh_amqp_connection{available='false'}=Connection) ->
+    _ = wh_amqp_connections:available(self()),
     connected(Connection#wh_amqp_connection{available='true'});
 connected(#wh_amqp_connection{prechannels_initalized='false'}=Connection) ->
     case initalize_prechannels(Connection) of
@@ -241,9 +241,8 @@ disconnected(#wh_amqp_connection{}=State) ->
     disconnected(State, ?START_TIMEOUT).
 
 -spec disconnected(wh_amqp_connection(), ?START_TIMEOUT..?MAX_TIMEOUT) -> wh_amqp_connection().
-disconnected(#wh_amqp_connection{available='true'
-                                 ,broker=Broker}=Connection, Timeout) ->
-    _ = wh_amqp_assignments:remove_broker(Broker),
+disconnected(#wh_amqp_connection{available='true'}=Connection, Timeout) ->
+    _ = wh_amqp_connections:unavailable(self()),
     disconnected(Connection#wh_amqp_connection{available='false'}, Timeout);
 disconnected(#wh_amqp_connection{channel_ref=Ref}=Connection, Timeout) 
   when is_reference(Ref) ->
@@ -348,7 +347,7 @@ create_control_channel(#wh_amqp_connection{broker=Broker}=Connection) ->
 %%--------------------------------------------------------------------
 -spec initalize_prechannels(wh_amqp_connection()) -> wh_amqp_connection().
 initalize_prechannels(#wh_amqp_connection{}=Connection) ->
-    initalize_prechannels(Connection, 10).
+    initalize_prechannels(Connection, 1000).
 
 -spec initalize_prechannels(wh_amqp_connection(), non_neg_integer()) -> wh_amqp_connection().
 initalize_prechannels(#wh_amqp_connection{}=Connection, 0) ->
@@ -397,7 +396,6 @@ open_channel(#wh_amqp_connection{connection=Pid}) ->
             E
     catch
         _:{'noproc', {'gen_server', 'call', [P|_]}} ->
-            %% TODO: send notice to self...
             lager:warning("amqp connection ~p is no longer valid...", [P]),
             {'error', 'not_connected'}
     end.

@@ -8,12 +8,126 @@
 %%%-------------------------------------------------------------------
 -module(whistle_amqp_maintenance).
 
+-export([validate_assignments/0]).
+-export([consumer_details/0]).
 -export([broker_summary/0]).
 -export([channel_summary/0]).
 
 -include("amqp_util.hrl").
 
 -define(ASSIGNMENTS, 'wh_amqp_assignments').
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+consumer_details() -> 
+    MatchSpec = [{#wh_amqp_assignment{consumer='$1'
+                                      ,channel='$2'
+                                      ,_='_'},
+                  [{'andalso', 
+                    {'=/=', '$1', 'undefined'},
+                    {'=/=', '$2', 'undefined'}
+                   }],
+                  ['$1']
+                 }],
+    consumer_details(ets:select(?ASSIGNMENTS, MatchSpec, 1)).
+
+consumer_details('$end_of_table') -> 'ok';
+consumer_details({[Consumer], Continuation}) ->
+    io:format("~p~n", [process_info(Consumer)]),
+    consumer_details(ets:select(Continuation)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+validate_assignments() ->
+    Pattern = #wh_amqp_assignment{ _='_'},
+    validate_assignments(ets:match_object(?ASSIGNMENTS, Pattern, 1)).
+
+validate_assignments('$end_of_table') -> 'ok';
+validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
+                                           ,consumer='undefined'
+                                           ,consumer_ref='undefined'
+                                           ,assigned='undefined'
+                                           ,channel=Channel
+                                           ,channel_ref=ChannelRef
+                                           ,connection=Connection
+                                           ,broker=?NE_BINARY}=Assignment
+                   ], Continuation}) 
+  when is_pid(Channel), is_reference(ChannelRef), is_pid(Connection) ->
+    %% validate prechannel
+    _ = case is_process_alive(Channel) andalso is_process_alive(Connection) of
+            'false' -> log_invalid_assignment(Assignment);
+            'true' -> 'ok'
+        end,
+    validate_assignments(ets:match_object(Continuation));
+validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
+                                           ,consumer=Consumer
+                                           ,consumer_ref=ConsumerRef
+                                           ,assigned='undefined'
+                                           ,channel='undefined'
+                                           ,channel_ref='undefined'
+                                           ,connection='undefined'
+                                           ,broker='undefined'
+                                           ,type='float'}=Assignment
+                   ], Continuation}) 
+  when is_pid(Consumer), is_reference(ConsumerRef) ->
+    %% validate float reservation
+    _ = case is_process_alive(Consumer) of
+            'false' -> log_invalid_assignment(Assignment);
+            'true' -> 'ok'
+        end,
+    validate_assignments(ets:match_object(Continuation));
+validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
+                                           ,consumer=Consumer
+                                           ,consumer_ref=ConsumerRef
+                                           ,assigned='undefined'
+                                           ,channel='undefined'
+                                           ,channel_ref='undefined'
+                                           ,connection='undefined'
+                                           ,broker=?NE_BINARY
+                                           ,type='sticky'}=Assignment
+                   ], Continuation}) 
+  when is_pid(Consumer), is_reference(ConsumerRef) ->
+    %% validate sticky reservation
+    _ = case is_process_alive(Consumer) of
+            'false' -> log_invalid_assignment(Assignment);
+            'true' -> 'ok'
+        end,
+    validate_assignments(ets:match_object(Continuation));
+validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
+                                           ,consumer=Consumer
+                                           ,consumer_ref=ConsumerRef
+                                           ,assigned={_, _, _}
+                                           ,channel=Channel
+                                           ,channel_ref=ChannelRef
+                                           ,connection=Connection                                           
+                                           ,broker=?NE_BINARY}=Assignment
+                   ], Continuation}) 
+  when is_pid(Consumer), is_reference(ConsumerRef)
+       ,is_pid(Channel), is_reference(ChannelRef)
+       ,is_pid(Connection) ->
+    %% validate assignment
+    _ = case is_process_alive(Consumer) 
+            andalso is_process_alive(Channel)
+            andalso is_process_alive(Connection)
+        of
+            'false' -> log_invalid_assignment(Assignment);
+            'true' -> 'ok'
+        end,
+    validate_assignments(ets:match_object(Continuation));
+validate_assignments({[Assignment], Continuation}) ->
+    log_invalid_assignment(Assignment),
+    validate_assignments(ets:match_object(Continuation)).    
+
+log_invalid_assignment(#wh_amqp_assignment{}=Assignment) ->
+    io:format("invalid assignment:~n ~p~n", [lager:pr(Assignment, ?MODULE)]).
 
 %%--------------------------------------------------------------------
 %% @public

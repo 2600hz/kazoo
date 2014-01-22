@@ -21,8 +21,6 @@
 -export([request_channel/2]).
 -export([add_channel/3]).
 -export([release/1]).
--export([add_broker/1]).
--export([remove_broker/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -98,14 +96,6 @@ add_channel(Broker, Connection, Channel) when is_pid(Channel) ->
 release(Consumer) ->
     gen_server:cast(?MODULE, {'release_assignments', Consumer}).
 
--spec add_broker(ne_binary()) -> 'ok'.
-add_broker(Broker) ->
-    gen_server:cast(?MODULE, {'add_broker', Broker}).
-
--spec remove_broker(ne_binary()) -> 'ok'.
-remove_broker(Broker) ->
-    gen_server:cast(?MODULE, {'remove_broker', Broker}).
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -145,7 +135,8 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({'request_float', Consumer}, _, State) ->
-    {'reply', assign_or_reserve(Consumer, primary_broker(State), 'float'), State};
+    Broker = wh_amqp_connections:primary_broker(),
+    {'reply', assign_or_reserve(Consumer, Broker, 'float'), State};
 handle_call({'request_sticky', Consumer, Broker}, _, State) ->
     {'reply', assign_or_reserve(Consumer, Broker, 'sticky'), State};
 handle_call(_Msg, _From, State) ->
@@ -161,14 +152,8 @@ handle_call(_Msg, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'add_broker', Broker}, #state{brokers=Brokers}=State) ->
-    lager:debug("broker ~s is now available", [Brokers]),
-    {'noreply', State#state{brokers=ordsets:add_element(Broker, Brokers)}};
-handle_cast({'remove_broker', Broker}, #state{brokers=Brokers}=State) ->
-    lager:warning("broker ~s is no longer available", [Broker]),
-    {'noreply', State#state{brokers=ordsets:del_element(Broker, Brokers)}};
 handle_cast({'add_channel', Broker, Connection, Channel}, State) ->
-    _ = case primary_broker(State) =:= Broker of
+    _ = case wh_amqp_connections:primary_broker() =:= Broker of
             'true' -> add_channel_primary_broker(Broker, Connection, Channel);
             'false' -> add_channel_alternate_broker(Broker, Connection, Channel)
         end,
@@ -190,7 +175,8 @@ handle_cast({'maybe_reassign', Consumer}, State) ->
                                   ,broker=Broker}=Assignment
              ], _} -> maybe_reassign(Assignment, Broker);
             {[#wh_amqp_assignment{type='float'}=Assignment], _} ->
-                maybe_reassign(Assignment, primary_broker(State))
+                Broker = wh_amqp_connections:primary_broker(),
+                maybe_reassign(Assignment, Broker)
         end,
     {'noreply', State};
 handle_cast(_Msg, State) ->
@@ -281,24 +267,12 @@ release_assignments({[#wh_amqp_assignment{timestamp=Timestamp
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec primary_broker(#state{}) -> api_binary().
-primary_broker(#state{brokers=Brokers}) ->
-    case ordsets:to_list(Brokers) of
-        [Broker|_] -> Broker;
-        _Else -> 'undefined'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec maybe_reassign(wh_amqp_assignment(), _) -> 'undefined' | wh_amqp_assignment().
 maybe_reassign(_, 'undefined') -> 'undefined';
 maybe_reassign(_, '$end_of_table') -> 'undefined';
 maybe_reassign(#wh_amqp_assignment{consumer=Consumer}=ConsumerAssignment
-               ,{[#wh_amqp_assignment{channel=Channel
+               ,{[#wh_amqp_assignment{timestamp=Timestamp
+                                      ,channel=Channel
                                       ,broker=Broker}=ChannelAssignment
                  ], Continuation}) ->
     %% This is a minor optimization and still allows a dying channel to be 
@@ -306,7 +280,9 @@ maybe_reassign(#wh_amqp_assignment{consumer=Consumer}=ConsumerAssignment
     %% it very unlikely and well handled if it does happen (when the new
     %% primary pre-channels are added)
     case is_process_alive(Channel) of 
-        'false' -> maybe_reassign(ConsumerAssignment, ets:select(Continuation));
+        'false' -> 
+            _ = ets:delete(?TAB, Timestamp),
+            maybe_reassign(ConsumerAssignment, ets:select(Continuation));
         'true' ->
             lager:debug("attempting to move consumer ~p to a channel on ~s"
                         ,[Consumer, Broker]),
@@ -735,7 +711,6 @@ handle_down_match({'channel', #wh_amqp_assignment{timestamp=Timestamp
              ,{#wh_amqp_assignment.reconnect, 'true'}
             ],
     ets:update_element(?TAB, Timestamp, Props),
-    %% TODO: Attempt to assign...
     gen_server:cast(?MODULE, {'maybe_reassign', Consumer}),
     lager:debug("sticky channel ~p on ~s went down while still assigned to consumer ~p: ~p"
                 ,[Channel, Broker, Consumer, Reason]).
@@ -750,7 +725,7 @@ add_watcher(Consumer, Watcher) ->
     case find(Consumer) of
         #wh_amqp_assignment{channel=Channel}=Assignment 
           when is_pid(Channel) ->
-            Watcher ! {'wh_amqp_assignment', Assignment};
+            Watcher ! Assignment;
         #wh_amqp_assignment{watchers=Watchers
                             ,timestamp=Timestamp} ->
             W = sets:add_element(Watcher, Watchers),

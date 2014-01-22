@@ -32,20 +32,13 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec add/1 :: (#wh_amqp_connection{}) -> {'error', _} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(), _}.
+-spec add/1 :: (#wh_amqp_connection{}) -> {'error', _} | {'ok', api_pid()} | {'ok', api_pid(), _}.
 add(#wh_amqp_connection{}=Connection) ->
-%%    supervisor:start_child(?SERVER, [Connection]),
-%%    supervisor:start_child(?SERVER, [Connection]),
-%%    supervisor:start_child(?SERVER, [Connection]),
-%%    supervisor:start_child(?SERVER, [Connection]),
-    supervisor:start_child(?SERVER, [Connection]).    
+    supervisor:start_child(?SERVER, [Connection]).
 
--spec remove/1 :: (#wh_amqp_connection{} | text()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
-remove(#wh_amqp_connection{manager=Name}) -> remove(Name);
-remove(URI) ->
-    Name = wh_util:to_atom(URI, 'true'),
-    _ = supervisor:terminate_child(?SERVER, Name),
-    supervisor:delete_child(?SERVER, Name).
+-spec remove/1 :: (pid()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+remove(Connection) when is_pid(Connection) ->
+    supervisor:terminate_child(?SERVER, Connection).
 
 %% ===================================================================
 %% Supervisor callbacks

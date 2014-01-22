@@ -16,7 +16,8 @@
 -include("amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
--define(CHILDREN, [?SUPER('wh_amqp_connection_sup')
+-define(CHILDREN, [?WORKER('wh_amqp_connections')
+                   ,?SUPER('wh_amqp_connection_sup')
                    ,?WORKER('wh_amqp_assignments')
                    ,?WORKER('wh_amqp_history')
                    ,?WORKER('wh_amqp_bootstrap')
