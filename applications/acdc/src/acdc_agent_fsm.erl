@@ -406,7 +406,7 @@ wait(_Msg, State) ->
     {'next_state', 'wait', State}.
 
 wait('status', _, State) ->
-    {'reply', [{'state', 'wait'}], 'wait', State};
+    {'reply', [{'state', <<"wait">>}], 'wait', State};
 wait('current_call', _, State) ->
     {'reply', 'undefined', 'wait', State}.
 
@@ -501,7 +501,7 @@ sync(_Evt, State) ->
     {'next_state', 'sync', State}.
 
 sync('status', _, State) ->
-    {'reply', [{'state', 'sync'}], 'sync', State};
+    {'reply', [{'state', <<"sync">>}], 'sync', State};
 sync('current_call', _, State) ->
     {'reply', 'undefined', 'sync', State}.
 
