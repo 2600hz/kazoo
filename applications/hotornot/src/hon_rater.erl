@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Given a rate_req, find appropriate rate for the call
 %%% @end
