@@ -151,4 +151,11 @@
                              ,started = now() :: wh_now() | '_'
                             }).
 -type wh_amqp_connection() :: #wh_amqp_connection{}.
--type wh_amqp_connections() :: [wh_amqp_connection(),...] | [].
+
+-record(wh_amqp_connections, {connection
+                              ,connection_ref
+                              ,broker
+                              ,available='false'
+                              ,timestamp=now()
+                              ,federation='false'}).
+-type wh_amqp_connections() :: #wh_amqp_connections{}.

@@ -12,6 +12,8 @@
 
 -export([add/1]).
 -export([remove/1]).
+-export([broker_connections/1]).
+-export([broker_available_connections/1]).
 -export([primary_broker/0]).
 -export([available/1]).
 -export([unavailable/1]).
@@ -30,12 +32,6 @@
 
 -include("amqp_util.hrl").
 
--record(wh_amqp_connections, {connection
-                              ,connection_ref
-                              ,broker
-                              ,available='false'
-                              ,timestamp=now()}).
-
 -record(state, {watchers=sets:new()}).
 -type state() :: #state{}.
 
@@ -52,19 +48,22 @@
 start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -spec add(wh_amqp_connection() | text()) -> wh_amqp_connection() | {'error', _}.
-add(#wh_amqp_connection{broker=Broker}=Connection) ->
+add(Broker) -> add(Broker, 'false').
+
+-spec add(wh_amqp_connection() | text(), boolean()) -> wh_amqp_connection() | {'error', _}.
+add(#wh_amqp_connection{broker=Broker}=Connection, Federation) ->
     case wh_amqp_connection_sup:add(Connection) of
         {'ok', Pid} ->
-            gen_server:cast(?MODULE, {'new_connection', Pid, Broker}),
+            gen_server:cast(?MODULE, {'new_connection', Pid, Broker, Federation}),
             Connection;
         {'error', Reason} ->
             lager:warning("unable to start amqp connection to '~s': ~p"
                           ,[Broker, Reason]),
             {'error', Reason}
     end;
-add(Broker) when not is_binary(Broker) ->
-    add(wh_util:to_binary(Broker));
-add(Broker) ->
+add(Broker, Federation) when not is_binary(Broker) ->
+    add(wh_util:to_binary(Broker), Federation);
+add(Broker, Federation) ->
     case catch amqp_uri:parse(wh_util:to_list(Broker)) of
         {'EXIT', _R} ->
             lager:error("failed to parse AMQP URI '~s': ~p", [Broker, _R]),
@@ -75,11 +74,13 @@ add(Broker) ->
         {'ok', #amqp_params_network{}=Params} ->
             add(#wh_amqp_connection{broker=Broker
                                     ,params=Params#amqp_params_network{connection_timeout=500}
-                                   });
+                                   }
+                ,Federation);
         {'ok', Params} ->
             add(#wh_amqp_connection{broker=Broker
                                     ,params=Params
-                                   })
+                                   }
+                ,Federation)
     end.
 
 -spec remove([pid(),...] | [] | pid() | text()) -> 'ok'.
@@ -104,6 +105,26 @@ available(Connection) when is_pid(Connection) ->
 -spec unavailable(pid()) -> 'ok'.
 unavailable(Connection) when is_pid(Connection) ->
     gen_server:cast(?MODULE, {'connection_unavailable', Connection}).
+
+
+-spec broker_connections(ne_binary()) -> non_neg_integer().
+broker_connections(Broker) ->
+    MatchSpec = [{#wh_amqp_connections{broker=Broker
+                                       ,_='_'},
+                  [],
+                  ['true']}
+                ],
+    ets:select_count(?TAB, MatchSpec).
+
+-spec broker_available_connections(ne_binary()) -> non_neg_integer().
+broker_available_connections(Broker) ->
+    MatchSpec = [{#wh_amqp_connections{broker=Broker
+                                       ,available='true'
+                                       ,_='_'},
+                  [],
+                  ['true']}
+                ],
+    ets:select_count(?TAB, MatchSpec).
 
 -spec primary_broker() -> api_binary().
 primary_broker() ->
@@ -184,11 +205,12 @@ handle_call(_Msg, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'new_connection', Connection, Broker}, State) ->
+handle_cast({'new_connection', Connection, Broker, Federation}, State) ->
     Ref = erlang:monitor('process', Connection),
     _ = ets:insert(?TAB, #wh_amqp_connections{connection=Connection
                                               ,connection_ref=Ref
-                                              ,broker=Broker}),
+                                              ,broker=Broker
+                                              ,federation=Federation}),
     {'noreply', State, 'hibernate'};
 handle_cast({'connection_available', Connection}, State) ->
     lager:debug("connection ~p is now available", [Connection]),

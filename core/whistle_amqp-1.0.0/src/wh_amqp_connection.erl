@@ -346,8 +346,8 @@ create_control_channel(#wh_amqp_connection{broker=Broker}=Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec initalize_prechannels(wh_amqp_connection()) -> wh_amqp_connection().
-initalize_prechannels(#wh_amqp_connection{}=Connection) ->
-    initalize_prechannels(Connection, 1000).
+initalize_prechannels(#wh_amqp_connection{}=Connection) -> 
+    initalize_prechannels(Connection, 10).
 
 -spec initalize_prechannels(wh_amqp_connection(), non_neg_integer()) -> wh_amqp_connection().
 initalize_prechannels(#wh_amqp_connection{}=Connection, 0) ->
