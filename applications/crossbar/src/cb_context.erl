@@ -24,6 +24,8 @@
          ,is_context/1
 
          %% Getters / Setters
+         ,setters/2
+
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
          ,account_doc/1
@@ -71,6 +73,9 @@
 -export_type([context/0
               ,setter_fun/0
              ]).
+
+-type setter_kv() :: {setter_fun(), term()}.
+-type setters() :: [setter_kv(),...] | [].
 
 -spec is_context(any()) -> boolean().
 is_context(#cb_context{}) -> 'true';
@@ -125,6 +130,14 @@ encodings_provided(#cb_context{encodings_provided=EP}) -> EP.
 resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
 
 %% Setters
+-spec setters(context(), setters()) -> context().
+setters(#cb_context{}=Context, []) -> Context;
+setters(#cb_context{}=Context, [_|_]=Setters) ->
+    lists:foldl(fun setters_fold/2, Context, Setters).
+
+-spec setters_fold(setter_kv(), context()) -> context().
+setters_fold({F, V}, C) -> F(C, V).
+
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_account_db(context(), ne_binary()) -> context().
 -spec set_auth_token(context(), ne_binary()) -> context().
