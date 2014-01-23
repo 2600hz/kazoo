@@ -110,12 +110,12 @@ response('fatal', Msg, Code, JTerm, Context) ->
                       ,wh_json:json_term(), cb_context:context()
                      ) -> cb_context:context().
 create_response(Status, Msg, Code, JTerm, Context) ->
-    Context#cb_context {
-      resp_status = Status
-      ,resp_error_msg = Msg
-      ,resp_error_code = Code
-      ,resp_data = JTerm
-     }.
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_status/2, Status}
+                         ,{fun cb_context:set_resp_error_msg/2, Msg}
+                         ,{fun cb_context:set_resp_error_code/2, Code}
+                         ,{fun cb_context:set_resp_data/2, JTerm}
+                        ]).
 
 %%--------------------------------------------------------------------
 %% @public
