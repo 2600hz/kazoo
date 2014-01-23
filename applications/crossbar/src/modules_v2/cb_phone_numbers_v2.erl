@@ -294,7 +294,7 @@ validate(Context, _, ?PORT_DOCS, _) ->
 post(#cb_context{req_json=ReqJObj}=Context, ?COLLECTION) ->
     Fun = fun() ->
             NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION)
+            ?MODULE:post(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION)
           end,
     set_response(collection_process(Context), <<>>, Context, Fun);
 post(#cb_context{req_json=ReqJObj}=Context, Number) ->
@@ -305,7 +305,7 @@ post(#cb_context{req_json=ReqJObj}=Context, Number) ->
                                                 ),
     Fun = fun() ->
             NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number)
+            ?MODULE:post(cb_context:set_req_json(Context, NewReqJObj), Number)
           end,
     set_response(Result, Number, Context, Fun).
 
