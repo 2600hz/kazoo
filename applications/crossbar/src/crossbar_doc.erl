@@ -10,6 +10,7 @@
 -module(crossbar_doc).
 
 -export([load/2, load/3
+         ,load_all/1, load_all/2
          ,load_from_file/2
          ,load_merge/2, load_merge/3
          ,merge/3
@@ -82,6 +83,30 @@ load([_|_]=IDs, Context, Opts) ->
     case couch_mgr:all_docs(cb_context:account_db(Context), Opts1) of
         {'error', Error} -> handle_couch_mgr_errors(Error, IDs, Context);
         {'ok', JObjs} -> handle_couch_mgr_success(extract_included_docs(JObjs), Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function attempts to load the context with account details,
+%% including the account db name and the account doc.
+%%
+%% Failure here returns 410, 500, or 503
+%% @end
+%%--------------------------------------------------------------------
+-spec load_all(cb_context:context()) -> cb_context:context().
+-spec load_all(cb_context:context(), wh_proplist()) -> cb_context:context().
+
+load_all(Context) -> load_all(Context, []).
+
+load_all(Context, Options) ->
+    load_all(Context, Options, cb_context:resp_status(Context)).
+
+load_all(Context, _Options, 'error') -> Context;
+load_all(Context, Options, _Status) ->
+    case couch_mgr:all_docs(cb_context:account_db(Context), Options) of
+        {'error', Error} -> handle_couch_mgr_errors(Error, Context);
+        {'ok', JObjs} -> handle_couch_mgr_success(JObjs, Context)
     end.
 
 %%--------------------------------------------------------------------
