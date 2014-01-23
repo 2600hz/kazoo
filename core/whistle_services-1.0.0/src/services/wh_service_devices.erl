@@ -50,18 +50,23 @@ reconcile(Services, DeviceType) ->
             Services;
         {'ok', []} -> wh_services:reset_category(<<"devices">>, Services);
         {'ok', JObjs} ->
-            lists:foldl(
-                fun(JObj, S) ->
-                    Item = wh_json:get_value(<<"key">>, JObj),
-                    Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
-                    case Item =:= DeviceType of
-                        'false' -> wh_services:update(<<"devices">>, Item, Quantity, S);
-                        'true' -> wh_services:update(<<"devices">>, Item, Quantity+1, S)
+            S = lists:foldl(
+                    fun(JObj, S) ->
+                        Item = wh_json:get_value(<<"key">>, JObj),
+                        Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
+                        case Item =:= DeviceType of
+                            'false' -> wh_services:update(<<"devices">>, Item, Quantity, S);
+                            'true' -> wh_services:update(<<"devices">>, Item, Quantity+1, S)
+                        end
                     end
-                end
-                ,wh_services:reset_category(<<"devices">>, Services)
-                ,JObjs
-            )
+                    ,wh_services:reset_category(<<"devices">>, Services)
+                    ,JObjs
+                ),
+            Keys = couch_mgr:get_result_keys(JObjs),
+            case lists:member(DeviceType, Keys) of
+                'false' -> wh_services:update(<<"devices">>, DeviceType, 1, S);
+                'true' -> S
+            end
     end.
 
 
