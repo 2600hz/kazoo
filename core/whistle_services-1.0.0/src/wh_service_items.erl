@@ -72,7 +72,10 @@ compare(Item1, Item2) ->
 
 -spec compare_quantity(wh_service_item:item(), wh_service_item:item()) -> boolean().
 compare_quantity(Item1, Item2) ->
-    wh_service_item:quantity(Item1) =:= wh_service_item:quantity(Item2).
+    wh_service_item:quantity(Item1) =:= 0
+        orelse
+        wh_service_item:quantity(Item1) 
+        =:= wh_service_item:quantity(Item2).
 
 -spec compare_rate(wh_service_item:item(), wh_service_item:item()) -> boolean().
 compare_rate(Item1, _) ->

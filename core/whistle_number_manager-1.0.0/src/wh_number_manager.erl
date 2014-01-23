@@ -269,10 +269,14 @@ create_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
                 ,fun({'not_found', #number{}=N}) ->
                         lager:debug("try to create not_found number ~s", [Number]),
-                        create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N#number{dry_run=DryRun});
+                        create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N);
                     ({_, #number{}}=E) -> E;
-                    (#number{current_state = ?NUMBER_STATE_AVAILABLE}=N) -> N#number{dry_run=DryRun};
+                    (#number{current_state = ?NUMBER_STATE_AVAILABLE}=N) -> N;
                     (#number{}=N) -> wnm_number:error_number_exists(N)
+                 end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) ->
+                         N#number{dry_run=DryRun}
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo, auth_by=AuthBy})
@@ -345,12 +349,15 @@ port_in(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                                              ,assign_to=AssignTo
                                              ,auth_by=AuthBy
                                              ,number_doc=PublicFields
-                                             ,dry_run=DryRun
                                             },
                         wnm_number:create_port_in(NewNumber);
                    ({_, #number{}}=E) -> E;
                    (#number{}=N) -> wnm_number:error_number_exists(N)
                 end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) ->
+                         N#number{dry_run=DryRun}
+                 end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
@@ -505,19 +512,22 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
     lager:debug("attempting to assign ~s to account ~s: dry run : ~p", [Number, AssignTo, DryRun]),
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
                 ,fun({'not_found', _}) ->
-                        NewNumber = #number{number=Number
-                                            ,module_name='wnm_other'
-                                            ,module_data=wh_json:new()
-                                            ,number_doc=wh_json:public_fields(PublicFields)
-                                            ,dry_run=DryRun
-                                },
-                        wnm_number:create_discovery(NewNumber);
+                         NewNumber = #number{number=Number
+                                             ,module_name='wnm_other'
+                                             ,module_data=wh_json:new()
+                                             ,number_doc=wh_json:public_fields(PublicFields)
+                                            },
+                         wnm_number:create_discovery(NewNumber);
                     ({_, #number{}}=E) -> E;
+                    (#number{}=N) -> N
+                 end
+                ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) ->
-                        N#number{dry_run=DryRun}
+                         N#number{dry_run=DryRun}
                  end
                 ,fun ({_, #number{}}=E) -> E;
-                     (#number{}=N) -> wnm_number:in_service(N#number{assign_to=AssignTo, auth_by=AuthBy})
+                     (#number{}=N) ->
+                         wnm_number:in_service(N#number{assign_to=AssignTo, auth_by=AuthBy})
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)

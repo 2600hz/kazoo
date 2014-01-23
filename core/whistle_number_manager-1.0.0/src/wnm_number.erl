@@ -60,7 +60,6 @@ create_discovery(#number{number=Number
                          ,number_doc=Doc
                          ,module_name=ModuleName
                          ,module_data=ModuleData
-                         ,dry_run=DryRun
                         }) ->
     Num = wnm_util:normalize_number(Number),
     Updates = [{<<"_id">>, Num}
@@ -70,7 +69,6 @@ create_discovery(#number{number=Number
                ,{<<"pvt_ported_in">>, 'false'}
                ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
                ,{<<"pvt_created">>, wh_util:current_tstamp()}
-               ,{<<"dry_run">>, DryRun}
               ],
     JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
     json_to_record(JObj, 'true').
@@ -366,7 +364,7 @@ reserved(#number{state = ?NUMBER_STATE_DISCOVERY}=Number) ->
                             }=N) ->
                          N#number{state = ?NUMBER_STATE_RESERVED
                                   ,assigned_to=AssignTo
-                                  ,prev_assigned_to=AssignedTo
+                                   ,prev_assigned_to=AssignedTo
                                  }
                  end
                 ,fun(#number{}=N) -> activate_phone_number(N) end
@@ -691,7 +689,6 @@ json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
       ,number_doc=JObj
       ,current_number_doc=case IsNew of 'true' -> wh_json:new(); 'false' -> JObj end
       ,used_by=wh_json:get_value(<<"used_by">>, JObj, <<>>)
-      ,dry_run=wh_json:get_value(<<"dry_run">>, JObj, 'false')
      }.
 
 -spec number_from_port_doc(wnm_number(), wh_json:object()) -> wnm_number().
@@ -724,7 +721,6 @@ record_to_json(#number{number_doc=JObj}=N) ->
                ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                ,{<<"pvt_created">>, wh_json:get_value(<<"pvt_created">>, JObj, wh_util:current_tstamp())}
                ,{<<"used_by">>, N#number.used_by}
-               ,{<<"dry_run">>, N#number.dry_run}
               ],
     lists:foldl(fun({K, 'undefined'}, J) -> wh_json:delete_key(K, J);
                    ({K, V}, J) -> wh_json:set_value(K, V, J)
@@ -1060,12 +1056,9 @@ create_number_summary(_Account, #number{state=State
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_phone_number_doc(ne_binary()) ->
+-spec load_phone_number_doc(ne_binary(), boolean()) ->
                                    {'ok', wh_json:object()} |
                                    {'error', _}.
-load_phone_number_doc(Account) ->
-    load_phone_number_doc(Account, 'false').
-
 load_phone_number_doc(Account, 'true') ->
     case erlang:get({'phone_number_doc', Account}) of
         'undefined' -> load_phone_number_doc(Account, 'false');
@@ -1099,6 +1092,16 @@ load_phone_number_doc(Account, 'false') ->
 %%--------------------------------------------------------------------
 -spec update_service_plans(wnm_number()) -> wnm_number().
 update_service_plans(#number{dry_run='true'
+                             ,billing_id='undefined'
+                             ,assigned_to=Account
+                            }=N) ->
+    update_service_plans(N#number{billing_id=wh_services:get_billing_id(Account)});
+update_service_plans(#number{dry_run='true'
+                             ,services='undefined'
+                             ,billing_id=Account
+                            }=N) ->
+    update_service_plans(N#number{services=wh_services:fetch(Account)});
+update_service_plans(#number{dry_run='true'
                              ,assigned_to=AssignedTo
                              ,phone_number_docs=Docs
                              ,module_name=ModuleName
@@ -1107,12 +1110,12 @@ update_service_plans(#number{dry_run='true'
     case dict:find(AssignedTo, Docs) of
         'error' -> Number;
         {'ok', JObj} ->
-            NuberJObj = wh_json:set_value(<<"module_name">>
-                                          ,ModuleName
-                                          ,wh_json:get_value(PhoneNumber, JObj)
-                                         ),
-            JObj1 =  wh_json:set_value(PhoneNumber, NuberJObj, JObj),
-            S = wh_service_phone_numbers:reconcile(JObj1, Services),
+            PhoneNumbers 
+                = wh_json:set_value([PhoneNumber, <<"module_name">>]
+                                    ,ModuleName
+                                    ,JObj
+                                   ),
+            S = wh_service_phone_numbers:reconcile(PhoneNumbers, Services),
             Number#number{services=S}
     end;
 update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssignedTo}=N) ->
@@ -1179,7 +1182,7 @@ activate_phone_number(#number{billing_id='undefined', assigned_to=Account}=N) ->
     activate_phone_number(N#number{billing_id=wh_services:get_billing_id(Account)});
 activate_phone_number(#number{services='undefined', billing_id=Account}=N) ->
     activate_phone_number(N#number{services=wh_services:fetch(Account)});
-activate_phone_number(#number{services=Services, number=Number}=N) ->
+activate_phone_number(#number{services=Services, number=Number}=N) ->        
     Units = wh_service_phone_numbers:phone_number_activation_charge(Number, Services),
     activate_phone_number(Units, N).
 
