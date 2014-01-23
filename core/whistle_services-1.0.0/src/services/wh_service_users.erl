@@ -38,7 +38,7 @@ reconcile(Services) ->
                         end, wh_services:reset_category(<<"users">>, Services), JObjs)
     end.
 
-reconcile(Services, DeviceType) ->
+reconcile(Services, UserType) ->
     AccountId = wh_services:account_id(Services),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = ['reduce'
@@ -50,17 +50,22 @@ reconcile(Services, DeviceType) ->
             Services;
         {'ok', []} -> wh_services:reset_category(<<"users">>, Services);
         {'ok', JObjs} ->
-            lists:foldl(
-                fun(JObj, S) ->
-                    Item = wh_json:get_value(<<"key">>, JObj),
-                    Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
-                    case Item =:= DeviceType of
-                        'false' -> wh_services:update(<<"users">>, Item, Quantity, S);
-                        'true' -> wh_services:update(<<"users">>, Item, Quantity+1, S)
+            S = lists:foldl(
+                    fun(JObj, S) ->
+                        Item = wh_json:get_value(<<"key">>, JObj),
+                        Quantity = wh_json:get_integer_value(<<"value">>, JObj, 0),
+                        case Item =:= UserType of
+                            'false' -> wh_services:update(<<"users">>, Item, Quantity, S);
+                            'true' -> wh_services:update(<<"users">>, Item, Quantity+1, S)
+                        end
                     end
-                end
-                ,wh_services:reset_category(<<"users">>, Services)
-                ,JObjs
-            )
+                    ,wh_services:reset_category(<<"users">>, Services)
+                    ,JObjs
+                ),
+            Keys = couch_mgr:get_result_keys(JObjs),
+            case lists:member(UserType, Keys) of
+                'false' -> wh_services:update(<<"users">>, UserType, 1, S);
+                'true' -> S
+            end
     end.
 

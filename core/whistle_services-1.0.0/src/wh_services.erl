@@ -638,21 +638,26 @@ is_reseller(Account) ->
 -spec calulate_charges(services(), any()) -> wh_json:object().
 calulate_charges(Services, Transactions) ->
     TransactionCharges = calculate_transactions_charges(Transactions),
-    PlansCharges = calculate_services_charges(Services),
+    case calculate_services_charges(Services) of
+        {'error', _} -> wh_json:new();
+        {'no_plan', _} -> wh_json:new();
+        {'ok', PlansCharges} ->
+            wh_json:merge_jobjs(TransactionCharges, PlansCharges)
+    end.
 
-    wh_json:merge_jobjs(TransactionCharges, PlansCharges).
-
--spec calculate_services_charges(services()) -> wh_json:object().
+-spec calculate_services_charges(services()) -> {'no_plan', wh_json:object()}
+                                                | {'error', wh_json:object()}
+                                                | {'ok', wh_json:object()}.
 calculate_services_charges(#wh_services{jobj=ServiceJObj}=Services) ->
     case wh_service_plans:from_service_json(ServiceJObj) of
-        [] -> wh_json:new();
+        [] -> {'no_plan', wh_json:new()};
         ServicePlans ->
             Items1 = wh_service_plans:create_items(Services, ServicePlans),
             case wh_service_plans:create_items(ServiceJObj) of
-                {'error', _} -> wh_json:new();
+                {'error', _} -> {'error', wh_json:new()};
                 {'ok', Items2} ->
                     Changed = wh_service_items:get_udapted_items(Items1, Items2),
-                    wh_service_items:public_json(Changed)
+                    {'ok', wh_service_items:public_json(Changed)}
             end
     end.
 
@@ -668,30 +673,9 @@ calculate_transactions_charges(Transactions) ->
                 ,{<<"activation_charges_description">>, Description}
             ], Acc)
         end
-        ,wh_json:from_list([
-            {<<"activation_charges">>, 0}
-            ,{<<"activation_charges_description">>, <<>>}
-         ])
+        ,wh_json:new()
         ,TransactionsJobj
     ).
-
--spec get_changes(wh_json:object(), wh_json:object()) -> wh_proplist().
-get_changes(OldQuantities, NewQuantities) ->
-    Props = wh_json:recursive_to_proplist(NewQuantities),
-    FlattenProps = flatten(Props),
-    lists:foldl(
-        fun({Keys, Value}, Acc) ->
-            OldValue = wh_json:get_value(Keys, OldQuantities, 0),
-            case Value - OldValue of
-                I when I > 0 ->
-                   [{Keys, I}];
-                _ -> Acc
-            end
-        end
-        ,[]
-        ,FlattenProps
-    ).
-
 
 -spec flatten(wh_proplist()) ->  wh_proplist().
 -spec flatten( wh_proplist(), list(), wh_proplist()) -> wh_proplist().
