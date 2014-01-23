@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%% Account module
 %%%
@@ -98,25 +98,38 @@ resource_exists(_, ?BIN_DATA) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, MediaId, ?BIN_DATA) ->
-    case load_media_meta(MediaId, Context) of
-        #cb_context{resp_status='success', doc=JObj} ->
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) ->
+                                    cb_context:context().
+content_types_provided(Context, MediaId, ?BIN_DATA) ->
+    content_types_provided(Context, MediaId, ?BIN_DATA, cb_context:req_verb(Context)).
+
+content_types_provided(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
+    Context1 = load_media_meta(MediaId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
             case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, [])) of
                 [] -> Context;
                 [Attachment|_] ->
                     CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
                     [Type, SubType] = binary:split(CT, <<"/">>),
-                    Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
+                    cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
             end
     end;
-content_types_provided(Context, _, _) -> Context.
+content_types_provided(Context, _MediaId, ?BIN_DATA, _Verb) ->
+    Context.
 
 -spec content_types_accepted(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, _MediaID, ?BIN_DATA) ->
+-spec content_types_accepted_for_upload(cb_context:context(), http_method()) ->
+                                               cb_context:context().
+content_types_accepted(Context, _MediaId, ?BIN_DATA) ->
+    content_types_accepted_for_upload(Context, cb_context:req_verb(Context)).
+
+content_types_accepted_for_upload(Context, ?HTTP_POST) ->
     CTA = [{'from_binary', ?MEDIA_MIME_TYPES}],
-    Context#cb_context{content_types_accepted=CTA};
-content_types_accepted(Context, _, _) ->
+    cb_context:set_content_types_accepted(Context, CTA);
+content_types_accepted_for_upload(Context, _Verb) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -131,83 +144,80 @@ content_types_accepted(Context, _, _) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    load_media_summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    validate_request('undefined', Context).
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, MediaId) ->
-    load_media_meta(MediaId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, MediaId) ->
-    validate_request(MediaId, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE, req_data=_Data}=Context, MediaID) ->
-    load_media_meta(MediaID, Context).
+validate(Context) ->
+    validate_media_docs(Context, cb_context:req_verb(Context)).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, MediaId, ?BIN_DATA) ->
+validate(Context, MediaId) ->
+    validate_media_doc(Context, MediaId, cb_context:req_verb(Context)).
+
+validate(Context, MediaId, ?BIN_DATA) ->
+    validate_media_binary(Context, MediaId, cb_context:req_verb(Context), cb_context:req_files(Context)).
+
+validate_media_docs(Context, ?HTTP_GET) ->
+    load_media_summary(Context);
+validate_media_docs(Context, ?HTTP_PUT) ->
+    validate_request('undefined', Context).
+
+validate_media_doc(Context, MediaId, ?HTTP_GET) ->
+    load_media_meta(MediaId, Context);
+validate_media_doc(Context, MediaId, ?HTTP_POST) ->
+    validate_request(MediaId, Context);
+validate_media_doc(Context, MediaId, ?HTTP_DELETE) ->
+    load_media_meta(MediaId, Context).
+
+validate_media_binary(Context, MediaId, ?HTTP_GET, _Files) ->
     lager:debug("fetch media contents"),
     load_media_binary(MediaId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST, req_files=[]}=Context, _MediaID, ?BIN_DATA) ->
+validate_media_binary(Context, _MediaId, ?HTTP_POST, []) ->
     Message = <<"please provide an media file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
-validate(#cb_context{req_verb = ?HTTP_POST, req_files=[{_Filename, FileObj}]}=Context, MediaId, ?BIN_DATA) ->
-    case load_media_meta(MediaId, Context) of
-        #cb_context{resp_status='success', doc=JObj}=C ->
+validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
+    Context1 = load_media_meta(MediaId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
             CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
             Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
                                              ,FileObj
-                                             ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))),
+                                             ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))
+                                            ),
 
             Props = [{<<"content_type">>, CT}
                      ,{<<"content_length">>, Size}
                      ,{<<"media_source">>, <<"recording">>}
                     ],
-            validate_request(MediaId, C#cb_context{req_data=wh_json:set_values(Props, JObj)});
-        Else -> Else
+            validate_request(MediaId
+                             ,cb_context:set_req_data(Context1
+                                                      ,wh_json:set_values(Props, cb_context:doc(Context1))
+                                                     )
+                            );
+        _Status -> Context1
     end;
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, _, ?BIN_DATA) ->
+validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
     Message = <<"please provide a single media file">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 get(Context, _MediaID, ?BIN_DATA) ->
-    Context#cb_context{resp_headers = [{<<"Content-Type">>
-                                            ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
-                                       ,{<<"Content-Length">>
-                                             ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
-                                       | Context#cb_context.resp_headers]}.
+    cb_context:add_resp_headers(Context
+                                ,[{<<"Content-Type">>
+                                       ,wh_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>)}
+                                  ,{<<"Content-Length">>
+                                        ,binary:referenced_byte_size(cb_context:resp_data(Context))}
+                                 ]).
 
 -spec put(cb_context:context()) -> cb_context:context().
-put(#cb_context{doc=JObj}=Context) ->
+put(Context) ->
+    JObj = cb_context:doc(Context),
     Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
     PrevText = wh_json:get_value(<<"pvt_previous_tts">>, JObj),
     TTS = not (wh_util:is_empty(Text) orelse Text =:= PrevText),
-    Routines = [fun(C) -> crossbar_doc:save(C) end
-                ,fun(#cb_context{resp_status='success', doc=J}=C) when TTS ->
-                         Voice = wh_json:get_value([<<"tts">>, <<"voice">>], J, <<"female/en-US">>),
-                         case whapps_speech:create(Text, Voice) of
-                             {'error', R} ->
-                                crossbar_doc:delete(C),
-                                crossbar_util:response('error', wh_util:to_binary(R), C);
-                             {'ok', ContentType, Content} ->
-                                 MediaId = wh_json:get_value(<<"_id">>, J),
-                                 Headers = wh_json:from_list([{<<"content_type">>, ContentType}
-                                                              ,{<<"content_length">>, byte_size(Content)}
-                                                             ]),
-                                 FileJObj = wh_json:from_list([{<<"headers">>, Headers}
-                                                               ,{<<"contents">>, Content}
-                                                              ]),
-                                 FileName = <<"text_to_speech_"
-                                              ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
-                                              ,".wav">>,
-                                 _ = update_media_binary(MediaId, C#cb_context{req_files=[{FileName, FileJObj}]
-                                                                               ,resp_status='error'
-                                                                              }),
-                                 crossbar_doc:load(MediaId, C)
-                         end;
+    Routines = [fun crossbar_doc:save/1
+                ,fun(C) when TTS ->
+                         maybe_update_tts(C, Text, cb_context:resp_status(C));
                     (C) -> C
                  end
-                ,fun(#cb_context{resp_status='success', doc=J1}=C) when TTS ->
-                         J2 = wh_json:set_value(<<"media_source">>, <<"tts">>, J1),
-                         crossbar_doc:save(C#cb_context{doc=wh_json:set_value(<<"pvt_previous_tts">>, Text, J2)});
+                ,fun(C) when TTS ->
+                         maybe_save_tts(C, Text, cb_context:resp_status(C));
                     (C) -> C
                  end
                 ],
@@ -216,43 +226,101 @@ put(#cb_context{doc=JObj}=Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
-post(#cb_context{doc=JObj}=Context, MediaId) ->
+post(Context, MediaId) ->
+    JObj = cb_context:doc(Context),
     Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
     PrevText = wh_json:get_value(<<"pvt_previous_tts">>, JObj),
     TTS = not (wh_util:is_empty(Text) orelse Text =:= PrevText),
-    Routines = [fun(#cb_context{resp_status='success', doc=J}=C) when TTS ->
-                        Voice = wh_json:get_value([<<"tts">>, <<"voice">>], J, <<"female/en-US">>),
-                        case whapps_speech:create(Text, Voice) of
-                            {'error', R} -> crossbar_util:response('error', wh_util:to_binary(R), C);
-                            {'ok', ContentType, Content} ->
-                                Headers = wh_json:from_list([{<<"content_type">>, ContentType}
-                                                             ,{<<"content_length">>, byte_size(Content)}
-                                                            ]),
-                                FileJObj = wh_json:from_list([{<<"headers">>, Headers}
-                                                              ,{<<"contents">>, Content}
-                                                              ]),
-                                FileName = <<"text_to_speech_"
-                                             ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
-                                             ,".wav">>,
-                                _ = update_media_binary(MediaId, C#cb_context{req_files=[{FileName, FileJObj}]
-                                                                              ,resp_status='error'
-                                                                             }),
-                                crossbar_doc:load_merge(MediaId, wh_json:public_fields(JObj), Context)
-                         end;
+
+    Routines = [fun(C) when TTS ->
+                        maybe_merge_tts(C, MediaId, Text, cb_context:resp_status(C));
                    (C) -> C
                 end
-                ,fun(#cb_context{resp_status='success', doc=J1}=C) when TTS ->
-                         J2 = wh_json:set_value(<<"media_source">>, <<"tts">>, J1),
-                         crossbar_doc:save(C#cb_context{doc=wh_json:set_value(<<"pvt_previous_tts">>, Text, J2)});
-                    (#cb_context{resp_status='success'}=C) ->
-                         crossbar_doc:save(C);
-                    (C) -> C
+                ,fun(C) when TTS ->
+                         maybe_save_tts(C, Text, cb_context:resp_status(Context));
+                    (C) ->
+                         case cb_context:resp_status(C) of
+                             'success' -> crossbar_doc:save(C);
+                             _Status -> Context
+                         end
                  end
                ],
     lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
 post(Context, MediaID, ?BIN_DATA) ->
     update_media_binary(MediaID, Context).
+
+-spec maybe_save_tts(cb_context:context(), ne_binary(), crossbar_status()) ->
+                            cb_context:context().
+maybe_save_tts(Context, Text, 'success') ->
+    JObj = wh_json:set_value(<<"media_source">>, <<"tts">>, cb_context:doc(Context)),
+    crossbar_doc:save(
+      cb_context:set_doc(Context
+                         ,wh_json:set_value(<<"pvt_previous_tts">>, Text, JObj)
+                        )
+     );
+maybe_save_tts(Context, _Text, _Status) ->
+    Context.
+
+-spec maybe_update_tts(cb_context:context(), ne_binary(), crossbar_status()) ->
+                        cb_context:context().
+maybe_update_tts(Context, Text, 'success') ->
+    JObj = cb_context:doc(Context),
+    Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, <<"female/en-US">>),
+    case whapps_speech:create(Text, Voice) of
+        {'error', R} ->
+            crossbar_doc:delete(Context),
+            crossbar_util:response('error', wh_util:to_binary(R), Context);
+        {'ok', ContentType, Content} ->
+            MediaId = wh_json:get_value(<<"_id">>, JObj),
+            Headers = wh_json:from_list([{<<"content_type">>, ContentType}
+                                         ,{<<"content_length">>, byte_size(Content)}
+                                        ]),
+            FileJObj = wh_json:from_list([{<<"headers">>, Headers}
+                                          ,{<<"contents">>, Content}
+                                         ]),
+            FileName = <<"text_to_speech_"
+                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
+                         ,".wav"
+                       >>,
+            _ = update_media_binary(MediaId
+                                    ,cb_context:set_resp_status(
+                                       cb_context:set_req_files(Context, [{FileName, FileJObj}])
+                                       ,'error'
+                                      )),
+            crossbar_doc:load(MediaId, Context)
+    end;
+maybe_update_tts(Context, _Text, _Status) -> Context.
+
+-spec maybe_merge_tts(cb_context:context(), ne_binary(), ne_binary(), crossbar_status()) ->
+                             cb_context:context().
+maybe_merge_tts(Context, MediaId, Text, 'success') ->
+    JObj = cb_context:doc(Context),
+    Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, <<"female/en-US">>),
+    case whapps_speech:create(Text, Voice) of
+        {'error', R} -> crossbar_util:response('error', wh_util:to_binary(R), Context);
+        {'ok', ContentType, Content} ->
+            Headers = wh_json:from_list([{<<"content_type">>, ContentType}
+                                         ,{<<"content_length">>, byte_size(Content)}
+                                        ]),
+            FileJObj = wh_json:from_list([{<<"headers">>, Headers}
+                                          ,{<<"contents">>, Content}
+                                         ]),
+            FileName = <<"text_to_speech_"
+                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
+                         ,".wav"
+                       >>,
+            _ = update_media_binary(MediaId
+                                    ,cb_context:set_resp_status(
+                                       cb_context:set_req_files(Context
+                                                                ,[{FileName, FileJObj}]
+                                                               )
+                                       ,'error'
+                                      )),
+            crossbar_doc:load_merge(MediaId, wh_json:public_fields(JObj), Context)
+    end;
+maybe_merge_tts(Context, _MediaId, _Text, _Status) ->
+    Context.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -300,7 +368,7 @@ on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"media">>}
              ,{<<"media_source">>, <<"upload">>}
             ],
-    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
+    cb_context:set_doc(Context, wh_json:set_values(Props, Doc));
 on_successful_validation(MediaId, Context) ->
     crossbar_doc:load_merge(MediaId, Context).
 
@@ -323,23 +391,22 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec load_media_binary(path_token(), cb_context:context()) -> cb_context:context().
 load_media_binary(MediaId, Context) ->
-    case load_media_meta(MediaId, Context) of
-        #cb_context{resp_status='success', doc=JObj} ->
-            MediaMeta = wh_json:get_value([<<"_attachments">>], JObj, []),
+    Context1 = load_media_meta(MediaId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            MediaMeta = wh_json:get_value([<<"_attachments">>], cb_context:doc(Context1), []),
 
             case wh_json:get_keys(MediaMeta) of
                 [] -> crossbar_util:response_bad_identifier(MediaId, Context);
                 [Attachment|_] ->
-                    lists:foldl(fun({K, V}, C) ->
-                                        cb_context:add_resp_header(K, V, C)
-                                end
-                                ,crossbar_doc:load_attachment(JObj, Attachment, Context)
-                                ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-                                  ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], MediaMeta)}
-                                  ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], MediaMeta)}
-                                 ])
+                    cb_context:add_resp_headers(
+                      crossbar_doc:load_attachment(cb_context:doc(Context1), Attachment, Context1)
+                      ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
+                        ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], MediaMeta)}
+                        ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], MediaMeta)}
+                       ])
             end;
-        Context1 -> Context1
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -350,22 +417,32 @@ load_media_binary(MediaId, Context) ->
 %%--------------------------------------------------------------------
 -spec update_media_binary(path_token(), cb_context:context()) ->
                                  cb_context:context().
-update_media_binary(MediaID, #cb_context{doc=JObj
-                                         ,req_files=[{Filename, FileObj}]
-                                         ,db_name=Db
-                                        }=Context) ->
+update_media_binary(MediaId, Context) ->
+    [{Filename, FileObj}] = cb_context:req_files(Context),
+
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
     lager:debug("file content type: ~s", [CT]),
     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
-    OldAttachments = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    _ = [couch_mgr:delete_attachment(Db, Id, Attachment)
-         || Attachment <- wh_json:get_keys(OldAttachments)
-        ],
-    crossbar_doc:save_attachment(MediaID, cb_modules_util:attachment_name(Filename, CT)
-                                 , Contents, Context, Opts
+
+    Context1 = maybe_remove_old_attachments(Context),
+
+    crossbar_doc:save_attachment(MediaId, cb_modules_util:attachment_name(Filename, CT)
+                                 ,Contents, Context1, Opts
                                 ).
+
+maybe_remove_old_attachments(Context) ->
+    MediaJObj = cb_context:doc(Context),
+    maybe_remove_old_attachments(Context, MediaJObj
+                                 ,wh_json:get_value(<<"_attachments">>, MediaJObj)
+                                ).
+maybe_remove_old_attachments(Context, _MediaJObj, 'undefined') ->
+    Context;
+maybe_remove_old_attachments(Context, MediaJObj, _Attachments) ->
+    lager:debug("removing old attachments"),
+    crossbar_doc:save(cb_context:set_doc(Context
+                                         ,wh_json:delete_key(<<"_attachments">>, MediaJObj)
+                                        )).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -375,13 +452,14 @@ update_media_binary(MediaID, #cb_context{doc=JObj
 %%--------------------------------------------------------------------
 -spec delete_media_binary(path_token(), cb_context:context()) -> cb_context:context().
 delete_media_binary(MediaID, Context) ->
-    case crossbar_doc:load(MediaID, Context) of
-        #cb_context{resp_status='success', doc=MediaMeta} ->
-            case wh_json:get_value([<<"_attachments">>, 1], MediaMeta) of
+    Context1 = crossbar_doc:load(MediaID, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            case wh_json:get_value([<<"_attachments">>, 1], cb_context:doc(Context1)) of
                 'undefined' -> crossbar_util:response_bad_identifier(MediaID, Context);
                 AttachMeta ->
                     [AttachmentID] = wh_json:get_keys(AttachMeta),
                     crossbar_doc:delete_attachment(MediaID, AttachmentID, Context)
             end;
-        Context1 -> Context1
+        _Status -> Context1
     end.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2013-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Fetch and accumulate all stats about the system
@@ -104,7 +104,7 @@ allowed_methods(_, _) ->
 %%    /system_stats/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
+-spec resource_exists() -> 'false'.
 -spec resource_exists(path_token()) -> boolean().
 -spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists() -> 'false'.

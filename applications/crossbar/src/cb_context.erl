@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Helpers for manipulating the #cb_context{} record
 %%% @end
@@ -24,6 +24,8 @@
          ,is_context/1
 
          %% Getters / Setters
+         ,setters/2
+
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
          ,account_doc/1
@@ -50,6 +52,7 @@
 
          ,req_json/1, set_req_json/2
          ,resp_error_code/1, set_resp_error_code/2
+         ,resp_error_msg/1, set_resp_error_msg/2
 
          ,resp_headers/1
          ,set_resp_headers/2, set_resp_header/3
@@ -71,6 +74,9 @@
 -export_type([context/0
               ,setter_fun/0
              ]).
+
+-type setter_kv() :: {setter_fun(), term()}.
+-type setters() :: [setter_kv(),...] | [].
 
 -spec is_context(any()) -> boolean().
 is_context(#cb_context{}) -> 'true';
@@ -123,8 +129,17 @@ languages_provided(#cb_context{languages_provided=LP}) -> LP.
 encodings_provided(#cb_context{encodings_provided=EP}) -> EP.
 
 resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
+resp_error_msg(#cb_context{resp_error_msg=Msg}) -> Msg.
 
 %% Setters
+-spec setters(context(), setters()) -> context().
+setters(#cb_context{}=Context, []) -> Context;
+setters(#cb_context{}=Context, [_|_]=Setters) ->
+    lists:foldl(fun setters_fold/2, Context, Setters).
+
+-spec setters_fold(setter_kv(), context()) -> context().
+setters_fold({F, V}, C) -> F(C, V).
+
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_account_db(context(), ne_binary()) -> context().
 -spec set_auth_token(context(), ne_binary()) -> context().
@@ -156,6 +171,7 @@ resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
 -spec set_languages_provided(context(), ne_binaries()) -> context().
 -spec set_encodings_provided(context(), ne_binaries()) -> context().
 -spec set_resp_error_code(context(), integer()) -> context().
+-spec set_resp_error_msg(context(), api_binary()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
@@ -187,6 +203,7 @@ set_languages_provided(#cb_context{}=Context, LP) -> Context#cb_context{language
 set_encodings_provided(#cb_context{}=Context, EP) -> Context#cb_context{encodings_provided=EP}.
 
 set_resp_error_code(#cb_context{}=Context, Code) -> Context#cb_context{resp_error_code=Code}.
+set_resp_error_msg(#cb_context{}=Context, Msg) -> Context#cb_context{resp_error_msg=Msg}.
 
 set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->
     Context#cb_context{resp_headers=lists:foldl(fun set_resp_header_fold/2, Hs, Headers)}.

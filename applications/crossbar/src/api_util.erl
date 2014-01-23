@@ -332,9 +332,20 @@ default_filename() ->
                            {cb_context:context(), cowboy_req:req()}.
 decode_base64(Context, CT, Req0) ->
     case cowboy_req:body(Req0) of
-        {'error', _E} ->
-            lager:debug("error getting request body: ~p", [_E]),
-            {Context, Req0};
+        {'error', 'badlength'} ->
+            lager:debug("the request body was most likely too big"),
+            ?MODULE:halt(Req0
+                         ,cb_context:add_validation_error(<<"file">>, <<"maxLength">>
+                                                          ,<<"File was larger than allowed">>
+                                                          ,Context
+                                                          ));
+        {'error', E} ->
+            lager:debug("error getting request body: ~p", [E]),
+            ?MODULE:halt(Req0
+                         ,cb_context:set_resp_status(
+                            cb_context:set_resp_data(Context, E)
+                            ,'fatal'
+                           ));
         {'ok', Base64Data, Req1} ->
             {EncodedType, FileContents} = decode_base64(Base64Data),
             ContentType = case EncodedType of
