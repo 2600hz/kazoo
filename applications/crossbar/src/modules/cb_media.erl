@@ -417,26 +417,32 @@ load_media_binary(MediaId, Context) ->
 %%--------------------------------------------------------------------
 -spec update_media_binary(path_token(), cb_context:context()) ->
                                  cb_context:context().
-update_media_binary(MediaID, Context) ->
-    JObj = cb_context:doc(Context),
+update_media_binary(MediaId, Context) ->
     [{Filename, FileObj}] = cb_context:req_files(Context),
-    Db = cb_context:account_db(Context),
 
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
     lager:debug("file content type: ~s", [CT]),
     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
 
-    OldAttachments = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
-    Id = wh_json:get_value(<<"_id">>, JObj),
+    Context1 = maybe_remove_old_attachments(Context),
 
-    _ = [couch_mgr:delete_attachment(Db, Id, Attachment)
-         || Attachment <- wh_json:get_keys(OldAttachments)
-        ],
-
-    crossbar_doc:save_attachment(MediaID, cb_modules_util:attachment_name(Filename, CT)
-                                 ,Contents, Context, Opts
+    crossbar_doc:save_attachment(MediaId, cb_modules_util:attachment_name(Filename, CT)
+                                 ,Contents, Context1, Opts
                                 ).
+
+maybe_remove_old_attachments(Context) ->
+    MediaJObj = cb_context:doc(Context),
+    maybe_remove_old_attachments(Context, MediaJObj
+                                 ,wh_json:get_value(<<"_attachments">>, MediaJObj)
+                                ).
+maybe_remove_old_attachments(Context, _MediaJObj, 'undefined') ->
+    Context;
+maybe_remove_old_attachments(Context, MediaJObj, _Attachments) ->
+    lager:debug("removing old attachments"),
+    crossbar_doc:save(cb_context:set_doc(Context
+                                         ,wh_json:delete_key(<<"_attachments">>, MediaJObj)
+                                        )).
 
 %%--------------------------------------------------------------------
 %% @private
