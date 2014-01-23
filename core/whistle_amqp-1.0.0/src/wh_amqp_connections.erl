@@ -10,7 +10,9 @@
 
 -behaviour(gen_server).
 
--export([add/1]).
+-export([add/1
+         ,add/2
+        ]).
 -export([remove/1]).
 -export([broker_connections/1]).
 -export([broker_available_connections/1]).
@@ -129,6 +131,7 @@ broker_available_connections(Broker) ->
 -spec primary_broker() -> api_binary().
 primary_broker() ->
     Pattern = #wh_amqp_connections{available='true'
+                                   ,federation='false'
                                    ,broker='$1'
                                    ,_='_'},
     case lists:sort([Broker
