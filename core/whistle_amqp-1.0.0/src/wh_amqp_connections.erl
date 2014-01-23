@@ -178,6 +178,7 @@ init([]) ->
     _ = ets:new(?TAB, ['named_table'
                        ,{'keypos', #wh_amqp_connections.connection}
                        ,'protected'
+                       ,{'read_concurrency', 'true'}
                       ]),
     {'ok', #state{}}.
 

@@ -73,7 +73,7 @@ create_prechannel(Srv) ->
 init([#wh_amqp_connection{}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
     put('callid', ?LOG_SYSTEM_ID),
-    {'ok', disconnected(Connection)}.
+    {'ok', disconnected(Connection#wh_amqp_connection{manager=self()})}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,7 +117,8 @@ handle_cast('create_prechannel'
     {'noreply', Connection};
 handle_cast('create_prechannel'
             ,#wh_amqp_connection{available='true'}=Connection) ->
-    {'noreply', establish_prechannel(Connection), 'hibernate'};
+    spawn(fun() -> establish_prechannel(Connection) end),
+    {'noreply', Connection, 'hibernate'};
 handle_cast({'new_exchange', _}
             ,#wh_amqp_connection{available='false'}=Connection) ->
     {'noreply', Connection, 'hibernate'};
@@ -362,14 +363,15 @@ initalize_prechannels(#wh_amqp_connection{}=Connection, Count) ->
     end.
 
 -spec establish_prechannel(wh_amqp_connection()) -> wh_amqp_connection().
-establish_prechannel(#wh_amqp_connection{broker=Broker}=Connection) ->
+establish_prechannel(#wh_amqp_connection{broker=Broker
+                                         ,manager=Manager}=Connection) ->
     case open_channel(Connection) of
         {'error', _R} ->
             lager:critical("unable to establish prechannel to ~s, assuming connection is invalid: ~p"
                            ,[Broker, _R]),
             disconnected(Connection);
         {'ok', Pid} ->
-            wh_amqp_assignments:add_channel(Broker, self(), Pid),
+            wh_amqp_assignments:add_channel(Broker, Manager, Pid),
             Connection
     end.
 

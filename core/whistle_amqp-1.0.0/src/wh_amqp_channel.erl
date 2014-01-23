@@ -143,7 +143,7 @@ command(#wh_amqp_assignment{consumer=Consumer
         #'basic.consume_ok'{consumer_tag=NewTag} ->
             wh_amqp_history:update_consumer_tag(Consumer, OldTag, NewTag);
         _Else -> 
-            lager:warning("failed to re-establish consumer for ~s: ~p"
+            lager:warning("failed to re-establish consumer for ~p: ~p"
                           ,[Consumer, _Else])
     end;
 command(#wh_amqp_assignment{consumer=Consumer

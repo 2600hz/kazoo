@@ -157,5 +157,6 @@
                               ,broker
                               ,available='false'
                               ,timestamp=now()
-                              ,federation='false'}).
+                              ,federation='false'
+                              ,manager=self()}).
 -type wh_amqp_connections() :: #wh_amqp_connections{}.

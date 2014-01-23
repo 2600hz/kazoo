@@ -171,16 +171,16 @@ validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
     validate_assignments(ets:match_object(Continuation));
 validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
                                            ,consumer=Consumer
-                                           ,consumer_ref=ConsumerRef
-                                           ,assigned={_, _, _}
+                                           ,consumer_ref=ConsumerRef                                           
                                            ,channel=Channel
                                            ,channel_ref=ChannelRef
-                                           ,connection=Connection                                           
+                                           ,connection=Connection 
+                                           ,assigned=Assigned
                                            ,broker=?NE_BINARY}=Assignment
                    ], Continuation}) 
   when is_pid(Consumer), is_reference(ConsumerRef)
        ,is_pid(Channel), is_reference(ChannelRef)
-       ,is_pid(Connection) ->
+       ,is_pid(Connection), is_integer(Assigned) ->
     %% validate assignment
     _ = case is_process_alive(Consumer) 
             andalso is_process_alive(Channel)
