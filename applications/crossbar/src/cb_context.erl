@@ -52,6 +52,7 @@
 
          ,req_json/1, set_req_json/2
          ,resp_error_code/1, set_resp_error_code/2
+         ,resp_error_msg/1, set_resp_error_msg/2
 
          ,resp_headers/1
          ,set_resp_headers/2, set_resp_header/3
@@ -128,6 +129,7 @@ languages_provided(#cb_context{languages_provided=LP}) -> LP.
 encodings_provided(#cb_context{encodings_provided=EP}) -> EP.
 
 resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
+resp_error_msg(#cb_context{resp_error_msg=Msg}) -> Msg.
 
 %% Setters
 -spec setters(context(), setters()) -> context().
@@ -169,6 +171,7 @@ setters_fold({F, V}, C) -> F(C, V).
 -spec set_languages_provided(context(), ne_binaries()) -> context().
 -spec set_encodings_provided(context(), ne_binaries()) -> context().
 -spec set_resp_error_code(context(), integer()) -> context().
+-spec set_resp_error_msg(context(), api_binary()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
@@ -200,6 +203,7 @@ set_languages_provided(#cb_context{}=Context, LP) -> Context#cb_context{language
 set_encodings_provided(#cb_context{}=Context, EP) -> Context#cb_context{encodings_provided=EP}.
 
 set_resp_error_code(#cb_context{}=Context, Code) -> Context#cb_context{resp_error_code=Code}.
+set_resp_error_msg(#cb_context{}=Context, Msg) -> Context#cb_context{resp_error_msg=Msg}.
 
 set_resp_headers(#cb_context{resp_headers=Hs}=Context, Headers) ->
     Context#cb_context{resp_headers=lists:foldl(fun set_resp_header_fold/2, Hs, Headers)}.
