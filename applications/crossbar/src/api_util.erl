@@ -490,6 +490,8 @@ parse_path_tokens(_, [<<"schemas">>=Mod|T], Events) ->
     [{Mod, T} | Events];
 parse_path_tokens(_, [<<"braintree">>=Mod|T], Events) ->
     [{Mod, T} | Events];
+parse_path_tokens(_, [<<"system_configs">>=Mod|T], Events) ->
+    [{Mod, T} | Events];
 parse_path_tokens(Context, [Mod|T], Events) ->
     case is_cb_module(Context, Mod) of
         'false' -> [];

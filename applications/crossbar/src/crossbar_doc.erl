@@ -66,7 +66,8 @@ load(DocId, #cb_context{}=Context) -> load(DocId, Context, []).
 load(_, #cb_context{resp_status='error'}=Context, _) -> Context;
 load(DocId, #cb_context{}=Context, Opts) when is_binary(DocId) ->
     case couch_mgr:open_cache_doc(cb_context:account_db(Context), DocId, Opts) of
-        {'error', Error} -> handle_couch_mgr_errors(Error, DocId, Context);
+        {'error', Error} ->
+            handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
             lager:debug("loaded doc ~s(~s) from ~s"
                         ,[DocId, wh_json:get_value(<<"_rev">>, JObj), cb_context:account_db(Context)]
@@ -118,13 +119,14 @@ load_merge(DocId, #cb_context{}=Context) ->
     load_merge(DocId, cb_context:doc(Context), Context).
 
 load_merge(DocId, DataJObj, #cb_context{load_merge_bypass='undefined'}=Context) ->
-    case load(DocId, Context) of
-        #cb_context{resp_status='success'}=Context1 ->
+    Context1 = load(DocId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
             lager:debug("loaded doc ~s(~s), merging"
                         ,[DocId, wh_json:get_value(<<"_rev">>, cb_context:doc(Context1))]
                        ),
             merge(DataJObj, cb_context:doc(Context1), Context1);
-        Else -> Else
+        _Status -> Context1
     end;
 load_merge(_, _, #cb_context{load_merge_bypass=JObj}=Context) ->
     handle_couch_mgr_success(JObj, Context).
@@ -144,7 +146,7 @@ merge(DataJObj, JObj, Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_view(ne_binary(), wh_proplist(), cb_context:context()) ->
+-spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context()) ->
                        cb_context:context().
 load_view(View, Options, Context) ->
     Db = cb_context:account_db(Context),
@@ -185,7 +187,8 @@ load_view(View, Options, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -type filter_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
--spec load_view(ne_binary(), wh_proplist(), cb_context:context(), filter_fun()) -> cb_context:context().
+-spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), filter_fun()) ->
+                       cb_context:context().
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status='success'} = Context1 ->
@@ -273,15 +276,15 @@ find_doc_id(JObj) ->
 -spec save(cb_context:context(), wh_json:object() | wh_json:objects(), wh_proplist()) ->
                   cb_context:context().
 
-save(#cb_context{}=Context) ->
+save(Context) ->
     save(Context, []).
-save(#cb_context{}=Context, Options) ->
+save(Context, Options) ->
     save(Context, cb_context:doc(Context), Options).
 
-save(#cb_context{}=Context, [], _Options) ->
+save(Context, [], _Options) ->
     lager:debug("no docs to save"),
     cb_context:set_resp_status(Context, 'success');
-save(#cb_context{}=Context, [_|_]=JObjs, Options) ->
+save(Context, [_|_]=JObjs, Options) ->
     JObjs0 = update_pvt_parameters(JObjs, Context),
     case couch_mgr:save_docs(cb_context:account_db(Context), JObjs0, Options) of
         {'error', Error} ->

@@ -1,0 +1,31 @@
+# Credentials Hash: 4d02ff46ad889921836b706c3c0e0b36
+# Account Name: Master
+# Account ID: 5b78db2f23f35aa022f5c3c0a5df1b92
+# Auth Token ID: 75c9cde109a3663b0ff19c6314327d2e
+
+# Create an auth token on the master account
+curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/user_auth -d '{"data":{"credentials":"4d02ff46ad889921836b706c3c0e0b36", "account_name":"Master"}}' | pp
+
+# List all known configs
+curl -v -H "content-type: application/json" -H "X-Auth-Token: 75c9cde109a3663b0ff19c6314327d2e" http://thinky64.2600hz.com:8000/v1/system_configs
+
+# Create a new config
+curl -v -X PUT -H "content-type: application/json" -H "X-Auth-Token: 75c9cde109a3663b0ff19c6314327d2e" http://thinky64.2600hz.com:8000/v1/system_configs -d '{"data":{"id":"abc123", "foo":"bar"}}'
+
+# Get default config
+curl -v -H "content-type: application/json" -H "X-Auth-Token: 75c9cde109a3663b0ff19c6314327d2e" http://thinky64.2600hz.com:8000/v1/system_configs/abc123
+
+# Get node-specific config
+curl -v -H "content-type: application/json" -H "X-Auth-Token: 75c9cde109a3663b0ff19c6314327d2e" http://thinky64.2600hz.com:8000/v1/system_configs/abc123/whistle_apps@thinky64.2600hz.com
+
+# Update default config
+curl -v -X POST -H "content-type: application/json" -H "X-Auth-Token: 75c9cde109a3663b0ff19c6314327d2e" http://thinky64.2600hz.com:8000/v1/system_configs/abc123 -d '{"data":{"foo":"baz"}}'
+
+# Update node specific config
+curl -v -X POST -H "content-type: application/json" -H "X-Auth-Token: 75c9cde109a3663b0ff19c6314327d2e" http://thinky64.2600hz.com:8000/v1/system_configs/abc123/ecallmgr@thinky64.2600hz.com -d '{"data":{"offthe":"chain"}}'
+
+# Delete node specific config
+curl -v -X DELETE -H "content-type: application/json" -H "X-Auth-Token: 75c9cde109a3663b0ff19c6314327d2e" http://thinky64.2600hz.com:8000/v1/system_configs/abc123/ecallmgr@thinky64.2600hz.com
+
+# Detele the whole config
+curl -v -X DELETE -H "content-type: application/json" -H "X-Auth-Token: 75c9cde109a3663b0ff19c6314327d2e" http://thinky64.2600hz.com:8000/v1/system_configs/abc123
