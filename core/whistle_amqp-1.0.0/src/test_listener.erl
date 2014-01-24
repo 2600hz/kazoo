@@ -1,20 +1,16 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% Listens for a list of events and gproc-sends them out to folks who
-%%% want them
+%%% 
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(wh_hooks_listener).
+-module(test_listener).
 
 -behaviour(gen_listener).
 
--export([start_link/0
-         ,handle_call_event/2
-         ,register/0, register/1, register/2
-        ]).
+-export([start_link/0]).
+-export([handle_federation_event/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -24,26 +20,16 @@
          ,code_change/3
         ]).
 
--include("whistle_apps.hrl").
--include_lib("whistle_apps/include/wh_hooks.hrl").
+-include("amqp_util.hrl").
 
--define(CACHE_NAME, 'wh_hooks_cache').
+-record(state, {}).
 
-%% Three main call events
--define(BINDINGS, [{'call', [{'restrict_to', ['CHANNEL_CREATE'
-                                              ,'CHANNEL_ANSWER'
-                                              ,'CHANNEL_DESTROY'
-                                             ]}
-                            ]}
-                   ,{'route', []}
+%% By convention, we put the options here in macros, but not required.
+-define(BINDINGS, [{'route', []}
+                   ,{'self', []}
                   ]).
--define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
-                       ,[{<<"call_event">>, <<"*">>}
-                         ,{<<"dialplan">>, <<"route_req">>}
-                        ]
-                      }
-                    ]).
--define(QUEUE_NAME, <<>>).
+-define(RESPONDERS, [{?MODULE, [{<<"*">>, <<"*">>}]}]).
+-define(QUEUE_NAME, <<"federation_test">>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
@@ -58,7 +44,6 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
@@ -67,77 +52,8 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
--define(HOOK_REG
-        ,{'p', 'l', 'wh_hook'}).
--define(HOOK_REG(AccountId)
-        ,{'p', 'l', {'wh_hook', AccountId}}).
--define(HOOK_REG(AccountId, EventName)
-        ,{'p', 'l', {'wh_hook', AccountId, EventName}}).
-
--spec register() -> 'true'.
--spec register(ne_binary()) -> 'true'.
--spec register(ne_binary(), ne_binary()) -> 'true'.
-register() ->
-    'true' = gproc:reg(?HOOK_REG).
-register(AccountId) ->
-    'true' = gproc:reg(?HOOK_REG(AccountId)).
-register(AccountId, EventName) ->
-    'true' = gproc:reg(?HOOK_REG(AccountId, EventName)).
-
--spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_call_event(JObj, _Props) ->
-    'true' = wapi_call:event_v(JObj) orelse wapi_route:req_v(JObj),
-    HookEvent = wh_json:get_value(<<"Event-Name">>, JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>
-                                   ,<<"Account-ID">>
-                                  ], JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    wh_util:put_callid(CallId),
-    handle_call_event(JObj, AccountId, HookEvent, CallId).
-
--spec handle_call_event(wh_json:object(), api_binary(), ne_binary(), ne_binary()) ->
-                               'ok'.
-handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId) ->
-    lager:debug("event 'channel_create' had no account id, caching"),
-    maybe_cache_call_event(JObj, CallId);
-handle_call_event(_JObj, 'undefined', _HookEvent, _CallId) ->
-    lager:debug("event '~s' had no account id, ignoring", [_HookEvent]);
-handle_call_event(_JObj, AccountId, <<"route_req">>, CallId) ->
-    lager:debug("recv route_req with account id ~s, looking for events to relay"
-                ,[AccountId]
-               ),
-    maybe_relay_new_event(AccountId, CallId);
-handle_call_event(JObj, AccountId, HookEvent, _CallId) ->
-    Evt = ?HOOK_EVT(AccountId, HookEvent, JObj),
-    gproc:send(?HOOK_REG, Evt),
-    gproc:send(?HOOK_REG(AccountId), Evt),
-    gproc:send(?HOOK_REG(AccountId, HookEvent), Evt).
-
--spec maybe_cache_call_event(wh_json:object(), ne_binary()) -> 'ok'.
-maybe_cache_call_event(JObj, CallId) ->
-    case wh_cache:peek_local(?CACHE_NAME, CallId) of
-        {'error', 'not_found'} ->
-            wh_cache:store_local(?CACHE_NAME, CallId, {'CHANNEL_CREATE', JObj}, [{'expires', 5000}]);
-        {'ok', {'account_id', AccountId}} ->
-            handle_call_event(JObj
-                              ,AccountId
-                              ,wh_json:get_value(<<"Event-Name">>, JObj)
-                              ,CallId
-                             )
-    end.
-
--spec maybe_relay_new_event(ne_binary(), ne_binary()) -> 'ok'.
-maybe_relay_new_event(AccountId, CallId) ->
-    case wh_cache:peek_local(?CACHE_NAME, CallId) of
-        {'error', 'not_found'} ->
-            wh_cache:store_local(?CACHE_NAME, CallId, {'account_id', AccountId}, [{'expires', 5000}]);
-        {'ok', {'CHANNEL_CREATE', JObj}} ->
-            handle_call_event(JObj
-                              ,AccountId
-                              ,wh_json:get_value(<<"Event-Name">>, JObj)
-                              ,CallId
-                             )
-    end.
+handle_federation_event(JObj, _) ->
+    io:format("handle_federation_event: ~p~n", [JObj]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -154,12 +70,11 @@ maybe_relay_new_event(AccountId, CallId) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', 'ok'}.
 init([]) ->
-    lager:debug("started ~s", [?MODULE]),
-    wapi_call:declare_exchanges(),
-    _ = spawn('whistle_apps_sup', 'start_child', [?CACHE(?CACHE_NAME)]),
-    {'ok', 'ok'}.
+    wh_amqp_connections:add(<<"amqp://guest:guest@10.26.0.82:5672">>, 'true'),
+    wh_amqp_channel:consumer_broker(<<"amqp://guest:guest@10.26.0.82:5672">>),
+    _ = erlang:send_after(1000, self(), 'send_test_message'),
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -188,12 +103,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
-    {'noreply', State};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
-    {'noreply', State};
 handle_cast(_Msg, State) ->
-    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -206,8 +116,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info('send_test_message', State) ->
+    Req = [{<<"Realm">>, <<"a18abd.s.zswitch.net">>}, {<<"Fields">>, [<<"Authorizing-ID">>]} | wh_api:default_headers(<<"test">>, <<"test">>)],
+    io:format("send_test_message: ~p~n", [wapi_registration:publish_query_req(Req)]),
+    _ = erlang:send_after(1000, self(), 'send_test_message'),
+    {'noreply', State};
 handle_info(_Info, State) ->
-    lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------

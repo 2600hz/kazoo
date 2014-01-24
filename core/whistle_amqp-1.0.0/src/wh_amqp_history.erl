@@ -17,6 +17,7 @@
 -export([add_command/2]).
 -export([remove/1]).
 -export([get/1]).
+-export([get_queues/1]).
 -export([add_exchange/1]).
 -export([get_exchanges/0]).
 -export([init/1
@@ -104,6 +105,15 @@ get(Consumer) ->
     Pattern = #wh_amqp_history{consumer=Consumer
                                ,_='_'},
     [Command 
+     || #wh_amqp_history{command=Command} 
+            <- ets:match_object(?TAB, Pattern)
+    ].
+
+-spec get_queues(pid()) -> wh_amqp_queues().
+get_queues(Consumer) ->
+    Pattern = #wh_amqp_history{consumer=Consumer
+                               ,_='_'},
+    [#'queue.declare'{}=Command
      || #wh_amqp_history{command=Command} 
             <- ets:match_object(?TAB, Pattern)
     ].
@@ -237,6 +247,9 @@ handle_cast(_Msg, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'remove_history', Pid}, State) ->
+    _ = remove(Pid),
+    {'noreply', State};
 handle_info({'DOWN', _, 'process', Pid, _Reason}
             ,#state{connections=Connections}=State) ->
     case sets:is_element(Pid, Connections) of
@@ -244,9 +257,11 @@ handle_info({'DOWN', _, 'process', Pid, _Reason}
             lager:debug("connection ~p went down: ~p", [Pid, _Reason]),
             {'noreply', State#state{connections=sets:del_element(Pid, Connections)}};
         'false' ->
-            lager:debug("removing AMQP history for consumer ~p: ~p"
+            %% Allow wh_amqp_assignments time to get the history so it
+            %% can cleanly remove queues/consumers/ect
+            lager:debug("removing AMQP history for consumer ~p in 2.5s: ~p"
                         ,[Pid, _Reason]),
-            _ = remove(Pid),
+            erlang:send_after(2500, self(), {'remove_history', Pid}),
             {'noreply', State}
     end;
 handle_info(_Info, State) ->

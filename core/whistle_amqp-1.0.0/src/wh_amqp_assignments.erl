@@ -274,10 +274,12 @@ release_assignments({[#wh_amqp_assignment{channel_ref=Ref}=Assignment]
     demonitor(Ref, ['flush']),
     release_assignments({[Assignment#wh_amqp_assignment{channel_ref='undefined'}]
                          ,Continuation});
-release_assignments({[#wh_amqp_assignment{channel=Channel}=Assignment]
-                     ,Continuation})
+release_assignments({[#wh_amqp_assignment{channel=Channel
+                                          ,consumer=Consumer}=Assignment
+                     ], Continuation})
   when is_pid(Channel) ->
-    _ = (catch wh_amqp_channel:close(Channel)),
+    Commands = wh_amqp_history:get(Consumer),
+    _ = (catch wh_amqp_channel:close(Channel, Commands)),
     release_assignments({[Assignment#wh_amqp_assignment{channel='undefined'}]
                          ,Continuation});
 release_assignments({[#wh_amqp_assignment{timestamp=Timestamp
@@ -503,12 +505,13 @@ assign_channel(#wh_amqp_assignment{channel_ref=Ref}=Assignment
                    ,Broker, Connection, Channel);
 assign_channel(#wh_amqp_assignment{channel=CurrentChannel
                                    ,broker=CurrentBroker
-                                   ,consumer=_Consumer}=Assignment
+                                   ,consumer=Consumer}=Assignment
                ,Broker, Connection, Channel)
   when is_pid(CurrentChannel) ->
     lager:debug("reassigning consumer ~p, closing current channel ~p on ~s"
-                ,[_Consumer, CurrentChannel, CurrentBroker]),
-    _ = (catch wh_amqp_channel:close(CurrentChannel)),
+                ,[Consumer, CurrentChannel, CurrentBroker]),
+    Commands = wh_amqp_history:get(Consumer),
+    _ = (catch wh_amqp_channel:close(CurrentChannel, Commands)),
     assign_channel(Assignment#wh_amqp_assignment{channel='undefined'
                                                  ,reconnect='true'}
                    ,Broker, Connection, Channel);    

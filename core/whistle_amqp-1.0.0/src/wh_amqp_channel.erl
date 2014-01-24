@@ -23,7 +23,9 @@
 -export([release/0
          ,release/1
         ]).
--export([close/1]).
+-export([close/1
+         ,close/2
+        ]).
 -export([maybe_publish/2]).
 -export([publish/2]).
 -export([command/1
@@ -89,10 +91,24 @@ release(Pid) when is_pid(Pid) ->
     wh_amqp_assignments:release(Pid).
 
 -spec close(api_pid()) -> 'ok'.
-close(Channel) when is_pid(Channel) ->
-    catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5000),
+close(Channel) -> close(Channel, []).
+
+close(Channel, []) when is_pid(Channel) ->
+    _ = (catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5000)),
     lager:debug("closed amqp channel ~p", [Channel]);
-close(_) -> 'ok'.
+close(_, []) -> 'ok';
+close(Channel, [#'basic.consume'{consumer_tag=CTag}|Commands]) when is_pid(Channel) ->
+    lager:debug("ensuring ~s is removed", [CTag]),
+    Command = #'basic.cancel'{consumer_tag=CTag, nowait='true'},
+    _ = (catch amqp_channel:cast(Channel, Command)),
+    close(Channel, Commands);
+close(Channel, [#'queue.declare'{queue=Queue}|Commands]) when is_pid(Channel) ->
+    lager:debug("ensuring queue ~s is removed", [Queue]),
+    Command = #'queue.delete'{queue=Queue, if_unused='true', nowait='true'},
+    _ = (catch amqp_channel:cast(Channel, Command)),
+    close(Channel, Commands);
+close(Channel, [_|Commands]) ->
+    close(Channel, Commands).
 
 %% maybe publish will only publish a message if there is an existing channel assignment
 -spec maybe_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.

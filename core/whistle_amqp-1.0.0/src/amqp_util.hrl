@@ -106,6 +106,9 @@
 -type wh_amqp_exchange() :: #'exchange.declare'{}.
 -type wh_amqp_exchanges() :: [#'exchange.declare'{},...] | [].
 
+-type wh_amqp_queue() :: #'queue.declare'{}.
+-type wh_amqp_queues() :: [#'queue.declare'{},...] | [].
+
 -type wh_command_ret_ok() :: #'basic.qos_ok'{} | #'queue.declare_ok'{} |
                              #'exchange.declare_ok'{} | #'queue.delete_ok'{} |
                              #'queue.declare_ok'{} | #'queue.unbind_ok'{} |
