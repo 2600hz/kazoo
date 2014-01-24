@@ -220,7 +220,6 @@ handle_query_user_channels(JObj, _Props) ->
 handle_query_users_channels(JObj, Realm) ->
     case find_users_channels(wh_json:get_value(<<"Usernames">>, JObj), Realm) of
         {'error', 'not_found'} -> send_user_query_resp(JObj, []);
-        {'error', _E} -> lager:debug("failed to lookup channels in realm ~s", [Realm]);
         {'ok', Cs} -> send_user_query_resp(JObj, Cs)
     end.
 
@@ -228,7 +227,6 @@ handle_query_users_channels(JObj, Realm) ->
 handle_query_user_channels(JObj, Username, Realm) ->
     case find_by_user_realm(Username, Realm) of
         {'error', 'not_found'} -> send_user_query_resp(JObj, []);
-        {'error', _E} -> lager:debug("failed to lookup channels for ~s:~s", [Username, Realm]);
         {'ok', Cs} -> send_user_query_resp(JObj, Cs)
     end.
 
@@ -247,7 +245,6 @@ handle_query_account_channels(JObj, _) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     case find_account_channels(AccountId) of
         {'error', 'not_found'} -> send_account_query_resp(JObj, []);
-        {'error', _E} -> lager:debug("failed to lookup channels for account ~s", [AccountId]);
         {'ok', Cs} -> send_account_query_resp(JObj, Cs)
     end.
 
@@ -604,9 +601,9 @@ find_users_channels(Usernames, Realm) ->
                    ]}
     end.
 
--spec find_account_channels(ne_binaries()) ->
-                                 {'ok', wh_json:objects()} |
-                                 {'error', 'not_found'}.
+-spec find_account_channels(ne_binary()) ->
+                                   {'ok', wh_json:objects()} |
+                                   {'error', 'not_found'}.
 find_account_channels(AccountId) ->
     case ets:match_object(?CHANNELS_TBL, #channel{account_id=AccountId, _='_'}) of
         [] -> {'error', 'not_found'};
@@ -616,6 +613,7 @@ find_account_channels(AccountId) ->
                    ]}
     end.
 
+-spec build_matchspec_ors(ne_binaries()) -> term().
 build_matchspec_ors(L) ->
     lists:foldl(fun(El, Acc) -> {'or', {'=:=', '$1', El}, Acc} end, 'false', L).
 
