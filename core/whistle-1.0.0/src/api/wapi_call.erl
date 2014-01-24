@@ -28,7 +28,6 @@
 -export([query_account_channels_req/1, query_account_channels_req_v/1]).
 -export([query_account_channels_resp/1, query_account_channels_resp_v/1]).
 
--export([cdr/1, cdr_v/1]).
 -export([usurp_control/1, usurp_control_v/1]).
 -export([usurp_publisher/1, usurp_publisher_v/1]).
 
@@ -52,7 +51,6 @@
 -export([publish_query_account_channels_req/1 ,publish_query_account_channels_req/3]).
 -export([publish_query_account_channels_resp/2 ,publish_query_account_channels_resp/3]).
 
--export([publish_cdr/2, publish_cdr/3]).
 -export([publish_usurp_control/2, publish_usurp_control/3]).
 -export([publish_usurp_publisher/2, publish_usurp_publisher/3]).
 
@@ -192,24 +190,6 @@
                                           ,{<<"Event-Name">>, <<"query_account_channels_resp">>}
                                          ]).
 -define(QUERY_ACCOUNT_CHANNELS_RESP_TYPES, []).
-
-
-%% Call CDR
--define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
--define(OPTIONAL_CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Custom-Channel-Vars">>
-                                        ,<<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
-                                        ,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                        ,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
-                                        ,<<"Timestamp">>, <<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
-                                        ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
-                                        ,<<"Digits-Dialed">>, <<"To">>, <<"From">>, <<"Request">>
-                                   ]).
--define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call_detail">>}
-                          ,{<<"Event-Name">>, <<"cdr">>}
-                          ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
-                          ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
-                         ]).
--define(CALL_CDR_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Call Usurp Control
 -define(CALL_USURP_CONTROL_HEADERS, [<<"Call-ID">>, <<"Fetch-ID">>]).
@@ -430,24 +410,6 @@ call_status_resp_v(Prop) when is_list(Prop) ->
 call_status_resp_v(JObj) -> call_status_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Format a CDR for a call
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec cdr(api_terms()) -> {'ok', iolist()} | {'error', string()}.
-cdr(Prop) when is_list(Prop) ->
-    case cdr_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
-        'false' -> {'error', "Proplist failed validation for call_cdr"}
-    end;
-cdr(JObj) -> cdr(wh_json:to_proplist(JObj)).
-
--spec cdr_v(api_terms()) -> boolean().
-cdr_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CALL_CDR_HEADERS, ?CALL_CDR_VALUES, ?CALL_CDR_TYPES);
-cdr_v(JObj) -> cdr_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
 %% @doc Format a call id update from the switch for the listener
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -644,14 +606,6 @@ publish_query_account_channels_resp(RespQ, JObj) ->
 publish_query_account_channels_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_ACCOUNT_CHANNELS_RESP_VALUES, fun ?MODULE:query_account_channels_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
-
--spec publish_cdr(ne_binary(), api_terms()) -> 'ok'.
--spec publish_cdr(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_cdr(CallId, JObj) ->
-    publish_cdr(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_cdr(CallId, CDR, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(CDR, ?CALL_CDR_VALUES, fun ?MODULE:cdr/1),
-    amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('cdr', CallId), Payload, ContentType).
 
 -spec publish_usurp_control(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_usurp_control(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
