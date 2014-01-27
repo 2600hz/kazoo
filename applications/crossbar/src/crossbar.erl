@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz, INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -14,7 +14,34 @@
          ,start_mod/1, stop_mod/1
         ]).
 
--include("crossbar.hrl").
+-include("./crossbar.hrl").
+
+-spec crossbar_routes() -> cowboy_router:routes().
+crossbar_routes() -> [{'_', paths_list()}].
+
+paths_list() ->
+    [api_path(), default_path()].
+
+default_path() ->
+    {'_', 'crossbar_default_handler', []}.
+
+api_path() ->
+    {<<"/:version/[...]">>, [api_version_constraint()], 'api_resource', []}.
+
+-spec api_version_constraint() -> cowboy_router:constraint().
+api_version_constraint() ->
+    {'version', 'function', fun api_version_constraint/1}.
+
+-spec api_version_constraint(ne_binary()) -> boolean().
+api_version_constraint(<<"v", ApiVersion/binary>>) ->
+    try wh_util:to_integer(ApiVersion) of
+        _Int -> lager:debug("routing to version ~b", [_Int]), 'true'
+    catch
+        _:_ -> lager:debug("not routing to version ~s", [ApiVersion]), 'false'
+    end;
+api_version_constraint(_NotVersion) ->
+    lager:debug("not routing version ~s", [_NotVersion]),
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -27,12 +54,9 @@ start_link() ->
     put('callid', ?LOG_SYSTEM_ID),
     _ = start_deps(),
     _ = declare_exchanges(),
-    Dispatch = cowboy_router:compile([
-                                      %% {HostMatch, list({PathMatch, Handler, Opts})}
-                                      {'_', [{<<"/:version/[...]">>, 'api_resource', []}
-                                             ,{'_', 'crossbar_default_handler', []}
-                                            ]}
-                                     ]),
+
+    Dispatch = cowboy_router:compile(crossbar_routes()),
+
     maybe_start_plaintext(Dispatch),
     maybe_start_ssl(Dispatch),
     crossbar_sup:start_link().
