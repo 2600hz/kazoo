@@ -392,9 +392,10 @@ put(Context, Number, ?PORT_DOCS, _) ->
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
                     cb_context:context().
 delete(Context, ?COLLECTION) ->
-    Results = collection_process(Context),
+    Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
+    Results = collection_process(Context, Numbers, <<"delete">>),
     Fun = fun() -> 'ok' end,
-    set_response(Results, <<>>, Context, Fun);
+    set_response({'ok', Results}, <<>>, Context, Fun);
 delete(Context, Number) ->
     Result = wh_number_manager:release_number(Number, cb_context:auth_account_id(Context)),
     Fun = fun() -> 'ok' end,
