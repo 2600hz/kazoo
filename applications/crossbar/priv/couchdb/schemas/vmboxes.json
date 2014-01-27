@@ -59,6 +59,12 @@
         "type":"boolean",
         "default":"false"
       },
+      "retrieval_via_url":{
+        "name":"Retrieval Via URL",
+        "description":"Add a URL into the VM->Email to download the voicemail",
+        "type":"boolean",
+        "default":"false"
+      },
       "skip_greeting":{
          "name":"Skip Greeting",
          "description":"Determines if the greeting should be skipped",

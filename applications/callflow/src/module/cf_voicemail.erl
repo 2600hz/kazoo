@@ -949,7 +949,7 @@ get_mailbox_profile(Data, Call) ->
                 case whapps_account_config:get(whapps_call:account_id(Call)
                                                ,?CF_CONFIG_CAT
                                                ,[<<"voicemail">>, <<"max_message_count">>]
-                                              ) 
+                                              )
                 of
                     'undefined' ->
                         whapps_config:get(?CF_CONFIG_CAT
@@ -957,7 +957,7 @@ get_mailbox_profile(Data, Call) ->
                                           ,?MAILBOX_DEFAULT_SIZE
                                          );
                     MMC -> MMC
-                end, 
+                end,
             MsgCount = count_non_deleted_messages(wh_json:get_value(<<"messages">>, JObj, [])),
 
             lager:info("mailbox limited to ~p voicemail messages (has ~b currently)", [MaxMessageCount, MsgCount]),

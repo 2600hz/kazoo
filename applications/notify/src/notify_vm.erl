@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
@@ -11,7 +11,9 @@
 %%%-------------------------------------------------------------------
 -module(notify_vm).
 
--export([init/0, handle_req/2]).
+-export([init/0
+         ,handle_req/2
+        ]).
 
 -include("notify.hrl").
 
