@@ -15,6 +15,7 @@
 -export([get_connection/1]).
 -export([new_exchange/2]).
 -export([create_prechannel/1]).
+-export([disconnect/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -54,6 +55,10 @@ new_exchange(Srv, Exchange) ->
 -spec create_prechannel(pid()) -> 'ok'.
 create_prechannel(Srv) ->
     gen_server:cast(Srv, 'create_prechannel').
+
+-spec disconnect(pid()) -> 'ok'.
+disconnect(Srv) ->
+    gen_server:cast(Srv, 'disconnect').    
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -106,6 +111,12 @@ handle_call(_Msg, _From, Connection) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('disconnect'
+            ,#wh_amqp_connection{available='false'}=Connection) ->
+    {'noreply', Connection, 'hibernate'};
+handle_cast('disconnect'
+            ,#wh_amqp_connection{available='true'}=Connection) ->
+    {'noreply', disconnected(Connection), 'hibernate'};
 handle_cast('create_control_channel'
             ,#wh_amqp_connection{available='false'}=Connection) ->
     {'noreply', Connection, 'hibernate'};
@@ -238,8 +249,11 @@ connected(#wh_amqp_connection{broker=_Broker}=Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().
-disconnected(#wh_amqp_connection{}=State) ->
-    disconnected(State, ?START_TIMEOUT).
+disconnected(#wh_amqp_connection{manager=Manager}=State) ->
+    case Manager =:= self() of
+        'true' -> disconnected(State, ?START_TIMEOUT);
+        'false' -> disconnect(Manager)
+    end.
 
 -spec disconnected(wh_amqp_connection(), ?START_TIMEOUT..?MAX_TIMEOUT) -> wh_amqp_connection().
 disconnected(#wh_amqp_connection{available='true'}=Connection, Timeout) ->
@@ -451,4 +465,4 @@ declare_exchanges(#wh_amqp_connection{channel=Channel
                               ,[Exchange|Exchanges])
     end;
 declare_exchanges(#wh_amqp_connection{}=Connection, _) ->
-    Connection#wh_amqp_connection{exchanges_initalized='false'}.
+    disconnected(Connection#wh_amqp_connection{exchanges_initalized='false'}).

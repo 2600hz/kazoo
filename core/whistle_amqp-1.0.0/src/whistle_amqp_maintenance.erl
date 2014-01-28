@@ -384,14 +384,14 @@ channel_summary_age(Timestamp) -> wh_util:elapsed_s(Timestamp).
 %% @end
 %%--------------------------------------------------------------------
 consumer_details() -> 
-    MatchSpec = [{#wh_amqp_assignment{consumer='$1'
-                                      ,channel='$2'
+    MatchSpec = [{#wh_amqp_assignment{channel='$1'
+                                      ,consumer='$2'
                                       ,_='_'},
                   [{'andalso', 
                     {'=/=', '$1', 'undefined'},
                     {'=/=', '$2', 'undefined'}
                    }],
-                  ['$1']
+                  ['$2']
                  }],
     print_consumer_details(ets:select(?ASSIGNMENTS, MatchSpec, 1)).
 

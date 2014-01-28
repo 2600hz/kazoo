@@ -123,16 +123,16 @@
 -type wh_amqp_type() :: 'sticky' | 'float'.
 
 -record(wh_amqp_assignment, {timestamp = now() :: wh_now() | '_'
-                             ,consumer :: api_pid() | '_'
-                             ,consumer_ref :: api_reference() | '$1' | '_'
+                             ,consumer :: api_pid() | '$2' | '_'
+                             ,consumer_ref :: api_reference() | '_'
                              ,type = 'float' :: wh_amqp_type()
                              ,channel :: api_pid() | '$1' | '_'
-                             ,channel_ref :: api_reference() | '$1' | '_'
-                             ,connection :: api_pid() | '_'
-                             ,broker :: api_binary() | '$2' | '_'
+                             ,channel_ref :: api_reference() | '_'
+                             ,connection :: api_pid() | '$1' | '_'
+                             ,broker :: api_binary() | '$1' | '_'
                              ,assigned :: wh_now() | '_'
                              ,reconnect = 'false' :: boolean()
-                             ,watchers = sets:new()
+                             ,watchers = sets:new() :: set() | [pid(),...] | []
                             }).
 
 -type wh_amqp_assignment() :: #wh_amqp_assignment{}.
@@ -155,11 +155,12 @@
                             }).
 -type wh_amqp_connection() :: #wh_amqp_connection{}.
 
--record(wh_amqp_connections, {connection
-                              ,connection_ref
-                              ,broker
-                              ,available='false'
-                              ,timestamp=now()
-                              ,federation='false'
-                              ,manager=self()}).
+-record(wh_amqp_connections, {connection :: api_pid() | '$1' | '_'
+                              ,connection_ref :: api_reference() | '_'
+                              ,broker :: ne_binary() | '$1' | '_'
+                              ,available='false' :: boolean() | '_'
+                              ,timestamp=now() :: wh_now() | '_'
+                              ,federation='false' :: boolean() | '_'
+                              ,manager=self() :: pid() | '_'
+                             }).
 -type wh_amqp_connections() :: #wh_amqp_connections{}.
