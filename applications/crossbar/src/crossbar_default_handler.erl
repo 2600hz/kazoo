@@ -74,26 +74,13 @@ get_magic_token(Path) ->
     get_magic_token_from_path(binary:split(Path, <<"/">>, ['global'])).
 
 get_magic_token_from_path([]) -> 'undefined';
+get_magic_token_from_path([<<>>|Paths]) -> get_magic_token_from_path(Paths);
 get_magic_token_from_path([Path|Paths]) ->
-    case decode_magic_token(Path) of
+    try whapps_util:from_magic_hash(Path) of
         'undefined' -> get_magic_token_from_path(Paths);
         Token -> Token
-    end.
-
-decode_magic_token(<<>>) ->
-    'undefined';
-decode_magic_token(Token) ->
-    try wh_util:from_hex_binary(Token) of
-        Bin ->  decode_magic_token_bin(Bin)
     catch
-        _E:_R -> 'undefined'
-    end.
-
-decode_magic_token_bin(Bin) ->
-    try zlib:unzip(Bin) of
-        Path -> Path
-    catch
-        _E:_R -> 'undefined'
+        _:_ -> get_magic_token_from_path(Paths)
     end.
 
 -spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.

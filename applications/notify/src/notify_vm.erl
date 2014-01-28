@@ -103,22 +103,40 @@ create_template_props(Event, Docs, Account) ->
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
-     ,{<<"voicemail">>, [{<<"caller_id_number">>, wnm_util:pretty_print(CIDNum)}
-                         ,{<<"caller_id_name">>, wnm_util:pretty_print(CIDName)}  %% sometimes the name is a number...
-                         ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-                         ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
-                         ,{<<"from_user">>, wnm_util:pretty_print(FromE164)}
-                         ,{<<"from_realm">>, wh_json:get_value(<<"From-Realm">>, Event)}
-                         ,{<<"to_user">>, wnm_util:pretty_print(ToE164)}
-                         ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
-                         ,{<<"box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
-                         ,{<<"media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
-                         ,{<<"length">>, preaty_print_length(Event)}
-                         ,{<<"transcription">>, wh_json:get_value([<<"Voicemail-Transcription">>, <<"text">>], Event)}
-                         ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
-                        ]}
+     ,{<<"voicemail">>, props:filter_undefined(
+                          [{<<"caller_id_number">>, wnm_util:pretty_print(CIDNum)}
+                           %% sometimes the name is a number...
+                           ,{<<"caller_id_name">>, wnm_util:pretty_print(CIDName)}
+                           ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
+                           ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+                           ,{<<"from_user">>, wnm_util:pretty_print(FromE164)}
+                           ,{<<"from_realm">>, wh_json:get_value(<<"From-Realm">>, Event)}
+                           ,{<<"to_user">>, wnm_util:pretty_print(ToE164)}
+                           ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
+                           ,{<<"box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
+                           ,{<<"media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
+                           ,{<<"length">>, preaty_print_length(Event)}
+                           ,{<<"transcription">>, wh_json:get_value([<<"Voicemail-Transcription">>, <<"text">>], Event)}
+                           ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
+                           ,{<<"magic_hash">>, magic_hash(Event)}
+                          ])}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
     ].
+
+-spec magic_hash(wh_json:object()) -> api_binary().
+magic_hash(Event) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, Event),
+    VMBoxId = wh_json:get_value(<<"Voicemail-Box">>, Event),
+    MessageId = wh_json:get_value(<<"Voicemail-Name">>, Event),
+
+    try list_to_binary([<<"/v1/accounts/">>, AccountId, <<"/vmboxes/">>, VMBoxId
+                        ,<<"/messages/">>, MessageId, <<"raw">>
+                       ])
+    of
+        URL -> whapps_util:to_magic_hash(URL)
+    catch
+        _:_ -> 'undefined'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

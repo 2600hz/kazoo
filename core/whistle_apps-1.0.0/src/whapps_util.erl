@@ -46,6 +46,9 @@
         ]).
 -export([write_tts_file/2]).
 -export([decr_timeout/2]).
+-export([to_magic_hash/1
+         ,from_magic_hash/1
+        ]).
 
 -include("whistle_apps.hrl").
 
@@ -620,3 +623,11 @@ write_tts_file(Path, Say) ->
 -spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
 decr_timeout(Timeout, Elapsed) ->
     wh_util:decr_timeout(Timeout, Elapsed).
+
+-spec to_magic_hash(ne_binary()) -> ne_binary().
+to_magic_hash(Bin) ->
+    wh_util:to_hex_binary(zlib:zip(Bin)).
+
+-spec from_magic_hash(ne_binary()) -> ne_binary().
+from_magic_hash(Bin) ->
+    zlib:unzip(wh_util:from_hex_binary(Bin)).
