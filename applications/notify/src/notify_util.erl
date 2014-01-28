@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -224,7 +224,7 @@ get_service_props(Request, Account, ConfigCat) ->
     Tree = wh_json:get_value(<<"pvt_tree">>, Account, []),
     [_, Module] = binary:split(ConfigCat, <<".">>),
     case Tree =/= [] andalso couch_mgr:open_doc(?WH_ACCOUNTS_DB, lists:last(Tree)) of
-        {ok, JObj} ->
+        {'ok', JObj} ->
             lager:debug("looking for notifications '~s' service info in: ~s", [Module, wh_json:get_value(<<"_id">>, JObj)]),
             [{<<"url">>, wh_json:get_value([<<"notifications">>, Module, <<"service_url">>], JObj, DefaultUrl)}
              ,{<<"name">>, wh_json:get_value([<<"notifications">>, Module, <<"service_name">>], JObj, DefaultName)}

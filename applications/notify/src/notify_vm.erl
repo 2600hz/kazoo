@@ -47,10 +47,10 @@ handle_req(JObj, _Props) ->
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
 
     lager:debug("loading vm box ~s", [wh_json:get_value(<<"Voicemail-Box">>, JObj)]),
-    {'ok', VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
+    {'ok', VMBox} = couch_mgr:open_cache_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
 
     lager:debug("loading owner ~s", [wh_json:get_value(<<"owner_id">>, VMBox)]),
-    {'ok', UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
+    {'ok', UserJObj} = couch_mgr:open_cache_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
 
     case {wh_json:get_ne_value(<<"email">>, UserJObj), wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)} of
         {'undefined', _} ->
@@ -61,7 +61,7 @@ handle_req(JObj, _Props) ->
             lager:debug("voicemail to email disabled for ~s", [_Email]);
         {Email, 'true'} ->
             lager:debug("VM->Email enabled for user, sending to ~s", [Email]),
-            {'ok', AcctObj} = couch_mgr:open_doc(AcctDB, wh_util:format_account_id(AcctDB, raw)),
+            {'ok', AcctObj} = couch_mgr:open_cache_doc(AcctDB, wh_util:format_account_id(AcctDB, 'raw')),
             Docs = [VMBox, UserJObj, AcctObj],
 
             Props = [{<<"email_address">>, Email}
