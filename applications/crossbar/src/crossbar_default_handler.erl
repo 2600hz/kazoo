@@ -18,7 +18,9 @@
 
 -include("crossbar.hrl").
 
--define(DEFAULT_PATHS, [<<"/:version/accounts/:account_id/vmboxes/:box_id/raw">>]).
+-define(DEFAULT_PATHS, [<<"/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw">>
+                        ,<<"/:version/accounts/:account_id/faxes/:direction/:fax_id/attachment">>
+                       ]).
 
 -spec init({atom(), 'http'}, cowboy_req:req(), wh_proplist()) ->
                   {'ok', cowboy_req:req(), 'undefined'}.
