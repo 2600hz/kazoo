@@ -10,6 +10,9 @@
 
 -behaviour(gen_server).
 
+-export([new/1
+         ,new/2
+        ]).
 -export([add/1
          ,add/2
         ]).
@@ -48,6 +51,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+
+-spec new(wh_amqp_connection() | text()) -> wh_amqp_connection() | {'error', _}.
+new(Broker) -> new(Broker, 'false').
+
+-spec new(wh_amqp_connection() | text(), boolean()) -> wh_amqp_connection() | {'error', _}.
+new(Broker, Federation) ->
+    case broker_connections(Broker) =:= 0 of
+        'false' -> {'error', 'exists'};
+        'true' -> wh_amqp_connections:add(Broker, Federation)
+    end.
 
 -spec add(wh_amqp_connection() | text()) -> wh_amqp_connection() | {'error', _}.
 add(Broker) -> add(Broker, 'false').

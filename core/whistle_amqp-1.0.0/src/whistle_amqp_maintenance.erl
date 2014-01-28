@@ -44,25 +44,21 @@ add_broker(Broker, Federation) when not is_binary(Broker) ->
 add_broker(Broker, Federation) when not is_boolean(Federation) ->
     add_broker(Broker, wh_util:is_true(Federation));
 add_broker(Broker, Federation) ->
-    Connections = wh_amqp_connections:broker_connections(Broker),
-    case Connections =:= 0 of
-        'false' ->
+    case wh_amqp_connections:new(Broker, Federation) of
+        {'error', 'exists'} ->
             io:format("ERROR: broker ~s currently has ~p connection(s) of which ~p is/are available~n"
                       ,[Broker
-                        ,Connections
+                        ,wh_amqp_connections:broker_connections(Broker)
                         ,wh_amqp_connections:broker_available_connections(Broker)
                        ]),
             io:format("~nTo add more connections use:~n sup whistle_amqp_maintenance add_connection ~s~n"
                       ,[Broker]),
             'no_return';
-        'true' ->
-            case wh_amqp_connections:add(Broker, Federation) of
-                {'error', Reason} ->
-                    io:format("ERROR: unable to add broker ~s: ~p~n"
-                              ,[Broker, Reason]),
-                    'no_return';
-                #wh_amqp_connection{} -> 'ok'
-            end
+        {'error', Reason} ->
+            io:format("ERROR: unable to add broker ~s: ~p~n"
+                      ,[Broker, Reason]),
+            'no_return';
+        #wh_amqp_connection{} -> 'ok'
     end.
 
 %%--------------------------------------------------------------------
