@@ -18,6 +18,8 @@
 
 -include("crossbar.hrl").
 
+-define(DEFAULT_PATHS, [<<"/:version/accounts/:account_id/vmboxes/:box_id/raw">>]).
+
 -spec init({atom(), 'http'}, cowboy_req:req(), wh_proplist()) ->
                   {'ok', cowboy_req:req(), 'undefined'}.
 init({_Any, 'http'}, Req0, HandlerOpts) ->
@@ -29,9 +31,35 @@ init({_Any, 'http'}, Req0, HandlerOpts) ->
         'undefined' ->
             {'ok', Req1, 'undefined'};
         Magic ->
-            lager:debug("magic path found: ~s", [Magic]),
-            {'upgrade', 'protocol', ?MODULE, Req1, [{'magic_path', Magic} | HandlerOpts]}
+            case is_valid_magic_path(Magic) of
+                'true' ->
+                    lager:debug("magic path found: ~s", [Magic]),
+                    {'upgrade', 'protocol', ?MODULE, Req1, [{'magic_path', Magic} | HandlerOpts]};
+                'false' ->
+                    lager:debug("invalid magic path: ~s", [Magic]),
+                    {'ok', Req1, 'undefined'}
+            end
     end.
+
+is_valid_magic_path(Path) ->
+    is_valid_magic_path(Path, whapps_config:get(?CONFIG_CAT, <<"magic_path_patterns">>, ?DEFAULT_PATHS)).
+
+is_valid_magic_path(Path, Templates) ->
+    lists:any(fun(Template) -> path_matches_template(Path, Template) end, Templates).
+
+path_matches_template(Path, Template) ->
+    lager:debug("testing ~s against ~s", [Path, Template]),
+    path_matches_template_tokens(
+      binary:split(Path, <<"/">>, ['global'])
+      ,binary:split(Template, <<"/">>, ['global'])
+     ).
+
+path_matches_template_tokens([], []) -> 'true';
+path_matches_template_tokens([_|PathTokens], [<<":", _/binary>>|TemplateTokens]) ->
+    path_matches_template_tokens(PathTokens, TemplateTokens);
+path_matches_template_tokens([Token|PathTokens], [Token|TemplateTokens]) ->
+    path_matches_template_tokens(PathTokens, TemplateTokens);
+path_matches_template_tokens(_, _) -> 'false'.
 
 upgrade(Req, Env, _Handler, HandlerOpts) ->
     cowboy_rest:upgrade(Req
