@@ -27,15 +27,13 @@ init({_Any, 'http'}, Req0, HandlerOpts) ->
 
     case get_magic_token(Path) of
         'undefined' ->
-            lager:debug("no magic token in path ~s", [Path]),
             {'ok', Req1, 'undefined'};
         Magic ->
-            lager:debug("found magic token ~s", [Magic]),
+            lager:debug("magic path found: ~s", [Magic]),
             {'upgrade', 'protocol', ?MODULE, Req1, [{'magic_path', Magic} | HandlerOpts]}
     end.
 
-upgrade(Req, Env, Handler, HandlerOpts) ->
-    lager:debug("upgrading handler from ~s to api_resource", [Handler]),
+upgrade(Req, Env, _Handler, HandlerOpts) ->
     cowboy_rest:upgrade(Req
                         ,props:set_value('handler', 'api_resource', Env)
                         ,'api_resource'
@@ -49,29 +47,23 @@ get_magic_token_from_path([]) -> 'undefined';
 get_magic_token_from_path([Path|Paths]) ->
     case decode_magic_token(Path) of
         'undefined' -> get_magic_token_from_path(Paths);
-        Token -> lager:debug("found token ~s in ~s", [Token, Path]), Token
+        Token -> Token
     end.
 
 decode_magic_token(<<>>) ->
     'undefined';
 decode_magic_token(Token) ->
     try wh_util:from_hex_binary(Token) of
-        Bin ->
-            lager:debug("found bin ~p", [Bin]),
-            decode_magic_token_bin(Bin)
+        Bin ->  decode_magic_token_bin(Bin)
     catch
-        _:_ -> 'undefined'
+        _E:_R -> 'undefined'
     end.
 
 decode_magic_token_bin(Bin) ->
     try zlib:unzip(Bin) of
-        Path ->
-            lager:debug("found path ~s", [Path]),
-            Path
+        Path -> Path
     catch
-        _E:_R ->
-            lager:debug("failed to unzip: ~s: ~p", [_E, _R]),
-            'undefined'
+        _E:_R -> 'undefined'
     end.
 
 -spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.

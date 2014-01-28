@@ -93,6 +93,7 @@ rest_init(Req0, Opts) ->
                   ,client_ip = ClientIP
                   ,profile_id = ProfileId
                   ,api_version = Version
+                  ,magic_pathed = props:is_defined('magic_path', Opts)
                  },
     Event = api_util:create_event_name(Context0, <<"init">>),
     {Context1, _} = crossbar_bindings:fold(Event, {Context0, Opts}),
