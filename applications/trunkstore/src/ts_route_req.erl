@@ -21,9 +21,7 @@ handle_req(ApiJObj, _Options) ->
     'true' = wapi_route:req_v(ApiJObj),
     CallID = wh_json:get_value(<<"Call-ID">>, ApiJObj),
     put('callid', CallID),
-
     lager:info("received a request asking if trunkstore can route this call"),
-
     case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj)
           ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)
          }

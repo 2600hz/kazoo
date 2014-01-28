@@ -148,7 +148,6 @@ call_cost(JObj) ->
             trunc(Cost - Discount)
     end.
 
-
 -spec get_integer_value(ne_binary(), wh_json:object()) -> integer().
 get_integer_value(Key, JObj) ->
     get_integer_value(Key, JObj, 0).

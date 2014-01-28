@@ -204,7 +204,7 @@ get_sip_request(Props) ->
                                    ], Props, <<"nouser">>),
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                      ,<<"variable_sip_auth_realm">>
-                                     ,<<"sip_to_host">>
+                                     ,<<"variable_sip_to_host">>
                                     ], Props, ?DEFAULT_REALM),
     <<User/binary, "@", Realm/binary>>.
 

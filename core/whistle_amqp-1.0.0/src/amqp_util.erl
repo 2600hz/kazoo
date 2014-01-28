@@ -57,9 +57,9 @@
 -export([callevt_exchange/0]).
 -export([new_callevt_queue/1]).
 -export([delete_callevt_queue/1]).
--export([bind_q_to_callevt/2, bind_q_to_callevt/3]).
--export([unbind_q_from_callevt/2, unbind_q_from_callevt/3]).
--export([callevt_publish/1, callevt_publish/3, callevt_publish/4]).
+-export([bind_q_to_callevt/1, bind_q_to_callevt/2]).
+-export([unbind_q_from_callevt/2]).
+-export([callevt_publish/2, callevt_publish/3, callevt_publish/4]).
 
 -export([callmgr_exchange/0]).
 -export([new_callmgr_queue/1, new_callmgr_queue/2]).
@@ -226,42 +226,15 @@ callctl_publish(CtrlQ, Payload, ContentType) ->
 callctl_publish(CtrlQ, Payload, ContentType, Props) ->
     basic_publish(?EXCHANGE_CALLCTL, CtrlQ, Payload, ContentType, Props).
 
--spec callevt_publish(amqp_payload()) -> 'ok'.
--spec callevt_publish(amqp_payload(), amqp_payload(), Type) -> 'ok' when
-      Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | 'publisher_usurp' | ne_binary().
--spec callevt_publish(ne_binary(), amqp_payload(), Type, ne_binary()) -> 'ok' when
-      Type :: 'status_req' | 'event' | 'cdr' | 'publisher_usurp' | ne_binary().
-callevt_publish(Payload) ->
-    callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, 'media_req').
-
-callevt_publish(Payload, ContentType, 'media_req') ->
-    basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, ContentType);
-
-callevt_publish(CallID, Payload, 'event') ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
-
-callevt_publish(CallID, Payload, 'status_req') ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
-
-callevt_publish(CallID, Payload, 'publisher_usurp') ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_PUBLISHER_USURP/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
-
-callevt_publish(CallID, Payload, 'cdr') ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
-
-callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
-    basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
-
-callevt_publish(_CallID, Payload, RoutingKey, ContentType) when is_binary(RoutingKey) ->
-    basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ContentType);
-callevt_publish(CallID, Payload, status_req, ContentType) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, Payload, ContentType);
-callevt_publish(CallID, Payload, publisher_usurp, ContentType) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_PUBLISHER_USURP/binary, (encode(CallID))/binary>>, Payload, ContentType);
-callevt_publish(CallID, Payload, event, ContentType) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, Payload, ContentType);
-callevt_publish(CallID, Payload, cdr, ContentType) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ContentType).
+-spec callevt_publish(ne_binary(), amqp_payload()) -> 'ok'.
+-spec callevt_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec callevt_publish(ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
+callevt_publish(RoutingKey, Payload) ->
+    callevt_publish(RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
+callevt_publish(RoutingKey, Payload, ContentType) ->
+    callevt_publish(RoutingKey, Payload, ContentType, []).
+callevt_publish(RoutingKey, Payload, ContentType, Prop) ->
+    basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ContentType, Prop).
 
 -spec originate_resource_publish(amqp_payload()) -> 'ok'.
 -spec originate_resource_publish(amqp_payload(), ne_binary()) -> 'ok'.
@@ -675,24 +648,11 @@ bind_q_to_callctl(Queue) ->
 bind_q_to_callctl(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLCTL).
 
-%% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallID
--type callevt_type() :: 'events' | 'status_req' | 'cdr' | 'publisher_usurp' | 'other'.
--spec bind_q_to_callevt(ne_binary(), ne_binary() | 'media_req') -> 'ok'.
--spec bind_q_to_callevt(ne_binary(), ne_binary(), callevt_type()) -> 'ok'.
-bind_q_to_callevt(Queue, 'media_req') ->
-    bind_q_to_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
-bind_q_to_callevt(Queue, CallID) ->
-    bind_q_to_callevt(Queue, CallID, 'events').
-
-bind_q_to_callevt(Queue, CallID, 'events') ->
-    bind_q_to_exchange(Queue, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
-bind_q_to_callevt(Queue, CallID, 'status_req') ->
-    bind_q_to_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
-bind_q_to_callevt(Queue, CallID, 'publisher_usurp') ->
-    bind_q_to_exchange(Queue, <<?KEY_PUBLISHER_USURP/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
-bind_q_to_callevt(Queue, CallID, 'cdr') ->
-    bind_q_to_exchange(Queue, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
-bind_q_to_callevt(Queue, Routing, 'other') ->
+-spec bind_q_to_callevt(ne_binary()) -> 'ok'.
+-spec bind_q_to_callevt(ne_binary(), ne_binary()) -> 'ok'.
+bind_q_to_callevt(Queue) ->
+    bind_q_to_callevt(Queue, Queue).
+bind_q_to_callevt(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
 -spec bind_q_to_resource(ne_binary()) -> 'ok'.
@@ -755,25 +715,6 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
 %% Unbind a Queue from an Exchange
 %% @end
 %%------------------------------------------------------------------------------
--spec unbind_q_from_callevt(ne_binary(), ne_binary() | 'media_req') -> 'ok' | {'error', _}.
--spec unbind_q_from_callevt(ne_binary(), ne_binary(), callevt_type()) ->
-                                   'ok' | {'error', _}.
-unbind_q_from_callevt(Queue, 'media_req') ->
-    unbind_q_from_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
-unbind_q_from_callevt(Queue, CallID) ->
-    unbind_q_from_callevt(Queue, CallID, 'events').
-
-unbind_q_from_callevt(Queue, CallID, 'events') ->
-    unbind_q_from_exchange(Queue, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
-unbind_q_from_callevt(Queue, CallID, 'status_req') ->
-    unbind_q_from_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
-unbind_q_from_callevt(Queue, CallID, 'publisher_usurp') ->
-    unbind_q_from_exchange(Queue, <<?KEY_PUBLISHER_USURP/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
-unbind_q_from_callevt(Queue, CallID, 'cdr') ->
-    unbind_q_from_exchange(Queue, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
-unbind_q_from_callevt(Queue, Routing, 'other') ->
-    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
-
 -spec unbind_q_from_conference(ne_binary(), conf_routing_type()) ->
                                       'ok' | {'error', _}.
 -spec unbind_q_from_conference(ne_binary(), conf_routing_type(), api_binary()) ->
@@ -807,6 +748,9 @@ unbind_q_from_sysconf(Queue, Routing) ->
 
 unbind_q_from_resource(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
+
+unbind_q_from_callevt(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
 unbind_q_from_callmgr(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).

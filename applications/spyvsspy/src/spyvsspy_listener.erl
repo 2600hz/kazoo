@@ -24,17 +24,17 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{self, []}
-                   ,{resource, [{restrict_to, [eavesdrop]}]}
+-define(BINDINGS, [{'self', []}
+                   ,{'resource', [{'restrict_to', ['eavesdrop']}]}
                   ]).
 -define(RESPONDERS, [
-                     {{spyvsspy_handlers, handle_eavesdrop_req}
+                     {{'spyvsspy_handlers', 'handle_eavesdrop_req'}
                       ,[{<<"resource">>, <<"eavesdrop_req">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<"spyvsspy_listener">>).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -49,11 +49,11 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE
-                            ,[{bindings, ?BINDINGS}
-                              ,{responders, ?RESPONDERS}
-                              ,{queue_name, ?QUEUE_NAME}
-                              ,{queue_options, ?QUEUE_OPTIONS}
-                              ,{consume_options, ?CONSUME_OPTIONS}
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
                              ]
                             ,[]).
 
@@ -73,7 +73,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -90,7 +90,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,7 +103,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -116,7 +116,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,7 +127,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,7 +152,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions

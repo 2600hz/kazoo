@@ -37,7 +37,7 @@
                                 end(Name, Mod, Args)).
 -define(CHILDREN, [<<"_node">>, <<"_authn">>, <<"_route">>, <<"_channel">>
                    ,<<"_config">>, <<"_resource">>, <<"_notify">>
-                   ,<<"_authz">>, <<"_cdr">>, <<"_conference">>
+                   ,<<"_authz">>, <<"_conference">>
                    ,<<"_event_stream_sup">>
                   ]).
 

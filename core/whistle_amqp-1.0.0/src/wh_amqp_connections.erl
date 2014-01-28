@@ -10,22 +10,18 @@
 
 -behaviour(gen_server).
 
--export([start_link/0]).
--export([add/1]).
--export([remove/1]).
--export([current/0]).
--export([find/1]).
--export([available/0]).
--export([is_available/0]).
--export([exchanges/0
-         ,exchanges/1
+-export([add/1
+         ,add/2
         ]).
+-export([remove/1]).
+-export([broker_connections/1]).
+-export([broker_available_connections/1]).
+-export([primary_broker/0]).
+-export([available/1]).
+-export([unavailable/1]).
+-export([is_available/0]).
 -export([wait_for_available/0]).
--export([update_exchanges/2]).
--export([connected/1]).
--export([disconnected/1]).
--export([declare_exchange/1]).
--export([redeclare_exchanges/1]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -34,21 +30,16 @@
          ,code_change/3
         ]).
 
--include_lib("rabbitmq_client/include/amqp_client.hrl").
+-define(TAB, ?MODULE).
 
 -include("amqp_util.hrl").
 
--record(state, {exchanges=dict:new()
-                ,ensure_tref
-               }).
-
--define(TAB, ?MODULE).
--define(ENSURE_TIME, 5000).
+-record(state, {watchers=sets:new()}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
 %%%===================================================================
-
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
@@ -56,153 +47,117 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
--spec add(text()) -> wh_amqp_connection() | {'error', _}.
-add(URI) when not is_binary(URI) ->
-    add(wh_util:to_binary(URI));
-add(URI) ->
-    case catch amqp_uri:parse(wh_util:to_list(URI)) of
+-spec add(wh_amqp_connection() | text()) -> wh_amqp_connection() | {'error', _}.
+add(Broker) -> add(Broker, 'false').
+
+-spec add(wh_amqp_connection() | text(), boolean()) -> wh_amqp_connection() | {'error', _}.
+add(#wh_amqp_connection{broker=Broker}=Connection, Federation) ->
+    case wh_amqp_connection_sup:add(Connection) of
+        {'ok', Pid} ->
+            gen_server:cast(?MODULE, {'new_connection', Pid, Broker, Federation}),
+            Connection;
+        {'error', Reason} ->
+            lager:warning("unable to start amqp connection to '~s': ~p"
+                          ,[Broker, Reason]),
+            {'error', Reason}
+    end;
+add(Broker, Federation) when not is_binary(Broker) ->
+    add(wh_util:to_binary(Broker), Federation);
+add(Broker, Federation) ->
+    case catch amqp_uri:parse(wh_util:to_list(Broker)) of
         {'EXIT', _R} ->
-            lager:error("failed to parse amqp URI '~s': ~p", [URI, _R]),
+            lager:error("failed to parse AMQP URI '~s': ~p", [Broker, _R]),
             {'error', 'invalid_uri'};
         {'error', {Info, _}} ->
-            lager:error("failed to parse amqp URI '~s': ~p", [URI, Info]),
+            lager:error("failed to parse AMQP URI '~s': ~p", [Broker, Info]),
             {'error', 'invalid_uri'};
         {'ok', #amqp_params_network{}=Params} ->
-            new(#wh_amqp_connection{uri=URI
-                                    ,manager=wh_util:to_atom(URI, 'true')
+            add(#wh_amqp_connection{broker=Broker
                                     ,params=Params#amqp_params_network{connection_timeout=500}
-                                   });
+                                   }
+                ,Federation);
         {'ok', Params} ->
-            new(#wh_amqp_connection{uri=URI
-                                    ,manager=wh_util:to_atom(URI, 'true')
+            add(#wh_amqp_connection{broker=Broker
                                     ,params=Params
-                                   })
+                                   }
+                ,Federation)
     end.
 
--spec new(wh_amqp_connection()) -> wh_amqp_connection() | {'error', _}.
-new(#wh_amqp_connection{uri=URI}=Connection) ->
-    case ets:member(?TAB, URI) of
-        'true' ->
-            lager:error("connection to '~s' already exists", [URI]);
-        'false' ->
-            case wh_amqp_connection_sup:add(Connection) of
-                {'ok', _} ->
-                    gen_server:call(?MODULE, {'new', Connection});
-                {'error', {'already_started', _}} ->
-                    gen_server:call(?MODULE, {'new', Connection});
-                {'error', 'already_present'} ->
-                    _ = wh_amqp_connection_sup:remove(Connection),
-                    new(Connection);
-                {'error', Reason} ->
-                    lager:warning("unable to start amqp connection to '~s': ~p", [URI, Reason]),
-                    {'error', Reason}
-            end
-    end.
+-spec remove([pid(),...] | [] | pid() | text()) -> 'ok'.
+remove([]) -> 'ok';
+remove([Connection|Connections]) when is_pid(Connection) ->
+    _ = wh_amqp_connection_sup:remove(Connection),
+    remove(Connections);
+remove(Connection) when is_pid(Connection) ->
+    wh_amqp_connection_sup:remove(Connection);
+remove(Broker) when not is_binary(Broker) ->
+    remove(wh_util:to_binary(Broker));
+remove(Broker) -> 
+    Pattern = #wh_amqp_connections{broker=Broker
+                                   ,connection='$1'
+                                   ,_='_'},
+    remove([Connection || [Connection] <- ets:match(?TAB, Pattern)]).
 
--spec remove(text()) -> 'ok'.
-remove(URI) when not is_binary(URI) ->
-    remove(wh_util:to_binary(URI));
-remove(URI) ->
-    case ets:lookup(?TAB, URI) of
-        [] -> 'ok';
-        [#wh_amqp_connection{}=Connection] ->
-            _ = wh_amqp_channels:lost_connection(Connection),
-            _ = wh_amqp_connection_sup:remove(Connection),
-            'ok'
-    end.
+-spec available(pid()) -> 'ok'.
+available(Connection) when is_pid(Connection) ->
+    gen_server:cast(?MODULE, {'connection_available', Connection}).
 
--spec current() -> {'ok', wh_amqp_connection()} |
-                   {'error', 'no_available_connection'}.
-current() ->
-    Match = #wh_amqp_connection{available='true', _='_'},
-    case ets:match_object(?TAB, Match) of
-        [Connection|_] ->
-            {'ok', Connection};
-        _Else ->
-            {'error', 'no_available_connection'}
-    end.
+-spec unavailable(pid()) -> 'ok'.
+unavailable(Connection) when is_pid(Connection) ->
+    gen_server:cast(?MODULE, {'connection_unavailable', Connection}).
 
--spec available() -> wh_amqp_connections().
-available() ->
-    Match = #wh_amqp_connection{available='true', _='_'},
-    ets:match_object(?TAB, Match).
 
--spec find(ne_binary() | string()) -> wh_amqp_connection() |
-                                      {'error', 'not_found'}.
-find(URI) ->
-    case ets:lookup(?TAB, wh_util:to_binary(URI)) of
-        [#wh_amqp_connection{}=Connection|_] ->
-            Connection;
-        _Else ->
-            {'error', 'not_found'}
+-spec broker_connections(ne_binary()) -> non_neg_integer().
+broker_connections(Broker) ->
+    MatchSpec = [{#wh_amqp_connections{broker=Broker
+                                       ,_='_'},
+                  [],
+                  ['true']}
+                ],
+    ets:select_count(?TAB, MatchSpec).
+
+-spec broker_available_connections(ne_binary()) -> non_neg_integer().
+broker_available_connections(Broker) ->
+    MatchSpec = [{#wh_amqp_connections{broker=Broker
+                                       ,available='true'
+                                       ,_='_'},
+                  [],
+                  ['true']}
+                ],
+    ets:select_count(?TAB, MatchSpec).
+
+-spec primary_broker() -> api_binary().
+primary_broker() ->
+    Pattern = #wh_amqp_connections{available='true'
+                                   ,federation='false'
+                                   ,broker='$1'
+                                   ,_='_'},
+    case lists:sort([Broker
+                     || [Broker] <- ets:match(?TAB, Pattern)
+                    ])
+    of
+        [] -> 'undefined';
+        [Broker|_] -> Broker
     end.
 
 -spec is_available() -> boolean().
-is_available() ->
-    case current() of
-        {'ok', _} -> 'true';
-        {'error', _} -> 'false'
-    end.
+is_available() -> primary_broker() =/= 'undefined'.
 
 -spec wait_for_available() -> 'ok'.
-wait_for_available() ->
+wait_for_available() -> wait_for_available('infinity').
+
+-spec wait_for_available('infinity') -> 'ok';
+                        (non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
+wait_for_available(Timeout) ->
     case is_available() of
         'true' -> 'ok';
         'false' ->
-            timer:sleep(random:uniform(1000) + 100),
-            wait_for_available()
+            gen_server:cast(?MODULE, {'add_watcher', self()}),
+            wait_for_notification(Timeout)
     end.
-
--spec exchanges() -> [#'exchange.declare'{},...] | [].
-exchanges() ->
-    gen_server:call(?MODULE, 'exchanges').
-
--spec exchanges(ne_binary()) -> [#'exchange.declare'{},...] | [].
-exchanges(URI) ->
-    case find(URI) of
-        #wh_amqp_connection{exchanges=Exchanges} ->
-            Exchanges;
-        {'error', 'not_found'} -> []
-    end.
-
--spec update_exchanges(string() | ne_binary(), wh_exchanges()) -> 'ok'.
-update_exchanges(URI, Exchanges) ->
-    gen_server:cast(?MODULE, {'update_exchanges', wh_util:to_binary(URI), Exchanges}).
-
--spec connected(wh_amqp_connection()) -> wh_amqp_connection().
-connected(#wh_amqp_connection{connection=Pid, uri=NewURI}=Connection) when is_pid(Pid) ->
-    case current() of
-        {'ok', #wh_amqp_connection{uri=CurrentURI}} ->
-            C = gen_server:call(?MODULE, {'connected', Connection}),
-            _ = case NewURI < CurrentURI of
-                    'true' ->
-                        gen_server:cast(?MODULE, {'force_reconnect', Connection});
-                    'false' -> 'ok'
-                end,
-            C;
-        {'error', 'no_available_connection'} ->
-            C = gen_server:call(?MODULE, {'connected', Connection}),
-            gen_server:cast(?MODULE, {'force_reconnect', Connection}),
-            C
-    end.
-
--spec disconnected(wh_amqp_connection()) -> wh_amqp_connection().
-disconnected(#wh_amqp_connection{}=Connection) ->
-    _ = wh_amqp_channels:lost_connection(Connection),
-    gen_server:call(?MODULE, {'disconnected', Connection}).
-
--spec declare_exchange(#'exchange.declare'{}) -> 'ok'.
-declare_exchange(#'exchange.declare'{}=Command) ->
-    gen_server:cast(?MODULE, {'add_exchange', Command}),
-    declare_exchange(available(), Command).
-
--spec redeclare_exchanges(wh_amqp_connection()) -> 'ok'.
-redeclare_exchanges(#wh_amqp_connection{}=Connection) ->
-    redeclare_exchanges(exchanges(), Connection).
-
+    
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -215,12 +170,16 @@ redeclare_exchanges(#wh_amqp_connection{}=Connection) ->
 %% @spec init(Args) -> {ok, State} |
 %%                     {ok, State, Timeout} |
 %%                     ignore |
-%%                     {stop, Reason}
+%%                     {'stop', Reason}
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
-    _ = ets:new(?TAB, ['named_table', 'ordered_set', {'keypos', #wh_amqp_connection.uri}]),
+    put(callid, ?LOG_SYSTEM_ID),
+    _ = ets:new(?TAB, ['named_table'
+                       ,{'keypos', #wh_amqp_connections.connection}
+                       ,'protected'
+                       ,{'read_concurrency', 'true'}
+                      ]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -229,44 +188,15 @@ init([]) ->
 %% Handling call messages
 %%
 %% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
+%%                                   {'reply', Reply, State} |
+%%                                   {'reply', Reply, State, Timeout} |
+%%                                   {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
+%%                                   {'stop', Reason, Reply, State} |
+%%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call('exchanges', _, #state{exchanges=Exchanges}=State) ->
-    {'reply', [V || {_, V} <- dict:to_list(Exchanges)], State};
-handle_call({'new', #wh_amqp_connection{uri=URI}=Connection}, _, State) ->
-    case ets:insert_new(?TAB, Connection) of
-        'true' -> {'reply', Connection, State};
-        'false' -> {'reply', find(URI), State}
-    end;
-handle_call({'connected', #wh_amqp_connection{uri=URI
-                                              ,connection=Pid
-                                              ,connection_ref=Ref
-                                              ,control_channel=CtrlPid
-                                             }=C}
-            ,_, State) ->
-    Updates = [{#wh_amqp_connection.connection, Pid}
-               ,{#wh_amqp_connection.connection_ref, Ref}
-               ,{#wh_amqp_connection.available, 'true'}
-               ,{#wh_amqp_connection.control_channel, CtrlPid}
-              ],
-    ets:update_element(?TAB, URI, Updates),
-    {'reply', C#wh_amqp_connection{available='true'}, ensure_same_connection(State)};
-handle_call({'disconnected', #wh_amqp_connection{uri=URI}=C}, _, State) ->
-    Updates = [{#wh_amqp_connection.connection, 'undefined'}
-               ,{#wh_amqp_connection.connection_ref, 'undefined'}
-               ,{#wh_amqp_connection.available, 'false'}
-               ,{#wh_amqp_connection.exchanges, []}
-               ,{#wh_amqp_connection.control_channel, 'undefined'}
-              ],
-    ets:update_element(?TAB, URI, Updates),
-    {'reply', C#wh_amqp_connection{available='false'}, ensure_same_connection(State)};
-handle_call(_Request, _From, State) ->
+handle_call(_Msg, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
@@ -274,48 +204,57 @@ handle_call(_Request, _From, State) ->
 %% @doc
 %% Handling cast messages
 %%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
+%% @spec handle_cast(Msg, State) -> {'noreply', State} |
+%%                                  {'noreply', State, Timeout} |
+%%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'force_reconnect', Connection}, State) ->
-    wh_amqp_channels:force_reconnect(Connection),
-    {'noreply', State};
-handle_cast({'add_exchange', #'exchange.declare'{exchange=Name}=Command}
-            ,#state{exchanges=Exchanges}=State) ->
-    {'noreply', State#state{exchanges=dict:store(Name, Command, Exchanges)}};
-handle_cast({'add_exchange', URI, #'exchange.declare'{exchange=Name}=Command}, State) ->
-    Exchanges = [Command
-                 |lists:filter(fun(#'exchange.declare'{exchange=N}) ->
-                                       N =/= Name;
-                                  (_) -> 'true'
-                               end, exchanges(URI))
-                ],
-    ets:update_element(?TAB, URI, {#wh_amqp_connection.exchanges, Exchanges}),
-    {'noreply', State};
+handle_cast({'new_connection', Connection, Broker, Federation}, State) ->
+    Ref = erlang:monitor('process', Connection),
+    _ = ets:insert(?TAB, #wh_amqp_connections{connection=Connection
+                                              ,connection_ref=Ref
+                                              ,broker=Broker
+                                              ,federation=Federation}),
+    {'noreply', State, 'hibernate'};
+handle_cast({'connection_available', Connection}, State) ->
+    lager:debug("connection ~p is now available", [Connection]),
+    Props = [{#wh_amqp_connections.available, 'true'}],
+    _ = ets:update_element(?TAB, Connection, Props),
+    {'noreply', notify_watchers(State), 'hibernate'};
+handle_cast({'connection_unavailable', Connection}, State) ->
+    lager:warning("connection ~p is no longer available", [Connection]),
+    Props = [{#wh_amqp_connections.available, 'false'}],
+    _ = ets:update_element(?TAB, Connection, Props),
+    {'noreply', State, 'hibernate'};
+handle_cast({'add_watcher', Watcher}, State) ->
+    case is_available() of
+        'false' -> {'noreply', add_watcher(Watcher, State), 'hibernate'};
+        'true' ->
+            _ = notify_watcher(Watcher),
+            {'noreply', State, 'hibernate'}
+    end;
 handle_cast(_Msg, State) ->
-    {'noreply', State}.
+    {'noreply', State, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling all non call/cast messages
 %%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
+%% @spec handle_info(Info, State) -> {'noreply', State} |
+%%                                   {'noreply', State, Timeout} |
+%%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('$ensure_same_connection', State) ->
-    _ = case current() of
-            {'ok', #wh_amqp_connection{}=Connection} ->
-                wh_amqp_channels:force_reconnect(Connection);
-            {'error', _} -> 'ok'
-        end,
-    {'noreply', State};
+handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->    
+    lager:warning("connection ~p went down: ~p"
+                  ,[Connection, _Reason]),
+    erlang:demonitor(Ref, ['flush']),
+    _ = ets:delete(?TAB, Connection),
+    {'noreply', State, 'hibernate'};
 handle_info(_Info, State) ->
-    {'noreply', State}.
+    lager:debug("unhandled message: ~p", [_Info]),
+    {'noreply', State, 'hibernate'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -329,7 +268,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("connections terminating: ~p", [_Reason]).
+    lager:debug("AMQP connections terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -345,30 +284,34 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec declare_exchange(wh_amqp_connections(), #'exchange.declare'{}) -> ok.
-declare_exchange([], _) -> 'ok';
-declare_exchange([#wh_amqp_connection{control_channel=Pid
-                                      ,uri=URI
-                                     }
-                  | Connections
-                 ], #'exchange.declare'{exchange=Name, type=_Ty}=Command) ->
-    _ = case amqp_channel:call(Pid, Command) of
-            #'exchange.declare_ok'{} ->
-                lager:debug("declared ~s exchange ~s on ~s via ~p", [_Ty, Name, URI, Pid]),
-                gen_server:cast(?MODULE, {'add_exchange', URI, Command});
-            _Else -> 'ok'
-        end,
-    declare_exchange(Connections, Command).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec add_watcher(pid(), state()) -> state().
+add_watcher(Watcher, #state{watchers=Watchers}=State) ->
+    State#state{watchers=sets:add_element(Watcher, Watchers)}.
 
--spec redeclare_exchanges([#'exchange.declare'{},...] | [], wh_amqp_connection()) -> 'ok'.
-redeclare_exchanges([], _) -> 'ok';
-redeclare_exchanges([Command|Commands], Connection)->
-    _ = declare_exchange([Connection], Command),
-    redeclare_exchanges(Commands, Connection).
+-spec notify_watchers(state()) -> state().
+notify_watchers(#state{watchers=[]}=State) -> 
+    State#state{watchers=sets:new()};
+notify_watchers(#state{watchers=[Watcher|Watchers]}=State) -> 
+    _ = notify_watcher(Watcher),
+    notify_watchers(State#state{watchers=Watchers});
+notify_watchers(#state{watchers=Watchers}=State) ->
+    notify_watchers(State#state{watchers=sets:to_list(Watchers)}).
 
--spec ensure_same_connection(#state{}) -> #state{}.
-ensure_same_connection(#state{ensure_tref='undefined'}=State) ->
-    State#state{ensure_tref=erlang:send_after(?ENSURE_TIME, self(), '$ensure_same_connection')};
-ensure_same_connection(#state{ensure_tref=TRef}=State) ->
-    _ = erlang:cancel_timer(TRef),
-    ensure_same_connection(State#state{ensure_tref='undefined'}).
+-spec notify_watcher(pid()) -> any().
+notify_watcher(Watcher) ->
+    Watcher ! {'wh_amqp_connections', 'connection_available'}.
+
+-spec wait_for_notification('infinity') -> 'ok';
+                           (non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
+wait_for_notification(Timeout) ->
+    receive
+        {'wh_amqp_connections', 'connection_available'} -> 'ok'
+    after
+        Timeout -> {'error', 'timeout'}
+    end.

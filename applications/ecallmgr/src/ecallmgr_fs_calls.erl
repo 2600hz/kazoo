@@ -230,7 +230,7 @@ create_call_status_resp(Props, 'true') ->
      ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
                                                ,props:get_value(<<"Caller-Caller-ID-Number">>, Props))}
      ,{<<"Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}
+     ,{<<"Other-Leg-Call-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Name">>, OLCIName}
      ,{<<"Other-Leg-Caller-ID-Number">>, OLCINum}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
@@ -257,7 +257,7 @@ create_call_status_resp(Props, 'false') ->
      ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
                                                ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props))}
      ,{<<"Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
+     ,{<<"Other-Leg-Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Name">>, OLCIName}
      ,{<<"Other-Leg-Caller-ID-Number">>, OLCINum}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, Props)}

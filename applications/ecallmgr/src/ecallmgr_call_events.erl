@@ -23,12 +23,15 @@
 -export([shutdown/2]).
 -export([to_json/1]).
 -export([swap_call_legs/1]).
--export([create_event/3]).
--export([create_event_props/3]).
+-export([create_event/1
+         ,create_event/2
+         ,create_event/3
+        ]).
 -export([publish_event/1]).
+-export([process_channel_event/1]).
 -export([transfer/3]).
--export([get_fs_var/4]).
 -export([handle_publisher_usurp/2]).
+-export([get_application_name/1]).
 -export([queue_name/1
          ,callid/1
          ,node/1
@@ -118,10 +121,7 @@ queue_name(Srv) -> gen_listener:queue_name(Srv).
 
 -spec to_json(wh_proplist()) -> wh_json:object().
 to_json(Props) ->
-    Masqueraded = is_masquerade(Props),
-    EventName = get_event_name(Props, Masqueraded),
-    ApplicationName = get_event_application(Props, Masqueraded),
-    wh_json:from_list(create_event(EventName, ApplicationName, Props)).
+    wh_json:from_list(create_event(Props)).
 
 -spec handle_publisher_usurp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
@@ -165,7 +165,10 @@ handle_publisher_usurp(JObj, Props) ->
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put('callid', CallId),
     gen_listener:cast(self(), 'init'),
-    {'ok', #state{node=Node, callid=CallId}}.
+    {'ok', #state{node=Node
+                  ,callid=CallId
+                  ,ref=wh_util:rand_hex_binary(12)
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -207,16 +210,8 @@ handle_cast('init', #state{node=Node
     'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
     'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
     'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
-    Ref = wh_util:rand_hex_binary(12),
-    Usurp = [{<<"Call-ID">>, CallId}
-             ,{<<"Media-Node">>, Node}
-             ,{<<"Reference">>, Ref}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    wapi_call:publish_usurp_publisher(CallId, Usurp),
-    {'noreply', State#state{sanity_check_tref=TRef
-                            ,ref = Ref
-                           }};
+    _ = usurp_other_publishers(State),
+    {'noreply', State#state{sanity_check_tref=TRef}};
 handle_cast({'update_node', Node}, #state{node=Node}=State) ->
     {'noreply', State};
 handle_cast({'update_node', Node}, #state{node=OldNode
@@ -277,6 +272,8 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
         {<<"CHANNEL_DESTROY">>, _} ->
             maybe_process_channel_destroy(Node, CallId, Props),
             {'noreply', State};
+        {<<"CHANNEL_ANSWER">>, _} ->
+            {'noreply', State};
         {?CHANNEL_MOVE_RELEASED_EVENT_BIN, _} ->
             lager:debug("channel move released call on our node", []),
             {'stop', 'normal', State};
@@ -332,7 +329,6 @@ handle_info('timeout', #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX
 handle_info('timeout', #state{node=Node
                               ,callid=CallId
                               ,failed_node_checks=FNC
-                              ,ref=Ref
                              }=State) ->
     erlang:monitor_node(Node, 'true'),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
@@ -348,12 +344,7 @@ handle_info('timeout', #state{node=Node
             'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
             'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
             'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
-            Usurp = [{<<"Call-ID">>, CallId}
-                     ,{<<"Media-Node">>, Node}
-                     ,{<<"Reference">>, Ref}
-                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ],
-            wapi_call:publish_usurp_publisher(CallId, Usurp),
+            _ = usurp_other_publishers(State),
             {'noreply', State#state{failed_node_checks=0}};
         {'ok', Reason} ->
             lager:warning("unable to find call on node ~s: ~p", [Node, Reason]),
@@ -427,116 +418,85 @@ code_change(_OldVsn, State, _Extra) ->
 -spec maybe_process_channel_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
 maybe_process_channel_destroy(Node, CallId, Props) ->
     case ecallmgr_fs_channel:node(CallId) of
-        {'ok', Node} -> process_channel_destroy(Node, CallId, Props);
-        {'error', _} -> process_channel_destroy(Node, CallId, Props);
+        {'ok', Node} -> gen_server:cast(self(), {'graceful_shutdown'});
+        {'error', _} -> gen_server:cast(self(), {'graceful_shutdown'});
         {'ok', _NewNode} ->
-            lager:debug("surpressing destroy; ~s is on ~s, not ~s: publishing channel move instead", [CallId, _NewNode, Node]),
-            publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props))
+            lager:debug("channel is on ~s, not ~s: publishing channel move"
+                        ,[CallId, _NewNode, Node]),
+            Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
+            publish_event(Event)
     end.
-
--spec process_channel_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
-process_channel_destroy(_, _, Props) ->
-    EventName = props:get_value(<<"Event-Name">>, Props),
-    ApplicationName = props:get_value(<<"Application">>, Props),
-    publish_event(create_event(EventName, ApplicationName, Props)),
-    gen_server:cast(self(), {'graceful_shutdown'}).
 
 -spec process_channel_event(wh_proplist()) -> 'ok'.
 process_channel_event(Props) ->
-    CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
-                             props:get_value(<<"Unique-ID">>, Props)),
-    put('callid', CallId),
+    put('callid', get_call_id(Props)),
+    EventName = get_event_name(Props),
+    ApplicationName = get_application_name(Props),
     Masqueraded = is_masquerade(Props),
-    EventName = get_event_name(Props, Masqueraded),
-    ApplicationName = get_event_application(Props, Masqueraded),
-
     case should_publish(EventName, ApplicationName, Masqueraded) of
-        'false' -> lager:debug("not publishing ~s(~s): ~s", [EventName, ApplicationName, props:get_value(<<"Action">>, Props)]);
+        'false' ->
+            Action = props:get_value(<<"Action">>, Props),
+            lager:debug("not publishing ~s(~s): ~s"
+                               ,[EventName, ApplicationName, Action]);
         'true' ->
-            %% TODO: the adding of the node to the props is for event_specific conference
-            %% clause until we can break the conference stuff into its own module
-            publish_event(create_event(EventName, ApplicationName, Props))
+            Event = create_event(EventName, ApplicationName, Props),
+            publish_event(Event)
     end.
 
--spec create_event(ne_binary(), api_binary(), wh_proplist()) -> wh_proplist().
-create_event(_, <<"sofia::transferee">>, Props) ->
-    create_event(<<"CHANNEL_TRANSFEREE">>, <<"transfer">>, Props);
-create_event(_, <<"sofia::transferor">>, Props) ->
-    create_event(<<"CHANNEL_TRANSFEROR">>, <<"transfer">>, Props);
-create_event(_, <<"sofia::replaced">>, Props) ->
-    create_event(<<"CHANNEL_REPLACED">>, <<"transfer">>, Props);
+-spec create_event(wh_proplist()) -> wh_proplist().
+create_event(Props) ->
+    create_event(get_event_name(Props), Props).
+
+-spec create_event(ne_binary(), wh_proplist()) -> wh_proplist().
+create_event(EventName, Props) ->
+    create_event(EventName, get_application_name(Props), Props).
+
+-spec create_event(ne_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
 create_event(EventName, ApplicationName, Props) ->
-    wh_api:default_headers(?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION)
-        ++ create_event_props(EventName, ApplicationName, Props).
-
--spec create_event_props(binary(), api_binary(), wh_proplist()) -> wh_proplist().
-create_event_props(EventName, ApplicationName, Props) ->
-    CCVs = ecallmgr_util:custom_channel_vars(Props),
-
-    {Mega,Sec,Micro} = os:timestamp(),
-    Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
-
-    %% Unix-epoch, in microseconds
-    FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
-    NormalizedFSTimestamp = wh_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
-
     props:filter_undefined(
-      [{<<"Msg-ID">>, wh_util:to_binary(FSTimestamp)}
-       ,{<<"Timestamp">>, NormalizedFSTimestamp}
-       ,{<<"Call-ID">>, find_fs_callid(Props)}
-       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
-       ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
-       ,{<<"Channel-State">>, get_channel_state(Props)}
-       ,{<<"Transfer-History">>, get_transfer_history(Props)}
-       ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
-       ,{<<"Hangup-Code">>, get_hangup_code(Props)}
-       ,{<<"Disposition">>, get_disposition(Props)}
-       ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
-       ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
-       ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
-       ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
-       ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props,
-                                                    props:get_value(<<"variable_holding_uuid">>, Props))}
-
-       ,{<<"Fax-Success">>, props:get_value(<<"variable_fax_success">>, Props) =/= <<"0">>}
-       ,{<<"Fax-Result-Code">>, props:get_value(<<"variable_fax_result_code">>, Props)}
-       ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
-       ,{<<"Fax-ECM-Used">>, props:get_value(<<"variable_fax_ecm_used">>, Props) =/= <<"off">>}
-       ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
-       ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
-       ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
-       ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
-
-       ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-       %% this sucks, its leaky but I dont see a better way around it since we need the raw application
-       %% name in call_control... (see note in call_control on start_link for why we need to use AMQP
-       %% to communicate to it)
-       ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
-       ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
-       ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
-       ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
-       ,{<<"Channel-Moving">>, wh_util:to_binary(is_channel_moving(Props))}
-       ,{<<"Replaced-By">>, props:get_value(<<"att_xfer_replaced_by">>, Props)}
-       | event_specific(EventName, ApplicationName, Props)
+      [{<<"Event-Name">>, EventName} 
+       |specific_call_event_props(EventName, ApplicationName, Props) 
+       ++ generic_call_event_props(Props)
       ]).
 
-find_fs_callid(Props) ->
-    find_fs_callid(Props, [<<"Caller-Unique-ID">>
-                           ,<<"Unique-ID">>
-                           ,<<"variable_uuid">>
-                           ,<<"Channel-Call-UUID">>
-                           ,<<"variable_sip_call_id">>
-                          ]).
-find_fs_callid(Props, [H|T]) ->
-    case props:get_value(H, Props) of
-        'undefined' -> find_fs_callid(Props, T);
-        V -> V
-    end;
-find_fs_callid(_, []) -> 'undefined'.
-
--spec is_channel_moving(wh_proplist()) -> boolean().
-is_channel_moving(Props) ->
-    wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)).
+-spec generic_call_event_props(wh_proplist()) -> wh_proplist().
+generic_call_event_props(Props) ->
+    {Mega,Sec,Micro} = os:timestamp(),
+    Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
+    FSTimestamp = props:get_integer_value(<<"Event-Date-Timestamp">>, Props, Timestamp),
+    NormalizedFSTimestamp = wh_util:unix_seconds_to_gregorian_seconds(FSTimestamp div 1000000),
+    [{<<"Timestamp">>, NormalizedFSTimestamp}
+     ,{<<"Msg-ID">>, wh_util:to_binary(FSTimestamp)}
+     ,{<<"Call-ID">>, get_call_id(Props)}
+     ,{<<"Transfer-History">>, get_transfer_history(Props)}
+     ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
+     ,{<<"Hangup-Code">>, get_hangup_code(Props)}
+     ,{<<"Disposition">>, get_disposition(Props)}
+     ,{<<"Raw-Application-Name">>, get_raw_application_name(Props)}
+     ,{<<"Channel-Moving">>, get_channel_moving(Props)}
+     ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+     ,{<<"Caller-ID-Number">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
+                                                        ,<<"Caller-Caller-ID-Number">>
+                                                       ], Props)}
+     ,{<<"Caller-ID-Name">>, props:get_first_defined([<<"variable_effective_caller_id_name">>
+                                                      ,<<"Caller-Caller-ID-Name">>
+                                                     ], Props)}
+     ,{<<"Callee-ID-Number">>, props:get_value(<<"Caller-Callee-ID-Number">>, Props)}
+     ,{<<"Callee-ID-Name">>, props:get_value(<<"Caller-Callee-ID-Name">>, Props)}
+     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
+     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
+     ,{<<"Other-Leg-Call-ID">>, props:get_first_defined([<<"Other-Leg-Unique-ID">>
+                                                         ,<<"variable_holding_uuid">>
+                                                        ], Props)}
+     ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
+     ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
+     ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+     ,{<<"Replaced-By">>, props:get_value(<<"att_xfer_replaced_by">>, Props)}
+     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
 
 -spec publish_event(wh_proplist()) -> 'ok'.
 publish_event(Props) ->
@@ -544,10 +504,6 @@ publish_event(Props) ->
     %% events queue by calling create_event then this directly.
     EventName = wh_util:to_lower_binary(props:get_value(<<"Event-Name">>, Props, <<>>)),
     ApplicationName = wh_util:to_lower_binary(props:get_value(<<"Application-Name">>, Props, <<>>)),
-    CallId = props:get_value(<<"Call-ID">>, Props),
-
-    put('callid', CallId),
-
     case {ApplicationName, EventName} of
         {_, <<"dtmf">>} ->
             Pressed = props:get_value(<<"DTMF-Digit">>, Props),
@@ -562,7 +518,7 @@ publish_event(Props) ->
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
-    wapi_call:publish_event(CallId, Props).
+    wapi_call:publish_event(Props).
 
 -spec is_masquerade(wh_proplist()) -> boolean().
 is_masquerade(Props) ->
@@ -574,104 +530,110 @@ is_masquerade(Props) ->
         _Else -> 'false'
     end.
 
--spec get_event_name(wh_proplist(), boolean()) -> api_binary().
-get_event_name(Props, 'true') -> props:get_value(<<"whistle_event_name">>, Props);
-get_event_name(Props, 'false') -> props:get_value(<<"Event-Name">>, Props).
-
--spec get_event_application(wh_proplist(), boolean()) -> api_binary().
-get_event_application(Props, 'true') ->
-    %% when the event is masqueraded override the actual application
-    %% with what whistle wants the event to be
-    props:get_value(<<"whistle_application_name">>, Props);
-get_event_application(Props, 'false') ->
-    props:get_value(<<"Application">>, Props
-                    ,props:get_value(<<"Event-Subclass">>, Props)).
-
 %% return a proplist of k/v pairs specific to the event
--spec event_specific(binary(), api_binary(), wh_proplist()) -> wh_proplist().
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"playback">> = Application, Prop) ->
-    %% if the playback was terminated as a result of DTMF, include it
-    [{<<"DTMF-Digit">>, props:get_value(<<"variable_playback_terminator_used">>, Prop)}
-     ,{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
-     ,{<<"Group-ID">>, props:get_value(<<"variable_media_group_id">>, Prop)}
-    ];
-
-event_specific(<<"CHANNEL_EXECUTE">>, <<"conference">>, Prop) ->
-    conference_specific(Prop);
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"conference">>, Prop) ->
-    case props:get_value(<<"variable_current_application_data">>, Prop) of
-        <<"page_", _/binary>> -> page_specific(Prop);
-        _Else -> conference_specific(Prop)
+-spec specific_call_event_props(binary(), api_binary(), wh_proplist()) -> wh_proplist().
+specific_call_event_props(<<"CHANNEL_EXECUTE">>, <<"conference">>, Props) ->
+    conference_specific(Props);
+specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"conference">>, Props) ->
+    case props:get_value(<<"variable_current_application_data">>, Props) of
+        <<"page_", _/binary>> -> page_specific(Props);
+        _Else -> conference_specific(Props)
     end;
-
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
+specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"playback">> = Application, Props) ->
+    %% if the playback was terminated as a result of DTMF, include it
+    [{<<"DTMF-Digit">>, props:get_value(<<"variable_playback_terminator_used">>, Props)}
+     ,{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
+     ,{<<"Group-ID">>, props:get_value(<<"variable_media_group_id">>, Props)}
+    ];
+specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Props) ->
     [{<<"Application-Name">>, <<"noop">>}
-     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop)}
+     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Props)}
     ];
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
+specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Props) ->
     [{<<"Application-Name">>, <<"bridge">>}
-     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Props, <<"FAIL">>)}
     ];
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"record">>, Prop) ->
+specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"record">>, Props) ->
     [{<<"Application-Name">>, <<"bridge">>}
-     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
-     ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Prop)}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Props, <<"FAIL">>)}
+     ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Props)}
     ];
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, Prop) ->
+specific_call_event_props(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, Props) ->
     [{<<"Application-Name">>, props:get_value(<<"set">>, ?FS_APPLICATION_NAMES)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
     ];
-
-event_specific(<<"CHANNEL_CREATE">>, _, Prop) ->
-    [{<<"To">>, ecallmgr_util:get_sip_to(Prop)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(Prop)}
-     ,{<<"Request">>, ecallmgr_util:get_sip_request(Prop)}
+specific_call_event_props(<<"CHANNEL_CREATE">>, _, Props) ->
+    [{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+     ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+     ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
     ];
-event_specific(<<"CHANNEL_ANSWER">>, _, Prop) ->
-    [{<<"To">>, ecallmgr_util:get_sip_to(Prop)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(Prop)}
-     ,{<<"Request">>, ecallmgr_util:get_sip_request(Prop)}
+specific_call_event_props(<<"CHANNEL_ANSWER">>, _, Props) ->
+    [{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+     ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+     ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
     ];
-event_specific(<<"CHANNEL_DESTROY">>, _, Prop) ->
-    [{<<"To">>, ecallmgr_util:get_sip_to(Prop)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(Prop)}
-     ,{<<"Request">>, ecallmgr_util:get_sip_request(Prop)}
+specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
+    [{<<"Fax-Success">>, get_fax_success(Props)}
+     ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+     ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+     ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
+     ,{<<"Remote-SDP">>, props:get_value(<<"variable_switch_r_sdp">>, Props)}
+     ,{<<"Local-SDP">>, props:get_value(<<"variable_sip_local_sdp_str">>, Props)}
+     ,{<<"Duration-Seconds">>, props:get_value(<<"variable_duration">>, Props)}
+     ,{<<"Billing-Seconds">>, props:get_value(<<"variable_billsec">>, Props)}
+     ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
+     ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
+     ,{<<"Fax-Result-Code">>, props:get_value(<<"variable_fax_result_code">>, Props)}
+     ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
+     ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
+     ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
+     ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
+     ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
     ];
-
-event_specific(<<"RECORD_STOP">>, _, Prop) ->
+specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
-     ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop, props:get_value(<<"whistle_application_response">>, Prop))}
-     ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Prop)}
-     ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Prop)}
-     ,{<<"Silence-Terminated">>, silence_terminated(Prop)}
+     ,{<<"Application-Response">>, props:get_first_defined([<<"Record-File-Path">>
+                                                            ,<<"whistle_application_response">>
+                                                           ], Props)}
+     ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Props)}
+     ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Props)}
+     ,{<<"Silence-Terminated">>, silence_terminated(Props)}
     ];
-event_specific(<<"DETECTED_TONE">>, _, Prop) ->
-    [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop)}];
-event_specific(<<"DTMF">>, _, Prop) ->
-    Pressed = props:get_value(<<"DTMF-Digit">>, Prop),
-    Duration = props:get_value(<<"DTMF-Duration">>, Prop),
-    [{<<"DTMF-Digit">>, Pressed}
-     ,{<<"DTMF-Duration">>, Duration}
+specific_call_event_props(<<"DETECTED_TONE">>, _, Props) ->
+    [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Props)}];
+specific_call_event_props(<<"DTMF">>, _, Props) ->
+    [{<<"DTMF-Digit">>, props:get_value(<<"DTMF-Digit">>, Props)}
+     ,{<<"DTMF-Duration">>, props:get_value(<<"DTMF-Duration">>, Props)}
     ];
-event_specific(_, <<"play_and_get_digits">>, Prop) ->
+specific_call_event_props(_, <<"play_and_get_digits">>, Props) ->
     [{<<"Application-Name">>, <<"play_and_collect_digits">>}
-     ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Prop, <<"">>)}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Props, <<"">>)}
     ];
-event_specific(_Evt, Application, Prop) ->
+specific_call_event_props(_Evt, Application, Props) ->
     [{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
     ].
 
-page_specific(Prop) ->
+-spec page_specific(wh_proplist()) -> wh_proplist().
+page_specific(Props) ->
     [{<<"Application-Name">>, <<"page">>}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
     ].
-conference_specific(Prop) ->
+
+-spec conference_specific(wh_proplist()) -> wh_proplist().
+conference_specific(Props) ->
     Default = [{<<"Application-Name">>, <<"conference">>}
-               ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
+               ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
               ],
-    case props:get_value(<<"Application-Data">>, Prop) of
+    case props:get_value(<<"Application-Data">>, Props) of
         'undefined' -> Default;
         ConfData ->
             case binary:split(ConfData, <<"@">>) of
@@ -684,24 +646,6 @@ conference_specific(Prop) ->
             end
     end.
 
--spec silence_terminated(api_integer() | wh_proplist()) -> api_boolean().
-silence_terminated('undefined') -> 'undefined';
-silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0;
-silence_terminated(Prop) when is_list(Prop) ->
-    case props:get_value(<<"variable_silence_hits_exhausted">>, Prop) of
-        'undefined' -> silence_terminated(props:get_integer_value(<<"variable_record_silence_hits">>, Prop));
-        Ex -> wh_util:is_true(Ex)
-    end.
-
--spec get_fs_var(atom(), ne_binary(), ne_binary(), binary()) -> binary().
-get_fs_var(Node, CallId, Var, Default) ->
-    case freeswitch:api(Node, 'uuid_getvar', wh_util:to_list(<<CallId/binary, " ", Var/binary>>)) of
-        {'ok', <<"_undef_">>} -> Default;
-        {'ok', <<"_none_">>} -> Default;
-        {'ok', Value} -> Value;
-        _ -> Default
-    end.
-
 -spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false') ->
     lager:debug("suppressing bridge execute complete in favour the whistle masquerade of this event"),
@@ -712,24 +656,104 @@ should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, 'false') ->
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, 'false') ->
     lager:debug("suppressing execute_extension execute complete in favour the whistle masquerade of this event"),
     'false';
+should_publish(<<"CHANNEL_EXECUTE", _/binary>>, <<"park">>, _) ->
+    'false';
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
     props:get_value(Application, ?FS_APPLICATION_NAMES) =/= 'undefined';
-should_publish(_, <<"sofia::transferee">>, _) ->
-    'true';
-should_publish(_, <<"sofia::transferor">>, _) ->
-    'true';
-should_publish(_, <<"sofia::replaced">>, _) ->
+should_publish(_, <<"transfer">>, _) ->
     'true';
 should_publish(EventName, _A, _) ->
     lists:member(EventName, ?CALL_EVENTS).
 
+-spec silence_terminated(api_integer() | wh_proplist()) -> api_boolean().
+silence_terminated('undefined') -> 'undefined';
+silence_terminated(Hits) when is_integer(Hits) -> Hits =:= 0;
+silence_terminated(Prop) when is_list(Prop) ->
+    case props:get_value(<<"variable_silence_hits_exhausted">>, Prop) of
+        'undefined' -> silence_terminated(props:get_integer_value(<<"variable_record_silence_hits">>, Prop));
+        Ex -> wh_util:is_true(Ex)
+    end.
+
+-spec is_channel_moving(wh_proplist()) -> boolean().
+is_channel_moving(Props) ->
+    props:get_is_true(<<"variable_channel_is_moving">>, Props, 'false').
+
+-spec get_channel_moving(wh_proplist()) -> 'undefined' | boolean().
+get_channel_moving(Props) ->
+    case is_channel_moving(Props) of
+        'false' -> 'undefined';
+        'true' -> 'true'
+    end.        
+
+-spec get_call_id(wh_proplist()) -> api_binary().
+get_call_id(Props) ->
+    props:get_first_defined([<<"Caller-Unique-ID">>
+                             ,<<"Unique-ID">>
+                             ,<<"variable_uuid">>
+                             ,<<"Channel-Call-UUID">>
+                             ,<<"variable_sip_call_id">>
+                            ], Props).
+
+-spec get_event_name(wh_proplist()) -> api_binary().
+get_event_name(Props) ->
+    case props:get_first_defined([<<"whistle_application_name">>
+                                  ,<<"Application">>
+                                  ,<<"Event-Subclass">>
+                                 ], Props)
+    of
+        <<"sofia::transferee">> -> <<"CHANNEL_TRANSFEREE">>;
+        <<"sofia::transferor">> -> <<"CHANNEL_TRANSFEROR">>;
+        <<"sofia::replaced">> -> <<"CHANNEL_REPLACED">>;
+        _Else ->
+            props:get_first_defined([<<"whistle_event_name">>
+                                     ,<<"Event-Name">>
+                                    ], Props)
+    end.
+
+-spec get_application_name(wh_proplist()) -> api_binary().
+get_application_name(Props) ->
+    case props:get_first_defined([<<"whistle_application_name">>
+                                  ,<<"Application">>
+                                  ,<<"Event-Subclass">>
+                                 ], Props)
+    of
+        <<"sofia::transferee">> -> <<"transfer">>;
+        <<"sofia::transferor">> -> <<"transfer">>;
+        <<"sofia::replaced">> -> <<"transfer">>;
+        Else -> Else
+    end.
+
+-spec get_raw_application_name(wh_proplist()) -> api_binary().
+get_raw_application_name(Props) ->
+    props:get_first_defined([<<"Application">>
+                             ,<<"whistle_application_name">>
+                             ,<<"Event-Subclass">>
+                            ], Props).
+
+-spec get_fax_success(wh_proplist()) -> 'undefined' | boolean().
+get_fax_success(Props) ->
+    case props:get_value(<<"variable_fax_success">>, Props) of
+        'undefined' -> 'undefined';
+        Else -> Else =/= <<"0">>
+    end.
+
+-spec get_fax_ecm_used(wh_proplist()) -> 'undefined' | boolean().
+get_fax_ecm_used(Props) ->
+    case props:get_value(<<"variable_fax_ecm_used">>, Props) of
+        'undefined' -> 'undefined';
+        Else -> Else =/= <<"off">>
+    end.
+
 -spec get_transfer_history(wh_proplist()) -> wh_json:object().
 get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
-    Hist = [HistJObj
-            || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
-               (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']))) =/= 'undefined'],
-    wh_json:from_list(Hist).
+    case [HistJObj
+          || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
+             (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, ['global']))) =/= 'undefined']
+    of
+        [] -> 'undefined';
+        History -> wh_json:from_list(History)
+    end.
 
 -spec create_trnsf_history_object(list()) -> {ne_binary(), wh_json:object()} | 'undefined'.
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
@@ -754,47 +778,30 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
 create_trnsf_history_object(_) ->
     'undefined'.
 
--spec get_channel_state(wh_proplist()) -> ne_binary().
-get_channel_state(Prop) ->
-    case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
-        'undefined' -> <<"unknown">>;
-        ChannelState -> ChannelState
-    end.
-
 -spec get_hangup_cause(wh_proplist()) -> api_binary().
 get_hangup_cause(Props) ->
-    Causes = case props:get_value(<<"variable_current_application">>, Props) of
-                 <<"bridge">> ->
-                     [<<"variable_bridge_hangup_cause">>, <<"variable_hangup_cause">>, <<"Hangup-Cause">>];
-                 _ ->
-                     [<<"variable_hangup_cause">>, <<"variable_bridge_hangup_cause">>, <<"Hangup-Cause">>]
-             end,
-    find_event_value(Causes, Props).
+    case props:get_value(<<"variable_current_application">>, Props) of
+        <<"bridge">> ->
+            props:get_first_defined([<<"variable_bridge_hangup_cause">>
+                                     ,<<"variable_hangup_cause">>
+                                     ,<<"Hangup-Cause">>], Props);
+        _Else ->
+            props:get_first_defined([<<"variable_hangup_cause">>
+                                     ,<<"variable_bridge_hangup_cause">>
+                                     ,<<"Hangup-Cause">>], Props)
+    end.
 
 -spec get_disposition(wh_proplist()) -> api_binary().
 get_disposition(Props) ->
-    find_event_value([<<"variable_originate_disposition">>
-                      ,<<"variable_endpoint_disposition">>
-                     ], Props).
+    props:get_first_defined([<<"variable_originate_disposition">>
+                             ,<<"variable_endpoint_disposition">>
+                            ], Props).
 
 -spec get_hangup_code(wh_proplist()) -> api_binary().
 get_hangup_code(Props) ->
-    find_event_value([<<"variable_proto_specific_hangup_cause">>
-                      ,<<"variable_last_bridge_proto_specific_hangup_cause">>
-                     ], Props).
-
--spec find_event_value(ne_binaries(), wh_proplist()) -> api_binary().
-find_event_value(Keys, Props) ->
-    find_event_value(Keys, Props, 'undefined').
-
--spec find_event_value(ne_binaries(), wh_proplist(), term()) -> term().
-find_event_value([], _, Default) -> Default;
-find_event_value([H|T], Props, Default) ->
-    Value = props:get_value(H, Props),
-    case wh_util:is_empty(Value) of
-        'true' -> find_event_value(T, Props, Default);
-        'false' -> Value
-    end.
+    props:get_first_defined([<<"variable_proto_specific_hangup_cause">>
+                             ,<<"variable_last_bridge_proto_specific_hangup_cause">>
+                            ], Props).
 
 -spec swap_call_legs(wh_proplist() | wh_json:object()) -> wh_proplist().
 -spec swap_call_legs(wh_proplist(), wh_proplist()) -> wh_proplist().
@@ -809,3 +816,14 @@ swap_call_legs([{<<"Other-Leg-", Key/binary>>, Value}|T], Swap) ->
     swap_call_legs(T, [{<<"Caller-", Key/binary>>, Value}|Swap]);
 swap_call_legs([Prop|T], Swap) ->
     swap_call_legs(T, [Prop|Swap]).
+
+-spec usurp_other_publishers(state()) -> 'ok'.
+usurp_other_publishers(#state{node=Node
+                              ,ref=Ref
+                              ,callid=CallId}) ->
+    Usurp = [{<<"Call-ID">>, CallId}
+             ,{<<"Media-Node">>, Node}
+             ,{<<"Reference">>, Ref}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wapi_call:publish_usurp_publisher(CallId, Usurp).

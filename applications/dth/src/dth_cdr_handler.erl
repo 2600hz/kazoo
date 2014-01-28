@@ -60,7 +60,7 @@ init() ->
 %%     detergent:call(WsdlModel, "SubmitCallRecord", [CallRecord]).
 
 handle_req(JObj, Props) ->
-    true = wapi_call:cdr_v(JObj),
+    true = wapi_call:event_v(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallID),
 

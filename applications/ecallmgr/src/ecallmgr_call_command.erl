@@ -984,7 +984,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                                   | EvtProp1
                                  ]
                end,
-    wapi_call:publish_event(UUID, EvtProp2).
+    wapi_call:publish_event(EvtProp2).
 
 -spec send_store_fax_call_event(ne_binary(), ne_binary()) -> 'ok'.
 send_store_fax_call_event(UUID, Results) ->
@@ -995,7 +995,7 @@ send_store_fax_call_event(UUID, Results) ->
             ,{<<"Application-Response">>, Results}
             | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
            ],
-    wapi_call:publish_event(UUID, Prop).
+    wapi_call:publish_event(Prop).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1029,7 +1029,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
                                | EvtProp1
                               ]
             end,
-        wapi_call:publish_event(UUID, EvtProp2)
+        wapi_call:publish_event(EvtProp2)
     catch
         Type:_ ->
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}

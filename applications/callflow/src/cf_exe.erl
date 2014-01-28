@@ -72,9 +72,7 @@
 -spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
-    Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', ['events', 'cdr', 'destroy_channel', 'control_usurp']}
-                         ]}
+    Bindings = [{'call', [{'callid', CallId}]}
                 ,{'self', []}
                ],
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
@@ -375,8 +373,6 @@ handle_cast({'send_amqp', API, PubFun}, #state{queue=Q}=State) ->
     send_amqp_message(API, PubFun, Q),
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
-    {'noreply', State};
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),

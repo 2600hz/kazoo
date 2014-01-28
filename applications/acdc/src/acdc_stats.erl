@@ -485,8 +485,6 @@ handle_cast({'remove_status', [{M, P, _}]}, State) ->
     lager:debug("removed statuses (or not): ~p", [N]),
     {'noreply', State};
 
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_Q}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->

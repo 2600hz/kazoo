@@ -9,56 +9,63 @@
 -module(trunkstore_maintenance).
 
 -export([migrate/0
+         ,i_understand_migrate/0
          ,clear_old_calls/0
         ]).
 
 -include("ts.hrl").
 
 migrate() ->
+    io:format("This command is ancient, if you REALLY know what you are duing run:~n", []),
+    io:format(" sup trunkstore_maintenance i_understand_migrate").
+
+i_understand_migrate() ->
     lager:info("migrating trunkstore information from the ts database"),
-    case couch_mgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, [{<<"include_docs">>, true}]) of
-        {error, not_found} ->
+    case couch_mgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, [{<<"include_docs">>, 'true'}]) of
+        {'error', 'not_found'} ->
             lager:info("ts database not found or ts_account/crossbar_listing view missing");
-        {ok, TSAccts} ->
+        {'ok', TSAccts} ->
             lager:info("trying ~b ts accounts", [length(TSAccts)]),
-            _ = [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct))) || Acct <- TSAccts],
+            _ = [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct))) 
+                 || Acct <- TSAccts
+                ],
             lager:info("migration complete")
     end.
 
 maybe_migrate(AcctJObj) ->
     Realm = wh_json:get_value([<<"account">>, <<"auth_realm">>], AcctJObj),
     case account_exists_with_realm(Realm) of
-        {true, AcctDB, AcctID} ->
+        {'true', AcctDB, AcctID} ->
             lager:info("account with realm ~s exists in ~s", [Realm, AcctDB]),
             move_doc(AcctDB, AcctID, AcctJObj);
-        false ->
+        'false' ->
             lager:info("account with realm ~s does not exist", [Realm]),
             case create_account(Realm) of
-                {ok, AcctDB, AcctID} ->
+                {'ok', AcctDB, AcctID} ->
                     lager:info("account db ~s created for realm ~s", [AcctDB, Realm]),
                     move_doc(AcctDB, AcctID, AcctJObj);
-                ignore ->
+                'ignore' ->
                     lager:info("failed to create an account db for realm ~s", [Realm])
             end;
-        ignore ->
+        'ignore' ->
             lager:info("ignoring ts account with realm ~s", [Realm])
     end.
 
 move_doc(AcctDB, AcctID, TSJObj) ->
     case has_ts_doc(AcctDB) of
-        true -> lager:info("looks like trunkstore account has been moved already");
-        false ->
-            {ok, AcctTSJObj} = create_ts_doc(AcctDB, AcctID, TSJObj),
-            {ok, _} = create_credit_doc(AcctDB, AcctID, AcctTSJObj),
+        'true' -> lager:info("looks like trunkstore account has been moved already");
+        'false' ->
+            {'ok', AcctTSJObj} = create_ts_doc(AcctDB, AcctID, TSJObj),
+            {'ok', _} = create_credit_doc(AcctDB, AcctID, AcctTSJObj),
             _ = whapps_maintenance:refresh(AcctID),
-            ok
+            'ok'
     end.
 
 has_ts_doc(AcctDB) ->
     case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, []) of
-        {ok, []} -> false;
-        {ok, _} -> true;
-        _ -> false
+        {'ok', []} -> 'false';
+        {'ok', _} -> 'true';
+        _ -> 'false'
     end.
 
 create_ts_doc(AcctDB, AcctID, TSJObj) ->
@@ -68,7 +75,7 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
                                ,{<<"pvt_account_id">>, AcctID}
                               ], wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, TSJObj))),
     lager:info("saving ts doc ~s into ~s", [wh_json:get_value(<<"_id">>, TSJObj), AcctDB]),
-    {ok, _} = couch_mgr:save_doc(AcctDB, JObj).
+    {'ok', _} = couch_mgr:save_doc(AcctDB, JObj).
 
 create_credit_doc(AcctDB, AcctID, TSJObj) ->
     Credit = wh_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], TSJObj, 0.0),
@@ -85,37 +92,37 @@ create_credit_doc(AcctDB, AcctID, TSJObj) ->
 account_exists_with_realm(Realm) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Realm)}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
-        {ok, []} -> false;
-        {ok, [AcctObj]} -> {true, wh_json:get_value([<<"value">>, <<"account_db">>], AcctObj), wh_json:get_value([<<"value">>, <<"account_id">>], AcctObj)};
-        {error, _E} ->
+        {'ok', []} -> 'false';
+        {'ok', [AcctObj]} -> 
+            {'true'
+             ,wh_json:get_value([<<"value">>, <<"account_db">>], AcctObj)
+             ,wh_json:get_value([<<"value">>, <<"account_id">>], AcctObj)};
+        {'error', _E} ->
             lager:info("failed to lookup account view: ~p", [_E]),
-            ignore
+            'ignore'
     end.
 
 create_account(Realm) ->
     AcctID = couch_mgr:get_uuid(),
-    AcctDB = wh_util:format_account_id(AcctID, encoded),
+    AcctDB = wh_util:format_account_id(AcctID, 'encoded'),
     case couch_mgr:db_create(AcctDB) of
-        true ->
+        'true' ->
             lager:info("created account db: ~s", [AcctDB]),
-
             case create_account_doc(Realm, AcctID, AcctDB) of
-                ignore ->
+                'ignore' ->
                     lager:info("failed to create account doc for ~s", [Realm]),
-                    ignore;
+                    'ignore';
                 _ ->
-                    {ok, AcctDB, AcctID}
+                    {'ok', AcctDB, AcctID}
             end;
-        false ->
+        'false' ->
             lager:info("failed to create account db: ~s", [AcctDB]),
-            ignore
+            'ignore'
     end.
 
 create_account_doc(Realm, AcctID, AcctDB) ->
     lager:info("creating the account doc in ~s and ~s", [AcctDB, ?WH_ACCOUNTS_DB]),
-
     Default = whapps_config:get(<<"crossbar.accounts">>, <<"default_parent">>, <<>>),
-
     Doc = wh_json:from_list([{<<"realm">>, Realm}
                              ,{<<"name">>, Realm}
                              ,{<<"pvt_account_id">>, AcctID}
@@ -127,27 +134,27 @@ create_account_doc(Realm, AcctID, AcctDB) ->
                              ,{<<"_id">>, AcctID}
                             ]),
     case couch_mgr:save_doc(AcctDB, Doc) of
-        {ok, _} ->
-            {ok, _} = couch_mgr:save_doc(?WH_ACCOUNTS_DB, Doc);
-        {error, _E} ->
+        {'ok', _} ->
+            {'ok', _} = couch_mgr:save_doc(?WH_ACCOUNTS_DB, Doc);
+        {'error', _E} ->
             lager:info("failed to save account doc into ~s: ~p", [AcctDB, _E]),
-            ignore
+            'ignore'
     end.
 
 %% some calls get stuck if they miss the CDR
 %% this clears them out
 clear_old_calls() ->
-    _ = clear_old_calls(ts_offnet_sup),
-    clear_old_calls(ts_onnet_sup).
+    _ = clear_old_calls('ts_offnet_sup'),
+    clear_old_calls('ts_onnet_sup').
 
 clear_old_calls(Super) ->
     Ps = [P || {_,P,_,_} <- supervisor:which_children(Super)],
     [begin
-         {dictionary, D} = erlang:process_info(P, dictionary),
-         C = proplists:get_value(callid, D),
+         {'dictionary', D} = erlang:process_info(P, 'dictionary'),
+         C = proplists:get_value('callid', D),
          case whapps_call_command:channel_status(C) of
-             {error, _} -> {P, C, exit(P, kill)};
-             _ -> {P, C, ok}
+             {'error', _} -> {P, C, exit(P, 'kill')};
+             _ -> {P, C, 'ok'}
          end
      end || P <- Ps
     ].

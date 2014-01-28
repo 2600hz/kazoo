@@ -17,24 +17,24 @@
 
 %% API
 -export([start_link/0]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("ts.hrl").
 
--define(RESPONDERS, [
-                     {ts_route_req, [{<<"dialplan">>, <<"route_req">>}]}
-                    ]).
--define(BINDINGS, [
-                   {route, []}
-                  ]).
+-define(RESPONDERS, [{'ts_route_req', [{<<"dialplan">>, <<"route_req">>}]}]).
+-define(BINDINGS, [{'route', []}]).
 
 -define(SERVER, ?MODULE).
 -define(ROUTE_QUEUE_NAME, <<"trunkstore_listener">>).
--define(ROUTE_QUEUE_OPTIONS, [{exclusive, false}]).
--define(ROUTE_CONSUME_OPTIONS, [{exclusive, false}]).
+-define(ROUTE_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(ROUTE_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -48,11 +48,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?ROUTE_QUEUE_NAME}
-                                      ,{queue_options, ?ROUTE_QUEUE_OPTIONS}
-                                      ,{consume_options, ?ROUTE_CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+                                      ,{'bindings', ?BINDINGS}
+                                      ,{'queue_name', ?ROUTE_QUEUE_NAME}
+                                      ,{'queue_options', ?ROUTE_QUEUE_OPTIONS}
+                                      ,{'consume_options', ?ROUTE_CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -72,7 +72,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:info("started ts_responder"),
-    {ok, ok}.
+    {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -89,7 +89,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, ignored, State}.
+    {'reply', 'ignored', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,7 +102,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -116,11 +116,18 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Unhandled, State) ->
     lager:info("unknown message: ~p", [_Unhandled]),
-    {noreply, State}.
+    {'noreply', State}.
 
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -145,7 +152,7 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions

@@ -12,10 +12,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0
-         ,handle_cdr/2
-        ]).
-
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -27,29 +24,16 @@
 
 -include("hangups.hrl").
 
--define(RESPONDERS, [{{?MODULE, 'handle_cdr'}
-                      ,[{<<"call_detail">>, <<"cdr">>}]
+-define(RESPONDERS, [{'hangups_channel_destroy'
+                      ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                      }
                     ]).
--define(BINDINGS, [{'call', [{'restrict_to', ['cdr']}
-                             ,{'callid', <<"*">>}
-                            ]}
+-define(BINDINGS, [{'call'
+                    ,[{'restrict_to', ['CHANNEL_DESTROY']}]}
                   ]).
 -define(QUEUE_NAME, <<"hangups_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
-
--define(IGNORE, whapps_config:get(?APP_NAME
-                                  ,<<"ignore_hangup_causes">>
-                                  ,[<<"NO_ANSWER">>
-                                    ,<<"USER_BUSY">>
-                                    ,<<"NO_USER_RESPONSE">>
-                                    ,<<"LOSE_RACE">>
-                                    ,<<"ATTENDED_TRANSFER">>
-                                    ,<<"ORIGINATOR_CANCEL">>
-                                    ,<<"NORMAL_CLEARING">>
-                                    ,<<"ALLOTTED_TIMEOUT">>
-                                   ])).
 
 %%%===================================================================
 %%% API
@@ -70,65 +54,6 @@ start_link() ->
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
-
--spec handle_cdr(wh_json:object(), wh_proplist()) -> any().
-handle_cdr(JObj, _Props) ->
-    'true' = wapi_call:cdr_v(JObj),
-    IgnoreCauses = whapps_config:get(<<"hangups">>, <<"ignore_hangup_causes">>, ?IGNORE),
-    HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj, <<"unknown">>),
-    case lists:member(HangupCause, IgnoreCauses) of
-        'true' -> 'ok';
-        'false' ->
-            AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-            lager:debug("abnormal call termination: ~s", [HangupCause]),
-            wh_notify:system_alert("~s ~s to ~s (~s) on ~s(~s)"
-                                   ,[wh_util:to_lower_binary(HangupCause)
-                                     ,find_source(JObj)
-                                     ,find_destination(JObj)
-                                     ,find_direction(JObj)
-                                     ,find_realm(JObj, AccountId)
-                                     ,AccountId
-                                    ]
-                                   ,maybe_add_hangup_specific(HangupCause, JObj)
-                                  ),
-            add_to_meters(AccountId, HangupCause)
-    end.
-
--spec maybe_add_hangup_specific(ne_binary(), wh_json:object()) -> wh_proplist().
-maybe_add_hangup_specific(<<"UNALLOCATED_NUMBER">>, JObj) ->
-    maybe_add_number_info(JObj);
-maybe_add_hangup_specific(<<"NO_ROUTE_DESTINATION">>, JObj) ->
-    maybe_add_number_info(JObj);
-maybe_add_hangup_specific(_HangupCause, JObj) ->
-    wh_json:to_proplist(JObj).
-
--spec maybe_add_number_info(wh_json:object()) -> wh_proplist().
-maybe_add_number_info(JObj) ->
-    Destination = find_destination(JObj),
-    try stepswitch_util:lookup_number(Destination) of
-        {'ok', AccountId, _Props} ->
-            [{<<"Account-Tree">>, build_account_tree(AccountId)}
-             | wh_json:to_proplist(JObj)
-            ];
-        {'error', _} ->
-            [{<<"Hangups-Message">>, <<"Destination was not found in numbers DBs">>}
-             | wh_json:to_proplist(JObj)
-            ]
-    catch
-        _:_ -> wh_json:to_proplist(JObj)
-    end.
-
--spec build_account_tree(ne_binary()) -> wh_json:object().
-build_account_tree(AccountId) ->
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
-    Tree = wh_json:get_value(<<"pvt_tree">>, AccountDoc, []),
-    build_account_tree(Tree, []).
-
--spec build_account_tree(ne_binaries(), wh_proplist()) -> wh_json:object().
-build_account_tree([], Map) -> wh_json:from_list(Map);
-build_account_tree([AccountId|Tree], Map) ->
-    {'ok', AccountDoc} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
-    build_account_tree(Tree, [{AccountId, wh_json:get_value(<<"name">>, AccountDoc)} | Map]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -176,8 +101,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_QueueName}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
@@ -240,97 +163,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find_realm(wh_json:object(), ne_binary()) -> ne_binary().
-find_realm(JObj, AccountId) ->
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
-        'undefined' -> get_account_realm(AccountId);
-        Realm -> Realm
-    end.
-
--spec get_account_realm(api_binary()) -> ne_binary().
-get_account_realm('undefined') -> <<"unknown">>;
-get_account_realm(AccountId) ->
-    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
-        {'ok', JObj} -> wh_json:get_value(<<"realm">>, JObj, <<"unknown">>);
-        {'error', _} -> <<"unknown">>
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find_destination(wh_json:object()) -> ne_binary().
-find_destination(JObj) ->
-    case catch binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>) of
-        [Num|_] -> Num;
-        _ -> use_to_as_destination(JObj)
-    end.
-
--spec use_to_as_destination(wh_json:object()) -> ne_binary().
-use_to_as_destination(JObj) ->
-    case catch binary:split(wh_json:get_value(<<"To-Uri">>, JObj), <<"@">>) of
-        [Num|_] -> Num;
-        _ -> wh_json:get_value(<<"Callee-ID-Number">>, JObj, <<"unknown">>)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find_source(wh_json:object()) -> ne_binary().
-find_source(JObj) ->
-    case catch binary:split(wh_json:get_value(<<"From-Uri">>, JObj), <<"@">>) of
-        [Num|_] -> Num;
-        _ -> wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"unknown">>)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find_direction(wh_json:object()) -> ne_binary().
-find_direction(JObj) ->
-    wh_json:get_value(<<"Call-Direction">>, JObj, <<"unknown">>).
-
--spec start_meters(ne_binary()) -> 'ok'.
--spec start_meters(api_binary(), api_binary()) -> 'ok'.
-start_meters(HangupCause) ->
-    _ = folsom_metrics:new_meter(hangups_util:meter_name(HangupCause)).
-
-start_meters('undefined', _) -> 'ok';
-start_meters(_, 'undefined') -> 'ok';
-start_meters(AccountId, HangupCause) ->
-    _ = folsom_metrics:new_meter(hangups_util:meter_name(HangupCause, AccountId)).
-
--spec add_to_meters(api_binary(), api_binary()) -> 'ok'.
-add_to_meters(AccountId, HangupCause) ->
-    lager:debug("add to meter ~s/~s", [AccountId, HangupCause]),
-
-    start_meters(HangupCause),
-    start_meters(AccountId, HangupCause),
-
-    notify_meters(HangupCause),
-    notify_meters(AccountId, HangupCause),
-    'ok'.
-
--spec notify_meters(ne_binary()) -> any().
--spec notify_meters(api_binary(), api_binary()) -> any().
-notify_meters(HangupCause) ->
-    folsom_metrics_meter:mark(hangups_util:meter_name(HangupCause)).
-
-notify_meters('undefined', _) -> 'ok';
-notify_meters(_, 'undefined') -> 'ok';
-notify_meters(AccountId, HangupCause) ->
-    folsom_metrics_meter:mark(hangups_util:meter_name(HangupCause, AccountId)).

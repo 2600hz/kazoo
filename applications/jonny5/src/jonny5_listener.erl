@@ -23,18 +23,18 @@
 
 -record(state, {}).
 
--define(RESPONDERS, [{j5_authz_req, [{<<"authz">>, <<"authz_req">>}]}
-                     ,{j5_reauthz_req, [{<<"authz">>, <<"reauthz_req">>}]}
-                     ,{j5_authz_identify, [{<<"authz">>, <<"identify_req">>}]}
-                     ,{j5_call_cdr, [{<<"call_detail">>, <<"cdr">>}]}
+-define(RESPONDERS, [{'j5_authz_req', [{<<"authz">>, <<"authz_req">>}]}
+                     ,{'j5_reauthz_req', [{<<"authz">>, <<"reauthz_req">>}]}
+                     ,{'j5_authz_identify', [{<<"authz">>, <<"identify_req">>}]}
+                     ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
                     ]).
--define(BINDINGS, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}
-                   ,{authz, []}
-                   ,{self, []}
+-define(BINDINGS, [{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>]}]}
+                   ,{'authz', []}
+                   ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"jonny5_listener">>).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -define(SERVER, ?MODULE).
 
@@ -50,12 +50,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({local, ?SERVER}, ?MODULE, [{bindings, ?BINDINGS}
-                                                        ,{responders, ?RESPONDERS}
-                                                        ,{queue_name, ?QUEUE_NAME}
-                                                        ,{queue_options, ?QUEUE_OPTIONS}
-                                                        ,{consume_options, ?CONSUME_OPTIONS}
-                                                       ], []).
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
+                                                          ,{'responders', ?RESPONDERS}
+                                                          ,{'queue_name', ?QUEUE_NAME}
+                                                          ,{'queue_options', ?QUEUE_OPTIONS}
+                                                          ,{'consume_options', ?CONSUME_OPTIONS}
+                                                         ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -73,7 +73,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -90,7 +90,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,7 +103,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -116,7 +116,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,7 +127,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,7 +152,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions

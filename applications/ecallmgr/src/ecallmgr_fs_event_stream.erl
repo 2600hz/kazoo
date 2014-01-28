@@ -230,13 +230,8 @@ process_event(Data, Node) ->
     end.
 
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
-process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
-    _ = maybe_start_event_listener(Node, UUID),
-    publish_new_channel_event(Props);
-process_event(<<"CHANNEL_DESTROY">>, _, Props, _) ->
-    publish_destroy_channel_event(Props);
-process_event(<<"CHANNEL_ANSWER">>, _, Props, _) ->
-    publish_answered_channel_event(Props);
+process_event(<<"CHANNEL_CREATE">>, UUID, _, Node) ->
+    maybe_start_event_listener(Node, UUID);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
@@ -272,34 +267,3 @@ maybe_start_event_listener(Node, UUID) ->
         {'ok', 'true'} -> ecallmgr_call_sup:start_event_process(Node, UUID);
         _E -> 'ok'
     end.
-
--spec publish_new_channel_event(wh_proplist()) -> 'ok'.
-publish_new_channel_event(Props) ->
-    case ecallmgr_config:get_boolean(?PUBLISH_CHANNEL_STATE, 'true') of
-        'false' -> 'ok';
-        'true' ->
-            Req = wh_api:default_headers(<<"channel">>, <<"new">>, ?APP_NAME, ?APP_VERSION) ++
-                ecallmgr_call_events:create_event_props(<<"CHANNEL_CREATE">>, 'undefined', Props),
-            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_new_channel/1)
-    end.
-
--spec publish_answered_channel_event(wh_proplist()) -> 'ok'.
-publish_answered_channel_event(Props) ->
-    case ecallmgr_config:get_boolean(?PUBLISH_CHANNEL_STATE, 'false') of
-        'false' -> 'ok';
-        'true' ->
-            Req = wh_api:default_headers(<<"channel">>, <<"answered">>, ?APP_NAME, ?APP_VERSION) ++
-                ecallmgr_call_events:create_event_props(<<"CHANNEL_ANSWER">>, 'undefined', Props),
-            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_answered_channel/1)
-    end.
-
--spec publish_destroy_channel_event(wh_proplist()) -> 'ok'.
-publish_destroy_channel_event(Props) ->
-    case ecallmgr_config:get_boolean(?PUBLISH_CHANNEL_STATE, 'false') of
-        'false' -> 'ok';
-        'true' ->
-            Req = wh_api:default_headers(<<"channel">>, <<"destroy">>, ?APP_NAME, ?APP_VERSION) ++
-                ecallmgr_call_events:create_event_props(<<"CHANNEL_DESTROY">>, 'undefined', Props),
-            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Req, fun wapi_call:publish_destroy_channel/1)
-    end.
-

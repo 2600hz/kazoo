@@ -458,16 +458,8 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
                                }) ->
     CallId = whapps_call:call_id(Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
-        {{<<"call_event">>, <<"CHANNEL_HANGUP">>}, CallId} ->
-            lager:debug("received channel hangup event, terminate"),
-            gen_listener:cast(Srv, 'hungup'),
-            {'reply', [{'call_event_consumers', Consumers}]};
-        {{<<"call_detail">>, <<"cdr">>}, CallId} ->
-            lager:debug("received channel cdr event, terminate"),
-            gen_listener:cast(Srv, 'hungup'),
-            'ignore';
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            lager:debug("received channel destry, terminate"),
+            lager:debug("received channel hangup event, terminate"),
             gen_listener:cast(Srv, 'hungup'),
             {'reply', [{'call_event_consumers', Consumers}]};
         {{<<"call_event">>, _}, EventCallId} when EventCallId =/= CallId ->

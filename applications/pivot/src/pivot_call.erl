@@ -66,16 +66,13 @@
 start_link(Call, JObj) ->
     CallId = whapps_call:call_id(Call),
 
-    gen_listener:start_link(?MODULE, [{'bindings', [{'call', [{'callid', CallId}
-                                                              ,{'restrict_to', ['events', 'cdr']}
-                                                             ]}
+    gen_listener:start_link(?MODULE, [{'bindings', [{'call', [{'callid', CallId}]}
                                                     ,{'self', []}
                                                    ]}
                                       ,{'responders', [{{?MODULE, 'maybe_relay_event'}
                                                         ,[{<<"conference">>, <<"config_req">>}
-                                                          ,{<<"call_event">>, <<"*">>}
                                                           ,{<<"resource">>, <<"offnet_resp">>}
-                                                          ,{<<"call_detail">>, <<"cdr">>}
+                                                          ,{<<"call_event">>, <<"*">>}
                                                          ]
                                                        }
                                                       ]}
@@ -114,8 +111,8 @@ maybe_relay_event(JObj, Props) ->
 -spec relay_cdr_event(wh_json:object(), wh_proplist()) -> 'ok'.
 relay_cdr_event(JObj, Props) ->
     case wh_util:get_event_type(JObj) of
-        {<<"call_detail">>, <<"cdr">>} ->
-            Pid = props:get_value('server', Props),
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+            Pid = proplists:get_value('server', Props),
             gen_listener:cast(Pid, {'cdr', JObj});
         _ -> 'ok'
     end.
@@ -229,8 +226,6 @@ handle_cast({'add_event_handler', Pid}, #state{response_event_handlers=Pids}=Sta
     lager:debug("adding event handler ~p", [Pid]),
     {'noreply', State#state{response_event_handlers=[Pid | Pids]}};
 
-handle_cast({'wh_amqp_channel',{'new_channel',_IsNew}}, State) ->
-    {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Req, State) ->
