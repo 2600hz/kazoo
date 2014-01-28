@@ -49,6 +49,8 @@
          ,allow_methods/1, set_allow_methods/2
          ,allowed_methods/1, set_allowed_methods/2
          ,method/1, set_method/2
+         ,path_tokens/1
+         ,magic_pathed/1, set_magic_pathed/2
 
          ,req_json/1, set_req_json/2
          ,resp_error_code/1, set_resp_error_code/2
@@ -67,7 +69,7 @@
          ,req_value/2, req_value/3
         ]).
 
--include("crossbar.hrl").
+-include("./crossbar.hrl").
 
 -type context() :: #cb_context{}.
 -type setter_fun() :: fun((context(), term()) -> context()).
@@ -122,6 +124,11 @@ allow_methods(#cb_context{allow_methods=AMs}) -> AMs.
 allowed_methods(#cb_context{allowed_methods=AMs}) -> AMs.
 method(#cb_context{method=M}) -> M.
 
+path_tokens(#cb_context{raw_path=Path}) ->
+    binary:split(Path, <<"/">>, ['global']).
+
+magic_pathed(#cb_context{magic_pathed=MP}) -> MP.
+
 req_json(#cb_context{req_json=RJ}) -> RJ.
 content_types_accepted(#cb_context{content_types_accepted=CTAs}) -> CTAs.
 content_types_provided(#cb_context{content_types_provided=CTPs}) -> CTPs.
@@ -172,6 +179,7 @@ setters_fold({F, V}, C) -> F(C, V).
 -spec set_encodings_provided(context(), ne_binaries()) -> context().
 -spec set_resp_error_code(context(), integer()) -> context().
 -spec set_resp_error_msg(context(), api_binary()) -> context().
+-spec set_magic_pathed(context(), boolean()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
@@ -201,6 +209,8 @@ set_content_types_accepted(#cb_context{}=Context, CTAs) -> Context#cb_context{co
 set_content_types_provided(#cb_context{}=Context, CTPs) -> Context#cb_context{content_types_provided=CTPs}.
 set_languages_provided(#cb_context{}=Context, LP) -> Context#cb_context{languages_provided=LP}.
 set_encodings_provided(#cb_context{}=Context, EP) -> Context#cb_context{encodings_provided=EP}.
+set_magic_pathed(#cb_context{}=Context, MP) ->
+    Context#cb_context{magic_pathed=wh_util:is_true(MP)}.
 
 set_resp_error_code(#cb_context{}=Context, Code) -> Context#cb_context{resp_error_code=Code}.
 set_resp_error_msg(#cb_context{}=Context, Msg) -> Context#cb_context{resp_error_msg=Msg}.
