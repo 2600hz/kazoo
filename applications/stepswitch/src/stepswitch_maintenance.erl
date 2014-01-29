@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%% Preforms maintenance operations against the stepswitch dbs
 %%% @end
@@ -7,8 +7,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(stepswitch_maintenance).
-
--include("stepswitch.hrl").
 
 -export([resources/0]).
 -export([reverse_lookup/1]).
@@ -22,12 +20,15 @@
          ,process_number/2
         ]).
 
+-include("stepswitch.hrl").
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec reverse_lookup(text()) -> 'ok'.
 reverse_lookup(Thing) when not is_binary(Thing) ->
     reverse_lookup(wh_util:to_binary(Thing));
 reverse_lookup(Thing) ->
@@ -39,6 +40,7 @@ reverse_lookup(Thing) ->
         {'error', 'not_found'} -> io:format("resource not found~n")
     end.
 
+-spec pretty_print_lookup(wh_proplist()) -> 'ok'.
 pretty_print_lookup([]) -> 'ok';
 pretty_print_lookup([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
@@ -81,16 +83,19 @@ print_tree([AccountId|Tree]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec resources() -> 'ok'.
 resources() ->
     Props = stepswitch_resources:get_props(),
     pretty_print_resources(Props).
 
+-spec pretty_print_resources(list()) -> 'ok'.
 pretty_print_resources([]) -> 'ok';
 pretty_print_resources([Resource|Resources]) ->
     _ = pretty_print_resource(Resource),
     io:format("~n"),
     pretty_print_resources(Resources).
 
+-spec pretty_print_resource(list()) -> 'ok'.
 pretty_print_resource([]) -> 'ok';
 pretty_print_resource([{_, []}|Props]) ->
     pretty_print_resource(Props);
@@ -231,6 +236,7 @@ pretty_print_endpoint([{Key, Value}|Props]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec print_condensed_list(list()) -> 'ok'.
 print_condensed_list([E1, E2, E3]) ->
     io:format("    | ~-20s | ~-20s | ~-20s|~n"
               ,[wh_util:to_binary(E1)

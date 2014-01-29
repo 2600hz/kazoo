@@ -34,7 +34,7 @@ handle_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_audio_req(wh_json:object()) -> any().
@@ -52,7 +52,7 @@ handle_audio_req(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_originate_req(wh_json:object()) -> any().
@@ -61,7 +61,7 @@ handle_originate_req(JObj) ->
     lager:debug("received outbound audio resource request for ~s from account ~s"
                 ,[Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
     case wh_json:get_value(<<"Outbound-Call-ID">>, JObj) of
-        'undefined' -> 
+        'undefined' ->
             J = wh_json:set_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), JObj),
             maybe_originate(Number, J);
         _Else -> maybe_originate(Number, JObj)
@@ -70,7 +70,7 @@ handle_originate_req(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
@@ -79,7 +79,7 @@ maybe_force_outbound(Props, JObj) ->
         wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
     of
         'false' -> local_extension(Props, JObj);
-        'true' -> 
+        'true' ->
             Number = props:get_value('number', Props),
             maybe_bridge(Number, JObj)
     end.
@@ -87,7 +87,7 @@ maybe_force_outbound(Props, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_bridge(ne_binary(), wh_json:object()) -> any().
@@ -100,7 +100,7 @@ maybe_bridge(Number, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec local_extension(wh_proplist(), wh_json:object()) -> any().
@@ -109,7 +109,7 @@ local_extension(Props, JObj) -> stepswitch_request_sup:local_extension(Props, JO
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_originate(ne_binary(), wh_json:object()) -> any().
@@ -122,7 +122,7 @@ maybe_originate(Number, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_no_resources(wh_json:object()) -> 'ok'.
