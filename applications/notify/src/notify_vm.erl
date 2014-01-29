@@ -130,7 +130,7 @@ magic_hash(Event) ->
     MessageId = wh_json:get_value(<<"Voicemail-Name">>, Event),
 
     try list_to_binary([<<"/v1/accounts/">>, AccountId, <<"/vmboxes/">>, VMBoxId
-                        ,<<"/messages/">>, MessageId, <<"raw">>
+                        ,<<"/messages/">>, MessageId, <<"/raw">>
                        ])
     of
         URL -> whapps_util:to_magic_hash(URL)
