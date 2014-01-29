@@ -51,8 +51,8 @@
                        ,[{<<"directory">>, <<"reg_flush">>}]
                       }
                     ]).
--define(BINDINGS, [{'registration', [{'retrict_to', ['reg_success', 'reg_flush']}]}
-                   ,{'registration', [{'retrict_to', ['reg_query']}
+-define(BINDINGS, [{'registration', [{'retrict_to', ['reg_success']}]}
+                   ,{'registration', [{'retrict_to', ['reg_query', 'reg_flush']}
                                       ,'federate'
                                      ]}
                    ,{'self', []}

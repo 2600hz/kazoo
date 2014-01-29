@@ -42,7 +42,7 @@ search(Conference) ->
           ],
     ReqResp = whapps_util:amqp_pool_collect(Req
                                             ,fun wapi_conference:publish_search_req/1
-                                            ,{'ecallmgr', fun wapi_conference:search_resp_v/1}
+                                            ,{'ecallmgr', fun wapi_conference:search_resp_v/1, 'true'}
                                            ),
     lager:debug("searching for conference ~s", [ConferenceId]),
     case ReqResp of
