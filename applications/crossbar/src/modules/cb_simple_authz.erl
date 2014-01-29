@@ -50,7 +50,6 @@ authorize(Context, Verb, _Nouns) ->
     case (allowed_if_sys_admin_mod(IsSysAdmin, Context)
           andalso account_is_descendant(IsSysAdmin, Context)
          ) orelse (Verb =:= ?HTTP_GET andalso cb_context:magic_pathed(Context))
-
     of
         'true' ->
             lager:debug("authorizing the request"),
