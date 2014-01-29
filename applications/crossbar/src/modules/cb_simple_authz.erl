@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Simple authorization module
 %%%
@@ -34,21 +34,23 @@
 init() -> crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
 
 -spec authorize(cb_context:context()) -> boolean().
-authorize(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, []}]
-                      ,req_verb=Verb
-                     }=Context) ->
+authorize(Context) ->
+    authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+authorize(Context, Verb, [{?WH_ACCOUNTS_DB, []}]) ->
     case cb_modules_util:is_superduper_admin(Context) of
         'true' -> 'true';
         'false' -> Verb =:= ?HTTP_PUT
     end;
-authorize(#cb_context{req_nouns=[{<<"global_provisioner_templates">>,_}|_]
-                      ,req_verb = ?HTTP_GET
-                     }) ->
+authorize(_Context, ?HTTP_GET, [{<<"global_provisioner_templates">>,_}|_]) ->
     'true';
-authorize(#cb_context{auth_account_id=AuthAccountId}=Context) ->
+authorize(Context, Verb, _Nouns) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
     IsSysAdmin = cb_modules_util:is_superduper_admin(AuthAccountId),
-    case allowed_if_sys_admin_mod(IsSysAdmin, Context)
-        andalso account_is_descendant(IsSysAdmin, Context) of
+    case (allowed_if_sys_admin_mod(IsSysAdmin, Context)
+          andalso account_is_descendant(IsSysAdmin, Context)
+         ) orelse (Verb =:= ?HTTP_GET andalso cb_context:magic_pathed(Context))
+    of
         'true' ->
             lager:debug("authorizing the request"),
             'true';
@@ -65,13 +67,15 @@ authorize(#cb_context{auth_account_id=AuthAccountId}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec account_is_descendant(boolean(), cb_context:context()) -> boolean().
-account_is_descendant('true', _) -> 'true';
-account_is_descendant('false', #cb_context{auth_account_id='undefined'}) ->
+account_is_descendant('true', _Context) -> 'true';
+account_is_descendant('false', Context) ->
+    account_is_descendant('false', Context, cb_context:auth_account_id(Context)).
+
+account_is_descendant('false', _Context, 'undefined') ->
     lager:debug("not authorizing, auth account id is undefined"),
     'false';
-account_is_descendant('false', #cb_context{auth_account_id=AuthAccountId
-                                           ,req_nouns=Nouns
-                                          }) ->
+account_is_descendant('false', Context, AuthAccountId) ->
+    Nouns = cb_context:req_nouns(Context),
     %% get the accounts/.... component from the URL
     case props:get_value(?WH_ACCOUNTS_DB, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access
@@ -141,7 +145,8 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_sys_admin_mod(cb_context:context()) -> boolean().
-is_sys_admin_mod(#cb_context{req_nouns=Nouns}) ->
+is_sys_admin_mod(Context) ->
+    Nouns = cb_context:req_nouns(Context),
     lists:any(fun(E) -> E end
               ,[props:get_value(Mod, Nouns) =/= 'undefined' || Mod <- ?SYS_ADMIN_MODS]
              ).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% API resource
 %%% @end
@@ -70,11 +70,12 @@ rest_init(Req0, Opts) ->
                 end,
     {Host, Req1} = cowboy_req:host(Req0),
     {Port, Req2} = cowboy_req:port(Req1),
-    {Path, Req3} = cowboy_req:path(Req2),
+    {Path, Req3} = find_path(Req2, Opts),
     {QS, Req4} = cowboy_req:qs(Req3),
     {Method, Req5} = cowboy_req:method(Req4),
     {{Peer, _PeerPort}, Req6} = cowboy_req:peer(Req5),
-    {Version, Req7} = cowboy_req:binding('version', Req6),
+    {Version, Req7} = find_version(Path, Req6),
+
     ClientIP = case cowboy_req:header(<<"x-forwarded-for">>, Req7) of
                 {'undefined', _} -> wh_network_utils:iptuple_to_binary(Peer);
                 {ForwardIP, _} -> wh_util:to_binary(ForwardIP)
@@ -92,11 +93,41 @@ rest_init(Req0, Opts) ->
                   ,client_ip = ClientIP
                   ,profile_id = ProfileId
                   ,api_version = Version
+                  ,magic_pathed = props:is_defined('magic_path', Opts)
                  },
     Event = api_util:create_event_name(Context0, <<"init">>),
     {Context1, _} = crossbar_bindings:fold(Event, {Context0, Opts}),
     lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
     {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req7), Context1}.
+
+find_version(Path, Req) ->
+    case cowboy_req:binding('version', Req) of
+        {'undefined', Req1} -> {find_version(Path), Req1};
+        {_Version, _Req1}=Found -> Found
+    end.
+find_version(Path) ->
+    lager:debug("find version in ~s", [Path]),
+    case binary:split(Path, <<"/">>, ['global']) of
+        [Path] -> <<"v1">>;
+        [<<>>, Ver | _] -> to_version(Ver);
+        [Ver | _] -> to_version(Ver)
+    end.
+
+to_version(<<"v", Int/binary>>=Version) ->
+    try wh_util:to_integer(Int) of
+        _ -> Version
+    catch
+        _:_ -> <<"v1">>
+    end;
+to_version(_) -> <<"v1">>.
+
+find_path(Req, Opts) ->
+    case props:get_value('magic_path', Opts) of
+        'undefined' -> cowboy_req:path(Req);
+        Magic ->
+            lager:debug("found magic path: ~s", [Magic]),
+            {Magic, Req}
+    end.
 
 terminate(_Req, _Context) ->
     lager:debug("session finished").
@@ -121,6 +152,7 @@ rest_terminate(Req, Context, Verb) ->
 -spec known_methods(cowboy_req:req(), cb_context:context()) ->
                            {http_methods(), cowboy_req:req(), cb_context:context()}.
 known_methods(Req, Context) ->
+    lager:debug("run: known_methods"),
     {?ALLOWED_METHODS
      ,Req
      ,cb_context:set_allowed_methods(
@@ -129,24 +161,33 @@ known_methods(Req, Context) ->
        )
     }.
 
+path_tokens(Context) ->
+    Api = cb_context:api_version(Context),
+    case cb_context:path_tokens(Context) of
+        [<<>>, Api | Tokens] -> Tokens;
+        [Api | Tokens] -> Tokens
+    end.
+
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
                              {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
 allowed_methods(Req0, Context) ->
+    lager:debug("run: allowed_methods"),
     Methods = cb_context:allowed_methods(Context),
-    {Tokens, Req1} = cowboy_req:path_info(Req0),
+    Tokens = path_tokens(Context),
+
     case api_util:parse_path_tokens(Context, Tokens) of
         [_|_] = Nouns ->
             %% Because we allow tunneling of verbs through the request,
             %% we have to check and see if we need to override the actual
             %% HTTP method with the tunneled version
-            case api_util:get_req_data(Context, Req1) of
-                {'halt', Context1, Req2} ->
-                    api_util:halt(Req2, cb_context:add_system_error('parse_error', Context1));
-                {Context1, Req2} ->
-                    determine_http_verb(Req2, cb_context:set_req_nouns(Context1, Nouns))
+            case api_util:get_req_data(Context, Req0) of
+                {'halt', Context1, Req1} ->
+                    api_util:halt(Req1, cb_context:add_system_error('parse_error', Context1));
+                {Context1, Req1} ->
+                    determine_http_verb(Req1, cb_context:set_req_nouns(Context1, Nouns))
             end;
         [] ->
-            {Methods, Req1, cb_context:set_allow_methods(Context, Methods)}
+            {Methods, Req0, cb_context:set_allow_methods(Context, Methods)}
     end.
 
 -spec determine_http_verb(cowboy_req:req(), cb_context:context()) ->

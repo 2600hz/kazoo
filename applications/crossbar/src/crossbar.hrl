@@ -127,6 +127,7 @@
           ,load_merge_bypass :: api_object()
           ,profile_id :: api_binary()
           ,api_version = <<"v1">> :: binary()
+          ,magic_pathed = 'false' :: boolean()
          }).
 
 -define(CROSSBAR_HRL, 'true').

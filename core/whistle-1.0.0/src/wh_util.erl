@@ -27,6 +27,7 @@
          ,to_float/1, to_float/2
          ,to_number/1
          ,to_hex/1, to_hex_binary/1, rand_hex_binary/1
+         ,from_hex_binary/1, from_hex_string/1
          ,to_list/1, to_binary/1
          ,to_atom/1, to_atom/2
         ]).
@@ -481,10 +482,35 @@ to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
 
+-spec from_hex_binary(binary()) -> binary().
+from_hex_binary(Bin) ->
+    to_binary(from_hex_string(to_list(Bin))).
+
+-spec from_hex_string(list()) -> list().
+-spec from_hex_string(list(), list()) -> list().
+from_hex_string(Str) ->
+    from_hex_string(Str, []).
+
+from_hex_string([], Acc) -> lists:reverse(Acc);
+from_hex_string([Div, Rem | T], Acc) ->
+    Lo = hex_char_to_binary(Rem),
+    Hi = hex_char_to_binary(Div),
+
+    Sum = (Hi * 16) + Lo,
+
+    from_hex_string(T, [Sum|Acc]).
+
+-spec hex_char_to_binary(pos_integer()) -> pos_integer().
+hex_char_to_binary(B) when B < 58 ->
+    (to_lower_char(B) - $0);
+hex_char_to_binary(B) ->
+    to_lower_char(B) - ($a - 10).
+
 -spec rand_hex_binary(pos_integer()) -> ne_binary().
 rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
     to_hex_binary(crypto:rand_bytes(Size)).
 
+-spec binary_to_hex_char(pos_integer()) -> pos_integer().
 binary_to_hex_char(N) when N < 10 -> $0 + N;
 binary_to_hex_char(N) when N < 16 -> $a - 10 + N.
 
@@ -858,6 +884,12 @@ prop_to_binary() ->
 
 prop_iolist_t() ->
     ?FORALL(IO, iolist(), is_binary(to_binary(IO))).
+
+prop_to_from_hex_test() ->
+    ?FORALL({F}, {binary()},
+            begin
+                F =:= from_hex_binary(to_hex_binary(F))
+            end).
 
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
