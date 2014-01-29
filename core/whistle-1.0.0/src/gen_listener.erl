@@ -76,6 +76,11 @@
          ,nack/2
         ]).
 
+-export([execute/4
+         ,execute/3
+         ,execute/2
+        ]).
+
 -export([federated_event/3]).
 -export([handle_event/4]).
 -export([distribute_event/3]).
@@ -104,6 +109,7 @@
          ,module_state :: module_state()
          ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
          ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}},...] | [] %% {QueueName, {proplist(), wh_proplist()}}
+         ,federators = []
          ,self = self()
          ,consumer_key = wh_amqp_channel:consumer_pid()
          }).
@@ -260,8 +266,21 @@ rm_binding(Srv, {Binding, Props}) ->
 rm_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {'rm_binding', wh_util:to_binary(Binding), Props}).
 
+-spec federated_event(server_ref(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
 federated_event(Srv, JObj, BasicDeliver) ->
     gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver}).
+
+-spec execute(server_ref(), module(), atom(), [term()]) -> 'ok'.
+execute(Srv, Module, Function, Args) ->
+    gen_server:cast(Srv, {'$execute', Module, Function, Args}).
+
+-spec execute(server_ref(), atom(), [term()]) -> 'ok'.
+execute(Srv, Function, Args) ->
+    gen_server:cast(Srv, {'$execute', Function, Args}).
+
+-spec execute(server_ref(), function()) -> 'ok'.
+execute(Srv, Function) when is_function(Function) ->
+    gen_server:cast(Srv, {'$execute', Function}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -302,13 +321,24 @@ init(Module, Params, ModState, TimeoutRef) ->
          || {Mod, Events} <- Responders
         ],
     _ = wh_amqp_channel:requisition(),
-    _ = maybe_start_federator(Params),
-    {'ok', #state{module=Module
-                  ,module_state=ModState
-                  ,module_timeout_ref=TimeoutRef
-                  ,params=Params
-                  ,bindings=props:get_value('bindings', Params, [])
-               }}.
+    case maybe_start_federator(Params) of
+        {'ok', Federator} ->
+            {'ok', #state{module=Module
+                          ,module_state=ModState
+                          ,module_timeout_ref=TimeoutRef
+                          ,params=Params
+                          ,federators=[Federator]
+                          ,bindings=props:get_value('bindings', Params, [])
+                         }};
+        _Else ->
+            {'ok', #state{module=Module
+                          ,module_state=ModState
+                          ,module_timeout_ref=TimeoutRef
+                          ,params=Params
+                          ,federators=[]
+                          ,bindings=props:get_value('bindings', Params, [])
+                         }}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -435,9 +465,6 @@ handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
     {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
 handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
     {'noreply', State};
-handle_cast({'federated_event', JObj, BasicDeliver}, State) ->
-    spawn(?MODULE, 'distribute_event', [JObj, BasicDeliver, State]),
-    {'noreply', State};
 handle_cast({'wh_amqp_assignment', {'new_channel', 'false'}}
             ,#state{bindings=Bindings
                     ,params=Params
@@ -451,6 +478,42 @@ handle_cast({'wh_amqp_assignment', {'new_channel', 'false'}}
     {'noreply', State#state{queue=Q
                             ,is_consuming='false'
                            }};
+handle_cast({'federated_event', JObj, BasicDeliver}, State) ->
+    spawn(?MODULE, 'distribute_event', [JObj, BasicDeliver, State]),
+    {'noreply', State};
+handle_cast({'$execute', Module, Function, Args}
+            ,#state{federators=[]}=State) ->
+    erlang:apply(Module, Function, Args),
+    {'noreply', State};
+handle_cast({'$execute', Function, Args}
+            ,#state{federators=[]}=State) ->
+    erlang:apply(Function, Args),
+    {'noreply', State};
+handle_cast({'$execute', Function}
+            ,#state{federators=[]}=State) ->
+    Function(),
+    {'noreply', State};
+handle_cast({'$execute', Module, Function, Args}=Msg
+            ,#state{federators=Federators}=State) ->
+    erlang:apply(Module, Function, Args),
+    _ = [gen_listener:cast(Federator, Msg)
+         || Federator <- Federators
+        ],
+    {'noreply', State};
+handle_cast({'$execute', Function, Args}=Msg
+            ,#state{federators=Federators}=State) ->
+    erlang:apply(Function, Args),
+    _ = [gen_listener:cast(Federator, Msg)
+         || Federator <- Federators
+        ],
+    {'noreply', State};
+handle_cast({'$execute', Function}=Msg
+            ,#state{federators=Federators}=State) ->
+    Function(),
+    _ = [gen_listener:cast(Federator, Msg)
+         || Federator <- Federators
+        ],
+    {'noreply', State};
 handle_cast(Message, #state{module=Module
                             ,module_state=ModState
                             ,module_timeout_ref=OldRef
@@ -598,7 +661,7 @@ federated_queue_name(Params) ->
     case wh_util:is_empty(QueueName) of
         'true' -> QueueName;
         'false' ->
-            %% TODO: fix the hardcoed zone name
+            %% TODO: fix the hardcoded zone name
             <<QueueName/binary, "-zone1">>
     end.
 

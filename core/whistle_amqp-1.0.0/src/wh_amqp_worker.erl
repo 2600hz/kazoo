@@ -190,11 +190,20 @@ call_collect(Srv, Req, PubFun, Timeout) ->
                           {'ok', wh_json:objects()} |
                           {'timeout', wh_json:objects()} |
                           {'error', _}.
-call_collect(Srv, Req, PubFun, {Whapp, VFun}, Timeout) ->
+call_collect(Srv, Req, PubFun, {Whapp, IncludeFederated}, Timeout)
+  when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_boolean(IncludeFederated) ->
+    call_collect(Srv, Req, PubFun, collect_from_whapp(Whapp, IncludeFederated), Timeout);
+call_collect(Srv, Req, PubFun, {Whapp, VFun}, Timeout) 
+  when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_function(VFun) ->
     call_collect(Srv, Req, PubFun, collect_from_whapp_or_validate(Whapp, VFun), Timeout);
-call_collect(Srv, Req, PubFun, Whapp, Timeout) when is_atom(Whapp); is_binary(Whapp) ->
+call_collect(Srv, Req, PubFun, {Whapp, VFun, IncludeFederated}, Timeout)
+  when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_function(VFun) andalso is_boolean(IncludeFederated) ->
+    call_collect(Srv, Req, PubFun, collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated), Timeout);
+call_collect(Srv, Req, PubFun, Whapp, Timeout) 
+  when is_atom(Whapp) orelse is_binary(Whapp) ->
     call_collect(Srv, Req, PubFun, collect_from_whapp(Whapp), Timeout);
-call_collect(Srv, Req, PubFun, UntilFun, Timeout) when is_integer(Timeout), Timeout >= 0 ->
+call_collect(Srv, Req, PubFun, UntilFun, Timeout)
+  when is_integer(Timeout), Timeout >= 0 ->
     Prop = maybe_convert_to_proplist(Req),
     try poolboy:checkout(Srv, 'false', default_timeout()) of
         W when is_pid(W) ->
@@ -235,13 +244,21 @@ collect_until_timeout() -> fun(_) -> 'false' end.
 
 -spec collect_from_whapp(text()) -> collect_until_fun().
 collect_from_whapp(Whapp) ->
-    Count = wh_nodes:whapp_count(Whapp),
+    collect_from_whapp(Whapp, 'false').
+
+-spec collect_from_whapp(text(), boolean()) -> collect_until_fun().
+collect_from_whapp(Whapp, IncludeFederated) ->
+    Count = wh_nodes:whapp_count(Whapp, IncludeFederated),
     lager:debug("attempting to collect ~p responses from ~s", [Count, Whapp]),
     fun(Responses) -> length(Responses) >= Count end.
 
 -spec collect_from_whapp_or_validate(text(), validate_fun()) -> collect_until_fun().
 collect_from_whapp_or_validate(Whapp, VFun) ->
-    Count = wh_nodes:whapp_count(Whapp),
+    collect_from_whapp_or_validate(Whapp, VFun, 'false').
+
+-spec collect_from_whapp_or_validate(text(),validate_fun(), boolean()) -> collect_until_fun().
+collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated) ->
+    Count = wh_nodes:whapp_count(Whapp, IncludeFederated),
     lager:debug("attempting to collect ~p responses from ~s or the first valid", [Count, Whapp]),
     fun([Response|_]=Responses) ->
             length(Responses) >= Count

@@ -28,6 +28,7 @@
          ,flush/1
          ,flush/2
         ]).
+-export([count/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -50,7 +51,10 @@
                        ,[{<<"directory">>, <<"reg_flush">>}]
                       }
                     ]).
--define(BINDINGS, [{'registration', [{'retrict_to', ['reg_success', 'reg_query', 'reg_flush']}]}
+-define(BINDINGS, [{'registration', [{'retrict_to', ['reg_success', 'reg_flush']}]}
+                   ,{'registration', [{'retrict_to', ['reg_query']}
+                                      ,'federate'
+                                     ]}
                    ,{'self', []}
                   ]).
 -define(SERVER, ?MODULE).
@@ -236,6 +240,9 @@ flush(Username, Realm) when not is_binary(Username) ->
 flush(Username, Realm) ->
     gen_server:cast(?MODULE, {'flush', Username, Realm}).
 
+-spec count() -> non_neg_integer().
+count() -> ets:info(?MODULE, 'size').
+
 -spec handle_reg_success(atom(), wh_proplist()) -> 'ok'.
 handle_reg_success(Node, Props) ->
     put('callid', props:get_first_defined([<<"Call-ID">>, <<"call-id">>], Props, 'reg_success')),
@@ -412,7 +419,7 @@ fetch_contact(Username, Realm) ->
     case wh_amqp_worker:call_collect(?ECALLMGR_AMQP_POOL
                                      ,Reg
                                      ,fun wapi_registration:publish_query_req/1
-                                     ,{'ecallmgr', fun wapi_registration:query_resp_v/1}
+                                     ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
                                      ,2000)
     of
         {'ok', JObjs} ->

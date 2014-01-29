@@ -120,15 +120,17 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, BasicDeliver, #state{parent=Parent
+                                        ,broker=Broker
                                         ,self=Self}) ->
     lager:debug("relaying federated event to ~p with consumer pid ~p",
                 [Parent, Self]),
     RemoteServerId = <<"consumer://"
                        ,(wh_util:to_binary(pid_to_list(Self)))/binary, "/"
                        ,(wh_json:get_value(<<"Server-ID">>, JObj, <<>>))/binary>>,
-    io:format("~p~n", [wh_json:set_value(<<"Server-ID">>, RemoteServerId, JObj)]),
     gen_listener:federated_event(Parent
-                                 ,wh_json:set_value(<<"Server-ID">>, RemoteServerId, JObj)
+                                 ,wh_json:set_values([{<<"Server-ID">>, RemoteServerId}
+                                                      ,{<<"AMQP-Broker">>, Broker}
+                                                     ], JObj)
                                  ,BasicDeliver),
     'ignore'.
 

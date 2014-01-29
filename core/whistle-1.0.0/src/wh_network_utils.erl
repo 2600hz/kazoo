@@ -20,6 +20,7 @@
 -export([resolve/1]).
 -export([is_rfc1918_ip/1]).
 -export([iptuple_to_binary/1]).
+-export([pretty_print_bytes/1]).
 
 -include_lib("kernel/include/inet.hrl").
 
@@ -160,3 +161,18 @@ iptuple_to_binary({A,B,C,D}) ->
       ,(wh_util:to_binary(B))/binary, "."
       ,(wh_util:to_binary(C))/binary, "."
       ,(wh_util:to_binary(D))/binary>>.
+
+-spec pretty_print_bytes(non_neg_integer()) -> iolist().
+pretty_print_bytes(Bytes) ->
+    if
+        Bytes div 1073741824 > 0 ->
+            io_lib:format("~.2fGB", [Bytes/1073741824]); 
+        Bytes div 1048576 > 0 ->
+            io_lib:format("~.2fMB", [Bytes/1048576]); 
+        Bytes div 1024 > 0 ->
+            io_lib:format("~.2fKB", [Bytes/1024]);
+        'true' -> 
+            io_lib:format("~BB", [Bytes])
+    end.
+
+    

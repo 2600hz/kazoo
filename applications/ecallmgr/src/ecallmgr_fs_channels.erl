@@ -29,6 +29,7 @@
         ]).
 -export([account_summary/1]).
 -export([match_presence/1]).
+-export([count/0]).
 
 -export([handle_query_auth_id/2]).
 -export([handle_query_user_channels/2]).
@@ -181,6 +182,9 @@ account_summary(AccountId) ->
                   ,['$_']}
                 ],
     summarize_account_usage(ets:select(?CHANNELS_TBL, MatchSpec)).
+
+-spec count() -> non_neg_integer().
+count() -> ets:info(?CHANNELS_TBL, 'size').
 
 -spec match_presence(ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
 match_presence(PresenceId) ->
