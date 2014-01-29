@@ -588,18 +588,18 @@ publish_query_user_channels_resp(RespQ, Resp, ContentType) ->
 -spec publish_query_account_channels_req(api_terms(), ne_binary(), ne_binary()) -> 'ok'.
 publish_query_account_channels_req(Props) when is_list(Props) ->
     publish_query_account_channels_req(Props
-                                    ,props:get_value(<<"Account-ID">>, Props)
-                                    ,?DEFAULT_CONTENT_TYPE
-                                   );
+                                       ,props:get_value(<<"Account-ID">>, Props)
+                                       ,?DEFAULT_CONTENT_TYPE
+                                      );
 publish_query_account_channels_req(JObj) ->
     publish_query_account_channels_req(JObj
-                                    ,wh_json:get_value(<<"Account-ID">>, JObj)
-                                    ,?DEFAULT_CONTENT_TYPE
-                                   ).
+                                       ,wh_json:get_value(<<"Account-ID">>, JObj)
+                                       ,?DEFAULT_CONTENT_TYPE
+                                      ).
 
 publish_query_account_channels_req(Req, AccountId, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?QUERY_ACCOUNT_CHANNELS_REQ_VALUES, fun ?MODULE:query_account_channels_req/1),
-    amqp_util:callevt_publish(<<AccountId/binary>>, Payload, ContentType).
+    amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', AccountId), Payload, ContentType).
 
 -spec publish_query_account_channels_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_query_account_channels_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

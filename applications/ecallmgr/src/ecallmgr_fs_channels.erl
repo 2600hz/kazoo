@@ -60,7 +60,10 @@
                        ,[{<<"call_event">>, <<"channel_status_req">>}]
                       }
                     ]).
--define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}]}]).
+-define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}
+                             ,'federate'
+                            ]}
+                  ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -174,8 +177,12 @@ updates(UUID, Updates) ->
 
 -spec account_summary(ne_binary()) -> wh_json:object().
 account_summary(AccountId) ->
-    MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
-                           ,authorizing_id = '$3', resource_id = '$4', bridge_id = '$5'
+    MatchSpec = [{#channel{direction = '$1'
+                           ,account_id = '$2'
+                           ,account_billing = '$7'
+                           ,authorizing_id = '$3'
+                           ,resource_id = '$4'
+                           ,bridge_id = '$5'
                            , _ = '_'
                           }
                   ,[{'=:=', '$2', {'const', AccountId}}]
@@ -188,7 +195,10 @@ count() -> ets:info(?CHANNELS_TBL, 'size').
 
 -spec match_presence(ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
 match_presence(PresenceId) ->
-    MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3',  _ = '_'}
+    MatchSpec = [{#channel{uuid = '$1'
+                           ,presence_id = '$2'
+                           ,node = '$3'
+                           , _ = '_'}
                   ,[{'=:=', '$2', {'const', PresenceId}}]
                   ,[{{'$1', '$3'}}]}
                 ],
@@ -212,9 +222,7 @@ handle_query_auth_id(JObj, _Props) ->
 -spec handle_query_user_channels(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_query_user_channels(JObj, _Props) ->
     'true' = wapi_call:query_user_channels_req_v(JObj),
-
     Realm = wh_json:get_value(<<"Realm">>, JObj),
-
     case wh_json:get_value(<<"Username">>, JObj) of
         'undefined' -> handle_query_users_channels(JObj, Realm);
         Username -> handle_query_user_channels(JObj, Username, Realm)
@@ -312,7 +320,11 @@ init([]) ->
     put('callid', ?LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs channels"),
-    _ = ets:new(?CHANNELS_TBL, ['set', 'protected', 'named_table', {'keypos', #channel.uuid}]),
+    _ = ets:new(?CHANNELS_TBL, ['set'
+                                ,'protected'
+                                ,'named_table'
+                                ,{'keypos', #channel.uuid}
+                               ]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -572,13 +584,10 @@ find_by_auth_id(AuthorizingId) ->
                                 {'ok', wh_json:objects()} |
                                 {'error', 'not_found'}.
 find_by_user_realm(Username, Realm) ->
-    MatchSpec = [{#channel{username = '$1', realm='$2', _ = '_'}
-                  ,[{'=:=', '$1', {'const', Username}}
-                    ,{'=:=', '$2', {'const', Realm}}
-                   ]
-                  ,['$_']}
-                ],
-    case ets:select(?CHANNELS_TBL, MatchSpec) of
+    Pattern = #channel{username=wh_util:to_lower_binary(Username)
+                      ,realm=wh_util:to_lower_binary(Realm)
+                      ,_='_'},
+    case ets:match_object(?CHANNELS_TBL, Pattern) of
         [] -> {'error', 'not_found'};
         Channels ->
             {'ok', [ecallmgr_fs_channel:to_json(Channel)
@@ -591,10 +600,10 @@ find_by_user_realm(Username, Realm) ->
                                  {'error', 'not_found'}.
 find_users_channels(Usernames, Realm) ->
     ETSUsernames = build_matchspec_ors(Usernames),
-    MatchSpec = [{#channel{username='$1', realm='$2', _ = '_'}
-                  ,[ETSUsernames
-                    ,{'=:=', '$2', {'const', Realm}}
-                   ]
+    MatchSpec = [{#channel{username='$1'
+                           ,realm=wh_util:to_lower_binary(Realm)
+                           ,_ = '_'}
+                  ,[ETSUsernames]
                   ,['$_']
                  }],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
@@ -618,8 +627,12 @@ find_account_channels(AccountId) ->
     end.
 
 -spec build_matchspec_ors(ne_binaries()) -> term().
-build_matchspec_ors(L) ->
-    lists:foldl(fun(El, Acc) -> {'or', {'=:=', '$1', El}, Acc} end, 'false', L).
+build_matchspec_ors(Usernames) ->
+    lists:foldl(fun(Username, Acc) -> 
+                        {'or', {'=:=', '$1', wh_util:to_lower_binary(Username)}, Acc}
+                end
+                ,'false'
+                ,Usernames).
 
 print_summary('$end_of_table') ->
     io:format("No channels found!~n", []);

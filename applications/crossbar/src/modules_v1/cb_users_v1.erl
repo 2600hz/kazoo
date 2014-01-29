@@ -136,8 +136,15 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, UserId) ->
     load_user(UserId, Context).
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, UserId, ?CHANNELS) ->
-    Context1 = load_user(UserId, Context),
-    get_channels(Context1).
+    Options = [{'key', [UserId, <<"device">>]}
+               ,'include_docs'
+              ],
+    %% TODO: Using the cf_attributes from crossbar isn't exactly kosher
+    Context1 = crossbar_doc:load_view(<<"cf_attributes/owned">>, Options, Context),
+    case cb_context:has_errors(Context1) of
+        'true' -> Context1;
+        'false' -> get_channels(Context1)
+    end.
 
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, UserId, <<"quickcall">>, _) ->
     Context1 = maybe_validate_quickcall(load_user(UserId, Context)),
@@ -165,25 +172,48 @@ delete(Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context()) -> cb_context:context().
-get_channels(#cb_context{doc=Doc, account_id=AccountId}=Context) ->
+get_channels(#cb_context{doc=JObjs, account_id=AccountId}=Context) ->
     Realm = crossbar_util:get_account_realm(AccountId),
-    Username = wh_json:get_value(<<"username">>, Doc),
+    Usernames = [Username
+                 || JObj <- JObjs
+                        ,(Username = wh_json:get_value([<<"doc">>
+                                                        ,<<"sip">>
+                                                        ,<<"username">>
+                                                       ], JObj))
+                        =/= 'undefined'
+                ],
     Req = [{<<"Realm">>, Realm}
-           ,{<<"Username">>, Username}
+           ,{<<"Usernames">>, Usernames}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_request(Req
+    case whapps_util:amqp_pool_collect(Req
                                        ,fun wapi_call:publish_query_user_channels_req/1
-                                       ,fun wapi_call:query_user_channels_resp_v/1
-                                      )
+                                       ,{'ecallmgr', 'true'})
     of
-        {'ok', Resp} ->
-            Channels = wh_json:get_value(<<"Channels">>, Resp, []),
-            crossbar_util:response(Channels, Context);
-        {'error', _E} ->
-            lager:error("could not reach ecallmgr channels: ~p", [_E]),
-            crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context)
+        {'error', _R} ->
+            lager:error("could not reach ecallmgr channels: ~p", [_R]),
+            crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context);
+        {_, Resp} ->
+            Channels = merge_user_channels_jobjs(Resp),
+            crossbar_util:response(Channels, Context)
     end.
+
+-spec merge_user_channels_jobjs(wh_json:objects()) -> wh_json:objects().
+merge_user_channels_jobjs(JObjs) ->
+    merge_user_channels_jobjs(JObjs, dict:new()).
+
+-spec merge_user_channels_jobjs(wh_json:objects(), dict()) -> wh_json:objects().
+merge_user_channels_jobjs([], Dict) ->
+    [Channel || {_, Channel} <- dict:to_list(Dict)];
+merge_user_channels_jobjs([JObj|JObjs], Dict) ->
+    merge_user_channels_jobjs(JObjs, merge_user_channels_jobj(JObj, Dict)).
+
+-spec merge_user_channels_jobj(wh_json:object(), dict()) -> dict().
+merge_user_channels_jobj(JObj, Dict) ->
+    lists:foldl(fun(Channel, D) ->
+                        UUID = wh_json:get_value(<<"uuid">>, Channel),
+                        dict:store(UUID, Channel, D)
+                end, Dict, wh_json:get_value(<<"Channels">>, JObj, [])).
 
 
 %%--------------------------------------------------------------------
