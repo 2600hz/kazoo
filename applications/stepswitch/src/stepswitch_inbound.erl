@@ -144,8 +144,9 @@ maybe_lookup_cnam(Props, JObj) ->
 %%--------------------------------------------------------------------
 -spec relay_request(wh_proplist(), wh_json:object()) ->
                            wh_json:object().
-relay_request(_, JObj) ->
-    wapi_route:publish_req(JObj).
+relay_request(_Props, JObj) ->
+    wapi_route:publish_req(JObj),
+    JObj.
 
 %%--------------------------------------------------------------------
 %% @private

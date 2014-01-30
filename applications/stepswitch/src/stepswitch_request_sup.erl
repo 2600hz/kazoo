@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -33,7 +33,8 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
-bridge(Endpoints, JObj) -> 
+-spec bridge(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
+bridge(Endpoints, JObj) ->
     Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
              ,"-", (wh_util:rand_hex_binary(3))/binary>>,
     supervisor:start_child(?MODULE

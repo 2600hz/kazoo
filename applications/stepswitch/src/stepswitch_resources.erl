@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -286,11 +286,13 @@ resource_has_flags(Flags, #resrc{flags=ResourceFlags, id=Id}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec resources_to_endpoints(resources(), ne_binary(), wh_json:object()) -> wh_json:objects().
+-spec resources_to_endpoints(resources(), ne_binary(), wh_json:object()) ->
+                                    wh_json:objects().
+-spec resources_to_endpoints(resources(), ne_binary(), wh_json:object(), wh_json:objects()) ->
+                                    wh_json:objects().
 resources_to_endpoints(Resources, Number, JObj) ->
     resources_to_endpoints(Resources, Number, JObj, []).
 
--spec resources_to_endpoints(resources(), ne_binary(), wh_json:object(), wh_json:objects()) -> wh_json:objects().
 resources_to_endpoints([], _, _, Endpoints) ->
     lager:debug("found ~p endpoints", [length(Endpoints)]),
     lists:reverse(Endpoints);
@@ -318,18 +320,19 @@ maybe_resource_to_endpoints(#resrc{id=Id
             Updates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
                        ,{<<"Resource-ID">>, Id}
                       ],
-            [[{<<"Name">>, Name}
-              ,{<<"Weight">>, Weight}
-              | update_ccvs(Endpoint, Updates)
-             ]
+            [wh_json:set_values([{<<"Name">>, Name}
+                                 ,{<<"Weight">>, Weight}
+                                ]
+                                ,update_ccvs(Endpoint, Updates)
+                               )
              || Endpoint <- gateways_to_endpoints(Match, Gateways, JObj, [])
             ] ++ Endpoints
     end.
 
--spec update_ccvs(wh_proplist(), wh_proplist()) -> wh_proplist().
-update_ccvs(Props, Updates) ->
-    CCVs = props:get_value(<<"Custom-Channel-Vars">>, Props, wh_json:new()),
-    props:set_value(<<"Custom-Channel-Vars">>, wh_json:set_values(Updates, CCVs), Props).
+-spec update_ccvs(wh_json:object(), wh_proplist()) -> wh_json:object().
+update_ccvs(JObj, Updates) ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    wh_json:set_value(<<"Custom-Channel-Vars">>, wh_json:set_values(Updates, CCVs), JObj).
 
 -spec evaluate_rules(re:mp(), ne_binary()) ->
                             {'ok', ne_binary()} |
@@ -353,39 +356,44 @@ evaluate_rules([Rule|Rules], Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec gateways_to_endpoints(ne_binary(), gateways(), wh_json:object(), wh_json:objects()) -> wh_json:objects().
+-spec gateways_to_endpoints(ne_binary(), gateways(), wh_json:object(), wh_json:objects()) ->
+                                   wh_json:objects().
 gateways_to_endpoints(_, [], _, Endpoints) -> Endpoints;
 gateways_to_endpoints(Number, [Gateway|Gateways], JObj, Endpoints) ->
     gateways_to_endpoints(Number, Gateways, JObj
-                          ,[gateway_to_endpoint(Number, Gateway, JObj) | Endpoints]).
+                          ,[gateway_to_endpoint(Number, Gateway, JObj) | Endpoints]
+                         ).
 
--spec gateway_to_endpoint(ne_binary(), gateway(), wh_json:object()) -> wh_json:object().
+-spec gateway_to_endpoint(ne_binary(), gateway(), wh_json:object()) ->
+                                wh_json:object().
 gateway_to_endpoint(Number, Gateway, JObj) ->
     CCVs = props:filter_undefined(
              [{<<"Emergency-Resource">>, gateway_emergency_resource(Gateway)}
               ,{<<"Format-From-URI">>, Gateway#gateway.format_from_uri}
               ,{<<"From-URI-Realm">>, Gateway#gateway.from_uri_realm}
              ]),
-    props:filter_empty(
-      [{<<"Route">>, gateway_dialstring(Gateway, Number)}
-       ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
-       ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
-       ,{<<"To-DID">>, wh_util:to_binary(Number)}
-       ,{<<"Invite-Format">>, Gateway#gateway.invite_format}
-       ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
-       ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
-       ,{<<"Codecs">>, Gateway#gateway.codecs}
-       ,{<<"Auth-User">>, Gateway#gateway.username}
-       ,{<<"Auth-Password">>, Gateway#gateway.password}
-       ,{<<"SIP-Headers">>, Gateway#gateway.sip_headers}
-       ,{<<"SIP-Interface">>, Gateway#gateway.sip_interface}
-       ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
-       ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
-       ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(Gateway#gateway.progress_timeout)}
-       ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-       | get_outbound_t38_settings(Gateway#gateway.t38_setting
-                                   ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj))
-      ]).
+    wh_json:from_list(
+      props:filter_empty(
+        [{<<"Route">>, gateway_dialstring(Gateway, Number)}
+         ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
+         ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
+         ,{<<"To-DID">>, wh_util:to_binary(Number)}
+         ,{<<"Invite-Format">>, Gateway#gateway.invite_format}
+         ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
+         ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
+         ,{<<"Codecs">>, Gateway#gateway.codecs}
+         ,{<<"Auth-User">>, Gateway#gateway.username}
+         ,{<<"Auth-Password">>, Gateway#gateway.password}
+         ,{<<"SIP-Headers">>, Gateway#gateway.sip_headers}
+         ,{<<"SIP-Interface">>, Gateway#gateway.sip_interface}
+         ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
+         ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
+         ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(Gateway#gateway.progress_timeout)}
+         ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+         | get_outbound_t38_settings(Gateway#gateway.t38_setting
+                                     ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj)
+                                    )
+        ])).
 
 -spec gateway_emergency_resource(gateway()) -> api_binary().
 gateway_emergency_resource(#gateway{is_emergency='true'}) ->
@@ -561,10 +569,10 @@ resource_rules([Rule|Rules], CompiledRules) ->
 -spec resource_grace_period(wh_json:object() | integer()) -> 0..100.
 resource_grace_period(JObj) when not is_integer(JObj) ->
     Default = whapps_config:get_integer(<<"stepswitch">>, <<"default_weight">>, 3),
-    wh_json:get_integer_value(<<"grace_period">>, JObj, Default);
-resource_grace_period(GracePeriod) when GracePeriod > 100 -> 100;
-resource_grace_period(GracePeriod) when GracePeriod < 0 -> 0;
-resource_grace_period(GracePeriod) -> GracePeriod.
+    resource_grace_period(wh_json:get_integer_value(<<"grace_period">>, JObj, Default));
+resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod > 100 -> 100;
+resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod < 0 -> 0;
+resource_grace_period(GracePeriod) when is_integer(GracePeriod) -> GracePeriod.
 
 -spec resource_weight(wh_json:object() | integer()) -> integer().
 resource_weight(JObj) when not is_integer(JObj) ->
@@ -574,8 +582,7 @@ resource_weight(W) when W > 100 -> 100;
 resource_weight(W) when W < 1 -> 1;
 resource_weight(W) -> W.
 
--spec resource_is_emergency(resource() | wh_json:object()) -> boolean().
-resource_is_emergency(#resrc{is_emergency=Emergency}) -> Emergency;
+-spec resource_is_emergency(wh_json:object()) -> boolean().
 resource_is_emergency(JObj) ->
     (wh_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>)
         orelse wh_json:is_true(<<"emergency">>, JObj).

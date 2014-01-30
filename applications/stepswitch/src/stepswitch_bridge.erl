@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -22,13 +22,14 @@
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
--record(state, {endpoints
-                ,resource_req
-                ,request_handler
-                ,control_queue
-                ,response_queue
-                ,queue
-                ,timeout}).
+-record(state, {endpoints = [] :: wh_json:objects()
+                ,resource_req :: wh_json:object()
+                ,request_handler :: pid()
+                ,control_queue :: api_binary()
+                ,response_queue :: api_binary()
+                ,queue :: api_binary()
+                ,timeout :: reference()
+               }).
 
 -define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
@@ -46,6 +47,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(wh_json:objects(), wh_json:object()) -> startlink_ret().
 start_link(Endpoints, JObj) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Bindings = [{'call', [{'callid', CallId}
@@ -53,7 +55,7 @@ start_link(Endpoints, JObj) ->
                                             ,<<"CHANNEL_EXECUTE_COMPLETE">>
                                             ,<<"CHANNEL_BRIDGE">>
                                            ]}
-                         ]}                
+                         ]}
                 ,{'self', []}
                ],
     gen_listener:start_link(?MODULE, [{'bindings', Bindings}
@@ -157,7 +159,8 @@ handle_cast(_Msg, State) ->
 handle_info('bridge_timeout', #state{timeout='undefined'}=State) ->
     {'noreply', State};
 handle_info('bridge_timeout', #state{response_queue=ResponseQ
-                                     ,resource_req=JObj}=State) ->
+                                     ,resource_req=JObj
+                                    }=State) ->
     wapi_offnet_resource:publish_resp(ResponseQ, bridge_timeout(JObj)),
     {'stop', 'normal', State#state{timeout='undefined'}};
 handle_info(_Info, State) ->
@@ -172,7 +175,9 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request}) ->
+handle_event(JObj, #state{request_handler=RequestHandler
+                          ,resource_req=Request
+                         }) ->
     case whapps_util:get_event_type(JObj) of
         {<<"error">>, _} ->
             <<"bridge">> = wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
@@ -181,8 +186,8 @@ handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request})
             gen_listener:cast(RequestHandler, {'bridge_result', bridge_error(JObj, Request)});
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             lager:debug("channel was destroy while waiting for bridge", []),
-            Result = case wh_json:get_value(<<"Disposition">>, JObj) 
-                         =:= <<"SUCCESS">> 
+            Result = case wh_json:get_value(<<"Disposition">>, JObj)
+                         =:= <<"SUCCESS">>
                      of
                          'true' -> bridge_success(JObj, Request);
                          'false' -> bridge_failure(JObj, Request)
@@ -191,8 +196,8 @@ handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request})
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             <<"bridge">> = wh_json:get_value(<<"Application-Name">>, JObj),
             lager:debug("channel execute complete for bridge", []),
-            Result = case wh_json:get_value(<<"Disposition">>, JObj) 
-                         =:= <<"SUCCESS">> 
+            Result = case wh_json:get_value(<<"Disposition">>, JObj)
+                         =:= <<"SUCCESS">>
                      of
                          'true' -> bridge_success(JObj, Request);
                          'false' -> bridge_failure(JObj, Request)
@@ -233,16 +238,20 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-build_bridge(#state{endpoints=Endpoints, resource_req=JObj, queue=Q}) ->
+build_bridge(#state{endpoints=Endpoints
+                    ,resource_req=JObj
+                    ,queue=Q
+                   }) ->
     {CIDNum, CIDName} = bridge_caller_id(Endpoints, JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    CCVUpdates = props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
-                                         ,{<<"Account-ID">>, AccountId}
-                                         ,{<<"From-URI">>, bridge_from_uri(CIDNum, JObj)}
-                                         ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
-                                        ]),
+    CCVUpdates = props:filter_undefined(
+                   [{<<"Ignore-Display-Updates">>, <<"true">>}
+                    ,{<<"Account-ID">>, AccountId}
+                    ,{<<"From-URI">>, bridge_from_uri(CIDNum, JObj)}
+                    ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
+                   ]),
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
        ,{<<"Dial-Endpoint-Method">>, <<"single">>}
@@ -267,40 +276,42 @@ build_bridge(#state{endpoints=Endpoints, resource_req=JObj, queue=Q}) ->
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec maybe_endpoints_format_from(wh_proplists(), ne_binary(), api_binary()) -> wh_proplists().
-maybe_endpoints_format_from(Endpoints, CIDNum, JObj) when is_binary(CIDNum) ->        
+-spec maybe_endpoints_format_from(wh_json:objects(), api_binary(), wh_json:object()) ->
+                                         wh_json:objects().
+maybe_endpoints_format_from(Endpoints, 'undefined', _) -> Endpoints;
+maybe_endpoints_format_from(Endpoints, CIDNum, JObj) ->
     DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                               ,<<"Account-Realm">>
                                              ], JObj),
     [maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm)
      || Endpoint <- Endpoints
-    ];
-maybe_endpoints_format_from(Endpoints, _, _) -> Endpoints.
+    ].
 
--spec maybe_endpoint_format_from(wh_proplist(), ne_binary(), api_binary()) -> wh_proplist().
+-spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
+                                        wh_json:object().
 maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
-    CCVs = props:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
     case wh_json:is_true(<<"Format-From-URI">>, CCVs) of
         'true' -> endpoint_format_from(Endpoint, CIDNum, DefaultRealm);
-        'false' -> 
-            props:set_value(<<"Custom-Channel-Vars">>
-                            ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                  ,<<"From-URI-Realm">>
-                                                 ], CCVs)
-                            ,Endpoint)
+        'false' ->
+            wh_json:set_value(<<"Custom-Channel-Vars">>
+                              ,wh_json:delete_keys([<<"Format-From-URI">>
+                                                    ,<<"From-URI-Realm">>
+                                                   ], CCVs)
+                              ,Endpoint)
     end.
 
--spec endpoint_format_from(wh_proplist(), ne_binary(), api_binary()) -> wh_proplist().
+-spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) -> wh_json:object().
 endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
-    CCVs = props:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
     Realm = wh_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm),
     case is_binary(Realm) of
-        'false' ->            
-            props:set_value(<<"Custom-Channel-Vars">>
-                            ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                  ,<<"From-URI-Realm">>
-                                                 ], CCVs)
-                            ,Endpoint);
+        'false' ->
+            wh_json:set_value(<<"Custom-Channel-Vars">>
+                              ,wh_json:delete_keys([<<"Format-From-URI">>
+                                                    ,<<"From-URI-Realm">>
+                                                   ], CCVs)
+                              ,Endpoint);
         'true' ->
             FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
             lager:debug("setting resource ~s from-uri to ~s"
@@ -308,21 +319,23 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
                           ,FromURI
                          ]),
             UpdatedCCVs = wh_json:set_value(<<"From-URI">>, FromURI, CCVs),
-            props:set_value(<<"Custom-Channel-Vars">>
-                            ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                  ,<<"From-URI-Realm">>
-                                                 ], UpdatedCCVs)
-                            ,Endpoint)
+            wh_json:set_value(<<"Custom-Channel-Vars">>
+                              ,wh_json:delete_keys([<<"Format-From-URI">>
+                                                    ,<<"From-URI-Realm">>
+                                                   ], UpdatedCCVs)
+                              ,Endpoint)
     end.
 
--spec bridge_caller_id(wh_json:objects(), wh_json:object()) -> {api_binary(), api_binary()}.
+-spec bridge_caller_id(wh_json:objects(), wh_json:object()) ->
+                              {api_binary(), api_binary()}.
 bridge_caller_id(Endpoints, JObj) ->
     case contains_emergency_endpoints(Endpoints) of
         'true' -> bridge_emergency_caller_id(JObj);
         'false' -> bridge_caller_id(JObj)
     end.
 
--spec bridge_emergency_caller_id(wh_json:object()) -> {api_binary(), api_binary()}.
+-spec bridge_emergency_caller_id(wh_json:object()) ->
+                                        {api_binary(), api_binary()}.
 bridge_emergency_caller_id(JObj) ->
     lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
     {maybe_emergency_cid_number(JObj)
@@ -331,7 +344,8 @@ bridge_emergency_caller_id(JObj) ->
                                 ], JObj)
     }.
 
--spec bridge_caller_id(wh_json:object()) -> {api_binary(), api_binary()}.
+-spec bridge_caller_id(wh_json:object()) ->
+                              {api_binary(), api_binary()}.
 bridge_caller_id(JObj) ->
     {wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                 ,<<"Emergency-Caller-ID-Number">>
@@ -340,24 +354,27 @@ bridge_caller_id(JObj) ->
                                  ,<<"Emergency-Caller-ID-Name">>
                                 ], JObj)
     }.
-    
--spec bridge_from_uri(ne_binary(), wh_json:object()) -> api_binary().
+
+-spec bridge_from_uri(api_binary(), wh_json:object()) ->
+                             api_binary().
 bridge_from_uri(CIDNum, JObj) ->
     Realm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                        ,<<"Account-Realm">>
                                       ], JObj),
     case (whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
-          orelse wh_json:is_true(<<"Format-From-URI">>, JObj))
+          orelse wh_json:is_true(<<"Format-From-URI">>, JObj)
+         )
         andalso (is_binary(CIDNum) andalso is_binary(Realm))
     of
         'false' -> 'undefined';
-        'true' -> 
+        'true' ->
             FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
             lager:debug("setting bridge from-uri to ~s", [FromURI]),
             FromURI
     end.
 
--spec maybe_emergency_cid_number(wh_json:object()) -> api_binary().
+-spec maybe_emergency_cid_number(wh_json:object()) ->
+                                        api_binary().
 maybe_emergency_cid_number(JObj) ->
     %% NOTE: if this request had a hunt-account-id then we
     %%   are assuming it was for a local resource (at the
@@ -370,7 +387,8 @@ maybe_emergency_cid_number(JObj) ->
                                       ], JObj)
     end.
 
--spec emergency_cid_number(wh_json:object()) -> ne_binary().
+-spec emergency_cid_number(wh_json:object()) ->
+                                  ne_binary().
 emergency_cid_number(JObj) ->
     Account = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
@@ -424,8 +442,7 @@ emergency_cid_number(Requested, [Candidate|Candidates], E911Enabled) ->
 -spec contains_emergency_endpoints(wh_json:objects()) -> boolean().
 contains_emergency_endpoints([]) -> 'false';
 contains_emergency_endpoints([Endpoint|Endpoints]) ->
-    CCVs = props:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
-    case wh_json:is_true(<<"Emergency-Resource">>, CCVs) of
+    case wh_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint) of
         'true' -> 'true';
         'false' -> contains_emergency_endpoints(Endpoints)
     end.
