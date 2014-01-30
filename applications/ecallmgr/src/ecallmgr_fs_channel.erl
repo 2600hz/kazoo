@@ -343,7 +343,7 @@ handle_channel_req(UUID, FetchId, Node, Pid) ->
         {'ok', Props} ->
             ChannelNode = props:get_value(<<"node">>, Props),
             URL = ecallmgr_fs_nodes:sip_url(ChannelNode),
-            try_channel_resp(Node, FetchId, [{<<"sip-url">>, URL}
+            try_channel_resp(FetchId, Node, [{<<"sip-url">>, URL}
                                              ,{<<"uuid">>, UUID}
                                             ])
     end.
