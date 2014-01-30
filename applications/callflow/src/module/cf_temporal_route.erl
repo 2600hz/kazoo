@@ -175,16 +175,19 @@ process_rules(_, [], _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_temporal_rules(temporal(), whapps_call:call()) -> rules().
-get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
-    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), []).
+get_temporal_rules(#temporal{local_sec=LSec, routes=Routes, timezone=TZ}, Call) ->
+    Now =  localtime:utc_to_local(calendar:universal_time()
+                                  ,wh_util:to_list(TZ)
+                                 ),
+    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), Now, []).
 
--spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), rules()) -> rules().
-get_temporal_rules([], _, _, Rules) -> lists:reverse(Rules);
-get_temporal_rules([Route|Routes], LSec, AccountDb, Rules) ->
+-spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), wh_datetime(), rules()) -> rules().
+get_temporal_rules([], _, _, _, Rules) -> lists:reverse(Rules);
+get_temporal_rules([Route|Routes], LSec, AccountDb, Now, Rules) ->
     case couch_mgr:open_cache_doc(AccountDb, Route) of
         {'error', _R} ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
-            get_temporal_rules(Routes, LSec, AccountDb, Rules);
+            get_temporal_rules(Routes, LSec, AccountDb, Now, Rules);
         {'ok', JObj} ->
             Rule = #rule{id = Route
                          ,enabled =
@@ -210,7 +213,33 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, Rules) ->
                          ,wtime_stop =
                              wh_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
                         },
-            get_temporal_rules(Routes, LSec, AccountDb, [Rule | Rules])
+            case date_difference(Now, {Rule#rule.start_date, {0,0, 0}}) of
+                'future' ->
+                    lager:warning("rule ~p is in the future discarding", [Rule#rule.name]),
+                    get_temporal_rules(Routes, LSec, AccountDb, Now, Rules);
+                'past' ->
+                    get_temporal_rules(Routes, LSec, AccountDb, Now, [Rule | Rules]);
+                'equal' ->
+                    get_temporal_rules(Routes, LSec, AccountDb, Now, [Rule | Rules])
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec date_difference(wh_datetime(), wh_datetime()) -> 'future' | 'equal' | 'past'.
+date_difference(Date1, Date2) ->
+    case calendar:time_difference(Date1, Date2) of
+        {D, _} when D > 0 -> 'future';
+        {D, _} when D < 0 -> 'past';
+        {0, {0, 0, 0}} -> 'equal';
+        {0, {H, M, S}} ->
+            case H+M+S of
+                R when R > 0 -> 'future';
+                R when R < 0 -> 'past'
+            end
     end.
 
 %%--------------------------------------------------------------------
