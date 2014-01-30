@@ -248,13 +248,15 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('bind_to_events', #state{node=Node}=State) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DATA">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_CREATE">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_DESTROY">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_ANSWER">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_BRIDGE">>}}) =:= 'true'
-        andalso gproc:reg({'p', 'l', {'event', Node, <<"CHANNEL_UNBRIDGE">>}}) =:= 'true'
-        andalso freeswitch:bind(Node, 'channels') =:= 'ok'
+    %% If the freeswitch version is updated so Kazoo can
+    %% support for nightmare transfer bind for channel queries
+    _ = (catch freeswitch:bind(Node, 'channels')),
+    case gproc:reg({'p', 'l',  ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DATA">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_CREATE">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DESTROY">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_ANSWER">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_BRIDGE">>)}) =:= 'true'
+        andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_UNBRIDGE">>)}) =:= 'true'
     of
         'true' -> {'noreply', State};
         'false' -> {'stop', 'gproc_badarg', State}
