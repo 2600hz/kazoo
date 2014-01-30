@@ -29,8 +29,9 @@
                                               ,'CHANNEL_ANSWER'
                                               ,'CHANNEL_DESTROY'
                                              ]}
+                             ,'federate'
                             ]}
-                   ,{'route', []}
+                   ,{'route', ['federate']}
                   ]).
 -define(RESPONDERS, [{{'wh_hooks_util', 'handle_call_event'}
                       ,[{<<"call_event">>, <<"*">>}

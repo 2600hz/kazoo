@@ -100,7 +100,7 @@ lookup_regs(Context) ->
           ],
     ReqResp = whapps_util:amqp_pool_collect(Req
                                             ,fun wapi_registration:publish_query_req/1
-                                            ,'ecallmgr'
+                                            ,{'ecallmgr', 'true'}
                                            ),
     case ReqResp of
         {'error', _} -> [];
