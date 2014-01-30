@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -26,10 +26,6 @@
 
 %% Supervisor callbacks
 -export([init/1]).
-
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, 'start_link', []}, Restart, Shutdown, Type, [Name]}).
 
 %%%===================================================================
 %%% API functions
@@ -95,7 +91,7 @@ find_acct_supervisors(AcctId) -> [S || S <- workers(), is_agent_in_acct(S, AcctI
 
 -spec is_agent_in_acct(pid(), ne_binary()) -> boolean().
 is_agent_in_acct(Super, AcctId) ->
-    case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
+    case catch acdc_agent_listener:config(acdc_agent_sup:listener(Super)) of
         {'EXIT', _} -> 'false';
         {AcctId, _, _} -> 'true';
         _ -> 'false'
@@ -111,7 +107,7 @@ find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= 'undefined' orelse
     lager:debug("failed to get good data: ~s ~s", [AcctId, AgentId]),
     'undefined';
 find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
-    case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
+    case catch acdc_agent_listener:config(acdc_agent_sup:listener(Super)) of
         {'EXIT', _E} -> find_agent_supervisor(AcctId, AgentId, Rest);
         {AcctId, AgentId, _} -> Super;
         _E -> find_agent_supervisor(AcctId, AgentId, Rest)

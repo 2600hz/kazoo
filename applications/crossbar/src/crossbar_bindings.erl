@@ -439,11 +439,8 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
             lager:debug("error: ~p", [_E]),
             E;
         {'EXIT', {'undef', [{_M, _F, _A, _}|_]}} ->
-            lager:debug("~s:~s/~p not defined, in call ~s:~s/~p"
-                        ,[_M, _F, length(_A)
-                          ,M, F, length(Payload)
-                         ]
-                       ),
+            ST = erlang:get_stacktrace(),
+            log_undefined(M, F, length(Payload), ST),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         {'EXIT', _E} ->
             ST = erlang:get_stacktrace(),
@@ -454,9 +451,7 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
             fold_bind_results(MFs, [Pay1|Tokens], Route, MFsLen, ReRunQ)
     catch
         'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
             lager:debug("failed to find matching function clause for ~s:~s/~b", [M, F, length(Payload)]),
-            wh_util:log_stacktrace(ST),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         'error':'undef' ->
             ST = erlang:get_stacktrace(),
@@ -480,7 +475,7 @@ fold_bind_results([], Payload, Route, MFsLen, ReRunQ) ->
             Payload
     end.
 
--spec log_undefined(atom(), atom(), integer(), list()) -> 'ok'.
+-spec log_undefined(atom(), atom(), non_neg_integer(), list()) -> 'ok'.
 log_undefined(M, F, Length, [{M, F, _Args,_}|_]) ->
     lager:debug("undefined function ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_}|_]) ->

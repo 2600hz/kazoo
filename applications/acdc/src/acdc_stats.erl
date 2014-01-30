@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%% Collector of stats
 %%% @end
@@ -17,14 +17,8 @@
          ,call_missed/5
          ,call_processed/4
 
-         ,agent_ready/2
-         ,agent_logged_in/2
-         ,agent_logged_out/2
-         ,agent_connecting/3, agent_connecting/5
-         ,agent_connected/3, agent_connected/5
-         ,agent_wrapup/3
-         ,agent_paused/3
-         ,agent_outbound/3
+         ,find_call/1
+         ,call_stat_to_json/1
         ]).
 
 %% ETS config
@@ -32,22 +26,13 @@
          ,call_key_pos/0
          ,call_table_opts/0
 
-         ,status_table_id/0
-         ,status_key_pos/0
-         ,status_table_opts/0
-
          ,init_db/1
-         ,db_name/1
          ,archive_call_data/2
-         ,archive_status_data/2
         ]).
 
 %% AMQP Callbacks
 -export([handle_call_stat/2
          ,handle_call_query/2
-
-         ,handle_status_stat/2
-         ,handle_status_query/2
         ]).
 
 %% gen_listener functions
@@ -62,65 +47,7 @@
         ]).
 
 -include("acdc.hrl").
-
--define(ARCHIVE_MSG, 'time_to_archive').
--define(CLEANUP_MSG, 'time_to_cleanup').
-
--define(VALID_STATUSES, [<<"waiting">>, <<"handled">>, <<"abandoned">>, <<"processed">>]).
-
--define(MAX_RESULT_SET, whapps_config:get_integer(?CONFIG_CAT, <<"max_result_set">>, 25)).
-
--record(agent_miss, {
-          agent_id :: api_binary()
-          ,miss_reason :: api_binary()
-          ,miss_timestamp = wh_util:current_tstamp() :: pos_integer()
-         }).
--type agent_miss() :: #agent_miss{}.
--type agent_misses() :: [agent_miss(),...] | [].
-
--record(call_stat, {
-          id :: api_binary() | '_' %% call_id::queue_id
-          ,call_id :: api_binary() | '_'
-          ,acct_id :: api_binary() | '$1' | '_'
-          ,queue_id :: api_binary() | '$2' | '_'
-
-          ,agent_id :: api_binary() | '$3' | '_' % the handling agent
-
-          ,entered_timestamp = wh_util:current_tstamp() :: pos_integer() | '$1' | '$5' | '_'
-          ,abandoned_timestamp :: api_integer() | '_'
-          ,handled_timestamp :: api_integer() | '_'
-          ,processed_timestamp :: api_integer() | '_'
-
-          ,abandoned_reason :: api_binary() | '_'
-
-          ,misses = [] :: agent_misses() | '_'
-
-          ,status :: api_binary() | '$2' | '$4' | '_'
-          ,caller_id_name :: api_binary() | '_'
-          ,caller_id_number :: api_binary() | '_'
-          ,is_archived = 'false' :: boolean() | '$3' | '_'
-         }).
--type call_stat() :: #call_stat{}.
-
--define(STATUS_STATUSES, [<<"logged_in">>, <<"logged_out">>, <<"ready">>
-                          ,<<"connecting">>, <<"connected">>
-                          ,<<"wrapup">>, <<"paused">>, <<"outbound">>
-                         ]).
--record(status_stat, {
-          id :: api_binary() | '_'
-          ,agent_id :: api_binary() | '$2' | '_'
-          ,acct_id :: api_binary() | '$1' | '_'
-          ,status :: api_binary() | '$4' | '_'
-          ,timestamp :: api_pos_integer() | '$1' | '$3' | '$5' | '_'
-
-          ,wait_time :: api_integer() | '_'
-          ,pause_time :: api_integer() | '_'
-          ,callid :: api_binary() | '_'
-          ,caller_id_name :: api_binary() | '_'
-          ,caller_id_number :: api_binary() | '_'
-          ,is_archived = 'false' :: boolean() | '$1' | '$2' | '_'
-         }).
--type status_stat() :: #status_stat{}.
+-include("acdc_stats.hrl").
 
 %% Public API
 call_waiting(AcctId, QueueId, CallId, CallerIdName, CallerIdNumber) ->
@@ -180,114 +107,12 @@ call_processed(AcctId, QueueId, AgentId, CallId) ->
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_processed/1).
 
-agent_ready(AcctId, AgentId) ->
-    Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
-              ,{<<"Agent-ID">>, AgentId}
-              ,{<<"Timestamp">>, wh_util:current_tstamp()}
-              ,{<<"Status">>, <<"ready">>}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_ready/1).
-
-agent_logged_in(AcctId, AgentId) ->
-    Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
-              ,{<<"Agent-ID">>, AgentId}
-              ,{<<"Timestamp">>, wh_util:current_tstamp()}
-              ,{<<"Status">>, <<"logged_in">>}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_in/1).
-
-agent_logged_out(AcctId, AgentId) ->
-    Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
-              ,{<<"Agent-ID">>, AgentId}
-              ,{<<"Timestamp">>, wh_util:current_tstamp()}
-              ,{<<"Status">>, <<"logged_out">>}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_logged_out/1).
-
-agent_connecting(AcctId, AgentId, CallId) ->
-    agent_connecting(AcctId, AgentId, CallId, 'undefined', 'undefined').
-agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
-    Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
-              ,{<<"Agent-ID">>, AgentId}
-              ,{<<"Timestamp">>, wh_util:current_tstamp()}
-              ,{<<"Status">>, <<"connecting">>}
-              ,{<<"Call-ID">>, CallId}
-              ,{<<"Caller-ID-Name">>, CallerIDName}
-              ,{<<"Caller-ID-Number">>, CallerIDNumber}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connecting/1).
-
-agent_connected(AcctId, AgentId, CallId) ->
-    agent_connected(AcctId, AgentId, CallId, 'undefined', 'undefined').
-agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
-    Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
-              ,{<<"Agent-ID">>, AgentId}
-              ,{<<"Timestamp">>, wh_util:current_tstamp()}
-              ,{<<"Status">>, <<"connected">>}
-              ,{<<"Call-ID">>, CallId}
-              ,{<<"Caller-ID-Name">>, CallerIDName}
-              ,{<<"Caller-ID-Number">>, CallerIDNumber}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_connected/1).
-
-agent_wrapup(AcctId, AgentId, WaitTime) ->
-    Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
-              ,{<<"Agent-ID">>, AgentId}
-              ,{<<"Timestamp">>, wh_util:current_tstamp()}
-              ,{<<"Status">>, <<"wrapup">>}
-              ,{<<"Wait-Time">>, WaitTime}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_wrapup/1).
-
-agent_paused(AcctId, AgentId, 'undefined') ->
-    lager:debug("undefined pause time for ~s(~s)", [AgentId, AcctId]);
-agent_paused(AcctId, AgentId, PauseTime) ->
-    Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
-              ,{<<"Agent-ID">>, AgentId}
-              ,{<<"Timestamp">>, wh_util:current_tstamp()}
-              ,{<<"Status">>, <<"paused">>}
-              ,{<<"Pause-Time">>, PauseTime}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_paused/1).
-
-agent_outbound(AcctId, AgentId, CallId) ->
-    Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
-              ,{<<"Agent-ID">>, AgentId}
-              ,{<<"Timestamp">>, wh_util:current_tstamp()}
-              ,{<<"Status">>, <<"outbound">>}
-              ,{<<"Call-ID">>, CallId}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_status_outbound/1).
-
 %% ETS config
 call_table_id() -> 'acdc_stats_call'.
 call_key_pos() -> #call_stat.id.
 call_table_opts() ->
     ['protected', 'named_table'
      ,{'keypos', call_key_pos()}
-    ].
-
-status_table_id() -> 'acdc_stats_status'.
-status_key_pos() -> #status_stat.id.
-status_table_opts() ->
-    ['protected', 'named_table'
-     ,{'keypos', status_key_pos()}
     ].
 
 -define(BINDINGS, [{'self', []}
@@ -299,9 +124,10 @@ status_table_opts() ->
                         ,{<<"acdc_call_stat">>, <<"abandoned">>}
                         ,{<<"acdc_call_stat">>, <<"handled">>}
                         ,{<<"acdc_call_stat">>, <<"processed">>}
+                        ,{<<"acdc_call_stat">>, <<"flush">>}
                        ]
                      }
-                     ,{{?MODULE, 'handle_status_stat'}
+                     ,{{'acdc_agent_stats', 'handle_status_stat'}
                        ,[{<<"acdc_status_stat">>, <<"ready">>}
                          ,{<<"acdc_status_stat">>, <<"logged_in">>}
                          ,{<<"acdc_status_stat">>, <<"logged_out">>}
@@ -315,7 +141,7 @@ status_table_opts() ->
                      ,{{?MODULE, 'handle_call_query'}
                        ,[{<<"acdc_stat">>, <<"current_calls_req">>}]
                       }
-                     ,{{?MODULE, 'handle_status_query'}
+                     ,{{'acdc_agent_stats', 'handle_status_query'}
                        ,[{<<"acdc_stat">>, <<"status_req">>}]
                       }
                     ]).
@@ -337,90 +163,33 @@ handle_call_stat(JObj, Props) ->
         <<"abandoned">> -> handle_abandoned_stat(JObj, Props);
         <<"handled">> -> handle_handled_stat(JObj, Props);
         <<"processed">> -> handle_processed_stat(JObj, Props);
+        <<"flush">> -> flush_call_stat(JObj, Props);
         _Name ->
             lager:debug("recv unknown call stat type ~s: ~p", [_Name, JObj])
     end.
-
--spec handle_status_stat(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_status_stat(JObj, Props) ->
-    'true' = case (EventName = wh_json:get_value(<<"Event-Name">>, JObj)) of
-                 <<"ready">> -> wapi_acdc_stats:status_ready_v(JObj);
-                 <<"logged_in">> -> wapi_acdc_stats:status_logged_in_v(JObj);
-                 <<"logged_out">> -> wapi_acdc_stats:status_logged_out_v(JObj);
-                 <<"connecting">> -> wapi_acdc_stats:status_connecting_v(JObj);
-                 <<"connected">> -> wapi_acdc_stats:status_connected_v(JObj);
-                 <<"wrapup">> -> wapi_acdc_stats:status_wrapup_v(JObj);
-                 <<"paused">> -> wapi_acdc_stats:status_paused_v(JObj);
-                 <<"outbound">> -> wapi_acdc_stats:status_outbound_v(JObj);
-                 _Name ->
-                     lager:debug("recv unknown status stat type ~s: ~p", [_Name, JObj]),
-                     'false'
-             end,
-
-    AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
-    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
-
-    gen_listener:cast(props:get_value('server', Props)
-                      ,{'create_status', #status_stat{id=status_stat_id(AgentId, Timestamp, EventName)
-                                                      ,agent_id=AgentId
-                                                      ,acct_id=wh_json:get_value(<<"Account-ID">>, JObj)
-                                                      ,status=EventName
-                                                      ,timestamp=Timestamp
-                                                      ,callid=wh_json:get_value(<<"Call-ID">>, JObj)
-                                                      ,wait_time=wait_time(EventName, JObj)
-                                                      ,pause_time=pause_time(EventName, JObj)
-                                                      ,caller_id_name=caller_id_name(EventName, JObj)
-                                                      ,caller_id_number=caller_id_number(EventName, JObj)
-                                                     }}).
-
--spec wait_time(ne_binary(), wh_json:object()) -> api_integer().
-wait_time(<<"paused">>, _) -> 'undefined';
-wait_time(_, JObj) -> wh_json:get_integer_value(<<"Wait-Time">>, JObj).
-
--spec pause_time(ne_binary(), wh_json:object()) -> api_integer().
-pause_time(<<"paused">>, JObj) ->
-    case wh_json:get_integer_value(<<"Pause-Time">>, JObj) of
-        'undefined' -> wh_json:get_integer_value(<<"Wait-Time">>, JObj);
-        PT -> PT
-    end;
-pause_time(_, _JObj) -> 'undefined'.
-
-caller_id_name(_, JObj) ->
-    wh_json:get_value(<<"Caller-ID-Name">>, JObj).
-caller_id_number(_, JObj) ->
-    wh_json:get_value(<<"Caller-ID-Number">>, JObj).
 
 -spec handle_call_query(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_query(JObj, _Prop) ->
     'true' = wapi_acdc_stats:current_calls_req_v(JObj),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
-    Limit = get_query_limit(JObj),
+    Limit = acdc_stats_util:get_query_limit(JObj),
 
     case call_build_match_spec(JObj) of
         {'ok', Match} -> query_calls(RespQ, MsgId, Match, Limit);
         {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
     end.
 
--spec handle_status_query(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_status_query(JObj, _Prop) ->
-    'true' = wapi_acdc_stats:status_req_v(JObj),
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
-    Limit = get_query_limit(JObj),
-
-    case status_build_match_spec(JObj) of
-        {'ok', Match} -> query_statuses(RespQ, MsgId, Match, Limit);
-        {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
-    end.
-
-get_query_limit(JObj) ->
-    Max = ?MAX_RESULT_SET,
-    case wh_json:get_integer_value(<<"Limit">>, JObj) of
-        'undefined' -> Max;
-        N when N > Max -> Max;
-        N when N < 1 -> 1;
-        N -> N
+find_call(CallId) ->
+    MS = [{#call_stat{call_id=CallId
+                      ,_ = '_'
+                     }
+           ,[]
+           ,['$_']
+          }],
+    case ets:select(call_table_id(), MS) of
+        [] -> 'undefined';
+        [Stat] -> call_stat_to_json(Stat)
     end.
 
 -record(state, {
@@ -456,33 +225,35 @@ handle_cast({'create_call', #call_stat{id=_Id}=Stat}, State) ->
     {'noreply', State};
 handle_cast({'create_status', #status_stat{id=_Id, status=_Status}=Stat}, State) ->
     lager:debug("creating new status stat ~s: ~s", [_Id, _Status]),
-    case ets:insert_new(status_table_id(), Stat) of
+    case ets:insert_new(acdc_agent_stats:status_table_id(), Stat) of
         'true' -> {'noreply', State};
         'false' ->
             lager:debug("stat ~s already exists, updating", [_Id]),
-            ets:insert(status_table_id(), Stat),
+            ets:insert(acdc_agent_stats:status_table_id(), Stat),
             {'noreply', State}
     end;
 handle_cast({'update_call', Id, Updates}, State) ->
     lager:debug("updating call stat ~s: ~p", [Id, Updates]),
     ets:update_element(call_table_id(), Id, Updates),
     {'noreply', State};
+handle_cast({'flush_call', Id}, State) ->
+    lager:debug("flushing call stat ~s", [Id]),
+    ets:delete(call_table_id(), Id),
+    {'noreply', State};
 handle_cast({'remove_call', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
-    lager:debug("removing call stats from table"),
     N = ets:select_delete(call_table_id(), Match),
-    lager:debug("removed calls (or not): ~p", [N]),
+    N > 1 andalso lager:debug("removed calls: ~p", [N]),
     {'noreply', State};
 
 handle_cast({'update_status', Id, Updates}, State) ->
     lager:debug("updating status stat ~s: ~p", [Id, Updates]),
-    ets:update_element(status_table_id(), Id, Updates),
+    ets:update_element(acdc_agent_stats:status_table_id(), Id, Updates),
     {'noreply', State};
 handle_cast({'remove_status', [{M, P, _}]}, State) ->
     Match = [{M, P, ['true']}],
-    lager:debug("removing status stats from table"),
-    N = ets:select_delete(status_table_id(), Match),
-    lager:debug("removed statuses (or not): ~p", [N]),
+    N = ets:select_delete(acdc_agent_stats:status_table_id(), Match),
+    N > 1 andalso lager:debug("removed statuses: ~p", [N]),
     {'noreply', State};
 
 handle_cast({'gen_listener',{'created_queue',_Q}}, State) ->
@@ -646,137 +417,17 @@ query_calls(RespQ, MsgId, Match, _Limit) ->
             wapi_acdc_stats:publish_current_calls_resp(RespQ, Resp)
     end.
 
-status_build_match_spec(JObj) ->
-    case wh_json:get_value(<<"Account-ID">>, JObj) of
-        'undefined' ->
-            {'error', wh_json:from_list([{<<"Account-ID">>, <<"missing but required">>}])};
-        AccountId ->
-            AcctMatch = {#status_stat{acct_id='$1', _='_'}
-                         ,[{'=:=', '$1', {'const', AccountId}}]
-                        },
-            status_build_match_spec(JObj, AcctMatch)
-    end.
-
--spec status_build_match_spec(wh_json:object(), {status_stat(), list()}) ->
-                                     {'ok', ets:match_spec()} |
-                                     {'error', wh_json:object()}.
-status_build_match_spec(JObj, AcctMatch) ->
-    case wh_json:foldl(fun status_match_builder_fold/3, AcctMatch, JObj) of
-        {'error', _Errs}=Errors -> Errors;
-        {StatusStat, Constraints} -> {'ok', [{StatusStat, Constraints, ['$_']}]}
-    end.
-
-status_match_builder_fold(_, _, {'error', _Err}=E) -> E;
-status_match_builder_fold(<<"Agent-ID">>, AgentId, {StatusStat, Contstraints}) ->
-    {StatusStat#status_stat{agent_id='$2'}
-     ,[{'=:=', '$2', {'const', AgentId}} | Contstraints]
-    };
-status_match_builder_fold(<<"Start-Range">>, Start, {StatusStat, Contstraints}) ->
-    Now = wh_util:current_tstamp(),
-    Past = Now - ?CLEANUP_WINDOW,
-
-    try wh_util:to_integer(Start) of
-        N when N < Past ->
-            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is too far in the past">>}
-                                         ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
-                                         ,{<<"Current-Timestamp">>, Now}
-                                         ,{<<"Past-Timestamp">>, Past}
-                                         ,{<<"Start-Range">>, N}
-                                        ])};
-        N when N > Now ->
-            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is in the future">>}
-                                         ,{<<"Current-Timestamp">>, Now}
-                                        ])};
-        N ->
-            {StatusStat#status_stat{timestamp='$3'}
-             ,[{'>=', '$3', N} | Contstraints]
-            }
-    catch
-        _:_ ->
-            {'error', wh_json:from_list([{<<"Start-Range">>, <<"supplied value is not an integer">>}])}
-    end;
-status_match_builder_fold(<<"End-Range">>, End, {StatusStat, Contstraints}) ->
-    Now = wh_util:current_tstamp(),
-    Past = Now - ?CLEANUP_WINDOW,
-
-    try wh_util:to_integer(End) of
-        N when N < Past ->
-            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is too far in the past">>}
-                                         ,{<<"Window-Size">>, ?CLEANUP_WINDOW}
-                                         ,{<<"Current-Timestamp">>, Now}
-                                        ])};
-        N when N > Now ->
-            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is in the future">>}
-                                         ,{<<"Current-Timestamp">>, Now}
-                                        ])};
-        N ->
-            {StatusStat#status_stat{timestamp='$3'}
-             ,[{'=<', '$3', N} | Contstraints]
-            }
-    catch
-        _:_ ->
-            {'error', wh_json:from_list([{<<"End-Range">>, <<"supplied value is not an integer">>}])}
-    end;
-status_match_builder_fold(<<"Status">>, Status, {StatusStat, Contstraints}) ->
-    {StatusStat#status_stat{status='$4'}
-     ,[{'=:=', '$4', {'const', Status}} | Contstraints]
-    };
-status_match_builder_fold(_, _, Acc) -> Acc.
-
--spec query_statuses(ne_binary(), ne_binary(), ets:match_spec(), pos_integer()) -> 'ok'.
-query_statuses(RespQ, MsgId, Match, Limit) ->
-    case ets:select(status_table_id(), Match) of
-        [] ->
-            lager:debug("no stats found, sorry ~s", [RespQ]),
-            Resp = [{<<"Error-Reason">>, <<"No agents found">>}
-                    ,{<<"Msg-ID">>, MsgId}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_acdc_stats:publish_status_err(RespQ, Resp);
-        Stats ->
-            QueryResults = lists:foldl(fun query_status_fold/2, wh_json:new(), Stats),
-            LimitList = lists:duplicate(Limit, 0),
-            TrimmedResults = wh_json:map(fun(A, B) ->
-                                                 trim_query_statuses(A, B, LimitList)
-                                         end, QueryResults),
-
-            Resp = [{<<"Agents">>, TrimmedResults}
-                    ,{<<"Msg-ID">>, MsgId}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_acdc_stats:publish_status_resp(RespQ, Resp)
-    end.
-
-trim_query_statuses(A, Statuses, Limit) ->
-    {_, Trimmed} = wh_json:foldl(fun trim_query_statuses_fold/3
-                                 ,{Limit
-                                   ,wh_json:new()
-                                  }, Statuses),
-    {A, Trimmed}.
-
-trim_query_statuses_fold(TBin, Datum, {Ks, Data}=Acc) ->
-    T = wh_util:to_integer(TBin),
-    case lists:min(Ks) of
-        N when N < T ->
-            {[T | lists:delete(N, Ks)]
-             ,wh_json:set_value(TBin
-                                ,wh_doc:public_fields(Datum)
-                                ,wh_json:delete_key(N, Data)
-                               )};
-        _ -> Acc
-    end.
-
 -spec archive_data() -> 'ok'.
 archive_data() ->
     Self = self(),
     _ = spawn(?MODULE, 'archive_call_data', [Self, 'false']),
-    _ = spawn(?MODULE, 'archive_status_data', [Self, 'false']),
+    _ = spawn('acdc_agent_stats', 'archive_status_data', [Self, 'false']),
     'ok'.
 
 force_archive_data() ->
     Self = self(),
     _ = spawn(?MODULE, 'archive_call_data', [Self, 'true']),
-    _ = spawn(?MODULE, 'archive_status_data', [Self, 'true']),
+    _ = spawn('acdc_agent_stats', 'archive_status_data', [Self, 'true']),
     'ok'.
 
 cleanup_data(Srv) ->
@@ -855,7 +506,7 @@ maybe_archive_call_data(Srv, Match) ->
         Stats ->
             couch_mgr:suppress_change_notice(),
             ToSave = lists:foldl(fun archive_call_fold/2, dict:new(), Stats),
-            [couch_mgr:save_docs(db_name(Acct), Docs)
+            [couch_mgr:save_docs(acdc_stats_util:db_name(Acct), Docs)
              || {Acct, Docs} <- dict:to_list(ToSave)
             ],
             [gen_listener:cast(Srv, {'update_call', Id, [{#call_stat.is_archived, 'true'}]})
@@ -867,13 +518,6 @@ maybe_archive_call_data(Srv, Match) ->
 query_call_fold(#call_stat{status=Status}=Stat, Acc) ->
     Doc = call_stat_to_doc(Stat),
     dict:update(Status, fun(L) -> [Doc | L] end, [Doc], Acc).
-
--spec query_status_fold(status_stat(), wh_json:object()) -> wh_json:object().
-query_status_fold(#status_stat{agent_id=AgentId
-                               ,timestamp=T
-                              }=Stat, Acc) ->
-    Doc = status_stat_to_doc(Stat),
-    wh_json:set_value([AgentId, wh_util:to_binary(T)], Doc, Acc).
 
 -spec archive_call_fold(call_stat(), dict()) -> dict().
 archive_call_fold(#call_stat{acct_id=AcctId}=Stat, Acc) ->
@@ -915,83 +559,46 @@ call_stat_to_doc(#call_stat{id=Id
            ,{<<"wait_time">>, wait_time(EnteredT, AbandonedT, HandledT)}
            ,{<<"talk_time">>, talk_time(HandledT, ProcessedT)}
           ]))
-      ,db_name(AcctId)
+      ,acdc_stats_util:db_name(AcctId)
       ,[{'account_id', AcctId}
         ,{'type', <<"call_stat">>}
        ]).
 
-archive_status_data(Srv, 'true') ->
-    put('callid', <<"acdc_stats.force_status_archiver">>),
-
-    Match = [{#status_stat{is_archived='$1'
-                           ,_='_'
-                          }
-              ,[{'=:=', '$1', 'false'}]
-              ,['$_']
-             }],
-    maybe_archive_status_data(Srv, Match);
-archive_status_data(Srv, 'false') ->
-    put('callid', <<"acdc_stats.status_archiver">>),
-
-    Past = wh_util:current_tstamp() - ?ARCHIVE_WINDOW,
-    Match = [{#status_stat{timestamp='$1'
-                           ,is_archived='$2'
-                           ,_='_'
-                          }
-              ,[{'=<', '$1', Past}
-                ,{'=:=', '$2', 'false'}
-               ]
-              ,['$_']
-             }],
-    maybe_archive_status_data(Srv, Match).
-
-maybe_archive_status_data(Srv, Match) ->
-    case ets:select(status_table_id(), Match) of
-        [] -> 'ok';
-        Stats ->
-            couch_mgr:suppress_change_notice(),
-            ToSave = lists:foldl(fun archive_status_fold/2, dict:new(), Stats),
-            [couch_mgr:save_docs(db_name(Acct), Docs)
-             || {Acct, Docs} <- dict:to_list(ToSave)
-            ],
-            [gen_listener:cast(Srv, {'update_status', Id, [{#status_stat.is_archived, 'true'}]})
-             || #status_stat{id=Id} <- Stats
-            ]
-    end.
-
--spec archive_status_fold(status_stat(), dict()) -> dict().
-archive_status_fold(#status_stat{acct_id=AcctId}=Stat, Acc) ->
-    Doc = status_stat_to_doc(Stat),
-    dict:update(AcctId, fun(L) -> [Doc | L] end, [Doc], Acc).
-
--spec status_stat_to_doc(status_stat()) -> wh_json:object().
-status_stat_to_doc(#status_stat{id=Id
-                                ,agent_id=AgentId
-                                ,acct_id=AcctId
-                                ,status=Status
-                                ,timestamp=Timestamp
-                                ,wait_time=WT
-                                ,pause_time=PT
-                                ,callid=CallId
-                                ,caller_id_name=CIDName
-                                ,caller_id_number=CIDNum
-                               }) ->
-    Prop = [{<<"_id">>, Id}
-            ,{<<"call_id">>, CallId}
-            ,{<<"agent_id">>, AgentId}
-            ,{<<"timestamp">>, Timestamp}
-            ,{<<"status">>, Status}
-            ,{<<"wait_time">>, WT}
-            ,{<<"pause_time">>, PT}
-            ,{<<"caller_id_name">>, CIDName}
-            ,{<<"caller_id_number">>, CIDNum}
-           ],
-    wh_doc:update_pvt_parameters(
-      wh_json:from_list(props:filter_undefined(Prop))
-      ,db_name(AcctId)
-      ,[{'account_id', AcctId}
-        ,{'type', <<"status_stat">>}
-       ]).
+-spec call_stat_to_json(call_stat()) -> wh_json:object().
+call_stat_to_json(#call_stat{id=Id
+                             ,call_id=CallId
+                             ,acct_id=AcctId
+                             ,queue_id=QueueId
+                             ,agent_id=AgentId
+                             ,entered_timestamp=EnteredT
+                             ,abandoned_timestamp=AbandonedT
+                             ,handled_timestamp=HandledT
+                             ,processed_timestamp=ProcessedT
+                             ,abandoned_reason=AbandonedR
+                             ,misses=Misses
+                             ,status=Status
+                             ,caller_id_name=CallerIdName
+                             ,caller_id_number=CallerIdNumber
+                            }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Id">>, Id}
+         ,{<<"Call-ID">>, CallId}
+         ,{<<"Queue-ID">>, QueueId}
+         ,{<<"Agent-ID">>, AgentId}
+         ,{<<"Account-ID">>, AcctId}
+         ,{<<"Entered-Timestamp">>, EnteredT}
+         ,{<<"Abandoned-Timestamp">>, AbandonedT}
+         ,{<<"Handled-Timestamp">>, HandledT}
+         ,{<<"Processed-Timestamp">>, ProcessedT}
+         ,{<<"Abandoned-Reason">>, AbandonedR}
+         ,{<<"Misses">>, misses_to_docs(Misses)}
+         ,{<<"Status">>, Status}
+         ,{<<"Caller-ID-Name">>, CallerIdName}
+         ,{<<"Caller-ID-Number">>, CallerIdNumber}
+         ,{<<"Wait-Time">>, wait_time(EnteredT, AbandonedT, HandledT)}
+         ,{<<"Talk-Time">>, talk_time(HandledT, ProcessedT)}
+        ])).
 
 wait_time(E, _, H) when is_integer(E), is_integer(H) -> H - E;
 wait_time(E, A, _) when is_integer(E), is_integer(A) -> A - E;
@@ -1014,14 +621,14 @@ miss_to_doc(#agent_miss{agent_id=AgentId
 
 -spec init_db(ne_binary()) -> 'ok'.
 init_db(AcctId) ->
-    DbName = db_name(AcctId),
-    lager:debug("created db ~s: ~s", [DbName, couch_mgr:db_create(DbName)]),
-    lager:debug("revised docs in ~s: ~p", [AcctId, couch_mgr:revise_views_from_folder(DbName, 'acdc')]).
+    DbName = acdc_stats_util:db_name(AcctId),
+    maybe_created_db(DbName, couch_mgr:db_create(DbName)).
 
--spec db_name(ne_binary()) -> ne_binary().
-db_name(Acct) ->
-    <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:format_account_id(Acct, 'raw'),
-    <<"acdc%2F",A/binary,"%2F",B/binary,"%2F", Rest/binary>>.
+maybe_created_db(DbName, 'false') ->
+    lager:debug("database ~s already created", [DbName]);
+maybe_created_db(DbName, 'true') ->
+    lager:debug("created db ~s, adding views", [DbName]),
+    couch_mgr:revise_views_from_folder(DbName, 'acdc').
 
 -spec call_stat_id(wh_json:object()) -> ne_binary().
 -spec call_stat_id(ne_binary(), ne_binary()) -> ne_binary().
@@ -1030,9 +637,6 @@ call_stat_id(JObj) ->
             ,wh_json:get_value(<<"Queue-ID">>, JObj)
            ).
 call_stat_id(CallId, QueueId) -> <<CallId/binary, "::", QueueId/binary>>.
-
-status_stat_id(AgentId, Timestamp, _EventName) ->
-    <<AgentId/binary, "::", (wh_util:to_binary(Timestamp))/binary>>.
 
 handle_waiting_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_waiting_v(JObj),
@@ -1099,6 +703,18 @@ handle_processed_stat(JObj, Props) ->
                  ,{#call_stat.status, <<"processed">>}
                 ]),
     update_call_stat(Id, Updates, Props).
+
+-spec flush_call_stat(wh_json:ojbect(), wh_proplist()) -> 'ok'.
+flush_call_stat(JObj, Props) ->
+    'true' = wapi_acdc_stats:call_flush_v(JObj),
+
+    Id = call_stat_id(JObj),
+
+    lager:debug("flushing ~s: ~p", [Id, JObj]),
+
+    gen_listener:cast(props:get_value('server', Props)
+                      ,{'flush_call', Id}
+                     ).
 
 -spec find_call_stat(ne_binary()) -> 'undefined' | call_stat().
 find_call_stat(Id) ->

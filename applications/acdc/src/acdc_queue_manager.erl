@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%% Manages queue processes:
 %%%   starting when a queue is created
@@ -66,9 +66,9 @@
                                    ,{'id', Q}
                                   ]}
                          ,{'acdc_queue', [{'restrict_to', ['stats_req', 'agent_change']}
-                                        ,{'account_id', A}
-                                        ,{'queue_id', Q}
-                                       ]}
+                                          ,{'account_id', A}
+                                          ,{'queue_id', Q}
+                                         ]}
                          ,{'notifications', [{'restrict_to', ['presence_probe']}]}
                         ]).
 
@@ -92,9 +92,9 @@
                       }
                     ]).
 
--define(SECONDARY_BINDINGS(AcctId, QueueId)
+-define(SECONDARY_BINDINGS(AccountId, QueueId)
         ,[{'acdc_queue', [{'restrict_to', ['member_call']}
-                          ,{'account_id', AcctId}
+                          ,{'account_id', AccountId}
                           ,{'queue_id', QueueId}
                          ]}
          ]).
@@ -115,23 +115,23 @@
 %%--------------------------------------------------------------------
 -spec start_link(pid(), wh_json:object()) -> startlink_ret().
 start_link(Super, QueueJObj) ->
-    AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
     QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
 
     gen_listener:start_link(?MODULE
-                            ,[{'bindings', ?BINDINGS(AcctId, QueueId)}
+                            ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
                               ,{'responders', ?RESPONDERS}
                              ]
                             ,[Super, QueueJObj]
                            ).
 
 -spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
-start_link(Super, AcctId, QueueId) ->
+start_link(Super, AccountId, QueueId) ->
     gen_listener:start_link(?MODULE
-                            ,[{'bindings', ?BINDINGS(AcctId, QueueId)}
+                            ,[{'bindings', ?BINDINGS(AccountId, QueueId)}
                               ,{'responders', ?RESPONDERS}
                              ]
-                            ,[Super, AcctId, QueueId]
+                            ,[Super, AccountId, QueueId]
                            ).
 
 handle_member_call(JObj, Props) ->
@@ -158,12 +158,12 @@ are_agents_available(Srv, EnterWhenEmpty) ->
 
 start_queue_call(JObj, Props, Call) ->
     _ = whapps_call:put_callid(Call),
-    AcctId = whapps_call:account_id(Call),
+    AccountId = whapps_call:account_id(Call),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
     lager:info("member call for queue ~s recv", [QueueId]),
 
-    acdc_stats:call_waiting(AcctId, QueueId
+    acdc_stats:call_waiting(AccountId, QueueId
                             ,whapps_call:call_id(Call)
                             ,whapps_call:caller_id_name(Call)
                             ,whapps_call:caller_id_number(Call)
@@ -181,7 +181,7 @@ start_queue_call(JObj, Props, Call) ->
             whapps_call_command:hold(MOH, Call)
     end,
 
-    wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj),
+    wapi_acdc_queue:publish_shared_member_call(AccountId, QueueId, JObj),
     lager:debug("put call into shared messaging queue"),
 
     _ = whapps_call_command:set('undefined'
@@ -193,7 +193,7 @@ start_queue_call(JObj, Props, Call) ->
 
     gen_listener:cast(props:get_value('server', Props), {'monitor_call', Call}),
 
-    acdc_util:presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH).
+    acdc_util:presence_update(AccountId, QueueId, ?PRESENCE_RED_FLASH).
 
 handle_member_call_cancel(JObj, Props) ->
     'true' = wapi_acdc_queue:member_call_cancel_v(JObj),
@@ -253,28 +253,28 @@ pick_winner(Srv, Resps) -> pick_winner(Srv, Resps, strategy(Srv), next_winner(Sr
 %% @end
 %%--------------------------------------------------------------------
 init([Super, QueueJObj]) ->
-    AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
     QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
 
     put('callid', <<"mgr_", QueueId/binary>>),
 
-    init(Super, AcctId, QueueId, QueueJObj);
-    
-init([Super, AcctId, QueueId]) ->
+    init(Super, AccountId, QueueId, QueueJObj);
+
+init([Super, AccountId, QueueId]) ->
     put('callid', <<"mgr_", QueueId/binary>>),
 
-    AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
+    AcctDb = wh_util:format_account_id(AccountId, 'encoded'),
     {'ok', QueueJObj} = couch_mgr:open_cache_doc(AcctDb, QueueId),
 
-    init(Super, AcctId, QueueId, QueueJObj).
+    init(Super, AccountId, QueueId, QueueJObj).
 
-init(Super, AcctId, QueueId, QueueJObj) ->
+init(Super, AccountId, QueueId, QueueJObj) ->
     process_flag('trap_exit', 'false'),
 
-    AcctDb = wh_util:format_account_id(AcctId, 'encoded'),
+    AcctDb = wh_util:format_account_id(AccountId, 'encoded'),
     couch_mgr:cache_db_doc(AcctDb, QueueId, QueueJObj),
 
-    _ = start_secondary_queue(AcctId, QueueId),
+    _ = start_secondary_queue(AccountId, QueueId),
 
     gen_listener:cast(self(), {'start_workers'}),
     Strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj)),
@@ -283,7 +283,7 @@ init(Super, AcctId, QueueId, QueueJObj) ->
     _ = update_strategy_state(self(), Strategy, StrategyState),
 
     lager:debug("queue mgr started for ~s", [QueueId]),
-    {'ok', update_properties(QueueJObj, #state{acct_id=AcctId
+    {'ok', update_properties(QueueJObj, #state{acct_id=AccountId
                                                ,queue_id=QueueId
                                                ,supervisor=Super
                                                ,strategy=Strategy
@@ -310,10 +310,10 @@ handle_call({'should_ignore_member_call', K}, _, #state{ignored_member_calls=Dic
         _Res -> {'reply', 'true', State#state{ignored_member_calls=dict:erase(K, Dict)}}
     end;
 
-handle_call('config', _, #state{acct_id=AcctId
+handle_call('config', _, #state{acct_id=AccountId
                                 ,queue_id=QueueId
                                }=State) ->
-    {'reply', {AcctId, QueueId}, State};
+    {'reply', {AccountId, QueueId}, State};
 
 handle_call('status', _, #state{known_agents=As}=State) ->
     Known = [A || {A, N} <- dict:to_list(As), N > 0],
@@ -374,12 +374,12 @@ handle_cast({'update_queue_config', JObj}, #state{enter_when_empty=_EnterWhenEmp
     {'noreply', State#state{enter_when_empty=EWE}, 'hibernate'};
 
 handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=State) ->
-    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Reason = wh_json:get_value(<<"Reason">>, JObj),
 
-    acdc_stats:call_abandoned(AcctId, QueueId, CallId, Reason),
+    acdc_stats:call_abandoned(AccountId, QueueId, CallId, Reason),
     {'noreply', State#state{
                   ignored_member_calls=dict:store(K, 'true', Dict)
                  }};
@@ -388,39 +388,39 @@ handle_cast({'monitor_call', Call}, State) ->
                                               ,{'restrict_to', ['events']}
                                              ]),
     {'noreply', State};
-handle_cast({'start_workers'}, #state{acct_id=AcctId
+handle_cast({'start_workers'}, #state{acct_id=AccountId
                                       ,queue_id=QueueId
                                       ,supervisor=QueueSup
                                      }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-    case couch_mgr:get_results(wh_util:format_account_id(AcctId, 'encoded')
-                               ,<<"agents/agents_listing">>
-                                   ,[{'key', QueueId}
-                                     ,'include_docs'
-                                    ]
-                              )
+    case couch_mgr:get_results(wh_util:format_account_id(AccountId, 'encoded')
+                               ,<<"queues/agents_listing">>
+                               ,[{'key', QueueId}
+                                 ,'include_docs'
+                                ])
     of
         {'ok', Agents} ->
-            _ = [start_agent_and_worker(WorkersSup, AcctId, QueueId
+            _ = [start_agent_and_worker(WorkersSup, AccountId, QueueId
                                         ,wh_json:get_value(<<"doc">>, A)
                                        )
                  || A <- Agents
-                ], 'ok';
+                ],
+            'ok';
         {'error', _E} ->
             lager:debug("failed to find agent count: ~p", [_E]),
             QWC = whapps_config:get_integer(<<"acdc">>, <<"queue_worker_count">>, 5),
-            acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, QWC)
+            acdc_queue_workers_sup:new_workers(WorkersSup, AccountId, QueueId, QWC)
     end,
     {'noreply', State};
 
 handle_cast({'start_worker'}, State) ->
     handle_cast({'start_worker', 1}, State);
-handle_cast({'start_worker', N}, #state{acct_id=AcctId
+handle_cast({'start_worker', N}, #state{acct_id=AccountId
                                         ,queue_id=QueueId
                                         ,supervisor=QueueSup
                                        }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-    acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, N),
+    acdc_queue_workers_sup:new_workers(WorkersSup, AccountId, QueueId, N),
     {'noreply', State};
 
 handle_cast({'agent_available', AgentId}, #state{strategy=Strategy
@@ -464,11 +464,11 @@ handle_cast({'agent_unavailable', AgentId}, #state{strategy=Strategy
 handle_cast({'agent_unavailable', JObj}, State) ->
     handle_cast({'agent_unavailable', wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
 
-handle_cast({'reject_member_call', Call, JObj}, #state{acct_id=AcctId
+handle_cast({'reject_member_call', Call, JObj}, #state{acct_id=AccountId
                                                        ,queue_id=QueueId
                                                       }=State) ->
     Prop = [{<<"Call-ID">>, whapps_call:call_id(Call)}
-            ,{<<"Account-ID">>, AcctId}
+            ,{<<"Account-ID">>, AccountId}
             ,{<<"Queue-ID">>, QueueId}
             ,{<<"Failure-Reason">>, <<"no agents">>}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -477,8 +477,8 @@ handle_cast({'reject_member_call', Call, JObj}, #state{acct_id=AcctId
     catch wapi_acdc_queue:publish_member_call_failure(Q, Prop),
     {'noreply', State};
 
-handle_cast({'sync_with_agent', A}, #state{acct_id=AcctId}=State) ->
-    case acdc_agent_util:most_recent_status(AcctId, A) of
+handle_cast({'sync_with_agent', A}, #state{acct_id=AccountId}=State) ->
+    case acdc_agent_util:most_recent_status(AccountId, A) of
         {'ok', <<"logout">>} -> gen_listener:cast(self(), {'agent_unavailable', A});
         _ -> gen_listener:cast(self(), {'agent_available', A})
     end,
@@ -546,33 +546,33 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-start_secondary_queue(AcctId, QueueId) ->
+start_secondary_queue(AccountId, QueueId) ->
     Self = self(),
     _ = spawn(fun() -> gen_listener:add_queue(Self
                                               ,?SECONDARY_QUEUE_NAME(QueueId)
                                               ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS}
                                                 ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
                                                ]
-                                              ,?SECONDARY_BINDINGS(AcctId, QueueId)
+                                              ,?SECONDARY_BINDINGS(AccountId, QueueId)
                                              )
               end).
 
-make_ignore_key(AcctId, QueueId, CallId) ->
-    {AcctId, QueueId, CallId}.
+make_ignore_key(AccountId, QueueId, CallId) ->
+    {AccountId, QueueId, CallId}.
 
 -spec start_agent_and_worker(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
-    acdc_queue_workers_sup:new_worker(WorkersSup, AcctId, QueueId),
+start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
+    acdc_queue_workers_sup:new_worker(WorkersSup, AccountId, QueueId),
 
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
 
-    case acdc_agent_util:most_recent_status(AcctId, AgentId) of
+    case acdc_agent_util:most_recent_status(AccountId, AgentId) of
         {'ok', <<"logout">>} -> 'ok';
         {'ok', <<"logged_out">>} -> 'ok';
         {'ok', _Status} ->
             lager:debug("maybe starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
 
-            case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+            case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
                 'undefined' -> acdc_agents_sup:new(AgentJObj);
                 P when is_pid(P) -> 'ok'
             end

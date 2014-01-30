@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2014, 2600Hz
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event queue
 %%% @end
@@ -241,6 +241,8 @@ handle_cast({'transferer', _}, State) ->
     lager:debug("call control has been transfered."),
     {'stop', 'normal', State};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),

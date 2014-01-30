@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Controls how a queue process progresses a member_call
 %%% @end
@@ -160,16 +160,26 @@ call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {'dtmf_pressed', wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {'channel_bridged', EvtJObj});
-call_event(_, _E, _N, _J) ->
-    lager:debug("unhandled event: ~s: ~s (~s)", [_E, _N, wh_json:get_value(<<"Application-Name">>, _J)]).
+call_event(_, _E, _N, _J) -> 'ok'.
+    %% lager:debug("unhandled event: ~s: ~s (~s)"
+    %%             ,[_E, _N, wh_json:get_value(<<"Application-Name">>, _J)]
+    %%            ).
 
-finish_member_call(FSM) -> gen_fsm:send_event(FSM, {'member_finished'}).
+-spec finish_member_call(pid()) -> 'ok'.
+finish_member_call(FSM) ->
+    gen_fsm:send_event(FSM, {'member_finished'}).
 
-current_call(FSM) -> gen_fsm:sync_send_event(FSM, 'current_call').
+-spec current_call(pid()) -> api_object().
+current_call(FSM) ->
+    gen_fsm:sync_send_event(FSM, 'current_call').
 
-status(FSM) -> gen_fsm:sync_send_event(FSM, 'status').
+-spec status(pid()) -> wh_proplist().
+status(FSM) ->
+    gen_fsm:sync_send_event(FSM, 'status').
 
-cdr_url(FSM) -> gen_fsm:sync_send_all_state_event(FSM, 'cdr_url').
+-spec cdr_url(pid()) -> api_binary().
+cdr_url(FSM) ->
+    gen_fsm:sync_send_all_state_event(FSM, 'cdr_url').
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -784,6 +794,8 @@ update_properties(QueueJObj, State) ->
       %%,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
      }.
 
+-spec current_call('undefined' | whapps_call:call(), reference() | wh_timeout() | 'undefined', wh_timeout()) ->
+                          wh_json:object().
 current_call('undefined', _, _) -> 'undefined';
 current_call(Call, QueueTimeLeft, Start) ->
     wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
@@ -794,6 +806,8 @@ current_call(Call, QueueTimeLeft, Start) ->
                        ,{<<"wait_left">>, elapsed(QueueTimeLeft)}
                        ,{<<"wait_time">>, elapsed(Start)}
                       ]).
+
+-spec elapsed('undefined' | reference() | wh_timeout()) -> api_integer().
 elapsed('undefined') -> 'undefined';
 elapsed(Ref) when is_reference(Ref) ->
     case erlang:read_timer(Ref) of

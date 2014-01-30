@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -52,14 +52,20 @@ presence_update(AcctId, PresenceId, State, CallId) ->
 
 -spec send_cdr(ne_binary(), wh_json:object()) -> 'ok'.
 send_cdr(Url, JObj) ->
+    send_cdr(Url, JObj, 3).
+send_cdr(Url, _JObj, 0) ->
+    lager:debug("trying to send cdr to ~s failed retry count", [Url]);
+send_cdr(Url, JObj, Retries) ->
     case ibrowse:send_req(wh_util:to_list(Url)
                           ,[{"Content-Type", "application/json"}]
                           ,'post', wh_json:encode(JObj)
+                          ,1000
                          ) of
         {'ok', _StatusCode, _RespHeaders, _RespBody} ->
             lager:debug("cdr server at ~s responded with a ~s: ~s", [Url, _StatusCode, _RespBody]);
         _Else ->
-            lager:debug("sending cdr to server at ~s caused error: ~p", [Url, _Else])
+            lager:debug("sending cdr to server at ~s caused error: ~p", [Url, _Else]),
+            send_cdr(Url, JObj, Retries-1)
     end.
 
 %% Returns the list of agents configured for the queue

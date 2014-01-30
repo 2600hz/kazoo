@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Iterate over each account, find configured queues and configured
 %%% agents, and start the attendant processes
@@ -10,6 +10,7 @@
 -module(acdc_init).
 
 -export([start_link/0
+         ,init_db/0
          ,init_acdc/0
          ,init_acct/1
          ,init_acct_queues/1
@@ -24,7 +25,21 @@ start_link() -> spawn(?MODULE, 'init_acdc', []), 'ignore'.
 -spec init_acdc() -> any().
 init_acdc() ->
     put('callid', ?MODULE),
-    [init_acct(Acct) || Acct <- whapps_util:get_all_accounts('encoded')].
+    case couch_mgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
+        {'ok', []} -> lager:debug("no accounts configured for acdc");
+        {'ok', Accounts} ->
+            [init_acct(wh_json:get_value(<<"key">>, Acct)) || Acct <- Accounts];
+        {'error', 'not_found'} ->
+            lager:debug("acdc db not found, initializing"),
+            _ = init_db(),
+            lager:debug("consider running acdc_maintenance:migrate() to enable acdc for already-configured accounts");
+        {'error', _E} ->
+            lager:debug("failed to query acdc db: ~p", [_E])
+    end.
+
+init_db() ->
+    _ = couch_mgr:db_create(?KZ_ACDC_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>).
 
 -spec init_acct(ne_binary()) -> 'ok'.
 init_acct(Acct) ->

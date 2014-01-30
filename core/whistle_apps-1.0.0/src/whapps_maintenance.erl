@@ -70,6 +70,9 @@ migrate() ->
     %% Migrate recorded name doc ids from VM Boxes to the Owner ID's doc (if exists)
     _ = callflow_maintenance:migrate_recorded_name(),
 
+    %% Update ACDc DB with accounts using ACDc
+    _ = acdc_maintenance:migrate_to_acdc_db(),
+
     %% Remove depreciated whapps from the startup list and add new defaults
     io:format("updating default kazoo modules~n", []),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
@@ -143,6 +146,7 @@ do_refresh() ->
     refresh(?WH_ANONYMOUS_CDR_DB),
     refresh(?WH_SERVICES_DB),
     refresh(?KZ_PORT_REQUESTS_DB),
+    refresh(?KZ_ACDC_DB),
 
     Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
@@ -216,6 +220,10 @@ refresh(?KZ_PORT_REQUESTS_DB) ->
     couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
     _ = couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
     'ok';
+refresh(?KZ_ACDC_DB) ->
+    couch_mgr:db_create(?KZ_ACDC_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
+    'ok';
 refresh(Account) when is_binary(Account) ->
     refresh(Account, get_all_account_views());
 refresh(Database) ->
@@ -231,7 +239,7 @@ refresh(Account, Views) ->
 
     %% Update MOD Views
     _ = refresh_account_mods(AccountDb),
-    
+
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} ->
             _ = refresh_from_accounts_db(AccountDb, AccountId),
@@ -256,7 +264,7 @@ refresh_account_db(AccountDb, AccountId, Views, JObj) ->
 refresh_account_mods(AccountDb) ->
     Views = get_all_account_mod_views(),
     MODs = whapps_util:get_account_mods(AccountDb),
-    [refresh_account_mod(AccountMOD, Views) 
+    [refresh_account_mod(AccountMOD, Views)
      || AccountMOD <- MODs
     ].
 

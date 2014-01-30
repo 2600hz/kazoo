@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -81,6 +81,7 @@ status() ->
     _ = spawn(fun() -> [acdc_queue_sup:status(Sup) || Sup <- workers()] end),
     'ok'.
 
+-spec queues_running() -> [{pid(), term()},...] | [].
 queues_running() ->
     [{W, catch acdc_queue_manager:config(acdc_queue_sup:manager(W))} || W <- workers()].
 

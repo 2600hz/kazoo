@@ -1,10 +1,11 @@
 %%%============================================================================
-%%% @copyright (C) 2011-2013 2600Hz Inc
+%%% @copyright (C) 2011-2014 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   James Aimonetti
 %%%============================================================================
 -module(whapps_call).
 
@@ -155,22 +156,28 @@ from_route_req(RouteReq) ->
     from_route_req(RouteReq, #whapps_call{}).
 
 -spec from_route_req(wh_json:object(), call()) -> call().
-from_route_req(RouteReq, #whapps_call{}=Call) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, RouteReq, Call#whapps_call.call_id),
+from_route_req(RouteReq, #whapps_call{call_id=OldCallId
+                                      ,ccvs=OldCCVs
+                                      ,request=OldRequest
+                                      ,from=OldFrom
+                                      ,to=OldTo
+                                     }=Call) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, RouteReq, OldCallId),
     put('callid', CallId),
 
-    CCVs = wh_json:merge_recursive(Call#whapps_call.ccvs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq, wh_json:new())),
-    Request = wh_json:get_value(<<"Request">>, RouteReq, Call#whapps_call.request),
-    From = wh_json:get_value(<<"From">>, RouteReq, Call#whapps_call.from),
-    To = wh_json:get_value(<<"To">>, RouteReq, Call#whapps_call.to),
+    CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq, wh_json:new())),
+
+    Request = wh_json:get_value(<<"Request">>, RouteReq, OldRequest),
+    From = wh_json:get_value(<<"From">>, RouteReq, OldFrom),
+    To = wh_json:get_value(<<"To">>, RouteReq, OldTo),
     Inception = case wh_json:get_value(<<"Inception">>, CCVs) of
                     <<"on-net">> -> <<"on-net">>;
                     <<"off-net">> -> <<"off-net">>;
-                    _Else -> Call#whapps_call.inception
+                    _Else -> inception(Call)
                 end,
-    AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, Call#whapps_call.account_id),
+    AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, account_id(Call)),
     AccountDb = case is_binary(AccountId) of
-                    'false' -> Call#whapps_call.account_db;
+                    'false' -> account_db(Call);
                     'true' ->  wh_util:format_account_id(AccountId, 'encoded')
                 end,
     [ToUser, ToRealm] = binary:split(To, <<"@">>),
@@ -190,13 +197,13 @@ from_route_req(RouteReq, #whapps_call{}=Call) ->
                      ,inception=Inception
                      ,account_id=AccountId
                      ,account_db=AccountDb
-                     ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, RouteReq, Call#whapps_call.switch_hostname)
-                     ,switch_nodename = wh_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, Call#whapps_call.switch_nodename)
-                     ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, Call#whapps_call.authorizing_id)
-                     ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, Call#whapps_call.authorizing_type)
-                     ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, Call#whapps_call.owner_id)
-                     ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, Call#whapps_call.caller_id_name)
-                     ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, Call#whapps_call.caller_id_number)
+                     ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, RouteReq, switch_hostname(Call))
+                     ,switch_nodename = wh_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, switch_nodename(Call))
+                     ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
+                     ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, authorizing_type(Call))
+                     ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, owner_id(Call))
+                     ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
+                     ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
                      ,ccvs = CCVs
                     }.
 

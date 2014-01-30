@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(acdc_agent).
+-module(acdc_agent_listener).
 
 -behaviour(gen_listener).
 
@@ -41,6 +41,12 @@
          ,maybe_update_presence_state/2
          ,presence_update/2
          ,update_agent_status/2
+        ]).
+
+%% Introspection
+-export([presence_id/1
+         ,queues/1
+         ,id/1
         ]).
 
 %% gen_server callbacks
@@ -303,6 +309,18 @@ presence_update(Srv, PresenceState) ->
 update_agent_status(Srv, Status) ->
     gen_listener:cast(Srv, {'update_status', Status}).
 
+-spec presence_id(pid()) -> api_binary().
+presence_id(Srv) ->
+    gen_listener:call(Srv, 'presence_id').
+
+-spec queues(pid()) -> ne_binaries().
+queues(Srv) ->
+    gen_listener:call(Srv, 'queues').
+
+-spec id(pid()) -> api_binary().
+id(Srv) ->
+    gen_listener:call(Srv, 'my_id').
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -349,6 +367,12 @@ init([Supervisor, Agent, Queues]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call('presence_id', _, #state{agent_presence_id=PresenceId}=State) ->
+    {'reply', PresenceId, State, 'hibernate'};
+handle_call('queues', _, #state{agent_queues=Queues}=State) ->
+    {'reply', Queues, State, 'hibernate'};
+handle_call('my_id', _, #state{agent_id=AgentId}=State) ->
+    {'reply', AgentId, State, 'hibernate'};
 handle_call({'agent_info', Field}, _, #state{agent=Agent}=State) ->
     {'reply', wh_json:get_value(Field, Agent), State};
 handle_call('config', _From, #state{acct_id=AcctId
@@ -416,7 +440,7 @@ handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
                                        }=State) ->
     lager:debug("agent logged out of last known queue ~s, logging out", [Q]),
     logout_from_queue(AcctId, AgentId, Q),
-    acdc_agent:logout_agent(self()),
+    acdc_agent_listener:logout_agent(self()),
     {'noreply', State#state{agent_queues=[]}};
 handle_cast({'queue_logout', Q}, #state{agent_queues=Qs
                                         ,acct_id=AcctId
@@ -469,7 +493,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
                      ,'hibernate'};
                 'true' ->
                     lager:debug("thief is done, going down"),
-                    acdc_agent:stop(self()),
+                    acdc_agent_listener:stop(self()),
                     {'noreply', State}
             end;
         _ ->

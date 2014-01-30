@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -140,16 +140,20 @@ handle_originate_execute(JObj, Props) ->
 init([Node, JObj]) ->
     _ = wh_util:put_callid(JObj),
     ServerId = wh_json:get_ne_value(<<"Server-ID">>, JObj),
-    bind_to_events(freeswitch:version(Node), Node),
+    _ = bind_to_events(freeswitch:version(Node), Node),
     case wapi_resource:originate_req_v(JObj) of
         'false' ->
             Error = <<"originate failed to execute as JObj did not validate">>,
             publish_error(Error, 'undefined', JObj, ServerId),
             {'stop', 'normal'};
         'true' ->
-            {'ok', #state{node=Node, originate_req=JObj, server_id=ServerId}}
+            {'ok', #state{node=Node
+                          ,originate_req=JObj
+                          ,server_id=ServerId
+                         }}
     end.
 
+-spec bind_to_events({'ok', ne_binary()}, atom()) -> 'ok'.
 bind_to_events({'ok', <<"mod_kazoo", _/binary>>}, Node) ->
     'ok' = freeswitch:event(Node, ['CUSTOM', 'loopback::bowout']);
 bind_to_events(_, Node) ->
@@ -243,7 +247,7 @@ handle_cast({'build_originate_args'}, #state{originate_req=JObj
     Endpoints = [update_endpoint(Endpoint, State)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {'noreply', State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj, FetchId)}};
+    {'noreply', State#state{dialstrings=build_originate_args_from_endpoints(?ORIGINATE_PARK, Endpoints, JObj, FetchId)}};
 handle_cast({'build_originate_args'}, #state{originate_req=JObj
                                              ,action = Action
                                              ,app = ?ORIGINATE_EAVESDROP
@@ -457,6 +461,7 @@ get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
 
+-spec get_bridge_action(wh_json:object()) -> ne_binary().
 get_bridge_action(JObj) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
 
@@ -477,6 +482,7 @@ maybe_update_node(JObj, Node) ->
             end
     end.
 
+-spec get_eavesdrop_action(wh_json:object()) -> ne_binary().
 get_eavesdrop_action(JObj) ->
     {CallId, Group} = case wh_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
                           'undefined' -> {wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
@@ -489,22 +495,25 @@ get_eavesdrop_action(JObj) ->
         'undefined' -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
--spec build_originate_args(ne_binary(), state() | wh_json:objects(), wh_json:object(), ne_binary()) -> ne_binary().
+-spec build_originate_args(ne_binary(), state(), wh_json:object(), ne_binary()) -> ne_binary().
 build_originate_args(Action, #state{uuid=UUID}=State, JObj, FetchId) ->
-    case wh_json:get_ne_value(<<"Endpoints">>, JObj, []) of
+    case wh_json:get_value(<<"Endpoints">>, JObj, []) of
         [] ->
             lager:warning("no endpoints defined in originate request"),
             'undefined';
         [Endpoint] ->
             lager:debug("only one endpoint, don't create per-endpoint UUIDs"),
             maybe_start_call_handlers(UUID, State#state{control_pid='undefined'}),
-            build_originate_args(Action, [update_endpoint(Endpoint, UUID)], JObj, FetchId);
+            build_originate_args_from_endpoints(Action, [update_endpoint(Endpoint, UUID)], JObj, FetchId);
         Endpoints ->
             lager:debug("multiple endpoints defined, assigning uuids to each"),
             UpdatedEndpoints = [update_endpoint(Endpoint, State) || Endpoint <- Endpoints],
-            build_originate_args(Action, UpdatedEndpoints, JObj, FetchId)
-    end;
-build_originate_args(Action, Endpoints, JObj, FetchId) ->
+            build_originate_args_from_endpoints(Action, UpdatedEndpoints, JObj, FetchId)
+    end.
+
+-spec build_originate_args_from_endpoints(ne_binary(), wh_json:object(), wh_json:object(), ne_binary()) ->
+                                                 ne_binary().
+build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
     DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                         <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
@@ -512,8 +521,8 @@ build_originate_args(Action, Endpoints, JObj, FetchId) ->
                     end,
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
     J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
-						   ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
-						   ,{<<"Loopback-Bowout">>, <<"true">>}
+                                                   ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
+                                                   ,{<<"Loopback-Bowout">>, <<"true">>}
                            ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
@@ -609,7 +618,7 @@ get_unset_vars(JObj) ->
         Unset -> [string:join(Unset, "^"), maybe_fix_fs_auto_answer_bug(Export)]
     end.
 
--spec maybe_fix_fs_auto_answer_bug([string(),...]) -> string().
+-spec maybe_fix_fs_auto_answer_bug(strings()) -> string().
 maybe_fix_fs_auto_answer_bug(Export) ->
     case lists:member("sip_auto_answer", Export) of
         'true' -> "^";
@@ -660,7 +669,7 @@ publish_originate_resp(ServerId, JObj) ->
 publish_originate_resp('undefined', _JObj, _UUID) -> 'ok';
 publish_originate_resp(ServerId, JObj, UUID) ->
     Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
-                              ,{<<"Application-Response">>, <<"SUCCESS">>} 
+                              ,{<<"Application-Response">>, <<"SUCCESS">>}
                               ,{<<"Event-Name">>, <<"originate_resp">>}
                               ,{<<"Call-ID">>, UUID}
                               ], JObj),
@@ -692,6 +701,7 @@ publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     lager:debug("sent originate_uuid to ~s", [ServerId]),
     wapi_resource:publish_originate_uuid(ServerId, Resp).
 
+-spec maybe_send_originate_uuid(created_uuid(), pid(), state()) -> 'ok'.
 maybe_send_originate_uuid({'fs', UUID}, Pid, #state{server_id=ServerId
                                                     ,originate_req=JObj
                                                    }) ->
@@ -700,7 +710,6 @@ maybe_send_originate_uuid({'fs', UUID}, Pid, #state{server_id=ServerId
 maybe_send_originate_uuid(_, _, _) -> 'ok'.
 
 -spec find_originate_timeout(wh_json:object()) -> pos_integer().
--spec find_max_endpoint_timeout(wh_json:objects(), pos_integer()) -> pos_integer().
 find_originate_timeout(JObj) ->
     OTimeout = case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                    'undefined' -> 10;
@@ -712,6 +721,7 @@ find_originate_timeout(JObj) ->
       ,OTimeout
      ).
 
+-spec find_max_endpoint_timeout(wh_json:objects(), pos_integer()) -> pos_integer().
 find_max_endpoint_timeout([], T) -> T;
 find_max_endpoint_timeout([EP|EPs], T) ->
     case wh_json:get_integer_value(<<"Endpoint-Timeout">>, EP) of
@@ -756,6 +766,7 @@ maybe_start_call_handlers(UUID, State) ->
             lager:debug("failed to start control process for ~p: ~p", [UUID, _E])
     end.
 
+-spec start_abandon_timer() -> reference().
 start_abandon_timer() ->
     erlang:send_after(?REPLY_TIMEOUT, self(), {'abandon_originate'}).
 
@@ -764,7 +775,9 @@ update_endpoint(Endpoint, #state{node=Node
                                  ,originate_req=JObj
                                 }=State) ->
     {_, Id} = UUID = create_uuid(Endpoint, JObj, Node),
-    maybe_start_call_handlers(UUID, State#state{uuid=UUID, control_pid='undefined'}),
+    maybe_start_call_handlers(UUID, State#state{uuid=UUID
+                                                ,control_pid='undefined'
+                                               }),
     wh_json:set_value(<<"origination_uuid">>, Id, Endpoint);
 update_endpoint(Endpoint, {_, ID}) ->
     wh_json:set_value(<<"origination_uuid">>, ID, Endpoint).

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Manage the bucket servers
 %%% @end
@@ -23,7 +23,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_call', [acdc_stats:call_table_id(), acdc_stats:call_table_opts()])
-                   ,?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_status', [acdc_stats:status_table_id(), acdc_stats:status_table_opts()])
+                   ,?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_status', [acdc_agent_stats:status_table_id(), acdc_agent_stats:status_table_opts()])
                    ,?WORKER('acdc_stats')
                   ]).
 
@@ -41,7 +41,9 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec stats_srv() -> {'ok', pid()} | {'error', 'not_found'}.
+-spec stats_srv() ->
+                       {'ok', pid()} |
+                       {'error', 'not_found'}.
 stats_srv() ->
     case [P || {'acdc_stats', P, _, _} <- supervisor:which_children(?MODULE)] of
         [P] when is_pid(P) -> {'ok', P};
