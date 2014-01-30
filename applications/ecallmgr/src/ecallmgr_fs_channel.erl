@@ -339,23 +339,52 @@ handle_channel_req(UUID, FetchId, Node) ->
 handle_channel_req(UUID, FetchId, Node, Pid) ->
     wh_amqp_channel:consumer_pid(Pid),
     case ecallmgr_fs_channel:fetch(UUID, 'proplist') of
+        {'error', 'not_found'} -> fetch_channel(UUID, FetchId, Node);
         {'ok', Props} ->
             ChannelNode = props:get_value(<<"node">>, Props),
             URL = ecallmgr_fs_nodes:sip_url(ChannelNode),
-            try ecallmgr_fs_xml:sip_channel_xml([{<<"sip-url">>, URL}|Props]) of
-                {'ok', ConfigXml} ->
-                    lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
-                    freeswitch:fetch_reply(Node, FetchId, 'channels', erlang:iolist_to_binary(ConfigXml))
-            catch
-                _E:_R ->
-                    lager:info("sofia profile resp failed to convert to XML (~s): ~p", [_E, _R]),
-                    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-                    freeswitch:fetch_reply(Node, FetchId, 'channels', iolist_to_binary(Resp))
-            end;
-        {'error', 'not_found'} ->
-            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-            freeswitch:fetch_reply(Node, FetchId, 'channels', iolist_to_binary(Resp))
+            try_channel_resp(Node, FetchId, [{<<"sip-url">>, URL}
+                                             ,{<<"uuid">>, UUID}
+                                            ])
     end.
+
+-spec try_channel_resp(ne_binary(), atom(), wh_proplist()) -> 'ok'.
+try_channel_resp(FetchId, Node, Props) ->
+    try ecallmgr_fs_xml:sip_channel_xml(Props) of
+        {'ok', ConfigXml} ->
+            lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
+            freeswitch:fetch_reply(Node, FetchId, 'channels', erlang:iolist_to_binary(ConfigXml))
+    catch
+        _E:_R ->
+            lager:info("sofia profile resp failed to convert to XML (~s): ~p", [_E, _R]),
+            channel_not_found(Node, FetchId)
+    end.
+
+-spec fetch_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
+fetch_channel(UUID, FetchId, Node) ->
+    Command = [{<<"Call-ID">>, UUID}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    case wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                             ,Command
+                             ,fun(C) -> wapi_call:publish_call_status_req(UUID, C) end
+                             ,fun wapi_call:call_status_resp_v/1
+                            )
+    of
+        {'error', 'timeout'} -> channel_not_found(Node, FetchId);
+        {'error', _} -> channel_not_found(Node, FetchId);
+        {'ok', JObj} ->
+            URL = wh_json:get_value(<<"Switch-URL">>, JObj),
+            Props = [{<<"sip-url">>, URL}
+                     ,{<<"uuid">>, UUID}
+                    ],
+            try_channel_resp(FetchId, Node, Props)
+    end.
+        
+-spec channel_not_found(atom(), ne_binary()) -> 'ok'.
+channel_not_found(Node, FetchId) ->
+    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+    freeswitch:fetch_reply(Node, FetchId, 'channels', iolist_to_binary(Resp)).
 
 -spec process_event(api_binary(), wh_proplist(), atom()) -> any().
 process_event(UUID, Props, Node) ->
