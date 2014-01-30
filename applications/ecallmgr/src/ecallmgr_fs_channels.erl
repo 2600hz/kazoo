@@ -278,14 +278,7 @@ handle_channel_status(JObj, _Props) ->
     lager:debug("channel status request received"),
     case ecallmgr_fs_channel:fetch(CallId) of
         {'error', 'not_found'} ->
-            lager:debug("no node found with channel ~s", [CallId]),
-            Resp = [{<<"Call-ID">>, CallId}
-                    ,{<<"Status">>, <<"terminated">>}
-                    ,{<<"Error-Msg">>, <<"no node found with channel">>}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+            maybe_send_empty_channel_resp(CallId, JObj);
         {'ok', Channel} ->
             Node = wh_json:get_binary_value(<<"node">>, Channel),
             [_, Hostname] = binary:split(Node, <<"@">>),
@@ -300,6 +293,23 @@ handle_channel_status(JObj, _Props) ->
                    ],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
+
+-spec maybe_send_empty_channel_resp(ne_binary(), wh_json:object()) -> 'ok'.
+maybe_send_empty_channel_resp(CallId, JObj) ->
+    case wh_json:is_true(<<"Active-Only">>, JObj) of
+        'true' -> 'ok';
+        'false' -> send_empty_channel_resp(CallId, JObj)
+    end.
+
+-spec send_empty_channel_resp(ne_binary(), wh_json:object()) -> 'ok'.
+send_empty_channel_resp(CallId, JObj) ->
+    Resp = [{<<"Call-ID">>, CallId}
+            ,{<<"Status">>, <<"terminated">>}
+            ,{<<"Error-Msg">>, <<"no node found with channel">>}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %%%===================================================================
 %%% gen_server callbacks

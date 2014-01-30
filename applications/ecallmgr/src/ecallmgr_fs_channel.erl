@@ -363,15 +363,15 @@ try_channel_resp(FetchId, Node, Props) ->
 -spec fetch_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
 fetch_channel(UUID, FetchId, Node) ->
     Command = [{<<"Call-ID">>, UUID}
+               ,{<<"Active-Only">>, <<"true">>}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     case wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                              ,Command
-                             ,fun(C) -> wapi_call:publish_call_status_req(UUID, C) end
-                             ,fun wapi_call:call_status_resp_v/1
+                             ,fun(C) -> wapi_call:publish_channel_status_req(UUID, C) end
+                             ,fun wapi_call:channel_status_resp_v/1
                             )
     of
-        {'error', 'timeout'} -> channel_not_found(Node, FetchId);
         {'error', _} -> channel_not_found(Node, FetchId);
         {'ok', JObj} ->
             URL = wh_json:get_value(<<"Switch-URL">>, JObj),

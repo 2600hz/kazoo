@@ -100,7 +100,7 @@
 
 %% Channel Status Request
 -define(CHANNEL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_CHANNEL_STATUS_REQ_HEADERS, []).
+-define(OPTIONAL_CHANNEL_STATUS_REQ_HEADERS, [<<"Active-Only">>]).
 -define(CHANNEL_STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                     ,{<<"Event-Name">>, <<"channel_status_req">>}
                                    ]).
