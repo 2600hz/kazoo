@@ -222,7 +222,8 @@ handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
             'false' -> ets:insert(Tab, Node)
         end,
     {'noreply', State};
-handle_cast({'wh_amqp_channel', {'new_channel', _}}, State) ->
+handle_cast({'gen_listener', {'created_queue', _}}
+            ,#state{heartbeat_ref='undefined'}=State) ->
     Reference = erlang:make_ref(),
     self() ! {'heartbeat', Reference},
     {'noreply', State#state{heartbeat_ref=Reference}};
