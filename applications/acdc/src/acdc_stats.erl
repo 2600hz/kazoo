@@ -278,7 +278,6 @@ handle_info(_Msg, State) ->
     {'noreply', State}.
 
 handle_event(_JObj, _State) ->
-    lager:debug("evt: ~p", [_JObj]),
     {'reply', []}.
 
 terminate(_Reason, _) ->
