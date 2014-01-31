@@ -183,7 +183,10 @@ call_collect(Srv, Req, PubFun, Whapp) when is_atom(Whapp); is_binary(Whapp) ->
     call_collect(Srv, Req, PubFun, Whapp, default_timeout());
 call_collect(Srv, Req, PubFun, {_, _}=Until) ->
     call_collect(Srv, Req, PubFun, Until, default_timeout());
+call_collect(Srv, Req, PubFun, {_, _, _}=Until) ->
+    call_collect(Srv, Req, PubFun, Until, default_timeout());
 call_collect(Srv, Req, PubFun, Timeout) ->
+
     call_collect(Srv, Req, PubFun, collect_until_timeout(), Timeout).
 
 -spec call_collect(server_ref(), api_terms(), publish_fun(), collect_until(), wh_timeout()) ->
