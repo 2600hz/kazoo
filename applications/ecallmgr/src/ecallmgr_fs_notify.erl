@@ -221,7 +221,7 @@ handle_cast('bind_to_message_events', #state{node=Node}=State) ->
         false -> ok;
         true ->
             %% ok = freeswitch:event(Node, ['RECV_MESSAGE']),
-            gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"MESSAGE">>)}),
+            gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"RECV_MESSAGE">>)}),
             lager:debug("bound to recv_message events on node ~s", [Node])
     end,
     {'noreply', State};
@@ -244,7 +244,7 @@ handle_info({'event', [_ | Props]}, #state{node=Node}=State) ->
             <<"PRESENCE_IN">> -> maybe_handle_presence_in(Props, Node);
             <<"PRESENCE_OUT">> -> maybe_handle_presence_out(Props, Node);
             <<"MESSAGE_QUERY">> -> spawn_link(?MODULE, 'handle_message_query', [Props, Node]);
-            <<"MESSAGE">> -> spawn_link(ecallmgr_message, process_msg, [Props, Node]);
+            <<"RECV_MESSAGE">> -> spawn_link(ecallmgr_message, process_msg, [Props, Node]);
             _ -> 'ok'
         end,
     {'noreply', State, 'hibernate'};
