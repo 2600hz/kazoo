@@ -66,7 +66,7 @@
                       ,call_event_consumers = [] :: list()
                       ,in_conference = 'false' :: boolean()
                       ,join_attempts = 0 :: integer()
-                      ,conference = whapps_conference:new()
+                      ,conference = 'undefined'
                       ,discovery_event = wh_json:new()
                       ,last_dtmf = <<>> :: binary()
                       ,queue :: api_binary()
@@ -152,7 +152,7 @@ relay_amqp(JObj, Props) ->
                 ,is_pid(Pid)
         ],
     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj),
-    case is_binary(Digit) andalso props:get_value('in_conference', Props, 'false') of
+    case is_binary(Digit) of
         'false' -> 'ok';
         'true' ->
             Srv = props:get_value('server', Props),
@@ -214,6 +214,8 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'get_conference'}, _, #participant{conference='undefined'}=P) ->
+    {'reply', {'error', 'not_provided'}, P};
 handle_call({'get_conference'}, _, #participant{conference=Conf}=P) ->
     {'reply', {'ok', Conf}, P};
 handle_call({'get_discovery_event'}, _, #participant{discovery_event=DE}=P) ->
@@ -244,8 +246,19 @@ handle_cast('hungup', #participant{conference=Conference
         end,
     _ = whapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
-handle_cast({'gen_listener', {'created_queue', Q}}, #participant{call=Call}=P) ->
+handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
+                                                                 ,call=Call}=P) ->
     {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)}};
+
+handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference=Conference
+                                                                 ,call=Call}=P) ->
+    {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)
+                              ,conference=whapps_conference:set_controller_queue(Q, Conference)
+                             }};
+handle_cast('hangup', Participant) ->
+    lager:debug("received in-conference command, hangup participant"),
+    gen_listener:cast(self(), 'hungup'),
+    {'noreply', Participant};
 handle_cast({'add_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
     lager:debug("adding call event consumer ~p", [C]),
     link(C),
@@ -253,14 +266,18 @@ handle_cast({'add_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
 handle_cast({'remove_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
     lager:debug("removing call event consumer ~p", [C]),
     {'noreply', P#participant{call_event_consumers=[C1 || C1 <- Cs, C=/=C1]}};
-handle_cast({'set_conference', C}, #participant{call=Call}=P) ->
-    ControllerQ = whapps_call:controller_queue(Call),
-    ConferenceId = whapps_conference:id(C),
+handle_cast({'set_conference', Conference}, Participant) ->
+    ConferenceId = whapps_conference:id(Conference),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
     gen_listener:add_binding(self(), 'conference', [{'conference', ConferenceId}]),
-    {'noreply', P#participant{conference=whapps_conference:set_controller_queue(ControllerQ, C)}};
+    {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
+handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
+    %% ALL MESSAGES BELLOW THIS ARE CONSUMED HERE UNTIL THE CONFERENCE IS KNOWN
+    lager:debug("ignoring message prior to conference discovery: ~p"
+                ,[_Message]),
+    {'noreply', Participant};
 handle_cast('join_local', #participant{call=Call
                                        ,conference=Conference
                                       }=Participant) ->
@@ -269,8 +286,9 @@ handle_cast('join_local', #participant{call=Call
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                 ,conference=Conference
                                                }=Participant) ->
-    BridgeRequest = couch_mgr:get_uuid(),
-    Route = binary:replace(wh_json:get_value(<<"Switch-URL">>, JObj), <<"mod_sofia">>, BridgeRequest),
+    Route = binary:replace(wh_json:get_value(<<"Switch-URL">>, JObj)
+                           ,<<"mod_sofia">>
+                           ,whapps_conference:id(Conference)),
     bridge_to_conference(Route, Conference, Call),
     {'noreply', Participant};
 handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->
@@ -340,10 +358,6 @@ handle_cast('toggle_deaf', #participant{deaf='true'}=Participant) ->
 handle_cast('toggle_deaf', #participant{deaf='false'}=Participant) ->
     deaf(self()),
     {'noreply', Participant};
-handle_cast('hangup', Participant) ->
-    lager:debug("received in-conference command, hangup participant"),
-    gen_listener:cast(self(), 'hungup'),
-    {'noreply', Participant};
 handle_cast(_Cast, Participant) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
     {'noreply', Participant}.
@@ -373,7 +387,6 @@ handle_info(_Msg, Participant) ->
 %%--------------------------------------------------------------------
 handle_event(JObj, #participant{call_event_consumers=Consumers
                                 ,call=Call
-                                ,in_conference=InConf
                                 ,server=Srv
                                }) ->
     CallId = whapps_call:call_id(Call),
@@ -382,13 +395,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
             lager:debug("received channel hangup event, terminate"),
             gen_listener:cast(Srv, 'hungup'),
             {'reply', [{'call_event_consumers', Consumers}]};
-        {{<<"call_event">>, _}, EventCallId} when EventCallId =/= CallId ->
-            lager:debug("received event from call ~s while relaying for ~s, dropping", [EventCallId, CallId]),
-            'ignore';
-        {_Else, _} ->
-            {'reply', [{'call_event_consumers', Consumers}
-                       ,{'in_conference', InConf}
-                      ]}
+        {_Else, _} -> {'reply', [{'call_event_consumers', Consumers}]}
     end.
 
 %%--------------------------------------------------------------------

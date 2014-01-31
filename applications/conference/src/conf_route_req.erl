@@ -50,7 +50,7 @@ find_conference(AccountDb, Call) ->
     ConferenceId = whapps_call:request_user(Call),
     case couch_mgr:open_doc(AccountDb, ConferenceId) of
         {'ok', JObj} ->
-            <<"confernce">> = wh_json:get_value(<<"pvt_type">>, JObj),
+            <<"conference">> = wh_json:get_value(<<"pvt_type">>, JObj),
             {'ok', whapps_conference:from_conference_doc(JObj)};
         {'error', _R}=Error ->
             lager:info("unable to find conference ~s in account db ~s: ~p"
@@ -59,7 +59,7 @@ find_conference(AccountDb, Call) ->
     end.
 
 find_account_db(Call) ->
-    Realm = whapps_call:from_realm(Call),
+    Realm = whapps_call:to_realm(Call),
     case whapps_util:get_account_by_realm(Realm) of
         {'ok', AccountDb} -> AccountDb;
         {'multiples', [AccountDb|_]} -> AccountDb;
