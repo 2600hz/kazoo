@@ -16,7 +16,6 @@
 process_msg(Props, Node) ->
     lager:debug("process_message received SIP/SIMPLE Msg"),
     From = props:get_value(<<"from">>, Props),
-    [_User, Realm] = binary:split(From, <<"@">>),
     To = props:get_value(<<"to">>, Props),
     Body = props:get_value(<<"body">>, Props),
     Header = [
