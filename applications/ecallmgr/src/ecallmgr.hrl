@@ -280,6 +280,7 @@
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
                     ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DATA'
+                    ,'RECV_MESSAGE'
                    ]).
 
 -define(FS_CUSTOM_EVENTS, ['whistle::noop', 'whistle::masquerade'
