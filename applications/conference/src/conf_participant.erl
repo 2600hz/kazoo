@@ -540,7 +540,7 @@ bridge_to_conference(Route, Conference, Call) ->
                                   ,{<<"Ignore-Early-Media">>, <<"true">>}
                                   ,{<<"To-URI">>, <<"sip:", (whapps_conference:id(Conference))/binary
                                                     ,"@", (get_account_realm(Call))/binary>>}
-                                  ,{<<"Bypass-Media">>, <<"true">>}
+                                  %% ,{<<"Bypass-Media">>, <<"true">>}
                                  ]),
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [Endpoint]}
@@ -548,7 +548,7 @@ bridge_to_conference(Route, Conference, Call) ->
                ,{<<"Ignore-Early-Media">>, <<"false">>}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Hold-Media">>, <<"silence">>}
-               ,{<<"Media">>, <<"bypass">>}
+               %% ,{<<"Media">>, <<"bypass">>}
               ],
     whapps_call_command:send_command(Command, Call).
 
