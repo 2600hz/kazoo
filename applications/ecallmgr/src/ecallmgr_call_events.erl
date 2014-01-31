@@ -453,11 +453,11 @@ create_event(Props) ->
 create_event(EventName, Props) ->
     create_event(EventName, get_application_name(Props), Props).
 
--spec create_event(ne_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
+-spec create_event(ne_binary(), api_binary(), wh_proplist()) -> wh_proplist().
 create_event(EventName, ApplicationName, Props) ->
     props:filter_undefined(
-      [{<<"Event-Name">>, EventName} 
-       |specific_call_event_props(EventName, ApplicationName, Props) 
+      [{<<"Event-Name">>, EventName}
+       |specific_call_event_props(EventName, ApplicationName, Props)
        ++ generic_call_event_props(Props)
       ]).
 
@@ -685,7 +685,7 @@ get_channel_moving(Props) ->
     case is_channel_moving(Props) of
         'false' -> 'undefined';
         'true' -> 'true'
-    end.        
+    end.
 
 -spec get_call_id(wh_proplist()) -> api_binary().
 get_call_id(Props) ->
