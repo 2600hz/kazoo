@@ -17,7 +17,7 @@ handle_req(JObj, Props) ->
     wh_util:put_callid(JObj),
     Call = whapps_call:from_route_req(JObj),
     case whapps_call:request_user(Call) of
-        <<_:32/binary>> ->
+        <<"conference">> ->
             Q = props:get_value('queue', Props),
             maybe_send_route_response(JObj, Q, Call);
          _Else -> 'ok'
@@ -47,7 +47,7 @@ find_conference(Call) ->
 
 find_conference('undefined', _) -> {'error', 'realm_unknown'};
 find_conference(AccountDb, Call) ->
-    ConferenceId = whapps_call:request_user(Call),
+    ConferenceId = whapps_call:to_user(Call),
     case couch_mgr:open_doc(AccountDb, ConferenceId) of
         {'ok', JObj} ->
             <<"conference">> = wh_json:get_value(<<"pvt_type">>, JObj),

@@ -288,7 +288,7 @@ handle_cast({'join_remote', JObj}, #participant{call=Call
                                                }=Participant) ->
     Route = binary:replace(wh_json:get_value(<<"Switch-URL">>, JObj)
                            ,<<"mod_sofia">>
-                           ,whapps_conference:id(Conference)),
+                           ,<<"conference">>),
     bridge_to_conference(Route, Conference, Call),
     {'noreply', Participant};
 handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->
@@ -538,8 +538,9 @@ bridge_to_conference(Route, Conference, Call) ->
                                   ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
                                   ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
                                   ,{<<"Ignore-Early-Media">>, <<"true">>}
-                                  ,{<<"To-URI">>, <<"sip:member@", (get_account_realm(Call))/binary>>}
-                                  %%,{<<"Bypass-Media">>, <<"true">>}
+                                  ,{<<"To-URI">>, <<"sip:", (whapps_conference:id(Conference))/binary
+                                                    ,"@", (get_account_realm(Call))/binary>>}
+                                  ,{<<"Bypass-Media">>, <<"true">>}
                                  ]),
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [Endpoint]}
@@ -547,7 +548,7 @@ bridge_to_conference(Route, Conference, Call) ->
                ,{<<"Ignore-Early-Media">>, <<"false">>}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Hold-Media">>, <<"silence">>}
-               %%,{<<"Media">>, <<"bypass">>}
+               ,{<<"Media">>, <<"bypass">>}
               ],
     whapps_call_command:send_command(Command, Call).
 
