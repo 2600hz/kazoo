@@ -50,7 +50,8 @@ maybe_relay_request(JObj) ->
                        ],
             _ = lists:foldl(fun(F, J) ->  F(Props, J) end
                             ,JObj
-                            ,Routines),
+                            ,Routines
+                           ),
             'ok'
     end.
 
