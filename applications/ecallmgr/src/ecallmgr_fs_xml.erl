@@ -339,8 +339,10 @@ get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
 
 get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
     SIPHeaders = wh_json:to_proplist(SIPJObj),
-    lists:foldl(fun({K,V}, Vars0) ->
-                        [ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
+    lists:foldl(fun({K,V}, Vars0) when is_binary(V) ->
+                        [ list_to_binary(["sip_h_", K, "=", V]) | Vars0];
+                   ({<<"Diversion">> = K, V}, Vars0) ->
+                        [ list_to_binary(["sip_h_", K, "=", kzsip_diversion:to_binary(V)]) | Vars0]
                 end, Vars, SIPHeaders);
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"

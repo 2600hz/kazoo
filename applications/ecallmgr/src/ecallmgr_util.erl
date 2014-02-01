@@ -416,14 +416,16 @@ set_fold(Node, UUID, {K, V}, Acc) ->
                     ecallmgr_util:send_cmd_ret().
 export(_, _, []) -> 'ok';
 export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
-    Exports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
+    Exports = [get_fs_key_and_value(Key, Val, UUID)
+               || {Key, Val} <- Props
+              ],
     ecallmgr_fs_command:export(Node, UUID, [{<<"alert_info">>, <<"intercom">>}
                                             ,get_fs_key_and_value(K, V, UUID)
-                                            | Exports
+                                            | props:filter(Exports, 'skip')
                                            ]);
 export(Node, UUID, Props) ->
     Exports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
-    ecallmgr_fs_command:export(Node, UUID, Exports).
+    ecallmgr_fs_command:export(Node, UUID, props:filter(Exports, 'skip')).
 
 %%--------------------------------------------------------------------
 %% @public
