@@ -651,13 +651,13 @@ create_federated_params(FederateBindings, Params) ->
     [{'responders', []}
      ,{'bindings', FederateBindings}
      ,{'queue_name', federated_queue_name(Params)}
-     ,{'queue_options', props:get_value('queue_options', Params)}
-     ,{'consume_options', props:get_value('consume_options', Params)}
+     ,{'queue_options', props:get_value('queue_options', Params, [])}
+     ,{'consume_options', props:get_value('consume_options', Params, [])}
     ].
 
 -spec federated_queue_name(wh_proplist()) -> api_binary().
 federated_queue_name(Params) ->
-    QueueName = props:get_value('queue_name', Params),
+    QueueName = props:get_value('queue_name', Params, <<>>),
     case wh_util:is_empty(QueueName) of
         'true' -> QueueName;
         'false' ->

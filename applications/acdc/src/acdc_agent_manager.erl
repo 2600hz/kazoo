@@ -34,8 +34,12 @@
 
 -define(BINDINGS, [{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
                    ,{'notifications', [{'restrict_to', ['presence_probe']}]}
-                   ,{'conf', [{'type', <<"user">>}]}
-                   ,{'conf', [{'type', <<"device">>}]}
+                   ,{'conf', [{'type', <<"user">>}
+                              ,'federate'
+                             ]}
+                   ,{'conf', [{'type', <<"device">>}
+                              ,'federate'
+                             ]}
                   ]).
 -define(RESPONDERS, [{{'acdc_agent_handler', 'handle_status_update'}
                       ,[{<<"agent">>, <<"login">>}

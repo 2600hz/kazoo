@@ -64,6 +64,7 @@
 -define(BINDINGS(A, Q), [{'conf', [{'type', <<"queue">>}
                                    ,{'db', wh_util:format_account_id(A, 'encoded')}
                                    ,{'id', Q}
+                                   ,'federate'
                                   ]}
                          ,{'acdc_queue', [{'restrict_to', ['stats_req', 'agent_change']}
                                           ,{'account_id', A}
