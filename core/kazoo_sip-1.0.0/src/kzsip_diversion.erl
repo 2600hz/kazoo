@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(ecallmgr_diversion).
+-module(kzsip_diversion).
 
 -export([to_binary/1
          ,from_binary/1
@@ -29,7 +29,7 @@
 -define(PARAM_EXTENSION, <<"extension">>).
 -define(PARAM_ADDRESS, <<"address">>).
 
--include("ecallmgr.hrl").
+-include("kazoo_sip.hrl").
 
 -type diversion() :: wh_json:object().
 -export_type([diversion/0]).
@@ -102,6 +102,7 @@ parse_name_addr_single_quote(<<"'", Header/binary>>, Acc) ->
 parse_name_addr_single_quote(<<C, Header/binary>>, Acc) ->
     parse_name_addr_single_quote(Header, [C | Acc]).
 
+-spec name_addr_start(char(), ne_binary()) -> ne_binary().
 name_addr_start(Char, Bin) ->
     wh_util:strip_left_binary(Bin, Char).
 
