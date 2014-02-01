@@ -733,6 +733,8 @@ create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
 %% the endpoint
 %% @end
 %%--------------------------------------------------------------------
+-spec generate_sip_headers(wh_json:object(), whapps_call:call()) ->
+                                  wh_json:object().
 generate_sip_headers(Endpoint, Call) ->
     Inception = whapps_call:inception(Call),
     HeaderFuns = [fun(J) ->
@@ -743,11 +745,7 @@ generate_sip_headers(Endpoint, Call) ->
                           end
                   end
                   ,fun(J) when Inception =:= <<"off-net">> ->
-                           case wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
-                               'undefined' -> J;
-                               Ringtone ->
-                                   wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
-                           end;
+                           maybe_add_offnet_sip_headers(Endpoint, Call, J);
                       (J) ->
                            case wh_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
                                'undefined' -> J;
@@ -757,6 +755,21 @@ generate_sip_headers(Endpoint, Call) ->
                    end
                  ],
     lists:foldr(fun(F, JObj) -> F(JObj) end, wh_json:new(), HeaderFuns).
+
+-spec maybe_add_offnet_sip_headers(wh_json:object(), whapps_call:call(), wh_json:object()) ->
+                                          wh_json:object().
+maybe_add_offnet_sip_headers(Endpoint, Call, J) ->
+    J1 = case wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
+             'undefined' -> J;
+             Ringtone ->
+                 wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
+         end,
+    lager:debug("CCVs: ~p", [whapps_call:custom_channel_vars(Call)]),
+    wh_json:set_value(<<"Diversion">>
+                      ,wh_json:from_list([{<<"address">>, list_to_binary([<<"sip:">>, whapps_call:request(Call)])}
+                                          ,{<<"counter">>, 1}
+                                         ])
+                      ,J1).
 
 %%--------------------------------------------------------------------
 %% @private
