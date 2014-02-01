@@ -228,7 +228,7 @@ custom_channel_vars(Props, Initial) ->
                    ({<<"variable_sip_refer_to">>, V}, Acc) ->
                         [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
                    ({<<"variable_sip_h_Diversion">>, V}, Acc) ->
-                        try ecallmgr_diversion:from_binary(wh_util:to_binary(mochiweb_util:unquote(V))) of
+                        try kzsip_diversion:from_binary(wh_util:to_binary(mochiweb_util:unquote(V))) of
                             Diversion ->
                                 Diversions = props:get_value(<<"Diversions">>, Acc, []),
                                 props:set_value(<<"Diversions">>
@@ -304,16 +304,21 @@ get_fs_kv(Key, Val, _) ->
             list_to_binary([Prefix, "=", wh_util:to_list(V), ""])
     end.
 
--spec get_fs_key_and_value(ne_binary(), ne_binary(), ne_binary()) -> {ne_binary(), binary()}.
+-spec get_fs_key_and_value(ne_binary(), ne_binary() | wh_json:object(), ne_binary()) ->
+                                  {ne_binary(), binary()} |
+                                  'skip'.
 get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
     {<<"hold_music">>, media_path(Media, 'extant', UUID, wh_json:new())};
-get_fs_key_and_value(Key, Val, _UUID) ->
+get_fs_key_and_value(<<"Diversion">>, DiversionJObj, _UUID) ->
+    {<<"sip_h_Diversion">>, kzsip_diversion:to_binary(DiversionJObj)};
+get_fs_key_and_value(Key, Val, _UUID) when is_binary(Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
             {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
         {_, Prefix} ->
             {Prefix, maybe_sanitize_fs_value(Key, Val)}
-    end.
+    end;
+get_fs_key_and_value(_, _, _) -> 'skip'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -356,7 +361,10 @@ set(Node, UUID, [{<<"Hold-Media">>, Value}]) ->
                                        ]),
     'ok';
 set(Node, UUID, [{K, V}]) ->
-    ecallmgr_fs_command:set(Node, UUID, [get_fs_key_and_value(K, V, UUID)]);
+    case get_fs_key_and_value(K, V, UUID) of
+        'skip' -> 'ok';
+        KV -> ecallmgr_fs_command:set(Node, UUID, [KV])
+    end;
 set(Node, UUID, [{_, _}|_]=Props) ->
     Multiset = lists:foldl(fun(Prop, Acc) ->
                               set_fold(Node, UUID, Prop, Acc)
@@ -379,21 +387,24 @@ set_fold(_, UUID, {<<"Auto-Answer", _/binary>> = K, V}, Acc) ->
      | Acc
     ];
 set_fold(Node, UUID, {K, V}, Acc) ->
-    {FSVariable, FSValue} = get_fs_key_and_value(K, V, UUID),
-    %% NOTE: uuid_setXXX does not support vars:
-    %%   switch_channel.c:1287 Invalid data (XXX contains a variable)
-    %%   so issue a set command if it is present.
-    case binary:match(FSVariable, <<"${">>) =:= 'nomatch'
-        andalso binary:match(FSValue, <<"${">>) =:= 'nomatch'
-    of
-        'true' -> [{FSVariable, FSValue} | Acc];
-        'false' ->
-            AppArg = wh_util:to_list(<<FSVariable/binary, "=", FSValue/binary>>),
-            _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-                                                ,{"execute-app-name", "set"}
-                                                ,{"execute-app-arg", AppArg}
-                                               ]),
-            Acc
+    case get_fs_key_and_value(K, V, UUID) of
+        'skip' -> Acc;
+        {FSVariable, FSValue} ->
+            %% NOTE: uuid_setXXX does not support vars:
+            %%   switch_channel.c:1287 Invalid data (XXX contains a variable)
+            %%   so issue a set command if it is present.
+            case binary:match(FSVariable, <<"${">>) =:= 'nomatch'
+                andalso binary:match(FSValue, <<"${">>) =:= 'nomatch'
+            of
+                'true' -> [{FSVariable, FSValue} | Acc];
+                'false' ->
+                    AppArg = wh_util:to_list(<<FSVariable/binary, "=", FSValue/binary>>),
+                    _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                                        ,{"execute-app-name", "set"}
+                                                        ,{"execute-app-arg", AppArg}
+                                                       ]),
+                    Acc
+            end
     end.
 
 %%--------------------------------------------------------------------
