@@ -764,12 +764,19 @@ maybe_add_offnet_sip_headers(Endpoint, Call, J) ->
              Ringtone ->
                  wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
          end,
-    lager:debug("CCVs: ~p", [whapps_call:custom_channel_vars(Call)]),
     wh_json:set_value(<<"Diversion">>
                       ,wh_json:from_list([{<<"address">>, list_to_binary([<<"sip:">>, whapps_call:request(Call)])}
-                                          ,{<<"counter">>, 1}
+                                          ,{<<"counter">>, find_diversion_count(Call)+1}
                                          ])
                       ,J1).
+
+-spec find_diversion_count(whapps_call:call()) -> non_neg_integer().
+find_diversion_count(Call) ->
+    case wh_json:get_value(<<"Diversions">>, whapps_call:custom_channel_vars(Call)) of
+        'undefined' -> 0;
+        [] -> 0;
+        Diversions -> lists:max([kzsip_diversion:counter(Diversion) || Diversion <- Diversions])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
