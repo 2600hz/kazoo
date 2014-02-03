@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -22,13 +22,15 @@
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
--record(state, {number_props
-                ,resource_req
-                ,request_handler
-                ,control_queue
-                ,response_queue
-                ,queue
-                ,timeout}).
+-record(state, {number_props = [] :: wh_proplist()
+                ,resource_req :: api_object()
+                ,request_handler :: pid()
+                ,control_queue :: api_binary()
+                ,response_queue :: api_binary()
+                ,queue :: api_binary()
+                ,timeout :: reference()
+               }).
+-type state() :: #state{}.
 
 -define(RESPONDERS, []).
 -define(QUEUE_NAME, <<>>).
@@ -46,6 +48,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(wh_proplist(), wh_json:object()) -> startlink_ret().
 start_link(Props, JObj) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     Bindings = [{'call', [{'callid', CallId}
@@ -157,7 +160,8 @@ handle_cast(_Msg, State) ->
 handle_info('local_extension_timeout', #state{timeout='undefined'}=State) ->
     {'noreply', State};
 handle_info('local_extension_timeout', #state{response_queue=ResponseQ
-                                              ,resource_req=JObj}=State) ->
+                                              ,resource_req=JObj
+                                             }=State) ->
     wapi_offnet_resource:publish_resp(ResponseQ, local_extension_timeout(JObj)),
     {'stop', 'normal', State#state{timeout='undefined'}};
 handle_info(_Info, State) ->
@@ -172,7 +176,10 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request}) ->
+-spec handle_event(wh_json:object(), state()) -> {'reply', []}.
+handle_event(JObj, #state{request_handler=RequestHandler
+                          ,resource_req=Request
+                         }) ->
     case whapps_util:get_event_type(JObj) of
         {<<"error">>, _} ->
             <<"execute_extension">> = wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
@@ -221,7 +228,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-build_local_extension(#state{number_props=Props, resource_req=JObj, queue=Q}) ->
+-spec build_local_extension(state()) -> wh_proplist().
+build_local_extension(#state{number_props=Props
+                             ,resource_req=JObj
+                             ,queue=Q
+                            }) ->
     {CIDNum, CIDName} = local_extension_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = props:get_value('number', Props),
@@ -237,7 +248,7 @@ build_local_extension(#state{number_props=Props, resource_req=JObj, queue=Q}) ->
                     ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
                     ,{<<"Callee-ID-Name">>, get_account_name(Number, AccountId)}
                     ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
-                   ]),    
+                   ]),
     [{<<"Application-Name">>, <<"execute_extension">>}
      ,{<<"Reset">>, <<"true">>}
      ,{<<"Extension">>, Number}

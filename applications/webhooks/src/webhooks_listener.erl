@@ -414,6 +414,7 @@ print_summary({[#webhook{uri=URI
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
+    wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     wh_hooks_listener:register(),
     {'ok', #state{}}.

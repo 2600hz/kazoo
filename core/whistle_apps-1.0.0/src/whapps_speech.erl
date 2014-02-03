@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% For TTS (Text To Speech), use the create/* methods
 %%% To do ASR (Automatic Speech Recognition), there are two options:
@@ -129,7 +129,7 @@ create(<<"ispeech">>, Text, Voice, Format, Options) ->
                      ,{<<"apikey">>, whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>)}
                      ,{<<"speed">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_speed">>, 0)}
                      ,{<<"startpadding">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_start_padding">>, 1)}
-                     ,{<<"endpadding">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_end_padding">>, 0)} 
+                     ,{<<"endpadding">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_end_padding">>, 0)}
                     ],
             Headers = [{"Content-Type", "application/json; charset=UTF-8"}],
             HTTPOptions = [{'response_format', 'binary'} | Options],
@@ -169,7 +169,7 @@ maybe_convert_content(Content, ContentType, Locale, Options) ->
                                       ]),
     case lists:member(ContentType, ContentTypes) of
         'true' -> attempt_asr_freeform(Content, ContentType, Locale, Options);
-        'false' -> 
+        'false' ->
             ConvertTo = whapps_config:get_binary(?MOD_CONFIG_CAT
                                                  ,<<"asr_prefered_content_type">>
                                                  ,<<"application/mpeg">>),
@@ -296,9 +296,9 @@ create_response({'ok', Code, _, Content}) ->
     {'error', 'tts_provider_failure'}.
 
 -spec convert_content(binary(), ne_binary(), ne_binary()) -> binary() | 'error'.
-convert_content(Content, <<"audio/mpeg">>, <<"application/wav">> = ContentType) ->
+convert_content(Content, <<"audio/mpeg">>, <<"application/wav">> = _ContentType) ->
     Mp3File = tmp_file_name(<<"mp3">>),
-    WavFile = tmp_file_name(<<"wav">>),    
+    WavFile = tmp_file_name(<<"wav">>),
     _ = file:write_file(Mp3File, Content),
     Cmd = io_lib:format("lame --decode ~s ~s &> /dev/null && echo -n \"success\"", [Mp3File, WavFile]),
     _ = os:cmd(Cmd),

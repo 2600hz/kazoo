@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%% Preforms maintenance operations against the stepswitch dbs
 %%% @end
@@ -7,8 +7,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(stepswitch_maintenance).
-
--include("stepswitch.hrl").
 
 -export([resources/0]).
 -export([reverse_lookup/1]).
@@ -22,12 +20,15 @@
          ,process_number/2
         ]).
 
+-include("stepswitch.hrl").
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec reverse_lookup(text()) -> 'ok'.
 reverse_lookup(Thing) when not is_binary(Thing) ->
     reverse_lookup(wh_util:to_binary(Thing));
 reverse_lookup(Thing) ->
@@ -39,6 +40,7 @@ reverse_lookup(Thing) ->
         {'error', 'not_found'} -> io:format("resource not found~n")
     end.
 
+-spec pretty_print_lookup(wh_proplist()) -> 'ok'.
 pretty_print_lookup([]) -> 'ok';
 pretty_print_lookup([{Key, Value}|Props]) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]),
@@ -81,16 +83,19 @@ print_tree([AccountId|Tree]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec resources() -> 'ok'.
 resources() ->
     Props = stepswitch_resources:get_props(),
     pretty_print_resources(Props).
 
+-spec pretty_print_resources(list()) -> 'ok'.
 pretty_print_resources([]) -> 'ok';
 pretty_print_resources([Resource|Resources]) ->
     _ = pretty_print_resource(Resource),
     io:format("~n"),
     pretty_print_resources(Resources).
 
+-spec pretty_print_resource(list()) -> 'ok'.
 pretty_print_resource([]) -> 'ok';
 pretty_print_resource([{_, []}|Props]) ->
     pretty_print_resource(Props);
@@ -179,28 +184,24 @@ reload_resources() -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec process_number(string()) -> any().
+-spec process_number(text()) -> any().
 process_number(Number) -> process_number(Number, 'undefined').
 
 -spec process_number(text(), text() | 'undefined') -> any().
-process_number(Number, AccountId) when not is_binary(Number) ->
-    process_number(wh_util:to_binary(Number), AccountId);
 process_number(Number, 'undefined') ->
-    Endpoints = stepswitch_resources:endpoints(Number, wh_json:new()),
+    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), wh_json:new()),
     pretty_print_endpoints(Endpoints);
-process_number(Number, AccountId) when not is_binary(AccountId) ->
-    process_number(Number, wh_util:to_binary(AccountId));
 process_number(Number, AccountId) ->
-    JObj = wh_json:from_list([{<<"Account-ID">>, AccountId}
-                              ,<<"Hunt-Account-ID">>, AccountId
+    JObj = wh_json:from_list([{<<"Account-ID">>, wh_util:to_binary(AccountId)}
+                              ,{<<"Hunt-Account-ID">>, wh_util:to_binary(AccountId)}
                              ]),
-    Endpoints = stepswitch_resources:endpoints(Number, JObj),
+    Endpoints = stepswitch_resources:endpoints(wh_util:to_binary(Number), JObj),
     pretty_print_endpoints(Endpoints).
 
--spec pretty_print_endpoints(wh_proplists()) -> any().
+-spec pretty_print_endpoints(wh_json:objects()) -> any().
 pretty_print_endpoints([]) -> 'ok';
 pretty_print_endpoints([Endpoint|Endpoints]) ->
-    _ = pretty_print_endpoint(Endpoint),
+    _ = pretty_print_endpoint(wh_json:to_proplist(Endpoint)),
     io:format("~n"),
     pretty_print_endpoints(Endpoints).
 
@@ -231,6 +232,7 @@ pretty_print_endpoint([{Key, Value}|Props]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec print_condensed_list(list()) -> 'ok'.
 print_condensed_list([E1, E2, E3]) ->
     io:format("    | ~-20s | ~-20s | ~-20s|~n"
               ,[wh_util:to_binary(E1)

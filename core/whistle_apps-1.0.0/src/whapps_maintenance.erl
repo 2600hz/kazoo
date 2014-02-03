@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -137,16 +137,7 @@ refresh() ->
 
 -spec do_refresh() -> pos_integer().
 do_refresh() ->
-    refresh(?WH_SIP_DB),
-    refresh(?WH_SCHEMA_DB),
-    refresh(?WH_ACCOUNTS_DB),
-    refresh(?WH_PROVISIONER_DB),
-    refresh(?WH_FAXES),
-    refresh(?WH_RATES_DB),
-    refresh(?WH_ANONYMOUS_CDR_DB),
-    refresh(?WH_SERVICES_DB),
-    refresh(?KZ_PORT_REQUESTS_DB),
-    refresh(?KZ_ACDC_DB),
+    [refresh(SystemDb) || SystemDb <- ?KZ_SYSTEM_DBS],
 
     Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
@@ -161,6 +152,8 @@ do_refresh() ->
                         Current + 1
                 end, 1, Accounts).
 
+refresh(?WH_OFFNET_DB) ->
+    stepswitch_maintenance:refresh();
 refresh(?WH_SERVICES_DB) ->
     whistle_services_maintenance:refresh();
 refresh(?WH_SIP_DB) ->

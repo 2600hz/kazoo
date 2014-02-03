@@ -50,7 +50,8 @@ maybe_relay_request(JObj) ->
                        ],
             _ = lists:foldl(fun(F, J) ->  F(Props, J) end
                             ,JObj
-                            ,Routines),
+                            ,Routines
+                           ),
             'ok'
     end.
 
@@ -60,7 +61,8 @@ maybe_relay_request(JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_id(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec set_account_id(wh_proplist(), wh_json:object()) ->
+                            wh_json:object().
 set_account_id(Props, JObj) ->
     AccountId = props:get_value('account_id', Props),
     wh_json:set_value(?CCV(<<"Account-ID">>), AccountId, JObj).
@@ -71,7 +73,8 @@ set_account_id(Props, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_inception(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec set_inception(wh_proplist(), wh_json:object()) ->
+                           wh_json:object().
 set_inception(_, JObj) ->
     wh_json:set_value(?CCV(<<"Inception">>), <<"off-net">>, JObj).
 
@@ -81,7 +84,8 @@ set_inception(_, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_find_resource(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec maybe_find_resource(wh_proplist(), wh_json:object()) ->
+                                 wh_json:object().
 maybe_find_resource(_, JObj) ->
     case stepswitch_resources:reverse_lookup(JObj) of
         {'error', 'not_found'} -> JObj;
@@ -100,7 +104,8 @@ maybe_find_resource(_, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_ringback(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec maybe_set_ringback(wh_proplist(), wh_json:object()) ->
+                                wh_json:object().
 maybe_set_ringback(Props, JObj) ->
     case props:get_value('ringback_media', Props) of
         'undefined' -> JObj;
@@ -114,7 +119,8 @@ maybe_set_ringback(Props, JObj) ->
 %% determine the e164 format of the inbound number
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_set_transfer_media(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec maybe_set_transfer_media(wh_proplist(), wh_json:object()) ->
+                                      wh_json:object().
 maybe_set_transfer_media(Props, JObj) ->
     case props:get_value('transfer_media', Props) of
         'undefined' -> JObj;
@@ -129,7 +135,8 @@ maybe_set_transfer_media(Props, JObj) ->
 %% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_lookup_cnam(wh_proplist(), wh_json:object()) -> wh_json:object().
+-spec maybe_lookup_cnam(wh_proplist(), wh_json:object()) ->
+                               wh_json:object().
 maybe_lookup_cnam(Props, JObj) ->
     case props:get_value('inbound_cnam', Props) of
         'false' -> JObj;
@@ -144,8 +151,9 @@ maybe_lookup_cnam(Props, JObj) ->
 %%--------------------------------------------------------------------
 -spec relay_request(wh_proplist(), wh_json:object()) ->
                            wh_json:object().
-relay_request(_, JObj) ->
-    wapi_route:publish_req(JObj).
+relay_request(_Props, JObj) ->
+    wapi_route:publish_req(JObj),
+    JObj.
 
 %%--------------------------------------------------------------------
 %% @private

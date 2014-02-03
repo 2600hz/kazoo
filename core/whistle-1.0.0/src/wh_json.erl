@@ -22,6 +22,7 @@
 -export([get_number_value/2, get_number_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
+-export([get_ne_binary_value/2, get_ne_binary_value/3]).
 -export([get_lower_binary/2, get_lower_binary/3]).
 -export([get_atom_value/2, get_atom_value/3]).
 -export([get_string_value/2, get_string_value/3]).
@@ -324,8 +325,8 @@ foldl(F, Acc0, ?JSON_WRAPPER(Prop)) when is_function(F, 3) ->
 
 -spec get_string_value(key(), object() | objects()) -> 'undefined' | list().
 -spec get_string_value(key(), object(), Default) -> list() | Default.
-get_string_value(Key, JObj) -> get_string_value(Key, JObj, 'undefined').
-
+get_string_value(Key, JObj) ->
+    get_string_value(Key, JObj, 'undefined').
 get_string_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
@@ -334,11 +335,23 @@ get_string_value(Key, JObj, Default) ->
 
 -spec get_binary_value(key(), object() | objects()) -> 'undefined' | binary().
 -spec get_binary_value(key(), object() | objects(), Default) -> binary() | Default.
-get_binary_value(Key, JObj) -> get_binary_value(Key, JObj, 'undefined').
+get_binary_value(Key, JObj) ->
+    get_binary_value(Key, JObj, 'undefined').
 get_binary_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> wh_util:to_binary(Value)
+    end.
+
+-spec get_ne_binary_value(key(), object() | objects()) -> api_binary().
+-spec get_ne_binary_value(key(), object() | objects(), Default) -> ne_binary() | Default.
+get_ne_binary_value(Key, JObj) ->
+    get_ne_binary_value(Key, JObj, 'undefined').
+get_ne_binary_value(Key, JObj, Default) ->
+    case get_binary_value(Key, JObj, Default) of
+        Default -> Default;
+        <<>> -> Default;
+        Value -> Value
     end.
 
 -spec get_lower_binary(key(), object() | objects()) -> 'undefined' | binary().
@@ -445,9 +458,12 @@ get_keys(Keys, JObj) -> get_keys1(get_value(Keys, JObj, new())).
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1,length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
--spec get_ne_value(key(), object() | objects()) -> json_term() | 'undefined'.
--spec get_ne_value(key(), object() | objects(), Default) -> json_term() | Default.
-get_ne_value(Key, JObj) -> get_ne_value(Key, JObj, 'undefined').
+-spec get_ne_value(key(), object() | objects()) ->
+                          json_term() | 'undefined'.
+-spec get_ne_value(key(), object() | objects(), Default) ->
+                          json_term() | Default.
+get_ne_value(Key, JObj) ->
+    get_ne_value(Key, JObj, 'undefined').
 
 get_ne_value(Key, JObj, Default) ->
     Value = get_value(Key, JObj),
@@ -466,7 +482,8 @@ get_ne_value(Key, JObj, Default) ->
 -spec find(key(), objects()) -> json_term() | 'undefined'.
 -spec find(key(), objects(), Default) -> json_term() | Default.
 
-find(Key, Docs) -> find(Key, Docs, 'undefined').
+find(Key, Docs) ->
+    find(Key, Docs, 'undefined').
 
 find(_, [], Default) -> Default;
 find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
@@ -477,7 +494,8 @@ find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
 
 -spec get_first_defined(keys(), object()) -> 'undefined' | json_term().
 -spec get_first_defined(keys(), object(), Default) -> Default | json_term().
-get_first_defined(Keys, JObj) -> get_first_defined(Keys, JObj, 'undefined').
+get_first_defined(Keys, JObj) ->
+    get_first_defined(Keys, JObj, 'undefined').
 
 get_first_defined([], _JObj, Default) -> Default;
 get_first_defined([H|T], JObj, Default) ->

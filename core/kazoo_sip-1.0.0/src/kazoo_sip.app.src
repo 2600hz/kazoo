@@ -1,0 +1,13 @@
+{application, kazoo_sip,
+ [
+  {description, "SIP Utilities"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {modules, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { kazoo_sip_app, []}},
+  {env, []}
+ ]}.

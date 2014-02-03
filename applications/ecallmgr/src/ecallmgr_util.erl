@@ -208,9 +208,9 @@ get_sip_request(Props) ->
                                     ], Props, ?DEFAULT_REALM),
     <<User/binary, "@", Realm/binary>>.
 
--spec get_orig_ip(wh_proplist()) -> ne_binary().
+-spec get_orig_ip(wh_proplist()) -> api_binary().
 get_orig_ip(Prop) ->
-    props:get_value(<<"X-AUTH-IP">>, Prop, props:get_value(<<"ip">>, Prop)).
+    props:get_first_defined([<<"X-AUTH-IP">>, <<"ip">>], Prop).
 
 %% Extract custom channel variables to include in the event
 -spec custom_channel_vars(wh_proplist()) -> wh_proplist().
@@ -219,10 +219,28 @@ custom_channel_vars(Props) ->
     custom_channel_vars(Props, []).
 
 custom_channel_vars(Props, Initial) ->
-    lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
-                   ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
-                   ({<<"variable_sip_h_Referred-By">>, V}, Acc) -> [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
-                   ({<<"variable_sip_refer_to">>, V}, Acc) -> [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+    lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+                        [{Key, V} | Acc];
+                   ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+                        [{Key, V} | Acc];
+                   ({<<"variable_sip_h_Referred-By">>, V}, Acc) ->
+                        [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+                   ({<<"variable_sip_refer_to">>, V}, Acc) ->
+                        [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+                   ({<<"variable_sip_h_Diversion">>, V}, Acc) ->
+                        try kzsip_diversion:from_binary(wh_util:to_binary(mochiweb_util:unquote(V))) of
+                            Diversion ->
+                                Diversions = props:get_value(<<"Diversions">>, Acc, []),
+                                props:set_value(<<"Diversions">>
+                                                ,[Diversion | Diversions]
+                                                ,Acc
+                                               )
+                        catch
+                            _E:_R ->
+                                lager:warning("failed to process diversion header: ~s", [V]),
+                                lager:warning("~s: ~p", [_E, _R]),
+                                Acc
+                        end;
                    (_, Acc) -> Acc
                 end, Initial, Props).
 
@@ -248,7 +266,7 @@ unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
     binary:split(Serialized, <<"|:">>, ['global']);
 unserialize_fs_array(_) -> [].
 
-%% convert a raw FS list of vars  to a proplist
+%% convert a raw FS list of vars to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
 -spec varstr_to_proplist(nonempty_string()) -> wh_proplist().
 varstr_to_proplist(VarStr) ->
@@ -286,16 +304,21 @@ get_fs_kv(Key, Val, _) ->
             list_to_binary([Prefix, "=", wh_util:to_list(V), ""])
     end.
 
--spec get_fs_key_and_value(ne_binary(), ne_binary(), ne_binary()) -> {ne_binary(), binary()}.
+-spec get_fs_key_and_value(ne_binary(), ne_binary() | wh_json:object(), ne_binary()) ->
+                                  {ne_binary(), binary()} |
+                                  'skip'.
 get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
     {<<"hold_music">>, media_path(Media, 'extant', UUID, wh_json:new())};
-get_fs_key_and_value(Key, Val, _UUID) ->
+get_fs_key_and_value(<<"Diversion">>, DiversionJObj, _UUID) ->
+    {<<"sip_h_Diversion">>, kzsip_diversion:to_binary(DiversionJObj)};
+get_fs_key_and_value(Key, Val, _UUID) when is_binary(Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
             {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
         {_, Prefix} ->
             {Prefix, maybe_sanitize_fs_value(Key, Val)}
-    end.
+    end;
+get_fs_key_and_value(_, _, _) -> 'skip'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -338,7 +361,10 @@ set(Node, UUID, [{<<"Hold-Media">>, Value}]) ->
                                        ]),
     'ok';
 set(Node, UUID, [{K, V}]) ->
-    ecallmgr_fs_command:set(Node, UUID, [get_fs_key_and_value(K, V, UUID)]);
+    case get_fs_key_and_value(K, V, UUID) of
+        'skip' -> 'ok';
+        KV -> ecallmgr_fs_command:set(Node, UUID, [KV])
+    end;
 set(Node, UUID, [{_, _}|_]=Props) ->
     Multiset = lists:foldl(fun(Prop, Acc) ->
                               set_fold(Node, UUID, Prop, Acc)
@@ -361,21 +387,24 @@ set_fold(_, UUID, {<<"Auto-Answer", _/binary>> = K, V}, Acc) ->
      | Acc
     ];
 set_fold(Node, UUID, {K, V}, Acc) ->
-    {FSVariable, FSValue} = get_fs_key_and_value(K, V, UUID),
-    %% NOTE: uuid_setXXX does not support vars:
-    %%   switch_channel.c:1287 Invalid data (XXX contains a variable)
-    %%   so issue a set command if it is present.
-    case binary:match(FSVariable, <<"${">>) =:= 'nomatch'
-        andalso binary:match(FSValue, <<"${">>) =:= 'nomatch'
-    of
-        'true' -> [{FSVariable, FSValue} | Acc];
-        'false' ->
-            AppArg = wh_util:to_list(<<FSVariable/binary, "=", FSValue/binary>>),
-            _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-                                                ,{"execute-app-name", "set"}
-                                                ,{"execute-app-arg", AppArg}
-                                               ]),
-            Acc
+    case get_fs_key_and_value(K, V, UUID) of
+        'skip' -> Acc;
+        {FSVariable, FSValue} ->
+            %% NOTE: uuid_setXXX does not support vars:
+            %%   switch_channel.c:1287 Invalid data (XXX contains a variable)
+            %%   so issue a set command if it is present.
+            case binary:match(FSVariable, <<"${">>) =:= 'nomatch'
+                andalso binary:match(FSValue, <<"${">>) =:= 'nomatch'
+            of
+                'true' -> [{FSVariable, FSValue} | Acc];
+                'false' ->
+                    AppArg = wh_util:to_list(<<FSVariable/binary, "=", FSValue/binary>>),
+                    _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                                        ,{"execute-app-name", "set"}
+                                                        ,{"execute-app-arg", AppArg}
+                                                       ]),
+                    Acc
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -387,14 +416,16 @@ set_fold(Node, UUID, {K, V}, Acc) ->
                     ecallmgr_util:send_cmd_ret().
 export(_, _, []) -> 'ok';
 export(Node, UUID, [{<<"Auto-Answer", _/binary>> = K, V} | Props]) ->
-    Exports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
+    Exports = [get_fs_key_and_value(Key, Val, UUID)
+               || {Key, Val} <- Props
+              ],
     ecallmgr_fs_command:export(Node, UUID, [{<<"alert_info">>, <<"intercom">>}
                                             ,get_fs_key_and_value(K, V, UUID)
-                                            | Exports
+                                            | props:filter(Exports, 'skip')
                                            ]);
 export(Node, UUID, Props) ->
     Exports = [get_fs_key_and_value(Key, Val, UUID) || {Key, Val} <- Props],
-    ecallmgr_fs_command:export(Node, UUID, Exports).
+    ecallmgr_fs_command:export(Node, UUID, props:filter(Exports, 'skip')).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -35,6 +35,7 @@
 -type api_string() :: string() | 'undefined'.
 -type api_reference() :: reference() | 'undefined'.
 -type api_pid() :: pid() | 'undefined'.
+-type api_list() :: list() | 'undefined'.
 
 -type api_number() :: number() | 'undefined'.
 -type api_integer() :: integer() | 'undefined'.
