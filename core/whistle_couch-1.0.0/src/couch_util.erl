@@ -89,7 +89,7 @@ max_bulk_insert() -> ?MAX_BULK_INSERT.
 %%------------------------------------------------------------------------------
 -spec get_new_connection(nonempty_string() | ne_binary(), pos_integer(), string(), string()) ->
                                 server() |
-                                {'error', 'timeout'}.
+                                {'error', 'timeout' | 'ehostunreach' | term()}.
 get_new_connection(Host, Port, "", "") ->
     get_new_conn(Host, Port, ?IBROWSE_OPTS);
 get_new_connection(Host, Port, User, Pass) ->
