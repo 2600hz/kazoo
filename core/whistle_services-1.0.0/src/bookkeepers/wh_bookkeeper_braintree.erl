@@ -152,7 +152,7 @@ commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
                 {'error', _E} ->
                     lager:error("could not save services for ~p : ~p retrying...", [BillingId, _E]),
                     commit_transactions(BillingId, Transactions, Try-1);
-                {'ok', JObj} -> 'ok'
+                {'ok', _} -> 'ok'
             end
     end;
 commit_transactions(BillingId, _Transactions, _Try) ->
