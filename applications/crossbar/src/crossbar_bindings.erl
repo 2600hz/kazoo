@@ -56,6 +56,15 @@
 
 -include("crossbar.hrl").
 
+-ifdef(TEST).
+%% PropEr needs to be included before eunit. Both modules create a ?LET macro,
+%% but the PropEr one is the useful one. Also needs to be included before any
+%% function definition because it includes functions.
+-include_lib("proper/include/proper.hrl").
+
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -define(SERVER, ?MODULE).
 
 %% {FullBinding, BindingPieces, QueueOfMods}
@@ -599,14 +608,6 @@ fold_processor(Routing, Payload, Bs) ->
 binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) > 0 ->
     matches(lists:reverse(binary:split(B, <<".">>, ['global']))
             ,lists:reverse(binary:split(R, <<".">>, ['global']))).
-
-
-%% PropEr needs to be included before eunit. Both modules create a ?LET macro,
-%% but the PropEr one is the useful one. Also needs to be included before any
-%% function definition because it includes functions.
--include_lib("proper/include/proper.hrl").
-
--include_lib("eunit/include/eunit.hrl").
 
 -define(ROUTINGS, [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>]).
 
