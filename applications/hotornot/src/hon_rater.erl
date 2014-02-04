@@ -36,11 +36,12 @@ get_rate_data(JObj) ->
     case hon_util:candidate_rates(ToDID, FromDID) of
         {'ok', []} ->
             wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
-            lager:debug("rate lookup had no results"),
+            lager:debug("no rates found for ~s to ~s", [FromDID, ToDID]),
             {'error', 'no_rate_found'};
         {'error', _E} ->
             wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
-            lager:debug("rate lookup error: ~p", [_E]),
+            lager:debug("rate lookup error for ~s to ~s: ~p"
+                       ,[FromDID, ToDID, _E]),
             {'error', 'no_rate_found'};
         {'ok', Rates} ->
             RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
@@ -49,9 +50,15 @@ get_rate_data(JObj) ->
             case hon_util:sort_rates(Matching) of
                 [] ->
                     wh_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
-                    lager:debug("no rates left after filter"),
+                    lager:debug("no rates left for ~s to ~s after filter"
+                               ,[FromDID, ToDID]),
                     {'error', 'no_rate_found'};
                 [Rate|_] ->
+                    lager:debug("using rate ~s for ~s to ~s"
+                               ,[wh_json:get_value(<<"rate_name">>, Rate)
+                                ,FromDID
+                                ,ToDID
+                                ]),
                     {'ok', rate_resp(Rate, JObj)}
             end
     end.
@@ -73,7 +80,6 @@ maybe_get_rate_discount(JObj) ->
 
 -spec rate_resp(wh_json:object(), wh_json:object()) -> wh_proplist().
 rate_resp(Rate, JObj) ->
-    lager:debug("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
     RateCost = get_rate_cost(Rate),
     RateSurcharge = get_surcharge(Rate),
     RateMinimum = wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60),
