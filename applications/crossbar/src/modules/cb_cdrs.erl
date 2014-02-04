@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% CDR
@@ -251,9 +251,10 @@ cdr_db(Timestamp, Context) ->
 maybe_add_design_doc(AccountMODb) ->
     case couch_mgr:lookup_doc_rev(AccountMODb, <<"_design/cdrs">>) of
         {'error', 'not_found'} ->
-            couch_mgr:load_doc_from_file(AccountMODb
-                                         ,'crossbar'
-                                         ,<<"account/cdrs.json">>);
+            couch_mgr:revise_doc_from_file(AccountMODb
+                                           ,'crossbar'
+                                           ,<<"account/cdrs.json">>
+                                          );
         {'ok', _ } -> 'ok'
     end.
 
@@ -262,12 +263,12 @@ maybe_add_design_doc(AccountMODb) ->
 
 cdr_db_name(Timestamp, Context) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    #cb_context{req_nouns=ReqNouns} = Context,
+    ReqNouns = cb_context:req_nouns(Context),
     [AccountId] = props:get_value(<<"accounts">>, ReqNouns),
     wh_util:format_account_id(AccountId, Year, Month).
 
 cdr_db_name(Year, Month, Context) ->
-    #cb_context{req_nouns=ReqNouns} = Context,
+    ReqNouns = cb_context:req_nouns(Context),
     [AccountId] = props:get_value(<<"accounts">>, ReqNouns),
     wh_util:format_account_id(AccountId, Year, Month).
 
