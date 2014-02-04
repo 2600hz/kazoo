@@ -431,16 +431,18 @@ get_path1(RawPath, Relative) ->
         lists:foldl(fun(<<"..">>, []) -> [];
                        (<<"..">>, [_ | PathTokens]) -> PathTokens;
                        (<<".">>, PathTokens) -> PathTokens;
+                       (<<>>, PathTokens) -> PathTokens;
                        (Segment, PathTokens) -> [Segment | PathTokens]
                     end, PathTokensRev, UrlTokens)
        ), <<"/">>).
 
--include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 get_path_test() ->
     RawPath = <<"/v1/accounts/acct_id/module">>,
     Relative = <<"../other_mod">>,
     ?assertEqual(get_path1(RawPath, Relative), <<"/v1/accounts/acct_id/other_mod">>),
     ?assertEqual(get_path1(RawPath, <<Relative/binary, "/mod_id">>), <<"/v1/accounts/acct_id/other_mod/mod_id">>).
+
 -endif.
