@@ -176,14 +176,14 @@ process_rules(_, [], _) ->
 %%--------------------------------------------------------------------
 -spec get_temporal_rules(temporal(), whapps_call:call()) -> rules().
 get_temporal_rules(#temporal{local_sec=LSec, routes=Routes, timezone=TZ}, Call) ->
-    Now =  localtime:utc_to_local(calendar:universal_time()
-                                  ,wh_util:to_list(TZ)
-                                 ),
-    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), Now, []).
+    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), TZ, []).
 
--spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), wh_datetime(), rules()) -> rules().
+-spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary(), rules()) -> rules().
 get_temporal_rules([], _, _, _, Rules) -> lists:reverse(Rules);
-get_temporal_rules([Route|Routes], LSec, AccountDb, Now, Rules) ->
+get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Rules) ->
+    Now = localtime:utc_to_local(calendar:universal_time()
+                                 ,wh_util:to_list(TZ)
+                                ),
     case couch_mgr:open_cache_doc(AccountDb, Route) of
         {'error', _R} ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
@@ -207,7 +207,7 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, Now, Rules) ->
                          ,month =
                              wh_json:get_value(<<"month">>, JObj, ?RULE_DEFAULT_MONTH)
                          ,start_date =
-                             get_date(wh_json:get_integer_value(<<"start_date">>, JObj, LSec))
+                             get_date(wh_json:get_integer_value(<<"start_date">>, JObj, LSec), TZ)
                          ,wtime_start =
                              wh_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
                          ,wtime_stop =
@@ -267,9 +267,12 @@ get_temporal_route(JObj, Call) ->
 %% Accepts a term and tries to convert it to a wh_date()
 %% @end
 %%--------------------------------------------------------------------
--spec get_date(non_neg_integer()) -> wh_date().
-get_date(Seconds) when is_integer(Seconds) ->
-    {Date, _} = calendar:gregorian_seconds_to_datetime(Seconds),
+-spec get_date(non_neg_integer(), ne_binary()) -> wh_date().
+get_date(Seconds, TZ) when is_integer(Seconds) ->
+    {Date, _} = localtime:utc_to_local(
+                    calendar:gregorian_seconds_to_datetime(Seconds)
+                    ,wh_util:to_list(TZ)
+                ),
     Date.
 
 %%--------------------------------------------------------------------
