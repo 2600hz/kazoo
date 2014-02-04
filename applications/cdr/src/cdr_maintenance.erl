@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @Copyright (c) 2010-2013, 2600Hz
+%%% @Copyright (c) 2010-2014, 2600Hz
 %%% @doc
 %%% Maintenance module for migrating CDRs to the new Transient
 %%% Account database sharding structure.
