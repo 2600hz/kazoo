@@ -61,7 +61,7 @@ handle_match(CallerId, Data, Call) ->
 %%--------------------------------------------------------------------
 -spec handle_no_match(whapps_call:call()) -> 'ok'.
 handle_no_match(Call) ->
-    case is_callflow_child(<<"no_match">>, Call) of
+    case is_callflow_child(<<"nomatch">>, Call) of
        true -> 'ok';
        false -> cf_exe:continue(Call)
     end.
