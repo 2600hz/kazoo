@@ -47,35 +47,53 @@ delete(#number{features=Features
                ,current_number_doc=CurrentDoc
                ,number_doc=Doc
               }=Number) ->
-    case wh_json:get_ne_value(<<"vitelity_e911">>, CurrentDoc) of
+    case wh_json:get_ne_value(<<"dash_e911">>, CurrentDoc) of
         'undefined' -> Number;
         _Else ->
             lager:debug("removing e911 information"),
             _ = remove_number(Num),
-            Number#number{features=sets:del_element(<<"vitelity_e911">>, Features)
-                          ,number_doc=wh_json:delete_key(<<"vitelity_e911">>, Doc)
+            Number#number{features=sets:del_element(<<"dash_e911">>, Features)
+                          ,number_doc=wh_json:delete_key(<<"dash_e911">>, Doc)
                          }
     end.
 
 -spec maybe_update_e911(wnm_number()) -> wnm_number().
 maybe_update_e911(#number{current_number_doc=CurrentJObj
                           ,features=Features
+                          ,number_doc=JObj
+                          ,dry_run='true'
+                         }=N) ->
+    CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
+    E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
+    NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
+    case wh_util:is_empty(E911) of
+        'true' ->
+            lager:debug("dry run: remove vitelity e911 information"),
+            N#number{features=sets:del_element(<<"dash_e911">>, Features)};
+        'false' when NotChanged  ->
+            N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+        'false' ->
+            lager:debug("dry run: change vitelity e911 information: ~s", [wh_json:encode(E911)]),
+            wnm_number:activate_feature(<<"dash_e911">>, N)
+    end;
+maybe_update_e911(#number{current_number_doc=CurrentJObj
+                          ,features=Features
                           ,number=Number
                           ,number_doc=JObj
                          }=N) ->
-    CurrentE911 = wh_json:get_ne_value(<<"vitelity_e911">>, CurrentJObj),
-    E911 = wh_json:get_ne_value(<<"vitelity_e911">>, JObj),
+    CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
+    E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
         'true' ->
             lager:debug("vitelity e911 information has been removed, updating vitelity"),
             _ = remove_number(Number),
-            N#number{features=sets:del_element(<<"vitelity_e911">>, Features)};
+            N#number{features=sets:del_element(<<"dash_e911">>, Features)};
         'false' when NotChanged  ->
-            N#number{features=sets:add_element(<<"vitelity_e911">>, Features)};
+            N#number{features=sets:add_element(<<"dash_e911">>, Features)};
         'false' ->
             lager:debug("vitelity e911 information has been changed: ~s", [wh_json:encode(E911)]),
-            N1 = wnm_number:activate_feature(<<"vitelity_e911">>, N),
+            N1 = wnm_number:activate_feature(<<"dash_e911">>, N),
             N1#number{number_doc=update_e911(N1, E911)}
     end.
 
@@ -90,7 +108,7 @@ remove_number(DID) ->
 
 -spec remove_e911_options(ne_binary()) -> list().
 remove_e911_options(DID) ->
-    [{'qs', [{'did', DID}
+    [{'qs', [{'did', wnm_util:to_npan(DID)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911delete">>}
              | wnm_vitelity_util:default_options()
@@ -110,7 +128,7 @@ get_location(DID) ->
 
 -spec get_location_options(ne_binary()) -> list().
 get_location_options(DID) ->
-    [{'qs', [{'did', DID}
+    [{'qs', [{'did',  wnm_util:to_npan(DID)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911getinfo">>}
              | wnm_vitelity_util:default_options()
@@ -124,7 +142,7 @@ update_e911(#number{number=Number}=N, Address) ->
 
 -spec e911_options(ne_binary(), wh_json:object()) -> list().
 e911_options(Number, AddressJObj) ->
-    [{'qs', [{'did', Number}
+    [{'qs', [{'did',  wnm_util:to_npan(Number)}
              ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj)}
              ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
              ,{'city', wh_json:get_value(<<"locality">>, AddressJObj)}
