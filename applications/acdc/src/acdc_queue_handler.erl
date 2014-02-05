@@ -25,14 +25,18 @@ handle_call_event(JObj, Props) ->
     {Cat, Name} = wh_util:get_event_type(JObj),
     handle_call_event(Cat, Name, JObj, Props).
 
-handle_call_event(_, <<"CHANNEL_DESTROY">>, JObj, Props) ->
+handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, JObj, Props) ->
     case acdc_queue_fsm:cdr_url(props:get_value('fsm_pid', Props)) of
         'undefined' -> 'ok';
         Url ->
             acdc_util:send_cdr(Url, JObj),
             Srv = props:get_value('server', Props),
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-            acdc_util:unbind_from_call_events(CallId, Srv)
+            acdc_util:unbind_from_call_events(CallId, Srv),
+            acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props)
+                                      ,Category
+                                      ,Name
+                                      ,JObj)
     end;
 handle_call_event(Category, Name, JObj, Props) ->
     acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props)
