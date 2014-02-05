@@ -14,7 +14,7 @@
 
 -define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {'playback_media', M}).
 
--define(WHISTLE_CONTEXT, <<"context_2">>).
+-define(DEFAULT_FREESWITCH_CONTEXT, ecallmgr_config:get(<<"freeswitch_context">>, <<"context_2">>)).
 
 -define(SIP_INTERFACE, "sofia/sipinterface_1/").
 -define(DEFAULT_FS_PROFILE, "sipinterface_1").
