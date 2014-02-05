@@ -783,6 +783,7 @@ insert_command(#state{node=Node
             execute_control_request(JObj, State),
             maybe_filter_queue(wh_json:get_value(<<"Filter-Applications">>, JObj), CommandQ);
         _ ->
+            lager:debug("recv and executing ~s now!", [AName]),
             execute_control_request(JObj, State),
             CommandQ
     end;
