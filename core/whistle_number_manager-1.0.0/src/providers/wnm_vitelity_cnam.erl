@@ -117,7 +117,7 @@ outbound_cnam_options(DID, NewCNAM) ->
 
 -spec process_outbound_xml_resp(wnm_number(), text()) -> wnm_number().
 process_outbound_xml_resp(N, XML) ->
-    try xmerl_string:scan(XML) of
+    try xmerl_scan:string(XML) of
         {#xmlElement{name='content'
                      ,content=Children
                     }, _} ->
@@ -126,7 +126,7 @@ process_outbound_xml_resp(N, XML) ->
             wnm_number:error_provider_fault(<<"unknown response format">>, N)
     catch
         _E:_R ->
-            wnm_number:error_provider_fault(<<"unknown response format">>, N)
+            wnm_number:error_provider_fault(<<"invalid response format">>, N)
     end.
 
 -spec process_outbound_resp(wnm_number(), xml_els()) -> wnm_number().
