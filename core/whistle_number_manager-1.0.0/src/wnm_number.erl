@@ -1110,7 +1110,7 @@ update_service_plans(#number{dry_run='true'
     case dict:find(AssignedTo, Docs) of
         'error' -> Number;
         {'ok', JObj} ->
-            PhoneNumbers 
+            PhoneNumbers
                 = wh_json:set_value([PhoneNumber, <<"module_name">>]
                                     ,ModuleName
                                     ,JObj

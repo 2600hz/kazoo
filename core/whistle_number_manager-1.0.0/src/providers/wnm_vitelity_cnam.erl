@@ -63,6 +63,21 @@ update_cnam_features(#number{}=N) ->
 handle_outbound_cnam(#number{current_number_doc=CurrentJObj
                              ,number_doc=JObj
                              ,features=Features
+                             ,dry_run='true'
+                            }=N) ->
+    CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], CurrentJObj),
+    case wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], JObj) of
+        'undefined' ->
+            N#number{features=sets:del_element(<<"outbound_cnam">>, Features)};
+        CurrentCNAM ->
+            N#number{features=sets:add_element(<<"outbound_cnam">>, Features)};
+        NewCNAM ->
+            lager:debug("dry run: cnam display name changed to ~s", [NewCNAM]),
+            wnm_number:activate_feature(<<"outbound_cnam">>, N)
+    end;
+handle_outbound_cnam(#number{current_number_doc=CurrentJObj
+                             ,number_doc=JObj
+                             ,features=Features
                             }=N) ->
     CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], CurrentJObj),
     case wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], JObj) of
@@ -86,18 +101,18 @@ try_update_outbound_cnam(#number{number=DID}=N, NewCNAM) ->
         {'ok', XML} ->
             process_outbound_xml_resp(N, XML);
         {'error', _E} ->
-            wnm_number:error_provider_error(<<"failed to query provider">>, N)
+            wnm_number:error_provider_fault(<<"failed to query provider">>, N)
     end.
 
 -spec outbound_cnam_options(ne_binary(), ne_binary()) -> list().
 outbound_cnam_options(DID, NewCNAM) ->
     [{'qs', [{'cmd', <<"lidb">>}
-             ,{'did', DID}
+             ,{'did',  wnm_util:to_npan(DID)}
              ,{'name', NewCNAM}
              ,{'xml', <<"yes">>}
              | wnm_vitelity_util:default_options()
             ]}
-      ,{'uri', wnm_vitelity_util:default_options()}
+      ,{'uri', wnm_vitelity_util:api_uri()}
      ].
 
 -spec process_outbound_xml_resp(wnm_number(), text()) -> wnm_number().
@@ -108,10 +123,10 @@ process_outbound_xml_resp(N, XML) ->
                     }, _} ->
             process_outbound_resp(N, Children);
         _ ->
-            wnm_number:error_provider_error(<<"unknown response format">>, N)
+            wnm_number:error_provider_fault(<<"unknown response format">>, N)
     catch
         _E:_R ->
-            wnm_number:error_provider_error(<<"unknown response format">>, N)
+            wnm_number:error_provider_fault(<<"unknown response format">>, N)
     end.
 
 -spec process_outbound_resp(wnm_number(), xml_els()) -> wnm_number().
@@ -120,21 +135,21 @@ process_outbound_resp(N, Children) ->
         <<"ok">> ->
             check_outbound_response_tag(N, Children);
         <<"fail">> ->
-            wnm_number:error_provider_error(wnm_vitelity_util:xml_resp_error_msg(Children), N)
+            wnm_number:error_provider_fault(wnm_vitelity_util:xml_resp_error_msg(Children), N)
     end.
 
 -spec check_outbound_response_tag(wnm_number(), xml_els()) -> wnm_number().
 check_outbound_response_tag(N, Children) ->
     case wnm_vitelity_util:xml_resp_response_msg(Children) of
         'undefined' ->
-            wnm_number:error_provider_error(<<"response tag not found">>, N);
+            wnm_number:error_provider_fault(<<"response tag not found">>, N);
         <<"ok">> ->
             N1 = wnm_number:activate_feature(<<"outbound_cnam">>, N),
             _ = publish_cnam_update(N1),
             N1;
         Msg ->
             lager:debug("resp was not ok, was ~s", [Msg]),
-            wnm_number:error_provider_error(Msg, N)
+            wnm_number:error_provider_fault(Msg, N)
     end.
 
 %%--------------------------------------------------------------------
@@ -144,6 +159,15 @@ check_outbound_response_tag(N, Children) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_inbound_cnam(wnm_number()) -> wnm_number().
+handle_inbound_cnam(#number{number_doc=JObj
+                            ,features=Features
+                            ,dry_run='true'}=N) ->
+    case wh_json:is_true([<<"cnam">>, <<"inbound_lookup">>], JObj) of
+        'false' ->
+            N#number{features=sets:del_element(<<"inbound_cnam">>, Features)};
+        'true' ->
+            wnm_number:activate_feature(<<"inbound_cnam">>, N)
+    end;
 handle_inbound_cnam(#number{number_doc=JObj}=N) ->
     case wh_json:is_true([<<"cnam">>, <<"inbound_lookup">>], JObj) of
         'false' -> remove_inbound_cnam(N);
@@ -162,7 +186,7 @@ remove_inbound_cnam(#number{features=Features
 
 -spec remove_inbound_options(ne_binary()) -> list().
 remove_inbound_options(Number) ->
-    [{'qs', [{'did', Number}
+    [{'qs', [{'did',  wnm_util:to_npan(Number)}
              ,{'cmd', <<"cnamdisable">>}
              ,{'xml', <<"yes">>}
              | wnm_vitelity_util:default_options()
@@ -183,7 +207,7 @@ add_inbound_cnam(#number{number=Number}=N) ->
 
 -spec inbound_options(ne_binary()) -> list().
 inbound_options(Number) ->
-    [{'qs', [{'did', Number}
+    [{'qs', [{'did',  wnm_util:to_npan(Number)}
              ,{'cmd', <<"cnamenable">>}
              ,{'xml', <<"yes">>}
              | wnm_vitelity_util:default_options()

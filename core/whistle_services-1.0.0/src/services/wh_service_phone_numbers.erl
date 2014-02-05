@@ -146,6 +146,8 @@ update_feature_quantities([], Services) ->
     Services;
 update_feature_quantities([<<"dash_e911">>|Features], Services) ->
     update_feature_quantities([<<"e911">>|Features], Services);
+update_feature_quantities([<<"vitelity_e911">>|Features], Services) ->
+    update_feature_quantities([<<"e911">>|Features], Services);
 update_feature_quantities([Feature|Features], Services) ->
     Quantity = wh_services:update_quantity(<<"number_services">>, Feature, Services),
     UpdatedServices = wh_services:update(<<"number_services">>, Feature, Quantity + 1, Services),
