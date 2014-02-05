@@ -608,7 +608,9 @@ maybe_nack(Call, Delivery, SharedPid) ->
 -spec is_call_alive(whapps_call:call() | ne_binary()) -> boolean().
 is_call_alive(Call) ->
     case whapps_call_command:b_channel_status(Call) of
-        {'ok', _} -> 'true';
+        {'ok', StatusJObj} ->
+            lager:debug("channel is ~s", [wh_json:get_value(<<"Status">>, StatusJObj)]),
+            'true';
         {'error', _E} -> 'false'
     end.
 
