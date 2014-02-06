@@ -244,7 +244,9 @@ process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
                ,?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Props)
               );
 process_event(<<"sofia::register">>, _UUID, Props, Node) ->
-    gproc:send({'p', 'l', ?REGISTER_SUCCESS_REG}, ?REGISTER_SUCCESS_MSG(Node, Props)).
+    gproc:send({'p', 'l', ?REGISTER_SUCCESS_REG}, ?REGISTER_SUCCESS_MSG(Node, Props));
+process_event(_, _, _, _) -> 'ok'.
+
 
 -spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_event(EventName, UUID, Props, Node) ->
