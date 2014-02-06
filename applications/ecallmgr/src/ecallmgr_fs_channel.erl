@@ -278,7 +278,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->    
+handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
     _ = spawn(?MODULE, 'process_event', [UUID, Props, Node, self()]),
     {'noreply', State};
 handle_info({'fetch', 'channels', <<"channel">>, <<"uuid">>, UUID, FetchId, _}, #state{node=Node}=State) ->
@@ -373,7 +373,7 @@ process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = ecallmgr_fs_channels:new(props_to_record(Props, Node)),
     _ = maybe_publish_channel_state(Props, Node),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
-        =:= wh_util:to_binary(node()) 
+        =:= wh_util:to_binary(node())
     of
         'true' -> ecallmgr_fs_authz:authorize(Props, UUID, Node);
         'false' -> 'ok'
@@ -441,7 +441,7 @@ props_to_record(Props, Node) ->
              ,node=Node
              ,timestamp=wh_util:current_tstamp()
              ,profile=props:get_value(<<"variable_sofia_profile_name">>, Props, ?DEFAULT_FS_PROFILE)
-             ,context=props:get_value(<<"Caller-Context">>, Props, ?WHISTLE_CONTEXT)
+             ,context=props:get_value(<<"Caller-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT)
              ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
              ,other_leg=get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props)
             }.

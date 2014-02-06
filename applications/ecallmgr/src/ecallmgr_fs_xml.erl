@@ -239,7 +239,7 @@ route_resp_xml(<<"bridge">>, Routes, JObj) ->
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
-    Context = wh_json:get_value(<<"Context">>, JObj, ?WHISTLE_CONTEXT),
+    Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
     ContextEl = context_el(Context, [LogEl, RingbackEl, TransferEl] ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
@@ -254,7 +254,7 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
              ,action_el(<<"park">>)
             ],
     ParkExtEl = extension_el(<<"park">>, 'undefined', [condition_el(Exten)]),
-    ContextEl = context_el(?WHISTLE_CONTEXT, [ParkExtEl]),
+    ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ParkExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
@@ -269,7 +269,7 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
              ,action_el(<<"respond">>, [ErrCode, ErrMsg])
             ],
     ErrExtEl = extension_el([condition_el(Exten)]),
-    ContextEl = context_el(?WHISTLE_CONTEXT, [ErrExtEl]),
+    ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
