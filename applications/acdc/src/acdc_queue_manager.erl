@@ -385,8 +385,9 @@ handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=S
                  }};
 handle_cast({'monitor_call', Call}, State) ->
     gen_listener:add_binding(self(), 'call', [{'callid', whapps_call:call_id(Call)}
-                                              ,{'restrict_to', ['events']}
+                                              ,{'restrict_to', [<<"CHANNEL_DESTROY">>]}
                                              ]),
+    lager:debug("bound for call events for ~s", [whapps_call:call_id(Call)]),
     {'noreply', State};
 handle_cast({'start_workers'}, #state{acct_id=AccountId
                                       ,queue_id=QueueId

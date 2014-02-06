@@ -109,7 +109,7 @@ sync_req_routing_key(AcctId, Id) ->
 -define(SYNC_RESP_TYPES, []).
 
 -spec sync_resp(api_terms()) -> {'ok', iolist()} |
-                                      {'error', string()}.
+                                {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
     case sync_resp_v(Props) of
         'true' -> wh_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
@@ -141,7 +141,7 @@ sync_resp_v(JObj) ->
 -define(STATS_REQ_TYPES, []).
 
 -spec stats_req(api_terms()) -> {'ok', iolist()} |
-                                      {'error', string()}.
+                                {'error', string()}.
 stats_req(Props) when is_list(Props) ->
     case stats_req_v(Props) of
         'true' -> wh_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);
@@ -157,7 +157,7 @@ stats_req_v(JObj) ->
     stats_req_v(wh_json:to_proplist(JObj)).
 
 -spec stats_req_routing_key(wh_json:object() | wh_proplist() | ne_binary()) -> ne_binary().
--spec stats_req_routing_key(ne_binary(), ne_binary()) -> ne_binary().
+-spec stats_req_routing_key(ne_binary(), api_binary()) -> ne_binary().
 stats_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Account-ID">>, Props, <<"*">>),
     AgentId = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
@@ -179,7 +179,7 @@ stats_req_publish_key(JObj) ->
                           ,wh_json:get_value(<<"Agent-ID">>, JObj)
                          ).
 
-stats_req_routing_key(Id, undefined) ->
+stats_req_routing_key(Id, 'undefined') ->
     stats_req_routing_key(Id);
 stats_req_routing_key(Id, AgentId) ->
     <<?STATS_REQ_KEY, Id/binary, ".", AgentId/binary>>.
@@ -431,7 +431,7 @@ unbind_q(_, _, []) -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
-declare_exchanges() ->    
+declare_exchanges() ->
     amqp_util:whapps_exchange().
 
 %%------------------------------------------------------------------------------
