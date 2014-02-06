@@ -301,6 +301,7 @@ handle_cast({'member_connect_req', MemberCallJObj, Delivery, _Url}
     put('callid', whapps_call:call_id(Call)),
 
     acdc_util:bind_to_call_events(Call),
+    lager:debug("bound to call events for ~s", [whapps_call:call_id(Call)]),
     send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
 
     {'noreply', State#state{call=Call
@@ -313,16 +314,8 @@ handle_cast({'member_connect_re_req'}, #state{my_q=MyQ
                                               ,acct_id=AcctId
                                               ,queue_id=QueueId
                                               ,call=Call
-                                              ,fsm_pid=FSM
                                              }=State) ->
-    case is_call_alive(Call) of
-        'true' ->
-            send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId);
-        'false' ->
-            lager:debug("call appears down, don't re req connect"),
-            acdc_queue_listener:finish_member_call(self()),
-            acdc_queue_fsm:finish_member_call(FSM)
-    end,
+    send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
     {'noreply', State};
 handle_cast({'member_connect_win', RespJObj, QueueOpts}, #state{my_q=MyQ
                                                                 ,my_id=MyId
@@ -351,6 +344,8 @@ handle_cast({'timeout_member_call'}, #state{delivery=Delivery
     lager:debug("member call has timed out, we're done"),
 
     acdc_util:unbind_from_call_events(Call),
+    lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
+
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId),
 
@@ -358,6 +353,7 @@ handle_cast({'timeout_member_call'}, #state{delivery=Delivery
 handle_cast({'ignore_member_call', Call, Delivery}, #state{shared_pid=Pid}=State) ->
     lager:debug("ignoring member call ~s, moving on", [whapps_call:call_id(Call)]),
     acdc_util:unbind_from_call_events(Call),
+    lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
     {'noreply', clear_call_state(State), 'hibernate'};
 handle_cast({'exit_member_call'}, #state{delivery=Delivery
@@ -372,6 +368,7 @@ handle_cast({'exit_member_call'}, #state{delivery=Delivery
     lager:debug("member call has exited the queue, we're done"),
 
     acdc_util:unbind_from_call_events(Call),
+    lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_failure(Q, AcctId, QueueId, whapps_call:call_id(Call), MyId, AgentId, <<"Caller exited the queue via DTMF">>),
 
@@ -390,6 +387,7 @@ handle_cast({'finish_member_call'}, #state{delivery=Delivery
     lager:debug("agent has taken care of member, we're done"),
 
     acdc_util:unbind_from_call_events(Call),
+    lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, whapps_call:call_id(Call)),
 
@@ -406,6 +404,7 @@ handle_cast({'finish_member_call', _AcceptJObj}, #state{delivery=Delivery
     lager:debug("agent has taken care of member, we're done"),
 
     acdc_util:unbind_from_call_events(Call),
+    lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, whapps_call:call_id(Call)),
 
@@ -596,11 +595,13 @@ maybe_nack(Call, Delivery, SharedPid) ->
         'true' ->
             lager:debug("call is still active, nack and replay"),
             acdc_util:unbind_from_call_events(Call),
+            lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
             acdc_queue_shared:nack(SharedPid, Delivery),
             'true';
         'false' ->
             lager:debug("call is probably not active, ack it (so its gone)"),
             acdc_util:unbind_from_call_events(Call),
+            lager:debug("unbound from call events for ~s", [whapps_call:call_id(Call)]),
             acdc_queue_shared:ack(SharedPid, Delivery),
             'false'
     end.
@@ -611,7 +612,9 @@ is_call_alive(Call) ->
         {'ok', StatusJObj} ->
             lager:debug("channel is ~s", [wh_json:get_value(<<"Status">>, StatusJObj)]),
             'true';
-        {'error', _E} -> 'false'
+        {'error', _E} ->
+            lager:debug("failed to get status: ~p", [_E]),
+            'false'
     end.
 
 -spec clear_call_state(state()) -> state().
