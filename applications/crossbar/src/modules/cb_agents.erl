@@ -106,9 +106,9 @@ resource_exists(?STATUS_PATH_TOKEN, _) -> 'true'.
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-content_types_provided(#cb_context{}=Context) -> Context.
-content_types_provided(#cb_context{}=Context, ?STATUS_PATH_TOKEN) -> Context;
-content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
+content_types_provided(Context) -> Context.
+content_types_provided(Context, ?STATUS_PATH_TOKEN) -> Context;
+content_types_provided(Context, ?STATS_PATH_TOKEN) ->
     case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
         ?FORMAT_VERBOSE ->
             CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
@@ -119,8 +119,8 @@ content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
             CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}],
             cb_context:add_content_types_provided(Context, CTPs)
     end.
-content_types_provided(#cb_context{}=Context, ?STATUS_PATH_TOKEN, _) -> Context;
-content_types_provided(#cb_context{}=Context, _, ?STATUS_PATH_TOKEN) -> Context.
+content_types_provided(Context, ?STATUS_PATH_TOKEN, _) -> Context;
+content_types_provided(Context, _, ?STATUS_PATH_TOKEN) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -138,22 +138,27 @@ content_types_provided(#cb_context{}=Context, _, ?STATUS_PATH_TOKEN) -> Context.
                       cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) ->
                       cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
     summary(Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATUS_PATH_TOKEN) ->
+validate(Context, PathToken) ->
+    validate_agent(Context, PathToken, cb_context:req_verb(Context)).
+
+validate_agent(Context, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
     fetch_all_agent_statuses(Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATS_PATH_TOKEN) ->
+validate_agent(Context, ?STATS_PATH_TOKEN, ?HTTP_GET) ->
     fetch_all_agent_stats(Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
+validate_agent(Context, Id, ?HTTP_GET) ->
     read(Id, Context).
 
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, AgentId, ?STATUS_PATH_TOKEN) ->
-    validate_status_change(read(AgentId, Context));
+validate(Context, AgentId, PathToken) ->
+    validate_agent_action(Context, AgentId, PathToken, cb_context:req_verb(Context)).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, AgentId, ?STATUS_PATH_TOKEN) ->
+validate_agent_action(Context, AgentId, ?STATUS_PATH_TOKEN, ?HTTP_POST) ->
+    validate_status_change(read(AgentId, Context));
+validate_agent_action(Context, AgentId, ?STATUS_PATH_TOKEN, ?HTTP_GET) ->
     fetch_agent_status(AgentId, Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?STATUS_PATH_TOKEN, AgentId) ->
+validate_agent_action(Context, ?STATUS_PATH_TOKEN, AgentId, ?HTTP_GET) ->
     fetch_agent_status(AgentId, Context).
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
