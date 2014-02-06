@@ -2,7 +2,7 @@
 #
 # kazoo
 #
-# chkconfig: 345 13 87
+# chkconfig: 345 85 87
 # description: Dubbed a "scalable, distributed, cloud-based" telephony platform
 # processname: kazoo
 #
@@ -12,7 +12,7 @@
 
 KZ_DIR="/opt/kazoo"
 KZ_APP=`basename $0`
-KZ_APP=${KZ_APP#kz-}
+KZ_APP=${KZ_APP#*-}
 LOCKFILE=${LOCKFILE-/var/lock/subsys/${KZ_APP}}
 USER="kazoo"
 RETVAL=0
@@ -66,6 +66,7 @@ case "$1" in
         stop
         ;;
     status)
+        export HOME=${KZ_DIR}
         sup -n${KZ_APP} whistle_maintenance nodes
         RETVAL=$?
         ;;
