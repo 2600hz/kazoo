@@ -99,8 +99,10 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast('bind_to_directory', #state{node=Node}=State) ->
     case freeswitch:bind(Node, 'directory') of
-        'timeout' -> {'stop', 'bind_timeout', State};
-        _Else -> {'noreply', State}
+        'ok' -> {'noreply', State};
+        {'error', Reason} ->
+            lager:critical("unable to establish directory bindings: ~p", [Reason]),
+            {'stop', Reason, State}
     end;
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -177,7 +179,7 @@ handle_directory_lookup(Id, Props, Node) ->
         _Other ->
             {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
             _ = freeswitch:fetch_reply(Node, Id, 'directory', Resp),
-            lager:debug("ignoring request from ~s for ~p", [Node, _Other])
+            lager:debug("ignoring authn request from ~s for ~p", [Node, _Other])
     end.
 
 -spec lookup_user(atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
@@ -196,11 +198,13 @@ handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {'ok', JObj}) ->
     Props = [{<<"Domain-Name">>, Realm}
              ,{<<"User-ID">>, Username}
             ],
+    lager:debug("building reverse authn resp for ~s@~s", [Username, Realm]),
     ecallmgr_fs_xml:reverse_authn_resp_xml(wh_json:set_values(Props, JObj));
 handle_lookup_resp(_, Realm, Username, {'ok', JObj}) ->
     Props = [{<<"Domain-Name">>, Realm}
              ,{<<"User-ID">>, Username}
             ],
+    lager:debug("building authn resp for ~s@~s", [Username, Realm]),
     ecallmgr_fs_xml:authn_resp_xml(wh_json:set_values(Props, JObj));
 handle_lookup_resp(_, _, _, {'error', _R}) ->
     lager:debug("authn request lookup failed: ~p", [_R]),
@@ -251,12 +255,11 @@ maybe_defered_error(Realm, Username, JObj) ->
     case wapi_authn:resp_v(JObj) of
         'false' -> {'error', 'timeout'};
         'true' ->
-            lager:debug("received authn information"),
             AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
             AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
             AuthorizingId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj),
             CacheProps = [{'origin', [{'db', AccountDb, AuthorizingId}
-                                      ,{'db', AccountDb, AccountId}
+                                     ,{'db', AccountDb, AccountId}
                                      ]}
                          ],
             wh_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
