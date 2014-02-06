@@ -222,37 +222,32 @@ process_event(Data, Node) ->
     case binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             wh_util:put_callid(UUID),
-            IsCorrectContext = props:get_value(<<"Caller-Context">>, Props) =:= ?DEFAULT_FREESWITCH_CONTEXT,
 
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-            maybe_send_event(EventName, UUID, Props, Node, IsCorrectContext),
-            process_event(EventName, UUID, Props, Node, IsCorrectContext);
+            maybe_send_event(EventName, UUID, Props, Node),
+            process_event(EventName, UUID, Props, Node);
          _Else ->
             'ok'
     end.
 
--spec process_event(ne_binary(), api_binary(), wh_proplist(), atom(), boolean()) -> any().
-process_event(<<"CHANNEL_CREATE">>, UUID, _Props, Node, 'true') ->
+-spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+process_event(<<"CHANNEL_CREATE">>, UUID, _Props, Node) ->
     maybe_start_event_listener(Node, UUID);
-process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node, 'true') ->
+process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
                ,?CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Props)
               );
-process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node, 'true') ->
+process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
                ,?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Props)
               );
-process_event(<<"sofia::register">>, _UUID, Props, Node, 'true') ->
-    gproc:send({'p', 'l', ?REGISTER_SUCCESS_REG}, ?REGISTER_SUCCESS_MSG(Node, Props));
-process_event(_EventName, _UUID, _Props, _Node, _) ->
-    lager:debug("ignoring ~s (~s)", [_EventName, _UUID]).
+process_event(<<"sofia::register">>, _UUID, Props, Node) ->
+    gproc:send({'p', 'l', ?REGISTER_SUCCESS_REG}, ?REGISTER_SUCCESS_MSG(Node, Props)).
 
--spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom(), boolean()) -> any().
-maybe_send_event(_EventName, _UUID, _Props, _Node, 'false') ->
-    'ok';
-maybe_send_event(EventName, UUID, Props, Node, 'true') ->
+-spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+maybe_send_event(EventName, UUID, Props, Node) ->
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         'true' -> 'ok';
         'false' ->

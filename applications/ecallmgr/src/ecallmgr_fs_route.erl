@@ -125,12 +125,11 @@ handle_info({'fetch', _Section, _Something, _Key, _Value, Id, ['undefined' | _Da
     _ = freeswitch:fetch_reply(Node, Id, 'dialplan', Resp),
     {'noreply', State};
 handle_info({'fetch', 'dialplan', _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
-    DefaultContext = ?DEFAULT_FREESWITCH_CONTEXT,
     case {props:get_value(<<"Event-Name">>, FSData)
           ,props:get_value(<<"Caller-Context">>, FSData)
          }
     of
-        {<<"REQUEST_PARAMS">>, DefaultContext} ->
+        {<<"REQUEST_PARAMS">>, _Context} ->
             %% TODO: move this to a supervisor somewhere
             lager:info("processing dialplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
             spawn(?MODULE, 'process_route_req', [Node, FSId, CallId, FSData]),
