@@ -58,7 +58,14 @@ start_link(Node, Options) ->
 -spec authorize(wh_proplist(), ne_binary(), atom()) -> boolean().
 authorize(Props, CallId, Node) ->
     put('callid', CallId),
-    maybe_authorize_channel(Props, Node).
+    case maybe_authorize_channel(Props, Node) of
+        'true' -> 
+            lager:debug("channel is authorized", []),
+            'true';
+        'false' -> 
+            lager:debug("channel is not authorized", []),
+            'false'
+    end.
 
 -spec kill_channel(wh_proplist(), atom()) -> 'ok'.
 -spec kill_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
@@ -66,6 +73,7 @@ authorize(Props, CallId, Node) ->
 kill_channel(Props, Node) ->
     Direction = props:get_value(<<"Call-Direction">>, Props),
     CallId = props:get_value(<<"Unique-ID">>, Props),
+    lager:debug("killing unauthorized channel", []),
     kill_channel(Direction, CallId, Node).
 
 kill_channel(<<"inbound">>, CallId, Node) ->
@@ -206,16 +214,16 @@ code_change(_OldVsn, State, _Extra) ->
 maybe_authorize_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     case props:get_value(?GET_CCV(<<"Channel-Authorized">>), Props) of
-        <<"true">> = T ->
+        <<"true">> ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,{'true', wh_json:new()}),
-            T;
-        <<"false">> = F -> 
+            'true';
+        <<"false">> -> 
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,'false'),
-            F;
+            'false';
         _Else ->
             maybe_channel_recovering(Props, CallId, Node)
     end.

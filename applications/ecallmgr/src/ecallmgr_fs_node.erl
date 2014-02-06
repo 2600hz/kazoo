@@ -479,8 +479,7 @@ channels_as_json(Node) ->
                         ((Values = binary:split(Line, <<"|||">>, ['global'])) =/= [Line])
                     ]
             end;
-        {'error', _} -> [];
-        'timeout' -> []
+        {'error', _} -> []
     end.
 
 -spec interface_from_props(wh_proplist()) -> interface().

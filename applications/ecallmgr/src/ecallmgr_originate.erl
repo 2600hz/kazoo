@@ -524,7 +524,7 @@ build_originate_args(Action, Endpoints, JObj, FetchId) ->
                                {'error', ne_binary() | 'timeout' | 'crash'}.
 originate_execute(Node, Dialstrings, Timeout) ->
     lager:debug("executing on ~s: ~s", [Node, Dialstrings]),
-    try freeswitch:api(Node, 'originate', wh_util:to_list(Dialstrings), Timeout*1000) of
+    case freeswitch:api(Node, 'originate', wh_util:to_list(Dialstrings), Timeout*1000) of
         {'ok', <<"+OK ", UUID/binary>>} ->
             {'ok', wh_util:strip_binary(binary:replace(UUID, <<"\n">>, <<>>))};
         {'ok', Other} ->
@@ -532,14 +532,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
             {'error', Other};
         {'error', _E}=Error ->
             lager:debug("error originating: ~s", [_E]),
-            Error;
-        'timeout' ->
-            lager:debug("timed out trying to originate"),
-            {'error', 'timeout'}
-    catch
-        _E:_R ->
-            lager:debug("crashed during originate: ~s: ~p", [_E, _R]),
-            {'error', 'crash'}
+            Error
     end.
 
 -spec bind_to_call_events(ne_binary()) -> 'ok'.
@@ -575,9 +568,6 @@ create_uuid(Node) ->
             {'fs', UUID};
         {'error', _E} ->
             lager:debug("unable to get a uuid from ~s: ~p", [Node, _E]),
-            {'fs', wh_util:rand_hex_binary(18)};
-        'timeout' ->
-            lager:debug("unable to get a uuid from ~s: timeout", [Node]),
             {'fs', wh_util:rand_hex_binary(18)}
     end.
 

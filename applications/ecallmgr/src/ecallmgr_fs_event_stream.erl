@@ -130,21 +130,13 @@ maybe_bind(Node, Binding) ->
 maybe_bind(Node, Binding, 2) ->
     case gen_server:call({'mod_kazoo', Node}, {'event', Binding}, 2000) of
         {'ok', {_IP, _Port}}=OK -> OK;
-        'timeout' -> {'error', 'timeout'};
         {'error', _Reason}=E -> E
     end;
 maybe_bind(Node, Binding, Attempts) ->
-    try gen_server:call({'mod_kazoo', Node}, {'event', Binding}, 2000) of
+    case gen_server:call({'mod_kazoo', Node}, {'event', Binding}, 2000) of
         {'ok', {_IP, _Port}}=OK -> OK;
-        'timeout' ->
-            lager:debug("timed out on attempt ~b to bind", [Attempts]),
-            maybe_bind(Node, Binding, Attempts+1);
         {'error', _Reason} ->
             lager:debug("failed on attempt ~b to bind: ~p", [Attempts, _Reason]),
-            maybe_bind(Node, Binding, Attempts+1)
-    catch
-        _E:_R ->
-            lager:debug("excepted on attempt ~b to bind: ~s: ~p", [Attempts, _E, _R]),
             maybe_bind(Node, Binding, Attempts+1)
     end.
 

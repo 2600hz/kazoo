@@ -96,10 +96,7 @@ handle_cast('bind_to_dialplan', #state{node=Node}=State) ->
         'ok' -> {'noreply', State};
         {'error', Reason} ->
             lager:critical("unable to establish route bindings: ~p", [Reason]),
-            {'stop', Reason, State};
-        'timeout' ->
-            lager:critical("unable to establish route bindings: timeout", []),
-            {'stop', 'timeout', State}
+            {'stop', Reason, State}
     end;
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),

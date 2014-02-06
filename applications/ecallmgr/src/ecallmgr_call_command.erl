@@ -936,14 +936,7 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
                                             ,[File, UUID, Node]
                                             ,[{<<"Details">>, E}]
                                            ),
-                     <<"failure">>;
-                 'timeout' ->
-                     lager:debug("timeout waiting for http_put"),
-                     wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
-                                            ,[File, UUID, Node]
-                                            ,[{<<"Details">>, <<"Timeout sending http_put to node">>}]
-                                           ),
-                     <<"timeout">>
+                     <<"failure">>
              end,
     case Type of
         'store' -> send_store_call_event(Node, UUID, Result);
@@ -952,23 +945,16 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
 
 -spec send_fs_store(atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
 send_fs_store(Node, Args, 'put') ->
-    freeswitch:api(Node, 'http_put', wh_util:to_list(Args), 20000);
+    freeswitch:api(Node, 'http_put', wh_util:to_list(Args), 30000);
 send_fs_store(Node, Args, 'post') ->
-    freeswitch:api(Node, 'http_post', wh_util:to_list(Args), 20000).
+    freeswitch:api(Node, 'http_post', wh_util:to_list(Args), 30000).
 
 -spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
 send_store_call_event(Node, UUID, MediaTransResults) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
-    Prop = try freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
+    Prop = case freeswitch:api(Node, 'uuid_dump', wh_util:to_list(UUID)) of
                {'ok', Dump} -> ecallmgr_util:eventstr_to_proplist(Dump);
-               {'error', _Err} -> [];
-               'timeout' -> []
-           catch
-               _E:_R ->
-                   lager:debug("failed get params from uuid_dump"),
-                   lager:debug("~p : ~p", [_E, _R]),
-                   lager:debug("sending less interesting call_event message"),
-                   []
+               {'error', _Err} -> []
            end,
     EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
                 ,{<<"Call-ID">>, UUID}

@@ -540,8 +540,7 @@ list_conferences(Node) ->
                 {'EXIT', _R} -> [];
                 Rs -> Rs
             end;
-        {'error', _} -> [];
-        'timeout' -> []
+        {'error', _} -> []
     end.
 
 -spec xml_list_to_records(xml_els(), atom()) -> conferences() | participants().

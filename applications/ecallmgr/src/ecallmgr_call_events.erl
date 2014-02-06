@@ -337,7 +337,7 @@ handle_info('timeout', #state{node=Node
     erlang:monitor_node(Node, 'true'),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
     case freeswitch:api(Node, 'uuid_exists', CallId) of
-        'timeout' ->
+        {'error', 'timeout'} ->
             lager:warning("timeout trying to find call on node ~s, trying again", [Node]),
             {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
         {'error', Reason} ->

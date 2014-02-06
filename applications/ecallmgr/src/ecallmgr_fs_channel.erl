@@ -162,8 +162,7 @@ renew(Node, UUID) ->
         {'ok', Dump} ->
             Props = ecallmgr_util:eventstr_to_proplist(Dump),
             {'ok', props_to_record(Props, Node)};
-        {'error', _}=E -> E;
-        'timeout' -> {'error', 'timeout'}
+        {'error', _}=E -> E
     end.
 
 -spec to_json(channel()) -> wh_json:object().
@@ -250,7 +249,7 @@ handle_call(_Request, _From, State) ->
 handle_cast('bind_to_events', #state{node=Node}=State) ->
     %% If the freeswitch version is updated so Kazoo can
     %% support for nightmare transfer bind for channel queries
-    _ = (catch freeswitch:bind(Node, 'channels')),
+    _ = freeswitch:bind(Node, 'channels'),
     case gproc:reg({'p', 'l',  ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DATA">>)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_CREATE">>)}) =:= 'true'
         andalso gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_DESTROY">>)}) =:= 'true'

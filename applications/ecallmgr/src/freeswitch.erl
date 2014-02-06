@@ -35,10 +35,26 @@
 version(Node) ->
     version(Node, ?TIMEOUT).
 version(Node, Timeout) ->
-    gen_server:call({'mod_kazoo', Node}, 'version', Timeout).
+    try gen_server:call({'mod_kazoo', Node}, 'version', Timeout) of
+        'timeout' -> {'error', 'timeout'};
+        Result -> Result
+    catch
+        _E:_R ->
+            lager:info("failed to get mod_kazoo version from ~s: ~p ~p"
+                      ,[Node, _E, _R]),
+            {'error', 'exception'}
+    end.
 
 noevents(Node) ->
-    gen_server:cast({'mod_kazoo', Node}, 'noevents').
+    try gen_server:cast({'mod_kazoo', Node}, 'noevents') of
+        'timeout' -> {'error', 'timeout'};
+        Result -> Result
+    catch
+        _E:_R ->
+            lager:info("failed to send noevents to ~s: ~p ~p"
+                      ,[Node, _E, _R]),
+            {'error', 'exception'}
+    end.
 
 close(Node) ->
     gen_server:cast({'mod_kazoo', Node}, 'exit').
@@ -46,12 +62,28 @@ close(Node) ->
 getpid(Node) ->
     getpid(Node, ?TIMEOUT).
 getpid(Node, Timeout) ->
-    gen_server:call({'mod_kazoo', Node}, 'getpid', Timeout).
+    try gen_server:call({'mod_kazoo', Node}, 'getpid', Timeout) of
+        'timeout' -> {'error', 'timeout'};
+        Result -> Result
+    catch
+        _E:_R ->
+            lager:info("failed to get mod_kazoo pid from ~s: ~p ~p"
+                      ,[Node, _E, _R]),
+            {'error', 'exception'}
+    end.
 
 bind(Node, Type) ->
     bind(Node, Type, ?TIMEOUT).
 bind(Node, Type, Timeout) ->
-    gen_server:call({'mod_kazoo', Node}, {'bind', Type}, Timeout).
+    try gen_server:call({'mod_kazoo', Node}, {'bind', Type}, Timeout) of
+        'timeout' -> {'error', 'timeout'};
+        Result -> Result
+    catch
+        _E:_R ->
+            lager:info("failed to get bind to ~s on ~s: ~p ~p"
+                      ,[Type, Node, _E, _R]),
+            {'error', 'exception'}
+    end.
 
 -spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string()) ->
                          'ok'.
@@ -62,14 +94,30 @@ fetch_reply(Node, FetchID, Section, Reply) ->
     gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
 
 fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
-    gen_server:call({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}, Timeout).
+    try gen_server:call({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}, Timeout) of
+        'timeout' -> {'error', 'timeout'};
+        Result -> Result
+    catch
+        _E:_R ->
+            lager:info("failed to send fetch reply to ~s: ~p ~p"
+                      ,[Node, _E, _R]),
+            {'error', 'exception'}
+    end.
 
 api(Node, Cmd) ->
     api(Node, Cmd, "").
 api(Node, Cmd, Args) ->
     api(Node, Cmd, Args, ?TIMEOUT).
 api(Node, Cmd, Args, Timeout) ->
-    gen_server:call({'mod_kazoo', Node}, {'api', Cmd, Args}, Timeout).
+    try gen_server:call({'mod_kazoo', Node}, {'api', Cmd, Args}, Timeout) of
+        'timeout' -> {'error', 'timeout'};
+        Result -> Result
+    catch
+        _E:_R ->
+            lager:info("failed to execute api command ~s on ~s: ~p ~p"
+                      ,[Cmd, Node, _E, _R]),
+            {'error', 'exception'}
+    end.
 
 %% @doc Make a backgrounded API call to FreeSWITCH. The asynchronous reply is
 %% sent to calling process after it is received. This function
@@ -81,10 +129,9 @@ api(Node, Cmd, Args, Timeout) ->
 bgapi(Node, Cmd, Args) ->
     Self = self(),
     spawn(fun() ->
-                  case gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
+                  try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', JobId}=JobOk ->
                           Self ! {'api', JobOk},
-
                           receive
                               {'bgok', JobId, _}=BgOk -> Self ! BgOk;
                               {'bgerror', JobId, _}=BgError -> Self ! BgError
@@ -95,6 +142,11 @@ bgapi(Node, Cmd, Args) ->
                           Self ! {'api', {'error', Reason}};
                       'timeout' ->
                           Self ! {'api', {'error', 'timeout'}}
+                  catch
+                      _E:_R ->
+                          lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
+                                    ,[Cmd, Node, _E, _R]),
+                          Self ! {'api', {'error', 'exception'}}
                   end
           end),
     %% get the initial result of the command, NOT the asynchronous response, and
@@ -106,7 +158,7 @@ bgapi(Node, Cmd, Args) ->
 bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
     Self = self(),
     spawn(fun() ->
-                  case gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
+                  try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', JobId} ->
                           Self ! {'api', 'ok'},
                           receive
@@ -119,6 +171,11 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
                           Self ! {'api', {'error', Reason}};
                       'timeout' ->
                           Self ! {'api', {'error', 'timeout'}}
+                  catch
+                      _E:_R ->
+                          lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
+                                    ,[Cmd, Node, _E, _R]),
+                          Self ! {'api', {'error', 'exception'}}
                   end
           end),
     %% get the initial result of the command, NOT the asynchronous response, and
@@ -131,7 +188,8 @@ event(Node, Events) ->
     event(Node, Events, ?TIMEOUT).
 event(Node, [_|_]=Events, Timeout) ->
     PortOpen = get('port_open'),
-    case gen_server:call({'mod_kazoo', Node}, {'event', Events}, Timeout) of
+    try gen_server:call({'mod_kazoo', Node}, {'event', Events}, Timeout) of
+        'timeout' -> {'error', 'timeout'};
         {'ok', {IP, Port}} when PortOpen =:= 'undefined' ->
             put('port_open', 'true'),
             {'ok', IPAddress} = inet_parse:address(IP),
@@ -140,6 +198,11 @@ event(Node, [_|_]=Events, Timeout) ->
         {'ok', _} -> 'ok';
         Else ->
             Else
+    catch
+        _E:_R ->
+            lager:info("failed to bind to events on ~s: ~p ~p"
+                      ,[Node, _E, _R]),
+            {'error', 'exception'}
     end;
 event(Node, Event, Timeout) ->
     event(Node, [Event], Timeout).

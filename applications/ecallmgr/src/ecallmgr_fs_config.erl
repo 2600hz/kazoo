@@ -98,10 +98,7 @@ handle_cast('bind_to_configuration', #state{node=Node}=State) ->
         'ok' -> {'noreply', State};
         {'error', Reason} ->
             lager:critical("unable to establish config bindings: ~p", [Reason]),
-            {'stop', Reason, State};
-        'timeout' ->
-            lager:critical("unable to establish config bindings: timeout waiting for ~s", [Node]),
-            {'stop', 'timeout', State}
+            {'stop', Reason, State}
     end;
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -167,7 +164,7 @@ handle_config_req(Node, Id, <<"acl.conf">>, _) ->
     SysconfResp = ecallmgr_config:fetch(<<"acls">>, wh_json:new()),
     try generate_acl_xml(SysconfResp) of
         ConfigXml ->
-            lager:debug("sending XML to ~s: ~s", [Node, ConfigXml]),
+            lager:debug("sending acl XML to ~s: ~s", [Node, ConfigXml]),
             freeswitch:fetch_reply(Node, Id, 'configuration', ConfigXml)
     catch
         _E:_R ->
@@ -211,6 +208,7 @@ handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
                   {'ok', Resp} ->
                       FixedTTS = maybe_fix_conference_tts(Resp),
                       {'ok', Xml} = ecallmgr_fs_xml:conference_resp_xml(FixedTTS),
+                      lager:debug("replying with conference profile ~s", [Profile]),
                       Xml;
                   {'error', 'timeout'} ->
                       lager:debug("timed out waiting for conference profile for ~s", [Profile]),
@@ -221,7 +219,7 @@ handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
                       {'ok', Resp} = ecallmgr_fs_xml:not_found(),
                       Resp
               end,
-    lager:debug("replying to ~s with profile ~s: ~s", [Id, Profile, XmlResp]),
+    lager:debug("sending conference profile XML to ~s: ~s", [Node, XmlResp]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(XmlResp));
 handle_config_req(Node, Id, _Conf, _) ->
     put('callid', Id),
