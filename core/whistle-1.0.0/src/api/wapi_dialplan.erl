@@ -906,7 +906,13 @@ error(JObj) -> error(wh_json:to_proplist(JObj)).
 
 -spec error_v(api_terms()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?ERROR_RESP_HEADERS, [{<<"Event-Name">>, <<"dialplan">>} | ?ERROR_RESP_VALUES], ?ERROR_RESP_TYPES);
+    wh_api:validate(Prop
+                    ,?ERROR_RESP_HEADERS
+                    ,[{<<"Event-Name">>, <<"dialplan">>}
+                      | ?ERROR_RESP_VALUES
+                     ]
+                    ,?ERROR_RESP_TYPES
+                   );
 error_v(JObj) -> error_v(wh_json:to_proplist(JObj)).
 
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
@@ -921,7 +927,7 @@ publish_command(CtrlQ, JObj) ->
 publish_command(CtrlQ, Prop, DPApp) ->
     try wh_util:to_atom(<<DPApp/binary>>) of
         BuildMsgFun ->
-            case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports)) of
+            case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info('exports')) of
                 'false' ->
                     {'error', 'invalid_dialplan_object'};
                 {_, 1} ->
@@ -929,8 +935,7 @@ publish_command(CtrlQ, Prop, DPApp) ->
                     amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)
             end
     catch
-        _:R ->
-            throw({R, Prop})
+        _:R -> throw({R, Prop})
     end.
 
 %% sending DP actions to CallControl Queue

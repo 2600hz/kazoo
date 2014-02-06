@@ -207,7 +207,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_event_binding(state()) -> [atom(),...].
+-spec get_event_binding(state()) -> atoms().
 get_event_binding(#state{name=Name, subclass=Subclass}) ->
     case wh_util:is_empty(Subclass) of
         'true' -> [wh_util:to_atom(Name, 'true')];
@@ -222,6 +222,7 @@ process_event(Data, Node) ->
     case binary_to_term(Data) of
         {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
             wh_util:put_callid(UUID),
+
             EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
             maybe_send_event(EventName, UUID, Props, Node),
             process_event(EventName, UUID, Props, Node);
@@ -230,7 +231,7 @@ process_event(Data, Node) ->
     end.
 
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
-process_event(<<"CHANNEL_CREATE">>, UUID, _, Node) ->
+process_event(<<"CHANNEL_CREATE">>, UUID, _Props, Node) ->
     maybe_start_event_listener(Node, UUID);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
@@ -244,8 +245,7 @@ process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
               );
 process_event(<<"sofia::register">>, _UUID, Props, Node) ->
     gproc:send({'p', 'l', ?REGISTER_SUCCESS_REG}, ?REGISTER_SUCCESS_MSG(Node, Props));
-process_event(_, _, _, _) ->
-    'ok'.
+process_event(_, _, _, _) -> 'ok'.
 
 -spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_event(EventName, UUID, Props, Node) ->

@@ -140,7 +140,8 @@ show_call_stat_cat([K|Ks], Resp) ->
         V ->
             io:format("call stats in ~s~n", [K]),
             show_stats(V),
-            show_call_stat_cat(Ks, Resp)
+            show_call_stat_cat(Ks, Resp),
+            io:format("~n~n", [])
     end.
 
 show_stats([]) -> 'ok';
@@ -212,11 +213,11 @@ flush_call_stat(CallId) ->
     case acdc_stats:find_call(CallId) of
         'undefined' -> io:format("nothing found for call ~s~n", [CallId]);
         Call ->
-            whapps_util:amqp_pool_send(
-              wh_json:set_values(wh_api:default_headers(?APP_NAME, ?APP_VERSION), Call)
-              ,fun wapi_acdc_stats:publish_call_flush/1
-             ),
-            io:format("sending flush request for call ~s~n", [CallId]),
-            io:format("call data: ~s~n", [wh_json:encode(Call)])
+            acdc_stats:call_abandoned(wh_json:get_value(<<"Account-ID">>, Call)
+                                      ,wh_json:get_value(<<"Queue-ID">>, Call)
+                                      ,CallId
+                                      ,<<"INTERNAL_ERROR">>
+                                     ),
+            io:format("setting call to 'abandoned'~n", [])
     end.
 

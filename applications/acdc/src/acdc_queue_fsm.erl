@@ -416,7 +416,7 @@ connect_req({'member_finished'}, #state{member_call=Call}=State) ->
             lager:debug("member finished while in connect_req: ~s", [CallId]),
             webseq:evt(self(), CallId, <<"member call finished - forced">>);
         _E->
-            lager:debug("member finished, but callid became ~p", [_E])
+            lgaer:debug("member finished, but callid became ~p", [_E])
     end,
     {'next_state', 'ready', clear_member_call(State), 'hibernate'};
 
