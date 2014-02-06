@@ -140,7 +140,8 @@ show_call_stat_cat([K|Ks], Resp) ->
         V ->
             io:format("call stats in ~s~n", [K]),
             show_stats(V),
-            show_call_stat_cat(Ks, Resp)
+            show_call_stat_cat(Ks, Resp),
+            io:format("~n~n", [])
     end.
 
 show_stats([]) -> 'ok';
