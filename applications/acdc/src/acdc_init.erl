@@ -26,7 +26,8 @@ start_link() -> spawn(?MODULE, 'init_acdc', []), 'ignore'.
 init_acdc() ->
     put('callid', ?MODULE),
     case couch_mgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
-        {'ok', []} -> lager:debug("no accounts configured for acdc");
+        {'ok', []} ->
+            lager:debug("no accounts configured for acdc");
         {'ok', Accounts} ->
             [init_acct(wh_json:get_value(<<"key">>, Acct)) || Acct <- Accounts];
         {'error', 'not_found'} ->
@@ -84,6 +85,8 @@ init_queues(AcctId, {'error', 'gateway_timeout'}) ->
     try_queues_again(AcctId),
     wait_a_bit(),
     'ok';
+init_queues(AcctId, {'error', 'not_found'}) ->
+    lager:error("the queues view for ~s appears to be missing; you should probably fix that", [AcctId]);
 init_queues(AcctId, {'error', _E}) ->
     lager:debug("error fetching queues: ~p", [_E]),
     try_queues_again(AcctId),
@@ -100,6 +103,8 @@ init_agents(AcctId, {'error', 'gateway_timeout'}) ->
     try_agents_again(AcctId),
     wait_a_bit(),
     'ok';
+init_agents(AcctId, {'error', 'not_found'}) ->
+    lager:error("the agents view for ~s appears to be missing; you should probably fix that", [AcctId]);
 init_agents(AcctId, {'error', _E}) ->
     lager:debug("error fetching agents: ~p", [_E]),
     try_agents_again(AcctId),
