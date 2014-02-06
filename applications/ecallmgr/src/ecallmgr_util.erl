@@ -91,14 +91,14 @@ send_cmd(Node, UUID, "record_call", Args) ->
             lager:debug("publishing event: ~s", [Evt]),
             _ = send_cmd(Node, UUID, "application", Evt),
             {'error', E};
-        'timeout' ->
-            lager:debug("timeout executing uuid_record"),
+        {'error', _Reason}=Error ->
+            lager:debug("error executing uuid_record: ~p", [_Reason]),
             Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-                                  ,",whistle_application_response=timeout"
+                                 ,",whistle_application_response=timeout"
                                  ]),
             lager:debug("publishing event: ~s", [Evt]),
             _ = send_cmd(Node, UUID, "application", Evt),
-            {'error', 'timeout'}
+            Error
     end;
 send_cmd(Node, UUID, "playstop", _Args) ->
     lager:debug("execute on node ~s: uuid_break(~s all)", [Node, UUID]),
