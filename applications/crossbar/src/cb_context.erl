@@ -72,12 +72,15 @@
 -include("./crossbar.hrl").
 
 -type context() :: #cb_context{}.
--type setter_fun() :: fun((context(), term()) -> context()).
+-type setter_fun_2() :: fun((context(), term()) -> context()).
+-type setter_fun_3() :: fun((context(), term(), term()) -> context()).
 -export_type([context/0
-              ,setter_fun/0
+              ,setter_fun_2/0
+              ,setter_fun_3/0
              ]).
 
--type setter_kv() :: {setter_fun(), term()}.
+-type setter_kv() :: {setter_fun_2(), term()} |
+                     {setter_fun_3(), term(), term()}.
 -type setters() :: [setter_kv(),...] | [].
 
 -spec is_context(any()) -> boolean().
@@ -145,7 +148,8 @@ setters(#cb_context{}=Context, [_|_]=Setters) ->
     lists:foldl(fun setters_fold/2, Context, Setters).
 
 -spec setters_fold(setter_kv(), context()) -> context().
-setters_fold({F, V}, C) -> F(C, V).
+setters_fold({F, V}, C) -> F(C, V);
+setters_fold({F, K, V}, C) -> F(C, K, V).
 
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_account_db(context(), ne_binary()) -> context().
