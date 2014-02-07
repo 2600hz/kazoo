@@ -206,7 +206,7 @@ validate_queue_operation(Context, Id, ?ROSTER_PATH_TOKEN, ?HTTP_GET) ->
 validate_queue_operation(Context, Id, ?ROSTER_PATH_TOKEN, ?HTTP_POST) ->
     add_queue_to_agents(Id, Context);
 validate_queue_operation(Context, Id, ?ROSTER_PATH_TOKEN, ?HTTP_DELETE) ->
-    rm_queue_from_agents(Id, Context, cb_context:req_data(Context));
+    rm_queue_from_agents(Id, Context);
 validate_queue_operation(Context, Id, ?EAVESDROP_PATH_TOKEN, ?HTTP_PUT) ->
     validate_eavesdrop_on_queue(Context, Id).
 
@@ -546,8 +546,14 @@ maybe_rm_agents(Id, Context, AgentIds) ->
     lager:debug("rm resulted in ~s", [cb_context:resp_status(RMContext1)]),
     RMContext1.
 
+-spec rm_queue_from_agents(ne_binary(), cb_context:context()) ->
+                                  cb_context:context().
 -spec rm_queue_from_agents(ne_binary(), cb_context:context(), wh_json:keys()) ->
                                   cb_context:context().
+rm_queue_from_agents(Id, Context) ->
+    Context1 = load_agent_roster(Id, Context),
+    rm_queue_from_agents(Id, Context, cb_context:doc(Context1)).
+
 rm_queue_from_agents(_Id, Context, []) ->
     cb_context:set_resp_status(Context, 'success');
 rm_queue_from_agents(Id, Context, [_|_]=AgentIds) ->
