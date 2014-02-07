@@ -415,6 +415,7 @@ handle_info('expire_sip_subscriptions', Cache) ->
     {'noreply', Cache};
 handle_info({'nodedown', NodeName}, State) ->
     spawn(fun() -> maybe_handle_nodedown(NodeName, State) end),
+    call_control_fs_nodedown(NodeName),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -449,6 +450,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec call_control_fs_nodeup(atom()) -> 'ok'.
+call_control_fs_nodeup(NodeName) ->
+    Pids = gproc:lookup_pids({'p', 'l', 'call_control'}),
+    call_control_fs_nodeup(Pids, NodeName).
+
+-spec call_control_fs_nodeup([pid(),...] | [], atom()) -> 'ok'.
+call_control_fs_nodeup([], _) -> 'ok';
+call_control_fs_nodeup([Pid|Pids], NodeName) ->
+    _ = ecallmgr_call_control:fs_nodeup(Pid, NodeName),
+    call_control_fs_nodeup(Pids, NodeName).
+
+-spec call_control_fs_nodedown(atom()) -> 'ok'.
+call_control_fs_nodedown(NodeName) ->
+    Pids = gproc:lookup_pids({'p', 'l', 'call_control'}),
+    call_control_fs_nodedown(Pids, NodeName).
+
+-spec call_control_fs_nodedown([pid(),...] | [], atom()) -> 'ok'.
+call_control_fs_nodedown([], _) -> 'ok';
+call_control_fs_nodedown([Pid|Pids], NodeName) ->
+    _ = ecallmgr_call_control:fs_nodedown(Pid, NodeName),
+    call_control_fs_nodedown(Pids, NodeName).
+
 -spec maybe_handle_nodeup(fs_node(), state()) -> 'ok'.
 maybe_handle_nodeup(NodeName, #state{nodes=Nodes}=State) ->
     case dict:find(NodeName, Nodes) of
@@ -529,6 +552,7 @@ maybe_connect_to_node(#node{node=NodeName}=Node) ->
         {'error', _R}=E -> E;
         'ok' ->
             lager:notice("successfully connected to freeswitch node ~s", [NodeName]),
+            call_control_fs_nodeup(NodeName),
             'ok'
     end.
 
