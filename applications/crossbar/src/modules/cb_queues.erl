@@ -496,7 +496,7 @@ add_queue_to_agents(Id, Context, []) ->
     Context1 = load_agent_roster(Id, Context),
     CurrAgentIds = cb_context:resp_data(Context1),
 
-    rm_queue_from_agents(Id, Context, CurrAgentIds);
+    rm_queue_from_agents(Id, Context1, CurrAgentIds);
 add_queue_to_agents(Id, Context, AgentIds) ->
     %% We need to figure out what agents are on the queue already, and remove those not
     %% in the AgentIds list
