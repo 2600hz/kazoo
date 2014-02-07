@@ -549,7 +549,7 @@ maybe_rm_agents(Id, Context, AgentIds) ->
 -spec rm_queue_from_agents(ne_binary(), cb_context:context(), wh_json:keys()) ->
                                   cb_context:context().
 rm_queue_from_agents(_Id, Context, []) ->
-    Context;
+    cb_context:set_resp_status(Context, 'success');
 rm_queue_from_agents(Id, Context, [_|_]=AgentIds) ->
     lager:debug("remove agents: ~p", [AgentIds]),
     Context1 = crossbar_doc:load(AgentIds, Context),
