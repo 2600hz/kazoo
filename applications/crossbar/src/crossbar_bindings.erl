@@ -460,7 +460,8 @@ fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
             fold_bind_results(MFs, [Pay1|Tokens], Route, MFsLen, ReRunQ)
     catch
         'error':'function_clause' ->
-            lager:debug("failed to find matching function clause for ~s:~s/~b", [M, F, length(Payload)]),
+            ST = erlang:get_stacktrace(),
+            log_function_clause(M, F, length(Payload), ST),
             fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         'error':'undef' ->
             ST = erlang:get_stacktrace(),
@@ -495,6 +496,17 @@ log_undefined(M, F, Length, [{RealM, RealF, RealArgs}|_]) ->
     lager:debug("in call ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, ST) ->
     lager:debug("undefined function ~s:~s/~b", [M, F, Length]),
+    wh_util:log_stacktrace(ST).
+
+log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
+    lager:debug("unable to find function clause for ~s:~s/~b", [M, F, Length]);
+log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_]) ->
+    lager:debug("unable to find function clause for ~s:~s(~p) in ~s:~p"
+                ,[RealM, RealF, RealArgs, props:get_value('file', Where), props:get_value('line', Where)]
+               ),
+    lager:debug("as part of ~s:~s/~p", [M, F, Length]);
+log_function_clause(M, F, Lenth, ST) ->
+    lager:debug("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
     wh_util:log_stacktrace(ST).
 
 %%-------------------------------------------------------------------------
