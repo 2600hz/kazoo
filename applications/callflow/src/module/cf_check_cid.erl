@@ -1,7 +1,34 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
+%%% Handles inspection of incoming caller id and branching to a child
+%%% callflow node accordingly.
 %%%
+%%% "data":{
+%%%   "use_absolute_mode":[true/false] // if true, direct call down a branch that
+%%%        //     matches the incoming caller id.
+%%%        // if false, use regex to determine whether incoming call should directed
+%%%        // down the "match" or "nomatch" branch.  Default is false.
+%%%   ,"regex": "^\\+15558881111" // regular expression used to determine match/nomatch
+%%%        // when use_absolute_mode is false.  Default matches all incoming caller ids.
+%%%   ,"caller_id": {      // optional caller id applied to incoming call when it goes down a
+%%%       }"external": {   // match branch, if specified.
+%%%           "name": "Joseph",
+%%%           "number": "+15558881122"
+%%%       },
+%%%       "internal": {
+%%%           "name": "Joe",
+%%%           "number": "+15558881122"
+%%%       }
+%%%    }
+%%%   ,"user_id":[uuid of kazoo User] // optional user id applied as owner of incoming call when
+%%%                                   // when a call goes down the match branch, if specified.
+%%% },
+%%% "children": {
+%%%   "match": { [callflow node to branch to when absolute mode is false and regex matches] },
+%%%   "nomatch": { [callflow node to branch to when regex does not match or no child node defined for incoming caller id] },
+%%%   "+15558881111": { [callflow node to branch to absolute mode is true and caller id matches +15558881111)] }
+%%% }
 %%% @end
 %%% @contributors
 %%%   Brian Davis
