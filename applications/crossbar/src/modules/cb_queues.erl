@@ -206,7 +206,7 @@ validate_queue_operation(Context, Id, ?ROSTER_PATH_TOKEN, ?HTTP_GET) ->
 validate_queue_operation(Context, Id, ?ROSTER_PATH_TOKEN, ?HTTP_POST) ->
     add_queue_to_agents(Id, Context);
 validate_queue_operation(Context, Id, ?ROSTER_PATH_TOKEN, ?HTTP_DELETE) ->
-    rm_queue_from_agents(Id, Context);
+    rm_queue_from_agents(Id, Context, cb_context:req_data(Context));
 validate_queue_operation(Context, Id, ?EAVESDROP_PATH_TOKEN, ?HTTP_PUT) ->
     validate_eavesdrop_on_queue(Context, Id).
 
@@ -496,8 +496,7 @@ add_queue_to_agents(Id, Context, []) ->
     Context1 = load_agent_roster(Id, Context),
     CurrAgentIds = cb_context:resp_data(Context1),
 
-    rm_queue_from_agents(Id, cb_context:set_req_data(Context, CurrAgentIds));
-
+    rm_queue_from_agents(Id, Context, CurrAgentIds);
 add_queue_to_agents(Id, Context, AgentIds) ->
     %% We need to figure out what agents are on the queue already, and remove those not
     %% in the AgentIds list
@@ -537,31 +536,38 @@ maybe_add_queue_to_agent(Id, A) ->
     lager:debug("agent ~s queues: ~p", [wh_json:get_value(<<"_id">>, A), Qs]),
     wh_json:set_value(<<"queues">>, Qs, A).
 
--spec maybe_rm_agents(ne_binary(), cb_context:context(), wh_json:json_strings()) -> cb_context:context().
+-spec maybe_rm_agents(ne_binary(), cb_context:context(), wh_json:keys()) -> cb_context:context().
 maybe_rm_agents(_Id, Context, []) ->
     lager:debug("no agents to remove from the queue ~s", [_Id]),
-    Context#cb_context{resp_status='success'};
+    cb_context:set_resp_status(Context, 'success');
 maybe_rm_agents(Id, Context, AgentIds) ->
-    #cb_context{}=RMContext = rm_queue_from_agents(Id, Context#cb_context{req_data=AgentIds}),
-    #cb_context{resp_status=_S1}=RMContext1 = crossbar_doc:save(RMContext),
-    lager:debug("rm resulted in ~s", [_S1]),
+    RMContext = rm_queue_from_agents(Id, Context, AgentIds),
+    RMContext1 = crossbar_doc:save(RMContext),
+    lager:debug("rm resulted in ~s", [cb_context:resp_status(RMContext1)]),
     RMContext1.
 
-rm_queue_from_agents(_Id, #cb_context{req_data=[]}=Context) ->
+-spec rm_queue_from_agents(ne_binary(), cb_context:context(), wh_json:keys()) ->
+                                  cb_context:context().
+rm_queue_from_agents(_Id, Context, []) ->
     Context;
-rm_queue_from_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
+rm_queue_from_agents(Id, Context, [_|_]=AgentIds) ->
     lager:debug("remove agents: ~p", [AgentIds]),
-    case crossbar_doc:load(AgentIds, Context) of
-        #cb_context{resp_status='success'
-                    ,doc=Agents
-                   }=Context1 ->
+    Context1 = crossbar_doc:load(AgentIds, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
             lager:debug("removed agents successfully"),
-            Context1#cb_context{doc=[maybe_rm_queue_from_agent(Id, A) || A <- Agents]};
-        Context1 -> Context1
+            cb_context:set_doc(Context1
+                               ,[maybe_rm_queue_from_agent(Id, A) || A <- cb_context:doc(Context1)]
+                              );
+        _Status -> Context1
     end;
-rm_queue_from_agents(_, #cb_context{req_data=_Req}=Context) ->
-    Context#cb_context{resp_status='success', doc='undefined'}.
+rm_queue_from_agents(_Id, Context, _Data) ->
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_doc/2, 'undefined'}
+                        ]).
 
+-spec maybe_rm_queue_from_agent(ne_binary(), wh_json:object()) -> wh_json:object().
 maybe_rm_queue_from_agent(Id, A) ->
     Qs = wh_json:get_value(<<"queues">>, A, []),
     wh_json:set_value(<<"queues">>, lists:delete(Id, Qs), A).

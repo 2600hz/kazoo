@@ -101,16 +101,19 @@ resource_exists(_, ?QUICKCALL_PATH_TOKEN, _) -> 'true'.
 %% Ensure we will be able to bill for devices
 %% @end
 %%--------------------------------------------------------------------
-billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = ?HTTP_GET}=Context) ->
+billing(Context) ->
+    billing(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+billing(Context, ?HTTP_GET, [{<<"devices">>, _}|_]) ->
     Context;
-billing(#cb_context{req_nouns=[{<<"devices">>, _}|_]}=Context) ->
+billing(Context, _ReqVerb, [{<<"devices">>, _}|_]) ->
     try wh_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
             crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end;
-billing(Context) -> Context.
+billing(Context, _ReqVerb, _Nouns) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -118,15 +121,25 @@ billing(Context) -> Context.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(cb_context:context()) -> 'true'.
-authenticate(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS, req_verb = ?HTTP_GET}) ->
-    lager:debug("authenticating request"),
-    'true'.
+-spec authenticate(cb_context:context()) -> boolean().
+authenticate(Context) ->
+    authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authorize(cb_context:context()) -> 'true'.
-authorize(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS, req_verb = ?HTTP_GET}) ->
+authenticate(?HTTP_GET, ?DEVICES_QCALL_NOUNS) ->
+    lager:debug("authenticating request"),
+    'true';
+authenticate(_Verb, _Nouns) ->
+    'false'.
+
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+authorize(?HTTP_GET, ?DEVICES_QCALL_NOUNS) ->
     lager:debug("authorizing request"),
-    'true'.
+    'true';
+authorize(_Verb, _Nouns) ->
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -135,9 +148,12 @@ authorize(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS, req_verb = ?HTTP_GET}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile_services(cb_context:context()) -> cb_context:context().
-reconcile_services(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+reconcile_services(Context) ->
+    reconcile_services(Context, cb_context:req_verb(Context)).
+
+reconcile_services(Context, ?HTTP_GET) ->
     Context;
-reconcile_services(#cb_context{}=Context) ->
+reconcile_services(Context, _Verb) ->
     _ = wh_services:reconcile(cb_context:account_id(Context), <<"devices">>),
     Context.
 
@@ -152,21 +168,27 @@ reconcile_services(#cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
+    validate_devices(Context, cb_context:req_verb(Context)).
+
+validate_devices(Context, ?HTTP_GET) ->
     load_device_summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_devices(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, <<"status">>) ->
+validate(Context, PathToken) ->
+    validate_device(Context, PathToken, cb_context:req_verb(Context)).
+
+validate_device(Context, <<"status">>, ?HTTP_GET) ->
     load_device_status(Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, DeviceId) ->
+validate_device(Context, DeviceId, ?HTTP_GET) ->
     load_device(DeviceId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, DeviceId) ->
+validate_device(Context, DeviceId, ?HTTP_POST) ->
     validate_request(DeviceId, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DeviceId) ->
+validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
+validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
     Context1 = maybe_validate_quickcall(load_device(DeviceId, Context)),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
@@ -175,7 +197,7 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, DeviceId, ?QUICKCALL_PATH_TO
     end.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(#cb_context{}=Context, DeviceId) ->
+post(Context, DeviceId) ->
     case changed_mac_address(Context) of
         'true' ->
             Context1 = crossbar_doc:save(Context),
@@ -187,16 +209,16 @@ post(#cb_context{}=Context, DeviceId) ->
     end.
 
 -spec put(cb_context:context()) -> cb_context:context().
-put(#cb_context{req_json=ReqJObj}=Context) ->
-    DryRun = (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')),
+put(Context) ->
+    DryRun = (not wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context), 'false')),
     put_resp(DryRun, Context).
 
-put_resp('true', #cb_context{req_json=ReqJObj}=Context) ->
+put_resp('true', Context) ->
     RespJObj = dry_run(Context),
     case wh_json:is_empty(RespJObj) of
         'false' -> crossbar_util:response_402(RespJObj, Context);
         'true' ->
-            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, cb_context:req_json(Context)),
             ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj))
     end;
 put_resp('false', Context) ->
@@ -205,9 +227,12 @@ put_resp('false', Context) ->
     _ = provisioner_util:maybe_provision(Context1),
     Context1.
 
-dry_run(#cb_context{account_id=AccountId, req_data=JObj}) ->
+-spec dry_run(cb_context:context()) -> wh_json:object().
+dry_run(Context) ->
+    JObj = cb_context:req_data(Context),
+    AccountId = cb_context:account_id(Context),
+
     DeviceType = wh_json:get_value(<<"device_type">>, JObj),
-    DeviceName = wh_json:get_value(<<"name">>, JObj),
 
     Services = wh_services:fetch(AccountId),
     UpdateServices = wh_service_devices:reconcile(Services, DeviceType),
@@ -215,18 +240,20 @@ dry_run(#cb_context{account_id=AccountId, req_data=JObj}) ->
     Charges = wh_services:activation_charges(<<"devices">>, DeviceType, Services),
 
     case Charges > 0 of
-        'false' -> wh_services:calulate_charges(UpdateServices, []);
+        'false' -> wh_services:calculate_charges(UpdateServices, []);
         'true' ->
             Transaction = wh_transaction:debit(AccountId, wht_util:dollars_to_units(Charges)),
-            Desc = <<"activation charges for ", DeviceType/binary , " ", DeviceName/binary>>,
+            Desc = <<"activation charges for "
+                     ,DeviceType/binary
+                     ," "
+                     ,(wh_json:get_value(<<"name">>, JObj))/binary
+                   >>,
             Transaction2 = wh_transaction:set_description(Desc, Transaction),
-            wh_services:calulate_charges(UpdateServices, [Transaction2])
+            wh_services:calculate_charges(UpdateServices, [Transaction2])
     end.
 
-
-
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(#cb_context{}=Context, DeviceId) ->
+delete(Context, DeviceId) ->
     Context1 = crossbar_doc:delete(Context),
     _ = provisioner_util:maybe_delete_provision(Context),
     _ = maybe_remove_aggregate(DeviceId, Context),
@@ -270,7 +297,7 @@ changed_mac_address(Context) ->
     end.
 
 -spec check_mac_address(api_binary(), cb_context:context()) -> cb_context:context().
-check_mac_address(DeviceId, #cb_context{}=Context) ->
+check_mac_address(DeviceId, Context) ->
     case unique_mac_address(cb_context:req_value(Context, <<"mac_address">>)
                             ,cb_context:account_db(Context)
                            )
@@ -302,7 +329,7 @@ get_mac_addresses(DbName) ->
     end.
 
 -spec prepare_outbound_flags(api_binary(), cb_context:context()) -> cb_context:context().
-prepare_outbound_flags(DeviceId, #cb_context{}=Context) ->
+prepare_outbound_flags(DeviceId, Context) ->
     JObj = case cb_context:req_value(Context, <<"outbound_flags">>) of
                [] -> cb_context:req_data(Context);
                Flags when is_list(Flags) ->
@@ -316,7 +343,7 @@ prepare_outbound_flags(DeviceId, #cb_context{}=Context) ->
     prepare_device_realm(DeviceId, cb_context:set_req_data(Context, JObj)).
 
 -spec prepare_device_realm(api_binary(), cb_context:context()) -> cb_context:context().
-prepare_device_realm(DeviceId, #cb_context{}=Context) ->
+prepare_device_realm(DeviceId, Context) ->
     AccountRealm = crossbar_util:get_account_realm(Context),
     Realm = cb_context:req_value(Context, [<<"sip">>, <<"realm">>], AccountRealm),
     case AccountRealm =:= Realm of
@@ -328,7 +355,7 @@ prepare_device_realm(DeviceId, #cb_context{}=Context) ->
     end.
 
 -spec validate_device_creds(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
-validate_device_creds(Realm, DeviceId, #cb_context{}=Context) ->
+validate_device_creds(Realm, DeviceId, Context) ->
     case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
         <<"password">> -> validate_device_password(Realm, DeviceId, Context);
         <<"ip">> ->
@@ -344,7 +371,7 @@ validate_device_creds(Realm, DeviceId, #cb_context{}=Context) ->
     end.
 
 -spec validate_device_password(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
-validate_device_password(Realm, DeviceId, #cb_context{}=Context) ->
+validate_device_password(Realm, DeviceId, Context) ->
     Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
     case is_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
         'true' -> check_device_schema(DeviceId, Context);
@@ -386,10 +413,10 @@ check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
     cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
 
-on_successful_validation('undefined', #cb_context{}=Context) ->
+on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
-on_successful_validation(DeviceId, #cb_context{}=Context) ->
+on_successful_validation(DeviceId, Context) ->
     crossbar_doc:load_merge(DeviceId, Context).
 
 %%--------------------------------------------------------------------

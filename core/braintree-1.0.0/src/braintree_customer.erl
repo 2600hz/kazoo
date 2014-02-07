@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(braintree_customer).
 
@@ -25,8 +25,8 @@
 -export([json_to_record/1]).
 -export([record_to_json/1]).
 
--import(braintree_util, [make_doc_xml/2]).
--import(wh_util, [get_xml_value/2]).
+-import('braintree_util', [make_doc_xml/2]).
+-import('wh_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
@@ -42,8 +42,8 @@
 %% Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
--spec url/0 :: () -> string().
--spec url/1 :: (ne_binary()) -> string().
+-spec url() -> string().
+-spec url(ne_binary()) -> string().
 
 url() ->
     "/customers/".
@@ -57,7 +57,7 @@ url(CustomerId) ->
 %% Creates a new customer record
 %% @end
 %%--------------------------------------------------------------------
--spec new/1 :: (ne_binary()) -> customer().
+-spec new(ne_binary()) -> customer().
 new(CustomerId) ->
     #bt_customer{id=CustomerId}.
 
@@ -67,7 +67,7 @@ new(CustomerId) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec new_subscription/2 :: (ne_binary(), customer()) -> braintree_subscription:subscription().
+-spec new_subscription(ne_binary(), customer()) -> braintree_subscription:subscription().
 new_subscription(PlanId, Customer) ->
     PaymentToken = default_payment_token(Customer),
     braintree_subscription:new(PlanId, PaymentToken).
@@ -78,12 +78,11 @@ new_subscription(PlanId, Customer) ->
 %% Given a cutomer record find (if any) the default payment token
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token/1 :: (ne_binary() | customer()) -> api_binary().
+-spec default_payment_token(ne_binary() | customer()) -> api_binary().
 default_payment_token(#bt_customer{}=Customer) ->
     braintree_card:default_payment_token(get_cards(Customer));
 default_payment_token(CustomerId) ->
     default_payment_token(find(CustomerId)).
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,7 +90,7 @@ default_payment_token(CustomerId) ->
 %% Get the customer id
 %% @end
 %%--------------------------------------------------------------------
--spec get_id/1 :: (customer()) -> api_binary().
+-spec get_id(customer()) -> api_binary().
 get_id(#bt_customer{id=CustomerId}) ->
     CustomerId.
 
@@ -101,7 +100,7 @@ get_id(#bt_customer{id=CustomerId}) ->
 %% Get credit cards
 %% @end
 %%--------------------------------------------------------------------
--spec get_cards/1 :: (customer()) -> braintree_card:cards().
+-spec get_cards(customer()) -> braintree_card:cards().
 get_cards(#bt_customer{credit_cards=Cards}) ->
     Cards.
 
@@ -111,7 +110,7 @@ get_cards(#bt_customer{credit_cards=Cards}) ->
 %% Get subscriptions
 %% @end
 %%--------------------------------------------------------------------
--spec get_subscriptions/1 :: (customer()) -> braintree_subscription:subscriptions().
+-spec get_subscriptions(customer()) -> braintree_subscription:subscriptions().
 get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
     Subscriptions.
 
@@ -121,8 +120,8 @@ get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
 %% Get a subscription
 %% @end
 %%--------------------------------------------------------------------
--spec get_subscription/2 :: (ne_binary(), customer() | braintree_subscription:subscriptions()) ->
-                                    braintree_subscription:subscription().
+-spec get_subscription(ne_binary(), customer() | braintree_subscription:subscriptions()) ->
+                              braintree_subscription:subscription().
 get_subscription(PlanId, #bt_customer{subscriptions=Subscriptions}) ->
     get_subscription(PlanId, Subscriptions);
 get_subscription(_, []) ->
@@ -131,8 +130,8 @@ get_subscription(PlanId, [#bt_subscription{plan_id=PlanId, status=Status}=Subscr
                           |Subscriptions
                          ]) ->
     case lists:member(Status, ?BT_ACTIVE_STATUSES) of
-        true -> Subscription;
-        false -> get_subscription(PlanId, Subscriptions)
+        'true' -> Subscription;
+        'false' -> get_subscription(PlanId, Subscriptions)
     end;
 get_subscription(PlanId, [_|Subscriptions]) ->
     get_subscription(PlanId, Subscriptions).
@@ -143,7 +142,7 @@ get_subscription(PlanId, [_|Subscriptions]) ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec all/0 :: () -> customers().
+-spec all() -> customers().
 all() ->
     Url = url(),
     Xml = braintree_request:get(Url),
@@ -157,7 +156,7 @@ all() ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (ne_binary() | nonempty_string()) -> customer().
+-spec find(ne_binary() | nonempty_string()) -> customer().
 find(CustomerId) ->
     Url = url(CustomerId),
     Xml = braintree_request:get(Url),
@@ -169,10 +168,10 @@ find(CustomerId) ->
 %% Creates a new customer using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (customer() | ne_binary()) -> customer().
+-spec create(customer() | ne_binary()) -> customer().
 create(#bt_customer{}=Customer) ->
     Url = url(),
-    Request = record_to_xml(Customer, true),
+    Request = record_to_xml(Customer, 'true'),
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml);
 create(CustomerId) ->
@@ -184,10 +183,10 @@ create(CustomerId) ->
 %% Updates a customer with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (customer()) -> customer().
+-spec update(customer()) -> customer().
 update(#bt_customer{id=CustomerId}=Customer) ->
     Url = url(CustomerId),
-    Request = record_to_xml(Customer, true),
+    Request = record_to_xml(Customer, 'true'),
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
@@ -197,7 +196,7 @@ update(#bt_customer{id=CustomerId}=Customer) ->
 %% Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (customer() | binary() | string()) -> customer().
+-spec delete(customer() | text()) -> customer().
 delete(#bt_customer{id=CustomerId}) ->
     delete(CustomerId);
 delete(CustomerId) ->
@@ -211,8 +210,8 @@ delete(CustomerId) ->
 %% Convert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (bt_xml()) -> customer().
--spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> customer().
+-spec xml_to_record(bt_xml()) -> customer().
+-spec xml_to_record(bt_xml(), wh_deeplist()) -> customer().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/customer").
@@ -239,7 +238,8 @@ xml_to_record(Xml, Base) ->
                               ]
                  ,subscriptions = [braintree_subscription:xml_to_record(Subscription)
                                    || Subscription <- xmerl_xpath:string(SubscriptionPath, Xml)
-                                  ]}.
+                                  ]
+                }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -247,11 +247,11 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (customer()) -> wh_proplist() | bt_xml().
--spec record_to_xml/2 :: (customer(), boolean()) -> wh_proplist() | bt_xml().
+-spec record_to_xml(customer()) -> wh_proplist() | bt_xml().
+-spec record_to_xml(customer(), boolean()) -> wh_proplist() | bt_xml().
 
 record_to_xml(Customer) ->
-    record_to_xml(Customer, false).
+    record_to_xml(Customer, 'false').
 
 record_to_xml(Customer, ToString) ->
     Props = [{'id', Customer#bt_customer.id}
@@ -263,12 +263,12 @@ record_to_xml(Customer, ToString) ->
              ,{'fax', Customer#bt_customer.fax}
              ,{'website', Customer#bt_customer.website}
              |[{'credit-card', braintree_card:record_to_xml(Card)}
-               || Card <- Customer#bt_customer.credit_cards, Card =/= undefined
+               || Card <- Customer#bt_customer.credit_cards, Card =/= 'undefined'
               ]
             ],
     case ToString of
-        true -> make_doc_xml(Props, 'customer');
-        false -> Props
+        'true' -> make_doc_xml(Props, 'customer');
+        'false' -> Props
     end.
 
 %%--------------------------------------------------------------------
@@ -277,9 +277,8 @@ record_to_xml(Customer, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record/1 :: ('undefined' | wh_json:object()) -> customer().
-json_to_record(undefined) ->
-    #bt_customer{};
+-spec json_to_record(api_object()) -> customer().
+json_to_record('undefined') -> #bt_customer{};
 json_to_record(JObj) ->
     #bt_customer{id = wh_json:get_binary_value(<<"id">>, JObj)
                  ,first_name = wh_json:get_binary_value(<<"first_name">>, JObj)
@@ -298,7 +297,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (customer()) -> wh_json:object().
+-spec record_to_json(customer()) -> wh_json:object().
 record_to_json(Customer) ->
     Props = [{<<"id">>, Customer#bt_customer.id}
              ,{<<"first_name">>, Customer#bt_customer.first_name}
