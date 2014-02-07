@@ -127,9 +127,11 @@ allow_methods(#cb_context{allow_methods=AMs}) -> AMs.
 allowed_methods(#cb_context{allowed_methods=AMs}) -> AMs.
 method(#cb_context{method=M}) -> M.
 
+-spec path_tokens(context()) -> ne_binaries().
 path_tokens(#cb_context{raw_path=Path}) ->
     [cowboy_http:urldecode(Token) || Token <- binary:split(Path, <<"/">>, ['global', 'trim'])].
 
+-spec magic_pathed(context()) -> boolean().
 magic_pathed(#cb_context{magic_pathed=MP}) -> MP.
 
 req_json(#cb_context{req_json=RJ}) -> RJ.
