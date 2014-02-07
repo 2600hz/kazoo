@@ -30,6 +30,8 @@
         ]).
 -export([sendmsg/3]).
 
+-include("ecallmgr.hrl").
+
 -define(TIMEOUT, 5000).
 
 version(Node) ->
@@ -41,7 +43,7 @@ version(Node, Timeout) ->
     catch
         _E:_R ->
             lager:info("failed to get mod_kazoo version from ~s: ~p ~p"
-                      ,[Node, _E, _R]),
+                       ,[Node, _E, _R]),
             {'error', 'exception'}
     end.
 
@@ -80,8 +82,8 @@ bind(Node, Type, Timeout) ->
         Result -> Result
     catch
         _E:_R ->
-            lager:info("failed to get bind to ~s on ~s: ~p ~p"
-                      ,[Type, Node, _E, _R]),
+            lager:info("failed to get bind to ~p on ~s: ~p ~p"
+                       ,[Type, Node, _E, _R]),
             {'error', 'exception'}
     end.
 
@@ -100,7 +102,7 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
     catch
         _E:_R ->
             lager:info("failed to send fetch reply to ~s: ~p ~p"
-                      ,[Node, _E, _R]),
+                       ,[Node, _E, _R]),
             {'error', 'exception'}
     end.
 
@@ -115,7 +117,7 @@ api(Node, Cmd, Args, Timeout) ->
     catch
         _E:_R ->
             lager:info("failed to execute api command ~s on ~s: ~p ~p"
-                      ,[Cmd, Node, _E, _R]),
+                       ,[Cmd, Node, _E, _R]),
             {'error', 'exception'}
     end.
 
@@ -145,7 +147,7 @@ bgapi(Node, Cmd, Args) ->
                   catch
                       _E:_R ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
-                                    ,[Cmd, Node, _E, _R]),
+                                     ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
                   end
           end),
@@ -174,7 +176,7 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
                   catch
                       _E:_R ->
                           lager:info("failed to execute bgapi command ~s on ~s: ~p ~p"
-                                    ,[Cmd, Node, _E, _R]),
+                                     ,[Cmd, Node, _E, _R]),
                           Self ! {'api', {'error', 'exception'}}
                   end
           end),
@@ -201,7 +203,7 @@ event(Node, [_|_]=Events, Timeout) ->
     catch
         _E:_R ->
             lager:info("failed to bind to events on ~s: ~p ~p"
-                      ,[Node, _E, _R]),
+                       ,[Node, _E, _R]),
             {'error', 'exception'}
     end;
 event(Node, Event, Timeout) ->
