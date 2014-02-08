@@ -45,7 +45,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CallerIdNumber = whapps_call:caller_id_number(Call),
     Regex = wh_json:get_value(<<"regex">>, Data, <<".*">>),
@@ -63,14 +63,14 @@ handle(Data, Call) ->
 %% Handle a caller id "match" condition
 %% @end
 %%--------------------------------------------------------------------
--spec handle_match(wh_json:json_object(), whapps_call:call(), ne_binary()) -> 'ok'.
+-spec handle_match(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
 handle_match(Data, Call, CallerIdNumber) ->
     case wh_json:is_true(<<"use_absolute_mode">>, Data, 'false') of
         'true' -> maybe_branch_on_caller_id(Data, Call, CallerIdNumber);
         'false' -> maybe_branch_on_regex(Data, Call)
     end.
 
--spec maybe_branch_on_caller_id(wh_json:json_object(), whapps_call:call(), ne_binary()) -> 'ok'.
+-spec maybe_branch_on_caller_id(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
 maybe_branch_on_caller_id(Data, Call, CallerIdNumber) ->
     case is_callflow_child(CallerIdNumber, Call) of
         'true' -> update_caller_identity(Data, Call);
@@ -120,7 +120,7 @@ is_callflow_child(Name, Call) ->
 %% @doc update the caller id and owner information for this call
 %% @end
 %%--------------------------------------------------------------------
--spec update_caller_identity(wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec update_caller_identity(wh_json:object(), whapps_call:call()) -> 'ok'.
 update_caller_identity(Data, Call) ->
     Name = wh_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"name">>], Data),
     Number = wh_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Data),
