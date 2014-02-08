@@ -12,7 +12,7 @@
 %%%   ,"regex": "^\\+15558881111" // regular expression used to determine match/nomatch
 %%%        // when use_absolute_mode is false.  Default matches all incoming caller ids.
 %%%   ,"caller_id": {      // optional caller id applied to incoming call when it goes down a
-%%%       }"external": {   // match branch, if specified.
+%%%       "external": {   // match branch, if specified.
 %%%           "name": "Joseph",
 %%%           "number": "+15558881122"
 %%%       },
@@ -47,11 +47,13 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Number = whapps_call:caller_id_number(Call),
+    CallerIdNumber = whapps_call:caller_id_number(Call),
     Regex = wh_json:get_value(<<"regex">>, Data, <<".*">>),
-    lager:debug("Comparing caller id ~s against regex ~s", [Number, Regex]),
-    case re:run(Number, Regex) of
-        {'match', _} -> handle_match(Number, Data, Call);
+
+    lager:debug("comparing caller id ~s against regex ~s", [CallerIdNumber, Regex]),
+
+    case re:run(CallerIdNumber, Regex) of
+        {'match', _} -> handle_match(Data, Call, CallerIdNumber);
         'nomatch' -> handle_no_match(Call)
     end.
 
@@ -61,19 +63,25 @@ handle(Data, Call) ->
 %% Handle a caller id "match" condition
 %% @end
 %%--------------------------------------------------------------------
--spec handle_match(ne_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
-handle_match(CallerId, Data, Call) ->
+-spec handle_match(wh_json:json_object(), whapps_call:call(), ne_binary()) -> 'ok'.
+handle_match(Data, Call, CallerIdNumber) ->
     case wh_json:is_true(<<"use_absolute_mode">>, Data, 'false') of
-        'true' ->
-            case is_callflow_child(CallerId, Call) of
-                'true' -> update_caller_identity(Data, Call);
-                'false' -> cf_exe:continue(Call)
-            end;
-        'false' ->
-            case is_callflow_child(<<"match">>, Call) of
-                'true' -> update_caller_identity(Data, Call);
-                'false' -> cf_exe:continue(Call)
-            end
+        'true' -> maybe_branch_on_caller_id(Data, Call, CallerIdNumber);
+        'false' -> maybe_branch_on_regex(Data, Call)
+    end.
+
+-spec maybe_branch_on_caller_id(wh_json:json_object(), whapps_call:call(), ne_binary()) -> 'ok'.
+maybe_branch_on_caller_id(Data, Call, CallerIdNumber) ->
+    case is_callflow_child(CallerIdNumber, Call) of
+        'true' -> update_caller_identity(Data, Call);
+        'false' -> cf_exe:continue(Call)
+    end.
+
+-spec maybe_branch_on_regex(wh_json:object(), whapps_call:call()) -> 'ok'.
+maybe_branch_on_regex(Data, Call) ->
+    case is_callflow_child(<<"match">>, Call) of
+        'true' -> update_caller_identity(Data, Call);
+        'false' -> cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -104,9 +112,6 @@ is_callflow_child(Name, Call) ->
             'true';
         {'attempt_resp', {'error', _}} ->
             lager:debug("failed to find callflow child"),
-            'false';
-        _ ->
-            lager:debug("unrecognized response from attempt"),
             'false'
     end.
 
