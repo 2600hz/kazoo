@@ -29,8 +29,10 @@
 handle(Data, Call) ->
     DurationMS = get_duration_ms(Data),
     lager:debug("sleeping for ~b ms", [DurationMS]),
-    timer:sleep(DurationMS),
-    cf_exe:continue(Call).
+    case whapps_call_command:wait_for_hangup(DurationMS) of
+        {'ok', 'channel_hungup'} -> cf_exe:stop(Call);
+        {'error', 'timeout'} -> cf_exe:continue(Call)
+    end.
 
 -spec get_duration_ms(wh_json:object()) -> non_neg_integer().
 get_duration_ms(Data) ->
