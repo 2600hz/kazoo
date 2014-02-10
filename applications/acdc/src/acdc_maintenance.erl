@@ -15,7 +15,7 @@
          ,logout_agent/2
          ,agent_presence_id/2
          ,migrate_to_acdc_db/0, migrate/0
-         ,refresh/0
+         ,refresh/0, refresh_account/1
          ,flush_call_stat/1
         ]).
 
@@ -152,12 +152,14 @@ show_stats([S|Ss]) ->
         ],
     show_stats(Ss).
 
+-spec refresh() -> 'ok'.
 refresh() ->
     case couch_mgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
         {'ok', []} ->
             lager:debug("no accounts configured for acdc");
         {'ok', Accounts} ->
-            [refresh_account(wh_json:get_value(<<"key">>, Acct)) || Acct <- Accounts];
+            [refresh_account(wh_json:get_value(<<"key">>, Acct)) || Acct <- Accounts],
+            lager:debug("refreshed accounts");
         {'error', 'not_found'} ->
             lager:debug("acdc db not found"),
             lager:debug("consider running acdc_maintenance:migrate() to enable acdc for already-configured accounts");
@@ -165,10 +167,11 @@ refresh() ->
             lager:debug("failed to query acdc db: ~p", [_E])
     end.
 
+-spec refresh_account(ne_binary()) -> 'ok'.
 refresh_account(Acct) ->
     MoDB = acdc_stats_util:db_name(Acct),
-    lager:debug("refreshing ~s", [MoDB]),
-    refresh_account(MoDB, couch_mgr:db_create(MoDB)).
+    refresh_account(MoDB, couch_mgr:db_create(MoDB)),
+    lager:debug("refreshed: ~s", [MoDB]).
 
 refresh_account(MoDB, 'true') ->
     lager:debug("created ~s", [MoDB]),
@@ -177,11 +180,15 @@ refresh_account(MoDB, 'false') ->
     lager:debug("exists ~s", [MoDB]),
     couch_mgr:revise_views_from_folder(MoDB, 'acdc').
 
+-spec migrate() -> 'ok'.
 migrate() ->
     migrate_to_acdc_db().
 migrate_to_acdc_db() ->
-    [migrate_to_acdc_db(Acct) || Acct <- whapps_util:get_all_accounts('raw')].
+    [migrate_to_acdc_db(Acct) || Acct <- whapps_util:get_all_accounts('raw')],
+    'ok'.
 
+-spec migrate_to_acdc_db(ne_binary()) -> 'ok'.
+-spec migrate_to_acdc_db(ne_binary(), non_neg_integer()) -> 'ok'.
 migrate_to_acdc_db(AccountId) ->
     migrate_to_acdc_db(AccountId, 3).
 
@@ -208,6 +215,7 @@ migrate_to_acdc_db(AccountId, Retries) ->
             migrate_to_acdc_db(AccountId, Retries-1)
     end.
 
+-spec maybe_migrate(ne_binary()) -> 'ok'.
 maybe_migrate(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [{'limit', 1}]) of
@@ -220,7 +228,8 @@ maybe_migrate(AccountId) ->
                                                ,[{'account_id', AccountId}
                                                  ,{'type', <<"acdc_activation">>}
                                                 ]),
-            couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc);
+            couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc),
+            io:format("saved account ~s to db~n", [AccountId]);
         {'error', _E} ->
             io:format("failed to query queue listing for account ~s: ~p~n", [AccountId, _E])
     end.
