@@ -137,13 +137,13 @@ get_location_options(DID) ->
     ].
 
 -spec update_e911(wnm_number(), wh_json:object()) -> wh_json:object().
-update_e911(#number{number=Number}=N, Address) ->
-    query_vitelity(N, wnm_vitelity_util:build_uri(e911_options(Number, Address))).
+update_e911(Number, Address) ->
+    query_vitelity(Number, wnm_vitelity_util:build_uri(e911_options(Number, Address))).
 
 -spec e911_options(ne_binary(), wh_json:object()) -> list().
-e911_options(Number, AddressJObj) ->
+e911_options(#number{number=Number, assigned_to=AccountId}, AddressJObj) ->
     [{'qs', [{'did',  wnm_util:to_npan(Number)}
-             ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj)}
+             ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
              ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
              ,{'city', wh_json:get_value(<<"locality">>, AddressJObj)}
              ,{'state', wh_json:get_value(<<"region">>, AddressJObj)}
@@ -154,6 +154,17 @@ e911_options(Number, AddressJObj) ->
             ]}
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
+-spec get_account_name(ne_binary()) -> ne_binary() | 'undefined'.
+get_account_name(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _Error} ->
+            lager:error('error opening ~p in ~p', [AccountId, AccountDb]),
+            'undefined';
+        {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj, 'undefined')
+    end.
+
+
 
 -spec is_valid_location(wh_json:object()) ->
                                {'ok', wh_json:object()} |
