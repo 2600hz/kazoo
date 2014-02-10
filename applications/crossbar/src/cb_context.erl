@@ -125,7 +125,7 @@ allowed_methods(#cb_context{allowed_methods=AMs}) -> AMs.
 method(#cb_context{method=M}) -> M.
 
 path_tokens(#cb_context{raw_path=Path}) ->
-    binary:split(Path, <<"/">>, ['global']).
+    [cowboy_http:urldecode(Token) || Token <- binary:split(Path, <<"/">>, ['global', 'trim'])].
 
 magic_pathed(#cb_context{magic_pathed=MP}) -> MP.
 

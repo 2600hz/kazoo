@@ -71,6 +71,7 @@ rest_init(Req0, Opts) ->
     {Host, Req1} = cowboy_req:host(Req0),
     {Port, Req2} = cowboy_req:port(Req1),
     {Path, Req3} = find_path(Req2, Opts),
+
     {QS, Req4} = cowboy_req:qs(Req3),
     {Method, Req5} = cowboy_req:method(Req4),
     {{Peer, _PeerPort}, Req6} = cowboy_req:peer(Req5),
