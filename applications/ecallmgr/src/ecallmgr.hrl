@@ -192,7 +192,24 @@
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
                                ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
-                               ,{<<"Secure-RTP">>, <<"zrtp_secure_media">>}
+							  
+							   ,{<<"SIP-Invite-Domain">>, <<"sip_invite_domain">>}
+							  						  
+							   ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
+							  
+                               ,{<<"Secure-RTP">>, <<"rtp_secure_media">>}
+                               ,{<<"RTP-Secure-Media">>, <<"rtp_secure_media">>}
+                               ,{<<"RTP-Secure-Media-Confirmed">>, <<"rtp_secure_media_confirmed">>}
+							   ,{<<"RTP-Secure-Audio-Confirmed">>, <<"rtp_secure_media_confirmed_audio">>}
+                               ,{<<"RTP-Secure-Video-Confirmed">>, <<"rtp_secure_media_confirmed_video">>}
+
+                               ,{<<"Secure-ZRTP">>, <<"zrtp_secure_media">>}
+							   ,{<<"ZRTP-Secure-Media">>, <<"zrtp_secure_media">>}
+                               ,{<<"ZRTP-Secure-Media-Confirmed">>, <<"zrtp_secure_media_confirmed">>}
+							   ,{<<"ZRTP-Secure-Audio-Confirmed">>, <<"zrtp_secure_media_confirmed_audio">>}
+                               ,{<<"ZRTP-Secure-Video-Confirmed">>, <<"zrtp_secure_media_confirmed_video">>}
+                               ,{<<"ZRTP-Enrollment">>, <<"zrtp_enrollment">>}							  
+							  
                                ,{<<"Ignore-Completed-Elsewhere">>, <<"ignore_completed_elsewhere">>}
                                ,{<<"tts_engine">>, <<"tts_engine">>}
                                ,{<<"tts_voice">>, <<"tts_voice">>}
@@ -270,14 +287,14 @@
                           ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
                           ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PROGRESS_MEDIA">>
                           ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
-                          ,<<"CHANNEL_REPLACED">>
+                          ,<<"CHANNEL_REPLACED">>, <<"CALL_SECURE">>
                      ]).
 
 -define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_DESTROY'
                     ,'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
-                    ,'CHANNEL_DATA'
+                    ,'CHANNEL_DATA', 'CALL_SECURE'
                    ]).
 
 -define(FS_CUSTOM_EVENTS, ['whistle::noop', 'whistle::masquerade'
