@@ -15,6 +15,7 @@
          ,logout_agent/2
          ,agent_presence_id/2
          ,migrate_to_acdc_db/0, migrate/0
+         ,refresh/0
          ,flush_call_stat/1
         ]).
 
@@ -150,6 +151,31 @@ show_stats([S|Ss]) ->
          || {K, V} <- wh_json:to_proplist(wh_doc:public_fields(S))
         ],
     show_stats(Ss).
+
+refresh() ->
+    case couch_mgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
+        {'ok', []} ->
+            lager:debug("no accounts configured for acdc");
+        {'ok', Accounts} ->
+            [refresh_account(wh_json:get_value(<<"key">>, Acct)) || Acct <- Accounts];
+        {'error', 'not_found'} ->
+            lager:debug("acdc db not found"),
+            lager:debug("consider running acdc_maintenance:migrate() to enable acdc for already-configured accounts");
+        {'error', _E} ->
+            lager:debug("failed to query acdc db: ~p", [_E])
+    end.
+
+refresh_account(Acct) ->
+    MoDB = acdc_stats_util:db_name(Acct),
+    lager:debug("refreshing ~s", [MoDB]),
+    refresh_account(MoDB, couch_mgr:db_create(MoDB)).
+
+refresh_account(MoDB, 'true') ->
+    lager:debug("created ~s", [MoDB]),
+    couch_mgr:revise_views_from_folder(MoDB, 'acdc');
+refresh_account(MoDB, 'false') ->
+    lager:debug("exists ~s", [MoDB]),
+    couch_mgr:revise_views_from_folder(MoDB, 'acdc').
 
 migrate() ->
     migrate_to_acdc_db().
