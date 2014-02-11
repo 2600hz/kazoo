@@ -11,10 +11,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0
-         ,handle_call_event/2
-         ,register/0, register/1, register/2
-        ]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -27,8 +24,6 @@
 -include("whistle_apps.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
--define(CACHE_NAME, 'wh_hooks_cache').
-
 %% Three main call events
 -define(BINDINGS, [{'call', [{'restrict_to', ['CHANNEL_CREATE'
                                               ,'CHANNEL_ANSWER'
@@ -37,11 +32,11 @@
                             ]}
                    ,{'route', []}
                   ]).
--define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
-                       ,[{<<"call_event">>, <<"*">>}
-                         ,{<<"dialplan">>, <<"route_req">>}
-                        ]
-                      }
+-define(RESPONDERS, [{{'wh_hooks_util', 'handle_call_event'}
+                      ,[{<<"call_event">>, <<"*">>}
+                        ,{<<"dialplan">>, <<"route_req">>}
+                       ]
+                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -67,78 +62,6 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
--define(HOOK_REG
-        ,{'p', 'l', 'wh_hook'}).
--define(HOOK_REG(AccountId)
-        ,{'p', 'l', {'wh_hook', AccountId}}).
--define(HOOK_REG(AccountId, EventName)
-        ,{'p', 'l', {'wh_hook', AccountId, EventName}}).
-
--spec register() -> 'true'.
--spec register(ne_binary()) -> 'true'.
--spec register(ne_binary(), ne_binary()) -> 'true'.
-register() ->
-    'true' = gproc:reg(?HOOK_REG).
-register(AccountId) ->
-    'true' = gproc:reg(?HOOK_REG(AccountId)).
-register(AccountId, EventName) ->
-    'true' = gproc:reg(?HOOK_REG(AccountId, EventName)).
-
--spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_call_event(JObj, _Props) ->
-    'true' = wapi_call:event_v(JObj) orelse wapi_route:req_v(JObj),
-    HookEvent = wh_json:get_value(<<"Event-Name">>, JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>
-                                   ,<<"Account-ID">>
-                                  ], JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    wh_util:put_callid(CallId),
-    handle_call_event(JObj, AccountId, HookEvent, CallId).
-
--spec handle_call_event(wh_json:object(), api_binary(), ne_binary(), ne_binary()) ->
-                               'ok'.
-handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId) ->
-    lager:debug("event 'channel_create' had no account id, caching"),
-    maybe_cache_call_event(JObj, CallId);
-handle_call_event(_JObj, 'undefined', _HookEvent, _CallId) ->
-    lager:debug("event '~s' had no account id, ignoring", [_HookEvent]);
-handle_call_event(_JObj, AccountId, <<"route_req">>, CallId) ->
-    lager:debug("recv route_req with account id ~s, looking for events to relay"
-                ,[AccountId]
-               ),
-    maybe_relay_new_event(AccountId, CallId);
-handle_call_event(JObj, AccountId, HookEvent, _CallId) ->
-    Evt = ?HOOK_EVT(AccountId, HookEvent, JObj),
-    gproc:send(?HOOK_REG, Evt),
-    gproc:send(?HOOK_REG(AccountId), Evt),
-    gproc:send(?HOOK_REG(AccountId, HookEvent), Evt).
-
--spec maybe_cache_call_event(wh_json:object(), ne_binary()) -> 'ok'.
-maybe_cache_call_event(JObj, CallId) ->
-    case wh_cache:peek_local(?CACHE_NAME, CallId) of
-        {'error', 'not_found'} ->
-            wh_cache:store_local(?CACHE_NAME, CallId, {'CHANNEL_CREATE', JObj}, [{'expires', 5000}]);
-        {'ok', {'account_id', AccountId}} ->
-            handle_call_event(JObj
-                              ,AccountId
-                              ,wh_json:get_value(<<"Event-Name">>, JObj)
-                              ,CallId
-                             )
-    end.
-
--spec maybe_relay_new_event(ne_binary(), ne_binary()) -> 'ok'.
-maybe_relay_new_event(AccountId, CallId) ->
-    case wh_cache:peek_local(?CACHE_NAME, CallId) of
-        {'error', 'not_found'} ->
-            wh_cache:store_local(?CACHE_NAME, CallId, {'account_id', AccountId}, [{'expires', 5000}]);
-        {'ok', {'CHANNEL_CREATE', JObj}} ->
-            handle_call_event(JObj
-                              ,AccountId
-                              ,wh_json:get_value(<<"Event-Name">>, JObj)
-                              ,CallId
-                             )
-    end.
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -158,7 +81,7 @@ maybe_relay_new_event(AccountId, CallId) ->
 init([]) ->
     lager:debug("started ~s", [?MODULE]),
     wapi_call:declare_exchanges(),
-    _ = spawn('whistle_apps_sup', 'start_child', [?CACHE(?CACHE_NAME)]),
+    _ = spawn('whistle_apps_sup', 'start_child', [?CACHE(?HOOKS_CACHE_NAME)]),
     {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
