@@ -40,6 +40,7 @@
 -define(CB_LIST, <<"media/crossbar_listing">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
+-define(DEFAULT_VOICE, whapps_config:get(<<"speech">>, <<"tts_default_voice">>, <<"female/en-US">>)).
 
 %%%===================================================================
 %%% API
@@ -200,24 +201,31 @@ validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
 get(Context, _MediaID, ?BIN_DATA) ->
     cb_context:add_resp_headers(Context
                                 ,[{<<"Content-Type">>
-                                       ,wh_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>)}
+                                   ,wh_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>)
+                                  }
                                   ,{<<"Content-Length">>
-                                        ,binary:referenced_byte_size(cb_context:resp_data(Context))}
+                                    ,binary:referenced_byte_size(cb_context:resp_data(Context))
+                                   }
                                  ]).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     JObj = cb_context:doc(Context),
-    Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
-    PrevText = wh_json:get_value(<<"pvt_previous_tts">>, JObj),
-    TTS = not (wh_util:is_empty(Text) orelse Text =:= PrevText),
+    TTS = is_tts(JObj),
+
     Routines = [fun crossbar_doc:save/1
                 ,fun(C) when TTS ->
-                         maybe_update_tts(C, Text, cb_context:resp_status(C));
+                         Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
+                         Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
+
+                         maybe_update_tts(C, Text, Voice, cb_context:resp_status(C));
                     (C) -> C
                  end
                 ,fun(C) when TTS ->
-                         maybe_save_tts(C, Text, cb_context:resp_status(C));
+                         Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
+                         Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
+
+                         maybe_save_tts(C, Text, Voice, cb_context:resp_status(C));
                     (C) -> C
                  end
                 ],
@@ -229,15 +237,15 @@ put(Context) ->
 post(Context, MediaId) ->
     JObj = cb_context:doc(Context),
     Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
-    PrevText = wh_json:get_value(<<"pvt_previous_tts">>, JObj),
-    TTS = not (wh_util:is_empty(Text) orelse Text =:= PrevText),
+    Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
+    TTS = is_tts(JObj),
 
     Routines = [fun(C) when TTS ->
-                        maybe_merge_tts(C, MediaId, Text, cb_context:resp_status(C));
+                        maybe_merge_tts(C, MediaId, Text, Voice, cb_context:resp_status(C));
                    (C) -> C
                 end
                 ,fun(C) when TTS ->
-                         maybe_save_tts(C, Text, cb_context:resp_status(Context));
+                         maybe_save_tts(C, Text, Voice, cb_context:resp_status(Context));
                     (C) ->
                          case cb_context:resp_status(C) of
                              'success' -> crossbar_doc:save(C);
@@ -250,23 +258,25 @@ post(Context, MediaId) ->
 post(Context, MediaID, ?BIN_DATA) ->
     update_media_binary(MediaID, Context).
 
--spec maybe_save_tts(cb_context:context(), ne_binary(), crossbar_status()) ->
+-spec maybe_save_tts(cb_context:context(), ne_binary(), ne_binary(), crossbar_status()) ->
                             cb_context:context().
-maybe_save_tts(Context, Text, 'success') ->
+maybe_save_tts(Context, Text, Voice, 'success') ->
     JObj = wh_json:set_value(<<"media_source">>, <<"tts">>, cb_context:doc(Context)),
     crossbar_doc:save(
       cb_context:set_doc(Context
-                         ,wh_json:set_value(<<"pvt_previous_tts">>, Text, JObj)
+                         ,wh_json:set_values([{<<"pvt_previous_tts">>, Text}
+                                              ,{<<"pvt_previous_voice">>, Voice}
+                                             ], JObj)
                         )
      );
-maybe_save_tts(Context, _Text, _Status) ->
+maybe_save_tts(Context, _Text, _Voice, _Status) ->
     Context.
 
--spec maybe_update_tts(cb_context:context(), ne_binary(), crossbar_status()) ->
+-spec maybe_update_tts(cb_context:context(), ne_binary(), ne_binary(), crossbar_status()) ->
                         cb_context:context().
-maybe_update_tts(Context, Text, 'success') ->
+maybe_update_tts(Context, Text, Voice, 'success') ->
     JObj = cb_context:doc(Context),
-    Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, <<"female/en-US">>),
+    Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
     case whapps_speech:create(Text, Voice) of
         {'error', R} ->
             crossbar_doc:delete(Context),
@@ -290,13 +300,13 @@ maybe_update_tts(Context, Text, 'success') ->
                                       )),
             crossbar_doc:load(MediaId, Context)
     end;
-maybe_update_tts(Context, _Text, _Status) -> Context.
+maybe_update_tts(Context, _Text, _Voice, _Status) -> Context.
 
--spec maybe_merge_tts(cb_context:context(), ne_binary(), ne_binary(), crossbar_status()) ->
+-spec maybe_merge_tts(cb_context:context(), ne_binary(), ne_binary(), ne_binary(), crossbar_status()) ->
                              cb_context:context().
-maybe_merge_tts(Context, MediaId, Text, 'success') ->
+maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
     JObj = cb_context:doc(Context),
-    Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, <<"female/en-US">>),
+
     case whapps_speech:create(Text, Voice) of
         {'error', R} -> crossbar_util:response('error', wh_util:to_binary(R), Context);
         {'ok', ContentType, Content} ->
@@ -310,6 +320,7 @@ maybe_merge_tts(Context, MediaId, Text, 'success') ->
                          ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
                          ,".wav"
                        >>,
+
             _ = update_media_binary(MediaId
                                     ,cb_context:set_resp_status(
                                        cb_context:set_req_files(Context
@@ -319,7 +330,7 @@ maybe_merge_tts(Context, MediaId, Text, 'success') ->
                                       )),
             crossbar_doc:load_merge(MediaId, wh_json:public_fields(JObj), Context)
     end;
-maybe_merge_tts(Context, _MediaId, _Text, _Status) ->
+maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
     Context.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -364,11 +375,11 @@ check_media_schema(MediaId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(MediaId, C) end,
     cb_context:validate_request_data(<<"media">>, Context, OnSuccess).
 
-on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
+on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"media">>}
              ,{<<"media_source">>, <<"upload">>}
             ],
-    cb_context:set_doc(Context, wh_json:set_values(Props, Doc));
+    cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(MediaId, Context) ->
     crossbar_doc:load_merge(MediaId, Context).
 
@@ -463,3 +474,19 @@ delete_media_binary(MediaID, Context) ->
             end;
         _Status -> Context1
     end.
+
+-spec is_tts(wh_json:object()) -> boolean().
+-spec is_tts(wh_json:object(), api_binary()) -> boolean().
+is_tts(JObj) ->
+    is_tts(JObj, wh_json:get_ne_value([<<"tts">>, <<"text">>], JObj)).
+
+is_tts(_JObj, 'undefined') -> 'false';
+is_tts(JObj, Text) ->
+    is_tts_text_changed(JObj, Text =:= wh_json:get_value(<<"pvt_previous_tts">>, JObj)).
+
+-spec is_tts_text_changed(wh_json:object(), boolean()) -> boolean().
+is_tts_text_changed(JObj, 'true') ->
+    Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj),
+    PrevVoice = wh_json:get_value(<<"pvt_previous_voice">>, JObj),
+    not (Voice =:= PrevVoice);
+is_tts_text_changed(_JObj, 'false') -> 'true'.
