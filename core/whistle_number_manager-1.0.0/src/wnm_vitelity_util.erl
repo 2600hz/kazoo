@@ -160,7 +160,7 @@ query_vitelity(URI) ->
     end.
 
 
--spec get_short_state(ne_binary()) -> ne_binary() | 'undefined';
+-spec get_short_state(ne_binary()) -> ne_binary() | 'undefined'.
 get_short_state(FullState) ->
     States = [
         {<<"alabama">>, <<"AL">>}
