@@ -270,6 +270,7 @@ build_originate(#state{endpoints=Endpoints, resource_req=JObj, queue=Q, msg_id=M
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
        ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
        ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
+       ,{<<"Fax-Timezone">>, wh_json:get_value(<<"Fax-Timezone">>, JObj)}
        ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
        ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
