@@ -227,10 +227,17 @@ get_account_mods(AccountId, Encoding) ->
         is_matched_account_mod(MOD, AccountId)
     ].
 
--spec is_matched_account_mod(ne_binary(), ne_binary()) -> ne_binary().
-is_matched_account_mod(<<"account/", DbActId:34/binary, _/binary>>, <<"account/", SearchId/binary>>) when DbActId =:= SearchId -> true;
-is_matched_account_mod(<<"account%2F", DbActId:38/binary, _/binary>>, <<"account%2F",SearchId/binary>>) when DbActId =:= SearchId -> true;
-is_matched_account_mod(_, _) -> false.
+-spec is_matched_account_mod(ne_binary(), ne_binary()) -> boolean().
+is_matched_account_mod(<<"account/", DbActId:34/binary, _/binary>>
+                       ,<<"account/", SearchId/binary>>
+                      ) when DbActId =:= SearchId ->
+    'true';
+is_matched_account_mod(<<"account%2F", DbActId:38/binary, _/binary>>
+                       ,<<"account%2F",SearchId/binary>>
+                      ) when DbActId =:= SearchId ->
+    'true';
+is_matched_account_mod(_, _) ->
+    'false'.
 
 -spec is_account_mod(ne_binary()) -> boolean().
 is_account_mod(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'true';
