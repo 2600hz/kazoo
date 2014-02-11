@@ -127,7 +127,9 @@
 -export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/2]).
--export([wait_for_hangup/0, wait_for_unbridge/0]).
+-export([wait_for_hangup/0, wait_for_hangup/1
+         ,wait_for_unbridge/0, wait_for_unbridge/1
+       ]).
 -export([wait_for_application_or_dtmf/2]).
 -export([collect_digits/2, collect_digits/3
          ,collect_digits/4, collect_digits/5
@@ -1884,15 +1886,29 @@ wait_for_channel_bridge() ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_hangup() -> {'ok', 'channel_hungup'}.
+-spec wait_for_hangup() -> {'ok', 'channel_hungup'} |
+                           {'error', 'timeout'}.
+-spec wait_for_hangup(wh_timeout()) ->
+                             {'ok', 'channel_hungup'} |
+                             {'error', 'timeout'}.
 wait_for_hangup() ->
+    wait_for_hangup('infinity').
+
+wait_for_hangup(Timeout) ->
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', 'channel_hungup'};
-                _ -> wait_for_hangup()
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+                    {'ok', 'channel_hungup'};
+                _Evt ->
+                    lager:debug("ignoring: ~p", [_Evt]),
+                    wait_for_hangup(wh_util:decr_timeout(Timeout, Start))
             end;
-        _ -> wait_for_hangup()
+        _ -> wait_for_hangup(wh_util:decr_timeout(Timeout, Start))
+    after
+        Timeout ->
+            {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------
@@ -1901,15 +1917,27 @@ wait_for_hangup() ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_unbridge() -> {'ok', 'leg_hungup'}.
+-spec wait_for_unbridge() ->
+                               {'ok', 'leg_hungup'} |
+                               {'error', 'timeout'}.
+-spec wait_for_unbridge(wh_timeout()) ->
+                               {'ok', 'leg_hungup'} |
+                               {'error', 'timeout'}.
 wait_for_unbridge() ->
+    wait_for_unbridge('infinity').
+
+wait_for_unbridge(Timeout) ->
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} ->
             case whapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"LEG_DESTROYED">>} -> {'ok', 'leg_hungup'};
                 _ -> wait_for_unbridge()
             end;
-        _ -> wait_for_unbridge()
+        _ -> wait_for_unbridge(wh_util:decr_timeout(Timeout, Start))
+    after
+        Timeout ->
+            {'error', 'timeout'}
     end.
 
 %%--------------------------------------------------------------------

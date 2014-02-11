@@ -363,6 +363,7 @@ process_event(UUID, Props, Node) ->
 
 -spec process_event(api_binary(), wh_proplist(), atom(), pid()) -> any().
 process_event(UUID, Props, Node, Pid) ->
+    wh_util:put_callid(UUID),
     wh_amqp_channel:consumer_pid(Pid),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
     process_specific_event(EventName, UUID, Props, Node).
@@ -396,20 +397,25 @@ process_specific_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
 process_specific_event(_, _, _, _) ->
     'ok'.
 
--spec maybe_publish_channel_state(wh_proplist(), atom() | ne_binary()) -> 'ok'.
-maybe_publish_channel_state(Props, Node) when not is_binary(Node) ->
-    maybe_publish_channel_state(Props, wh_util:to_binary(Node));
-maybe_publish_channel_state(Props, Node) ->
+-spec maybe_publish_channel_state(wh_proplist(), atom()) -> 'ok'.
+maybe_publish_channel_state(Props, _Node) ->
     %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
     %%   becomes disconnected any calls it previsouly controlled will not produce
     %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
     case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'true') of
         'false' -> ecallmgr_call_events:process_channel_event(Props);
-        'true' ->
-            case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props, Node) =:= Node of
-                'true' -> ecallmgr_call_events:process_channel_event(Props);
-                'false' -> lager:debug("channel state for call controlled by another ecallmgr, not publishing")
-            end
+        'true' -> maybe_publish_restricted(Props)
+    end.
+
+-spec maybe_publish_restricted(wh_proplist()) -> 'ok'.
+maybe_publish_restricted(Props) ->
+    EcallmgrNode = wh_util:to_binary(node()),
+
+    case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
+        'undefined' -> ecallmgr_call_events:process_channel_event(Props);
+        EcallmgrNode -> ecallmgr_call_events:process_channel_event(Props);
+        _EventEcallmgr ->
+            lager:debug("channel state for call controlled by another ecallmgr(~s), not publishing", [_EventEcallmgr])
     end.
 
 -spec props_to_record(wh_proplist(), atom()) -> channel().
