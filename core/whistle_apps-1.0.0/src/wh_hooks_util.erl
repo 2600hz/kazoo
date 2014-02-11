@@ -58,7 +58,7 @@ handle_call_event(JObj, Props) ->
                                   ], JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     wh_util:put_callid(CallId),
-    handle_call_event(JObj, AccountId, HookEvent, CallId, props:is_true('rr', Props)).
+    handle_call_event(JObj, AccountId, HookEvent, CallId, props:get_is_true('rr', Props)).
 
 -spec handle_call_event(wh_json:object(), api_binary(), ne_binary(), ne_binary(), boolean()) ->
                                'ok'.
