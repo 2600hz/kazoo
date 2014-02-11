@@ -162,6 +162,7 @@ known_methods(Req, Context) ->
        )
     }.
 
+-spec path_tokens(cb_context:context()) -> ne_binaries().
 path_tokens(Context) ->
     Api = cb_context:api_version(Context),
     case cb_context:path_tokens(Context) of

@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(braintree_transaction).
 
@@ -22,8 +22,8 @@
 -export([record_to_xml/1]).
 -export([record_to_json/1]).
 
--import(braintree_util, [make_doc_xml/2]).
--import(wh_util, [get_xml_value/2]).
+-import('braintree_util', [make_doc_xml/2]).
+-import('wh_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
@@ -33,9 +33,9 @@
 %% Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
--spec url/0 :: () -> string().
--spec url/1 :: (ne_binary()) -> string().
--spec url/2 :: (ne_binary(), ne_binary()) -> string().
+-spec url() -> string().
+-spec url(ne_binary()) -> string().
+-spec url(ne_binary(), ne_binary()) -> string().
 
 url() ->
     "/transactions/".
@@ -56,7 +56,7 @@ url(TransactionId, Options) ->
 %% Find a transaction by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (ne_binary()) -> bt_transaction().
+-spec find(ne_binary()) -> bt_transaction().
 find(TransactionId) ->
     Url = url(TransactionId),
     Xml = braintree_request:get(Url),
@@ -68,7 +68,7 @@ find(TransactionId) ->
 %% Find transactions by customer id
 %% @end
 %%--------------------------------------------------------------------
--spec find_by_customer/1 :: (ne_binary()) -> bt_transactions().
+-spec find_by_customer(ne_binary()) -> bt_transactions().
 find_by_customer(CustomerId) ->
     Url = url(<<"advanced_search">>),
     Props = [{'customer_id', [{'is', CustomerId}]}],
@@ -105,22 +105,22 @@ find_by_customer(CustomerId, Min, Max) ->
 %% Creates a new transaction using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (bt_transaction()) -> bt_transaction().
--spec create/2 :: (ne_binary(), bt_transaction()) -> bt_transaction().
+-spec create(bt_transaction()) -> bt_transaction().
+-spec create(ne_binary(), bt_transaction()) -> bt_transaction().
 
 create(#bt_transaction{amount=Amount}=Transaction) ->
     MinAmount = whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00),
     MaxAmount = whapps_config:get_float(<<"braintree">>, <<"max_amount">>, 200.00),
     case wh_util:to_float(Amount) <  MinAmount of
-        true -> braintree_util:error_min_amount(MinAmount);
-        false -> ok
+        'true' -> braintree_util:error_min_amount(MinAmount);
+        'false' -> 'ok'
     end,
     case wh_util:to_float(Amount) >  MaxAmount of
-        true -> braintree_util:error_max_amount(MaxAmount);
-        false -> ok
+        'true' -> braintree_util:error_max_amount(MaxAmount);
+        'false' -> 'ok'
     end,
     Url = url(),
-    Request = record_to_xml(Transaction, true),
+    Request = record_to_xml(Transaction, 'true'),
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
@@ -133,9 +133,9 @@ create(CustomerId, Transaction) ->
 %% Create a sale transaction
 %% @end
 %%--------------------------------------------------------------------
--spec sale/1 :: (bt_transaction()) -> bt_transaction().
--spec sale/2 :: (ne_binary(), bt_transaction()) -> bt_transaction().
--spec quick_sale/2 :: (ne_binary(), ne_binary()) -> bt_transaction().
+-spec sale(bt_transaction()) -> bt_transaction().
+-spec sale(ne_binary(), bt_transaction()) -> bt_transaction().
+-spec quick_sale(ne_binary(), ne_binary()) -> bt_transaction().
 
 sale(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE}).
@@ -155,9 +155,9 @@ quick_sale(CustomerId, Token, Amount) ->
 %% Create a credit transaction
 %% @end
 %%--------------------------------------------------------------------
--spec credit/1 :: (bt_transaction()) -> bt_transaction().
--spec credit/2 :: (ne_binary(), bt_transaction()) -> bt_transaction().
--spec quick_credit/2 :: (ne_binary(), ne_binary()) -> bt_transaction().
+-spec credit(bt_transaction()) -> bt_transaction().
+-spec credit(ne_binary(), bt_transaction()) -> bt_transaction().
+-spec quick_credit(ne_binary(), ne_binary()) -> bt_transaction().
 
 credit(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT}).
@@ -169,8 +169,8 @@ credit(CustomerId, Transaction) ->
 
 quick_credit(CustomerId, Amount) ->
     credit(CustomerId, #bt_transaction{amount=wh_util:to_binary(Amount)
-                                       ,settle=false
-                                       ,tax_exempt=false
+                                       ,settle='false'
+                                       ,tax_exempt='false'
                                       }).
 
 %%--------------------------------------------------------------------
@@ -179,7 +179,7 @@ quick_credit(CustomerId, Amount) ->
 %% Void transactions that have a status:authorized or submitted_for_settlement
 %% @end
 %%--------------------------------------------------------------------
--spec void/1 :: (bt_transaction() | ne_binary()) -> bt_transaction().
+-spec void(bt_transaction() | ne_binary()) -> bt_transaction().
 void(#bt_transaction{id=TransactionId}) ->
     void(TransactionId);
 void(TransactionId) ->
@@ -193,17 +193,17 @@ void(TransactionId) ->
 %% Refund a transaction with status: settled or settling
 %% @end
 %%--------------------------------------------------------------------
--spec refund/1 :: (bt_transaction() | ne_binary()) -> bt_transaction().
--spec refund/2 :: (bt_transaction() | ne_binary(), api_binary()) -> bt_transaction().
+-spec refund(bt_transaction() | ne_binary()) -> bt_transaction().
+-spec refund(bt_transaction() | ne_binary(), api_binary()) -> bt_transaction().
 
 refund(TransactionId) ->
-    refund(TransactionId, undefined).
+    refund(TransactionId, 'undefined').
 
 refund(#bt_transaction{id=TransactionId}, Amount) ->
     refund(TransactionId, Amount);
 refund(TransactionId, Amount) ->
     Url = url(TransactionId, <<"refund">>),
-    Request = record_to_xml(#bt_transaction{amount=Amount}, true),
+    Request = record_to_xml(#bt_transaction{amount=Amount}, 'true'),
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
@@ -213,8 +213,8 @@ refund(TransactionId, Amount) ->
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (bt_xml()) -> bt_transaction().
--spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> bt_transaction().
+-spec xml_to_record(bt_xml()) -> bt_transaction().
+-spec xml_to_record(bt_xml(), wh_deeplist()) -> bt_transaction().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/transaction").
@@ -235,7 +235,6 @@ xml_to_record(Xml, Base) ->
                     ,created_at = get_xml_value([Base, "/created-at/text()"], Xml)
                     ,update_at = get_xml_value([Base, "/updated-at/text()"], Xml)
                     ,refund_id = get_xml_value([Base, "/refund-id/text()"], Xml)
-%%                    ,refund_ids = get_xml_value([Base, "/id/text()", Xml)
                     ,refunded_transaction = get_xml_value([Base, "/refunded-transaction-id /text()"], Xml)
                     ,settlement_batch = get_xml_value([Base, "/settlement-batch-id/text()"], Xml)
                     ,avs_error_code = get_xml_value([Base, "/avs-error-response-code/text()"], Xml)
@@ -259,7 +258,6 @@ xml_to_record(Xml, Base) ->
                     ,discounts = [braintree_discount:xml_to_record(Discounts)
                                   || Discounts <- xmerl_xpath:string(DiscountsPath, Xml)
                                  ]
-%%                    ,descriptor = undefined = get_xml_value([Base, "/id/text()"], Xml)
                    }.
 
 %%--------------------------------------------------------------------
@@ -268,11 +266,11 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (bt_transaction()) -> proplist() | bt_xml().
--spec record_to_xml/2 :: (bt_transaction(), boolean()) -> proplist() | bt_xml().
+-spec record_to_xml(bt_transaction()) -> proplist() | bt_xml().
+-spec record_to_xml(bt_transaction(), boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Transaction) ->
-    record_to_xml(Transaction, false).
+    record_to_xml(Transaction, 'false').
 
 record_to_xml(#bt_transaction{}=Transaction, ToString) ->
     Props = [{'type', Transaction#bt_transaction.type}
@@ -285,74 +283,74 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
              ,{'shipping-address-id', Transaction#bt_transaction.shipping_address_id}
              ,{'tax-amount', Transaction#bt_transaction.tax_amount}
              ,{'tax-exempt', Transaction#bt_transaction.tax_exempt}],
-    Conditionals = [fun(#bt_transaction{billing_address=undefined}, P) -> P;
+    Conditionals = [fun(#bt_transaction{billing_address='undefined'}, P) -> P;
                        (#bt_transaction{billing_address=BA}, P) ->
                             [{'billing', braintree_address:record_to_xml(BA)}|P]
                     end,
-                    fun(#bt_transaction{shipping_address=undefined}, P) -> P;
+                    fun(#bt_transaction{shipping_address='undefined'}, P) -> P;
                        (#bt_transaction{shipping_address=SA}, P) ->
                             [{'shipping', braintree_address:record_to_xml(SA)}|P]
                     end,
-                    fun(#bt_transaction{card=undefined}, P) -> P;
+                    fun(#bt_transaction{card='undefined'}, P) -> P;
                        (#bt_transaction{card=CC}, P) ->
                             [{'credit-card', braintree_card:record_to_xml(CC)}|P]
                     end,
-                    fun(#bt_transaction{customer=undefined}, P) -> P;
+                    fun(#bt_transaction{customer='undefined'}, P) -> P;
                        (#bt_transaction{customer=Cust}, P) ->
                             [{'customer', braintree_customer:record_to_xml(Cust)}|P]
                     end,
-                    fun(#bt_transaction{store_in_vault=true}, P) ->
-                            case proplists:get_value('options', P) of
-                                undefined ->
-                                    [{'options', [{'store-in-vault', true}]}|P];
+                    fun(#bt_transaction{store_in_vault='true'}, P) ->
+                            case props:get_value('options', P) of
+                                'undefined' ->
+                                    [{'options', [{'store-in-vault', 'true'}]}|P];
                                 Options ->
-                                    [{'options', [{'store-in-vault', true}|Options]}
-                                     |proplists:delete('options', P)
+                                    [{'options', [{'store-in-vault', 'true'}|Options]}
+                                     |props:delete('options', P)
                                     ]
                             end;
                        (_, P) -> P
                     end,
-                    fun(#bt_transaction{store_on_success=true}, P) ->
-                            case proplists:get_value('options', P) of
-                                undefined ->
-                                    [{'options', [{'store-in-vault-on-success', true}]}|P];
+                    fun(#bt_transaction{store_on_success='true'}, P) ->
+                            case props:get_value('options', P) of
+                                'undefined' ->
+                                    [{'options', [{'store-in-vault-on-success', 'true'}]}|P];
                                 Options ->
-                                    [{'options', [{'store-in-vault-on-success', true}|Options]}
-                                     |proplists:delete('options', P)
+                                    [{'options', [{'store-in-vault-on-success', 'true'}|Options]}
+                                     |props:delete('options', P)
                                     ]
                             end;
                        (_, P) -> P
                     end,
-                    fun(#bt_transaction{store_on_success=true}, P) ->
-                            case proplists:get_value('options', P) of
-                                undefined ->
-                                    [{'options', [{'store-shipping-address-in-vault', true}]}|P];
+                    fun(#bt_transaction{store_on_success='true'}, P) ->
+                            case props:get_value('options', P) of
+                                'undefined' ->
+                                    [{'options', [{'store-shipping-address-in-vault', 'true'}]}|P];
                                 Options ->
-                                    [{'options', [{'store-shipping-address-in-vault', true}|Options]}
-                                     |proplists:delete('options', P)
+                                    [{'options', [{'store-shipping-address-in-vault', 'true'}|Options]}
+                                     |props:delete('options', P)
                                     ]
                             end;
                        (_, P) -> P
                     end,
-                    fun(#bt_transaction{change_billing_address=true}, P) ->
-                            case proplists:get_value('options', P) of
-                                undefined ->
-                                    [{'options', [{'add-billing-address-to-payment-method', true}]}|P];
+                    fun(#bt_transaction{change_billing_address='true'}, P) ->
+                            case props:get_value('options', P) of
+                                'undefined' ->
+                                    [{'options', [{'add-billing-address-to-payment-method', 'true'}]}|P];
                                 Options ->
-                                    [{'options', [{'add-billing-address-to-payment-method', true}|Options]}
-                                     |proplists:delete('options', P)
+                                    [{'options', [{'add-billing-address-to-payment-method', 'true'}|Options]}
+                                     |props:delete('options', P)
                                     ]
                             end;
                        (_, P) -> P
                     end,
-                    fun(#bt_transaction{settle=true}, P) ->
-                            [{'options', [{'submit-for-settlement', true}]}|P];
+                    fun(#bt_transaction{settle='true'}, P) ->
+                            [{'options', [{'submit-for-settlement', 'true'}]}|P];
                        (_, P) -> P
                     end],
     Props1 = lists:foldr(fun(F, P) -> F(Transaction, P) end, Props, Conditionals),
     case ToString of
-        true -> make_doc_xml(Props1, 'transaction');
-        false -> Props1
+        'true' -> make_doc_xml(Props1, 'transaction');
+        'false' -> Props1
     end.
 
 %%--------------------------------------------------------------------
@@ -361,7 +359,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (bt_transaction()) -> wh_json:object().
+-spec record_to_json(bt_transaction()) -> wh_json:object().
 record_to_json(#bt_transaction{}=Transaction) ->
     Props = [{<<"id">>, Transaction#bt_transaction.id}
              ,{<<"status">>, Transaction#bt_transaction.status}
@@ -401,4 +399,4 @@ record_to_json(#bt_transaction{}=Transaction) ->
                                  || Discounts <- Transaction#bt_transaction.discounts
                                 ]}
             ],
-    wh_json:from_list([KV || {_, V}=KV <- Props, V =/= undefined]).
+    wh_json:from_list(props:filter_undefined(Props)).

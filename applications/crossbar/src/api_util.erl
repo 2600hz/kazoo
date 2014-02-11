@@ -486,6 +486,7 @@ parse_path_tokens(Context, Tokens) ->
 -spec parse_path_tokens(cb_context:context(), wh_json:json_strings(), cb_mods_with_tokens()) ->
                                cb_mods_with_tokens().
 parse_path_tokens(_, [], Events) -> Events;
+parse_path_tokens(_, [<<>>], Events) -> Events;
 parse_path_tokens(_, [<<"schemas">>=Mod|T], Events) ->
     [{Mod, T} | Events];
 parse_path_tokens(_, [<<"braintree">>=Mod|T], Events) ->
@@ -517,8 +518,6 @@ is_cb_module_version(#cb_context{api_version=ApiVersion}, Elem) ->
         'error':'badarg' -> 'false'; %% atom didn't exist already
         _E:_R -> 'false'
     end.
-
-
 
 %%--------------------------------------------------------------------
 %% @private

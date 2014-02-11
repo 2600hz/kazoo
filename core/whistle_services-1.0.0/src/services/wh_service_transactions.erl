@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz, INC
+%%% @copyright (C) 2012-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -19,11 +19,13 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec current_billing_period(ne_binary(), atom()) -> wh_json:objects() | atom().
+-spec current_billing_period(ne_binary(), atom()) ->
+                                    wh_json:objects() | atom().
 current_billing_period(AccountId, 'subscriptions') ->
     wh_bookkeeper_braintree:subscriptions(AccountId).
 
--spec current_billing_period(ne_binary(), atom(), tuple()) -> wh_json:objects() | atom().
+-spec current_billing_period(ne_binary(), atom(), {ne_binary(), ne_binary()}) ->
+                                    wh_json:objects() | atom().
 current_billing_period(AccountId, 'transactions', {Min, Max}) ->
     wh_bookkeeper_braintree:transactions(AccountId, Min, Max).
 

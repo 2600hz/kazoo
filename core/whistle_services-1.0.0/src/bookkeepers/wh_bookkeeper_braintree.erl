@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -96,7 +96,7 @@ sync([ServiceItem|ServiceItems], AccountId, Updates) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec transactions(ne_binary(), atom(), atom()) ->
+-spec transactions(ne_binary(), ne_binary(), ne_binary()) ->
                           'not_found' |
                           'unknown_error' |
                           wh_json:objects().
@@ -115,13 +115,13 @@ transactions(AccountId, Min, Max) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec subscriptions(ne_binary()) -> atom() | [wh_json:object(), ...].
+-spec subscriptions(ne_binary()) -> atom() | wh_json:objects().
 subscriptions(AccountId) ->
     try braintree_customer:find(AccountId) of
         Customer ->
             [braintree_subscription:record_to_json(Sub) || Sub <-  braintree_customer:get_subscriptions(Customer)]
     catch
-        throw:{'not_found', _} -> 'not_found';
+        'throw':{'not_found', _} -> 'not_found';
         _:_ -> 'unknow_error'
     end.
 
@@ -143,7 +143,7 @@ commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
             commit_transactions(BillingId, Transactions, Try-1);
         {'ok', JObj} ->
             NewTransactions = wh_json:get_value(<<"transactions">>, JObj, [])
-                               ++ wh_transactions:to_json(Transactions),
+                ++ wh_transactions:to_json(Transactions),
             JObj1 = wh_json:set_values([{<<"pvt_dirty">>, 'true'}
                                         ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                         ,{<<"transactions">>, NewTransactions}

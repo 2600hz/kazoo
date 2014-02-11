@@ -888,11 +888,10 @@ set_response(_Else, _, Context, _) ->
 -spec dry_run_response(wh_proplist()) -> wh_json:object().
 -spec dry_run_response(ne_binary(), wh_json:object()) -> wh_json:object().
 dry_run_response([{'services', Services}, {'activation_charges', Charges}]) ->
-    wh_services:calulate_charges(Services, Charges).
+    wh_services:calculate_charges(Services, Charges).
 
 dry_run_response(?COLLECTION, Data) ->
     accumulate_resp(wh_json:get_value(<<"charges">>, Data, wh_json:new())).
-
 
 -spec accumulate_resp(wh_json:object()) -> wh_json:object().
 -spec accumulate_resp(wh_json:objects(), {integer(), ne_binaries()}) -> wh_json:object().

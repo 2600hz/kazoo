@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(braintree_subscription).
 
@@ -31,8 +31,8 @@
 -export([update_discount_quantity/3]).
 -export([increment_discount_quantity/2]).
 
--import(braintree_util, [make_doc_xml/2]).
--import(wh_util, [get_xml_value/2]).
+-import('braintree_util', [make_doc_xml/2]).
+-import('wh_util', [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
 
@@ -50,9 +50,9 @@
 %% Create the partial url for this module
 %% @end
 %%--------------------------------------------------------------------
--spec url/0 :: () -> string().
--spec url/1 :: (ne_binary()) -> string().
--spec url/2 :: (ne_binary(), ne_binary()) -> string().
+-spec url() -> string().
+-spec url(ne_binary()) -> string().
+-spec url(ne_binary(), ne_binary()) -> string().
 
 url() ->
     "/subscriptions/".
@@ -73,8 +73,8 @@ url(SubscriptionId, Options) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec new/2 :: (ne_binary(), ne_binary()) -> subscription().
--spec new/3 :: (ne_binary(), ne_binary(), ne_binary()) -> subscription().
+-spec new(ne_binary(), ne_binary()) -> subscription().
+-spec new(ne_binary(), ne_binary(), ne_binary()) -> subscription().
 
 new(PlanId, PaymentToken) ->
     new(wh_util:rand_hex_binary(16), PlanId, PaymentToken).
@@ -83,7 +83,7 @@ new(SubscriptionId, PlanId, PaymentToken) ->
     #bt_subscription{id=SubscriptionId
                      ,payment_token=PaymentToken
                      ,plan_id=PlanId
-                     ,create=true
+                     ,create='true'
                     }.
 
 %%--------------------------------------------------------------------
@@ -92,7 +92,7 @@ new(SubscriptionId, PlanId, PaymentToken) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec get_id/1 :: (subscription()) -> 'undefined' | ne_binary().
+-spec get_id(subscription()) -> api_binary().
 get_id(#bt_subscription{id=SubscriptionId}) ->
     SubscriptionId.
 
@@ -102,12 +102,12 @@ get_id(#bt_subscription{id=SubscriptionId}) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec get_addon/2 :: (subscription(), ne_binary()) -> #bt_addon{}.
+-spec get_addon(subscription(), ne_binary()) -> #bt_addon{}.
 get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
-        false ->
+        'false' ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
-                false -> braintree_util:error_not_found(<<"Add-On">>);
+                'false' -> braintree_util:error_not_found(<<"Add-On">>);
                 #bt_addon{}=AddOn -> AddOn
             end;
         #bt_addon{}=AddOn -> AddOn
@@ -119,12 +119,12 @@ get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
 %% Get the quantity of addons
 %% @end
 %%--------------------------------------------------------------------
--spec get_addon_quantity/2 :: (subscription(), ne_binary()) -> integer().
+-spec get_addon_quantity(subscription(), ne_binary()) -> integer().
 get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
-        false ->
+        'false' ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
-                false -> 0;
+                'false' -> 0;
                 #bt_addon{}=AddOn -> braintree_addon:get_quantity(AddOn)
             end;
         #bt_addon{}=AddOn -> braintree_addon:get_quantity(AddOn)
@@ -136,17 +136,17 @@ get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_amount/3 :: (subscription(), ne_binary(), ne_binary()) -> subscription().
+-spec update_addon_amount(subscription(), ne_binary(), ne_binary()) -> subscription().
 update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amount) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
-        false ->
+        'false' ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
-                false -> braintree_util:error_not_found(<<"Add-On">>);
-                #bt_addon{}=AddOn -> 
+                'false' -> braintree_util:error_not_found(<<"Add-On">>);
+                #bt_addon{}=AddOn ->
                     AddOn1 = AddOn#bt_addon{amount=Amount},
                     Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}
             end;
-        #bt_addon{}=AddOn -> 
+        #bt_addon{}=AddOn ->
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId, amount=Amount},
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end.
@@ -157,12 +157,12 @@ update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amou
 %% Find a specific discount
 %% @end
 %%--------------------------------------------------------------------
--spec get_discount/2 :: (subscription(), ne_binary()) -> #bt_discount{}.
+-spec get_discount(subscription(), ne_binary()) -> #bt_discount{}.
 get_discount(#bt_subscription{discounts=Discounts}, DiscountId) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
-        false ->
+        'false' ->
             case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
-                false -> braintree_util:error_not_found(<<"Discount">>);
+                'false' -> braintree_util:error_not_found(<<"Discount">>);
                 #bt_discount{}=Discount -> Discount
             end;
         #bt_discount{}=Discount -> Discount
@@ -174,17 +174,17 @@ get_discount(#bt_subscription{discounts=Discounts}, DiscountId) ->
 %% Update the amount of a specific discount
 %% @end
 %%--------------------------------------------------------------------
--spec update_discount_amount/3 :: (subscription(), ne_binary(), ne_binary()) -> subscription().
+-spec update_discount_amount(subscription(), ne_binary(), ne_binary()) -> subscription().
 update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Amount) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
-        false ->
+        'false' ->
             case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
-                false -> braintree_util:error_not_found(<<"Discount">>);
-                #bt_discount{}=Discount -> 
+                'false' -> braintree_util:error_not_found(<<"Discount">>);
+                #bt_discount{}=Discount ->
                     Discount1 = Discount#bt_discount{amount=Amount},
                     Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.inherited_from, Discounts, Discount1)}
             end;
-        #bt_discount{}=Discount -> 
+        #bt_discount{}=Discount ->
             Discount1 = Discount#bt_discount{existing_id=DiscountId, amount=Amount},
             Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
     end.
@@ -195,11 +195,13 @@ update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, Disco
 %% Find a subscription by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (ne_binary()) -> subscription().
+-spec find(ne_binary()) -> subscription().
 find(SubscriptionId) ->
-    Url = url(SubscriptionId),
-    Xml = braintree_request:get(Url),
-    xml_to_record(Xml).
+    xml_to_record(
+      braintree_request:get(
+        url(SubscriptionId)
+       )
+     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -207,14 +209,14 @@ find(SubscriptionId) ->
 %% Creates a new subscription using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (subscription()) -> subscription().
--spec create/2 :: (ne_binary(), ne_binary()) -> subscription().
+-spec create(subscription()) -> subscription().
+-spec create(ne_binary(), ne_binary()) -> subscription().
 
-create(#bt_subscription{id=undefined}=Subscription) ->
+create(#bt_subscription{id='undefined'}=Subscription) ->
     create(Subscription#bt_subscription{id=wh_util:rand_hex_binary(16)});
 create(#bt_subscription{}=Subscription) ->
     Url = url(),
-    Request = record_to_xml(Subscription, true),
+    Request = record_to_xml(Subscription, 'true'),
     Xml = braintree_request:post(Url, Request),
     xml_to_record(Xml).
 
@@ -227,12 +229,12 @@ create(Plan, Token) ->
 %% Updates a subscription with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (subscription()) -> subscription().
-update(#bt_subscription{create=true}=Subscription) ->
+-spec update(subscription()) -> subscription().
+update(#bt_subscription{create='true'}=Subscription) ->
     create(Subscription);
 update(#bt_subscription{id=SubscriptionId}=Subscription) ->
     Url = url(SubscriptionId),
-    Request = record_to_xml(Subscription, true),
+    Request = record_to_xml(Subscription, 'true'),
     Xml = braintree_request:put(Url, Request),
     xml_to_record(Xml).
 
@@ -242,7 +244,7 @@ update(#bt_subscription{id=SubscriptionId}=Subscription) ->
 %% Deletes a subscription id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec cancel/1 :: (subscription() | ne_binary()) -> subscription().
+-spec cancel(subscription() | ne_binary()) -> subscription().
 cancel(#bt_subscription{id=SubscriptionId}) ->
     cancel(SubscriptionId);
 cancel(SubscriptionId) ->
@@ -256,7 +258,7 @@ cancel(SubscriptionId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reset/1 :: (subscription()) -> subscription().
+-spec reset(subscription()) -> subscription().
 reset(Subscription) ->
     lists:foldl(fun(F, S) -> F(S) end, Subscription, [fun reset_addons/1
                                                       ,fun reset_discounts/1
@@ -268,7 +270,7 @@ reset(Subscription) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reset_addons/1 :: (subscription()) -> subscription().
+-spec reset_addons(subscription()) -> subscription().
 reset_addons(#bt_subscription{add_ons=AddOns}=Subscription) ->
     Subscription#bt_subscription{add_ons=[AddOn#bt_addon{quantity=0} || AddOn <- AddOns]}.
 
@@ -278,7 +280,7 @@ reset_addons(#bt_subscription{add_ons=AddOns}=Subscription) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reset_discounts/1 :: (subscription()) -> subscription().
+-spec reset_discounts(subscription()) -> subscription().
 reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
     Subscription#bt_subscription{discounts=[Discount#bt_discount{quantity=0} || Discount <- Discounts]}.
 
@@ -289,14 +291,14 @@ reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_quantity/3 :: (subscription() | ne_binary(), ne_binary(), integer()) -> subscription().
+-spec update_addon_quantity(subscription() | ne_binary(), ne_binary(), integer()) -> subscription().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_integer(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, wh_util:to_integer(Quantity));
 update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
-        false ->
+        'false' ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
-                false ->
+                'false' ->
                     AddOn = #bt_addon{inherited_from=AddOnId, quantity=Quantity},
                     Subscription#bt_subscription{add_ons=[AddOn|AddOns]};
                 #bt_addon{}=AddOn ->
@@ -318,12 +320,12 @@ update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec increment_addon_quantity/2 :: (subscription() | ne_binary(), ne_binary()) -> subscription().
+-spec increment_addon_quantity(subscription() | ne_binary(), ne_binary()) -> subscription().
 increment_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
-        false ->
+        'false' ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
-                false ->
+                'false' ->
                     AddOn = #bt_addon{inherited_from=AddOnId, quantity=1},
                     Subscription#bt_subscription{add_ons=[AddOn|AddOns]};
                 #bt_addon{quantity=Quantity}=AddOn ->
@@ -345,14 +347,14 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_discount_quantity/3 :: (subscription() | ne_binary(), ne_binary(), integer()) -> subscription().
+-spec update_discount_quantity(subscription() | ne_binary(), ne_binary(), integer()) -> subscription().
 update_discount_quantity(Subscription, DiscountId, Quantity) when not is_integer(Quantity) ->
     update_discount_quantity(Subscription, DiscountId, wh_util:to_integer(Quantity));
 update_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Quantity) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
-        false ->
+        'false' ->
             case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
-                false ->
+                'false' ->
                     Discount = #bt_discount{inherited_from=DiscountId, quantity=Quantity},
                     Subscription#bt_subscription{discounts=[Discount|Discounts]};
                 #bt_discount{}=Discount ->
@@ -374,12 +376,12 @@ update_discount_quantity(SubscriptionId, DiscountId, Quantity) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec increment_discount_quantity/2 :: (subscription() | ne_binary(), ne_binary()) -> subscription().
+-spec increment_discount_quantity(subscription() | ne_binary(), ne_binary()) -> subscription().
 increment_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId) ->
     case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
-        false ->
+        'false' ->
             case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
-                false ->
+                'false' ->
                     Discount = #bt_discount{inherited_from=DiscountId, quantity=1},
                     Subscription#bt_subscription{discounts=[Discount|Discounts]};
                 #bt_discount{quantity=Quantity}=Discount ->
@@ -400,8 +402,8 @@ increment_discount_quantity(SubscriptionId, DiscountId) ->
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (bt_xml()) -> subscription().
--spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> subscription().
+-spec xml_to_record(bt_xml()) -> subscription().
+-spec xml_to_record(bt_xml(), wh_deeplist()) -> subscription().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/subscription").
@@ -438,12 +440,8 @@ xml_to_record(Xml, Base) ->
                      ,discounts = [braintree_discount:xml_to_record(Discount)
                                    || Discount <- xmerl_xpath:string(DiscountsPath, Xml)
                                   ]
-%%                     ,descriptor = get_xml_value([Base, "/token/text()"], Xml)
-%%                     ,transactions = [braintree_transaction:xml_to_record(Trans)
-%%                                      || Trans <- xmerl_xpath:string([Base, "/transactions/transaction"], Xml)
-%%                                     ]
                      }.
-   
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -451,11 +449,11 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (subscription()) -> proplist() | bt_xml().
--spec record_to_xml/2 :: (subscription(), boolean()) -> proplist() | bt_xml().
+-spec record_to_xml(subscription()) -> proplist() | bt_xml().
+-spec record_to_xml(subscription(), boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Subscription) ->
-    record_to_xml(Subscription, false).
+    record_to_xml(Subscription, 'false').
 
 record_to_xml(#bt_subscription{}=Subscription, ToString) ->
     Props = [{'id', Subscription#bt_subscription.id}
@@ -489,8 +487,8 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
                    ],
     Props1 = lists:foldr(fun(F, P) -> F(Subscription, P) end, Props, Conditionals),
     case ToString of
-        true -> make_doc_xml(Props1, 'subscription');
-        false -> Props1
+        'true' -> make_doc_xml(Props1, 'subscription');
+        'false' -> Props1
     end.
 
 %%--------------------------------------------------------------------
@@ -499,7 +497,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (subscription()) -> wh_json:object().
+-spec record_to_json(subscription()) -> wh_json:object().
 record_to_json(Subscription) ->
     Props = [{<<"id">>, Subscription#bt_subscription.id}
              ,{<<"balance">>, Subscription#bt_subscription.balance}
@@ -524,8 +522,6 @@ record_to_json(Subscription) ->
              ,{<<"trial_duration">>, Subscription#bt_subscription.trial_duration}
              ,{<<"trial_duration_unit">>, Subscription#bt_subscription.trial_duration_unit}
              ,{<<"trial_period">>, Subscription#bt_subscription.trial_period}
-%             ,{<<"addons">>, braintree_addon:record_to_json(Subscription#bt_subscription.add_ons)}
-%             ,{<<"discounts">>, braintree_discount:record_to_json(Subscription#bt_subscription.discounts)}
              ,{<<"descriptor">>, Subscription#bt_subscription.descriptor}
              ,{<<"do_not_inherit">>, Subscription#bt_subscription.do_not_inherit}
              ,{<<"start_immediately">>, Subscription#bt_subscription.start_immediately}
@@ -533,7 +529,7 @@ record_to_json(Subscription) ->
              ,{<<"revert_on_prorate_fail">>, Subscription#bt_subscription.revert_on_prorate_fail}
              ,{<<"replace_add_ons">>, Subscription#bt_subscription.replace_add_ons}
              ,{<<"create">>, Subscription#bt_subscription.create}
-            ],    
+            ],
     wh_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
@@ -542,14 +538,14 @@ record_to_json(Subscription) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec update_options/3 :: (_, _, proplist()) -> proplist().
+-spec update_options(_, _, wh_proplist()) -> wh_proplist().
 update_options(Key, Value, Props) ->
-    case proplists:get_value('options', Props) of
-        undefined ->
+    case props:get_value('options', Props) of
+        'undefined' ->
             [{'options', [{Key, Value}]}|Props];
         Options ->
             [{'options', [{Key, Value}|Options]}
-             |proplists:delete('options', Props)
+             |props:delete('options', Props)
             ]
     end.
 
@@ -559,17 +555,19 @@ update_options(Key, Value, Props) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec create_addon_changes/1 :: ([#bt_addon{},...] | []) -> changes().
+-spec create_addon_changes([#bt_addon{},...] | []) -> changes().
 create_addon_changes(AddOns) ->
     lists:foldr(fun(#bt_addon{id=Id, quantity=0}, C) ->
                         append_items('remove', Id, C);
-                   (#bt_addon{existing_id=undefined
-                              ,inherited_from=undefined}, C) ->
+                   (#bt_addon{existing_id='undefined'
+                              ,inherited_from='undefined'
+                             }, C) ->
                         C;
-                   (#bt_addon{existing_id=undefined
+                   (#bt_addon{existing_id='undefined'
                               ,inherited_from=Id
                               ,quantity=Q
-                              ,amount=A}, C) ->
+                              ,amount=A
+                             }, C) ->
                         Item = [{'inherited_from_id', Id}
                                 ,{'quantity', Q}
                                 ,{'amount', A}
@@ -589,17 +587,19 @@ create_addon_changes(AddOns) ->
 %% Determine the necessary steps to change the discounts
 %% @end
 %%--------------------------------------------------------------------
--spec create_discount_changes/1 :: ([#bt_discount{},...] | []) -> changes().
+-spec create_discount_changes([#bt_discount{},...] | []) -> changes().
 create_discount_changes(Discounts) ->
     lists:foldr(fun(#bt_discount{id=Id, quantity=0}, C) ->
                         append_items('remove', Id, C);
-                   (#bt_discount{existing_id=undefined
-                              ,inherited_from=undefined}, C) ->
+                   (#bt_discount{existing_id='undefined'
+                                 ,inherited_from='undefined'
+                                }, C) ->
                         C;
-                   (#bt_discount{existing_id=undefined
-                              ,inherited_from=Id
-                              ,quantity=Q
-                              ,amount=A}, C) ->
+                   (#bt_discount{existing_id='undefined'
+                                 ,inherited_from=Id
+                                 ,quantity=Q
+                                 ,amount=A
+                                }, C) ->
                         Item = [{'inherited_from_id', Id}
                                 ,{'quantity', Q}
                                 ,{'amount', A}
@@ -619,10 +619,10 @@ create_discount_changes(Discounts) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec append_items/3 :: (atom(), ne_binary() | proplist(), changes()) -> changes().    
-append_items(Change, Item, Changes) -> 
+-spec append_items(atom(), ne_binary() | wh_proplist(), changes()) -> changes().
+append_items(Change, Item, Changes) ->
     case lists:keyfind(Change, 1, Changes) of
-        false -> 
+        'false' ->
             [{Change, [{'type', "array"}], [{'item', Item}]}|Changes];
         {_, Props, Items} ->
             lists:keyreplace(Change, 1, Changes, {Change, Props, [{'item', Item}|Items]})

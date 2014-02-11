@@ -50,7 +50,7 @@
                           ,bookkeepers = wh_json:new() :: wh_json:object()
                          }).
 
--type(item() :: #wh_service_item{}).
+-type item() :: #wh_service_item{}.
 -export_type([item/0]).
 
 %%--------------------------------------------------------------------

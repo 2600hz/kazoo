@@ -39,7 +39,7 @@
 
 -export([is_reseller/1]).
 
--export([calulate_charges/2]).
+-export([calculate_charges/2]).
 
 -include("whistle_services.hrl").
 
@@ -129,7 +129,8 @@ from_service_json(JObj) ->
                  ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, <<"good_standing">>)
                  ,billing_id=BillingId
                  ,current_billing_id=BillingId
-                 ,deleted=wh_json:is_true(<<"pvt_deleted">>, JObj)}.
+                 ,deleted=wh_json:is_true(<<"pvt_deleted">>, JObj)
+                }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -635,8 +636,8 @@ is_reseller(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec calulate_charges(services(), any()) -> wh_json:object().
-calulate_charges(Services, Transactions) ->
+-spec calculate_charges(services(), any()) -> wh_json:object().
+calculate_charges(Services, Transactions) ->
     TransactionCharges = calculate_transactions_charges(Transactions),
     case calculate_services_charges(Services) of
         {'error', _} -> wh_json:new();
@@ -676,27 +677,6 @@ calculate_transactions_charges(Transactions) ->
         ,wh_json:new()
         ,TransactionsJobj
     ).
-
--spec flatten(wh_proplist()) ->  wh_proplist().
--spec flatten( wh_proplist(), list(), wh_proplist()) -> wh_proplist().
-flatten(Props) ->
-    flatten(Props, [], []).
-
-flatten([], _, Acc) ->
-    lists:reverse(Acc);
-flatten([{Key, Value}|Tail], Path, Acc) when is_list(Value) ->
-    Tmp = flatten(Value, [Key|Path], Acc),
-    flatten(Tail, [], Tmp);
-flatten([{Key, Value}|[]], Path, Acc) ->
-    Tmp = lists:reverse([Key|Path]),
-    [{Tmp, Value}|Acc];
-flatten([{Key, Value}|Tail], Path, Acc) ->
-    Tmp = lists:reverse([Key|Path]),
-    flatten(Tail, Path, [{Tmp, Value}|Acc]);
-flatten([Elem|Tail], Path, Acc) ->
-    Tmp = flatten(Elem, Path, Acc),
-    flatten(Tail, Path, lists:merge(Tmp, Acc)).
-
 
 %%%===================================================================
 %%% Internal functions

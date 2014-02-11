@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, VoIP INC
+%%% @copyright (C) 2013-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -16,15 +16,14 @@
 
 -include("../crossbar.hrl").
 
-%%-ifdef(TEST).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
-%%-endif.
+-endif.
 
 %% 1 month
 -define(FETCH_DEFAULT, 60*60*24*30).
 %% 1 year
 -define(FETCH_MAX, 60*60*24*30*12).
-
 
 %%%===================================================================
 %%% API
@@ -36,7 +35,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> 'ok'.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.transactions">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.transactions">>, ?MODULE, 'resource_exists'),
@@ -49,8 +48,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods() | [].
--spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+-spec allowed_methods() -> http_methods() | [].
+-spec allowed_methods(path_token()) -> http_methods() | [].
 allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_) ->
@@ -65,8 +64,8 @@ allowed_methods(_) ->
 %%    /transactions/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists() -> 'true'.
+-spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
@@ -80,13 +79,17 @@ resource_exists(_) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_GET,  query_json=Query}=Context) ->
-    From = wh_json:get_integer_value(<<"created_from">>, Query, 0),
-    To = wh_json:get_integer_value(<<"created_to">>, Query, 0),
-    Reason = wh_json:get_value(<<"reason">>, Query, 'undefined'),
-    case Reason of
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+
+validate(Context) ->
+    validate_transactions(Context, cb_context:req_verb(Context)).
+
+validate_transactions(Context, ?HTTP_GET) ->
+    From = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, 0)),
+    To = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, 0)),
+
+    case cb_context:req_value(Context, <<"reason">>) of
         <<"no_call">> ->
             Reasons = wht_util:reasons(2000),
             fetch(From, To, Context, Reasons);
@@ -94,17 +97,23 @@ validate(#cb_context{req_verb = ?HTTP_GET,  query_json=Query}=Context) ->
             fetch(From, To, Context)
     end.
 
-validate(#cb_context{req_verb = ?HTTP_GET, account_id=AccountId}=Context, <<"current_balance">>) ->
-    Balance = wht_util:units_to_dollars(wht_util:current_balance(AccountId)),
+validate(Context, PathToken) ->
+    validate_transaction(Context, PathToken, cb_context:req_verb(Context)).
+
+validate_transaction(Context, <<"current_balance">>, ?HTTP_GET) ->
+    Balance = wht_util:units_to_dollars(wht_util:current_balance(cb_context:account_id(Context))),
     JObj = wh_json:from_list([{<<"balance">>, Balance}]),
-    Context#cb_context{resp_status=success, resp_data=JObj};
-validate(#cb_context{req_verb = ?HTTP_GET, query_json=Query}=Context, <<"monthly_recurring">>) ->
-    From = wh_json:get_integer_value(<<"created_from">>, Query, 0),
-    To = wh_json:get_integer_value(<<"created_to">>, Query, 0),
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_resp_data/2, JObj}
+                        ]);
+validate_transaction(Context, <<"monthly_recurring">>, ?HTTP_GET) ->
+    From = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, 0)),
+    To = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, 0)),
     fetch_braintree_transactions(From, To, Context);
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, <<"subscriptions">>) ->
+validate_transaction(Context, <<"subscriptions">>, ?HTTP_GET) ->
     fetch_braintree_subscriptions(Context);
-validate(Context, _) ->
+validate_transaction(Context, _PathToken, _Verb) ->
     cb_context:add_system_error('bad_identifier',  Context).
 
 %%--------------------------------------------------------------------
@@ -113,27 +122,29 @@ validate(Context, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/3 :: (integer(), integer(), #cb_context{}) -> #cb_context{}.
--spec fetch/4 :: (integer(), integer(), #cb_context{}, ne_binary()) -> #cb_context{}.
+-spec fetch(pos_integer(), pos_integer(), cb_context:context()) ->
+                   cb_context:context().
+-spec fetch(pos_integer(), pos_integer(), cb_context:context(), ne_binary()) ->
+                   cb_context:context().
 fetch(From, To, Context) ->
     case validate_date(From, To) of
-        {'true', VFrom, VTo} ->
-            filter(VFrom, VTo, Context);
+        {'true', VFrom, VTo} -> filter(VFrom, VTo, Context);
         {'false', R} ->
             cb_context:add_validation_error(<<"created_from/created_to">>
-                                                ,<<"date_range">>
-                                                ,R
+                                            ,<<"date_range">>
+                                            ,R
                                             ,Context
                                            )
     end.
+
 fetch(From, To, Context, Reason) ->
     case validate_date(From, To) of
         {'true', VFrom, VTo} ->
             filter(VFrom, VTo, Context, Reason);
         {'false', R} ->
             cb_context:add_validation_error(<<"created_from/created_to">>
-                                                ,<<"date_range">>
-                                                ,R
+                                            ,<<"date_range">>
+                                            ,R
                                             ,Context
                                            )
     end.
@@ -144,7 +155,8 @@ fetch(From, To, Context, Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec fetch_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) ->
+                                          cb_context:context().
 fetch_braintree_transactions(Min, Max, Context) ->
     case validate_date(Min, Max) of
         {'true', From, To} ->
@@ -167,7 +179,8 @@ fetch_braintree_transactions(Min, Max, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_braintree_subscriptions(cb_context:context()) -> cb_context:context().
+-spec fetch_braintree_subscriptions(cb_context:context()) ->
+                                           cb_context:context().
 fetch_braintree_subscriptions(Context) ->
     filter_braintree_subscriptions(Context).
 
@@ -177,8 +190,10 @@ fetch_braintree_subscriptions(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter/3 :: (integer(), integer(), cb_context:context()) -> cb_context:context().
--spec filter/4 :: (integer(), integer(), #cb_context{}, ne_binary())  -> #cb_context{}.
+-spec filter(integer(), integer(), cb_context:context()) ->
+                    cb_context:context().
+-spec filter(integer(), integer(), cb_context:context(), ne_binary()) ->
+                    cb_context:context().
 filter(From, To, Context) ->
     try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
         Transactions ->
@@ -189,6 +204,7 @@ filter(From, To, Context) ->
         _:_ ->
             send_resp({'error', <<"error while fetching transactions">>}, Context)
     end.
+
 filter(From, To, Context, Reason) ->
     try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
         Transactions ->
@@ -207,13 +223,19 @@ filter(From, To, Context, Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec filter_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) ->
+                                           cb_context:context().
 filter_braintree_transactions(From, To, Context) ->
-    case  wh_service_transactions:current_billing_period(cb_context:account_id(Context), 'transactions', {From, To}) of
+    case wh_service_transactions:current_billing_period(
+           cb_context:account_id(Context)
+           ,'transactions'
+           ,{From, To}
+          )
+    of
         'not_found' ->
             send_resp({'error', <<"no data found in braintree">>}, Context);
-        'unknow_error' ->
-            send_resp({'error', <<"unknow  braintree error">>}, Context);
+        'unknown_error' ->
+            send_resp({'error', <<"unknown braintree error">>}, Context);
         BTransactions ->
             JObjs = lists:foldl(fun(BTr, Acc) ->
                         case is_prorated_braintree_transaction(BTr) of
@@ -237,12 +259,11 @@ filter_braintree_subscriptions(Context) ->
         'not_found' ->
             send_resp({'error', <<"no data found in braintree">>}, Context);
         'unknow_error' ->
-            send_resp({'error', <<"unknow braintree error">>}, Context);
+            send_resp({'error', <<"unknown braintree error">>}, Context);
         BSubscriptions ->
             JObjs = [filter_braintree_subscirption(BSub) || BSub <- BSubscriptions],
             send_resp({'ok', JObjs}, Context)
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -273,7 +294,6 @@ filter_braintree_subscirption(BSubscription) ->
                ],
     lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -295,20 +315,20 @@ is_prorated_braintree_transaction(BTransaction) ->
 -spec clean_braintree_transaction(wh_json:object()) -> wh_json:object().
 clean_braintree_transaction(BTransaction) ->
     RemoveKeys = [<<"status">>
-                      ,<<"type">>
-                      ,<<"currency_code">>
-                      ,<<"merchant_account_id">>
-                      ,<<"settlement_batch">>
-                      ,<<"avs_postal_response">>
-                      ,<<"avs_street_response">>
-                      ,<<"ccv_response_code">>
-                      ,<<"processor_authorization_code">>
-                      ,<<"processor_response_code">>
-                      ,<<"tax_exempt">>
-                      ,<<"billing_address">>
-                      ,<<"shipping_address">>
-                      ,<<"customer">>
-                      ,<<"card">>
+                  ,<<"type">>
+                  ,<<"currency_code">>
+                  ,<<"merchant_account_id">>
+                  ,<<"settlement_batch">>
+                  ,<<"avs_postal_response">>
+                  ,<<"avs_street_response">>
+                  ,<<"ccv_response_code">>
+                  ,<<"processor_authorization_code">>
+                  ,<<"processor_response_code">>
+                  ,<<"tax_exempt">>
+                  ,<<"billing_address">>
+                  ,<<"shipping_address">>
+                  ,<<"customer">>
+                  ,<<"card">>
                  ],
     wh_json:delete_keys(RemoveKeys, BTransaction).
 
@@ -321,18 +341,18 @@ clean_braintree_transaction(BTransaction) ->
 -spec clean_braintree_subscription(wh_json:object()) -> wh_json:object().
 clean_braintree_subscription(BSubscription) ->
     RemoveKeys = [<<"billing_dom">>
-                      ,<<"failure_count">>
-                      ,<<"merchant_account_id">>
-                      ,<<"never_expires">>
-                      ,<<"paid_through_date">>
-                      ,<<"payment_token">>
-                      ,<<"trial_period">>
-                      ,<<"do_not_inherit">>
-                      ,<<"start_immediately">>
-                      ,<<"prorate_charges">>
-                      ,<<"revert_on_prorate_fail">>
-                      ,<<"replace_add_ons">>
-                      ,<<"create">>
+                  ,<<"failure_count">>
+                  ,<<"merchant_account_id">>
+                  ,<<"never_expires">>
+                  ,<<"paid_through_date">>
+                  ,<<"payment_token">>
+                  ,<<"trial_period">>
+                  ,<<"do_not_inherit">>
+                  ,<<"start_immediately">>
+                  ,<<"prorate_charges">>
+                  ,<<"revert_on_prorate_fail">>
+                  ,<<"replace_add_ons">>
+                  ,<<"create">>
                  ],
     wh_json:delete_keys(RemoveKeys, BSubscription).
 
@@ -345,10 +365,8 @@ clean_braintree_subscription(BSubscription) ->
 -spec prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
 prorated_braintree_transaction(BTransaction) ->
     case wh_json:get_value(<<"subscription_id">>, BTransaction, 'false') of
-        'false' ->
-            wh_json:new();
-        _Id ->
-            calculate_prorated(BTransaction)
+        'false' -> wh_json:new();
+        _Id -> calculate_prorated(BTransaction)
     end.
 
 %%--------------------------------------------------------------------
@@ -360,20 +378,19 @@ prorated_braintree_transaction(BTransaction) ->
 -spec correct_date_braintree_transaction(wh_json:object()) -> wh_json:object().
 correct_date_braintree_transaction(BTransaction) ->
     Keys = [<<"created_at">>, <<"update_at">>],
-    lists:foldl(
-      fun(Key, BTr) ->
-              case wh_json:get_value(Key, BTr, 'null') of
-                  'null' -> BTr;
-                  V1 ->
-                      V2 = string:substr(binary:bin_to_list(V1), 1, 10),
-                      [Y, M, D|_] = string:tokens(V2, "-"),
-                      {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
-                      DateTime = {{Y1, M1, D1}, {0, 0, 0}},
-                      Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
-                      wh_json:set_value(Key, Timestamp, BTr)
-                  end
-      end, BTransaction, Keys).
+    lists:foldl(fun correct_date_braintree_transaction_fold/2, BTransaction, Keys).
 
+correct_date_braintree_transaction_fold(Key, BTr) ->
+    case wh_json:get_value(Key, BTr, 'null') of
+        'null' -> BTr;
+        V1 ->
+            V2 = string:substr(binary:bin_to_list(V1), 1, 10),
+            [Y, M, D|_] = string:tokens(V2, "-"),
+            {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
+            DateTime = {{Y1, M1, D1}, {0, 0, 0}},
+            Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
+            wh_json:set_value(Key, Timestamp, BTr)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -384,23 +401,23 @@ correct_date_braintree_transaction(BTransaction) ->
 -spec correct_date_braintree_subscription(wh_json:object()) -> wh_json:object().
 correct_date_braintree_subscription(BSubscription) ->
     Keys = [<<"billing_first_date">>
-                ,<<"billing_end_date">>
-                ,<<"billing_start_date">>
-                ,<<"next_bill_date">>
+            ,<<"billing_end_date">>
+            ,<<"billing_start_date">>
+            ,<<"next_bill_date">>
            ],
-    lists:foldl(
-      fun(Key, BSub) ->
-              case wh_json:get_value(Key, BSub, 'null') of
-                  'null' -> BSub;
-                  V1 ->
-                      V2 = binary:bin_to_list(V1),
-                      [Y, M, D|_] = string:tokens(V2, "-"),
-                      {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
-                      DateTime = {{Y1, M1, D1}, {0, 0, 0}},
-                      Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
-                      wh_json:set_value(Key, Timestamp, BSub)
-                  end
-      end, BSubscription, Keys).
+    lists:foldl(fun correct_date_braintree_subscription_fold/2, BSubscription, Keys).
+
+correct_date_braintree_subscription_fold(Key, BSub) ->
+    case wh_json:get_value(Key, BSub, 'null') of
+        'null' -> BSub;
+        V1 ->
+            V2 = binary:bin_to_list(V1),
+            [Y, M, D|_] = string:tokens(V2, "-"),
+            {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
+            DateTime = {{Y1, M1, D1}, {0, 0, 0}},
+            Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
+            wh_json:set_value(Key, Timestamp, BSub)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -449,13 +466,26 @@ calculate_discount(BTransaction) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec calculate(wh_json:objects(), number()) -> number().
-calculate([], Acc) ->
-    Acc;
+calculate([], Acc) -> Acc;
 calculate([Addon|Addons], Acc) ->
     Amount = wh_json:get_number_value(<<"amount">>, Addon, 0),
     Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
     calculate(Addons, (Amount*Quantity+Acc)).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec send_resp({'ok', _} | {'error', _}, cb_context:context()) -> cb_context:context().
+send_resp({'ok', JObj}, Context) ->
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_resp_data/2, JObj}
+                        ]);
+send_resp({'error', Details}, Context) ->
+    cb_context:add_system_error('bad_identifier', [{'details', Details}], Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -463,24 +493,13 @@ calculate([Addon|Addons], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-send_resp(Resp, Context) ->
-    case Resp of
-        {'ok', JObj} ->
-            Context#cb_context{resp_status=success, resp_data=JObj};
-        {'error', Details} ->
-            cb_context:add_system_error('bad_identifier', [{'details', Details}], Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
+-spec timestamp_to_braintree(pos_integer()) -> ne_binary().
 timestamp_to_braintree(Timestamp) ->
     {{Y, M, D}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    <<(wh_util:to_binary(M))/binary, "/", (wh_util:to_binary(D))/binary, "/", (wh_util:to_binary(Y))/binary>>.
-
+    <<(wh_util:to_binary(M))/binary, "/"
+      ,(wh_util:to_binary(D))/binary, "/"
+      ,(wh_util:to_binary(Y))/binary
+    >>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -488,7 +507,8 @@ timestamp_to_braintree(Timestamp) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_date/2 :: (any(), any()) -> {true, integer(), integer()} | {false, ne_binary()}.
+-spec validate_date(any(), any()) -> {'true', pos_integer(), pos_integer()} |
+                                     {'false', ne_binary()}.
 validate_date(0, 0) ->
     validate_date(wh_util:current_tstamp()-?FETCH_DEFAULT, wh_util:current_tstamp());
 validate_date(0, To) ->

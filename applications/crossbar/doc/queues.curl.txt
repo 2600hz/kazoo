@@ -1,0 +1,33 @@
+# Credentials Hash: 4d02ff46ad889921836b706c3c0e0b36
+# Account Name: Master
+# Account ID: 5b78db2f23f35aa022f5c3c0a5df1b92
+# Auth Token ID: f9cf88646e6b22c46681647147f54220
+# Queue ID: 2ef921516683cdd6dffe6df7ed6a448a
+
+# Create an auth token on the master account
+curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/user_auth -d '{"data":{"credentials":"4d02ff46ad889921836b706c3c0e0b36", "account_name":"Master"}}' | pp
+
+# List queues
+curl -v -X GET -H "x-auth-token:f9cf88646e6b22c46681647147f54220" -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/queues | pp
+
+# Create a queue
+curl -v -X PUT -H "x-auth-token:f9cf88646e6b22c46681647147f54220" -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/queues -d '{"data":{"name":"Support Queue"}}' | pp
+
+# List queues stats
+curl -v -X GET -H "x-auth-token:f9cf88646e6b22c46681647147f54220" -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/queues/stats | pp
+
+# List queue
+curl -v -X GET -H "x-auth-token:f9cf88646e6b22c46681647147f54220" -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/queues/2ef921516683cdd6dffe6df7ed6a448a | pp
+
+# List queue stats
+curl -v -X GET -H "x-auth-token:f9cf88646e6b22c46681647147f54220" -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/queues/2ef921516683cdd6dffe6df7ed6a448a/stats | pp
+
+# List queue roster (what agents are assigned to the queue)
+curl -v -X GET -H "x-auth-token:f9cf88646e6b22c46681647147f54220" -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/queues/2ef921516683cdd6dffe6df7ed6a448a/roster | pp
+
+# Set the queue roster
+curl -v -X POST -H "x-auth-token:f9cf88646e6b22c46681647147f54220" -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/queues/2ef921516683cdd6dffe6df7ed6a448a/roster -d '{"data": ["f3ced8ea7bccc352a2124e8a34351e81", "e154a97ec2942599865a1591a477fd19"]}' | pp
+
+# clear a queue's roster
+curl -v -X DELETE -H "x-auth-token:f9cf88646e6b22c46681647147f54220" -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/queues/2ef921516683cdd6dffe6df7ed6a448a/roster | pp
+

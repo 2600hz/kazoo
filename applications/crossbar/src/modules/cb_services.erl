@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -36,13 +36,13 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.services">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.services">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.services">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.get.services">>, ?MODULE, get),
-    _ = crossbar_bindings:bind(<<"*.execute.put.services">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.services">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.services">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.services">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.services">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.services">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.get.services">>, ?MODULE, 'get'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.services">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.services">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.services">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -73,10 +73,10 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> boolean().
-resource_exists() -> true.
+resource_exists() -> 'true'.
 
-resource_exists(<<"plan">>) -> true;
-resource_exists(_) -> false.
+resource_exists(<<"plan">>) -> 'true';
+resource_exists(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -88,24 +88,36 @@ resource_exists(_) -> false.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 
-validate(#cb_context{account_id=AccountId, req_verb = ?HTTP_GET}=Context) ->
-    crossbar_util:response(wh_services:public_json(AccountId), Context);
-validate(#cb_context{req_data=JObj, account_id=AccountId, req_verb = ?HTTP_POST}=Context) ->
-    BillingId = wh_json:get_value(<<"billing_id">>, JObj),
-    try wh_services:set_billing_id(BillingId, AccountId) of
-        undefined -> Context#cb_context{doc=undefined, resp_status=success};
-        Services -> Context#cb_context{doc=Services, resp_status=success}
+validate(Context) ->
+    validate_services(Context, cb_context:req_verb(Context)).
+
+validate_services(Context, ?HTTP_GET) ->
+    crossbar_util:response(wh_services:public_json(cb_context:account_id(Context)), Context);
+validate_services(Context, ?HTTP_POST) ->
+    BillingId = wh_json:get_value(<<"billing_id">>, cb_context:req_data(Context)),
+    try wh_services:set_billing_id(BillingId, cb_context:account_id(Context)) of
+        'undefined' ->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_doc/2, 'undefined'}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                ]);
+        ServicesRec ->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_doc/2, wh_services:public_json(ServicesRec)}
+                                 ,{fun cb_context:store/3, 'services', ServicesRec}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                ])
     catch
-        throw:{Error, Reason} ->
+        'throw':{Error, Reason} ->
             R = wh_json:set_value([<<"billing_id">>, <<"invalid">>], Reason, wh_json:new()),
-            crossbar_util:response(error, wh_util:to_binary(Error), 400, R, Context)
+            crossbar_util:response('error', wh_util:to_binary(Error), 400, R, Context)
     end.
 
-validate(#cb_context{account_id=AccountId}=Context, <<"plan">>) ->
-    crossbar_util:response(wh_services:service_plan_json(AccountId), Context).
+validate(Context, <<"plan">>) ->
+    crossbar_util:response(wh_services:service_plan_json(cb_context:account_id(Context)), Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -115,10 +127,10 @@ validate(#cb_context{account_id=AccountId}=Context, <<"plan">>) ->
 %% the resource into the resp_data, resp_headers, etc...
 %% @end
 %%--------------------------------------------------------------------
--spec get(#cb_context{}) -> #cb_context{}.
--spec get(#cb_context{}, path_token()) -> #cb_context{}.
+-spec get(cb_context:context()) -> cb_context:context().
+-spec get(cb_context:context(), path_token()) -> cb_context:context().
 
-get(#cb_context{}=Context) ->
+get(Context) ->
     Context.
 
 get(Context, <<"plan">>) ->
@@ -131,14 +143,16 @@ get(Context, <<"plan">>) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post(#cb_context{}) -> #cb_context{}.
-post(#cb_context{doc=undefined}=Context) ->
-    Context;
-post(#cb_context{doc=Services}=Context) ->
+-spec post(cb_context:context()) -> cb_context:context().
+post(Context) ->
+    post(Context, cb_context:fetch(Context, 'services')).
+
+post(Context, 'undefined') -> Context;
+post(Context, Services) ->
     try wh_services:save(Services) of
         NewServices ->
             crossbar_util:response(wh_services:public_json(NewServices), Context)
     catch
-        throw:{Error, Reason} ->
-            crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
+        'throw':{Error, Reason} ->
+            crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
     end.

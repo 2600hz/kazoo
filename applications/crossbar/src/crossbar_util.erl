@@ -52,7 +52,7 @@ response(JTerm, Context) ->
 response_202(Msg, Context) ->
     create_response('success', Msg, 202, Msg, Context).
 
--spec response_402(cb_context:context(), wh_json:json_string()) ->
+-spec response_402(wh_json:object(), cb_context:context()) ->
                           cb_context:context().
 response_402(Data, Context) ->
     create_response('error', <<"accept charges">>, 402, Data, Context).
