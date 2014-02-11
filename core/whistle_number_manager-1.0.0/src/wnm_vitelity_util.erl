@@ -17,6 +17,7 @@
          ,default_options/0, default_options/1
          ,build_uri/1
          ,query_vitelity/1
+         ,get_short_state/1
 
          ,xml_resp_status_msg/1
          ,xml_resp_error_msg/1
@@ -157,3 +158,75 @@ query_vitelity(URI) ->
             lager:debug("error querying: ~p", [_R]),
             E
     end.
+
+
+-spec get_short_state(ne_binary()) -> ne_binary() | 'undefined';
+get_short_state(FullState) ->
+    States = [
+        {<<"alabama">>, <<"AL">>}
+        ,{<<"alaska">>, <<"AK">>}
+        ,{<<"american samoa">>, <<"AS">>}
+        ,{<<"arizona">>, <<"AZ">>}
+        ,{<<"arkansas">>, <<"AR">>}
+        ,{<<"california">>, <<"CA">>}
+        ,{<<"colorado">>, <<"CO">>}
+        ,{<<"connecticut">>, <<"CT">>}
+        ,{<<"delaware">>, <<"DE">>}
+        ,{<<"district of columbia">>, <<"DC">>}
+        ,{<<"federated states of micronesia">>, <<"FM">>}
+        ,{<<"florida">>, <<"FL">>}
+        ,{<<"georgia">>, <<"GA">>}
+        ,{<<"guam">>, <<"GU">>}
+        ,{<<"hawaii">>, <<"HI">>}
+        ,{<<"idaho">>, <<"ID">>}
+        ,{<<"illinois">>, <<"IL">>}
+        ,{<<"indiana">>, <<"IN">>}
+        ,{<<"iowa">>, <<"IA">>}
+        ,{<<"kansas">>, <<"KS">>}
+        ,{<<"kentucky">>, <<"KY">>}
+        ,{<<"louisiana">>, <<"LA">>}
+        ,{<<"maine">>, <<"ME">>}
+        ,{<<"marshall islands">>, <<"MH">>}
+        ,{<<"maryland">>, <<"MD">>}
+        ,{<<"massachusetts">>, <<"MA">>}
+        ,{<<"michigan">>, <<"MI">>}
+        ,{<<"minnesota">>, <<"MN">>}
+        ,{<<"mississippi">>, <<"MS">>}
+        ,{<<"missouri">>, <<"MO">>}
+        ,{<<"montana">>, <<"MT">>}
+        ,{<<"nebraska">>, <<"NE">>}
+        ,{<<"nevada">>, <<"NV">>}
+        ,{<<"new hampshire">>, <<"NH">>}
+        ,{<<"new jersey">>, <<"NJ">>}
+        ,{<<"new mexico">>, <<"NM">>}
+        ,{<<"new york">>, <<"NY">>}
+        ,{<<"north carolina">>, <<"NC">>}
+        ,{<<"north dakota">>, <<"ND">>}
+        ,{<<"northern mariana islands">>, <<"MP">>}
+        ,{<<"ohio">>, <<"OH">>}
+        ,{<<"oklahoma">>, <<"OK">>}
+        ,{<<"oregon">>, <<"OR">>}
+        ,{<<"palau">>, <<"PW">>}
+        ,{<<"pennsylvania">>, <<"PA">>}
+        ,{<<"puerto rico">>, <<"PR">>}
+        ,{<<"rhode island">>, <<"RI">>}
+        ,{<<"south carolina">>, <<"SC">>}
+        ,{<<"south dakota">>, <<"SD">>}
+        ,{<<"tennessee">>, <<"TN">>}
+        ,{<<"texas">>, <<"TX">>}
+        ,{<<"utah">>, <<"UT">>}
+        ,{<<"vermont">>, <<"VT">>}
+        ,{<<"virgin islands">>, <<"VI">>}
+        ,{<<"virginia">>, <<"VA">>}
+        ,{<<"washington">>, <<"WA">>}
+        ,{<<"west virginia">>, <<"WV">>}
+        ,{<<"wisconsin">>, <<"WI">>}
+        ,{<<"wyoming">>, <<"WY">>}
+    ],
+    State =  wh_util:to_lower_binary(FullState),
+    props:get_value(State, States).
+
+
+
+
+

@@ -753,7 +753,7 @@ save_number_doc(#number{number_db=Db
                         ,number=Num
                         ,number_doc=JObj
                        }=Number) ->
-    case couch_mgr:save_doc(Db, set_locality(JObj, Number)) of
+    case couch_mgr:ensure_saved(Db, set_locality(JObj, Number)) of
         {'error', 'not_found'} ->
             lager:debug("attempting to creating new database '~s' for number '~s'", [Db, Num]),
             'true' = couch_mgr:db_create(Db),
