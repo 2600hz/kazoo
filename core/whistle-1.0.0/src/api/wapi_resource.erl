@@ -79,6 +79,7 @@
                                              ,<<"Eavesdrop-Group-ID">>
                                              ,<<"Fax-Identity-Number">>
                                              ,<<"Fax-Identity-Name">>
+                                             ,<<"Fax-Timezone">>
                                          | fun() ->
                                                    wapi_dialplan:optional_bridge_req_headers()
                                            end()
