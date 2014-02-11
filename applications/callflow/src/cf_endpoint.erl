@@ -20,9 +20,9 @@
 
 -define(NON_DIRECT_MODULES, ['cf_ring_group', 'acdc_util']).
 
--define(ENCRYPTION_MAP, [ {<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
-						 ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
-									   ,{<<"ZRTP-Enrollment">>, <<"true">>}]}]).
+-define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
+                        ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
+                                       ,{<<"ZRTP-Enrollment">>, <<"true">>}]}]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -859,21 +859,8 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                             _Else -> wh_json:set_value(<<"Media-Encryption-Enforce-Security">>, <<"false">>, J)
                         end
                 end
-               ,fun(J) ->
-						case wh_json:get_value([<<"media">>, <<"encryption">>, <<"methods">>], Endpoint, []) of
-							[] -> J;
-							Methods ->
-								lists:foldl(fun(Method, Acc) ->
-													case props:get_value(Method, ?ENCRYPTION_MAP, []) of
-														[] -> Acc;
-														Values -> wh_json:set_values(Values , Acc)
-													end
-											end, J, Methods)
-						end
-                end
-               ,fun(J) ->
-						wh_json:set_value(<<"SIP-Invite-Domain">>, whapps_call:request_realm(Call), J)
-                end
+               ,fun(J) -> encryption_method_map(J, Endpoint) end
+               ,fun(J) -> wh_json:set_value(<<"SIP-Invite-Domain">>, whapps_call:request_realm(Call), J) end
                ,fun(J) ->
                         case wh_json:is_true([<<"sip">>, <<"ignore_completed_elsewhere">>], Endpoint) of
                             'false' -> J;
@@ -883,6 +870,21 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                 end
               ],
     lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), CCVFuns).
+
+encryption_method_map(JObj, []) -> JObj;
+encryption_method_map(JObj, [Method|Methods]) ->
+    case props:get_value(Method, ?ENCRYPTION_MAP, []) of
+        [] -> encryption_method_map(JObj, Methods);
+        Values ->
+            encryption_method_map(wh_json:set_values(Values , JObj), Method)
+    end;
+encryption_method_map(JObj, Endpoint) ->
+    encryption_method_map(
+      JObj
+      ,wh_json:get_value([<<"media">>
+                          ,<<"encryption">>
+                          ,<<"methods">>
+                         ], Endpoint, [])).
 
 -spec get_invite_format(wh_json:object()) -> ne_binary().
 get_invite_format(SIPJObj) ->
