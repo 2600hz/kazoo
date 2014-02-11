@@ -285,12 +285,22 @@ update(Id, Context) ->
 on_successful_validation('undefined', Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+	AuthDoc = cb_context:auth_doc(Context),
+	Timezone = case wh_json:get_value(<<"owner_id">>, AuthDoc) of
+				   'undefined' -> crossbar_util:get_account_timezone(AccountId);
+				   UserId -> case crossbar_util:get_user_timezone(AccountId, UserId) of
+								 'error' -> crossbar_util:get_account_timezone(AccountId);
+								 {'ok', UserTimezone} -> UserTimezone
+							 end
+			   end,
+			
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
                                             ,{<<"pvt_job_status">>, <<"pending">>}
                                             ,{<<"attempts">>, 0}
                                             ,{<<"pvt_account_id">>, AccountId}
                                             ,{<<"pvt_account_db">>, AccountDb}
+                                            ,{<<"fax_timezone">>, Timezone}
                                            ], cb_context:doc(Context))
                        );
 on_successful_validation(DocId, Context) ->
