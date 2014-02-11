@@ -142,11 +142,12 @@ update_e911(Number, Address) ->
 
 -spec e911_options(ne_binary(), wh_json:object()) -> list().
 e911_options(#number{number=Number, assigned_to=AccountId}, AddressJObj) ->
+    State = wnm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
     [{'qs', [{'did',  wnm_util:to_npan(Number)}
              ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
              ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
              ,{'city', wh_json:get_value(<<"locality">>, AddressJObj)}
-             ,{'state', wh_json:get_value(<<"region">>, AddressJObj)}
+             ,{'state', State}
              ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911send">>}
@@ -177,10 +178,11 @@ is_valid_location(Location) ->
 
 -spec location_options(wh_json:object()) -> list().
 location_options(AddressJObj) ->
+    State = wnm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
     [{'qs', [{'name', wh_json:get_value(<<"customer_name">>, AddressJObj)}
              ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
              ,{'city', wh_json:get_value(<<"locality">>, AddressJObj)}
-             ,{'state', wh_json:get_value(<<"region">>, AddressJObj)}
+             ,{'state', State}
              ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
              ,{'xml', <<"yes">>}
              ,{'cmd', <<"e911checkaddress">>}
