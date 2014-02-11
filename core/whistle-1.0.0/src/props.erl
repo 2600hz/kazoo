@@ -27,7 +27,7 @@
          ,filter_empty/1
          ,filter_undefined/1
          ,to_querystring/1
-		 ,to_log/1 , to_log/2
+         ,to_log/1, to_log/2
         ]).
 
 -include_lib("whistle/include/wh_types.hrl").
