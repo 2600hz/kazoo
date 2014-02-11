@@ -1,0 +1,23 @@
+# Credentials Hash: 4d02ff46ad889921836b706c3c0e0b36
+# Account Name: Master
+# Account ID: 5b78db2f23f35aa022f5c3c0a5df1b92
+# Auth Token ID: 0541e8ef4a8ffe106defc289f3349faa
+# Media ID: 076a24173eb22da9affca25317315892
+
+# Create an auth token on the master account
+curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/user_auth -d '{"data":{"credentials":"4d02ff46ad889921836b706c3c0e0b36", "account_name":"Master"}}' | pp
+
+# Get a listing of media files
+curl -v -X GET -H "X-Auth-Token: 0541e8ef4a8ffe106defc289f3349faa" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/media | pp
+
+# Create a new media meta object (required before uploading the actual media data)
+curl -v -X PUT -H "X-Auth-Token: 0541e8ef4a8ffe106defc289f3349faa" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/media -d '{"data":{"streamable":true,"name":"File","description":"My Test Media File"}}' | pp
+
+# Add the media binary file to the media meta data
+curl -v -X POST -H "content-type: audio/mp3" -H "X-Auth-Token: 0541e8ef4a8ffe106defc289f3349faa" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/media/076a24173eb22da9affca25317315892/raw --data-binary=@/path/to/file.mp3
+
+# Create a new TTS media document (requires iSpeech to be enabled)
+curl -v -X PUT -H "X-Auth-Token: 0541e8ef4a8ffe106defc289f3349faa" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/media -d {"data":{"streamable":true,"name":"TestTTS","media_source":"tts","tts":{"text":"Testing TTS","voice":"female/en-US"},"auth_token":"0b8bdd858b2fd8aa7bd6dd7c63e04743","description":"tts file"} | pp
+
+# Get a metadata about media file
+curl -v -X GET -H "X-Auth-Token: 0541e8ef4a8ffe106defc289f3349faa" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/media/076a24173eb22da9affca25317315892 | pp
