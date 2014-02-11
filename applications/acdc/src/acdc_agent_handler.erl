@@ -229,7 +229,7 @@ handle_call_event(_, <<"CHANNEL_DESTROY">>, _, JObj, Props) ->
         Url -> acdc_util:send_cdr(Url, JObj)
     end,
     Srv = props:get_value('server', Props),
-    _ = acdc_agent:remove_cdr_urls(Srv, CallId),
+    _ = acdc_agent_listener:remove_cdr_urls(Srv, CallId),
     acdc_util:unbind_from_call_events(CallId, Srv);
 handle_call_event(Category, Name, FSM, JObj, _) ->
     acdc_agent_fsm:call_event(FSM, Category, Name, JObj).
