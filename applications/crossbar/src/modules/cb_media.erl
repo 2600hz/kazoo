@@ -247,7 +247,6 @@ post(Context, MediaId) ->
                 ,fun(C) when TTS ->
                          maybe_save_tts(C, Text, Voice, cb_context:resp_status(Context));
                     (C) ->
-                         lager:debug("save ~p", [cb_context:doc(C)]),
                          case cb_context:resp_status(C) of
                              'success' -> crossbar_doc:save(C);
                              _Status -> Context
@@ -299,7 +298,6 @@ maybe_update_tts(Context, Text, Voice, 'success') ->
                                        cb_context:set_req_files(Context, [{FileName, FileJObj}])
                                        ,'error'
                                       )),
-            lager:debug("load: ~p", [wh_json:public_fields(JObj)]),
             crossbar_doc:load(MediaId, Context)
     end;
 maybe_update_tts(Context, _Text, _Voice, _Status) -> Context.
