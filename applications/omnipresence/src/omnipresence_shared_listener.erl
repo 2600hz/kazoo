@@ -84,7 +84,7 @@ start_link() ->
 init([]) ->
     put('callid', ?MODULE),
     gen_listener:cast(self(), {'find_subscriptions_srv'}),
-    wh_hooks_listener:register(),
+    wh_hooks:register_rr(),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
 
