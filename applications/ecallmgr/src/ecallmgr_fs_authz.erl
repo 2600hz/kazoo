@@ -230,16 +230,15 @@ maybe_authorize_channel(Props, Node) ->
 
 -spec maybe_channel_recovering(wh_proplist(), ne_binary(), atom()) -> boolean().
 maybe_channel_recovering(Props, CallId, Node) ->
-    case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
+    case props:is_true(<<"variable_recovered">>, Props, 'false') of
         'true' -> allow_call(Props, CallId, Node);
         'false' -> is_authz_enabled(Props, CallId, Node)
     end.
 
 -spec is_authz_enabled(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_authz_enabled(Props, CallId, Node) ->
-    case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false')) of
-        'true' ->
-            is_global_resource(Props, CallId, Node);
+    case ecallmgr_config:is_true(<<"authz_enabled">>, 'false') of
+        'true' -> is_global_resource(Props, CallId, Node);
         'false' ->
             lager:debug("config ecallmgr.authz is disabled"),
             allow_call(Props, CallId, Node)
@@ -247,10 +246,8 @@ is_authz_enabled(Props, CallId, Node) ->
 
 -spec is_global_resource(wh_proplist(), ne_binary(), atom()) -> boolean().
 is_global_resource(Props, CallId, Node) ->
-    GlobalResource = props:get_value(?GET_CCV(<<"Global-Resource">>), Props, 'true'),
-    RestrictLocal = ecallmgr_config:get(<<"authz_local_resources">>, <<"false">>),
-    case wh_util:is_true(GlobalResource)
-        orelse wh_util:is_true(RestrictLocal)
+    case props:is_true(?GET_CCV(<<"Global-Resource">>), Props, 'true')
+        orelse ecallmgr_config:is_true(<<"authz_local_resources">>, 'false')
     of
         'true' -> is_consuming_resource(Props, CallId, Node);
         'false' ->
@@ -284,90 +281,61 @@ set_heartbeat_on_answer(Props, CallId, Node) ->
     %% Ensure that even if the call is answered while we are authorizing it
     %% the session will hearbeat.
 %%     'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
-    ensure_account_id_exists(Props, CallId, Node).
+%%    ensure_account_id_exists(Props, CallId, Node).
+    request_channel_authorization(Props, CallId, Node).
 
--spec ensure_account_id_exists(wh_proplist(), ne_binary(), atom()) -> boolean().
-ensure_account_id_exists(Props, CallId, Node) ->
-    case props:get_value(?GET_CCV(<<"Account-ID">>), Props) of
-        'undefined' ->
-            case identify_account('undefined', Props) of
-                {'error', 'not_required'} ->
-                    allow_call(Props, CallId, Node);
-                {'error', _R} ->
-                    lager:debug("unable to determine the account id: ~p", [_R]),
-                    maybe_deny_call(Props, CallId, Node);
-                {'ok', Resp} ->
-                    update_account_id(Resp, Props, CallId, Node)
-            end;
-        _Else ->
-            authorize_account(Props, CallId, Node)
+-spec request_channel_authorization(wh_proplist(), ne_binary(), atom()) -> boolean().
+request_channel_authorization(Props, CallId, Node) ->
+    lager:debug("channel authorization request started"),
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,authz_req(Props)
+                                  ,fun wapi_authz:publish_authz_req/1
+                                  ,fun wapi_authz:authz_resp_v/1
+                                  ,5000),
+    case ReqResp of
+        {'error', _R} ->
+            lager:debug("authz request lookup failed: ~p", [_R]),
+            maybe_deny_call(Props, CallId, Node);
+        {'ok', JObj} -> authz_response(JObj, Props, CallId, Node)
     end.
 
--spec update_account_id(wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
-update_account_id(Resp, Props, CallId, Node) ->
-    case props:get_value(?GET_CCV(<<"Account-ID">>), Resp) of
-        'undefined' -> update_reseller_id(Resp, Props, CallId, Node);
-        AccountId ->
-            ecallmgr_fs_channel:set_account_id(CallId, AccountId),
-            update_reseller_id(Resp, [{?GET_CCV(<<"Account-ID">>), AccountId}|Props], CallId, Node)
+authz_response(JObj, Props, CallId, Node) ->
+    case wh_json:is_true(<<"Is-Authorized">>, JObj) of
+        'true' -> authorize_account(JObj, Props, CallId, Node);
+        'false' ->
+            lager:info("channel is unauthorized: ~s/~s"
+                       ,[wh_json:get_value(<<"Account-Billing">>, JObj)
+                         ,wh_json:get_value(<<"Reseller-Billing">>, JObj)
+                        ]),
+            case maybe_deny_call(Props, CallId, Node) of
+                'true' -> authorize_account(JObj, Props, CallId, Node);
+                'false' -> 'false'
+            end
     end.
 
--spec update_reseller_id(wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
-update_reseller_id(Resp, Props, CallId, Node) ->
-    case props:get_value(?GET_CCV(<<"Reseller-ID">>), Resp) of
-        'undefined' -> authorize_account(Props, CallId, Node);
+-spec authorize_account(wh_json:object(), wh_proplist(), ne_binary(), atom()) -> boolean().
+authorize_account(JObj, Props, CallId, Node) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    Type = wh_json:get_value(<<"Account-Billing">>, JObj),
+    lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
+    P = props:set_values([{?GET_CCV(<<"Account-ID">>), AccountId}
+                          ,{?GET_CCV(<<"Account-Billing">>), Type}
+                         ], Props),
+    authorize_reseller(JObj, P, CallId, Node).
+
+-spec authorize_reseller(wh_json:object(), wh_proplist(), ne_binary(), atom()) -> boolean().
+authorize_reseller(JObj, Props, CallId, Node) ->
+    AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
+    case wh_json:get_value(<<"Reseller-ID">>, JObj, AccountId) of
+        AccountId -> rate_call(Props, CallId, Node);
         ResellerId ->
-            authorize_account([{?GET_CCV(<<"Reseller-ID">>), ResellerId}|Props], CallId, Node)
-    end.
-
--spec authorize_account(wh_proplist(), ne_binary(), atom()) -> boolean().
-authorize_account(Props, CallId, Node) ->
-    AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
-    case authorize(AccountId, Props) of
-        {'deny', Type} ->
-            lager:debug("account ~s unauthorized: ~p", [AccountId, Type]),
-            case maybe_deny_call(Props, CallId, Node) of
-                'true' ->
-                    update_account_billing_type(Type, Props, CallId, Node);
-                'false' -> 'false'
-            end;
-        {'ok', Type} ->
-            lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
-            update_account_billing_type(Type, Props, CallId, Node);
-        {'error', _R} ->
-            lager:debug("failed to authorize account ~s: ~p", [AccountId, _R]),
-            maybe_deny_call(Props, CallId, Node)
-    end.
-
--spec update_account_billing_type(ne_binary(), wh_proplist(), ne_binary(), atom()) -> boolean().
-update_account_billing_type(Type, Props, CallId, Node) ->
-    authorize_reseller(props:set_value(?GET_CCV(<<"Account-Billing">>), Type, Props), CallId, Node).
-
--spec authorize_reseller(wh_proplist(), ne_binary(), atom()) -> boolean().
-authorize_reseller(Props, CallId, Node) ->
-    ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), Props),
-    AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
-    case AccountId =:= ResellerId orelse authorize(ResellerId, Props) of
-        'true' ->
-            rate_call(Props, CallId, Node);
-        {'deny', Type} ->
-            lager:debug("reseller ~s unauthorized: ~p", [AccountId, Type]),
-            case maybe_deny_call(Props, CallId, Node) of
-                'true' ->
-                    update_reseller_billing_type(Type, Props, CallId, Node);
-                'false' -> 'false'
-            end;
-        {'ok', Type} ->
+            Type = wh_json:get_value(<<"Reseller-Billing">>, JObj),
             lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
-            update_reseller_billing_type(Type, Props, CallId, Node);
-        {'error', _R} ->
-            lager:debug("unable to authorize reseller: ~p", [_R]),
-            maybe_deny_call(Props, CallId, Node)
+            P = props:set_values([{?GET_CCV(<<"Reseller-ID">>), ResellerId}
+                                  ,{?GET_CCV(<<"Reseller-Billing">>), Type}
+                                 ], Props),
+            rate_call(P, CallId, Node)
     end.
-
--spec update_reseller_billing_type(ne_binary(), wh_proplist(), ne_binary(), atom()) -> boolean().
-update_reseller_billing_type(Type, Props, CallId, Node) ->
-    rate_call(props:set_value(?GET_CCV(<<"Reseller-Billing">>), Type, Props), CallId, Node).
 
 -spec rate_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
@@ -389,14 +357,14 @@ allow_call(Props, CallId, Node) ->
                          ,?AUTHZ_RESPONSE_KEY(CallId)
                          ,{'true', wh_json:from_list(Vars)}),
     _ = case props:get_value(<<"Channel-State">>, Props) =:= <<"CS_ROUTING">> of
-            'true' -> 'ok';
-            'false' -> ecallmgr_util:set(Node, CallId, props:filter_undefined(Vars))
+            'false' -> ecallmgr_util:set(Node, CallId, Vars);
+            'true' -> 'ok'
         end,
     'true'.
 
 -spec maybe_deny_call(wh_proplist(), api_binary(), atom()) -> boolean().
 maybe_deny_call(Props, CallId, Node) ->
-    case wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, 'false')) of
+    case ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') of
         'true' -> rate_call(Props, CallId, Node);
         'false' ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), 'false'),
@@ -419,31 +387,7 @@ rate_channel(Props, Node) ->
         {'error', _R} -> lager:debug("rate request lookup failed: ~p", [_R]);
         {'ok', RespJObj} -> set_rating_ccvs(RespJObj, Node)
     end.
-
--spec authorize(api_binary(), wh_proplist()) ->
-                       {'ok', api_binary()} |
-                       {'error', 'account_limited'} |
-                       {'error', 'default_is_deny'} |
-                       {'deny', api_binary()}.
-authorize('undefined', _) -> {'error', 'no_account'};
-authorize(AccountId, Props) ->
-    lager:debug("channel authorization request started"),
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,authz_req(AccountId, Props)
-                                  ,fun wapi_authz:publish_authz_req/1
-                                  ,fun wapi_authz:authz_resp_v/1
-                                  ,5000),
-    case ReqResp of
-        {'error', _R} ->
-            lager:debug("authz request lookup failed: ~p", [_R]),
-            authz_default();
-        {'ok', RespJObj} ->
-            case wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj)) of
-                'false' -> {'deny', wh_json:get_value(<<"Type">>, RespJObj)};
-                'true' -> {'ok', wh_json:get_value(<<"Type">>, RespJObj)}
-            end
-    end.
-
+ 
 -spec reauthorize(api_binary(), ne_binary(), wh_proplist()) ->
                                {'ok', wh_json:object()} |
                                {'error', _}.
@@ -466,40 +410,6 @@ reauthorize(AccountId, Type, Props) ->
             end
     end.
 
--spec identify_account(api_binary(), wh_proplist()) ->
-                                    {'ok', wh_proplist()} |
-                                    {'error', 'unidentified_channel' | 'not_required'}.
-identify_account(_, Props) ->
-    lager:debug("requesting account identification"),
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,authz_identify_req(Props)
-                                  ,fun wapi_authz:publish_identify_req/1
-                                  ,fun wapi_authz:identify_resp_v/1
-                                  ,5000),
-    case ReqResp of
-        {'error', _R} ->
-            lager:debug("authz identify request lookup failed: ~p", [_R]),
-            {'error', 'unidentified_channel'};
-        {'ok', RespJObj} ->
-            AuthzRequired = wh_json:is_true(<<"Required">>, RespJObj, 'true'),
-            GlobalResource = wh_json:get_value(<<"Global-Resource">>, RespJObj, 'true'),
-            RestrictLocal = ecallmgr_config:get(<<"authz_local_resources">>, <<"false">>),
-            case (AuthzRequired)
-                andalso (wh_util:is_true(GlobalResource)
-                    orelse wh_util:is_true(RestrictLocal))
-
-            of
-                'false' ->
-                    lager:debug("identified channel as a local resource, allowing"),
-                    {'error', 'not_required'};
-                'true' ->
-                    {'ok', [{?GET_CCV(<<"Account-ID">>), wh_json:get_value(<<"Account-ID">>, RespJObj)}
-                            ,{?GET_CCV(<<"Reseller-ID">>), wh_json:get_value(<<"Reseller-ID">>, RespJObj)}
-                            |Props
-                           ]}
-            end
-    end.
-
 -spec attempt_reauthorization('account'|'reseller', api_binary(), ne_binary(), wh_proplist(), atom()) -> 'ok'.
 attempt_reauthorization(Billing, AccountId, Type, Props, Node) ->
     case reauthorize(AccountId, Type, Props) of
@@ -515,15 +425,13 @@ attempt_reauthorization(Billing, AccountId, Type, Props, Node) ->
     end.
 
 -spec maybe_update_ccvs('undefined' | wh_json:object(), ne_binary(), atom()) -> 'ok'.
-maybe_update_ccvs('undefined', _, _) ->
-    'ok';
+maybe_update_ccvs('undefined', _, _) -> 'ok';
 maybe_update_ccvs(CCVs, CallId, Node) ->
     ChannelVars = wh_json:to_proplist(CCVs),
     ecallmgr_util:set(Node, CallId, ChannelVars).
 
 -spec maybe_update_billing_type('account'|'reseller', ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
-maybe_update_billing_type(_, Type, Type, _, _) ->
-    'ok';
+maybe_update_billing_type(_, Type, Type, _, _) -> 'ok';
 maybe_update_billing_type('account', _, Type, CallId, Node) ->
     ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type));
 maybe_update_billing_type('reseller', _, Type, CallId, Node) ->
@@ -538,6 +446,7 @@ should_reauth(BillingVar, Props) ->
     end.
 
 -spec authz_default() -> {'ok', ne_binary()} | {'error', 'account_limited'}.
+%% TODO: fix us of authz_defualt
 authz_default() ->
     case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) of
         <<"deny">> -> {'error', 'account_limited'};
@@ -578,21 +487,17 @@ maybe_update_callee_id(JObj, Acc) ->
         'false' -> [{<<"Rate">>, Rate}|Acc]
     end.
 
--spec authz_req(ne_binary(), wh_proplist()) -> wh_proplist().
-authz_req(AccountId, Props) ->
-    [{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"noname">>)}
-     ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props, <<"0000000000">>)}
-     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
-     ,{<<"Account-ID">>, props:get_value(?GET_CCV(<<"Account-ID">>), Props)}
-     ,{<<"Auth-Account-ID">>, AccountId}
-     ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
-     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
-     ,{<<"Usage">>, ecallmgr_fs_channels:account_summary(AccountId)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ].
+-spec authz_req(wh_proplist()) -> wh_proplist().
+authz_req(Props) ->
+    props:filter_undefined(
+      [{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+       ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+       ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+       ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
+       ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+       ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).
 
 -spec rough_billing_seconds(wh_proplist()) -> non_neg_integer().
 rough_billing_seconds(Props) ->
@@ -625,21 +530,6 @@ reauthz_req(AccountId, Type, Props) ->
      ,{<<"Progress-Media-Time">>, get_time_value(<<"Caller-Channel-Progress-Media-Time">>, Props)}
      ,{<<"Hangup-Time">>, get_time_value(<<"Caller-Channel-Hangup-Time">>, Props)}
      ,{<<"Transfer-Time">>, get_time_value(<<"Caller-Channel-Transfer-Time">>, Props)}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ].
-
--spec authz_identify_req(wh_proplist()) -> wh_proplist().
-authz_identify_req(Props) ->
-    [{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props,
-                                            props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"Unknown">>))}
-     ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props,
-                                               props:get_value(<<"Caller-Caller-ID-Number">>, Props, <<"0000000000">>))}
-     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
-     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"From-Network-Addr">>, props:get_value(<<"Caller-Network-Addr">>, Props)}
-     ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
-     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

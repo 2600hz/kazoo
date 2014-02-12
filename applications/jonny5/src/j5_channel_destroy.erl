@@ -16,23 +16,34 @@ handle_req(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
     timer:sleep(crypto:rand_uniform(1000, 3000)),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    AccountId = wh_json:get_value(<<"Account-ID">>, CCV),
-    ResellerId = wh_json:get_value(<<"Reseller-ID">>, CCV),
-    case wh_json:get_value(<<"Account-Billing">>, CCV) of
-        <<"per_minute">> -> j5_credit:reconcile_cdr(AccountId, JObj);
-        <<"per_minute_limit">> -> j5_credit:reconcile_cdr(AccountId, JObj);
-        <<"allotment">> -> j5_allotments:reconcile_cdr(AccountId, JObj);
-        _ ->
-            j5_util:remove_call_charges(AccountId, CallId),
-            'ok'
-    end,
-    case wh_json:get_value(<<"Reseller-Billing">>, CCV) of
-        <<"per_minute">> -> j5_credit:reconcile_cdr(ResellerId, JObj);
-        <<"per_minute_limit">> -> j5_credit:reconcile_cdr(ResellerId, JObj);
-        <<"allotment">> -> j5_allotments:reconcile_cdr(ResellerId, JObj);
-        _ ->
-            j5_util:remove_call_charges(ResellerId, CallId),
-            'ok'
+    Request = j5_request:from_jobj(JObj),
+    _ = account_reconcile_cdr(Request),
+    _ = reseller_reconcile_cdr(Request),
+    j5_channels:remove(Request#request.call_id),
+    'ok'.
+
+-spec account_reconcile_cdr(j5_request()) -> 'ok'.
+account_reconcile_cdr(Request) ->
+    case j5_request:account_id(Request) of
+        'undefined' -> 'ok';
+        AccountId ->
+            reconcile_cdr(Request, j5_util:get_limits(AccountId))
     end.
+
+-spec reseller_reconcile_cdr(j5_request()) -> 'ok'.
+reseller_reconcile_cdr(Request) ->
+    AccountId = j5_request:account_id(Request),
+    case j5_request:reseller_id(Request) of
+        'undefined' -> 'ok';
+        AccountId -> 'ok';
+        ResellerId ->
+            reconcile_cdr(Request, j5_util:get_limits(ResellerId))
+    end.
+
+-spec reconcile_cdr(j5_request(), j5_limits()) -> 'ok'.
+reconcile_cdr(Request, Limits) ->
+    _ = j5_allotments:reconcile_cdr(Request, Limits),
+%%    _ = j5_credit:reconcile_cdr(Request, Limits),
+%%    _ = j5_flat_rate:reconcile_cdr(Request, Limits),
+%%    _ = j5_per_minute:reconcile_cdr(Request, Limits),
+    'ok'.

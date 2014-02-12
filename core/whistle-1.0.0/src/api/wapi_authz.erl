@@ -33,10 +33,8 @@
 -define(KEY_AUTHZ_IDENT_REQ, <<"authz.ident_req">>).
 
 %% Authorization Requests
--define(AUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Call-ID">>
-                                ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                ,<<"Account-ID">>, <<"Request">>, <<"Usage">>
-                                ,<<"Call-Direction">>, <<"Auth-Account-ID">>
+-define(AUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
+                                ,<<"Call-ID">>, <<"Call-Direction">>
                            ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
@@ -54,7 +52,10 @@
 
 %% Authorization Responses
 -define(AUTHZ_RESP_HEADERS, [<<"Call-ID">>, <<"Is-Authorized">>]).
--define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Type">>, <<"Global-Resource">>]).
+-define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Account-ID">>, <<"Account-Billing">>
+                                      ,<<"Reseller-ID">>, <<"Reseller-Billing">>
+                                      ,<<"Custom-Channel-Vars">>, <<"Global-Resource">>
+                                     ]).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"authz_resp">>}
                             ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}

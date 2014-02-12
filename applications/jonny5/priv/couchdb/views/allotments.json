@@ -1,0 +1,10 @@
+{
+    "_id": "_design/allotments"
+    ,"language": "javascript"
+    ,"views": {
+        "consumed": {
+            "map": "function(doc) { if ( (doc.pvt_type != 'allotment_credit' && doc.pvt_type != 'allotment_debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'allotment_credit' ? 1 : -1); emit([doc.name || doc.description, doc.pvt_created], doc.amount * modifier); }"
+            ,"reduce": "_sum"
+        }
+    }
+}

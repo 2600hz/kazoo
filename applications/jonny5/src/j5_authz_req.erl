@@ -11,124 +11,140 @@
 
 -include("jonny5.hrl").
 
--type(authz_resp() :: {'ok', 'under_hard_limit' | 'flat_rate' | 'per_minute'} |
-                      {'error', _}).
-
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
-handle_req(JObj, Props) ->
+handle_req(JObj, _) ->
     'true' = wapi_authz:authz_req_v(JObj),
     wh_util:put_callid(JObj),
+    maybe_determine_account_id(j5_request:from_jobj(JObj)).
 
-    AuthAccountId = wh_json:get_value(<<"Auth-Account-ID">>, JObj),
-    Limits = j5_util:get_limits(AuthAccountId),
+-spec maybe_determine_account_id(j5_request()) -> 'ok'.
+maybe_determine_account_id(Request) ->
+    case j5_request:account_id(Request) of
+        'undefined' -> determine_account_id(Request);
+        _Else -> maybe_account_limited(Request)
+    end.
 
-    Routines = [fun maybe_ignore_limits/3
-                ,fun maybe_no_limits/3
-                ,fun maybe_hard_limit/3
-                ,fun maybe_allotments/3
-                ,fun maybe_flat_rate/3
-                ,fun maybe_per_minute/3
-                ,fun maybe_soft_limit/3
-               ],
+-spec determine_account_id(j5_request()) -> 'ok'.
+determine_account_id(Request) ->
+    Number = j5_request:number(Request),
+    case wh_number_manager:lookup_account_by_number(Number) of
+        {'ok', AccountId, _} ->            
+            maybe_account_limited(
+              j5_request:set_account_id(AccountId, Request)
+             );
+        {'error', {'account_disabled', AccountId}} ->
+            R = j5_request:set_account_id(AccountId, Request),
+            send_response(
+              j5_request:deny_account(<<"disabled">>, R)
+             );
+        {'error', _} -> send_response(Request)
+    end.
 
-    send_resp(JObj
-              ,props:get_value('queue', Props)
-              ,Limits
-              ,lists:foldl(fun(F, A) ->
-                                   F(A, Limits, JObj) end
-                           ,{'error', 'not_processed'}, Routines)
-             ).
+-spec maybe_account_limited(j5_request()) -> 'ok'.
+maybe_account_limited(Request) ->
+    Limits = j5_util:get_limits(j5_request:account_id(Request)),
+    R = maybe_authorize(Request, Limits),
+    case j5_request:is_authorized(R, Limits) of
+        'false' -> send_response(R);
+        'true' ->
+            io:format("ACCOUNT_LIMITED: ~p~n", [lager:pr(R, ?MODULE)]),
+            maybe_determine_reseller_id(R)
+    end.
 
--spec maybe_ignore_limits(authz_resp(), #limits{}, wh_json:object()) -> authz_resp().
-maybe_ignore_limits(_, #limits{enabled='true'}, _) ->
-    {'ok', 'limits_enabled'};
-maybe_ignore_limits(_, #limits{enabled='false'}, _) ->
-    {'ok', 'limits_disabled'}.
+-spec maybe_determine_reseller_id(j5_request()) -> 'ok'. 
+maybe_determine_reseller_id(Request) ->
+    case j5_request:reseller_id(Request) of
+        'undefined' -> determine_reseller_id(Request);
+        _Else -> maybe_reseller_limited(Request)
+    end.
 
--spec maybe_hard_limit(authz_resp(), #limits{}, wh_json:object()) -> authz_resp().
-maybe_hard_limit({'ok', 'limits_enabled'}, Limits, JObj) ->
-    case j5_hard_limit:is_under(Limits, JObj) of
-        'true' -> {'ok', 'under_hard_limits'};
-        'false' -> {'error', 'hard_limit'}
-    end;
-maybe_hard_limit(Else, _, _) -> Else.
+-spec determine_reseller_id(j5_request()) -> 'ok'. 
+determine_reseller_id(Request) ->
+    AccountId = j5_request:account_id(Request),
+    ResellerId = wh_servies:find_reseller_id(AccountId),
+    maybe_reseller_limited(
+      j5_request:set_reseller_id(ResellerId, Request)
+     ).
 
--spec maybe_allotments(authz_resp(), #limits{}, wh_json:object()) -> authz_resp().
-maybe_allotments({'ok', 'under_hard_limits'}, Limits, JObj) ->
-    case j5_allotments:is_available(Limits, JObj) of
-        'true' -> {'ok', 'allotment'};
-        'false' -> {'error', 'no_allotment'}
-    end;
-maybe_allotments(Else, _, _) -> Else.
+-spec maybe_reseller_limited(j5_request()) -> 'ok'.
+maybe_reseller_limited(Request) ->
+    ResellerId = j5_request:reseller_id(Request),
+    case j5_request:account_id(Request) =:= ResellerId of
+        'true' ->
+            send_response(
+              j5_request:authorize_reseller(<<"limits_disabled">>, Request)
+             );
+        'false' ->
+            Limits = j5_util:get_limits(ResellerId),
+            send_response(maybe_authorize(Request, Limits))
+    end.
 
--spec maybe_flat_rate(authz_resp(), #limits{}, wh_json:object()) -> authz_resp().
-maybe_flat_rate({'error', 'no_allotment'}, Limits, JObj) ->
-    case j5_flat_rate:is_available(Limits, JObj) of
-        'true' -> {'ok', 'flat_rate'};
-        'false' -> {'error', 'flat_rate_limit'}
-    end;
-maybe_flat_rate(Else, _, _) -> Else.
-
--spec maybe_per_minute(authz_resp(), #limits{}, wh_json:object()) -> authz_resp().
-maybe_per_minute({'error', 'flat_rate_limit'}, Limits, JObj) ->
-    case j5_credit:is_available(Limits, JObj) of
-        'true' -> {'ok', 'per_minute'};
-        'false' -> {'error', 'per_minute_limit'}
-    end;
-maybe_per_minute(Else, _, _) -> Else.
-
--spec maybe_soft_limit(authz_resp(), #limits{}, wh_json:object()) -> authz_resp().
-maybe_soft_limit({'error', _}=E, Limits, JObj) ->
-    case should_soft_limit(wh_json:get_value(<<"Call-Direction">>, JObj), Limits) of
-        'true' -> {'ok', 'soft_limit'};
-        'false' -> E
-    end;
-maybe_soft_limit(Else, _, _) -> Else.
-
--spec maybe_no_limits(authz_resp(), #limits{}, wh_json:object()) -> authz_resp().
-maybe_no_limits({'ok', 'limits_enabled'}=Ok, _, JObj) ->
-    [Number, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+-spec maybe_authorize(j5_request(), j5_limits()) -> j5_request().
+maybe_authorize(Request, #limits{enabled='false'}=Limits) -> 
+    j5_request:authorize(<<"limits_disabled">>, Request, Limits);
+maybe_authorize(Request, #limits{enabled='true'}=Limits) ->
+    CallDirection = j5_request:call_direction(Request),
+    Number = j5_request:number(Request),
     case wnm_util:classify_number(Number) of
         <<"emergency">> ->
             lager:debug("allowing emergency call", []),
-            {'ok', 'limits_disabled'};
-        <<"tollfree_us">> ->
-            case wh_json:get_value(<<"Call-Direction">>, JObj) of
-                <<"outbound">> ->
-                    lager:debug("allowing outbound tollfree call", []),
-                    {'ok', 'limits_disabled'};
-                _Else -> Ok
-            end;
-        _Else -> Ok
-    end;
-maybe_no_limits(Else, _, _) -> Else.
+            j5_request:authorize(<<"limits_disabled">>, Request, Limits);
+        <<"tollfree_us">> when CallDirection =:= <<"outbound">> ->
+            lager:debug("allowing outbound tollfree call", []),
+            j5_request:authorize(<<"limits_disabled">>, Request, Limits);
+        _Else -> authorize(Request, Limits)
+    end.
 
--spec should_soft_limit(ne_binary(), #limits{}) -> boolean().
-should_soft_limit(<<"outbound">>, #limits{soft_limit_outbound='true'}) ->
-    lager:debug("outbound calls are not enforcing (soft limit)", []),
-    'true';
-should_soft_limit(<<"inbound">>, #limits{soft_limit_inbound='true'}) ->
-    lager:debug("inbound calls are not enforcing (soft limit)", []),
-    'true';
-should_soft_limit(_, _) -> 'false'.
+-spec authorize(j5_request(), j5_limits()) -> authz_result().
+authorize(Request, Limits) ->
+    Routines = [fun j5_allotments:authorize/2
+%%                ,fun j5_flat_rate:authorize/2
+%%                ,fun j5_per_minute:authorize/2
+               ],
+    maybe_soft_limit(
+      lists:foldl(fun(F, R) ->
+                          case j5_request:is_authorized(R, Limits) of
+                              'false' -> F(R, Limits);
+                              'true' -> R
+                          end
+                  end, Request, Routines)
+      ,Limits).
 
--spec send_resp(wh_json:object(),  ne_binary(), #limits{}, {'ok', 'credit' | 'flatrate'} | {'error', _}) -> 'ok'.
-send_resp(JObj, Q, Limits, {'error', Reason}) ->
-    lager:debug("call is unauthorize due to ~s", [Reason]),
-    j5_util:send_system_alert(<<"no flat rate or credit">>, JObj, Limits),
-    Resp = [{<<"Is-Authorized">>, <<"false">>}
-            ,{<<"Type">>, wh_util:to_binary(Reason)}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-           ],
-    wapi_authz:publish_authz_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-send_resp(JObj, Q, _, {'ok', Type}) ->
-    lager:debug("call is authorized as ~s", [Type]),
-    Resp = [{<<"Is-Authorized">>, <<"true">>}
-            ,{<<"Type">>, wh_util:to_binary(Type)}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-           ],
-    wapi_authz:publish_authz_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+-spec maybe_soft_limit(j5_request(), j5_limits()) -> j5_request().
+maybe_soft_limit(Request, Limits) ->
+   case j5_request:is_authorized(Request) of
+       'true' -> Request;
+       'false' ->
+           case j5_request:call_direction(Request) of
+               <<"outbound">> -> maybe_outbound_soft_limit(Request, Limits);
+               <<"inbound">> -> maybe_inbound_soft_limit(Request, Limits)
+           end
+   end.
+
+-spec maybe_outbound_soft_limit(j5_request(), j5_limits()) -> j5_request().
+maybe_outbound_soft_limit(Request, #limits{soft_limit_outbound='true'}=Limits) ->
+    lager:debug("outbound channel authorization is not enforced (soft limit)", []),
+    j5_request:authorize(<<"soft_limit">>, Request, Limits);
+maybe_outbound_soft_limit(Request, _) -> Request.
+
+-spec maybe_inbound_soft_limit(j5_request(), j5_limits()) -> j5_request().
+maybe_inbound_soft_limit(Request, #limits{soft_limit_inbound='true'}=Limits) ->
+    lager:debug("inbound channel authorization is not enforced (soft limit)", []),
+    j5_request:authorize(<<"soft_limit">>, Request, Limits);
+maybe_inbound_soft_limit(Request, _) -> Request.
+
+-spec send_response(j5_request()) -> 'ok'.
+send_response(Request) ->
+    ServerId = j5_request:server_id(Request),
+    Resp = props:filter_undefined(
+             [{<<"Is-Authorized">>, wh_util:to_binary(j5_request:is_authorized(Request))}
+              ,{<<"Account-ID">>, j5_request:account_id(Request)}
+              ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
+              ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
+              ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
+              ,{<<"Msg-ID">>, j5_request:message_id(Request)}
+              ,{<<"Call-ID">>, j5_request:call_id(Request)}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    io:format("~p~n", [Resp]),
+    wapi_authz:publish_authz_resp(ServerId, Resp).
