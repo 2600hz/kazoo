@@ -655,8 +655,8 @@ kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
 -spec kvs_flush(call()) -> call().
 kvs_flush(#whapps_call{}=Call) -> Call#whapps_call{kvs=orddict:new()}.
 
--spec kvs_fetch(wh_json:json_string(), call()) -> term().
--spec kvs_fetch(wh_json:json_string(), Default, call()) -> term() | Default.
+-spec kvs_fetch(wh_json:key(), call()) -> term().
+-spec kvs_fetch(wh_json:key(), Default, call()) -> term() | Default.
 kvs_fetch(Key, Call) -> kvs_fetch(Key, 'undefined', Call).
 kvs_fetch(Key, Default, #whapps_call{kvs=Dict}) ->
     try orddict:fetch(wh_util:to_binary(Key), Dict) of
