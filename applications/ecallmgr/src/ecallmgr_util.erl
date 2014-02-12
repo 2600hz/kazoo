@@ -360,6 +360,13 @@ set(Node, UUID, [{<<"Hold-Media">>, Value}]) ->
                                         ,{"execute-app-arg", AppArg}
                                        ]),
     'ok';
+set(Node, UUID, [{<<"ringback">>, Media}]) ->
+    AppArgs = [<<"ringback=", Media/binary>>,<<"transfer_ringback=", Media/binary>>],
+    _ = [freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                        ,{"execute-app-name", "export"}
+                                        ,{"execute-app-arg", AppArg}
+                                       ]) || AppArg <- AppArgs],
+    'ok';
 set(Node, UUID, [{K, V}]) ->
     case get_fs_key_and_value(K, V, UUID) of
         'skip' -> 'ok';
