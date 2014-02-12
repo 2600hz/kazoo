@@ -51,9 +51,12 @@ insert_value(K, V, Props) ->
     end.
 
 -type filter_fun() :: fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()).
--spec filter(filter_fun(), wh_proplist()) -> wh_proplist().
+-spec filter(filter_fun(), wh_proplist()) -> wh_proplist();
+            (wh_proplist(), term()) -> wh_proplist().
 filter(Fun, Props) when is_function(Fun, 1), is_list(Props) ->
-    lists:filter(Fun, Props).
+    [P || P <- Props, Fun(P)];
+filter(Props, Term) when is_list(Props) ->
+    [P || P <- Props, P =/= Term].
 
 -spec filter_empty(wh_proplist()) -> wh_proplist().
 filter_empty(Props) ->
