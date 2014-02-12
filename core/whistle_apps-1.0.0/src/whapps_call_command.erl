@@ -1517,6 +1517,7 @@ b_privacy(Mode, Call) ->
                              ,digits_collected = <<>> :: binary()
                              ,after_timeout = ?MILLISECONDS_IN_DAY :: pos_integer()
                             }).
+-type wcc_collect_digits() :: #wcc_collect_digits{}.
 
 collect_digits(MaxDigits, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
@@ -1553,6 +1554,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
                                           ,call=Call
                                          }).
 
+-spec do_collect_digits(wcc_collect_digits()) -> collect_digits_return().
 do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                                       ,timeout=Timeout
                                       ,interdigit=Interdigit
