@@ -407,7 +407,6 @@ handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, 
     erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
-
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                                            ,call=Call
                                                           }=State) ->
@@ -416,14 +415,14 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, R
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
-
+handle_info({'DOWN', _Ref, 'process', _Pid, 'normal'}, State) ->
+    {'noreply', State};
 handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
                                             ,call=Call
                                            }=State) ->
     erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
-
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                            ,call=Call
                                           }=State) ->
@@ -432,7 +431,6 @@ handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
-
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
