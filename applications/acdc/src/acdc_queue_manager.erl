@@ -196,6 +196,8 @@ start_queue_call(JObj, Props, Call) ->
     acdc_util:presence_update(AccountId, QueueId, ?PRESENCE_RED_FLASH).
 
 handle_member_call_cancel(JObj, Props) ->
+    wh_util:put_callid(JObj),
+    lager:debug("cancel call ~p", [JObj]),
     'true' = wapi_acdc_queue:member_call_cancel_v(JObj),
     K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, JObj)
                         ,wh_json:get_value(<<"Queue-ID">>, JObj)

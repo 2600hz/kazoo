@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% Data: {
@@ -141,6 +141,7 @@ process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"member">>, 
     lager:info("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
 process_message(MC, Timeout, Start, Wait, _JObj, _Type) ->
+    lager:debug("ignoring ~p", [_Type]),
     wait_for_bridge(MC, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
 
 -spec reduce_timeout(max_wait(), integer()) -> max_wait().
@@ -159,6 +160,7 @@ max_queue_size(_) -> 0.
 is_queue_full(0, _) -> 'false';
 is_queue_full(MaxQueueSize, CurrQueueSize) -> CurrQueueSize >= MaxQueueSize.
 
+-spec cancel_member_call(whapps_call:call(), ne_binary()) -> 'ok'.
 cancel_member_call(Call, Reason) ->
     AcctId = whapps_call:account_id(Call),
     {'ok', QueueId} = whapps_call:kvs_find('queue_id', Call),
