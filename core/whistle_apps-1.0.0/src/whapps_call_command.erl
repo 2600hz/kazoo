@@ -137,6 +137,13 @@
         ]).
 -export([send_command/2]).
 
+-export([default_collect_timeout/0
+         ,default_digit_timeout/0
+         ,default_interdigit_timeout/0
+         ,default_message_timeout/0
+         ,default_application_timeout/0
+        ]).
+
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), binary()} |
                               {'say', binary()} | {'say', binary(), binary()} |
@@ -151,8 +158,32 @@
 
 -define(CONFIG_CAT, <<"call_command">>).
 
+-define(DEFAULT_COLLECT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"collect_timeout">>, 5000)).
 -define(DEFAULT_DIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"digit_timeout">>, 3000)).
--define(DEFAULT_INTERDIGIT, whapps_config:get_integer(?CONFIG_CAT, <<"interdigit_timeout">>, 2000)).
+-define(DEFAULT_INTERDIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"interdigit_timeout">>, 2000)).
+
+-define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 5000)).
+-define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500000)).
+
+-spec default_collect_timeout() -> pos_integer().
+default_collect_timeout() ->
+    ?DEFAULT_COLLECT_TIMEOUT.
+
+-spec default_digit_timeout() -> pos_integer().
+default_digit_timeout() ->
+    ?DEFAULT_DIGIT_TIMEOUT.
+
+-spec default_interdigit_timeout() -> pos_integer().
+default_interdigit_timeout() ->
+    ?DEFAULT_INTERDIGIT_TIMEOUT.
+
+-spec default_message_timeout() -> pos_integer().
+default_message_timeout() ->
+    ?DEFAULT_MESSAGE_TIMEOUT.
+
+-spec default_application_timeout() -> pos_integer().
+default_application_timeout() ->
+    ?DEFAULT_APPLICATION_TIMEOUT.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1170,7 +1201,7 @@ b_prompt_and_collect_digit(Prompt, Call) ->
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, 3,  Call).
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
-    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, 5000, Call).
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, ?DEFAULT_COLLECT_TIMEOUT, Call).
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, 'undefined', Call).
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
@@ -1275,7 +1306,7 @@ b_play_and_collect_digit(Media, Call) ->
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, 3,  Call).
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Call) ->
-    b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, 5000, Call).
+    b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, ?DEFAULT_COLLECT_TIMEOUT, Call).
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, 'undefined', Call).
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Call) ->
@@ -1290,7 +1321,7 @@ b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, 0, _Timeout, MediaInva
     {'ok', <<>>};
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
     NoopId = play(Media, Terminators, Call),
-    case collect_digits(MaxDigits, Timeout, 2000, NoopId, Call) of
+    case collect_digits(MaxDigits, Timeout, ?DEFAULT_INTERDIGIT_TIMEOUT, NoopId, Call) of
         {'ok', Digits} ->
             case re:run(Digits, Regex) of
                 {'match', _} when byte_size(Digits) >= MinDigits ->
@@ -1510,7 +1541,7 @@ b_privacy(Mode, Call) ->
 
 -record(wcc_collect_digits, {max_digits :: pos_integer()
                              ,timeout = ?DEFAULT_DIGIT_TIMEOUT :: wh_timeout()
-                             ,interdigit = ?DEFAULT_INTERDIGIT :: pos_integer()
+                             ,interdigit = ?DEFAULT_INTERDIGIT_TIMEOUT :: pos_integer()
                              ,noop_id :: api_binary()
                              ,terminators = [<<"#">>] :: ne_binaries()
                              ,call :: whapps_call:call()
@@ -1675,7 +1706,7 @@ wait_for_message(Call, Application) ->
 wait_for_message(Call, Application, Event) ->
     wait_for_message(Call, Application, Event, <<"call_event">>).
 wait_for_message(Call, Application, Event, Type) ->
-    wait_for_message(Call, Application, Event, Type, 5000).
+    wait_for_message(Call, Application, Event, Type, ?DEFAULT_MESSAGE_TIMEOUT).
 
 wait_for_message(Call, Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
@@ -1719,7 +1750,7 @@ wait_for_application(Call, Application) ->
 wait_for_application(Call, Application, Event) ->
     wait_for_application(Call, Application, Event, <<"call_event">>).
 wait_for_application(Call, Application, Event, Type) ->
-    wait_for_application(Call, Application, Event, Type, 500000).
+    wait_for_application(Call, Application, Event, Type, ?DEFAULT_APPLICATION_TIMEOUT).
 
 wait_for_application(Call, Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
@@ -1763,7 +1794,7 @@ wait_for_headless_application(Application) ->
 wait_for_headless_application(Application, Event) ->
     wait_for_headless_application(Application, Event, <<"call_event">>).
 wait_for_headless_application(Application, Event, Type) ->
-    wait_for_headless_application(Application, Event, Type, 500000).
+    wait_for_headless_application(Application, Event, Type, ?DEFAULT_APPLICATION_TIMEOUT).
 
 wait_for_headless_application(Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
