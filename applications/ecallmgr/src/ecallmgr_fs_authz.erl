@@ -300,7 +300,9 @@ request_channel_authorization(Props, CallId, Node) ->
     end.
 
 authz_response(JObj, Props, CallId, Node) ->
-    case wh_json:is_true(<<"Is-Authorized">>, JObj) of
+    case wh_json:is_true(<<"Is-Authorized">>, JObj) 
+        orelse wh_json:is_true(<<"Soft-Limit">>, JObj)
+    of
         'true' -> authorize_account(JObj, Props, CallId, Node);
         'false' ->
             lager:info("channel is unauthorized: ~s/~s"
@@ -495,6 +497,7 @@ authz_req(Props) ->
        ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
        ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
        ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+       ,{<<"Other-Leg-Call-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
