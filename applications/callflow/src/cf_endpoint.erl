@@ -518,7 +518,9 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
 maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
     CallFowarding = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
     Source = wh_json:get_value(<<"source">>, Properties),
+    Number = wh_json:get_value(<<"number">>, CallFowarding),
     case wh_json:is_true(<<"enabled">>, CallFowarding)
+        andalso Number =/= <<>>
         andalso (wh_json:is_false(<<"direct_calls_only">>, CallFowarding, 'true')
                  orelse
                    (not lists:member(Source, ?NON_DIRECT_MODULES)))
