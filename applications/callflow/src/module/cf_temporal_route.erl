@@ -1,7 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
-%%%
+%%% "data":{
+%%%   "action": "menu" | "enable" | "disable" | "reset"
+%%%   ,"rules":[] // list of rules
+%%%   // optional after here
+%%%   ,"interdigit_timeout":2000
+%%% }
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -78,6 +83,7 @@
                    ,timezone = ?TEMPORAL_DEFAULT_TIMEZONE :: ne_binary()
                    ,prompts = #prompts{} :: prompts()
                    ,keys = #keys{} :: keys()
+                   ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
                   }).
 -type temporal() :: #temporal{}.
 
@@ -175,10 +181,13 @@ process_rules(_, [], _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_temporal_rules(temporal(), whapps_call:call()) -> rules().
-get_temporal_rules(#temporal{local_sec=LSec, routes=Routes, timezone=TZ}, Call) ->
+get_temporal_rules(#temporal{local_sec=LSec
+                             ,routes=Routes
+                             ,timezone=TZ
+                            }, Call) ->
     get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), TZ, []).
 
--spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary(), rules()) -> rules().
+-spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary() | wh_datetime(), rules()) -> rules().
 get_temporal_rules([], _, _, _, Rules) -> lists:reverse(Rules);
 get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Rules) ->
     Now = localtime:utc_to_local(calendar:universal_time()
@@ -213,7 +222,7 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Rules) ->
                          ,wtime_stop =
                              wh_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
                         },
-            case date_difference(Now, {Rule#rule.start_date, {0,0, 0}}) of
+            case date_difference(Now, {Rule#rule.start_date, {0,0,0}}) of
                 'future' ->
                     lager:warning("rule ~p is in the future discarding", [Rule#rule.name]),
                     get_temporal_rules(Routes, LSec, AccountDb, Now, Rules);
@@ -235,11 +244,7 @@ date_difference(Date1, Date2) ->
         {D, _} when D > 0 -> 'future';
         {D, _} when D < 0 -> 'past';
         {0, {0, 0, 0}} -> 'equal';
-        {0, {H, M, S}} ->
-            case H+M+S of
-                R when R > 0 -> 'future';
-                R when R < 0 -> 'past'
-            end
+        {0, _} -> 'future'
     end.
 
 %%--------------------------------------------------------------------
@@ -252,13 +257,18 @@ date_difference(Date1, Date2) ->
 get_temporal_route(JObj, Call) ->
     lager:info("loading temporal route"),
     Keys = case wh_json:get_value(<<"rules">>, JObj, []) of
-        [] ->
-            {'branch_keys', Rules} = cf_exe:get_branch_keys(Call),
-            Rules;
-        Rules -> Rules
-    end,
+               [] ->
+                   {'branch_keys', Rules} = cf_exe:get_branch_keys(Call),
+                   Rules;
+               Rules -> Rules
+           end,
     load_current_time(#temporal{routes = Keys
                                 ,timezone = wh_json:get_value(<<"timezone">>, JObj, ?TEMPORAL_DEFAULT_TIMEZONE)
+                                ,interdigit_timeout =
+                                    wh_json:get_integer_value(<<"interdigit_timeout">>
+                                                              ,JObj
+                                                              ,whapps_call_command:default_interdigit_timeout()
+                                                             )
                                }).
 
 %%--------------------------------------------------------------------
@@ -288,8 +298,17 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
                                          ,reset=Reset
                                         }
                               ,prompts=#prompts{main_menu=MainMenu}
+                              ,interdigit_timeout=Interdigit
                              }=Temporal, Rules, Call) ->
-    case whapps_call_command:b_play_and_collect_digit(MainMenu, Call) of
+    NoopId = whapps_call_command:play(MainMenu, Call),
+
+    case whapps_call_command:collect_digits(1
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
         {'ok', Enable} ->
             enable_temporal_rules(Temporal, Rules, Call);
         {'ok', Disable} ->
