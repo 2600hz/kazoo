@@ -260,26 +260,26 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %%--------------------------------------------------------------------
 -spec get_limit(ne_binary(), wh_json:object(), tristate_integer()) -> tristate_integer().
 get_limit(Key, JObj, Default) ->
-    PrivateValue = get_private_limit(Key, JObj, Default),
-    PublicValue = get_public_limit(Key, JObj),
-    case PrivateValue < PublicValue of
+    PrivateValue = get_private_limit(Key, JObj),
+    PublicValue = get_public_limit(Key, JObj, Default),
+    case PrivateValue =/= 'undefined'
+        andalso PrivateValue < PublicValue 
+    of
         'true' -> PrivateValue;
         'false' -> PublicValue
     end.
 
--spec get_public_limit(ne_binary(), wh_json:object()) -> non_neg_integer().
-get_public_limit(Key, JObj) ->
-    case wh_json:get_integer_value(Key, JObj, 0) of
+-spec get_public_limit(ne_binary(), wh_json:object(), tristate_integer()) -> non_neg_integer().
+get_public_limit(Key, JObj, Default) ->
+    case wh_json:get_integer_value(Key, JObj) of
+        'undefined' -> get_default_limit(Key, Default);
         Value when Value < 0 -> 0;
         Value -> Value
     end.
 
--spec get_private_limit(ne_binary(), wh_json:object(), tristate_integer()) -> tristate_integer().
-get_private_limit(Key, JObj, Default) ->
-    case wh_json:get_integer_value(<<"pvt_", Key/binary>>, JObj) of
-        'undefined' -> get_default_limit(Key, Default);
-        Value -> Value
-    end.
+-spec get_private_limit(ne_binary(), wh_json:object()) -> tristate_integer().
+get_private_limit(Key, JObj) ->
+    wh_json:get_integer_value(<<"pvt_", Key/binary>>, JObj).
 
 -spec get_default_limit(ne_binary(), tristate_integer()) -> tristate_integer().
 get_default_limit(Key, Default) ->

@@ -78,7 +78,7 @@ reconcile_call_cost(Request, Limits) ->
     CallId = j5_request:call_id(Request),
     AccountId = j5_limits:account_id(Limits),
     Amount = wh_transactions:call_charges(AccountId, CallId)
-        - (-1 * j5_request:call_cost(Request)),
+        - (j5_request:call_cost(Request) * -1),
     case Amount > 0 of
         'true' -> create_debit_transaction(<<"end">>, abs(Amount), Request, Limits);
         'false' -> create_credit_transaction(<<"end">>, abs(Amount), Request, Limits)

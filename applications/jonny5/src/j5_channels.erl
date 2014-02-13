@@ -7,18 +7,21 @@
 %%%-------------------------------------------------------------------
 -module(j5_channels).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 -export([start_link/0]).
 -export([total_calls/1]).
 -export([resource_consuming/1]).
--export([remove/1]).
 -export([inbound_flat_rate/1]).
 -export([outbound_flat_rate/1]).
+-export([authorized/1]).
+-export([remove/1]).
+-export([handle_authz_resp/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
+         ,handle_event/2
          ,terminate/2
          ,code_change/3
         ]).
@@ -29,25 +32,30 @@
 -record(state, {}).
 
 -define(SERVER, ?MODULE).
+-define(TAB, ?MODULE).
 
--record(channel, {uuid :: api_binary() | '$1' | '_'
-                  ,destination :: api_binary() | '_'
-                  ,direction :: api_binary() | '$1' | '_'
-                  ,account_id :: api_binary() | '$1' | '$2' | '_'
-                  ,account_billing :: api_binary() | '$7' | '_'
-                  ,authorizing_id :: api_binary() | '$1' | '$3' | '_'
-                  ,authorizing_type :: api_binary() | '_'
-                  ,owner_id :: api_binary() | '_'
-                  ,resource_id :: api_binary() | '$4' | '_'
-                  ,fetch_id :: api_binary() | '$5' | '_'
-                  ,reseller_id :: api_binary() | '_'
-                  ,reseller_billing :: api_binary() | '_'
-                  ,realm :: api_binary() | '_' | '$2'
-                  ,username :: api_binary() | '_' | '$1'
-                  ,other_leg :: api_binary() | '$2' | '_'
-                  ,node :: atom() | '$1' | '$2' | '$3' | '_'
-                  ,timestamp :: pos_integer() | '_'
+-record(channel, {call_id :: api_binary()
+                  ,other_leg_call_id :: api_binary()
+                  ,direction :: api_binary()
+                  ,account_id :: api_binary()
+                  ,account_billing :: api_binary()
+                  ,reseller_id :: api_binary()
+                  ,reseller_billing :: api_binary()
+                  ,soft_limit :: boolean()
+                  ,timestamp :: pos_integer()
                  }).
+
+-define(BINDINGS, [{'authz', [{'restrict_to', ['broadcast']}
+                              ,'federate'
+                             ]}
+                  ]).
+-define(RESPONDERS, [{{?MODULE, 'handle_authz_resp'}
+                      ,[{<<"authz">>, <<"authz_resp">>}]}
+                    ]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
+
 
 %%%===================================================================
 %%% API
@@ -61,26 +69,138 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
+    gen_listener:start_link({'local', ?SERVER}, ?MODULE, [{'bindings', ?BINDINGS}
+                                                          ,{'responders', ?RESPONDERS}
+                                                          ,{'queue_name', ?QUEUE_NAME}
+                                                          ,{'queue_options', ?QUEUE_OPTIONS}
+                                                          ,{'consume_options', ?CONSUME_OPTIONS}
+                                                         ], []).
 
+-spec total_calls(ne_binary()) -> non_neg_integer().
 total_calls(AccountId) ->
-    io:format("j5_channels:total_calls(~s)~n", [AccountId]),
-    0.
+    MatchSpec = [{#channel{account_id=AccountId
+                           ,call_id='$1'
+                           ,other_leg_call_id='$2'
+                           ,_='_'}
+                  ,[]
+                  ,[{{'$1', '$2'}}]
+                 }
+                 ,{#channel{reseller_id=AccountId
+                            ,call_id='$1'
+                            ,other_leg_call_id='$2'
+                            ,_='_'}
+                   ,[]
+                   ,[{{'$1', '$2'}}]
+                  }
+                ],
+    count_unique_calls(ets:select(?TAB, MatchSpec)).
 
+-spec resource_consuming(ne_binary()) -> non_neg_integer().
 resource_consuming(AccountId) ->
-    io:format("j5_channels:resource_consuming(~s)~n", [AccountId]),
-    0.
+    MatchSpec = [{#channel{account_id=AccountId
+                           ,account_billing='$1'
+                           ,call_id='$2'
+                           ,other_leg_call_id='$3'
+                           ,_='_'}
+                  ,[{'=/=', '$1', 'undefined'}
+                    ,{'=/=', '$1', <<"limits_disabled">>}
+                   ]
+                  ,[{{'$2', '$3'}}]
+                 }
+                 ,{#channel{reseller_id=AccountId
+                            ,reseller_billing='$1'
+                            ,call_id='$2'
+                            ,other_leg_call_id='$3'
+                            ,_='_'}
+                   ,[{'=/=', '$1', 'undefined'}
+                     ,{'=/=', '$1', <<"limits_disabled">>}
+                    ]
+                   ,[{{'$2', '$3'}}]
+                  }
+                ],
+    count_unique_calls(ets:select(?TAB, MatchSpec)).
 
-remove(CallId) ->
-    io:format("j5_channels:remove(~s)~n", [CallId]).
-
+-spec inbound_flat_rate(ne_binary()) -> non_neg_integer().
 inbound_flat_rate(AccountId) ->
-    io:format("j5_channels:inbound_flat_rate(~s)~n", [AccountId]),
-    0.
+    MatchSpec = [{#channel{account_id=AccountId
+                           ,account_billing = <<"flat_rate">>
+                           ,direction = <<"inbound">>
+                           ,_='_'}
+                  ,[]
+                  ,['true']
+                 }
+                 ,{#channel{account_id=AccountId
+                            ,account_billing = <<"flat_rate_burst">>
+                            ,direction = <<"inbound">>
+                            ,_='_'}
+                   ,[]
+                   ,['true']
+                  }
+                 ,{#channel{reseller_id=AccountId
+                            ,reseller_billing = <<"flat_rate">>
+                            ,direction = <<"inbound">>
+                            ,_='_'}
+                   ,[]
+                   ,['true']
+                  }
+                 ,{#channel{reseller_id=AccountId
+                            ,reseller_billing = <<"flat_rate_burst">>
+                            ,direction = <<"inbound">>
+                            ,_='_'}
+                   ,[]
+                   ,['true']
+                  }
+                ],
+    ets:select_count(?TAB, MatchSpec).     
 
+-spec outbound_flat_rate(ne_binary()) -> non_neg_integer().
 outbound_flat_rate(AccountId) ->
-    io:format("j5_channels:outbound_flat_rate(~s)~n", [AccountId]),
-    0.
+    MatchSpec = [{#channel{account_id=AccountId
+                           ,account_billing = <<"flat_rate">>
+                           ,direction = <<"outbound">>
+                           ,_='_'}
+                  ,[]
+                  ,['true']
+                 }
+                 ,{#channel{account_id=AccountId
+                            ,account_billing = <<"flat_rate_burst">>
+                            ,direction = <<"outbound">>
+                            ,_='_'}
+                   ,[]
+                   ,['true']
+                  }
+                 ,{#channel{reseller_id=AccountId
+                            ,reseller_billing = <<"flat_rate">>
+                            ,direction = <<"outbound">>
+                            ,_='_'}
+                   ,[]
+                   ,['true']
+                  }
+                 ,{#channel{reseller_id=AccountId
+                            ,reseller_billing = <<"flat_rate_burst">>
+                            ,direction = <<"outbound">>
+                            ,_='_'}
+                   ,[]
+                   ,['true']
+                  }
+                ],
+    ets:select_count(?TAB, MatchSpec).     
+
+-spec authorized(wh_json:object()) -> 'ok'.
+authorized(JObj) ->
+    gen_server:cast(?SERVER, {'authorized', JObj}).
+
+-spec remove(ne_binary()) -> 'ok'.
+remove(CallId) ->
+    gen_server:cast(?SERVER, {'remove', CallId}).
+
+-spec handle_authz_resp(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_authz_resp(JObj, _Props) ->
+    'true' = wapi_authz:authz_resp_v(JObj),
+    case wh_json:is_true(<<"Is-Authorized">>, JObj) of
+        'true' -> authorized(JObj);
+        'false' -> 'ok'
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -99,6 +219,11 @@ outbound_flat_rate(AccountId) ->
 %%--------------------------------------------------------------------
 init([]) ->
     wh_hooks_listener:register(),
+    _ = ets:new(?TAB, ['set'
+                       ,'protected'
+                       ,'named_table'
+                       ,{'keypos', #channel.call_id}
+                      ]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -128,6 +253,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'authorized', JObj}, State) ->
+    ets:insert(?TAB, from_jobj(JObj)),
+    {'noreply', State};
+handle_cast({'remove', CallId}, State) ->
+    ets:delete(?TAB, CallId),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -141,12 +272,27 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_CREATE">>, JObj), State) ->
+handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
+    %% insert_new keeps a CHANNEL_CREATE from overriding an entry from
+    %% an auth_resp BUT an auth_resp CAN override a CHANNEL_CREATE
+    ets:insert_new(?TAB, from_jobj(JObj)),
     {'noreply', State};
-handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_DESTROY">>, JObj), State) ->
+handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
+    ets:delete(?TAB, wh_json:get_value(<<"Call-ID">>, JObj)),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
+handle_event(_JObj, _State) ->
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -176,24 +322,32 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-from_json(JObj) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    #channel{uuid = wh_json:get_value(<<"Call-ID">>, JObj)
-             ,destination = wh_json:get_value(<<"Request">>, JObj) %% TODO: strip realm
-             ,direction = wh_json:get_value(<<"Call-Direction">>, JObj)
-             ,account_id = wh_json:get_value(<<"Account-ID">>, CCVs)
-             ,account_billing = wh_json:get_value(<<"Account-Billing">>, CCVs)
-             ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CCVs)
-             ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
-             ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
-             ,resource_id = wh_json:get_value(<<"Resource-ID">>, CCVs)
-%%             ,fetch_id = wh_json:get_value(?GET_CCV(<<"Fetch-ID">>), JObj)
-             ,reseller_id = wh_json:get_value(<<"Reseller-ID">>, CCVs)
-             ,reseller_billing = wh_json:get_value(<<"Reseller-Billing">>, CCVs)
-             ,realm = wh_json:get_value(<<"Realm">>, CCVs)
-             ,username = wh_json:get_value(<<"Username">>, CCVs)
-             ,node = wh_json:get_value(<<"Media-Server">>, JObj)
-             ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, 0)
-%%             ,other_leg=get_other_leg(wh_json:get_value(<<"Unique-ID">>, JObj), JObj)
+-spec from_jobj(wh_json:object()) -> #channel{}.
+from_jobj(JObj) ->
+    %% CHANNEL_CREATE has bunch of stuff in CCVs where as auth_resp
+    %%  is root level, so if no CCVs then just use the JObj as is...
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, JObj),
+    #channel{call_id=wh_json:get_value(<<"Call-ID">>, JObj)
+             ,other_leg_call_id=wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
+             ,direction=wh_json:get_value(<<"Call-Direction">>, JObj)
+             ,account_id=wh_json:get_value(<<"Account-ID">>, CCVs)
+             ,account_billing=wh_json:get_value(<<"Account-Billing">>, CCVs)
+             ,reseller_id=wh_json:get_value(<<"Reseller-ID">>, CCVs)
+             ,reseller_billing=wh_json:get_value(<<"Reseller-Billing">>, CCVs)
+             ,soft_limit=wh_json:is_true(<<"Soft-Limit">>, JObj)
+             ,timestamp=wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())
             }.
+
+-type unique_channel() :: {ne_binary(), api_binary()}.
+-type unique_channels() :: [unique_channel(),...] | [].
+
+-spec count_unique_calls(unique_channels()) -> non_neg_integer().
+count_unique_calls(Channels) ->
+    sets:size(count_unique_calls(Channels, sets:new())).
+
+-spec count_unique_calls(unique_channels(), set()) -> non_neg_integer().
+count_unique_calls([], Set) -> Set;
+count_unique_calls([{CallId, 'undefined'}|Channels], Set) ->
+    count_unique_calls(Channels, sets:add_element(CallId, Set));
+count_unique_calls([{_, CallId}|Channels], Set) ->
+    count_unique_calls(Channels, sets:add_element(CallId, Set)).

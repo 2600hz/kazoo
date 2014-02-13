@@ -149,7 +149,7 @@ maybe_outbound_soft_limit(Request, Limits) ->
         'false' -> Request;
         'true' ->
             lager:debug("outbound channel authorization is not enforced (soft limit)", []),
-            j5_request:authorize(<<"soft_limit">>, Request, Limits)
+            j5_request:set_soft_limit(Request)
     end.
 
 -spec maybe_inbound_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
@@ -158,7 +158,7 @@ maybe_inbound_soft_limit(Request, Limits) ->
         'false' -> Request;
         'true' ->
             lager:debug("inbound channel authorization is not enforced (soft limit)", []),
-            j5_request:authorize(<<"soft_limit">>, Request, Limits)
+            j5_request:set_soft_limit(Request)
     end.
 
 -spec send_response(j5_request:request()) -> 'ok'.
@@ -170,9 +170,18 @@ send_response(Request) ->
               ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
               ,{<<"Reseller-ID">>, j5_request:reseller_id(Request)}
               ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
+              ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
+              ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
+              ,{<<"Soft-Limit">>, wh_util:to_binary(j5_request:soft_limit(Request))}
               ,{<<"Msg-ID">>, j5_request:message_id(Request)}
               ,{<<"Call-ID">>, j5_request:call_id(Request)}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    io:format("~p~n", [Resp]),
-    wapi_authz:publish_authz_resp(ServerId, Resp).
+    wapi_authz:publish_authz_resp(ServerId, Resp),    
+    case j5_request:is_authorized(Request) of
+        'true' ->
+            wapi_authz:broadcast_authz_resp(Resp),
+            j5_channels:authorized(wh_json:from_list(Resp));
+        'false' -> 'ok'
+    end.
+            

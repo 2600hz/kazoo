@@ -26,12 +26,17 @@
 -export([set_reseller_id/2
          ,reseller_id/1
         ]).
+-export([set_soft_limit/1
+         ,clear_soft_limit/1
+         ,soft_limit/1
+        ]).
 -export([billing/2
          ,account_billing/1
          ,reseller_billing/1
         ]).
 -export([call_direction/1]).
 -export([call_id/1]).
+-export([other_leg_call_id/1]).
 -export([from/1]).
 -export([to/1]).
 -export([answered_time/1]).
@@ -51,8 +56,10 @@
                   ,reseller_id :: api_binary()
                   ,reseller_billing :: api_binary()
                   ,reseller_authorized = 'false' :: boolean()
+                  ,soft_limit = 'false' :: boolean()
                   ,call_id :: api_binary()
                   ,call_direction :: api_binary()
+                  ,other_leg_call_id :: api_binary()
                   ,sip_to :: api_binary()
                   ,sip_from :: api_binary()
                   ,sip_request :: api_binary()
@@ -61,6 +68,7 @@
                   ,billing_seconds = 0 :: non_neg_integer()
                   ,answered_time = 0 :: non_neg_integer()
                   ,timestamp = 0 :: non_neg_integer()
+                  ,request_jobj = wh_json:new() :: wh_json:object()
                  }).
 -opaque request() :: #request{}.
 -export_type([request/0]).
@@ -71,7 +79,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec from_jobj(wh_json:object()) -> #request{}.
+-spec from_jobj(wh_json:object()) -> request().
 from_jobj(JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     #request{account_id = wh_json:get_ne_value(<<"Account-ID">>, CCVs)
@@ -80,6 +88,7 @@ from_jobj(JObj) ->
              ,reseller_billing = wh_json:get_ne_value(<<"Reseller-Billing">>, CCVs, <<"limits_enforced">>)
              ,call_id = wh_json:get_ne_value(<<"Call-ID">>, JObj)
              ,call_direction = wh_json:get_value(<<"Call-Direction">>, JObj)
+             ,other_leg_call_id = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
              ,sip_to = wh_json:get_ne_value(<<"To">>, JObj)
              ,sip_from = wh_json:get_ne_value(<<"From">>, JObj)
              ,sip_request = wh_json:get_value(<<"Request">>, JObj)
@@ -87,7 +96,8 @@ from_jobj(JObj) ->
              ,server_id = wh_json:get_value(<<"Server-ID">>, JObj)
              ,billing_seconds = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
              ,answered_time = wh_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
-             ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())}.
+             ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())
+             ,request_jobj = JObj}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -95,7 +105,7 @@ from_jobj(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(ne_binary(), #request{}, j5_limits:limits()) -> #request{}.
+-spec authorize(ne_binary(), #request{}, j5_limits:limits()) -> request().
 authorize(Reason, #request{reseller_id=ResellerId
                            ,account_id=AccountId}=Request
           ,Limits) ->
@@ -112,14 +122,14 @@ authorize(Reason, #request{reseller_id=ResellerId
                             ,account_authorized='true'}
     end.
 
--spec authorize_account(ne_binary(), #request{}) -> #request{}.
+-spec authorize_account(ne_binary(), #request{}) -> request().
 authorize_account(Reason, #request{account_id=AccountId}=Request) ->
     lager:debug("account ~s authorized channel: ~s"
                 ,[AccountId, Reason]),
     Request#request{account_billing=Reason
                     ,account_authorized='true'}.
 
--spec authorize_reseller(ne_binary(), #request{}) -> #request{}.
+-spec authorize_reseller(ne_binary(), #request{}) -> request().
 authorize_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
     lager:debug("reseller ~s authorized channel: ~s"
                 ,[ResellerId, Reason]),
@@ -132,7 +142,7 @@ authorize_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec deny(ne_binary(), #request{}, j5_limits:limits()) -> #request{}.
+-spec deny(ne_binary(), #request{}, j5_limits:limits()) -> request().
 deny(Reason, #request{reseller_id=ResellerId
                      ,account_id=AccountId}=Request
      ,Limits) ->
@@ -149,14 +159,14 @@ deny(Reason, #request{reseller_id=ResellerId
                             ,account_authorized='false'}
     end.
 
--spec deny_account(ne_binary(), #request{}) -> #request{}.
+-spec deny_account(ne_binary(), #request{}) -> request().
 deny_account(Reason, #request{account_id=AccountId}=Request) ->
     lager:debug("account ~s denied channel: ~s"
                 ,[AccountId, Reason]),
     Request#request{account_billing=Reason
                     ,account_authorized='false'}.
 
--spec deny_reseller(ne_binary(), #request{}) -> #request{}.
+-spec deny_reseller(ne_binary(), #request{}) -> request().
 deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
     lager:debug("reseller ~s denied channel: ~s"
                 ,[ResellerId, Reason]),
@@ -193,7 +203,7 @@ is_authorized(#request{account_authorized=AccountAuthorized
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_id(api_binary(), #request{}) -> #request{}.
+-spec set_account_id(api_binary(), #request{}) -> request().
 set_account_id(AccountId, Request) -> Request#request{account_id=AccountId}.
 
 -spec account_id(#request{}) -> api_binary().
@@ -205,7 +215,7 @@ account_id(#request{account_id=AccountId}) -> AccountId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_reseller_id(api_binary(), #request{}) -> #request{}.
+-spec set_reseller_id(api_binary(), #request{}) -> request().
 set_reseller_id(ResellerId, Request) ->
     Request#request{reseller_id=ResellerId}.
 
@@ -233,6 +243,32 @@ account_billing(#request{account_billing=Billing}) -> Billing.
 
 -spec reseller_billing(#request{}) -> api_binary().
 reseller_billing(#request{reseller_billing=Billing}) -> Billing.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_soft_limit(#request{}) -> request().
+set_soft_limit(Request) ->
+    Request#request{soft_limit='true'}.
+
+-spec clear_soft_limit(#request{}) -> request().
+clear_soft_limit(Request) ->
+    Request#request{soft_limit='false'}.
+
+-spec soft_limit(#request{}) -> api_binary().
+soft_limit(#request{soft_limit=SoftLimit}) -> SoftLimit.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec other_leg_call_id(#request{}) -> api_binary().
+other_leg_call_id(#request{other_leg_call_id=CallId}) -> CallId.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -336,7 +372,8 @@ number(#request{sip_request=SIPRequest}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec per_minute_cost(#request{}) -> non_neg_integer().
-per_minute_cost(_Request) -> 0.
+per_minute_cost(#request{request_jobj=JObj}) ->
+    wht_util:per_minute_cost(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -345,4 +382,5 @@ per_minute_cost(_Request) -> 0.
 %% @end
 %%--------------------------------------------------------------------
 -spec call_cost(#request{}) -> non_neg_integer().
-call_cost(_Request) -> 0.
+call_cost(#request{request_jobj=JObj}) ->
+    wht_util:call_cost(JObj).
