@@ -440,6 +440,32 @@ execute_job(JObj, Q) ->
                             {'ok', string(), wh_proplist(), ne_binary()} |
                             {'error', term()}.
 fetch_document(JObj) ->
+    case wh_json:get_value(<<"_attachments">>, JObj, 'undefined') of
+        'undefined' -> fetch_document_from_url(JObj);
+        Attachments -> fetch_document_from_attachment(JObj)
+    end.
+
+
+-spec fetch_document_from_attachment(wh_json:object()) ->
+                            {'ok', string(), wh_proplist(), ne_binary()} |
+                            {'error', term()}.
+fetch_document_from_attachment(JObj) ->
+    JobId = wh_json:get_value(<<"_id">>, JObj),
+    Attachments = wh_json:get_value(<<"_attachments">>, JObj),
+    Keys = wh_json:get_keys(Attachments),
+    AttachmentName = lists:nth(1,Keys), 
+    AttachmentDoc = wh_json:get_value(AttachmentName, Attachments), 
+    CT = wh_json:get_value(<<"content_type">>, AttachmentDoc),
+    Props = [{"Content-Type",CT}],  
+    {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES,JobId,AttachmentName),
+    {'ok',"200",Props,Contents}.
+    
+    
+    
+-spec fetch_document_from_url(wh_json:object()) ->
+                            {'ok', string(), wh_proplist(), ne_binary()} |
+                            {'error', term()}.
+fetch_document_from_url(JObj) ->
     FetchRequest = wh_json:get_value(<<"document">>, JObj),
     Url = wh_json:get_string_value(<<"url">>, FetchRequest),
     Method = wh_util:to_atom(wh_json:get_value(<<"method">>, FetchRequest, <<"get">>), 'true'),
@@ -508,10 +534,14 @@ normalize_content_type(CT) ->
 -spec send_fax(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
     IgnoreEarlyMedia = wh_util:to_binary(whapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
+    ToNumber = wnm_util:to_e164(wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj))),
+    ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = wh_util:rand_hex_binary(8),
     Request = props:filter_undefined([
                 {<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
                ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
+               ,{<<"Outbound-Callee-ID-Number">>, ToNumber}
+               ,{<<"Outbound-Callee-ID-Name">>, ToName }
                ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
                ,{<<"To-DID">>, wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))}
                ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity_number">>, JObj)}
