@@ -25,6 +25,7 @@
           ,record = <<"3">> :: ne_binary()
          }).
 -type menu_keys() :: #menu_keys{}.
+-define(MENU_KEY_LENGTH, 1).
 
 -record(cf_menu_data, {
           menu_id :: api_binary()
@@ -85,9 +86,11 @@ menu_loop(#cf_menu_data{retries=Retries
                         ,timeout=Timeout
                         ,record_pin=RecordPin
                         ,record_from_offnet=RecOffnet
+                        ,interdigit_timeout=Interdigit
                        }=Menu, Call) ->
+    NoopId = whapps_call_command:play(get_prompt(Menu, Call), Call),
 
-    case whapps_call_command:b_play_and_collect_digits(1, MaxLength, get_prompt(Menu, Call), 1, Timeout, Call) of
+    case whapps_call_command:collect_digits(MaxLength, Timeout, Interdigit, NoopId, Call) of
         {'ok', <<>>} ->
             lager:info("menu entry timeout"),
             case cf_exe:attempt(<<"timeout">>, Call) of
@@ -393,12 +396,15 @@ review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
                                                           ,record=RecordKey
                                                           ,save=SaveKey
                                                          }
+                                          ,timeout=Timeout
+                                          ,interdigit_timeout=Interdigit
                                          }=Menu, Call) ->
     lager:info("playing menu greeting review options"),
     _ = whapps_call_command:flush_dtmf(Call),
-    Prompt = whapps_util:get_prompt(<<"vm-review_recording">>, Call),
 
-    case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
+    NoopId = whapps_call_command:prompt(<<"vm-review_recording">>, Call),
+
+    case whapps_call_command:collect_digits(?MENU_KEY_LENGTH, Timeout, Interdigit, NoopId, Call) of
         {'ok', ListenKey} ->
             _ = whapps_call_command:b_play(MediaName, Call),
             review_recording(MediaName, Menu, Call);
