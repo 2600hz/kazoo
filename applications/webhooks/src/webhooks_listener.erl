@@ -416,7 +416,7 @@ print_summary({[#webhook{uri=URI
 init([]) ->
     wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
-    wh_hooks_listener:register(),
+    wh_hooks:register_rr(),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
