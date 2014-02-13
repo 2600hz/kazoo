@@ -13,6 +13,7 @@
 -export([start_link/1]).
 -export([handle_tx_resp/2
          ,handle_call_event/2
+         ,handle_fax_event/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -41,6 +42,9 @@
                      }
                      ,{{?MODULE, 'handle_call_event'}
                        ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+                      }
+                     ,{{?MODULE, 'handle_fax_event'}
+                       ,[{<<"call_event">>, <<"CHANNEL_FAX_STATUS">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -73,6 +77,10 @@ handle_tx_resp(JObj, Props) ->
 handle_call_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
+
+handle_fax_event(JObj, Props) ->
+    Srv = props:get_value('server', Props),
+    gen_server:cast(Srv, {'fax_status', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -134,6 +142,10 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
     gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', reset(State)};
 handle_cast({'tx_resp', _, _}, State) ->
+    {'noreply', State};
+handle_cast({'fax_status', JobId, JObj}, State) ->
+    lager:debug("fax status ~p , ~p",[JobId, JObj]),
+    %% TODO update stats/websockets/job 
     {'noreply', State};
 handle_cast({_, Pid, _}, #state{queue_name='undefined'}=State) when is_pid(Pid) ->
     lager:debug("worker received request with unknown queue name, rejecting", []),
@@ -558,7 +570,8 @@ send_fax(JobId, JObj, Q) ->
                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ]),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-                                              ,{'restrict_to', [<<"CHANNEL_DESTROY">>]}
+                                              ,{'restrict_to', [<<"CHANNEL_DESTROY">>
+                                                               ,<<"CHANNEL_FAX_STATUS">>]}
                                              ]),
     wapi_offnet_resource:publish_req(Request).
 
