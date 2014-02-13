@@ -55,6 +55,8 @@ handle(Data, Call) ->
         CF ->
             whapps_call_command:answer(Call),
             CaptureGroup = whapps_call:kvs_fetch('cf_capture_group', Call),
+            lager:debug("executing ~s", [wh_json:get_value(<<"action">>, Data)]),
+
             CF1 = case wh_json:get_value(<<"action">>, Data) of
                       <<"activate">> -> cf_activate(CF, CaptureGroup, Call);       %% Support for NANPA *72
                       <<"deactivate">> -> cf_deactivate(CF, Call);                 %% Support for NANPA *73
@@ -139,7 +141,7 @@ cf_toggle(CF, _, Call) ->
 %%--------------------------------------------------------------------
 -spec cf_activate(callfwd(), 'undefined' | binary(), whapps_call:call()) -> callfwd().
 cf_activate(CF1, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
-    lager:info("activating call forwarding"),
+    lager:info("activating call forwarding to '~s'", [CaptureGroup]),
     CF2 = #callfwd{number=Number} = cf_update_number(CF1, CaptureGroup, Call),
     _ = try
             {'ok', _} = whapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
@@ -194,16 +196,19 @@ cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call)
                                             ,Call
                                            )
     of
-        {'ok', Short} when byte_size(Short) >= Min ->
+        {'ok', Short} when byte_size(Short) =< Min ->
+            lager:debug("too short of input(~p): '~s'", [Min, Short]),
             cf_update_number(CF, CaptureGroup, Call);
         {'ok', Number} ->
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             lager:info("update call forwarding number with ~s", [Number]),
             CF#callfwd{number=Number};
-        {'error', _} -> exit('normal')
+        {'error', _E} ->
+            lager:debug("error collecting digits: ~p", [_E]),
+            exit('normal')
     end;
 cf_update_number(CF, CaptureGroup, _) ->
-    lager:info("update call forwarding number with ~s", [CaptureGroup]),
+    lager:info("update call forwarding number with '~s'", [CaptureGroup]),
     CF#callfwd{number=CaptureGroup}.
 
 %%--------------------------------------------------------------------
