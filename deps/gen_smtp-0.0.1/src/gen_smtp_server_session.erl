@@ -108,20 +108,23 @@ start(Socket, Module, Options) ->
 %% @private
 -spec(init/1 :: (Args :: list()) -> {'ok', #state{}, ?TIMEOUT} | {'stop', any()} | 'ignore').
 init([Socket, Module, Options]) ->
-	{ok, {PeerName, _Port}} = socket:peername(Socket),
-	case Module:init(proplists:get_value(hostname, Options, smtp_util:guess_FQDN()), proplists:get_value(sessioncount, Options, 0), PeerName, proplists:get_value(callbackoptions, Options, [])) of
-		{ok, Banner, CallbackState} ->
-			socket:send(Socket, ["220 ", Banner, "\r\n"]),
-			socket:active_once(Socket),
-			{ok, #state{socket = Socket, module = Module, options = Options, callbackstate = CallbackState}, ?TIMEOUT};
-		{stop, Reason, Message} ->
-			socket:send(Socket, [Message, "\r\n"]),
-			socket:close(Socket),
-			{stop, Reason};
-		ignore ->
-			socket:close(Socket),
-			ignore
-	end.
+	case socket:peername(Socket) of
+        {ok, {PeerName, _Port}} ->
+            case Module:init(proplists:get_value(hostname, Options, smtp_util:guess_FQDN()), proplists:get_value(sessioncount, Options, 0), PeerName, proplists:get_value(callbackoptions, Options, [])) of
+                {ok, Banner, CallbackState} ->
+                    socket:send(Socket, ["220 ", Banner, "\r\n"]),
+                    socket:active_once(Socket),
+                    {ok, #state{socket = Socket, module = Module, options = Options, callbackstate = CallbackState}, ?TIMEOUT};
+                {stop, Reason, Message} ->
+                    socket:send(Socket, [Message, "\r\n"]),
+                    socket:close(Socket),
+                    {stop, Reason};
+                ignore ->
+                    socket:close(Socket),
+                    ignore
+            end;
+        Other -> ignore
+    end.
 
 %% @hidden
 -spec handle_call(Message :: any(), From :: {pid(), reference()}, #state{}) -> {'stop', 'normal', 'ok', #state{}} | {'reply', {'unknown_call', any()}, #state{}}.
