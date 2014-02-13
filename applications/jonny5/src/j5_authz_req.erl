@@ -17,14 +17,14 @@ handle_req(JObj, _) ->
     wh_util:put_callid(JObj),
     maybe_determine_account_id(j5_request:from_jobj(JObj)).
 
--spec maybe_determine_account_id(j5_request()) -> 'ok'.
+-spec maybe_determine_account_id(j5_request:request()) -> 'ok'.
 maybe_determine_account_id(Request) ->
     case j5_request:account_id(Request) of
         'undefined' -> determine_account_id(Request);
         _Else -> maybe_account_limited(Request)
     end.
 
--spec determine_account_id(j5_request()) -> 'ok'.
+-spec determine_account_id(j5_request:request()) -> 'ok'.
 determine_account_id(Request) ->
     Number = j5_request:number(Request),
     case wh_number_manager:lookup_account_by_number(Number) of
@@ -43,7 +43,7 @@ determine_account_id(Request) ->
             send_response(Request)
     end.
 
--spec maybe_account_limited(j5_request()) -> 'ok'.
+-spec maybe_account_limited(j5_request:request()) -> 'ok'.
 maybe_account_limited(Request) ->
     AccountId = j5_request:account_id(Request),
     Limits = j5_limits:get(AccountId),
@@ -56,14 +56,14 @@ maybe_account_limited(Request) ->
         'true' -> maybe_determine_reseller_id(R)
     end.
 
--spec maybe_determine_reseller_id(j5_request()) -> 'ok'. 
+-spec maybe_determine_reseller_id(j5_request:request()) -> 'ok'. 
 maybe_determine_reseller_id(Request) ->
     case j5_request:reseller_id(Request) of
         'undefined' -> determine_reseller_id(Request);
         _Else -> maybe_reseller_limited(Request)
     end.
 
--spec determine_reseller_id(j5_request()) -> 'ok'. 
+-spec determine_reseller_id(j5_request:request()) -> 'ok'. 
 determine_reseller_id(Request) ->
     AccountId = j5_request:account_id(Request),
     ResellerId = wh_servies:find_reseller_id(AccountId),
@@ -71,7 +71,7 @@ determine_reseller_id(Request) ->
       j5_request:set_reseller_id(ResellerId, Request)
      ).
 
--spec maybe_reseller_limited(j5_request()) -> 'ok'.
+-spec maybe_reseller_limited(j5_request:request()) -> 'ok'.
 maybe_reseller_limited(Request) ->
     ResellerId = j5_request:reseller_id(Request),
     case j5_request:account_id(Request) =:= ResellerId of
@@ -92,7 +92,7 @@ maybe_reseller_limited(Request) ->
             end
     end.
 
--spec maybe_authorize(j5_request(), j5_limits:limits()) -> j5_request().
+-spec maybe_authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_authorize(Request, Limits) ->
     case j5_limits:enabled(Limits) of
         'true' -> maybe_authorize_exception(Request, Limits);
@@ -102,7 +102,7 @@ maybe_authorize(Request, Limits) ->
             j5_request:authorize(<<"limits_disabled">>, Request, Limits)
     end.
 
--spec maybe_authorize_exception(j5_request(), j5_limits:limits()) -> 'ok'.
+-spec maybe_authorize_exception(j5_request:request(), j5_limits:limits()) -> 'ok'.
 maybe_authorize_exception(Request, Limits) ->
     CallDirection = j5_request:call_direction(Request),
     Number = j5_request:number(Request),
@@ -116,7 +116,7 @@ maybe_authorize_exception(Request, Limits) ->
         _Else -> authorize(Request, Limits)
     end.
 
--spec authorize(j5_request(), j5_limits:limits()) -> authz_result().
+-spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
     %% TODO: hard limits?
     Routines = [fun j5_allotments:authorize/2
@@ -132,7 +132,7 @@ authorize(Request, Limits) ->
                   end, Request, Routines)
       ,Limits).
 
--spec maybe_soft_limit(j5_request(), j5_limits:limits()) -> j5_request().
+-spec maybe_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_soft_limit(Request, Limits) ->
    case j5_request:is_authorized(Request) of
        'true' -> Request;
@@ -143,7 +143,7 @@ maybe_soft_limit(Request, Limits) ->
            end
    end.
 
--spec maybe_outbound_soft_limit(j5_request(), j5_limits:limits()) -> j5_request().
+-spec maybe_outbound_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_outbound_soft_limit(Request, Limits) ->
     case j5_limits:soft_limit_outbound(Limits) of
         'false' -> Request;
@@ -152,7 +152,7 @@ maybe_outbound_soft_limit(Request, Limits) ->
             j5_request:authorize(<<"soft_limit">>, Request, Limits)
     end.
 
--spec maybe_inbound_soft_limit(j5_request(), j5_limits:limits()) -> j5_request().
+-spec maybe_inbound_soft_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_inbound_soft_limit(Request, Limits) ->
     case j5_limits:soft_limit_inbound(Limits) of
         'false' -> Request;
@@ -161,7 +161,7 @@ maybe_inbound_soft_limit(Request, Limits) ->
             j5_request:authorize(<<"soft_limit">>, Request, Limits)
     end.
 
--spec send_response(j5_request()) -> 'ok'.
+-spec send_response(j5_request:request()) -> 'ok'.
 send_response(Request) ->
     ServerId = j5_request:server_id(Request),
     Resp = props:filter_undefined(

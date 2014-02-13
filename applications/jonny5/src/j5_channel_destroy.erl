@@ -34,7 +34,7 @@ handle_req(JObj, _Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec account_reconcile_cdr(j5_request()) -> 'ok'.
+-spec account_reconcile_cdr(j5_request:request()) -> 'ok'.
 account_reconcile_cdr(Request) ->
     case j5_request:account_id(Request) of
         'undefined' -> 'ok';
@@ -48,7 +48,7 @@ account_reconcile_cdr(Request) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reseller_reconcile_cdr(j5_request()) -> 'ok'.
+-spec reseller_reconcile_cdr(j5_request:request()) -> 'ok'.
 reseller_reconcile_cdr(Request) ->
     AccountId = j5_request:account_id(Request),
     case j5_request:reseller_id(Request) of
@@ -64,7 +64,7 @@ reseller_reconcile_cdr(Request) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_cdr(j5_request(), j5_limits:limits()) -> 'ok'.
+-spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_cdr(Request, Limits) ->
     _ = j5_allotments:reconcile_cdr(Request, Limits),
     _ = j5_flat_rate:reconcile_cdr(Request, Limits),

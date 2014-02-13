@@ -45,13 +45,33 @@
 
 -include_lib("jonny5.hrl").
 
+-record(request, {account_id :: api_binary()
+                  ,account_billing :: api_binary()
+                  ,account_authorized = 'false' :: boolean()
+                  ,reseller_id :: api_binary()
+                  ,reseller_billing :: api_binary()
+                  ,reseller_authorized = 'false' :: boolean()
+                  ,call_id :: api_binary()
+                  ,call_direction :: api_binary()
+                  ,sip_to :: api_binary()
+                  ,sip_from :: api_binary()
+                  ,sip_request :: api_binary()
+                  ,message_id :: api_binary()
+                  ,server_id :: api_binary()
+                  ,billing_seconds = 0 :: non_neg_integer()
+                  ,answered_time = 0 :: non_neg_integer()
+                  ,timestamp = wh_util:current_tstamp()
+                 }).
+-opaque request() :: #request{}.
+-export_type([request/0]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec from_jobj(wh_json:object()) -> j5_request().
+-spec from_jobj(wh_json:object()) -> #request{}.
 from_jobj(JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     #request{account_id = wh_json:get_ne_value(<<"Account-ID">>, CCVs)
@@ -74,7 +94,7 @@ from_jobj(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(ne_binary(), j5_request(), j5_limits:limits()) -> j5_request().
+-spec authorize(ne_binary(), #request{}, j5_limits:limits()) -> #request{}.
 authorize(Reason, #request{reseller_id=ResellerId
                            ,account_id=AccountId}=Request
           ,Limits) ->
@@ -91,14 +111,14 @@ authorize(Reason, #request{reseller_id=ResellerId
                             ,account_authorized='true'}
     end.
 
--spec authorize_account(ne_binary(), j5_request()) -> j5_request().
+-spec authorize_account(ne_binary(), #request{}) -> #request{}.
 authorize_account(Reason, #request{account_id=AccountId}=Request) ->
     lager:debug("account ~s authorized channel: ~s"
                 ,[AccountId, Reason]),
     Request#request{account_billing=Reason
                     ,account_authorized='true'}.
 
--spec authorize_reseller(ne_binary(), j5_request()) -> j5_request().
+-spec authorize_reseller(ne_binary(), #request{}) -> #request{}.
 authorize_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
     lager:debug("reseller ~s authorized channel: ~s"
                 ,[ResellerId, Reason]),
@@ -111,7 +131,7 @@ authorize_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec deny(ne_binary(), j5_request(), j5_limits:limits()) -> j5_request().
+-spec deny(ne_binary(), #request{}, j5_limits:limits()) -> #request{}.
 deny(Reason, #request{reseller_id=ResellerId
                      ,account_id=AccountId}=Request
      ,Limits) ->
@@ -128,14 +148,14 @@ deny(Reason, #request{reseller_id=ResellerId
                             ,account_authorized='false'}
     end.
 
--spec deny_account(ne_binary(), j5_request()) -> j5_request().
+-spec deny_account(ne_binary(), #request{}) -> #request{}.
 deny_account(Reason, #request{account_id=AccountId}=Request) ->
     lager:debug("account ~s denied channel: ~s"
                 ,[AccountId, Reason]),
     Request#request{account_billing=Reason
                     ,account_authorized='false'}.
 
--spec deny_reseller(ne_binary(), j5_request()) -> j5_request().
+-spec deny_reseller(ne_binary(), #request{}) -> #request{}.
 deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
     lager:debug("reseller ~s denied channel: ~s"
                 ,[ResellerId, Reason]),
@@ -148,7 +168,7 @@ deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_authorized(j5_request()) -> boolean().
+-spec is_authorized(#request{}) -> boolean().
 is_authorized(#request{account_id=AccountId
                        ,account_authorized=Authorized
                        ,reseller_id=AccountId}) -> Authorized;
@@ -156,7 +176,7 @@ is_authorized(#request{account_authorized=AccountAuthorized
                       ,reseller_authorized=ResellerAuthorized}) ->
     AccountAuthorized andalso ResellerAuthorized.
 
--spec is_authorized(j5_request(), j5_limits:limits()) -> boolean().
+-spec is_authorized(#request{}, j5_limits:limits()) -> boolean().
 is_authorized(#request{account_authorized=AccountAuthorized
                        ,reseller_id=ResellerId
                        ,reseller_authorized=ResellerAuthorized}
@@ -172,10 +192,10 @@ is_authorized(#request{account_authorized=AccountAuthorized
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_id(api_binary(), j5_request()) -> j5_request().
+-spec set_account_id(api_binary(), #request{}) -> #request{}.
 set_account_id(AccountId, Request) -> Request#request{account_id=AccountId}.
 
--spec account_id(j5_request()) -> api_binary().
+-spec account_id(#request{}) -> api_binary().
 account_id(#request{account_id=AccountId}) -> AccountId.
 
 %%--------------------------------------------------------------------
@@ -184,11 +204,11 @@ account_id(#request{account_id=AccountId}) -> AccountId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_reseller_id(api_binary(), j5_request()) -> j5_request().
+-spec set_reseller_id(api_binary(), #request{}) -> #request{}.
 set_reseller_id(ResellerId, Request) ->
     Request#request{reseller_id=ResellerId}.
 
--spec reseller_id(j5_request()) -> api_binary().
+-spec reseller_id(#request{}) -> api_binary().
 reseller_id(#request{reseller_id=ResellerId}) -> ResellerId.
 
 %%--------------------------------------------------------------------
@@ -197,7 +217,7 @@ reseller_id(#request{reseller_id=ResellerId}) -> ResellerId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec billing(j5_request(), j5_limits:limits()) -> api_binary().
+-spec billing(#request{}, j5_limits:limits()) -> api_binary().
 billing(#request{account_billing=AccountBilling
                  ,reseller_id=ResellerId
                  ,reseller_billing=ResellerBilling}
@@ -207,10 +227,10 @@ billing(#request{account_billing=AccountBilling
         'false' -> AccountBilling
     end.
 
--spec account_billing(j5_request()) -> api_binary().
+-spec account_billing(#request{}) -> api_binary().
 account_billing(#request{account_billing=Billing}) -> Billing.
 
--spec reseller_billing(j5_request()) -> api_binary().
+-spec reseller_billing(#request{}) -> api_binary().
 reseller_billing(#request{reseller_billing=Billing}) -> Billing.
 
 %%--------------------------------------------------------------------
@@ -219,7 +239,7 @@ reseller_billing(#request{reseller_billing=Billing}) -> Billing.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec timestamp(j5_request()) -> api_binary().
+-spec timestamp(#request{}) -> api_binary().
 timestamp(#request{timestamp=Timestamp}) -> Timestamp.
 
 %%--------------------------------------------------------------------
@@ -228,7 +248,7 @@ timestamp(#request{timestamp=Timestamp}) -> Timestamp.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec answered_time(j5_request()) -> api_binary().
+-spec answered_time(#request{}) -> api_binary().
 answered_time(#request{answered_time=AnsweredTime}) ->
     AnsweredTime.
 
@@ -238,7 +258,7 @@ answered_time(#request{answered_time=AnsweredTime}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec billing_seconds(j5_request()) -> api_binary().
+-spec billing_seconds(#request{}) -> api_binary().
 billing_seconds(#request{billing_seconds=BillingSeconds}) ->
     BillingSeconds.
 
@@ -248,7 +268,7 @@ billing_seconds(#request{billing_seconds=BillingSeconds}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec call_direction(j5_request()) -> api_binary().
+-spec call_direction(#request{}) -> api_binary().
 call_direction(#request{call_direction=CallDirection}) ->
     CallDirection.
 
@@ -258,7 +278,7 @@ call_direction(#request{call_direction=CallDirection}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec call_id(j5_request()) -> api_binary().
+-spec call_id(#request{}) -> api_binary().
 call_id(#request{call_id=CallId}) -> CallId.
 
 %%--------------------------------------------------------------------
@@ -267,7 +287,7 @@ call_id(#request{call_id=CallId}) -> CallId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec from(j5_request()) -> api_binary().
+-spec from(#request{}) -> api_binary().
 from(#request{sip_from=From}) -> From.
 
 %%--------------------------------------------------------------------
@@ -276,7 +296,7 @@ from(#request{sip_from=From}) -> From.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec to(j5_request()) -> api_binary().
+-spec to(#request{}) -> api_binary().
 to(#request{sip_to=To}) -> To.
 
 %%--------------------------------------------------------------------
@@ -285,7 +305,7 @@ to(#request{sip_to=To}) -> To.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec message_id(j5_request()) -> api_binary().
+-spec message_id(#request{}) -> api_binary().
 message_id(#request{message_id=MessageId}) -> MessageId.
 
 %%--------------------------------------------------------------------
@@ -294,7 +314,7 @@ message_id(#request{message_id=MessageId}) -> MessageId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec server_id(j5_request()) -> api_binary().
+-spec server_id(#request{}) -> api_binary().
 server_id(#request{server_id=ServerId}) -> ServerId.
 
 %%--------------------------------------------------------------------
@@ -303,7 +323,7 @@ server_id(#request{server_id=ServerId}) -> ServerId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec number(j5_request()) -> ne_binary().
+-spec number(#request{}) -> ne_binary().
 number(#request{sip_request=SIPRequest}) ->
     [Number|_] = binary:split(SIPRequest, <<"@">>),
     Number.
@@ -314,7 +334,7 @@ number(#request{sip_request=SIPRequest}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec per_minute_cost(j5_request()) -> non_neg_integer().
+-spec per_minute_cost(#request{}) -> non_neg_integer().
 per_minute_cost(_Request) -> 0.
 
 %%--------------------------------------------------------------------
@@ -323,5 +343,5 @@ per_minute_cost(_Request) -> 0.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec call_cost(j5_request()) -> non_neg_integer().
+-spec call_cost(#request{}) -> non_neg_integer().
 call_cost(_Request) -> 0.

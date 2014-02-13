@@ -19,7 +19,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(j5_request(), j5_limits:limits()) -> j5_request().
+-spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
     Routines = [fun calls_at_limit/2
                 ,fun resource_consumption_at_limit/2
@@ -32,7 +32,7 @@ authorize(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reauthorize(j5_request(), j5_limits:limits()) -> j5_request().
+-spec reauthorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 reauthorize(Request, _) -> Request.
 
 %%--------------------------------------------------------------------
@@ -41,7 +41,7 @@ reauthorize(Request, _) -> Request.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_cdr(j5_request(), j5_limits:limits()) -> 'ok'.
+-spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_cdr(_, _) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -50,7 +50,7 @@ reconcile_cdr(_, _) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec calls_at_limit(j5_request(), j5_limits:limits()) -> j5_request().
+-spec calls_at_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 calls_at_limit(Request, Limits) ->
     Limit =  j5_limits:calls(Limits),
     Used = j5_channels:total_calls(j5_limits:account_id(Limits)),
@@ -65,7 +65,7 @@ calls_at_limit(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec resource_consumption_at_limit(j5_request(), j5_limits:limits()) -> j5_request().
+-spec resource_consumption_at_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 resource_consumption_at_limit(Request, Limits) ->
     Limit =  j5_limits:resource_consuming_calls(Limits),
     Used = j5_channels:resource_consuming(j5_limits:account_id(Limits)),

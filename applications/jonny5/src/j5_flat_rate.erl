@@ -30,7 +30,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(j5_request(), j5_limits:limits()) -> j5_request().
+-spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
     case eligible_for_flat_rate(Request) of
         'true' ->
@@ -48,7 +48,7 @@ authorize(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reauthorize(j5_request(), j5_limits:limits()) -> j5_request().
+-spec reauthorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 reauthorize(Request, _) -> Request.
 
 %%--------------------------------------------------------------------
@@ -57,7 +57,7 @@ reauthorize(Request, _) -> Request.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_cdr(j5_request(), j5_limits:limits()) -> 'ok'.
+-spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_cdr(_, _) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -66,7 +66,7 @@ reconcile_cdr(_, _) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec eligible_for_flat_rate(j5_request()) -> boolean().
+-spec eligible_for_flat_rate(j5_request:request()) -> boolean().
 eligible_for_flat_rate(Request) ->
     Number = wnm_util:to_e164(j5_request:number(Request)),
     TrunkWhitelist = ?WHITELIST,
@@ -81,7 +81,7 @@ eligible_for_flat_rate(Request) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_consume_flat_rate(j5_request(), j5_limits:limits()) -> j5_request().
+-spec maybe_consume_flat_rate(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_consume_flat_rate(Request, Limits) ->
     RemainingInbound = consume_inbound_limits(Request, Limits),
     RemainingOutbound = consume_outbound_limits(Request, Limits),
@@ -96,13 +96,13 @@ maybe_consume_flat_rate(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec consume_inbound_limits(j5_request(), j5_limits:limits()) -> integer().
+-spec consume_inbound_limits(j5_request:request(), j5_limits:limits()) -> integer().
 consume_inbound_limits(Request, Limits) ->
     Used = get_inbound_resources(Request, Limits),
     Limit = j5_limits:inbound_trunks(Limits),
     consume_limit(Limit, Used, <<"inbound">>).
 
--spec get_inbound_resources(j5_request(), j5_limits:limits()) -> integer().
+-spec get_inbound_resources(j5_request:request(), j5_limits:limits()) -> integer().
 get_inbound_resources(Request, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     CurrentUsage = j5_channels:inbound_flat_rate(AccountId),   
@@ -117,13 +117,13 @@ get_inbound_resources(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec consume_outbound_limits(j5_request(), j5_limits:limits()) -> integer().
+-spec consume_outbound_limits(j5_request:request(), j5_limits:limits()) -> integer().
 consume_outbound_limits(Request, Limits) ->
     Used = get_outbound_resources(Request, Limits),
     Limit = j5_limits:outbound_trunks(Limits),
     consume_limit(Limit, Used, <<"outbound">>).
 
--spec get_outbound_resources(j5_request(), j5_limits:limits()) -> integer().
+-spec get_outbound_resources(j5_request:request(), j5_limits:limits()) -> integer().
 get_outbound_resources(Request, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     CurrentUsage = j5_channels:outbound_flat_rate(AccountId),   

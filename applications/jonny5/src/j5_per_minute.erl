@@ -19,7 +19,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(j5_request(), j5_limits:limits()) -> j5_request().
+-spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
     lager:debug("checking if account ~s has available per-minute credit"
                 ,[j5_limits:account_id(Limits)]),
@@ -37,7 +37,7 @@ authorize(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reauthorize(j5_request(), j5_limits:limits()) -> 'ok'.
+-spec reauthorize(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reauthorize(Request, Limits) ->
     case j5_limits:reserve_amount(Limits) - j5_request:call_cost(Request) > 0 of
         'true' ->
@@ -46,7 +46,7 @@ reauthorize(Request, Limits) ->
         'false' -> maybe_debit_next_minute(Request, Limits)
     end.
 
--spec maybe_debit_next_minute(j5_request(), j5_limits:limits()) -> boolean().
+-spec maybe_debit_next_minute(j5_request:request(), j5_limits:limits()) -> boolean().
 maybe_debit_next_minute(Request, Limits) ->
     Amount = j5_request:per_minute_cost(Request),
     case maybe_credit_available(Amount, Limits) of
@@ -66,14 +66,14 @@ maybe_debit_next_minute(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_cdr(j5_request(), j5_limits:limits()) -> 'ok'.
+-spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_cdr(Request, Limits) ->
     case j5_request:billing(Request, Limits) of
         <<"per_minute">> -> reconcile_call_cost(Request, Limits);
         _Else -> 'ok'
     end.
 
--spec reconcile_call_cost(j5_request(), j5_limits:limits()) -> 'ok'.
+-spec reconcile_call_cost(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_call_cost(Request, Limits) ->
     CallId = j5_request:call_id(Request),
     AccountId = j5_limits:account_id(Limits),
@@ -152,7 +152,7 @@ maybe_postpay_credit_available(Balance, Amount, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_debit_transaction(ne_binary(), integer(), j5_request(), j5_limits:limits()) -> any().
+-spec create_debit_transaction(ne_binary(), integer(), j5_request:request(), j5_limits:limits()) -> any().
 create_debit_transaction(Event, Amount, Request, Limits) ->
     LedgerId = j5_limits:account_id(Limits),
     lager:debug("creating debit transaction in ledger ~s for $~w"
@@ -187,7 +187,7 @@ create_debit_transaction(Event, Amount, Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_credit_transaction(ne_binary(), integer(), j5_request(), j5_limits:limits()) -> any().
+-spec create_credit_transaction(ne_binary(), integer(), j5_request:request(), j5_limits:limits()) -> any().
 create_credit_transaction(Event, Amount, Request, Limits) ->
     LedgerId = j5_limits:account_id(Limits),
     lager:debug("creating credit transaction in ledger ~s for $~w"
@@ -216,7 +216,7 @@ create_credit_transaction(Event, Amount, Request, Limits) ->
                  )
      ).
 
--spec metadata(j5_request()) -> wh_json:object().
+-spec metadata(j5_request:request()) -> wh_json:object().
 metadata(Request) ->
     wh_json:from_list(
       [{<<"direction">>, j5_request:call_direction(Request)}
