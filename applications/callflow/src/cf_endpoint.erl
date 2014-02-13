@@ -525,11 +525,8 @@ maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
                  orelse
                    (not lists:member(Source, ?NON_DIRECT_MODULES)))
     of
-        'false' ->
-            io:format("cf_endpoint.erl:MARKER:529 ~p~n", [marker]),
-            {'error', 'cf_not_appropriate'};
+        'false' -> {'error', 'cf_not_appropriate'};
         'true' ->
-            io:format("cf_endpoint.erl:MARKER:532 ~p~n", [marker]),
             lager:info("creating call forwarding endpoint"),
             create_call_fwd_endpoint(Endpoint, Properties, CallFowarding, Call)
     end.
