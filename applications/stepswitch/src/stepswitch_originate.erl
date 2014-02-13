@@ -255,6 +255,8 @@ build_originate(#state{endpoints=Endpoints, resource_req=JObj, queue=Q, msg_id=M
       [{<<"Dial-Endpoint-Method">>, <<"single">>}
        ,{<<"Application-Name">>, Application}
        ,{<<"Msg-ID">>, MsgId}
+       ,{<<"Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
+       ,{<<"Outbound-Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
        ,{<<"Endpoints">>, Endpoints}
        ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
