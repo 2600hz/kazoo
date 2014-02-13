@@ -19,12 +19,12 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(j5_request(), j5_limits()) -> j5_request().
+-spec authorize(j5_request(), j5_limits:limits()) -> j5_request().
 authorize(Request, Limits) ->
     Allotment = try_find_allotment(Request, Limits),
     maybe_consume_allotment(Allotment, Request, Limits).
 
--spec maybe_consume_allotment('undefined'| wh_json:object(), j5_request(), j5_limits()) -> j5_request().
+-spec maybe_consume_allotment('undefined'| wh_json:object(), j5_request(), j5_limits:limits()) -> j5_request().
 maybe_consume_allotment('undefined', Request, _) -> 
     lager:debug("account has no allotment", []),
     Request;
@@ -50,7 +50,7 @@ maybe_consume_allotment(Allotment, Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reauthorize(j5_request(), j5_limits()) -> j5_request().
+-spec reauthorize(j5_request(), j5_limits:limits()) -> j5_request().
 reauthorize(Request, Limits) ->
     %% Until the call has been answered for 60 seconds we have
     %% a reservation from the authz_req
@@ -63,7 +63,7 @@ reauthorize(Request, Limits) ->
             maybe_tick_allotment_consumption(Allotment, Request, Limits)
     end.
 
--spec maybe_tick_allotment_consumption('undefined' | wh_json:object(), j5_request(), j5_limits()) -> j5_request().
+-spec maybe_tick_allotment_consumption('undefined' | wh_json:object(), j5_request(), j5_limits:limits()) -> j5_request().
 maybe_tick_allotment_consumption('undefined', _, _) -> 'ok';
 maybe_tick_allotment_consumption(Allotment, Request, Limits) ->
     Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
@@ -88,7 +88,7 @@ maybe_tick_allotment_consumption(Allotment, Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_cdr(j5_request(), j5_limits()) -> 'ok'.
+-spec reconcile_cdr(j5_request(), j5_limits:limits()) -> 'ok'.
 reconcile_cdr(Request, Limits) ->
     BillingSeconds = j5_request:billing_seconds(Request), 
     case j5_request:billing(Request, Limits) of
@@ -98,7 +98,7 @@ reconcile_cdr(Request, Limits) ->
         _Else -> 'ok'
     end.
 
--spec release_unsed_allotment(j5_request(), j5_limits()) -> 'ok'.
+-spec release_unsed_allotment(j5_request(), j5_limits:limits()) -> 'ok'.
 release_unsed_allotment(Request, Limits) ->
     case try_find_allotment(Request, Limits) of
         'undefined' -> 'ok';
@@ -112,7 +112,7 @@ release_unsed_allotment(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec try_find_allotment(j5_request(), j5_limits()) -> wh_json:object() | 'undefined'.
+-spec try_find_allotment(j5_request(), j5_limits:limits()) -> wh_json:object() | 'undefined'.
 try_find_allotment(Request, Limits) ->
     case wnm_util:classify_number(j5_request:number(Request)) of
         'undefined' -> 'undefined';
@@ -131,11 +131,11 @@ try_find_allotment(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec allotment_consumed_sofar(wh_json:object(), j5_limits()) -> integer() | {'error', _}.
+-spec allotment_consumed_sofar(wh_json:object(), j5_limits:limits()) -> integer() | {'error', _}.
 allotment_consumed_sofar(Allotment, Limits) ->
     allotment_consumed_sofar(Allotment, Limits, 0).
 
--spec allotment_consumed_sofar(wh_json:object(), j5_limits(), 0..3) -> integer() | {'error', _}.
+-spec allotment_consumed_sofar(wh_json:object(), j5_limits:limits(), 0..3) -> integer() | {'error', _}.
 allotment_consumed_sofar(_, _, Attempts) when Attempts > 2 -> {'error', 'not_found'};
 allotment_consumed_sofar(Allotment, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),
@@ -159,7 +159,7 @@ allotment_consumed_sofar(Allotment, Limits, Attempts) ->
             abs(wh_json:get_integer_value(<<"value">>, JObj, 0))
     end.
 
--spec add_transactions_view(ne_binary(), wh_json:object(), j5_limits(), 0..3) -> integer() | {'error', _}.
+-spec add_transactions_view(ne_binary(), wh_json:object(), j5_limits:limits(), 0..3) -> integer() | {'error', _}.
 add_transactions_view(LedgerDb, Allotment, Limits, Attempts) ->
     _ = couch_mgr:revise_views_from_folder(LedgerDb, 'jonny5'),
     allotment_consumed_sofar(Allotment, Limits, Attempts + 1).
@@ -193,7 +193,7 @@ cycle_start(<<"minutely">>) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_allotment_consumption(wh_json:object(), integer(), j5_request(), j5_limits()) -> wh_jobj_return().
+-spec start_allotment_consumption(wh_json:object(), integer(), j5_request(), j5_limits:limits()) -> wh_jobj_return().
 start_allotment_consumption(Allotment, Units, Request, Limits) ->
     CallId = j5_request:call_id(Request),
     Props = [{<<"_id">>, <<CallId/binary, "-start">>}
@@ -210,7 +210,7 @@ start_allotment_consumption(Allotment, Units, Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec tick_allotment_consumption(wh_json:object(), integer(), j5_request(), j5_limits()) -> wh_jobj_return().
+-spec tick_allotment_consumption(wh_json:object(), integer(), j5_request(), j5_limits:limits()) -> wh_jobj_return().
 tick_allotment_consumption(Allotment, Units, Request, Limits) ->
     CallId = j5_request:call_id(Request),
     Timestamp = j5_request:timestamp(Request),
@@ -229,7 +229,7 @@ tick_allotment_consumption(Allotment, Units, Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec return_allotment_consumption(wh_json:object(), integer(), j5_request(), j5_limits()) -> wh_jobj_return().
+-spec return_allotment_consumption(wh_json:object(), integer(), j5_request(), j5_limits:limits()) -> wh_jobj_return().
 return_allotment_consumption(Allotment, Units, Request, Limits) ->
     CallId = j5_request:call_id(Request),
     Props = [{<<"_id">>, <<CallId/binary, "-stop">>}
@@ -246,7 +246,7 @@ return_allotment_consumption(Allotment, Units, Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec write_to_ledger(proplist(), integer(), j5_limits()) -> wh_jobj_return().
+-spec write_to_ledger(proplist(), integer(), j5_limits:limits()) -> wh_jobj_return().
 write_to_ledger(Props, Units, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     LedgerDb = wh_util:format_account_mod_id(AccountId),

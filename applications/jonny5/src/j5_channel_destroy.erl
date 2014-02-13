@@ -64,7 +64,7 @@ reseller_reconcile_cdr(Request) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_cdr(j5_request(), j5_limits()) -> 'ok'.
+-spec reconcile_cdr(j5_request(), j5_limits:limits()) -> 'ok'.
 reconcile_cdr(Request, Limits) ->
     _ = j5_allotments:reconcile_cdr(Request, Limits),
     _ = j5_flat_rate:reconcile_cdr(Request, Limits),

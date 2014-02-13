@@ -9,6 +9,7 @@
 
 -export([get/1]).
 -export([fetch/1]).
+-export([to_props/1]).
 -export([account_id/1]).
 -export([enabled/1]).
 -export([soft_limit_outbound/1]).
@@ -94,6 +95,16 @@ fetch(AccountId) ->
     CacheProps = [{'origin', {'db', AccountDb}}],
     wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, CacheProps),
     Limits.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+to_props(#limits{}=Limits) ->
+    lists:zip(record_info('fields', 'limits'), tl(tuple_to_list(Limits)));
+to_props(Account) -> to_props(?MODULE:get(Account)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -336,3 +347,4 @@ create_init_limits(AccountDb) ->
             lager:debug("failed to create initial limits document in db ~s: ~p", [AccountDb, _R]),
             wh_json:new()
     end.
+

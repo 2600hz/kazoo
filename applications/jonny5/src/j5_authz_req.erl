@@ -92,7 +92,7 @@ maybe_reseller_limited(Request) ->
             end
     end.
 
--spec maybe_authorize(j5_request(), j5_limits()) -> j5_request().
+-spec maybe_authorize(j5_request(), j5_limits:limits()) -> j5_request().
 maybe_authorize(Request, Limits) ->
     case j5_limits:enabled(Limits) of
         'true' -> maybe_authorize_exception(Request, Limits);
@@ -102,7 +102,7 @@ maybe_authorize(Request, Limits) ->
             j5_request:authorize(<<"limits_disabled">>, Request, Limits)
     end.
 
--spec maybe_authorize_exception(j5_request(), j5_limits()) -> 'ok'.
+-spec maybe_authorize_exception(j5_request(), j5_limits:limits()) -> 'ok'.
 maybe_authorize_exception(Request, Limits) ->
     CallDirection = j5_request:call_direction(Request),
     Number = j5_request:number(Request),
@@ -116,7 +116,7 @@ maybe_authorize_exception(Request, Limits) ->
         _Else -> authorize(Request, Limits)
     end.
 
--spec authorize(j5_request(), j5_limits()) -> authz_result().
+-spec authorize(j5_request(), j5_limits:limits()) -> authz_result().
 authorize(Request, Limits) ->
     %% TODO: hard limits?
     Routines = [fun j5_allotments:authorize/2
@@ -132,7 +132,7 @@ authorize(Request, Limits) ->
                   end, Request, Routines)
       ,Limits).
 
--spec maybe_soft_limit(j5_request(), j5_limits()) -> j5_request().
+-spec maybe_soft_limit(j5_request(), j5_limits:limits()) -> j5_request().
 maybe_soft_limit(Request, Limits) ->
    case j5_request:is_authorized(Request) of
        'true' -> Request;
@@ -143,7 +143,7 @@ maybe_soft_limit(Request, Limits) ->
            end
    end.
 
--spec maybe_outbound_soft_limit(j5_request(), j5_limits()) -> j5_request().
+-spec maybe_outbound_soft_limit(j5_request(), j5_limits:limits()) -> j5_request().
 maybe_outbound_soft_limit(Request, Limits) ->
     case j5_limits:soft_limit_outbound(Limits) of
         'false' -> Request;
@@ -152,7 +152,7 @@ maybe_outbound_soft_limit(Request, Limits) ->
             j5_request:authorize(<<"soft_limit">>, Request, Limits)
     end.
 
--spec maybe_inbound_soft_limit(j5_request(), j5_limits()) -> j5_request().
+-spec maybe_inbound_soft_limit(j5_request(), j5_limits:limits()) -> j5_request().
 maybe_inbound_soft_limit(Request, Limits) ->
     case j5_limits:soft_limit_inbound(Limits) of
         'false' -> Request;

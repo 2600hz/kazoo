@@ -74,7 +74,7 @@ from_jobj(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(ne_binary(), j5_request(), j5_limits()) -> j5_request().
+-spec authorize(ne_binary(), j5_request(), j5_limits:limits()) -> j5_request().
 authorize(Reason, #request{reseller_id=ResellerId
                            ,account_id=AccountId}=Request
           ,Limits) ->
@@ -111,7 +111,7 @@ authorize_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec deny(ne_binary(), j5_request(), j5_limits()) -> j5_request().
+-spec deny(ne_binary(), j5_request(), j5_limits:limits()) -> j5_request().
 deny(Reason, #request{reseller_id=ResellerId
                      ,account_id=AccountId}=Request
      ,Limits) ->
@@ -156,7 +156,7 @@ is_authorized(#request{account_authorized=AccountAuthorized
                       ,reseller_authorized=ResellerAuthorized}) ->
     AccountAuthorized andalso ResellerAuthorized.
 
--spec is_authorized(j5_request(), j5_limits()) -> boolean().
+-spec is_authorized(j5_request(), j5_limits:limits()) -> boolean().
 is_authorized(#request{account_authorized=AccountAuthorized
                        ,reseller_id=ResellerId
                        ,reseller_authorized=ResellerAuthorized}
@@ -197,7 +197,7 @@ reseller_id(#request{reseller_id=ResellerId}) -> ResellerId.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec billing(j5_request(), j5_limits()) -> api_binary().
+-spec billing(j5_request(), j5_limits:limits()) -> api_binary().
 billing(#request{account_billing=AccountBilling
                  ,reseller_id=ResellerId
                  ,reseller_billing=ResellerBilling}
