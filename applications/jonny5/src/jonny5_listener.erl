@@ -25,7 +25,6 @@
 
 -define(RESPONDERS, [{'j5_authz_req', [{<<"authz">>, <<"authz_req">>}]}
                      ,{'j5_reauthz_req', [{<<"authz">>, <<"reauthz_req">>}]}
-                     ,{'j5_authz_identify', [{<<"authz">>, <<"identify_req">>}]}
                      ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
                     ]).
 -define(BINDINGS, [{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>]}]}

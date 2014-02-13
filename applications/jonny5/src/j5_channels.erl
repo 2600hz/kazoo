@@ -13,6 +13,8 @@
 -export([total_calls/1]).
 -export([resource_consuming/1]).
 -export([remove/1]).
+-export([inbound_flat_rate/1]).
+-export([outbound_flat_rate/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -71,6 +73,14 @@ resource_consuming(AccountId) ->
 
 remove(CallId) ->
     io:format("j5_channels:remove(~s)~n", [CallId]).
+
+inbound_flat_rate(AccountId) ->
+    io:format("j5_channels:inbound_flat_rate(~s)~n", [AccountId]),
+    0.
+
+outbound_flat_rate(AccountId) ->
+    io:format("j5_channels:outbound_flat_rate(~s)~n", [AccountId]),
+    0.
 
 %%%===================================================================
 %%% gen_server callbacks

@@ -41,7 +41,7 @@ maybe_skip_reauth(<<"inbound">>, #limits{soft_limit_inbound='true'}, JObj) ->
 maybe_skip_reauth(_, Limits, JObj) ->
     case wh_json:get_value(<<"Type">>, JObj) of
         <<"allotment">> -> j5_allotments:reauthorize(Limits, JObj);
-        <<"per_minute">> -> j5_credit:reauthorize(Limits, JObj);
+        <<"per_minute">> -> j5_per_minute:reauthorize(Limits, JObj);
         _Else -> send_allow_resp(JObj)
     end.
 
