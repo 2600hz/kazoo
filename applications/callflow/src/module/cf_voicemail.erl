@@ -1,7 +1,13 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
-%%%
+%%% "data":{
+%%%   "action":"compose"|"check"
+%%%   ,"id":"vmbox_id"
+%%%   // optional
+%%%   ,"max_message_length":500
+%%%   ,"interdigit_timeout":2000 // in milliseconds
+%%% }
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -16,8 +22,35 @@
 -define(FOLDER_NEW, <<"new">>).
 -define(FOLDER_SAVED, <<"saved">>).
 -define(FOLDER_DELETED, <<"deleted">>).
--define(MAILBOX_DEFAULT_SIZE, 0).
--define(MAILBOX_DEFAULT_MSG_MAX_LENGTH, 0).
+
+-define(MAILBOX_DEFAULT_SIZE
+        ,whapps_config:get_integer(?CF_CONFIG_CAT
+                                   ,[<<"voicemail">>, <<"max_message_count">>]
+                                   ,0
+                                  )).
+-define(MAILBOX_DEFAULT_MSG_MAX_LENGTH
+        ,whapps_config:get_integer(?CF_CONFIG_CAT
+                                   ,[<<"voicemail">>, <<"max_message_length">>]
+                                   ,500
+                                  )).
+-define(MAILBOX_DEFAULT_MSG_MIN_LENGTH
+        ,whapps_config:get_integer(?CF_CONFIG_CAT
+                                   ,[<<"voicemail">>, <<"min_message_size">>]
+                                   ,500
+                                  )).
+-define(MAILBOX_DEFAULT_BOX_NUMBER_LENGTH
+        ,whapps_config:get_integer(?CF_CONFIG_CAT
+                                   ,[<<"voicemail">>, <<"max_box_number_length">>]
+                                   ,15
+                                  )).
+
+-define(DEFAULT_VM_EXTENSION
+        ,whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
+       ).
+
+-define(DEFAULT_MAX_PIN_LENGTH
+        ,whapps_config:get_integer(?CF_CONFIG_CAT, [<<"voicemail">>, <<"max_pin_length">>], 6)
+       ).
 
 -record(keys, {
           %% Compose Voicemail
@@ -48,6 +81,8 @@
          }).
 -type vm_keys() :: #keys{}.
 
+-define(KEY_LENGTH, 1).
+
 -record(mailbox, {
           mailbox_id :: api_binary()
           ,mailbox_number = <<>> :: binary()
@@ -70,6 +105,7 @@
           ,transcribe_voicemail = 'false' :: boolean()
           ,notifications :: wh_json:object()
           ,delete_after_notify = 'false' :: boolean()
+          ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
          }).
 -type mailbox() :: #mailbox{}.
 
@@ -146,10 +182,21 @@ check_mailbox(#mailbox{pin = <<>>, exists='true'}, 'false', Call, _) ->
     lager:info("attempted to sign into a mailbox with no pin"),
     _ = whapps_call_command:b_prompt(<<"vm-no_access">>, Call),
     'ok';
-check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
+check_mailbox(#mailbox{pin=Pin
+                       ,interdigit_timeout=Interdigit
+                      }=Box, IsOwner, Call, Loop) ->
     lager:info("requesting pin number to check mailbox"),
     put('cf_voicemail', ?LINE),
-    case whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"vm-enter_pass">>, 1, Call) of
+
+    NoopId = whapps_call_command:prompt(<<"vm-enter_pass">>, Call),
+
+    case whapps_call_command:collect_digits(?DEFAULT_MAX_PIN_LENGTH
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
         {'ok', Pin} ->
             lager:info("caller entered a valid pin"),
             main_menu(Box, Call);
@@ -174,10 +221,19 @@ find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loo
     lager:info("maximum number of invalid attempts to find mailbox"),
     _ = whapps_call_command:b_prompt(<<"vm-abort">>, Call),
     'ok';
-find_mailbox(Box, Call, Loop) ->
+find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
     lager:info("requesting mailbox number to check"),
     put('cf_voicemail', ?LINE),
-    case whapps_call_command:b_prompt_and_collect_digits(1, 15, <<"vm-enter_id">>, 1, Call) of
+
+    NoopId = whapps_call_command:prompt(<<"vm-enter_id">>, Call),
+
+    case whapps_call_command:collect_digits(?MAILBOX_DEFAULT_BOX_NUMBER_LENGTH
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
         {'ok', <<>>} ->
             find_mailbox(Box, Call, Loop + 1);
         {'ok', Mailbox} ->
@@ -384,6 +440,7 @@ main_menu(#mailbox{owner_id=OwnerId
                                ,configure=Configure
                                ,exit=Exit
                               }
+                   ,interdigit_timeout=Interdigit
                   }=Box, Call, Loop) ->
     lager:debug("playing mailbox main menu"),
     _ = whapps_call_command:b_flush(Call),
@@ -398,7 +455,13 @@ main_menu(#mailbox{owner_id=OwnerId
                                              ++ [{'prompt', <<"vm-main_menu">>}]
                                              ,Call),
     put('cf_voicemail', ?LINE),
-    case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
+    case whapps_call_command:collect_digits(?KEY_LENGTH
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
         {'error', _} ->
             lager:info("error during mailbox main menu"),
             _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
@@ -556,11 +619,18 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                          ,delete=Delete
                                          ,return_main=ReturnMain
                                         }
+                              ,interdigit_timeout=Interdigit
                              }=Box, Call) ->
     lager:info("playing message menu"),
     NoopId = whapps_call_command:audio_macro(Prompt, Call),
     put('cf_voicemail', ?LINE),
-    case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call)of
+    case whapps_call_command:collect_digits(?KEY_LENGTH
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
         {'ok', Keep} -> {'ok', 'keep'};
         {'ok', Delete} -> {'ok', 'delete'};
         {'ok', ReturnMain} -> {'ok', 'return'};
@@ -587,11 +657,21 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable
                                 ,set_pin=SetPin
                                 ,return_main=ReturnMain
                                }
+                     ,interdigit_timeout=Interdigit
                     }=Box, Call, Loop) when Loop < 4 ->
     lager:info("playing mailbox configuration menu"),
     {'ok', _} = whapps_call_command:b_flush(Call),
     put('cf_voicemail', ?LINE),
-    case whapps_call_command:b_prompt_and_collect_digit(<<"vm-settings_menu">>, Call) of
+
+    NoopId = whapps_call_command:prompt(<<"vm-settings_menu">>, Call),
+
+    case whapps_call_command:collect_digits(?KEY_LENGTH
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
         {'ok', RecUnavailable} ->
             lager:info("caller choose to record their unavailable greeting"),
             case record_unavailable_greeting(tmp_file(), Box, Call) of
@@ -718,18 +798,23 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec change_pin(mailbox(), whapps_call:call()) -> 'ok' | mailbox().
-change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
+change_pin(#mailbox{mailbox_id=Id
+                    ,interdigit_timeout=Interdigit
+                   }=Box, Call) ->
     lager:info("requesting new mailbox pin number"),
     try
         put('cf_voicemail', ?LINE),
-        {'ok', Pin} = whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"vm-enter_new_pin">>, 1, Call),
+        {'ok', Pin} = get_new_pin(Interdigit, Call),
         lager:info("collected first pin"),
         put('cf_voicemail', ?LINE),
-        {'ok', Pin} = whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"vm-enter_new_pin_confirm">>, 1, Call),
+        {'ok', Pin} = confirm_new_pin(Interdigit, Call),
         lager:info("collected second pin"),
+
         if byte_size(Pin) == 0 -> throw('pin_empty'); 'true' -> 'ok' end,
         lager:info("entered pin is not empty"),
+
         AccountDb = whapps_call:account_db(Call),
+
         {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
         {'ok', _} = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pin">>, Pin, JObj)),
         {'ok', _} = whapps_call_command:b_prompt(<<"vm-pin_set">>, Call),
@@ -743,6 +828,28 @@ change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
                 _ -> 'ok'
             end
     end.
+
+-spec get_new_pin(pos_integer(), whapps_call:call()) ->
+                         {'ok', binary()}.
+get_new_pin(Interdigit, Call) ->
+    NoopId = whapps_call_command:prompt(<<"vm-enter_new_pin">>, Call),
+    collect_pin(Interdigit, Call, NoopId).
+
+-spec confirm_new_pin(pos_integer(), whapps_call:call()) ->
+                         {'ok', binary()}.
+confirm_new_pin(Interdigit, Call) ->
+    NoopId = whapps_call_command:prompt(<<"vm-enter_new_pin_confirm">>, Call),
+    collect_pin(Interdigit, Call, NoopId).
+
+-spec collect_pin(pos_integer(), whapps_call:call(), ne_binary()) ->
+                         {'ok', binary()}.
+collect_pin(Interdigit, Call, NoopId) ->
+    whapps_call_command:collect_digits(?DEFAULT_MAX_PIN_LENGTH
+                                       ,whapps_call_command:default_collect_timeout()
+                                       ,Interdigit
+                                       ,NoopId
+                                       ,Call
+                                      ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -952,11 +1059,7 @@ get_mailbox_profile(Data, Call) ->
                                                ,[<<"voicemail">>, <<"max_message_count">>]
                                               )
                 of
-                    'undefined' ->
-                        whapps_config:get(?CF_CONFIG_CAT
-                                          ,[<<"voicemail">>, <<"max_message_count">>]
-                                          ,?MAILBOX_DEFAULT_SIZE
-                                         );
+                    'undefined' -> ?MAILBOX_DEFAULT_SIZE;
                     MMC -> MMC
                 end,
             MsgCount = count_non_deleted_messages(wh_json:get_value(<<"messages">>, JObj, [])),
@@ -1000,6 +1103,8 @@ get_mailbox_profile(Data, Call) ->
                          wh_json:get_value(<<"notifications">>, JObj)
                      ,delete_after_notify =
                          wh_json:is_true(<<"delete_after_notify">>, JObj, 'false')
+                     ,interdigit_timeout =
+                         wh_json:find(<<"interdigit_timeout">>, [JObj, Data], whapps_call_command:default_interdigit_timeout())
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
@@ -1085,11 +1190,20 @@ review_recording(AttachmentName, AllowOperator
                                       ,record=Record
                                       ,operator=Operator
                                      }
+                           ,interdigit_timeout=Interdigit
                           }=Box
                  ,Call, Loop) ->
     lager:info("playing recording review options"),
     put('cf_voicemail', ?LINE),
-    case whapps_call_command:b_prompt_and_collect_digit(<<"vm-review_recording">>, Call) of
+
+    NoopId = whapps_call_command:prompt(<<"vm-review_recording">>, Call),
+    case whapps_call_command:collect_digits(?KEY_LENGTH
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
         {'ok', Listen} ->
             lager:info("caller choose to replay the recording"),
             _ = whapps_call_command:b_play(AttachmentName, Call),
@@ -1133,11 +1247,7 @@ store_recording(AttachmentName, DocId, Call) ->
                                                ,[<<"voicemail">>, <<"min_message_size">>]
                                               )
                 of
-                    'undefined' ->
-                        whapps_config:get_integer(?CF_CONFIG_CAT
-                                                  ,[<<"voicemail">>, <<"min_message_size">>]
-                                                  ,500
-                                                 );
+                    'undefined' -> ?MAILBOX_DEFAULT_MSG_MIN_LENGTH;
                     MML -> wh_util:to_integer(MML)
                 end,
             AttachmentLength = wh_json:get_integer_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
@@ -1206,13 +1316,12 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum
                                   ])
            end,
 
-    Ext = whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>),
     Props = [{<<"name">>, Name}
              ,{<<"description">>, <<"voicemail message media">>}
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
              ,{<<"media_source">>, <<"recording">>}
-             ,{<<"media_type">>, Ext}
+             ,{<<"media_type">>, ?DEFAULT_VM_EXTENSION}
              ,{<<"media_filename">>, AttachmentName}
              ,{<<"streamable">>, 'true'}
              ,{<<"utc_seconds">>, UtcSeconds}
@@ -1361,7 +1470,7 @@ update_folder1(Message, _, _, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc(wh_json:json_string() | wh_json:json_strings()
+-spec update_doc(wh_json:key() | wh_json:keys()
                  ,wh_json:json_term()
                  ,mailbox() | ne_binary()
                  ,whapps_call:call() | ne_binary()
@@ -1395,7 +1504,7 @@ update_doc(Key, Value, Id, Call) ->
 %%--------------------------------------------------------------------
 -spec tmp_file() -> ne_binary().
 tmp_file() ->
-    Ext = whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>),
+    Ext = ?DEFAULT_VM_EXTENSION,
     <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".", Ext/binary>>.
 
 %%--------------------------------------------------------------------
@@ -1430,16 +1539,12 @@ get_unix_epoch(Epoch, Timezone) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_max_message_length(wh_json:objects()) -> pos_integer().
+find_max_message_length([]) -> ?MAILBOX_DEFAULT_MSG_MAX_LENGTH;
 find_max_message_length([JObj | T]) ->
     case wh_json:get_integer_value(<<"max_message_length">>, JObj) of
         Len when is_integer(Len) andalso Len > 0 -> Len;
         _ -> find_max_message_length(T)
-    end;
-find_max_message_length([]) ->
-    whapps_config:get_integer(?CF_CONFIG_CAT
-                              ,[<<"voicemail">>, <<"max_message_length">>]
-                              ,500
-                             ).
+    end.
 
 -spec is_owner(whapps_call:call(), ne_binary()) -> boolean().
 is_owner(Call, OwnerId) ->
