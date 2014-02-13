@@ -154,8 +154,8 @@ get_global_endpoints(Number, JObj) ->
 -spec sort_endpoints(wh_json:objects()) -> wh_json:objects().
 sort_endpoints(Endpoints) ->
     lists:sort(fun(P1, P2) ->
-                       props:get_value(<<"Weight">>, P1, 1)
-                           =< props:get_value(<<"Weight">>, P2, 1)
+                       wh_json:get_value(<<"Weight">>, P1, 1)
+                           =< wh_json:get_value(<<"Weight">>, P2, 1)
                end, Endpoints).
 
 %%--------------------------------------------------------------------
