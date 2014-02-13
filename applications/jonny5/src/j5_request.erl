@@ -60,7 +60,7 @@
                   ,server_id :: api_binary()
                   ,billing_seconds = 0 :: non_neg_integer()
                   ,answered_time = 0 :: non_neg_integer()
-                  ,timestamp = wh_util:current_tstamp()
+                  ,timestamp = 0 :: non_neg_integer()
                  }).
 -opaque request() :: #request{}.
 -export_type([request/0]).
@@ -86,7 +86,8 @@ from_jobj(JObj) ->
              ,message_id = wh_json:get_value(<<"Msg-ID">>, JObj)
              ,server_id = wh_json:get_value(<<"Server-ID">>, JObj)
              ,billing_seconds = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
-             ,answered_time = wh_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)}.
+             ,answered_time = wh_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
+             ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())}.
 
 %%--------------------------------------------------------------------
 %% @public

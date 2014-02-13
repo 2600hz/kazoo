@@ -87,6 +87,14 @@ maybe_consume_flat_rate(Request, Limits) ->
     RemainingOutbound = consume_outbound_limits(Request, Limits),
     case consume_twoway_limits(RemainingInbound + RemainingOutbound, Limits) of
         0 -> j5_request:authorize(<<"flat_rate">>, Request, Limits);
+        Remaining -> maybe_consume_flat_rate_burst(Remaining, Request, Limits)
+    end.
+
+-spec maybe_consume_flat_rate_burst(non_neg_integer(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
+maybe_consume_flat_rate_burst(Remaining, Request, Limits) ->
+    Limit = j5_limits:burst_trunks(Limits),
+    case consume_limit(Limit, Remaining, <<"burst">>) of
+        0 -> j5_request:authorize(<<"flat_rate_burst">>, Request, Limits);
         _Else -> Request
     end.
 

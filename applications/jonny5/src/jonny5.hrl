@@ -10,5 +10,7 @@
 -define(APP_VERSION, <<"2.0.0">>).
 -define(APP_NAME, <<"jonny5">>).
 
+-type tristate_integer() :: -1 | non_neg_integer().
+
 -define(JONNY5_HRL, 'true').
 -endif.
