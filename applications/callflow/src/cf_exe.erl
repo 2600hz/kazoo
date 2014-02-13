@@ -172,14 +172,14 @@ control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_nam
 control_queue(Call) -> control_queue(whapps_call:kvs_fetch('cf_exe_pid', Call)).
 control_queue(_, Call) -> control_queue(Call).
 
--spec get_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:json_strings()}.
+-spec get_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
 get_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, 'get_branch_keys');
 get_branch_keys(Call) ->
     Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
     get_branch_keys(Srv).
 
--spec get_all_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:json_strings()}.
+-spec get_all_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'get_branch_keys', 'all'});
 get_all_branch_keys(Call) ->
