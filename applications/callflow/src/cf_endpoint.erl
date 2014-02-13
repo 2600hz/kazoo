@@ -520,13 +520,16 @@ maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
     Source = wh_json:get_value(<<"source">>, Properties),
     Number = wh_json:get_value(<<"number">>, CallFowarding),
     case wh_json:is_true(<<"enabled">>, CallFowarding)
-        andalso Number =/= <<>>
+        andalso not wh_util:is_empty(Number)
         andalso (wh_json:is_false(<<"direct_calls_only">>, CallFowarding, 'true')
                  orelse
                    (not lists:member(Source, ?NON_DIRECT_MODULES)))
     of
-        'false' -> {'error', 'cf_not_appropriate'};
+        'false' ->
+            io:format("cf_endpoint.erl:MARKER:529 ~p~n", [marker]),
+            {'error', 'cf_not_appropriate'};
         'true' ->
+            io:format("cf_endpoint.erl:MARKER:532 ~p~n", [marker]),
             lager:info("creating call forwarding endpoint"),
             create_call_fwd_endpoint(Endpoint, Properties, CallFowarding, Call)
     end.
