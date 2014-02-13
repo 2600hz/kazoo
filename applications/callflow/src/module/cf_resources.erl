@@ -31,7 +31,7 @@ handle(Data, Call) ->
     end.
 
 -spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
-handle_bridge_failure(Cause, Code, Call) ->    
+handle_bridge_failure(Cause, Code, Call) ->
     lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
     case cf_util:handle_bridge_failure(Cause, Code, Call) of
         'ok' -> lager:debug("found bridge failure child");
@@ -105,7 +105,7 @@ get_account_realm(Call) ->
         {'error', _} -> 'undefined'
     end.
 
--spec get_caller_id(wh_json:object(), whapps_call:call()) -> api_binary().
+-spec get_caller_id(wh_json:object(), whapps_call:call()) -> {api_binary(), api_binary()}.
 get_caller_id(Data, Call) ->
     Type = wh_json:get_value(<<"caller_id_type">>, Data, <<"external">>),
     cf_attributes:caller_id(Type, Call).
