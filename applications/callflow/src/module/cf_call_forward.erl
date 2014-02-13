@@ -1,7 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
-%%%
+%%% "data":{
+%%%   "action":"activate" | "deactivate" | "update" | "toggle" | "menu"
+%%% }
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -13,6 +15,11 @@
 -export([handle/2]).
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".call_forward">>).
+-define(KEY_LENGTH, 1).
+
+-define(MIN_CALLFWD_NUMBER_LENGTH, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_callfwd_number_length">>, 3)).
+-define(MAX_CALLFWD_NUMBER_LENGTH, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_callfwd_number_length">>, 20)).
+-define(CALLFWD_NUMBER_TIMEOUT, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"callfwd_number_timeout">>, 8000)).
 
 -record(keys, {menu_toggle_cf =
                    whapps_config:get_binary(?MOD_CONFIG_CAT, [<<"keys">>, <<"menu_toggle_option">>], <<"1">>)
@@ -27,6 +34,7 @@
                   ,number = <<>> :: binary()
                   ,require_keypress = 'true' :: boolean()
                   ,keep_caller_id = 'true' :: boolean()
+                  ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
                  }).
 -type callfwd() :: #callfwd{}.
 
@@ -69,6 +77,7 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
                             ,menu_change_number=ChangeNum
                            }
                  ,enabled=Enabled
+                 ,interdigit_timeout=Interdigit
                 }=CF, CaptureGroup, Call) ->
     lager:info("playing call forwarding menu"),
     Prompt = case Enabled of
@@ -76,7 +85,16 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
                  'false' -> whapps_util:get_prompt(<<"cf-disabled_menu">>, Call)
              end,
     _  = whapps_call_command:b_flush(Call),
-    case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
+
+    NoopId = whapps_call_command:play(Prompt, Call),
+
+    case whapps_call_command:collect_digits(?KEY_LENGTH
+                                            ,?CALLFWD_NUMBER_TIMEOUT
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
         {'ok', Toggle} ->
             CF1 = cf_toggle(CF, CaptureGroup, Call),
             cf_menu(CF1, CaptureGroup, Call);
@@ -161,10 +179,23 @@ cf_deactivate(CF, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec cf_update_number(callfwd(), 'undefined' | binary(), whapps_call:call()) -> callfwd().
-cf_update_number(CF, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
+cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call) when is_atom(CaptureGroup)
+                                                                                      ;CaptureGroup =:= <<>>
+                                                                                      ->
     EnterNumber = whapps_util:get_prompt(<<"cf-enter_number">>, Call),
-    case whapps_call_command:b_play_and_collect_digits(3, 20, EnterNumber, 1, 8000, Call) of
-        {'ok', <<>>} -> cf_update_number(CF, CaptureGroup, Call);
+
+    NoopId = whapps_call_command:play(EnterNumber, Call),
+    Min = ?MIN_CALLFWD_NUMBER_LENGTH,
+
+    case whapps_call_command:collect_digits(?MAX_CALLFWD_NUMBER_LENGTH
+                                            ,?CALLFWD_NUMBER_TIMEOUT
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
+        {'ok', Short} when byte_size(Short) >= Min ->
+            cf_update_number(CF, CaptureGroup, Call);
         {'ok', Number} ->
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             lager:info("update call forwarding number with ~s", [Number]),

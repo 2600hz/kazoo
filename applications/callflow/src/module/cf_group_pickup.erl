@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2013-2014, 2600Hz INC
 %%% @doc
 %%% Pickup a call in the specified group
 %%%
@@ -37,14 +37,14 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
-    case maybe_allowed_to_intercept(Data, Call) of
-        'true' ->
-            case find_sip_endpoints(Data, Call) of
-                [] -> no_users_in_group(Call);
-                Usernames -> connect_to_ringing_channel(Usernames, Call)
-            end;
-        'false' -> no_permission_to_intercept(Call)
-    end,
+    _ = case maybe_allowed_to_intercept(Data, Call) of
+            'true' ->
+                case find_sip_endpoints(Data, Call) of
+                    [] -> no_users_in_group(Call);
+                    Usernames -> connect_to_ringing_channel(Usernames, Call)
+                end;
+            'false' -> no_permission_to_intercept(Call)
+        end,
     cf_exe:stop(Call).
 
 -spec maybe_allowed_to_intercept(wh_json:object(), whapps_call:call()) -> boolean().
@@ -272,17 +272,17 @@ find_user_endpoints(UserIds, DeviceIds, Call) ->
     UserDeviceIds = cf_attributes:owned_by(UserIds, <<"device">>, Call),
     lists:merge(lists:sort(UserDeviceIds), DeviceIds).
 
--spec no_users_in_group(whapps_call:call()) -> 'ok'.
+-spec no_users_in_group(whapps_call:call()) -> any().
 no_users_in_group(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_play(<<"system_media/pickup-no_users">>, Call).
 
--spec no_channels_ringing(whapps_call:call()) -> 'ok'.
+-spec no_channels_ringing(whapps_call:call()) -> any().
 no_channels_ringing(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_play(<<"system_media/pickup-no_channels">>, Call).
 
--spec no_permission_to_intercept(whapps_call:call()) -> 'ok'.
+-spec no_permission_to_intercept(whapps_call:call()) -> any().
 %% TODO: please convert to system_media file (say is not consistent on deployments)
 no_permission_to_intercept(Call) ->
     whapps_call_command:answer(Call),

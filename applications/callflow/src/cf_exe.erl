@@ -172,14 +172,14 @@ control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_nam
 control_queue(Call) -> control_queue(whapps_call:kvs_fetch('cf_exe_pid', Call)).
 control_queue(_, Call) -> control_queue(Call).
 
--spec get_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:json_strings()}.
+-spec get_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
 get_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, 'get_branch_keys');
 get_branch_keys(Call) ->
     Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
     get_branch_keys(Srv).
 
--spec get_all_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:json_strings()}.
+-spec get_all_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'get_branch_keys', 'all'});
 get_all_branch_keys(Call) ->
@@ -407,7 +407,6 @@ handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, 
     erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
-
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                                            ,call=Call
                                                           }=State) ->
@@ -416,14 +415,14 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{cf_module_pid={Pid, R
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
-
+handle_info({'DOWN', _Ref, 'process', _Pid, 'normal'}, State) ->
+    {'noreply', State};
 handle_info({'EXIT', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
                                             ,call=Call
                                            }=State) ->
     erlang:demonitor(Ref, ['flush']),
     lager:debug("cf module ~s down normally", [whapps_call:kvs_fetch('cf_last_action', Call)]),
     {'noreply', State#state{cf_module_pid='undefined'}};
-
 handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
                                            ,call=Call
                                           }=State) ->
@@ -432,7 +431,6 @@ handle_info({'EXIT', Pid, _Reason}, #state{cf_module_pid={Pid, Ref}
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     ?MODULE:continue(self()),
     {'noreply', State#state{cf_module_pid='undefined'}};
-
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.

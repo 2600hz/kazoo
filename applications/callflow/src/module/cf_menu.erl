@@ -1,7 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
-%%%
+%%% "data":{
+%%%   "id":"menu_id"
+%%%   // optional after here
+%%%   "interdigit_timeout":2000
+%%% }
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -21,6 +25,7 @@
           ,record = <<"3">> :: ne_binary()
          }).
 -type menu_keys() :: #menu_keys{}.
+-define(MENU_KEY_LENGTH, 1).
 
 -record(cf_menu_data, {
           menu_id :: api_binary()
@@ -38,6 +43,7 @@
          ,transfer_media = 'true' :: boolean() | ne_binary()
          ,invalid_media = 'true' :: boolean() | ne_binary()
          ,keys = #menu_keys{} :: menu_keys()
+         ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
          }).
 -type menu() :: #cf_menu_data{}.
 
@@ -80,8 +86,11 @@ menu_loop(#cf_menu_data{retries=Retries
                         ,timeout=Timeout
                         ,record_pin=RecordPin
                         ,record_from_offnet=RecOffnet
+                        ,interdigit_timeout=Interdigit
                        }=Menu, Call) ->
-    case whapps_call_command:b_play_and_collect_digits(1, MaxLength, get_prompt(Menu, Call), 1, Timeout, Call) of
+    NoopId = whapps_call_command:play(get_prompt(Menu, Call), Call),
+
+    case whapps_call_command:collect_digits(MaxLength, Timeout, Interdigit, NoopId, Call) of
         {'ok', <<>>} ->
             lager:info("menu entry timeout"),
             case cf_exe:attempt(<<"timeout">>, Call) of
@@ -387,12 +396,15 @@ review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey
                                                           ,record=RecordKey
                                                           ,save=SaveKey
                                                          }
+                                          ,timeout=Timeout
+                                          ,interdigit_timeout=Interdigit
                                          }=Menu, Call) ->
     lager:info("playing menu greeting review options"),
     _ = whapps_call_command:flush_dtmf(Call),
-    Prompt = whapps_util:get_prompt(<<"vm-review_recording">>, Call),
 
-    case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
+    NoopId = whapps_call_command:prompt(<<"vm-review_recording">>, Call),
+
+    case whapps_call_command:collect_digits(?MENU_KEY_LENGTH, Timeout, Interdigit, NoopId, Call) of
         {'ok', ListenKey} ->
             _ = whapps_call_command:b_play(MediaName, Call),
             review_recording(MediaName, Menu, Call);
@@ -461,36 +473,42 @@ get_menu_profile(Data, Call) ->
             lager:info("loaded menu route ~s", [Id]),
             Default = #cf_menu_data{},
             #cf_menu_data{menu_id = Id
-                     ,name =
-                         wh_json:get_ne_value(<<"name">>, JObj, Id)
-                     ,retries =
-                         wh_json:get_integer_value(<<"retries">>, JObj, Default#cf_menu_data.retries)
-                     ,timeout =
-                         wh_json:get_integer_value(<<"timeout">>, JObj, Default#cf_menu_data.timeout)
-                     ,max_length =
-                         wh_json:get_integer_value(<<"max_extension_length">>, JObj, Default#cf_menu_data.max_length)
-                     ,hunt =
-                         wh_json:is_true(<<"hunt">>, JObj, Default#cf_menu_data.hunt)
-                     ,hunt_deny =
-                         wh_json:get_value(<<"hunt_deny">>, JObj, Default#cf_menu_data.hunt_deny)
-                     ,hunt_allow =
-                         wh_json:get_value(<<"hunt_allow">>, JObj, Default#cf_menu_data.hunt_allow)
-                     ,record_pin =
-                         wh_json:get_value(<<"record_pin">>, JObj, Default#cf_menu_data.record_pin)
-                     ,record_from_offnet =
-                         wh_json:is_true(<<"allow_record_from_offnet">>, JObj, Default#cf_menu_data.record_from_offnet)
-                     ,greeting_id =
-                         wh_json:get_ne_value([<<"media">>, <<"greeting">>], JObj)
-                     ,exit_media =
-                         (not wh_json:is_false([<<"media">>, <<"exit_media">>], JObj))
-                     andalso wh_json:get_ne_value([<<"media">>, <<"exit_media">>], JObj, 'true')
-                     ,transfer_media =
-                         (not wh_json:is_false([<<"media">>, <<"transfer_media">>], JObj))
-                     andalso wh_json:get_ne_value([<<"media">>, <<"transfer_media">>], JObj, 'true')
-                     ,invalid_media =
-                         (not wh_json:is_false([<<"media">>, <<"invalid_media">>], JObj))
-                     andalso wh_json:get_ne_value([<<"media">>, <<"invalid_media">>], JObj, 'true')
-                    };
+                          ,name =
+                              wh_json:get_ne_value(<<"name">>, JObj, Id)
+                          ,retries =
+                              wh_json:get_integer_value(<<"retries">>, JObj, Default#cf_menu_data.retries)
+                          ,timeout =
+                              wh_json:get_integer_value(<<"timeout">>, JObj, Default#cf_menu_data.timeout)
+                          ,max_length =
+                              wh_json:get_integer_value(<<"max_extension_length">>, JObj, Default#cf_menu_data.max_length)
+                          ,hunt =
+                              wh_json:is_true(<<"hunt">>, JObj, Default#cf_menu_data.hunt)
+                          ,hunt_deny =
+                              wh_json:get_value(<<"hunt_deny">>, JObj, Default#cf_menu_data.hunt_deny)
+                          ,hunt_allow =
+                              wh_json:get_value(<<"hunt_allow">>, JObj, Default#cf_menu_data.hunt_allow)
+                          ,record_pin =
+                              wh_json:get_value(<<"record_pin">>, JObj, Default#cf_menu_data.record_pin)
+                          ,record_from_offnet =
+                              wh_json:is_true(<<"allow_record_from_offnet">>, JObj, Default#cf_menu_data.record_from_offnet)
+                          ,greeting_id =
+                              wh_json:get_ne_value([<<"media">>, <<"greeting">>], JObj)
+                          ,exit_media =
+                              (not wh_json:is_false([<<"media">>, <<"exit_media">>], JObj))
+                          andalso wh_json:get_ne_value([<<"media">>, <<"exit_media">>], JObj, 'true')
+                          ,transfer_media =
+                              (not wh_json:is_false([<<"media">>, <<"transfer_media">>], JObj))
+                          andalso wh_json:get_ne_value([<<"media">>, <<"transfer_media">>], JObj, 'true')
+                          ,invalid_media =
+                              (not wh_json:is_false([<<"media">>, <<"invalid_media">>], JObj))
+                          andalso wh_json:get_ne_value([<<"media">>, <<"invalid_media">>], JObj, 'true')
+                          ,interdigit_timeout =
+                              wh_util:to_integer(
+                                wh_json:find(<<"interdigit_timeout">>
+                                             ,[JObj, Data]
+                                             ,whapps_call_command:default_interdigit_timeout()
+                                            ))
+                         };
         {'error', R} ->
             lager:info("failed to load menu route ~s, ~w", [Id, R]),
             #cf_menu_data{}

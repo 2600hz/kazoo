@@ -1,7 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
-%%%
+%%% "data":{
+%%%   "action":"logout" | "login" | "toggle" | "bridge"
+%%%   "id":"user_id"
+%%%   // optional after here
+%%%   "interdigit_timeout":2000
+%%% }
 %%% @end
 %%% @contributors
 %%%   Edouard Swiac
@@ -12,7 +17,11 @@
 
 -export([handle/2]).
 
--define(MAX_LOGIN_ATTEMPTS, 3).
+-define(HD_CONFIG_CAT, <<?CF_CONFIG_CAT/binary, ".hotdesk">>).
+-define(MAX_LOGIN_ATTEMPTS, whapps_config:get_integer(?HD_CONFIG_CAT, <<"max_login_attempts">>, 3)).
+-define(PIN_LENGTH, whapps_config:get_integer(?HD_CONFIG_CAT, <<"max_pin_length">>, 6)).
+-define(HOTDESK_ID_LENGTH, whapps_config:get_integer(?HD_CONFIG_CAT, <<"max_hotdesk_id_length">>, 10)).
+
 -record(hotdesk, {enabled = 'false' :: boolean()
                   ,hotdesk_id :: api_binary()
                   ,pin :: api_binary()
@@ -22,6 +31,7 @@
                   ,endpoint_ids = [] :: ne_binaries()
                   ,jobj = wh_json:new() :: wh_json:object()
                   ,account_db :: ne_binary()
+                  ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
                  }).
 -type hotdesk() :: #hotdesk{}.
 
@@ -35,7 +45,7 @@
 handle(Data, Call) ->
     Action = wh_json:get_value(<<"action">>, Data),
 
-    case get_hotdesk_profile(hotdesk_id(Data, Action, Call), Call) of
+    case get_hotdesk_profile(hotdesk_id(Data, Action, Call), Data, Call) of
         #hotdesk{}=Hotdesk -> handle_action(Action, Hotdesk, Call);
         {'error', _} -> cf_exe:continue(Call)
     end.
@@ -131,22 +141,34 @@ maybe_require_login_pin(Hotdesk, Call) ->
 
 -spec require_login_pin(hotdesk(), whapps_call:call()) -> whapps_api_std_return().
 require_login_pin(Hotdesk, Call) ->
-    require_login_pin(Hotdesk, Call, 1).
+    require_login_pin(Hotdesk, Call, ?MAX_LOGIN_ATTEMPTS, 1).
 
--spec require_login_pin(hotdesk(), whapps_call:call(), 1..?MAX_LOGIN_ATTEMPTS) ->
+-spec require_login_pin(hotdesk(), whapps_call:call(), pos_integer(), pos_integer()) ->
                                whapps_api_std_return().
-require_login_pin(_, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
+require_login_pin(_, Call, Max, Loop) when Loop > Max ->
     lager:info("maximum number of invalid hotdesk pin attempts"),
     whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     whapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
-require_login_pin(#hotdesk{require_pin='true', pin=Pin}=Hotdesk, Call, Loop) ->
+require_login_pin(#hotdesk{require_pin='true'
+                           ,pin=Pin
+                           ,interdigit_timeout=Interdigit
+                          }=Hotdesk, Call, Max, Loop) ->
     _ = whapps_call_command:answer(Call),
-    case whapps_call_command:b_prompt_and_collect_digits(1, 6, <<"hotdesk-enter_pin">>, 1, Call) of
+
+    NoopId = whapps_call_command:prompt(<<"hotdesk-enter_pin">>, Call),
+
+    case whapps_call_command:collect_digits(?PIN_LENGTH
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
         {'ok', Pin} ->
             maybe_logout_elsewhere(Hotdesk, Call);
         {'ok', _} ->
             _ = whapps_call_command:play(<<"hotdesk-invalid_entry">>, Call),
-            require_login_pin(Hotdesk, Call, Loop + 1);
+            require_login_pin(Hotdesk, Call, Max, Loop + 1);
         {'error', _} ->
             lager:info("caller hungup during login")
     end.
@@ -244,35 +266,48 @@ logged_out(_, Call) ->
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec get_hotdesk_profile(api_binary(), whapps_call:call()) ->
+-spec get_hotdesk_profile(api_binary(), wh_json:object(), whapps_call:call()) ->
                                  hotdesk() |
                                  {'error', _}.
-get_hotdesk_profile('undefined', Call) -> find_hotdesk_profile(Call, 1);
-get_hotdesk_profile(OwnerId, Call) ->
+get_hotdesk_profile('undefined', Data, Call) ->
+    find_hotdesk_profile(Call, Data, ?MAX_LOGIN_ATTEMPTS, 1);
+get_hotdesk_profile(OwnerId, Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
-        {'ok', JObj} -> from_json(JObj, Call);
+        {'ok', JObj} -> from_json(JObj, Data, Call);
         {'error', _R}=E ->
             lager:info("failed to load hotdesking profile for user ~s: ~p", [OwnerId, _R]),
             whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
             E
     end.
 
--spec find_hotdesk_profile(whapps_call:call(), 1..?MAX_LOGIN_ATTEMPTS) ->
+-spec find_hotdesk_profile(whapps_call:call(), wh_json:object(), pos_integer(), pos_integer()) ->
                                   hotdesk() |
                                   {'error', _}.
-find_hotdesk_profile(Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
+find_hotdesk_profile(Call, _Data, Max, Loop) when Loop > Max ->
     lager:info("too many failed attempts to get the hotdesk id"),
     whapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     {'error', 'too_many_attempts'};
-find_hotdesk_profile(Call, Loop) ->
+find_hotdesk_profile(Call, Data, Max, Loop) ->
     whapps_call_command:answer(Call),
-    case whapps_call_command:b_prompt_and_collect_digits(1, 10, <<"hotdesk-enter_id">>, 1, Call) of
-        {'ok', <<>>} -> find_hotdesk_profile(Call, Loop + 1);
+
+    NoopId = whapps_call_command:prompt(<<"hotdesk-enter_id">>, Call),
+    Interdigit = wh_json:get_integer_value(<<"interdigit_timeout">>, Data, whapps_call_command:default_interdigit_timeout()),
+
+    case whapps_call_command:collect_digits(?HOTDESK_ID_LENGTH
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
+        {'ok', <<>>} ->
+            find_hotdesk_profile(Call, Data, Max, Loop + 1);
         {'ok', HotdeskId} ->
-            case lookup_hotdesk_id(HotdeskId, Call) of
+            case lookup_hotdesk_id(HotdeskId, Data, Call) of
                 #hotdesk{}=Hotdesk -> Hotdesk;
-                {'error', _} -> find_hotdesk_profile(Call, Loop + 1)
+                {'error', _} ->
+                    find_hotdesk_profile(Call, Data, Max, Loop + 1)
             end;
         {'error', R}=E ->
             lager:info("failed to get owner id from caller: ~p", [R]),
@@ -280,10 +315,10 @@ find_hotdesk_profile(Call, Loop) ->
             E
     end.
 
--spec lookup_hotdesk_id(ne_binary(), whapps_call:call()) ->
+-spec lookup_hotdesk_id(ne_binary(), wh_json:object(), whapps_call:call()) ->
                                hotdesk() |
                                {'error', _}.
-lookup_hotdesk_id(HotdeskId, Call) ->
+lookup_hotdesk_id(HotdeskId, Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     ViewOptions = [{'key', HotdeskId}
                    ,'include_docs'
@@ -291,15 +326,15 @@ lookup_hotdesk_id(HotdeskId, Call) ->
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/hotdesk_id">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:info("found hotdesk id ~s", [HotdeskId]),
-            from_json(wh_json:get_value(<<"doc">>, JObj), Call);
+            from_json(wh_json:get_value(<<"doc">>, JObj), Data, Call);
         _Else ->
             lager:info("failed to load hotdesk id ~s", [HotdeskId]),
             _ = whapps_call_command:play(<<"hotdesk-invalid_entry">>, Call),
             {'error', 'not_found'}
     end.
 
--spec from_json(wh_json:object(), whapps_call:call()) -> hotdesk().
-from_json(JObj, Call) ->
+-spec from_json(wh_json:object(), wh_json:object(), whapps_call:call()) -> hotdesk().
+from_json(JObj, Data, Call) ->
     OwnerId = wh_json:get_value(<<"_id">>, JObj),
     Hotdesk =  wh_json:get_value(<<"hotdesk">>, JObj),
     lager:info("creating hotdesk profile from ~s", [OwnerId]),
@@ -310,6 +345,7 @@ from_json(JObj, Call) ->
              ,keep_logged_in_elsewhere = wh_json:is_true(<<"keep_logged_in_elsewhere">>, Hotdesk)
              ,endpoint_ids = get_endpoint_ids(OwnerId, Call)
              ,owner_id = OwnerId
+             ,interdigit_timeout = wh_json:find(<<"interdigit_timeout">>, [JObj, Data], whapps_call_command:default_interdigit_timeout())
             }.
 
 -spec remove_from_endpoints(hotdesk(), whapps_call:call()) -> hotdesk().

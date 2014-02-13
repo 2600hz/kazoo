@@ -76,10 +76,10 @@ handle(Data, Call) ->
                     lager:info("action is to automatically determine if we should retrieve or park"),
                     Slot = create_slot(cf_exe:callid(Call), Call),
                     case retrieve(SlotNumber, ParkedCalls, Call) of
-                        {'hungup', JObj} -> park_call(SlotNumber, Slot, JObj, 'undefined', Call);
                         {'error', _} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call);
-                        {'ok', _} -> cf_exe:continue(Call)
-                    end
+                        {'ok', 'channel_hungup'} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call)
+                    end,
+                    cf_exe:continue(Call)
             end;
         'nomatch' ->
             lager:info("call was the result of a blind transfer, assuming intention was to park"),
@@ -98,9 +98,8 @@ handle(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec retrieve(ne_binary(), wh_json:object(), whapps_call:call()) ->
-                      {'ok', wh_json:object()} |
-                      {'hungup', wh_json:object()} |
-                      {'error', term()}.
+                      {'ok', 'channel_hungup'} |
+                      {'error', 'slot_empty' | 'timeout' | 'failed'}.
 retrieve(SlotNumber, ParkedCalls, Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
         'undefined' ->
@@ -126,7 +125,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
 
 -spec maybe_retrieve_slot(ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
                                  'ok' |
-                                 {'error', _}.
+                                 {'error', 'timeout' | 'failed'}.
 maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) ->
     lager:info("retrieved parked call from slot, maybe bridging to caller ~s", [ParkedCall]),
     %% publish_usurp_control(ParkedCall, Call),
@@ -153,8 +152,7 @@ send_pickup(ParkedCall, Call) ->
 
 -spec wait_for_pickup(whapps_call:call()) ->
                              'ok' |
-                             {'error', 'timeout'} |
-                             {'error', 'failed'}.
+                             {'error', 'timeout' | 'failed'}.
 wait_for_pickup(Call) ->
     case whapps_call_command:receive_event(10000) of
         {'ok', Evt} ->
@@ -166,7 +164,6 @@ wait_for_pickup(Call) ->
 
 -spec pickup_event(whapps_call:call(), {ne_binary(), ne_binary()}, wh_json:object()) ->
                           'ok' |
-                          {'error', 'timeout'} |
                           {'error', 'failed'}.
 pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
     lager:debug("error in dialplan: ~s", [wh_json:get_value(<<"Error-Message">>, Evt)]),
@@ -531,7 +528,7 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_pickup(ne_binary(), api_binary(), whapps_call:call()) -> any().
+-spec wait_for_pickup(ne_binary(), wh_json:object(), whapps_call:call()) -> 'ok'.
 wait_for_pickup(SlotNumber, Slot, Call) ->
     RingbackId = wh_json:get_value(<<"Ringback-ID">>, Slot),
     HoldMedia = wh_json:get_value(<<"Hold-Media">>, Slot),

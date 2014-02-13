@@ -137,6 +137,13 @@
         ]).
 -export([send_command/2]).
 
+-export([default_collect_timeout/0
+         ,default_digit_timeout/0
+         ,default_interdigit_timeout/0
+         ,default_message_timeout/0
+         ,default_application_timeout/0
+        ]).
+
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), binary()} |
                               {'say', binary()} | {'say', binary(), binary()} |
@@ -148,6 +155,35 @@
                               {'tts', ne_binary(), ne_binary(), ne_binary()}.
 -type audio_macro_prompts() :: [audio_macro_prompt(),...] | [].
 -export_type([audio_macro_prompt/0]).
+
+-define(CONFIG_CAT, <<"call_command">>).
+
+-define(DEFAULT_COLLECT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"collect_timeout">>, 5000)).
+-define(DEFAULT_DIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"digit_timeout">>, 3000)).
+-define(DEFAULT_INTERDIGIT_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"interdigit_timeout">>, 2000)).
+
+-define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 5000)).
+-define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500000)).
+
+-spec default_collect_timeout() -> pos_integer().
+default_collect_timeout() ->
+    ?DEFAULT_COLLECT_TIMEOUT.
+
+-spec default_digit_timeout() -> pos_integer().
+default_digit_timeout() ->
+    ?DEFAULT_DIGIT_TIMEOUT.
+
+-spec default_interdigit_timeout() -> pos_integer().
+default_interdigit_timeout() ->
+    ?DEFAULT_INTERDIGIT_TIMEOUT.
+
+-spec default_message_timeout() -> pos_integer().
+default_message_timeout() ->
+    ?DEFAULT_MESSAGE_TIMEOUT.
+
+-spec default_application_timeout() -> pos_integer().
+default_application_timeout() ->
+    ?DEFAULT_APPLICATION_TIMEOUT.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -273,10 +309,10 @@ channel_status_filter([JObj|JObjs]) ->
 -spec relay_event(pid(), wh_json:object()) -> any().
 relay_event(Pid, JObj) -> Pid ! {'amqp_msg', JObj}.
 
--spec receive_event(integer()) ->
+-spec receive_event(wh_timeout()) ->
                            {'ok', wh_json:object()} |
                            {'error', 'timeout'}.
--spec receive_event(integer(), boolean()) ->
+-spec receive_event(wh_timeout(), boolean()) ->
                            {'ok', wh_json:object()} |
                            {'other', wh_json:object()} |
                            {'error', 'timeout'}.
@@ -1165,7 +1201,7 @@ b_prompt_and_collect_digit(Prompt, Call) ->
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, 3,  Call).
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
-    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, 5000, Call).
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, ?DEFAULT_COLLECT_TIMEOUT, Call).
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
     b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, 'undefined', Call).
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
@@ -1270,7 +1306,7 @@ b_play_and_collect_digit(Media, Call) ->
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, 3,  Call).
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Call) ->
-    b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, 5000, Call).
+    b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, ?DEFAULT_COLLECT_TIMEOUT, Call).
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, 'undefined', Call).
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Call) ->
@@ -1285,7 +1321,7 @@ b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, 0, _Timeout, MediaInva
     {'ok', <<>>};
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
     NoopId = play(Media, Terminators, Call),
-    case collect_digits(MaxDigits, Timeout, 2000, NoopId, Call) of
+    case collect_digits(MaxDigits, Timeout, ?DEFAULT_INTERDIGIT_TIMEOUT, NoopId, Call) of
         {'ok', Digits} ->
             case re:run(Digits, Regex) of
                 {'match', _} when byte_size(Digits) >= MinDigits ->
@@ -1503,69 +1539,81 @@ b_privacy(Mode, Call) ->
 -spec collect_digits(integer(), integer(), integer(), api_binary(), list(), whapps_call:call()) ->
                             collect_digits_return().
 
+-record(wcc_collect_digits, {max_digits :: pos_integer()
+                             ,timeout = ?DEFAULT_DIGIT_TIMEOUT :: wh_timeout()
+                             ,interdigit = ?DEFAULT_INTERDIGIT_TIMEOUT :: pos_integer()
+                             ,noop_id :: api_binary()
+                             ,terminators = [<<"#">>] :: ne_binaries()
+                             ,call :: whapps_call:call()
+                             ,digits_collected = <<>> :: binary()
+                             ,after_timeout = ?MILLISECONDS_IN_DAY :: pos_integer()
+                            }).
+-type wcc_collect_digits() :: #wcc_collect_digits{}.
+
 collect_digits(MaxDigits, Call) ->
-    collect_digits(MaxDigits, 3000, Call).
+    do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
+                                          ,call=Call
+                                         }).
+
 collect_digits(MaxDigits, Timeout, Call) ->
-    collect_digits(MaxDigits, Timeout, 2000, Call).
+    do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
+                                          ,timeout=wh_util:to_integer(Timeout)
+                                          ,call=Call
+                                         }).
+
 collect_digits(MaxDigits, Timeout, Interdigit, Call) ->
-    collect_digits(MaxDigits, Timeout, Interdigit, 'undefined', Call).
+    do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
+                                          ,timeout=wh_util:to_integer(Timeout)
+                                          ,interdigit=wh_util:to_integer(Interdigit)
+                                          ,call=Call
+                                         }).
+
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Call) ->
-    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, [<<"#">>], Call).
+    do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
+                                          ,timeout=wh_util:to_integer(Timeout)
+                                          ,interdigit=wh_util:to_integer(Interdigit)
+                                          ,noop_id=NoopId
+                                          ,call=Call
+                                         }).
 
-collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) when is_binary(MaxDigits) ->
-    collect_digits(wh_util:to_integer(MaxDigits), Timeout, Interdigit, NoopId, Terminators, Call);
-collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) when is_binary(Timeout) ->
-    collect_digits(MaxDigits, wh_util:to_integer(Timeout), Interdigit, NoopId, Terminators, Call);
-collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) when is_binary(Interdigit) ->
-    collect_digits(MaxDigits, Timeout, wh_util:to_integer(Interdigit), NoopId, Terminators, Call);
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
-    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, <<>>, ?MILLISECONDS_IN_DAY).
+    do_collect_digits(#wcc_collect_digits{max_digits=wh_util:to_integer(MaxDigits)
+                                          ,timeout=wh_util:to_integer(Timeout)
+                                          ,interdigit=wh_util:to_integer(Interdigit)
+                                          ,noop_id=NoopId
+                                          ,terminators=Terminators
+                                          ,call=Call
+                                         }).
 
-collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After) ->
+-spec do_collect_digits(wcc_collect_digits()) -> collect_digits_return().
+do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
+                                      ,timeout=Timeout
+                                      ,interdigit=Interdigit
+                                      ,noop_id=NoopId
+                                      ,terminators=Terminators
+                                      ,call=Call
+                                      ,digits_collected=Digits
+                                      ,after_timeout=After
+                                     }=Collect) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
-            case get_event_type(JObj) of
-                {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _} ->
-                    lager:debug("channel was unbridged while collecting digits"),
-                    {'error', 'channel_unbridge'};
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    lager:debug("channel was hungup while collecting digits"),
-                    {'error', 'channel_hungup'};
-                {<<"error">>, _, <<"noop">>} ->
-                    case wh_json:get_value([<<"Request">>, <<"Msg-ID">>], JObj, NoopId) of
-                        NoopId when is_binary(NoopId), NoopId =/= <<>> ->
-                            lager:debug("channel execution error while collecting digits: ~s"
-                                        ,[wh_json:get_value(<<"Error-Message">>, JObj)]
-                                       ),
-                            {'error', JObj};
-                        _NID when is_binary(NoopId), NoopId =/= <<>> ->
-                            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
-                        _NID ->
-                            lager:debug("channel execution error while collecting digits with noop-id ~s: ~s", [NoopId, wh_json:encode(JObj)]),
-                            {'error', JObj}
-                    end;
-                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
-                    %% Playback completed start timeout
-                    case wh_json:get_value(<<"Application-Response">>, JObj) of
-                        NoopId when is_binary(NoopId), NoopId =/= <<>> ->
-                            %% if we were given the NoopId of the noop and this is it, then start the timer
-                            %% unless we have already started collecting digits when the noop came in
-                            T = case Digits of <<>> -> Timeout; _ -> After end,
-                            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, T);
-                        _NID when is_binary(NoopId), NoopId =/= <<>> ->
-                            %% if we were given the NoopId of the noop and this is not it, then keep waiting
-                            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
-                        _ ->
-                            %% if we are not given the NoopId of the noop then just use the first to start the timer
-                            %% unless we have already started collecting digits when the noop came in
-                            T = case Digits of <<>> -> Timeout; _ -> After end,
-                            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, T)
-                    end;
-                {<<"call_event">>, <<"DTMF">>, _} ->
+    case receive_event(After) of
+        {'ok', JObj} ->
+            case handle_collect_digit_event(JObj, NoopId) of
+                {'error', _}=Error -> Error;
+                {'noop_complete'} ->
+                    %% if we were given the NoopId of the noop and this is it, then start the timer
+                    %% unless we have already started collecting digits when the noop came in
+                    T = case Digits of <<>> -> Timeout; _ -> After end,
+                    do_collect_digits(Collect#wcc_collect_digits{after_timeout=T});
+                {'continue'} ->
+                    %% if we were given the NoopId of the noop and this is not it, then keep waiting
+                    do_collect_digits(Collect);
+                {'decrement'} ->
+                    do_collect_digits(Collect#wcc_collect_digits{after_timeout=whapps_util:decr_timeout(After, Start)});
+                {'ok', Digit} ->
                     %% DTMF received, collect and start interdigit timeout
                     Digits =:= <<>> andalso flush(Call),
-                    Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>),
+
                     case lists:member(Digit, Terminators) of
                         'true' ->
                             lager:debug("collected digits ('~s') from caller, terminated with ~s", [Digits, Digit]),
@@ -1573,22 +1621,68 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                         'false' ->
                             case <<Digits/binary, Digit/binary>> of
                                 D when byte_size(D) < MaxDigits ->
-                                    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, D, Interdigit);
+                                    do_collect_digits(Collect#wcc_collect_digits{digits_collected=D
+                                                                                 ,after_timeout=Interdigit
+                                                                                });
                                 D ->
                                     lager:debug("collected maximum digits ('~s') from caller", [D]),
                                     {'ok', D}
                             end
-                    end;
-                _ ->
-                    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, whapps_util:decr_timeout(After, Start))
+                    end
             end;
-        _ ->
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, whapps_util:decr_timeout(After, Start))
-    after
-        After -> {'ok', Digits}
+        {'error', 'timeout'} -> {'ok', Digits}
     end.
+
+-spec handle_collect_digit_event(wh_json:object(), api_binary()) ->
+                                        {'dtmf', ne_binary()} |
+                                        {'noop_complete'} |
+                                        {'continue'} |
+                                        {'decrement'} |
+                                        {'error', _}.
+-spec handle_collect_digit_event(wh_json:object(), api_binary(), {ne_binary(), ne_binary(), ne_binary()}) ->
+                                        {'dtmf', ne_binary()} |
+                                        {'noop_complete'} |
+                                        {'continue'} |
+                                        {'decrement'} |
+                                        {'error', _}.
+handle_collect_digit_event(JObj, NoopId) ->
+    handle_collect_digit_event(JObj, NoopId, get_event_type(JObj)).
+
+handle_collect_digit_event(_JObj, _NoopId, {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _}) ->
+    lager:debug("channel was unbridged while collecting digits"),
+    {'error', 'channel_unbridge'};
+handle_collect_digit_event(_JObj, _NoopId, {<<"call_event">>, <<"CHANNEL_DESTROY">>, _}) ->
+    lager:debug("channel was hungup while collecting digits"),
+    {'error', 'channel_hungup'};
+handle_collect_digit_event(JObj, NoopId, {<<"error">>, _, <<"noop">>}) ->
+    case wh_json:get_value([<<"Request">>, <<"Msg-ID">>], JObj, NoopId) of
+        NoopId when is_binary(NoopId), NoopId =/= <<>> ->
+            lager:debug("channel execution error while collecting digits: ~s"
+                        ,[wh_json:get_value(<<"Error-Message">>, JObj)]
+                       ),
+            {'error', JObj};
+        _NID when is_binary(NoopId), NoopId =/= <<>> ->
+            {'continue'};
+        _NID ->
+            lager:debug("channel execution error while collecting digits with noop-id ~s: ~s"
+                        ,[NoopId, wh_json:encode(JObj)]
+                       ),
+            {'error', JObj}
+    end;
+handle_collect_digit_event(JObj, NoopId, {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>}) ->
+    %% Playback completed start timeout
+    case wh_json:get_value(<<"Application-Response">>, JObj) of
+        NoopId when is_binary(NoopId), NoopId =/= <<>> ->
+            {'noop_complete'};
+        _NID when is_binary(NoopId), NoopId =/= <<>> ->
+            {'continue'};
+        _ ->
+            {'noop_complete'}
+    end;
+handle_collect_digit_event(JObj, _NoopId, {<<"call_event">>, <<"DTMF">>, _}) ->
+    {'ok', wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>)};
+handle_collect_digit_event(_JObj, _NoopId, _EventType) ->
+    {'decrement'}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1612,12 +1706,13 @@ wait_for_message(Call, Application) ->
 wait_for_message(Call, Application, Event) ->
     wait_for_message(Call, Application, Event, <<"call_event">>).
 wait_for_message(Call, Application, Event, Type) ->
-    wait_for_message(Call, Application, Event, Type, 5000).
+    wait_for_message(Call, Application, Event, Type, ?DEFAULT_MESSAGE_TIMEOUT).
 
 wait_for_message(Call, Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event(Timeout) of
+        {'error', 'timeout'}=E -> E;
+        {'ok', JObj} ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s", [Application]),
@@ -1629,11 +1724,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
                     {'ok', JObj};
                 _ ->
                     wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
-            end;
-        _ ->
-            wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
-    after
-        Timeout -> {'error', 'timeout'}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -1659,12 +1750,13 @@ wait_for_application(Call, Application) ->
 wait_for_application(Call, Application, Event) ->
     wait_for_application(Call, Application, Event, <<"call_event">>).
 wait_for_application(Call, Application, Event, Type) ->
-    wait_for_application(Call, Application, Event, Type, 500000).
+    wait_for_application(Call, Application, Event, Type, ?DEFAULT_APPLICATION_TIMEOUT).
 
 wait_for_application(Call, Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event(Timeout) of
+        {'error', 'timeout'}=E -> E;
+        {'ok', JObj} ->
             case get_event_type(JObj) of
                 {<<"error">>, _, Application} ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
@@ -1676,11 +1768,7 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
                     {'ok', JObj};
                 _ ->
                     wait_for_application(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
-            end;
-        _ ->
-            wait_for_application(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
-    after
-        Timeout -> {'error', 'timeout'}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -1706,7 +1794,7 @@ wait_for_headless_application(Application) ->
 wait_for_headless_application(Application, Event) ->
     wait_for_headless_application(Application, Event, <<"call_event">>).
 wait_for_headless_application(Application, Event, Type) ->
-    wait_for_headless_application(Application, Event, Type, 500000).
+    wait_for_headless_application(Application, Event, Type, ?DEFAULT_APPLICATION_TIMEOUT).
 
 wait_for_headless_application(Application, Event, Type, Timeout) ->
     Start = os:timestamp(),
@@ -1928,16 +2016,13 @@ wait_for_unbridge() ->
 
 wait_for_unbridge(Timeout) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event(Timeout) of
+        {'error', 'timeout'}=E -> E;
+        {'ok', JObj} ->
             case whapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"LEG_DESTROYED">>} -> {'ok', 'leg_hungup'};
-                _ -> wait_for_unbridge()
-            end;
-        _ -> wait_for_unbridge(wh_util:decr_timeout(Timeout, Start))
-    after
-        Timeout ->
-            {'error', 'timeout'}
+                _ -> wait_for_unbridge(wh_util:decr_timeout(Timeout, Start))
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -1951,8 +2036,9 @@ wait_for_unbridge(Timeout) ->
                                           {'dtmf', binary()}.
 wait_for_application_or_dtmf(Application, Timeout) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event(Timeout) of
+        {'error', 'timeout'}=E -> E;
+        {'ok', JObj} ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     lager:debug("channel was destroyed while waiting for ~s or DTMF", [Application]),
@@ -1964,13 +2050,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                 {<<"call_event">>, <<"DTMF">>, _} -> {'dtmf', wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
                     wait_for_application_or_dtmf(Application, whapps_util:decr_timeout(Timeout, Start))
-            end;
-        _ ->
-            %% dont let the mailbox grow unbounded if
-            %%   this process hangs around...
-            wait_for_application_or_dtmf(Application, whapps_util:decr_timeout(Timeout, Start))
-    after
-        Timeout -> {'error', 'timeout'}
+            end
     end.
 
 -type wait_for_fax_ret() :: {'ok', wh_json:object()} |
@@ -1983,13 +2063,15 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 wait_for_fax() -> wait_for_fax(?WAIT_FOR_FAX_TIMEOUT).
 wait_for_fax(Timeout) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event(Timeout) of
+        {'error', 'timeout'}=E -> E;
+        {'ok', JObj} ->
             case get_event_type(JObj) of
                 {<<"error">>, _, <<"receive_fax">>} ->
                     lager:debug("channel execution error while waiting for fax: ~s", [wh_json:encode(JObj)]),
                     {'error', JObj};
-                {<<"call_event">>, <<"CHANNEL_EXECUTE">>, <<"receive_fax">>} -> wait_for_fax('infinity');
+                {<<"call_event">>, <<"CHANNEL_EXECUTE">>, <<"receive_fax">>} ->
+                    wait_for_fax('infinity');
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">>} ->
                     {'ok', wh_json:set_value(<<"Fax-Success">>, 'true', JObj)};
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
@@ -1997,10 +2079,7 @@ wait_for_fax(Timeout) ->
                     lager:debug("channel hungup but no end of fax, maybe its coming next..."),
                     wait_for_fax(5000);
                 _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))
-            end;
-        _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))
-    after
-        Timeout -> {'error', 'timeout'}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -2014,11 +2093,11 @@ get_event_type(JObj) ->
     {C, N} = wh_util:get_event_type(JObj),
     {C, N, get_app(JObj)}.
 
+-spec get_app(wh_json:object()) -> api_binary().
 get_app(JObj) ->
-    case wh_json:get_value(<<"Application-Name">>, JObj) of
-        'undefined' -> wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj);
-        App -> App
-    end.
+    wh_json:get_first_defined([<<"Application-Name">>
+                               ,[<<"Request">>, <<"Application-Name">>]
+                              ], JObj).
 
 %%--------------------------------------------------------------------
 %% @public

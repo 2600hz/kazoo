@@ -102,7 +102,7 @@
                        ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
                        ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
                        ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
-                       ,from_realm = <<"norealm">> :: ne_binary()          %% SIP from host
+                       ,from_realm = <<"norealm">> :: api_binary()         %% SIP from host
                        ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
                        ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
                        ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
@@ -352,9 +352,20 @@ to_proplist(#whapps_call{}=Call) ->
 is_call(#whapps_call{}) -> 'true';
 is_call(_) -> 'false'.
 
--spec exec([fun((call()) -> call()),...], call()) -> call().
+-type exec_fun_1() :: fun((call()) -> call()).
+-type exec_fun_2() :: {fun((term(), call()) -> call()), term()}.
+-type exec_fun_3() :: {fun((term(), term(), call()) -> call()), term(), term()}.
+-type exec_fun() :: exec_fun_1() | exec_fun_2() | exec_fun_3().
+-type exec_funs() :: [exec_fun(),...].
+
+-spec exec(exec_funs(), call()) -> call().
 exec(Funs, #whapps_call{}=Call) ->
-    lists:foldr(fun(F, C) -> F(C) end, Call, Funs).
+    lists:foldr(fun exec_fold/2, Call, Funs).
+
+-spec exec_fold(exec_fun(), call()) -> call().
+exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
+exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
+exec_fold(F, C) when is_function(F, 1) -> F(C).
 
 -spec set_application_name(ne_binary(), call()) -> call().
 set_application_name(AppName, #whapps_call{}=Call) when is_binary(AppName) ->
@@ -440,8 +451,8 @@ caller_id_name(#whapps_call{caller_id_name=CIDName}) ->
         'false' -> CIDName
     end.
 
--spec set_caller_id_number(ne_binary(), call()) -> call().
-set_caller_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) ->
+-spec set_caller_id_number(api_binary(), call()) -> call().
+set_caller_id_number(CIDNumber, #whapps_call{}=Call) ->
     whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), 'undefined', Call),
     Call#whapps_call{caller_id_number=CIDNumber}.
 
@@ -503,7 +514,7 @@ from(#whapps_call{from=From}) ->
 from_user(#whapps_call{from_user=FromUser}) ->
     FromUser.
 
--spec from_realm(call()) -> ne_binary().
+-spec from_realm(call()) -> api_binary().
 from_realm(#whapps_call{from_realm=FromRealm}) ->
     FromRealm.
 
@@ -552,8 +563,10 @@ inception(#whapps_call{inception=Inception}) ->
 
 -spec set_account_db(ne_binary(), call()) -> call().
 set_account_db(AccountDb, #whapps_call{}=Call) when is_binary(AccountDb) ->
-    AccountId = wh_util:format_account_id(AccountDb, raw),
-    set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb, account_id=AccountId}).
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb
+                                                                         ,account_id=AccountId
+                                                                        }).
 
 -spec account_db(call()) -> api_binary().
 account_db(#whapps_call{account_db=AccountDb}) ->
@@ -561,8 +574,10 @@ account_db(#whapps_call{account_db=AccountDb}) ->
 
 -spec set_account_id(ne_binary(), call()) -> call().
 set_account_id(AccountId, #whapps_call{}=Call) when is_binary(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
-    set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb, account_id=AccountId}).
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb
+                                                                         ,account_id=AccountId
+                                                                        }).
 
 -spec account_id(call()) -> api_binary().
 account_id(#whapps_call{account_id=AccountId}) ->

@@ -36,7 +36,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
 
--spec finish_request(cb_context:context()) -> any().
+-spec finish_request(cb_context:context()) -> 'ok'.
+-spec finish_request(cb_context:context(), api_object()) -> 'ok'.
 finish_request(Context) ->
     finish_request(Context, cb_context:auth_doc(Context)).
 
@@ -48,8 +49,10 @@ finish_request(Context, AuthDoc) ->
                                              ,wh_json:get_value(<<"_rev">>, AuthDoc)
                                             ]),
     couch_mgr:save_doc(?TOKEN_DB, AuthDoc),
-    couch_mgr:enable_change_notice().
+    couch_mgr:enable_change_notice(),
+    'ok'.
 
+-spec clean_expired() -> 'ok'.
 clean_expired() ->
     CreatedBefore = wh_util:current_tstamp() - ?LOOP_TIMEOUT, % gregorian seconds - Expiry time
     ViewOpts = [{'startkey', 0}
@@ -62,11 +65,14 @@ clean_expired() ->
         {'ok', L} ->
             lager:debug("removing ~b expired tokens", [length(L)]),
             _ = couch_mgr:del_docs(?TOKEN_DB, prepare_tokens_for_deletion(L)),
+            couch_compactor_fsm:compact_db(?TOKEN_DB),
             'ok';
         {'error', _E} ->
             lager:debug("failed to lookup expired tokens: ~p", [_E])
     end.
 
+-spec prepare_token_for_deletion(wh_json:objects() | wh_json:object()) ->
+                                        wh_json:objects() | wh_json:object().
 prepare_tokens_for_deletion(L) ->
     [prepare_token_for_deletion(T) || T <- L].
 prepare_token_for_deletion(Token) ->
@@ -91,6 +97,9 @@ authenticate(Context) ->
             {'halt', cb_context:add_system_error('too_many_requests', Context)}
     end.
 
+-spec check_auth_token(cb_context:context(), api_binary(), boolean()) ->
+                              boolean() |
+                              {'true', cb_context:context()}.
 check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;
 check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->

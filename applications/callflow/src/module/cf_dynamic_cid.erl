@@ -1,20 +1,20 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
-%%%
+%%% "data":{
+%%%   "media_id":"id_of_media"
+%%%   // optional after this
+%%%   "interdigit_timeout":2000
+%%% }
 %%% @end
-%%% Created : 1 Dec 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_dynamic_cid).
 
 -include("../callflow.hrl").
 
 -export([handle/2]).
-
--define(GET_CONFIG, fun(Key, Default) ->
-                      whapps_config:get_binary(<<"callflow.dynamic_cid">>, Key, Default)
-                    end).
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".dynamic_cid">>).
 
@@ -51,21 +51,43 @@ handle(Data, Call) ->
     DynamicCID = #dynamic_cid{},
     Prompts = DynamicCID#dynamic_cid.prompts,
     _ = whapps_call_command:b_play(<<"silence_stream://100">>, Call),
+
     Media = case wh_json:get_ne_value(<<"media_id">>, Data) of
                 'undefined' -> Prompts#prompts.default_prompt;
                 Else -> Else
             end,
+
     Min = DynamicCID#dynamic_cid.min_digits,
     Max = DynamicCID#dynamic_cid.max_digits,
     Regex = DynamicCID#dynamic_cid.whitelist,
     DefaultCID = DynamicCID#dynamic_cid.default_cid,
-    CID = case whapps_call_command:b_play_and_collect_digits(Min, Max, Media, 1, 5000, 'undefined', Regex, Call) of
+
+    Interdigit = wh_json:get_integer_value(<<"interdigit_timeout">>
+                                           ,Data
+                                           ,whapps_call_commnd:default_interdigit_timeout()
+                                          ),
+
+    NoopId = whapps_call_command:play(Media, Call),
+
+    CID = case whapps_call_command:collect_digits(Max
+                                                  ,whapps_call_command:default_collect_timeout()
+                                                  ,Interdigit
+                                                  ,NoopId
+                                                  ,Call
+                                                 )
+          of
               {'ok', <<>>} ->
                   _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID;
               {'ok', Digits} ->
-                  _ = whapps_call_command:play(Prompts#prompts.accept_tone, Call),
-                  Digits;
+                  case re:run(Digits, Regex) of
+                      {'match', _} when byte_size(Digits) >= Min ->
+                          whapps_call_command:play(Prompts#prompts.accept_tone, Call),
+                          Digits;
+                      _ ->
+                          _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
+                          DefaultCID
+                  end;
               {'error', _} ->
                   _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID
@@ -73,8 +95,8 @@ handle(Data, Call) ->
     lager:info("setting the caller id number to ~s", [CID]),
 
     {'ok', C1} = cf_exe:get_call(Call),
-    Updates = [fun(C) -> whapps_call:kvs_store('dynamic_cid', CID, C) end
-               ,fun(C) -> whapps_call:set_caller_id_number(CID, C) end
+    Updates = [{fun whapps_call:kvs_store/3, 'dynamic_cid', CID}
+               ,{fun whapps_call:set_caller_id_number/2, CID}
               ],
     cf_exe:set_call(whapps_call:exec(Updates, C1)),
     cf_exe:continue(Call).
