@@ -110,6 +110,7 @@ ensure 2600hz is always leading the way in cloud telecom.
 * erlang R15+
 * python-simplejson
 * libxslt
+* gcc-c++
 * zip
 * unzip
 * make
