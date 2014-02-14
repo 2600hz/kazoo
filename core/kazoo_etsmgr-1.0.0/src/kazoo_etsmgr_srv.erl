@@ -14,7 +14,9 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, start_link/2]).
+-export([start_link/1, start_link/2
+         ,default_table_options/0
+        ]).
 
 %% gen_server callbacks
 -export([init/1
@@ -111,6 +113,8 @@ init([Opts]) ->
                  }}.
 
 -define(DEFAULT_TABLE_OPTIONS, ['set', 'protected', {'keypos', 2}]).
+default_table_options() ->
+    ?DEFAULT_TABLE_OPTIONS.
 
 opt_table_id(Opts) -> props:get_value('table_id', Opts).
 opt_table_options(Opts) ->

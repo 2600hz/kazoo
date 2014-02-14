@@ -24,7 +24,7 @@
 start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
-    kazoo_token_bucket_sup:start_link().
+    kazoo_token_buckets_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public

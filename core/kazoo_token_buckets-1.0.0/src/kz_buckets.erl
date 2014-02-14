@@ -1,24 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2014, 2600Hz INC
+%%% @copyright (C) 2014, 2600Hz INC
 %%% @doc
-%%% Handles reading/writing to the buckets ETS table
+%%% API interface for buckets
+%%% ETS writer for table
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_buckets_ets).
+-module(kz_buckets).
 
--behaviour(gen_server).
-
-%% API
+%% API exports
 -export([start_link/0
-         ,has_token/1, has_token/2, has_token/3
-         ,has_tokens/2, has_tokens/3, has_tokens/4
-         ,start_bucket/1, start_bucket/2, start_bucket/3, start_bucket/4, start_bucket/5
-         ,has_bucket/1, has_bucket/2
-         ,key_pos/0
-         ,table_id/0
+         ,has_token/1, has_token/2
+         ,has_tokens/2, has_tokens/3
+         ,start_bucket/1, start_bucket/2, start_bucket/3, start_bucket/4
+         ,has_bucket/1
          ,tokens/0
+        ]).
+
+%% ETS related
+-export([table_id/0
+         ,table_options/0
+         ,gift_data/0
         ]).
 
 %% gen_server callbacks
@@ -30,13 +33,10 @@
          ,code_change/3
         ]).
 
--include("../crossbar.hrl").
+-include("kz_buckets.hrl").
 
--define(SERVER, ?MODULE).
--define(TABLE_ID, 'cb_buckets_mgr').
-
--define(MAX_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"max_bucket_tokens">>, 100)).
--define(FILL_RATE, whapps_config:get_integer(?CONFIG_CAT, <<"tokens_fill_rate">>, 10)).
+-define(MAX_TOKENS, whapps_config:get_integer(<<"token_buckets">>, <<"max_bucket_tokens">>, 100)).
+-define(FILL_RATE, whapps_config:get_integer(<<"token_buckets">>, <<"tokens_fill_rate">>, 10)).
 
 -record(state, {table_id :: ets:tid()}).
 
@@ -58,47 +58,63 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
--spec has_token(cb_context:context()) -> boolean().
--spec has_token(api_binary(), api_binary()) -> boolean().
--spec has_token(api_binary(), api_binary(), boolean()) -> boolean().
+-spec has_token(api_binary()) -> boolean().
+-spec has_token(api_binary(), boolean()) -> boolean().
 
--spec has_tokens(cb_context:context(), pos_integer()) -> boolean().
--spec has_tokens(api_binary(), api_binary(), pos_integer()) -> boolean().
--spec has_tokens(api_binary(), api_binary(), pos_integer(), boolean()) -> boolean().
-has_token(Context) ->
-    has_tokens(Context, 1).
-has_token(AccountId, ClientIp) ->
-    has_tokens(AccountId, ClientIp, 1).
-has_token(AccountId, ClientIp, StartIfMissing) ->
-    has_tokens(AccountId, ClientIp, 1, StartIfMissing).
+-spec has_tokens(api_binary(), pos_integer()) -> boolean().
+-spec has_tokens(api_binary(), pos_integer(), boolean()) -> boolean().
+has_token(Name) ->
+    has_tokens(Name, 1).
+has_token(Name, StartIfMissing) ->
+    has_tokens(Name, 1, StartIfMissing).
 
-bucket_name(Context) ->
-    AccountId = case cb_context:account_id(Context) of
-                    'undefined' -> <<"unauthenticated">>;
-                    Id -> Id
-                end,
-    ClientIp = cb_context:client_ip(Context),
-    {AccountId, ClientIp}.
-
-has_tokens(Context, Count) ->
-    {AccountId, ClientIp} = bucket_name(Context),
-    has_tokens(AccountId, ClientIp, Count).
-has_tokens(AccountId, ClientIp, Count) ->
-    has_tokens(AccountId, ClientIp, Count, 'true').
-
-has_tokens(AccountId, ClientIp, Count, StartBucketIfMissing) ->
-    lager:debug("looking for token bucket for ~s/~s", [AccountId, ClientIp]),
-    case ets:lookup(?MODULE, key(AccountId, ClientIp)) of
-        [] when StartBucketIfMissing -> start_bucket(AccountId, ClientIp), 'true';
+has_tokens(Key, Count) ->
+    has_tokens(Key, Count, 'true').
+has_tokens(Key, Count, StartBucketIfMissing) ->
+    lager:debug("looking for token bucket for ~s", [Key]),
+    case ets:lookup(?MODULE, Key) of
+        [] when StartBucketIfMissing ->
+            start_bucket(Key),
+            has_tokens(Key, Count, 'false');
         [] -> 'false';
-        [#bucket{srv=Srv}] -> kz_token_bucket:consume(Srv, Count)
+        [#bucket{srv=Srv}] ->
+            kz_token_bucket:consume(Srv, Count)
     end.
 
+-spec has_bucket(api_binary()) -> boolean().
+has_bucket(Key) ->
+    case ets:lookup(?MODULE, Key) of
+        [] -> 'false';
+        [#bucket{}] -> 'true';
+        _O ->
+            lager:error("has_bucket(~s, ~s) failed: ~p", [Key, _O]),
+            'false'
+    end.
+
+-spec start_bucket(ne_binary()) -> 'ok'.
+-spec start_bucket(ne_binary(), pos_integer()) -> 'ok'.
+-spec start_bucket(ne_binary(), pos_integer(), pos_integer()) -> 'ok'.
+-spec start_bucket(ne_binary(), pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) -> 'ok'.
+
+start_bucket(Name) ->
+    start_bucket(Name, ?MAX_TOKENS).
+start_bucket(Name, MaxTokens) ->
+    start_bucket(Name, MaxTokens, ?FILL_RATE).
+start_bucket(Name, MaxTokens, FillRate) ->
+    start_bucket(Name, MaxTokens, FillRate, 'second').
+start_bucket(Name, MaxTokens, FillRate, FillTime) ->
+    case has_bucket(Name) of
+        'true' -> lager:debug("bucket exists for ~s/~s already", [Name]);
+        'false' ->
+            gen_server:cast(?MODULE, {'start', Name, MaxTokens, FillRate, FillTime})
+    end.
+
+-spec tokens() -> 'ok'.
 tokens() ->
     lager:info("~60.s | ~20.s | ~10.s |", [<<"Key">>, <<"Pid">>, <<"Tokens">>]),
-    tokens_traverse(ets:first(?MODULE)).
+    tokens_traverse(ets:first(table_id())).
 tokens_traverse('$end_of_table') ->
     lager:debug("~90.s", [<<"No more token servers">>]);
 tokens_traverse(Key) ->
@@ -106,46 +122,18 @@ tokens_traverse(Key) ->
     lager:info("~60.60s | ~20.20p | ~10.10p |", [K, P, kz_token_bucket:tokens(P)]),
     tokens_traverse(ets:next(?MODULE, Key)).
 
-key_pos() -> #bucket.key.
+%%%===================================================================
+%%% ETS
+%%%===================================================================
+-spec table_id() -> atom().
 table_id() -> ?MODULE.
 
-key(AccountId, ClientIp) -> <<AccountId/binary, "/", ClientIp/binary>>.
+-spec table_options() -> list().
+table_options() ->
+    ['named_table' | kazoo_etsmgr_srv:default_table_options()].
 
--spec start_bucket(cb_context:context()) -> 'ok'.
--spec start_bucket(ne_binary(), ne_binary()) -> 'ok'.
--spec start_bucket(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
--spec start_bucket(ne_binary(), ne_binary(), pos_integer(), pos_integer()) -> 'ok'.
--spec start_bucket(ne_binary(), ne_binary(), pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) -> 'ok'.
-
-start_bucket(Context) ->
-    {AccountId, ClientIp} = bucket_name(Context),
-    start_bucket(AccountId, ClientIp).
-start_bucket(AccountId, ClientIp) ->
-    start_bucket(AccountId, ClientIp, ?MAX_TOKENS).
-start_bucket(AccountId, ClientIp, MaxTokens) ->
-    start_bucket(AccountId, ClientIp, MaxTokens, ?FILL_RATE).
-start_bucket(AccountId, ClientIp, MaxTokens, FillRate) ->
-    start_bucket(AccountId, ClientIp, MaxTokens, FillRate, 'second').
-start_bucket(AccountId, ClientIp, MaxTokens, FillRate, FillTime) ->
-    case has_bucket(AccountId, ClientIp) of
-        'true' -> lager:debug("bucket exists for ~s/~s already", [AccountId, ClientIp]);
-        'false' ->
-            gen_server:cast(?MODULE, {'start', AccountId, ClientIp, MaxTokens, FillRate, FillTime})
-    end.
-
--spec has_bucket(cb_context:context()) -> boolean().
--spec has_bucket(api_binary(), api_binary()) -> boolean().
-has_bucket(Context) ->
-    {AccountId, ClientIp} = bucket_name(Context),
-    has_bucket(AccountId, ClientIp).
-has_bucket(AccountId, ClientIp) ->
-    case ets:lookup(?MODULE, key(AccountId, ClientIp)) of
-        [] -> 'false';
-        [#bucket{}] -> 'true';
-        _O ->
-            lager:error("has_bucket(~s, ~s) failed: ~p", [AccountId, ClientIp, _O]),
-            'false'
-    end.
+-spec gift_data() -> 'ok'.
+gift_data() -> 'ok'.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -196,16 +184,16 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Req, #state{table_id='undefined'}=State) ->
     lager:debug("ignoring req: ~p", [_Req]),
     {'noreply', State};
-handle_cast({'start', AccountId, ClientIp, MaxTokens, FillRate, FillTime}, #state{table_id=Tbl}=State) ->
+handle_cast({'start', Name, MaxTokens, FillRate, FillTime}, #state{table_id=Tbl}=State) ->
     lager:debug("starting token bucket for ~s/~s (~b at ~b/~s)"
-                ,[AccountId, ClientIp, MaxTokens, FillRate, FillTime]
+                ,[Name, MaxTokens, FillRate, FillTime]
                ),
     case cb_kz_buckets_sup:start_bucket(MaxTokens, FillRate, FillTime) of
         {'ok', Pid} when is_pid(Pid) ->
-            case ets:insert_new(Tbl, new_bucket(Pid, AccountId, ClientIp)) of
-                'true' -> lager:debug("new bucket for ~s/~s: ~p", [AccountId, ClientIp, Pid]);
+            case ets:insert_new(Tbl, new_bucket(Pid, Name)) of
+                'true' -> lager:debug("new bucket for ~s/~s: ~p", [Name, Pid]);
                 'false' ->
-                    lager:debug("hmm, bucket appears to exist for ~s/~s, stopping ~p", [AccountId, ClientIp, Pid]),
+                    lager:debug("hmm, bucket appears to exist for ~s/~s, stopping ~p", [Name, Pid]),
                     cb_kz_buckets_sup:stop_bucket(Pid)
             end;
         _E -> lager:debug("error: starting bucket: ~p", [_E])
@@ -275,9 +263,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec new_bucket(pid(), api_binary(), api_binary()) -> bucket().
-new_bucket(Pid, AccountId, ClientIp) ->
-    #bucket{key=key(AccountId, ClientIp)
+-spec new_bucket(pid(), api_binary()) -> bucket().
+new_bucket(Pid, Name) ->
+    #bucket{key=Name
             ,srv=Pid
             ,ref=erlang:monitor('process', Pid)
            }.
