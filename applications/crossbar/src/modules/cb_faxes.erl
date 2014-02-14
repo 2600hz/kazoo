@@ -285,9 +285,9 @@ update(Id, Context) ->
 on_successful_validation('undefined', Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-	AuthDoc = cb_context:auth_doc(Context),
+    AuthDoc = cb_context:auth_doc(Context),
     OwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
-	Timezone = crossbar_util:get_account_timezone(AccountId, OwnerId),
+    Timezone = crossbar_util:get_account_timezone(AccountId, OwnerId),
 			
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
