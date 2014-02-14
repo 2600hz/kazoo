@@ -296,8 +296,8 @@ to_log(Props) ->
 to_log(Props, Header) ->
   Keys = props:get_keys(Props),
   K = wh_util:rand_hex_binary(4),
-  lager:info(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
+  lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
   lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,props:get_value(A,Props)]) end,Keys),
-  lager:info(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
+  lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
   'ok'.
 
