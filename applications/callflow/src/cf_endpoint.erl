@@ -22,7 +22,7 @@
 
 -define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
                         ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
-                                       ,{<<"ZRTP-Enrollment">>, <<"true">>}]}]).
+                                      ,{<<"ZRTP-Enrollment">>, <<"true">>}]}]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -854,10 +854,8 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                         end
                 end
                ,fun(J) ->
-                        case wh_json:get_value([<<"media">>, <<"encryption">>, <<"enforce_security">>], Endpoint, 'true') of
-                            'true' -> wh_json:set_value(<<"Media-Encryption-Enforce-Security">>, <<"true">>, J);
-                            _Else -> wh_json:set_value(<<"Media-Encryption-Enforce-Security">>, <<"false">>, J)
-                        end
+                        EnforceSecurity = wh_json:is_true([<<"media">>, <<"encryption">>, <<"enforce_security">>], Endpoint,'true'),
+                        wh_json:set_value(<<"Media-Encryption-Enforce-Security">>, EnforceSecurity, J)
                 end
                ,fun(J) -> encryption_method_map(J, Endpoint) end
                ,fun(J) -> wh_json:set_value(<<"SIP-Invite-Domain">>, whapps_call:request_realm(Call), J) end
@@ -871,6 +869,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
               ],
     lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), CCVFuns).
 
+-spec encryption_method_map(api_object(), api_binaries()) -> api_object().
 encryption_method_map(JObj, []) -> JObj;
 encryption_method_map(JObj, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of
