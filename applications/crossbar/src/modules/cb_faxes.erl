@@ -286,13 +286,8 @@ on_successful_validation('undefined', Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
 	AuthDoc = cb_context:auth_doc(Context),
-	Timezone = case wh_json:get_value(<<"owner_id">>, AuthDoc) of
-				   'undefined' -> crossbar_util:get_account_timezone(AccountId);
-				   UserId -> case crossbar_util:get_user_timezone(AccountId, UserId) of
-								 'error' -> crossbar_util:get_account_timezone(AccountId);
-								 {'ok', UserTimezone} -> UserTimezone
-							 end
-			   end,
+    OwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
+	Timezone = crossbar_util:get_account_timezone(AccountId, OwnerId),
 			
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, <<"fax">>}

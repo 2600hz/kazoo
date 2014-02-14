@@ -416,32 +416,24 @@ get_account_lang(AccountId) ->
             'error'
     end.
 
--spec get_user_timezone(ne_binary(), ne_binary()) -> 'error' | {'ok', ne_binary()}.
+-spec get_user_timezone(ne_binary(), ne_binary()) -> ne_binary().
+get_user_timezone(AccountId, 'undefined') ->
+    get_account_timezone(AccountId);
 get_user_timezone(AccountId, UserId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, UserId) of
         {'ok', JObj} ->
-            case wh_json:get_value(<<"timezone">>, JObj) of
-                'undefined' -> 'error';
-                Lang -> {'ok', Lang}
-            end;
-        {'error', _E} ->
-            lager:error("failed to lookup user ~p in ~p : ~p", [UserId, AccountId, _E]),
-            'error'
+            wh_json:get_value(<<"timezone">>, JObj);
+        {'error', _E} -> 'undefined'
     end.
 
--spec get_account_timezone(ne_binary()) -> 'error' | {'ok', ne_binary()}.
+-spec get_account_timezone(ne_binary()) -> ne_binary().
 get_account_timezone(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
-            case wh_json:get_value(<<"timezone">>, JObj) of
-                'undefined' -> 'error';
-                Lang -> {'ok', Lang}
-            end;
-        {'error', _E} ->
-            lager:error("failed to lookup account ~p : ~p", [AccountId, _E]),
-            'error'
+            wh_json:get_value(<<"timezone">>, JObj);
+        {'error', _E} -> 'undefined'
     end.
 
 -spec get_path(cowboy_req:req(), ne_binary()) -> ne_binary().
