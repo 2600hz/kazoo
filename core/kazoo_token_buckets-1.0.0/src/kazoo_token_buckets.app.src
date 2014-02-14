@@ -1,0 +1,13 @@
+{application, kazoo_token_buckets,
+ [
+  {description, "Token Buckets - Throttling mechanism"},
+  {vsn, "1.0.0"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { kazoo_token_buckets_app, []}},
+  {env, []}
+ ]}.
