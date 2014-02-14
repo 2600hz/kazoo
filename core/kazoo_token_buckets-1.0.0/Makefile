@@ -1,4 +1,4 @@
-PROJECT = kazoo_token_bucket
+PROJECT = kazoo_token_buckets
 ROOT = ../..
 DIALYZER = dialyzer
 
