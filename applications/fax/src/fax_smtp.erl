@@ -28,7 +28,7 @@
 
 -spec init(Hostname :: binary(), SessionCount :: non_neg_integer(), Address :: tuple(), Options :: list()) -> {'ok', string(), #state{}} | {'stop', any(), string()}.
 init(Hostname, SessionCount, Address, Options) ->
-	lager:info("peer: ~p", [Address]),
+	%lager:info("peer: ~p", [Address]),
 	case SessionCount > 20 of
 		false ->
 			Banner = [Hostname, " Kazoo Email to Fax Server"],
@@ -135,7 +135,7 @@ handle_other(<<"PROXY">>, Args, State) ->
     lager:info("PROXY : ~p",[Args]),
 	{State};
 %% TODO
-%% <<"PROXY">> / <<"TCP4 95.94.44.193 213.63.149.200 59640 25">>
+%% <<"PROXY">> / <<"TCP4 X.X.X.X Y.Y.Y.Y 59640 25">>
 %% TRANSPORT PEER_IP PROXY_IP PEER_PORT PROXY_PORT
 
 handle_other(Verb, Args, State) ->
@@ -159,9 +159,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec terminate(Reason :: any(), State :: #state{}) -> {'ok', any(), #state{}}.
 terminate(normal, #state{filename=Filename,content_type=CT,docs=Docs}=State) ->
-	lager:info("terminate normal saving docs"),
 	case wh_util:is_empty(Filename) of
 		'false' ->
+            lager:info("terminate normal saving docs"),
 			{ok,FileContents} = file:read_file(Filename),
 			save_fax_doc(Docs, FileContents,CT),
 			file:delete(Filename);
@@ -209,8 +209,8 @@ check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From}=State) ->
 %	{ok, State}.
 
 add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
-	FaxBoxId = wh_json:get_value(<<"_id">>,FaxBoxDoc),	
-	AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),	
+	FaxBoxId = wh_json:get_value(<<"_id">>,FaxBoxDoc),
+	AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
 	AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
 	Props = [
 			 {<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
