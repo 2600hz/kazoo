@@ -416,7 +416,7 @@ get_account_lang(AccountId) ->
             'error'
     end.
 
--spec get_user_timezone(ne_binary(), ne_binary()) -> ne_binary().
+-spec get_user_timezone(api_binary(), api_binary()) -> api_binary().
 get_user_timezone(AccountId, 'undefined') ->
     get_account_timezone(AccountId);
 get_user_timezone(AccountId, UserId) ->
@@ -424,10 +424,12 @@ get_user_timezone(AccountId, UserId) ->
     case couch_mgr:open_cache_doc(AccountDb, UserId) of
         {'ok', JObj} ->
             wh_json:get_value(<<"timezone">>, JObj);
-        {'error', _E} -> 'undefined'
+        {'error', _E} -> get_account_timezone(AccountId)
     end.
 
--spec get_account_timezone(ne_binary()) -> ne_binary().
+-spec get_account_timezone(api_binary()) -> api_binary().
+get_account_timezone('undefined') ->
+    'undefined';
 get_account_timezone(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
