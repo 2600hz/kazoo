@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013 VoIP, INC
+%%% @copyright (C) 2011-2014 2600Hz, INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -63,6 +63,7 @@ start_deps() ->
                                         ,'crypto'
                                         ,'gproc'
                                         ,'lager'
+                                        ,'kazoo_token_buckets'
                                         ,'whistle_amqp'
                                         ,'whistle_couch'
                                        ]],
