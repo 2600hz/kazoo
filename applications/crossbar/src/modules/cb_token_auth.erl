@@ -90,7 +90,7 @@ prepare_token_for_deletion(Token) ->
                           {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
-    case cb_buckets_ets:has_token(Context) of
+    case kz_buckets:has_token(Context) of
         'true' -> check_auth_token(Context, cb_context:auth_token(Context), cb_context:magic_pathed(Context));
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
