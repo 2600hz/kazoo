@@ -27,9 +27,11 @@
          ,filter_empty/1
          ,filter_undefined/1
          ,to_querystring/1
+         ,to_log/1, to_log/2
         ]).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 %% don't import the get_keys/1 that fetches keys from the process dictionary
 -compile({'no_auto_import', [get_keys/1]}).
@@ -288,3 +290,17 @@ to_querystring_test() ->
                   end, Tests).
 
 -endif.
+
+-spec to_log(wh_proplist()) -> 'ok'.
+to_log(Props) ->
+	to_log(Props,<<"Props">>).
+
+-spec to_log(wh_proplist(), ne_binary()) -> 'ok'.
+to_log(Props, Header) ->
+  Keys = props:get_keys(Props),
+  K = wh_util:rand_hex_binary(4),
+  lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
+  lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,props:get_value(A,Props)]) end,Keys),
+  lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
+  'ok'.
+

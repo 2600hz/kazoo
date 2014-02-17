@@ -962,6 +962,16 @@ maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
 is_post_hangup_command(AppName) ->
     lists:member(AppName, ?POST_HANGUP_COMMANDS).
 
+-spec get_module(ne_binary(), ne_binary()) -> atom().
+get_module(Category, Name) ->
+	ModuleName = <<"ecallmgr_", Category/binary, "_", Name/binary>>,
+	try wh_util:to_atom(ModuleName) of
+		Module -> Module
+	catch
+		'error':'undef' ->
+			wh_util:to_atom(ModuleName,'true')
+	end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -978,11 +988,8 @@ execute_control_request(Cmd, #state{node=Node
         lager:debug("executing call command '~s' ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)
                                                        ,wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
                                                       ]),
-        Mod = wh_util:to_atom(<<"ecallmgr_"
-                                     ,(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
-                                     ,"_"
-                                     ,(wh_json:get_value(<<"Event-Name">>, Cmd, <<>>))/binary
-                                   >>),
+        Mod = get_module(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>),
+						 wh_json:get_value(<<"Event-Name">>, Cmd, <<>>)),
         Mod:exec_cmd(Node, CallId, Cmd, self())
     catch
         _:{'error', 'nosession'} ->
