@@ -28,8 +28,8 @@
 -export([get_account_realm/1, get_account_realm/2]).
 -export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
 -export([get_path/2]).
--export([get_user_lang/2]).
--export([get_account_lang/1]).
+-export([get_user_lang/2, get_account_lang/1]).
+-export([get_user_timezone/2, get_account_timezone/1]).
 
 -include("crossbar.hrl").
 
@@ -414,6 +414,28 @@ get_account_lang(AccountId) ->
         {'error', _E} ->
             lager:error("failed to lookup account ~p : ~p", [AccountId, _E]),
             'error'
+    end.
+
+-spec get_user_timezone(api_binary(), api_binary()) -> api_binary().
+get_user_timezone(AccountId, 'undefined') ->
+    get_account_timezone(AccountId);
+get_user_timezone(AccountId, UserId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+        {'ok', JObj} ->
+            wh_json:get_value(<<"timezone">>, JObj);
+        {'error', _E} -> get_account_timezone(AccountId)
+    end.
+
+-spec get_account_timezone(api_binary()) -> api_binary().
+get_account_timezone('undefined') ->
+    'undefined';
+get_account_timezone(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} ->
+            wh_json:get_value(<<"timezone">>, JObj);
+        {'error', _E} -> 'undefined'
     end.
 
 -spec get_path(cowboy_req:req(), ne_binary()) -> ne_binary().

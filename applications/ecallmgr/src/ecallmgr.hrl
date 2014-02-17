@@ -207,6 +207,7 @@
                                ,{<<"Enable-T38-Passthrough">>, <<"t38_passthru">>}
                                ,{<<"Fax-Identity-Number">>, <<"fax_ident">>}
                                ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
+                               ,{<<"Fax-Timezone">>, <<"fax_timezone">>}
                                ,{<<"sip_rh_X-Redirect-Server">>, <<"sip_rh_X-Redirect-Server">>}
                                ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
                                ,{<<"Park-After-Pickup">>, <<"park_after_bridge">>}
