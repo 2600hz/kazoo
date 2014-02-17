@@ -4,6 +4,7 @@
 %%%
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kazoo_token_buckets).
 
@@ -23,7 +24,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
-    _ = declare_exchanges(),
     kazoo_token_buckets_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -58,13 +58,3 @@ start_deps() ->
                                                 ,'lager'
                                                ]],
     'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Ensures that all exchanges used are declared
-%% @end
-%%--------------------------------------------------------------------
--spec declare_exchanges() -> 'ok'.
-declare_exchanges() ->
-    wapi_self:declare_exchanges().
