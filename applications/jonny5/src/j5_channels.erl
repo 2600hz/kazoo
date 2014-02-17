@@ -218,7 +218,7 @@ handle_authz_resp(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    wh_hooks_listener:register(),
+    wh_hooks:register(),
     _ = ets:new(?TAB, ['set'
                        ,'protected'
                        ,'named_table'

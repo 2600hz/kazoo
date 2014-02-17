@@ -6,5 +6,8 @@
             "map": "function(doc) { if ( (doc.pvt_type != 'allotment_credit' && doc.pvt_type != 'allotment_debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'allotment_credit' ? 1 : -1); emit([doc.name || doc.description, doc.pvt_created], doc.amount * modifier); }"
             ,"reduce": "_sum"
         }
+        ,"reconcile_by_callid": {
+            "map": "function (doc) {if (doc.pvt_deleted || (doc.pvt_type != 'allotment_credit' && doc.pvt_type != 'allotment_debit')) return; var modifier = (doc.pvt_type == 'allotment_credit' ? 1 : -1); emit(doc.call_id, doc.amount * modifier);}"
+        }	
     }
 }
