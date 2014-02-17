@@ -113,13 +113,15 @@ start_bucket(Name, MaxTokens, FillRate, FillTime) ->
 
 -spec tokens() -> 'ok'.
 tokens() ->
-    lager:info("~60.s | ~20.s | ~10.s |", [<<"Key">>, <<"Pid">>, <<"Tokens">>]),
+    io:format("~60.60s | ~20.20s | ~10.10s |~n", [<<"Key">>, <<"Pid">>, <<"Tokens">>]),
     tokens_traverse(ets:first(table_id())).
 tokens_traverse('$end_of_table') ->
-    lager:debug("~90.s", [<<"No more token servers">>]);
+    io:format("~s~n", [<<"No more token servers">>]);
 tokens_traverse(Key) ->
     [#bucket{key=K, srv=P}] = ets:lookup(?MODULE, Key),
-    lager:info("~60.60s | ~20.20p | ~10.10p |", [K, P, kz_token_bucket:tokens(P)]),
+    io:format("~60.60s | ~20.20s | ~10.10s |~n"
+              ,[K, pid_to_list(P), integer_to_list(kz_token_bucket:tokens(P))]
+             ),
     tokens_traverse(ets:next(?MODULE, Key)).
 
 %%%===================================================================
@@ -188,13 +190,13 @@ handle_cast({'start', Name, MaxTokens, FillRate, FillTime}, #state{table_id=Tbl}
     lager:debug("starting token bucket for ~s/~s (~b at ~b/~s)"
                 ,[Name, MaxTokens, FillRate, FillTime]
                ),
-    case cb_kz_buckets_sup:start_bucket(MaxTokens, FillRate, FillTime) of
+    case kz_buckets_sup:start_bucket(MaxTokens, FillRate, FillTime) of
         {'ok', Pid} when is_pid(Pid) ->
             case ets:insert_new(Tbl, new_bucket(Pid, Name)) of
                 'true' -> lager:debug("new bucket for ~s/~s: ~p", [Name, Pid]);
                 'false' ->
                     lager:debug("hmm, bucket appears to exist for ~s/~s, stopping ~p", [Name, Pid]),
-                    cb_kz_buckets_sup:stop_bucket(Pid)
+                    kz_buckets_sup:stop_bucket(Pid)
             end;
         _E -> lager:debug("error: starting bucket: ~p", [_E])
     end,
