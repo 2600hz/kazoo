@@ -354,8 +354,7 @@ load_apps(AccountId, UserId) ->
         {'error', _E} ->
             lager:error("failed to load lookup apps in ~p", [MasterAccountDb]),
             'undefined';
-        {'ok', JObjs} ->
-            filter_apps(JObjs, Lang)
+        {'ok', JObjs} -> filter_apps(JObjs, Lang)
     end.
 
 -spec filter_apps(wh_json:objects(), ne_binary()) -> wh_json:objects().
@@ -366,10 +365,11 @@ filter_apps(JObjs, Lang) ->
 filter_apps([], _, Acc) -> Acc;
 filter_apps([JObj|JObjs], Lang, Acc) ->
     App = wh_json:get_value(<<"value">>, JObj, wh_json:new()),
+    DefaultLabel = wh_json:get_value([<<"i18n">>, ?DEFAULT_LANGUAGE, <<"label">>], App),
     NewApp = wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, App)}
                                 ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
                                 ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
-                                ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], App)}
+                                ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], App, DefaultLabel)}
                                ]),
     filter_apps(JObjs, Lang, [NewApp|Acc]).
 
