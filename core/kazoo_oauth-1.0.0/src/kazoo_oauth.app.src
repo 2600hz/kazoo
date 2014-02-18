@@ -1,0 +1,13 @@
+{application, kazoo_oauth,
+ [
+  {description, "OAuth Utilities"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {modules, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { kazoo_oauth_app, []}},
+  {env, []}
+ ]}.

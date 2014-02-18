@@ -276,10 +276,10 @@ maybe_load_username(Account, Context) ->
             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                 'false' ->
                     lager:debug("the username '~s' was found and is not disabled, continue", [Username]),
-                    setter(Context, [{fun cb_context:set_account_db/2, Account}
-                                     ,{fun cb_context:set_doc/2, wh_json:get_value(<<"doc">>, User)}
-                                     ,{fun cb_context:set_resp_status/2, 'success'}
-                                    ]);
+                    cb_context:setters(Context, [{fun cb_context:set_account_db/2, Account}
+                                                 ,{fun cb_context:set_doc/2, wh_json:get_value(<<"doc">>, User)}
+                                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                                ]);
                 'true' ->
                     lager:debug("the username '~s' was found but is disabled", [Username]),
                     cb_context:add_validation_error(<<"username">>
@@ -295,12 +295,6 @@ maybe_load_username(Account, Context) ->
                                             ,Context
                                            )
     end.
-
--spec setter(cb_context:context(), [{function(), term()},...]) -> cb_context:context().
--spec setter_fold({function(), term()}, cb_context:context()) -> cb_context:context().
-setter(Context, Funs) ->
-    lists:foldl(fun setter_fold/2, Context, Funs).
-setter_fold({F, V}, C) -> F(C, V).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -329,9 +323,9 @@ create_token(Context) ->
                     lager:debug("created new local auth token ~s", [AuthToken]),
                     JObj1 = populate_resp(JObj, AccountId, OwnerId),
                     crossbar_util:response(crossbar_util:response_auth(JObj1)
-                                           ,setter(Context, [{fun cb_context:set_auth_token/2, AuthToken}
-                                                             ,{fun cb_context:set_auth_doc/2, Doc}
-                                                            ])
+                                           ,cb_context:setters(Context, [{fun cb_context:set_auth_token/2, AuthToken}
+                                                                         ,{fun cb_context:set_auth_doc/2, Doc}
+                                                                        ])
                                           );
                 {'error', R} ->
                     lager:debug("could not create new local auth token, ~p", [R]),
@@ -408,9 +402,9 @@ reset_users_password(Context) ->
                                ], JObj),
 
     Context1 = crossbar_doc:save(
-                 setter(Context, [{fun cb_context:set_doc/2, JObj1}
-                                  ,{fun cb_context:set_req_verb/2, ?HTTP_POST}
-                                 ])
+                 cb_context:setters(Context, [{fun cb_context:set_doc/2, JObj1}
+                                              ,{fun cb_context:set_req_verb/2, ?HTTP_POST}
+                                             ])
                 ),
     case cb_context:resp_status(Context1) of
         'success' ->
