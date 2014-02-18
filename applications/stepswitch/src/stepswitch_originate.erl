@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -28,7 +28,8 @@
                 ,request_handler
                 ,response_queue
                 ,queue
-                ,timeout}).
+                ,timeout
+               }).
 
 -define(RESPONDERS, []).
 -define(BINDINGS, [{'resource', []}
@@ -200,13 +201,13 @@ handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request, 
                 'false' ->
                     gen_listener:cast(RequestHandler, {'originate_result', originate_failure(JObj, Request)})
             end;
-        {<<"error">>, <<"originate_resp">>} -> 
+        {<<"error">>, <<"originate_resp">>} ->
             MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
             lager:debug("channel execution error while waiting for originate: ~s"
                         ,[wh_util:to_binary(wh_json:encode(JObj))]),
             gen_listener:cast(RequestHandler, {'originate_result', originate_error(JObj, Request)});
         {<<"dialplan">>, <<"originate_ready">>} ->
-            gen_listener:cast(RequestHandler, {'originate_result', originate_ready(JObj, Request)}); 
+            gen_listener:cast(RequestHandler, {'originate_result', originate_ready(JObj, Request)});
         _ -> 'ok'
     end,
     {'reply', []}.
@@ -289,7 +290,7 @@ originate_from_uri(CIDNum, JObj) ->
         andalso (is_binary(CIDNum) andalso is_binary(Realm))
     of
         'false' -> 'undefined';
-        'true' -> 
+        'true' ->
             FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
             lager:debug("setting bridge from-uri to ~s", [FromURI]),
             FromURI

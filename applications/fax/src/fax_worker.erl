@@ -440,31 +440,27 @@ execute_job(JObj, Q) ->
                             {'ok', string(), wh_proplist(), ne_binary()} |
                             {'error', term()}.
 fetch_document(JObj) ->
-    case wh_json:get_value(<<"_attachments">>, JObj, 'undefined') of
-        'undefined' -> fetch_document_from_url(JObj);
-        Attachments -> fetch_document_from_attachment(JObj)
+    case wh_json:get_value(<<"_attachments">>, JObj, []) of
+        [] -> fetch_document_from_url(JObj);
+        Attachments -> fetch_document_from_attachment(JObj, Attachments)
     end.
 
-
--spec fetch_document_from_attachment(wh_json:object()) ->
-                            {'ok', string(), wh_proplist(), ne_binary()} |
-                            {'error', term()}.
-fetch_document_from_attachment(JObj) ->
+-spec fetch_document_from_attachment(wh_json:object(), wh_json:objects()) ->
+                                            {'ok', string(), wh_proplist(), ne_binary()} |
+                                            {'error', term()}.
+fetch_document_from_attachment(JObj, Attachments) ->
     JobId = wh_json:get_value(<<"_id">>, JObj),
-    Attachments = wh_json:get_value(<<"_attachments">>, JObj),
-    Keys = wh_json:get_keys(Attachments),
-    AttachmentName = lists:nth(1,Keys), 
-    AttachmentDoc = wh_json:get_value(AttachmentName, Attachments), 
-    CT = wh_json:get_value(<<"content_type">>, AttachmentDoc),
-    Props = [{"Content-Type",CT}],  
-    {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES,JobId,AttachmentName),
-    {'ok',"200",Props,Contents}.
-    
-    
-    
+
+    [AttachmentName|_] = wh_json:get_keys(Attachments),
+
+    CT = wh_json:get_value([AttachmentName, <<"content_type">>], Attachments),
+    Props = [{"Content-Type",CT}],
+    {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES, JobId, AttachmentName),
+    {'ok', "200", Props, Contents}.
+
 -spec fetch_document_from_url(wh_json:object()) ->
-                            {'ok', string(), wh_proplist(), ne_binary()} |
-                            {'error', term()}.
+                                     {'ok', string(), wh_proplist(), ne_binary()} |
+                                     {'error', term()}.
 fetch_document_from_url(JObj) ->
     FetchRequest = wh_json:get_value(<<"document">>, JObj),
     Url = wh_json:get_string_value(<<"url">>, FetchRequest),
