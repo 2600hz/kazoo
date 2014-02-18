@@ -182,13 +182,13 @@ save_fax_doc([],_FileContents, _CT) ->
 	ok;
 save_fax_doc([Doc|Docs],FileContents,CT) ->
 	case couch_mgr:save_doc(?WH_FAXES, Doc) of
-		{'ok', JObj} -> DocId = wh_json:get_value(<<"_id">>, JObj),
-						Rev = wh_json:get_value(<<"_rev">>, JObj),
-						Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]},{'rev', Rev}],
-						couch_mgr:put_attachment(?WH_FAXES, DocId, attachment_name(<<>>, CT), FileContents, Opts);
-		Else -> ok
-	end,
-	save_fax_doc(Docs,FileContents,CT).
+        {'ok', JObj} -> DocId = wh_json:get_value(<<"_id">>, JObj),
+                        Rev = wh_json:get_value(<<"_rev">>, JObj),
+                        Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]},{'rev', Rev}],
+                        couch_mgr:put_attachment(?WH_FAXES, DocId, attachment_name(<<>>, CT), FileContents, Opts);
+        Else -> ok
+    end,
+    save_fax_doc(Docs,FileContents,CT).
 
 
 -spec check_faxbox(To :: binary(), State :: #state{}) -> {'ok', #state{}} | {'error', string(), #state{}}.
@@ -212,16 +212,15 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
 	FaxBoxId = wh_json:get_value(<<"_id">>,FaxBoxDoc),
 	AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
 	AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-	Props = [
-			 {<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
-            ,{<<"fax_identity_name">>, wh_json:get_value(<<"caller_name">>, FaxBoxDoc)}		
-			,{<<"from_number">>,wh_json:get_value(<<"caller_id">>,FaxBoxDoc)}
+	Props = [{<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
+            ,{<<"fax_identity_name">>, wh_json:get_value(<<"caller_name">>, FaxBoxDoc)}
+            ,{<<"from_number">>,wh_json:get_value(<<"caller_id">>,FaxBoxDoc)}
             ,{<<"fax_identity_number">>, wh_json:get_value(<<"caller_id">>, FaxBoxDoc)}
             ,{<<"fax_timezone">>, wh_json:get_value(<<"timezone">>, FaxBoxDoc)}
-			,{<<"to_name">>,FaxNumber}
-			,{<<"to_number">>,FaxNumber}
-			,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}
-			,{<<"notifications">>,wh_json:from_list([{<<"email">>,wh_json:from_list([{<<"send_to">>,wh_json:get_value(<<"email_to">>,FaxBoxDoc)}])}]) }
+            ,{<<"to_name">>,FaxNumber}
+            ,{<<"to_number">>,FaxNumber}
+            ,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}
+            ,{<<"notifications">>,wh_json:from_list([{<<"email">>,wh_json:from_list([{<<"send_to">>,wh_json:get_value(<<"email_to">>,FaxBoxDoc)}])}]) }
             ,{<<"faxbox_id">>, FaxBoxId}
             ,{<<"folder">>, <<"outbox">>}
 			 ],
