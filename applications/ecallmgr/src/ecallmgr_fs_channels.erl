@@ -19,7 +19,6 @@
 -export([details/0
          ,details/1
         ]).
--export([authz_summary/0]).
 -export([show_all/0]).
 -export([flush_node/1]).
 -export([new/1]).
@@ -27,13 +26,13 @@
 -export([update/3
          ,updates/2
         ]).
--export([account_summary/1]).
 -export([match_presence/1]).
 -export([count/0]).
 
 -export([handle_query_auth_id/2]).
 -export([handle_query_user_channels/2]).
 -export([handle_query_account_channels/2]).
+-export([handle_query_channels/2]).
 -export([handle_channel_status/2]).
 
 -export([init/1
@@ -56,6 +55,9 @@
                      ,{{?MODULE, 'handle_query_account_channels'}
                        ,[{<<"call_event">>, <<"query_account_channels_req">>}]
                       }
+                     ,{{?MODULE, 'handle_query_channels'}
+                       ,[{<<"call_event">>, <<"query_channels_req">>}]
+                      }
                      ,{{?MODULE, 'handle_channel_status'}
                        ,[{<<"call_event">>, <<"channel_status_req">>}]
                       }
@@ -70,15 +72,6 @@
 
 -record(state, {}).
 -type state() :: #state{}.
-
--record(astats, {bridge_ids =           sets:new() :: set()
-                 ,outbound_flat_rate =  sets:new() :: set()
-                 ,inbound_flat_rate =   sets:new() :: set()
-                 ,outbound_per_minute = sets:new() :: set()
-                 ,inbound_per_minute =  sets:new() :: set()
-                 ,resource_consumers =  sets:new() :: set()
-                }).
--type astats() :: #astats{}.
 
 %%%===================================================================
 %%% API
@@ -140,15 +133,6 @@ details(UUID) ->
                  }],
     print_details(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
 
--spec authz_summary() -> 'ok'.
-authz_summary() ->
-    MatchSpec = [{#channel{account_id='$1', _ = '_'}
-                  ,[]
-                  ,['$1']
-                 }],
-    AccountIds = sets:from_list(ets:select(?CHANNELS_TBL, MatchSpec)),
-    print_authz_summary(sets:to_list(AccountIds)).
-
 -spec show_all() -> wh_json:objects().
 show_all() ->
     ets:foldl(fun(Channel, Acc) ->
@@ -174,21 +158,6 @@ update(UUID, Key, Value) ->
 -spec updates(ne_binary(), wh_proplist()) -> 'ok'.
 updates(UUID, Updates) ->
     gen_server:call(?MODULE, {'channel_updates', UUID, Updates}).
-
--spec account_summary(ne_binary()) -> wh_json:object().
-account_summary(AccountId) ->
-    MatchSpec = [{#channel{direction = '$1'
-                           ,account_id = '$2'
-                           ,account_billing = '$7'
-                           ,authorizing_id = '$3'
-                           ,resource_id = '$4'
-                           ,bridge_id = '$5'
-                           , _ = '_'
-                          }
-                  ,[{'=:=', '$2', {'const', AccountId}}]
-                  ,['$_']}
-                ],
-    summarize_account_usage(ets:select(?CHANNELS_TBL, MatchSpec)).
 
 -spec count() -> non_neg_integer().
 count() -> ets:info(?CHANNELS_TBL, 'size').
@@ -269,6 +238,16 @@ send_account_query_resp(JObj, Cs) ->
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     lager:debug("sending back channel data to ~s", [ServerId]),
     wapi_call:publish_query_account_channels_resp(ServerId, Resp).
+
+-spec handle_query_channels(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_query_channels(JObj, _Props) ->
+    'true' = wapi_call:query_channels_req_v(JObj),
+    Fields = wh_json:get_value(<<"Fields">>, JObj, []),
+    Resp = [{<<"Channels">>, query_channels(Fields)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],    
+    wapi_call:publish_query_channels_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec handle_channel_status(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
@@ -474,107 +453,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec summarize_account_usage(channels()) -> wh_json:object().
-summarize_account_usage(Channels) ->
-    AStats = lists:foldr(fun classify_channel/2, #astats{}, Channels),
-    wh_json:from_list(
-      [{<<"Calls">>, sets:size(AStats#astats.bridge_ids)}
-       ,{<<"Channels">>,  length(Channels)}
-       ,{<<"Outbound-Flat-Rate">>, sets:size(AStats#astats.outbound_flat_rate)}
-       ,{<<"Inbound-Flat-Rate">>, sets:size(AStats#astats.inbound_flat_rate)}
-       ,{<<"Outbound-Per-Minute">>, sets:size(AStats#astats.outbound_per_minute)}
-       ,{<<"Inbound-Per-Minute">>, sets:size(AStats#astats.inbound_per_minute)}
-       ,{<<"Resource-Consuming-Calls">>, sets:size(AStats#astats.resource_consumers)}
-      ]).
-
--spec classify_channel(channel(), astats()) -> astats().
-classify_channel(#channel{bridge_id='undefined', uuid=UUID}=Channel, AStats) ->
-    classify_channel(Channel#channel{bridge_id=UUID}
-                     ,AStats
-                    );
-classify_channel(#channel{direction = <<"outbound">>
-                          ,account_billing = <<"flat_rate">>
-                          ,bridge_id=BridgeId
-                          ,uuid=UUID
-                         }
-                 ,#astats{outbound_flat_rate=OutboundFlatRates
-                          ,resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{outbound_flat_rate=sets:add_element(UUID, OutboundFlatRates)
-                  ,resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,account_billing = <<"flat_rate">>
-                          ,bridge_id=BridgeId
-                          ,uuid=UUID
-                         }
-                 ,#astats{inbound_flat_rate=InboundFlatRates
-                          ,resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{inbound_flat_rate=sets:add_element(UUID, InboundFlatRates)
-                  ,resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"outbound">>
-                          ,account_billing = <<"per_minute">>
-                          ,bridge_id=BridgeId
-                          ,uuid=UUID
-                         }
-                 ,#astats{outbound_per_minute=OutboundPerMinute
-                          ,resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{outbound_per_minute=sets:add_element(UUID, OutboundPerMinute)
-                  ,resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,account_billing = <<"per_minute">>
-                          ,bridge_id=BridgeId
-                          ,uuid=UUID
-                         }
-                 ,#astats{inbound_per_minute=InboundPerMinute
-                          ,resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{inbound_per_minute=sets:add_element(UUID, InboundPerMinute)
-                  ,resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,authorizing_id='undefined'
-                          ,bridge_id=BridgeId
-                         }
-                 ,#astats{resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,bridge_id=BridgeId
-                         }
-                 ,#astats{bridge_ids=BridgeIds}=AStats) ->
-    AStats#astats{bridge_ids=sets:add_element(BridgeId, BridgeIds)};
-classify_channel(#channel{direction = <<"outbound">>
-                          ,resource_id='undefined'
-                          ,bridge_id=BridgeId
-                         }
-                 ,#astats{bridge_ids=BridgeIds}=AStats) ->
-    AStats#astats{bridge_ids=sets:add_element(BridgeId, BridgeIds)};
-classify_channel(#channel{direction = <<"outbound">>
-                          ,bridge_id=BridgeId
-                         }
-                 ,#astats{resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 }.
-
 -spec find_by_auth_id(ne_binary()) ->
                              {'ok', wh_json:objects()} |
                              {'error', 'not_found'}.
@@ -644,6 +522,33 @@ build_matchspec_ors(Usernames) ->
                 ,'false'
                 ,Usernames).
 
+-spec query_channels(ne_binaries()) -> wh_json:object().
+query_channels(Fields) ->
+    query_channels(ets:match_object(?CHANNELS_TBL, #channel{_='_'}, 1)
+                   ,Fields
+                   ,wh_json:new()).
+
+-spec query_channels({[channel()], ets:continuation()}, ne_binaries(), wh_json:object()) -> wh_json:object().
+query_channels('$end_of_table', _, Channels) -> Channels;
+query_channels({[#channel{uuid=CallId}=Channel], Continuation}
+                ,<<"all">>, Channels) ->
+    JObj = ecallmgr_fs_channel:to_api_json(Channel),
+    query_channels(ets:match_object(Continuation)
+                   ,<<"all">>
+                   ,wh_json:set_value(CallId, JObj, Channels));
+query_channels({[#channel{uuid=CallId}=Channel], Continuation}
+               ,Fields, Channels) ->
+    Props = ecallmgr_fs_channel:to_api_props(Channel),
+    JObj = wh_json:from_list(
+             props:filter_undefined(
+               [{Field, props:get_value(Field, Props)}
+                || Field <- Fields
+               ]
+              )),
+    query_channels(ets:match_object(Continuation)
+                   ,Fields
+                   ,wh_json:set_value(CallId, JObj, Channels)).
+
 print_summary('$end_of_table') ->
     io:format("No channels found!~n", []);
 print_summary(Match) ->
@@ -682,32 +587,3 @@ print_details({[#channel{}=Channel]
          || {K, V} <- ecallmgr_fs_channel:to_props(Channel)
         ],
     print_details(ets:select(Continuation), Count + 1).
-
--spec print_authz_summary(ne_binaries()) -> 'ok'.
--spec print_authz_summary(ne_binaries(), non_neg_integer()) -> 'ok'.
-
-print_authz_summary([]) ->
-    io:format("No accounts found!~n");
-print_authz_summary(AccountIds) ->
-    io:format("+----------------------------------+------------+------------+-------------------------+-------------------------+------------+~n"),
-    io:format("| Account ID                       | Calls      | Channels   |        Flat-Rate        |        Per-Minute       | Resources  |~n"),
-    io:format("|                                  |            |            | Inbound    | Outbound   | Inbound    | Outbound   |            |~n"),
-    io:format("+==================================+============+============+============+============+============+============+============+"),
-    print_authz_summary(AccountIds, 0).
-
-print_authz_summary([], Count) ->
-    io:format("~n+----------------------------------+------------+------------+------------+------------+------------+------------+------------+~n"),
-    io:format("Found ~p accounts~n", [Count]);
-print_authz_summary([AccountId|AccountIds], Count) ->
-    JObj = account_summary(AccountId),
-    io:format("~n| ~-32s | ~-10s | ~-10s | ~-10s | ~-10s | ~-10s | ~-10s | ~-10s |"
-              ,[AccountId
-                ,wh_json:get_binary_value(<<"Calls">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Channels">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Inbound-Flat-Rate">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Outbound-Flat-Rate">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Inbound-Per-Minute">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Outbound-Per-Minute">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Resource-Consuming-Calls">>, JObj, 0)
-               ]),
-    print_authz_summary(AccountIds, Count + 1).

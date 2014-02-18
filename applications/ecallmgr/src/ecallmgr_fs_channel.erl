@@ -21,9 +21,12 @@
          ,import_moh/1
          ,set_account_id/2
          ,fetch/1, fetch/2
-         ,renew/2
-         ,to_json/1
+         ,renew/2]).
+-export([to_json/1
          ,to_props/1
+        ]).
+-export([to_api_json/1
+         ,to_api_props/1
         ]).
 -export([handle_channel_req/3
          ,handle_channel_req/4
@@ -200,6 +203,39 @@ to_props(Channel) ->
        ,{<<"context">>, Channel#channel.context}
        ,{<<"dialplan">>, Channel#channel.dialplan}
        ,{<<"other_leg">>, Channel#channel.other_leg}
+      ]).
+
+-spec to_api_json(channel()) -> wh_json:object().
+to_api_json(Channel) ->
+    wh_json:from_list(to_api_props(Channel)).
+
+-spec to_api_props(channel()) -> wh_proplist().
+to_api_props(Channel) ->
+    props:filter_undefined(
+      [{<<"Call-ID">>, Channel#channel.uuid}
+       ,{<<"Destination">>, Channel#channel.destination}
+       ,{<<"Call-Direction">>, Channel#channel.direction}
+       ,{<<"Account-ID">>, Channel#channel.account_id}
+       ,{<<"Account-Billing">>, Channel#channel.account_billing}
+       ,{<<"Authorizing-ID">>, Channel#channel.authorizing_id}
+       ,{<<"Authorizing-Type">>, Channel#channel.authorizing_type}
+       ,{<<"Owner-ID">>, Channel#channel.owner_id}
+       ,{<<"Resource-ID">>, Channel#channel.resource_id}
+       ,{<<"Presence-ID">>, Channel#channel.presence_id}
+       ,{<<"Fetch-ID">>, Channel#channel.fetch_id}
+       ,{<<"Bridge-ID">>, Channel#channel.bridge_id}
+       ,{<<"Precedence">>, Channel#channel.precedence}
+       ,{<<"Reseller-ID">>, Channel#channel.reseller_id}
+       ,{<<"Reseller-Billing">>, Channel#channel.reseller_billing}
+       ,{<<"Realm">>, Channel#channel.realm}
+       ,{<<"Username">>, Channel#channel.username}
+       ,{<<"Answered">>, Channel#channel.answered}
+       ,{<<"Media-Node">>, wh_util:to_binary(Channel#channel.node)}
+       ,{<<"Timestamp">>, Channel#channel.timestamp}
+       ,{<<"Profile">>, Channel#channel.profile}
+       ,{<<"Context">>, Channel#channel.context}
+       ,{<<"Dialplan">>, Channel#channel.dialplan}
+       ,{<<"Other-Leg-Call-ID">>, Channel#channel.other_leg}
       ]).
 
 %%%===================================================================

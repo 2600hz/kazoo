@@ -10,6 +10,7 @@
 -behaviour(gen_listener).
 
 -export([start_link/0]).
+-export([sync/0]).
 -export([total_calls/1]).
 -export([resource_consuming/1]).
 -export([inbound_flat_rate/1]).
@@ -29,10 +30,14 @@
 -include("jonny5.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
--record(state, {}).
+-record(state, {sync_ref :: api_reference()
+                ,sync_timer:: api_reference()
+               }).
+-type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 -define(TAB, ?MODULE).
+-define(SYNC_PERIOD, 900000). %% 15 minutes
 
 -record(channel, {call_id :: api_binary()
                   ,other_leg_call_id :: api_binary()
@@ -75,6 +80,9 @@ start_link() ->
                                                           ,{'queue_options', ?QUEUE_OPTIONS}
                                                           ,{'consume_options', ?CONSUME_OPTIONS}
                                                          ], []).
+
+-spec sync() -> 'ok'.
+sync() -> gen_server:cast(?SERVER, 'synchronize_channels').
 
 -spec total_calls(ne_binary()) -> non_neg_integer().
 total_calls(AccountId) ->
@@ -187,12 +195,10 @@ outbound_flat_rate(AccountId) ->
     ets:select_count(?TAB, MatchSpec).     
 
 -spec authorized(wh_json:object()) -> 'ok'.
-authorized(JObj) ->
-    gen_server:cast(?SERVER, {'authorized', JObj}).
+authorized(JObj) -> gen_server:cast(?SERVER, {'authorized', JObj}).
 
 -spec remove(ne_binary()) -> 'ok'.
-remove(CallId) ->
-    gen_server:cast(?SERVER, {'remove', CallId}).
+remove(CallId) -> gen_server:cast(?SERVER, {'remove', CallId}).
 
 -spec handle_authz_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_authz_resp(JObj, _Props) ->
@@ -219,12 +225,13 @@ handle_authz_resp(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     wh_hooks:register(),
+    wh_nodes:notify_expire(),
     _ = ets:new(?TAB, ['set'
                        ,'protected'
                        ,'named_table'
                        ,{'keypos', #channel.call_id}
                       ]),
-    {'ok', #state{}}.
+    {'ok', start_channel_sync_timer(#state{})}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -253,11 +260,18 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
+    self() ! {'synchronize_channels', SyncRef},
+    {'noreply', State};
+handle_cast({'wh_nodes', {'expire', _Node}}, #state{sync_ref=SyncRef}=State) ->
+    lager:debug("notifed that node ~s is no longer reachable, synchronizing channels", []),
+    self() ! {'synchronize_channels', SyncRef},
+    {'noreply', State};
 handle_cast({'authorized', JObj}, State) ->
-    ets:insert(?TAB, from_jobj(JObj)),
+    _ = ets:insert(?TAB, from_jobj(JObj)),
     {'noreply', State};
 handle_cast({'remove', CallId}, State) ->
-    ets:delete(?TAB, CallId),
+    _ = ets:delete(?TAB, CallId),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -272,13 +286,29 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) ->
+    Req = wh_api:default_headers(?APP_NAME, ?APP_VERSION),
+    _ = case whapps_util:amqp_pool_collect(Req
+                                           ,fun wapi_call:publish_query_channels_req/1
+                                           ,{'ecallmgr', 'true'})
+        of
+            {'error', _R} ->
+                lager:error("could not reach ecallmgr channels: ~p", [_R]);
+            {_, JObjs} ->
+                EcallmgrChannelIds = ecallmgr_channel_ids(JObjs),
+                LocalChannelIds = j5_channel_ids(),
+                fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds)
+        end,
+    {'noreply', start_channel_sync_timer(State)};
+handle_info({'synchronize_channels', _}, State) ->
+    {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
     %% insert_new keeps a CHANNEL_CREATE from overriding an entry from
     %% an auth_resp BUT an auth_resp CAN override a CHANNEL_CREATE
-    ets:insert_new(?TAB, from_jobj(JObj)),
+    _ = ets:insert_new(?TAB, from_jobj(JObj)),
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
-    ets:delete(?TAB, wh_json:get_value(<<"Call-ID">>, JObj)),
+    _ = ets:delete(?TAB, wh_json:get_value(<<"Call-ID">>, JObj)),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -351,3 +381,44 @@ count_unique_calls([{CallId, 'undefined'}|Channels], Set) ->
     count_unique_calls(Channels, sets:add_element(CallId, Set));
 count_unique_calls([{_, CallId}|Channels], Set) ->
     count_unique_calls(Channels, sets:add_element(CallId, Set)).
+
+-spec j5_channel_ids() -> set().
+j5_channel_ids() ->
+    sets:from_list(
+      ets:select(?TAB, [{#channel{call_id='$1', _='_'}, [], ['$1']}])
+     ).
+
+-spec ecallmgr_channel_ids(wh_json:objects()) -> set().
+ecallmgr_channel_ids(JObjs) ->
+    ecallmgr_channel_ids(JObjs, sets:new()).
+
+-spec ecallmgr_channel_ids(wh_json:objects(), set()) -> set().
+ecallmgr_channel_ids([], ChannelIds) -> ChannelIds;
+ecallmgr_channel_ids([JObj|JObjs], ChannelIds) ->
+    Channels = wh_json:get_value(<<"Channels">>, JObj),
+    ecallmgr_channel_ids(
+      JObjs
+      ,lists:foldl(fun(ChannelId, Ids) ->
+                           sets:add_element(ChannelId, Ids)
+                   end, ChannelIds, wh_json:get_keys(Channels))
+     ).
+
+-spec fix_channel_disparity(set(), set()) -> 'ok'.
+fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds) ->
+    Disparity = sets:to_list(sets:subtract(LocalChannelIds, EcallmgrChannelIds)),
+    fix_channel_disparity(Disparity).
+
+-spec fix_channel_disparity(ne_binaries()) -> 'ok'.
+fix_channel_disparity([]) -> 'ok';
+fix_channel_disparity([ChannelId|ChannelIds]) ->
+    lager:debug("channel disparity with ecallmgr, removing ~s"
+                ,[ChannelId]),
+    _ = ets:delete(?TAB, ChannelId),
+    fix_channel_disparity(ChannelIds).
+
+-spec start_channel_sync_timer(state()) -> state().
+start_channel_sync_timer(State) ->
+    SyncRef = make_ref(),
+    TRef = erlang:send_after(?SYNC_PERIOD, self(), {'synchronize_channels', SyncRef}),
+    State#state{sync_ref=SyncRef
+                ,sync_timer=TRef}.
