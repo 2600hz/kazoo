@@ -56,6 +56,7 @@
                           ,sip_interface
                           ,channel_vars = ["[",[],"]"] :: iolist()
                           ,include_channel_vars = 'true' :: boolean()
+                          ,failover
                          }).
 -type bridge_endpoint() :: #bridge_endpoint{}.
 
@@ -522,6 +523,7 @@ endpoint_jobj_to_record(Endpoint, IncludeVars) ->
                      ,sip_interface = wh_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
                      ,channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)
                      ,include_channel_vars = IncludeVars
+                     ,failover = wh_json:get_value(<<"Failover">>, Endpoint)
                     }.
 
 -spec get_endpoint_span(wh_json:object()) -> ne_binary().
@@ -635,7 +637,7 @@ build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
 -spec build_sip_channel(bridge_endpoint()) ->
                                {'ok', bridge_channel()} |
                                {'error', _}.
-build_sip_channel(Endpoint) ->
+build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
     Routines = [fun(C) -> maybe_clean_contact(C, Endpoint) end
                 ,fun(C) -> ensure_username_present(C, Endpoint) end
                 ,fun(C) -> maybe_replace_fs_path(C, Endpoint) end
@@ -647,11 +649,23 @@ build_sip_channel(Endpoint) ->
     try lists:foldl(fun(F, C) -> F(C) end, get_sip_contact(Endpoint), Routines) of
         Channel -> {'ok', Channel}
     catch
+        _E:{'badmatch', {'error', 'not_found'}} ->
+            lager:warning("Failed to build sip channel trying failover", []),
+            maybe_failover(Failover);
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:warning("Failed to build sip channel (~s): ~p", [_E, _R]),
             wh_util:log_stacktrace(ST),
             {'error', 'invalid'}
+    end.
+
+-spec maybe_failover(wh_json:object()) ->
+                               {'ok', bridge_channel()} |
+                               {'error', _}.
+maybe_failover(Endpoint) ->
+    case wh_util:is_empty(Endpoint) of
+        'true' -> {'error', 'invalid'};
+        'false' -> build_sip_channel(endpoint_jobj_to_record(Endpoint))
     end.
 
 -spec get_sip_contact(bridge_endpoint()) -> ne_binary().

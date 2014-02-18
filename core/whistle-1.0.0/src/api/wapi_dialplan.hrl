@@ -73,6 +73,7 @@
                ,<<"Enable-T38-Fax-Request">>
                ,<<"Enable-T38-Passthrough">>
                ,<<"Enable-T38-Gateway">>
+               ,<<"Failover">>
          ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
