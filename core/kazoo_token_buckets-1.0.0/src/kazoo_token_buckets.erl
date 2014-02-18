@@ -1,13 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014 2600Hz, INC
+%%% @copyright (C) 2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(whistle_apps).
+-module(kazoo_token_buckets).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("kz_buckets.hrl").
 
 -export([start_link/0
          ,start/0
@@ -23,7 +24,7 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
-    whistle_apps_sup:start_link().
+    kazoo_token_buckets_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -42,9 +43,7 @@ start() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() ->
-    exit(whereis('whistle_apps_sup'), 'shutdown'),
-    'ok'.
+stop() -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -54,17 +53,8 @@ stop() ->
 %%--------------------------------------------------------------------
 -spec start_deps() -> 'ok'.
 start_deps() ->
-    whistle_apps_deps:ensure(),
-    case application:get_env('reloader') of
-        {'ok', 'true'} -> reloader:start();
-        _ -> 'ok'
-    end,
-    [wh_util:ensure_started(A) || A <- ['sasl'
-                                        ,'crypto'
-                                        ,'gproc'
-                                        ,'lager'
-                                        ,'kazoo_token_buckets'
-                                        ,'whistle_amqp'
-                                        ,'whistle_couch'
-                                       ]],
+    whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'lager'
+                                               ]],
     'ok'.

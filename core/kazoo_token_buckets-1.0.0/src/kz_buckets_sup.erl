@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2014, 2600Hz
 %%% @doc
 %%% Supervisor for Kazoo Token Bucket Servers
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_kz_buckets_sup).
+-module(kz_buckets_sup).
 
 -behaviour(supervisor).
 
@@ -19,7 +19,7 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--include("../crossbar.hrl").
+-include("kz_buckets.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -41,7 +41,7 @@ start_link() ->
 -spec stop_bucket(pid()) -> any().
 
 start_bucket(MaxTokens, FillRate, FillTime) ->
-    supervisor:start_child(?SERVER, [MaxTokens, FillRate, 'false', FillTime]).
+    supervisor:start_child(?SERVER, [MaxTokens, FillRate, 'true', FillTime]).
 
 stop_bucket(Pid) ->
     supervisor:terminate_child(?SERVER, Pid).

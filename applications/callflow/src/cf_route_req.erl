@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% handler for route requests, responds if callflows match
 %%% @end
@@ -26,12 +26,7 @@ handle_req(JObj, Props) ->
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
-                    lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
-                                                                       ,whapps_call:account_id(Call)
-                                                                      ]),
-                    ControllerQ = props:get_value('queue', Props),
-                    cache_call(Flow, NoMatch, ControllerQ, Call),
-                    send_route_response(Flow, JObj, ControllerQ, Call);
+                    maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
                 {'ok', _, 'true'} ->
                     lager:info("only available callflow is a nomatch for a unauthorized call", []);
                 {'error', R} ->
@@ -39,6 +34,42 @@ handle_req(JObj, Props) ->
             end;
         'false' ->
             'ok'
+    end.
+
+maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
+    lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
+                                                       ,whapps_call:account_id(Call)
+                                                      ]),
+
+    {Name, Cost} = bucket_info(Call, Flow),
+
+    case kz_buckets:consume_tokens(Name, Cost) of
+        'false' ->
+            lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
+        'true' ->
+            ControllerQ = props:get_value('queue', Props),
+            cache_call(Flow, NoMatch, ControllerQ, Call),
+            send_route_response(Flow, JObj, ControllerQ, Call)
+    end.
+
+-spec bucket_info(whapps_call:call(), wh_json:object()) -> {ne_binary(), pos_integer()}.
+bucket_info(Call, Flow) ->
+    case wh_json:get_value(<<"pvt_bucket_name">>, Flow) of
+        'undefined' -> {bucket_name_from_call(Call, Flow), bucket_cost(Flow)};
+        Name -> {Name, bucket_cost(Flow)}
+    end.
+
+-spec bucket_name_from_call(whapps_call:call(), wh_json:object()) -> ne_binary().
+bucket_name_from_call(Call, Flow) ->
+    <<(whapps_call:account_id(Call))/binary, ":", (wh_json:get_value(<<"_id">>, Flow))/binary>>.
+
+-spec bucket_cost(wh_json:object()) -> pos_integer().
+bucket_cost(Flow) ->
+    Min = whapps_config:get_integer(?CF_CONFIG_CAT, <<"min_bucket_cost">>, 5),
+    case wh_json:get_integer_value(<<"pvt_bucket_cost">>, Flow) of
+        'undefined' -> Min;
+        N when N < Min -> Min;
+        N -> N
     end.
 
 %%-----------------------------------------------------------------------------

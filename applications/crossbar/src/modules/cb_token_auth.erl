@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Token auth module
 %%%
@@ -90,7 +90,7 @@ prepare_token_for_deletion(Token) ->
                           {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
-    case cb_buckets_ets:has_token(Context) of
+    case kz_buckets:consume_token(bucket_name(Context)) of
         'true' -> check_auth_token(Context, cb_context:auth_token(Context), cb_context:magic_pathed(Context));
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
@@ -117,3 +117,21 @@ check_auth_token(Context, AuthToken, _MagicPathed) ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             'false'
     end.
+
+-spec bucket_name(cb_context:context()) -> ne_binary().
+-spec bucket_name(api_binary(), api_binary()) -> ne_binary().
+bucket_name(Context) ->
+    bucket_name(cb_context:client_ip(Context)
+                ,cb_context:account_id(Context)
+               ).
+
+bucket_name('undefined', 'undefined') ->
+    <<"no_ip/no_account">>;
+bucket_name(IP, 'undefined') ->
+    <<IP/binary, "/no_account">>;
+bucket_name('undefined', AccountId) ->
+    <<"no_ip/", AccountId/binary>>;
+bucket_name(IP, AccountId) ->
+    <<IP/binary, "/", AccountId/binary>>.
+
+
