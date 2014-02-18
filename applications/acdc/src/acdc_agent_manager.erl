@@ -139,11 +139,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(?HOOK_EVT(AccountId, <<"new">>, JObj), State) ->
-    lager:debug("new event"),
-    _ = spawn('acdc_agent_handler', 'handle_new_channel', [JObj, AccountId]),
-    {'noreply', State};
-handle_info(?HOOK_EVT(AccountId, <<"channel_create">>, JObj), State) ->
+handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_CREATE">>, JObj), State) ->
     lager:debug("channel_create event"),
     _ = spawn('acdc_agent_handler', 'handle_new_channel', [JObj, AccountId]),
     {'noreply', State};
