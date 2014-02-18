@@ -22,6 +22,7 @@
 -export([start_link/2, start_link/3, start_link/4
          ,consume/2
          ,tokens/1
+         ,set_name/2
         ]).
 
 %% gen_server callbacks
@@ -83,6 +84,9 @@ consume(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
 -spec tokens(pid()) -> non_neg_integer().
 tokens(Srv) -> gen_server:call(Srv, {'tokens'}).
 
+-spec set_name(pid(), ne_binary()) -> 'ok'.
+set_name(Srv, Name) -> gen_server:cast(Srv, {'name', Name}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -99,6 +103,7 @@ tokens(Srv) -> gen_server:call(Srv, {'tokens'}).
 %% @end
 %%--------------------------------------------------------------------
 init([Max, FillRate, FillBlock, FillTime]) ->
+    wh_util:put_callid(?MODULE),
     lager:debug("starting token bucket with ~b max, filling at ~b/~s, in a block: ~s"
                 ,[Max, FillRate,FillTime, FillBlock]
                ),
@@ -136,6 +141,7 @@ handle_call({'consume', Req}, _From, #state{tokens=Current}=State) ->
 handle_call({'tokens'}, _From, #state{tokens=Current}=State) ->
     {'reply', Current, State};
 handle_call(_Request, _From, State) ->
+    lager:debug("unhandled call: ~p", [_Request]),
     {'reply', 'ok', State}.
 
 %%--------------------------------------------------------------------
@@ -148,6 +154,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'name', Name}, State) ->
+    wh_util:put_callid(Name),
+    lager:debug("updated name to ~s", [Name]),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -212,12 +222,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%   If fill_rate is 100 tokens/s, (1s / 100 tokens/s) * 1000ms = 10ms
 %%   Maxes out at 1ms
 
+-spec fill_time_in_ms(fill_rate_time() | pos_integer()) -> pos_integer().
 fill_time_in_ms('second') -> 1000;
 fill_time_in_ms('minute') -> ?MILLISECONDS_IN_MINUTE;
 fill_time_in_ms('hour') -> ?MILLISECONDS_IN_HOUR;
 fill_time_in_ms('day') -> ?MILLISECONDS_IN_DAY;
 fill_time_in_ms(N) when is_integer(N) -> N.
 
+-spec start_fill_timer(pos_integer(), boolean(), fill_rate_time() | pos_integer()) -> reference().
 start_fill_timer(_FillRate, 'true', FillTime) ->
     start_fill_timer(fill_time_in_ms(FillTime));
 start_fill_timer(FillRate, 'false', FillTime) ->
@@ -229,13 +241,18 @@ fill_timeout(FillRate, FillTime) ->
         N -> N
     end.
 
-start_fill_timer(Timeout) -> erlang:start_timer(Timeout, self(), ?TOKEN_FILL_TIME).
+-spec start_fill_timer(pos_integer()) -> reference().
+start_fill_timer(Timeout) ->
+    erlang:start_timer(Timeout, self(), ?TOKEN_FILL_TIME).
 
+-spec add_tokens(pos_integer(), non_neg_integer(), pos_integer(), boolean(), fill_rate_time() | pos_integer()) ->
+                        non_neg_integer().
 add_tokens(Max, Count, FillRate, 'true', _FillTime) ->
     constrain(Max, Count, FillRate);
 add_tokens(Max, Count, FillRate, 'false', FillTime) ->
     FillTimeout = fill_timeout(FillRate, fill_time_in_ms(FillTime)),
     FillShard = FillTimeout div FillRate,
+
     constrain(Max, Count, FillShard).
 
 constrain(Max, Count, Inc) ->

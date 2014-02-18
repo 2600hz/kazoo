@@ -207,7 +207,8 @@ handle_cast({'start', Name, MaxTokens, FillRate, FillTime}, #state{table_id=Tbl}
                 'false' ->
                     lager:debug("hmm, bucket appears to exist for ~s/~s, stopping ~p", [Name, Pid]),
                     kz_buckets_sup:stop_bucket(Pid)
-            end;
+            end,
+            kz_token_bucket:set_name(Pid, Name);
         _E -> lager:debug("error: starting bucket: ~p", [_E])
     end,
     {'noreply', State};
