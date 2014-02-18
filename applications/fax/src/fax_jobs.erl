@@ -106,7 +106,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('expire_jobs', State) ->
-    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 900000),
+    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 180000),
     ViewOptions = [{<<"key">>, wh_util:to_binary(node())}],
     case couch_mgr:get_results(?WH_FAXES, <<"faxes/processing_by_node">>, ViewOptions) of
         {'ok', JObjs} ->
@@ -116,7 +116,7 @@ handle_info('expire_jobs', State) ->
                  couch_mgr:update_doc(?WH_FAXES, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
              end
              || JObj <- JObjs
-                    ,(wh_util:current_tstamp() - wh_json:get_integer_value(<<"pvt_modified">>, JObj, 0)) > (MaxTime div 1000)
+                    ,(wh_util:current_tstamp() - wh_json:get_integer_value([<<"value">>,<<"modified">>], JObj, 0)) > (MaxTime div 1000)
             ],
             'ok';
         {'error', _R} ->
