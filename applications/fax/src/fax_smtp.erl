@@ -297,16 +297,15 @@ attachment_name(Filename, CT) ->
                               false -> A
                           end
                   end
-                  ,fun(A) ->
-                           case wh_util:is_empty(filename:extension(A)) of
-                               false -> A;
-                               true ->
-                                   <<A/binary, ".", (content_type_to_extension(CT))/binary>>
-                           end
-                   end
+                 ,fun(A) ->
+                          case wh_util:is_empty(filename:extension(A)) of
+                              false -> A;
+                              true -> <<A/binary, ".", (content_type_to_extension(CT))/binary>>
+                          end
+                  end
                  ],
     F = lists:foldl(fun(F, A) -> F(A) end, Filename, Generators),
-	lager:info("attachment_name ~p",[F]),
+    lager:info("attachment_name ~p",[F]),
 	F.
 
 %%--------------------------------------------------------------------
