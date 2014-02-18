@@ -620,7 +620,7 @@ get_clid(Endpoint, Properties, Call) ->
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  wh_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
-    Clid= get_clid(Endpoint, Properties, Call),
+    Clid = get_clid(Endpoint, Properties, Call),
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
     Prop =
         [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
@@ -653,8 +653,18 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
          ,{<<"Force-Fax">>, get_force_fax(Endpoint)}
          ,{<<"Ignore-Completed-Elsewhere">>, wh_json:is_true(<<"ignore_complete_elsewhere">>, Endpoint)}
+         ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
+
+
+maybe_build_failover(Endpoint, Call) ->
+    CallForward = wh_json:get_value(<<"call_forward">>, Endpoint),
+    case wh_json:is_true(<<"failover">>, CallForward) of
+        'false' -> 'undefined';
+        'true' ->
+            create_call_fwd_endpoint(Endpoint, wh_json:new(), CallForward, Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
