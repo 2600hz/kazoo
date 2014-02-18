@@ -109,7 +109,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({'render', Props, Template}, _, TemplateName) ->
-    {'ok', TemplateName} = erlydtl:compile(Template, TemplateName),
+    {'ok', TemplateName} = erlydtl:compile_template(Template, TemplateName),
     {'ok', Result} = TemplateName:render(Props),
     {'reply', {'ok', Result}, TemplateName};
 handle_call(_Request, _From, TemplateName) ->

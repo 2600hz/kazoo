@@ -143,7 +143,7 @@ compile_default_template(TemplateModule, Category, Key) ->
                    Else -> Else
                end,
     lager:debug("compiling ~s: '~s'", [TemplateModule, Template]),
-    {'ok', TemplateModule} = erlydtl:compile(Template, TemplateModule).
+    {'ok', TemplateModule} = erlydtl:compile_template(Template, TemplateModule).
 
 get_default_template(Category, Key) ->
     File = category_to_file(Category),
@@ -178,9 +178,9 @@ render_template(Template, DefaultTemplate, Props) ->
         CustomTemplate = wh_util:to_atom(list_to_binary([couch_mgr:get_uuid(), "_"
                                                         ,wh_util:to_binary(DefaultTemplate)
                                                         ])
-                                         ,true),
+                                         ,'true'),
         lager:debug("compiling custom ~s template", [DefaultTemplate]),
-        {'ok', CustomTemplate} = erlydtl:compile(Template, CustomTemplate),
+        {'ok', CustomTemplate} = erlydtl:compile_template(Template, CustomTemplate),
 
         lager:debug("rendering custom template ~s", [CustomTemplate]),
         Result = CustomTemplate:render(Props),
