@@ -2,7 +2,7 @@
   ,"language":"javascript"
   ,"views":{
     "lookup": {
-      "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(doc.prefix, null); }"
+      "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(parseInt(doc.prefix), null); }"
     },
     "crossbar_listing": {
       "map":"function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(doc._id, {\"name\":doc.rate_name, \"cost\":doc.rate_cost, \"carrier\":doc.carrier}); }"
