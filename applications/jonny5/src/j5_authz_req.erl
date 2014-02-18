@@ -113,12 +113,19 @@ maybe_authorize_exception(Request, Limits) ->
         <<"tollfree_us">> when CallDirection =:= <<"outbound">> ->
             lager:debug("allowing outbound tollfree call", []),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits);
+        _Else -> maybe_hard_limit(Request, Limits)
+    end.
+
+-spec maybe_hard_limit(j5_request:request(), j5_limits:limits()) -> 'ok'.
+maybe_hard_limit(Request, Limits) ->    
+    R = j5_hard_limit:authorize(Request, Limits),
+    case j5_request:billing(R, Limits) of
+        <<"hard_limit">> -> maybe_soft_limit(Request, Limits);
         _Else -> authorize(Request, Limits)
     end.
 
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
-    %% TODO: hard limits?
     Routines = [fun j5_allotments:authorize/2
                 ,fun j5_flat_rate:authorize/2
                 ,fun j5_per_minute:authorize/2

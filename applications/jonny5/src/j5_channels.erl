@@ -413,6 +413,7 @@ fix_channel_disparity([]) -> 'ok';
 fix_channel_disparity([ChannelId|ChannelIds]) ->
     lager:debug("channel disparity with ecallmgr, removing ~s"
                 ,[ChannelId]),
+    %% TODO: release credits?
     _ = ets:delete(?TAB, ChannelId),
     fix_channel_disparity(ChannelIds).
 

@@ -21,10 +21,12 @@
 %%--------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
-    Routines = [fun calls_at_limit/2
-                ,fun resource_consumption_at_limit/2
-               ],
-    lists:foldl(fun(F, R) -> F(R, Limits) end, Request, Routines).
+    case calls_at_limit(Limits) 
+        orelse resource_consumption_at_limit(Limits)
+    of
+        'true' -> j5_request:deny(<<"hard_limit">>, Request, Limits);
+        'false' -> Request
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -50,14 +52,11 @@ reconcile_cdr(_, _) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec calls_at_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
-calls_at_limit(Request, Limits) ->
+-spec calls_at_limit(j5_limits:limits()) -> j5_request:request().
+calls_at_limit(Limits) ->
     Limit =  j5_limits:calls(Limits),
     Used = j5_channels:total_calls(j5_limits:account_id(Limits)),
-    case should_deny(Limit, Used) of
-        'true' -> j5_request:deny(<<"hard_limit">>, Request, Limits);
-        'false' -> Request
-    end.
+    should_deny(Limit, Used).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -65,14 +64,11 @@ calls_at_limit(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec resource_consumption_at_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
-resource_consumption_at_limit(Request, Limits) ->
+-spec resource_consumption_at_limit(j5_limits:limits()) -> j5_request:request().
+resource_consumption_at_limit(Limits) ->
     Limit =  j5_limits:resource_consuming_calls(Limits),
     Used = j5_channels:resource_consuming(j5_limits:account_id(Limits)),
-    case should_deny(Limit, Used) of
-        'true' -> j5_request:deny(<<"hard_limit">>, Request, Limits);
-        'false' -> Request
-    end.
+    should_deny(Limit, Used).
 
 %%--------------------------------------------------------------------
 %% @private
