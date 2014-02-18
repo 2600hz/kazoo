@@ -86,8 +86,8 @@ consume_tokens(Key, Count, StartBucketIfMissing) ->
     lager:debug("looking for token bucket for ~s", [Key]),
     case ets:lookup(?MODULE, Key) of
         [] when StartBucketIfMissing ->
-            start_bucket(Key),
-            consume_tokens(Key, Count, 'false');
+            'ok' = start_bucket(Key),
+            consume_tokens(Key, Count, StartBucketIfMissing);
         [] -> 'false';
         [#bucket{srv=Srv}] ->
             kz_token_bucket:consume(Srv, Count)
@@ -200,7 +200,7 @@ handle_cast({'start', Name, MaxTokens, FillRate, FillTime}, #state{table_id=Tbl}
     lager:debug("starting token bucket for ~s/~s (~b at ~b/~s)"
                 ,[Name, MaxTokens, FillRate, FillTime]
                ),
-    case kz_buckets_sup:start_bucket(MaxTokens, FillRate, FillTime) of
+    case exists(Name) andalso kz_buckets_sup:start_bucket(MaxTokens, FillRate, FillTime) of
         {'ok', Pid} when is_pid(Pid) ->
             case ets:insert_new(Tbl, new_bucket(Pid, Name)) of
                 'true' -> lager:debug("new bucket for ~s/~s: ~p", [Name, Pid]);
@@ -209,7 +209,10 @@ handle_cast({'start', Name, MaxTokens, FillRate, FillTime}, #state{table_id=Tbl}
                     kz_buckets_sup:stop_bucket(Pid)
             end,
             kz_token_bucket:set_name(Pid, Name);
-        _E -> lager:debug("error: starting bucket: ~p", [_E])
+        'false' ->
+            lager:debug("good chance the bucket already exists");
+        _E ->
+            lager:debug("error: starting bucket: ~p", [_E])
     end,
     {'noreply', State};
 handle_cast(_Msg, State) ->
