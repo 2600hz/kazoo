@@ -1,0 +1,6 @@
+{% block content %}
+    testing: <br />
+    {% block content %}{% endblock %}
+    <br />
+    end testing<br />
+{% endblock %}

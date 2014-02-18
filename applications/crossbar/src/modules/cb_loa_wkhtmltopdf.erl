@@ -45,7 +45,7 @@ generate_loa_from_template(Context, TemplateData, ResellerId, Carrier) ->
     Template = cb_port_requests:find_template(ResellerId, Carrier),
 
     Renderer = wh_util:to_atom(<<ResellerId/binary, "_loa">>, 'true'),
-    {'ok', Renderer} = erlydtl:compile(Template, Renderer),
+    {'ok', Renderer} = erlydtl:compile_template(Template, Renderer),
     {'ok', LOA} = Renderer:render(TemplateData),
 
     code:purge(Renderer),

@@ -1,0 +1,7 @@
+>>>> before custom call tag 'comment'
+{% call functional_test_for_preset %}
+>>>> after custom call tag 'comment'
+
+>>>> before custom call tag 'if'
+{% call functional_test_if with var1 %}
+>>>> after custom call tag 'if'

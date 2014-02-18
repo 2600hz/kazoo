@@ -1,0 +1,66 @@
+Generate gettext infrastructure
+-------------------------------
+
+Erlydtl allows templates to use i18n features based on gettext. Standard po
+files can be used to generate i18ized templates. A template parser/po generator
+is also provided.
+
+Translation done by `{%trans%}`, `{%blocktrans%}` tags and by wrapping variables
+in `_(...)` construction.
+
+Translation may be applied in compile time (translated strings are embedded in
+compiled template code) or in runtime (template will query gettext server during
+template rendering). 1'st is faster in terms of template rendering time, 2'nd is
+more flexible (you may update locales without any template recompilation).
+
+In order to apply compile-time translation, you must pass `blocktrans_fun` plus
+`blocktrans_locales` (this will translate `{%blocktrans%}`) and/or `locale` (this
+translates `{%trans%}` and `_("string literal")` values) to `erlydtl:compile/3`.
+Next, you should pass `locale` option to `my_compiled_template:render/2`.
+
+If you prefer runtime translation, just don't pass `blocktrans_fun` and/or `locale`
+compilation options and add `translation_fun` option to `my_compiled_template:render/2`.
+
+    1.  In order to enable i18n you first, you'll need gettext library to be
+        available on your lib_path. 
+
+        Library can be downloaded from http://github.com/etnt/gettext
+
+    2.  Then you'll need to add a parse target on your makefile (or the script
+        used to trigger template reparsing) trans:
+
+        erl -pa ./ebin ./deps/*/ebin -noshell -s reloader -run i18n_manager \
+                               generate_pos "en,es" "./views/*/*.html,./views/*.html"
+        rm -rf $(GETTEXT_DIR)/lang/default-old
+        mv $(GETTEXT_DIR)/lang/default $(GETTEXT_DIR)/lang/default-old
+        cp -rf $(GETTEXT_DIR)/lang/$(GETTEXT_TMP_NAME) $(GETTEXT_DIR)/lang/default
+        rm -rf $(GETTEXT_DIR)/lang/$(GETTEXT_TMP_NAME)/*
+
+        Mind that GETTEXT_DIR and GETTEXT_TMP_NAME must be bound to existing
+        directories. Args passed to i18n_manager:generate_pos are locales that
+        will be supported (generating dir structure and po files) and
+        directories where generator will search for template files including
+        trans tags.
+
+    3.  If you wish to translate templates at compile-time, gettext server must be
+        running before template parsing and it must be
+        populated with the content of the po files. Consider adding this
+        snipplet to the code before template parsing
+
+	gettext_server:start(),
+        LoadPo = 
+            fun(Lang)->
+                {_, Bin} = file:read_file("./lang/default/"++ Lang ++"/gettext.po"),
+                gettext:store_pofile(Lang, Bin)
+            end,
+        lists:map(LoadPo, ["es","en"]).
+
+        Here locales are the codes are provided to gettext. Those codes must be
+        a subset of the locales provided to po generation process.
+
+    4.  Update strings. Edit po files on $(GETTEXT_DIR)/lang/default/$(LOCALE)/gettext.po 
+        translating msgstr to the translated version of their corresponding msgstr.
+
+    5.  Generate localized templates providing `blocktrans_fun` and
+        `blocktrans_locales` compile options or use runtime
+        translation via `translation_fun` rendering option.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Signup module
 %%%
@@ -71,7 +71,7 @@ init() ->
     supervisor:start_child('crossbar_sup', crossbar_sup:child_spec(?MODULE)).
 
 start_link() ->
-    {ok, proc_lib:spawn_link(?MODULE, 'init_it', [])}.
+    {'ok', proc_lib:spawn_link(?MODULE, 'init_it', [])}.
 
 init_it() ->
     put('callid', ?LOG_SYSTEM_ID),
@@ -265,17 +265,19 @@ create_activation_key() ->
 %%--------------------------------------------------------------------
 -spec check_activation_key(ne_binary(), cb_context:context()) -> cb_context:context().
 check_activation_key(ActivationKey, Context) ->
-    case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_KEYS, [{<<"key">>, ActivationKey}
-                                                                   ,{<<"include_docs">>, true}]) of
-        {ok, []} ->
+    case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_KEYS, [{'key', ActivationKey}
+                                                                   ,'include_docs'
+                                                                  ])
+    of
+        {'ok', []} ->
             lager:debug("activation key not found"),
-            crossbar_util:response(error, <<"invalid activation key">>, 403, Context);
-        {ok, [JObj|_]} ->
+            crossbar_util:response('error', <<"invalid activation key">>, 403, Context);
+        {'ok', [JObj|_]} ->
             lager:debug("activation key is valid"),
-            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"doc">>, JObj)};
+            Context#cb_context{resp_status='success', doc=wh_json:get_value(<<"doc">>, JObj)};
         _ ->
             lager:debug("db error while looking up activation key"),
-            crossbar_util:response(error, <<"invalid activation key">>, 403, Context)
+            crossbar_util:response('error', <<"invalid activation key">>, 403, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -285,13 +287,13 @@ check_activation_key(ActivationKey, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_signup(wh_json:object()) ->
-                                   {'ok', wh_json:object(), wh_json:object()} |
-                                   {'error', 'creation_failed' | 'account_undefined' | 'user_undefined'}.
+                             {'ok', wh_json:object(), wh_json:object()} |
+                             {'error', 'creation_failed' | 'account_undefined' | 'user_undefined'}.
 activate_signup(JObj) ->
     case activate_account(wh_json:get_value(<<"pvt_account">>, JObj)) of
-        {ok, Account} ->
+        {'ok', Account} ->
             activate_user(Account, wh_json:get_value(<<"pvt_user">>, JObj));
-        {error, _}=E ->
+        {'error', _}=E ->
             E
     end.
 
@@ -301,22 +303,22 @@ activate_signup(JObj) ->
 %% Create the account defined on the signup document
 %% @end
 %%--------------------------------------------------------------------
--spec activate_account('undefined' | wh_json:object()) ->
-                                    {'ok', wh_json:object()} |
-                                    {'error', 'creation_failed' | 'account_undefined'}.
-activate_account(undefined) ->
-    {error, account_undefined};
+-spec activate_account(api_object()) ->
+                              {'ok', wh_json:object()} |
+                              {'error', 'creation_failed' | 'account_undefined'}.
+activate_account('undefined') ->
+    {'error', 'account_undefined'};
 activate_account(Account) ->
     Event = <<"*.execute.put.accounts">>,
     Payload = [#cb_context{doc=Account}],
     case crossbar_bindings:fold(Event, Payload) of
-        #cb_context{resp_status=success, resp_data=JObj} ->
+        #cb_context{resp_status='success', resp_data=JObj} ->
             AccountId = wh_json:get_value(<<"id">>, JObj),
             lager:debug("created new account ~s", [AccountId]),
-            {ok, JObj};
+            {'ok', JObj};
         _ ->
             lager:debug("could not create a new account"),
-            {error, creation_failed}
+            {'error', 'creation_failed'}
     end.
 
 %%--------------------------------------------------------------------
@@ -326,24 +328,24 @@ activate_account(Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec activate_user(wh_json:object(), 'undefined' | wh_json:object()) ->
-                                 {'ok', wh_json:object(), wh_json:object()} |
-                                 {'error', 'user_undefined' | 'creation_failed'}.
-activate_user(_, undefined) ->
-    {error, user_undefined};
+-spec activate_user(wh_json:object(), api_object()) ->
+                           {'ok', wh_json:object(), wh_json:object()} |
+                           {'error', 'user_undefined' | 'creation_failed'}.
+activate_user(_, 'undefined') ->
+    {'error', 'user_undefined'};
 activate_user(Account, User) ->
     AccountId = wh_json:get_value(<<"id">>, Account),
-    Db = wh_util:format_account_id(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, 'encoded'),
     Event = <<"*.execute.put.users">>,
     Payload = [#cb_context{doc=User, db_name=Db}],
     case crossbar_bindings:fold(Event, Payload) of
-        #cb_context{resp_status=success, resp_data=JObj} ->
+        #cb_context{resp_status='success', resp_data=JObj} ->
             UserId = wh_json:get_value(<<"id">>, JObj),
             lager:debug("created new user ~s in account ~s", [UserId, AccountId]),
-            {ok, Account, JObj};
+            {'ok', Account, JObj};
         _ ->
             lager:debug("could not create a new user in account ~s", [AccountId]),
-            {error, creation_failed}
+            {'error', 'creation_failed'}
     end.
 
 %%--------------------------------------------------------------------
@@ -353,12 +355,12 @@ activate_user(Account, User) ->
 %% then exectute it now.
 %% @end
 %%--------------------------------------------------------------------
--spec exec_register_command(cb_context:context(), #state{}) -> 'ok' | string().
-exec_register_command(_, #state{register_cmd=undefined}) ->
-    ok;
+-spec exec_register_command(cb_context:context(), #state{}) ->
+                                   'ok' | string().
+exec_register_command(_, #state{register_cmd='undefined'}) -> 'ok';
 exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
     Props = template_props(Context),
-    {ok, Cmd} = CmdTmpl:render(Props),
+    {'ok', Cmd} = CmdTmpl:render(Props),
     lager:debug("executing register command ~s", [Cmd]),
     os:cmd(binary_to_list(iolist_to_binary(Cmd))).
 
@@ -367,17 +369,23 @@ exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_activation_email(cb_context:context(), #state{}) -> {'ok', pid()} | {'error', term()}.
-send_activation_email(#cb_context{doc=JObj, req_id=ReqId}=Context, #state{activation_email_subject=SubjectTmpl
-                                                                          ,activation_email_from=FromTmpl}=State) ->
+-spec send_activation_email(cb_context:context(), #state{}) ->
+                                   {'ok', pid()} |
+                                   {'error', term()}.
+send_activation_email(#cb_context{doc=JObj
+                                  ,req_id=ReqId
+                                 }=Context
+                      ,#state{activation_email_subject=SubjectTmpl
+                              ,activation_email_from=FromTmpl
+                             }=State) ->
     Props = template_props(Context),
     To = wh_json:get_value([<<"pvt_user">>, <<"email">>], JObj),
     Subject = case SubjectTmpl:render(Props) of
-                  {ok, S} -> S;
+                  {'ok', S} -> S;
                   _ -> <<"Confirm your account activation">>
               end,
     From = case FromTmpl:render(Props) of
-               {ok, F} -> F;
+               {'ok', F} -> F;
                _ ->
                    <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>
            end,
@@ -392,8 +400,11 @@ send_activation_email(#cb_context{doc=JObj, req_id=ReqId}=Context, #state{activa
             },
     Encoded = mimemail:encode(Email),
     lager:debug("sending activation email to ~s", [To]),
-    gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
-                         ,fun(X) -> put(callid, ReqId), lager:debug("sending email to ~s resulted in ~p", [To, X]) end).
+    gen_smtp_client:send({From, [To], Encoded}
+                         ,[{'relay', "localhost"}]
+                         ,fun(X) -> wh_util:put_callid(ReqId),
+                                    lager:debug("sending email to ~s resulted in ~p", [To, X])
+                          end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -402,30 +413,30 @@ send_activation_email(#cb_context{doc=JObj, req_id=ReqId}=Context, #state{activa
 %% if they have been provided
 %% @end
 %%--------------------------------------------------------------------
--spec create_body(#state{}, proplist(), [] | [mail_message_body(),...]) -> [] | [mail_message_body(),...].
-create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= undefined ->
+-spec create_body(#state{}, wh_proplist(), [] | [mail_message_body(),...]) -> [] | [mail_message_body(),...].
+create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= 'undefined' ->
     case Tmpl:render(Props) of
-        {ok, Content} ->
+        {'ok', Content} ->
             Part = {<<"text">>, <<"html">>
                     ,[{<<"Content-Type">>, <<"text/html">>}]
                     ,[]
                     ,iolist_to_binary(Content)
                    },
-             create_body(State#state{activation_email_html=undefined}, Props, [Part|Body]);
+             create_body(State#state{activation_email_html='undefined'}, Props, [Part|Body]);
         _ ->
-             create_body(State#state{activation_email_html=undefined}, Props, Body)
+             create_body(State#state{activation_email_html='undefined'}, Props, Body)
     end;
-create_body(#state{activation_email_plain=Tmpl}=State, Props, Body) when Tmpl =/= undefined ->
+create_body(#state{activation_email_plain=Tmpl}=State, Props, Body) when Tmpl =/= 'undefined' ->
     case Tmpl:render(Props) of
-        {ok, Content} ->
+        {'ok', Content} ->
             Part = {<<"text">>, <<"plain">>
                     ,[{<<"Content-Type">>, <<"text/plain">>}]
                     ,[]
                     ,iolist_to_binary(Content)
                    },
-             create_body(State#state{activation_email_plain=undefined}, Props, [Part|Body]);
+             create_body(State#state{activation_email_plain='undefined'}, Props, [Part|Body]);
         _ ->
-             create_body(State#state{activation_email_plain=undefined}, Props, Body)
+             create_body(State#state{activation_email_plain='undefined'}, Props, Body)
     end;
 create_body(_, _, Body) ->
     Body.
@@ -436,27 +447,27 @@ create_body(_, _, Body) ->
 %% create a proplist to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
--spec template_props(cb_context:context()) -> [{ne_binary(), proplist() | ne_binary()},...].
+-spec template_props(cb_context:context()) -> [{ne_binary(), wh_proplist() | ne_binary()},...].
 template_props(#cb_context{doc=JObj
                            ,req_data=Data
                            ,raw_host=RawHost
                            ,port=Port
                           }) ->
-
     ApiHost = list_to_binary(["http://", RawHost, ":", wh_util:to_list(Port), "/"]),
     %% remove the redundant request data
     Req = wh_json:delete_keys([<<"account">>, <<"user">>], Data),
 
     %% create props to expose to the template
-    [{<<"account">>, wh_json:to_proplist(<<"pvt_account">>, JObj)}
-     ,{<<"user">>, wh_json:to_proplist(<<"pvt_user">>, JObj)}
-     ,{<<"request">>, wh_json:to_proplist(Req)}
-     ,{<<"api_url">>, [{<<"host">>, ApiHost}
-                       ,{<<"path">>, <<"v1/signup/">>}
-                      ]}
-     ,{<<"host">>, RawHost}
-     ,{<<"activation_key">>, wh_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
-    ].
+    props:filter_undefined(
+      [{<<"account">>, wh_json:to_proplist(<<"pvt_account">>, JObj)}
+       ,{<<"user">>, wh_json:to_proplist(<<"pvt_user">>, JObj)}
+       ,{<<"request">>, wh_json:to_proplist(Req)}
+       ,{<<"api_url">>, [{<<"host">>, ApiHost}
+                         ,{<<"path">>, <<"v1/signup/">>}
+                        ]}
+       ,{<<"host">>, RawHost}
+       ,{<<"activation_key">>, wh_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -466,15 +477,15 @@ template_props(#cb_context{doc=JObj
 %% @end
 %%--------------------------------------------------------------------
 -spec is_unique_realm(binary() | 'undefined') -> boolean().
-is_unique_realm(undefined) -> false;
-is_unique_realm(<<>>) -> false;
+is_unique_realm('undefined') -> 'false';
+is_unique_realm(<<>>) -> 'false';
 is_unique_realm(Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
-        {ok, _} -> false;
-        {error, _} ->
-            case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_REALM, [{<<"key">>, Realm}]) of
-                {ok, []} -> true;
-                _Else -> false
+        {'ok', _} -> 'false';
+        {'error', _} ->
+            case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_REALM, [{'key', Realm}]) of
+                {'ok', []} -> 'true';
+                _Else -> 'false'
             end
     end.
 
@@ -490,15 +501,17 @@ is_unique_realm(Realm) ->
 cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     lager:debug("cleaning up signups"),
     Expiration = calendar:datetime_to_gregorian_seconds(calendar:universal_time()) + Lifespan,
-    case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{<<"startkey">>, 0}
-                                                                      ,{<<"endkey">>, Expiration}
-                                                                      ,{<<"include_docs">>, true}
-                                                                     ]) of
-        {ok, Expired} ->
-            _ = couch_mgr:del_docs(?SIGNUP_DB, [wh_json:get_value(<<"doc">>, JObj, wh_json:new()) || JObj <- Expired]),
-            ok;
-        _Else ->
-            ok
+    case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{'startkey', 0}
+                                                                      ,{'endkey', Expiration}
+                                                                      ,'include_docs'
+                                                                     ])
+    of
+        {'ok', Expired} ->
+            _ = couch_mgr:del_docs(?SIGNUP_DB
+                                   ,[wh_json:get_value(<<"doc">>, JObj) || JObj <- Expired]
+                                  ),
+            'ok';
+        _Else -> 'ok'
     end.
 
 %%--------------------------------------------------------------------
@@ -509,31 +522,33 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
 -spec init_state() -> #state{}.
 init_state() ->
     case get_configs() of
-        {ok, Terms} ->
+        {'ok', Terms} ->
             lager:debug("loaded config from ~s", [?SIGNUP_CONF]),
             Defaults = #state{},
             #state{cleanup_interval =
-                       props:get_integer_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
+                       props:get_integer_value('cleanup_interval', Terms, Defaults#state.cleanup_interval)
                    ,signup_lifespan =
-                       props:get_integer_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
+                       props:get_integer_value('signup_lifespan', Terms, Defaults#state.signup_lifespan)
                    ,register_cmd =
-                       compile_template(props:get_value(register_cmd, Terms), cb_signup_register_cmd)
+                       compile_template(props:get_value('register_cmd', Terms), 'cb_signup_register_cmd')
                    ,activation_email_plain =
-                       compile_template(props:get_value(activation_email_plain, Terms), cb_signup_email_plain)
+                       compile_template(props:get_value('activation_email_plain', Terms), 'cb_signup_email_plain')
                    ,activation_email_html =
-                       compile_template(props:get_value(activation_email_html, Terms), cb_signup_email_html)
+                       compile_template(props:get_value('activation_email_html', Terms), 'cb_signup_email_html')
                    ,activation_email_from =
-                       compile_template(props:get_value(activation_email_from, Terms), cb_signup_email_from)
+                       compile_template(props:get_value('activation_email_from', Terms), 'cb_signup_email_from')
                    ,activation_email_subject =
-                       compile_template(props:get_value(activation_email_subject, Terms), cb_signup_email_subject)
+                       compile_template(props:get_value('activation_email_subject', Terms), 'cb_signup_email_subject')
                   };
-        {error, _} ->
+        {'error', _} ->
             lager:debug("could not read config from ~s", [?SIGNUP_CONF]),
             #state{}
     end.
 
--spec get_configs() -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
-                                                   | {integer(), module(), term()}}.
+-spec get_configs() -> {'ok', proplist()} |
+                       {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
+                        | {integer(), module(), term()}
+                       }.
 get_configs() ->
     file:consult(lists:flatten(?SIGNUP_CONF)).
 
@@ -544,16 +559,20 @@ get_configs() ->
 %% to the priv directory of this module
 %% @end
 %%--------------------------------------------------------------------
--type template_name() :: 'cb_signup_email_from' | 'cb_signup_email_html' | 'cb_signup_email_plain' | 'cb_signup_email_subject' | 'cb_signup_register_cmd'.
--spec compile_template('undefined' | string() | ne_binary(), template_name()) -> 'undefined' | template_name().
-compile_template(undefined, _) ->
-    undefined;
+-type template_name() :: 'cb_signup_email_from' |
+                         'cb_signup_email_html' |
+                         'cb_signup_email_plain' |
+                         'cb_signup_email_subject' |
+                         'cb_signup_register_cmd'.
+-spec compile_template(string() | api_binary(), template_name()) ->
+                              'undefined' | template_name().
+compile_template('undefined', _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
                "/" ->
                    Template;
                _ ->
-                   BasePath = code:lib_dir(crossbar, priv),
+                   BasePath = code:lib_dir('crossbar', 'priv'),
                    lists:concat([BasePath, "/signup/", Template])
            end,
     lager:debug("sourcing template from file at ~s", [Path]),
@@ -567,16 +586,17 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template(nonempty_string() | ne_binary(), template_name()) -> 'undefined' | template_name().
+-spec do_compile_template(nonempty_string() | ne_binary(), template_name()) ->
+                                 'undefined' | template_name().
 do_compile_template(Template, Name) ->
-    case erlydtl:compile(Template, Name) of
-        {ok, Name} ->
+    case erlydtl:compile_template(Template, Name) of
+        {'ok', Name} ->
             lager:debug("compiled ~s template", [Name]),
             Name;
-        ok ->
+        'ok' ->
             lager:debug("compiled ~s template file", [Name]),
             Name;
         _E ->
             lager:debug("could not compile ~s template, ignoring", [Name]),
-            undefined
+            'undefined'
     end.
