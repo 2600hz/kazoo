@@ -55,13 +55,13 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
 -spec bucket_info(whapps_call:call(), wh_json:object()) -> {ne_binary(), pos_integer()}.
 bucket_info(Call, Flow) ->
     case wh_json:get_value(<<"pvt_bucket_name">>, Flow) of
-        'undefined' -> {bucket_name_from_call(Call), bucket_cost(Flow)};
+        'undefined' -> {bucket_name_from_call(Call, Flow), bucket_cost(Flow)};
         Name -> {Name, bucket_cost(Flow)}
     end.
 
--spec bucket_name_from_call(whapps_call:call()) -> ne_binary().
-bucket_name_from_call(Call) ->
-    <<(whapps_call:account_id(Call))/binary, ":", (whapps_call:to_user(Call))/binary>>.
+-spec bucket_name_from_call(whapps_call:call(), wh_json:object()) -> ne_binary().
+bucket_name_from_call(Call, Flow) ->
+    <<(whapps_call:account_id(Call))/binary, ":", (wh_json:get_value(<<"_id">>, Flow))/binary>>.
 
 -spec bucket_cost(wh_json:object()) -> pos_integer().
 bucket_cost(Flow) ->
