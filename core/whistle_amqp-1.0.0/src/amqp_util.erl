@@ -549,13 +549,14 @@ new_queue(Queue, Options) when is_binary(Queue) ->
     Return = ?P_GET('return_field', Options, 'queue'),
 
     case catch wh_amqp_channel:command(QD) of
-        {ok, #'queue.declare_ok'{queue=Q}} when Return =:= 'queue' -> Q;
-        {ok, #'queue.declare_ok'{message_count=Cnt}} when Return =:= 'message_count' -> Cnt;
-        {ok, #'queue.declare_ok'{consumer_count=Cnt}} when Return =:= 'consumer_count' -> Cnt;
-        {ok, #'queue.declare_ok'{queue=Q
-                                 ,message_count=MCnt
-                                 ,consumer_count=CCnt
-                                }} when Return =:= 'all' -> {Q, MCnt, CCnt};
+        {'ok', #'queue.declare_ok'{queue=Q}} when Return =:= 'queue' -> Q;
+        {'ok', #'queue.declare_ok'{message_count=Cnt}} when Return =:= 'message_count' -> Cnt;
+        {'ok', #'queue.declare_ok'{consumer_count=Cnt}} when Return =:= 'consumer_count' -> Cnt;
+        {'ok', #'queue.declare_ok'{queue=Q
+                                   ,message_count=MCnt
+                                   ,consumer_count=CCnt
+                                  }} when Return =:= 'all' ->
+            {Q, MCnt, CCnt};
         {'error', _}=E -> E;
         {'EXIT', {{'shutdown', Reason}, _}} -> {'error', Reason};
         {'EXIT',{'noproc', _}} -> {'error', 'no_channel'}

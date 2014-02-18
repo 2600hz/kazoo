@@ -1,0 +1,4 @@
+.eunit
+.dialyzer_plt
+erl_crash.dump
+ebin/

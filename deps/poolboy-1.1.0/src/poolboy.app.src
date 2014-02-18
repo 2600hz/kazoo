@@ -1,6 +1,6 @@
 {application, poolboy, [
     {description, "A hunky Erlang worker pool factory"},
-    {vsn, "1.0.1"},
+    {vsn, {cmd, "echo `cat VERSION`"}},
     {applications, [kernel, stdlib]},
     {registered, [poolboy]}
 ]}.

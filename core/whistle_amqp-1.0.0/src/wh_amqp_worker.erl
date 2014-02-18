@@ -122,17 +122,20 @@ call(Srv, Req, PubFun, VFun) ->
                   {'error', _}.
 call(Srv, Req, PubFun, VFun, Timeout) ->
     Prop = maybe_convert_to_proplist(Req),
-    case catch poolboy:checkout(Srv, 'false', 1000) of
+    try poolboy:checkout(Srv, 'false', default_timeout()) of
         W when is_pid(W) ->
-            Reply = gen_listener:call(W, {'request', Prop, PubFun, VFun, Timeout}
-                                      ,fudge_timeout(Timeout)),
+            Reply = gen_listener:call(W
+                                      ,{'request', Prop, PubFun, VFun, Timeout}
+                                      ,fudge_timeout(Timeout)
+                                     ),
             poolboy:checkin(Srv, W),
             Reply;
         'full' ->
             lager:critical("failed to checkout worker: full"),
-            {'error', 'pool_full'};
-        _Else ->
-            lager:warning("poolboy error: ~p", [_Else]),
+            {'error', 'pool_full'}
+    catch
+        _E:_R ->
+            lager:warning("poolboy exception: ~s: ~p", [_E, _R]),
             {'error', 'poolboy_fault'}
     end.
 
@@ -146,7 +149,7 @@ call_custom(Srv, Req, PubFun, VFun, Bind) ->
     call_custom(Srv, Req, PubFun, VFun, default_timeout(), Bind).
 call_custom(Srv, Req, PubFun, VFun, Timeout, Bind) ->
     Prop = maybe_convert_to_proplist(Req),
-    case catch poolboy:checkout(Srv, 'false', 1000) of
+    try poolboy:checkout(Srv, 'false', default_timeout()) of
         W when is_pid(W) ->
             gen_listener:add_binding(W, Bind),
             Reply = gen_listener:call(W, {'request', Prop, PubFun, VFun, Timeout}
@@ -156,9 +159,10 @@ call_custom(Srv, Req, PubFun, VFun, Timeout, Bind) ->
             Reply;
         'full' ->
             lager:critical("failed to checkout worker: full"),
-            {'error', 'pool_full'};
-        _Else ->
-            lager:warning("poolboy error: ~p", [_Else]),
+            {'error', 'pool_full'}
+    catch
+        _E:_R ->
+            lager:warning("poolboy error: ~s:~p", [_E, _R]),
             {'error', 'poolboy_fault'}
     end.
 
@@ -192,7 +196,7 @@ call_collect(Srv, Req, PubFun, Whapp, Timeout) when is_atom(Whapp); is_binary(Wh
     call_collect(Srv, Req, PubFun, collect_from_whapp(Whapp), Timeout);
 call_collect(Srv, Req, PubFun, UntilFun, Timeout) when is_integer(Timeout), Timeout >= 0 ->
     Prop = maybe_convert_to_proplist(Req),
-    case catch poolboy:checkout(Srv, 'false', 1000) of
+    try poolboy:checkout(Srv, 'false', default_timeout()) of
         W when is_pid(W) ->
             Reply = gen_listener:call(W, {'call_collect', Prop, PubFun, UntilFun, Timeout}
                                       ,fudge_timeout(Timeout)),
@@ -200,24 +204,26 @@ call_collect(Srv, Req, PubFun, UntilFun, Timeout) when is_integer(Timeout), Time
             Reply;
         'full' ->
             lager:critical("failed to checkout worker: full"),
-            {'error', 'pool_full'};
-        _Else ->
-            lager:warning("poolboy error: ~p", [_Else]),
+            {'error', 'pool_full'}
+    catch
+        _E:_R ->
+            lager:warning("poolboy error: ~s:~p", [_E, _R]),
             {'error', 'poolboy_fault'}
     end.
 
 -spec cast(server_ref(), api_terms(), publish_fun()) -> 'ok' | {'error', _}.
 cast(Srv, Req, PubFun) ->
     Prop = maybe_convert_to_proplist(Req),
-    case catch poolboy:checkout(Srv, 'false', 1000) of
+    try poolboy:checkout(Srv, 'false', default_timeout()) of
         W when is_pid(W) ->
             poolboy:checkin(Srv, W),
             gen_listener:cast(W, {'publish', Prop, PubFun});
         'full' ->
             lager:critical("failed to checkout worker: full"),
-            {'error', 'pool_full'};
-        _Else ->
-            lager:debug("poolboy error: ~p", [_Else]),
+            {'error', 'pool_full'}
+    catch
+        _E:_R ->
+            lager:warning("poolboy error: ~s:~p", [_E, _R]),
             {'error', 'poolboy_fault'}
     end.
 
