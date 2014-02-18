@@ -658,6 +658,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
     wh_json:from_list(props:filter_undefined(Prop)).
 
 
+-spec maybe_build_failover(wh_json:object(), whapps_call:call()) -> api_object().
 maybe_build_failover(Endpoint, Call) ->
     CallForward = wh_json:get_value(<<"call_forward">>, Endpoint),
     case wh_json:is_true(<<"failover">>, CallForward) of
