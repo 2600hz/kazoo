@@ -649,7 +649,7 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
     try lists:foldl(fun(F, C) -> F(C) end, get_sip_contact(Endpoint), Routines) of
         Channel -> {'ok', Channel}
     catch
-        _E:{badmatch, {'error', 'not_found'}} ->
+        _E:{'badmatch', {'error', 'not_found'}} ->
             lager:warning("Failed to build sip channel trying failover", []),
             maybe_failover(Failover);
         _E:_R ->
