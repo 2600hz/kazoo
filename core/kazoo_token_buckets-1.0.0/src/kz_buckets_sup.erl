@@ -41,7 +41,7 @@ start_link() ->
 -spec stop_bucket(pid()) -> any().
 
 start_bucket(MaxTokens, FillRate, FillTime) ->
-    supervisor:start_child(?SERVER, [MaxTokens, FillRate, 'false', FillTime]).
+    supervisor:start_child(?SERVER, [MaxTokens, FillRate, 'true', FillTime]).
 
 stop_bucket(Pid) ->
     supervisor:terminate_child(?SERVER, Pid).
