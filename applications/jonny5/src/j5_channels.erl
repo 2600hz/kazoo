@@ -15,6 +15,7 @@
 -export([resource_consuming/1]).
 -export([inbound_flat_rate/1]).
 -export([outbound_flat_rate/1]).
+-export([allotment_consumed/4]).
 -export([authorized/1]).
 -export([remove/1]).
 -export([handle_authz_resp/2]).
@@ -46,8 +47,9 @@
                   ,account_billing :: api_binary()
                   ,reseller_id :: api_binary()
                   ,reseller_billing :: api_binary()
-                  ,soft_limit :: boolean()
-                  ,timestamp :: pos_integer()
+                  ,soft_limit = 'false' :: boolean()
+                  ,timestamp = wh_util:current_tstamp() :: pos_integer()
+                  ,answered_timestamp :: 'undefined' | pos_integer()
                  }).
 
 -define(BINDINGS, [{'authz', [{'restrict_to', ['broadcast']}
@@ -192,7 +194,29 @@ outbound_flat_rate(AccountId) ->
                    ,['true']
                   }
                 ],
-    ets:select_count(?TAB, MatchSpec).     
+    ets:select_count(?TAB, MatchSpec).
+
+-spec allotment_consumed(non_neg_integer(), non_neg_integer(), ne_binary(), ne_binary() | j5_limits:limits()) -> non_neg_integer().
+allotment_consumed(CycleStart, Span, Classification, AccountId) when is_binary(AccountId) ->
+    MatchSpec = [{#channel{account_id=AccountId
+                           ,account_billing = <<"allotment_", Classification/binary>>
+                           ,answered_timestamp = '$1'
+                           ,_='_'}
+                  ,[]
+                  ,['$1']
+                 }
+                 ,{#channel{reseller_id=AccountId
+                            ,reseller_billing = <<"allotment_", Classification/binary>>
+                            ,answered_timestamp = '$1'
+                            ,_='_'}
+                   ,[]
+                   ,['$1']
+                  }
+                ],
+    sum_allotment_consumed(CycleStart, Span, ets:select(?TAB, MatchSpec));
+allotment_consumed(CycleStart, Span, Classification, Limits) ->
+    AccountId = j5_limits:account_id(Limits),
+    allotment_consumed(CycleStart, Span, Classification, AccountId).
 
 -spec authorized(wh_json:object()) -> 'ok'.
 authorized(JObj) -> gen_server:cast(?SERVER, {'authorized', JObj}).
@@ -264,7 +288,7 @@ handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
     self() ! {'synchronize_channels', SyncRef},
     {'noreply', State};
 handle_cast({'wh_nodes', {'expire', _Node}}, #state{sync_ref=SyncRef}=State) ->
-    lager:debug("notifed that node ~s is no longer reachable, synchronizing channels", []),
+    lager:debug("notifed that node ~s is no longer reachable, synchronizing channels", [_Node]),
     self() ! {'synchronize_channels', SyncRef},
     {'noreply', State};
 handle_cast({'authorized', JObj}, State) ->
@@ -306,6 +330,11 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
     %% insert_new keeps a CHANNEL_CREATE from overriding an entry from
     %% an auth_resp BUT an auth_resp CAN override a CHANNEL_CREATE
     _ = ets:insert_new(?TAB, from_jobj(JObj)),
+    {'noreply', State};
+handle_info(?HOOK_EVT(_, <<"CHANNEL_ANSWER">>, JObj), State) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    Props = [{#channel.answered_timestamp, wh_util:current_tstamp()}],
+    _ = ets:update_element(?TAB, CallId, Props),
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
     _ = ets:delete(?TAB, wh_json:get_value(<<"Call-ID">>, JObj)),
@@ -365,7 +394,6 @@ from_jobj(JObj) ->
              ,reseller_id=wh_json:get_value(<<"Reseller-ID">>, CCVs)
              ,reseller_billing=wh_json:get_value(<<"Reseller-Billing">>, CCVs)
              ,soft_limit=wh_json:is_true(<<"Soft-Limit">>, JObj)
-             ,timestamp=wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())
             }.
 
 -type unique_channel() :: {ne_binary(), api_binary()}.
@@ -413,7 +441,6 @@ fix_channel_disparity([]) -> 'ok';
 fix_channel_disparity([ChannelId|ChannelIds]) ->
     lager:debug("channel disparity with ecallmgr, removing ~s"
                 ,[ChannelId]),
-    %% TODO: release credits?
     _ = ets:delete(?TAB, ChannelId),
     fix_channel_disparity(ChannelIds).
 
@@ -423,3 +450,28 @@ start_channel_sync_timer(State) ->
     TRef = erlang:send_after(?SYNC_PERIOD, self(), {'synchronize_channels', SyncRef}),
     State#state{sync_ref=SyncRef
                 ,sync_timer=TRef}.
+
+-type non_neg_integers() :: [non_neg_integer(),...] | [].
+
+-spec sum_allotment_consumed(non_neg_integer(), non_neg_integer(), non_neg_integers()) -> non_neg_integer().
+sum_allotment_consumed(CycleStart, Span, Matches) ->
+    sum_allotment_consumed(CycleStart, Span, wh_util:current_tstamp(), 0, Matches).
+
+-spec sum_allotment_consumed(non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integers()) -> non_neg_integer().
+sum_allotment_consumed(_, _, _, Seconds, []) -> Seconds;
+sum_allotment_consumed(CycleStart, Span, CurrentTimestamp, Seconds, ['undefined'|Matches]) ->
+    sum_allotment_consumed(CycleStart, Span, CurrentTimestamp, Seconds + 60, Matches);
+sum_allotment_consumed(CycleStart, Span, CurrentTimestamp, Seconds, [Timestamp|Matches]) ->    
+    S = calculate_consumed(CycleStart, Span, CurrentTimestamp, Timestamp) + Seconds,
+    sum_allotment_consumed(CycleStart, Span, CurrentTimestamp, S, Matches).
+
+-spec calculate_consumed(non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) -> non_neg_integer().
+calculate_consumed(CycleStart, Span, CurrentTimestamp, Timestamp) ->
+    Consumed = case Timestamp < CycleStart of
+                   'true' -> CurrentTimestamp - CycleStart + 60;
+                   'false' -> CurrentTimestamp - Timestamp + 60
+               end,
+    case Consumed > Span of
+        'true' -> Span;
+        'false' -> Consumed
+    end.

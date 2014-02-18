@@ -78,16 +78,7 @@ resource_consumption_at_limit(Limits) ->
 %%--------------------------------------------------------------------
 -spec should_deny(integer(), integer()) -> boolean().
 should_deny(-1, _) -> 'false';
-should_deny(0, _) ->
-    %% TODO: send a system_alert
-    'true';
-should_deny(Limit, Used) ->
-    case Limit > Used of
-        'true' ->            
-            %% TODO: send a system_alert
-            'true';
-        'false' -> 'false'
-    end.
-
+should_deny(0, _) -> 'true';
+should_deny(Limit, Used) -> Limit > Used.
              
     

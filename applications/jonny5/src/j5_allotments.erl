@@ -40,8 +40,8 @@ maybe_consume_allotment(Allotment, Request, Limits) ->
         Consumed ->
             lager:debug("account ~s has ~ws remaining of their allotment"
                         ,[AccountId, Amount - Consumed]),
-            start_allotment_consumption(Allotment, 60, Request, Limits),
-            j5_request:authorize(<<"allotment">>, Request, Limits)
+            Classification = wh_json:get_value(<<"classification">>, Allotment),
+            j5_request:authorize(<<"allotment_", Classification/binary>>, Request, Limits)
     end.
 
 %%--------------------------------------------------------------------
@@ -60,25 +60,7 @@ reauthorize(Request, Limits) ->
         'false' -> j5_request:authorize(<<"allotment">>, Request, Limits);
         'true' ->
             Allotment = try_find_allotment(Request, Limits),
-            maybe_tick_allotment_consumption(Allotment, Request, Limits)
-    end.
-
--spec maybe_tick_allotment_consumption('undefined' | wh_json:object(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
-maybe_tick_allotment_consumption('undefined', _, _) -> 'ok';
-maybe_tick_allotment_consumption(Allotment, Request, Limits) ->
-    Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
-    case allotment_consumed_sofar(Allotment, Limits) of
-        Consumed when (Amount - Consumed) =< 60 ->
-            lager:debug("allotment consumed, transitioning to per_minute", []),
-            %% TODO: how to send billing-seconds-offset?
-            %% CCVs = wh_json:from_list([{<<"Billing-Seconds-Offset">>, (Timestamp - Answered) + 62}]),
-
-            %% Since we are authing the last 60 seconds take it the last
-            %% of the allotment and move to per_minute (or flat_rate)...
-            tick_allotment_consumption(Allotment, 60, Request, Limits),
-            Request;
-        _Else ->
-            tick_allotment_consumption(Allotment, 60, Request, Limits),
+            %% TODO: detemine if allotment still exists...
             j5_request:authorize(<<"allotment">>, Request, Limits)
     end.
 
@@ -90,21 +72,43 @@ maybe_tick_allotment_consumption(Allotment, Request, Limits) ->
 %%--------------------------------------------------------------------
 -spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_cdr(Request, Limits) ->
-    BillingSeconds = j5_request:billing_seconds(Request), 
     case j5_request:billing(Request, Limits) of
-        <<"allotment">> when BillingSeconds =< 0 ->
-            release_unsed_allotment(Request, Limits);
-        %% TODO: reconcile usage for systems not hearbeating...
+        <<"allotment_", _/binary>> -> maybe_reconcile_allotment(Request, Limits);
         _Else -> 'ok'
     end.
 
--spec release_unsed_allotment(j5_request:request(), j5_limits:limits()) -> 'ok'.
-release_unsed_allotment(Request, Limits) ->
+-spec maybe_reconcile_allotment(j5_request:request(), j5_limits:limits()) -> 'ok'.
+maybe_reconcile_allotment(Request, Limits) ->
     case try_find_allotment(Request, Limits) of
         'undefined' -> 'ok';
-        Allotment ->
-            return_allotment_consumption(Allotment, 60, Request, Limits)
+        Allotment -> 
+            BillingSeconds = j5_request:billing_seconds(Request),
+            reconcile_allotment(BillingSeconds, Allotment, Request, Limits)
     end.
+
+-spec reconcile_allotment(non_neg_integer(), wh_json:object(), j5_request:request(), j5_limits:limits()) -> 'ok'.
+reconcile_allotment(0, _, _, _) -> 'ok';
+reconcile_allotment(Seconds, Allotment, Request, Limits) ->
+    CallId = j5_request:call_id(Request),
+    AccountId = j5_limits:account_id(Limits),
+    LedgerDb = wh_util:format_account_mod_id(AccountId),
+    Timestamp = wh_util:current_tstamp(),
+    Id = <<CallId/binary, "-allotment-consumption">>,
+    lager:debug("adding allotment debit ~s to ledger ~s for ~wsec"
+                ,[Id, LedgerDb, Seconds]), 
+    Props = [{<<"_id">>, Id}
+             ,{<<"account_id">>, AccountId}
+             ,{<<"seconds">>, abs(Seconds)}
+             ,{<<"call_id">>, CallId}
+             ,{<<"name">>, wh_json:get_value(<<"name">>, Allotment)}
+             ,{<<"classification">>, wh_json:get_value(<<"classification">>, Allotment)}
+             ,{<<"pvt_created">>, Timestamp}
+             ,{<<"pvt_modified">>, Timestamp}
+             ,{<<"pvt_vsn">>, 1}
+             ,{<<"pvt_whapp">>, ?APP_NAME}
+             ,{<<"pvt_type">>, <<"allotment_consumption">>}
+            ],
+    couch_mgr:save_doc(LedgerDb, wh_json:from_list(Props)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -116,15 +120,21 @@ release_unsed_allotment(Request, Limits) ->
 try_find_allotment(Request, Limits) ->
     case wnm_util:classify_number(j5_request:number(Request)) of
         'undefined' -> 'undefined';
-        Classification ->
-            Allotments = j5_limits:allotments(Limits),
-            lager:debug("checking if account ~s has any allotments for ~s"
-                        ,[j5_limits:account_id(Limits)
-                          ,Classification
-                         ]),
-            wh_json:get_value(Classification, Allotments)
+        Classification -> try_find_allotment_classification(Classification, Limits)
     end.
 
+-spec try_find_allotment_classification(ne_binary(), j5_limits:limits()) -> wh_json:object() | 'undefined'.
+try_find_allotment_classification(Classification, Limits) ->
+    Allotments = j5_limits:allotments(Limits),
+    lager:debug("checking if account ~s has any allotments for ~s"
+                ,[j5_limits:account_id(Limits)
+                  ,Classification
+                 ]),
+    case wh_json:get_value(Classification, Allotments) of
+        'undefined' -> 'undefined';
+        Allotment -> wh_json:set_value(<<"classification">>, Classification, Allotment)
+    end.             
+        
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -133,36 +143,42 @@ try_find_allotment(Request, Limits) ->
 %%--------------------------------------------------------------------
 -spec allotment_consumed_sofar(wh_json:object(), j5_limits:limits()) -> integer() | {'error', _}.
 allotment_consumed_sofar(Allotment, Limits) ->
-    allotment_consumed_sofar(Allotment, Limits, 0).
+    Classification = wh_json:get_value(<<"classification">>, Allotment),
+    Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
+    CycleStart = cycle_start(Cycle),
+    CycleSpan = cycle_span(Cycle),
+    case allotment_consumed_sofar(CycleStart, Classification, Limits, 0) of
+        {'error', _}=Error -> Error;
+        Consumed ->
+            Consumed + j5_channels:allotment_consumed(CycleStart, CycleSpan, Classification, Limits)
+    end.
 
--spec allotment_consumed_sofar(wh_json:object(), j5_limits:limits(), 0..3) -> integer() | {'error', _}.
-allotment_consumed_sofar(_, _, Attempts) when Attempts > 2 -> {'error', 'not_found'};
-allotment_consumed_sofar(Allotment, Limits, Attempts) ->
+-spec allotment_consumed_sofar(non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) -> integer() | {'error', _}.
+allotment_consumed_sofar(_, _, _, Attempts) when Attempts > 2 -> 0;
+allotment_consumed_sofar(CycleStart, Classification, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),
     LedgerDb = wh_util:format_account_mod_id(AccountId),
-    Name = wh_json:get_value(<<"name">>, Allotment),
-    Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
-    ViewOptions = [{'startkey', [Name, cycle_start(Cycle)]}
+    ViewOptions = [{'startkey', [Classification, CycleStart]}
                    ,'group'
                    ,{'group_level', 1}
                    ,'reduce'
                   ],
     case couch_mgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
         {'error', 'not_found'} -> 
-            add_transactions_view(LedgerDb, Allotment, Limits, Attempts);
+            add_transactions_view(LedgerDb, CycleStart, Classification, Limits, Attempts);
         {'error', _R}=Error ->
-            lager:debug("unable to get ~s allotment ~s for ~s: ~p"
-                        ,[Cycle, Name, LedgerDb, _R]),
+            lager:debug("unable to get consumed quanity for ~s allotment from ~s: ~p"
+                        ,[Classification, LedgerDb, _R]),
             Error;
         {'ok', []} -> 0;
         {'ok', [JObj|_]} ->
             abs(wh_json:get_integer_value(<<"value">>, JObj, 0))
     end.
 
--spec add_transactions_view(ne_binary(), wh_json:object(), j5_limits:limits(), 0..3) -> integer() | {'error', _}.
-add_transactions_view(LedgerDb, Allotment, Limits, Attempts) ->
+-spec add_transactions_view(ne_binary(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) -> integer() | {'error', _}.
+add_transactions_view(LedgerDb, CycleStart, Classification, Limits, Attempts) ->
     _ = couch_mgr:revise_views_from_folder(LedgerDb, 'jonny5'),
-    allotment_consumed_sofar(Allotment, Limits, Attempts + 1).
+    allotment_consumed_sofar(CycleStart, Classification, Limits, Attempts + 1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -187,83 +203,9 @@ cycle_start(<<"minutely">>) ->
     {{Year, Month, Day}, {Hour, Min, _}} = calendar:universal_time(),
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, 0}}).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec start_allotment_consumption(wh_json:object(), integer(), j5_request:request(), j5_limits:limits()) -> wh_jobj_return().
-start_allotment_consumption(Allotment, Units, Request, Limits) ->
-    CallId = j5_request:call_id(Request),
-    Props = [{<<"_id">>, <<CallId/binary, "-start">>}
-             ,{<<"call_id">>, CallId}
-             ,{<<"name">>, wh_json:get_value(<<"name">>, Allotment)}
-             ,{<<"reason">>, <<"allotment_channel">>}
-             ,{<<"pvt_type">>, <<"allotment_debit">>}
-            ],
-    write_to_ledger(Props, Units, Limits).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec tick_allotment_consumption(wh_json:object(), integer(), j5_request:request(), j5_limits:limits()) -> wh_jobj_return().
-tick_allotment_consumption(Allotment, Units, Request, Limits) ->
-    CallId = j5_request:call_id(Request),
-    Timestamp = j5_request:timestamp(Request),
-    Props = [{<<"_id">>, <<CallId/binary, "-"
-                           ,(wh_util:to_binary(Timestamp))/binary>>}
-             ,{<<"call_id">>, CallId}
-             ,{<<"name">>, wh_json:get_value(<<"name">>, Allotment)}
-             ,{<<"reason">>, <<"allotment_channel">>}
-             ,{<<"pvt_type">>, <<"allotment_debit">>}
-            ],
-    write_to_ledger(Props, Units, Limits).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec return_allotment_consumption(wh_json:object(), integer(), j5_request:request(), j5_limits:limits()) -> wh_jobj_return().
-return_allotment_consumption(Allotment, Units, Request, Limits) ->
-    CallId = j5_request:call_id(Request),
-    Props = [{<<"_id">>, <<CallId/binary, "-stop">>}
-             ,{<<"call_id">>, CallId}
-             ,{<<"name">>, wh_json:get_value(<<"name">>, Allotment)}
-             ,{<<"reason">>, <<"allotment_channel">>}
-             ,{<<"pvt_type">>, <<"allotment_credit">>}
-            ],
-    write_to_ledger(Props, Units, Limits).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec write_to_ledger(proplist(), integer(), j5_limits:limits()) -> wh_jobj_return().
-write_to_ledger(Props, Units, Limits) ->
-    AccountId = j5_limits:account_id(Limits),
-    LedgerDb = wh_util:format_account_mod_id(AccountId),
-    Timestamp = wh_util:current_tstamp(),
-    lager:debug("adding ~s ~s to ledger ~s for ~wsec"
-                ,[props:get_value(<<"pvt_type">>, Props)
-                  ,props:get_value(<<"_id">>, Props)
-                  ,LedgerDb
-                  ,Units
-                 ]),
-    JObj = wh_json:from_list(
-             [{<<"account_id">>, AccountId}
-              ,{<<"amount">>, abs(Units)}
-              ,{<<"pvt_created">>, Timestamp}
-              ,{<<"pvt_modified">>, Timestamp}
-              ,{<<"pvt_vsn">>, 1}
-              ,{<<"pvt_whapp">>, ?APP_NAME}
-              | Props
-             ]),
-    couch_mgr:save_doc(LedgerDb, JObj).
+-spec cycle_span(ne_binary()) -> integer().
+cycle_span(<<"monthly">>) -> 2629743;
+cycle_span(<<"weekly">>) -> 604800;
+cycle_span(<<"daily">>) -> 86400;
+cycle_span(<<"hourly">>) -> 3600;
+cycle_span(<<"minutely">>) -> 60.

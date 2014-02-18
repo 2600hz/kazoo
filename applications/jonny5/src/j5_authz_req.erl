@@ -120,8 +120,8 @@ maybe_authorize_exception(Request, Limits) ->
 maybe_hard_limit(Request, Limits) ->    
     R = j5_hard_limit:authorize(Request, Limits),
     case j5_request:billing(R, Limits) of
-        <<"hard_limit">> -> maybe_soft_limit(Request, Limits);
-        _Else -> authorize(Request, Limits)
+        <<"hard_limit">> -> maybe_soft_limit(R, Limits);
+        _Else -> authorize(R, Limits)
     end.
 
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
