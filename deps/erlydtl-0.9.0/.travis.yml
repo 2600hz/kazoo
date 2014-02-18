@@ -1,0 +1,7 @@
+language: erlang
+otp_release:
+#  - R16B03 (not yet available on travis)
+  - R16B02
+  - R15B03
+#  - R14B04 (seems lists:concat/1 is broken on R14B04..)
+script: "make test"

@@ -1,0 +1,5 @@
+{% extends "recursive_block" %}
+
+{% block content %}
+    extended content
+{% endblock %}

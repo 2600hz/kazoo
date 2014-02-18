@@ -1,0 +1,47 @@
+{% autoescape off %}
+Add: 2 + 2 = {{ 2|add:2 }}
+
+Capfirst: {{ "capitalized"|capfirst }}
+
+Centered:
+<pre>
+{{ "center"|center:20 }}
+</pre>
+
+Date format:  {{ date_var1|date:"D, d M Y" }}
+DateTime format: {{ datetime_var1|date:"D, d M Y H:i:s" }}
+
+Escape JS: {{ "\" '"|escapejs }}
+
+First letter: {{ "first"|first }}
+
+Fix ampersands: {{ "&"|fix_ampersands }}
+
+Force_escape: {{ "<b></b>"|force_escape }}
+
+Joined: {{ list|join:", " }}
+
+Last: {{ "last"|last }}
+
+Length: {{ list|length }}
+
+Length is 2?: {{ list|length_is:2 }}
+
+Left adjust: 
+<pre>
+{{ "left"|ljust:20 }}
+</pre>
+
+Line breaks: {{ "Line 1\nLine 2\nLine 3"|linebreaksbr }}
+
+Lowercase: {{ "LOWERCASE"|lower }}
+
+Right adjust:
+<pre>
+{{ "right"|rjust:20 }}
+</pre>
+
+Uppercase: {{ "uppercase"|upper }}
+
+URL Encode: {{ "Let's go!"|urlencode }}
+{% endautoescape %}

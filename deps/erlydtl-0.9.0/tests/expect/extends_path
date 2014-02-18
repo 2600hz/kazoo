@@ -1,0 +1,14 @@
+base-barstring
+
+base2 template
+
+replacing the base title
+block title 2 from  base1 
+
+more of base2 template
+
+replacing the base content - variable: test-barstring after variable 
+
+block content2 in base 2, should pass through
+
+end of base2 template

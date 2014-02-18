@@ -1,0 +1,33 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Test variable</title>								 
+  </head>
+  <body>
+	before
+	<object id="myvideo" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" width="800" height="600">
+	<param name="movie" value="/static/mediaplayer.swf">
+    <param name="allowfullscreen" value="true">
+    <param name="menu" value="false">
+    <param name="flashvars" value="file=/myvid.mp4&image=/mypic.jpg">
+    <!--[if !IE]>-->
+    <object type="application/x-shockwave-flash" data="/static/mediaplayer.swf" width="800" height="620">
+    <param name="allowfullscreen" value="true">
+    <param name="menu" value="false">
+    <param name="flashvars" value="file=/myvid.mp4&image=/mypic.jpg">
+    <!--<![endif]-->
+    <h2>To view the Video:</h2>
+    <p>
+    	<a href="http://www.adobe.com/go/getflashplayer">
+        	<img src="http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif" alt="Get Adobe Flash player">
+    	</a>
+    </p>
+    <!--[if !IE]>-->
+    </object>
+    <!--<![endif]-->
+</object>
+
+	after
+  </body>
+</html>

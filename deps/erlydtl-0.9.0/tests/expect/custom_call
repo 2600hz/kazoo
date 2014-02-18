@@ -1,0 +1,23 @@
+>>>> before custom call tag 'comment'
+before
+
+<ul>
+
+	<li>preset-apple</li>
+
+	<li>preset-banana</li>
+
+	<li>preset-coconut</li>
+
+</ul>
+
+after
+>>>> after custom call tag 'comment'
+
+>>>> before custom call tag 'if'
+One but not two:  two 
+Two but not one:  one 
+One: 
+None: 
+
+>>>> after custom call tag 'if'
