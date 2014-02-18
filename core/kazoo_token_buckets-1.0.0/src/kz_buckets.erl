@@ -11,10 +11,11 @@
 
 %% API exports
 -export([start_link/0
-         ,has_token/1, has_token/2
-         ,has_tokens/2, has_tokens/3
+         ,consume_token/1, consume_token/2
+         ,consume_tokens/2, consume_tokens/3
+
          ,start_bucket/1, start_bucket/2, start_bucket/3, start_bucket/4
-         ,has_bucket/1
+         ,exists/1
          ,tokens/0
         ]).
 
@@ -60,36 +61,45 @@
 start_link() ->
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
--spec has_token(api_binary()) -> boolean().
--spec has_token(api_binary(), boolean()) -> boolean().
+%%--------------------------------------------------------------------
+%% @doc
+%% consume_tokens(Name, [Count, [StartIfMissing]])
+%% Name :: name of the bucket
+%% Count ::
+%% @end
+%%--------------------------------------------------------------------
+-spec consume_token(api_binary()) -> boolean().
+-spec consume_token(api_binary(), boolean()) -> boolean().
 
--spec has_tokens(api_binary(), pos_integer()) -> boolean().
--spec has_tokens(api_binary(), pos_integer(), boolean()) -> boolean().
-has_token(Name) ->
-    has_tokens(Name, 1).
-has_token(Name, StartIfMissing) ->
-    has_tokens(Name, 1, StartIfMissing).
+-spec consume_tokens(api_binary(), pos_integer()) -> boolean().
+-spec consume_tokens(api_binary(), pos_integer(), boolean()) -> boolean().
+consume_token(Name) ->
+    consume_tokens(Name, 1).
 
-has_tokens(Key, Count) ->
-    has_tokens(Key, Count, 'true').
-has_tokens(Key, Count, StartBucketIfMissing) ->
+consume_token(Name, StartIfMissing) ->
+    consume_tokens(Name, 1, StartIfMissing).
+
+consume_tokens(Key, Count) ->
+    consume_tokens(Key, Count, 'true').
+
+consume_tokens(Key, Count, StartBucketIfMissing) ->
     lager:debug("looking for token bucket for ~s", [Key]),
     case ets:lookup(?MODULE, Key) of
         [] when StartBucketIfMissing ->
             start_bucket(Key),
-            has_tokens(Key, Count, 'false');
+            consume_tokens(Key, Count, 'false');
         [] -> 'false';
         [#bucket{srv=Srv}] ->
             kz_token_bucket:consume(Srv, Count)
     end.
 
--spec has_bucket(api_binary()) -> boolean().
-has_bucket(Key) ->
+-spec exists(api_binary()) -> boolean().
+exists(Key) ->
     case ets:lookup(?MODULE, Key) of
         [] -> 'false';
         [#bucket{}] -> 'true';
         _O ->
-            lager:error("has_bucket(~s, ~s) failed: ~p", [Key, _O]),
+            lager:error("exists(~s, ~s) failed: ~p", [Key, _O]),
             'false'
     end.
 
@@ -105,7 +115,7 @@ start_bucket(Name, MaxTokens) ->
 start_bucket(Name, MaxTokens, FillRate) ->
     start_bucket(Name, MaxTokens, FillRate, 'second').
 start_bucket(Name, MaxTokens, FillRate, FillTime) ->
-    case has_bucket(Name) of
+    case exists(Name) of
         'true' -> lager:debug("bucket exists for ~s/~s already", [Name]);
         'false' ->
             gen_server:cast(?MODULE, {'start', Name, MaxTokens, FillRate, FillTime})
@@ -153,7 +163,7 @@ gift_data() -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?MODULE),
+    wh_util:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
