@@ -19,6 +19,7 @@
 -export([authorized/1]).
 -export([remove/1]).
 -export([handle_authz_resp/2]).
+-export([handle_rate_resp/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -50,14 +51,27 @@
                   ,soft_limit = 'false' :: boolean()
                   ,timestamp = wh_util:current_tstamp() :: pos_integer()
                   ,answered_timestamp :: 'undefined' | pos_integer()
+                  ,rate :: api_binary()
+                  ,rate_increment :: api_binary()
+                  ,rate_minimum :: api_binary()
+                  ,discount_percentage :: api_binary()
+                  ,surcharge :: api_binary()
+                  ,rate_name :: api_binary()
+                  ,rate_id :: api_binary()
+                  ,base_cost :: api_binary()
                  }).
 
 -define(BINDINGS, [{'authz', [{'restrict_to', ['broadcast']}
                               ,'federate'
                              ]}
+                   ,{'rate', [{'restrict_to', ['broadcast']}
+                              ,'federate'
+                             ]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_authz_resp'}
                       ,[{<<"authz">>, <<"authz_resp">>}]}
+                     ,{{?MODULE, 'handle_rate_resp'}
+                       ,[{<<"rate">>, <<"resp">>}]}
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -232,6 +246,12 @@ handle_authz_resp(JObj, _Props) ->
         'false' -> 'ok'
     end.
 
+-spec handle_rate_resp(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_rate_resp(JObj, Props) ->
+    'true' = wapi_rate:resp_v(JObj),
+    Srv = props:get_value('server', Props),
+    gen_server:cast(Srv, {'rate_resp', JObj}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -284,6 +304,21 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'rate_resp', JObj}, State) ->
+    Props = props:filter_undefined(
+              [{#channel.rate, wh_json:get_value(<<"Rate">>, JObj)}
+               ,{#channel.rate_increment, wh_json:get_value(<<"Rate-Increment">>, JObj)}
+               ,{#channel.rate_minimum, wh_json:get_value(<<"Rate-Minimum">>, JObj)}
+               ,{#channel.discount_percentage, wh_json:get_value(<<"Discount-Percentage">>, JObj)}
+               ,{#channel.surcharge, wh_json:get_value(<<"Surcharge">>, JObj)}
+               ,{#channel.rate_name, wh_json:get_value(<<"Rate-Name">>, JObj)}
+               ,{#channel.rate_id, wh_json:get_value(<<"Rate-ID">>, JObj)}
+               ,{#channel.base_cost, wh_json:get_value(<<"Base-Cost">>, JObj)}
+              ]
+             ),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    _ = ets:update_element(?TAB, CallId, Props),
+    {'noreply', State};
 handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
     self() ! {'synchronize_channels', SyncRef},
     {'noreply', State};

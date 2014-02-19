@@ -24,7 +24,8 @@ handle_req(JObj, _Props) ->
         {'ok', Resp} ->
             wapi_rate:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
                                    ,props:filter_undefined(Resp)
-                                  )
+                                  ),
+            wapi_rate:broadcast_resp(props:filter_undefined(Resp))
     end.
 
 -spec get_rate_data(wh_json:object()) ->

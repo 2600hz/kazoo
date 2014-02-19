@@ -13,12 +13,14 @@
          ,declare_exchanges/0
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
+         ,broadcast_resp/1, broadcast_resp/2
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
 
 -define(EVENT_CATEGORY, <<"rate">>).
 -define(KEY_RATE_REQ, <<"rate.req">>).
+-define(KEY_RATE_BROADCAST, <<"rate.resp.broadcast">>).
 
 %% AMQP fields for Rating Request
 -define(RATE_REQ_HEADERS, [<<"To-DID">>, <<"Call-ID">>]).
@@ -102,6 +104,9 @@ bind_to_q(Q, 'undefined') ->
 bind_to_q(Q, ['req'|T]) ->
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_REQ),
     bind_to_q(Q, T);
+bind_to_q(Q, ['broadcast'|T]) ->
+    'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_BROADCAST),
+    bind_to_q(Q, T);
 bind_to_q(Q, [_|T]) ->
     bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
@@ -115,6 +120,9 @@ unbind_q_from(Q, 'undefined') ->
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ);
 unbind_q_from(Q, ['req'|T]) ->
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['broadcast'|T]) ->
+    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_BROADCAST),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [_|T]) ->
     unbind_q_from(Q, T);
@@ -149,3 +157,11 @@ publish_resp(Queue, JObj) ->
 publish_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+-spec broadcast_resp/1 :: (api_terms()) -> 'ok'.
+-spec broadcast_resp/2 :: (api_terms(), ne_binary()) -> 'ok'.
+broadcast_resp(JObj) ->
+    broadcast_resp(JObj, ?DEFAULT_CONTENT_TYPE).
+broadcast_resp(Resp, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun ?MODULE:resp/1),
+    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_BROADCAST).
