@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -24,6 +24,7 @@
          ,stop_auto_compaction/0
          ,compact_automatically/0
          ,compact_automatically/1
+
          %% Inspection
          ,nodes_left/0
          ,dbs_left/0
@@ -1185,7 +1186,7 @@ db_design_docs(Conn, D) ->
 
 -spec rebuild_design_docs(server(), ne_binary(), ne_binaries()) -> 'ok'.
 -spec rebuild_design_doc(server(), ne_binary(), ne_binary()) -> 'ok'.
--spec rebuild_design_doc(server(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec rebuild_design_doc(server(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 rebuild_design_docs(Conn, D, DDs) ->
     _ = [rebuild_design_doc(Conn, D, DD) || DD <- DDs],
     'ok'.
@@ -1216,8 +1217,8 @@ rebuild_views(Conn, D, DD, Views) ->
 
 rebuild_view(Conn, D, DD, View) ->
     case couch_util:get_results(Conn, D, <<DD/binary, "/", View/binary>>, [{'stale', 'update_after'}
-                                                                             ,{'limit', 1}
-                                                                            ])
+                                                                           ,{'limit', 1}
+                                                                          ])
     of
         {'error', _E} ->
             lager:debug("error while rebuilding view '~s/~s' has rebuilt on '~s'\: ~p", [DD, View, D, _E]),
@@ -1321,7 +1322,8 @@ compact_design_docs(AdminConn, S, DDs) ->
 -type design_info_resp() :: {'ok', wh_json:object()} |
                             couchbeam_error().
 
--spec wait_for_design_compaction(server(), ne_binary(), ne_binaries()) -> 'ok'.
+-spec wait_for_design_compaction(server(), ne_binary(), ne_binaries()) ->
+                                        'ok'.
 -spec wait_for_design_compaction(server(), ne_binary(), ne_binaries(), ne_binary(), design_info_resp()) ->
                                         'ok'.
 wait_for_design_compaction(_, _, []) -> 'ok';
@@ -1369,6 +1371,13 @@ wait_for_compaction(AdminConn, S, {'ok', ShardData}) ->
 -spec get_node_connections({ne_binary(), list()} | ne_binary(), atom()) ->
                                   {server(), server()} |
                                   {'error', 'no_connection'}.
+-spec get_node_connections(text(), pos_integer(), string(), string(), pos_integer()) ->
+                                  {server(), server()} |
+                                  {'error', 'no_connection'}.
+-spec get_node_connections(text(), pos_integer(), string(), string(), pos_integer(), non_neg_integer()) ->
+                                  {server(), server()} |
+                                  {'error', 'no_connection'}.
+
 get_node_connections({N, Opts}, ConfigCookie) ->
     lager:debug("getting connections from opts: ~p", [Opts]),
     [_, Host] = binary:split(N, <<"@">>),
@@ -1395,6 +1404,7 @@ get_node_connections(N, Cookie) ->
 
 get_node_connections(Host, Port, User, Pass, AdminPort) ->
     get_node_connections(Host, Port, User, Pass, AdminPort, 0).
+
 get_node_connections(_Host, _Port, _User, _Pass, _AdminPort, Retries) when Retries > 2 ->
     lager:warning("failed to get connections for ~s on ~p and ~p", [_Host, _Port, _AdminPort]),
     {'error', 'no_connection'};
@@ -1418,18 +1428,37 @@ get_node_connections(Host, Port, User, Pass, AdminPort, Retries) ->
             get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
         {_Conn, _AdminConn}=Conns -> Conns
     catch
+        'error':{'case_clause',{'error',{'conn_failed',{'error','econnrefused'}}}} ->
+            lager:warning("connection refused when connecting to ~s (on either ~p or ~p)"
+                          ,[Host, Port, AdminPort]
+                         ),
+            BCCookie = whapps_config:get(<<"whistle_couch">>, <<"bigcouch_cookie">>),
+            lager:warning("check that those ports are correct and the bigcouch_cookie(~s) is correct"
+                          ,[BCCookie]
+                         ),
+            lager:warning("'sup whapps_config set_default bigcouch_cookie <cookie>' if needed"),
+            get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1);
         _E:_R ->
             lager:warning("failed to connect to ~s: ~s: ~p", [Host, _E, _R]),
             get_node_connections(Host, Port, User, Pass, AdminPort, Retries+1)
     end.
 
+-spec get_ports(atom(), atom()) -> {pos_integer(), pos_integer()}.
 get_ports(Node, Cookie) ->
     erlang:set_cookie(Node, Cookie),
     case net_adm:ping(Node) =:= 'pong' andalso get_ports(Node) of
-        'false' -> {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()};
+        'false' ->
+            lager:warning("failed to ping '~s' using cookie '~s'", [Node, Cookie]),
+            BCCookie = whapps_config:get(<<"whistle_couch">>, <<"bigcouch_cookie">>),
+            lager:warning("check that the configured bigcouch_cookie(~s) is correct"
+                          ,[BCCookie]
+                         ),
+            lager:warning("'sup whapps_config set_default bigcouch_cookie <cookie>' if needed"),
+            {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()};
         Ports -> Ports
     end.
 
+-spec get_ports(atom()) -> {pos_integer(), pos_integer()}.
 get_ports(Node) ->
     try {get_port(Node, ["chttpd", "port"], fun wh_couch_connections:get_port/0)
          ,get_port(Node, ["httpd", "port"], fun wh_couch_connections:get_admin_port/0)
@@ -1441,15 +1470,21 @@ get_ports(Node) ->
     catch
         _E:_R ->
             lager:debug("failed to get ports: ~s: ~p", [_E, _R]),
+            lager:debug("using kazoo couch ports instead"),
             {wh_couch_connections:get_port(), wh_couch_connections:get_admin_port()}
     end.
 
+-spec get_port(atom(), list(string()), fun(() -> pos_integer())) -> pos_integer().
 get_port(Node, Key, DefaultFun) ->
     case rpc:call(Node, 'couch_config', 'get', Key) of
         {'badrpc', _} -> DefaultFun();
         P -> wh_util:to_integer(P)
     end.
 
+-type client_update() :: 'job_starting' |
+                         'job_finished' |
+                         'job_cancelled'.
+-spec maybe_send_update(pid(), reference(), client_update()) -> 'ok'.
 maybe_send_update(P, Ref, Update) when is_pid(P) ->
     case erlang:is_process_alive(P) of
         'true' -> P ! {Update, Ref}, 'ok';
@@ -1457,6 +1492,7 @@ maybe_send_update(P, Ref, Update) when is_pid(P) ->
     end;
 maybe_send_update(_,_,_) -> 'ok'.
 
+-spec maybe_start_auto_compaction_job() -> 'ok'.
 maybe_start_auto_compaction_job() ->
     case compact_automatically() andalso
         (catch wh_couch_connections:test_admin_conn())

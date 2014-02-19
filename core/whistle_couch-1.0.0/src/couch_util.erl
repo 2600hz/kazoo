@@ -686,9 +686,9 @@ maybe_publish_doc(#db{name=DbName}=Db, Doc, JObj) ->
         'false' -> 'ok'
     end.
 
+-spec should_publish_doc(wh_json:object()) -> boolean().
 should_publish_doc(Doc) ->
     case doc_id(Doc) of
-        'undefined' -> 'false';
         <<"_design/", _/binary>> = _D -> 'false';
         _Else -> 'true'
     end.
@@ -708,39 +708,49 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
             end
     end.
 
-publish(Action, Db, Doc) ->
+-spec publish(wapi_conf:action(), string(), wh_json:object()) -> 'ok'.
+publish(Action, DbName, Doc) ->
+    Db = wh_util:to_binary(DbName),
     Type = doc_type(Doc),
     Id = doc_id(Doc),
     Props =
         [{<<"ID">>, Id}
          ,{<<"Type">>, Type}
-         ,{<<"Database">>, wh_util:to_binary(Db)}
+         ,{<<"Database">>, Db}
          ,{<<"Rev">>, doc_rev(Doc)}
          ,{<<"Account-ID">>, doc_acct_id(Db, Doc)}
          ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
          ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
-         | wh_api:default_headers(<<"configuration">>, <<"doc_", (wh_util:to_binary(Action))/binary>>
-                                      ,<<"whistle_couch">>, <<"1.0.0">>)
+         | wh_api:default_headers(<<"configuration">>
+                                  ,<<"doc_", (wh_util:to_binary(Action))/binary>>
+                                  ,<<"whistle_couch">>
+                                  ,<<"1.0.0">>
+                                 )
         ],
     Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
     whapps_util:amqp_pool_send(Props, Fun).
 
+-spec doc_rev(wh_json:object()) -> ne_binary().
 doc_rev(Doc) ->
     wh_json:get_first_defined([<<"_rev">>, <<"rev">>]
                               ,Doc
-                              ,<<"undefined">>).
+                              ,<<"undefined">>
+                             ).
 
+-spec doc_id(wh_json:object()) -> ne_binary().
 doc_id(Doc) ->
     wh_json:get_first_defined([<<"_id">>, <<"id">>]
                               ,Doc
-                              ,<<"undefined">>).
+                              ,<<"undefined">>
+                             ).
 
+-spec doc_type(wh_json:object()) -> ne_binary().
 doc_type(Doc) ->
     wh_json:get_value(<<"pvt_type">>, Doc, <<"undefined">>).
 
+-spec doc_acct_id(ne_binary(), wh_json:object()) -> ne_binary().
 doc_acct_id(Db, Doc) ->
-    wh_json:get_value(<<"pvt_account_id">>
-                      ,Doc
-                      ,wh_util:format_account_id(Db, 'raw')
-                     ).
-
+    case wh_json:get_value(<<"pvt_account_id">>, Doc) of
+        'undefined' -> wh_util:format_account_id(Db, 'raw');
+        AccountId -> AccountId
+    end.
