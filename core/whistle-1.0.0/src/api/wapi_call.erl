@@ -463,7 +463,7 @@ unbind_q(Queue, Props) ->
     unbind_q(Queue, Events, CallId).
 
 unbind_q(Q, [Event|T], CallId) ->
-    _ = amqp_util:unbind_q_from_callevt(Q, ?CALL_EVENT_ROUTING_KEY(Event, CallId)),    
+    _ = amqp_util:unbind_q_from_callevt(Q, ?CALL_EVENT_ROUTING_KEY(Event, CallId)),
     unbind_q(Q, T, CallId);
 unbind_q(_Q, [], _CallId) -> 'ok'.
 
@@ -499,7 +499,7 @@ publish_channel_status_req(API) ->
 publish_channel_status_req(CallId, JObj) ->
     publish_channel_status_req(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_channel_status_req(CallId, Req, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_STATUS_REQ_VALUES, fun ?MODULE:channel_status_req/1),    
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_STATUS_REQ_VALUES, fun ?MODULE:channel_status_req/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', CallId), Payload, ContentType).
 
 -spec publish_channel_status_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -583,6 +583,8 @@ publish_query_user_channels_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_USER_CHANNELS_RESP_VALUES, fun ?MODULE:query_user_channels_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
+-spec publish_query_account_channels_req(api_terms()) -> 'ok'.
+-spec publish_query_account_channels_req(api_terms(), ne_binary(), ne_binary()) -> 'ok'.
 publish_query_account_channels_req(Props) when is_list(Props) ->
     publish_query_account_channels_req(Props
                                     ,props:get_value(<<"Account-ID">>, Props)
@@ -594,10 +596,9 @@ publish_query_account_channels_req(JObj) ->
                                     ,?DEFAULT_CONTENT_TYPE
                                    ).
 
-
 publish_query_account_channels_req(Req, AccountId, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?QUERY_ACCOUNT_CHANNELS_REQ_VALUES, fun ?MODULE:query_account_channels_req/1),
-    amqp_util:callevt_publish(<<AccountId/binary>>, Payload, 'status_req', ContentType).
+    amqp_util:callevt_publish(<<AccountId/binary>>, Payload, ContentType).
 
 -spec publish_query_account_channels_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_query_account_channels_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

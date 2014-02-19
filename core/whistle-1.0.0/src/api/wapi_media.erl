@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Media requests, responses, and errors
 %%% @end
@@ -128,7 +128,7 @@ bind_q(Queue, _Props) ->
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
-    amqp_util:unbind_q_to_whapps(Queue, ?MEDIA_REQ_ROUTING_KEY).
+    amqp_util:unbind_q_from_whapps(Queue, ?MEDIA_REQ_ROUTING_KEY).
 
 %%--------------------------------------------------------------------
 %% @doc

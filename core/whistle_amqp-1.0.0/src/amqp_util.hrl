@@ -125,14 +125,14 @@
 -record(wh_amqp_assignment, {timestamp = now() :: wh_now() | '_'
                              ,consumer :: api_pid() | '$2' | '_'
                              ,consumer_ref :: api_reference() | '_'
-                             ,type = 'float' :: wh_amqp_type()
+                             ,type = 'float' :: wh_amqp_type() | '_'
                              ,channel :: api_pid() | '$1' | '_'
                              ,channel_ref :: api_reference() | '_'
                              ,connection :: api_pid() | '$1' | '_'
                              ,broker :: api_binary() | '$1' | '_'
                              ,assigned :: wh_now() | '_'
-                             ,reconnect = 'false' :: boolean()
-                             ,watchers = sets:new() :: set() | [pid(),...] | []
+                             ,reconnect = 'false' :: boolean() | '_'
+                             ,watchers = sets:new() :: set() | pids() | '_'
                             }).
 
 -type wh_amqp_assignment() :: #wh_amqp_assignment{}.
@@ -142,7 +142,7 @@
 
 -record(wh_amqp_connection, {broker :: string() | api_binary() | '_'
                              ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{} | '_'
-                             ,manager :: atom() | '_'
+                             ,manager :: pid() | '_'
                              ,connection :: pid() | '_'
                              ,connection_ref :: reference() | '_'
                              ,channel :: api_pid() | '$1' | '_'

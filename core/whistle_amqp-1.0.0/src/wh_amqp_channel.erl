@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -46,7 +46,7 @@ consumer_pid(Pid) when is_pid(Pid) ->
     put('$wh_amqp_consumer_pid', Pid).
 
 -spec remove_consumer_pid() -> 'undefined'.
-remove_consumer_pid() -> 
+remove_consumer_pid() ->
     put('$wh_amqp_consumer_pid', 'undefined').
 
 -spec consumer_broker() -> api_binary().
@@ -57,7 +57,7 @@ consumer_broker() ->
     end.
 
 -spec consumer_broker(ne_binary()) -> api_binary().
-consumer_broker(Broker) when is_binary(Broker) -> 
+consumer_broker(Broker) when is_binary(Broker) ->
     put('$wh_amqp_consumer_broker', Broker).
 
 -spec remove_consumer_broker() -> 'undefined'.
@@ -158,7 +158,7 @@ command(#wh_amqp_assignment{consumer=Consumer
     case amqp_channel:subscribe(Channel, C, Consumer) of
         #'basic.consume_ok'{consumer_tag=NewTag} ->
             wh_amqp_history:update_consumer_tag(Consumer, OldTag, NewTag);
-        _Else -> 
+        _Else ->
             lager:warning("failed to re-establish consumer for ~p: ~p"
                           ,[Consumer, _Else])
     end;
@@ -219,7 +219,8 @@ handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
 handle_command_result(#'queue.unbind_ok'{}
                       ,#'queue.unbind'{exchange=_Exchange
                                        ,routing_key=_RK
-                                       ,queue=_Q}=Command
+                                       ,queue=_Q
+                                      }=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("unbound ~s from ~s exchange (routing key ~s) via channel ~p"
                 ,[_Q, _Exchange, _RK, Channel]),
@@ -228,7 +229,8 @@ handle_command_result(#'queue.unbind_ok'{}
 handle_command_result(#'queue.bind_ok'{}
                       ,#'queue.bind'{exchange=_Exchange
                                      ,routing_key=_RK
-                                     ,queue=_Q}=Command
+                                     ,queue=_Q
+                                    }=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("bound ~s to ~s exchange (routing key ~s) via channel ~p"
                 ,[_Q, _Exchange, _RK, Channel]),

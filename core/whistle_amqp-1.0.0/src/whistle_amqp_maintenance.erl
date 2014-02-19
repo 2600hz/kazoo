@@ -40,7 +40,7 @@ add_broker(Broker) ->
     add_broker(Broker, 'false').
 
 add_broker(Broker, Federation) when not is_binary(Broker) ->
-    add_broker(wh_util:to_binary(Broker), Federation);    
+    add_broker(wh_util:to_binary(Broker), Federation);
 add_broker(Broker, Federation) when not is_boolean(Federation) ->
     add_broker(Broker, wh_util:is_true(Federation));
 add_broker(Broker, Federation) ->
@@ -127,7 +127,7 @@ validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
                                            ,channel_ref=ChannelRef
                                            ,connection=Connection
                                            ,broker=?NE_BINARY}=Assignment
-                   ], Continuation}) 
+                   ], Continuation})
   when is_pid(Channel), is_reference(ChannelRef), is_pid(Connection) ->
     %% validate prechannel
     _ = case is_process_alive(Channel) andalso is_process_alive(Connection) of
@@ -144,7 +144,7 @@ validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
                                            ,connection='undefined'
                                            ,broker='undefined'
                                            ,type='float'}=Assignment
-                   ], Continuation}) 
+                   ], Continuation})
   when is_pid(Consumer), is_reference(ConsumerRef) ->
     %% validate float reservation
     _ = case is_process_alive(Consumer) of
@@ -161,7 +161,7 @@ validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
                                            ,connection='undefined'
                                            ,broker=?NE_BINARY
                                            ,type='sticky'}=Assignment
-                   ], Continuation}) 
+                   ], Continuation})
   when is_pid(Consumer), is_reference(ConsumerRef) ->
     %% validate sticky reservation
     _ = case is_process_alive(Consumer) of
@@ -171,18 +171,18 @@ validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
     validate_assignments(ets:match_object(Continuation));
 validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
                                            ,consumer=Consumer
-                                           ,consumer_ref=ConsumerRef                                           
+                                           ,consumer_ref=ConsumerRef
                                            ,channel=Channel
                                            ,channel_ref=ChannelRef
-                                           ,connection=Connection 
+                                           ,connection=Connection
                                            ,assigned=Assigned
                                            ,broker=?NE_BINARY}=Assignment
-                   ], Continuation}) 
+                   ], Continuation})
   when is_pid(Consumer), is_reference(ConsumerRef)
        ,is_pid(Channel), is_reference(ChannelRef)
        ,is_pid(Connection), is_integer(Assigned) ->
     %% validate assignment
-    _ = case is_process_alive(Consumer) 
+    _ = case is_process_alive(Consumer)
             andalso is_process_alive(Channel)
             andalso is_process_alive(Connection)
         of
@@ -192,7 +192,7 @@ validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
     validate_assignments(ets:match_object(Continuation));
 validate_assignments({[Assignment], Continuation}) ->
     log_invalid_assignment(Assignment),
-    validate_assignments(ets:match_object(Continuation)).    
+    validate_assignments(ets:match_object(Continuation)).
 
 log_invalid_assignment(#wh_amqp_assignment{}=Assignment) ->
     io:format("invalid assignment:~n ~p~n", [lager:pr(Assignment, ?MODULE)]).
@@ -279,7 +279,7 @@ broker_summary_connections(Broker) ->
                 ],
     Count = sets:to_list(
               sets:from_list(
-                [Connection 
+                [Connection
                  || Connection <- ets:select(?ASSIGNMENTS, MatchSpec)
                 ])),
     io:format(" ~-11B |", [length(Count)]).
@@ -294,7 +294,7 @@ broker_summary_assigned_sticky(Broker) ->
                     ,{'=/=', '$2', 'undefined'}
                    }],
                   ['true']}
-                ],    
+                ],
     io:format(" ~-8B |", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
 broker_summary_unassigned_sticky(Broker) ->
@@ -307,7 +307,7 @@ broker_summary_unassigned_sticky(Broker) ->
                     ,{'=/=', '$2', 'undefined'}
                    }],
                   ['true']}
-                ],    
+                ],
     io:format(" ~-10B |", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
 broker_summary_assigned_float(Broker) ->
@@ -320,7 +320,7 @@ broker_summary_assigned_float(Broker) ->
                     ,{'=/=', '$2', 'undefined'}
                    }],
                   ['true']}
-                ],    
+                ],
     io:format(" ~-8B |", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
 broker_summary_unassigned_float(Broker) ->
@@ -333,7 +333,7 @@ broker_summary_unassigned_float(Broker) ->
                     ,{'=/=', '$2', 'undefined'}
                    }],
                   ['true']}
-                ],    
+                ],
     io:format(" ~-10B |", [ets:select_count(?ASSIGNMENTS, MatchSpec)]).
 
 broker_summary_prechannels(Broker) ->
@@ -356,7 +356,7 @@ channel_summary() ->
     io:format("+--------------------------------------------------+----------+----------+-----------------+-----------------+-----------------+----------+----------+~n"),
     io:format("| Broker                                           |   Age    | Assigned |     Consumer    |     Channel     |   Connection    |   Type   | Watchers |~n"),
     io:format("+==================================================+==========+==========+=================+=================+=================+==========+==========+~n"),
-    Pattern = #wh_amqp_assignment{ _='_'},
+    Pattern = #wh_amqp_assignment{_='_'},
     channel_summary(ets:match_object(?ASSIGNMENTS, Pattern, 1)).
 
 channel_summary('$end_of_table') -> 'ok';
@@ -383,11 +383,11 @@ channel_summary_age(Timestamp) -> wh_util:elapsed_s(Timestamp).
 %%
 %% @end
 %%--------------------------------------------------------------------
-consumer_details() -> 
+consumer_details() ->
     MatchSpec = [{#wh_amqp_assignment{channel='$1'
                                       ,consumer='$2'
                                       ,_='_'},
-                  [{'andalso', 
+                  [{'andalso',
                     {'=/=', '$1', 'undefined'},
                     {'=/=', '$2', 'undefined'}
                    }],
@@ -402,7 +402,7 @@ consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(Node
     consumer_details(wh_util:to_binary(NodeNumber), ProcessUpper, ProcessLower);
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessUpper) ->
     consumer_details(NodeNumber, wh_util:to_binary(ProcessUpper), ProcessLower);
-consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessLower) -> 
+consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessLower) ->
     consumer_details(NodeNumber, ProcessUpper, wh_util:to_binary(ProcessLower));
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) ->
     Pid = list_to_pid(
@@ -414,11 +414,11 @@ consumer_details(NodeNumber, ProcessUpper, ProcessLower) ->
     print_consumer_details(Pid).
 
 print_consumer_details('$end_of_table') -> 'ok';
-print_consumer_details({[Consumer], Continuation}) -> 
-    print_consumer_details(Consumer),   
+print_consumer_details({[Consumer], Continuation}) ->
+    print_consumer_details(Consumer),
     print_consumer_details(ets:select(Continuation));
 print_consumer_details(Consumer) when is_pid(Consumer) ->
-    _ = io:format("Consumer ~p:~n", [Consumer]),    
+    _ = io:format("Consumer ~p:~n", [Consumer]),
     _ = case wh_amqp_assignments:find(Consumer) of
             {'error', _} ->
                 io:format("  ~-10s: Not currently assigned AMQP channel!~n"
@@ -459,8 +459,8 @@ print_consumer_details(Consumer) when is_pid(Consumer) ->
     io:format("~n", []).
 
 print_consumer_history([]) -> 'ok';
-print_consumer_history([Command|Commands]) -> 
+print_consumer_history([Command|Commands]) ->
     {'$lager_record', Name, Props} = lager:pr(Command, ?MODULE),
     io:format("    ~s~n      ~p~n", [Name, Props]),
     print_consumer_history(Commands).
-    
+
