@@ -200,24 +200,28 @@ receive_fax(Call, OwnerId) ->
             lager:debug("rxfax unhandled: ~p", [_Resp])
     end.
 
+-spec maybe_update_fax_settings(whapps_call:call(), api_binary(), api_binary()) -> 'ok'.
 maybe_update_fax_settings(Call, AccountId, OwnerId) ->
     case couch_mgr:open_doc(?WH_FAXES, OwnerId) of
         {'ok', JObj} ->
             ChannelVars = build_fax_settings(Call, JObj, AccountId, OwnerId),
             whapps_call_command:set(wh_json:from_list(ChannelVars), 'undefined', Call);
-        _ -> 'ok'
+        {'error', _} -> 'ok'
     end.
     
+-spec build_fax_settings(whapps_call:call(), wh_json:object(), api_binary(), api_binary()) -> wh_proplist().
 build_fax_settings(Call, JObj, AccountId, OwnerId) ->
     FaxNumber = case wh_util:is_true(wh_json:get_value(<<"force_incoming_caller_id">>, JObj, 'false')) of
                     'false' -> wh_json:get_value(<<"caller_id">>, JObj);
                     'true' -> whapps_call:to_user(Call)
                 end,                                                 
-    props:filter_undefined([ {<<"Fax-Identity-Number">>, FaxNumber }
-                            ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"name">>, JObj)}
-                            ,{<<"Fax-Timezone">>, wh_json:get_value(<<"timezone">>, JObj)}
-                           ]).
+    props:filter_undefined(
+      [{<<"Fax-Identity-Number">>, FaxNumber}
+       ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"name">>, JObj)}
+       ,{<<"Fax-Timezone">>, wh_json:get_value(<<"timezone">>, JObj)}
+      ]).
 
+-spec maybe_store_fax(whapps_call:call(), api_binary(), wh_json:object()) -> 'ok'.
 maybe_store_fax(Call, OwnerId, RecvJObj) ->
     %% store Fax in DB
     case store_fax(Call, OwnerId, RecvJObj) of

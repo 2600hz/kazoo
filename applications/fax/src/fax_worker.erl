@@ -141,32 +141,34 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
             release_failed_job('tx_resp', JObj, Job),
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)}
-   end;
+    end;
 handle_cast({'tx_resp', _, _}, State) ->
     {'noreply', State};
-handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{max_time=TimerRef,job=Job}=State) ->
+handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{max_time=TimerRef
+                                                                       ,job=Job
+                                                                      }=State) ->
     TransferRate = wh_json:get_integer_value([<<"Application-Data">>,<<"Fax-Transfer-Rate">>], JObj, 1),
     NumberOfPages = wh_json:get_integer_value(<<"pvt_pages">>, Job, 0 ),
     FileSize = wh_json:get_integer_value(<<"pvt_size">>, Job, 0 ),
     NewMaxTime = wh_util:to_integer(((FileSize * 8) / TransferRate) * 10000 * 4),
-    lager:debug("new timings ~p ~p ~p",[FileSize,TransferRate,NewMaxTime]),
+    lager:debug("new timings ~p ~p ~p", [FileSize, TransferRate,NewMaxTime]),
     NewTimerRef = erlang:send_after(NewMaxTime, self(), 'job_timeout'),
     _ = erlang:cancel_timer(TimerRef),
     lager:debug("fax status - negociate result - ~s : ~p",[JobId, TransferRate]),
     %% TODO update stats/websockets/job
-    %%      maybe setup timer to cancel job bassed on transmission rate 
-
+    %%      maybe setup timer to cancel job bassed on transmission rate     
     {'noreply', State#state{max_time=NewTimerRef}};
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}, State) ->
-    TransferredPages = wh_json:get_value([<<"Application-Data">>,<<"Fax-Transferred-Pages">>], JObj),
-    lager:debug("fax status - page result - ~s : ~p : ~p",[JobId, TransferredPages, wh_util:current_tstamp()]),
+    TransferredPages = wh_json:get_value([<<"Application-Data">>, <<"Fax-Transferred-Pages">>], JObj),
+    lager:debug("fax status - page result - ~s : ~p : ~p"
+                ,[JobId, TransferredPages, wh_util:current_tstamp()]),
     _ = bump_modified(JobId),
     %% TODO update stats/websockets/job 
     {'noreply', State};
-handle_cast({'fax_status', <<"result">>, JobId, JObj}, #state{job_id=JobId,
-                                                                      job=Job,
-                                                                      pool=Pid
-                                                                     }=State) ->
+handle_cast({'fax_status', <<"result">>, JobId, JObj}, #state{job_id=JobId
+                                                              ,job=Job,
+                                                              ,pool=Pid
+                                                             }=State) ->
     %% TODO update stats/websockets/job 
     release_successful_job(JObj, Job),
     gen_server:cast(Pid, {'job_complete', self()}),            
@@ -220,7 +222,8 @@ handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'set_sizes', NumberOfPages, FileSize}, #state{job=JObj}=State) ->
     Values = [{<<"pvt_pages">>, NumberOfPages}
-             ,{<<"pvt_size">>, FileSize}],
+              ,{<<"pvt_size">>, FileSize}
+             ],
     {'noreply',State#state{job=wh_json:set_values(Values, JObj)}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -541,12 +544,12 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             {'error', list_to_binary(["file type '", Else, "' is unsupported"])}
     end.
 
+-spec set_sizes(ne_binary()) -> 'ok'.
 set_sizes(OutputFile) ->
     CmdCount = <<"echo -n `tiffinfo ", OutputFile/binary , " | grep 'Page Number' | grep -c 'P'`">>,
     NumberOfPages = wh_util:to_integer( os:cmd(wh_util:to_list(CmdCount)) ),
     FileSize = filelib:file_size(OutputFile),
     gen_listener:cast(self(), {'set_sizes', NumberOfPages, FileSize}).
-    
 
 -spec normalize_content_type(string() | ne_binary()) -> ne_binary().
 normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
@@ -598,7 +601,8 @@ send_fax(JobId, JObj, Q) ->
               ]),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
                                               ,{'restrict_to', [<<"CHANNEL_DESTROY">>
-                                                               ,<<"CHANNEL_FAX_STATUS">>]}
+                                                                ,<<"CHANNEL_FAX_STATUS">>
+                                                               ]}
                                              ]),
     wapi_offnet_resource:publish_req(Request).
 

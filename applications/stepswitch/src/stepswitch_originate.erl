@@ -197,7 +197,6 @@ handle_event(JObj, #state{request_handler=RequestHandler, resource_req=Request, 
             MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
             case wh_json:get_value(<<"Application-Response">>, JObj) =:= <<"SUCCESS">> of
                 'true' ->
-                    % gen_listener:cast(RequestHandler, {'bind_to_call', wh_json:get_value(<<"Call-ID">>, JObj)});
                     gen_listener:cast(RequestHandler, {'originate_result', originate_success(JObj, Request)});
                 'false' ->
                     gen_listener:cast(RequestHandler, {'originate_result', originate_failure(JObj, Request)})

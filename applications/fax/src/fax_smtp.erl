@@ -53,7 +53,7 @@ init(Hostname, SessionCount, Address, Options) ->
             State = #state{options = Options, peer_ip = Address},
             {'ok', Banner, State};
         'true' ->
-            lager:info("Connection limit exceeded ~p",[Address]),
+            lager:info("connection limit exceeded ~p", [Address]),
             {'stop', 'normal', ["421 ", Hostname, " is too busy to accept mail right now"]}
     end.
 
