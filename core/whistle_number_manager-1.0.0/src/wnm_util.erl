@@ -27,6 +27,7 @@
 -export([find_account_id/1]).
 -export([get_all_number_dbs/0]).
 -export([are_jobjs_identical/2]).
+-export([to_e164/2]).
 
 -ifdef(TEST).
 -include_lib("proper/include/proper.hrl").
@@ -332,6 +333,17 @@ to_e164(Number) ->
     Converters = get_e164_converters(),
     Regexs = wh_json:get_keys(Converters),
     maybe_convert_to_e164(Regexs, Converters, Number).
+
+-spec to_e164(ne_binary(), api_object()) -> ne_binary().
+to_e164(<<$+, _/binary>> = N, _ ) -> N;
+to_e164(N, 'undefined') -> to_e164(N);
+to_e164(Number, Converters) ->
+    Regexs = wh_json:get_keys(Converters),
+    case Regexs of
+        [] -> to_e164(Number);
+        _ -> maybe_convert_to_e164(Regexs, Converters, Number)
+    end.
+    
 
 maybe_convert_to_e164([], _, Number) -> Number;
 maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
