@@ -347,6 +347,7 @@ response_auth(JObj) ->
     IsModerator = wh_json:get_value(<<"is_moderator">>, JObj, 'undefined'),
     Apps = wh_json:get_value(<<"apps">>, JObj, 'undefined'),
     Lang = wh_json:get_value(<<"language">>, JObj, 'undefined'),
+    AccountName = wh_json:get_value(<<"account_name">>, JObj, 'undefined'),
     IsReseller = wh_services:is_reseller(AccountId),
     ResellerId = wh_services:find_reseller_id(AccountId),
     wh_json:from_list(
@@ -359,6 +360,7 @@ response_auth(JObj) ->
              ,{<<"is_moderator">>, IsModerator}
              ,{<<"apps">>, Apps}
              ,{<<"language">>, Lang}
+             ,{<<"account_name">>, AccountName}
             ]
         )
     ).
