@@ -176,7 +176,9 @@ pretty_print_number_props([{Key, Value}|Props]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reload_resources() -> 'ok'.
-reload_resources() -> 'ok'.
+reload_resources() ->
+    stepswitch_resources:fetch_global_resources(),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -7,9 +7,11 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch_resources).
 
--export([get_props/0]).
+-export([get_props/0, get_props/1]).
 -export([endpoints/2]).
 -export([reverse_lookup/1]).
+
+-export([fetch_global_resources/0]).
 
 -include("stepswitch.hrl").
 
@@ -54,6 +56,7 @@
           ,t38_setting = 'false' :: boolean()
           ,codecs = [] :: ne_binaries()
           ,bypass_media = 'false' :: boolean()
+          ,destination_formatters :: api_objects()
          }).
 
 -type resource() :: #resrc{}.
@@ -66,11 +69,20 @@
                              ,get/1
                             ]}).
 
+-spec get_props() -> [wh_proplist(),...] | [].
 get_props() ->
     [resource_to_props(Resource)
      || Resource <- sort_resources(get())
     ].
 
+-spec get_props(ne_binary()) -> wh_proplist() | 'undefined'.
+get_props(ResourceId) ->
+    case get_resource(ResourceId) of
+        'undefined' -> 'undefined';
+        Resource -> resource_to_props(Resource)
+    end.
+
+-spec resource_to_props(resource()) -> wh_proplist().
 resource_to_props(#resrc{}=Resource) ->
     props:filter_undefined(
       [{<<"Name">>, Resource#resrc.name}
@@ -88,8 +100,10 @@ resource_to_props(#resrc{}=Resource) ->
        ,{<<"Flags">>, Resource#resrc.flags}
        ,{<<"Codecs">>, Resource#resrc.codecs}
        ,{<<"Rules">>, Resource#resrc.raw_rules}
+       ,{<<"Destination-Formatters">>, Resource#resrc.destination_formatters}
       ]).
 
+-spec sort_resources(resources()) -> resources().
 sort_resources(Resources) ->
     lists:sort(fun(#resrc{weight=W1}, #resrc{weight=W2}) ->
                        W1 =< W2
@@ -164,7 +178,9 @@ sort_endpoints(Endpoints) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reverse_lookup(wh_json:object()) -> {'ok', wh_proplist()} | {'error', 'not_found'}.
+-spec reverse_lookup(wh_json:object()) ->
+                            {'ok', wh_proplist()} |
+                            {'error', 'not_found'}.
 reverse_lookup(JObj) ->
     Realm = stepswitch_util:get_realm(JObj),
     IP = wh_json:get_first_defined([<<"From-Network-Addr">>
@@ -195,7 +211,9 @@ find_account_id(Realm) ->
         {'ok', AccountId} -> AccountId
     end.
 
--spec maybe_find_global(api_binary(), api_binary()) -> {'ok', wh_proplist()} | {'error', 'not_found'}.
+-spec maybe_find_global(api_binary(), api_binary()) ->
+                               {'ok', wh_proplist()} |
+                               {'error', 'not_found'}.
 maybe_find_global(IP, Realm) ->
     search_resources(IP, Realm, get()).
 
@@ -205,29 +223,36 @@ maybe_find_local(_, _, 'undefined') -> {'error', 'not_found'};
 maybe_find_local(IP, Realm, AccountId) ->
     search_resources(IP, Realm, get(AccountId)).
 
--spec search_resources(api_binary(), api_binary(), resources()) -> {'ok', wh_proplist()} | {'error', 'not_found'}.
-search_resources(_, _, []) -> {'error', 'not_found'};
+-spec search_resources(api_binary(), api_binary(), resources()) ->
+                              {'ok', wh_proplist()} |
+                              {'error', 'not_found'}.
+search_resources(_IP, _Realm, []) ->
+    lager:debug("failed to find matching resource for ~s(~s)", [_IP, _Realm]),
+    {'error', 'not_found'};
 search_resources(IP, Realm, [#resrc{id=Id
                                     ,gateways=Gateways
-                                    ,global=Global}
+                                    ,global=Global
+                                    ,destination_formatters=Formatters
+                                   }
                              | Resources
                             ]) ->
     case search_gateways(IP, Realm, Gateways) of
         {'error', 'not_found'} -> search_resources(IP, Realm, Resources);
         #gateway{}=Gateway ->
-            lager:debug("found matching resource ~s for ip(~s) or realm(~s) of call"
-                        ,[Id, IP, Realm]),
             Props = props:filter_undefined(
                       [{'resource_id', Id}
                        ,{'global', Global}
                        ,{'realm', Gateway#gateway.realm}
                        ,{'username', Gateway#gateway.username}
                        ,{'password', Gateway#gateway.password}
+                       ,{'destination_formatters', Formatters}
                       ]),
             {'ok', Props}
     end.
 
--spec search_gateways(api_binary(), api_binary(), gateways()) -> gateway() | {'error', 'not_found'}.
+-spec search_gateways(api_binary(), api_binary(), gateways()) ->
+                             gateway() |
+                             {'error', 'not_found'}.
 search_gateways(_, _, []) -> {'error', 'not_found'};
 search_gateways(IP, Realm, [Gateway | Gateways]) ->
     case search_gateway(IP, Realm, Gateway) of
@@ -235,7 +260,9 @@ search_gateways(IP, Realm, [Gateway | Gateways]) ->
         #gateway{}=Gateway -> Gateway
     end.
 
--spec search_gateway(api_binary(), api_binary(), gateway()) -> gateway() | {'error', 'not_found'}.
+-spec search_gateway(api_binary(), api_binary(), gateway()) ->
+                            gateway() |
+                            {'error', 'not_found'}.
 search_gateway(IP, _, #gateway{realm=IP}=Gateway) when IP =/= 'undefined' -> Gateway;
 search_gateway(IP, _, #gateway{server=IP}=Gateway) when IP =/= 'undefined' -> Gateway;
 search_gateway(_, Realm, #gateway{realm=Realm}=Gateway) when Realm =/= 'undefined' -> Gateway;
@@ -251,8 +278,8 @@ search_gateway(_, _, _) -> {'error', 'not_found'}.
 -spec filter_resources(ne_binaries(), resources()) -> resources().
 filter_resources([], Resources) ->
     lager:debug("no flags provided, filtering resources that require flags"),
-    [Resource || Resource <- Resources
-                     ,not Resource#resrc.require_flags
+    [Resource || Resource <- Resources,
+                 not Resource#resrc.require_flags
     ];
 filter_resources(Flags, Resources) ->
     lager:debug("filtering resources by flags"),
@@ -422,6 +449,22 @@ get(AccountId) ->
         {'error', 'not_found'} -> fetch_local_resources(AccountId)
     end.
 
+-spec get_resource(ne_binary()) -> resource() | 'undefined'.
+get_resource(ResourceId) ->
+    case wh_cache:fetch_local(?STEPSWITCH_CACHE, 'global_resources') of
+        {'ok', Resources} -> get_resource(ResourceId, Resources);
+        {'error', 'not_found'} ->
+            fetch_global_resources(),
+            get_resource(ResourceId)
+    end.
+
+get_resource(ResourceId, [#resrc{id=ResourceId}=Resource|_Resources]) ->
+    Resource;
+get_resource(ResourceId, [#resrc{}|Resources]) ->
+    get_resource(ResourceId, Resources);
+get_resource(_ResourceId, []) ->
+    'undefined'.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -525,6 +568,7 @@ resource_from_jobj(JObj) ->
                       ,is_emergency=resource_is_emergency(JObj)
                       ,codecs=resource_codecs(JObj)
                       ,bypass_media=resource_bypass_media(JObj)
+                      ,destination_formatters=resource_destination_formatters(JObj)
                      },
     Gateways = gateways_from_jobjs(wh_json:get_value(<<"gateways">>, JObj, [])
                                    ,Resource),
@@ -534,6 +578,11 @@ resource_from_jobj(JObj) ->
 resource_bypass_media(JObj) ->
     Default = whapps_config:get_is_true(<<"stepswitch">>, <<"default_bypass_media">>, 'false'),
     wh_json:is_true([<<"media">>, <<"bypass_media">>], JObj, Default).
+
+-spec resource_destination_formatters(wh_json:object()) -> api_objects().
+resource_destination_formatters(JObj) ->
+    Default = whapps_config:get(<<"stepswitch">>, <<"default_destination_formatters">>),
+    wh_json:get_value(<<"destination_formatters">>, JObj, Default).
 
 -spec resource_codecs(wh_json:object()) -> ne_binaries().
 resource_codecs(JObj) ->
@@ -548,7 +597,7 @@ resource_codecs(JObj) ->
 
 -spec resource_rules(wh_json:object()) -> rules().
 resource_rules(JObj) ->
-    lager:info("compiling resource rules for ~s/~s"
+    lager:info("compiling resource rules for ~s / ~s"
                ,[wh_json:get_value(<<"pvt_account_db">>, JObj, <<"offnet">>)
                  ,wh_json:get_value(<<"_id">>, JObj)
                 ]),
