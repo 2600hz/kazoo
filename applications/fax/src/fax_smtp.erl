@@ -53,7 +53,7 @@ init(Hostname, SessionCount, Address, Options) ->
             State = #state{options = Options, peer_ip = Address},
             {'ok', Banner, State};
         'true' ->
-            lager:info("Connection limit exceeded"),
+            lager:info("Connection limit exceeded ~p",[Address]),
             {'stop', 'normal', ["421 ", Hostname, " is too busy to accept mail right now"]}
     end.
 
@@ -169,7 +169,7 @@ handle_VRFY(_Address, State) ->
     {'error', "252 VRFY disabled by policy, just send some mail", State}.
 
 -spec handle_other(binary(), binary(), #state{}) ->
-                          {string(), #state{}}.
+                          {string(), #state{}} | {#state{}}.
 handle_other(<<"PROXY">>, Args, State) ->
     lager:info("PROXY : ~p",[Args]),
     %% JMA: Shouldn't this return a two-tuple?
@@ -284,6 +284,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
     { _ , JObj} = wh_json_validator:is_valid(wh_json:from_list(Props), <<"faxes">>),
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
                               ,{<<"pvt_job_status">>, <<"pending">>}
+                              ,{<<"pvt_created">>, wh_util:current_tstamp()}      
                               ,{<<"attempts">>, 0}
                               ,{<<"pvt_account_id">>, AccountId}
                               ,{<<"pvt_account_db">>, AccountDb}
@@ -299,10 +300,10 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
 process_message(<<"multipart">>, <<"mixed">>, _Headers, _Parameters, Body, State) ->
     lager:info("processing multipart/mixed"),
     case Body of
-        {Type, SubType, Headers, Parameters, BodyPart} ->
+        {Type, SubType, HeadersPart, ParametersPart, BodyPart} ->
             lager:info("processing ~s/~s",[Type,SubType]),
-            process_part(<<Type/binary,"/",SubType/binary>>,Headers,Parameters,BodyPart, State);
-        [{Type, SubType, _Headers, _Parameters, _BodyParts}|_OtherParts]=Parts ->
+            process_part(<<Type/binary,"/",SubType/binary>>,HeadersPart,ParametersPart,BodyPart, State);
+        [{Type, SubType, _HeadersPart, _ParametersPart, _BodyParts}|_OtherParts]=Parts ->
             lager:info("processing multiple parts, first is ~s/~s",[Type,SubType]),
             process_parts(Parts, State);
         A ->

@@ -57,7 +57,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     spawn(?MODULE, 'cleanup_jobs', []),
-    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 900000),
+    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 180000),
     _ = erlang:send_after(MaxTime, self(), 'expire_jobs'),
     {'ok', #state{}, 0}.
 

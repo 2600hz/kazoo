@@ -30,7 +30,6 @@
                 ,pool :: api_pid()
                 ,job_id :: api_binary()
                 ,job :: api_object()
-                ,keep_alive :: 'undefined' | reference()
                 ,max_time :: 'undefined' | reference()
                }).
 -type state() :: #state{}.
@@ -146,7 +145,7 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
 handle_cast({'tx_resp', _, _}, State) ->
     {'noreply', State};
 handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{max_time=TimerRef,job=Job}=State) ->
-    TransferRate = wh_json:get_integer_value(<<"Fax-Transfer-Rate">>, JObj, 1),
+    TransferRate = wh_json:get_integer_value([<<"Application-Data">>,<<"Fax-Transfer-Rate">>], JObj, 1),
     NumberOfPages = wh_json:get_integer_value(<<"pvt_pages">>, Job, 0 ),
     FileSize = wh_json:get_integer_value(<<"pvt_size">>, Job, 0 ),
     NewMaxTime = wh_util:to_integer(((FileSize * 8) / TransferRate) * 10000 * 4),
@@ -159,7 +158,7 @@ handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{max_time=
 
     {'noreply', State#state{max_time=NewTimerRef}};
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}, State) ->
-    TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, JObj),
+    TransferredPages = wh_json:get_value([<<"Application-Data">>,<<"Fax-Transferred-Pages">>], JObj),
     lager:debug("fax status - page result - ~s : ~p : ~p",[JobId, TransferredPages, wh_util:current_tstamp()]),
     _ = bump_modified(JobId),
     %% TODO update stats/websockets/job 
@@ -192,13 +191,11 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
             lager:debug("acquired job, attempting to send fax ~s", [JobId]),
             try execute_job(JObj, Q) of
                 'ok' ->
-                   % KeepAliveRef = erlang:send_after(60000, self(), 'keep_alive'),
                     MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 900000),
                     MaxTimeRef = erlang:send_after(MaxTime, self(), 'job_timeout'),
                     {'noreply', State#state{job_id=JobId
                                             ,pool=Pid
                                             ,job=JObj
-                                         %   ,keep_alive=KeepAliveRef
                                             ,max_time=MaxTimeRef
                                            }};
                 'failure' ->
@@ -239,18 +236,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('keep_alive', #state{pool=Pid
-                                 ,job_id=JobId
-                                }=State) ->
-    case bump_modified(JobId) of
-        {'ok', _} ->
-            KeepAliveRef = erlang:send_after(60000, self(), 'keep_alive'),
-            {'noreply', State#state{keep_alive=KeepAliveRef}};
-        {'error', _R} ->
-            lager:debug("prematurely terminating job: ~p", [_R]),
-            gen_server:cast(Pid, {'job_complete', self()}),
-            {'noreply', reset(State)}
-    end;
 handle_info('job_timeout', #state{job=JObj}=State) ->
     release_failed_job('job_timeout', 'undefined', JObj),
     {'noreply', reset(State)};
@@ -429,7 +414,7 @@ release_failed_job('job_timeout', _Error, JObj) ->
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
     Result = [{<<"time_elapsed">>, elapsed_time(JObj)}
-              | fax_util:fax_properties(wh_json:get_value(<<"Resource-Response">>, Resp, Resp))
+              | fax_util:fax_properties(wh_json:get_value(<<"Application-Data">>, Resp, Resp))
              ],
     release_job(Result, JObj).
 
@@ -624,9 +609,6 @@ get_proxy_url(JobId) ->
     list_to_binary(["http://", Hostname, ":", Port, "/fax/", JobId, ".tiff"]).
 
 -spec reset(state()) -> state().
-reset(#state{keep_alive=KeepAliveRef}=State) when is_reference(KeepAliveRef) ->
-    erlang:cancel_timer(KeepAliveRef),
-    reset(State#state{keep_alive='undefined'});
 reset(#state{max_time=MaxTimeRef}=State) when is_reference(MaxTimeRef) ->
     erlang:cancel_timer(MaxTimeRef),
     reset(State#state{max_time='undefined'});

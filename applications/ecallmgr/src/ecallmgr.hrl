@@ -287,7 +287,7 @@
                           ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
                           ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PROGRESS_MEDIA">>
                           ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
-                          ,<<"CHANNEL_REPLACED">>, <<"CALL_SECURE">>
+                          ,<<"CHANNEL_REPLACED">>, <<"CALL_SECURE">>, <<"CHANNEL_FAX_STATUS">>
                      ]).
 
 -define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_DESTROY'
@@ -301,6 +301,12 @@
                            ,'sofia::transferor', 'sofia::transferee'
                            ,'sofia::replaced', 'sofia::register'
                            ,'conference::maintenance'
+                           ,'spandsp::txfaxresult'
+                           ,'spandsp::rxfaxresult'
+                           ,'spandsp::txfaxpageresult'
+                           ,'spandsp::rxfaxpageresult'
+                           ,'spandsp::txfaxnegociateresult'
+                           ,'spandsp::rxfaxnegociateresult'                          
                            ,?CHANNEL_MOVE_RELEASED_EVENT
                            ,?CHANNEL_MOVE_COMPLETE_EVENT
                           ]).

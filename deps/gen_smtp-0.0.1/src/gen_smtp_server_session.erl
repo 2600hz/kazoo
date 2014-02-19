@@ -123,7 +123,12 @@ init([Socket, Module, Options]) ->
                     socket:close(Socket),
                     ignore
             end;
-        Other -> ignore
+        {error,enotconn} ->
+            socket:close(Socket),
+            ignore;
+        Other -> io:format("socket:peername ~p.~n", [Other]),
+                 socket:close(Socket),
+                 ignore
     end.
 
 %% @hidden
