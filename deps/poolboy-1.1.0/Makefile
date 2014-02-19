@@ -1,33 +1,53 @@
-REBAR = rebar
+PROJECT = poolboy
+ROOT = ../..
+REBAR = $(ROOT)/utils/rebar/rebar
 DIALYZER = dialyzer
 
-DIALYZER_WARNINGS = -Wunmatched_returns -Werror_handling \
-                    -Wrace_conditions -Wunderspecs
+EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
+PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-.PHONY: all compile test qc clean get-deps build-plt dialyze
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps -I$(ROOT)/deps/couchbeam-0.8.0/include $(PA)
+     # +bin_opt_info
+
+DIRS =  .
+
+.PHONY: all compile clean
 
 all: compile
 
-compile:
-	@$(REBAR) compile
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 
-test: compile
-	@$(REBAR) eunit skip_deps=true
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
 
-qc: compile
-	@$(REBAR) qc skip_deps=true
+ebin/$(PROJECT).app: src/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
+
+test/$(PROJECT).app: src/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
 
 clean:
-	@$(REBAR) clean
+	rm -f ebin/*
+	rm -f test/*.beam test/$(PROJECT).app
+	rm -f erl_crash.dump
 
-get-deps:
-	@$(REBAR) get-deps
+test: clean compile-test eunit
 
-.dialyzer_plt:
-	@$(DIALYZER) --build_plt --output_plt .dialyzer_plt \
-	    --apps kernel stdlib
+eunit: compile-test
+	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
-build-plt: .dialyzer_plt
-
-dialyze: build-plt
-	@$(DIALYZER) --src src --plt .dialyzer_plt $(DIALYZER_WARNINGS)
+dialyze:
+	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
+		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
+		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
