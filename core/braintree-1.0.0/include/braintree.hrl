@@ -18,7 +18,8 @@
 
 -define(BT_XML_PROLOG, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").
 -define(BT_API_VERSION, 2).
--define(BT_SERVER_URL, [{"prodcution", "www.braintreegateway.com"}
+-define(BT_SERVER_URL, [{"production", "www.braintreegateway.com"}
+                         {"prodcution", "www.braintreegateway.com"}
                          ,{"qa", "qa.braintreegateway.com"}
                          ,{"sandbox", "sandbox.braintreegateway.com"}]).
 -define(BT_EMPTY_XML, fun() -> xmerl_scan:string("<?xml version=\"1.0\"?><empty />") end()).
