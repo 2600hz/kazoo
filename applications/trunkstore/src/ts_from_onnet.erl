@@ -35,13 +35,15 @@ maybe_onnet_data(State) ->
     CallID = ts_callflow:get_aleg_id(State),
     AccountId = ts_callflow:get_account_id(State),
     FromUser = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
+
     lager:info("on-net request from ~s(~s) to ~s", [FromUser, AccountId, ToDID]),
-    Options = 
+    Options =
         case ts_util:lookup_did(FromUser, AccountId) of
             {'ok', Opts} -> Opts;
             _ ->
                 Username = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj, <<>>),
                 Realm = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Realm">>], JObj, <<>>),
+
                 case ts_util:lookup_user_flags(Username, Realm, AccountId) of
                     {'ok', Opts} -> Opts;
                     _ -> wh_json:new()
@@ -69,8 +71,8 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                                       ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
                                       ,wh_json:get_value(<<"sip_headers">>, AccountOptions)
                                      ]),
-    
-    EmergencyCallerID = 
+
+    EmergencyCallerID =
         case ts_util:caller_id([wh_json:get_value(<<"emergency_caller_id">>, DIDOptions)
                                 ,wh_json:get_value(<<"emergency_caller_id">>, SrvOptions)
                                 ,wh_json:get_value(<<"emergency_caller_id">>, AccountOptions)
@@ -83,7 +85,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                    ,ts_util:maybe_ensure_cid_valid('emergency', ECIDNum, FromUser, AccountId)}
                 ]
         end,
-    CallerID = 
+    CallerID =
         case ts_util:caller_id([wh_json:get_value(<<"caller_id">>, DIDOptions)
                                 ,wh_json:get_value(<<"caller_id">>, SrvOptions)
                                 ,wh_json:get_value(<<"caller_id">>, AccountOptions)

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%% utility functions for Trunkstore
 %%%
@@ -95,13 +95,13 @@ constrain_weight(W) -> W.
                         {'ok', wh_json:object()} |
                         {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
-    Options = [{<<"key">>, DID}],
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case wh_cache:fetch({'lookup_did', DID, AccountId}) of
         {'ok', _}=Resp ->
             lager:info("cache hit for ~s", [DID]),
             Resp;
         {'error', 'not_found'} ->
+            Options = [{'key', DID}],
             case couch_mgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
                 {'ok', []} ->
                     lager:info("cache miss for ~s, no results", [DID]),
@@ -135,7 +135,11 @@ lookup_user_flags(Name, Realm, AccountId) ->
             lager:info("cache hit for ~s@~s", [Name, Realm]),
             Result;
         {'error', 'not_found'} ->
-            case couch_mgr:get_results(AccountDb, <<"trunkstore/LookUpUserFlags">>, [{<<"key">>, [Realm, Name]}]) of
+            Options = [{'key', [wh_util:to_lower_binary(Realm)
+                                ,wh_util:to_lower_binary(Name)
+                               ]
+                       }],
+            case couch_mgr:get_results(AccountDb, <<"trunkstore/LookUpUserFlags">>, Options) of
                 {'error', _}=E ->
                     lager:info("cache miss for ~s@~s, err: ~p", [Name, Realm, E]),
                     E;
