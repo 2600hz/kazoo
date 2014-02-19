@@ -11,6 +11,7 @@
 -export([get_outbound_destination/1]).
 -export([lookup_number/1]).
 -export([correct_shortdial/2]).
+-export([custom_to_e164/2, custom_to_e164/3]).
 
 -include("stepswitch.hrl").
 
@@ -64,11 +65,56 @@ assume_e164(Number) -> <<$+, Number/binary>>.
 %%--------------------------------------------------------------------
 -spec get_outbound_destination(wh_json:object()) -> ne_binary().
 get_outbound_destination(JObj) ->
-    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
-     case wh_json:is_true(<<"Bypass-E164">>, JObj) of
-         'false' -> wnm_util:to_e164(Number);
-         'true' -> Number
-     end.
+    {Num, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),    
+    Number = get_stripped_number(Num),
+    case wh_json:is_true(<<"Bypass-E164">>, JObj) of
+        'false' -> custom_to_e164(Number, JObj);
+        'true' -> Number
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_stripped_number(ne_binary() | list() | string() ) -> binary().
+get_stripped_number(Number) ->
+    wh_util:to_binary(lists:filter(fun(X) -> lists:member(X,"0123456789") end, wh_util:to_list(Number))).
+
+-spec custom_to_e164( binary(), wh_json:object()) -> binary().
+custom_to_e164(<<$+, _/binary>> = N, _) -> N;
+custom_to_e164(Number, JObj) ->
+    AccountId = wh_json:get_first_defined([<<"Account-ID">>,?CCV(<<"Account-ID">>)], JObj),
+    OwnerId = wh_json:get_first_defined([<<"Originating-ID">>,?CCV(<<"Authorizing-ID">>)], JObj),
+    custom_to_e164(Number, AccountId, OwnerId).
+
+-spec custom_to_e164( binary(), api_binary(), api_binary()) -> binary().
+custom_to_e164(Number, 'undefined', _) ->
+    wnm_util:to_e164(Number);       
+custom_to_e164(Number, AccountId, 'undefined') ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> DialPlan = wh_json:get_value(<<"dial_plan">>, JObj,[]),
+                        case DialPlan of
+                            [] -> wnm_util:to_e164(Number);
+                            _ -> wnm_util:to_e164(Number, DialPlan)
+                        end;
+        _ -> wnm_util:to_e164(Number)
+    end;
+custom_to_e164(Number, AccountId, OwnerId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', JObj} -> DialPlan = wh_json:get_value(<<"dial_plan">>, JObj,[]),
+                        case DialPlan of
+                            [] -> custom_to_e164(Number, AccountId, 'undefined');
+                            _ -> wnm_util:to_e164(Number, DialPlan)
+                        end;
+        _ -> custom_to_e164(Number, AccountId, 'undefined')
+    end.
+    
+
+    
 
 %%--------------------------------------------------------------------
 %% @public
