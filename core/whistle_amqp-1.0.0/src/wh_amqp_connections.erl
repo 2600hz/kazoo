@@ -85,7 +85,7 @@ add(Broker, Federation) ->
                 ,Federation)
     end.
 
--spec remove([pid(),...] | [] | pid() | text()) -> 'ok'.
+-spec remove(pids() | pid() | text()) -> 'ok'.
 remove([]) -> 'ok';
 remove([Connection|Connections]) when is_pid(Connection) ->
     _ = wh_amqp_connection_sup:remove(Connection),
@@ -94,10 +94,11 @@ remove(Connection) when is_pid(Connection) ->
     wh_amqp_connection_sup:remove(Connection);
 remove(Broker) when not is_binary(Broker) ->
     remove(wh_util:to_binary(Broker));
-remove(Broker) -> 
+remove(Broker) ->
     Pattern = #wh_amqp_connections{broker=Broker
                                    ,connection='$1'
-                                   ,_='_'},
+                                   ,_='_'
+                                  },
     remove([Connection || [Connection] <- ets:match(?TAB, Pattern)]).
 
 -spec available(pid()) -> 'ok'.
@@ -112,7 +113,8 @@ unavailable(Connection) when is_pid(Connection) ->
 -spec broker_connections(ne_binary()) -> non_neg_integer().
 broker_connections(Broker) ->
     MatchSpec = [{#wh_amqp_connections{broker=Broker
-                                       ,_='_'},
+                                       ,_='_'
+                                      },
                   [],
                   ['true']}
                 ],
@@ -122,7 +124,8 @@ broker_connections(Broker) ->
 broker_available_connections(Broker) ->
     MatchSpec = [{#wh_amqp_connections{broker=Broker
                                        ,available='true'
-                                       ,_='_'},
+                                       ,_='_'
+                                      },
                   [],
                   ['true']}
                 ],
@@ -133,7 +136,8 @@ primary_broker() ->
     Pattern = #wh_amqp_connections{available='true'
                                    ,federation='false'
                                    ,broker='$1'
-                                   ,_='_'},
+                                   ,_='_'
+                                  },
     case lists:sort([Broker
                      || [Broker] <- ets:match(?TAB, Pattern)
                     ])
@@ -157,7 +161,7 @@ wait_for_available(Timeout) ->
             gen_server:cast(?MODULE, {'add_watcher', self()}),
             wait_for_notification(Timeout)
     end.
-    
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -174,7 +178,7 @@ wait_for_available(Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = ets:new(?TAB, ['named_table'
                        ,{'keypos', #wh_amqp_connections.connection}
                        ,'protected'
@@ -214,7 +218,8 @@ handle_cast({'new_connection', Connection, Broker, Federation}, State) ->
     _ = ets:insert(?TAB, #wh_amqp_connections{connection=Connection
                                               ,connection_ref=Ref
                                               ,broker=Broker
-                                              ,federation=Federation}),
+                                              ,federation=Federation
+                                             }),
     {'noreply', State, 'hibernate'};
 handle_cast({'connection_available', Connection}, State) ->
     lager:debug("connection ~p is now available", [Connection]),
@@ -246,7 +251,7 @@ handle_cast(_Msg, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->    
+handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->
     lager:warning("connection ~p went down: ~p"
                   ,[Connection, _Reason]),
     erlang:demonitor(Ref, ['flush']),
@@ -295,9 +300,9 @@ add_watcher(Watcher, #state{watchers=Watchers}=State) ->
     State#state{watchers=sets:add_element(Watcher, Watchers)}.
 
 -spec notify_watchers(state()) -> state().
-notify_watchers(#state{watchers=[]}=State) -> 
+notify_watchers(#state{watchers=[]}=State) ->
     State#state{watchers=sets:new()};
-notify_watchers(#state{watchers=[Watcher|Watchers]}=State) -> 
+notify_watchers(#state{watchers=[Watcher|Watchers]}=State) ->
     _ = notify_watcher(Watcher),
     notify_watchers(State#state{watchers=Watchers});
 notify_watchers(#state{watchers=Watchers}=State) ->
@@ -307,8 +312,9 @@ notify_watchers(#state{watchers=Watchers}=State) ->
 notify_watcher(Watcher) ->
     Watcher ! {'wh_amqp_connections', 'connection_available'}.
 
--spec wait_for_notification('infinity') -> 'ok';
-                           (non_neg_integer()) -> 'ok' | {'error', 'timeout'}.
+-spec wait_for_notification(wh_timeout()) ->
+                                   'ok' |
+                                   {'error', 'timeout'}.
 wait_for_notification(Timeout) ->
     receive
         {'wh_amqp_connections', 'connection_available'} -> 'ok'

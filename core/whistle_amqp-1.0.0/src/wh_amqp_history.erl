@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -34,11 +34,13 @@
 
 -record(state, {consumers = sets:new()
                 ,exchanges = dict:new()
-                ,connections = sets:new()}).
+                ,connections = sets:new()
+               }).
 
--record(wh_amqp_history, {timestamp = now()
-                          ,consumer
-                          ,command}).
+-record(wh_amqp_history, {timestamp = os:timestamp() :: wh_now() | '_'
+                          ,consumer :: api_pid() | '_'
+                          ,command :: wh_amqp_command() | '_'
+                         }).
 -type wh_amqp_history() :: #wh_amqp_history{}.
 
 %%%===================================================================
@@ -70,23 +72,25 @@ basic_consumers(Consumer) ->
     Pattern = #wh_amqp_history{consumer=Consumer
                                ,command=#'basic.consume'{_='_'}
                                ,_='_'},
-    [Command 
+    [Command
      || #wh_amqp_history{command=Command} <- ets:match_object(?TAB, Pattern)
     ].
 
--spec add_command(wh_amqp_assignment(), wh_amqp_commands()) -> 'ok'.
+-spec add_command(wh_amqp_assignment(), wh_amqp_command()) -> 'ok'.
 add_command(#wh_amqp_assignment{consumer=Consumer}, Command) ->
     MatchSpec =[{#wh_amqp_history{consumer=Consumer
                                   ,command=Command
-                                  ,_='_'}
+                                  ,_='_'
+                                 }
                  ,[]
                  ,['true']
                 }],
     case ets:select_count(?TAB, MatchSpec) =:= 0 of
-        'false' -> 
+        'false' ->
             lager:debug("not tracking history for known command ~s from ~p"
-                        ,[element(1, Command), Consumer]);
-        'true' -> 
+                        ,[element(1, Command), Consumer]
+                       );
+        'true' ->
             gen_server:cast(?MODULE, {'command', Consumer, Command})
     end.
 
@@ -100,21 +104,24 @@ remove(Consumer) when is_pid(Consumer) ->
     gen_server:cast(?MODULE, {'remove', Consumer});
 remove(_) -> 'ok'.
 
--spec get(pid()) -> wh_amqp_commands().
+-spec get(api_pid()) -> wh_amqp_commands().
+get('undefined') -> [];
 get(Consumer) ->
     Pattern = #wh_amqp_history{consumer=Consumer
-                               ,_='_'},
-    [Command 
-     || #wh_amqp_history{command=Command} 
+                               ,_='_'
+                              },
+    [Command
+     || #wh_amqp_history{command=Command}
             <- ets:match_object(?TAB, Pattern)
     ].
 
 -spec get_queues(pid()) -> wh_amqp_queues().
 get_queues(Consumer) ->
     Pattern = #wh_amqp_history{consumer=Consumer
-                               ,_='_'},
+                               ,_='_'
+                              },
     [#'queue.declare'{}=Command
-     || #wh_amqp_history{command=Command} 
+     || #wh_amqp_history{command=Command}
             <- ets:match_object(?TAB, Pattern)
     ].
 
@@ -188,7 +195,7 @@ handle_cast({'update_consumer_tag', Consumer, OldTag, NewTag}, State) ->
                                                          ,_='_'}
                                ,_='_'},
     _ = update_consumer_tag(ets:match_object(?TAB, Pattern, 1), NewTag),
-    {'noreply', State};    
+    {'noreply', State};
 handle_cast({'command', Consumer, #'queue.delete'{queue=Queue}}, State) ->
     Pattern = #wh_amqp_history{consumer=Consumer
                                ,command=#'queue.declare'{queue=Queue
@@ -219,7 +226,7 @@ handle_cast({'command', Consumer, Command}, #state{consumers=Consumers}=State) -
                                           ,command=Command}),
     case sets:is_element(Consumer, Consumers) of
         'true' -> {'noreply', State};
-        'false' ->            
+        'false' ->
             _Ref = monitor('process', Consumer),
             {'noreply', State#state{consumers=sets:add_element(Consumer, Consumers)}}
     end;
@@ -236,7 +243,7 @@ handle_cast({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
     {'noreply', State#state{exchanges=dict:store(Name, Exchange, Exchanges)}};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
-     
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -253,7 +260,7 @@ handle_info({'remove_history', Pid}, State) ->
 handle_info({'DOWN', _, 'process', Pid, _Reason}
             ,#state{connections=Connections}=State) ->
     case sets:is_element(Pid, Connections) of
-        'true' -> 
+        'true' ->
             lager:debug("connection ~p went down: ~p", [Pid, _Reason]),
             {'noreply', State#state{connections=sets:del_element(Pid, Connections)}};
         'false' ->

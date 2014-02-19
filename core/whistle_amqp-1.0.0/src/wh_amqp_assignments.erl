@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -73,7 +73,7 @@ get_channel(Timeout) when is_integer(Timeout); Timeout =:= 'infinity' ->
                  (pid(), 'infinity') -> wh_amqp_assignment().
 get_channel(Consumer, Timeout) when is_pid(Consumer) ->
     case find(Consumer) of
-        #wh_amqp_assignment{channel=Channel}=Assignment 
+        #wh_amqp_assignment{channel=Channel}=Assignment
           when is_pid(Channel) -> Assignment;
         #wh_amqp_assignment{} ->
             gen_server:cast(?MODULE, {'add_watcher', Consumer, self()}),
@@ -90,7 +90,7 @@ request_channel(Consumer, Broker) when is_pid(Consumer) ->
     gen_server:call(?MODULE, {'request_sticky', Consumer, Broker}).
 
 -spec add_channel(ne_binary(), pid(), pid()) -> 'ok'.
-add_channel(Broker, Connection, Channel) when is_pid(Channel) ->
+add_channel(Broker, Connection, Channel) when is_pid(Channel), is_binary(Broker) ->
     case wh_amqp_connections:primary_broker() =:= Broker of
         'true' ->
             gen_server:cast(?MODULE, {'add_channel_primary_broker', Broker, Connection, Channel});
@@ -98,7 +98,7 @@ add_channel(Broker, Connection, Channel) when is_pid(Channel) ->
             gen_server:cast(?MODULE, {'add_channel_alternate_broker', Broker, Connection, Channel})
     end.
 
--spec release(pid()) -> 'ok'.    
+-spec release(pid()) -> 'ok'.
 release(Consumer) ->
     gen_server:cast(?MODULE, {'release_assignments', Consumer}).
 
@@ -248,7 +248,7 @@ import_pending_channels() ->
         %% channel requests they are imported first.  Helps assignment
         %% time when rapid requests are made (on the order of ms).
         {'$gen_cast', {'add_channel_primary_broker', Broker, Connection, Channel}} ->
-            _ = add_channel_primary_broker(Broker, Connection, Channel),
+            'true' = add_channel_primary_broker(Broker, Connection, Channel),
             import_pending_channels()
     after
         0 -> 'ok'
@@ -275,7 +275,8 @@ release_assignments({[#wh_amqp_assignment{channel_ref=Ref}=Assignment]
     release_assignments({[Assignment#wh_amqp_assignment{channel_ref='undefined'}]
                          ,Continuation});
 release_assignments({[#wh_amqp_assignment{channel=Channel
-                                          ,consumer=Consumer}=Assignment
+                                          ,consumer=Consumer
+                                         }=Assignment
                      ], Continuation})
   when is_pid(Channel) ->
     Commands = wh_amqp_history:get(Consumer),
@@ -283,7 +284,8 @@ release_assignments({[#wh_amqp_assignment{channel=Channel
     release_assignments({[Assignment#wh_amqp_assignment{channel='undefined'}]
                          ,Continuation});
 release_assignments({[#wh_amqp_assignment{timestamp=Timestamp
-                                         ,consumer=Consumer}
+                                         ,consumer=Consumer
+                                         }
                      ], Continuation}) ->
     lager:debug("removed assignment for consumer ~p", [Consumer]),
     _ = ets:delete(?TAB, Timestamp),
@@ -301,13 +303,14 @@ maybe_reassign(_, '$end_of_table') -> 'undefined';
 maybe_reassign(#wh_amqp_assignment{consumer=_Consumer}=ConsumerAssignment
                ,{[#wh_amqp_assignment{timestamp=Timestamp
                                       ,channel=Channel
-                                      ,broker=_Broker}=ChannelAssignment
+                                      ,broker=_Broker
+                                     }=ChannelAssignment
                  ], Continuation}) ->
-    %% This is a minor optimization and still allows a dying channel to be 
+    %% This is a minor optimization and still allows a dying channel to be
     %% re-assigned prior to the notification that a broker is down. However,
     %% it very unlikely and well handled if it does happen (when the new
     %% primary prechannels are added)
-    case is_process_alive(Channel) of 
+    case is_process_alive(Channel) of
         'false' ->
             %% If we found a dead prechannel its likely a dying connection
             %% either way its no good to anybody so pull it out.
@@ -324,7 +327,8 @@ maybe_reassign(#wh_amqp_assignment{}=ConsumerAssignment, Broker) ->
     Pattern = #wh_amqp_assignment{consumer='undefined'
                                   ,consumer_ref='undefined'
                                   ,broker=Broker
-                                  ,_='_'},
+                                  ,_='_'
+                                 },
     maybe_reassign(ConsumerAssignment, ets:match_object(?TAB, Pattern, 1)).
 
 %%--------------------------------------------------------------------
@@ -335,7 +339,7 @@ maybe_reassign(#wh_amqp_assignment{}=ConsumerAssignment, Broker) ->
 %%--------------------------------------------------------------------
 -spec assign_or_reserve(pid(), api_binary(), wh_amqp_type()) -> wh_amqp_assignment().
 assign_or_reserve(Consumer, 'undefined', Type) ->
-    %% When there is no primary broker we will not be able to 
+    %% When there is no primary broker we will not be able to
     %% find a channel so just make a reservation
     maybe_reserve(Consumer, 'undefined', Type);
 assign_or_reserve(Consumer, Broker, Type) ->
@@ -343,9 +347,10 @@ assign_or_reserve(Consumer, Broker, Type) ->
     Pattern = #wh_amqp_assignment{consumer='undefined'
                                   ,consumer_ref='undefined'
                                   ,broker=Broker
-                                  ,_='_'},
+                                  ,_='_'
+                                 },
     case ets:match_object(?TAB, Pattern, 1) of
-        '$end_of_table' ->             
+        '$end_of_table' ->
             %% No channel available, reserve assignment
             %% which will be assigned when an appropriate
             %% connection adds a prechannel
@@ -393,16 +398,19 @@ move_channel_to_consumer(#wh_amqp_assignment{timestamp=Timestamp
                                              ,channel=Channel
                                              ,channel_ref=ChannelRef
                                              ,broker=Broker
-                                             ,connection=Connection}
+                                             ,connection=Connection
+                                            }
                          ,#wh_amqp_assignment{consumer=Consumer}=ConsumerAssignment) ->
     Assignment =
-        ConsumerAssignment#wh_amqp_assignment{channel=Channel                                                  
+        ConsumerAssignment#wh_amqp_assignment{channel=Channel
                                               ,channel_ref=ChannelRef
                                               ,connection=Connection
-                                              ,assigned=wh_util:current_tstamp()},
+                                              ,assigned=wh_util:current_tstamp()
+                                             },
     %% Update the consumer assignment with all the channel information
     ets:insert(?TAB, Assignment#wh_amqp_assignment{reconnect='false'
-                                                   ,watchers=sets:new()}),
+                                                   ,watchers=sets:new()
+                                                  }),
     %% Remove the channel assignment so it will not be given away twice
     ets:delete(?TAB, Timestamp),
     lager:debug("assigned existing consumer ~p an available channel ~p on ~s"
@@ -418,17 +426,20 @@ move_channel_to_consumer(#wh_amqp_assignment{timestamp=Timestamp
 %%--------------------------------------------------------------------
 -spec add_consumer_to_channel(wh_amqp_assignment(), pid(), wh_amqp_type()) -> wh_amqp_assignment().
 add_consumer_to_channel(#wh_amqp_assignment{channel=_Channel
-                                            ,broker=_Broker}=ChannelAssignment
+                                            ,broker=_Broker
+                                           }=ChannelAssignment
                         ,Consumer, Type) ->
     Ref = erlang:monitor('process', Consumer),
     Assignment =
         ChannelAssignment#wh_amqp_assignment{consumer=Consumer
                                              ,consumer_ref=Ref
                                              ,assigned=wh_util:current_tstamp()
-                                             ,type=Type},
+                                             ,type=Type
+                                            },
     %% Add the consumer to the channel assignment
     ets:insert(?TAB, Assignment#wh_amqp_assignment{reconnect='false'
-                                                   ,watchers=sets:new()}),
+                                                   ,watchers=sets:new()
+                                                  }),
     lager:debug("assigned existing channel ~p on ~s to new consumer ~p"
                 ,[_Channel, _Broker, Consumer]),
     send_notifications(Assignment).
@@ -439,19 +450,21 @@ add_consumer_to_channel(#wh_amqp_assignment{channel=_Channel
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_channel_primary_broker(ne_binary(), pid(), pid()) -> 'ok'.
+-spec add_channel_primary_broker(ne_binary(), pid(), pid()) -> 'true'.
 add_channel_primary_broker(Broker, Connection, Channel) ->
     %% This will find any reservations that require a channel
     %% and assign it the new channel
     MatchSpec = [{#wh_amqp_assignment{type='float'
                                       ,broker='undefined'
-                                      ,_='_'},
+                                      ,_='_'
+                                     },
                    [],
                    ['$_']
                   }
                  ,{#wh_amqp_assignment{type='sticky'
                                        ,broker=Broker
-                                       ,_='_'},
+                                       ,_='_'
+                                      },
                    [],
                    ['$_']
                   }],
@@ -461,7 +474,7 @@ add_channel_primary_broker(Broker, Connection, Channel) ->
             assign_channel(Assignment, Broker, Connection, Channel)
     end.
 
--spec maybe_reclaim_channel(ne_binary(), pid(), pid()) -> 'ok'.
+-spec maybe_reclaim_channel(ne_binary(), pid(), pid()) -> 'true'.
 maybe_reclaim_channel(Broker, Connection, Channel) ->
     %% This will attemp to find a floating channel not using
     %% the primary broker and move to the new channel
@@ -471,7 +484,8 @@ maybe_reclaim_channel(Broker, Connection, Channel) ->
     MatchSpec = [{#wh_amqp_assignment{type='float'
                                       ,broker='$1'
                                       ,consumer='$2'
-                                      ,_='_'},
+                                      ,_='_'
+                                     },
                   [{'andalso', {'=/=', '$1', Broker}
                     ,{'=/=', '$2', 'undefined'}
                    }],
@@ -483,13 +497,14 @@ maybe_reclaim_channel(Broker, Connection, Channel) ->
             assign_channel(Assignment, Broker, Connection, Channel)
     end.
 
--spec add_channel_alternate_broker(ne_binary(), pid(), pid()) -> 'ok'.
+-spec add_channel_alternate_broker(ne_binary(), pid(), pid()) -> 'true'.
 add_channel_alternate_broker(Broker, Connection, Channel) ->
     %% This will find any sticky reservations that require a
     %% channel from this broker and assign it the new channel
     Pattern = #wh_amqp_assignment{type='sticky'
                                   ,broker=Broker
-                                  ,_='_'},
+                                  ,_='_'
+                                 },
     case ets:match_object(?TAB, Pattern, 1) of
         '$end_of_table' -> cache(Broker, Connection, Channel);
         {[#wh_amqp_assignment{}=Assignment], _} ->
@@ -505,7 +520,8 @@ assign_channel(#wh_amqp_assignment{channel_ref=Ref}=Assignment
                    ,Broker, Connection, Channel);
 assign_channel(#wh_amqp_assignment{channel=CurrentChannel
                                    ,broker=CurrentBroker
-                                   ,consumer=Consumer}=Assignment
+                                   ,consumer=Consumer
+                                  }=Assignment
                ,Broker, Connection, Channel)
   when is_pid(CurrentChannel) ->
     lager:debug("reassigning consumer ~p, closing current channel ~p on ~s"
@@ -514,9 +530,10 @@ assign_channel(#wh_amqp_assignment{channel=CurrentChannel
     _ = (catch wh_amqp_channel:close(CurrentChannel, Commands)),
     assign_channel(Assignment#wh_amqp_assignment{channel='undefined'
                                                  ,reconnect='true'}
-                   ,Broker, Connection, Channel);    
+                   ,Broker, Connection, Channel);
 assign_channel(#wh_amqp_assignment{timestamp=Timestamp
-                                   ,consumer=Consumer}=ConsumerAssignment
+                                   ,consumer=Consumer
+                                  }=ConsumerAssignment
                ,Broker, Connection, Channel) ->
     Ref = erlang:monitor('process', Channel),
     Assigment
@@ -524,10 +541,12 @@ assign_channel(#wh_amqp_assignment{timestamp=Timestamp
                                                 ,channel_ref=Ref
                                                 ,broker=Broker
                                                 ,connection=Connection
-                                                ,assigned=wh_util:current_tstamp()},
+                                                ,assigned=wh_util:current_tstamp()
+                                               },
     %% Add the new channel to the consumer assignment (reservation/wrong broker)
     ets:insert(?TAB, Assigment#wh_amqp_assignment{reconnect='false'
-                                                  ,watchers=sets:new()}),
+                                                  ,watchers=sets:new()
+                                                 }),
     lager:debug("assigned consumer ~p new channel ~p on ~s after ~pus"
                 ,[Consumer, Channel, Broker, wh_util:elapsed_us(Timestamp)]),
     _ = maybe_reconnect(Assigment),
@@ -548,7 +567,8 @@ cache(Broker, Connection, Channel) ->
 -spec maybe_reconnect(wh_amqp_assignment()) -> 'ok'.
 maybe_reconnect(#wh_amqp_assignment{reconnect='false'}) -> 'ok';
 maybe_reconnect(#wh_amqp_assignment{consumer=Consumer
-                                    ,channel=Channel}=Assignment) ->
+                                    ,channel=Channel
+                                   }=Assignment) ->
     _ = spawn(fun() ->
                       lager:debug("replaying previous AMQP commands from consumer ~p on channel ~p"
                                   ,[Consumer, Channel]),
@@ -607,11 +627,11 @@ notify_watchers(#wh_amqp_assignment{}=Assignment, [Watcher|Watchers]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_reserve(api_binary(), pid(), wh_amqp_type()) -> wh_amqp_assignment().
+-spec maybe_reserve(api_binary(), api_pid(), wh_amqp_type()) -> wh_amqp_assignment().
 maybe_reserve(Consumer, Broker, Type) ->
     Pattern = #wh_amqp_assignment{consumer=Consumer, _='_'},
     case ets:match_object(?TAB, Pattern, 1) of
-        '$end_of_table' -> 
+        '$end_of_table' ->
             %% This handles the condition when a consumer requested a channel but
             %% the broker was not avaiable (or there where none for a float)...
             %% the first time.  Add a reservation for matching prechannels.
@@ -625,7 +645,7 @@ maybe_reserve(Consumer, Broker, Type) ->
             ExistingAssignment
     end.
 
--spec reserve(api_binary(), pid(), wh_amqp_type()) -> wh_amqp_assignment().
+-spec reserve(api_binary(), api_pid(), wh_amqp_type()) -> wh_amqp_assignment().
 reserve(Consumer, Broker, 'sticky') when Broker =/= 'undefined' ->
     Ref = erlang:monitor('process', Consumer),
     Assignment = #wh_amqp_assignment{consumer=Consumer
@@ -659,11 +679,11 @@ reserve(Consumer, _, 'float') ->
 
 -spec handle_down_msg(down_matches(), _) -> 'ok'.
 handle_down_msg([], _) -> 'ok';
-handle_down_msg([Match|Matches], Reason) ->    
+handle_down_msg([Match|Matches], Reason) ->
     _ = handle_down_match(Match, Reason),
     handle_down_msg(Matches, Reason).
 
--spec handle_down_match(down_match(), _) -> any().
+-spec handle_down_match(down_match(), _) -> 'ok'.
 handle_down_match({'consumer', #wh_amqp_assignment{consumer=Consumer}=Assignment}
                   ,_Reason) ->
     lager:debug("consumer ~p, went down without closing channel: ~p"
@@ -719,7 +739,7 @@ handle_down_match({'channel', #wh_amqp_assignment{timestamp=Timestamp
 %%--------------------------------------------------------------------
 add_watcher(Consumer, Watcher) ->
     case find(Consumer) of
-        #wh_amqp_assignment{channel=Channel}=Assignment 
+        #wh_amqp_assignment{channel=Channel}=Assignment
           when is_pid(Channel) ->
             Watcher ! Assignment;
         #wh_amqp_assignment{watchers=Watchers
@@ -730,7 +750,7 @@ add_watcher(Consumer, Watcher) ->
     end.
 
 -spec wait_for_assignment('infinity') -> wh_amqp_assignment();
-                         (non_neg_integer()) -> wh_amqp_assignment() | 
+                         (non_neg_integer()) -> wh_amqp_assignment() |
                                                 {'error', 'timeout'}.
 wait_for_assignment(Timeout) ->
     receive
@@ -741,11 +761,11 @@ wait_for_assignment(Timeout) ->
     end.
 
 -spec request_and_wait(pid(), api_binary(), 'infinity') -> wh_amqp_assignment();
-                      (pid(), api_binary(), non_neg_integer()) -> wh_amqp_assignment() | 
+                      (pid(), api_binary(), non_neg_integer()) -> wh_amqp_assignment() |
                                                                   {'error', 'timeout'}.
 request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
     case request_channel(Consumer, Broker) of
-        #wh_amqp_assignment{channel=Channel}=Assignment 
+        #wh_amqp_assignment{channel=Channel}=Assignment
           when is_pid(Channel) -> Assignment;
         #wh_amqp_assignment{} ->
             gen_server:cast(?MODULE, {'add_watcher', Consumer, self()}),
@@ -783,7 +803,7 @@ log_short_lived(#wh_amqp_assignment{assigned=Timestamp}=Assignment) ->
     Duration = wh_util:elapsed_s(Timestamp),
     case Duration < 5 of
         'false' -> 'ok';
-        'true' -> 
+        'true' ->
             lager:warning("short lived assignment (~ps): ~p"
                           ,[Duration, Assignment])
     end.
