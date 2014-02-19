@@ -148,7 +148,6 @@ handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{max_time=
                                                                        ,job=Job
                                                                       }=State) ->
     TransferRate = wh_json:get_integer_value([<<"Application-Data">>,<<"Fax-Transfer-Rate">>], JObj, 1),
-    NumberOfPages = wh_json:get_integer_value(<<"pvt_pages">>, Job, 0 ),
     FileSize = wh_json:get_integer_value(<<"pvt_size">>, Job, 0 ),
     NewMaxTime = wh_util:to_integer(((FileSize * 8) / TransferRate) * 10000 * 4),
     lager:debug("new timings ~p ~p ~p", [FileSize, TransferRate,NewMaxTime]),
@@ -166,14 +165,14 @@ handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}, State) ->
     %% TODO update stats/websockets/job 
     {'noreply', State};
 handle_cast({'fax_status', <<"result">>, JobId, JObj}, #state{job_id=JobId
-                                                              ,job=Job,
+                                                              ,job=Job
                                                               ,pool=Pid
                                                              }=State) ->
     %% TODO update stats/websockets/job 
     release_successful_job(JObj, Job),
     gen_server:cast(Pid, {'job_complete', self()}),            
     {'noreply', reset(State)};
-handle_cast({'fax_status', Event, JobId, JObj}, State) ->
+handle_cast({'fax_status', Event, JobId, _}, State) ->
     lager:debug("fax status - ~s - ~s",[Event, JobId]),
     %% TODO update stats/websockets/job 
     {'noreply', State};

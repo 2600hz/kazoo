@@ -210,7 +210,7 @@ maybe_update_fax_settings(Call, AccountId, OwnerId) ->
     end.
     
 -spec build_fax_settings(whapps_call:call(), wh_json:object(), api_binary(), api_binary()) -> wh_proplist().
-build_fax_settings(Call, JObj, AccountId, OwnerId) ->
+build_fax_settings(Call, JObj, _AccountId, _OwnerId) ->
     FaxNumber = case wh_util:is_true(wh_json:get_value(<<"force_incoming_caller_id">>, JObj, 'false')) of
                     'false' -> wh_json:get_value(<<"caller_id">>, JObj);
                     'true' -> whapps_call:to_user(Call)
