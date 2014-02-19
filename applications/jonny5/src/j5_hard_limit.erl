@@ -8,7 +8,6 @@
 -module(j5_hard_limit).
 
 -export([authorize/2]).
--export([reauthorize/2]).
 -export([reconcile_cdr/2]).
 
 -include("jonny5.hrl").
@@ -27,15 +26,6 @@ authorize(Request, Limits) ->
         'true' -> j5_request:deny(<<"hard_limit">>, Request, Limits);
         'false' -> Request
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec reauthorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
-reauthorize(Request, _) -> Request.
 
 %%--------------------------------------------------------------------
 %% @public

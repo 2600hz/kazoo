@@ -8,7 +8,6 @@
 -module(j5_per_minute).
 
 -export([authorize/2]).
--export([reauthorize/2]).
 -export([reconcile_cdr/2]).
 
 -include("jonny5.hrl").
@@ -28,35 +27,6 @@ authorize(Request, Limits) ->
         'false' -> Request;
         'true' ->
             create_debit_transaction(<<"reservation">>, Amount, Request, Limits),
-            j5_request:authorize(<<"per_minute">>, Request, Limits)
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec reauthorize(j5_request:request(), j5_limits:limits()) -> 'ok'.
-reauthorize(Request, Limits) ->
-    case j5_limits:reserve_amount(Limits) - j5_request:call_cost(Request) > 0 of
-        'true' ->
-            lager:info("call cost has not exceeded the reserved amount yet", []),
-            j5_request:authorize(<<"per_minute">>, Request, Limits);
-        'false' -> maybe_debit_next_minute(Request, Limits)
-    end.
-
--spec maybe_debit_next_minute(j5_request:request(), j5_limits:limits()) -> boolean().
-maybe_debit_next_minute(Request, Limits) ->
-    Amount = j5_request:per_minute_cost(Request),
-    case maybe_credit_available(Amount, Limits) of
-        'false' ->
-            lager:debug("account does not have the required credit to continue this call", []),
-            Request;
-        'true' ->
-            lager:debug("account has the required credit to continue this call for another minute", []),
-            Timestamp = j5_request:timestamp(Request),
-            create_debit_transaction(wh_util:to_binary(Timestamp), Amount, Request, Limits),
             j5_request:authorize(<<"per_minute">>, Request, Limits)
     end.
 

@@ -8,7 +8,6 @@
 -module(j5_flat_rate).
 
 -export([authorize/2]).
--export([reauthorize/2]).
 -export([reconcile_cdr/2]).
 
 -include("jonny5.hrl").
@@ -41,15 +40,6 @@ authorize(Request, Limits) ->
             lager:debug("number is not eligible for flat rate trunks", []),
             Request
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec reauthorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
-reauthorize(Request, _) -> Request.
 
 %%--------------------------------------------------------------------
 %% @public

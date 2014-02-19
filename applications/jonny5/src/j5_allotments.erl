@@ -8,7 +8,6 @@
 -module(j5_allotments).
 
 -export([authorize/2]).
--export([reauthorize/2]).
 -export([reconcile_cdr/2]).
 
 -include("jonny5.hrl").
@@ -42,26 +41,6 @@ maybe_consume_allotment(Allotment, Request, Limits) ->
                         ,[AccountId, Amount - Consumed]),
             Classification = wh_json:get_value(<<"classification">>, Allotment),
             j5_request:authorize(<<"allotment_", Classification/binary>>, Request, Limits)
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec reauthorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
-reauthorize(Request, Limits) ->
-    %% Until the call has been answered for 60 seconds we have
-    %% a reservation from the authz_req
-    AnsweredTime = j5_request:answered_time(Request),
-    Timestamp = j5_request:timestamp(Request),
-    case (Timestamp - AnsweredTime) > 55 of
-        'false' -> j5_request:authorize(<<"allotment">>, Request, Limits);
-        'true' ->
-            Allotment = try_find_allotment(Request, Limits),
-            %% TODO: detemine if allotment still exists...
-            j5_request:authorize(<<"allotment">>, Request, Limits)
     end.
 
 %%--------------------------------------------------------------------
@@ -159,9 +138,7 @@ allotment_consumed_sofar(CycleStart, Classification, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),
     LedgerDb = wh_util:format_account_mod_id(AccountId),
     ViewOptions = [{'startkey', [Classification, CycleStart]}
-                   ,'group'
-                   ,{'group_level', 1}
-                   ,'reduce'
+                   ,{'reduce', 'false'}
                   ],
     case couch_mgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
         {'error', 'not_found'} -> 
@@ -170,9 +147,23 @@ allotment_consumed_sofar(CycleStart, Classification, Limits, Attempts) ->
             lager:debug("unable to get consumed quanity for ~s allotment from ~s: ~p"
                         ,[Classification, LedgerDb, _R]),
             Error;
-        {'ok', []} -> 0;
-        {'ok', [JObj|_]} ->
-            abs(wh_json:get_integer_value(<<"value">>, JObj, 0))
+        {'ok', JObjs} -> sum_allotment_consumed_sofar(JObjs, CycleStart)
+    end.
+
+-spec sum_allotment_consumed_sofar(wh_json:objects(), non_neg_integer()) -> non_neg_integer().
+sum_allotment_consumed_sofar(JObjs, CycleStart) ->
+    sum_allotment_consumed_sofar(JObjs, CycleStart, 0).
+
+-spec sum_allotment_consumed_sofar(wh_json:objects(), non_neg_integer(), non_neg_integer()) -> non_neg_integer().
+sum_allotment_consumed_sofar([], _, Seconds) -> Seconds;
+sum_allotment_consumed_sofar([JObj|JObjs], CycleStart, Seconds) ->
+    [_, Timestamp] = wh_json:get_value(<<"key">>, JObj),
+    Duration = wh_json:get_value(<<"value">>, JObj),
+    case (Timestamp - Duration) > CycleStart of
+        'true' ->
+            sum_allotment_consumed_sofar(JObjs, CycleStart, Seconds + Duration);
+        'false' ->
+            sum_allotment_consumed_sofar(JObjs, CycleStart, Seconds + (Timestamp - CycleStart))
     end.
 
 -spec add_transactions_view(ne_binary(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) -> integer() | {'error', _}.

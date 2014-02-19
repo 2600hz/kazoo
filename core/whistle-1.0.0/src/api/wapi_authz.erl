@@ -11,15 +11,11 @@
 
 -export([authz_req/1, authz_req_v/1
          ,authz_resp/1, authz_resp_v/1
-         ,reauthz_req/1, reauthz_req_v/1
-         ,reauthz_resp/1, reauthz_resp_v/1
          ,bind_q/2, unbind_q/2
          ,declare_exchanges/0
          ,publish_authz_req/1, publish_authz_req/2
          ,publish_authz_resp/2, publish_authz_resp/3
          ,broadcast_authz_resp/1, broadcast_authz_resp/2
-         ,publish_reauthz_req/1, publish_reauthz_req/2
-         ,publish_reauthz_resp/2, publish_reauthz_resp/3
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -27,7 +23,6 @@
 -define(EVENT_CATEGORY, <<"authz">>).
 -define(KEY_AUTHZ_REQ, <<"authz.authorize">>).
 -define(KEY_AUTHZ_BROADCAST, <<"authz.authorize.broadcast">>).
--define(KEY_REAUTHZ_REQ, <<"authz.reauthorize">>).
 
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
@@ -62,41 +57,6 @@
                             ,{<<"Global-Resource">>, [<<"true">>, <<"false">>]}
                            ]).
 -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
-
-%% Reauthorization Requests
--define(REAUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Call-ID">>, <<"Auth-Account-ID">>, <<"Type">>]).
--define(OPTIONAL_REAUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>
-                                           ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                           ,<<"Account-ID">>, <<"Request">>
-                                           ,<<"Call-Direction">>, <<"Created-Time">>
-                                           ,<<"Answered-Time">>, <<"Progress-Time">>
-                                           ,<<"Progress-Media-Time">>, <<"Hangup-Time">>
-                                           ,<<"Transfer-Time">>, <<"Timestamp">>
-                                           ,<<"Account-ID">>, <<"Billing-Seconds">>
-                                      ]).
--define(REAUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                             ,{<<"Event-Name">>, <<"reauthz_req">>}
-                            ]).
--define(REAUTHZ_REQ_TYPES, [{<<"To">>, fun is_binary/1}
-                            ,{<<"From">>, fun is_binary/1}
-                            ,{<<"Call-ID">>, fun is_binary/1}
-                            ,{<<"Account-ID">>, fun is_binary/1}
-                            ,{<<"Caller-ID-Name">>, fun is_binary/1}
-                            ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                            ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                           ]).
-
-%% Reauthorization Responses
--define(REAUTHZ_RESP_HEADERS, [<<"Call-ID">>, <<"Is-Authorized">>]).
--define(OPTIONAL_REAUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Type">>]).
--define(REAUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                              ,{<<"Event-Name">>, <<"reauthz_resp">>}
-                              ,{<<"Type">>, [<<"flat_rate">>, <<"per_minute">>, <<"soft_limit">>
-                                                 ,<<"allotment">>, <<"limits_disabled">>
-                                            ]}
-                              ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
-                             ]).
--define(REAUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %%--------------------------------------------------------------------
 %% @doc Authorization Request - see wiki
@@ -139,46 +99,6 @@ authz_resp_v(JObj) ->
     authz_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Authorization Request - see wiki
-%% Takes proplist, creates JSON iolist or error
-%% @end
-%%--------------------------------------------------------------------
--spec reauthz_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-reauthz_req(Prop) when is_list(Prop) ->
-    case reauthz_req_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?REAUTHZ_REQ_HEADERS, ?OPTIONAL_REAUTHZ_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for reauthz_req"}
-    end;
-reauthz_req(JObj) ->
-    reauthz_req(wh_json:to_proplist(JObj)).
-
--spec reauthz_req_v/1 :: (api_terms()) -> boolean().
-reauthz_req_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?REAUTHZ_REQ_HEADERS, ?REAUTHZ_REQ_VALUES, ?REAUTHZ_REQ_TYPES);
-reauthz_req_v(JObj) ->
-    reauthz_req_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc Authorization Response - see wiki
-%% Takes proplist, creates JSON iolist or error
-%% @end
-%%--------------------------------------------------------------------
--spec reauthz_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-reauthz_resp(Prop) when is_list(Prop) ->
-    case reauthz_resp_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?REAUTHZ_RESP_HEADERS, ?OPTIONAL_REAUTHZ_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for reauthz_resp"}
-    end;
-reauthz_resp(JObj) ->
-    reauthz_resp(wh_json:to_proplist(JObj)).
-
--spec reauthz_resp_v/1 :: (api_terms()) -> boolean().
-reauthz_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?REAUTHZ_RESP_HEADERS, ?REAUTHZ_RESP_VALUES, ?REAUTHZ_RESP_TYPES);
-reauthz_resp_v(JObj) ->
-    reauthz_resp_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
 %% @doc Setup and tear down bindings for authz gen_listeners
 %% @end
 %%--------------------------------------------------------------------
@@ -195,9 +115,6 @@ bind_to_q(Q, ['authorize'|T]) ->
 bind_to_q(Q, ['broadcast'|T]) ->
     'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_BROADCAST),
     bind_to_q(Q, T);
-bind_to_q(Q, ['reauthorize'|T]) ->
-    'ok' = amqp_util:bind_q_to_callmgr(Q, ?KEY_REAUTHZ_REQ),
-    bind_to_q(Q, T);
 bind_to_q(_Q, []) -> 'ok'.
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
@@ -212,9 +129,6 @@ unbind_q_from(Q, ['authorize'|T]) ->
 unbind_q_from(Q, ['broadcast'|T]) ->
     'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_BROADCAST),
     bind_to_q(Q, T);
-unbind_q_from(Q, ['reauthorize'|T]) ->
-    'ok' = amqp_util:unbind_q_from_callmgr(Q, ?KEY_REAUTHZ_REQ),
-    unbind_q_from(Q, T);
 unbind_q_from(_Q, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -253,19 +167,3 @@ broadcast_authz_resp(JObj) ->
 broadcast_authz_resp(Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?AUTHZ_RESP_VALUES, fun ?MODULE:authz_resp/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_BROADCAST).
-
--spec publish_reauthz_req/1 :: (api_terms()) -> 'ok'.
--spec publish_reauthz_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
-publish_reauthz_req(JObj) ->
-    publish_reauthz_req(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_reauthz_req(Req, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?REAUTHZ_REQ_VALUES, fun ?MODULE:reauthz_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_REAUTHZ_REQ).
-
--spec publish_reauthz_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_reauthz_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_reauthz_resp(Queue, JObj) ->
-    publish_reauthz_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_reauthz_resp(Queue, Resp, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?REAUTHZ_RESP_VALUES, fun ?MODULE:reauthz_resp/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
