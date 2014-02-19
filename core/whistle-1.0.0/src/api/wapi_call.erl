@@ -69,6 +69,7 @@
                                                  ,(amqp_util:encode(CallId))/binary>>).
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>
+                                      ,<<"Application-Event">>, <<"Application-Data">>
                                       ,<<"Custom-Channel-Vars">>, <<"Timestamp">>, <<"Channel-State">>
                                       ,<<"Call-Direction">>, <<"Transfer-History">>
                                       ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>

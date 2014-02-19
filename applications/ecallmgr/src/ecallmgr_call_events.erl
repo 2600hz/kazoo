@@ -619,6 +619,16 @@ specific_call_event_props(_, <<"play_and_get_digits">>, Props) ->
     [{<<"Application-Name">>, <<"play_and_collect_digits">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Props, <<"">>)}
     ];
+specific_call_event_props(<<"CHANNEL_FAX_STATUS">>, <<"rxfax", Event/binary>>, Prop) ->
+    [{<<"Application-Name">>, <<"receive_fax">>}
+    ,{<<"Application-Event">>, Event}
+    ,{<<"Application-Data">>, wh_json:from_list(fax_specific(Prop))}
+    ];
+specific_call_event_props(<<"CHANNEL_FAX_STATUS">>, <<"txfax", Event/binary>>, Prop) ->
+    [{<<"Application-Name">>, <<"send_fax">>}
+    ,{<<"Application-Event">>, Event}
+    ,{<<"Application-Data">>, wh_json:from_list(fax_specific(Prop))}
+    ];
 specific_call_event_props(_Evt, Application, Props) ->
     [{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
@@ -648,6 +658,32 @@ conference_specific(Props) ->
             end
     end.
 
+-spec fax_specific(wh_proplist()) -> wh_proplist().
+fax_specific(Props) ->
+    props:filter_undefined(      
+      [{<<"Fax-Success">>, get_fax_success(Props)}
+       ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
+       ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
+       ,{<<"Fax-ECM-Used">>, props:get_value(<<"variable_fax_ecm_used">>, Props)}
+       ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
+       ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
+       ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
+       ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
+       ,{<<"Fax-Local-Station-ID">>, props:get_value(<<"variable_fax_local_statio_id">>, Props)}
+       ,{<<"Fax-Remote-Station-ID">>, props:get_value(<<"variable_fax_remote_station_id">>, Props)}
+       ,{<<"Fax-Remote-Country">>, props:get_value(<<"variable_fax_remote_country">>, Props)}
+       ,{<<"Fax-Remote-Vendor">>, props:get_value(<<"variable_fax_remote_vendor">>, Props)}
+       ,{<<"Fax-Remote-Model">>, props:get_value(<<"variable_fax_remote_model">>, Props)}
+       ,{<<"Fax-Image-Resolution">>, props:get_value(<<"variable_fax_image_resolution">>, Props)}
+       ,{<<"Fax-File-Image-Resolution">>, props:get_value(<<"variable_fax_file_image_resolution">>, Props)}
+       ,{<<"Fax-Image-Size">>, props:get_value(<<"variable_fax_image_size">>, Props)}
+       ,{<<"Fax-Image-Pixel-Size">>, props:get_value(<<"variable_fax_image_pixel_size">>, Props)}
+       ,{<<"Fax-File-Image-Pixel-Size">>, props:get_value(<<"variable_fax_file_image_pixel_size">>, Props)}
+       ,{<<"Fax-Longest-Bad-Row-Run">>, props:get_value(<<"variable_fax_longest_bad_row_run">>, Props)}
+       ,{<<"Fax-Encoding">>, props:get_value(<<"variable_fax_encoding">>, Props)}
+       ,{<<"Fax-Encoding-Name">>, props:get_value(<<"variable_fax_encoding_name">>, Props)}
+       ]).
+
 -spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false') ->
     lager:debug("suppressing bridge execute complete in favour the whistle masquerade of this event"),
@@ -663,6 +699,8 @@ should_publish(<<"CHANNEL_EXECUTE", _/binary>>, <<"park">>, _) ->
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
     props:get_value(Application, ?FS_APPLICATION_NAMES) =/= 'undefined';
 should_publish(_, <<"transfer">>, _) ->
+    'true';
+should_publish(<<"CHANNEL_FAX_STATUS">>, _, _) ->
     'true';
 should_publish(EventName, _A, _) ->
     lists:member(EventName, ?CALL_EVENTS).
@@ -706,6 +744,8 @@ get_event_name(Props) ->
         <<"sofia::transferee">> -> <<"CHANNEL_TRANSFEREE">>;
         <<"sofia::transferor">> -> <<"CHANNEL_TRANSFEROR">>;
         <<"sofia::replaced">> -> <<"CHANNEL_REPLACED">>;
+        <<"spandsp::txfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
+        <<"spandsp::rxfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
         _Else ->
             props:get_first_defined([<<"whistle_event_name">>
                                      ,<<"Event-Name">>
@@ -722,6 +762,8 @@ get_application_name(Props) ->
         <<"sofia::transferee">> -> <<"transfer">>;
         <<"sofia::transferor">> -> <<"transfer">>;
         <<"sofia::replaced">> -> <<"transfer">>;
+        <<"spandsp::rxfax", Event/binary >> -> <<"rxfax",Event/binary>>;
+        <<"spandsp::txfax", Event/binary >> -> <<"txfax", Event/binary>>;
         Else -> Else
     end.
 

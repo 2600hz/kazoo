@@ -202,7 +202,6 @@ handle_info({'EXIT', From, Reason}, State) ->
 		true ->
 			{noreply, State#state{sessions = lists:delete(From, State#state.sessions)}};
 		false ->
-			io:format("process ~p exited with reason ~p~n", [From, Reason]),
 			{noreply, State}
 	end;
 handle_info({inet_async, ListenSocket, _, {error, econnaborted}}, State) ->

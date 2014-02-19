@@ -13,6 +13,7 @@
 -export([start_link/1]).
 -export([handle_tx_resp/2
          ,handle_call_event/2
+         ,handle_fax_event/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -29,7 +30,6 @@
                 ,pool :: api_pid()
                 ,job_id :: api_binary()
                 ,job :: api_object()
-                ,keep_alive :: 'undefined' | reference()
                 ,max_time :: 'undefined' | reference()
                }).
 -type state() :: #state{}.
@@ -41,6 +41,9 @@
                      }
                      ,{{?MODULE, 'handle_call_event'}
                        ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+                      }
+                     ,{{?MODULE, 'handle_fax_event'}
+                       ,[{<<"call_event">>, <<"CHANNEL_FAX_STATUS">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -73,6 +76,12 @@ handle_tx_resp(JObj, Props) ->
 handle_call_event(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
+
+handle_fax_event(JObj, Props) ->
+    Srv = props:get_value('server', Props),
+    JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
+    Event = wh_json:get_value(<<"Application-Event">>, JObj),
+    gen_server:cast(Srv, {'fax_status', Event , JobId, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -125,15 +134,48 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
                                             }=State) ->
     case wh_json:get_value(<<"Response-Message">>, JObj) of
         <<"SUCCESS">> ->
-            lager:debug("received successful attempt to tx fax, releasing job"),
-            release_successful_job(JObj, Job);
+            lager:debug("received successful attempt to originate fax, continue processing"),
+            {'noreply', State};
         _Else ->
             lager:debug("received failed attempt to tx fax, releasing job: ~s", [_Else]),
-            release_failed_job('tx_resp', JObj, Job)
-    end,
-    gen_server:cast(Pid, {'job_complete', self()}),
-    {'noreply', reset(State)};
+            release_failed_job('tx_resp', JObj, Job),
+            gen_server:cast(Pid, {'job_complete', self()}),
+            {'noreply', reset(State)}
+    end;
 handle_cast({'tx_resp', _, _}, State) ->
+    {'noreply', State};
+handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{max_time=TimerRef
+                                                                       ,job=Job
+                                                                      }=State) ->
+    TransferRate = wh_json:get_integer_value([<<"Application-Data">>,<<"Fax-Transfer-Rate">>], JObj, 1),
+    NumberOfPages = wh_json:get_integer_value(<<"pvt_pages">>, Job, 0 ),
+    FileSize = wh_json:get_integer_value(<<"pvt_size">>, Job, 0 ),
+    NewMaxTime = wh_util:to_integer(((FileSize * 8) / TransferRate) * 10000 * 4),
+    lager:debug("new timings ~p ~p ~p", [FileSize, TransferRate,NewMaxTime]),
+    NewTimerRef = erlang:send_after(NewMaxTime, self(), 'job_timeout'),
+    _ = erlang:cancel_timer(TimerRef),
+    lager:debug("fax status - negociate result - ~s : ~p",[JobId, TransferRate]),
+    %% TODO update stats/websockets/job
+    %%      maybe setup timer to cancel job bassed on transmission rate     
+    {'noreply', State#state{max_time=NewTimerRef}};
+handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}, State) ->
+    TransferredPages = wh_json:get_value([<<"Application-Data">>, <<"Fax-Transferred-Pages">>], JObj),
+    lager:debug("fax status - page result - ~s : ~p : ~p"
+                ,[JobId, TransferredPages, wh_util:current_tstamp()]),
+    _ = bump_modified(JobId),
+    %% TODO update stats/websockets/job 
+    {'noreply', State};
+handle_cast({'fax_status', <<"result">>, JobId, JObj}, #state{job_id=JobId
+                                                              ,job=Job,
+                                                              ,pool=Pid
+                                                             }=State) ->
+    %% TODO update stats/websockets/job 
+    release_successful_job(JObj, Job),
+    gen_server:cast(Pid, {'job_complete', self()}),            
+    {'noreply', reset(State)};
+handle_cast({'fax_status', Event, JobId, JObj}, State) ->
+    lager:debug("fax status - ~s - ~s",[Event, JobId]),
+    %% TODO update stats/websockets/job 
     {'noreply', State};
 handle_cast({_, Pid, _}, #state{queue_name='undefined'}=State) when is_pid(Pid) ->
     lager:debug("worker received request with unknown queue name, rejecting", []),
@@ -151,13 +193,11 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
             lager:debug("acquired job, attempting to send fax ~s", [JobId]),
             try execute_job(JObj, Q) of
                 'ok' ->
-                    KeepAliveRef = erlang:send_after(60000, self(), 'keep_alive'),
                     MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 900000),
                     MaxTimeRef = erlang:send_after(MaxTime, self(), 'job_timeout'),
                     {'noreply', State#state{job_id=JobId
                                             ,pool=Pid
                                             ,job=JObj
-                                            ,keep_alive=KeepAliveRef
                                             ,max_time=MaxTimeRef
                                            }};
                 'failure' ->
@@ -180,6 +220,11 @@ handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
     {'noreply', State#state{queue_name=QueueName}};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
+handle_cast({'set_sizes', NumberOfPages, FileSize}, #state{job=JObj}=State) ->
+    Values = [{<<"pvt_pages">>, NumberOfPages}
+              ,{<<"pvt_size">>, FileSize}
+             ],
+    {'noreply',State#state{job=wh_json:set_values(Values, JObj)}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -194,23 +239,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('keep_alive', #state{pool=Pid
-                                 ,job_id=JobId
-                                }=State) ->
-    case bump_modified(JobId) of
-        {'ok', _} ->
-            KeepAliveRef = erlang:send_after(60000, self(), 'keep_alive'),
-            {'noreply', State#state{keep_alive=KeepAliveRef}};
-        {'error', _R} ->
-            lager:debug("prematurely terminating job: ~p", [_R]),
-            gen_server:cast(Pid, {'job_complete', self()}),
-            {'noreply', reset(State)}
-    end;
 handle_info('job_timeout', #state{job=JObj}=State) ->
     release_failed_job('job_timeout', 'undefined', JObj),
     {'noreply', reset(State)};
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
+    lager:debug("fax worker unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -384,7 +417,7 @@ release_failed_job('job_timeout', _Error, JObj) ->
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
     Result = [{<<"time_elapsed">>, elapsed_time(JObj)}
-              | fax_util:fax_properties(wh_json:get_value(<<"Resource-Response">>, Resp))
+              | fax_util:fax_properties(wh_json:get_value(<<"Application-Data">>, Resp, Resp))
              ],
     release_job(Result, JObj).
 
@@ -487,6 +520,7 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             R = file:write_file(OutputFile, RespContent),
             lager:debug("result of tmp file write: ~s", [R]),
+            set_sizes(OutputFile),
             {'ok', OutputFile};
         <<"application/pdf">> ->
             InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
@@ -499,6 +533,7 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             lager:debug("attempting to convert pdf: ~s", [Cmd]),
             case os:cmd(Cmd) of
                 "success" ->
+                    set_sizes(OutputFile),
                     {'ok', OutputFile};
                 _Else ->
                     lager:debug("could not covert file: ~s", [_Else]),
@@ -508,6 +543,13 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             lager:debug("unsupported file type: ~p", [Else]),
             {'error', list_to_binary(["file type '", Else, "' is unsupported"])}
     end.
+
+-spec set_sizes(ne_binary()) -> 'ok'.
+set_sizes(OutputFile) ->
+    CmdCount = <<"echo -n `tiffinfo ", OutputFile/binary , " | grep 'Page Number' | grep -c 'P'`">>,
+    NumberOfPages = wh_util:to_integer( os:cmd(wh_util:to_list(CmdCount)) ),
+    FileSize = filelib:file_size(OutputFile),
+    gen_listener:cast(self(), {'set_sizes', NumberOfPages, FileSize}).
 
 -spec normalize_content_type(string() | ne_binary()) -> ne_binary().
 normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;
@@ -558,7 +600,9 @@ send_fax(JobId, JObj, Q) ->
                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ]),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-                                              ,{'restrict_to', [<<"CHANNEL_DESTROY">>]}
+                                              ,{'restrict_to', [<<"CHANNEL_DESTROY">>
+                                                                ,<<"CHANNEL_FAX_STATUS">>
+                                                               ]}
                                              ]),
     wapi_offnet_resource:publish_req(Request).
 
@@ -569,9 +613,6 @@ get_proxy_url(JobId) ->
     list_to_binary(["http://", Hostname, ":", Port, "/fax/", JobId, ".tiff"]).
 
 -spec reset(state()) -> state().
-reset(#state{keep_alive=KeepAliveRef}=State) when is_reference(KeepAliveRef) ->
-    erlang:cancel_timer(KeepAliveRef),
-    reset(State#state{keep_alive='undefined'});
 reset(#state{max_time=MaxTimeRef}=State) when is_reference(MaxTimeRef) ->
     erlang:cancel_timer(MaxTimeRef),
     reset(State#state{max_time='undefined'});
