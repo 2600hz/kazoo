@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%% Configuration updates (like DB doc changes) can be communicated across
 %%% the AMQP bus so WhApps can flush cache entries, update settings, etc.
@@ -25,8 +25,8 @@
 
 -define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Rev">>, <<"Database">>]).
 -define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Account-ID">>, <<"Type">>, <<"Version">>
-                                               ,<<"Date-Modified">>, <<"Date-Created">>
-                                               ,<<"Doc">>
+                                           ,<<"Date-Modified">>, <<"Date-Created">>
+                                           ,<<"Doc">>
                                           ]).
 -define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
                                  ,{<<"Event-Name">>, [<<"doc_edited">>
@@ -121,8 +121,8 @@ get_routing_key(Props) ->
                                 ,props:get_value('id', Props, <<"*">>)),
     amqp_util:document_routing_key(Action, Db, Type, Id).
 
--spec publish_doc_update(action(), binary(), binary(), binary(), api_terms()) -> 'ok'.
--spec publish_doc_update(action(), binary(), binary(), binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_doc_update(action(), ne_binary(), ne_binary(), ne_binary(), api_terms()) -> 'ok'.
+-spec publish_doc_update(action(), ne_binary(), ne_binary(), ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_doc_update(Action, Db, Type, Id, JObj) ->
     publish_doc_update(Action, Db, Type, Id, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_doc_update(Action, Db, Type, Id, Change, ContentType) ->
