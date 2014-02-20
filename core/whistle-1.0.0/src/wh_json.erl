@@ -36,7 +36,9 @@
          ,foreach/2
         ]).
 -export([get_ne_value/2, get_ne_value/3]).
--export([get_value/2, get_value/3, get_values/1]).
+-export([get_value/2, get_value/3
+         ,get_values/1
+        ]).
 -export([get_keys/1, get_keys/2]).
 -export([set_value/3, set_values/2, new/0]).
 -export([delete_key/2, delete_key/3, delete_keys/2]).
