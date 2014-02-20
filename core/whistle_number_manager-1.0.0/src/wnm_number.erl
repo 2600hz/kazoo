@@ -1038,7 +1038,7 @@ create_number_summary(_Account, #number{state=State
                                         ,used_by=UsedBy
                                        }) ->
     MaybeOwned = case (ModuleName == 'wnm_local') of
-                     'true' -> ['local'];
+                     'true' -> [<<"local">>];
                      'false' -> []
                  end,
     NFeatures =  lists:merge([wh_util:to_binary(F) || F <- sets:to_list(Features)], MaybeOwned),
