@@ -67,8 +67,12 @@ maybe_authorize_channel(Props, Node) ->
             'false';
         _Else ->
             case props:get_value(<<"Hunt-Destination-Number">>, Props) of
-                <<"conference">> -> 'true';
-                _Else -> maybe_channel_recovering(Props, CallId, Node)
+                <<"conference">> -> 
+                    wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+                                 ,?AUTHZ_RESPONSE_KEY(CallId)
+                                 ,{'true', wh_json:new()}),
+                    'true';
+                _ -> maybe_channel_recovering(Props, CallId, Node)
             end
     end.
 
