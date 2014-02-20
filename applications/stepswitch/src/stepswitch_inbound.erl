@@ -113,13 +113,12 @@ maybe_format_destination(_NumberProps, JObj) ->
             case stepswitch_resources:get_props(ResourceId) of
                 'undefined' -> JObj;
                 Resource ->
-                    maybe_apply_meta_formatters(JObj, props:get_value(<<"Formatters">>, Resource, []))
+                    maybe_apply_meta_formatters(JObj, props:get_value(<<"Formatters">>, Resource, wh_json:new()))
             end
     end.
 
--spec maybe_apply_meta_formatters(wh_json:object(), wh_json:objects()) ->
+-spec maybe_apply_meta_formatters(wh_json:object(), wh_json:object()) ->
                                          wh_json:object().
-maybe_apply_meta_formatters(JObj, []) -> JObj;
 maybe_apply_meta_formatters(JObj, MetaFormatters) ->
     JObjKeys = [{wh_util:to_lower_binary(K), K}
                 || K <- wh_json:get_keys(wh_api:remove_defaults(JObj))
