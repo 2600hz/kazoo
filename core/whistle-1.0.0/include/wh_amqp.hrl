@@ -17,7 +17,6 @@
 
 -define(KEY_CALL_MEDIA_REQ, <<"call.media">>). %% corresponds to media_req/1
 -define(KEY_CALL_EVENT, <<"call.event.">>). %% corresponds to the call_event/1 api call
--define(KEY_CALL_STATUS_REQ, <<"call.status.">>). % corresponds to the call_status_req/1 api call
 -define(KEY_CALL_CDR, <<"call.cdr.">>). %% corresponds to the call_cdr/1 api call
 -define(KEY_PUBLISHER_USURP, <<"publisher.usurp.">>).
 
