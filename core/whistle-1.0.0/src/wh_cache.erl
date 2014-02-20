@@ -270,7 +270,7 @@ dump_local(Srv, ShowValue) ->
          end
          || Obj <- ets:match_object(Srv, #cache_obj{_ = '_'})
         ],
-    ok.
+    'ok'.
 
 -spec wait_for_key_local(atom(), term()) ->
                                 {'ok', term()} |

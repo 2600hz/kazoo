@@ -15,7 +15,13 @@
 -export([resource_consuming/1]).
 -export([inbound_flat_rate/1]).
 -export([outbound_flat_rate/1]).
+-export([allotments/1]).
 -export([allotment_consumed/4]).
+-export([per_minute/1]).
+-export([per_minute_cost/1]).
+-export([accounts/0]).
+-export([account/1]).
+-export([to_props/1]).
 -export([authorized/1]).
 -export([remove/1]).
 -export([handle_authz_resp/2]).
@@ -46,8 +52,10 @@
                   ,direction :: api_binary()
                   ,account_id :: api_binary()
                   ,account_billing :: api_binary()
+                  ,account_allotment = 'false' :: boolean()
                   ,reseller_id :: api_binary()
                   ,reseller_billing :: api_binary()
+                  ,reseller_allotment = 'false' :: boolean()
                   ,soft_limit = 'false' :: boolean()
                   ,timestamp = wh_util:current_tstamp() :: pos_integer()
                   ,answered_timestamp :: 'undefined' | pos_integer()
@@ -60,6 +68,11 @@
                   ,rate_id :: api_binary()
                   ,base_cost :: api_binary()
                  }).
+-opaque channel() :: #channel{}.
+-type channels() :: [channels(),...] | [].
+-export_type([channel/0
+              ,channels/0
+             ]).
 
 -define(BINDINGS, [{'authz', [{'restrict_to', ['broadcast']}
                               ,'federate'
@@ -102,17 +115,19 @@ sync() -> gen_server:cast(?SERVER, 'synchronize_channels').
 
 -spec total_calls(ne_binary()) -> non_neg_integer().
 total_calls(AccountId) ->
-    MatchSpec = [{#channel{account_id=AccountId
-                           ,call_id='$1'
-                           ,other_leg_call_id='$2'
-                           ,_='_'}
+    MatchSpec = [{#channel{account_id = AccountId
+                           ,call_id = '$1'
+                           ,other_leg_call_id = '$2'
+                           ,_='_'
+                          }
                   ,[]
                   ,[{{'$1', '$2'}}]
                  }
-                 ,{#channel{reseller_id=AccountId
-                            ,call_id='$1'
-                            ,other_leg_call_id='$2'
-                            ,_='_'}
+                 ,{#channel{reseller_id = AccountId
+                            ,call_id = '$1'
+                            ,other_leg_call_id = '$2'
+                            ,_='_'
+                           }
                    ,[]
                    ,[{{'$1', '$2'}}]
                   }
@@ -121,21 +136,23 @@ total_calls(AccountId) ->
 
 -spec resource_consuming(ne_binary()) -> non_neg_integer().
 resource_consuming(AccountId) ->
-    MatchSpec = [{#channel{account_id=AccountId
-                           ,account_billing='$1'
-                           ,call_id='$2'
-                           ,other_leg_call_id='$3'
-                           ,_='_'}
+    MatchSpec = [{#channel{account_id = AccountId
+                           ,account_billing = '$1'
+                           ,call_id = '$2'
+                           ,other_leg_call_id = '$3'
+                           ,_='_'
+                          }
                   ,[{'=/=', '$1', 'undefined'}
                     ,{'=/=', '$1', <<"limits_disabled">>}
                    ]
                   ,[{{'$2', '$3'}}]
                  }
-                 ,{#channel{reseller_id=AccountId
-                            ,reseller_billing='$1'
-                            ,call_id='$2'
-                            ,other_leg_call_id='$3'
-                            ,_='_'}
+                 ,{#channel{reseller_id = AccountId
+                            ,reseller_billing = '$1'
+                            ,call_id = '$2'
+                            ,other_leg_call_id = '$3'
+                            ,_='_'
+                           }
                    ,[{'=/=', '$1', 'undefined'}
                      ,{'=/=', '$1', <<"limits_disabled">>}
                     ]
@@ -146,31 +163,35 @@ resource_consuming(AccountId) ->
 
 -spec inbound_flat_rate(ne_binary()) -> non_neg_integer().
 inbound_flat_rate(AccountId) ->
-    MatchSpec = [{#channel{account_id=AccountId
+    MatchSpec = [{#channel{account_id = AccountId
                            ,account_billing = <<"flat_rate">>
                            ,direction = <<"inbound">>
-                           ,_='_'}
+                           ,_='_'
+                          }
                   ,[]
                   ,['true']
                  }
-                 ,{#channel{account_id=AccountId
+                 ,{#channel{account_id = AccountId
                             ,account_billing = <<"flat_rate_burst">>
                             ,direction = <<"inbound">>
-                            ,_='_'}
+                            ,_='_'
+                           }
                    ,[]
                    ,['true']
                   }
-                 ,{#channel{reseller_id=AccountId
+                 ,{#channel{reseller_id = AccountId
                             ,reseller_billing = <<"flat_rate">>
                             ,direction = <<"inbound">>
-                            ,_='_'}
+                            ,_='_'
+                           }
                    ,[]
                    ,['true']
                   }
-                 ,{#channel{reseller_id=AccountId
+                 ,{#channel{reseller_id = AccountId
                             ,reseller_billing = <<"flat_rate_burst">>
                             ,direction = <<"inbound">>
-                            ,_='_'}
+                            ,_='_'
+                           }
                    ,[]
                    ,['true']
                   }
@@ -179,50 +200,76 @@ inbound_flat_rate(AccountId) ->
 
 -spec outbound_flat_rate(ne_binary()) -> non_neg_integer().
 outbound_flat_rate(AccountId) ->
-    MatchSpec = [{#channel{account_id=AccountId
+    MatchSpec = [{#channel{account_id = AccountId
                            ,account_billing = <<"flat_rate">>
                            ,direction = <<"outbound">>
-                           ,_='_'}
+                           ,_='_'
+                          }
                   ,[]
                   ,['true']
                  }
-                 ,{#channel{account_id=AccountId
+                 ,{#channel{account_id = AccountId
                             ,account_billing = <<"flat_rate_burst">>
                             ,direction = <<"outbound">>
-                            ,_='_'}
+                            ,_='_'
+                           }
                    ,[]
                    ,['true']
                   }
-                 ,{#channel{reseller_id=AccountId
+                 ,{#channel{reseller_id = AccountId
                             ,reseller_billing = <<"flat_rate">>
                             ,direction = <<"outbound">>
-                            ,_='_'}
+                            ,_='_'
+                           }
                    ,[]
                    ,['true']
                   }
-                 ,{#channel{reseller_id=AccountId
+                 ,{#channel{reseller_id = AccountId
                             ,reseller_billing = <<"flat_rate_burst">>
                             ,direction = <<"outbound">>
-                            ,_='_'}
+                            ,_='_'
+                           }
                    ,[]
                    ,['true']
                   }
                 ],
     ets:select_count(?TAB, MatchSpec).
 
+-spec allotments(ne_binary()) -> non_neg_integer().
+allotments(AccountId) ->
+    MatchSpec = [{#channel{account_id = AccountId
+                           ,account_allotment = 'true'
+                           ,_='_'
+                          }
+                  ,[]
+                  ,['true']
+                 }
+                 ,{#channel{reseller_id = AccountId
+                            ,reseller_allotment = 'true'
+                            ,_='_'
+                           }
+                   ,[]
+                   ,['true']
+                  }
+                ],
+    ets:select_count(?TAB, MatchSpec).
+
+
 -spec allotment_consumed(non_neg_integer(), non_neg_integer(), ne_binary(), ne_binary() | j5_limits:limits()) -> non_neg_integer().
 allotment_consumed(CycleStart, Span, Classification, AccountId) when is_binary(AccountId) ->
-    MatchSpec = [{#channel{account_id=AccountId
+    MatchSpec = [{#channel{account_id = AccountId
                            ,account_billing = <<"allotment_", Classification/binary>>
                            ,answered_timestamp = '$1'
-                           ,_='_'}
+                           ,_='_'
+                          }
                   ,[]
                   ,['$1']
                  }
-                 ,{#channel{reseller_id=AccountId
+                 ,{#channel{reseller_id = AccountId
                             ,reseller_billing = <<"allotment_", Classification/binary>>
                             ,answered_timestamp = '$1'
-                            ,_='_'}
+                            ,_='_'
+                           }
                    ,[]
                    ,['$1']
                   }
@@ -231,6 +278,123 @@ allotment_consumed(CycleStart, Span, Classification, AccountId) when is_binary(A
 allotment_consumed(CycleStart, Span, Classification, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     allotment_consumed(CycleStart, Span, Classification, AccountId).
+
+-spec per_minute(ne_binary()) -> non_neg_integer().
+per_minute(AccountId) ->
+    MatchSpec = [{#channel{account_id = AccountId
+                           ,account_billing = <<"per_minute">>
+                           ,_='_'
+                          }
+                  ,[]
+                  ,['true']
+                 }
+                 ,{#channel{reseller_id = AccountId
+                            ,reseller_billing = <<"per_minute">>
+                            ,_='_'
+                           }
+                   ,[]
+                   ,['true']
+                  }
+                ],
+    ets:select_count(?TAB, MatchSpec).
+
+-spec per_minute_cost(ne_binary()) -> non_neg_integer().
+per_minute_cost(AccountId) ->
+    MatchSpec = [{#channel{account_id = AccountId
+                           ,account_billing = <<"per_minute">>
+                           ,_='_'
+                          }
+                  ,[]
+                  ,['$_']
+                 }
+                 ,{#channel{reseller_id = AccountId
+                            ,reseller_billing = <<"per_minute">>
+                            ,_='_'
+                           }
+                   ,[]
+                   ,['$_']
+                  }
+                ],
+    lists:foldl(fun(Channel, Cost) ->
+                        call_cost(Channel) + Cost
+                end, 0, ets:select(?TAB, MatchSpec)).
+
+-spec accounts() -> ne_binaries().
+accounts() ->
+    MatchSpec = [{#channel{account_id = '$1'
+                           ,_='_'
+                          }
+                  ,[]
+                  ,['$1']
+                 }
+                 ,{#channel{reseller_id = '$1'
+                            ,_='_'
+                           }
+                   ,[]
+                   ,['$1']
+                  }
+                ],
+    sets:to_list(sets:from_list(ets:select(?TAB, MatchSpec))).
+
+
+-spec account(ne_binary()) -> channels().
+account(AccountId) ->
+    MatchSpec = [{#channel{account_id = AccountId
+                           ,_='_'
+                          }
+                  ,[]
+                  ,['$_']
+                 }
+                 ,{#channel{reseller_id = AccountId
+                            ,_='_'
+                           }
+                   ,[]
+                   ,['$_']
+                  }
+                ],
+    ets:select(?TAB, MatchSpec).
+
+-spec to_props(channel()) -> wh_proplist().
+to_props(#channel{call_id=CallId
+                  ,other_leg_call_id=OtherLeg
+                  ,direction=Direction
+                  ,account_id=AccountId
+                  ,account_billing=AccountBilling
+                  ,reseller_id=ResellerId
+                  ,reseller_billing=ResellerBilling
+                  ,soft_limit=SoftLimit
+                  ,timestamp=Timestamp
+                  ,answered_timestamp=AnsweredTimestamp
+                  ,rate=Rate
+                  ,rate_increment=RateIncrement
+                  ,rate_minimum=RateMinimum
+                  ,discount_percentage=DiscountPercentage
+                  ,surcharge=Surcharge
+                  ,rate_name=RateName
+                  ,rate_id=RateId
+                  ,base_cost=BaseCost
+                 }) ->
+    props:filter_undefined(
+      [{<<"Call-ID">>, CallId}
+       ,{<<"Other-Leg-Call-ID">>, OtherLeg}
+       ,{<<"Direction">>, Direction}
+       ,{<<"Account-ID">>, AccountId}
+       ,{<<"Account-Billing">>, AccountBilling}
+       ,{<<"Reseller-ID">>, ResellerId}
+       ,{<<"Reseller-Billing">>, ResellerBilling}
+       ,{<<"Soft-Limit">>, SoftLimit}
+       ,{<<"Timestamp">>, Timestamp}
+       ,{<<"Answered-Timestamp">>, AnsweredTimestamp}
+       ,{<<"Rate">>, Rate}
+       ,{<<"Rate-Increment">>, RateIncrement}
+       ,{<<"Rate-Minimum">>, RateMinimum}
+       ,{<<"Discount-Percentage">>, DiscountPercentage}
+       ,{<<"Surcharge">>, Surcharge}
+       ,{<<"Rate-Name">>, RateName}
+       ,{<<"Rate-ID">>, RateId}
+       ,{<<"Base-Cost">>, BaseCost}
+      ]
+     ).
 
 -spec authorized(wh_json:object()) -> 'ok'.
 authorized(JObj) -> gen_server:cast(?SERVER, {'authorized', JObj}).
@@ -421,15 +585,23 @@ from_jobj(JObj) ->
     %% CHANNEL_CREATE has bunch of stuff in CCVs where as auth_resp
     %%  is root level, so if no CCVs then just use the JObj as is...
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, JObj),
-    #channel{call_id=wh_json:get_value(<<"Call-ID">>, JObj)
-             ,other_leg_call_id=wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
-             ,direction=wh_json:get_value(<<"Call-Direction">>, JObj)
-             ,account_id=wh_json:get_value(<<"Account-ID">>, CCVs)
-             ,account_billing=wh_json:get_value(<<"Account-Billing">>, CCVs)
-             ,reseller_id=wh_json:get_value(<<"Reseller-ID">>, CCVs)
-             ,reseller_billing=wh_json:get_value(<<"Reseller-Billing">>, CCVs)
-             ,soft_limit=wh_json:is_true(<<"Soft-Limit">>, JObj)
+    AccountBilling = wh_json:get_value(<<"Account-Billing">>, CCVs),
+    ResellerBilling = wh_json:get_value(<<"Reseller-Billing">>, CCVs),
+    #channel{call_id = wh_json:get_value(<<"Call-ID">>, JObj)
+             ,other_leg_call_id = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
+             ,direction = wh_json:get_value(<<"Call-Direction">>, JObj)
+             ,account_id = wh_json:get_value(<<"Account-ID">>, CCVs)
+             ,account_billing = AccountBilling
+             ,account_allotment = is_alloment(AccountBilling)
+             ,reseller_id = wh_json:get_value(<<"Reseller-ID">>, CCVs)
+             ,reseller_billing = ResellerBilling
+             ,reseller_allotment = is_alloment(ResellerBilling)
+             ,soft_limit = wh_json:is_true(<<"Soft-Limit">>, JObj)
             }.
+
+-spec is_alloment(ne_binary()) -> boolean().
+is_alloment(<<"allotment_", _/binary>>) -> 'true';
+is_alloment(_) -> 'false'.
 
 -type unique_channel() :: {ne_binary(), api_binary()}.
 -type unique_channels() :: [unique_channel(),...] | [].
@@ -510,3 +682,14 @@ calculate_consumed(CycleStart, Span, CurrentTimestamp, Timestamp) ->
         'true' -> Span;
         'false' -> Consumed
     end.
+
+-spec call_cost(channel()) -> non_neg_integer().
+call_cost(#channel{answered_timestamp='undefined'}=Channel) ->
+    wht_util:call_cost(billing_jobj(60, Channel));
+call_cost(#channel{answered_timestamp=Timestamp}=Channel) ->
+    BillingSeconds = wh_util:current_tstamp() - Timestamp + 60,    
+    wht_util:call_cost(billing_jobj(BillingSeconds, Channel)).
+
+-spec billing_jobj(non_neg_integer(), channel()) -> wh_json:object().
+billing_jobj(BillingSeconds, Channel) ->
+    wh_json:from_list([{<<"Billing-Seconds">>, BillingSeconds} | to_props(Channel)]).

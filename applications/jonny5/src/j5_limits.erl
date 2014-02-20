@@ -9,6 +9,7 @@
 
 -export([get/1]).
 -export([fetch/1]).
+-export([cached/0]).
 -export([to_props/1]).
 -export([account_id/1]).
 -export([enabled/1]).
@@ -95,6 +96,15 @@ fetch(Account) ->
     CacheProps = [{'origin', {'db', AccountDb}}],
     wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, CacheProps),
     Limits.
+
+-spec cached() -> [limits(),...] | [].
+cached() ->
+    [Limit
+     || {_, Limit} <- wh_cache:filter_local(?JONNY5_CACHE
+                                            ,fun(_, #limits{}) -> 'true';
+                                                (_, _) -> 'false' 
+                                             end)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public

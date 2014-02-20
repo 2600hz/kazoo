@@ -25,9 +25,7 @@ authorize(Request, Limits) ->
     Amount = j5_limits:reserve_amount(Limits),
     case maybe_credit_available(Amount, Limits) of
         'false' -> Request;
-        'true' ->
-            create_debit_transaction(<<"reservation">>, Amount, Request, Limits),
-            j5_request:authorize(<<"per_minute">>, Request, Limits)
+        'true' -> j5_request:authorize(<<"per_minute">>, Request, Limits)
     end.
 
 %%--------------------------------------------------------------------
@@ -45,13 +43,10 @@ reconcile_cdr(Request, Limits) ->
 
 -spec reconcile_call_cost(j5_request:request(), j5_limits:limits()) -> 'ok'.
 reconcile_call_cost(Request, Limits) ->
-    CallId = j5_request:call_id(Request),
-    AccountId = j5_limits:account_id(Limits),
-    Amount = wh_transactions:call_charges(AccountId, CallId)
-        - (j5_request:call_cost(Request) * -1),
-    case Amount > 0 of
-        'true' -> create_debit_transaction(<<"end">>, abs(Amount), Request, Limits);
-        'false' -> create_credit_transaction(<<"end">>, abs(Amount), Request, Limits)
+    case j5_request:call_cost(Request) of
+        0 -> 'ok';
+        Amount ->
+            create_debit_transaction(<<"end">>, Amount, Request, Limits)
     end.
 
 %%--------------------------------------------------------------------
@@ -63,7 +58,8 @@ reconcile_call_cost(Request, Limits) ->
 -spec maybe_credit_available(integer(), j5_limits:limits()) -> boolean().
 maybe_credit_available(Amount, Limits) ->
     AccountId = j5_limits:account_id(Limits),
-    Balance = wht_util:current_balance(AccountId),
+    Balance = wht_util:current_balance(AccountId)
+        - j5_channels:per_minute_cost(AccountId),
     maybe_prepay_credit_available(Balance, Amount, Limits)
         orelse maybe_postpay_credit_available(Balance, Amount, Limits).
 
@@ -147,41 +143,6 @@ create_debit_transaction(Event, Amount, Request, Limits) ->
     wh_transaction:save(
       lists:foldl(fun(F, T) -> F(T) end
                   ,wh_transaction:debit(LedgerId, Amount)
-                  ,Routines
-                 )
-     ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec create_credit_transaction(ne_binary(), integer(), j5_request:request(), j5_limits:limits()) -> any().
-create_credit_transaction(Event, Amount, Request, Limits) ->
-    LedgerId = j5_limits:account_id(Limits),
-    lager:debug("creating credit transaction in ledger ~s for $~w"
-                ,[LedgerId, wht_util:units_to_dollars(Amount)]),
-    Routines = [fun(T) ->
-                        case j5_request:account_id(Request) of
-                            LedgerId ->   
-                                wh_transaction:set_reason(<<"per_minute_call">>, T);
-                            AccountId ->
-                                T1 = wh_transaction:set_reason(<<"sub_account_per_minute_call">>, T),
-                                wh_transaction:set_sub_account_id(AccountId, T1)
-                        end
-                end
-                ,fun(T) -> wh_transaction:set_event(Event, T) end
-                ,fun(T) -> wh_transaction:set_call_id(j5_request:call_id(Request), T) end
-                ,fun(T) ->  wh_transaction:set_description(<<"per minute call">>, T) end
-                ,fun(T) when Event =:= <<"end">> ->
-                         wh_transaction:set_metadata(metadata(Request), T);
-                    (T) -> T
-                 end
-               ],
-    wh_transaction:save(
-      lists:foldl(fun(F, T) -> F(T) end
-                  ,wh_transaction:credit(LedgerId, Amount)
                   ,Routines
                  )
      ).
