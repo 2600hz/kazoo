@@ -9,7 +9,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/2]).
+-export([start_link/3]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -39,8 +39,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Parent, Params) ->
-    Broker = <<"amqp://guest:guest@10.26.0.82:5672">>,
+start_link(Parent, Broker, Params) ->
     gen_listener:start_link(?MODULE, Params, [Parent, Broker]).
 
 %%%===================================================================

@@ -321,13 +321,13 @@ init(Module, Params, ModState, TimeoutRef) ->
          || {Mod, Events} <- Responders
         ],
     _ = wh_amqp_channel:requisition(),
-    case maybe_start_federator(Params) of
-        {'ok', Federator} ->
+    case maybe_start_federators(Params) of
+        {'ok', Federators} ->
             {'ok', #state{module=Module
                           ,module_state=ModState
                           ,module_timeout_ref=TimeoutRef
                           ,params=Params
-                          ,federators=[Federator]
+                          ,federators=Federators
                           ,bindings=props:get_value('bindings', Params, [])
                          }};
         _Else ->
@@ -622,15 +622,23 @@ code_change(_OldVersion, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_start_federator(wh_proplist()) -> 'ok'.
-maybe_start_federator(Params) ->
+-spec maybe_start_federators(wh_proplist()) -> pids().
+maybe_start_federators(Params) ->
     Bindings = props:get_value('bindings', Params, []),
     case get_federated_bindings(Bindings) of
         [] -> 'ok';
         FederateBindings ->
             FederateParams = create_federated_params(FederateBindings, Params),
-            listener_federator:start_link(self(), FederateParams)
+            FederatedBrokers = wh_amqp_connections:federated_brokers(),
+            start_federators(FederatedBrokers, FederateParams, [])
     end.
+
+-spec start_federators(ne_binaries(), wh_proplist(), pids()) -> pids().
+start_federators([], _, Pids) -> Pids;
+start_federators([Broker|Brokers], FederateParams, Pids) ->
+    Pid = listener_federator:start_link(self(), Broker, FederateParams),
+    start_federators(Brokers, FederateParams, [Pid|Pids]).
+
 
 -spec get_federated_bindings(wh_proplist()) -> wh_proplist().
 get_federated_bindings(Bindings) ->

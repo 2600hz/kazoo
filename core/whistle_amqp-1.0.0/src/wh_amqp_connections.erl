@@ -20,6 +20,7 @@
 -export([broker_connections/1]).
 -export([broker_available_connections/1]).
 -export([primary_broker/0]).
+-export([federated_brokers/0]).
 -export([available/1]).
 -export([unavailable/1]).
 -export([is_available/0]).
@@ -158,6 +159,20 @@ primary_broker() ->
         [] -> 'undefined';
         [Broker|_] -> Broker
     end.
+
+-spec federated_brokers() -> ne_binaries().
+federated_brokers() ->
+    Pattern = #wh_amqp_connections{federation='true'
+                                   ,broker='$1'
+                                   ,_='_'
+                                  },
+    sets:to_list(
+      sets:from_list(
+        [Broker
+         || [Broker] <- ets:match(?TAB, Pattern)
+        ]
+       )
+     ).
 
 -spec is_available() -> boolean().
 is_available() -> primary_broker() =/= 'undefined'.
