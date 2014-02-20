@@ -66,7 +66,10 @@ maybe_authorize_channel(Props, Node) ->
                                  ,'false'),
             'false';
         _Else ->
-            maybe_channel_recovering(Props, CallId, Node)
+            case props:get_value(<<"Hunt-Destination-Number">>, Props) of
+                <<"conference">> -> 'true';
+                _Else -> maybe_channel_recovering(Props, CallId, Node)
+            end
     end.
 
 -spec maybe_channel_recovering(wh_proplist(), ne_binary(), atom()) -> boolean().
