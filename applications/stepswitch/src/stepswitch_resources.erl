@@ -56,7 +56,7 @@
           ,t38_setting = 'false' :: boolean()
           ,codecs = [] :: ne_binaries()
           ,bypass_media = 'false' :: boolean()
-          ,destination_formatters :: api_objects()
+          ,formatters :: api_objects()
          }).
 
 -type resource() :: #resrc{}.
@@ -100,7 +100,7 @@ resource_to_props(#resrc{}=Resource) ->
        ,{<<"Flags">>, Resource#resrc.flags}
        ,{<<"Codecs">>, Resource#resrc.codecs}
        ,{<<"Rules">>, Resource#resrc.raw_rules}
-       ,{<<"Destination-Formatters">>, Resource#resrc.destination_formatters}
+       ,{<<"Formatters">>, Resource#resrc.formatters}
       ]).
 
 -spec sort_resources(resources()) -> resources().
@@ -232,7 +232,6 @@ search_resources(_IP, _Realm, []) ->
 search_resources(IP, Realm, [#resrc{id=Id
                                     ,gateways=Gateways
                                     ,global=Global
-                                    ,destination_formatters=Formatters
                                    }
                              | Resources
                             ]) ->
@@ -245,7 +244,6 @@ search_resources(IP, Realm, [#resrc{id=Id
                        ,{'realm', Gateway#gateway.realm}
                        ,{'username', Gateway#gateway.username}
                        ,{'password', Gateway#gateway.password}
-                       ,{'destination_formatters', Formatters}
                       ]),
             {'ok', Props}
     end.
@@ -568,7 +566,7 @@ resource_from_jobj(JObj) ->
                       ,is_emergency=resource_is_emergency(JObj)
                       ,codecs=resource_codecs(JObj)
                       ,bypass_media=resource_bypass_media(JObj)
-                      ,destination_formatters=resource_destination_formatters(JObj)
+                      ,formatters=resource_formatters(JObj)
                      },
     Gateways = gateways_from_jobjs(wh_json:get_value(<<"gateways">>, JObj, [])
                                    ,Resource),
@@ -579,10 +577,10 @@ resource_bypass_media(JObj) ->
     Default = whapps_config:get_is_true(<<"stepswitch">>, <<"default_bypass_media">>, 'false'),
     wh_json:is_true([<<"media">>, <<"bypass_media">>], JObj, Default).
 
--spec resource_destination_formatters(wh_json:object()) -> api_objects().
-resource_destination_formatters(JObj) ->
-    Default = whapps_config:get(<<"stepswitch">>, <<"default_destination_formatters">>),
-    wh_json:get_value(<<"destination_formatters">>, JObj, Default).
+-spec resource_formatters(wh_json:object()) -> api_objects().
+resource_formatters(JObj) ->
+    Default = whapps_config:get(<<"stepswitch">>, <<"default_formatters">>),
+    wh_json:get_value(<<"formatters">>, JObj, Default).
 
 -spec resource_codecs(wh_json:object()) -> ne_binaries().
 resource_codecs(JObj) ->
