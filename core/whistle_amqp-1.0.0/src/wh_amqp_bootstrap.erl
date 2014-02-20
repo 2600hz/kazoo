@@ -60,7 +60,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     put('callid', ?LOG_SYSTEM_ID),
-    add_brokers(get_config()),
+    add_zones(get_config()),
     lager:info("waiting for first amqp connection...", []),
     wh_amqp_connections:wait_for_available(),
     timer:sleep(2000),
@@ -141,26 +141,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec add_brokers(ne_binaries()) -> 'ok'.
-add_brokers([]) -> 'ok';
-add_brokers([{'local', Brokers}|Zones]) -> 
-    _ = add_local_brokers(Brokers),    
-    add_brokers(Zones);
-add_brokers([{_, Brokers}|Zones]) -> 
-    _ = add_federated_brokers(Brokers),
-    add_brokers(Zones).
-    
--spec add_local_brokers(ne_binaries()) -> 'ok'.
-add_local_brokers([]) -> 'ok';
-add_local_brokers([Broker|Brokers]) ->
-    _ = wh_amqp_connections:add(Broker, 'false'),
-    add_local_brokers(Brokers).
+-spec add_zones(ne_binaries()) -> 'ok'.
+add_zones([]) -> 'ok';
+add_zones([{ZoneName, Brokers}|Zones]) -> 
+    _ = add_brokers(Brokers, ZoneName),
+    add_zones(Zones).
 
--spec add_federated_brokers(ne_binaries()) -> 'ok'.    
-add_federated_brokers([]) -> 'ok';
-add_federated_brokers([Broker|Brokers]) ->
-    _ = wh_amqp_connections:add(Broker, 'true'),
-    add_federated_brokers(Brokers).
+-spec add_brokers(ne_binaries(), atom()) -> 'ok'.
+add_brokers([], _) -> 'ok';
+add_brokers([Broker|Brokers], ZoneName) ->
+    _ = wh_amqp_connections:add(Broker, ZoneName),
+    add_brokers(Brokers, ZoneName).
 
 -spec get_config() -> wh_proplist().
 get_config() ->
@@ -178,8 +169,7 @@ get_from_zone(ZoneName) ->
     Zones = wh_config:get('zone'),
     Props = dict:to_list(get_from_zone(ZoneName, Zones, dict:new())),
     case props:get_value('local', Props, []) of
-        [] -> 
-            [{'local', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}|Props];
+        [] -> [{'local', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}|Props];
         _Else -> Props
     end.
 

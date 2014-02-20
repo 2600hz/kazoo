@@ -37,14 +37,14 @@
 %% @end
 %%--------------------------------------------------------------------
 add_broker(Broker) ->
-    add_broker(Broker, 'false').
+    add_broker(Broker, 'local').
 
-add_broker(Broker, Federation) when not is_binary(Broker) ->
-    add_broker(wh_util:to_binary(Broker), Federation);
-add_broker(Broker, Federation) when not is_boolean(Federation) ->
-    add_broker(Broker, wh_util:is_true(Federation));
-add_broker(Broker, Federation) ->
-    case wh_amqp_connections:new(Broker, Federation) of
+add_broker(Broker, Zone) when not is_binary(Broker) ->
+    add_broker(wh_util:to_binary(Broker), Zone);
+add_broker(Broker, Zone) when not is_atom(Zone) ->
+    add_broker(Broker, wh_util:to_atom(Zone, 'true'));
+add_broker(Broker, Zone) ->
+    case wh_amqp_connections:new(Broker, Zone) of
         {'error', 'exists'} ->
             io:format("ERROR: broker ~s currently has ~p connection(s) of which ~p is/are available~n"
                       ,[Broker
@@ -79,14 +79,14 @@ remove_broker(Broker) ->
 %% @end
 %%--------------------------------------------------------------------
 add_connection(Broker) ->
-    add_connection(Broker, 'false').
+    add_connection(Broker, 'local').
 
-add_connection(Broker, Federation) when not is_binary(Broker) ->
-    add_connection(wh_util:to_binary(Broker), Federation);
-add_connection(Broker, Federation) when not is_boolean(Federation) ->
-    add_connection(Broker, wh_util:is_true(Federation));
-add_connection(Broker, Federation) ->
-    case wh_amqp_connections:add(Broker, Federation) of
+add_connection(Broker, Zone) when not is_binary(Broker) ->
+    add_connection(wh_util:to_binary(Broker), Zone);
+add_connection(Broker, Zone) when not is_atom(Zone) ->
+    add_connection(Broker, wh_util:to_atom(Zone, 'true'));
+add_connection(Broker, Zone) ->
+    case wh_amqp_connections:add(Broker, Zone) of
         {'error', Reason} ->
             io:format("unable to add broker ~s: ~p~n"
                       ,[Broker, Reason]),
@@ -201,7 +201,7 @@ log_invalid_assignment(#wh_amqp_assignment{}=Assignment) ->
 %%--------------------------------------------------------------------
 connection_summary() ->
     io:format("+--------------------------------------------------+------------------+----------+-----------+------------+---------+~n"),
-    io:format("| Broker                                           |    Connection    | Channels | Available | Federation | Primary |~n"),
+    io:format("| Broker                                           |    Connection    | Channels | Available | Zone       | Primary |~n"),
     io:format("+==================================================+==================+==========+===========+============+=========+~n"),
     PrimaryBroker = wh_amqp_connections:primary_broker(),
     Pattern = #wh_amqp_connections{_='_'},
@@ -211,7 +211,7 @@ connection_summary('$end_of_table', _) -> 'ok';
 connection_summary({[#wh_amqp_connections{connection=Connection
                                           ,broker=Broker
                                           ,available=Available
-                                          ,federation=Federation}
+                                          ,zone=Zone}
                    ], Continuation}, PrimaryBroker) ->
     MatchSpec = [{#wh_amqp_assignment{connection=Connection
                                       ,_='_'},
@@ -223,7 +223,7 @@ connection_summary({[#wh_amqp_connections{connection=Connection
                 ,Connection
                 ,ets:select_count(?ASSIGNMENTS, MatchSpec)
                 ,Available
-                ,Federation
+                ,Zone
                 ,Broker =:= PrimaryBroker
                ]),
     io:format("+--------------------------------------------------+------------------+----------+-----------+------------+---------+~n"),
@@ -258,8 +258,15 @@ broker_summary([Broker|Brokers]) ->
     _ = broker_summary_assigned_float(Broker),
     _ = broker_summary_unassigned_float(Broker),
     _ = broker_summary_prechannels(Broker),
+    _ = broker_summary_zone(Broker),
     io:format("+--------------------------------------------------+-------------+-----------------------+-----------------------+-------------+~n"),
     broker_summary(Brokers).
+
+broker_summary_zone('undefined') ->
+    io:format("|                                                  |             |          |            |          |            |             |~n", []);
+broker_summary_zone(Broker) ->
+    Zone = wh_amqp_connections:broker_zone(Broker),
+    io:format("|  Zone: ~-41s |             |          |            |          |            |             |~n", [Zone]).
 
 broker_summary_broker('undefined') ->
     io:format("| ~-48s |", [<<"ANY">>]);
