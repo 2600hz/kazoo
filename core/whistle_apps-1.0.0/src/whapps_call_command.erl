@@ -239,7 +239,7 @@ b_channel_status(ChannelId) when is_binary(ChannelId) ->
     Resp = wh_amqp_worker:call_collect('whapps_amqp_pool'
                                        ,Command
                                        ,fun(C) -> wapi_call:publish_channel_status_req(ChannelId, C) end
-                                       ,{'ecallmgr', fun wapi_call:channel_status_resp_v/1}
+                                       ,{'ecallmgr', 'true'}
                                       ),
     case Resp of
         {'error', _}=E -> E;
