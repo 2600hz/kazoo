@@ -135,10 +135,11 @@ request_channel_authorization(Props, CallId, Node) ->
     case ReqResp of
         {'error', _R} ->
             lager:debug("authz request lookup failed: ~p", [_R]),
-            maybe_deny_call(Props, CallId, Node);
+            authz_default(Props, CallId, Node);
         {'ok', JObj} -> authz_response(JObj, Props, CallId, Node)
     end.
 
+-spec authz_response(wh_json:object(), wh_proplist(), ne_binary(), atom()) -> boolean().
 authz_response(JObj, Props, CallId, Node) ->
     case wh_json:is_true(<<"Is-Authorized">>, JObj)
         orelse wh_json:is_true(<<"Soft-Limit">>, JObj)
@@ -230,15 +231,12 @@ rate_channel(Props, Node) ->
         {'ok', RespJObj} -> set_rating_ccvs(RespJObj, Node)
     end.
 
--spec authz_default() -> {'ok', ne_binary()} | {'error', 'account_limited'}.
+-spec authz_default(wh_proplist(), ne_binary(), atom()) -> {'ok', ne_binary()} | boolean().
 %% TODO: fix use of authz_default
-authz_default() ->
+authz_default(Props, CallId, Node) ->
     case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) of
-        <<"deny">> -> {'error', 'account_limited'};
-        _Else ->
-            DefaultType = ecallmgr_config:get(<<"authz_default_type">>, <<"per_minute">>),
-            lager:debug("authorizing channel as config ecallmgr.authz_default_type: '~s'", [DefaultType]),
-            {'ok', DefaultType}
+        <<"deny">> -> maybe_deny_call(Props, CallId, Node);
+        _Else -> allow_call(Props, CallId, Node)
     end.
 
 -spec set_rating_ccvs(wh_json:object(), atom()) -> 'ok'.
