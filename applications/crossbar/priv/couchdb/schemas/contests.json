@@ -1,0 +1,63 @@
+{
+    "_id":"contests"
+    ,"$schema":"http://json-schema.org/draft-03/schema#"
+    ,"id":"http://json-schema.org/draft-03/schema#"
+    ,"description":"Contests - Caller 10 wins a prize"
+    ,"properties":{
+        "name":{
+            "name":"Name"
+            ,"description":"A friendly name for the contest"
+            ,"required":"true"
+            ,"type":"string"
+            ,"minLength":1
+            ,"maxLength":128
+        }
+        ,"prior_time":{
+            "name":"Prior Time"
+            ,"description":"What time (in gregorian seconds) should CallerTen start answering the configured phone numbers"
+            ,"type":"integer"
+        }
+        ,"prior_media_id":{
+            "name":"Prior Time Media"
+            ,"description":"What media file should be played if a caller calls in before the promotion has begun"
+            ,"type":"string"
+        }
+        ,"start_time":{
+            "name":"Start Time"
+            ,"description":"What time (in gregorian seconds) should CallerTen start the contest"
+            ,"type":"integer"
+            ,"required":true
+        }
+        ,"winning_media_id":{
+            "name":"Winning Media"
+            ,"description":"What media file should be played to the winner of the contest"
+            ,"type":"string"
+        }
+        ,"non_winning_media_id":{
+            "name":"Non Winning Media"
+            ,"description":"What media file to play for callers before the contest is won"
+            ,"type":"string"
+        }
+        ,"end_time":{
+            "name":"End Time"
+            ,"description":"What time (in gregorian seconds) should CallerTen stop the contest if no winner is found"
+            ,"type":"integer"
+        }
+        ,"after_time":{
+            "name":"After Time"
+            ,"description":"What time (in gregorian seconds) should CallerTen stop answering calls after a winner is found"
+            ,"type":"integer"
+        }
+        ,"after_media_id":{
+            "name":"After Media"
+            ,"description":"What media file to play to callers after a winner has won the contest"
+            ,"type":"string"
+        }
+        ,"winning_caller_number":{
+            "name":"Winning Caller Number"
+            ,"description":"The Nth caller to call in wins!"
+            ,"type":"integer"
+            ,"required":true
+        }
+    }
+}
