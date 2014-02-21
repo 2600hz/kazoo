@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -13,7 +13,9 @@
 -export([start_module/1]).
 -export([stop_module/1]).
 -export([running_modules/0]).
--export([refresh/0, refresh/1]).
+-export([refresh/0, refresh/1
+         ,refresh_schemas/0
+        ]).
 -export([find_account_by_number/1]).
 -export([find_account_by_name/1]).
 -export([find_account_by_realm/1]).
@@ -98,6 +100,9 @@ refresh() ->
 
 refresh(Value) ->
     io:format("please use whapps_maintenance:refresh(~p).", [Value]).
+
+refresh_schemas() ->
+    whapps_maintenance:refresh(?WH_SCHEMA_DB).
 
 %%--------------------------------------------------------------------
 %% @public
