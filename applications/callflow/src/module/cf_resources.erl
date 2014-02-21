@@ -62,6 +62,7 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
                             ,{<<"Account-ID">>, whapps_call:account_id(Call)}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
+                            ,{<<"Originating-ID">>,whapps_call:authorizing_id(Call)}                           
                             ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
                             ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
                             ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}

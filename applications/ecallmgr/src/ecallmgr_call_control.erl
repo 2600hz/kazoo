@@ -968,8 +968,10 @@ get_module(Category, Name) ->
 	try wh_util:to_atom(ModuleName) of
 		Module -> Module
 	catch
-		'error':'undef' ->
-			wh_util:to_atom(ModuleName,'true')
+        'error':'badarg' ->
+            wh_util:to_atom(ModuleName,'true');
+        What:Why -> lager:debug("get_module ~s atom error ~p/~p",
+                                [ModuleName,What,Why])
 	end.
 
 %%--------------------------------------------------------------------
