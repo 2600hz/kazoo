@@ -352,7 +352,7 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
                                   ,<<"Event-Name">>
                                  ], Props)
     of
-        <<"whistle::", _/binary>> -> 
+        <<"whistle::", _/binary>> ->
             {'noreply', handle_execute_complete(Application, JObj, State)};
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
             {'noreply', handle_execute_complete(Application, JObj, State)};
@@ -361,7 +361,7 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
         <<"CHANNEL_DESTROY">> ->
             case wh_json:is_true(<<"Channel-Moving">>, JObj) of
                 'false' -> {'noreply', handle_channel_destroyed(JObj, State)};
-                'true' -> 
+                'true' ->
                     lager:debug("channel destroy while moving to other node, deferring to new controller"),
                     {'stop', 'normal', State}
             end;
@@ -426,7 +426,7 @@ handle_info('nodedown_restart_exceeded', #state{is_node_up='false'}=State) ->
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
-    
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -508,7 +508,7 @@ call_control_ready(Q, #state{callid=CallId
 %% @doc
 %%
 %% @end
-%%--------------------------------------------------------------------    
+%%--------------------------------------------------------------------
 -spec handle_channel_destroyed(wh_json:object(), state()) -> state().
 handle_channel_destroyed(_,  #state{sanity_check_tref=SCTRef
                                     ,current_app=CurrentApp
@@ -765,7 +765,7 @@ publish_leg_removal(Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_dialplan(wh_json:obejct(), state()) -> state().
+-spec handle_dialplan(wh_json:object(), state()) -> state().
 handle_dialplan(JObj, #state{callid=CallId
                              ,is_node_up=INU
                              ,is_call_up=CallUp
@@ -964,13 +964,13 @@ is_post_hangup_command(AppName) ->
 
 -spec get_module(ne_binary(), ne_binary()) -> atom().
 get_module(Category, Name) ->
-	ModuleName = <<"ecallmgr_", Category/binary, "_", Name/binary>>,
-	try wh_util:to_atom(ModuleName) of
-		Module -> Module
-	catch
-		'error':'undef' ->
-			wh_util:to_atom(ModuleName,'true')
-	end.
+        ModuleName = <<"ecallmgr_", Category/binary, "_", Name/binary>>,
+        try wh_util:to_atom(ModuleName) of
+                Module -> Module
+        catch
+                'error':'undef' ->
+                        wh_util:to_atom(ModuleName,'true')
+        end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -989,7 +989,7 @@ execute_control_request(Cmd, #state{node=Node
                                                        ,wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
                                                       ]),
         Mod = get_module(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>),
-						 wh_json:get_value(<<"Event-Name">>, Cmd, <<>>)),
+                                                 wh_json:get_value(<<"Event-Name">>, Cmd, <<>>)),
         Mod:exec_cmd(Node, CallId, Cmd, self())
     catch
         _:{'error', 'nosession'} ->

@@ -49,8 +49,7 @@ version(Node, Timeout) ->
 
 noevents(Node) ->
     try gen_server:cast({'mod_kazoo', Node}, 'noevents') of
-        'timeout' -> {'error', 'timeout'};
-        Result -> Result
+        'ok' -> 'ok'
     catch
         _E:_R ->
             lager:info("failed to send noevents to ~s: ~p ~p"

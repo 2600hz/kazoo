@@ -25,10 +25,10 @@
 authorize(Props, CallId, Node) ->
     put('callid', CallId),
     case maybe_authorize_channel(Props, Node) of
-        'true' -> 
+        'true' ->
             lager:debug("channel is authorized", []),
             'true';
-        'false' -> 
+        'false' ->
             lager:debug("channel is not authorized", []),
             'false'
     end.
@@ -60,14 +60,14 @@ maybe_authorize_channel(Props, Node) ->
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,{'true', wh_json:new()}),
             'true';
-        <<"false">> -> 
+        <<"false">> ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,'false'),
             'false';
         _Else ->
             case props:get_value(<<"Hunt-Destination-Number">>, Props) of
-                <<"conference">> -> 
+                <<"conference">> ->
                     wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
                                  ,{'true', wh_json:new()}),
@@ -114,7 +114,7 @@ is_consuming_resource(Props, CallId, Node) ->
                     allow_call(Props, CallId, Node)
             end;
         <<"inbound">> ->
-            case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= 'undefined' 
+            case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= 'undefined'
                 orelse props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props) =:= <<"resource">>
             of
                 'true' -> request_channel_authorization(Props, CallId, Node);
@@ -140,7 +140,7 @@ request_channel_authorization(Props, CallId, Node) ->
     end.
 
 authz_response(JObj, Props, CallId, Node) ->
-    case wh_json:is_true(<<"Is-Authorized">>, JObj) 
+    case wh_json:is_true(<<"Is-Authorized">>, JObj)
         orelse wh_json:is_true(<<"Soft-Limit">>, JObj)
     of
         'true' -> authorize_account(JObj, Props, CallId, Node);
@@ -231,7 +231,7 @@ rate_channel(Props, Node) ->
     end.
 
 -spec authz_default() -> {'ok', ne_binary()} | {'error', 'account_limited'}.
-%% TODO: fix use of authz_defualt
+%% TODO: fix use of authz_default
 authz_default() ->
     case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) of
         <<"deny">> -> {'error', 'account_limited'};

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Track the FreeSWITCH channel information, and provide accessors
 %%% @end
@@ -246,7 +246,7 @@ handle_query_channels(JObj, _Props) ->
     Resp = [{<<"Channels">>, query_channels(Fields)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],    
+           ],
     wapi_call:publish_query_channels_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec handle_channel_status(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -518,13 +518,16 @@ find_account_channels(AccountId) ->
                    ]}
     end.
 
--spec build_matchspec_ors(ne_binaries()) -> term().
+-spec build_matchspec_ors(ne_binaries()) -> tuple() | 'false'.
 build_matchspec_ors(Usernames) ->
-    lists:foldl(fun(Username, Acc) -> 
-                        {'or', {'=:=', '$1', wh_util:to_lower_binary(Username)}, Acc}
-                end
+    lists:foldl(fun build_matchspec_ors_fold/2
                 ,'false'
-                ,Usernames).
+                ,Usernames
+               ).
+
+-spec build_matchspec_ors_fold(ne_binary(), tuple() | 'false') -> tuple().
+build_matchspec_ors_fold(Username, Acc) ->
+    {'or', {'=:=', '$1', wh_util:to_lower_binary(Username)}, Acc}.
 
 -spec query_channels(ne_binaries()) -> wh_json:object().
 query_channels(Fields) ->
@@ -532,7 +535,8 @@ query_channels(Fields) ->
                    ,Fields
                    ,wh_json:new()).
 
--spec query_channels({[channel()], ets:continuation()}, ne_binaries(), wh_json:object()) -> wh_json:object().
+-spec query_channels({[channel()], ets:continuation()}, ne_binary() | ne_binaries(), wh_json:object()) ->
+                            wh_json:object().
 query_channels('$end_of_table', _, Channels) -> Channels;
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}
                 ,<<"all">>, Channels) ->
