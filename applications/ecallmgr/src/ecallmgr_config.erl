@@ -134,20 +134,20 @@ get_boolean(Key, Default, Node) ->
         N -> wh_util:to_boolean(N)
     end.
 
--spec is_true(wh_json:key()) -> api_boolean().
+-spec is_true(wh_json:key()) -> boolean().
 -spec is_true(wh_json:key(), Default) -> boolean() | Default.
 -spec is_true(wh_json:key(), Default, wh_json:key() | atom()) -> boolean() | Default.
 is_true(Key) ->
-    is_true(Key, 'undefined').
+    wh_util:is_true(?MODULE:get(Key)).
 
 is_true(Key, Default) ->
-    case get(Key, Default) of
+    case ?MODULE:get(Key, Default) of
         Default -> Default;
         N -> wh_util:is_true(N)
     end.
 
 is_true(Key, Default, Node) ->
-    case get(Key, Default, Node) of
+    case ?MODULE:get(Key, Default, Node) of
         Default -> Default;
         N -> wh_util:is_true(N)
     end.
