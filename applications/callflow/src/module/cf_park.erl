@@ -77,9 +77,9 @@ handle(Data, Call) ->
                     Slot = create_slot(cf_exe:callid(Call), Call),
                     case retrieve(SlotNumber, ParkedCalls, Call) of
                         {'error', _} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call);
-                        {'ok', 'channel_hungup'} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call)
-                    end,
-                    cf_exe:continue(Call)
+                        {'ok', 'channel_hungup'} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call);
+                        {'ok', _} -> cf_exe:continue(Call)
+                    end
             end;
         'nomatch' ->
             lager:info("call was the result of a blind transfer, assuming intention was to park"),
@@ -324,11 +324,11 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                                     {'error', atom()}.
 maybe_resolve_conflict(SlotNumber, Slot, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    {'ok', JObj} = couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME),
-    {'ok', JObj}=Ok = couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, JObj)),
+    {'ok', JObj1} = couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME),
+    {'ok', JObj2}=Ok = couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, JObj1)),
     lager:info("successfully stored call parking data for slot ~s", [SlotNumber]),
     CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-    wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
+    wh_cache:store_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
     Ok.
 
 %%--------------------------------------------------------------------
