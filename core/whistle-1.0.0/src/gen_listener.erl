@@ -165,7 +165,7 @@
 
 -callback handle_event(wh_json:object(), module_state()) ->
     handle_event_return().
-    
+
 -callback terminate('normal' | 'shutdown' | {'shutdown', term()} | term(), module_state()) ->
     term().
 -callback code_change(term() | {'down', term()}, module_state(), term()) ->
@@ -642,7 +642,7 @@ start_federators([Broker|Brokers], FederateParams, Pids) ->
 
 -spec get_federated_bindings(wh_proplist()) -> wh_proplist().
 get_federated_bindings(Bindings) ->
-    lists:foldr(fun({Binding, Props}, Federate) ->                             
+    lists:foldr(fun({Binding, Props}, Federate) ->
                         case props:get_is_true('federate', Props, 'false') of
                             'false' -> Federate;
                             'true' ->
@@ -669,8 +669,16 @@ federated_queue_name(Params) ->
     case wh_util:is_empty(QueueName) of
         'true' -> QueueName;
         'false' ->
-            %% TODO: fix the hardcoded zone name
-            <<QueueName/binary, "-zone1">>
+            [Zone] = wh_config:get(get_node_section_name(), 'zone'),
+            <<QueueName/binary, "-", (wh_util:to_binary(Zone))/binary>>
+    end.
+
+-spec get_node_section_name() -> atom().
+get_node_section_name() ->
+    Node = wh_util:to_binary(node()),
+    case binary:split(Node, <<"@">>) of
+        [Name, _] -> wh_util:to_atom(Name, 'true');
+        _Else -> node()
     end.
 
 handle_callback_info(Message, #state{module=Module
