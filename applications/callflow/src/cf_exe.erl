@@ -449,16 +449,16 @@ handle_event(JObj, #state{cf_module_pid=PidRef
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
             ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-            TrasferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
-            _ = case ExeFetchId =:= TrasferFetchId of
+            TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+            _ = case ExeFetchId =:= TransferFetchId of
                     'false' -> 'ok';
                     'true' -> transfer(Call)
                 end,
             'ignore';
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, _} ->
             ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-            TrasferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
-            case ExeFetchId =:= TrasferFetchId of
+            TransferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+            case ExeFetchId =:= TransferFetchId of
                 'false' -> 'ignore';
                 'true' ->
                     ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
