@@ -458,13 +458,15 @@ handle_event(JObj, #state{cf_module_pid=PidRef
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, _} ->
             ExeFetchId = whapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
             TrasferFetchId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
-            _ = case ExeFetchId =:= TrasferFetchId of
-                    'false' -> 'ok';
-                    'true' ->
-                        ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
-                        callid_update(ReplacedBy, Call)
-                end,
-            'ignore';
+            case ExeFetchId =:= TrasferFetchId of
+                'false' -> 'ignore';
+                'true' ->
+                    ReplacedBy = wh_json:get_value(<<"Replaced-By">>, JObj),
+                    callid_update(ReplacedBy, Call),
+                    {'reply', [{'cf_module_pid', get_pid(PidRef)}
+                               ,{'cf_event_pids', Others}
+                              ]}
+            end;
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             _ = case whapps_call:custom_channel_var(<<"Fetch-ID">>, Call)
                     =:= wh_json:get_value(<<"Fetch-ID">>, JObj)
@@ -487,8 +489,9 @@ handle_event(JObj, #state{cf_module_pid=PidRef
             {'reply', [{'cf_module_pid', get_pid(PidRef)}
                        ,{'cf_event_pids', Others}
                       ]};
-        {_, _Else} when Others =:= [] ->
-            lager:info("received event from call ~s while relaying for ~s, dropping", [_Else, CallId]),
+        {{_Cat, _Name}, _Else} when Others =:= [] ->
+            lager:info("received ~s (~s) from call ~s while relaying for ~s"
+                       , [_Cat, _Name, _Else, CallId]),
             'ignore';
         {_Evt, _Else} ->
             lager:info("the others want to know about ~p", [_Evt]),

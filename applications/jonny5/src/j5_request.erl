@@ -44,6 +44,7 @@
 -export([timestamp/1]).
 -export([message_id/1]).
 -export([server_id/1]).
+-export([classification/1]).
 -export([number/1]).
 -export([per_minute_cost/1]).
 -export([call_cost/1]).
@@ -65,6 +66,8 @@
                   ,sip_request :: api_binary()
                   ,message_id :: api_binary()
                   ,server_id :: api_binary()
+                  ,classification :: api_binary()
+                  ,number :: api_binary()
                   ,billing_seconds = 0 :: non_neg_integer()
                   ,answered_time = 0 :: non_neg_integer()
                   ,timestamp = 0 :: non_neg_integer()
@@ -82,6 +85,8 @@
 -spec from_jobj(wh_json:object()) -> request().
 from_jobj(JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    Request = wh_json:get_value(<<"Request">>, JObj),
+    [Number|_] = binary:split(Request, <<"@">>),
     #request{account_id = wh_json:get_ne_value(<<"Account-ID">>, CCVs)
              ,account_billing = wh_json:get_ne_value(<<"Account-Billing">>, CCVs, <<"limits_enforced">>)
              ,reseller_id = wh_json:get_ne_value(<<"Reseller-ID">>, CCVs)
@@ -91,12 +96,14 @@ from_jobj(JObj) ->
              ,other_leg_call_id = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
              ,sip_to = wh_json:get_ne_value(<<"To">>, JObj)
              ,sip_from = wh_json:get_ne_value(<<"From">>, JObj)
-             ,sip_request = wh_json:get_value(<<"Request">>, JObj)
+             ,sip_request = Request
              ,message_id = wh_json:get_value(<<"Msg-ID">>, JObj)
              ,server_id = wh_json:get_value(<<"Server-ID">>, JObj)
              ,billing_seconds = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
              ,answered_time = wh_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
              ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())
+             ,classification = wnm_util:classify_number(Number)
+             ,number = Number
              ,request_jobj = JObj}.
 
 %%--------------------------------------------------------------------
@@ -360,10 +367,17 @@ server_id(#request{server_id=ServerId}) -> ServerId.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec classification(#request{}) -> ne_binary().
+classification(#request{classification=Classification}) -> Classification.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec number(#request{}) -> ne_binary().
-number(#request{sip_request=SIPRequest}) ->
-    [Number|_] = binary:split(SIPRequest, <<"@">>),
-    Number.
+number(#request{number=Number}) -> Number.
 
 %%--------------------------------------------------------------------
 %% @public

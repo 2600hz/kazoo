@@ -262,14 +262,18 @@ handle_channel_status(JObj, _Props) ->
             Node = wh_json:get_binary_value(<<"node">>, Channel),
             [_, Hostname] = binary:split(Node, <<"@">>),
             lager:debug("channel is on ~s", [Hostname]),
-            Resp = [{<<"Call-ID">>, CallId}
-                    ,{<<"Status">>, <<"active">>}
-                    ,{<<"Switch-Hostname">>, Hostname}
-                    ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
-                    ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
+            Resp =
+                props:filter_undefined(
+                  [{<<"Call-ID">>, CallId}
+                   ,{<<"Status">>, <<"active">>}
+                   ,{<<"Switch-Hostname">>, Hostname}
+                   ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+                   ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
+                   ,{<<"Other-Leg-Call-ID">>, wh_json:get_value(<<"other_leg">>, Channel)}
+                   ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  ]
+                 ),
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 

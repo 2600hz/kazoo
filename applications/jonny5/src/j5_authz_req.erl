@@ -66,7 +66,7 @@ maybe_determine_reseller_id(Request) ->
 -spec determine_reseller_id(j5_request:request()) -> 'ok'. 
 determine_reseller_id(Request) ->
     AccountId = j5_request:account_id(Request),
-    ResellerId = wh_servies:find_reseller_id(AccountId),
+    ResellerId = wh_services:find_reseller_id(AccountId),
     maybe_reseller_limited(
       j5_request:set_reseller_id(ResellerId, Request)
      ).
@@ -105,8 +105,7 @@ maybe_authorize(Request, Limits) ->
 -spec maybe_authorize_exception(j5_request:request(), j5_limits:limits()) -> 'ok'.
 maybe_authorize_exception(Request, Limits) ->
     CallDirection = j5_request:call_direction(Request),
-    Number = j5_request:number(Request),
-    case wnm_util:classify_number(Number) of
+    case j5_request:classification(Request) of
         <<"emergency">> ->
             lager:debug("allowing emergency call", []),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits);

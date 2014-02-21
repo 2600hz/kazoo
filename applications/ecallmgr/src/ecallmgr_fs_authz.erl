@@ -198,7 +198,7 @@ allow_call(Props, CallId, Node) ->
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                          ,?AUTHZ_RESPONSE_KEY(CallId)
                          ,{'true', wh_json:from_list(Vars)}),
-    _ = case props:get_value(<<"Channel-State">>, Props) =:= <<"CS_ROUTING">> of
+    _ = case props:is_true(<<"Call-Setup">>, Props, 'false') of
             'false' -> ecallmgr_util:set(Node, CallId, Vars);
             'true' -> 'ok'
         end,

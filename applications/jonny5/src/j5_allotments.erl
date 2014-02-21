@@ -97,7 +97,7 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
 %%--------------------------------------------------------------------
 -spec try_find_allotment(j5_request:request(), j5_limits:limits()) -> wh_json:object() | 'undefined'.
 try_find_allotment(Request, Limits) ->
-    case wnm_util:classify_number(j5_request:number(Request)) of
+    case j5_request:classification(Request) of
         'undefined' -> 'undefined';
         Classification -> try_find_allotment_classification(Classification, Limits)
     end.
