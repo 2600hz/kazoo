@@ -201,21 +201,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
             %% Caller parked in slot number...
             _ = whapps_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
             _ = whapps_call_command:b_say(wh_util:to_binary(SlotNumber), Call),
-
-
-            case whapps_call_command:wait_for_message(Call, 'undefined', <<"CHANNEL_REPLACED">>, <<"call_event">>) of
-                {'error', _} -> cf_exe:transfer(Call);
-                {'ok', JObj} ->
-
-                    io:format("CHANNEL REPLACED!!! ~p~n", [JObj]),
-                    lager:info("call was the result of an attended-transfer completion, updating call id"),
-                    Replaces = wh_json:get_value(<<"Call-ID">>, JObj),
-                    {'ok', FoundInSlotNumber, UpdatedSlot} = update_call_id(Replaces, ParkedCalls, Call),
-                    wait_for_pickup(FoundInSlotNumber, UpdatedSlot, Call)
-
-
-            end,
-            'ok';
+            cf_exe:transfer(Call);
         %% blind transfer and but the provided slot number is occupied
         {_, {'error', 'occupied'}} ->
             lager:info("blind transfer to a occupied slot, call the parker back.."),
@@ -362,11 +348,9 @@ update_call_id(_, _, _, Loops) when Loops > 5 ->
     lager:info("unable to update parked call id after ~p tries", [Loops]),
     {'error', 'update_failed'};
 update_call_id(Replaces, ParkedCalls, Call, Loops) ->
-    CallId = get_new_call_id(Call),
+    CallId = cf_exe:callid(Call),
     lager:info("update parked call id ~s with new call id ~s", [Replaces, CallId]),
-
     Slots = wh_json:get_value(<<"slots">>, ParkedCalls, wh_json:new()),
-
     case find_slot_by_callid(Slots, Replaces) of
         {'ok', SlotNumber, Slot} ->
             lager:info("found parked call id ~s in slot ~s", [Replaces, SlotNumber]),
@@ -401,7 +385,6 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                          end
                       ],
             UpdatedSlot = lists:foldr(fun(F, J) -> F(J) end, Slot, Updaters),
-
             JObj = wh_json:set_value([<<"slots">>, SlotNumber], UpdatedSlot, ParkedCalls),
             case couch_mgr:save_doc(whapps_call:account_db(Call), JObj) of
                 {'ok', _} ->
@@ -421,30 +404,6 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
             lager:info("failed to find parking slot with call id ~s: ~p", [Replaces, _R]),
             timer:sleep(250),
             update_call_id(Replaces, get_parked_calls(Call), Call, Loops + 1)
-    end.
-
-
-get_new_call_id(Call) ->
-    CallId = cf_exe:callid(Call),
-    Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    Resp = wh_amqp_worker:call_collect('whapps_amqp_pool'
-                                       ,Command
-                                       ,fun(C) -> wapi_call:publish_channel_status_req(CallId, C) end
-                                       ,{'ecallmgr', 'true'}
-                                      ),
-    case Resp of
-        {'error', _}=E -> E;
-        {_, JObjs} ->
-            case wh_json:find(<<"Other-Leg-Call-ID">>, JObjs) of
-                'undefined' -> 
-                    lager:info("parked call-id ~s", [CallId]),
-                    CallId;
-                OtherLeg ->
-                    lager:info("parked other leg call-id ~s", [OtherLeg]),
-                    OtherLeg
-            end
     end.
 
 -spec maybe_get_ringback_id(whapps_call:call()) -> api_binary().
