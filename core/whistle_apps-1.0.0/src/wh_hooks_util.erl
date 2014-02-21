@@ -97,7 +97,9 @@ maybe_cache_call_event(JObj, CallId, RR) ->
         {'ok', {'account_id', AccountId}} ->
             %% only relay channel create to non-round_robin registrants
             EvtName = wh_json:get_value(<<"Event-Name">>, JObj),
-            handle_call_event(JObj, AccountId, EvtName, CallId, 'false')
+            handle_call_event(JObj, AccountId, EvtName, CallId, 'false');
+        {'ok', {'CHANNEL_CREATE', _JObj, _ShouldRR}} ->
+            lager:debug("already have a channel_create for ~s: ~p", [CallId, _JObj])
     end.
 
 -spec maybe_relay_new_event(ne_binary(), ne_binary()) -> 'ok'.
@@ -111,5 +113,7 @@ maybe_relay_new_event(AccountId, CallId) ->
             handle_call_event(JObj, AccountId, EvtName, CallId, 'false');
         {'ok', {'CHANNEL_CREATE', JObj, 'false'}} ->
             EvtName = wh_json:get_value(<<"Event-Name">>, JObj),
-            handle_call_event(JObj, AccountId, EvtName, CallId, 'false')
+            handle_call_event(JObj, AccountId, EvtName, CallId, 'false');
+        {'ok', {'account_id', _AccountId}} ->
+            lager:debug("already have account id(~s) for call ~s", [_AccountId, CallId])
     end.
