@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%% Worker with a dedicated targeted queue.
 %%%
@@ -186,7 +186,6 @@ call_collect(Srv, Req, PubFun, {_, _}=Until) ->
 call_collect(Srv, Req, PubFun, {_, _, _}=Until) ->
     call_collect(Srv, Req, PubFun, Until, default_timeout());
 call_collect(Srv, Req, PubFun, Timeout) ->
-
     call_collect(Srv, Req, PubFun, collect_until_timeout(), Timeout).
 
 -spec call_collect(server_ref(), api_terms(), publish_fun(), collect_until(), wh_timeout()) ->
@@ -196,13 +195,13 @@ call_collect(Srv, Req, PubFun, Timeout) ->
 call_collect(Srv, Req, PubFun, {Whapp, IncludeFederated}, Timeout)
   when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_boolean(IncludeFederated) ->
     call_collect(Srv, Req, PubFun, collect_from_whapp(Whapp, IncludeFederated), Timeout);
-call_collect(Srv, Req, PubFun, {Whapp, VFun}, Timeout) 
+call_collect(Srv, Req, PubFun, {Whapp, VFun}, Timeout)
   when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_function(VFun) ->
     call_collect(Srv, Req, PubFun, collect_from_whapp_or_validate(Whapp, VFun), Timeout);
 call_collect(Srv, Req, PubFun, {Whapp, VFun, IncludeFederated}, Timeout)
   when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_function(VFun) andalso is_boolean(IncludeFederated) ->
     call_collect(Srv, Req, PubFun, collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated), Timeout);
-call_collect(Srv, Req, PubFun, Whapp, Timeout) 
+call_collect(Srv, Req, PubFun, Whapp, Timeout)
   when is_atom(Whapp) orelse is_binary(Whapp) ->
     call_collect(Srv, Req, PubFun, collect_from_whapp(Whapp), Timeout);
 call_collect(Srv, Req, PubFun, UntilFun, Timeout)
