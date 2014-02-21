@@ -217,7 +217,7 @@ set_default(Key, Value) ->
 set_node(Key, Value) ->
     set(Key, Value, wh_util:to_binary(node()), [{'node_specific', 'true'}]).
 
--spec set(wh_json:key(), wh_json:json_term(), wh_json:key() | atom(), wh_proplist()) -> 'ok'.
+-spec set(wh_json:key(), wh_json:json_term(), 'undefined' | wh_json:key() | atom(), wh_proplist()) -> 'ok'.
 set(Key, Value, 'undefined', Opt) ->
     set(Key, Value, <<"default">>, Opt);
 set(Key, Value, Node, Opt) when not is_binary(Key) ->
