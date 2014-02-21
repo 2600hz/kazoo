@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Users module
 %%%
@@ -38,9 +38,10 @@
 %% SUPPORT FOR THE DEPRECIATED CB_SIGNUPS...
 -spec create_user(cb_context:context()) -> cb_context:context().
 create_user(Context) ->
-    case validate_request('undefined', Context#cb_context{req_verb = ?HTTP_PUT}) of
-        #cb_context{resp_status='success'}=C1 -> ?MODULE:put(C1);
-        Else -> Else
+    Context1 = validate_request('undefined', cb_context:set_req_verb(Context, ?HTTP_PUT)),
+    case cb_context:resp_status(Context1) of
+        'success' -> ?MODULE:put(Context1);
+        _Status -> Context1
     end.
 
 init() ->
@@ -172,14 +173,14 @@ delete(Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_channels(cb_context:context()) -> cb_context:context().
-get_channels(#cb_context{doc=JObjs, account_id=AccountId}=Context) ->
-    Realm = crossbar_util:get_account_realm(AccountId),
+get_channels(Context) ->
+    Realm = crossbar_util:get_account_realm(cb_context:account_id(Context)),
     Usernames = [Username
-                 || JObj <- JObjs
-                        ,(Username = wh_json:get_value([<<"doc">>
-                                                        ,<<"sip">>
-                                                        ,<<"username">>
-                                                       ], JObj))
+                 || JObj <- cb_context:doc(Context),
+                    (Username = wh_json:get_value([<<"doc">>
+                                                   ,<<"sip">>
+                                                   ,<<"username">>
+                                                  ], JObj))
                         =/= 'undefined'
                 ],
     Req = [{<<"Realm">>, Realm}
@@ -188,7 +189,8 @@ get_channels(#cb_context{doc=JObjs, account_id=AccountId}=Context) ->
           ],
     case whapps_util:amqp_pool_collect(Req
                                        ,fun wapi_call:publish_query_user_channels_req/1
-                                       ,{'ecallmgr', 'true'})
+                                       ,{'ecallmgr', 'true'}
+                                      )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
@@ -210,11 +212,12 @@ merge_user_channels_jobjs([JObj|JObjs], Dict) ->
 
 -spec merge_user_channels_jobj(wh_json:object(), dict()) -> dict().
 merge_user_channels_jobj(JObj, Dict) ->
-    lists:foldl(fun(Channel, D) ->
-                        UUID = wh_json:get_value(<<"uuid">>, Channel),
-                        dict:store(UUID, Channel, D)
-                end, Dict, wh_json:get_value(<<"Channels">>, JObj, [])).
+    lists:foldl(fun merge_user_channels_fold/2, Dict, wh_json:get_value(<<"Channels">>, JObj, [])).
 
+-spec merge_user_channels_fold(wh_json:object(), dict()) -> dict().
+merge_user_channels_fold(Channel, D) ->
+    UUID = wh_json:get_value(<<"uuid">>, Channel),
+    dict:store(UUID, Channel, D).
 
 %%--------------------------------------------------------------------
 %% @private
