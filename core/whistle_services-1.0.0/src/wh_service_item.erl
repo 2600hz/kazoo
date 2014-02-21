@@ -141,8 +141,15 @@ quantity(#wh_service_item{quantity=Quantity}) ->
 -spec set_quantity(api_binary() | integer(), item()) -> item().
 set_quantity('undefined', #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{quantity='undefined'};
-set_quantity(Quantity, #wh_service_item{}=ServiceItem) ->
-    ServiceItem#wh_service_item{quantity=wh_util:to_integer(Quantity)}.
+set_quantity(Q, #wh_service_item{}=ServiceItem) ->
+    Quantity = wh_util:to_integer(Q),
+    case Quantity > 0 of
+        'false' -> ServiceItem#wh_service_item{quantity=Quantity};
+        'true'->
+            ServiceItem#wh_service_item{single_discount='true'
+                                        ,quantity=Quantity
+                                       }
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
