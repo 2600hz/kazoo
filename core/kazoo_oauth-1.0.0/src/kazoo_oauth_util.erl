@@ -15,7 +15,7 @@
          ,new_token/4
          ,new_token/5
         ]).
--export([jwt/2]).
+-export([jwt/2, jwt/3]).
 -export([authorization_header/1]).
 -export([refresh_token/1
          ,refresh_token/2
@@ -66,7 +66,8 @@ get_oauth_service_app(AppId) ->
             load_service_app_keys(
               oauth_service_from_jobj(AppId, Provider, JObj)
              );
-        {'error', _} ->
+        {'error', _Error} ->
+            lager:debug("service_app ~p",[_Error]),
             {'error', <<"OAUTH - App ", AppId/binary, " not found">>}
     end.
 
@@ -100,17 +101,22 @@ pem_to_rsa(PemFileContents) ->
     [RSAEntry] = public_key:pem_decode(PemFileContents),
     public_key:pem_entry_decode(RSAEntry).	
 
+jwt(#oauth_service_app{email=AccountEmail}=App, Scope) ->
+    jwt(App, Scope, AccountEmail).
 jwt(#oauth_service_app{email=AccountEmail
                        ,private_key=PrivateKey
                        ,public_key=PublicKey
                        ,provider=#oauth_provider{auth_url=URL}}
-   ,Scope) ->
-    JObj = wh_json:from_list([{<<"iss">>, AccountEmail}
+   ,Scope, EMail) ->
+    
+    JObj = wh_json:from_list([{<<"iss">>, EMail}
                               ,{<<"aud">>, URL}
                               ,{<<"scope">>, Scope}
-                              ,{<<"iat">>,wh_util:current_tstamp_unix()-500}
-                              ,{<<"exp">>,wh_util:current_tstamp_unix()+2000}
+                              ,{<<"iat">>,current_tstamp_unix()-500}
+                              ,{<<"exp">>,current_tstamp_unix()+2000}
                              ]),
+    
+      
     JWT64 = base64:encode(wh_json:encode(JObj)),
     JWT64_HEADER = <<"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9">>,
     JWT_FOR_SIGN = <<JWT64_HEADER/binary, ".", JWT64/binary>>,
@@ -209,26 +215,18 @@ new_token(#oauth_app{name=ClientId
             {'error', Else}
     end.
 
--spec refresh_token(api_object()) -> api_binary().    
-refresh_token(JObj) ->
-    App = wh_json:get_value(<<"client_id">>, JObj),
-    refresh_token(App, JObj).
 
--spec refresh_token(api_binary() | oauth_app(), api_object()) -> api_binary().    
-refresh_token(AppId, JObj) when is_binary(AppId) ->
-    {'ok', App} = get_oauth_app(AppId),
-    refresh_token(App, JObj);    
-refresh_token(#oauth_app{}=App, JObj) ->
-    AuthorizationCode = wh_json:get_value(<<"code">>, JObj),
-    Scope = wh_json:get_value(<<"scope">>, JObj),    
-    lager:debug("refresh_token ~p ~p"
-               ,[wh_json:get_value(<<"id_token">>, JObj), AuthorizationCode]),
-    case wh_json:get_value(<<"id_token1">>, JObj) of
-        'undefined' ->
-            lager:debug("id_token not found!"),
-            case new_token(App,Scope,AuthorizationCode,[]) of
-                {'ok', RefreshTokenObj} -> RefreshTokenObj;
-                _ -> 'undefined'
-            end;        
-        RefreshTokenObj -> wh_json:set_value(<<"id_token">>, RefreshTokenObj, wh_json:new())
-    end.
+-spec current_tstamp_unix() -> non_neg_integer().
+current_tstamp_unix() -> gregorian_seconds_to_unix_seconds(calendar:datetime_to_gregorian_seconds(calendar:universal_time())).
+
+%% there are 86400 seconds in a day
+%% there are 62167219200 seconds between Jan 1, 0000 and Jan 1, 1970
+-define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
+
+-spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> non_neg_integer().
+gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
+    wh_util:to_integer(GregorianSeconds) - ?UNIX_EPOCH_AS_GREG_SECONDS.
+
+-spec unix_seconds_to_gregorian_seconds(integer() | string() | binary()) -> non_neg_integer().
+unix_seconds_to_gregorian_seconds(UnixSeconds) ->
+    wh_util:to_integer(UnixSeconds) + ?UNIX_EPOCH_AS_GREG_SECONDS.
