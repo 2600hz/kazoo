@@ -29,6 +29,7 @@
                                               ,'CHANNEL_ANSWER'
                                               ,'CHANNEL_DESTROY'
                                              ]}
+                             ,'federate'
                             ]}
                   ]).
 -define(RESPONDERS, [{{'wh_hooks_util', 'handle_call_event'}

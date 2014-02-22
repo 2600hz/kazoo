@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Utilities shared by a subset of whapps
 %%% @end
@@ -270,7 +270,7 @@ get_account_by_realm(RawRealm) ->
                 {'ok', [JObj]} ->
                     AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
                     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-                    CacheProps = [{'expires', 86400}
+                    CacheProps = [{'expires', ?SECONDS_IN_DAY}
                                   ,{'origin', {'db', AccountDb, AccountId}}
                                  ],
                     wh_cache:store(?ACCT_BY_REALM_CACHE(Realm), {'ok', AccountDb}, CacheProps),
@@ -279,7 +279,7 @@ get_account_by_realm(RawRealm) ->
                     {'error', 'not_found'};
                 {'ok', [_|_]=JObjs} ->
                     AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
-                    CacheProps = [{'expires', 86400}
+                    CacheProps = [{'expires', ?SECONDS_IN_DAY}
                                   ,{'origin', [{'db', AccountDb, wh_util:format_account_id(AccountDb, 'raw')}
                                                || AccountDb <- AccountDbs
                                               ]}
@@ -310,7 +310,7 @@ get_accounts_by_name(Name) ->
                 {'ok', [JObj]} ->
                     AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
                     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-                    CacheProps = [{'expires', 86400}
+                    CacheProps = [{'expires', ?SECONDS_IN_DAY}
                                   ,{'origin', {'db', AccountDb, AccountId}}
                                  ],
                     wh_cache:store(?ACCT_BY_NAME_CACHE(Name), {'ok', AccountDb}, CacheProps),
@@ -318,7 +318,7 @@ get_accounts_by_name(Name) ->
                 {'ok', []} -> {'error', 'not_found'};
                 {'ok', [_|_]=JObjs} ->
                     AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
-                    CacheProps = [{'expires', 86400}
+                    CacheProps = [{'expires', ?SECONDS_IN_DAY}
                                   ,{'origin', [{'db', AccountDb, wh_util:format_account_id(AccountDb, 'raw')}
                                                || AccountDb <- AccountDbs
                                               ]}

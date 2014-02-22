@@ -112,29 +112,53 @@ close(Channel, [_|Commands]) ->
 
 %% maybe publish will only publish a message if there is an existing channel assignment
 -spec maybe_publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
-maybe_publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
-    case wh_amqp_assignments:find() of
-        #wh_amqp_assignment{channel=Channel, broker=_Broker} when is_pid(Channel) ->
-            amqp_channel:call(Channel, BasicPub, AmqpMsg),
-            lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
-                        ,[_Exchange, _Broker, _RK, Channel]);
-        _Else ->
-            lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
-                        ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload])
+maybe_publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
+    case maybe_split_routing_key(RoutingKey) of
+        {'undefined', _} ->
+            basic_publish(wh_amqp_assignments:find(), BasicPub, AmqpMsg);        
+        {ConsumerPid, RemoteRoutingKey} ->
+            basic_publish(wh_amqp_assignments:find(ConsumerPid)
+                          ,BasicPub#'basic.publish'{routing_key=RemoteRoutingKey}
+                          ,AmqpMsg)
     end.
 
 %% publish will wait up to 5 seconds for a valid channel before publishing
 -spec publish(#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
-publish(#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
-    case wh_amqp_assignments:get_channel(5000) of
-        #wh_amqp_assignment{channel=Channel, broker=_Broker} when is_pid(Channel) ->
-            amqp_channel:call(Channel, BasicPub, AmqpMsg),
-            lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
-                        ,[_Exchange, _Broker, _RK, Channel]);
-        _Else ->
-            lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
-                        ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload])
+publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
+    case maybe_split_routing_key(RoutingKey) of
+        {'undefined', _} ->
+            basic_publish(wh_amqp_assignments:get_channel(5000), BasicPub, AmqpMsg);
+        {ConsumerPid, RemoteRoutingKey} ->
+            basic_publish(wh_amqp_assignments:get_channel(ConsumerPid, 5000)
+                          ,BasicPub#'basic.publish'{routing_key=RemoteRoutingKey}
+                          ,AmqpMsg)
     end.
+        
+-spec basic_publish(wh_amqp_assignment(), #'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
+basic_publish(#wh_amqp_assignment{channel=Channel, broker=_Broker} 
+              ,#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub
+              ,AmqpMsg)
+  when is_pid(Channel) ->
+    _ = (catch amqp_channel:call(Channel, BasicPub, AmqpMsg)),
+    lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
+                ,[_Exchange, _Broker, _RK, Channel]);
+basic_publish(_, #'basic.publish'{exchange=_Exchange, routing_key=_RK}, AmqpMsg) ->
+    lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
+                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]);
+basic_publish({'error', 'no_channel'}
+              ,#'basic.publish'{exchange=_Exchange, routing_key=_RK}
+              ,AmqpMsg) ->
+    lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
+                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]).    
+
+-spec maybe_split_routing_key(ne_binary()) -> {api_pid(), ne_binary()}.
+maybe_split_routing_key(<<"consumer://", _/binary>> = RoutingKey) ->
+    Size = byte_size(RoutingKey),
+    {Start, _} = lists:last(binary:matches(RoutingKey, <<"/">>)),
+    {list_to_pid(wh_util:to_list(binary:part(RoutingKey, 11, Start - 11)))
+     ,binary:part(RoutingKey, Start + 1, Size - Start - 1)};
+maybe_split_routing_key(RoutingKey) -> {'undefined', RoutingKey}.
+
 
 -spec command(wh_amqp_command()) -> command_ret().
 command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
@@ -183,7 +207,7 @@ command(#wh_amqp_assignment{channel=Channel
                           Result = amqp_channel:call(Channel, Command),
                           handle_command_result(Result, Command, Assignment);
                      (_) -> 'ok'
-                  end, wh_amqp_history:basic_consumers(Consumer));
+                  end, wh_amqp_history:list_consume(Consumer));
 command(#wh_amqp_assignment{channel=Channel}=Assignment, Command) ->
     Result = amqp_channel:call(Channel, Command),
     handle_command_result(Result, Command, Assignment).
@@ -254,5 +278,6 @@ handle_command_result('ok', Command, #wh_amqp_assignment{channel=Channel}=Assign
     _ = wh_amqp_history:add_command(Assignment, Command),
     'ok';
 handle_command_result(_Else, _R, _) ->
-    lager:warning("unexpected AMQP command result: ~p", [_R]),
+    lager:warning("unexpected AMQP command result: ~p"
+                  ,[lager:pr(_Else, ?MODULE)]),
     {'error', 'unexpected_result'}.

@@ -1,75 +1,18 @@
-%%%============================================================================
-%%% @copyright (C) 2011-2013 2600Hz Inc
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2014, VoIP INC
 %%% @doc
-%%% This module is responsible for the second stage in the conference process:
-%%% 1. Determine if an arbitrary call (on an arbitrary server) is for a
-%%%    conference.  If so acquire control of the call.
-%%% 2. Discovery, collect enough information to determine the global identifier
-%%%    of the conference, locate/start the service, and transfer control
-%%% 3. Execute the conference, move new members to a conference focus, provide
-%%%    in conference features, location services, and state.
+%%%
 %%% @end
 %%% @contributors
-%%%   Karl Anderson <karl@2600hz.org>
-%%%   James Aimonetti <james@2600hz.org>
-%%%============================================================================
--module(conf_discovery).
-
--behaviour(gen_listener).
-
-%% API
--export([start_link/0]).
--export([handle_discovery_req/2
-         ,handle_config_req/2
-        ]).
-
-%% gen_server callbacks
--export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
-        ]).
-
--define(RESPONDERS, [{{?MODULE, 'handle_discovery_req'}
-                      ,[{<<"conference">>, <<"discovery_req">>}]
-                     }
-                     ,{{?MODULE, 'handle_config_req'}
-                       ,[{<<"conference">>, <<"config_req">>}]
-                      }
-                    ]).
--define(BINDINGS, [{'conference', [{'restrict_to', ['discovery', 'config']}]}
-                   ,{'self', []}
-                  ]).
--define(QUEUE_NAME, <<"conference_discovery">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+%%%-------------------------------------------------------------------
+-module(conf_discovery_req).
 
 -include("conference.hrl").
 
-%%%===================================================================
-%%% API
-%%%===================================================================
+-export([handle_req/2]).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%% @end
-%%--------------------------------------------------------------------
--spec start_link() -> startlink_ret().
-start_link() ->
-    gen_listener:start_link(?MODULE,
-                            [{'responders', ?RESPONDERS}
-                             ,{'bindings', ?BINDINGS}
-                             ,{'queue_name', ?QUEUE_NAME}
-                             ,{'queue_options', ?QUEUE_OPTIONS}
-                             ,{'consume_options', ?CONSUME_OPTIONS}
-                            ], []).
-
--spec handle_discovery_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_discovery_req(JObj, _) ->
+-spec handle_req(wh_json:object(), wh_proplist()) -> any().
+handle_req(JObj, _Options) ->
     'true' = wapi_conference:discovery_req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     put('callid', whapps_call:call_id(Call)),
@@ -79,166 +22,9 @@ handle_discovery_req(JObj, _) ->
             conf_participant:consume_call_events(Srv),
             whapps_call_command:answer(Call),
             welcome_to_conference(Call, Srv, JObj);
-        _Else ->
-            discovery_failed(Call, 'undefined')
+        _Else -> discovery_failed(Call, 'undefined')
     end.
 
-handle_config_req(JObj, _Props) ->
-    'true' = wapi_conference:config_req_v(JObj),
-    ConfigName = wh_json:get_value(<<"Profile">>, JObj),
-
-    fetch_config(JObj, ConfigName).
-
-fetch_config(JObj, <<"default">> = ConfigName) ->
-    Config =  whapps_config:get(<<"conferences">>, [<<"profiles">>, ConfigName], wh_json:from_list(?DEFAULT_PROFILE_CONFIG)),
-    fetch_config(JObj, ConfigName, Config);
-fetch_config(JObj, ConfigName) ->
-    Config =  whapps_config:get(<<"conferences">>, [<<"profiles">>, ConfigName]),
-    fetch_config(JObj, ConfigName, Config).
-
-fetch_config(_JObj, _ConfigName, 'undefined') ->
-    lager:debug("no profile defined for ~s", [_ConfigName]);
-fetch_config(JObj, ConfigName, Profile) ->
-    lager:debug("profile ~s found", [ConfigName]),
-    Resp = [{<<"Profiles">>, wh_json:from_list([{ConfigName, Profile}])}
-            ,{<<"Caller-Controls">>, caller_controls(ConfigName)}
-            ,{<<"Advertise">>, advertise(ConfigName)}
-            ,{<<"Chat-Permissions">>, chat_permissions(ConfigName)}
-            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    try
-        wapi_conference:publish_config_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                                            ,props:filter_undefined(Resp)
-                                           )
-    catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("failed: ~s: ~p", [_E, _R]),
-            wh_util:log_stacktrace(ST)
-    end.
-
-caller_controls(<<"default">> = ConfigName) ->
-    caller_controls(ConfigName, whapps_config:get(<<"conferences">>, [<<"caller-controls">>, ConfigName], ?DEFAULT_CALLER_CONTROLS_CONFIG));
-caller_controls(ConfigName) ->
-    caller_controls(ConfigName, whapps_config:get(<<"conferences">>, [<<"caller-controls">>, ConfigName])).
-
-caller_controls(_ConfigName, 'undefined') -> 'undefined';
-caller_controls(ConfigName, Controls) ->
-    wh_json:from_list([{ConfigName, Controls}]).
-
-advertise(<<"default">> = ConfigName) ->
-    advertise(ConfigName, whapps_config:get(<<"conferences">>, [<<"advertise">>, ConfigName], ?DEFAULT_ADVERTISE_CONFIG));
-advertise(ConfigName) ->
-    advertise(ConfigName, whapps_config:get(<<"conferences">>, [<<"advertise">>, ConfigName])).
-
-advertise(_ConfigName, 'undefined') -> 'undefined';
-advertise(ConfigName, Advertise) -> wh_json:from_list([{ConfigName, Advertise}]).
-
-chat_permissions(<<"default">> = ConfigName) ->
-    chat_permissions(ConfigName, whapps_config:get(<<"conferences">>, [<<"chat-permissions">>, ConfigName], ?DEFAULT_CHAT_CONFIG));
-chat_permissions(ConfigName) ->
-    chat_permissions(ConfigName, whapps_config:get(<<"conferences">>, [<<"chat-permissions">>, ConfigName])).
-chat_permissions(_ConfigName, 'undefined') -> 'undefined';
-chat_permissions(ConfigName, Chat) -> wh_json:from_list([{ConfigName, Chat}]).
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%% @end
-%%--------------------------------------------------------------------
-init([]) ->
-    lager:debug("starting new conference discovery process"),
-    {'ok', 'ok'}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {'reply', 'ok', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {'noreply', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info(_Info, State) ->
-    {'noreply', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all amqp messages
-%%
-%% @spec handle_event(JObj, Props) -> {reply, Props} |
-%%                                    ignore
-%% @end
-%%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {'reply', []}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("conference discovery ~p termination", [_Reason]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {'ok', State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
 -spec welcome_to_conference(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
 welcome_to_conference(Call, Srv, DiscoveryJObj) ->
     whapps_call_command:prompt(<<"conf-welcome">>, Call),

@@ -7,6 +7,7 @@
 
 -define(SECONDS_IN_HOUR, 3600).
 -define(SECONDS_IN_DAY, 86400).
+-define(SECONDS_IN_WEEK, 604800).
 
 -define(ANY_DIGIT, [<<"1">>, <<"2">>, <<"3">>
                     ,<<"4">>, <<"5">>, <<"6">>
@@ -80,7 +81,7 @@
 %% datetime_to_gregorian_seconds({date(),time()}) - ?UNIX_EPOCH_IN_GREGORIAN.
 -define(UNIX_EPOCH_IN_GREGORIAN, 62167219200).
 
--type wh_now() :: calendar:t_now().
+-type wh_now() :: erlang:timestamp().
 -type wh_year() :: non_neg_integer().
 -type wh_month() :: 1..12.
 -type wh_day() :: 1..31.

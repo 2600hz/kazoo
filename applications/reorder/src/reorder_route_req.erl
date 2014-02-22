@@ -14,14 +14,13 @@
 
 -spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj)
-        =:= 'undefined' 
-    of
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    case wh_util:is_empty(AccountId) of
+        'false' -> 'ok';
         'true' ->
-            lager:info("received a unauthorized route request"),
+            lager:debug("received route request with no account-id"),
             ControllerQ = props:get_value('queue', Props),
-            maybe_known_number(ControllerQ, JObj);
-        'false' -> 'ok'
+            maybe_known_number(ControllerQ, JObj)
     end.
 
 -spec maybe_known_number(ne_binary(), wh_json:object()) -> 'ok'.

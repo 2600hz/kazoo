@@ -16,9 +16,6 @@
 -export([channel_status_req/1, channel_status_req_v/1]).
 -export([channel_status_resp/1, channel_status_resp_v/1]).
 
--export([call_status_req/1, call_status_req_v/1]).
--export([call_status_resp/1, call_status_resp_v/1]).
-
 -export([query_auth_id_req/1, query_auth_id_req_v/1]).
 -export([query_auth_id_resp/1, query_auth_id_resp_v/1]).
 
@@ -27,6 +24,9 @@
 
 -export([query_account_channels_req/1, query_account_channels_req_v/1]).
 -export([query_account_channels_resp/1, query_account_channels_resp_v/1]).
+
+-export([query_channels_req/1, query_channels_req_v/1]).
+-export([query_channels_resp/1, query_channels_resp_v/1]).
 
 -export([usurp_control/1, usurp_control_v/1]).
 -export([usurp_publisher/1, usurp_publisher_v/1]).
@@ -39,9 +39,6 @@
 -export([publish_channel_status_req/1 ,publish_channel_status_req/2, publish_channel_status_req/3]).
 -export([publish_channel_status_resp/2, publish_channel_status_resp/3]).
 
--export([publish_call_status_req/1 ,publish_call_status_req/2, publish_call_status_req/3]).
--export([publish_call_status_resp/2, publish_call_status_resp/3]).
-
 -export([publish_query_auth_id_req/1 ,publish_query_auth_id_req/2, publish_query_auth_id_req/3]).
 -export([publish_query_auth_id_resp/2, publish_query_auth_id_resp/3]).
 
@@ -50,6 +47,9 @@
 
 -export([publish_query_account_channels_req/1 ,publish_query_account_channels_req/3]).
 -export([publish_query_account_channels_resp/2 ,publish_query_account_channels_resp/3]).
+
+-export([publish_query_channels_req/1 ,publish_query_channels_req/2]).
+-export([publish_query_channels_resp/2 ,publish_query_channels_resp/3]).
 
 -export([publish_usurp_control/2, publish_usurp_control/3]).
 -export([publish_usurp_publisher/2, publish_usurp_publisher/3]).
@@ -100,7 +100,7 @@
 
 %% Channel Status Request
 -define(CHANNEL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_CHANNEL_STATUS_REQ_HEADERS, []).
+-define(OPTIONAL_CHANNEL_STATUS_REQ_HEADERS, [<<"Active-Only">>]).
 -define(CHANNEL_STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                     ,{<<"Event-Name">>, <<"channel_status_req">>}
                                    ]).
@@ -110,35 +110,13 @@
 -define(CHANNEL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
 -define(OPTIONAL_CHANNEL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>
                                                    ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                                   ,<<"Switch-URL">>
+                                                   ,<<"Switch-URL">>, <<"Other-Leg-Call-ID">>
                                               ]).
 -define(CHANNEL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                      ,{<<"Event-Name">>, <<"channel_status_resp">>}
                                      ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
                                     ]).
 -define(CHANNEL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
-
-%% Call Status Request
--define(CALL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_CALL_STATUS_REQ_HEADERS, []).
--define(CALL_STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                 ,{<<"Event-Name">>, <<"call_status_req">>}
-                                ]).
--define(CALL_STATUS_REQ_TYPES, []).
-
-%% Call Status Response
--define(CALL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
--define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>, <<"Switch-Hostname">>
-                                                ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                                ,<<"Destination-Number">>, <<"Other-Leg-Call-ID">>
-                                                ,<<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">>
-                                                ,<<"Other-Leg-Destination-Number">>, <<"Presence-ID">>
-                                           ]).
--define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                  ,{<<"Event-Name">>, <<"call_status_resp">>}
-                                  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
-                                 ]).
--define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Query Auth ID Req
 -define(QUERY_AUTH_ID_REQ_HEADERS, [<<"Auth-ID">>]).
@@ -191,6 +169,22 @@
                                           ,{<<"Event-Name">>, <<"query_account_channels_resp">>}
                                          ]).
 -define(QUERY_ACCOUNT_CHANNELS_RESP_TYPES, []).
+
+%% Query Channels Req
+-define(QUERY_CHANNELS_REQ_HEADERS, []).
+-define(OPTIONAL_QUERY_CHANNELS_REQ_HEADERS, [<<"Fields">>]).
+-define(QUERY_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                    ,{<<"Event-Name">>, <<"query_channels_req">>}
+                                   ]).
+-define(QUERY_CHANNELS_REQ_TYPES, []).
+
+%% Query Channels Resp
+-define(QUERY_CHANNELS_RESP_HEADERS, [<<"Channels">>]).
+-define(OPTIONAL_QUERY_CHANNELS_RESP_HEADERS, []).
+-define(QUERY_CHANNELS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                     ,{<<"Event-Name">>, <<"query_channels_resp">>}
+                                    ]).
+-define(QUERY_CHANNELS_RESP_TYPES, [{<<"Channels">>, fun wh_json:is_json_object/1}]).
 
 %% Call Usurp Control
 -define(CALL_USURP_CONTROL_HEADERS, [<<"Call-ID">>, <<"Fetch-ID">>]).
@@ -265,24 +259,6 @@ channel_status_resp(JObj) -> channel_status_resp(wh_json:to_proplist(JObj)).
 channel_status_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CHANNEL_STATUS_RESP_HEADERS, ?CHANNEL_STATUS_RESP_VALUES, ?CHANNEL_STATUS_RESP_TYPES);
 channel_status_resp_v(JObj) -> channel_status_resp_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc Inquire into the status of a call
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec call_status_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
-call_status_req(Prop) when is_list(Prop) ->
-    case call_status_req_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for call status req"}
-    end;
-call_status_req(JObj) -> call_status_req(wh_json:to_proplist(JObj)).
-
--spec call_status_req_v(api_terms()) -> boolean().
-call_status_req_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CALL_STATUS_REQ_HEADERS, ?CALL_STATUS_REQ_VALUES, ?CALL_STATUS_REQ_TYPES);
-call_status_req_v(JObj) -> call_status_req_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a call
@@ -393,22 +369,40 @@ query_account_channels_resp_v(Prop) when is_list(Prop) ->
 query_account_channels_resp_v(JObj) -> query_account_channels_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc Respond with status of a call, either active or non-existant
+%% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec call_status_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
-call_status_resp(Prop) when is_list(Prop) ->
-    case call_status_resp_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for call status resp"}
+-spec query_channels_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+query_channels_req(Prop) when is_list(Prop) ->
+    case query_channels_req_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?QUERY_CHANNELS_REQ_HEADERS, ?OPTIONAL_QUERY_CHANNELS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for channels query req"}
     end;
-call_status_resp(JObj) -> call_status_resp(wh_json:to_proplist(JObj)).
+query_channels_req(JObj) -> query_channels_req(wh_json:to_proplist(JObj)).
 
--spec call_status_resp_v(api_terms()) -> boolean().
-call_status_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CALL_STATUS_RESP_HEADERS, ?CALL_STATUS_RESP_VALUES, ?CALL_STATUS_RESP_TYPES);
-call_status_resp_v(JObj) -> call_status_resp_v(wh_json:to_proplist(JObj)).
+-spec query_channels_req_v(api_terms()) -> boolean().
+query_channels_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUERY_CHANNELS_REQ_HEADERS, ?QUERY_CHANNELS_REQ_VALUES, ?QUERY_CHANNELS_REQ_TYPES);
+query_channels_req_v(JObj) -> query_channels_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Inquire into the status of a call
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec query_channels_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+query_channels_resp(Prop) when is_list(Prop) ->
+    case query_channels_resp_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?QUERY_CHANNELS_RESP_HEADERS, ?OPTIONAL_QUERY_CHANNELS_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for channels query resp"}
+    end;
+query_channels_resp(JObj) -> query_channels_resp(wh_json:to_proplist(JObj)).
+
+-spec query_channels_resp_v(api_terms()) -> boolean().
+query_channels_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?QUERY_CHANNELS_RESP_HEADERS, ?QUERY_CHANNELS_RESP_VALUES, ?QUERY_CHANNELS_RESP_TYPES);
+query_channels_resp_v(JObj) -> query_channels_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call id update from the switch for the listener
@@ -511,28 +505,6 @@ publish_channel_status_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_STATUS_RESP_VALUES, fun ?MODULE:channel_status_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_call_status_req(api_terms()) -> 'ok'.
--spec publish_call_status_req(ne_binary(), api_terms()) -> 'ok'.
--spec publish_call_status_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_call_status_req(API) ->
-    case is_list(API) of
-        'true' -> publish_call_status_req(props:get_value(<<"Call-ID">>, API), API);
-        'false' -> publish_call_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
-    end.
-publish_call_status_req(CallId, JObj) ->
-    publish_call_status_req(CallId, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_call_status_req(CallId, Req, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?CALL_STATUS_REQ_VALUES, fun ?MODULE:call_status_req/1),
-    amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', CallId), Payload, ContentType).
-
--spec publish_call_status_resp(ne_binary(), api_terms()) -> 'ok'.
--spec publish_call_status_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_call_status_resp(RespQ, JObj) ->
-    publish_call_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_call_status_resp(RespQ, Resp, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?CALL_STATUS_RESP_VALUES, fun ?MODULE:call_status_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
-
 -spec publish_query_auth_id_req(api_terms()) -> 'ok'.
 -spec publish_query_auth_id_req(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_query_auth_id_req(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -588,18 +560,18 @@ publish_query_user_channels_resp(RespQ, Resp, ContentType) ->
 -spec publish_query_account_channels_req(api_terms(), ne_binary(), ne_binary()) -> 'ok'.
 publish_query_account_channels_req(Props) when is_list(Props) ->
     publish_query_account_channels_req(Props
-                                    ,props:get_value(<<"Account-ID">>, Props)
-                                    ,?DEFAULT_CONTENT_TYPE
-                                   );
+                                       ,props:get_value(<<"Account-ID">>, Props)
+                                       ,?DEFAULT_CONTENT_TYPE
+                                      );
 publish_query_account_channels_req(JObj) ->
     publish_query_account_channels_req(JObj
-                                    ,wh_json:get_value(<<"Account-ID">>, JObj)
-                                    ,?DEFAULT_CONTENT_TYPE
-                                   ).
+                                       ,wh_json:get_value(<<"Account-ID">>, JObj)
+                                       ,?DEFAULT_CONTENT_TYPE
+                                      ).
 
 publish_query_account_channels_req(Req, AccountId, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?QUERY_ACCOUNT_CHANNELS_REQ_VALUES, fun ?MODULE:query_account_channels_req/1),
-    amqp_util:callevt_publish(<<AccountId/binary>>, Payload, ContentType).
+    amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', AccountId), Payload, ContentType).
 
 -spec publish_query_account_channels_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_query_account_channels_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -608,6 +580,24 @@ publish_query_account_channels_resp(RespQ, JObj) ->
 publish_query_account_channels_resp(RespQ, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?QUERY_ACCOUNT_CHANNELS_RESP_VALUES, fun ?MODULE:query_account_channels_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_query_channels_req(api_terms()) -> 'ok'.
+-spec publish_query_channels_req(api_terms(), ne_binary()) -> 'ok'.
+publish_query_channels_req(ApiProps) -> publish_query_channels_req(ApiProps, ?DEFAULT_CONTENT_TYPE).
+publish_query_channels_req(ApiProps, ContentType) when is_list(ApiProps) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(ApiProps, ?QUERY_CHANNELS_REQ_VALUES, fun ?MODULE:query_channels_req/1),
+    amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', <<"channels">>), Payload, ContentType);
+publish_query_channels_req(JObj, ContentType) ->
+    publish_query_channels_req(wh_json:to_proplist(JObj), ContentType).
+
+-spec publish_query_channels_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_query_channels_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_query_channels_resp(RespQ, ApiProps) -> publish_query_channels_resp(RespQ, ApiProps, ?DEFAULT_CONTENT_TYPE).
+publish_query_channels_resp(RespQ, ApiProps, ContentType) when is_list(ApiProps) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(ApiProps, ?QUERY_CHANNELS_RESP_VALUES, fun ?MODULE:query_channels_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType);
+publish_query_channels_resp(RespQ, JObj, ContentType) ->
+    publish_query_channels_resp(RespQ, wh_json:to_proplist(JObj), ContentType).
 
 -spec publish_usurp_control(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_usurp_control(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

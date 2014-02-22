@@ -58,7 +58,10 @@
                       ,[{<<"conference">>, <<"search_req">>}]
                      }
                     ]).
--define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}]}]).
+-define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}
+                                   ,'federate'
+                                  ]}
+                  ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).

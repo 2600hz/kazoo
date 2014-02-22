@@ -63,7 +63,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
--type origin_tuple() :: {'db', ne_binary(), ne_binary()}.
+-type origin_tuple() :: {'db', ne_binary(), ne_binary()} | {'db', ne_binary()}.
 -type origin_tuples() :: [origin_tuple(),...] | [].
 -record(cache_obj, {key :: term() | '_' | '$1'
                     ,value :: term() | '_' | '$1' | '$2'
@@ -117,7 +117,7 @@ start_link(Name, ExpirePeriod, Props) ->
             gen_server:start_link({'local', Name}, ?MODULE, [Name, ExpirePeriod, Props], []);
         BindingProps ->
             lager:debug("started new cache process (gen_listener): ~s", [Name]),
-            Bindings = [{'conf', P} || P <- BindingProps],
+            Bindings = [{'conf', ['federate'|P]} || P <- BindingProps],
             gen_listener:start_link({'local', Name}, ?MODULE
                                     ,[{'bindings', Bindings}
                                       ,{'responders', ?RESPONDERS}
@@ -270,7 +270,7 @@ dump_local(Srv, ShowValue) ->
          end
          || Obj <- ets:match_object(Srv, #cache_obj{_ = '_'})
         ],
-    ok.
+    'ok'.
 
 -spec wait_for_key_local(atom(), term()) ->
                                 {'ok', term()} |
@@ -294,9 +294,10 @@ wait_for_key_local(Srv, Key, Timeout) ->
 handle_document_change(JObj, Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
     Srv = props:get_value('server', Props),
-    Id = wh_json:get_value(<<"ID">>, JObj),
     Db = wh_json:get_value(<<"Database">>, JObj),
-    gen_listener:cast(Srv, {'change', {'db', Db, Id}}).
+    Type = wh_json:get_value(<<"Type">>, JObj),
+    Id = wh_json:get_value(<<"ID">>, JObj),
+    gen_listener:cast(Srv, {'change', Db, Type, Id}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -417,8 +418,8 @@ handle_cast({'flush'}, #state{tab=Tab}=State) ->
     _ = maybe_exec_flush_callbacks(Tab),
     ets:delete_all_objects(Tab),
     {'noreply', State, 'hibernate'};
-handle_cast({'change', {'db', _, _}=Change}, #state{tab=Tab}=State) ->
-    _ = maybe_erase_changed(Change, Tab),
+handle_cast({'change', Db, Type, Id}, #state{tab=Tab}=State) ->
+    _ = maybe_erase_changed(Db, Type, Id, Tab),
     {'noreply', State};
 handle_cast({'wh_amqp_channel', {'new_channel', 'false'}}, #state{name=Name
                                                                   ,tab=Tab
@@ -527,12 +528,21 @@ get_props_callback(Props) ->
 -spec get_props_origin(wh_proplist()) -> 'undefined' | term().
 get_props_origin(Props) -> props:get_value('origin', Props).
 
--spec maybe_erase_changed(origin_tuple(), atom()) -> 'ok'.
-maybe_erase_changed(Change, Tab) ->
-    MatchSpec = [{#cache_obj{origin = '$1', _ = '_'}
-                 ,[{'=:=', {'const', Change}, '$1'}]
-                 ,['$_']
-                }],
+-spec maybe_erase_changed(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
+maybe_erase_changed(Db, Type, Id, Tab) ->
+    MatchSpec = [{#cache_obj{origin = {'db', Db}, _ = '_'}
+                  ,[]
+                  ,['$_']
+                 }
+                 ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
+                   ,[]
+                   ,['$_']
+                  }
+                 ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
+                   ,[]
+                   ,['$_']
+                  }
+                ],
     Objects = ets:select(Tab, MatchSpec),
     _ = erase_changed(Objects, [], Tab),
     'ok'.

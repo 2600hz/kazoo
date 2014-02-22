@@ -14,11 +14,15 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(ORIGIN_BINDINGS, [[{'type', <<"limits">>}]]).
+-define(ORIGIN_BINDINGS, [[{'type', <<"limits">>}]
+                          ,[{'type', <<"user">>}]
+                          ,[{'type', <<"device">>}]
+                         ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 -define(CHILDREN, [?CACHE_ARGS(?JONNY5_CACHE, ?CACHE_PROPS)
                    ,?WORKER('jonny5_listener')
+                   ,?WORKER('j5_channels')
                   ]).
 
 %% ===================================================================

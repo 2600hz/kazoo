@@ -82,8 +82,8 @@ get_atom(Section, Key, Default) ->
         Default -> Default;
         [_|_]=Values ->
             [wh_util:to_atom(Value, 'true') || Value <- Values];
-        V ->
-            [wh_util:to_atom(V, 'true')]
+        Value ->
+            [wh_util:to_atom(Value, 'true')]
     end.
 
 %%--------------------------------------------------------------------
@@ -101,7 +101,7 @@ get_integer(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
         Default -> Default;
         [_|_]=Values -> [wh_util:to_integer(Value) || Value <- Values];
-        V -> [wh_util:to_integer(V)]
+        Value -> [wh_util:to_integer(Value)]
     end.
 
 %%--------------------------------------------------------------------
@@ -119,7 +119,7 @@ get_string(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
         Default -> Default;
         [_|_]=Values -> [wh_util:to_lower_string(Value) || Value <- Values];
-        V -> [wh_util:to_lower_string(V)]
+        Value -> [wh_util:to_lower_string(Value)]
     end.
 
 -spec get_raw_string(section(), string()) -> [string(),...] | ?DEFAULT_DEFAULTS.
@@ -131,9 +131,8 @@ get_raw_string(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
         Default -> Default;
         [_|_]=Values -> Values;
-        V -> V
+        Value -> Value
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -146,11 +145,11 @@ find_values(Section, ?DEFAULT_DEFAULTS) ->
     {'ok', Prop} = load(),
     get_sections(Section, Prop);
 find_values(Section, Keys) when is_list(Keys) ->
-    V = lists:foldl(fun(Key, Acc) ->
-                            V = find_values(Section, Key),
-                            [V | Acc]
-                    end, [], Keys),
-    lists:reverse(V);
+    lists:reverse(
+      lists:foldl(fun(Key, Acc) ->
+                          [find_values(Section, Key)|Acc]
+                  end, [], Keys)
+     );
 find_values(Section, Key) ->
     {'ok', Prop} = load(),
     Sections = get_sections(Section, Prop),

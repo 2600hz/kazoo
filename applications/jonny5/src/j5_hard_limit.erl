@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -7,90 +7,68 @@
 %%%-------------------------------------------------------------------
 -module(j5_hard_limit).
 
--export([is_under/2]).
+-export([authorize/2]).
+-export([reconcile_cdr/2]).
 
 -include("jonny5.hrl").
 
--spec is_under(#limits{}, wh_json:object()) -> boolean().
-is_under(Limits, JObj) ->
-    case calls_at_limit(Limits, JObj)
-        orelse resource_consumption_at_limit(Limits, JObj)
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
+authorize(Request, Limits) ->
+    case calls_at_limit(Limits)
+        orelse resource_consumption_at_limit(Limits)
     of
-        'false' -> 'true';
-        'true' ->
-            j5_util:send_system_alert(<<"hard limit">>, JObj, Limits),
-            'false'
+        'true' -> j5_request:deny(<<"hard_limit">>, Request, Limits);
+        'false' -> Request
     end.
 
--spec calls_at_limit(#limits{}, wh_json:object()) -> boolean().
-calls_at_limit(#limits{calls=-1}, _) ->
-    'false';
-calls_at_limit(#limits{calls=0}, _) ->
-    'true';
-calls_at_limit(#limits{calls=Resources}, JObj) ->
-    ConsumedResources = wh_json:get_integer_value([<<"Usage">>, <<"Calls">>], JObj, 0),
-    Resources - ConsumedResources < 0.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile_cdr(j5_request:request(), j5_limits:limits()) -> 'ok'.
+reconcile_cdr(_, _) -> 'ok'.
 
--spec resource_consumption_at_limit(#limits{}, wh_json:object()) -> boolean().
-resource_consumption_at_limit(#limits{resource_consuming_calls=-1}, _) ->
-    'false';
-resource_consumption_at_limit(#limits{resource_consuming_calls=0}, _) ->
-    'true';
-resource_consumption_at_limit(#limits{resource_consuming_calls=Resources}, JObj) ->
-    ConsumedResources = wh_json:get_integer_value([<<"Usage">>, <<"Resource-Consuming-Calls">>], JObj, 0),
-    Resources - ConsumedResources < 0.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec calls_at_limit(j5_limits:limits()) -> boolean().
+calls_at_limit(Limits) ->
+    Limit =  j5_limits:calls(Limits),
+    Used = j5_channels:total_calls(j5_limits:account_id(Limits)),
+    should_deny(Limit, Used).
 
--include_lib("eunit/include/eunit.hrl").
--ifdef(TEST).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec resource_consumption_at_limit(j5_limits:limits()) -> boolean().
+resource_consumption_at_limit(Limits) ->
+    Limit =  j5_limits:resource_consuming_calls(Limits),
+    Used = j5_channels:resource_consuming(j5_limits:account_id(Limits)),
+    should_deny(Limit, Used).
 
-limits(C, R) ->
-    #limits{calls = C
-            ,resource_consuming_calls = R
-           }.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec should_deny(integer(), integer()) -> boolean().
+should_deny(-1, _) -> 'false';
+should_deny(0, _) -> 'true';
+should_deny(Limit, Used) -> Limit > Used.
 
-authz_jobj(C, R) ->
-    Props = [{<<"Calls">>, C}
-             ,{<<"Resource-Consuming-Calls">>, R}
-            ],
-    wh_json:from_list([{<<"Usage">>, wh_json:from_list(Props)}]).
 
-calls_at_limit_test() ->
-    %% no calls, unlimited allowed
-    ?assertEqual('false', calls_at_limit(limits(-1, 0), authz_jobj(0, 0))),
-    %% no calls, none allowed
-    ?assertEqual('true', calls_at_limit(limits(0, 0), authz_jobj(0, 0))),
-    %% 1 call, none allowed
-    ?assertEqual('true', calls_at_limit(limits(0, 0), authz_jobj(1, 0))),
-    %% 1 call, 1 allowed
-    ?assertEqual('false', calls_at_limit(limits(1, 0), authz_jobj(1, 0))),
-    %% 2 calls, 1 allowed
-    ?assertEqual('true', calls_at_limit(limits(1, 0), authz_jobj(2, 0))),
-    %% 1 calls, 2 allowed
-    ?assertEqual('false', calls_at_limit(limits(2, 0), authz_jobj(1, 0))),
-    ok.
-
-resource_consumption_at_limit_test() ->
-    %% no calls, unlimited allowed
-    ?assertEqual('false', resource_consumption_at_limit(limits(0, -1), authz_jobj(0, 0))),
-    %% no calls, none allowed
-    ?assertEqual('true', resource_consumption_at_limit(limits(0, 0), authz_jobj(0, 0))),
-    %% 1 call, none allowed
-    ?assertEqual('true', resource_consumption_at_limit(limits(0, 0), authz_jobj(0, 1))),
-    %% 1 call, 1 allowed
-    ?assertEqual('false', resource_consumption_at_limit(limits(0, 1), authz_jobj(0, 1))),
-    %% 2 calls, 1 allowed
-    ?assertEqual('true', resource_consumption_at_limit(limits(0, 1), authz_jobj(0, 2))),
-    %% 1 calls, 2 allowed
-    ?assertEqual('false', resource_consumption_at_limit(limits(0, 2), authz_jobj(0, 1))),
-    ok.
-
-is_under_test() ->
-    %% no calls, unlimited allowed
-    ?assertEqual('true', is_under(limits(-1, -1), authz_jobj(0, 0))),
-    %% limited by calls
-    ?assertEqual('false', is_under(limits(0, -1), authz_jobj(0, 0))),
-    %% limited by resources
-    ?assertEqual('false', is_under(limits(-1, 0), authz_jobj(0, 0))),
-    ok.
-
--endif.

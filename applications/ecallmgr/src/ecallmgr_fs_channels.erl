@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Track the FreeSWITCH channel information, and provide accessors
 %%% @end
@@ -19,7 +19,6 @@
 -export([details/0
          ,details/1
         ]).
--export([authz_summary/0]).
 -export([show_all/0]).
 -export([flush_node/1]).
 -export([new/1]).
@@ -27,12 +26,13 @@
 -export([update/3
          ,updates/2
         ]).
--export([account_summary/1]).
 -export([match_presence/1]).
+-export([count/0]).
 
 -export([handle_query_auth_id/2]).
 -export([handle_query_user_channels/2]).
 -export([handle_query_account_channels/2]).
+-export([handle_query_channels/2]).
 -export([handle_channel_status/2]).
 
 -export([init/1
@@ -55,26 +55,23 @@
                      ,{{?MODULE, 'handle_query_account_channels'}
                        ,[{<<"call_event">>, <<"query_account_channels_req">>}]
                       }
+                     ,{{?MODULE, 'handle_query_channels'}
+                       ,[{<<"call_event">>, <<"query_channels_req">>}]
+                      }
                      ,{{?MODULE, 'handle_channel_status'}
                        ,[{<<"call_event">>, <<"channel_status_req">>}]
                       }
                     ]).
--define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}]}]).
+-define(BINDINGS, [{'call', [{'restrict_to', ['status_req']}
+                             ,'federate'
+                            ]}
+                  ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
 -record(state, {}).
 -type state() :: #state{}.
-
--record(astats, {bridge_ids =           sets:new() :: set()
-                 ,outbound_flat_rate =  sets:new() :: set()
-                 ,inbound_flat_rate =   sets:new() :: set()
-                 ,outbound_per_minute = sets:new() :: set()
-                 ,inbound_per_minute =  sets:new() :: set()
-                 ,resource_consumers =  sets:new() :: set()
-                }).
--type astats() :: #astats{}.
 
 %%%===================================================================
 %%% API
@@ -136,15 +133,6 @@ details(UUID) ->
                  }],
     print_details(ets:select(?CHANNELS_TBL, MatchSpec, 1)).
 
--spec authz_summary() -> 'ok'.
-authz_summary() ->
-    MatchSpec = [{#channel{account_id='$1', _ = '_'}
-                  ,[]
-                  ,['$1']
-                 }],
-    AccountIds = sets:from_list(ets:select(?CHANNELS_TBL, MatchSpec)),
-    print_authz_summary(sets:to_list(AccountIds)).
-
 -spec show_all() -> wh_json:objects().
 show_all() ->
     ets:foldl(fun(Channel, Acc) ->
@@ -171,20 +159,15 @@ update(UUID, Key, Value) ->
 updates(UUID, Updates) ->
     gen_server:call(?MODULE, {'channel_updates', UUID, Updates}).
 
--spec account_summary(ne_binary()) -> wh_json:object().
-account_summary(AccountId) ->
-    MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
-                           ,authorizing_id = '$3', resource_id = '$4', bridge_id = '$5'
-                           , _ = '_'
-                          }
-                  ,[{'=:=', '$2', {'const', AccountId}}]
-                  ,['$_']}
-                ],
-    summarize_account_usage(ets:select(?CHANNELS_TBL, MatchSpec)).
+-spec count() -> non_neg_integer().
+count() -> ets:info(?CHANNELS_TBL, 'size').
 
 -spec match_presence(ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
 match_presence(PresenceId) ->
-    MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3',  _ = '_'}
+    MatchSpec = [{#channel{uuid = '$1'
+                           ,presence_id = '$2'
+                           ,node = '$3'
+                           , _ = '_'}
                   ,[{'=:=', '$2', {'const', PresenceId}}]
                   ,[{{'$1', '$3'}}]}
                 ],
@@ -208,9 +191,7 @@ handle_query_auth_id(JObj, _Props) ->
 -spec handle_query_user_channels(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_query_user_channels(JObj, _Props) ->
     'true' = wapi_call:query_user_channels_req_v(JObj),
-
     Realm = wh_json:get_value(<<"Realm">>, JObj),
-
     case wh_json:get_value(<<"Username">>, JObj) of
         'undefined' -> handle_query_users_channels(JObj, Realm);
         Username -> handle_query_user_channels(JObj, Username, Realm)
@@ -258,6 +239,16 @@ send_account_query_resp(JObj, Cs) ->
     lager:debug("sending back channel data to ~s", [ServerId]),
     wapi_call:publish_query_account_channels_resp(ServerId, Resp).
 
+-spec handle_query_channels(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_query_channels(JObj, _Props) ->
+    'true' = wapi_call:query_channels_req_v(JObj),
+    Fields = wh_json:get_value(<<"Fields">>, JObj, []),
+    Resp = [{<<"Channels">>, query_channels(Fields)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_call:publish_query_channels_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+
 -spec handle_channel_status(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
     'true' = wapi_call:channel_status_req_v(JObj),
@@ -266,28 +257,42 @@ handle_channel_status(JObj, _Props) ->
     lager:debug("channel status request received"),
     case ecallmgr_fs_channel:fetch(CallId) of
         {'error', 'not_found'} ->
-            lager:debug("no node found with channel ~s", [CallId]),
-            Resp = [{<<"Call-ID">>, CallId}
-                    ,{<<"Status">>, <<"terminated">>}
-                    ,{<<"Error-Msg">>, <<"no node found with channel">>}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+            maybe_send_empty_channel_resp(CallId, JObj);
         {'ok', Channel} ->
             Node = wh_json:get_binary_value(<<"node">>, Channel),
             [_, Hostname] = binary:split(Node, <<"@">>),
             lager:debug("channel is on ~s", [Hostname]),
-            Resp = [{<<"Call-ID">>, CallId}
-                    ,{<<"Status">>, <<"active">>}
-                    ,{<<"Switch-Hostname">>, Hostname}
-                    ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
-                    ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
+            Resp =
+                props:filter_undefined(
+                  [{<<"Call-ID">>, CallId}
+                   ,{<<"Status">>, <<"active">>}
+                   ,{<<"Switch-Hostname">>, Hostname}
+                   ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+                   ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Node)}
+                   ,{<<"Other-Leg-Call-ID">>, wh_json:get_value(<<"other_leg">>, Channel)}
+                   ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  ]
+                 ),
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
+
+-spec maybe_send_empty_channel_resp(ne_binary(), wh_json:object()) -> 'ok'.
+maybe_send_empty_channel_resp(CallId, JObj) ->
+    case wh_json:is_true(<<"Active-Only">>, JObj) of
+        'true' -> 'ok';
+        'false' -> send_empty_channel_resp(CallId, JObj)
+    end.
+
+-spec send_empty_channel_resp(ne_binary(), wh_json:object()) -> 'ok'.
+send_empty_channel_resp(CallId, JObj) ->
+    Resp = [{<<"Call-ID">>, CallId}
+            ,{<<"Status">>, <<"terminated">>}
+            ,{<<"Error-Msg">>, <<"no node found with channel">>}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -308,7 +313,11 @@ init([]) ->
     put('callid', ?LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs channels"),
-    _ = ets:new(?CHANNELS_TBL, ['set', 'protected', 'named_table', {'keypos', #channel.uuid}]),
+    _ = ets:new(?CHANNELS_TBL, ['set'
+                                ,'protected'
+                                ,'named_table'
+                                ,{'keypos', #channel.uuid}
+                               ]),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -448,107 +457,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec summarize_account_usage(channels()) -> wh_json:object().
-summarize_account_usage(Channels) ->
-    AStats = lists:foldr(fun classify_channel/2, #astats{}, Channels),
-    wh_json:from_list(
-      [{<<"Calls">>, sets:size(AStats#astats.bridge_ids)}
-       ,{<<"Channels">>,  length(Channels)}
-       ,{<<"Outbound-Flat-Rate">>, sets:size(AStats#astats.outbound_flat_rate)}
-       ,{<<"Inbound-Flat-Rate">>, sets:size(AStats#astats.inbound_flat_rate)}
-       ,{<<"Outbound-Per-Minute">>, sets:size(AStats#astats.outbound_per_minute)}
-       ,{<<"Inbound-Per-Minute">>, sets:size(AStats#astats.inbound_per_minute)}
-       ,{<<"Resource-Consuming-Calls">>, sets:size(AStats#astats.resource_consumers)}
-      ]).
-
--spec classify_channel(channel(), astats()) -> astats().
-classify_channel(#channel{bridge_id='undefined', uuid=UUID}=Channel, AStats) ->
-    classify_channel(Channel#channel{bridge_id=UUID}
-                     ,AStats
-                    );
-classify_channel(#channel{direction = <<"outbound">>
-                          ,account_billing = <<"flat_rate">>
-                          ,bridge_id=BridgeId
-                          ,uuid=UUID
-                         }
-                 ,#astats{outbound_flat_rate=OutboundFlatRates
-                          ,resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{outbound_flat_rate=sets:add_element(UUID, OutboundFlatRates)
-                  ,resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,account_billing = <<"flat_rate">>
-                          ,bridge_id=BridgeId
-                          ,uuid=UUID
-                         }
-                 ,#astats{inbound_flat_rate=InboundFlatRates
-                          ,resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{inbound_flat_rate=sets:add_element(UUID, InboundFlatRates)
-                  ,resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"outbound">>
-                          ,account_billing = <<"per_minute">>
-                          ,bridge_id=BridgeId
-                          ,uuid=UUID
-                         }
-                 ,#astats{outbound_per_minute=OutboundPerMinute
-                          ,resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{outbound_per_minute=sets:add_element(UUID, OutboundPerMinute)
-                  ,resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,account_billing = <<"per_minute">>
-                          ,bridge_id=BridgeId
-                          ,uuid=UUID
-                         }
-                 ,#astats{inbound_per_minute=InboundPerMinute
-                          ,resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{inbound_per_minute=sets:add_element(UUID, InboundPerMinute)
-                  ,resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,authorizing_id='undefined'
-                          ,bridge_id=BridgeId
-                         }
-                 ,#astats{resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 };
-classify_channel(#channel{direction = <<"inbound">>
-                          ,bridge_id=BridgeId
-                         }
-                 ,#astats{bridge_ids=BridgeIds}=AStats) ->
-    AStats#astats{bridge_ids=sets:add_element(BridgeId, BridgeIds)};
-classify_channel(#channel{direction = <<"outbound">>
-                          ,resource_id='undefined'
-                          ,bridge_id=BridgeId
-                         }
-                 ,#astats{bridge_ids=BridgeIds}=AStats) ->
-    AStats#astats{bridge_ids=sets:add_element(BridgeId, BridgeIds)};
-classify_channel(#channel{direction = <<"outbound">>
-                          ,bridge_id=BridgeId
-                         }
-                 ,#astats{resource_consumers=ResourceConsumers
-                          ,bridge_ids=BridgeIds
-                         }=AStats) ->
-    AStats#astats{resource_consumers=sets:add_element(BridgeId, ResourceConsumers)
-                  ,bridge_ids=sets:add_element(BridgeId, BridgeIds)
-                 }.
-
 -spec find_by_auth_id(ne_binary()) ->
                              {'ok', wh_json:objects()} |
                              {'error', 'not_found'}.
@@ -568,13 +476,10 @@ find_by_auth_id(AuthorizingId) ->
                                 {'ok', wh_json:objects()} |
                                 {'error', 'not_found'}.
 find_by_user_realm(Username, Realm) ->
-    MatchSpec = [{#channel{username = '$1', realm='$2', _ = '_'}
-                  ,[{'=:=', '$1', {'const', Username}}
-                    ,{'=:=', '$2', {'const', Realm}}
-                   ]
-                  ,['$_']}
-                ],
-    case ets:select(?CHANNELS_TBL, MatchSpec) of
+    Pattern = #channel{username=wh_util:to_lower_binary(Username)
+                      ,realm=wh_util:to_lower_binary(Realm)
+                      ,_='_'},
+    case ets:match_object(?CHANNELS_TBL, Pattern) of
         [] -> {'error', 'not_found'};
         Channels ->
             {'ok', [ecallmgr_fs_channel:to_json(Channel)
@@ -587,10 +492,10 @@ find_by_user_realm(Username, Realm) ->
                                  {'error', 'not_found'}.
 find_users_channels(Usernames, Realm) ->
     ETSUsernames = build_matchspec_ors(Usernames),
-    MatchSpec = [{#channel{username='$1', realm='$2', _ = '_'}
-                  ,[ETSUsernames
-                    ,{'=:=', '$2', {'const', Realm}}
-                   ]
+    MatchSpec = [{#channel{username='$1'
+                           ,realm=wh_util:to_lower_binary(Realm)
+                           ,_ = '_'}
+                  ,[ETSUsernames]
                   ,['$_']
                  }],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
@@ -613,9 +518,44 @@ find_account_channels(AccountId) ->
                    ]}
     end.
 
--spec build_matchspec_ors(ne_binaries()) -> term().
-build_matchspec_ors(L) ->
-    lists:foldl(fun(El, Acc) -> {'or', {'=:=', '$1', El}, Acc} end, 'false', L).
+-spec build_matchspec_ors(ne_binaries()) -> tuple() | 'false'.
+build_matchspec_ors(Usernames) ->
+    lists:foldl(fun build_matchspec_ors_fold/2
+                ,'false'
+                ,Usernames
+               ).
+
+-spec build_matchspec_ors_fold(ne_binary(), tuple() | 'false') -> tuple().
+build_matchspec_ors_fold(Username, Acc) ->
+    {'or', {'=:=', '$1', wh_util:to_lower_binary(Username)}, Acc}.
+
+-spec query_channels(ne_binaries()) -> wh_json:object().
+query_channels(Fields) ->
+    query_channels(ets:match_object(?CHANNELS_TBL, #channel{_='_'}, 1)
+                   ,Fields
+                   ,wh_json:new()).
+
+-spec query_channels({[channel()], ets:continuation()}, ne_binary() | ne_binaries(), wh_json:object()) ->
+                            wh_json:object().
+query_channels('$end_of_table', _, Channels) -> Channels;
+query_channels({[#channel{uuid=CallId}=Channel], Continuation}
+                ,<<"all">>, Channels) ->
+    JObj = ecallmgr_fs_channel:to_api_json(Channel),
+    query_channels(ets:match_object(Continuation)
+                   ,<<"all">>
+                   ,wh_json:set_value(CallId, JObj, Channels));
+query_channels({[#channel{uuid=CallId}=Channel], Continuation}
+               ,Fields, Channels) ->
+    Props = ecallmgr_fs_channel:to_api_props(Channel),
+    JObj = wh_json:from_list(
+             props:filter_undefined(
+               [{Field, props:get_value(Field, Props)}
+                || Field <- Fields
+               ]
+              )),
+    query_channels(ets:match_object(Continuation)
+                   ,Fields
+                   ,wh_json:set_value(CallId, JObj, Channels)).
 
 print_summary('$end_of_table') ->
     io:format("No channels found!~n", []);
@@ -655,32 +595,3 @@ print_details({[#channel{}=Channel]
          || {K, V} <- ecallmgr_fs_channel:to_props(Channel)
         ],
     print_details(ets:select(Continuation), Count + 1).
-
--spec print_authz_summary(ne_binaries()) -> 'ok'.
--spec print_authz_summary(ne_binaries(), non_neg_integer()) -> 'ok'.
-
-print_authz_summary([]) ->
-    io:format("No accounts found!~n");
-print_authz_summary(AccountIds) ->
-    io:format("+----------------------------------+------------+------------+-------------------------+-------------------------+------------+~n"),
-    io:format("| Account ID                       | Calls      | Channels   |        Flat-Rate        |        Per-Minute       | Resources  |~n"),
-    io:format("|                                  |            |            | Inbound    | Outbound   | Inbound    | Outbound   |            |~n"),
-    io:format("+==================================+============+============+============+============+============+============+============+"),
-    print_authz_summary(AccountIds, 0).
-
-print_authz_summary([], Count) ->
-    io:format("~n+----------------------------------+------------+------------+------------+------------+------------+------------+------------+~n"),
-    io:format("Found ~p accounts~n", [Count]);
-print_authz_summary([AccountId|AccountIds], Count) ->
-    JObj = account_summary(AccountId),
-    io:format("~n| ~-32s | ~-10s | ~-10s | ~-10s | ~-10s | ~-10s | ~-10s | ~-10s |"
-              ,[AccountId
-                ,wh_json:get_binary_value(<<"Calls">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Channels">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Inbound-Flat-Rate">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Outbound-Flat-Rate">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Inbound-Per-Minute">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Outbound-Per-Minute">>, JObj, 0)
-                ,wh_json:get_binary_value(<<"Resource-Consuming-Calls">>, JObj, 0)
-               ]),
-    print_authz_summary(AccountIds, Count + 1).

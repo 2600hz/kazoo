@@ -57,9 +57,10 @@
 
 %% Three main call events
 -define(BINDINGS, [{'conf', [{'action', <<"*">>}
-                              ,{'db', ?KZ_WEBHOOKS_DB}
-                              ,{'type', <<"webhook">>}
-                              ,{'id', <<"*">>}
+                             ,{'db', ?KZ_WEBHOOKS_DB}
+                             ,{'type', <<"webhook">>}
+                             ,{'id', <<"*">>}
+                             ,'federate'
                              ]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}

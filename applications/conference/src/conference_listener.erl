@@ -1,33 +1,40 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% Karls Hackity Hack....
-%%% We want to block during startup until we have a AMQP connection
-%%% but due to the way wh_amqp_mgr is structured we cant block in
-%%% init there.  So this module will bootstrap wh_amqp_mgr
-%%% and block until a connection becomes available, after that it
-%%% removes itself....
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(wh_amqp_bootstrap).
+-module(conference_listener).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 -export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
+         ,handle_event/2
          ,terminate/2
          ,code_change/3
         ]).
 
--include("amqp_util.hrl").
-
--define(SERVER, ?MODULE).
+-include("conference.hrl").
 
 -record(state, {}).
+
+-define(BINDINGS, [{'conference', [{'restrict_to', ['discovery', 'config']}]}
+                   ,{'route', []}
+                   ,{'self', []}
+                  ]).
+-define(RESPONDERS, [{'conf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
+                     ,{'conf_route_win', [{<<"dialplan">>, <<"route_win">>}]}
+                     ,{'conf_discovery_req', [{<<"conference">>, <<"discovery_req">>}]}
+                     ,{'conf_config_req', [{<<"conference">>, <<"config_req">>}]}
+                    ]).
+-define(QUEUE_NAME, <<"conference_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -41,7 +48,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
+    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+                                      ,{'responders', ?RESPONDERS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
+                                     ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -59,12 +71,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
-    add_zones(get_config()),
-    lager:info("waiting for first amqp connection...", []),
-    wh_amqp_connections:wait_for_available(),
-    timer:sleep(2000),
-    {'ok', #state{}, 100}.     
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -93,6 +100,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -106,12 +117,19 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('timeout', State) ->
-    _ = wh_amqp_sup:stop_bootstrap(),
-    {'noreply', State};
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
+handle_event(_JObj, _State) ->
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,7 +143,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("amqp bootstrap terminating: ~p", [_Reason]).
+    lager:debug("conference listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -141,64 +159,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec add_zones(ne_binaries()) -> 'ok'.
-add_zones([]) -> 'ok';
-add_zones([{ZoneName, Brokers}|Zones]) -> 
-    _ = add_brokers(Brokers, ZoneName),
-    add_zones(Zones).
-
--spec add_brokers(ne_binaries(), atom()) -> 'ok'.
-add_brokers([], _) -> 'ok';
-add_brokers([Broker|Brokers], ZoneName) ->
-    _ = wh_amqp_connections:add(Broker, ZoneName),
-    add_brokers(Brokers, ZoneName).
-
--spec get_config() -> wh_proplist().
-get_config() ->
-    case wh_config:get(get_node_section_name(), 'zone') of
-        [Zone] -> get_from_zone(Zone);
-        _Else -> get_from_amqp()
-    end.
-
--spec get_from_amqp() -> wh_proplist().
-get_from_amqp() ->
-    [{'local', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}].
-
--spec get_from_zone(atom()) -> wh_proplist().
-get_from_zone(ZoneName) ->
-    Zones = wh_config:get('zone'),
-    Props = dict:to_list(get_from_zone(ZoneName, Zones, dict:new())),
-    case props:get_value('local', Props, []) of
-        [] -> [{'local', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}|Props];
-        _Else -> Props
-    end.
-
--spec get_from_zone(atom(), wh_proplist(), dict()) -> dict().
-get_from_zone(_, [], Dict) -> Dict;
-get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
-    case props:get_value('name', Zone) of
-        'undefined' -> get_from_zone(ZoneName, Zones, Dict);
-        ZoneName -> 
-            get_from_zone(ZoneName, Zones, import_zone('local', Zone, Dict));
-        RemoteZoneName -> 
-            get_from_zone(ZoneName, Zones, import_zone(RemoteZoneName, Zone, Dict))
-    end.
-
--spec import_zone(atom(), wh_proplist(), dict()) -> dict().
-import_zone(_, [], Dict) -> Dict;
-import_zone(ZoneName, [{'amqp_uri', URI}|Props], Dict) ->
-    case dict:find(ZoneName, Dict) of
-        'error' ->
-            import_zone(ZoneName, Props, dict:store(ZoneName, [URI], Dict)); 
-         _ ->
-            import_zone(ZoneName, Props, dict:append(ZoneName, URI, Dict))
-    end;
-import_zone(ZoneName, [_|Props], Dict) -> import_zone(ZoneName, Props, Dict).
-
--spec get_node_section_name() -> atom().
-get_node_section_name() ->
-    Node = wh_util:to_binary(node()),
-    case binary:split(Node, <<"@">>) of
-        [Name, _] -> wh_util:to_atom(Name, 'true');
-        _Else -> node()
-    end.

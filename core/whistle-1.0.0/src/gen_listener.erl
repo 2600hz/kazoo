@@ -76,7 +76,14 @@
          ,nack/2
         ]).
 
+-export([execute/4
+         ,execute/3
+         ,execute/2
+        ]).
+
+-export([federated_event/3]).
 -export([handle_event/4]).
+-export([distribute_event/3]).
 
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
@@ -102,6 +109,7 @@
          ,module_state :: module_state()
          ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
          ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}},...] | [] %% {QueueName, {proplist(), wh_proplist()}}
+         ,federators = []
          ,self = self()
          ,consumer_key = wh_amqp_channel:consumer_pid()
          }).
@@ -258,6 +266,22 @@ rm_binding(Srv, {Binding, Props}) ->
 rm_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {'rm_binding', wh_util:to_binary(Binding), Props}).
 
+-spec federated_event(server_ref(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
+federated_event(Srv, JObj, BasicDeliver) ->
+    gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver}).
+
+-spec execute(server_ref(), module(), atom(), [term()]) -> 'ok'.
+execute(Srv, Module, Function, Args) ->
+    gen_server:cast(Srv, {'$execute', Module, Function, Args}).
+
+-spec execute(server_ref(), atom(), [term()]) -> 'ok'.
+execute(Srv, Function, Args) ->
+    gen_server:cast(Srv, {'$execute', Function, Args}).
+
+-spec execute(server_ref(), function()) -> 'ok'.
+execute(Srv, Function) when is_function(Function) ->
+    gen_server:cast(Srv, {'$execute', Function}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -297,12 +321,24 @@ init(Module, Params, ModState, TimeoutRef) ->
          || {Mod, Events} <- Responders
         ],
     _ = wh_amqp_channel:requisition(),
-    {'ok', #state{module=Module
-                  ,module_state=ModState
-                  ,module_timeout_ref=TimeoutRef
-                  ,params=Params
-                  ,bindings=props:get_value('bindings', Params, [])
-               }}.
+    case maybe_start_federators(Params) of
+        {'ok', Federators} ->
+            {'ok', #state{module=Module
+                          ,module_state=ModState
+                          ,module_timeout_ref=TimeoutRef
+                          ,params=Params
+                          ,federators=Federators
+                          ,bindings=props:get_value('bindings', Params, [])
+                         }};
+        'ok' ->
+            {'ok', #state{module=Module
+                          ,module_state=ModState
+                          ,module_timeout_ref=TimeoutRef
+                          ,params=Params
+                          ,federators=[]
+                          ,bindings=props:get_value('bindings', Params, [])
+                         }}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -442,6 +478,42 @@ handle_cast({'wh_amqp_assignment', {'new_channel', 'false'}}
     {'noreply', State#state{queue=Q
                             ,is_consuming='false'
                            }};
+handle_cast({'federated_event', JObj, BasicDeliver}, State) ->
+    spawn(?MODULE, 'distribute_event', [JObj, BasicDeliver, State]),
+    {'noreply', State};
+handle_cast({'$execute', Module, Function, Args}
+            ,#state{federators=[]}=State) ->
+    erlang:apply(Module, Function, Args),
+    {'noreply', State};
+handle_cast({'$execute', Function, Args}
+            ,#state{federators=[]}=State) ->
+    erlang:apply(Function, Args),
+    {'noreply', State};
+handle_cast({'$execute', Function}
+            ,#state{federators=[]}=State) ->
+    Function(),
+    {'noreply', State};
+handle_cast({'$execute', Module, Function, Args}=Msg
+            ,#state{federators=Federators}=State) ->
+    erlang:apply(Module, Function, Args),
+    _ = [gen_listener:cast(Federator, Msg)
+         || Federator <- Federators
+        ],
+    {'noreply', State};
+handle_cast({'$execute', Function, Args}=Msg
+            ,#state{federators=Federators}=State) ->
+    erlang:apply(Function, Args),
+    _ = [gen_listener:cast(Federator, Msg)
+         || Federator <- Federators
+        ],
+    {'noreply', State};
+handle_cast({'$execute', Function}=Msg
+            ,#state{federators=Federators}=State) ->
+    Function(),
+    _ = [gen_listener:cast(Federator, Msg)
+         || Federator <- Federators
+        ],
+    {'noreply', State};
 handle_cast(Message, #state{module=Module
                             ,module_state=ModState
                             ,module_timeout_ref=OldRef
@@ -465,7 +537,6 @@ handle_cast(Message, #state{module=Module
             wh_util:log_stacktrace(ST),
             {'stop', Reason, State}
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -516,11 +587,11 @@ handle_info(Message, State) ->
 handle_event(Payload, <<"application/json">>, BasicDeliver, State) ->
     JObj = wh_json:decode(Payload),
     _ = wh_util:put_callid(JObj),
-    process_req(JObj, BasicDeliver, State);
+    distribute_event(JObj, BasicDeliver, State);
 handle_event(Payload, <<"application/erlang">>, BasicDeliver, State) ->
     JObj = binary_to_term(Payload),
     _ = wh_util:put_callid(JObj),
-    process_req(JObj, BasicDeliver, State).
+    distribute_event(JObj, BasicDeliver, State).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -551,6 +622,64 @@ code_change(_OldVersion, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec maybe_start_federators(wh_proplist()) -> 'ok' | {'ok', pids()}.
+maybe_start_federators(Params) ->
+    Bindings = props:get_value('bindings', Params, []),
+    case get_federated_bindings(Bindings) of
+        [] -> 'ok';
+        FederateBindings ->
+            FederateParams = create_federated_params(FederateBindings, Params),
+            FederatedBrokers = wh_amqp_connections:federated_brokers(),
+            start_federators(FederatedBrokers, FederateParams, [])
+    end.
+
+-spec start_federators(ne_binaries(), wh_proplist(), pids()) -> {'ok', pids()}.
+start_federators([], _, Pids) -> {'ok', Pids};
+start_federators([Broker|Brokers], FederateParams, Pids) ->
+    {'ok', Pid} = listener_federator:start_link(self(), Broker, FederateParams),
+    start_federators(Brokers, FederateParams, [Pid|Pids]).
+
+-spec get_federated_bindings(wh_proplist()) -> wh_proplist().
+get_federated_bindings(Bindings) ->
+    lists:foldr(fun({Binding, Props}, Federate) ->
+                        case props:get_is_true('federate', Props, 'false') of
+                            'false' -> Federate;
+                            'true' ->
+                                lager:debug("found federated binding for ~s: ~p"
+                                            ,[Binding, Props]),
+                                [{Binding, props:delete('federate', Props)}
+                                 | Federate
+                                ]
+                        end
+                end, [], Bindings).
+
+-spec create_federated_params(wh_proplist(), wh_proplist()) -> wh_proplist().
+create_federated_params(FederateBindings, Params) ->
+    [{'responders', []}
+     ,{'bindings', FederateBindings}
+     ,{'queue_name', federated_queue_name(Params)}
+     ,{'queue_options', props:get_value('queue_options', Params, [])}
+     ,{'consume_options', props:get_value('consume_options', Params, [])}
+    ].
+
+-spec federated_queue_name(wh_proplist()) -> api_binary().
+federated_queue_name(Params) ->
+    QueueName = props:get_value('queue_name', Params, <<>>),
+    case wh_util:is_empty(QueueName) of
+        'true' -> QueueName;
+        'false' ->
+            [Zone] = wh_config:get(get_node_section_name(), 'zone'),
+            <<QueueName/binary, "-", (wh_util:to_binary(Zone))/binary>>
+    end.
+
+-spec get_node_section_name() -> atom().
+get_node_section_name() ->
+    Node = wh_util:to_binary(node()),
+    case binary:split(Node, <<"@">>) of
+        [Name, _] -> wh_util:to_atom(Name, 'true');
+        _Else -> node()
+    end.
+
 handle_callback_info(Message, #state{module=Module
                                      ,module_state=ModState
                                      ,module_timeout_ref=OldRef
@@ -582,17 +711,17 @@ format_status(_Opt, [_PDict, #state{module=Module
      ,{'data', [{"Listener State", State}]}
     ].
 
--spec process_req(wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
-process_req(JObj, BasicDeliver, State) ->
-    case handle_callback_event(State, JObj) of
+-spec distribute_event(wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+distribute_event(JObj, BasicDeliver, State) ->
+    case callback_handle_event(JObj, BasicDeliver, State) of
         'ignore' -> 'ok';
-        Props -> process_req(Props, JObj, BasicDeliver, State)
+        Props -> distribute_event(Props, JObj, BasicDeliver, State)
     end.
 
--spec process_req(wh_proplist(), wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
-process_req(Props, JObj, BasicDeliver, #state{responders=Responders
-                                              ,consumer_key=ConsumerKey
-                                             }) ->
+-spec distribute_event(wh_proplist(), wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
+                                                   ,consumer_key=ConsumerKey
+                                                  }) ->
     Key = wh_util:get_event_type(JObj),
     _ = [spawn(fun() ->
                        _ = wh_util:put_callid(JObj),
@@ -607,15 +736,22 @@ process_req(Props, JObj, BasicDeliver, #state{responders=Responders
         ],
     'ok'.
 
--spec handle_callback_event(state(), wh_json:object()) -> 'ignore' | wh_proplist().
-handle_callback_event(#state{module=Module
-                             ,module_state=ModState
-                             ,queue=Queue
-                             ,other_queues=OtherQueues
-                             ,self=Self
-                            }, JObj) ->
+-spec callback_handle_event(wh_json:object(), #'basic.deliver'{}, state()) -> 'ignore' | wh_proplist().
+callback_handle_event(JObj
+                      ,BasicDeliver
+                      ,#state{module=Module
+                              ,module_state=ModState
+                              ,queue=Queue
+                              ,other_queues=OtherQueues
+                              ,self=Self
+                             }) ->
     OtherQueueNames = props:get_keys(OtherQueues),
-    case catch Module:handle_event(JObj, ModState) of
+    case
+        case erlang:function_exported(Module, 'handle_event', 3) of
+            'true' -> catch Module:handle_event(JObj, BasicDeliver, ModState);
+            'false' -> catch Module:handle_event(JObj, ModState)
+        end
+    of
         'ignore' -> 'ignore';
         {'reply', Props} when is_list(Props) ->
             [{'server', Self}
