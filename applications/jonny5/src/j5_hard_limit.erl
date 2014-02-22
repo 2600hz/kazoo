@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -20,7 +20,7 @@
 %%--------------------------------------------------------------------
 -spec authorize(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 authorize(Request, Limits) ->
-    case calls_at_limit(Limits) 
+    case calls_at_limit(Limits)
         orelse resource_consumption_at_limit(Limits)
     of
         'true' -> j5_request:deny(<<"hard_limit">>, Request, Limits);
@@ -42,7 +42,7 @@ reconcile_cdr(_, _) -> 'ok'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec calls_at_limit(j5_limits:limits()) -> j5_request:request().
+-spec calls_at_limit(j5_limits:limits()) -> boolean().
 calls_at_limit(Limits) ->
     Limit =  j5_limits:calls(Limits),
     Used = j5_channels:total_calls(j5_limits:account_id(Limits)),
@@ -54,7 +54,7 @@ calls_at_limit(Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec resource_consumption_at_limit(j5_limits:limits()) -> j5_request:request().
+-spec resource_consumption_at_limit(j5_limits:limits()) -> boolean().
 resource_consumption_at_limit(Limits) ->
     Limit =  j5_limits:resource_consuming_calls(Limits),
     Used = j5_channels:resource_consuming(j5_limits:account_id(Limits)),
@@ -70,5 +70,5 @@ resource_consumption_at_limit(Limits) ->
 should_deny(-1, _) -> 'false';
 should_deny(0, _) -> 'true';
 should_deny(Limit, Used) -> Limit > Used.
-             
-    
+
+

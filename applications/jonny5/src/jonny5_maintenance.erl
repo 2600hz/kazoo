@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -33,14 +33,14 @@ authz_summary() ->
             'no_return';
         Accounts ->
             io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
-            io:format("| Account ID                       | Calls | Resource Calls | Allotments | Inbound Trunks | Outbound Trunks | Per Minute |~n"), 
+            io:format("| Account ID                       | Calls | Resource Calls | Allotments | Inbound Trunks | Outbound Trunks | Per Minute |~n"),
             io:format("+==================================+=======+================+============+================+=================+============+~n"),
             authz_summary(Accounts)
     end.
 
 -spec authz_summary(ne_binaries()) -> 'no_return'.
 authz_summary([]) -> 'no_return';
-authz_summary([AccountId|AccountIds]) -> 
+authz_summary([AccountId|AccountIds]) ->
     io:format("| ~-32s | ~-5w | ~-14w | ~-10w | ~-14w | ~-15w | ~-10w |~n"
               ,[AccountId
                 ,j5_channels:total_calls(AccountId)
@@ -53,8 +53,8 @@ authz_summary([AccountId|AccountIds]) ->
     io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
     authz_summary(AccountIds).
 
--spec authz_details(j5_channels:channels() | ne_binary()) -> 'ok'.
-authz_details([]) -> 
+-spec authz_details(j5_channels:channels() | ne_binary()) -> 'no_return'.
+authz_details([]) ->
     io:format("~n", []),
     'no_return';
 authz_details([Channel|Channels]) ->
@@ -79,7 +79,7 @@ authz_details([Channel|Channels]) ->
     pretty_print_field(<<"Rate Minimum">>, props:get_value(<<"Rate-Minimum">>, Props)),
     pretty_print_field(<<"Discount Percentage">>, props:get_value(<<"Discount-Percentage">>, Props)),
     pretty_print_field(<<"Surcharge">>, props:get_value(<<"Surcharge">>, Props)),
-    pretty_print_field(<<"Base Cost">>, props:get_value(<<"Base-Cost">>, Props)),   
+    pretty_print_field(<<"Base Cost">>, props:get_value(<<"Base-Cost">>, Props)),
     authz_details(Channels);
 authz_details(AccountId) ->
     authz_details(j5_channels:account(AccountId)).
@@ -105,7 +105,7 @@ authz_details_duration(Key, Props, Timestamp) ->
 -spec limits_summary() -> 'no_return'.
 limits_summary() ->
     case j5_limits:cached() of
-        [] -> 
+        [] ->
             io:format("no limits found~n", []),
             'no_return';
         Limits ->
@@ -114,7 +114,7 @@ limits_summary() ->
     end.
 
 -spec limits_summary([j5_limits:limits(),...] | [] | ne_binary()) -> 'no_return'.
-limits_summary([]) -> 'ok';
+limits_summary([]) -> 'no_return';
 limits_summary([Limit|Limits]) ->
     case j5_limits:enabled(Limit) of
         'false' ->
@@ -178,9 +178,9 @@ limits_summary_postpay(Limit) ->
 -spec limit_summary_header() -> 'ok'.
 limit_summary_header() ->
     io:format("+----------------------------------+-------+----------------+------------+--------------------------+------------+-------------+~n"),
-    io:format("| Account ID                       | Calls | Resource Calls | Allotments |           Trunks         | Per Minute | Max Postpay |~n"), 
-    io:format("|                                  |       |                |            |  In | Out | Both | Burst |            |             |~n"), 
-    io:format("+==================================+=======+================+============+==========================+============+=============+~n").    
+    io:format("| Account ID                       | Calls | Resource Calls | Allotments |           Trunks         | Per Minute | Max Postpay |~n"),
+    io:format("|                                  |       |                |            |  In | Out | Both | Burst |            |             |~n"),
+    io:format("+==================================+=======+================+============+==========================+============+=============+~n").
 
 -spec limits_details(atom() | string() | ne_binary()) -> 'no_return'.
 limits_details(Account) when not is_binary(Account) ->
@@ -229,9 +229,9 @@ limits_details_allotments([Key|Keys], JObj) ->
     pretty_print_field("  Cycle", wh_json:get_value([Key, <<"cycle">>], JObj, <<"monthly">>)),
     limits_details_allotments(Keys, JObj).
 
--spec pretty_print_field(string(), any()) -> 'ok'.
+-spec pretty_print_field(text(), any()) -> 'ok'.
 pretty_print_field(_, 'undefined') -> 'ok';
 pretty_print_field(Name, Value) when is_number(Value) ->
-    io:format("~-25s: ~w~n", [Name, Value]); 
+    io:format("~-25s: ~w~n", [Name, Value]);
 pretty_print_field(Name, Value) ->
     io:format("~-25s: ~s~n", [Name, Value]).

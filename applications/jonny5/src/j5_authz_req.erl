@@ -56,14 +56,14 @@ maybe_account_limited(Request) ->
         'true' -> maybe_determine_reseller_id(R)
     end.
 
--spec maybe_determine_reseller_id(j5_request:request()) -> 'ok'. 
+-spec maybe_determine_reseller_id(j5_request:request()) -> 'ok'.
 maybe_determine_reseller_id(Request) ->
     case j5_request:reseller_id(Request) of
         'undefined' -> determine_reseller_id(Request);
         _Else -> maybe_reseller_limited(Request)
     end.
 
--spec determine_reseller_id(j5_request:request()) -> 'ok'. 
+-spec determine_reseller_id(j5_request:request()) -> 'ok'.
 determine_reseller_id(Request) ->
     AccountId = j5_request:account_id(Request),
     ResellerId = wh_services:find_reseller_id(AccountId),
@@ -102,7 +102,7 @@ maybe_authorize(Request, Limits) ->
             j5_request:authorize(<<"limits_disabled">>, Request, Limits)
     end.
 
--spec maybe_authorize_exception(j5_request:request(), j5_limits:limits()) -> 'ok'.
+-spec maybe_authorize_exception(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_authorize_exception(Request, Limits) ->
     CallDirection = j5_request:call_direction(Request),
     case j5_request:classification(Request) of
@@ -115,8 +115,8 @@ maybe_authorize_exception(Request, Limits) ->
         _Else -> maybe_hard_limit(Request, Limits)
     end.
 
--spec maybe_hard_limit(j5_request:request(), j5_limits:limits()) -> 'ok'.
-maybe_hard_limit(Request, Limits) ->    
+-spec maybe_hard_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
+maybe_hard_limit(Request, Limits) ->
     R = j5_hard_limit:authorize(Request, Limits),
     case j5_request:billing(R, Limits) of
         <<"hard_limit">> -> maybe_soft_limit(R, Limits);
@@ -183,11 +183,11 @@ send_response(Request) ->
               ,{<<"Call-ID">>, j5_request:call_id(Request)}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    wapi_authz:publish_authz_resp(ServerId, Resp),    
+    wapi_authz:publish_authz_resp(ServerId, Resp),
     case j5_request:is_authorized(Request) of
         'true' ->
             wapi_authz:broadcast_authz_resp(Resp),
             j5_channels:authorized(wh_json:from_list(Resp));
         'false' -> 'ok'
     end.
-            
+

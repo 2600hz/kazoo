@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -24,13 +24,13 @@ authorize(Request, Limits) ->
     maybe_consume_allotment(Allotment, Request, Limits).
 
 -spec maybe_consume_allotment('undefined'| wh_json:object(), j5_request:request(), j5_limits:limits()) -> j5_request:request().
-maybe_consume_allotment('undefined', Request, _) -> 
+maybe_consume_allotment('undefined', Request, _) ->
     lager:debug("account has no allotment", []),
     Request;
 maybe_consume_allotment(Allotment, Request, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
-    case allotment_consumed_sofar(Allotment, Limits) of
+    case allotment_consumed_so_far(Allotment, Limits) of
         {'error', _R} -> Request;
         Consumed when Consumed > (Amount - 60) ->
             lager:debug("account ~s has used all ~ws of their allotment"
@@ -60,7 +60,7 @@ reconcile_cdr(Request, Limits) ->
 maybe_reconcile_allotment(Request, Limits) ->
     case try_find_allotment(Request, Limits) of
         'undefined' -> 'ok';
-        Allotment -> 
+        Allotment ->
             BillingSeconds = j5_request:billing_seconds(Request),
             reconcile_allotment(BillingSeconds, Allotment, Request, Limits)
     end.
@@ -74,7 +74,7 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     Timestamp = wh_util:current_tstamp(),
     Id = <<CallId/binary, "-allotment-consumption">>,
     lager:debug("adding allotment debit ~s to ledger ~s for ~wsec"
-                ,[Id, LedgerDb, Seconds]), 
+                ,[Id, LedgerDb, Seconds]),
     Props = [{<<"_id">>, Id}
              ,{<<"account_id">>, AccountId}
              ,{<<"seconds">>, abs(Seconds)}
@@ -112,64 +112,70 @@ try_find_allotment_classification(Classification, Limits) ->
     case wh_json:get_value(Classification, Allotments) of
         'undefined' -> 'undefined';
         Allotment -> wh_json:set_value(<<"classification">>, Classification, Allotment)
-    end.             
-        
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec allotment_consumed_sofar(wh_json:object(), j5_limits:limits()) -> integer() | {'error', _}.
-allotment_consumed_sofar(Allotment, Limits) ->
+-spec allotment_consumed_so_far(wh_json:object(), j5_limits:limits()) ->
+                                       integer() |
+                                       {'error', _}.
+allotment_consumed_so_far(Allotment, Limits) ->
     Classification = wh_json:get_value(<<"classification">>, Allotment),
     Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
     CycleStart = cycle_start(Cycle),
     CycleSpan = cycle_span(Cycle),
-    case allotment_consumed_sofar(CycleStart, Classification, Limits, 0) of
+    case allotment_consumed_so_far(CycleStart, Classification, Limits, 0) of
         {'error', _}=Error -> Error;
         Consumed ->
             Consumed + j5_channels:allotment_consumed(CycleStart, CycleSpan, Classification, Limits)
     end.
 
--spec allotment_consumed_sofar(non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) -> integer() | {'error', _}.
-allotment_consumed_sofar(_, _, _, Attempts) when Attempts > 2 -> 0;
-allotment_consumed_sofar(CycleStart, Classification, Limits, Attempts) ->
+-spec allotment_consumed_so_far(non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
+                                       integer() |
+                                       {'error', _}.
+allotment_consumed_so_far(_, _, _, Attempts) when Attempts > 2 -> 0;
+allotment_consumed_so_far(CycleStart, Classification, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),
     LedgerDb = wh_util:format_account_mod_id(AccountId),
     ViewOptions = [{'startkey', [Classification, CycleStart]}
                    ,{'reduce', 'false'}
                   ],
     case couch_mgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
-        {'error', 'not_found'} -> 
+        {'error', 'not_found'} ->
             add_transactions_view(LedgerDb, CycleStart, Classification, Limits, Attempts);
         {'error', _R}=Error ->
             lager:debug("unable to get consumed quanity for ~s allotment from ~s: ~p"
                         ,[Classification, LedgerDb, _R]),
             Error;
-        {'ok', JObjs} -> sum_allotment_consumed_sofar(JObjs, CycleStart)
+        {'ok', JObjs} -> sum_allotment_consumed_so_far(JObjs, CycleStart)
     end.
 
--spec sum_allotment_consumed_sofar(wh_json:objects(), non_neg_integer()) -> non_neg_integer().
-sum_allotment_consumed_sofar(JObjs, CycleStart) ->
-    sum_allotment_consumed_sofar(JObjs, CycleStart, 0).
+-spec sum_allotment_consumed_so_far(wh_json:objects(), non_neg_integer()) -> non_neg_integer().
+sum_allotment_consumed_so_far(JObjs, CycleStart) ->
+    sum_allotment_consumed_so_far(JObjs, CycleStart, 0).
 
--spec sum_allotment_consumed_sofar(wh_json:objects(), non_neg_integer(), non_neg_integer()) -> non_neg_integer().
-sum_allotment_consumed_sofar([], _, Seconds) -> Seconds;
-sum_allotment_consumed_sofar([JObj|JObjs], CycleStart, Seconds) ->
+-spec sum_allotment_consumed_so_far(wh_json:objects(), non_neg_integer(), non_neg_integer()) -> non_neg_integer().
+sum_allotment_consumed_so_far([], _, Seconds) -> Seconds;
+sum_allotment_consumed_so_far([JObj|JObjs], CycleStart, Seconds) ->
     [_, Timestamp] = wh_json:get_value(<<"key">>, JObj),
     Duration = wh_json:get_value(<<"value">>, JObj),
     case (Timestamp - Duration) > CycleStart of
         'true' ->
-            sum_allotment_consumed_sofar(JObjs, CycleStart, Seconds + Duration);
+            sum_allotment_consumed_so_far(JObjs, CycleStart, Seconds + Duration);
         'false' ->
-            sum_allotment_consumed_sofar(JObjs, CycleStart, Seconds + (Timestamp - CycleStart))
+            sum_allotment_consumed_so_far(JObjs, CycleStart, Seconds + (Timestamp - CycleStart))
     end.
 
--spec add_transactions_view(ne_binary(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) -> integer() | {'error', _}.
+-spec add_transactions_view(ne_binary(), non_neg_integer(), ne_binary(), j5_limits:limits(), 0..3) ->
+                                   integer() |
+                                   {'error', _}.
 add_transactions_view(LedgerDb, CycleStart, Classification, Limits, Attempts) ->
     _ = couch_mgr:revise_views_from_folder(LedgerDb, 'jonny5'),
-    allotment_consumed_sofar(CycleStart, Classification, Limits, Attempts + 1).
+    allotment_consumed_so_far(CycleStart, Classification, Limits, Attempts + 1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -183,7 +189,8 @@ cycle_start(<<"monthly">>) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}});
 cycle_start(<<"weekly">>) ->
     {Date, _} = calendar:universal_time(),
-    calendar:datetime_to_gregorian_seconds({Date, {0, 0, 0}}) - (calendar:day_of_the_week(Date) - 1) * 86400;
+    calendar:datetime_to_gregorian_seconds({Date, {0, 0, 0}}) -
+        (calendar:day_of_the_week(Date) - 1) * ?SECONDS_IN_DAY;
 cycle_start(<<"daily">>) ->
     {{Year, Month, Day}, _} = calendar:universal_time(),
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {0, 0, 0}});
@@ -195,8 +202,8 @@ cycle_start(<<"minutely">>) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, 0}}).
 
 -spec cycle_span(ne_binary()) -> integer().
-cycle_span(<<"monthly">>) -> 2629743;
-cycle_span(<<"weekly">>) -> 604800;
-cycle_span(<<"daily">>) -> 86400;
-cycle_span(<<"hourly">>) -> 3600;
+cycle_span(<<"monthly">>) -> 2629743; % avg days in month
+cycle_span(<<"weekly">>) -> ?SECONDS_IN_WEEK;
+cycle_span(<<"daily">>) -> ?SECONDS_IN_DAY;
+cycle_span(<<"hourly">>) -> ?SECONDS_IN_HOUR;
 cycle_span(<<"minutely">>) -> 60.

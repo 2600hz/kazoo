@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -57,19 +57,19 @@
                 ,node :: ne_binary()
                }).
 
--record(node, {node = node() :: atom()
-               ,expires = 0 :: non_neg_integer()
-               ,whapps = [] :: ne_binaries()
-               ,media_servers = [] :: ne_binaries()
-               ,last_heartbeat = wh_util:now_ms(now()) :: wh_now()
-               ,federated = 'false' :: boolean()
-               ,broker :: api_binary()
-               ,used_memory = 0 :: non_neg_integer()
-               ,processes = 0 :: non_neg_integer()
-               ,ports = 0 :: non_neg_integer()
-               ,version :: api_binary()
-               ,channels = 0 :: non_neg_integer()
-               ,registrations = 0 :: non_neg_integer()
+-record(node, {node = node() :: atom() | '$1' | '_'
+               ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
+               ,whapps = [] :: ne_binaries() | '$1' | '_'
+               ,media_servers = [] :: ne_binaries() | '_'
+               ,last_heartbeat = wh_util:now_ms(now()) :: pos_integer() | 'undefined' | '$3' | '_'
+               ,federated = 'false' :: boolean() | '_'
+               ,broker :: api_binary() | '_'
+               ,used_memory = 0 :: non_neg_integer() | '_'
+               ,processes = 0 :: non_neg_integer() | '_'
+               ,ports = 0 :: non_neg_integer() | '_'
+               ,version :: api_binary() | '_'
+               ,channels = 0 :: non_neg_integer() | '_'
+               ,registrations = 0 :: non_neg_integer() | '_'
               }).
 
 -type wh_node() :: #node{}.
@@ -99,41 +99,33 @@ start_link() ->
 whapp_count(Whapp) ->
     whapp_count(Whapp, 'false').
 
--spec whapp_count(text(), text()) -> integer().
-whapp_count(Whapp, IncludeFederated) 
-  when not is_binary(Whapp) ->
-    whapp_count(wh_util:to_binary(Whapp), IncludeFederated);
-whapp_count(Whapp, IncludeFederated) 
-  when not is_boolean(IncludeFederated) ->
-    whapp_count(Whapp, wh_util:is_true(IncludeFederated));
-whapp_count(Whapp, 'false') ->
+-spec whapp_count(text(), text() | boolean()) -> integer().
+whapp_count(Whapp, IncludeFederated) ->
     MatchSpec = [{#node{whapps='$1'
-                       ,federated='false'
-                       ,_ = '_'}
-                 ,[{'=/=', '$1', []}]
-                 ,['$1']}
-               ],
-    determine_whapp_count(Whapp, MatchSpec);
-whapp_count(Whapp, 'true') ->
-    MatchSpec = [{#node{whapps='$1'
-                       ,_ = '_'}
-                 ,[{'=/=', '$1', []}]
-                 ,['$1']}
-               ],
-    determine_whapp_count(Whapp, MatchSpec).
+                        ,federated=wh_util:is_true(IncludeFederated)
+                        ,_ = '_'
+                       }
+                  ,[{'=/=', '$1', []}]
+                  ,['$1']
+                 }],
+    determine_whapp_count(wh_util:to_binary(Whapp), MatchSpec).
 
 -spec determine_whapp_count(ne_binary(), ets:match_spec()) -> non_neg_integer().
 determine_whapp_count(Whapp, MatchSpec) ->
-    lists:foldl(fun(Whapps, Acc) ->
-                        case lists:member(Whapp, Whapps) of
-                            'true' -> Acc + 1;
-                            'false' -> Acc
-                        end
+    lists:foldl(fun(Whapps, Acc) when is_list(Whapps) ->
+                        determine_whapp_count_fold(Whapps, Acc, Whapp)
                 end, 0, ets:select(?MODULE, MatchSpec)).
+
+-spec determine_whapp_count_fold(ne_binaries(), non_neg_integer(), ne_binary()) -> non_neg_integer().
+determine_whapp_count_fold(Whapps, Acc, Whapp) ->
+    case lists:member(Whapp, Whapps) of
+        'true' -> Acc + 1;
+        'false' -> Acc
+    end.
 
 -spec status() -> 'no_return'.
 status() ->
-    Nodes = lists:sort(fun(N1, N2) -> 
+    Nodes = lists:sort(fun(N1, N2) ->
                                N1#node.node > N2#node.node
                        end, ets:tab2list(?MODULE)),
     _ = [begin
@@ -174,7 +166,7 @@ status_list([], _) -> io:format("~n", []);
 status_list(Whapps, Column) when Column > 3 ->
     io:format("~n                ", []),
     status_list(Whapps, 0);
-status_list([Whapp|Whapps], Column) -> 
+status_list([Whapp|Whapps], Column) ->
     io:format("~-20s", [Whapp]),
     status_list(Whapps, Column + 1).
 
@@ -392,14 +384,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec create_node(5000..15000) -> wh_node().
+-spec create_node('undefined' | 5000..15000) -> wh_node().
 create_node(Heartbeat) ->
     maybe_add_whapps_data(#node{expires=Heartbeat
                                 ,broker=wh_amqp_connections:primary_broker()
                                 ,used_memory=erlang:memory('total')
                                 ,processes=erlang:system_info('process_count')
                                 ,ports=length(erlang:ports())
-                                ,version=erlang:system_info('otp_release')}).
+                                ,version=wh_util:to_binary(erlang:system_info('otp_release'))
+                               }).
 
 -spec maybe_add_whapps_data(wh_node()) -> wh_node().
 maybe_add_whapps_data(Node) ->
@@ -463,7 +456,7 @@ advertise_payload(Node) ->
 from_json(JObj) ->
     Node = wh_json:get_value(<<"Node">>, JObj),
     #node{node=wh_util:to_atom(Node, 'true')
-          ,expires=wh_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR
+          ,expires=wh_util:to_integer(wh_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
           ,whapps=wh_json:get_value(<<"WhApps">>, JObj, [])
           ,media_servers=wh_json:get_value(<<"Media-Servers">>, JObj, [])
           ,used_memory=wh_json:get_integer_value(<<"Used-Memory">>, JObj, 0)
@@ -505,9 +498,10 @@ notify_new(Node, Pids) ->
         ],
     'ok'.
 
+-spec is_federated(api_object() | ne_binary()) -> boolean().
 is_federated(<<"consumer://", _/binary>>) -> 'true';
 is_federated('undefined') -> 'false';
 is_federated(ServerId) when is_binary(ServerId) -> 'false';
 is_federated(JObj) -> is_federated(wh_json:get_value(<<"Server-ID">>, JObj)).
 
-     
+

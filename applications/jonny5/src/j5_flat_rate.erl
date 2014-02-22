@@ -36,7 +36,7 @@ authorize(Request, Limits) ->
             lager:debug("checking if account ~s has available flat rate trunks"
                         ,[j5_limits:account_id(Limits)]),
             maybe_consume_flat_rate(Request, Limits);
-        'false' -> 
+        'false' ->
             lager:debug("number is not eligible for flat rate trunks", []),
             Request
     end.
@@ -103,7 +103,7 @@ consume_inbound_limits(Request, Limits) ->
 -spec get_inbound_resources(j5_request:request(), j5_limits:limits()) -> integer().
 get_inbound_resources(Request, Limits) ->
     AccountId = j5_limits:account_id(Limits),
-    CurrentUsage = j5_channels:inbound_flat_rate(AccountId),   
+    CurrentUsage = j5_channels:inbound_flat_rate(AccountId),
     case j5_request:call_direction(Request) of
         <<"inbound">> -> CurrentUsage + 1;
         <<"outbound">> -> CurrentUsage
@@ -124,7 +124,7 @@ consume_outbound_limits(Request, Limits) ->
 -spec get_outbound_resources(j5_request:request(), j5_limits:limits()) -> integer().
 get_outbound_resources(Request, Limits) ->
     AccountId = j5_limits:account_id(Limits),
-    CurrentUsage = j5_channels:outbound_flat_rate(AccountId),   
+    CurrentUsage = j5_channels:outbound_flat_rate(AccountId),
     case j5_request:call_direction(Request) of
         <<"inbound">> -> CurrentUsage;
         <<"outbound">> -> CurrentUsage + 1
@@ -136,7 +136,7 @@ get_outbound_resources(Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec consume_twoway_limits(j5_limits:limits(), integer()) -> integer().
+-spec consume_twoway_limits(integer(), j5_limits:limits()) -> integer().
 consume_twoway_limits(Used, Limits) ->
     Limit = j5_limits:twoway_trunks(Limits),
     consume_limit(Limit, Used, <<"twoway">>).
@@ -148,13 +148,13 @@ consume_twoway_limits(Used, Limits) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec consume_limit(integer(), integer(), ne_binary()) -> integer().
-consume_limit(-1, _, Type) -> 
+consume_limit(-1, _, Type) ->
     lager:debug("account has unlimited ~s trunks", [Type]),
     0;
-consume_limit(0, Used, Type) -> 
+consume_limit(0, Used, Type) ->
     lager:debug("account has no ~s trunks", [Type]),
     Used;
-consume_limit(Limit, 0, Type) -> 
+consume_limit(Limit, 0, Type) ->
     lager:debug("account is consuming 0/~p ~s trunks", [Limit, Type]),
     0;
 consume_limit(Limit, Used, Type) ->
@@ -167,5 +167,5 @@ consume_limit(Limit, Used, Type) ->
             lager:debug("account is consuming ~p/~p ~s trunks"
                         ,[Used - 1, Limit, Type]),
             0
-    end.    
-    
+    end.
+

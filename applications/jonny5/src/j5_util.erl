@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -7,7 +7,6 @@
 %%%-------------------------------------------------------------------
 -module(j5_util).
 
--export([send_system_alert/3]).
 -export([remove_call_charges/2]).
 
 -include_lib("jonny5.hrl").
@@ -22,7 +21,3 @@ remove_call_charges(AccountId, CallId) ->
             _ = wh_transactions:remove(Transactions),
             'ok'
     end.
-
-send_system_alert(_Reason, _JObj, _Limits) ->
-    %% TODO: FIX ME!!
-    spawn(fun() -> ok end).

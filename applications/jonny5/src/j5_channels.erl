@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -47,29 +47,29 @@
 -define(TAB, ?MODULE).
 -define(SYNC_PERIOD, 900000). %% 15 minutes
 
--record(channel, {call_id :: api_binary()
-                  ,other_leg_call_id :: api_binary()
-                  ,direction :: api_binary()
-                  ,account_id :: api_binary()
-                  ,account_billing :: api_binary()
-                  ,account_allotment = 'false' :: boolean()
-                  ,reseller_id :: api_binary()
-                  ,reseller_billing :: api_binary()
-                  ,reseller_allotment = 'false' :: boolean()
-                  ,soft_limit = 'false' :: boolean()
-                  ,timestamp = wh_util:current_tstamp() :: pos_integer()
-                  ,answered_timestamp :: 'undefined' | pos_integer()
-                  ,rate :: api_binary()
-                  ,rate_increment :: api_binary()
-                  ,rate_minimum :: api_binary()
-                  ,discount_percentage :: api_binary()
-                  ,surcharge :: api_binary()
-                  ,rate_name :: api_binary()
-                  ,rate_id :: api_binary()
-                  ,base_cost :: api_binary()
+-record(channel, {call_id :: api_binary() | '$1' | '$2' | '_'
+                  ,other_leg_call_id :: api_binary() | '$2' | '$3' | '_'
+                  ,direction :: api_binary() | '_'
+                  ,account_id :: api_binary() | '$1' | '_'
+                  ,account_billing :: api_binary() | '$1' | '_'
+                  ,account_allotment = 'false' :: boolean() | '_'
+                  ,reseller_id :: api_binary() | '$1' | '_'
+                  ,reseller_billing :: api_binary() | '$1' | '_'
+                  ,reseller_allotment = 'false' :: boolean() | '_'
+                  ,soft_limit = 'false' :: boolean() | '_'
+                  ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_'
+                  ,answered_timestamp :: 'undefined' | pos_integer() | '$1' | '_'
+                  ,rate :: api_binary() | '_'
+                  ,rate_increment :: api_binary() | '_'
+                  ,rate_minimum :: api_binary() | '_'
+                  ,discount_percentage :: api_binary() | '_'
+                  ,surcharge :: api_binary() | '_'
+                  ,rate_name :: api_binary() | '_'
+                  ,rate_id :: api_binary() | '_'
+                  ,base_cost :: api_binary() | '_'
                  }).
--opaque channel() :: #channel{}.
--type channels() :: [channels(),...] | [].
+-type channel() :: #channel{}.
+-type channels() :: [channel(),...] | [].
 -export_type([channel/0
               ,channels/0
              ]).
@@ -196,7 +196,7 @@ inbound_flat_rate(AccountId) ->
                    ,['true']
                   }
                 ],
-    ets:select_count(?TAB, MatchSpec).     
+    ets:select_count(?TAB, MatchSpec).
 
 -spec outbound_flat_rate(ne_binary()) -> non_neg_integer().
 outbound_flat_rate(AccountId) ->
@@ -580,7 +580,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec from_jobj(wh_json:object()) -> #channel{}.
+-spec from_jobj(wh_json:object()) -> channel().
 from_jobj(JObj) ->
     %% CHANNEL_CREATE has bunch of stuff in CCVs where as auth_resp
     %%  is root level, so if no CCVs then just use the JObj as is...
@@ -610,7 +610,7 @@ is_alloment(_) -> 'false'.
 count_unique_calls(Channels) ->
     sets:size(count_unique_calls(Channels, sets:new())).
 
--spec count_unique_calls(unique_channels(), set()) -> non_neg_integer().
+-spec count_unique_calls(unique_channels(), set()) -> set().
 count_unique_calls([], Set) -> Set;
 count_unique_calls([{CallId, 'undefined'}|Channels], Set) ->
     count_unique_calls(Channels, sets:add_element(CallId, Set));
@@ -668,7 +668,7 @@ sum_allotment_consumed(CycleStart, Span, Matches) ->
 sum_allotment_consumed(_, _, _, Seconds, []) -> Seconds;
 sum_allotment_consumed(CycleStart, Span, CurrentTimestamp, Seconds, ['undefined'|Matches]) ->
     sum_allotment_consumed(CycleStart, Span, CurrentTimestamp, Seconds + 60, Matches);
-sum_allotment_consumed(CycleStart, Span, CurrentTimestamp, Seconds, [Timestamp|Matches]) ->    
+sum_allotment_consumed(CycleStart, Span, CurrentTimestamp, Seconds, [Timestamp|Matches]) ->
     S = calculate_consumed(CycleStart, Span, CurrentTimestamp, Timestamp) + Seconds,
     sum_allotment_consumed(CycleStart, Span, CurrentTimestamp, S, Matches).
 
@@ -687,7 +687,7 @@ calculate_consumed(CycleStart, Span, CurrentTimestamp, Timestamp) ->
 call_cost(#channel{answered_timestamp='undefined'}=Channel) ->
     wht_util:call_cost(billing_jobj(60, Channel));
 call_cost(#channel{answered_timestamp=Timestamp}=Channel) ->
-    BillingSeconds = wh_util:current_tstamp() - Timestamp + 60,    
+    BillingSeconds = wh_util:current_tstamp() - Timestamp + 60,
     wht_util:call_cost(billing_jobj(BillingSeconds, Channel)).
 
 -spec billing_jobj(non_neg_integer(), channel()) -> wh_json:object().

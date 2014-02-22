@@ -63,7 +63,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
--type origin_tuple() :: {'db', ne_binary(), ne_binary()}.
+-type origin_tuple() :: {'db', ne_binary(), ne_binary()} | {'db', ne_binary()}.
 -type origin_tuples() :: [origin_tuple(),...] | [].
 -record(cache_obj, {key :: term() | '_' | '$1'
                     ,value :: term() | '_' | '$1' | '$2'

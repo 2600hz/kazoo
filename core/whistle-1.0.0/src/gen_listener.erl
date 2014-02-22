@@ -330,7 +330,7 @@ init(Module, Params, ModState, TimeoutRef) ->
                           ,federators=Federators
                           ,bindings=props:get_value('bindings', Params, [])
                          }};
-        _Else ->
+        'ok' ->
             {'ok', #state{module=Module
                           ,module_state=ModState
                           ,module_timeout_ref=TimeoutRef
@@ -622,7 +622,7 @@ code_change(_OldVersion, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_start_federators(wh_proplist()) -> pids().
+-spec maybe_start_federators(wh_proplist()) -> 'ok' | {'ok', pids()}.
 maybe_start_federators(Params) ->
     Bindings = props:get_value('bindings', Params, []),
     case get_federated_bindings(Bindings) of
@@ -633,12 +633,11 @@ maybe_start_federators(Params) ->
             start_federators(FederatedBrokers, FederateParams, [])
     end.
 
--spec start_federators(ne_binaries(), wh_proplist(), pids()) -> pids().
-start_federators([], _, Pids) -> Pids;
+-spec start_federators(ne_binaries(), wh_proplist(), pids()) -> {'ok', pids()}.
+start_federators([], _, Pids) -> {'ok', Pids};
 start_federators([Broker|Brokers], FederateParams, Pids) ->
-    Pid = listener_federator:start_link(self(), Broker, FederateParams),
+    {'ok', Pid} = listener_federator:start_link(self(), Broker, FederateParams),
     start_federators(Brokers, FederateParams, [Pid|Pids]).
-
 
 -spec get_federated_bindings(wh_proplist()) -> wh_proplist().
 get_federated_bindings(Bindings) ->

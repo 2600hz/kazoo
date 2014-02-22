@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -41,7 +41,7 @@
                  ,bundled_outbound_trunks = 0 :: non_neg_integer()
                  ,bundled_twoway_trunks = 0 :: non_neg_integer()
                  ,burst_trunks = 0 :: tristate_integer()
-                 ,max_postpay_amount = 0 :: non_neg_integer()
+                 ,max_postpay_amount = 0 :: tristate_integer()
                  ,reserve_amount = 0 :: non_neg_integer()
                  ,allow_prepay = 'true' :: boolean()
                  ,allow_postpay = 'false' :: boolean()
@@ -49,7 +49,8 @@
                  ,soft_limit_inbound = 'false' :: boolean()
                  ,soft_limit_outbound = 'false' :: boolean()
                 }).
--opaque limits() :: #limits{}.
+
+-type limits() :: #limits{}.
 -export_type([limits/0]).
 
 -define(LIMITS_KEY(AccountId), {'limits', AccountId}).
@@ -60,7 +61,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary()) -> #limits{}.
+-spec get(ne_binary()) -> limits().
 get(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case wh_cache:peek_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId)) of
@@ -68,7 +69,7 @@ get(Account) ->
         {'error', 'not_found'} -> fetch(AccountId)
     end.
 
--spec fetch(ne_binary()) -> #limits{}.
+-spec fetch(ne_binary()) -> limits().
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
@@ -102,7 +103,7 @@ cached() ->
     [Limit
      || {_, Limit} <- wh_cache:filter_local(?JONNY5_CACHE
                                             ,fun(_, #limits{}) -> 'true';
-                                                (_, _) -> 'false' 
+                                                (_, _) -> 'false'
                                              end)
     ].
 
@@ -112,7 +113,7 @@ cached() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec to_props(ne_binary() | #limits{}) -> wh_proplist().
+-spec to_props(ne_binary() | limits()) -> wh_proplist().
 to_props(#limits{}=Limits) ->
     lists:zip(record_info('fields', 'limits'), tl(tuple_to_list(Limits)));
 to_props(Account) -> to_props(?MODULE:get(Account)).
@@ -123,17 +124,17 @@ to_props(Account) -> to_props(?MODULE:get(Account)).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec account_id(#limits{}) -> api_binary().
+-spec account_id(limits()) -> api_binary().
 account_id(#limits{account_id=AccountId}) -> AccountId;
 account_id(_) -> 'undefined'.
- 
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec enabled(#limits{}) -> boolean().
+-spec enabled(limits()) -> boolean().
 enabled(#limits{enabled=Enabled}) -> Enabled.
 
 %%--------------------------------------------------------------------
@@ -142,7 +143,7 @@ enabled(#limits{enabled=Enabled}) -> Enabled.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec soft_limit_outbound(#limits{}) -> boolean().
+-spec soft_limit_outbound(limits()) -> boolean().
 soft_limit_outbound(#limits{soft_limit_outbound=SoftLimit}) -> SoftLimit.
 
 %%--------------------------------------------------------------------
@@ -151,7 +152,7 @@ soft_limit_outbound(#limits{soft_limit_outbound=SoftLimit}) -> SoftLimit.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec soft_limit_inbound(#limits{}) -> boolean().
+-spec soft_limit_inbound(limits()) -> boolean().
 soft_limit_inbound(#limits{soft_limit_inbound=SoftLimit}) -> SoftLimit.
 
 %%--------------------------------------------------------------------
@@ -160,7 +161,7 @@ soft_limit_inbound(#limits{soft_limit_inbound=SoftLimit}) -> SoftLimit.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec allotments(#limits{}) -> wh_json:object().
+-spec allotments(limits()) -> wh_json:object().
 allotments(#limits{allotments=Allotments}) -> Allotments.
 
 %%--------------------------------------------------------------------
@@ -169,7 +170,7 @@ allotments(#limits{allotments=Allotments}) -> Allotments.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec calls(#limits{}) -> tristate_integer().
+-spec calls(limits()) -> tristate_integer().
 calls(#limits{calls=Calls}) -> Calls.
 
 %%--------------------------------------------------------------------
@@ -178,7 +179,7 @@ calls(#limits{calls=Calls}) -> Calls.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec resource_consuming_calls(#limits{}) -> tristate_integer().
+-spec resource_consuming_calls(limits()) -> tristate_integer().
 resource_consuming_calls(#limits{resource_consuming_calls=Calls}) -> Calls.
 
 %%--------------------------------------------------------------------
@@ -187,7 +188,7 @@ resource_consuming_calls(#limits{resource_consuming_calls=Calls}) -> Calls.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec inbound_trunks(#limits{}) -> tristate_integer().
+-spec inbound_trunks(limits()) -> tristate_integer().
 inbound_trunks(#limits{inbound_trunks=-1}) -> -1;
 inbound_trunks(#limits{bundled_inbound_trunks=BundledTrunks
                        ,inbound_trunks=Trunks}) ->
@@ -199,7 +200,7 @@ inbound_trunks(#limits{bundled_inbound_trunks=BundledTrunks
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec outbound_trunks(#limits{}) -> tristate_integer().
+-spec outbound_trunks(limits()) -> tristate_integer().
 outbound_trunks(#limits{outbound_trunks=-1}) -> -1;
 outbound_trunks(#limits{bundled_outbound_trunks=BundledTrunks
                         ,outbound_trunks=Trunks}) ->
@@ -211,7 +212,7 @@ outbound_trunks(#limits{bundled_outbound_trunks=BundledTrunks
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec twoway_trunks(#limits{}) -> tristate_integer().
+-spec twoway_trunks(limits()) -> tristate_integer().
 twoway_trunks(#limits{twoway_trunks=-1}) -> -1;
 twoway_trunks(#limits{bundled_twoway_trunks=BundledTrunks
                       ,twoway_trunks=Trunks}) ->
@@ -223,7 +224,7 @@ twoway_trunks(#limits{bundled_twoway_trunks=BundledTrunks
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec burst_trunks(#limits{}) -> tristate_integer().
+-spec burst_trunks(limits()) -> tristate_integer().
 burst_trunks(#limits{burst_trunks=Trunks}) -> Trunks.
 
 %%--------------------------------------------------------------------
@@ -232,7 +233,7 @@ burst_trunks(#limits{burst_trunks=Trunks}) -> Trunks.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec allow_prepay(#limits{}) -> boolean().
+-spec allow_prepay(limits()) -> boolean().
 allow_prepay(#limits{allow_prepay=AllowPrepay}) -> AllowPrepay.
 
 %%--------------------------------------------------------------------
@@ -241,7 +242,7 @@ allow_prepay(#limits{allow_prepay=AllowPrepay}) -> AllowPrepay.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec allow_postpay(#limits{}) -> boolean().
+-spec allow_postpay(limits()) -> boolean().
 allow_postpay(#limits{allow_postpay=AllowPostpay}) -> AllowPostpay.
 
 %%--------------------------------------------------------------------
@@ -250,7 +251,7 @@ allow_postpay(#limits{allow_postpay=AllowPostpay}) -> AllowPostpay.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reserve_amount(#limits{}) -> non_neg_integer().
+-spec reserve_amount(limits()) -> non_neg_integer().
 reserve_amount(#limits{reserve_amount=ReserveAmount}) -> ReserveAmount.
 
 %%--------------------------------------------------------------------
@@ -259,7 +260,7 @@ reserve_amount(#limits{reserve_amount=ReserveAmount}) -> ReserveAmount.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec max_postpay(#limits{}) -> non_neg_integer().
+-spec max_postpay(limits()) -> non_neg_integer().
 max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 
 %%--------------------------------------------------------------------
@@ -268,18 +269,20 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_limit(ne_binary(), wh_json:object(), tristate_integer()) -> tristate_integer().
+-spec get_limit(ne_binary(), wh_json:object(), tristate_integer()) ->
+                       tristate_integer().
 get_limit(Key, JObj, Default) ->
     PrivateValue = get_private_limit(Key, JObj),
     PublicValue = get_public_limit(Key, JObj, Default),
     case PrivateValue =/= 'undefined'
-        andalso PrivateValue < PublicValue 
+        andalso PrivateValue < PublicValue
     of
         'true' -> PrivateValue;
         'false' -> PublicValue
     end.
 
--spec get_public_limit(ne_binary(), wh_json:object(), tristate_integer()) -> non_neg_integer().
+-spec get_public_limit(ne_binary(), wh_json:object(), tristate_integer()) ->
+                              non_neg_integer().
 get_public_limit(Key, JObj, Default) ->
     case wh_json:get_integer_value(Key, JObj) of
         'undefined' -> get_default_limit(Key, Default);
@@ -334,9 +337,8 @@ get_public_limit_boolean(<<"allow_prepay">> = Key, JObj, Default) ->
         'undefined' -> get_default_limit_boolean(Key, Default);
         Value -> wh_util:is_true(Value)
     end;
-get_public_limit_boolean(Key, _, Default) -> 
+get_public_limit_boolean(Key, _, Default) ->
     get_default_limit_boolean(Key, Default).
-
 
 -spec get_default_limit_boolean(ne_binary(), boolean()) -> boolean().
 get_default_limit_boolean(Key, Default) ->
@@ -352,7 +354,7 @@ get_default_limit_boolean(Key, Default) ->
 get_bundled_inbound_limit(AccountDb, JObj) ->
     case wh_json:get_ne_value(<<"pvt_bundled_inbound_trunks">>, JObj) of
         'undefined' -> 0;
-        Type ->     
+        Type ->
             View = <<Type/binary, "/crossbar_listing">>,
             get_bundled_limit(AccountDb, View)
     end.
@@ -361,7 +363,7 @@ get_bundled_inbound_limit(AccountDb, JObj) ->
 get_bundled_outbound_limit(AccountDb, JObj) ->
     case wh_json:get_ne_value(<<"pvt_bundled_outbound_trunks">>, JObj) of
         'undefined' -> 0;
-        Type ->     
+        Type ->
             View = <<Type/binary, "/crossbar_listing">>,
             get_bundled_limit(AccountDb, View)
     end.
@@ -370,7 +372,7 @@ get_bundled_outbound_limit(AccountDb, JObj) ->
 get_bundled_twoway_limit(AccountDb, JObj) ->
     case wh_json:get_ne_value(<<"pvt_bundled_twoway_trunks">>, JObj) of
         'undefined' -> 0;
-        Type ->     
+        Type ->
             View = <<Type/binary, "/crossbar_listing">>,
             get_bundled_limit(AccountDb, View)
     end.

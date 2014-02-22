@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -14,7 +14,7 @@
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
-         ,handle_event/3
+         ,handle_event/2, handle_event/3
          ,terminate/2
          ,code_change/3
         ]).
@@ -24,9 +24,10 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("rabbitmq_server/plugins-src/rabbitmq-erlang-client/include/amqp_client.hrl").
 
--record(state, {parent
-                ,broker
-                ,self=self()}).
+-record(state, {parent :: pid()
+                ,broker :: ne_binary()
+                ,self_binary = wh_util:to_binary(pid_to_list(self())) :: ne_binary()
+               }).
 
 %%%===================================================================
 %%% API
@@ -39,6 +40,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(pid(), ne_binary(), wh_proplist()) -> startlink_ret().
 start_link(Parent, Broker, Params) ->
     gen_listener:start_link(?MODULE, Params, [Parent, Broker]).
 
@@ -63,7 +65,8 @@ init([Parent, Broker]) ->
     wh_amqp_connections:new(Broker, 'true'),
     wh_amqp_channel:consumer_broker(Broker),
     {'ok', #state{parent=Parent
-                  ,broker=Broker}}.
+                  ,broker=Broker
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -118,13 +121,17 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+handle_event(_JObj, _State) ->
+    {'reply', []}.
+
 handle_event(JObj, BasicDeliver, #state{parent=Parent
                                         ,broker=Broker
-                                        ,self=Self}) ->
+                                        ,self_binary=Self
+                                       }) ->
     lager:debug("relaying federated event to ~p with consumer pid ~p",
                 [Parent, Self]),
     RemoteServerId = <<"consumer://"
-                       ,(wh_util:to_binary(pid_to_list(Self)))/binary, "/"
+                       ,(Self)/binary, "/"
                        ,(wh_json:get_value(<<"Server-ID">>, JObj, <<>>))/binary>>,
     gen_listener:federated_event(Parent
                                  ,wh_json:set_values([{<<"Server-ID">>, RemoteServerId}
