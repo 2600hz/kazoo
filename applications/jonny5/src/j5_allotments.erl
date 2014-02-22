@@ -65,7 +65,8 @@ maybe_reconcile_allotment(Request, Limits) ->
             reconcile_allotment(BillingSeconds, Allotment, Request, Limits)
     end.
 
--spec reconcile_allotment(non_neg_integer(), wh_json:object(), j5_request:request(), j5_limits:limits()) -> 'ok'.
+-spec reconcile_allotment(non_neg_integer(), wh_json:object(), j5_request:request(), j5_limits:limits()) ->
+                                 'ok'.
 reconcile_allotment(0, _, _, _) -> 'ok';
 reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     CallId = j5_request:call_id(Request),
@@ -87,7 +88,8 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
              ,{<<"pvt_whapp">>, ?APP_NAME}
              ,{<<"pvt_type">>, <<"allotment_consumption">>}
             ],
-    couch_mgr:save_doc(LedgerDb, wh_json:from_list(Props)).
+    _ = couch_mgr:save_doc(LedgerDb, wh_json:from_list(Props)),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -95,14 +97,14 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec try_find_allotment(j5_request:request(), j5_limits:limits()) -> wh_json:object() | 'undefined'.
+-spec try_find_allotment(j5_request:request(), j5_limits:limits()) -> api_object().
 try_find_allotment(Request, Limits) ->
     case j5_request:classification(Request) of
         'undefined' -> 'undefined';
         Classification -> try_find_allotment_classification(Classification, Limits)
     end.
 
--spec try_find_allotment_classification(ne_binary(), j5_limits:limits()) -> wh_json:object() | 'undefined'.
+-spec try_find_allotment_classification(ne_binary(), j5_limits:limits()) -> api_object().
 try_find_allotment_classification(Classification, Limits) ->
     Allotments = j5_limits:allotments(Limits),
     lager:debug("checking if account ~s has any allotments for ~s"

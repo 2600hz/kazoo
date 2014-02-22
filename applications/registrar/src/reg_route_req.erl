@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Look up IP for authorization/replaying of route_req
 %%% @end
@@ -33,7 +33,7 @@ maybe_replay_route_req(JObj) ->
 -spec maybe_replay_route_req(wh_json:object(), api_binary()) -> any().
 maybe_replay_route_req(JObj, IP) ->
     lager:debug("trying to see if this route req is an auth-by-ip'd device: ~s", [IP]),
-    ViewOptions = [{<<"key">>, IP}],
+    ViewOptions = [{'key', IP}],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
         {'ok', []} -> lager:debug("no entry in ~s for IP ~s", [?WH_SIP_DB, IP]);
         {'ok', [Doc|_]} -> replay_route_req(JObj, Doc);

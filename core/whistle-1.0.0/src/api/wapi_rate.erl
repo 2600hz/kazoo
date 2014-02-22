@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Handles authorization requests, responses, queue bindings
 %%% @end
@@ -158,8 +158,8 @@ publish_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec broadcast_resp/1 :: (api_terms()) -> 'ok'.
--spec broadcast_resp/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec broadcast_resp(api_terms()) -> 'ok'.
+-spec broadcast_resp(api_terms(), ne_binary()) -> 'ok'.
 broadcast_resp(JObj) ->
     broadcast_resp(JObj, ?DEFAULT_CONTENT_TYPE).
 broadcast_resp(Resp, ContentType) ->
