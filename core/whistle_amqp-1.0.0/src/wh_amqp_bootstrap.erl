@@ -60,21 +60,11 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     put('callid', ?LOG_SYSTEM_ID),
-    Init = get_config(),
-    URIs = case props:get_value('uri', Init, ?DEFAULT_AMQP_URI) of
-               URI = "amqp://"++_ -> 
-                   [URI];
-               URI = "amqps://"++_ -> 
-                   [URI];
-               URI when is_list(URI) -> 
-                   URI
-           end,
-    _ = [wh_amqp_connections:add(U) || U <- URIs],
+    add_zones(get_config()),
     lager:info("waiting for first amqp connection...", []),
     wh_amqp_connections:wait_for_available(),
     timer:sleep(2000),
-%%    lager:debug("current amqp connection: ~p", [wh_amqp_connections:current()]),
-    {'ok', #state{}, 100}.
+    {'ok', #state{}, 100}.     
 
 %%--------------------------------------------------------------------
 %% @private
@@ -151,8 +141,64 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec add_zones(ne_binaries()) -> 'ok'.
+add_zones([]) -> 'ok';
+add_zones([{ZoneName, Brokers}|Zones]) -> 
+    _ = add_brokers(Brokers, ZoneName),
+    add_zones(Zones).
+
+-spec add_brokers(ne_binaries(), atom()) -> 'ok'.
+add_brokers([], _) -> 'ok';
+add_brokers([Broker|Brokers], ZoneName) ->
+    _ = wh_amqp_connections:add(Broker, ZoneName),
+    add_brokers(Brokers, ZoneName).
+
 -spec get_config() -> wh_proplist().
 get_config() ->
-    [{'uri', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}
-     %%,{'use_federation', wh_config:get('amqp', 'use_federation')}
-    ].
+    case wh_config:get(get_node_section_name(), 'zone') of
+        [Zone] -> get_from_zone(Zone);
+        _Else -> get_from_amqp()
+    end.
+
+-spec get_from_amqp() -> wh_proplist().
+get_from_amqp() ->
+    [{'local', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}].
+
+-spec get_from_zone(atom()) -> wh_proplist().
+get_from_zone(ZoneName) ->
+    Zones = wh_config:get('zone'),
+    Props = dict:to_list(get_from_zone(ZoneName, Zones, dict:new())),
+    case props:get_value('local', Props, []) of
+        [] -> [{'local', wh_config:get('amqp', 'uri', ?DEFAULT_AMQP_URI)}|Props];
+        _Else -> Props
+    end.
+
+-spec get_from_zone(atom(), wh_proplist(), dict()) -> dict().
+get_from_zone(_, [], Dict) -> Dict;
+get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
+    case props:get_value('name', Zone) of
+        'undefined' -> get_from_zone(ZoneName, Zones, Dict);
+        ZoneName -> 
+            get_from_zone(ZoneName, Zones, import_zone('local', Zone, Dict));
+        RemoteZoneName -> 
+            get_from_zone(ZoneName, Zones, import_zone(RemoteZoneName, Zone, Dict))
+    end.
+
+-spec import_zone(atom(), wh_proplist(), dict()) -> dict().
+import_zone(_, [], Dict) -> Dict;
+import_zone(ZoneName, [{'amqp_uri', URI}|Props], Dict) ->
+    case dict:find(ZoneName, Dict) of
+        'error' ->
+            import_zone(ZoneName, Props, dict:store(ZoneName, [URI], Dict)); 
+         _ ->
+            import_zone(ZoneName, Props, dict:append(ZoneName, URI, Dict))
+    end;
+import_zone(ZoneName, [_|Props], Dict) -> import_zone(ZoneName, Props, Dict).
+
+-spec get_node_section_name() -> atom().
+get_node_section_name() ->
+    Node = wh_util:to_binary(node()),
+    case binary:split(Node, <<"@">>) of
+        [Name, _] -> wh_util:to_atom(Name, 'true');
+        _Else -> node()
+    end.

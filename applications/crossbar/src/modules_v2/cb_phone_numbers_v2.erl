@@ -1030,25 +1030,12 @@ collection_action(#cb_context{auth_account_id=AuthBy
 %%--------------------------------------------------------------------
 -spec has_tokens(cb_context:context()) -> boolean().
 -spec has_tokens(cb_context:context(), pos_integer()) -> boolean().
-has_tokens(Context) ->
-    has_tokens(Context, 1).
+has_tokens(Context) -> has_tokens(Context, 1).
 has_tokens(Context, Count) ->
-    case cb_buckets_ets:has_tokens(?PHONE_NUMBERS_CONFIG_CAT, cb_context:account_id(Context), Count, 'false') of
+    Name = <<(cb_context:account_id(Context))/binary, "/", ?PHONE_NUMBERS_CONFIG_CAT/binary>>,
+    case kz_buckets:consume_tokens(Name, Count) of
+        'true' -> 'true';
         'false' ->
-            lager:debug("no tokens for this request, checking if bucket exists"),
-            case cb_buckets_ets:has_bucket(?PHONE_NUMBERS_CONFIG_CAT, cb_context:account_id(Context)) of
-                'true' ->
-                    lager:warning("rate limiting activation limit reached, rejecting"),
-                    'false';
-                'false' ->
-                    cb_buckets_ets:start_bucket(?PHONE_NUMBERS_CONFIG_CAT
-                                                ,cb_context:account_id(Context)
-                                                ,?MAX_TOKENS
-                                                ,?MAX_TOKENS
-                                                ,'day'
-                                               ),
-                    'true'
-            end;
-        'true' ->
-            'true'
+            lager:warning("rate limiting activation limit reached, rejecting"),
+            'false'
     end.

@@ -425,7 +425,7 @@ open_channel(#wh_amqp_connection{connection=Pid}) ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges(wh_amqp_connection()) -> wh_amqp_connection().
 declare_exchanges(#wh_amqp_connection{}=Connection) ->
-    declare_exchanges(Connection, wh_amqp_history:get_exchanges()).
+    declare_exchanges(Connection, wh_amqp_history:list_exchanges()).
 
 -spec declare_exchanges(wh_amqp_connection(), wh_amqp_exchanges()) -> wh_amqp_connection().
 declare_exchanges(#wh_amqp_connection{}=Connection, []) ->

@@ -18,8 +18,6 @@
 -export([relay_amqp/2]).
 -export([handle_participants_event/2]).
 -export([handle_conference_error/2]).
--export([handle_authn_req/2]).
--export([handle_route_req/2, handle_route_win/2]).
 
 -export([consume_call_events/1]).
 -export([conference/1, set_conference/2]).
@@ -54,15 +52,6 @@
                      ,{{?MODULE, 'handle_conference_error'}
                        ,[{<<"conference">>, <<"error">>}]
                       }
-                     ,{{?MODULE, 'handle_authn_req'}
-                       ,[{<<"directory">>, <<"authn_req">>}]
-                      }
-                     ,{{?MODULE, 'handle_route_req'}
-                       ,[{<<"dialplan">>, <<"route_req">>}]
-                      }
-                     ,{{?MODULE, 'handle_route_win'}
-                       ,[{<<"dialplan">>, <<"route_win">>}]
-                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -70,8 +59,6 @@
 
 -record(participant, {participant_id = 0 :: non_neg_integer()
                       ,call :: whapps_call:call()
-                      ,bridge
-                      ,bridge_request
                       ,moderator = 'false' :: boolean()
                       ,muted = 'false' :: boolean()
                       ,deaf = 'false' :: boolean()
@@ -79,7 +66,7 @@
                       ,call_event_consumers = [] :: list()
                       ,in_conference = 'false' :: boolean()
                       ,join_attempts = 0 :: integer()
-                      ,conference = whapps_conference:new()
+                      ,conference = 'undefined'
                       ,discovery_event = wh_json:new()
                       ,last_dtmf = <<>> :: binary()
                       ,queue :: api_binary()
@@ -165,7 +152,7 @@ relay_amqp(JObj, Props) ->
                 ,is_pid(Pid)
         ],
     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj),
-    case is_binary(Digit) andalso props:get_value('in_conference', Props, 'false') of
+    case is_binary(Digit) of
         'false' -> 'ok';
         'true' ->
             Srv = props:get_value('server', Props),
@@ -192,35 +179,6 @@ handle_conference_error(JObj, Props) ->
             gen_listener:cast(Srv, {'sync_participant', []});
         _Else -> 'ok'
     end.
-
--spec handle_authn_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_authn_req(JObj, Props) ->
-    'true' = wapi_authn:req_v(JObj),
-    BridgeRequest = props:get_value('bridge_request', Props),
-    case wh_json:get_value(<<"Method">>, JObj) =:= <<"INVITE">>
-        andalso binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
-        [BridgeRequest, _] ->
-            Srv = props:get_value('server', Props),
-            gen_listener:cast(Srv, {'authn_req', JObj});
-        _Else -> 'ok'
-    end.
-
--spec handle_route_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_route_req(JObj, Props) ->
-    'true' = wapi_route:req_v(JObj),
-    BridgeRequest = props:get_value('bridge_request', Props),
-    case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
-        [BridgeRequest, _] ->
-            Srv = props:get_value('server', Props),
-            gen_listener:cast(Srv, {'route_req', JObj});
-        _Else -> 'ok'
-    end.
-
--spec handle_route_win(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_route_win(JObj, Props) ->
-    'true' = wapi_route:win_v(JObj),
-    Srv = props:get_value('server', Props),
-    gen_listener:cast(Srv, {'route_win', JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -256,6 +214,8 @@ init([Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'get_conference'}, _, #participant{conference='undefined'}=P) ->
+    {'reply', {'error', 'not_provided'}, P};
 handle_call({'get_conference'}, _, #participant{conference=Conf}=P) ->
     {'reply', {'ok', Conf}, P};
 handle_call({'get_discovery_event'}, _, #participant{discovery_event=DE}=P) ->
@@ -286,8 +246,19 @@ handle_cast('hungup', #participant{conference=Conference
         end,
     _ = whapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
-handle_cast({'gen_listener', {'created_queue', Q}}, #participant{call=Call}=P) ->
+handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
+                                                                 ,call=Call}=P) ->
     {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)}};
+
+handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference=Conference
+                                                                 ,call=Call}=P) ->
+    {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)
+                              ,conference=whapps_conference:set_controller_queue(Q, Conference)
+                             }};
+handle_cast('hangup', Participant) ->
+    lager:debug("received in-conference command, hangup participant"),
+    gen_listener:cast(self(), 'hungup'),
+    {'noreply', Participant};
 handle_cast({'add_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
     lager:debug("adding call event consumer ~p", [C]),
     link(C),
@@ -295,14 +266,18 @@ handle_cast({'add_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
 handle_cast({'remove_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
     lager:debug("removing call event consumer ~p", [C]),
     {'noreply', P#participant{call_event_consumers=[C1 || C1 <- Cs, C=/=C1]}};
-handle_cast({'set_conference', C}, #participant{call=Call}=P) ->
-    ControllerQ = whapps_call:controller_queue(Call),
-    ConferenceId = whapps_conference:id(C),
+handle_cast({'set_conference', Conference}, Participant) ->
+    ConferenceId = whapps_conference:id(Conference),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
     gen_listener:add_binding(self(), 'conference', [{'conference', ConferenceId}]),
-    {'noreply', P#participant{conference=whapps_conference:set_controller_queue(ControllerQ, C)}};
+    {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
+handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
+    %% ALL MESSAGES BELLOW THIS ARE CONSUMED HERE UNTIL THE CONFERENCE IS KNOWN
+    lager:debug("ignoring message prior to conference discovery: ~p"
+                ,[_Message]),
+    {'noreply', Participant};
 handle_cast('join_local', #participant{call=Call
                                        ,conference=Conference
                                       }=Participant) ->
@@ -311,49 +286,13 @@ handle_cast('join_local', #participant{call=Call
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                 ,conference=Conference
                                                }=Participant) ->
-    gen_listener:add_binding(self(), 'route', []),
-    gen_listener:add_binding(self(), 'authn', []),
-    BridgeRequest = couch_mgr:get_uuid(),
-    Route = binary:replace(wh_json:get_value(<<"Switch-URL">>, JObj), <<"mod_sofia">>, BridgeRequest),
+    Route = binary:replace(wh_json:get_value(<<"Switch-URL">>, JObj)
+                           ,<<"mod_sofia">>
+                           ,<<"conference">>),
     bridge_to_conference(Route, Conference, Call),
-    {'noreply', Participant#participant{bridge_request=BridgeRequest
-                                        ,conference=Conference
-                                       }};
-handle_cast({'route_req', JObj}, #participant{call=Call}=Participant) ->
-    Bridge = whapps_call:from_route_req(JObj),
-    ControllerQ = whapps_call:controller_queue(Call),
-    publish_route_response(ControllerQ
-                           ,wh_json:get_value(<<"Msg-ID">>, JObj)
-                           ,wh_json:get_value(<<"Server-ID">>, JObj)
-                           ,whapps_call:account_id(Call)),
-    {'noreply', Participant#participant{bridge=whapps_call:set_controller_queue(ControllerQ, Bridge)}};
-handle_cast({'authn_req', JObj}, #participant{conference=Conference
-                                              ,call=Call
-                                             }=Participant) ->
-    send_authn_response(wh_json:get_value(<<"Msg-ID">>, JObj)
-                        ,wh_json:get_value(<<"Server-ID">>, JObj)
-                        ,Conference
-                        ,Call),
     {'noreply', Participant};
-handle_cast({'route_win', JObj}, #participant{conference=Conference
-                                              ,bridge=Bridge
-                                             }=Participant) ->
-    lager:debug("won route for participant invite from local server"),
-    gen_listener:rm_binding(self(), 'route', []),
-    gen_listener:rm_binding(self(), 'authn', []),
-    B = whapps_call:from_route_win(JObj, Bridge),
-    lager:debug("answering conference call bridge ~s", [whapps_call:call_id(B)]),
-    whapps_call_command:answer(B),
-    ConferenceId = whapps_conference:id(Conference),
-    lager:debug("call ~s joining as moderator ~s", [whapps_call:call_id(B), whapps_conference:moderator(Conference)]),
-    whapps_call_command:conference(ConferenceId, 'false', 'false', whapps_conference:moderator(Conference), B),
-    {'noreply', Participant#participant{bridge=B}};
-handle_cast({'sync_participant', JObj}, #participant{bridge='undefined'
-                                                     ,call=Call
-                                                    }=Participant) ->
+handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->
     {'noreply', sync_participant(JObj, Call, Participant)};
-handle_cast({'sync_participant', JObj}, #participant{bridge=Bridge}=Participant) ->
-    {'noreply', sync_participant(JObj, Bridge, Participant)};
 handle_cast('play_member_entry', #participant{conference=Conference}=Participant) ->
     _ = whapps_conference:play_entry_tone(Conference) andalso
         whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
@@ -419,10 +358,6 @@ handle_cast('toggle_deaf', #participant{deaf='true'}=Participant) ->
 handle_cast('toggle_deaf', #participant{deaf='false'}=Participant) ->
     deaf(self()),
     {'noreply', Participant};
-handle_cast('hangup', Participant) ->
-    lager:debug("received in-conference command, hangup participant"),
-    gen_listener:cast(self(), 'hungup'),
-    {'noreply', Participant};
 handle_cast(_Cast, Participant) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
     {'noreply', Participant}.
@@ -452,8 +387,6 @@ handle_info(_Msg, Participant) ->
 %%--------------------------------------------------------------------
 handle_event(JObj, #participant{call_event_consumers=Consumers
                                 ,call=Call
-                                ,in_conference=InConf
-                                ,bridge_request=BridgeRequest
                                 ,server=Srv
                                }) ->
     CallId = whapps_call:call_id(Call),
@@ -462,14 +395,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
             lager:debug("received channel hangup event, terminate"),
             gen_listener:cast(Srv, 'hungup'),
             {'reply', [{'call_event_consumers', Consumers}]};
-        {{<<"call_event">>, _}, EventCallId} when EventCallId =/= CallId ->
-            lager:debug("received event from call ~s while relaying for ~s, dropping", [EventCallId, CallId]),
-            'ignore';
-        {_Else, _} ->
-            {'reply', [{'call_event_consumers', Consumers}
-                       ,{'in_conference', InConf}
-                       ,{'bridge_request', BridgeRequest}
-                      ]}
+        {_Else, _} -> {'reply', [{'call_event_consumers', Consumers}]}
     end.
 
 %%--------------------------------------------------------------------
@@ -612,7 +538,9 @@ bridge_to_conference(Route, Conference, Call) ->
                                   ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
                                   ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
                                   ,{<<"Ignore-Early-Media">>, <<"true">>}
-                                  %%,{<<"Bypass-Media">>, <<"true">>}
+                                  ,{<<"To-URI">>, <<"sip:", (whapps_conference:id(Conference))/binary
+                                                    ,"@", (get_account_realm(Call))/binary>>}
+                                  %% ,{<<"Bypass-Media">>, <<"true">>}
                                  ]),
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [Endpoint]}
@@ -620,35 +548,25 @@ bridge_to_conference(Route, Conference, Call) ->
                ,{<<"Ignore-Early-Media">>, <<"false">>}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Hold-Media">>, <<"silence">>}
-               %%,{<<"Media">>, <<"bypass">>}
+               %% ,{<<"Media">>, <<"bypass">>}
               ],
     whapps_call_command:send_command(Command, Call).
 
--spec publish_route_response/4 :: (ne_binary(), api_binary(), ne_binary(), ne_binary()) -> 'ok'.
-publish_route_response(ControllerQ, MsgId, ServerId, AccountId) ->
-    lager:debug("sending route response for participant invite from local server"),
-    Resp = [{<<"Msg-ID">>, MsgId}
-            ,{<<"Routes">>, []}
-            ,{<<"Method">>, <<"park">>}
-            ,{<<"From-Realm">>, wh_util:get_account_realm(AccountId)}
-            | wh_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)],
-    wapi_route:publish_resp(ServerId, Resp).
+-spec get_account_realm(whapps_call:call()) -> ne_binary().
+get_account_realm(Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    AccountId = whapps_call:account_id(Call),
+    get_account_realm(AccountDb, AccountId).
 
--spec send_authn_response/4 :: (api_binary(), ne_binary(), whapps_conference:conference(), whapps_call:call()) -> 'ok'.
-send_authn_response(MsgId, ServerId, Conference, Call) ->
-    lager:debug("sending authn response for participant invite from local server"),
-    CCVs = [{<<"Username">>, whapps_conference:bridge_username(Conference)}
-            ,{<<"Account-ID">>, whapps_call:account_db(Call)}
-            ,{<<"Authorizing-Type">>, <<"conference">>}
-            ,{<<"Inception">>, <<"on-net">>}
-            ,{<<"Authorizing-ID">>, whapps_conference:id(Conference)}
-           ],
-    Resp = [{<<"Msg-ID">>, MsgId}
-            ,{<<"Auth-Password">>, whapps_conference:bridge_password(Conference)}
-            ,{<<"Auth-Method">>, <<"password">>}
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    wapi_authn:publish_resp(ServerId, Resp).
+-spec get_account_realm(api_binary(), api_binary()) -> ne_binary().
+get_account_realm('undefined', _) -> <<"unknown">>;
+get_account_realm(AccountDb, AccountId) ->
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> wh_json:get_ne_value(<<"realm">>, JObj);
+        {'error', R} ->
+            lager:debug("error while looking up account realm: ~p", [R]),
+            <<"unknown">>
+    end.
 
 -spec send_conference_command(whapps_conference:conference(), whapps_call:call()) -> 'ok'.
 send_conference_command(Conference, Call) ->

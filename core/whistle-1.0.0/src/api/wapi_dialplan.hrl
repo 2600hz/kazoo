@@ -55,8 +55,8 @@
 %% Bridge Endpoints
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS
-        ,[ <<"Route">>, <<"To-User">>
-               ,<<"To-Realm">>, <<"To-DID">>
+        ,[<<"Route">>, <<"To-User">>
+               ,<<"To-Realm">>, <<"To-DID">>, <<"To-URI">>
                ,<<"To-IP">>, <<"To-Username">>
                ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
                ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>

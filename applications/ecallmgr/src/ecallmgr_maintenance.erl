@@ -50,7 +50,6 @@
 -export([node_details/0
          ,node_details/1
         ]).
--export([authz_summary/0]).
 -export([channel_summary/0
          ,channel_summary/1
         ]).
@@ -305,11 +304,6 @@ node_details() ->
 -spec node_details(text()) -> 'no_return'.
 node_details(NodeName) ->
     ecallmgr_fs_nodes:details(NodeName),
-    'no_return'.
-
--spec authz_summary() -> 'no_return'.
-authz_summary() ->
-    ecallmgr_fs_channels:authz_summary(),
     'no_return'.
 
 -spec channel_summary() -> 'no_return'.

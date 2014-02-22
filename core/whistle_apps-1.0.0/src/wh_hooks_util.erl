@@ -7,10 +7,15 @@
 %%%-------------------------------------------------------------------
 -module(wh_hooks_util).
 
--export([register/0, register/1, register/2
-         ,register_rr/0, register_rr/1, register_rr/2
-         ,handle_call_event/2
+-export([register/0
+         ,register/1
+         ,register/2
         ]).
+-export([register_rr/0
+         ,register_rr/1
+         ,register_rr/2
+        ]).
+-export([handle_call_event/2]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -52,7 +57,7 @@ register_rr(AccountId, EventName) ->
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    'true' = wapi_call:event_v(JObj) orelse wapi_route:req_v(JObj),
+    'true' = wapi_call:event_v(JObj),
     HookEvent = wh_json:get_value(<<"Event-Name">>, JObj),
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>
                                    ,<<"Account-ID">>
@@ -64,15 +69,19 @@ handle_call_event(JObj, Props) ->
 -spec handle_call_event(wh_json:object(), api_binary(), ne_binary(), ne_binary(), boolean()) ->
                                'ok'.
 handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
-    lager:debug("event 'channel_create' had no account id, caching"),
-    maybe_cache_call_event(JObj, CallId, RR);
+    lager:debug("event 'channel_create' had no account id"),
+    case lookup_account_id(JObj) of
+        {'error', _R} -> 
+            lager:debug("failed to determine account id for 'channel_create'", []);
+        {'ok', AccountId} ->
+            lager:debug("determined account id for 'channel_create' is ~s", [AccountId]),
+            J = wh_json:set_value([<<"Custom-Channel-Vars">>
+                                   ,<<"Account-ID">>
+                                  ], AccountId, JObj),
+            handle_call_event(J, AccountId, <<"CHANNEL_CREATE">>, CallId, RR)
+    end;
 handle_call_event(_JObj, 'undefined', _HookEvent, _CallId, _RR) ->
     lager:debug("event '~s' had no account id, ignoring", [_HookEvent]);
-handle_call_event(_JObj, AccountId, <<"route_req">>, CallId, _RR) ->
-    lager:debug("recv route_req with account id ~s, looking for events to relay"
-                ,[AccountId]
-               ),
-    maybe_relay_new_event(AccountId, CallId);
 handle_call_event(JObj, AccountId, HookEvent, _CallId, 'false') ->
     Evt = ?HOOK_EVT(AccountId, HookEvent, JObj),
     gproc:send(?HOOK_REG, Evt),
@@ -84,32 +93,35 @@ handle_call_event(JObj, AccountId, HookEvent, _CallId, 'true') ->
     gproc:send(?HOOK_REG_RR(AccountId), Evt),
     gproc:send(?HOOK_REG_RR(AccountId, HookEvent), Evt).
 
--spec maybe_cache_call_event(wh_json:object(), ne_binary(), boolean()) -> 'ok'.
-maybe_cache_call_event(JObj, CallId, RR) ->
-    case wh_cache:peek_local(?HOOKS_CACHE_NAME, CallId) of
-        {'error', 'not_found'} ->
-            wh_cache:store_local(?HOOKS_CACHE_NAME, CallId, {'CHANNEL_CREATE', JObj, RR}, [{'expires', 5000}]);
-        {'ok', {'account_id', AccountId}} when RR ->
-            %% relay channel create to round_robin and non-round_robin registrants
-            EvtName = wh_json:get_value(<<"Event-Name">>, JObj),
-            handle_call_event(JObj, AccountId, EvtName, CallId, 'true'),
-            handle_call_event(JObj, AccountId, EvtName, CallId, 'false');
-        {'ok', {'account_id', AccountId}} ->
-            %% only relay channel create to non-round_robin registrants
-            EvtName = wh_json:get_value(<<"Event-Name">>, JObj),
-            handle_call_event(JObj, AccountId, EvtName, CallId, 'false')
+-spec lookup_account_id(wh_json:object()) -> {'ok', ne_binary()} | {'error', _}.
+lookup_account_id(JObj) ->
+    Number = get_inbound_destination(JObj),
+    case wh_cache:peek_local(?HOOKS_CACHE_NAME, cache_key_number(Number)) of
+        {'ok', AccountId} -> {'ok', AccountId};
+        {'error', 'not_found'} -> fetch_account_id(Number)
     end.
 
--spec maybe_relay_new_event(ne_binary(), ne_binary()) -> 'ok'.
-maybe_relay_new_event(AccountId, CallId) ->
-    case wh_cache:peek_local(?HOOKS_CACHE_NAME, CallId) of
-        {'error', 'not_found'} ->
-            wh_cache:store_local(?HOOKS_CACHE_NAME, CallId, {'account_id', AccountId}, [{'expires', 5000}]);
-        {'ok', {'CHANNEL_CREATE', JObj, 'true'}} ->
-            EvtName = wh_json:get_value(<<"Event-Name">>, JObj),
-            handle_call_event(JObj, AccountId, EvtName, CallId, 'true'),
-            handle_call_event(JObj, AccountId, EvtName, CallId, 'false');
-        {'ok', {'CHANNEL_CREATE', JObj, 'false'}} ->
-            EvtName = wh_json:get_value(<<"Event-Name">>, JObj),
-            handle_call_event(JObj, AccountId, EvtName, CallId, 'false')
+-spec fetch_account_id(ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+fetch_account_id(Number) ->
+    case wh_number_manager:lookup_account_by_number(Number) of
+        {'ok', AccountId, _} ->
+            CacheProps = [{'origin', {'db', wnm_util:number_to_db_name(Number), Number}}],
+            wh_cache:store_local(?HOOKS_CACHE_NAME, cache_key_number(Number), AccountId, CacheProps),
+            {'ok', AccountId};
+        {'error', _}=Error -> Error
     end.
+
+-spec cache_key_number(ne_binary()) -> {'wh_hooks', ne_binary()}.
+cache_key_number(Number) -> {'wh_hooks', Number}.
+
+-spec get_inbound_destination(wh_json:object()) -> ne_binary().
+get_inbound_destination(JObj) ->
+    {Number, _} = whapps_util:get_destination(JObj, <<"stepswitch">>, <<"inbound_user_field">>),
+    case whapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>, 'false') of
+        'true' -> assume_e164(Number);
+        'false' -> wnm_util:to_e164(Number)
+    end.
+
+-spec assume_e164(ne_binary()) -> ne_binary().
+assume_e164(<<$+, _/binary>> = Number) -> Number;
+assume_e164(Number) -> <<$+, Number/binary>>.

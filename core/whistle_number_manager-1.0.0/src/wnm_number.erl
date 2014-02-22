@@ -149,8 +149,14 @@ get(Number, PublicFields) ->
                 ,fun(#number{number_db=Db}=N) ->
                          case couch_mgr:open_doc(Db, Num) of
                              {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
-                             {'error', 'not_found'} -> error_number_not_found(N);
-                             {'error', Reason} -> error_number_database(Reason, N)
+                             {'error', 'not_found'} -> 
+                                 lager:debug("unable to find number ~s/~s"
+                                             ,[Db, Num]),
+                                 error_number_not_found(N);
+                             {'error', Reason} ->
+                                 lager:debug("unable to retrieve number ~s/~s: ~p"
+                                             ,[Db, Num, Reason]),
+                                 error_number_database(Reason, N)
                          end
                  end
                ],
@@ -530,7 +536,6 @@ in_service(#number{state = ?NUMBER_STATE_RESERVED}=Number) ->
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = ?NUMBER_STATE_IN_SERVICE, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
-                ,fun(#number{}=N) -> activate_phone_number(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = ?NUMBER_STATE_IN_SERVICE, assigned_to=AssignedTo, assign_to=AssignedTo}=Number) ->
@@ -1038,7 +1043,7 @@ create_number_summary(_Account, #number{state=State
                                         ,used_by=UsedBy
                                        }) ->
     MaybeOwned = case (ModuleName == 'wnm_local') of
-                     'true' -> ['local'];
+                     'true' -> [<<"local">>];
                      'false' -> []
                  end,
     NFeatures =  lists:merge([wh_util:to_binary(F) || F <- sets:to_list(Features)], MaybeOwned),

@@ -262,7 +262,7 @@ is_valid_call(Context, Data) ->
                                              )
             };
         CallId ->
-            case whapps_call_command:b_call_status(CallId) of
+            case whapps_call_command:b_channel_status(CallId) of
                 {'error', _E} ->
                     lager:debug("is not valid call: ~p", [_E]),
                     {'false'

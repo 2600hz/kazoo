@@ -160,7 +160,7 @@
                               ,broker :: ne_binary() | '$1' | '_'
                               ,available='false' :: boolean() | '_'
                               ,timestamp=now() :: wh_now() | '_'
-                              ,federation='false' :: boolean() | '_'
+                              ,zone='local' :: atom() | '_'
                               ,manager=self() :: pid() | '_'
                              }).
 -type wh_amqp_connections() :: #wh_amqp_connections{}.

@@ -19,7 +19,9 @@
 %% Advertise message
 -define(ADVERTISE_HEADERS, [<<"Expires">>]).
 -define(OPTIONAL_ADVERTISE_HEADERS, [<<"Media-Servers">>
-                                         ,<<"WhApps">>
+                                     ,<<"WhApps">>, <<"Used-Memory">>, <<"Processes">>
+                                     ,<<"Ports">>, <<"Version">>, <<"Channels">>
+                                     ,<<"Registrations">>
                                     ]).
 -define(ADVERTISE_VALUES, [{<<"Event-Category">>, <<"nodes">>}
                            ,{<<"Event-Name">>, <<"advertise">>}

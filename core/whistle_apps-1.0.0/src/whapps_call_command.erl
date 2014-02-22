@@ -12,8 +12,8 @@
 -include("./whapps_call_command.hrl").
 
 -export([presence/2, presence/3]).
--export([call_status/1, channel_status/1, channel_status/2]).
--export([b_call_status/1, b_channel_status/1]).
+-export([channel_status/1, channel_status/2]).
+-export([b_channel_status/1]).
 -export([response/2, response/3, response/4]).
 
 -export([relay_event/2
@@ -210,47 +210,6 @@ presence(State, PresenceId, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Produces the low level wh_api request to get the call status.
-%% This request will execute immediately
-%% @end
-%%--------------------------------------------------------------------
--spec call_status(api_binary() | whapps_call:call()) ->
-                         'ok' |
-                         {'error', 'no_call_id'}.
-call_status('undefined') -> {'error', 'no_call_id'};
-call_status(CallId) when is_binary(CallId) ->
-    Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_call:publish_call_status_req(CallId, Command);
-call_status(Call) -> call_status(whapps_call:call_id(Call)).
-
--spec b_call_status(api_binary() | whapps_call:call()) ->
-                           whapps_api_std_return().
-b_call_status('undefined') -> {'error', 'no_call_id'};
-b_call_status(CallId) when is_binary(CallId) ->
-    Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    Resp = wh_amqp_worker:call('whapps_amqp_pool'
-                               ,Command
-                               ,fun(C) -> wapi_call:publish_call_status_req(CallId, C) end
-                               ,fun wapi_call:call_status_resp_v/1
-                              ),
-    case Resp of
-        {'error', 'timeout'} -> {'ok', wh_json:new()};
-        {'error', _}=E -> E;
-        {'ok', JObj}=OK ->
-            case wh_json:get_value(<<"Status">>, JObj) of
-                <<"active">> -> OK;
-                _Else -> {'error', JObj}
-            end
-    end;
-b_call_status(Call) -> b_call_status(whapps_call:call_id(Call)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Produces the low level wh_api request to get the channel status.
 %% This request will execute immediately
 %% @end
@@ -280,7 +239,7 @@ b_channel_status(ChannelId) when is_binary(ChannelId) ->
     Resp = wh_amqp_worker:call_collect('whapps_amqp_pool'
                                        ,Command
                                        ,fun(C) -> wapi_call:publish_channel_status_req(ChannelId, C) end
-                                       ,{'ecallmgr', fun wapi_call:channel_status_resp_v/1}
+                                       ,{'ecallmgr', 'true'}
                                       ),
     case Resp of
         {'error', _}=E -> E;

@@ -21,7 +21,9 @@
          ,get_keys/1
          ,get_first_defined/2, get_first_defined/3
          ,get_all_values/2, get_values/2
-         ,set_value/3, insert_value/3
+         ,set_values/2
+         ,set_value/3
+         ,insert_value/3
          ,unique/1
          ,filter/2
          ,filter_empty/1
@@ -38,6 +40,11 @@
 
 -type wh_proplist_keys() :: [wh_proplist_key(),...] | [].
 -type wh_proplist_values() :: [wh_proplist_value(),...] | [].
+
+-spec set_values(wh_proplist(), wh_proplist()) -> wh_proplist().
+set_values([], Props) -> Props;
+set_values([{K, V}|KVs], Props) -> 
+    set_values(KVs, set_value(K, V, Props)).
 
 -spec set_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
                        wh_proplist().

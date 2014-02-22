@@ -29,13 +29,11 @@
                                               ,'CHANNEL_ANSWER'
                                               ,'CHANNEL_DESTROY'
                                              ]}
+                             ,'federate'
                             ]}
-                   ,{'route', []}
                   ]).
 -define(RESPONDERS, [{{'wh_hooks_util', 'handle_call_event'}
-                      ,[{<<"call_event">>, <<"*">>}
-                        ,{<<"dialplan">>, <<"route_req">>}
-                       ]
+                      ,[{<<"call_event">>, <<"*">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).

@@ -68,12 +68,12 @@ handle_outbound_cnam(#number{current_number_doc=CurrentJObj
     CurrentCNAM = wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], CurrentJObj),
     case wh_json:get_ne_value([<<"cnam">>, <<"display_name">>], JObj) of
         'undefined' ->
-            N#number{features=sets:del_element(<<"outbound_cnam">>, Features)};
+            handle_inbound_cnam(N#number{features=sets:del_element(<<"outbound_cnam">>, Features)});
         CurrentCNAM ->
-            N#number{features=sets:add_element(<<"outbound_cnam">>, Features)};
+            handle_inbound_cnam(N#number{features=sets:add_element(<<"outbound_cnam">>, Features)});
         NewCNAM ->
             lager:debug("dry run: cnam display name changed to ~s", [NewCNAM]),
-            wnm_number:activate_feature(<<"outbound_cnam">>, N)
+            handle_inbound_cnam(wnm_number:activate_feature(<<"outbound_cnam">>, N))
     end;
 handle_outbound_cnam(#number{current_number_doc=CurrentJObj
                              ,number_doc=JObj

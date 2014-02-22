@@ -118,6 +118,7 @@
                                     ,{'conf', [{'action', <<"*">>}
                                                ,{'db', wh_util:format_account_id(AcctId, 'encoded')}
                                                ,{'id', AgentId}
+                                               ,'federate'
                                               ]}
                                    ]).
 

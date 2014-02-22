@@ -20,7 +20,7 @@
 
 -define(CHILDREN, [?CACHE
                    ,?SUPER('conf_participant_sup')
-                   ,?WORKER('conf_discovery')
+                   ,?WORKER('conference_listener')
                   ]).
 
 %% ===================================================================

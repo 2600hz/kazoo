@@ -120,8 +120,8 @@ current_balance(AccountId) ->
 -spec call_cost(wh_json:object()) -> integer().
 call_cost(JObj) ->
     CCVs = wh_json:get_first_defined([<<"Custom-Channel-Vars">>
-                                          ,<<"custom_channel_vars">>
-                                     ], JObj, wh_json:new()),
+                                      ,<<"custom_channel_vars">>
+                                     ], JObj, JObj),
     BillingSecs = get_integer_value(<<"Billing-Seconds">>, JObj)
         - get_integer_value(<<"Billing-Seconds-Offset">>, CCVs),
     %% if we transition from allotment to per_minute the offset has a slight

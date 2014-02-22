@@ -425,11 +425,11 @@ lookup_regs(AccountRealm) ->
            ,{<<"Fields">>, [<<"Authorizing-ID">>]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Resp = whapps_util:amqp_pool_collect(Req
-                                         ,fun wapi_registration:publish_query_req/1
-                                         ,'ecallmgr'
-                                        ),
-    case Resp of
+    case whapps_util:amqp_pool_collect(Req
+                                       ,fun wapi_registration:publish_query_req/1
+                                       ,'ecallmgr'
+                                      )
+    of
         {'error', _E} ->
             lager:debug("error getting reg: ~p", [_E]),
             [];

@@ -11,15 +11,14 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([is_consuming/2]).
--export([update_consumer_tag/3]).
--export([basic_consumers/1]).
 -export([add_command/2]).
+-export([update_consumer_tag/3]).
 -export([remove/1]).
 -export([get/1]).
--export([get_queues/1]).
 -export([add_exchange/1]).
--export([get_exchanges/0]).
+-export([list_exchanges/0]).
+-export([list_consume/1]).
+-export([is_consuming/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -56,27 +55,7 @@
 %%--------------------------------------------------------------------
 start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
--spec is_consuming(pid(), ne_binary()) -> boolean().
-is_consuming(Consumer, Queue) ->
-    MatchSpec =[{#wh_amqp_history{consumer=Consumer
-                                  ,command=#'basic.consume'{queue=Queue
-                                                            ,_='_'}
-                                 ,_='_'}
-                 ,[]
-                 ,['true']
-                }],
-    ets:select_count(?TAB, MatchSpec) =/= 0.
-
--spec basic_consumers(pid()) -> wh_amqp_commands().
-basic_consumers(Consumer) ->
-    Pattern = #wh_amqp_history{consumer=Consumer
-                               ,command=#'basic.consume'{_='_'}
-                               ,_='_'},
-    [Command
-     || #wh_amqp_history{command=Command} <- ets:match_object(?TAB, Pattern)
-    ].
-
--spec add_command(wh_amqp_assignment(), wh_amqp_command()) -> 'ok'.
+-spec add_command(wh_amqp_assignment(), wh_amqp_commands()) -> 'ok'.
 add_command(#wh_amqp_assignment{consumer=Consumer}, Command) ->
     MatchSpec =[{#wh_amqp_history{consumer=Consumer
                                   ,command=Command
@@ -115,23 +94,33 @@ get(Consumer) ->
             <- ets:match_object(?TAB, Pattern)
     ].
 
--spec get_queues(pid()) -> wh_amqp_queues().
-get_queues(Consumer) ->
-    Pattern = #wh_amqp_history{consumer=Consumer
-                               ,_='_'
-                              },
-    [#'queue.declare'{}=Command
-     || #wh_amqp_history{command=Command}
-            <- ets:match_object(?TAB, Pattern)
-    ].
-
 -spec add_exchange(wh_amqp_exchange()) -> 'ok'.
 add_exchange(#'exchange.declare'{}=Exchange) ->
     gen_server:cast(?MODULE, {'add_exchange', Exchange}).
 
--spec get_exchanges() -> wh_amqp_exchanges().
-get_exchanges() ->
-    gen_server:call(?MODULE, 'get_exchanges').
+-spec list_exchanges() -> wh_amqp_exchanges().
+list_exchanges() ->
+    gen_server:call(?MODULE, 'list_exchanges').
+
+-spec list_consume(pid()) -> wh_amqp_commands().
+list_consume(Consumer) ->
+    Pattern = #wh_amqp_history{consumer=Consumer
+                               ,command=#'basic.consume'{_='_'}
+                               ,_='_'},
+    [Command 
+     || #wh_amqp_history{command=Command} <- ets:match_object(?TAB, Pattern)
+    ].
+
+-spec is_consuming(pid(), ne_binary()) -> boolean().
+is_consuming(Consumer, Queue) ->
+    MatchSpec =[{#wh_amqp_history{consumer=Consumer
+                                  ,command=#'basic.consume'{queue=Queue
+                                                            ,_='_'}
+                                 ,_='_'}
+                 ,[]
+                 ,['true']
+                }],
+    ets:select_count(?TAB, MatchSpec) =/= 0.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -171,7 +160,7 @@ init([]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call('get_exchanges', {Connection, _}, #state{exchanges=Exchanges
+handle_call('list_exchanges', {Connection, _}, #state{exchanges=Exchanges
                                                      ,connections=Connections}=State) ->
     _Ref = monitor('process', Connection),
     {'reply', [Exchange || {_, Exchange} <- dict:to_list(Exchanges)]

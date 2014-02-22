@@ -184,7 +184,10 @@ process_route_req(Node, FetchId, CallId, Props) ->
     end.
 
 search_for_route(Node, FetchId, CallId, Props) ->
-    _ = spawn('ecallmgr_fs_authz', 'authorize', [Props, CallId, Node]),
+    _ = spawn('ecallmgr_fs_authz', 'authorize', [props:set_value(<<"Call-Setup">>, <<"true">>, Props)
+                                                 ,CallId
+                                                 ,Node
+                                                ]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,route_req(CallId, FetchId, Props, Node)
                                   ,fun wapi_route:publish_req/1
@@ -203,7 +206,7 @@ search_for_route(Node, FetchId, CallId, Props) ->
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
- maybe_wait_for_authz(JObj, Node, FetchId, CallId) ->
+maybe_wait_for_authz(JObj, Node, FetchId, CallId) ->
     case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false'))
         andalso wh_json:get_value(<<"Method">>, JObj) =/= <<"error">>
     of

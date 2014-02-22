@@ -94,7 +94,7 @@ maybe_update_e911(#number{current_number_doc=CurrentJObj
         'false' ->
             lager:debug("vitelity e911 information has been changed: ~s", [wh_json:encode(E911)]),
             N1 = wnm_number:activate_feature(<<"dash_e911">>, N),
-            N1#number{number_doc=update_e911(N1, E911)}
+            N1#number{number_doc=wh_json:set_value(<<"dash_e911">>, update_e911(N1, E911), JObj)}
     end.
 
 -spec remove_number(ne_binary()) ->
