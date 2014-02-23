@@ -64,6 +64,7 @@
          ,content_types_provided/1, set_content_types_provided/2
          ,languages_provided/1, set_languages_provided/2
          ,encodings_provided/1, set_encodings_provided/2
+         ,charsets_provided/1, set_charsets_provided/2
 
          %% Special accessors
          ,req_value/2, req_value/3
@@ -74,9 +75,11 @@
 -type context() :: #cb_context{}.
 -type setter_fun_2() :: fun((context(), term()) -> context()).
 -type setter_fun_3() :: fun((context(), term(), term()) -> context()).
+-type setter_fun() :: setter_fun_2() | setter_fun_3().
+-type setter_funs() :: [setter_fun(),...] | [].
 -export_type([context/0
-              ,setter_fun_2/0
-              ,setter_fun_3/0
+              ,setter_fun/0
+              ,setter_funs/0
              ]).
 
 -type setter_kv() :: {setter_fun_2(), term()} |
@@ -138,6 +141,7 @@ req_json(#cb_context{req_json=RJ}) -> RJ.
 content_types_accepted(#cb_context{content_types_accepted=CTAs}) -> CTAs.
 content_types_provided(#cb_context{content_types_provided=CTPs}) -> CTPs.
 languages_provided(#cb_context{languages_provided=LP}) -> LP.
+charsets_provided(#cb_context{charsets_provided=CP}) -> CP.
 encodings_provided(#cb_context{encodings_provided=EP}) -> EP.
 
 resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
@@ -165,7 +169,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_query_string(context(), wh_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
 -spec set_doc(context(), api_object() | wh_json:objects()) -> context().
--spec set_start(context(), wh_timeout()) -> context().
+-spec set_start(context(), wh_now()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
 -spec set_resp_expires(context(), wh_datetime()) -> context().
@@ -182,6 +186,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_content_types_accepted(context(), crossbar_content_handlers()) -> context().
 -spec set_content_types_provided(context(), crossbar_content_handlers()) -> context().
 -spec set_languages_provided(context(), ne_binaries()) -> context().
+-spec set_charsets_provided(context(), ne_binaries()) -> context().
 -spec set_encodings_provided(context(), ne_binaries()) -> context().
 -spec set_resp_error_code(context(), integer()) -> context().
 -spec set_resp_error_msg(context(), api_binary()) -> context().
@@ -214,6 +219,7 @@ set_req_json(#cb_context{}=Context, RJ) -> Context#cb_context{req_json=RJ}.
 set_content_types_accepted(#cb_context{}=Context, CTAs) -> Context#cb_context{content_types_accepted=CTAs}.
 set_content_types_provided(#cb_context{}=Context, CTPs) -> Context#cb_context{content_types_provided=CTPs}.
 set_languages_provided(#cb_context{}=Context, LP) -> Context#cb_context{languages_provided=LP}.
+set_charsets_provided(#cb_context{}=Context, CP) -> Context#cb_context{charsets_provided=CP}.
 set_encodings_provided(#cb_context{}=Context, EP) -> Context#cb_context{encodings_provided=EP}.
 set_magic_pathed(#cb_context{}=Context, MP) ->
     Context#cb_context{magic_pathed=wh_util:is_true(MP)}.
