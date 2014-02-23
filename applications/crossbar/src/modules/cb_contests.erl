@@ -12,23 +12,12 @@
 -module(cb_contests).
 
 -export([init/0
-         ,authenticate/1
-         ,authorize/1
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
-         ,content_types_provided/1
-         ,content_types_accepted/1
-         ,languages_provided/1
-         ,charsets_provided/1
-         ,encodings_provided/1
          ,validate/1, validate/2
-         ,billing/1
          ,put/1
          ,post/2
          ,delete/2
-         ,etag/1
-         ,expires/1
-         ,finish_request/1
         ]).
 
 -include("../crossbar.hrl").
@@ -47,44 +36,12 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.contests">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.contests">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.contests">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.content_types_accepted.contests">>, ?MODULE, 'content_types_accepted'),
-    _ = crossbar_bindings:bind(<<"*.languages_provided.contests">>, ?MODULE, 'languages_provided'),
-    _ = crossbar_bindings:bind(<<"*.charsets_provided.contests">>, ?MODULE, 'charsets_provided'),
-    _ = crossbar_bindings:bind(<<"*.encodings_provided.contests">>, ?MODULE, 'encodings_provided'),
     _ = crossbar_bindings:bind(<<"*.validate.contests">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.billing">>, ?MODULE, 'billing'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.contests">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.contests">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.contests">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.contests">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"*.etag.contests">>, ?MODULE, 'etag'),
-    _ = crossbar_bindings:bind(<<"*.expires.contests">>, ?MODULE, 'expires'),
-    _ = crossbar_bindings:bind(<<"*.finish_request">>, ?MODULE, 'finish_request').
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
-%% known, or false if not.
-%% @end
-%%--------------------------------------------------------------------
--spec authenticate(cb_context:context()) -> 'false'.
-authenticate(_) -> 'false'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
-%% allowed to access the resource, or false if not.
-%% @end
-%%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> 'false'.
-authorize(_) -> 'false'.
+    _ = crossbar_bindings:bind(<<"*.execute.delete.contests">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -113,70 +70,6 @@ allowed_methods(_) ->
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% What content-types will the module be using to respond (matched against
-%% client's accept header)
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
-%% @end
-%%--------------------------------------------------------------------
--spec content_types_provided(cb_context:context()) -> cb_context:context().
-content_types_provided(Context) ->
-    cb_context:set_content_types_provided(Context
-                                          ,?CONTENT_PROVIDED % see crossbar.hrl
-                                         ).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% What content-types will the module be requiring (matched to the client's
-%% Content-Type header
-%% Of the form {atom, [{Type, SubType}]} :: {from_json, [{<<"application">>, <<"json">>}]}
-%% @end
-%%--------------------------------------------------------------------
--spec content_types_accepted(cb_context:context()) -> cb_context:context().
-content_types_accepted(Context) ->
-    cb_context:set_content_types_accepted(Context
-                                          ,?CONTENT_ACCEPTED % see crossbar.hrl
-                                         ).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If you provide alternative languages, return a list of languages and optional
-%% quality value:
-%% [<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]
-%% @end
-%%--------------------------------------------------------------------
--spec languages_provided(cb_context:context()) -> cb_context:context().
-languages_provided(Context) ->
-    cb_context:set_languages_provided(Context, ?LANGUAGES_PROVIDED).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If you provide alternative charsets, return a list of charsets and optional
-%% quality value:
-%% [<<"iso-8859-5">>, <<"unicode-1-1;q=0.8">>]
-%% @end
-%%--------------------------------------------------------------------
--spec charsets_provided(cb_context:context()) -> cb_context:context().
-charsets_provided(Context) ->
-    cb_context:set_charsets_provided(Context, ?CHARSETS_PROVIDED).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If you provide alternative encodings, return a list of encodings and optional
-%% quality value:
-%% [<<"gzip;q=1.0">>, <<"identity;q=0.5">>, <<"*;q=0">>]
-%% @end
-%%--------------------------------------------------------------------
--spec encodings_provided(cb_context:context()) -> cb_context:context().
-encodings_provided(Context) ->
-    cb_context:set_encodings_provided(Context, ?ENCODINGS_PROVIDED).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -212,17 +105,6 @@ validate_contest(Context, Id, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If you handle billing-related calls, this callback will allow you to
-%% execute those.
-%% @end
-%%--------------------------------------------------------------------
--spec billing(cb_context:context()) -> cb_context:context().
-billing(Context) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
@@ -250,36 +132,6 @@ post(Context, _) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If you want to manipulate the etag header, change it here in the cb_context{}
-%% @end
-%%--------------------------------------------------------------------
--spec etag(cb_context:context()) -> cb_context:context().
-etag(Context) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set the expires header
-%% @end
-%%--------------------------------------------------------------------
--spec expires(cb_context:context()) -> cb_context:context().
-expires(Context) ->
-    cb_context:set_resp_expires(Context, ?DEFAULT_EXPIRES).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% The response has gone out, do some cleanup of your own here.
-%% @end
-%%--------------------------------------------------------------------
--spec finish_request(cb_context:context()) -> cb_context:context().
-finish_request(Context) ->
-    Context.
 
 %%--------------------------------------------------------------------
 %% @private
