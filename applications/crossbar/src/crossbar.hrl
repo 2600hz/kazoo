@@ -91,6 +91,8 @@
                           ,'cb_whitelabel'
                          ]).
 
+-define(DEFAULT_EXPIRES, {{2006, 6, 15}, {0,0,0}}).
+
 -record(cb_context, {
            content_types_provided = [] :: crossbar_content_handlers()
           ,content_types_accepted = [] :: crossbar_content_handlers()
@@ -111,7 +113,7 @@
           ,account_id :: api_binary()
           ,db_name :: api_binary()
           ,doc :: api_object() | wh_json:objects()
-          ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
+          ,resp_expires = ?DEFAULT_EXPIRES :: wh_datetime()
           ,resp_etag :: 'automatic' | string() | api_binary()
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg :: wh_json:json_string()
