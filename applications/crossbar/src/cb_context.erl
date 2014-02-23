@@ -174,7 +174,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_resp_status(context(), crossbar_status()) -> context().
 -spec set_resp_expires(context(), wh_datetime()) -> context().
 -spec set_api_version(context(), ne_binary()) -> context().
--spec set_resp_etag(context(), api_binary()) -> context().
+-spec set_resp_etag(context(), api_binary() | 'automatic') -> context().
 -spec set_resp_headers(context(), wh_proplist()) -> context().
 -spec add_resp_headers(context(), wh_proplist()) -> context().
 -spec set_resp_header(context(), ne_binary(), ne_binary()) -> context().

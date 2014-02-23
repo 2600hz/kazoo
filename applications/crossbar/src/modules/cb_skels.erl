@@ -269,7 +269,7 @@ etag(Context) ->
 %%--------------------------------------------------------------------
 -spec expires(cb_context:context()) -> cb_context:context().
 expires(Context) ->
-    Context.
+    cb_context:set_resp_expires(Context, ?DEFAULT_EXPIRES).
 
 %%--------------------------------------------------------------------
 %% @public
