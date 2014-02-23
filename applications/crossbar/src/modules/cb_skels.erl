@@ -124,19 +124,23 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) ->
-    Context.
+    cb_context:set_content_types_provided(Context
+                                          ,?CONTENT_PROVIDED % see crossbar.hrl
+                                         ).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% What content-types will the module be requiring (matched to the client's
 %% Content-Type header
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% Of the form {atom, [{Type, SubType}]} :: {from_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context()) -> cb_context:context().
 content_types_accepted(Context) ->
-    Context.
+    cb_context:set_content_types_accepted(Context
+                                          ,?CONTENT_ACCEPTED % see crossbar.hrl
+                                         ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -148,7 +152,7 @@ content_types_accepted(Context) ->
 %%--------------------------------------------------------------------
 -spec languages_provided(cb_context:context()) -> cb_context:context().
 languages_provided(Context) ->
-    Context.
+    cb_context:set_languages_provided(Context, ?LANGUAGES_PROVIDED).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,7 +164,7 @@ languages_provided(Context) ->
 %%--------------------------------------------------------------------
 -spec charsets_provided(cb_context:context()) -> cb_context:context().
 charsets_provided(Context) ->
-    Context.
+    cb_context:set_charsets_provided(Context, ?CHARSETS_PROVIDED).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -172,7 +176,7 @@ charsets_provided(Context) ->
 %%--------------------------------------------------------------------
 -spec encodings_provided(cb_context:context()) -> cb_context:context().
 encodings_provided(Context) ->
-    Context.
+    cb_context:set_encodings_provided(Context, ?ENCODINGS_PROVIDED).
 
 %%--------------------------------------------------------------------
 %% @public

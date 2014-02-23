@@ -28,6 +28,10 @@
                            ,{'from_form', [{<<"application">>, <<"x-www-form-urlencoded">>}]}
                            ,{'from_binary', ?CSV_CONTENT_TYPES}
                           ]).
+-define(LANGUAGES_PROVIDED, [<<"en">>, <<"en-us">>, <<"en-gb">>]).
+-define(CHARSETS_PROVIDED, [<<"iso-8859-1">>]).
+-define(ENCODINGS_PROVIDED, [<<"gzip;q=1.0">>,<<"identity;q=0.5">>]).
+
 -define(ALLOWED_METHODS, [?HTTP_GET
                           ,?HTTP_POST
                           ,?HTTP_PUT
@@ -92,9 +96,9 @@
           ,content_types_accepted = [] :: crossbar_content_handlers()
           ,allowed_methods = ?ALLOWED_METHODS :: http_methods()
           ,allow_methods = ?ALLOWED_METHODS :: http_methods()
-          ,languages_provided = [<<"en">>, <<"en-us">>, <<"en-gb">>] :: ne_binaries() %% english by default
-          ,charsets_provided = [<<"iso-8859-1">>] :: ne_binaries() %% all charsets provided
-          ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: ne_binaries() %% gzip and identity
+          ,languages_provided = ?LANGUAGES_PROVIDED :: ne_binaries() %% english by default
+          ,charsets_provided = ?CHARSETS_PROVIDED :: ne_binaries() %% all charsets provided
+          ,encodings_provided = ?ENCODINGS_PROVIDED :: ne_binaries() %% gzip and identity
           ,auth_token = <<>> :: binary() | 'undefined'
           ,auth_account_id :: api_binary()
           ,auth_doc :: api_object()
