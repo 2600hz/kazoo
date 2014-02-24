@@ -1,0 +1,64 @@
+#!/usr/bin/env escript
+%% -*- mode: erlang -*-
+
+%% dtl scanner benchmarks.
+%% todo: benchmark compiler (and parser?) too..
+
+%% Usage: ./benchmark <run time in seconds> <template file to scan>
+%% Defaults to 2 seconds on 'bench.dtl'.
+
+main([]) ->
+    run_benchmark(2, "bench.dtl");
+main([Time]) ->
+    run_benchmark(list_to_integer(Time), "bench.dtl");
+main([Time, File]) ->
+    run_benchmark(list_to_integer(Time), File).
+
+run_benchmark(Time, File) ->
+    {ok, Bin} = file:read_file(File),
+    Template = binary_to_list(Bin),
+    io:format("Running benchmarks for ~b seconds on ~b bytes (~s)...~n", [Time, length(Template), File]),
+    New = run_benchmark(Time, Template, erlydtl_new_scanner),
+    Old = run_benchmark(Time, Template, erlydtl_scanner),
+    results(New, Old),
+    io:format("Done.~n~n").
+
+run_benchmark(Time, Data, Scanner) ->
+    io:format("Running ~s, hold on... ", [Scanner]),
+    {Start, _} = statistics(wall_clock),
+    {{Count, Min, Max}, End} = run_scans({0, 16#ffff, 0}, Start + (Time * 1000), Data, Scanner),
+    io:format("ok~n"),
+    Tot = (End - Start) / 1000,
+    Speed = ((Count * length(Data)) / Tot) / 1024,
+    {Scanner, {Count, Tot, Min / 1000, Max / 1000, Tot / Count, Speed}}.
+
+
+run_scans({Count, Min, Max}, End, Data, Scanner) ->
+    {ok, _} = Scanner:scan(Data),
+    {Time, Dur} = statistics(wall_clock),
+    Stats = {Count + 1, erlang:min(Min, Dur), erlang:max(Max, Dur)},
+    if Time < End -> run_scans(Stats, End, Data, Scanner);
+       true -> {Stats, Time}
+    end.
+
+results({NewScanner, New}, {OldScanner, Old}) ->
+    print_stats(NewScanner, New),
+    print_stats(OldScanner, Old),
+    io:format("Deltas~n"),
+    [compare_stats(T, N, O)
+     || {T, N, O} <- lists:zip3(
+                       ["Count", "Total time", "Min", "Max", "Avg", "Kbytes/s"],
+                       tuple_to_list(New), tuple_to_list(Old))].
+
+print_stats(Title, {Count, Tot, Min, Max, Avg, Speed}) ->
+    io:format("~s scanned ~6b times in ~.3f seconds @ ~.1f Kbytes/sec~n"
+              "  min ~.3f max ~.3f avg ~.6f~n",
+              [Title, Count, Tot, Speed, Min, Max, Avg]).
+
+compare_stats(Title, New, Old) ->
+    io:format("  ~.10s: ~12.3f", [Title, (New - Old)/1]),
+    if Old /= 0 ->
+            io:format(" ~6.1f%~n", [100 * ((New - Old)/Old)]);
+       true ->
+            io:format("      ~~%~n")
+    end.

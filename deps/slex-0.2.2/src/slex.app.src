@@ -1,0 +1,8 @@
+%% -*- mode: erlang -*-
+{application, slex,
+ [{description, "slex : a Stateful Lexical Analyzer Compiler."},
+  {vsn, "0.2.2"},
+  {modules, []},
+  {applications, [kernel, stdlib, compiler, syntax_tools]},
+  {registered, []}
+ ]}.
