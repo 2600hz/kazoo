@@ -21,7 +21,7 @@
 -define(OPTIONAL_ADVERTISE_HEADERS, [<<"Media-Servers">>
                                      ,<<"WhApps">>, <<"Used-Memory">>, <<"Processes">>
                                      ,<<"Ports">>, <<"Version">>, <<"Channels">>
-                                     ,<<"Registrations">>
+                                     ,<<"Registrations">>, <<"Zone">>
                                     ]).
 -define(ADVERTISE_VALUES, [{<<"Event-Category">>, <<"nodes">>}
                            ,{<<"Event-Name">>, <<"advertise">>}

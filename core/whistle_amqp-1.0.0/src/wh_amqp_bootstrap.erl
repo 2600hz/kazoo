@@ -155,7 +155,7 @@ add_brokers([Broker|Brokers], ZoneName) ->
 
 -spec get_config() -> wh_proplist().
 get_config() ->
-    case wh_config:get(get_node_section_name(), 'zone') of
+    case wh_config:get(wh_config:get_node_section_name(), 'zone') of
         [Zone] -> get_from_zone(Zone);
         _Else -> get_from_amqp()
     end.
@@ -194,11 +194,3 @@ import_zone(ZoneName, [{'amqp_uri', URI}|Props], Dict) ->
             import_zone(ZoneName, Props, dict:append(ZoneName, URI, Dict))
     end;
 import_zone(ZoneName, [_|Props], Dict) -> import_zone(ZoneName, Props, Dict).
-
--spec get_node_section_name() -> atom().
-get_node_section_name() ->
-    Node = wh_util:to_binary(node()),
-    case binary:split(Node, <<"@">>) of
-        [Name, _] -> wh_util:to_atom(Name, 'true');
-        _Else -> node()
-    end.

@@ -55,14 +55,16 @@
                 ,notify_new = sets:new() :: set()
                 ,notify_expire = sets:new() :: set()
                 ,node :: ne_binary()
+                ,zone = 'local' :: atom()
                }).
+-type nodes_state() :: #state{}.
 
 -record(node, {node = node() :: atom() | '$1' | '_'
                ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
                ,whapps = [] :: ne_binaries() | '$1' | '_'
                ,media_servers = [] :: ne_binaries() | '_'
                ,last_heartbeat = wh_util:now_ms(now()) :: pos_integer() | 'undefined' | '$3' | '_'
-               ,federated = 'false' :: boolean() | '_'
+               ,zone :: ne_binary() | '_'
                ,broker :: api_binary() | '_'
                ,used_memory = 0 :: non_neg_integer() | '_'
                ,processes = 0 :: non_neg_integer() | '_'
@@ -73,7 +75,7 @@
               }).
 
 -type wh_node() :: #node{}.
--type nodes_state() :: #state{}.
+-type wh_nodes() :: [wh_node(),...] | [].
 
 %%%===================================================================
 %%% API
@@ -100,9 +102,17 @@ whapp_count(Whapp) ->
     whapp_count(Whapp, 'false').
 
 -spec whapp_count(text(), text() | boolean()) -> integer().
-whapp_count(Whapp, IncludeFederated) ->
+whapp_count(Whapp, 'false') ->
     MatchSpec = [{#node{whapps='$1'
-                        ,federated=wh_util:is_true(IncludeFederated)
+                        ,zone = <<"local">>
+                        ,_ = '_'
+                       }
+                  ,[{'=/=', '$1', []}]
+                  ,['$1']
+                 }],
+    determine_whapp_count(wh_util:to_binary(Whapp), MatchSpec);
+whapp_count(Whapp, 'true') ->
+    MatchSpec = [{#node{whapps='$1'
                         ,_ = '_'
                        }
                   ,[{'=/=', '$1', []}]
@@ -125,9 +135,19 @@ determine_whapp_count_fold(Whapps, Acc, Whapp) ->
 
 -spec status() -> 'no_return'.
 status() ->
-    Nodes = lists:sort(fun(N1, N2) ->
-                               N1#node.node > N2#node.node
-                       end, ets:tab2list(?MODULE)),
+    try
+        Nodes = lists:sort(fun(N1, N2) ->
+                                   N1#node.node > N2#node.node
+                           end, ets:tab2list(?MODULE)),
+        print_status(Nodes)
+    catch
+        {'EXIT', {'badarg', _}} ->
+            io:format("status unknown until node is fully initialized, try again in a moment~n", []),
+            'no_return'                
+    end.
+
+-spec print_status(wh_nodes()) -> 'no_return'.
+print_status(Nodes) -> 
     _ = [begin
              MemoryUsage = wh_network_utils:pretty_print_bytes(Node#node.used_memory),
              io:format("Node          : ~s~n", [Node#node.node]),
@@ -135,7 +155,7 @@ status() ->
              io:format("Memory Usage  : ~s~n", [MemoryUsage]),
              io:format("Processes     : ~B~n", [Node#node.processes]),
              io:format("Ports         : ~B~n", [Node#node.ports]),
-             io:format("Federated     : ~s~n", [Node#node.federated]),
+             io:format("Zone          : ~s~n", [Node#node.zone]),
              io:format("Broker        : ~s~n", [Node#node.broker]),
              _ = case lists:sort(Node#node.whapps) of
                      []-> 'ok';
@@ -227,9 +247,10 @@ init([]) ->
     net_kernel:monitor_nodes('true', ['nodedown_reason'
                                       ,{'node_type', 'all'}
                                      ]),
-    Node = create_node('undefined'),
+    State = #state{tab=Tab},
+    Node = create_node('undefined', State),
     ets:insert(Tab, Node),
-    {'ok', #state{tab=Tab, node=wh_util:to_binary(Node#node.node)}}.
+    {'ok', State#state{node=wh_util:to_binary(Node#node.node)}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -265,7 +286,7 @@ handle_cast({'notify_expire', Pid}, #state{notify_expire=Set}=State) ->
     _ = erlang:monitor('process', Pid),
     {'noreply', State#state{notify_expire=sets:add_element(Pid, Set)}};
 handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
-    Node = from_json(JObj),
+    Node = from_json(JObj, State),
     _ = case ets:insert_new(Tab, Node) of
             'true' -> spawn(fun() -> notify_new(Node#node.node, State) end);
             'false' -> ets:insert(Tab, Node)
@@ -309,9 +330,9 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
     {'noreply', State};
 handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
                                        ,tab=Tab}=State) ->
-    _ = ets:insert(Tab, create_node('undefined')),
+    _ = ets:insert(Tab, create_node('undefined', State)),
     Heartbeat = crypto:rand_uniform(5000, 15000),
-    try create_node(Heartbeat) of
+    try create_node(Heartbeat, State) of
         Node ->
             wapi_nodes:publish_advertise(advertise_payload(Node))
     catch
@@ -384,14 +405,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec create_node('undefined' | 5000..15000) -> wh_node().
-create_node(Heartbeat) ->
+-spec create_node('undefined' | 5000..15000, nodes_state()) -> wh_node().
+create_node(Heartbeat, #state{zone=Zone}) ->
     maybe_add_whapps_data(#node{expires=Heartbeat
                                 ,broker=wh_amqp_connections:primary_broker()
                                 ,used_memory=erlang:memory('total')
                                 ,processes=erlang:system_info('process_count')
                                 ,ports=length(erlang:ports())
                                 ,version=wh_util:to_binary(erlang:system_info('otp_release'))
+                                ,zone=wh_util:to_binary(Zone)
                                }).
 
 -spec maybe_add_whapps_data(wh_node()) -> wh_node().
@@ -449,11 +471,12 @@ advertise_payload(Node) ->
      ,{<<"Version">>, Node#node.version}
      ,{<<"Channels">>, Node#node.channels}
      ,{<<"Registrations">>, Node#node.registrations}
+     ,{<<"Zone">>, Node#node.zone}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec from_json(wh_json:object()) -> wh_node().
-from_json(JObj) ->
+-spec from_json(wh_json:object(), nodes_state()) -> wh_node().
+from_json(JObj, State) ->
     Node = wh_json:get_value(<<"Node">>, JObj),
     #node{node=wh_util:to_atom(Node, 'true')
           ,expires=wh_util:to_integer(wh_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
@@ -465,9 +488,16 @@ from_json(JObj) ->
           ,version=wh_json:get_value(<<"Version">>, JObj, <<"unknown">>)
           ,channels=wh_json:get_integer_value(<<"Channels">>, JObj, 0)
           ,registrations=wh_json:get_integer_value(<<"Registrations">>, JObj, 0)
-          ,federated=is_federated(JObj)
+          ,zone=get_zone(JObj, State)
           ,broker=get_amqp_broker(JObj)
          }.
+
+-spec get_zone(wh_json:object(), nodes_state()) -> ne_binary().
+get_zone(JObj, #state{zone=Zone}) ->
+    case wh_json:get_value(<<"Zone">>, JObj, Zone) of
+        Zone -> <<"local">>;
+        RemoteZone -> RemoteZone
+    end.
 
 -spec get_amqp_broker(api_binary() | wh_json:object()) -> api_binary().
 get_amqp_broker('undefined') ->
@@ -498,10 +528,9 @@ notify_new(Node, Pids) ->
         ],
     'ok'.
 
--spec is_federated(api_object() | ne_binary()) -> boolean().
-is_federated(<<"consumer://", _/binary>>) -> 'true';
-is_federated('undefined') -> 'false';
-is_federated(ServerId) when is_binary(ServerId) -> 'false';
-is_federated(JObj) -> is_federated(wh_json:get_value(<<"Server-ID">>, JObj)).
-
-
+-spec get_zone_name() -> atom().
+get_zone_name() ->
+    case wh_config:get(wh_config:get_node_section_name(), 'zone') of
+        [Zone] -> Zone;
+        _Else -> 'local'
+    end.
