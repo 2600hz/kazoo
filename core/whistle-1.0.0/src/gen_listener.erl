@@ -674,16 +674,8 @@ federated_queue_name(Params) ->
     case wh_util:is_empty(QueueName) of
         'true' -> QueueName;
         'false' ->
-            [Zone] = wh_config:get(get_node_section_name(), 'zone'),
+            [Zone] = wh_config:get(wh_config:get_node_section_name(), 'zone'),
             <<QueueName/binary, "-", (wh_util:to_binary(Zone))/binary>>
-    end.
-
--spec get_node_section_name() -> atom().
-get_node_section_name() ->
-    Node = wh_util:to_binary(node()),
-    case binary:split(Node, <<"@">>) of
-        [Name, _] -> wh_util:to_atom(Name, 'true');
-        _Else -> node()
     end.
 
 handle_callback_info(Message, #state{module=Module

@@ -14,6 +14,7 @@
          ,get_integer/2, get_integer/3
          ,get_string/2, get_string/3
          ,get_raw_string/2, get_raw_string/3
+         ,get_node_section_name/0
         ]).
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -132,6 +133,20 @@ get_raw_string(Section, Key, Default) ->
         Default -> Default;
         [_|_]=Values -> Values;
         Value -> Value
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_node_section_name() -> atom().
+get_node_section_name() ->
+    Node = wh_util:to_binary(node()),
+    case binary:split(Node, <<"@">>) of
+        [Name, _] -> wh_util:to_atom(Name, 'true');
+        _Else -> node()
     end.
 
 %%--------------------------------------------------------------------
