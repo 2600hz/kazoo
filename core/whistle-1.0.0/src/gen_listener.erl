@@ -624,6 +624,13 @@ code_change(_OldVersion, State, _Extra) ->
 %%%===================================================================
 -spec maybe_start_federators(wh_proplist()) -> 'ok' | {'ok', pids()}.
 maybe_start_federators(Params) ->
+    case wh_amqp_connections:federated_brokers() of
+        [] -> 'ok';
+        FederatedBrokers -> start_federators(FederatedBrokers, Params)
+    end.
+
+-spec start_federators(ne_binaries(), wh_proplist()) -> 'ok' | {'ok', pids()}.
+start_federators(FederatedBrokers, Params) ->
     Bindings = props:get_value('bindings', Params, []),
     case get_federated_bindings(Bindings) of
         [] -> 'ok';
