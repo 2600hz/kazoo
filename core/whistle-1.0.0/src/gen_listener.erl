@@ -636,7 +636,6 @@ start_federators(FederatedBrokers, Params) ->
         [] -> 'ok';
         FederateBindings ->
             FederateParams = create_federated_params(FederateBindings, Params),
-            FederatedBrokers = wh_amqp_connections:federated_brokers(),
             start_federators(FederatedBrokers, FederateParams, [])
     end.
 
