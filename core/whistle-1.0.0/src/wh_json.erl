@@ -191,9 +191,9 @@ merge_jobjs(?JSON_WRAPPER(Props1)=_JObj1, ?JSON_WRAPPER(_)=JObj2) ->
                         set_value(K, V, JObj2Acc)
                 end, JObj2, Props1).
 
--type merge_pred() :: fun(({json_term(), json_term()}) -> boolean()).
+-type merge_pred() :: fun((json_term(), json_term()) -> boolean()).
 
--spec merge_true(any(), any()) -> 'true'.
+-spec merge_true(json_term(), json_term()) -> 'true'.
 merge_true(_, _) -> 'true'.
 
 -spec merge_recursive(objects()) -> object().
