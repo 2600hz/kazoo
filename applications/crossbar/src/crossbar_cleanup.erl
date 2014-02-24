@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -232,10 +232,15 @@ start_cleanup_timer() ->
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
     start_timer(Expiry*1000, 'cleanup').
 
+-spec start_minute_timer() -> reference().
 start_minute_timer() ->
     start_timer(?MILLISECONDS_IN_MINUTE, 'minute_cleanup').
+
+-spec start_hour_timer() -> reference().
 start_hour_timer() ->
     start_timer(?MILLISECONDS_IN_HOUR, 'hour_cleanup').
+
+-spec start_day_timer() -> reference().
 start_day_timer() ->
     start_timer(?MILLISECONDS_IN_DAY, 'day_cleanup').
 
@@ -267,9 +272,11 @@ cleanup_heard_voicemail(AcctDb) ->
             cleanup_heard_voicemail(AcctDb, wh_util:to_integer(Duration))
     end.
 
+-spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> 'ok'.
+-spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> 'ok'.
 cleanup_heard_voicemail(AcctDb, Duration) ->
     Today = wh_util:current_tstamp(),
-    DurationS = Duration * 86400, % duration in seconds
+    DurationS = Duration * ?SECONDS_IN_DAY, % duration in seconds
     case couch_mgr:get_results(AcctDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
         {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AcctDb]);
         {'ok', View} ->
@@ -285,8 +292,10 @@ cleanup_heard_voicemail(AcctDb, Duration) ->
         {'error', _E} ->
             lager:debug("failed to get voicemail boxes in ~s: ~p", [AcctDb, _E])
     end.
+
 cleanup_heard_voicemail(AcctDb, Timestamp, Boxes) ->
-    [cleanup_voicemail_box(AcctDb, Timestamp, Box) || Box <- Boxes].
+    [cleanup_voicemail_box(AcctDb, Timestamp, Box) || Box <- Boxes],
+    'ok'.
 
 -spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> any().
 cleanup_voicemail_box(AcctDb, Timestamp, {Box, Msgs}) ->
@@ -308,6 +317,7 @@ cleanup_voicemail_box(AcctDb, Timestamp, {Box, Msgs}) ->
             lager:debug("updated messages in voicemail box ~s", [wh_json:get_value(<<"_id">>, Box2)])
     end.
 
+-spec delete_media(ne_binary(), ne_binary()) -> {'ok', wh_json:object()}.
 delete_media(AcctDb, MediaId) ->
     {'ok', JObj} = couch_mgr:open_doc(AcctDb, MediaId),
     couch_mgr:ensure_saved(AcctDb, wh_json:set_value(<<"pvt_deleted">>, 'true', JObj)).
