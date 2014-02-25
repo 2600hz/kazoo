@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -55,12 +55,12 @@ is_ipv6(Address) when is_list(Address) ->
 to_cidr(IP) -> to_cidr(IP, <<"32">>).
 
 -spec to_cidr(ne_binary(), ne_binary()) -> ne_binary().
-to_cidr(IP, Prefix) when not is_binary(IP) -> 
+to_cidr(IP, Prefix) when not is_binary(IP) ->
     to_cidr(wh_util:to_binary(IP), Prefix);
-to_cidr(IP, Prefix) when not is_binary(Prefix) -> 
+to_cidr(IP, Prefix) when not is_binary(Prefix) ->
     to_cidr(IP, wh_util:to_binary(Prefix));
-to_cidr(IP, Prefix) ->    
-    case wh_network_utils:is_ipv4(IP) 
+to_cidr(IP, Prefix) ->
+    case wh_network_utils:is_ipv4(IP)
         andalso  wh_util:to_integer(Prefix) =< 32
     of
         'true' ->
@@ -166,13 +166,13 @@ iptuple_to_binary({A,B,C,D}) ->
 pretty_print_bytes(Bytes) ->
     if
         Bytes div 1073741824 > 0 ->
-            io_lib:format("~.2fGB", [Bytes/1073741824]); 
+            io_lib:format("~.2fGB", [Bytes/1073741824]);
         Bytes div 1048576 > 0 ->
-            io_lib:format("~.2fMB", [Bytes/1048576]); 
+            io_lib:format("~.2fMB", [Bytes/1048576]);
         Bytes div 1024 > 0 ->
             io_lib:format("~.2fKB", [Bytes/1024]);
-        'true' -> 
+        'true' ->
             io_lib:format("~BB", [Bytes])
     end.
 
-    
+
