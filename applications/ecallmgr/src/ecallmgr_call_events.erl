@@ -666,7 +666,6 @@ conference_specific(Props) ->
 
 -spec fax_specific(wh_proplist()) -> wh_proplist().
 fax_specific(Props) ->
-    props:to_log(Props,<<"FAX EVENT">>),
     props:filter_undefined(      
       [{<<"Fax-Success">>, get_fax_success(Props)}
        ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
