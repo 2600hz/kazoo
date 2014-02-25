@@ -252,11 +252,11 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
                                  | EPs], Acc) ->
     _Props = kzt_util:xml_attributes_to_proplist(Attrs),
 
-    try wnm_sip:parse(kzt_util:xml_text_to_binary(Number)) of
+    try kzsip_uri:parse(kzt_util:xml_text_to_binary(Number)) of
         Uri ->
-            lager:debug("maybe add SIP ~s", [wnm_sip:encode(Uri)]),
+            lager:debug("maybe add SIP ~s", [kzsip_uri:encode(Uri)]),
             SipJObj = wh_json:from_list([{<<"invite_format">>, <<"route">>}
-                                         ,{<<"route">>, wnm_sip:encode(Uri)}
+                                         ,{<<"route">>, kzsip_uri:encode(Uri)}
                                         ]),
             Device = wh_json:from_list([{<<"sip">>, SipJObj}]),
             EP = cf_endpoint:create_sip_endpoint(Device, wh_json:new(), Call),
