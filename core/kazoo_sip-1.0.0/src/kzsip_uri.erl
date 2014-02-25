@@ -1,15 +1,18 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Parse and manipulate SIP URIs
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(wnm_sip).
+-module(kzsip_uri).
 
 -export([parse/1
          ,encode/1
+
+         ,to_json/1
+         ,from_json/1
         ]).
 
 %% Accessors
@@ -19,7 +22,7 @@
          ,port/1
         ]).
 
--include("wnm.hrl").
+-include("kazoo_sip.hrl").
 
 -record(sip_uri, {scheme = 'sip' :: 'sip' | 'sips'
                   ,user :: ne_binary()
@@ -28,6 +31,28 @@
                  }).
 -type sip_uri() :: #sip_uri{}.
 -export_type([sip_uri/0]).
+
+-spec to_json(sip_uri()) -> wh_json:object().
+to_json(#sip_uri{scheme=Scheme
+                 ,user=User
+                 ,host=Host
+                 ,port=Port
+                }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"scheme">>, wh_util:to_binary(Scheme)}
+         ,{<<"user">>, User}
+         ,{<<"host">>, Host}
+         ,{<<"port">>, Port}
+        ])).
+
+-spec from_json(wh_json:object()) -> sip_uri().
+from_json(JObj) ->
+    #sip_uri{scheme=wh_json:get_atom_value(<<"scheme">>, JObj)
+             ,user=wh_json:get_value(<<"user">>, JObj)
+             ,host=wh_json:get_value(<<"host">>, JObj)
+             ,port=wh_json:get_integer_value(<<"port">>, JObj)
+            }.
 
 -spec parse(ne_binary()) -> sip_uri().
 parse(Bin) ->
@@ -138,5 +163,11 @@ encode_full_5060_test() ->
     U = <<"sips:username@host.com:5060">>,
     Uri = parse(U),
     ?assertEqual(<<"sips:username@host.com">>, encode(Uri)).
+
+to_json_test() ->
+    U = <<"sips:username@host.com:5060">>,
+    Uri = parse(U),
+    JObj = to_json(Uri),
+    ?assertEqual(Uri, from_json(JObj)).
 
 -endif.
