@@ -156,6 +156,18 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     From = props:get_value(<<"send_from">>, Service),
     To = props:get_value(<<"email_address">>, Props),
 
+    Charset = props:get_value(<<"template_charset">>, Service),
+    ContentTypeParams = case Charset of
+                            <<>> -> [];
+                            <<_/binary>> -> [{<<"content-type-params">>,[{<<"charset">>,Charset}]}];
+                            _ -> []
+                        end,
+    CharsetString = case Charset of
+                            <<>> -> <<>>;
+                            <<_/binary>> -> iolist_to_binary([<<";charset=">>, Charset]);
+                            _ -> <<>>
+                        end,
+
     lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),
     {'ok', VMJObj} = couch_mgr:open_doc(DB, DocId),
 
@@ -173,10 +185,10 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
                    ,{<<"Subject">>, Subject}
                    ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
                   ]
-             ,[]
+             ,ContentTypeParams
              ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>,CharsetString])}], [], iolist_to_binary(TxtBody)}
+                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>,CharsetString])}], [], iolist_to_binary(HTMLBody)}
                  ]
                }
                ,{<<"audio">>, <<"mpeg">>

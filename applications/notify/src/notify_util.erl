@@ -221,6 +221,8 @@ get_service_props(Request, Account, ConfigCat) ->
     UnconfiguredFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
     DefaultFrom = wh_json:get_ne_value(<<"send_from">>, Request
                                        ,whapps_config:get(ConfigCat, <<"default_from">>, UnconfiguredFrom)),
+    DefaultCharset = wh_json:get_ne_value(<<"template_charset">>, Request
+                                       ,whapps_config:get(ConfigCat, <<"default_template_charset">>, <<>>)),
     Tree = wh_json:get_value(<<"pvt_tree">>, Account, []),
     [_, Module] = binary:split(ConfigCat, <<".">>),
     case Tree =/= [] andalso couch_mgr:open_doc(?WH_ACCOUNTS_DB, lists:last(Tree)) of
@@ -232,6 +234,7 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"support_number">>, wh_json:get_value([<<"notifications">>, Module, <<"support_number">>], JObj, DefaultNumber)}
              ,{<<"support_email">>, wh_json:get_value([<<"notifications">>, Module, <<"support_email">>], JObj, DefaultEmail)}
              ,{<<"send_from">>, wh_json:get_value([<<"notifications">>, Module, <<"send_from">>], JObj, DefaultFrom)}
+             ,{<<"template_charset">>, wh_json:get_value([<<"notifications">>, Module, <<"template_charset">>], JObj, DefaultCharset)}
              ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ];
         _E ->
@@ -242,6 +245,7 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"support_number">>, DefaultNumber}
              ,{<<"support_email">>, DefaultEmail}
              ,{<<"send_from">>, DefaultFrom}
+             ,{<<"template_charset">>, DefaultCharset}
              ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ]
     end.
