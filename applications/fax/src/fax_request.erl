@@ -160,20 +160,21 @@ handle_cast({'fax_status', <<"result">>, JObj}, State) ->
     end_receive_fax(JObj, State);
 %    {'stop', 'normal', State};
 handle_cast({'fax_status', Event, JObj}, State) ->
-    lager:debug("fax status - ~s - ~p",[Event, JObj]),
+    lager:debug("fax status not handled - ~s",[Event]),
     %% TODO update stats/websockets/job 
     {'noreply', State};
 handle_cast({'exec_completed', <<"store_fax">>, <<"success">>, JObj}, State) ->
     check_for_upload(JObj, State),
     {'stop', 'normal', State};
 handle_cast({'exec_completed', <<"store_fax">>, Error, JObj}, State) ->
+    lager:debug("fax store error ~s - ~p",[Error, JObj]),
     check_for_upload(JObj, State),
     {'stop', 'normal', State};
-handle_cast({'exec_completed', <<"receive_fax">>, Result, JObj}, State) ->
-    lager:debug("Fax Receive Result ~s : ~p",[Result,JObj]),
+handle_cast({'exec_completed', <<"receive_fax">>, Result, _JObj}, State) ->
+    lager:debug("Fax Receive Result ~s",[Result]),
     {'noreply', State };
 handle_cast({'exec_completed', App, Result, JObj}, State) ->
-    lager:debug("Fax Receive - ~s / ~s",[App,Result]),
+    lager:debug("Fax exec not handled - ~s / ~s ",[App,Result]),
     {'noreply', State };
 handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
     lager:debug("worker discovered queue name ~s", [QueueName]),
@@ -298,19 +299,18 @@ maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
     end.
 
 update_fax_settings(Call, JObj) ->
-    ChannelVars = build_fax_settings(Call, JObj),
+    ChannelVars = build_fax_settings(JObj),
     whapps_call_command:set(wh_json:from_list(ChannelVars), 'undefined', Call).
 
--spec build_fax_settings(whapps_call:call(), wh_json:object()) -> wh_proplist().
-build_fax_settings(Call, JObj) ->
-    FaxNumber = case wh_util:is_true(wh_json:get_value(<<"force_incoming_caller_id">>, JObj, 'false')) of
-                    'false' -> wh_json:get_value(<<"fax_identity">>, JObj);
-                    'true' -> whapps_call:to_user(Call)
-                end,                                                 
+-spec build_fax_settings(wh_json:object()) -> wh_proplist().
+build_fax_settings(JObj) ->
     props:filter_undefined(
-      [{<<"Fax-Identity-Number">>, FaxNumber}
+      [{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity">>, JObj)}
        ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_header">>, JObj)}
        ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
+       ,{<<"Callee-ID-Number">>, wh_util:to_binary(wh_json:get_value(<<"caller_id">>, JObj))}
+       ,{<<"Callee-ID-Name">>, wh_util:to_binary(
+           wh_json:get_first_defined([<<"caller_name">>,<<"name">>], JObj))}
       ]).
 
 -spec end_receive_fax(wh_json:object(), state()) -> state().
