@@ -30,7 +30,6 @@
                 ,pool :: api_pid()
                 ,job_id :: api_binary()
                 ,job :: api_object()
-                ,max_time :: 'undefined' | reference()
                }).
 -type state() :: #state{}.
 
@@ -144,19 +143,13 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
     end;
 handle_cast({'tx_resp', _, _}, State) ->
     {'noreply', State};
-handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{max_time=TimerRef
-                                                                       ,job=Job
+handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{job=Job
                                                                       }=State) ->
     TransferRate = wh_json:get_integer_value([<<"Application-Data">>,<<"Fax-Transfer-Rate">>], JObj, 1),
-    FileSize = wh_json:get_integer_value(<<"pvt_size">>, Job, 0 ),
-    NewMaxTime = wh_util:to_integer(((FileSize * 8) / TransferRate) * 10000 * 4),
-    lager:debug("new timings ~p ~p ~p", [FileSize, TransferRate,NewMaxTime]),
-    NewTimerRef = erlang:send_after(NewMaxTime, self(), 'job_timeout'),
-    _ = erlang:cancel_timer(TimerRef),
     lager:debug("fax status - negociate result - ~s : ~p",[JobId, TransferRate]),
     %% TODO update stats/websockets/job
     %%      maybe setup timer to cancel job bassed on transmission rate     
-    {'noreply', State#state{max_time=NewTimerRef}};
+    {'noreply', State};
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}, State) ->
     TransferredPages = wh_json:get_value([<<"Application-Data">>, <<"Fax-Transferred-Pages">>], JObj),
     lager:debug("fax status - page result - ~s : ~p : ~p"
@@ -192,12 +185,9 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
             lager:debug("acquired job, attempting to send fax ~s", [JobId]),
             try execute_job(JObj, Q) of
                 'ok' ->
-                    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 900000),
-                    MaxTimeRef = erlang:send_after(MaxTime, self(), 'job_timeout'),
                     {'noreply', State#state{job_id=JobId
                                             ,pool=Pid
                                             ,job=JObj
-                                            ,max_time=MaxTimeRef
                                            }};
                 'failure' ->
                     gen_server:cast(Pid, {'job_complete', self()}),
@@ -387,7 +377,7 @@ release_failed_job('tx_resp', Resp, JObj) ->
               ,{<<"fax_receiver_id">>, <<>>}
               ,{<<"fax_error_correction">>, 'false'}
              ],
-    release_job(Result, JObj);
+    release_job(Result, JObj, Resp);
 release_failed_job('exception', _Error, JObj) ->
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 0}
@@ -418,10 +408,14 @@ release_successful_job(Resp, JObj) ->
     Result = [{<<"time_elapsed">>, elapsed_time(JObj)}
               | fax_util:fax_properties(wh_json:get_value(<<"Application-Data">>, Resp, Resp))
              ],
-    release_job(Result, JObj).
+    release_job(Result, JObj, Resp).
 
 -spec release_job(wh_proplist(), wh_json:object()) -> 'ok' | 'failure'.
 release_job(Result, JObj) ->
+    release_job(Result, JObj, wh_json:new()).
+
+-spec release_job(wh_proplist(), wh_json:object(), wh_json:object()) -> 'ok' | 'failure'.
+release_job(Result, JObj, Resp) ->
     Success = props:is_true(<<"success">>, Result, 'false'),
     Updaters = [fun(J) -> wh_json:set_value(<<"tx_result">>, wh_json:from_list(Result), J) end
                 ,fun(J) ->
@@ -444,8 +438,63 @@ release_job(Result, JObj) ->
                          wh_json:set_value(<<"attempts">>, Attempts + 1, J)
                  end
                ],
-    couch_mgr:ensure_saved(?WH_FAXES, lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)),
+    Update = lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters),
+    couch_mgr:ensure_saved(?WH_FAXES, Update),
+    maybe_notify(Result, JObj, Resp, wh_json:get_value(<<"pvt_job_status">>, Update)),
     case Success of 'true' -> 'ok'; 'false' -> 'failure' end.
+
+
+maybe_notify(Result, JObj, Resp, <<"completed">>) ->
+    lager:debug("notify Result ~p",[Result]),
+    lager:debug("notify JObj ~p",[JObj]),
+    lager:debug("notify Resp ~p",[Resp]),
+    Message = notify_fields(JObj, Resp),                                     
+    wapi_notifications:publish_fax_outbound(Message);
+maybe_notify(Result, JObj, Resp, <<"failed">>) ->
+    lager:debug("notify Result ~p",[Result]),
+    lager:debug("notify JObj ~p",[JObj]),
+    lager:debug("notify Resp ~p",[Resp]),
+    Message = notify_fields(JObj, Resp),                                     
+    wapi_notifications:publish_fax_outbound_error(Message);
+maybe_notify(Result, JObj, Resp, Status) ->
+    lager:debug("notify Status ~p",[Status]),
+    lager:debug("notify Result ~p",[Result]),
+    lager:debug("notify JObj ~p",[JObj]),
+    lager:debug("notify Resp ~p",[Resp]),
+    'ok'.
+
+
+notify_fields(JObj, Resp) ->
+    ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
+    ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
+    Notify = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], JObj),
+    props:filter_empty(
+      [{<<"Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
+      ,{<<"Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
+      ,{<<"Callee-ID-Number">>, ToNumber}
+      ,{<<"Callee-ID-Name">>, ToName }
+      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+      ,{<<"Fax-JobId">>, wh_json:get_value(<<"_id">>, JObj)}
+      ,{<<"Fax-BoxId">>, wh_json:get_value(<<"fax_box_id">>, JObj)}
+      ,{<<"Fax-Notifications">>,
+        wh_json:from_list([{<<"email">>,
+          wh_json:from_list([{<<"send_to">>, Notify}])}])}
+      ,{<<"Fax-Info">>, fax_info(wh_json:get_value(<<"Application-Data">>, Resp)) }
+      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
+      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]).    
+
+-spec fax_info(wh_json:object()) -> api_object().
+fax_info('undefined') ->
+    'undefined';
+fax_info(JObj) ->
+    wh_json:from_list( fax_fields(JObj)).    
+
+-spec fax_fields(wh_json:object()) -> wh_proplist().
+fax_fields('undefined') ->
+    'undefined';
+fax_fields(JObj) ->
+    [{K,V} || {<<"Fax-", _/binary>> = K, V} <- wh_json:to_proplist(JObj)].
 
 -spec elapsed_time(wh_json:object()) -> non_neg_integer().
 elapsed_time(JObj) ->
@@ -571,7 +620,7 @@ normalize_content_type(CT) ->
 -spec send_fax(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
     IgnoreEarlyMedia = wh_util:to_binary(whapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
-    ToNumber = wnm_util:to_e164(wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj))),
+    ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = wh_util:rand_hex_binary(8),
     Request = props:filter_undefined([
@@ -589,7 +638,7 @@ send_fax(JobId, JObj, Q) ->
                ,{<<"Msg-ID">>, JobId}
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
-                                                               ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
+                                                              ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
                                                               ])}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
@@ -605,6 +654,8 @@ send_fax(JobId, JObj, Q) ->
                                              ]),
     wapi_offnet_resource:publish_req(Request).
 
+
+
 -spec get_proxy_url(ne_binary()) -> ne_binary().
 get_proxy_url(JobId) ->
     Hostname = wh_network_utils:get_hostname(),
@@ -612,9 +663,6 @@ get_proxy_url(JobId) ->
     list_to_binary(["http://", Hostname, ":", Port, "/fax/", JobId, ".tiff"]).
 
 -spec reset(state()) -> state().
-reset(#state{max_time=MaxTimeRef}=State) when is_reference(MaxTimeRef) ->
-    erlang:cancel_timer(MaxTimeRef),
-    reset(State#state{max_time='undefined'});
 reset(State) ->
     put('callid', ?LOG_SYSTEM_ID),
     State#state{job_id='undefined'
