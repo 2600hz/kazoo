@@ -218,7 +218,7 @@ flush_local(Srv) -> gen_server:cast(Srv, {'flush'}).
 
 -spec fetch_keys_local(atom()) -> list().
 fetch_keys_local(Srv) ->
-    MatchSpec = [{#cache_obj{key = '$1', type = normal, _ = '_'}
+    MatchSpec = [{#cache_obj{key = '$1', type = 'normal', _ = '_'}
                   ,[]
                   ,['$1']
                  }],
@@ -226,7 +226,7 @@ fetch_keys_local(Srv) ->
 
 -spec filter_local(atom(), fun((term(), term()) -> boolean())) -> wh_proplist().
 filter_local(Srv, Pred)  when is_function(Pred, 2) ->
-    ets:foldl(fun(#cache_obj{key=K, value=V, type = normal}, Acc) ->
+    ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, Acc) ->
                       case Pred(K, V) of
                           'true' -> [{K, V}|Acc];
                           'false' -> Acc
