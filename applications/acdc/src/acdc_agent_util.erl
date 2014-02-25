@@ -82,7 +82,8 @@ most_recent_db_status(AccountId, AgentId) ->
         {'ok', [StatusJObj]} -> {'ok', wh_json:get_value(<<"value">>, StatusJObj)};
         {'ok', []} -> {'ok', <<"unknown">>};
         {'error', 'not_found'} ->
-            acdc_maintenance:refresh_account(AccountId);
+            acdc_maintenance:refresh_account(AccountId),
+            most_recent_status(AccountId, AgentId);
         {'error', _E} ->
             lager:debug("error querying view: ~p", [_E]),
             {'ok', <<"unknown">>}
