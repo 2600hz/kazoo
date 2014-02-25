@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -337,7 +337,7 @@ update_category(Category, Keys, Value, Node, Opts, JObj) ->
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%-----------------------------------------------------------------------------
 maybe_save_category(Category, JObj) ->
@@ -357,7 +357,7 @@ maybe_save_category(Category, JObj, Looped) ->
         {'error', _R} ->
             lager:warning("unable to update ~s system config doc: ~p", [Category, _R]),
             cache_jobj(Category, JObj1)
-    end.    
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -426,7 +426,7 @@ get_db_config(Category) ->
             lager:debug("could not fetch config ~s from db: ~p", [Category, _R]),
             E
     end.
- 
+
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
