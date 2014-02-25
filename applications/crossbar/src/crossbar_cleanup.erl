@@ -258,8 +258,8 @@ cleanup_soft_deletes(AcctDb) ->
     end.
 
 -spec cleanup_heard_voicemail(ne_binary()) -> any().
--spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> any().
--spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> any().
+-spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> 'ok'.
+-spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> 'ok'.
 cleanup_heard_voicemail(AcctDb) ->
     case whapps_account_config:get(AcctDb
                                    ,<<"callflow">>
@@ -272,8 +272,6 @@ cleanup_heard_voicemail(AcctDb) ->
             cleanup_heard_voicemail(AcctDb, wh_util:to_integer(Duration))
     end.
 
--spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> 'ok'.
--spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> 'ok'.
 cleanup_heard_voicemail(AcctDb, Duration) ->
     Today = wh_util:current_tstamp(),
     DurationS = Duration * ?SECONDS_IN_DAY, % duration in seconds
