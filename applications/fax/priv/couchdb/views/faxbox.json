@@ -1,0 +1,12 @@
+{
+   "_id": "_design/faxbox",
+   "language": "javascript",
+   "views": {
+       "crossbar_listing": {
+           "map": "function(doc) { if (doc.pvt_type != 'faxbox' || doc.pvt_deleted) return; emit(doc.pvt_account_id, {'id': doc._id, 'name': doc.name, 'created': doc.pvt_created }); }"
+       },
+       "email_address": {
+           "map": "function(doc) { if (doc.pvt_type != 'faxbox' || doc.pvt_deleted) return; for (a in doc.email_addresses) { emit(doc.email_addresses[a], doc.pvt_account_id); } }"
+       }
+   }
+}
