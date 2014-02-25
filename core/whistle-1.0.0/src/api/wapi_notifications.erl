@@ -13,7 +13,10 @@
 -export([declare_exchanges/0]).
 
 -export([voicemail/1, voicemail_v/1
-         ,fax/1, fax_v/1
+         ,fax_inbound/1, fax_inbound_v/1
+         ,fax_inbound_error/1, fax_inbound_error_v/1
+         ,fax_outbound/1, fax_outbound_v/1
+         ,fax_outbound_error/1, fax_outbound_error_v/1
          ,mwi_update/1, mwi_update_v/1
          ,mwi_query/1, mwi_query_v/1
          ,register/1, register_v/1
@@ -35,7 +38,10 @@
         ]).
 
 -export([publish_voicemail/1, publish_voicemail/2
-         ,publish_fax/1, publish_fax/2
+         ,publish_fax_inbound/1, publish_fax_inbound/2
+         ,publish_fax_outbound/1, publish_fax_outbound/2
+         ,publish_fax_inbound_error/1, publish_fax_inbound_error/2
+         ,publish_fax_outbound_error/1, publish_fax_outbound_error/2
          ,publish_mwi_update/1, publish_mwi_update/2
          ,publish_mwi_query/1, publish_mwi_query/2
          ,publish_register/1, publish_register/2
@@ -56,7 +62,10 @@
 -include_lib("whistle/include/wh_api.hrl").
 
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
--define(NOTIFY_FAX_NEW, <<"notifications.fax.new">>).
+-define(NOTIFY_FAX_INBOUND, <<"notifications.fax.inbound">>).
+-define(NOTIFY_FAX_OUTBOUND, <<"notifications.fax.outbound">>).
+-define(NOTIFY_FAX_INBOUND_ERROR, <<"notifications.fax.inbound_error">>).
+-define(NOTIFY_FAX_OUTBOUND_ERROR, <<"notifications.fax.outbound_error">>).
 -define(NOTIFY_MWI_UPDATE, <<"notifications.sip.mwi_update">>).
 -define(NOTIFY_MWI_QUERY, <<"notifications.sip.mwi_query">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
@@ -93,19 +102,61 @@
 -define(VOICEMAIL_TYPES, []).
 
 %% Notify New Fax
--define(FAX_HEADERS, [<<"From-User">>, <<"From-Realm">>
-                      ,<<"To-User">>, <<"To-Realm">>
-                      ,<<"Account-DB">>, <<"Fax-ID">>
-                     ]).
--define(OPTIONAL_FAX_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Call-ID">>
-                               ,<<"Fax-Total-Pages">>, <<"Fax-Transferred-Pages">>
-                               ,<<"Fax-Transfer-Rate">>, <<"Fax-Result-Text">>, <<"ECM-Used">>
-                               ,<<"Owner-ID">>, <<"Fax-Timestamp">>
+-define(FAX_INBOUND_HEADERS, [<<"From-User">>, <<"From-Realm">>
+                             ,<<"To-User">>, <<"To-Realm">>
+                             ,<<"Account-ID">>, <<"Fax-ID">>
+                             ]).
+-define(OPTIONAL_FAX_INBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                      ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                      ,<<"Call-ID">>, <<"Fax-Info">>
+                                      ,<<"Owner-ID">>, <<"Fax-BoxId">>
+                                      ,<<"Fax-Notifications">>
+                                      ]).
+-define(FAX_INBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                            ,{<<"Event-Name">>, <<"inbound_fax">>}
+                            ]).
+-define(FAX_INBOUND_TYPES, []).
+
+-define(FAX_INBOUND_ERROR_HEADERS, [<<"From-User">>, <<"From-Realm">>
+                                   ,<<"To-User">>, <<"To-Realm">>
+                                   ,<<"Account-ID">>
+                                   ]).
+-define(OPTIONAL_FAX_INBOUND_ERROR_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                            ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                            ,<<"Call-ID">>, <<"Fax-Info">>, <<"Fax-ID">>
+                                            ,<<"Owner-ID">>, <<"Fax-BoxId">>
+                                            ,<<"Fax-Notifications">>
+                                            ]).
+-define(FAX_INBOUND_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                  ,{<<"Event-Name">>, <<"inbound_fax_error">>}
+                                  ]).
+-define(FAX_INBOUND_ERROR_TYPES, []).
+
+-define(FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
+                              ,<<"Account-ID">>, <<"Fax-JobId">>
                               ]).
--define(FAX_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                     ,{<<"Event-Name">>, <<"new_fax">>}
-                    ]).
--define(FAX_TYPES, []).
+-define(OPTIONAL_FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">> 
+                                       ,<<"Call-ID">>, <<"Fax-Info">>
+                                       ,<<"Owner-ID">>, <<"Fax-BoxId">>
+                                       ,<<"Fax-Notifications">>
+                                       ]).
+-define(FAX_OUTBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                             ,{<<"Event-Name">>, <<"outbound_fax">>}
+                             ]).
+-define(FAX_OUTBOUND_TYPES, []).
+
+-define(FAX_OUTBOUND_ERROR_HEADERS, [<<"Fax-JobId">>]).
+-define(OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
+                                             ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
+                                             ,<<"Call-ID">>, <<"Fax-Info">>
+                                             ,<<"Owner-ID">>, <<"Fax-BoxId">>
+                                             ,<<"Fax-Notifications">>, <<"Fax-Error">>
+                                             ,<<"Account-ID">>
+                                             ]).
+-define(FAX_OUTBOUND_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                   ,{<<"Event-Name">>, <<"outbound_fax_error">>}
+                                   ]).
+-define(FAX_OUTBOUND_ERROR_TYPES, []).
 
 %% Notify updated MWI
 -define(MWI_REQ_HEADERS, [<<"Notify-User">>, <<"Notify-Realm">>, <<"Messages-New">>, <<"Messages-Saved">>]).
@@ -282,17 +333,68 @@ voicemail_v(JObj) -> voicemail_v(wh_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
-fax(Prop) when is_list(Prop) ->
-    case fax_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?FAX_HEADERS, ?OPTIONAL_FAX_HEADERS);
-        'false' -> {'error', "Proplist failed validation for fax"}
+fax_inbound(Prop) when is_list(Prop) ->
+    case fax_inbound_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?FAX_INBOUND_HEADERS, ?OPTIONAL_FAX_INBOUND_HEADERS);
+        'false' -> {'error', "Proplist failed validation for inbound_fax"}
     end;
-fax(JObj) -> fax(wh_json:to_proplist(JObj)).
+fax_inbound(JObj) -> fax_inbound(wh_json:to_proplist(JObj)).
 
--spec fax_v(api_terms()) -> boolean().
-fax_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?FAX_HEADERS, ?FAX_VALUES, ?FAX_TYPES);
-fax_v(JObj) -> fax_v(wh_json:to_proplist(JObj)).
+-spec fax_inbound_v(api_terms()) -> boolean().
+fax_inbound_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?FAX_INBOUND_HEADERS, ?FAX_INBOUND_VALUES, ?FAX_INBOUND_TYPES);
+fax_inbound_v(JObj) -> fax_inbound_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+fax_outbound(Prop) when is_list(Prop) ->
+    case fax_outbound_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?FAX_OUTBOUND_HEADERS, ?OPTIONAL_FAX_OUTBOUND_HEADERS);
+        'false' -> {'error', "Proplist failed validation for outbound_fax"}
+    end;
+fax_outbound(JObj) -> fax_outbound(wh_json:to_proplist(JObj)).
+
+-spec fax_outbound_v(api_terms()) -> boolean().
+fax_outbound_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?FAX_OUTBOUND_HEADERS, ?FAX_OUTBOUND_VALUES, ?FAX_OUTBOUND_TYPES);
+fax_outbound_v(JObj) -> fax_outbound_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+fax_inbound_error(Prop) when is_list(Prop) ->
+    case fax_inbound_error_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?FAX_INBOUND_ERROR_HEADERS, ?OPTIONAL_FAX_INBOUND_ERROR_HEADERS);
+        'false' -> {'error', "Proplist failed validation for inbound_fax_error"}
+    end;
+fax_inbound_error(JObj) -> fax_inbound_error(wh_json:to_proplist(JObj)).
+
+-spec fax_inbound_error_v(api_terms()) -> boolean().
+fax_inbound_error_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?FAX_INBOUND_ERROR_HEADERS, ?FAX_INBOUND_ERROR_VALUES, ?FAX_INBOUND_ERROR_TYPES);
+fax_inbound_error_v(JObj) -> fax_inbound_error_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+fax_outbound_error(Prop) when is_list(Prop) ->
+    case fax_outbound_error_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?FAX_OUTBOUND_ERROR_HEADERS, ?OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS);
+        'false' -> {'error', "Proplist failed validation for outbound_fax_error"}
+    end;
+fax_outbound_error(JObj) -> fax_outbound_error(wh_json:to_proplist(JObj)).
+
+-spec fax_outbound_error_v(api_terms()) -> boolean().
+fax_outbound_error_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?FAX_OUTBOUND_ERROR_HEADERS, ?FAX_OUTBOUND_ERROR_VALUES, ?FAX_OUTBOUND_ERROR_TYPES);
+fax_outbound_error_v(JObj) -> fax_outbound_error_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
@@ -563,8 +665,25 @@ bind_to_q(Q, 'undefined') ->
 bind_to_q(Q, ['new_voicemail'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     bind_to_q(Q, T);
+bind_to_q(Q, ['inbound_fax'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_INBOUND),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['outbound_fax'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_OUTBOUND),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['new_fax'|T]) ->
-    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_NEW),
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_INBOUND),
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_OUTBOUND),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['inbound_fax_error'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_INBOUND_ERROR),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['outbound_fax_error'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_OUTBOUND_ERROR),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['fax_error'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_INBOUND_ERROR),
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_OUTBOUND_ERROR),
     bind_to_q(Q, T);
 bind_to_q(Q, ['mwi_update'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_UPDATE),
@@ -627,8 +746,25 @@ unbind_q_from(Q, 'undefined') ->
 unbind_q_from(Q, ['new_voicemail'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     unbind_q_from(Q, T);
+unbind_q_from(Q, ['inbound_fax'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_INBOUND),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['outbound_fax'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_OUTBOUND),
+    unbind_q_from(Q, T);
 unbind_q_from(Q, ['new_fax'|T]) ->
-    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_FAX_NEW),
+    'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_INBOUND),
+    'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_OUTBOUND),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['inbound_fax_error'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_INBOUND_ERROR),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['outbound_fax_error'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_OUTBOUND_ERROR),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['fax_error'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_OUTBOUND_ERROR),
+    'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_INBOUND_ERROR),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['mwi_update'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_UPDATE),
@@ -697,13 +833,35 @@ publish_voicemail(Voicemail, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Voicemail, ?VOICEMAIL_VALUES, fun ?MODULE:voicemail/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_NEW, Payload, ContentType).
 
--spec publish_fax(api_terms()) -> 'ok'.
--spec publish_fax(api_terms(), ne_binary()) -> 'ok'.
-publish_fax(JObj) -> publish_fax(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_fax(Fax, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Fax, ?FAX_VALUES, fun ?MODULE:fax/1),
-    amqp_util:notifications_publish(?NOTIFY_FAX_NEW, Payload, ContentType).
+-spec publish_fax_inbound(api_terms()) -> 'ok'.
+-spec publish_fax_inbound(api_terms(), ne_binary()) -> 'ok'.
+publish_fax_inbound(JObj) -> publish_fax_inbound(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_fax_inbound(Fax, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Fax,?FAX_INBOUND_VALUES, fun ?MODULE:fax_inbound/1),
+    amqp_util:notifications_publish(?NOTIFY_FAX_INBOUND, Payload, ContentType).
 
+-spec publish_fax_outbound(api_terms()) -> 'ok'.
+-spec publish_fax_outbound(api_terms(), ne_binary()) -> 'ok'.
+publish_fax_outbound(JObj) -> publish_fax_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_fax_outbound(Fax, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_VALUES, fun ?MODULE:fax_outbound/1),
+    amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND, Payload, ContentType).
+
+-spec publish_fax_inbound_error(api_terms()) -> 'ok'.
+-spec publish_fax_inbound_error(api_terms(), ne_binary()) -> 'ok'.
+publish_fax_inbound_error(JObj) -> publish_fax_inbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_fax_inbound_error(Fax, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Fax, ?FAX_INBOUND_ERROR_VALUES, fun ?MODULE:fax_inbound_error/1),
+    amqp_util:notifications_publish(?NOTIFY_FAX_INBOUND_ERROR, Payload, ContentType).
+
+-spec publish_fax_outbound_error(api_terms()) -> 'ok'.
+-spec publish_fax_outbound_error(api_terms(), ne_binary()) -> 'ok'.
+publish_fax_outbound_error(JObj) -> publish_fax_outbound_error(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_fax_outbound_error(Fax, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_ERROR_VALUES, fun ?MODULE:fax_outbound_error/1),
+    amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_ERROR, Payload, ContentType).
+
+ 
 -spec publish_mwi_update(api_terms()) -> 'ok'.
 -spec publish_mwi_update(api_terms(), ne_binary()) -> 'ok'.
 publish_mwi_update(JObj) -> publish_mwi_update(JObj, ?DEFAULT_CONTENT_TYPE).
