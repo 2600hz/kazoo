@@ -12,14 +12,11 @@
         ]).
 -export([token/2
          ,verify_token/2
-         ,new_token/4
-         ,new_token/5
+         ,refresh_token/4
+         ,refresh_token/5
         ]).
 -export([jwt/2, jwt/3]).
 -export([authorization_header/1]).
--export([refresh_token/1
-         ,refresh_token/2
-        ]).
 
 -spec authorization_header(oauth_token()) -> api_binary().
 authorization_header(#oauth_token{type=Type,token=Token}) ->
@@ -190,12 +187,12 @@ verify_token(#oauth_provider{tokeninfo_url=TokenInfoUrl}, AccessToken) ->
             {'error', Else}
     end.
 
--spec new_token( api_binary() | oauth_app(), api_binary(), api_binary(), wh_proplist() ) -> {'ok', api_object()} | {'error', any()}.
-new_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
-    new_token(App, Scope, AuthorizationCode, ExtraHeaders, <<"postmessage">>).
+-spec refresh_token( api_binary() | oauth_app(), api_binary(), api_binary(), wh_proplist() ) -> {'ok', api_object()} | {'error', any()}.
+refresh_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
+    refresh_token(App, Scope, AuthorizationCode, ExtraHeaders, <<"postmessage">>).
 
--spec new_token( api_binary() | oauth_app(), api_binary(), api_binary(), wh_proplist(), api_binary() ) -> {'ok', api_object()} | {'error', any()}.
-new_token(#oauth_app{name=ClientId
+-spec refresh_token( api_binary() | oauth_app(), api_binary(), api_binary(), wh_proplist(), api_binary() ) -> {'ok', api_object()} | {'error', any()}.
+refresh_token(#oauth_app{name=ClientId
                      ,secret=Secret
                      ,provider=#oauth_provider{auth_url=URL}}
          ,Scope, AuthorizationCode, ExtraHeaders, RedirectURI) ->
