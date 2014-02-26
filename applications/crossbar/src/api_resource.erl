@@ -761,10 +761,13 @@ generate_etag(Req0, Context0) ->
         'automatic' ->
             {Content, _} = api_util:create_resp_content(Req1, Context1),
             Tag = wh_util:to_hex_binary(crypto:md5(Content)),
+            lager:debug("autogen etag: ~s", [Tag]),
             {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)};
         'undefined' ->
+            lager:debug("no etag"),
             {'undefined', Req1, cb_context:set_resp_etag(Context1, 'undefined')};
         Tag ->
+            lager:debug("etag: ~s", [Tag]),
             {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)}
     end.
 
