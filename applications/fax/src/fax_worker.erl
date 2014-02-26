@@ -444,26 +444,18 @@ release_job(Result, JObj, Resp) ->
     case Success of 'true' -> 'ok'; 'false' -> 'failure' end.
 
 
+-spec maybe_notify(wh_proplist(), wh_json:object(), wh_json:object(), ne_binary()) -> any().
 maybe_notify(Result, JObj, Resp, <<"completed">>) ->
-    lager:debug("notify Result ~p",[Result]),
-    lager:debug("notify JObj ~p",[JObj]),
-    lager:debug("notify Resp ~p",[Resp]),
     Message = notify_fields(JObj, Resp),                                     
     wapi_notifications:publish_fax_outbound(Message);
 maybe_notify(Result, JObj, Resp, <<"failed">>) ->
-    lager:debug("notify Result ~p",[Result]),
-    lager:debug("notify JObj ~p",[JObj]),
-    lager:debug("notify Resp ~p",[Resp]),
     Message = notify_fields(JObj, Resp),                                     
     wapi_notifications:publish_fax_outbound_error(Message);
 maybe_notify(Result, JObj, Resp, Status) ->
-    lager:debug("notify Status ~p",[Status]),
-    lager:debug("notify Result ~p",[Result]),
-    lager:debug("notify JObj ~p",[JObj]),
-    lager:debug("notify Resp ~p",[Resp]),
-    'ok'.
+    lager:debug("notify Status ~p noit handled",[Status]).
 
 
+-spec notify_fields(wh_json:object(), wh_json:object()) -> any().
 notify_fields(JObj, Resp) ->
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
