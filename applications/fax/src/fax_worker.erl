@@ -452,7 +452,7 @@ maybe_notify(Result, JObj, Resp, <<"failed">>) ->
     Message = notify_fields(JObj, Resp),                                     
     wapi_notifications:publish_fax_outbound_error(Message);
 maybe_notify(Result, JObj, Resp, Status) ->
-    lager:debug("notify Status ~p noit handled",[Status]).
+    lager:debug("notify Status ~p not handled",[Status]).
 
 
 -spec notify_fields(wh_json:object(), wh_json:object()) -> any().
