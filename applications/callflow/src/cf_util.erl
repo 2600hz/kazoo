@@ -32,6 +32,7 @@
 -export([get_operator_callflow/1]).
 -export([endpoint_id_by_sip_username/2]).
 -export([owner_ids_by_sip_username/2]).
+-export([apply_dialplan/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -724,6 +725,32 @@ maybe_get_endpoint_assigned_owner(JObj) ->
         'undefined' -> 'undefined';
         OwnerId -> OwnerId
     end.
+
+
+-spec apply_dialplan(ne_binary(), api_object()) -> ne_binary().
+apply_dialplan(N, 'undefined') -> N;
+apply_dialplan(Number, DialPlan) ->
+    Regexs = wh_json:get_keys(DialPlan),
+    case Regexs of
+        [] -> Number;
+        _ -> maybe_apply_dialplan(Regexs, DialPlan, Number)
+    end.
+
+maybe_apply_dialplan([], _, Number) -> Number;
+maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
+    case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
+        'nomatch' ->
+            maybe_apply_dialplan(Regexs, DialPlan, Number);
+        'match' -> 
+            Number;
+        {'match', Captures} ->
+            Root = lists:last(Captures),
+            Prefix = wh_json:get_binary_value([Regex, <<"prefix">>], DialPlan, <<>>),
+            Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], DialPlan, <<>>),
+            <<Prefix/binary, Root/binary, Suffix/binary>>
+    end.
+
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

@@ -112,6 +112,7 @@ merge_attributes(Endpoint) ->
             ,<<"caller_id_options">>
             ,<<"do_not_disturb">>
             ,<<"call_forward">>
+            ,<<"dial_plan">>
             ,?CF_ATTR_LOWER_KEY
            ],
     merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
