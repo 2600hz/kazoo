@@ -488,16 +488,14 @@ fold_bind_results([], Payload, Route, MFsLen, ReRunQ) ->
 -spec log_undefined(atom(), atom(), non_neg_integer(), list()) -> 'ok'.
 log_undefined(M, F, Length, [{M, F, _Args,_}|_]) ->
     lager:debug("undefined function ~s:~s/~b", [M, F, Length]);
-log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_}|_]) ->
-    lager:debug("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
-    lager:debug("in call ~s:~s/~b", [M, F, Length]);
-log_undefined(M, F, Length, [{RealM, RealF, RealArgs}|_]) ->
+log_undefined(M, F, Length, [{RealM, RealF, RealArgs,_Location}|_]) ->
     lager:debug("undefined function ~s:~s/~b", [RealM, RealF, length(RealArgs)]),
     lager:debug("in call ~s:~s/~b", [M, F, Length]);
 log_undefined(M, F, Length, ST) ->
     lager:debug("undefined function ~s:~s/~b", [M, F, Length]),
     wh_util:log_stacktrace(ST).
 
+-spec log_function_clause(atom(), atom(), non_neg_integer(), list()) -> 'ok'.
 log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
     lager:debug("unable to find function clause for ~s:~s/~b", [M, F, Length]);
 log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_]) ->
