@@ -172,7 +172,6 @@ handle_VRFY(_Address, State) ->
                           {string(), #state{}} | {#state{}}.
 handle_other(<<"PROXY">>, Args, State) ->
     lager:info("PROXY : ~p",[Args]),
-    %% JMA: Shouldn't this return a two-tuple?
     {State};
 
 %% TODO
@@ -263,10 +262,10 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Props = props:filter_undefined(
               [{<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
-               ,{<<"fax_identity_name">>, wh_json:get_value(<<"caller_name">>, FaxBoxDoc)}
+               ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_header">>, FaxBoxDoc)}
                ,{<<"from_number">>,wh_json:get_value(<<"caller_id">>,FaxBoxDoc)}
-               ,{<<"fax_identity_number">>, wh_json:get_value(<<"caller_id">>, FaxBoxDoc)}
-               ,{<<"fax_timezone">>, wh_json:get_value(<<"timezone">>, FaxBoxDoc)}
+               ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
+               ,{<<"fax_timezone">>, wh_json:get_value(<<"fax_timezone">>, FaxBoxDoc)}
                ,{<<"to_name">>,FaxNumber}
                ,{<<"to_number">>,FaxNumber}
                ,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}

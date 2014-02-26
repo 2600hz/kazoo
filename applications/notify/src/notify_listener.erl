@@ -27,7 +27,10 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
-                     ,{notify_fax, [{<<"notification">>, <<"new_fax">>}]}
+                     ,{notify_fax_inbound, [{<<"notification">>, <<"inbound_fax">>}]}
+                     ,{notify_fax_outbound, [{<<"notification">>, <<"outbound_fax">>}]}
+                     ,{notify_fax_inbound_error, [{<<"notification">>, <<"inbound_fax_error">>}]}
+                     ,{notify_fax_outbound_error, [{<<"notification">>, <<"outbound_fax_error">>}]}
                      ,{notify_deregister, [{<<"notification">>, <<"deregister">>}]}
                      ,{notify_pwd_recovery, [{<<"notification">>, <<"password_recovery">>}]}
                      ,{notify_new_account, [{<<"notification">>, <<"new_account">>}]}
@@ -40,7 +43,10 @@
                     ]).
 
 -define(RESTRICT_TO, [new_voicemail
-                      ,new_fax
+                      ,inbound_fax
+                      ,inbound_fax_error
+                      ,outbound_fax
+                      ,outbound_fax_error
                       ,deregister
                       ,pwd_recovery
                       ,new_account

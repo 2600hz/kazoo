@@ -968,7 +968,7 @@ get_module(Category, Name) ->
         try wh_util:to_atom(ModuleName) of
                 Module -> Module
         catch
-                'error':'undef' ->
+                'error':'badarg' ->
                         wh_util:to_atom(ModuleName,'true')
         end.
 

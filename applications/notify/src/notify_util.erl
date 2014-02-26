@@ -20,6 +20,7 @@
          ,compile_default_template/3
          ,find_admin/1
          ,get_account_doc/1
+         ,qr_code_image/1
         ]).
 
 -include("notify.hrl").
@@ -358,6 +359,14 @@ category_to_file(<<"notify.voicemail_to_email">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_vm.config"];
 category_to_file(<<"notify.fax_to_email">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_fax.config"];
+category_to_file(<<"notify.fax_inbound_to_email">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_fax_inbound.config"];
+category_to_file(<<"notify.fax_outbound_to_email">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_fax_outbound.config"];
+category_to_file(<<"notify.fax_inbound_error_to_email">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_fax_inbound_error.config"];
+category_to_file(<<"notify.fax_outbound_error_to_email">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_fax_outbound_error.config"];
 category_to_file(<<"notify.deregister">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_deregister.config"];
 category_to_file(<<"notify.password_recovery">>) ->
@@ -380,3 +389,26 @@ category_to_file(<<"notify.transaction">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_transaction.config"];
 category_to_file(_) ->
     'undefined'.
+
+
+-spec qr_code_image(api_binary()) -> wh_proplist() | 'undefined'.
+qr_code_image('undefined') -> 'undefined';
+qr_code_image(Text) ->
+    lager:debug("create qr code for ~s", [Text]),
+    CHL = wh_util:uri_encode(Text),
+    Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
+
+    case ibrowse:send_req(wh_util:to_list(Url)
+                          ,[]
+                          ,'get'
+                          ,[]
+                          ,[{'response', 'binary'}]
+                         )
+    of
+        {'ok', "200", _RespHeaders, RespBody} ->
+            lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
+            [{<<"image">>, base64:encode(RespBody)}];
+        _E ->
+            lager:debug("failed to generate QR code: ~p", [_E]),
+            'undefined'
+    end.

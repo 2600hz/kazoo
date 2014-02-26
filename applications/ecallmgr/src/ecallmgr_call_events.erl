@@ -483,8 +483,12 @@ generic_call_event_props(Props) ->
      ,{<<"Caller-ID-Name">>, props:get_first_defined([<<"variable_effective_caller_id_name">>
                                                       ,<<"Caller-Caller-ID-Name">>
                                                      ], Props)}
-     ,{<<"Callee-ID-Number">>, props:get_value(<<"Caller-Callee-ID-Number">>, Props)}
-     ,{<<"Callee-ID-Name">>, props:get_value(<<"Caller-Callee-ID-Name">>, Props)}
+     ,{<<"Callee-ID-Number">>, props:get_first_defined([<<"variable_effective_callee_id_number">>
+                                                        ,<<"Caller-Callee-ID-Number">>
+                                                       ], Props)}
+     ,{<<"Callee-ID-Name">>, props:get_first_defined([<<"variable_effective_callee_id_name">>
+                                                      ,<<"Caller-Callee-ID-Name">>
+                                                     ], Props)}
      ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
@@ -664,7 +668,6 @@ fax_specific(Props) ->
       [{<<"Fax-Success">>, get_fax_success(Props)}
        ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
        ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
-       ,{<<"Fax-ECM-Used">>, props:get_value(<<"variable_fax_ecm_used">>, Props)}
        ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
        ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
        ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
@@ -682,6 +685,9 @@ fax_specific(Props) ->
        ,{<<"Fax-Longest-Bad-Row-Run">>, props:get_value(<<"variable_fax_longest_bad_row_run">>, Props)}
        ,{<<"Fax-Encoding">>, props:get_value(<<"variable_fax_encoding">>, Props)}
        ,{<<"Fax-Encoding-Name">>, props:get_value(<<"variable_fax_encoding_name">>, Props)}
+       ,{<<"Fax-Timezone">>, props:get_value(<<"variable_fax_timezone">>, Props)}
+       ,{<<"Fax-Identity-Number">>, props:get_value(<<"variable_fax_ident">>, Props)}
+       ,{<<"Fax-Identity-Name">>, props:get_value(<<"variable_fax_header">>, Props)}
        ]).
 
 -spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().

@@ -8,17 +8,17 @@
 %%% @contributors
 %%%   James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(notify_fax).
+-module(notify_fax_inbound).
 
 -export([init/0, handle_req/2]).
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, notify_fax_text_tmpl).
--define(DEFAULT_HTML_TMPL, notify_fax_html_tmpl).
--define(DEFAULT_SUBJ_TMPL, notify_fax_subj_tmpl).
+-define(DEFAULT_TEXT_TMPL, notify_fax_inbound_text_tmpl).
+-define(DEFAULT_HTML_TMPL, notify_fax_inbound_html_tmpl).
+-define(DEFAULT_SUBJ_TMPL, notify_fax_inbound_subj_tmpl).
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_to_email">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_inbound_to_email">>).
 
 -spec init() -> 'ok'.
 init() ->
@@ -30,60 +30,48 @@ init() ->
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
-    true = wapi_notifications:fax_v(JObj),
+    true = wapi_notifications:fax_inbound_v(JObj),
     _ = whapps_util:put_callid(JObj),
 
     lager:debug("new fax left, sending to email if enabled"),
-    lager:debug("notification: ~p", [JObj]),
 
-    AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     FaxId = wh_json:get_value(<<"Fax-ID">>, JObj),
+    lager:debug("account-id: ~s, fax-id: ~s", [AccountId, FaxId]),
+    {ok, FaxDoc} = couch_mgr:open_doc(AccountDb, FaxId),
 
-    lager:debug("account-db: ~s, fax-id: ~s", [AcctDB, FaxId]),
+    Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),   
 
-    {ok, FaxDoc} = couch_mgr:open_doc(AcctDB, FaxId),
+    {ok, AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    Docs = [FaxDoc, JObj, AcctObj],
+    Props = create_template_props(JObj, Docs, AcctObj),
 
-    OwnerId = case wh_json:get_value(<<"owner_id">>, FaxDoc) of
-                  undefined -> wh_json:get_value(<<"Owner-ID">>, JObj);
-                  OID -> OID
-              end,
-    lager:debug("owner: ~s", [OwnerId]),
+    CustomTxtTemplate = wh_json:get_value([<<"notifications">>,
+                                           <<"inbound_fax_to_email">>,
+                                           <<"email_text_template">>], AcctObj),
+    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>,
+                                            <<"inbound_fax_to_email">>,
+                                            <<"email_html_template">>], AcctObj),
+    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>,
+                                               <<"inbound_fax_to_email">>,
+                                               <<"email_subject_template">>], AcctObj),
 
-    {ok, UserJObj} = couch_mgr:open_doc(AcctDB, OwnerId),
-    case {wh_json:get_ne_value(<<"email">>, UserJObj)
-          ,wh_json:is_true(<<"fax_to_email_enabled">>, UserJObj)
-         } of
-        {undefined, _} ->
-            lager:debug("no email found for user ~s", [wh_json:get_value(<<"username">>, UserJObj)]);
-        {_Email, false} ->
-            lager:debug("fax to email disabled for ~s", [_Email]);
-        {Email, true} ->
-            lager:debug("Fax->Email enabled for user, sending to ~s", [Email]),
-            {ok, AcctObj} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, wh_util:format_account_id(AcctDB, raw)),
-            Docs = [FaxDoc, UserJObj, AcctObj],
-
-            Props = [{<<"email_address">>, Email}
-                     | create_template_props(JObj, Docs, AcctObj)
-                    ],
-
-            CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"fax_to_email">>, <<"email_text_template">>], AcctObj),
-            {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
-
-            CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"fax_to_email">>, <<"email_html_template">>], AcctObj),
-            {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
-
-            CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"fax_to_email">>, <<"email_subject_template">>], AcctObj),
-            {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-
-            try build_and_send_email(TxtBody, HTMLBody, Subject, Email, props:filter_empty(Props)) of
-                _ -> lager:debug("built and sent")
-            catch
-                C:R ->
-                    lager:debug("failed: ~s:~p", [C, R]),
-                    ST = erlang:get_stacktrace(),
-                    wh_util:log_stacktrace(ST)
-            end
+    {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
+    {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
+    {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
+    
+    try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props)) of
+        _ -> lager:debug("built and sent")
+    catch
+        C:R ->
+            lager:debug("failed: ~s:~p", [C, R]),
+            ST = erlang:get_stacktrace(),
+            wh_util:log_stacktrace(ST)
     end.
+    
+    
+    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -97,18 +85,22 @@ create_template_props(Event, Docs, Account) ->
 
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
+    ToName = wh_json:get_value(<<"Callee-ID-Name">>, Event),
+    ToNum = wh_json:get_value(<<"Callee-ID-Number">>, Event),
     ToE164 = wh_json:get_value(<<"To-User">>, Event),
     FromE164 = wh_json:get_value(<<"From-User">>, Event),
     DateCalled = wh_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
+    Timezone = wh_util:to_list(wh_json:find(<<"fax_timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
      ,{<<"fax">>, [{<<"caller_id_number">>, wnm_util:pretty_print(CIDNum)}
                    ,{<<"caller_id_name">>, wnm_util:pretty_print(CIDName)}
+                   ,{<<"callee_id_number">>, wnm_util:pretty_print(ToNum)}
+                   ,{<<"callee_id_name">>, wnm_util:pretty_print(ToName)}
                    ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
                    ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
                    ,{<<"from_user">>, wnm_util:pretty_print(FromE164)}
@@ -118,7 +110,7 @@ create_template_props(Event, Docs, Account) ->
                    ,{<<"fax_id">>, wh_json:get_value(<<"Fax-ID">>, Event)}
                    ,{<<"fax_media">>, wh_json:get_value(<<"Fax-Name">>, Event)}
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
-                   | fax_values(Event)
+                   | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
                   ]}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
     ].
@@ -137,10 +129,10 @@ fax_values(Event) ->
 -spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
+build_and_send_email(TxtBody, HTMLBody, Subject, 'undefined', Props) ->
+    'ok';
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
-    To = props:get_value(<<"email_address">>, Props),
-
     From = props:get_value(<<"send_from">>, Service),
 
     {ContentType, AttachmentFileName, AttachmentBin} = get_attachment(Props),
