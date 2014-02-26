@@ -62,33 +62,34 @@
 
 -export([flush/0, cache/1, cache/2, retrieve/1]).
 
--define(BRIDGE_PWD, <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">>).
+-define(BRIDGE_USER, whapps_config:get(<<"conferences">>, <<"bridge_username">>, wh_util:rand_hex_binary(12))).
+-define(BRIDGE_PWD, whapps_config:get(<<"conferences">>, <<"bridge_password">>, wh_util:rand_hex_binary(12))).
 
 -record(whapps_conference, {
-          id :: api_binary()                           %% the conference id
-         ,focus :: api_binary()                        %% the conference focus
-         ,profile = <<"default">> :: api_binary()      %% conference profile (config settings)
-         ,controller_q :: api_binary()                 %% the controller queue, for responses
-         ,bridge_username = <<"test">> :: ne_binary()  %% the username used for a conference bridge
-         ,bridge_password = ?BRIDGE_PWD :: ne_binary() %% the password used for a conference bridge
-         ,member_pins = [] :: ne_binaries()            %% a list of pins for use by members
-         ,moderator_pins = [] :: ne_binaries()         %% a list of pins for use by the moderators
-         ,moderator :: boolean()                       %% tri-state true/false if the caller is known to be a moderator, otherwise 'undefined'
-         ,member_join_muted = 'false' :: boolean()     %% should the member join muted
-         ,member_join_deaf = 'false' :: boolean()      %% should the member join deaf
-         ,moderator_join_muted = 'false' :: boolean()  %% should the moderator join muted
-         ,moderator_join_deaf = 'false' :: boolean()   %% should the moderator join deaf
-         ,max_participants = 0 :: non_neg_integer()    %% max number of participants
-         ,require_moderator = 'false' :: boolean()     %% does the conference require a moderator
-         ,wait_for_moderator = 'false' :: boolean()    %% can members wait for a moderator
-         ,play_name_on_join = 'false' :: boolean()     %% should participants have their name played on join
-         ,play_entry_prompt = 'true' :: boolean()      %% Play prompt telling caller they're entering the conference
-         ,play_entry_tone = 'true' :: boolean()        %% Play tone telling caller they've entered the conference
-         ,play_welcome = 'true' :: boolean()           %% Play prompt welcoming caller to the conference
-         ,conference_doc :: wh_json:object()           %% the complete conference doc used to create the record (when and if)
-         ,app_name = <<"whapps_conference">> :: ne_binary() %% The application name used during whapps_conference_command
-         ,app_version = <<"1.0.0">> :: ne_binary()     %% The application version used during whapps_conference_command
-         ,kvs = orddict:new() :: orddict:orddict()     %% allows conferences to set values that propogate to children
+          id :: api_binary()                                 %% the conference id
+         ,focus :: api_binary()                              %% the conference focus
+         ,profile = <<"default">> :: api_binary()            %% conference profile (config settings)
+         ,controller_q :: api_binary()                       %% the controller queue, for responses
+         ,bridge_username = ?BRIDGE_USER :: ne_binary()      %% the username used for a conference bridge
+         ,bridge_password = ?BRIDGE_PWD :: ne_binary()       %% the password used for a conference bridge
+         ,member_pins = [] :: ne_binaries()                  %% a list of pins for use by members
+         ,moderator_pins = [] :: ne_binaries()               %% a list of pins for use by the moderators
+         ,moderator :: boolean()                             %% tri-state true/false if the caller is known to be a moderator, otherwise 'undefined'
+         ,member_join_muted = 'false' :: boolean()           %% should the member join muted
+         ,member_join_deaf = 'false' :: boolean()            %% should the member join deaf
+         ,moderator_join_muted = 'false' :: boolean()        %% should the moderator join muted
+         ,moderator_join_deaf = 'false' :: boolean()         %% should the moderator join deaf
+         ,max_participants = 0 :: non_neg_integer()          %% max number of participants
+         ,require_moderator = 'false' :: boolean()           %% does the conference require a moderator
+         ,wait_for_moderator = 'false' :: boolean()          %% can members wait for a moderator
+         ,play_name_on_join = 'false' :: boolean()           %% should participants have their name played on join
+         ,play_entry_prompt = 'true' :: boolean()            %% Play prompt telling caller they're entering the conference
+         ,play_entry_tone = 'true' :: boolean()              %% Play tone telling caller they've entered the conference
+         ,play_welcome = 'true' :: boolean()                 %% Play prompt welcoming caller to the conference
+         ,conference_doc :: wh_json:object()                 %% the complete conference doc used to create the record (when and if)
+         ,app_name = <<"whapps_conference">> :: ne_binary()  %% The application name used during whapps_conference_command
+         ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_conference_command
+         ,kvs = orddict:new() :: orddict:orddict()           %% allows conferences to set values that propogate to children
          }).
 
 -opaque conference() :: #whapps_conference{}.
