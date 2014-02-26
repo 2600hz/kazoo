@@ -34,7 +34,6 @@ handle_req(JObj, _Props) ->
     _ = whapps_util:put_callid(JObj),
 
     lager:debug("new fax left, sending to email if enabled"),
-    lager:debug("notification: ~p", [JObj]),
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),

@@ -106,6 +106,9 @@ create_template_props(Event, Docs, Account) ->
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                    | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
                   ]}
+     ,{<<"error">>, [{<<"call_info">>, wh_json:get_value(<<"Fax-Error">>, Event)}
+                    ,{<<"fax_info">>, wh_json:get_value([<<"Fax-Info">>,<<"Fax-Result-Text">>], Event)}
+                    ]}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
     ].
 

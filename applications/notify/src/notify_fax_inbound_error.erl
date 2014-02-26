@@ -43,6 +43,8 @@ handle_req(JObj, _Props) ->
     {ok, AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     Docs = [JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
+    
+
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>,
                                            <<"inbound_fax_error_to_email">>,
@@ -109,6 +111,9 @@ create_template_props(Event, Docs, Account) ->
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                    | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
                   ]}
+     ,{<<"error">>, [{<<"call_info">>, wh_json:get_value(<<"Fax-Error">>, Event)}
+                    ,{<<"fax_info">>, wh_json:get_value([<<"Fax-Info">>,<<"Fax-Result-Text">>], Event)}
+                    ]}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
     ].
 
