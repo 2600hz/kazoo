@@ -13,7 +13,9 @@
 
 -export([migrate/0]).
 -export([find_invalid_acccount_dbs/0]).
--export([refresh/0, refresh/1]).
+-export([refresh/0, refresh/1
+         ,refresh_account_dbs/0, refresh_account_db/1
+        ]).
 -export([blocking_refresh/0]).
 -export([purge_doc_type/2, purge_doc_type/3]).
 -export([cleanup_aggregated_account/1]).
@@ -135,6 +137,12 @@ refresh() ->
     _ = spawn(fun do_refresh/0),
     'started'.
 
+refresh_account_dbs() ->
+    [refresh_account_db(Account) || Account <- whapps_util:get_all_accounts('raw')].
+
+refresh_account_db(Account) ->
+    refresh(Account, get_all_account_views()).
+
 -spec do_refresh() -> pos_integer().
 do_refresh() ->
     [refresh(SystemDb) || SystemDb <- ?KZ_SYSTEM_DBS],
@@ -218,7 +226,7 @@ refresh(?KZ_ACDC_DB) ->
     _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
     'ok';
 refresh(Account) when is_binary(Account) ->
-    refresh(Account, get_all_account_views());
+    refresh_account_db(Account);
 refresh(Database) ->
     refresh(wh_util:to_binary(Database)).
 

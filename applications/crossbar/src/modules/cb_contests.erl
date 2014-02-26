@@ -2,8 +2,6 @@
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
-%%% Listing of all expected v1 callbacks
-%%%
 %%% @end
 %%% @contributors:
 %%%   Karl Anderson
