@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(conference_listener).
+-module(conference_shared_listener).
 
 -behaviour(gen_listener).
 
@@ -23,15 +23,17 @@
 
 -record(state, {}).
 
--define(BINDINGS, [{'route', []}
+-define(BINDINGS, [{'conference', [{'restrict_to', ['discovery', 'config']}]}
+                   ,{'authn', []}
                    ,{'self', []}
                   ]).
--define(RESPONDERS, [{'conf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{'conf_route_win', [{<<"dialplan">>, <<"route_win">>}]}
+-define(RESPONDERS, [{'conf_discovery_req', [{<<"conference">>, <<"discovery_req">>}]}
+                     ,{'conf_config_req', [{<<"conference">>, <<"config_req">>}]}
+                     ,{'conf_authn_req', [{<<"directory">>, <<"authn_req">>}]}
                     ]).
--define(QUEUE_NAME, <<"">>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"conference_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
