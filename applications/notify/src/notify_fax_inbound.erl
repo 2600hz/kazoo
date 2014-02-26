@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with fax attachment to the user.
@@ -14,23 +14,24 @@
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, notify_fax_inbound_text_tmpl).
--define(DEFAULT_HTML_TMPL, notify_fax_inbound_html_tmpl).
--define(DEFAULT_SUBJ_TMPL, notify_fax_inbound_subj_tmpl).
+-define(DEFAULT_TEXT_TMPL, 'notify_fax_inbound_text_tmpl').
+-define(DEFAULT_HTML_TMPL, 'notify_fax_inbound_html_tmpl').
+-define(DEFAULT_SUBJ_TMPL, 'notify_fax_inbound_subj_tmpl').
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_inbound_to_email">>).
 
 -spec init() -> 'ok'.
 init() ->
     %% ensure the fax template can compile, otherwise crash the processes
-    {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
-    {ok, _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
-    {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
-    true = wapi_notifications:fax_inbound_v(JObj),
+    'true' = wapi_notifications:fax_inbound_v(JObj),
+
     _ = whapps_util:put_callid(JObj),
 
     lager:debug("new fax left, sending to email if enabled"),
@@ -39,28 +40,31 @@ handle_req(JObj, _Props) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     FaxId = wh_json:get_value(<<"Fax-ID">>, JObj),
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, FaxId]),
-    {ok, FaxDoc} = couch_mgr:open_doc(AccountDb, FaxId),
+    {'ok', FaxDoc} = couch_mgr:open_doc(AccountDb, FaxId),
 
-    Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),   
+    Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 
-    {ok, AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
 
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>,
-                                           <<"inbound_fax_to_email">>,
-                                           <<"email_text_template">>], AcctObj),
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>,
-                                            <<"inbound_fax_to_email">>,
-                                            <<"email_html_template">>], AcctObj),
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>,
-                                               <<"inbound_fax_to_email">>,
-                                               <<"email_subject_template">>], AcctObj),
+    CustomTxtTemplate = wh_json:get_value([<<"notifications">>
+                                           ,<<"inbound_fax_to_email">>
+                                           ,<<"email_text_template">>
+                                          ], AcctObj),
+    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>
+                                            ,<<"inbound_fax_to_email">>
+                                            ,<<"email_html_template">>
+                                           ], AcctObj),
+    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>
+                                               ,<<"inbound_fax_to_email">>
+                                               ,<<"email_subject_template">>
+                                              ], AcctObj),
 
-    {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
-    {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
-    {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-    
+    {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
+    {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
+    {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
+
     try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props)) of
         _ -> lager:debug("built and sent")
     catch
@@ -69,9 +73,6 @@ handle_req(JObj, _Props) ->
             ST = erlang:get_stacktrace(),
             wh_util:log_stacktrace(ST)
     end.
-    
-    
-    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -129,7 +130,7 @@ fax_values(Event) ->
 -spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
-build_and_send_email(TxtBody, HTMLBody, Subject, 'undefined', Props) ->
+build_and_send_email(_TxtBody, _HTMLBody, _Subject, 'undefined', _Props) ->
     'ok';
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
@@ -172,13 +173,13 @@ get_file_name(Props, Ext) ->
     %% CallerID_Date_Time.mp3
     Fax = props:get_value(<<"fax">>, Props),
     CallerID = case {props:get_value(<<"caller_id_name">>, Fax), props:get_value(<<"caller_id_number">>, Fax)} of
-                   {undefined, undefined} -> <<"Unknown">>;
-                   {undefined, Num} -> wh_util:to_binary(Num);
+                   {'undefined', 'undefined'} -> <<"Unknown">>;
+                   {'undefined', Num} -> wh_util:to_binary(Num);
                    {Name, _} -> wh_util:to_binary(Name)
                end,
     LocalDateTime = props:get_value(<<"date_called">>, Fax, <<"0000-00-00_00-00-00">>),
     FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
-    re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{return, binary}, global]).
+    re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -186,9 +187,11 @@ get_file_name(Props, Ext) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_attachment(proplist()) -> {ne_binary(), ne_binary(), ne_binary()} | {'error', _}.
+-spec get_attachment(wh_proplist()) ->
+                            {ne_binary(), ne_binary(), ne_binary()} |
+                            {'error', _}.
 get_attachment(Props) ->
-    {ok, AttachmentBin} = raw_attachment_binary(Props),
+    {'ok', AttachmentBin} = raw_attachment_binary(Props),
     case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>) of
         <<"pdf">> -> convert_to_pdf(AttachmentBin, Props);
         _Else -> convert_to_tiff(AttachmentBin, Props)
@@ -200,14 +203,27 @@ get_attachment(Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec raw_attachment_binary(proplist()) -> {'ok', ne_binary()} | {'error', _}.
+-spec raw_attachment_binary(proplist()) ->
+                                   {'ok', ne_binary()} |
+                                   {'error', _}.
 raw_attachment_binary(Props) ->
-    DB = props:get_value(<<"account_db">>, Props),
+    Db = props:get_value(<<"account_db">>, Props),
     Fax = props:get_value(<<"fax">>, Props),
     FaxId = props:get_value(<<"fax_id">>, Fax),
-    {ok, FaxJObj} = couch_mgr:open_doc(DB, FaxId),
-    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, FaxJObj),
-    couch_mgr:fetch_attachment(DB, FaxId, AttachmentId).
+    raw_attachment_binary(Db, Fax, FaxId).
+
+raw_attachment_binary(Db, Fax, FaxId) ->
+    raw_attachment_binary(Db, Fax, FaxId, 2).
+
+raw_attachment_binary(Db, Fax, FaxId, Retries) when Retries > 0 ->
+    {'ok', FaxJObj} = couch_mgr:open_doc(Db, FaxId),
+    case wh_json:get_keys(<<"_attachments">>, FaxJObj) of
+        [AttachmentId | _] -> couch_mgr:fetch_attachment(Db, FaxId, AttachmentId);
+        [] ->
+            lager:debug("failed to find the attachment, retrying ~b more times", [Retries]),
+            timer:sleep(?MILLISECONDS_IN_MINUTE * 5),
+            raw_attachment_binary(Db, Fax, FaxId, Retries)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -225,19 +241,21 @@ convert_to_tiff(AttachmentBin, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_to_pdf(ne_binary(), proplist()) -> {ne_binary(), ne_binary(), ne_binary()} | {'error', _}.
+-spec convert_to_pdf(ne_binary(), wh_proplist()) ->
+                            {ne_binary(), ne_binary(), ne_binary()} |
+                            {'error', _}.
 convert_to_pdf(AttachmentBin, Props) ->
     TiffFile = tmp_file_name(<<"tiff">>),
-    PDFFile = tmp_file_name(<<"pdf">>),    
+    PDFFile = tmp_file_name(<<"pdf">>),
     _ = file:write_file(TiffFile, AttachmentBin),
     Cmd = io_lib:format("tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"", [PDFFile, TiffFile]),
     _ = os:cmd(Cmd),
     _ = file:delete(TiffFile),
     case file:read_file(PDFFile) of
-        {ok, PDFBin} ->
+        {'ok', PDFBin} ->
             _ = file:delete(PDFFile),
             {<<"application/pdf">>, get_file_name(Props, "pdf"), PDFBin};
-        {error, _R}=E ->
+        {'error', _R}=E ->
             lager:debug("unable to convert tiff: ~p", [_R]),
             E
     end.

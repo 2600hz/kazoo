@@ -921,19 +921,19 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
     Result = case send_fs_store(Node, Args, Method) of
                  {'ok', <<"+OK", _/binary>>} ->
-                     lager:debug("successfully stored media"),
+                     lager:debug("successfully stored media for ~s", [Type]),
                      <<"success">>;
                  {'ok', Err} ->
-                     lager:debug("store media failed: ~s", [Err]),
-                     wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
-                                            ,[File, UUID, Node]
+                     lager:debug("store media failed for ~s: ~s", [Type, Err]),
+                     wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
+                                            ,[Type, File, UUID, Node]
                                             ,[{<<"Details">>, Err}]
                                            ),
                      <<"failure">>;
                  {'error', E} ->
-                     lager:debug("error executing http_put: ~p", [E]),
-                     wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
-                                            ,[File, UUID, Node]
+                     lager:debug("error executing http_put for ~s: ~p", [Type, E]),
+                     wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
+                                            ,[Type, File, UUID, Node]
                                             ,[{<<"Details">>, E}]
                                            ),
                      <<"failure">>
@@ -945,9 +945,9 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
 
 -spec send_fs_store(atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
 send_fs_store(Node, Args, 'put') ->
-    freeswitch:api(Node, 'http_put', wh_util:to_list(Args), 30000);
+    freeswitch:api(Node, 'http_put', wh_util:to_list(Args), 120000);
 send_fs_store(Node, Args, 'post') ->
-    freeswitch:api(Node, 'http_post', wh_util:to_list(Args), 30000).
+    freeswitch:api(Node, 'http_post', wh_util:to_list(Args), 120000).
 
 -spec send_store_call_event(atom(), ne_binary(), wh_json:object() | ne_binary()) -> 'ok'.
 send_store_call_event(Node, UUID, MediaTransResults) ->
