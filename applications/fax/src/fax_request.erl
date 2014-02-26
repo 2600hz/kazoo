@@ -299,20 +299,36 @@ maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
     end.
 
 update_fax_settings(Call, JObj) ->
-    ChannelVars = build_fax_settings(JObj),
+    ChannelVars = build_fax_settings(Call, JObj),
+    lager:debug("CHANNEL VARS ~p",[ChannelVars]),
     whapps_call_command:set(wh_json:from_list(ChannelVars), 'undefined', Call).
 
--spec build_fax_settings(wh_json:object()) -> wh_proplist().
-build_fax_settings(JObj) ->
+-spec build_fax_settings(whapps_call:call(), wh_json:object()) -> wh_proplist().
+build_fax_settings(Call, JObj) ->    
     props:filter_undefined(
-      [{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity">>, JObj)}
+      [case wh_json:is_true(<<"override_fax_identity">>, JObj, 'false') of
+           'false' ->
+               {<<"Fax-Identity-Number">>, whapps_call:to_user(Call)};
+           'true' ->
+               {<<"Fax-Identity-Number">>, wh_util:to_binary(
+                  wh_json:get_first_defined([<<"fax_identity">>,<<"caller_id">>], JObj
+                                           ,whapps_call:to_user(Call)))}
+       end,
+       case wh_json:is_true(<<"override_callee_number">>, JObj, 'false') of
+           'false' ->
+              {<<"Callee-ID-Number">>, whapps_call:to_user(Call)};
+           'true' ->
+              {<<"Callee-ID-Number">>, wh_util:to_binary(
+                  wh_json:get_first_defined([<<"caller_id">>,<<"fax_identity">>], JObj
+                                           ,whapps_call:to_user(Call)))}
+       end      
        ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_header">>, JObj)}
        ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
-       ,{<<"Callee-ID-Number">>, wh_util:to_binary(wh_json:get_value(<<"caller_id">>, JObj))}
        ,{<<"Callee-ID-Name">>, wh_util:to_binary(
            wh_json:get_first_defined([<<"caller_name">>,<<"name">>], JObj))}
       ]).
 
+    
 -spec end_receive_fax(wh_json:object(), state()) -> state().
 end_receive_fax(JObj, #state{call=Call, owner_id=OwnerId}=State) ->
     whapps_call_command:hangup(Call),
@@ -458,6 +474,8 @@ notify_fields(Call, OwnerId, JObj) ->
             wh_json:get_value(<<"Application-Data">>, JObj)))}
       ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
       ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+      ,{<<"Callee-ID-Number">>, whapps_call:callee_id_number(Call)}
+      ,{<<"Callee-ID-Name">>, whapps_call:callee_id_name(Call)}
       ,{<<"Call-ID">>, whapps_call:call_id(Call)}
       ,{<<"Fax-Timestamp">>, wh_util:current_tstamp()}
       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
