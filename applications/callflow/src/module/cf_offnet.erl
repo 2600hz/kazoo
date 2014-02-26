@@ -131,11 +131,14 @@ get_to_did(Data, Call) ->
 
 -spec get_to_did(wh_json:object(), whapps_call:call(), ne_binary()) -> ne_binary().
 get_to_did(Data, Call, Number) ->
-    Endpoint = cf_endpoint:get(Call),
-    case wh_json:get_value(<<"dial_plan">>, Endpoint, []) of
-        [] -> Number;
-        DialPlan -> cf_util:apply_dialplan(Number, DialPlan)
-    end. 
+    case cf_endpoint:get(Call) of
+        {'ok', Endpoint} ->
+            case wh_json:get_value(<<"dial_plan">>, Endpoint, []) of
+                [] -> Number;
+                DialPlan -> cf_util:apply_dialplan(Number, DialPlan)
+            end;
+        {'error', _ } -> Number
+    end.
 
 
 -spec get_sip_headers(wh_json:object(), whapps_call:call()) -> api_object().
