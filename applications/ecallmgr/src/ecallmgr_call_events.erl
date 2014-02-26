@@ -489,8 +489,6 @@ generic_call_event_props(Props) ->
      ,{<<"Callee-ID-Name">>, props:get_first_defined([<<"variable_effective_callee_id_name">>
                                                       ,<<"Caller-Callee-ID-Name">>
                                                      ], Props)}
-%     ,{<<"Callee-ID-Number">>, props:get_value(<<"Caller-Callee-ID-Number">>, Props)}
-%     ,{<<"Callee-ID-Name">>, props:get_value(<<"Caller-Callee-ID-Name">>, Props)}
      ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
