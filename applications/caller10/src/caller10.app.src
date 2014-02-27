@@ -1,0 +1,13 @@
+{application, caller10,
+ [
+  {description, "CallerTen - Be the Nth caller to win!"},
+  {vsn, "0.0.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { caller10_app, []}},
+  {env, []}
+ ]}.
