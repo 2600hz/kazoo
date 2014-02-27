@@ -88,7 +88,11 @@ resource_exists(?AUTHORIZE) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{auth_doc=Doc}=Context, ?AUTHORIZE) ->
-    AccountId = wh_json:get_value(<<"account_id">>, Doc, <<>>),
+    RequestNouns = cb_context:req_nouns(Context),
+    AccountId = case props:get_value(<<"accounts">>, RequestNouns) of
+                    'undefined' -> wh_json:get_value(<<"account_id">>, Doc, <<>>);
+                    [Else] -> Else
+                end,
     OwnerId = wh_json:get_value(<<"owner_id">>, Doc, <<>>),
     JObj = populate_resp(Doc, AccountId, OwnerId),
     crossbar_util:response(crossbar_util:response_auth(JObj), Context).
@@ -97,7 +101,8 @@ validate(#cb_context{auth_doc=Doc}=Context, ?AUTHORIZE) ->
 
 -spec populate_resp(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
 populate_resp(JObj, AccountId, UserId) ->
-    Routines = [fun(J) -> wh_json:set_value(<<"apps">>, load_apps(AccountId, UserId), J) end
+    Routines = [fun(J) -> wh_json:set_value(<<"account_id">>, AccountId, J) end
+                ,fun(J) -> wh_json:set_value(<<"apps">>, load_apps(AccountId, UserId), J) end
                 ,fun(J) -> wh_json:set_value(<<"language">>, get_language(AccountId, UserId), J) end
                 ,fun(J) -> wh_json:set_value(<<"account_name">>, get_account_name(AccountId), J) end
                ],

@@ -146,8 +146,10 @@ validate_account_path(Context, AccountId, <<"siblings">>, ?HTTP_GET) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
     Context1 = crossbar_doc:save(Context),
+
     case cb_context:resp_status(Context1) of
         'success' ->
+            _ = provisioner_util:maybe_update_account(Context1),
             JObj = cb_context:doc(Context1),
             _ = replicate_account_definition(JObj),
             support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, JObj)

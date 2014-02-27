@@ -16,6 +16,7 @@
 -export([get_old_mac_address/1]).
 -export([maybe_provision/1]).
 -export([maybe_delete_provision/1]).
+-export([maybe_update_account/1]).
 -export([maybe_delete_account/1]).
 -export([maybe_send_contact_list/1]).
 -export([get_provision_defaults/1]).
@@ -126,6 +127,26 @@ maybe_delete_provision(#cb_context{doc=JObj, auth_token=AuthToken}=Context, 'suc
         _ -> 'false'
     end;
 maybe_delete_provision(_Context, _Status) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_update_account(cb_context:context()) -> boolean().
+maybe_update_account(#cb_context{account_id=AccountId
+                                 ,auth_token=AuthToken
+                                 ,doc=Doc}=Context) ->
+    case cb_context:is_context(Context)
+        andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
+    of
+        'false' -> 'false';
+        <<"provisioner_v5">> ->
+            _ = spawn(fun() -> provisioner_v5:update_account(AccountId, Doc, AuthToken) end),
+            'true';
+        _ -> 'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
