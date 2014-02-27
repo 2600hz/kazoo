@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%%
 %%% Behaviour for setting up an AMQP listener.
@@ -549,8 +549,11 @@ handle_cast(Message, #state{module=Module
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(term(), state()) -> handle_info_ret().
-handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
-                                              ,payload=Payload}}, State) ->
+handle_info({#'basic.deliver'{}=BD
+             ,#amqp_msg{props=#'P_basic'{content_type=CT}
+                        ,payload=Payload
+                       }}
+            ,State) ->
     spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]),
     {'noreply', State, 'hibernate'};
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
