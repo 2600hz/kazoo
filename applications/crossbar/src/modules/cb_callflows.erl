@@ -1,7 +1,7 @@
 %%%----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
-%%% Callflow gen server for CRUD
+%%% Callflow CRUD
 %%%
 %%% @end
 %%% @contributors
@@ -52,7 +52,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_MediaID) ->
+allowed_methods(_CallflowId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -79,16 +79,22 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
+    validate_callflows(Context, cb_context:req_verb(Context)).
+
+validate_callflows(Context, ?HTTP_GET) ->
     load_callflow_summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_callflows(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
+validate(Context, CallflowId) ->
+    validate_callflow(Context, CallflowId, cb_context:req_verb(Context)).
+
+validate_callflow(Context, DocId, ?HTTP_GET) ->
     load_callflow(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId) ->
+validate_callflow(Context, DocId, ?HTTP_POST) ->
     validate_request(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId) ->
+validate_callflow(Context, DocId, ?HTTP_DELETE) ->
     load_callflow(DocId, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
@@ -122,12 +128,17 @@ load_callflow_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec load_callflow(ne_binary(), cb_context:context()) -> cb_context:context().
 load_callflow(DocId, Context) ->
-    case crossbar_doc:load(DocId, Context) of
-        #cb_context{resp_status=success, doc=Doc, resp_data=Data, db_name=Db}=Context1 ->
-            Meta = get_metadata(wh_json:get_value(<<"flow">>, Doc), Db, wh_json:new()),
-            Context1#cb_context{resp_data=wh_json:set_value(<<"metadata">>, Meta, Data)};
-        Else ->
-            Else
+    Context1 = crossbar_doc:load(DocId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            Meta = get_metadata(wh_json:get_value(<<"flow">>, cb_context:doc(Context1))
+                                ,cb_context:account_db(Context1)
+                                ,wh_json:new()
+                               ),
+            cb_context:set_resp_data(Context1
+                                     ,wh_json:set_value(<<"metadata">>, Meta, cb_context:resp_data(Context1))
+                                    );
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -139,44 +150,54 @@ load_callflow(DocId, Context) ->
 validate_request(CallflowId, Context) ->
     prepare_numbers(CallflowId, Context).
 
-prepare_numbers(CallflowId, #cb_context{req_data=JObj}=Context) ->
+prepare_numbers(CallflowId, Context) ->
+    JObj = cb_context:req_data(Context),
     try [wnm_util:to_e164(Number) || Number <- wh_json:get_ne_value(<<"numbers">>, JObj, [])] of
         [_|_]=Numbers ->
-            C = Context#cb_context{req_data=wh_json:set_value(<<"numbers">>, Numbers, JObj)},
+            C = cb_context:set_req_data(Context, wh_json:set_value(<<"numbers">>, Numbers, JObj)),
             validate_unique_numbers(CallflowId, Numbers, C);
         [] ->
             prepare_patterns(CallflowId, Context)
     catch
         _:_ ->
             C = cb_context:add_validation_error(<<"numbers">>
-                                                    ,<<"type">>
-                                                    ,<<"Value is not of type array">>
-                                                    ,Context),
-            validate_unique_numbers(CallflowId, [], C#cb_context{req_data=wh_json:set_value(<<"numbers">>, [], JObj)})
+                                                ,<<"type">>
+                                                ,<<"Value is not of type array">>
+                                                ,Context
+                                               ),
+            validate_unique_numbers(CallflowId
+                                    ,[]
+                                    ,cb_context:set_req_data(C, wh_json:set_value(<<"numbers">>, [], JObj))
+                                   )
     end.
 
-prepare_patterns(CallflowId, #cb_context{req_data=JObj}=Context) ->
+prepare_patterns(CallflowId, Context) ->
+    JObj = cb_context:req_data(Context),
     case wh_json:get_value(<<"patterns">>, JObj, []) of
         [] ->
             C = cb_context:add_validation_error(<<"numbers">>
-                                                    ,<<"required">>
-                                                    ,<<"Callflows must be assigned at least one number">>
-                                                    ,Context),
+                                                ,<<"required">>
+                                                ,<<"Callflows must be assigned at least one number">>
+                                                ,Context
+                                               ),
             check_callflow_schema(CallflowId, C);
         _Else ->
             check_callflow_schema(CallflowId, Context)
     end.
 
-validate_unique_numbers(CallflowId, _, #cb_context{db_name=undefined}=Context) ->
-    check_callflow_schema(CallflowId, Context);
 validate_unique_numbers(CallflowId, [], Context) ->
     check_callflow_schema(CallflowId, Context);
-validate_unique_numbers(CallflowId, Numbers, #cb_context{db_name=Db}=Context) ->
-    case couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]) of
-        {error, _R} ->
+validate_unique_numbers(CallflowId, Numbers, Context) ->
+    validate_unique_numbers(CallflowId, Numbers, Context, cb_context:account_db(Context)).
+
+validate_unique_numbers(CallflowId, _Numbers, Context, 'undefined') ->
+    check_callflow_schema(CallflowId, Context);
+validate_unique_numbers(CallflowId, Numbers, Context, AccountDb) ->
+    case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
+        {'error', _R} ->
             lager:debug("failed to load callflows from account: ~p", [_R]),
             check_callflow_schema(CallflowId, Context);
-        {ok, JObjs} ->
+        {'ok', JObjs} ->
             FilteredJObjs = filter_callflow_list(CallflowId, JObjs),
             C = check_uniqueness(Numbers, FilteredJObjs, Context),
             check_callflow_schema(CallflowId, C)
@@ -186,9 +207,9 @@ check_callflow_schema(CallflowId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(CallflowId, C) end,
     cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
 
-on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
+on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"callflow">>}],
-    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
+    cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(CallflowId, Context) ->
     crossbar_doc:load_merge(CallflowId, Context).
 
@@ -209,7 +230,10 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-maybe_reconcile_numbers(#cb_context{resp_status='success'}=Context) ->
+maybe_reconcile_numbers(Context) ->
+    maybe_reconcile_numbers(Context, cb_context:resp_status(Context)).
+
+maybe_reconcile_numbers(Context, 'success') ->
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, 'true') of
         'false' -> Context;
         'true' ->
@@ -227,7 +251,7 @@ maybe_reconcile_numbers(#cb_context{resp_status='success'}=Context) ->
             Context
     end,
     track_assignment('update', Context);
-maybe_reconcile_numbers(Context) -> Context.
+maybe_reconcile_numbers(Context, _Status) -> Context.
 
 %%--------------------------------------------------------------------
 %% @private
