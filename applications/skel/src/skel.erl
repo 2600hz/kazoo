@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(skel).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("skel.hrl").
 
 -export([start_link/0
          ,start/0
