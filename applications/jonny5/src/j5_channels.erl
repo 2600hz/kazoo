@@ -322,20 +322,31 @@ per_minute_cost(AccountId) ->
 -spec accounts() -> ne_binaries().
 accounts() ->
     MatchSpec = [{#channel{account_id = '$1'
+                           ,reseller_id = '$2'
                            ,_='_'
                           }
                   ,[]
-                  ,['$1']
+                  ,['$$']
                  }
-                 ,{#channel{reseller_id = '$1'
-                            ,_='_'
-                           }
-                   ,[]
-                   ,['$1']
-                  }
                 ],
-    sets:to_list(sets:from_list(ets:select(?TAB, MatchSpec))).
+    accounts(ets:select(?TAB, MatchSpec), sets:new()).
 
+-spec accounts(_, set()) -> ne_binaries().
+accounts([], Accounts) ->
+    lists:revers(sets:to_list(Accounts));
+accounts([['undefined', 'undefined']|Ids], Accounts) ->
+    accounts(Ids, Accounts);
+accounts([[AccountId, 'undefined']|Ids], Accounts) ->
+    accounts(Ids, sets:add_element(AccountId, Accounts));
+accounts([['undefined', ResellerId]|Ids], Accounts) ->
+    accounts(Ids, sets:add_element(ResellerId, Accounts));
+accounts([[AccountId, ResellerId]|Ids], Accounts) ->
+    accounts(Ids
+             ,sets:add_element(
+                 AccountId
+                 ,sets:add_element(ResellerId, Accounts)
+                )
+             ).
 
 -spec account(ne_binary()) -> channels().
 account(AccountId) ->
