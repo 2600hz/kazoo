@@ -26,6 +26,7 @@
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'route', []}
                    ,{'self', []}
+                   ,{'conf', [{'doc_type', <<"contest">>}]}
                   ]).
 -define(RESPONDERS, [
                      %% Received because of our route binding
