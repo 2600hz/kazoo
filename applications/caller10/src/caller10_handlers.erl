@@ -10,6 +10,7 @@
 
 -export([handle_route_req/2
          ,handle_route_win/2
+         ,handle_config_change/2
         ]).
 
 -include("caller10.hrl").
@@ -43,3 +44,9 @@ handle_route_win(JObj, _Props) ->
     %% the return of this function is ignored anyway, and the call is finished, so no need
     %% to match the return here.
     whapps_call:hangup(Call1).
+
+-spec handle_config_change(wh_json:object(), wh_proplist()) -> any().
+handle_config_change(JObj, _Props) ->
+    lager:debug("recv config change: ~p", [JObj]),
+    'true' = wapi_conf:doc_update_v(JObj),
+    lager:debug("and it validated!").
