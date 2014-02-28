@@ -556,7 +556,9 @@ handle_info({#'basic.deliver'{}=BD
             ,State) ->
     spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]),
     {'noreply', State, 'hibernate'};
-handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}
+            ,#state{queue='undefined'}=State
+           ) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
 handle_info(#'basic.consume_ok'{}, State) ->
@@ -586,7 +588,7 @@ handle_info(Message, State) ->
 %% @spec handle_event(JObj, State) -> {'reply', Options} | ignore
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  'ok'.
+-spec handle_event(ne_binary(), ne_binary(), #'basic.deliver'{}, state()) ->  'ok'.
 handle_event(Payload, <<"application/json">>, BasicDeliver, State) ->
     JObj = wh_json:decode(Payload),
     _ = wh_util:put_callid(JObj),
@@ -712,14 +714,14 @@ format_status(_Opt, [_PDict, #state{module=Module
      ,{'data', [{"Listener State", State}]}
     ].
 
--spec distribute_event(wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+-spec distribute_event(wh_json:object(), #'basic.deliver'{}, state()) -> 'ok'.
 distribute_event(JObj, BasicDeliver, State) ->
     case callback_handle_event(JObj, BasicDeliver, State) of
         'ignore' -> 'ok';
         Props -> distribute_event(Props, JObj, BasicDeliver, State)
     end.
 
--spec distribute_event(wh_proplist(), wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+-spec distribute_event(wh_proplist(), wh_json:object(), #'basic.deliver'{}, state()) -> 'ok'.
 distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                    ,consumer_key=ConsumerKey
                                                   }) ->
@@ -775,7 +777,9 @@ maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> 'true';
 maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> 'true';
 maybe_event_matches_key(_A, _B) -> 'false'.
 
--spec start_amqp(wh_proplist()) -> {'ok', binary()} | {'error', _}.
+-spec start_amqp(wh_proplist()) ->
+                        {'ok', binary()} |
+                        {'error', _}.
 start_amqp(Props) ->
     QueueProps = props:get_value('queue_options', Props, []),
     QueueName = props:get_value('queue_name', Props, <<>>),
@@ -789,7 +793,7 @@ start_amqp(Props) ->
     end.
 
 -spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
-set_qos('undefined') -> ok;
+set_qos('undefined') -> 'ok';
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
 
 -spec start_consumer(ne_binary(), wh_proplist()) -> 'ok'.
@@ -830,7 +834,8 @@ start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
     erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
 start_timer(_) -> 'undefined'.
 
--spec add_other_queue(binary(), wh_proplist(), wh_proplist(), state()) -> {ne_binary(), state()}.
+-spec add_other_queue(binary(), wh_proplist(), wh_proplist(), state()) ->
+                             {ne_binary(), state()}.
 add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
     {'ok', Q} = start_amqp(QueueProps),
     gen_server:cast(self(), {'gen_listener', {'created_queue', Q}}),
