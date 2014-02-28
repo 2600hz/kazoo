@@ -28,13 +28,15 @@
                    ,{'self', []}
                    ,{'conf', [{'doc_type', <<"contest">>}]}
                   ]).
--define(RESPONDERS, [
-                     %% Received because of our route binding
-                     {{'caller10_handlers', 'handle_route_req'}, [{<<"dialplan">>, <<"route_req">>}]}
-
-                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
-                     %% which is usually populated with the listener's queue name
-                     ,{{'caller10_handlers', 'handle_route_win'}, [{<<"dialplan">>, <<"route_win">>}]}
+-define(RESPONDERS, [{{'caller10_handlers', 'handle_route_req'}
+                      ,[{<<"dialplan">>, <<"route_req">>}]
+                     }
+                     ,{{'caller10_handlers', 'handle_route_win'}
+                       ,[{<<"dialplan">>, <<"route_win">>}]
+                      }
+                     ,{{'caller10_handlers', 'handle_config_change'}
+                       ,[{<<"configuration">>, <<"*">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
