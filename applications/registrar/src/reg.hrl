@@ -18,6 +18,7 @@
                     ,method
                     ,owner_id
                     ,suppress_unregister_notifications
+                    ,register_overwrite_notify
                     ,account_realm
                     ,account_name
                    }).

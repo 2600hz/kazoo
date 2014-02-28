@@ -37,6 +37,12 @@
          "type":"boolean",
          "default":false
       },
+       "register_overwrite_notify": {
+           "name":"Listen for registration overwrite occurences",
+           "description":"When true enables overwrite notifications",
+           "type":"boolean",
+           "default":false
+       },
       "caller_id":{
          "description":"The default caller ID parameters",
          "type":"object",
