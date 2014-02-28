@@ -21,9 +21,25 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Code = wh_json:get_value(<<"code">>, Data, <<"486">>),
+    Code = wh_json:get_binary_value(<<"code">>, Data, <<"486">>),
     Cause = wh_json:get_ne_value(<<"message">>, Data),
-    Media = wh_json:get_ne_value(<<"media">>, Data),
+    Media = get_media_id(Data, Call),
     lager:info("responding to call with ~s ~s", [Code, Cause]),
     _ = whapps_call_command:response(Code, Cause, Media, Call),
     cf_exe:stop(Call).
+
+-spec get_media_id(api_binary() | wh_json:object(), whapps_call:call()) -> api_binary().
+get_media_id('undefined', _) -> 'undefined';
+get_media_id(<<"system_media", _/binary>> = Path, _) -> Path;
+get_media_id(<<"local_stream://", _/binary>> = Path, _) -> Path;
+get_media_id(<<"silence_stream://", _/binary>> = Path, _) -> Path;
+get_media_id(<<"/", _/binary>> = Path, _) -> Path;
+get_media_id(Path, Call) when is_binary(Path) ->
+    case whapps_call:account_id(Call) of
+        'undefined' -> Path;
+        AccountId ->
+            lager:info("prepending media ID with /~s/", [AccountId]),
+            <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>
+    end;
+get_media_id(Data, Call) ->
+    get_media_id(wh_json:get_ne_value(<<"media">>, Data), Call).
