@@ -52,6 +52,7 @@
                                       ,<<"Account-Realm">>
                                       ,<<"Account-Name">>
                                       ,<<"Suppress-Unregister-Notifications">>
+                                      ,<<"Register-Overwrite-Notify">>
                                      ]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"authn_resp">>}
