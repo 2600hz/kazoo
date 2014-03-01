@@ -72,12 +72,28 @@ find(Number, Quantity, Opts) ->
                         'unassigned' |
                         'not_found' |
                         {wnm_failures(), api_object() | ne_binary()}.
--spec lookup_account_by_number(ne_binary()) ->
+-spec lookup_account_by_number(api_binary()) ->
                                       {'ok', ne_binary(), wh_proplist()} |
                                       {'error', lookup_errors()}.
 lookup_account_by_number('undefined') ->
     {'error', 'not_reconcilable'};
-lookup_account_by_number(Number) ->
+lookup_account_by_number(Num) ->
+    Number = wnm_util:to_e164(Num),
+    case wh_cache:peek({'account_lookup', Number}) of
+        {'ok', Ok} -> Ok;
+        {'error', 'not_found'} ->
+            case fetch_account_by_number(Number) of
+                {'ok', _, _}=Ok ->
+                    wh_cache:store({'account_lookup', Number}, Ok),
+                    Ok;
+                Else -> Else
+            end
+    end.
+
+-spec fetch_account_by_number(api_binary()) ->
+                                     {'ok', ne_binary(), wh_proplist()} |
+                                     {'error', lookup_errors()}.
+fetch_account_by_number(Number) ->
     try wnm_number:get(Number) of
         Number1 -> maybe_check_account(Number1)
     catch
