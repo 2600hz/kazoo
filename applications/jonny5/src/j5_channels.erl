@@ -333,7 +333,7 @@ accounts() ->
 
 -spec accounts(_, set()) -> ne_binaries().
 accounts([], Accounts) ->
-    lists:revers(sets:to_list(Accounts));
+    lists:reverse(sets:to_list(Accounts));
 accounts([['undefined', 'undefined']|Ids], Accounts) ->
     accounts(Ids, Accounts);
 accounts([[AccountId, 'undefined']|Ids], Accounts) ->
