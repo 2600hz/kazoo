@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @Copyright (C) 2010-2013, 2600Hz
+%%% @Copyright (C) 2010-2014, 2600Hz
 %%% @doc
 %%% Whistle API Helpers
 %%%
@@ -107,9 +107,9 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
 -spec prepare_api_payload(api_terms(), wh_proplist(), fun((api_terms()) -> api_formatter_return())) ->
                                  api_formatter_return().
 prepare_api_payload(Prop, HeaderValues) when is_list(Prop) ->
-    CleanupFuns = [fun (P) -> remove_empty_values(P) end
-                   ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
-                   ,fun (P) -> set_missing_values(P, HeaderValues) end
+    CleanupFuns = [fun remove_empty_values/1
+                   ,fun set_missing_default_values/1
+                   ,fun(P) -> set_missing_values(P, HeaderValues) end
                   ],
     lists:foldr(fun(F, P) -> F(P) end, Prop, CleanupFuns);
 prepare_api_payload(JObj, HeaderValues) ->
@@ -120,6 +120,10 @@ prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_list(Prop),
     FormatterFun(prepare_api_payload(Prop, HeaderValues));
 prepare_api_payload(JObj, HeaderValues, FormatterFun) when is_function(FormatterFun, 1) ->
     prepare_api_payload(wh_json:to_proplist(JObj), HeaderValues, FormatterFun).
+
+-spec set_missing_default_values(api_terms()) -> api_terms().
+set_missing_default_values(P) ->
+    set_missing_values(P, ?DEFAULT_VALUES).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -153,6 +157,7 @@ remove_empty_values(JObj) ->
     Prop = remove_empty_values(wh_json:to_proplist(JObj)),
     wh_json:from_list(Prop).
 
+-spec do_empty_value_removal(wh_proplist(), wh_proplist()) -> wh_proplist().
 do_empty_value_removal([], Acc) ->
     lists:reverse(Acc);
 do_empty_value_removal([{<<"Server-ID">>,_}=KV|T], Acc) ->
