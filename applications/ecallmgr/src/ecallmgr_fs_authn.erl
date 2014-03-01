@@ -194,7 +194,10 @@ lookup_user(Node, Id, Method,  Props) ->
 
 -spec get_auth_realm(wh_proplist()) -> ne_binary().
 get_auth_realm(Props) ->
-    case props:get_value(<<"sip_auth_realm">>, Props) of
+    case props:get_first_defined([<<"sip_auth_realm">>
+                                  ,<<"domain">>
+                                 ], Props) 
+    of
         'undefined' -> get_auth_uri_realm(Props);
         Realm ->
             case wh_network_utils:is_ipv4(Realm) of
@@ -205,7 +208,7 @@ get_auth_realm(Props) ->
 
 -spec get_auth_uri_realm(wh_proplist()) -> ne_binary().
 get_auth_uri_realm(Props) ->
-    AuthURI = props:get_value(<<"sip_auth_uri">>, Props),
+    AuthURI = props:get_value(<<"sip_auth_uri">>, Props, <<>>),
     case binary:split(AuthURI, <<"@">>) of
         [_, Realm] -> Realm;
         _Else ->
