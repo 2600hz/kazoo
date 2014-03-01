@@ -28,10 +28,8 @@ maybe_determine_account_id(Request) ->
 determine_account_id(Request) ->
     Number = j5_request:number(Request),
     case wh_number_manager:lookup_account_by_number(Number) of
-        {'ok', AccountId, _} ->
-            maybe_account_limited(
-              j5_request:set_account_id(AccountId, Request)
-             );
+        {'ok', AccountId, Props} ->
+            maybe_local_resource(AccountId, Props, Request);
         {'error', {'account_disabled', AccountId}} ->
             lager:debug("account ~s is disabled", [AccountId]),
             R = j5_request:set_account_id(AccountId, Request),
@@ -41,6 +39,28 @@ determine_account_id(Request) ->
         {'error', _R} ->
             lager:debug("unable to determine account id for ~s: ~p", [Number, _R]),
             send_response(Request)
+    end.
+
+-spec maybe_local_resource(ne_binary(), wh_proplist(), j5_request:request()) -> 'ok'.
+maybe_local_resource(AccountId, Props, Request) ->
+    case props:get_value('local', Props) of
+        'false' ->
+            maybe_account_limited(
+              j5_request:set_account_id(AccountId, Request)
+             );
+        'true' ->
+            Number = j5_request:number(Request),
+            lager:debug("number ~s is a local number for account ~s, allowing"
+                       ,[Number, AccountId]),
+            Routines = [fun(R) -> j5_request:authorize_account(<<"limits_disabled">>, R) end
+                       ,fun(R) -> j5_request:authorize_reseller(<<"limits_disabled">>, R) end
+                       ,fun(R) -> j5_request:set_account_id(AccountId, R) end
+                       ,fun(R) ->
+                                ResellerId = wh_services:find_reseller_id(AccountId),
+                                j5_request:set_reseller_id(ResellerId, R)
+                        end
+                       ],
+            send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines))
     end.
 
 -spec maybe_account_limited(j5_request:request()) -> 'ok'.
