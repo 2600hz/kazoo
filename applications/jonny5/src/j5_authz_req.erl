@@ -209,6 +209,6 @@ send_response(Request) ->
         'true' ->
             wapi_authz:broadcast_authz_resp(Resp),
             j5_channels:authorized(wh_json:from_list(Resp));
-        'false' -> 'ok'
+        'false' -> j5_util:send_system_alert(Request)
     end.
 
