@@ -62,7 +62,10 @@
 -type validate_fun() :: fun((api_terms()) -> boolean()).
 -type collect_until_fun() :: fun((wh_json:objects()) -> boolean()).
 
--type collect_until() :: collect_until_fun() | text() | {text(), validate_fun()}.
+-type collect_until() :: collect_until_fun() |
+                         text() |
+                         {text(), validate_fun()} |
+                         {text(), validate_fun(), boolean()}.
 -type timeout_or_until() :: wh_timeout() | collect_until().
 
 -export_type([publish_fun/0

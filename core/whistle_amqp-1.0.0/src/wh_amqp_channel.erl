@@ -115,7 +115,7 @@ close(Channel, [_|Commands]) ->
 maybe_publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
     case maybe_split_routing_key(RoutingKey) of
         {'undefined', _} ->
-            basic_publish(wh_amqp_assignments:find(), BasicPub, AmqpMsg);        
+            basic_publish(wh_amqp_assignments:find(), BasicPub, AmqpMsg);
         {ConsumerPid, RemoteRoutingKey} ->
             basic_publish(wh_amqp_assignments:find(ConsumerPid)
                           ,BasicPub#'basic.publish'{routing_key=RemoteRoutingKey}
@@ -133,23 +133,23 @@ publish(#'basic.publish'{routing_key=RoutingKey}=BasicPub, AmqpMsg) ->
                           ,BasicPub#'basic.publish'{routing_key=RemoteRoutingKey}
                           ,AmqpMsg)
     end.
-        
--spec basic_publish(wh_amqp_assignment(), #'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
-basic_publish(#wh_amqp_assignment{channel=Channel, broker=_Broker} 
+
+-spec basic_publish(wh_amqp_assignment() | {'error', _}, #'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
+basic_publish(#wh_amqp_assignment{channel=Channel, broker=_Broker}
               ,#'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub
               ,AmqpMsg)
   when is_pid(Channel) ->
     _ = (catch amqp_channel:call(Channel, BasicPub, AmqpMsg)),
     lager:debug("published to ~s(~s) exchange (routing key ~s) via ~p"
                 ,[_Exchange, _Broker, _RK, Channel]);
-basic_publish(_, #'basic.publish'{exchange=_Exchange, routing_key=_RK}, AmqpMsg) ->
-    lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
+basic_publish({'error', 'timeout'}, #'basic.publish'{exchange=_Exchange, routing_key=_RK}, AmqpMsg) ->
+    lager:debug("timeout, dropping payload to ~s exchange (routing key ~s): ~s"
                 ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]);
 basic_publish({'error', 'no_channel'}
               ,#'basic.publish'{exchange=_Exchange, routing_key=_RK}
               ,AmqpMsg) ->
-    lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
-                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]).    
+    lager:debug("no_channel, dropping payload to ~s exchange (routing key ~s): ~s"
+                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]).
 
 -spec maybe_split_routing_key(ne_binary()) -> {api_pid(), ne_binary()}.
 maybe_split_routing_key(<<"consumer://", _/binary>> = RoutingKey) ->

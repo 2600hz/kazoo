@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%% Utilities to facilitate AMQP interaction
 %%% @end
@@ -183,12 +183,10 @@ configuration_publish(RoutingKey, Payload) ->
 configuration_publish(RoutingKey, Payload, ContentType) ->
     basic_publish(?EXCHANGE_CONFIGURATION, RoutingKey, Payload, ContentType).
 
--spec document_change_publish(Action, Db, Type, Id, Payload) -> 'ok' when
-      Action :: atom(), %% edited | created | deleted
-      Db :: ne_binary(),
-      Type :: ne_binary(),
-      Id :: ne_binary(),
-      Payload :: amqp_payload().
+-type doc_change_action() :: 'edited' | 'created' | 'deleted'.
+
+-spec document_change_publish(doc_change_action(), ne_binary(), ne_binary(), ne_binary(), amqp_payload()) ->
+                                     'ok'.
 document_change_publish(Action, Db, Type, Id, JSON) ->
     document_change_publish(Action, Db, Type, Id, JSON, ?DEFAULT_CONTENT_TYPE).
 document_change_publish(Action, Db, Type, Id, Payload, ContentType) ->
@@ -196,10 +194,14 @@ document_change_publish(Action, Db, Type, Id, Payload, ContentType) ->
     configuration_publish(RoutingKey, Payload, ContentType).
 
 -spec document_routing_key() -> ne_binary().
--spec document_routing_key(atom() | ne_binary()) -> ne_binary().
--spec document_routing_key(atom() | ne_binary(), ne_binary()) -> ne_binary().
--spec document_routing_key(atom() | ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
--spec document_routing_key(atom() | ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec document_routing_key(doc_change_action() | ne_binary()) ->
+                                  ne_binary().
+-spec document_routing_key(doc_change_action() | ne_binary(), ne_binary()) ->
+                                  ne_binary().
+-spec document_routing_key(doc_change_action() | ne_binary(), ne_binary(), ne_binary()) ->
+                                  ne_binary().
+-spec document_routing_key(doc_change_action() | ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                                  ne_binary().
 document_routing_key() ->
     document_routing_key(<<"*">>).
 document_routing_key(Action) ->
@@ -299,7 +301,6 @@ conference_publish(Payload, 'command', ConfId, Options, ContentType) ->
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
-
 -spec basic_publish(ne_binary(), binary(), amqp_payload()) -> 'ok'.
 -spec basic_publish(ne_binary(), binary(), amqp_payload(), ne_binary()) -> 'ok'.
 -spec basic_publish(ne_binary(), binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
@@ -309,8 +310,8 @@ basic_publish(Exchange, RoutingKey, Payload) ->
 basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
     basic_publish(Exchange, RoutingKey, Payload, ContentType, []).
 
-basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop) when is_list(Payload) ->
-    basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
+basic_publish(Exchange, RoutingKey, Payload, ContentType, Props) when is_list(Payload) ->
+    basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Props);
 basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
   when is_binary(Exchange),
        is_binary(ContentType),

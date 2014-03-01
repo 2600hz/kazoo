@@ -171,12 +171,13 @@ validate_assignments({[#wh_amqp_assignment{timestamp={_, _, _}
                                            ,channel=Channel
                                            ,channel_ref=ChannelRef
                                            ,connection=Connection
-                                           ,assigned=Assigned
-                                           ,broker=?NE_BINARY}=Assignment
+                                           ,assigned={_,_,_}
+                                           ,broker=?NE_BINARY
+                                          }=Assignment
                    ], Continuation})
   when is_pid(Consumer), is_reference(ConsumerRef)
        ,is_pid(Channel), is_reference(ChannelRef)
-       ,is_pid(Connection), is_integer(Assigned) ->
+       ,is_pid(Connection) ->
     %% validate assignment
     _ = case is_process_alive(Consumer)
             andalso is_process_alive(Channel)

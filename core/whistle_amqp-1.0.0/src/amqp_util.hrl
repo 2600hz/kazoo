@@ -9,7 +9,7 @@
 
 %%% See http://www.rabbitmq.com/releases/rabbitmq-erlang-client/v2.7.0/doc/
 
--define(AMQP_DEBUG, false).
+-define(AMQP_DEBUG, 'false').
 
 %% see http://www.rabbitmq.com/uri-spec.html
 -define(DEFAULT_AMQP_URI, "amqp://guest:guest@localhost:5672").
@@ -122,7 +122,7 @@
 
 -type wh_amqp_type() :: 'sticky' | 'float'.
 
--record(wh_amqp_assignment, {timestamp = now() :: wh_now() | '_'
+-record(wh_amqp_assignment, {timestamp = os:timestamp() :: wh_now() | '_'
                              ,consumer :: api_pid() | '$2' | '_'
                              ,consumer_ref :: api_reference() | '_'
                              ,type = 'float' :: wh_amqp_type() | '_'
@@ -151,16 +151,16 @@
                              ,available = 'false' :: boolean()
                              ,exchanges_initalized = 'false' :: boolean() | '_'
                              ,prechannels_initalized = 'false' :: boolean() | '_'
-                             ,started = now() :: wh_now() | '_'
+                             ,started = os:timestamp() :: wh_now() | '_'
                             }).
 -type wh_amqp_connection() :: #wh_amqp_connection{}.
 
 -record(wh_amqp_connections, {connection :: api_pid() | '$1' | '_'
                               ,connection_ref :: api_reference() | '_'
-                              ,broker :: ne_binary() | '$1' | '_'
+                              ,broker :: ne_binary() | '$1' | '$2' | '_'
                               ,available='false' :: boolean() | '_'
                               ,timestamp=now() :: wh_now() | '_'
-                              ,zone='local' :: atom() | '_'
+                              ,zone='local' :: atom() | '$1' | '_'
                               ,manager=self() :: pid() | '_'
                              }).
 -type wh_amqp_connections() :: #wh_amqp_connections{}.

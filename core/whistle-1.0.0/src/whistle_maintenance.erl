@@ -28,8 +28,8 @@
 -spec gc_pids/1 :: ([pid(),...]) -> 'ok'.
 -spec gc_top_mem_consumers/0 :: () -> 'ok'.
 -spec gc_top_mem_consumers/1 :: (pos_integer()) -> 'ok'.
--spec top_mem_consumers/0 :: () -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
--spec top_mem_consumers/1 :: (pos_integer()) -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
+-spec top_mem_consumers/0 :: () -> {wh_proplist(), wh_proplist()}.
+-spec top_mem_consumers/1 :: (pos_integer()) -> {wh_proplist(), wh_proplist()}.
 -spec etop/0 :: () -> 'ok'.
 
 syslog_level(Level) ->
@@ -47,7 +47,7 @@ nodes() ->
 hotload(Module) when is_atom(Module) ->
     _ = code:soft_purge(Module),
     case code:load_file(Module) of
-        {'module', _} -> 'ok';          
+        {'module', _} -> 'ok';
         {'error' , Reason} ->
             io:format("ERROR: unable to hotload ~s: ~s~n", [Module, Reason]),
             'no_return'
@@ -84,4 +84,4 @@ ibrowse_cleanup(K, P) ->
         true -> ok;
         false -> ets:delete(ibrowse_stream, K)
     end.
-            
+

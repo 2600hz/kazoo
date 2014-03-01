@@ -118,7 +118,7 @@ release(Consumer) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    wh_util:put_callid(?LOG_SYSTEM_ID),
     _ = ets:new(?TAB, ['named_table'
                        ,{'keypos', #wh_amqp_assignment.timestamp}
                        ,'protected'
@@ -405,7 +405,7 @@ move_channel_to_consumer(#wh_amqp_assignment{timestamp=Timestamp
         ConsumerAssignment#wh_amqp_assignment{channel=Channel
                                               ,channel_ref=ChannelRef
                                               ,connection=Connection
-                                              ,assigned=wh_util:current_tstamp()
+                                              ,assigned=os:timestamp()
                                              },
     %% Update the consumer assignment with all the channel information
     ets:insert(?TAB, Assignment#wh_amqp_assignment{reconnect='false'
@@ -433,7 +433,7 @@ add_consumer_to_channel(#wh_amqp_assignment{channel=_Channel
     Assignment =
         ChannelAssignment#wh_amqp_assignment{consumer=Consumer
                                              ,consumer_ref=Ref
-                                             ,assigned=wh_util:current_tstamp()
+                                             ,assigned=os:timestamp()
                                              ,type=Type
                                             },
     %% Add the consumer to the channel assignment
@@ -544,7 +544,7 @@ assign_channel(#wh_amqp_assignment{timestamp=Timestamp
                                                 ,channel_ref=Ref
                                                 ,broker=Broker
                                                 ,connection=Connection
-                                                ,assigned=wh_util:current_tstamp()
+                                                ,assigned=os:timestamp()
                                                },
     %% Add the new channel to the consumer assignment (reservation/wrong broker)
     ets:insert(?TAB, Assigment#wh_amqp_assignment{reconnect='false'
