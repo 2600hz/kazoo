@@ -25,7 +25,9 @@ remove_call_charges(AccountId, CallId) ->
 
 -spec send_system_alert(j5_request:request()) -> any().
 send_system_alert(Request) ->
+    ConsumerPid = wh_amqp_channel:consumer_pid(),
     spawn(fun() ->
+                  wh_amqp_channel:consumer_pid(ConsumerPid),
                   AccountId = j5_request:account_id(Request),
                   ResellerId = j5_request:reseller_id(Request),
                   Routines = [fun(P) ->
