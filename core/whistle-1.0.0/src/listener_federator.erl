@@ -62,7 +62,6 @@ start_link(Parent, Broker, Params) ->
 init([Parent, Broker]) ->
     lager:debug("federating listener ~p on broker ~s"
                 ,[Parent, Broker]),
-    wh_amqp_connections:new(Broker, 'true'),
     wh_amqp_channel:consumer_broker(Broker),
     {'ok', #state{parent=Parent
                   ,broker=Broker
