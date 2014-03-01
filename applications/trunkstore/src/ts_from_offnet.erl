@@ -223,7 +223,7 @@ routing_data(ToDID, AcctID, Settings) ->
                                {wh_json:new(), wh_json:new()}
                        end,
     SrvOptions = wh_json:get_value(<<"options">>, Srv, wh_json:new()),
-    case wh_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions)) of
+    case wh_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions, 'true')) of
         'false' -> throw({'server_disabled', wh_json:get_value(<<"id">>, Srv)});
         'true' -> 'ok'
     end,

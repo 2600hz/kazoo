@@ -103,7 +103,7 @@ lookup_account_in_ports(N, Error) ->
             {'ok', AccountId
              ,[{'force_outbound', 'true'}
                ,{'pending_port', 'true'}
-               ,{'local', 'wnm_local'}
+               ,{'local', 'true'}
                ,{'inbound_cnam', 'false'}
                ,{'number', Number}
                ,{'account_id', AccountId}
