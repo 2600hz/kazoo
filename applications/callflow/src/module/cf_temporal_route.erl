@@ -187,16 +187,20 @@ get_temporal_rules(#temporal{local_sec=LSec
                             }, Call) ->
     get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), TZ, []).
 
--spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary() | wh_datetime(), rules()) -> rules().
-get_temporal_rules([], _, _, _, Rules) -> lists:reverse(Rules);
-get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Rules) ->
+-spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary(), rules()) -> rules().
+get_temporal_rules(Routes, LSec, AccountDb, TZ, Rules) when is_binary(TZ) ->
     Now = localtime:utc_to_local(calendar:universal_time()
                                  ,wh_util:to_list(TZ)
                                 ),
+    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules).
+
+-spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary(), wh_datetime(), rules()) -> rules().
+get_temporal_rules([], _, _, _, _, Rules) -> lists:reverse(Rules);
+get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Now, Rules) ->
     case couch_mgr:open_cache_doc(AccountDb, Route) of
         {'error', _R} ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
-            get_temporal_rules(Routes, LSec, AccountDb, Now, Rules);
+            get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
         {'ok', JObj} ->
             Rule = #rule{id = Route
                          ,enabled =
@@ -225,11 +229,11 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Rules) ->
             case date_difference(Now, {Rule#rule.start_date, {0,0,0}}) of
                 'future' ->
                     lager:warning("rule ~p is in the future discarding", [Rule#rule.name]),
-                    get_temporal_rules(Routes, LSec, AccountDb, Now, Rules);
+                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
                 'past' ->
-                    get_temporal_rules(Routes, LSec, AccountDb, Now, [Rule | Rules]);
+                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [Rule | Rules]);
                 'equal' ->
-                    get_temporal_rules(Routes, LSec, AccountDb, Now, [Rule | Rules])
+                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [Rule | Rules])
             end
     end.
 
