@@ -17,6 +17,12 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('caller10_cache')
                    ,?WORKER('caller10_listener')
+                   ,?WORKER('caller10_contests')
+                   ,?WORKER_ARGS('kazoo_etsmgr_srv', [[{'table_id', caller10_contests:table_id()}
+                                                       ,{'table_options', caller10_contests:table_options()}
+                                                       ,{'find_me_function', fun caller10_contests:find_me_function/0}
+                                                       ,{'gift_data', caller10_contests:gift_data()}
+                                                      ]])
                   ]).
 
 %% ===================================================================
