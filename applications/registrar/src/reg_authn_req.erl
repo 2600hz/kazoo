@@ -213,7 +213,7 @@ maybe_auth_type_enabled(JObj) ->
 
 -spec is_device_enabled(wh_json:object()) -> boolean().
 is_device_enabled(JObj) ->
-    Default = whapps_config:get_is_true(?CONFIG_CAT, <<"device_enabled_default">>, 'false'),
+    Default = whapps_config:get_is_true(?CONFIG_CAT, <<"device_enabled_default">>, 'true'),
     case wh_json:is_true([<<"doc">>, <<"enabled">>], JObj, Default) of
         'true' -> 'true';
         'false' ->
@@ -231,7 +231,7 @@ maybe_owner_enabled(JObj) ->
 
 -spec is_owner_enabled(ne_binary(), ne_binary()) -> boolean().
 is_owner_enabled(AccountDb, OwnerId) ->
-    Default = whapps_config:get_is_true(?CONFIG_CAT, <<"owner_enabled_default">>, 'false'),
+    Default = whapps_config:get_is_true(?CONFIG_CAT, <<"owner_enabled_default">>, 'true'),
     case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', JObj} ->
             case wh_json:is_true(<<"enabled">>, JObj, Default) of
