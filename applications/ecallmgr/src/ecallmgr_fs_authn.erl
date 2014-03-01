@@ -184,12 +184,36 @@ handle_directory_lookup(Id, Props, Node) ->
 
 -spec lookup_user(atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
-    Realm = props:get_value(<<"domain">>, Props, props:get_value(<<"Auth-Realm">>, Props)),
+    Domain = props:get_value(<<"domain">>, Props),
+    Realm = get_auth_realm(Props),
     Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
     ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Props),
-    {'ok', Xml} = handle_lookup_resp(Method, Realm, Username, ReqResp),
+    {'ok', Xml} = handle_lookup_resp(Method, Domain, Username, ReqResp),
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
     freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
+
+-spec get_auth_realm(wh_proplist()) -> ne_binary().
+get_auth_realm(Props) ->
+    case props:get_value(<<"sip_auth_realm">>, Props) of
+        'undefined' -> get_auth_uri_realm(Props);
+        Realm ->
+            case wh_network_utils:is_ipv4(Realm) of
+                'true' -> get_auth_uri_realm(Props);
+                'false' -> Realm
+            end
+    end.
+
+-spec get_auth_uri_realm(wh_proplist()) -> ne_binary().
+get_auth_uri_realm(Props) ->
+    AuthURI = props:get_value(<<"sip_auth_uri">>, Props),
+    case binary:split(AuthURI, <<"@">>) of
+        [_, Realm] -> Realm;
+        _Else ->
+            props:get_first_defined([<<"Auth-Realm">>
+                                    ,<<"sip_request_host">>
+                                    ,<<"sip_to_host">>
+                                    ], Props)
+    end.
 
 -spec handle_lookup_resp(ne_binary(), ne_binary(), ne_binary()
                          ,{'ok', wh_json:object()} | {'error', _}) ->
