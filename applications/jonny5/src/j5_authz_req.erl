@@ -38,7 +38,7 @@ determine_account_id(Request) ->
              );
         {'error', _R} ->
             lager:debug("unable to determine account id for ~s: ~p", [Number, _R]),
-            send_response(Request)
+            'ok'
     end.
 
 -spec maybe_local_resource(ne_binary(), wh_proplist(), j5_request:request()) -> 'ok'.
