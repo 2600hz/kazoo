@@ -29,6 +29,8 @@
 -define(PARAM_EXTENSION, <<"extension">>).
 -define(PARAM_ADDRESS, <<"address">>).
 
+-define(SOLO_EXTENSION, <<"_solo_">>).
+
 -include("kazoo_sip.hrl").
 
 -type diversion() :: wh_json:object().
@@ -42,6 +44,8 @@
 -spec extensions(diversion()) -> api_list().
 -spec address(diversion()) -> api_binary().
 
+address(JObj) ->
+    wh_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
 reason(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_REASON, JObj).
 counter(JObj) ->
@@ -53,11 +57,22 @@ privacy(JObj) ->
 screen(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_SCREEN, JObj).
 extensions(JObj) ->
-    wh_json:get_ne_value(?PARAM_EXTENSION, JObj).
-address(JObj) ->
-    wh_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
+    case wh_json:get_ne_value(?PARAM_EXTENSION, JObj) of
+        'undefined' -> 'undefined';
+        Extensions ->
+           lists:foldl(fun extensions_fold/2, [], wh_json:to_proplist(Extensions))
+    end.
+
+-spec extensions_fold({ne_binary(), ne_binary()}, wh_proplist()) ->
+                             wh_proplist().
+extensions_fold({K, ?SOLO_EXTENSION}, Acc) ->
+    [K | Acc];
+extensions_fold({_K, _V}=Extention, Acc) ->
+    [Extention | Acc].
 
 -spec from_binary(ne_binary()) -> wh_json:object().
+from_binary(<<"Diversion:", Header/binary>>) ->
+    from_binary(Header);
 from_binary(Header) ->
     case parse_name_addr_header(Header) of
         {<<>>, Name} ->
@@ -87,16 +102,22 @@ parse_name_addr({<<>>, Acc}) ->
 parse_name_addr({<<C, Header/binary>>, Acc}) ->
     parse_name_addr({Header, [C | Acc]}).
 
+-spec parse_name_addr_angle(ne_binary(), iolist()) ->
+                                   {binary(), iolist()}.
 parse_name_addr_angle(<<">", Header/binary>>, Acc) ->
     {wh_util:strip_binary(Header), [$> | Acc]};
 parse_name_addr_angle(<<C, Header/binary>>, Acc) ->
     parse_name_addr_angle(Header, [C | Acc]).
 
+-spec parse_name_addr_double_quote(ne_binary(), iolist()) ->
+                                          {binary(), iolist()}.
 parse_name_addr_double_quote(<<"\"", Header/binary>>, Acc) ->
     {Header, [$" | Acc]};
 parse_name_addr_double_quote(<<C, Header/binary>>, Acc) ->
     parse_name_addr_double_quote(Header, [C | Acc]).
 
+-spec parse_name_addr_single_quote(ne_binary(), iolist()) ->
+                                          {binary(), iolist()}.
 parse_name_addr_single_quote(<<"'", Header/binary>>, Acc) ->
     {Header, [$' | Acc]};
 parse_name_addr_single_quote(<<C, Header/binary>>, Acc) ->
@@ -106,16 +127,19 @@ parse_name_addr_single_quote(<<C, Header/binary>>, Acc) ->
 name_addr_start(Char, Bin) ->
     wh_util:strip_left_binary(Bin, Char).
 
+-spec parse_params(ne_binary(), wh_json:object()) -> wh_json:object().
 parse_params(Params, JObj) ->
-    case binary:split(Params, <<";">>) of
+    case binary:split(Params, <<";">>, ['trim']) of
         [Param] -> parse_param(Param, JObj);
         [Param, Rest] -> parse_params(Rest, parse_param(Param, JObj))
     end.
 
+-spec parse_param(ne_binary(), wh_json:object()) -> wh_json:object().
+-spec parse_param(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
 parse_param(Param, JObj) ->
-    case binary:split(Param, <<"=">>) of
+    case binary:split(Param, <<"=">>, ['trim']) of
         [Name, Value] ->
-            parse_param(Name, wh_util:strip_binary(Value), JObj);
+            parse_param(wh_util:strip_binary(Name), wh_util:strip_binary(Value), JObj);
         [Extension] ->
             add_extension(wh_util:strip_binary(Extension), JObj)
     end.
@@ -137,20 +161,24 @@ parse_param(Extension, Value, JObj) ->
                            wh_json:object().
 add_extension(<<>>, JObj) -> JObj;
 add_extension(Extension, JObj) ->
+    Extensions = wh_json:get_value(?PARAM_EXTENSION, JObj, wh_json:new()),
     wh_json:set_value(?PARAM_EXTENSION
-                      ,[maybe_unquote(Extension)
-                        | wh_json:get_value(?PARAM_EXTENSION, JObj, [])
-                       ]
+                      ,wh_json:set_value(maybe_unquote(Extension)
+                                         ,?SOLO_EXTENSION
+                                         ,Extensions
+                                        )
                       ,JObj
                      ).
 
 -spec add_extension(ne_binary(), ne_binary(), wh_json:object()) ->
                            wh_json:object().
 add_extension(Extension, Value, JObj) ->
+    Extensions = wh_json:get_value(?PARAM_EXTENSION, JObj, wh_json:new()),
     wh_json:set_value(?PARAM_EXTENSION
-                      ,[{Extension, maybe_unquote(Value)}
-                        | wh_json:get_value(?PARAM_EXTENSION, JObj, [])
-                       ]
+                      ,wh_json:set_value(Extension
+                                         ,maybe_unquote(Value)
+                                         ,Extensions
+                                        )
                       ,JObj
                      ).
 
@@ -194,6 +222,7 @@ parse_param_value(Param, [Literal | Literals]) ->
 parse_param_value(Param, []) ->
     parse_token_param(Param).
 
+-spec parse_token_param(ne_binary(), iolist()) -> binary().
 parse_token_param(Token) ->
     parse_token_param(Token, []).
 parse_token_param(<<$ , _/binary>>, Acc) ->
@@ -205,21 +234,25 @@ parse_token_param(<<>>, Acc) ->
 parse_token_param(<<C, Token/binary>>, Acc) ->
     parse_token_param(Token, [C | Acc]).
 
+-spec parse_quoted_param(ne_binary()) -> ne_binary().
 parse_quoted_param(<<"\"", Quoted/binary>>) ->
     parse_double_quoted_param(Quoted, []);
 parse_quoted_param(<<"'", Quoted/binary>>) ->
     parse_single_quoted_param(Quoted, []).
 
+-spec parse_double_quoted_param(ne_binary(), iolist()) -> ne_binary().
 parse_double_quoted_param(<<"\"", _/binary>>, Acc) ->
     list_to_binary(lists:reverse(Acc));
 parse_double_quoted_param(<<C, Quoted/binary>>, Acc) ->
     parse_double_quoted_param(Quoted, [C | Acc]).
 
+-spec parse_single_quoted_param(ne_binary(), iolist()) -> ne_binary().
 parse_single_quoted_param(<<"'", _/binary>>, Acc) ->
     list_to_binary(lists:reverse(Acc));
 parse_single_quoted_param(<<C, Quoted/binary>>, Acc) ->
     parse_single_quoted_param(Quoted, [C | Acc]).
 
+-spec maybe_unquote(ne_binary()) -> ne_binary().
 maybe_unquote(<<"\"", Value/binary>>) ->
     Length = byte_size(Value),
     binary:part(Value, 0, Length-1);
@@ -230,9 +263,11 @@ to_binary(JObj) ->
     Address = wh_json:get_value(?PARAM_ADDRESS, JObj),
     maybe_add_params(JObj, Address).
 
+-spec maybe_add_params(wh_json:object(), ne_binary()) -> ne_binary().
 maybe_add_params(JObj, Address) ->
     wh_json:foldl(fun maybe_add_param/3, Address, JObj).
 
+-spec maybe_add_param(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 maybe_add_param(?PARAM_REASON, Reason, Acc) ->
     <<Acc/binary, ";", ?PARAM_REASON/binary, "=", (encode_reason_param(wh_util:strip_binary(Reason)))/binary>>;
 maybe_add_param(?PARAM_COUNTER, Count, Acc) ->
@@ -244,9 +279,12 @@ maybe_add_param(?PARAM_PRIVACY, Priv, Acc) ->
 maybe_add_param(?PARAM_SCREEN, Screen, Acc) ->
     <<Acc/binary, ";", ?PARAM_SCREEN/binary, "=", (encode_screen_param(wh_util:strip_binary(Screen)))/binary>>;
 maybe_add_param(?PARAM_EXTENSION, Extensions, Acc) ->
-    lists:foldl(fun maybe_add_extension/2, Acc, Extensions);
+    lists:foldl(fun maybe_add_extension/2, Acc, wh_json:to_proplist(Extensions));
 maybe_add_param(_, _, Acc) -> Acc.
 
+-spec maybe_add_extension({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
+maybe_add_extension({Key, ?SOLO_EXTENSION}, Acc) ->
+    <<Acc/binary, ";", (wh_util:to_binary(Key))/binary>>;
 maybe_add_extension({Key, Value}, Acc) ->
     <<Acc/binary, ";", (wh_util:to_binary(Key))/binary, "=", (wh_util:to_binary(Value))/binary>>;
 maybe_add_extension(Key, Acc) ->
@@ -300,5 +338,26 @@ from_binary_endline_test() ->
     ?assertEqual(<<"time-of-day">>, reason(JObj)),
     ?assertEqual(0, counter(JObj)),
     ?assertEqual(<<"foo">>, privacy(JObj)).
+
+from_binary_spaced_header_names_test() ->
+    Header = <<"<sip:+12345556543@192.168.47.68:5060>;privacy=off; reason=unconditional; counter=1">>,
+    JObj = from_binary(Header),
+
+    ?assertEqual(<<"<sip:+12345556543@192.168.47.68:5060>">>, address(JObj)),
+    ?assertEqual(<<"off">>, privacy(JObj)),
+    ?assertEqual(<<"unconditional">>, reason(JObj)),
+    ?assertEqual(1, counter(JObj)).
+
+from_binary_extensions_test() ->
+    Header = <<"<sip:+12345556543@192.168.47.68:5060>;privacy=off;reason=unconditional;counter=1;some_extension;other_extension=foo">>,
+
+    JObj = from_binary(Header),
+    Extensions = extensions(JObj),
+
+    ?assertEqual('true', is_list(Extensions)),
+    ?assertEqual(<<"foo">>, props:get_value(<<"other_extension">>, Extensions)),
+    ?assertEqual('true', props:get_value(<<"some_extension">>, Extensions)),
+    ?assertEqual(Header, to_binary(JObj)).
+
 
 -endif.
