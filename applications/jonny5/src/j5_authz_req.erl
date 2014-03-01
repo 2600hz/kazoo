@@ -43,6 +43,7 @@ determine_account_id(Request) ->
 
 -spec maybe_local_resource(ne_binary(), wh_proplist(), j5_request:request()) -> 'ok'.
 maybe_local_resource(AccountId, Props, Request) ->
+    %% TODO: we need to check system_config to determine if we authz local
     case props:get_value('local', Props) of
         'false' ->
             maybe_account_limited(
