@@ -29,6 +29,8 @@
 -define(PARAM_EXTENSION, <<"extension">>).
 -define(PARAM_ADDRESS, <<"address">>).
 
+-define(SOLO_EXTENSION, <<"_solo_">>).
+
 -include("kazoo_sip.hrl").
 
 -type diversion() :: wh_json:object().
@@ -42,6 +44,8 @@
 -spec extensions(diversion()) -> api_list().
 -spec address(diversion()) -> api_binary().
 
+address(JObj) ->
+    wh_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
 reason(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_REASON, JObj).
 counter(JObj) ->
@@ -53,9 +57,18 @@ privacy(JObj) ->
 screen(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_SCREEN, JObj).
 extensions(JObj) ->
-    wh_json:get_ne_value(?PARAM_EXTENSION, JObj).
-address(JObj) ->
-    wh_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
+    case wh_json:get_ne_value(?PARAM_EXTENSION, JObj) of
+        'undefined' -> 'undefined';
+        Extensions ->
+           lists:foldl(fun extensions_fold/2, [], wh_json:to_proplist(Extensions))
+    end.
+
+-spec extensions_fold({ne_binary(), ne_binary()}, wh_proplist()) ->
+                             wh_proplist().
+extensions_fold({K, ?SOLO_EXTENSION}, Acc) ->
+    [K | Acc];
+extensions_fold({_K, _V}=Extention, Acc) ->
+    [Extention | Acc].
 
 -spec from_binary(ne_binary()) -> wh_json:object().
 from_binary(<<"Diversion:", Header/binary>>) ->
@@ -148,20 +161,24 @@ parse_param(Extension, Value, JObj) ->
                            wh_json:object().
 add_extension(<<>>, JObj) -> JObj;
 add_extension(Extension, JObj) ->
+    Extensions = wh_json:get_value(?PARAM_EXTENSION, JObj, wh_json:new()),
     wh_json:set_value(?PARAM_EXTENSION
-                      ,[maybe_unquote(Extension)
-                        | wh_json:get_value(?PARAM_EXTENSION, JObj, [])
-                       ]
+                      ,wh_json:set_value(maybe_unquote(Extension)
+                                         ,?SOLO_EXTENSION
+                                         ,Extensions
+                                        )
                       ,JObj
                      ).
 
 -spec add_extension(ne_binary(), ne_binary(), wh_json:object()) ->
                            wh_json:object().
 add_extension(Extension, Value, JObj) ->
+    Extensions = wh_json:get_value(?PARAM_EXTENSION, JObj, wh_json:new()),
     wh_json:set_value(?PARAM_EXTENSION
-                      ,[{Extension, maybe_unquote(Value)}
-                        | wh_json:get_value(?PARAM_EXTENSION, JObj, [])
-                       ]
+                      ,wh_json:set_value(Extension
+                                         ,maybe_unquote(Value)
+                                         ,Extensions
+                                        )
                       ,JObj
                      ).
 
@@ -262,10 +279,12 @@ maybe_add_param(?PARAM_PRIVACY, Priv, Acc) ->
 maybe_add_param(?PARAM_SCREEN, Screen, Acc) ->
     <<Acc/binary, ";", ?PARAM_SCREEN/binary, "=", (encode_screen_param(wh_util:strip_binary(Screen)))/binary>>;
 maybe_add_param(?PARAM_EXTENSION, Extensions, Acc) ->
-    lists:foldl(fun maybe_add_extension/2, Acc, Extensions);
+    lists:foldl(fun maybe_add_extension/2, Acc, wh_json:to_proplist(Extensions));
 maybe_add_param(_, _, Acc) -> Acc.
 
 -spec maybe_add_extension({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
+maybe_add_extension({Key, ?SOLO_EXTENSION}, Acc) ->
+    <<Acc/binary, ";", (wh_util:to_binary(Key))/binary>>;
 maybe_add_extension({Key, Value}, Acc) ->
     <<Acc/binary, ";", (wh_util:to_binary(Key))/binary, "=", (wh_util:to_binary(Value))/binary>>;
 maybe_add_extension(Key, Acc) ->
@@ -320,15 +339,25 @@ from_binary_endline_test() ->
     ?assertEqual(0, counter(JObj)),
     ?assertEqual(<<"foo">>, privacy(JObj)).
 
-from_binary_extensions_test() ->
+from_binary_spaced_header_names_test() ->
     Header = <<"<sip:+12345556543@192.168.47.68:5060>;privacy=off; reason=unconditional; counter=1">>,
     JObj = from_binary(Header),
-
-    io:format("j: ~p~n", [JObj]),
 
     ?assertEqual(<<"<sip:+12345556543@192.168.47.68:5060>">>, address(JObj)),
     ?assertEqual(<<"off">>, privacy(JObj)),
     ?assertEqual(<<"unconditional">>, reason(JObj)),
     ?assertEqual(1, counter(JObj)).
+
+from_binary_extensions_test() ->
+    Header = <<"<sip:+12345556543@192.168.47.68:5060>;privacy=off;reason=unconditional;counter=1;some_extension;other_extension=foo">>,
+
+    JObj = from_binary(Header),
+    Extensions = extensions(JObj),
+
+    ?assertEqual('true', is_list(Extensions)),
+    ?assertEqual(<<"foo">>, props:get_value(<<"other_extension">>, Extensions)),
+    ?assertEqual('true', props:get_value(<<"some_extension">>, Extensions)),
+    ?assertEqual(Header, to_binary(JObj)).
+
 
 -endif.
