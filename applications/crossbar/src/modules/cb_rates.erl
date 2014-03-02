@@ -316,7 +316,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
             Id = <<ISO/binary, "-", (wh_util:to_binary(Prefix))/binary>>,
             Props = props:filter_undefined(
                       [{<<"_id">>, Id}
-                       ,{<<"prefix">>, Prefix}
+                       ,{<<"prefix">>, wh_util:to_binary(Prefix)}
                        ,{<<"weight">>, Weight}
                        ,{<<"description">>, Description}
                        ,{<<"rate_name">>, Id}
@@ -371,38 +371,34 @@ get_row_internal_surcharge(_R) ->
 
 -spec get_row_surcharge(rate_row()) -> api_float().
 get_row_surcharge([_, _, _, Surcharge, _, _]) ->
-    get_row_surcharge(Surcharge);
+    wh_util:to_float(Surcharge);
 get_row_surcharge([_, _, _, _, Surcharge, _ | _]) ->
-    get_row_surcharge(Surcharge);
+    wh_util:to_float(Surcharge);
 get_row_surcharge([_|_]=_R) ->
     lager:info("surcharge not found on row: ~p", [_R]),
-    'undefined';
-get_row_surcharge(Surcharge) ->
-    wh_util:to_float(Surcharge).
+    'undefined'.
 
 -spec get_row_internal_rate(rate_row()) -> api_float().
-get_row_internal_rate([_, _, _, Rate]) -> get_row_internal_rate(Rate);
+get_row_internal_rate([_, _, _, Rate]) ->
+    wh_util:to_float(Rate);
 get_row_internal_rate([_, _, _, InternalRate, _]) ->
-    get_row_internal_rate(InternalRate);
+    wh_util:to_float(Rate);
 get_row_internal_rate([_, _, _, _, InternalRate, _]) ->
-    get_row_internal_rate(InternalRate);
+    wh_util:to_float(Rate);
 get_row_internal_rate([_, _, _, _, _, InternalRate | _]) ->
-    get_row_internal_rate(InternalRate);
+    wh_util:to_float(Rate);
 get_row_internal_rate([_|_]=_R) ->
     lager:info("internal rate not found on row: ~p", [_R]),
-    'undefined';
-get_row_internal_rate(InternalRate) ->
-    wh_util:to_float(InternalRate).
+    'undefined'.
 
 -spec get_row_rate(rate_row()) -> api_float().
-get_row_rate([_, _, _, Rate]) -> get_row_rate(Rate);
-get_row_rate([_, _, _, _, Rate]) -> get_row_rate(Rate);
-get_row_rate([_, _, _, _, _, Rate]) -> get_row_rate(Rate);
-get_row_rate([_, _, _, _, _, _, Rate | _]) -> get_row_rate(Rate);
+get_row_rate([_, _, _, Rate]) -> wh_util:to_float(Rate);
+get_row_rate([_, _, _, _, Rate]) -> wh_util:to_float(Rate);
+get_row_rate([_, _, _, _, _, Rate]) -> wh_util:to_float(Rate);
+get_row_rate([_, _, _, _, _, _, Rate | _]) -> wh_util:to_float(Rate);
 get_row_rate([_|_]=_R) ->
     lager:info("rate not found on row: ~p", [_R]),
-    'undefined';
-get_row_rate(Rate) -> wh_util:to_float(Rate).
+    'undefined'.
 
 -spec strip_quotes(ne_binary()) -> ne_binary().
 strip_quotes(Bin) ->
