@@ -382,11 +382,11 @@ get_row_surcharge([_|_]=_R) ->
 get_row_internal_rate([_, _, _, Rate]) ->
     wh_util:to_float(Rate);
 get_row_internal_rate([_, _, _, InternalRate, _]) ->
-    wh_util:to_float(Rate);
+    wh_util:to_float(InternalRate);
 get_row_internal_rate([_, _, _, _, InternalRate, _]) ->
-    wh_util:to_float(Rate);
+    wh_util:to_float(InternalRate);
 get_row_internal_rate([_, _, _, _, _, InternalRate | _]) ->
-    wh_util:to_float(Rate);
+    wh_util:to_float(InternalRate);
 get_row_internal_rate([_|_]=_R) ->
     lager:info("internal rate not found on row: ~p", [_R]),
     'undefined'.
