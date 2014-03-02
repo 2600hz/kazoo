@@ -32,7 +32,19 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {}).
+-record(state, {is_writable = 'false' :: boolean()
+               }).
+
+-record(contest, {id :: ne_binary()
+                  ,prior_time :: pos_integer()
+                  ,start_time :: pos_integer()
+                  ,end_time :: pos_integer()
+                  ,after_time :: pos_integer()
+                  ,doc :: api_object()
+                  ,handling_app :: api_binary()
+                  ,numbers :: ne_binaries()
+                  ,account_id :: ne_binary()
+                 }).
 
 %%%===================================================================
 %%% API
@@ -52,7 +64,12 @@ start_link() ->
 table_id() -> ?MODULE. %% Any atom will do
 
 -spec table_options() -> list().
-table_options() -> [].
+table_options() ->
+    ['set'
+     ,'protected'
+     ,{'keypos', #contest.id}
+     ,'named_table'
+    ].
 
 -spec find_me_function() -> api_pid().
 find_me_function() -> whereis(?MODULE).
@@ -119,6 +136,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
+    lager:debug("recv ETS table ~p from ~p", [_TableId, _From]),
+    {'noreply', State#state{is_writable='true'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
