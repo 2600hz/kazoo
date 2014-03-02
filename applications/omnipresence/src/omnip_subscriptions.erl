@@ -127,18 +127,21 @@ handle_channel_event(<<"CHANNEL_DESTROY">>, JObj) -> handle_destroyed_channel(JO
 handle_new_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
+    lager:debug("received channel create, checking for subscribers", []),
     maybe_send_update(JObj, ?PRESENCE_RINGING).
 
 -spec handle_answered_channel(wh_json:object()) -> any().
 handle_answered_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
+    lager:debug("received channel answer, checking for subscribers", []),
     maybe_send_update(JObj, ?PRESENCE_ANSWERED).
 
 -spec handle_destroyed_channel(wh_json:object()) -> any().
 handle_destroyed_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
+    lager:debug("received channel destroy, checking for subscribers", []),
     maybe_send_update(JObj, ?PRESENCE_HANGUP),
     %% When multiple omnipresence instances are in multiple
     %% zones its possible (due to the round-robin) for the
