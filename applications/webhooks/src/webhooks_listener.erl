@@ -10,10 +10,12 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0
+-export([start_link/0         
          ,handle_config/2
-         ,handle_call_event/3
-         ,hooks_configured/0, hooks_configured/1
+         ,handle_channel_event/2
+         ,handle_channel_event/3
+         ,hooks_configured/0
+         ,hooks_configured/1
         ]).
 -export([init/1
          ,handle_call/3
@@ -62,10 +64,20 @@
                              ,{'id', <<"*">>}
                              ,'federate'
                              ]}
+                   %% channel events that toggle presence lights
+                   ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
+                                               ,'CHANNEL_ANSWER'
+                                               ,'CHANNEL_DESTROY'
+                                              ]}
+                              ,'federate'
+                             ]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
                       ,[{<<"configuration">>, <<"*">>}]
                      }
+                     ,{{?MODULE, 'handle_channel_event'}
+                       ,[{<<"call_event">>, <<"*">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -167,8 +179,22 @@ find_hook(JObj) ->
                        ,wapi_conf:get_id(JObj)
                       ).
 
--spec handle_call_event(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-handle_call_event(AccountId, HookEvent, JObj) ->
+-spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_channel_event(JObj, _) ->
+    HookEvent = wh_json:get_value(<<"Event-Name">>, JObj),
+    case wh_hooks_util:lookup_account_id(JObj) of
+        {'error', _R} -> 
+            lager:debug("failed to determine account id for ~s", [HookEvent]);
+        {'ok', AccountId} ->
+            lager:debug("determined account id for ~s is ~s", [HookEvent, AccountId]),
+            J = wh_json:set_value([<<"Custom-Channel-Vars">>
+                                   ,<<"Account-ID">>
+                                  ], AccountId, JObj),
+            handle_channel_event(AccountId, HookEvent, J)
+    end.
+
+-spec handle_channel_event(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+handle_channel_event(AccountId, HookEvent, JObj) ->
     lager:debug("evt ~s for ~s", [HookEvent, AccountId]),
     case find_webhooks(HookEvent, AccountId) of
         [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
@@ -417,7 +443,6 @@ print_summary({[#webhook{uri=URI
 init([]) ->
     wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
-    wh_hooks:register_rr(),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -482,7 +507,7 @@ handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     spawn(?MODULE, 'load_hooks', [self()]),
     {'noreply', State};
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
-    _ = spawn(?MODULE, 'handle_call_event', [AccountId, EventType, JObj]),
+    _ = spawn(?MODULE, 'handle_channel_event', [AccountId, EventType, JObj]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

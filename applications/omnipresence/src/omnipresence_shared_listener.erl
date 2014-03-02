@@ -10,7 +10,7 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,handle_call_event/3
+         ,handle_channel_event/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -30,6 +30,13 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
+                   %% channel events that toggle presence lights
+                   ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
+                                               ,'CHANNEL_ANSWER'
+                                               ,'CHANNEL_DESTROY'
+                                              ]}
+                              ,'federate'
+                             ]}
                    ,{'presence', [{'restrict_to', ['update', 'reset']}]}
                    ,{'notifications', [{'restrict_to', ['presence_update']}]}
                   ]).
@@ -41,6 +48,9 @@
                       }
                      ,{{'omnip_subscriptions', 'handle_reset'}
                        ,[{<<"presence">>, <<"reset">>}]
+                      }
+                     ,{{?MODULE, 'handle_channel_event'}
+                       ,[{<<"call_event">>, <<"*">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"omnip_shared_listener">>).
@@ -66,6 +76,11 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
+-spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_channel_event(JObj, _Props) ->
+    EventType = wh_json:get_value(<<"Event-Name">>, JObj),
+    omnip_subscriptions:handle_channel_event(EventType, JObj).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -84,7 +99,6 @@ start_link() ->
 init([]) ->
     put('callid', ?MODULE),
     gen_listener:cast(self(), {'find_subscriptions_srv'}),
-    wh_hooks:register_rr(),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
 
@@ -153,8 +167,8 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};
-handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
-    _ = spawn(?MODULE, 'handle_call_event', [AccountId, EventType, JObj]),
+handle_info(?HOOK_EVT(_, EventType, JObj), State) ->
+    _ = spawn('omnip_subscriptions', 'handle_channel_event', [EventType, JObj]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -199,16 +213,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec handle_call_event(ne_binary(), ne_binary(), wh_json:object()) -> any().
-handle_call_event(_AccountId, <<"CHANNEL_CREATE">>, JObj) ->
-    omnip_subscriptions:handle_new_channel(JObj);
-handle_call_event(_AccountId, <<"CHANNEL_ANSWER">>, JObj) ->
-    omnip_subscriptions:handle_answered_channel(JObj);
-handle_call_event(_AccountId, <<"CHANNEL_DESTROY">>, JObj) ->
-    omnip_subscriptions:handle_destroyed_channel(JObj).

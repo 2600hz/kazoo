@@ -12,6 +12,7 @@
 
 -export([start_link/0
          ,handle_subscribe/2
+         ,handle_channel_event/2
          ,handle_new_channel/1
          ,handle_answered_channel/1
          ,handle_destroyed_channel/1
@@ -116,6 +117,11 @@ handle_subscribe(JObj, Props) ->
 handle_presence_update(JObj, _Props) ->
     'true' = wapi_notifications:presence_update_v(JObj),
     maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj)).
+
+-spec handle_channel_event(ne_binary(), wh_json:object()) -> any().
+handle_channel_event(<<"CHANNEL_CREATE">>, JObj) -> handle_new_channel(JObj);
+handle_channel_event(<<"CHANNEL_ANSWER">>, JObj) -> handle_answered_channel(JObj);
+handle_channel_event(<<"CHANNEL_DESTROY">>, JObj) -> handle_destroyed_channel(JObj).
 
 -spec handle_new_channel(wh_json:object()) -> any().
 handle_new_channel(JObj) ->
