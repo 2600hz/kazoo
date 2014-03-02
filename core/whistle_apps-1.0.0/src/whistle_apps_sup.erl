@@ -46,7 +46,6 @@
 
 -define(CHILDREN, [?WORKER('wh_nodes')
                    ,?WORKER('wh_hooks_listener')
-                   ,?WORKER('wh_hooks_shared_listener')
                    ,?WORKER('wh_cache')
                    ,?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
                    ,?WORKER('whistle_apps_init')
