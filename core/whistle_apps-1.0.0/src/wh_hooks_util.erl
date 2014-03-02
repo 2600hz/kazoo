@@ -15,6 +15,7 @@
          ,register_rr/1
          ,register_rr/2
         ]).
+-export([lookup_account_id/1]).
 -export([handle_call_event/2]).
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -80,8 +81,6 @@ handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
                                   ], AccountId, JObj),
             handle_call_event(J, AccountId, <<"CHANNEL_CREATE">>, CallId, RR)
     end;
-handle_call_event(_JObj, 'undefined', _HookEvent, _CallId, _RR) ->
-    lager:debug("event '~s' had no account id, ignoring", [_HookEvent]);
 handle_call_event(JObj, AccountId, HookEvent, _CallId, 'false') ->
     Evt = ?HOOK_EVT(AccountId, HookEvent, JObj),
     gproc:send(?HOOK_REG, Evt),
