@@ -39,7 +39,11 @@
 
 -define(SERVER, ?MODULE).
 
+-define(LOAD_WINDOW, whapps_config:get_integer(<<"caller10">>, <<"load_window_size_s">>, 3600)).
+-define(REFRESH_WINDOW_MSG, 'refresh_window').
+
 -record(state, {is_writable = 'false' :: boolean()
+                ,refresh_ref :: reference()
                }).
 
 -record(contest, {id :: ne_binary()
@@ -114,7 +118,7 @@ gift_data() -> 'ok'.
 %%--------------------------------------------------------------------
 init([]) ->
     wh_util:put_callid(?MODULE),
-    {'ok', #state{}}.
+    {'ok', #state{refresh_ref=start_refresh_timer()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -182,6 +186,10 @@ handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     _Pid = spawn(?MODULE, 'load_contests', []),
     lager:debug("loading contests in ~p", [_Pid]),
     {'noreply', State#state{is_writable='true'}};
+handle_info(?REFRESH_WINDOW_MSG, State) ->
+    lager:debug("time to refresh the ETS window"),
+    _Pid = spawn(?MODULE, 'load_contests', []),
+    {'noreply', State#state{refresh_ref=start_refresh_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -242,6 +250,7 @@ load_account_contests(AccountId) ->
     Now = wh_util:current_tstamp(),
     Options = ['include_docs'
                ,{'startkey', Now}
+               ,{'endkey', Now + ?LOAD_WINDOW}
               ],
     case couch_mgr:get_results(AccountDb, <<"contests/listing_by_begin_time">>, Options) of
         {'ok', []} ->
@@ -273,3 +282,8 @@ jobj_to_record(JObj) ->
              ,numbers = []
              ,account_id = wh_json:get_value(<<"pvt_account_id">>, JObj)
             }.
+
+-spec start_refresh_timer() -> reference().
+start_refresh_timer() ->
+    SendAfter = trunc(?LOAD_WINDOW * 0.9),
+    erlang:send_after(SendAfter, self(), ?REFRESH_WINDOW_MSG).
