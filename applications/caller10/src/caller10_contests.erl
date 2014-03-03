@@ -254,13 +254,14 @@ load_account_contests(AccountId) ->
               ],
     case couch_mgr:get_results(AccountDb, <<"contests/listing_by_begin_time">>, Options) of
         {'ok', []} ->
-            lager:debug("account ~s is in aggregate, but has no contests coming in the future (after ~b)", [AccountId, Now]);
+            lager:debug("account ~s is in aggregate, but has no contests coming in the future (after ~b but before ~b)"
+                        ,[AccountId, Now, Now + ?LOAD_WINDOW]);
         {'ok', Contests} ->
             _ = [load_account_contest(wh_json:get_value(<<"doc">>, Contest))
                  || Contest <- Contests
                 ],
-            lager:debug("account ~s: found ~b contests starting after ~b"
-                        ,[AccountId, length(Contests), Now]
+            lager:debug("account ~s: found ~b contests starting after ~b but before ~b"
+                        ,[AccountId, length(Contests), Now, Now + ?LOAD_WINDOW]
                        );
         {'error', _E} ->
             lager:debug("failed to load contests from account ~s: ~p", [AccountId, _E])
@@ -285,5 +286,5 @@ jobj_to_record(JObj) ->
 
 -spec start_refresh_timer() -> reference().
 start_refresh_timer() ->
-    SendAfter = trunc(?LOAD_WINDOW * 0.9),
+    SendAfter = trunc(?LOAD_WINDOW * 1000 * 0.9),
     erlang:send_after(SendAfter, self(), ?REFRESH_WINDOW_MSG).
