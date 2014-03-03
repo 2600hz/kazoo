@@ -59,5 +59,10 @@
             ,"type":"integer"
             ,"required":true
         }
+        ,"numbers":{
+            "description":"A list of static numbers that the callflow should execute for"
+            ,"type":"array"
+            ,"items":[{"type":"string"}]
+        }
     }
 }
