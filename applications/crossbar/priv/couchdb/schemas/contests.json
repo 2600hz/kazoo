@@ -43,9 +43,9 @@
             ,"description":"What time (in gregorian seconds) should CallerTen stop the contest if no winner is found"
             ,"type":"integer"
         }
-        ,"after_time":{
-            "name":"After Time"
-            ,"description":"What time (in gregorian seconds) should CallerTen stop answering calls after a winner is found"
+        ,"after_offset":{
+            "name":"After Offset"
+            ,"description":"How long after the winner is found to keep the contest answering callers"
             ,"type":"integer"
         }
         ,"after_media_id":{
