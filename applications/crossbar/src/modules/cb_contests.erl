@@ -247,10 +247,63 @@ summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_type">>, <<"contest">>, cb_context:doc(Context)));
 on_successful_validation(Id, Context) ->
+    case validate_custom(Context) of
+        {'pass', Context1} -> successful_validation(Id, Context1);
+        {'fail', Errors} -> cb_context:add_json_validator_errors(Context, Errors)
+    end.
+
+-spec successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+successful_validation('undefined', Context) ->
+    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_type">>, <<"contest">>, cb_context:doc(Context)));
+successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
+
+-spec validate_custom(cb_context:context()) -> {'pass', cb_context:context()} |
+                                               {'fail', wh_proplist()}.
+validate_custom(Context) ->
+    Doc = cb_context:doc(Context),
+    Validators = [fun validate_prior_start_times/1
+                  ,fun validate_start_end_times/1
+                 ],
+    case lists:foldl(fun(F, Acc) ->
+                             case F(Doc) of
+                                 'true' -> Acc;
+                                 {'false', Error} -> [Error | Acc]
+                             end
+                     end, [], Validators)
+    of
+        [] -> {'pass', Context};
+        Errors -> {'fail', Errors}
+    end.
+
+-spec validate_prior_start_times(wh_json:object()) -> 'true' |
+                                                      {'false', {ne_binary(), ne_binary()}}.
+validate_prior_start_times(JObj) ->
+    case validate_before_after(wh_json:get_integer_value(<<"prior_time">>, JObj)
+                               ,wh_json:get_integer_value(<<"start_time">>, JObj)
+                              )
+    of
+        'true' -> 'true';
+        'false' -> {'false', {<<"start_time">>, <<"minimum:must be after prior_time">>}}
+    end.
+
+-spec validate_start_end_times(wh_json:object()) -> 'true' |
+                                                    {'false', {ne_binary(), ne_binary()}}.
+validate_start_end_times(JObj) ->
+    case validate_before_after(wh_json:get_integer_value(<<"start_time">>, JObj)
+                               ,wh_json:get_integer_value(<<"end_time">>, JObj)
+                              )
+    of
+        'true' -> 'true';
+        'false' -> {'false', {<<"start_time">>, <<"maximum:must be before end_time">>}}
+    end.
+
+-spec validate_before_after(api_integer(), api_integer()) -> boolean().
+validate_before_after('undefined', 'undefined') -> 'true';
+validate_before_after('undefined', _After) -> 'true';
+validate_before_after(_Before, 'undefined') -> 'true';
+validate_before_after(Before, After) -> Before < After.
 
 %%--------------------------------------------------------------------
 %% @private
