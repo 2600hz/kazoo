@@ -16,6 +16,7 @@
          ,has_errors/1
          ,add_system_error/2, add_system_error/3
          ,add_validation_error/4
+         ,add_json_validator_errors/2
          ,validate_request_data/2, validate_request_data/3, validate_request_data/4
          ,add_content_types_provided/2
          ,add_content_types_accepted/2
@@ -387,10 +388,7 @@ validate_request_data(Schema, #cb_context{req_data=Data
     case wh_json_validator:is_valid(wh_json:public_fields(Data), Schema) of
         {'fail', Errors} ->
             lager:debug("request data did not validate against ~s: ~p", [Schema, Errors]),
-            lists:foldl(fun({Property, Error}, C) ->
-                                [Code, Message] = binary:split(Error, <<":">>),
-                                add_validation_error(Property, Code, Message, C)
-                        end, Context#cb_context{resp_status='error'}, Errors);
+            add_json_validator_errors(Context, Errors);
         {'pass', JObj} ->
             Status = case RespStatus =:= 'error' of
                          'true' -> 'error';
@@ -408,6 +406,17 @@ validate_request_data(Schema, #cb_context{req_data=Data
                                       }
             end
     end.
+
+-spec add_json_validator_errors(context(), wh_proplist()) -> context().
+add_json_validator_errors(Context, Errors) ->
+    lists:foldl(fun({Property, Error}, C) ->
+                        case binary:split(Error, <<":">>) of
+                            [Code, Message] ->
+                                add_validation_error(Property, Code, Message, C);
+                            [Message] ->
+                                add_validation_error(Property, <<>>, Message, C)
+                        end
+                end, Context#cb_context{resp_status='error'}, Errors).
 
 validate_request_data(Schema, Context, OnSuccess) ->
     validate_request_data(Schema, Context, OnSuccess, 'undefined').
