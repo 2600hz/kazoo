@@ -34,12 +34,26 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
+    maybe_init_db(),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.contests">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.contests">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.contests">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.contests">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.contests">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.contests">>, ?MODULE, 'delete').
+
+-spec maybe_init_db() -> 'ok'.
+maybe_init_db() ->
+    case couch_mgr:db_exists(<<"contests">>) of
+        'true' -> 'ok';
+        'false' -> init_db()
+    end.
+
+-spec init_db() -> 'ok'.
+init_db() ->
+    couch_mgr:db_create(<<"contests">>),
+    _ = couch_mgr:revise_doc_from_file(<<"contests">>, 'crossbar', <<"views/contests.json">>),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -108,7 +122,39 @@ validate_contest(Context, Id, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            maybe_add_account_to_contests_db(Context1),
+            Context1;
+        _Status -> Context1
+    end.
+
+-spec maybe_add_account_to_contests_db(cb_context:context()) -> 'ok'.
+maybe_add_account_to_contests_db(Context) ->
+    AccountId = cb_context:account_id(Context),
+    case couch_mgr:open_doc(<<"contests">>, AccountId) of
+        {'ok', _Doc} ->
+            lager:debug("account is already part of the contests aggregate");
+        {'error', 'not_found'} ->
+            _ = add_account_to_contests_db(AccountId),
+            lager:debug("added account ~s to contests aggregate", [AccountId]);
+        {'error', _E} ->
+            lager:debug("failed to open account doc in contests: ~p", [_E])
+    end.
+
+-spec add_account_to_contests_db(ne_binary()) ->
+                                        {'ok', wh_json:object()} |
+                                        {'error', _}.
+add_account_to_contests_db(AccountId) ->
+    Doc = wh_doc:update_pvt_parameters(
+            wh_json:from_list([{<<"_id">>, AccountId}])
+            ,<<"contests">>
+            ,[{'account_id', AccountId}
+              ,{'type', <<"contest">>}
+             ]
+           ),
+    couch_mgr:ensure_saved(<<"contests">>, Doc).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -129,7 +175,26 @@ post(Context, _) ->
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
-    crossbar_doc:delete(Context).
+    Context1 = crossbar_doc:delete(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            maybe_remove_account_from_contests_db(Context1),
+            Context1;
+        _RespStatus -> Context1
+    end.
+
+-spec maybe_remove_account_from_contests_db(cb_context:context()) -> 'ok'.
+maybe_remove_account_from_contests_db(Context) ->
+    Context1 = summary(Context),
+    case cb_context:doc(Context1) of
+        [] -> remove_account_from_contests_db(cb_context:account_id(Context1));
+        _ -> lager:debug("there are contests remaining")
+    end.
+
+-spec remove_account_from_contests_db(ne_binary()) -> 'ok'.
+remove_account_from_contests_db(AccountId) ->
+    _ = couch_mgr:del_doc(<<"contests">>, AccountId),
+    lager:debug("removed account ~s from contests aggregate", [AccountId]).
 
 %%--------------------------------------------------------------------
 %% @private

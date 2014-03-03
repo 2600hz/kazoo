@@ -1,6 +1,6 @@
 # Credentials Hash: 4d02ff46ad889921836b706c3c0e0b36
 # Account Name: Master
-# Auth Token ID: 1499eb50d6a0e039907866b6ef08bdc0
+# Auth Token ID: 6abbe8d667487359d9113d4b08a5f9a7
 # Account ID: 5b78db2f23f35aa022f5c3c0a5df1b92
 # Contest ID:
 
@@ -8,16 +8,16 @@
 curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/user_auth -d '{"data":{"credentials":"4d02ff46ad889921836b706c3c0e0b36", "account_name":"Master"}}' | pp
 
 # List contests
-curl -v -X GET -H "X-Auth-Token: 1499eb50d6a0e039907866b6ef08bdc0" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests | pp
+curl -v -X GET -H "X-Auth-Token: 6abbe8d667487359d9113d4b08a5f9a7" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests | pp
 
 # Create contest
-curl -v -X PUT -H "X-Auth-Token: 1499eb50d6a0e039907866b6ef08bdc0" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests -d '{"data":{"name":"First Contest", "start_time":63560624400}}' | pp
+curl -v -X PUT -H "X-Auth-Token: 6abbe8d667487359d9113d4b08a5f9a7" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests -d '{"data":{"name":"First Contest", "start_time":63560624400, "winning_caller_number":9}}' | pp
 
 # Get details of the contest
-curl -v -X GET -H "X-Auth-Token: 1499eb50d6a0e039907866b6ef08bdc0" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests/7e5c820c59b1c8c8e20f36e3d34f5581 | pp
+curl -v -X GET -H "X-Auth-Token: 6abbe8d667487359d9113d4b08a5f9a7" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests/7e5c820c59b1c8c8e20f36e3d34f5581 | pp
 
 # Edit contest
-curl -v -X POST -H "X-Auth-Token: 1499eb50d6a0e039907866b6ef08bdc0" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests/7e5c820c59b1c8c8e20f36e3d34f5581 -d '{"data":{"name":"First Contest", "start_time":63560624400, "end_time":63560628000}}' | pp
+curl -v -X POST -H "X-Auth-Token: 6abbe8d667487359d9113d4b08a5f9a7" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests/7e5c820c59b1c8c8e20f36e3d34f5581 -d '{"data":{"name":"First Contest", "start_time":63560624400, "end_time":63560628000}}' | pp
 
 # Delete a contest
-curl -v -X DELETE -H "X-Auth-Token: 1499eb50d6a0e039907866b6ef08bdc0" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests/7e5c820c59b1c8c8e20f36e3d34f5581 | pp
+curl -v -X DELETE -H "X-Auth-Token: 6abbe8d667487359d9113d4b08a5f9a7" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/contests/7e5c820c59b1c8c8e20f36e3d34f5581 | pp
