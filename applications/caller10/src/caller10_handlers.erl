@@ -45,8 +45,31 @@ handle_route_win(JObj, _Props) ->
     %% to match the return here.
     whapps_call:hangup(Call1).
 
--spec handle_config_change(wh_json:object(), wh_proplist()) -> any().
+-spec handle_config_change(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_config_change(JObj, _Props) ->
-    lager:debug("recv config change: ~p", [JObj]),
     'true' = wapi_conf:doc_update_v(JObj),
-    lager:debug("and it validated!").
+    handle_contest_change(JObj, wh_json:get_value(<<"Event-Name">>, JObj)).
+
+-spec handle_contest_change(wh_json:object(), ne_binary()) -> 'ok'.
+handle_contest_change(JObj, <<"doc_created">>) ->
+    AccountDb = wh_json:get_value(<<"Database">>, JObj),
+    DocId = wh_json:get_value(<<"ID">>, JObj),
+
+    lager:debug("new contest ~s from ~s", [DocId, wh_json:get_value(<<"Account-ID">>, JObj)]),
+
+    {'ok', Contest} = couch_mgr:open_doc(AccountDb, DocId),
+    caller10_contests:created(Contest);
+handle_contest_change(JObj, <<"doc_edited">>) ->
+    AccountDb = wh_json:get_value(<<"Database">>, JObj),
+    DocId = wh_json:get_value(<<"ID">>, JObj),
+
+    lager:debug("updated contest ~s from ~s", [DocId, wh_json:get_value(<<"Account-ID">>, JObj)]),
+
+    {'ok', Contest} = couch_mgr:open_doc(AccountDb, DocId),
+    caller10_contests:updated(Contest);
+handle_contest_change(JObj, <<"doc_deleted">>) ->
+    DocId = wh_json:get_value(<<"ID">>, JObj),
+
+    lager:debug("new contest ~s from ~s", [DocId, wh_json:get_value(<<"Account-ID">>, JObj)]),
+
+    caller10_contests:deleted(DocId).

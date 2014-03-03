@@ -11,7 +11,11 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0
+         ,created/1
+         ,updated/1
+         ,deleted/1
+        ]).
 
 %% gen_server callbacks
 -export([init/1
@@ -64,6 +68,18 @@
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
+-spec created(wh_json:object()) -> 'ok'.
+created(JObj) ->
+    gen_server:cast(?MODULE, {'load_contest', jobj_to_record(JObj)}).
+
+-spec updated(wh_json:object()) -> 'ok'.
+updated(JObj) ->
+    gen_server:cast(?MODULE, {'update_contest', jobj_to_record(JObj)}).
+
+-spec deleted(ne_binary()) -> 'ok'.
+deleted(DocId) ->
+    gen_server:cast(?MODULE, {'delete_contest', DocId}).
+
 -spec table_id() -> ?MODULE.
 table_id() -> ?MODULE. %% Any atom will do
 
@@ -97,6 +113,7 @@ gift_data() -> 'ok'.
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    wh_util:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -126,11 +143,25 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'load_contest', #contest{id=Id}=Contest}, State) ->
+handle_cast({'load_contest', #contest{id=Id}=Contest}
+            ,#state{is_writable='true'}=State
+           ) ->
     case ets:insert_new(table_id(), Contest) of
         'false' -> lager:debug("contest ~s already loaded", [Id]);
         'true' -> lager:debug("loaded contest ~s", [Id])
     end,
+    {'noreply', State};
+handle_cast({'update_contest', #contest{id=Id}=Contest}
+            ,#state{is_writable='true'}=State
+           ) ->
+    'true' = ets:insert(table_id(), Contest),
+    lager:debug("updated contest ~s", [Id]),
+    {'noreply', State};
+handle_cast({'delete_contest', Id}
+            ,#state{is_writable='true'}=State
+           ) ->
+    'true' = ets:delete(table_id(), Id),
+    lager:debug("deleted contest ~s", [Id]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
