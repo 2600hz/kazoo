@@ -239,16 +239,20 @@ load_contests(Accounts) ->
 -spec load_account_contests(ne_binary()) -> 'ok'.
 load_account_contests(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    Options = ['include_docs'],
-    case couch_mgr:get_results(AccountDb, <<"contests/crossbar_listing">>, Options) of
+    Now = wh_util:current_tstamp(),
+    Options = ['include_docs'
+               ,{'startkey', Now}
+              ],
+    case couch_mgr:get_results(AccountDb, <<"contests/listing_by_begin_time">>, Options) of
         {'ok', []} ->
-            lager:debug("account ~s is in aggregate, but has no contests; removing from aggregate", [AccountId]),
-            couch_mgr:del_doc(<<"contests">>, AccountId),
-            'ok';
+            lager:debug("account ~s is in aggregate, but has no contests coming in the future (after ~b)", [AccountId, Now]);
         {'ok', Contests} ->
-            [load_account_contest(wh_json:get_value(<<"doc">>, Contest))
-             || Contest <- Contests
-            ];
+            _ = [load_account_contest(wh_json:get_value(<<"doc">>, Contest))
+                 || Contest <- Contests
+                ],
+            lager:debug("account ~s: found ~b contests starting after ~b"
+                        ,[AccountId, length(Contests), Now]
+                       );
         {'error', _E} ->
             lager:debug("failed to load contests from account ~s: ~p", [AccountId, _E])
     end.
