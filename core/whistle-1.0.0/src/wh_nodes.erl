@@ -143,11 +143,11 @@ status() ->
     catch
         {'EXIT', {'badarg', _}} ->
             io:format("status unknown until node is fully initialized, try again in a moment~n", []),
-            'no_return'                
+            'no_return'
     end.
 
 -spec print_status(wh_nodes()) -> 'no_return'.
-print_status(Nodes) -> 
+print_status(Nodes) ->
     _ = [begin
              MemoryUsage = wh_network_utils:pretty_print_bytes(Node#node.used_memory),
              io:format("Node          : ~s~n", [Node#node.node]),
@@ -527,10 +527,3 @@ notify_new(Node, Pids) ->
          || Pid <- Pids
         ],
     'ok'.
-
--spec get_zone_name() -> atom().
-get_zone_name() ->
-    case wh_config:get(wh_config:get_node_section_name(), 'zone') of
-        [Zone] -> Zone;
-        _Else -> 'local'
-    end.

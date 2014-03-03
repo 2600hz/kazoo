@@ -133,7 +133,7 @@ maybe_resolve_srv_records(Address) ->
         SRVs -> maybe_resolve_a_records([D || {_, _, _, D} <- SRVs])
     end.
 
--spec maybe_resolve_a_records(ne_binary()) -> wh_ip_list().
+-spec maybe_resolve_a_records(ne_binaries()) -> wh_ip_list().
 maybe_resolve_a_records(Domains) ->
     lists:foldr(fun maybe_resolve_fold/2, [], Domains).
 
@@ -143,7 +143,7 @@ maybe_resolve_fold(Domain, IPs) ->
         'false' -> resolve_a_record(wh_util:to_list(Domain), IPs)
     end.
 
--spec resolve_a_record(ne_binary(), wh_ip_list()) -> wh_ip_list().
+-spec resolve_a_record(string(), wh_ip_list()) -> wh_ip_list().
 resolve_a_record(Domain, IPs) ->
     case inet:getaddrs(Domain, 'inet') of
         {'error', _R} ->
@@ -160,7 +160,8 @@ iptuple_to_binary({A,B,C,D}) ->
     <<(wh_util:to_binary(A))/binary, "."
       ,(wh_util:to_binary(B))/binary, "."
       ,(wh_util:to_binary(C))/binary, "."
-      ,(wh_util:to_binary(D))/binary>>.
+      ,(wh_util:to_binary(D))/binary
+    >>.
 
 -spec pretty_print_bytes(non_neg_integer()) -> iolist().
 pretty_print_bytes(Bytes) ->
