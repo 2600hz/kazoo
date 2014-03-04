@@ -49,6 +49,7 @@
 -record(contest, {id :: ne_binary()
                   ,prior_time :: pos_integer() | 'undefined'
                   ,start_time :: pos_integer()
+                  ,begin_time :: pos_integer()
                   ,end_time :: pos_integer() | 'undefined'
                   ,after_time :: pos_integer() | 'undefined'
                   ,doc :: api_object()
@@ -286,6 +287,7 @@ jobj_to_record(JObj) ->
     #contest{id = wh_json:get_value(<<"_id">>, JObj)
              ,prior_time = wh_json:get_integer_value(<<"prior_time">>, JObj)
              ,start_time = wh_json:get_integer_value(<<"start_time">>, JObj)
+             ,begin_time = begin_time(JObj)
              ,end_time = wh_json:get_integer_value(<<"end_time">>, JObj)
              ,after_time = wh_json:get_integer_value(<<"after_time">>, JObj)
              ,doc = JObj
