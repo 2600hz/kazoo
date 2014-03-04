@@ -642,11 +642,6 @@ registration_notify(#registration{previous_contact=PrevContact
               ]),
     wapi_notifications:publish_register_overwrite(Props).
 
-
-
-    
-
-
 -spec maybe_initial_registration(registration()) -> 'ok'.
 maybe_initial_registration(#registration{initial='false'}) -> 'ok';
 maybe_initial_registration(#registration{initial='true'}=Reg) ->
