@@ -78,11 +78,13 @@
                        ,user_agent
                        ,expires
                        ,contact
+                       ,previous_contact
                        ,last_registration
                        ,initial_registration
                        ,registrar_node
                        ,registrar_hostname
                        ,suppress_unregister = 'true'
+                       ,register_overwrite_notify = 'false'
                        ,account_db
                        ,account_id
                        ,authorizing_id
@@ -125,7 +127,8 @@ reg_success(JObj, _Props) ->
                                                                ,Registration#registration.contact
                                                               ]),
     whistle_stats:increment_counter("register-success"),
-    maybe_initial_registration(Registration).
+    _ = maybe_initial_registration(Registration),
+    maybe_registration_notify(Registration).
 
 -spec reg_query(wh_json:object(), wh_proplist()) -> 'ok'.
 reg_query(JObj, _Props) ->
@@ -605,13 +608,39 @@ fix_contact(Contact) ->
 -spec existing_or_new_registration(ne_binary(), ne_binary()) -> registration().
 existing_or_new_registration(Username, Realm) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
-        [#registration{}=Reg] -> Reg;
+        [#registration{contact=Contact}=Reg] -> 
+            Reg#registration{previous_contact=Contact};
         _Else ->
             lager:debug("new registration ~s@~s", [Username, Realm]),
             #registration{id=registration_id(Username, Realm)
                           ,initial_registration=wh_util:current_tstamp()
                          }
     end.
+
+-spec maybe_registration_notify(registration()) -> 'ok'.
+maybe_registration_notify(#registration{register_overwrite_notify = 'false'}) -> 'ok';
+maybe_registration_notify(#registration{register_overwrite_notify = 'true'
+                                        ,contact = Contact
+                                        ,previous_contact = Contact
+                                        }) -> 'ok';
+maybe_registration_notify(#registration{register_overwrite_notify = 'true'
+                                        ,previous_contact = 'undefined'
+                                        }) -> 'ok';
+maybe_registration_notify(#registration{register_overwrite_notify = 'true'}=Reg) ->
+    registration_notify(Reg).
+
+registration_notify(#registration{previous_contact=PrevContact
+                                 ,contact=Contact
+                                 ,username=Username
+                                 ,realm=Realm}) ->
+    Props = props:filter_undefined(
+              [{<<"Previous-Contact">>, PrevContact}
+               ,{<<"Contact">>, Contact}
+               ,{<<"Username">>, Username}
+               ,{<<"Realm">>, Realm}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ]),
+    wapi_notifications:publish_register_overwrite(Props).
 
 -spec maybe_initial_registration(registration()) -> 'ok'.
 maybe_initial_registration(#registration{initial='false'}) -> 'ok';
@@ -645,6 +674,7 @@ maybe_query_authn(#registration{username=Username
                              ,account_realm = wh_json:get_value(<<"Account-Realm">>, JObj)
                              ,account_name = wh_json:get_value(<<"Account-Name">>, JObj)
                              ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
+                             ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
                             }
     end.
 
@@ -697,6 +727,7 @@ query_authn(#registration{username=Username
                              ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
                              ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
+                             ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
                              ,account_realm = wh_json:get_value(<<"Account-Realm">>, JObj)
                              ,account_name = wh_json:get_value(<<"Account-Name">>, JObj)
                             }
@@ -708,6 +739,7 @@ update_cache(#registration{authorizing_id=AuthorizingId
                            ,authorizing_type=AuthorizingType
                            ,account_db=AccountDb
                            ,suppress_unregister=SuppressUnregister
+                           ,register_overwrite_notify=RegisterOverwrite
                            ,owner_id=OwnerId
                            ,id=Id
                            ,account_realm=AccountRealm
@@ -719,6 +751,7 @@ update_cache(#registration{authorizing_id=AuthorizingId
              ,{#registration.authorizing_type, AuthorizingType}
              ,{#registration.owner_id, OwnerId}
              ,{#registration.suppress_unregister, SuppressUnregister}
+             ,{#registration.register_overwrite_notify, RegisterOverwrite}            
              ,{#registration.account_realm, AccountRealm}
              ,{#registration.account_name, AccountName}
             ],

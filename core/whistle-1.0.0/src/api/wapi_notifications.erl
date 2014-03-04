@@ -21,6 +21,7 @@
          ,mwi_query/1, mwi_query_v/1
          ,register/1, register_v/1
          ,deregister/1, deregister_v/1
+         ,register_overwrite/1, register_overwrite_v/1
          ,presence_probe/1, presence_probe_v/1
          ,presence_update/1, presence_update_v/1
          ,presence_states/0
@@ -46,6 +47,7 @@
          ,publish_mwi_query/1, publish_mwi_query/2
          ,publish_register/1, publish_register/2
          ,publish_deregister/1, publish_deregister/2
+         ,publish_register_overwrite/1, publish_register_overwrite/2
          ,publish_presence_probe/1, publish_presence_probe/2
          ,publish_presence_update/1, publish_presence_update/2
          ,publish_pwd_recovery/1, publish_pwd_recovery/2
@@ -69,6 +71,7 @@
 -define(NOTIFY_MWI_UPDATE, <<"notifications.sip.mwi_update">>).
 -define(NOTIFY_MWI_QUERY, <<"notifications.sip.mwi_query">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
+-define(NOTIFY_REGISTER_OVERWRITE, <<"notifications.sip.register_overwrite">>).
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
 -define(NOTIFY_PRESENCE_UPDATE, <<"notifications.presence.update">>).
 -define(NOTIFY_PRESENCE_PROBE, <<"notifications.presence.probe">>).
@@ -221,6 +224,17 @@
                             ,{<<"Event-Name">>, <<"deregister">>}
                            ]).
 -define(DEREGISTER_TYPES, []).
+
+
+%% Notify Register_Overwrite
+-define(REGISTER_OVERWRITE_HEADERS, [<<"Previous-Contact">>, <<"Contact">>
+                                    ,<<"Username">>, <<"Realm">>
+                                    ]).
+-define(OPTIONAL_REGISTER_OVERWRITE_HEADERS, []).
+-define(REGISTER_OVERWRITE_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                   ,{<<"Event-Name">>, <<"register_overwrite">>}
+                                   ]).
+-define(REGISTER_OVERWRITE_TYPES, []).
 
 %% Notify Register
 -define(REGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
@@ -467,6 +481,24 @@ deregister_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?DEREGISTER_HEADERS, ?DEREGISTER_VALUES, ?DEREGISTER_TYPES);
 deregister_v(JObj) -> deregister_v(wh_json:to_proplist(JObj)).
 
+
+%%--------------------------------------------------------------------
+%% @doc Register_Overwrite (unregister is a key word) - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+register_overwrite(Prop) when is_list(Prop) ->
+    case register_overwrite_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?REGISTER_OVERWRITE_HEADERS, ?OPTIONAL_REGISTER_OVERWRITE_HEADERS);
+        'false' -> {'error', "Proplist failed validation for register_overwrite"}
+    end;
+register_overwrite(JObj) -> register_overwrite(wh_json:to_proplist(JObj)).
+
+-spec register_overwrite_v(api_terms()) -> boolean().
+register_overwrite_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?REGISTER_OVERWRITE_HEADERS, ?REGISTER_OVERWRITE_VALUES, ?REGISTER_OVERWRITE_TYPES);
+register_overwrite_v(JObj) -> register_overwrite_v(wh_json:to_proplist(JObj)).
+
 %%--------------------------------------------------------------------
 %% @doc Presence_Probe (unregister is a key word) - see wiki
 %% Takes proplist, creates JSON string or error
@@ -698,6 +730,9 @@ bind_to_q(Q, ['register'|T]) ->
 bind_to_q(Q, ['deregister'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
     bind_to_q(Q, T);
+bind_to_q(Q, ['register_overwrite'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_REGISTER_OVERWRITE),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['presence_update'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
     bind_to_q(Q, T);
@@ -778,6 +813,9 @@ unbind_q_from(Q, ['register'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['deregister'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['register_overwrite'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_REGISTER_OVERWRITE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['presence_update'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
@@ -890,6 +928,15 @@ publish_deregister(JObj) -> publish_deregister(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_deregister(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?DEREGISTER_VALUES, fun ?MODULE:deregister/1),
     amqp_util:notifications_publish(?NOTIFY_DEREGISTER, Payload, ContentType).
+
+-spec publish_register_overwrite(api_terms()) -> 'ok'.
+-spec publish_register_overwrite(api_terms(), ne_binary()) -> 'ok'.
+publish_register_overwrite(JObj) -> publish_register_overwrite(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_register_overwrite(API, ContentType) when is_list(API) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?REGISTER_OVERWRITE_VALUES, fun ?MODULE:register_overwrite/1),
+    amqp_util:notifications_publish(?NOTIFY_REGISTER_OVERWRITE, Payload, ContentType);
+publish_register_overwrite(JObj, ContentType) ->
+    publish_register_overwrite(wh_json:to_proplist(JObj), ContentType).
 
 -spec publish_presence_update(api_terms()) -> 'ok'.
 -spec publish_presence_update(api_terms(), ne_binary()) -> 'ok'.

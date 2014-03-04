@@ -9,10 +9,10 @@
 -module(ecallmgr_fs_notify).
 
 -behaviour(gen_listener).
-
 -export([start_link/1, start_link/2]).
 -export([presence_update/2]).
 -export([mwi_update/2]).
+-export([register_overwrite/2]).
 -export([relay_presence/5]).
 -export([publish_presence_event/3]).
 -export([handle_message_query/2]).
@@ -33,9 +33,12 @@
 -define(SERVER, ?MODULE).
 -define(MWI_BODY, "Message-Account: sip:~s\r\nMessages-Waiting: ~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
--define(BINDINGS, [{'notifications', [{'restrict_to', ['mwi_update']}]}]).
+-define(BINDINGS, [{'notifications', [{'restrict_to', ['mwi_update', 'register_overwrite']}]}]).
 -define(RESPONDERS, [{{?MODULE, 'mwi_update'}
                       ,[{<<"notification">>, <<"mwi">>}]
+                     }
+                     ,{{?MODULE, 'register_overwrite'}
+                      ,[{<<"notification">>, <<"register_overwrite">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_notify">>).
@@ -117,6 +120,43 @@ mwi_update(JObj, Props) ->
             Node = props:get_value('node', Props),
             send_mwi_update(JObj, Node, Username, Realm, Contact)
     end. 
+
+-spec register_overwrite(wh_json:object(), wh_proplist()) -> no_return().
+register_overwrite(JObj, Props) ->
+    Node = props:get_value('node', Props),
+    PrevContact = wh_json:get_value(<<"Previous-Contact">>, JObj),
+    NewContact = wh_json:get_value(<<"Contact">>, JObj),
+    SipUri = <<"sip:"
+               ,(wh_json:get_binary_value(<<"Username">>, JObj))/binary
+               ,"@"
+               ,(wh_json:get_binary_value(<<"Realm">>, JObj))/binary>>,
+    PrevBody = wh_util:to_list(<<"Replaced-By:", NewContact/binary>>),
+    NewBody = wh_util:to_list(<<"Overwrote:", PrevContact/binary>>),
+    PrevContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
+                        ,{"contact", PrevContact}
+                        ,{"to-uri", SipUri}
+                        ,{"from-uri", SipUri}
+                        ,{"event-str", "registration-overwrite"}
+                        ,{"content-type", "text/plain"}
+                        ,{"content-length", wh_util:to_list(length(PrevBody))}
+                        ,{"body", PrevBody}
+                        ],
+    NewContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
+                        ,{"contact", NewContact}
+                        ,{"to-uri", SipUri}
+                        ,{"from-uri", SipUri}
+                        ,{"event-str", "registration-overwrite"}
+                        ,{"content-type", "text/plain"}
+                        ,{"content-length", wh_util:to_list(length(NewBody))}
+                        ,{"body", NewBody}
+                        ], 
+    _ = freeswitch:sendevent(Node, 'NOTIFY', PrevContactHeaders),
+    _ = freeswitch:sendevent(Node, 'NOTIFY', NewContactHeaders),
+    lager:debug("sent registration overwrite update of old '~s' new '~s' via '~s'"
+               ,[PrevContact
+                ,NewContact
+                ,Node
+                ]).
 
 send_mwi_update(JObj, Node, Username, Realm, Contact) ->
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
