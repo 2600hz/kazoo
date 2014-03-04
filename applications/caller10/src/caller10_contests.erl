@@ -54,6 +54,7 @@
                   ,after_time :: pos_integer() | 'undefined'
                   ,doc :: api_object()
                   ,handling_app :: api_binary()
+                  ,handling_vote :: 1..100
                   ,numbers :: ne_binaries()
                   ,account_id :: ne_binary()
                  }).
@@ -292,6 +293,7 @@ jobj_to_record(JObj) ->
              ,after_time = wh_json:get_integer_value(<<"after_time">>, JObj)
              ,doc = JObj
              ,handling_app = 'undefined'
+             ,handling_vote = 0
              ,numbers = []
              ,account_id = wh_json:get_value(<<"pvt_account_id">>, JObj)
             }.
