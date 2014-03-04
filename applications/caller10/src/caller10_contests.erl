@@ -74,11 +74,21 @@ start_link() ->
 
 -spec created(wh_json:object()) -> 'ok'.
 created(JObj) ->
-    gen_server:cast(?MODULE, {'load_contest', jobj_to_record(JObj)}).
+    case is_contest_relevant(JObj) of
+        'true' ->
+            gen_server:cast(?MODULE, {'load_contest', jobj_to_record(JObj)});
+        'false' ->
+            lager:debug("contest was outside the window, ignoring")
+    end.
 
 -spec updated(wh_json:object()) -> 'ok'.
 updated(JObj) ->
-    gen_server:cast(?MODULE, {'update_contest', jobj_to_record(JObj)}).
+    case is_contest_relevant(JObj) of
+        'true' ->
+            gen_server:cast(?MODULE, {'update_contest', jobj_to_record(JObj)});
+        'false' ->
+            lager:debug("contest was outside the window, ignoring")
+    end.
 
 -spec deleted(ne_binary()) -> 'ok'.
 deleted(DocId) ->
@@ -165,7 +175,7 @@ handle_cast({'delete_contest', Id}
             ,#state{is_writable='true'}=State
            ) ->
     'true' = ets:delete(table_id(), Id),
-    lager:debug("deleted contest ~s", [Id]),
+    lager:debug("maybe deleted contest ~s", [Id]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -288,3 +298,30 @@ jobj_to_record(JObj) ->
 start_refresh_timer() ->
     SendAfter = trunc(?LOAD_WINDOW * 1000 * 0.9),
     erlang:send_after(SendAfter, self(), ?REFRESH_WINDOW_MSG).
+
+-spec is_contest_relevant(wh_json:object()) -> boolean().
+is_contest_relevant(JObj) ->
+    Now = wh_util:current_tstamp(),
+    From = Now - ?LOAD_WINDOW,
+    To = Now + ?LOAD_WINDOW,
+
+    BeginTime = begin_time(JObj),
+
+    case BeginTime > From orelse BeginTime < To of
+        'true' -> 'true';
+        'false' ->
+            (EndTime = wh_json:get_integer_value(<<"end_time">>, JObj)) =/= 'undefined' andalso EndTime < To
+    end.
+
+-spec begin_time(wh_json:object() | contest()) -> pos_integer().
+begin_time(#contest{prior_time='undefined'
+                    ,start_time=StartTime
+                   }) ->
+    StartTime;
+begin_time(#contest{prior_time=PriorTime}) ->
+    PriorTime;
+begin_time(JObj) ->
+    case wh_json:get_integer_value(<<"prior_time">>, JObj) of
+        'undefined' -> wh_json:get_integer_value(<<"start_time">>, JObj);
+        PriorTime -> PriorTime
+    end.
