@@ -152,7 +152,6 @@ register_overwrite(JObj, Props) ->
                         ], 
     _ = freeswitch:sendevent(Node, 'NOTIFY', PrevContactHeaders),
     _ = freeswitch:sendevent(Node, 'NOTIFY', NewContactHeaders),
-    io:format("~p~n~p~n",[PrevContactHeaders, NewContactHeaders]),
     lager:debug("sent registration overwrite update of old '~s' new '~s' via '~s'"
                ,[PrevContact
                 ,NewContact
