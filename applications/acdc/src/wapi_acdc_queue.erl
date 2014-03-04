@@ -521,10 +521,20 @@ shared_queue_name(AcctId, QueueId) ->
 -spec queue_size(ne_binary(), ne_binary()) -> integer() | 'undefined'.
 queue_size(AcctId, QueueId) ->
     Q = shared_queue_name(AcctId, QueueId),
-    amqp_util:new_queue(Q, [{'return_field', 'message_count'}
-                            ,{'exclusive', 'false'}
-                            ,{'passive', 'true'}
-                           ]).
+    try amqp_util:new_queue(Q, [{'return_field', 'message_count'}
+                                 ,{'exclusive', 'false'}
+                                 ,{'passive', 'true'}
+                                ])
+    of
+        {'error', {'server_initiated_close', 404, _Msg}} ->
+            lager:debug("failed to query queue size: ~s", [_Msg]),
+            'undefined';
+        N -> N
+    catch
+        _E:_R ->
+            lager:debug("failed to query queue size: ~s: ~p", [_E, _R]),
+            'undefined'
+    end.
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
@@ -589,7 +599,7 @@ unbind_q(_, _, _, []) -> 'ok'.
 declare_exchanges() ->
     amqp_util:callmgr_exchange(),
     amqp_util:whapps_exchange().
-    
+
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
 %%------------------------------------------------------------------------------
