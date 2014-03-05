@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -125,7 +125,10 @@ maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
                               'false' -> 'direct_playback'
                           end,
             {'ok', <<(wh_media_util:base_url(Host, Port, Permissions))/binary
-                     ,Db/binary, "/", Id/binary, "/", Attachment/binary>>
+                     ,Db/binary
+                     ,"/", Id/binary
+                     ,"/", Attachment/binary
+                   >>
             }
     end.
 

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -29,7 +29,7 @@ playback(Media, Options) ->
             _ = wh_media_file:maybe_prepare_proxy(URI),
             Ok
     end.
-            
+
 -spec store(ne_binary(), ne_binary(), ne_binary()) ->
                    {'ok', ne_binary()} |
                    {'error', _}.
