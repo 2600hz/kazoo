@@ -11,6 +11,7 @@
 -export([handle_route_req/2
          ,handle_route_win/2
          ,handle_config_change/2
+         ,handle_contest_handler_request/2
         ]).
 
 -include("caller10.hrl").
@@ -73,3 +74,8 @@ handle_contest_change(JObj, <<"doc_deleted">>) ->
     lager:debug("new contest ~s from ~s", [DocId, wh_json:get_value(<<"Account-ID">>, JObj)]),
 
     caller10_contests:deleted(DocId).
+
+-spec handle_contest_handler_request(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_contest_handler_request(JObj, _Props) ->
+    'true' = wapi_caller10:contest_handler_request_v(JObj),
+    caller10_contests:handle_contest_handler_request(JObj).

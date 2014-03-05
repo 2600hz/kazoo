@@ -27,6 +27,7 @@
 -define(BINDINGS, [{'route', []}
                    ,{'self', []}
                    ,{'conf', [{'doc_type', <<"contest">>}]}
+                   ,{'caller10', []}
                   ]).
 -define(RESPONDERS, [{{'caller10_handlers', 'handle_route_req'}
                       ,[{<<"dialplan">>, <<"route_req">>}]
@@ -36,6 +37,9 @@
                       }
                      ,{{'caller10_handlers', 'handle_config_change'}
                        ,[{<<"configuration">>, <<"*">>}]
+                      }
+                     ,{{'caller10_handlers', 'handle_contest_handler_request'}
+                       ,[{<<"caller10">>, <<"contest_handler_request">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).

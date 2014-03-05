@@ -15,6 +15,8 @@
          ,created/1
          ,updated/1
          ,deleted/1
+
+         ,handle_contest_handler_request/1
         ]).
 
 %% gen_server callbacks
@@ -100,6 +102,15 @@ updated(JObj) ->
 -spec deleted(ne_binary()) -> 'ok'.
 deleted(DocId) ->
     gen_server:cast(?MODULE, {'delete_contest', DocId}).
+
+-spec handle_contest_handler_request(wh_json:object()) -> 'ok'.
+handle_contest_handler_request(JObj) ->
+    ContestId = wapi_caller10:contest_id(JObj),
+    case ets:lookup(table_id(), ContestId) of
+        [] -> lager:debug("no contest ~s in our ETS", [ContestId]);
+        [#contest{}=Contest] ->
+            publish_contest_handler_response(Contest)
+    end.
 
 -spec table_id() -> ?MODULE.
 table_id() -> ?MODULE. %% Any atom will do
@@ -356,11 +367,43 @@ add_contest_handlers(LoadPid) ->
     end.
 
 -spec publish_contest_handler_request(contest()) -> 'ok'.
-publish_contest_handler_request(#contest{id=Id}) ->
+publish_contest_handler_request(#contest{id=Id
+                                         ,account_id=AccountId
+                                        }) ->
     API = [{<<"Contest-ID">>, Id}
+           ,{<<"Account-ID">>, AccountId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(API, fun wapi_caller10:publish_contest_handler_req/1).
+
+-spec publish_contest_handler_response(contest()) -> 'ok'.
+publish_contest_handler_response(#contest{id=Id
+                                          ,account_id=AccountId
+                                          ,handling_app='undefined'
+                                         }) ->
+    Vote = random:uniform(100),
+    lager:debug("contest ~s has no handling_app, sending ourselves with vote ~b", [Id, Vote]),
+    API = [{<<"Contest-ID">>, Id}
+           ,{<<"Account-ID">>, AccountId}
+           ,{<<"Handling-App">>, wh_util:to_binary(node())}
+           ,{<<"Handling-Vote">>, Vote}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wapi_caller10:publish_contest_handler_response(API);
+publish_contest_handler_response(#contest{id=Id
+                                          ,account_id=AccountId
+                                          ,handling_app=HandlingApp
+                                          ,handling_vote=Vote
+                                         }) ->
+    Vote = random:uniform(100),
+    lager:debug("contest ~s has a handling_app(~s) and vote(~b)", [Id, HandlingApp, Vote]),
+    API = [{<<"Contest-ID">>, Id}
+           ,{<<"Account-ID">>, AccountId}
+           ,{<<"Handling-App">>, HandlingApp}
+           ,{<<"Handling-Vote">>, Vote}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    wapi_caller10:publish_contest_handler_response(API).
 
 -spec contests_needing_handlers() -> contests().
 contests_needing_handlers() ->
