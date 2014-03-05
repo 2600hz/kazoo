@@ -174,10 +174,18 @@ format_account_id(<<"account/", _/binary>>=DbName, 'encoded') ->
     binary:replace(DbName, <<"/">>, <<"%2F">>, ['global']);
 
 %% get just the account ID from the account db name
+format_account_id(<<"account/", AccountId:34/binary, "-", _Date:6/binary>>, 'raw') ->
+    binary:replace(AccountId, <<"/">>, <<>>, ['global']);
+format_account_id(<<"account%2F", AccountId:38/binary, "-", _Date:6/binary>>, 'raw') ->
+    binary:replace(AccountId, <<"%2F">>, <<>>, ['global']);
+
 format_account_id(<<"account%2F", AccountId/binary>>, 'raw') ->
     binary:replace(AccountId, <<"%2F">>, <<>>, ['global']);
 format_account_id(<<"account/", AccountId/binary>>, 'raw') ->
     binary:replace(AccountId, <<"/">>, <<>>, ['global']);
+
+format_account_id(<<AccountId:32/binary, "-", _Date:6/binary>>, 'raw') ->
+    AccountId;
 
 format_account_id([AccountId], Encoding) when is_binary(AccountId) ->
     format_account_id(AccountId, Encoding);
