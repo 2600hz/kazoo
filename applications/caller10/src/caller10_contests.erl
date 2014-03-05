@@ -33,6 +33,7 @@
          ,gift_data/0
 
          ,load_contests/0
+         ,add_contest_handlers/1
         ]).
 
 -include("caller10.hrl").
@@ -40,25 +41,29 @@
 -define(SERVER, ?MODULE).
 
 -define(LOAD_WINDOW, whapps_config:get_integer(<<"caller10">>, <<"load_window_size_s">>, 3600)).
+-define(CUTOFF_WINDOW, whapps_config:get_integer(<<"caller10">>, <<"cutoff_window_size_s">>, 360)).
 -define(REFRESH_WINDOW_MSG, 'refresh_window').
 
 -record(state, {is_writable = 'false' :: boolean()
                 ,refresh_ref :: reference()
                }).
 
--record(contest, {id :: ne_binary()
-                  ,prior_time :: pos_integer() | 'undefined'
-                  ,start_time :: pos_integer()
-                  ,begin_time :: pos_integer()
-                  ,end_time :: pos_integer() | 'undefined'
-                  ,after_time :: pos_integer() | 'undefined'
-                  ,doc :: api_object()
-                  ,handling_app :: api_binary()
-                  ,handling_vote :: 1..100
-                  ,numbers :: ne_binaries()
-                  ,account_id :: ne_binary()
+-record(contest, {id :: ne_binary() | '_'
+                  ,cutoff_time :: pos_integer() | '_'
+                  ,begin_time :: pos_integer() | '$1' | '_'
+                  ,prior_time :: pos_integer() | 'undefined' | '_'
+                  ,start_time :: pos_integer() | '_'
+                  ,end_time :: pos_integer() | 'undefined' | '_'
+                  ,after_offset :: pos_integer() | 'undefined' | '_'
+                  ,doc :: api_object() | '_'
+                  ,handling_app :: api_binary() | '_'
+                  ,handling_vote :: 0..100 | '_'
+                  ,numbers :: ne_binaries() | '_'
+                  ,account_id :: ne_binary() | '_'
+                  ,listener_pid :: api_pid() | '_'
                  }).
 -type contest() :: #contest{}.
+-type contests() :: [contest(),...] | [].
 
 %%%===================================================================
 %%% API
@@ -195,12 +200,15 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     lager:debug("recv ETS table ~p from ~p", [_TableId, _From]),
-    _Pid = spawn(?MODULE, 'load_contests', []),
-    lager:debug("loading contests in ~p", [_Pid]),
+    LoadPid = spawn(?MODULE, 'load_contests', []),
+    _AddPid = spawn(?MODULE, 'add_contest_handlers', [LoadPid]),
+    lager:debug("loading contests in ~p and adding handlers in ~p", [LoadPid, _AddPid]),
     {'noreply', State#state{is_writable='true'}};
 handle_info(?REFRESH_WINDOW_MSG, State) ->
     lager:debug("time to refresh the ETS window"),
-    _Pid = spawn(?MODULE, 'load_contests', []),
+    LoadPid = spawn(?MODULE, 'load_contests', []),
+    _AddPid = spawn(?MODULE, 'add_contest_handlers', [LoadPid]),
+    lager:debug("loading contests in ~p and adding handlers in ~p", [LoadPid, _AddPid]),
     {'noreply', State#state{refresh_ref=start_refresh_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -285,12 +293,14 @@ load_account_contest(ContestJObj) ->
 
 -spec jobj_to_record(wh_json:object()) -> contest().
 jobj_to_record(JObj) ->
+    BeginTime = begin_time(JObj),
     #contest{id = wh_json:get_value(<<"_id">>, JObj)
              ,prior_time = wh_json:get_integer_value(<<"prior_time">>, JObj)
              ,start_time = wh_json:get_integer_value(<<"start_time">>, JObj)
-             ,begin_time = begin_time(JObj)
+             ,begin_time = BeginTime
+             ,cutoff_time = BeginTime - ?CUTOFF_WINDOW
              ,end_time = wh_json:get_integer_value(<<"end_time">>, JObj)
-             ,after_time = wh_json:get_integer_value(<<"after_time">>, JObj)
+             ,after_offset = wh_json:get_integer_value(<<"after_offset">>, JObj)
              ,doc = JObj
              ,handling_app = 'undefined'
              ,handling_vote = 0
@@ -319,13 +329,56 @@ is_contest_relevant(JObj) ->
 
 -spec begin_time(wh_json:object() | contest()) -> pos_integer().
 begin_time(#contest{prior_time='undefined'
+                    ,begin_time='undefined'
                     ,start_time=StartTime
                    }) ->
     StartTime;
-begin_time(#contest{prior_time=PriorTime}) ->
+begin_time(#contest{prior_time=PriorTime
+                    ,begin_time='undefined'
+                   }) ->
     PriorTime;
+begin_time(#contest{begin_time=BeginTime}) ->
+    BeginTime;
 begin_time(JObj) ->
     case wh_json:get_integer_value(<<"prior_time">>, JObj) of
         'undefined' -> wh_json:get_integer_value(<<"start_time">>, JObj);
         PriorTime -> PriorTime
     end.
+
+-spec add_contest_handlers(pid()) -> 'ok'.
+add_contest_handlers(LoadPid) ->
+    _ = wait_for_loader(LoadPid),
+    case contests_needing_handlers() of
+        [] -> lager:debug("no contests missing handlers");
+        Contests ->
+            [publish_contest_handler_request(Contest) || Contest <- Contests],
+            lager:debug("published handler requests for ~b contests", [length(Contests)])
+    end.
+
+-spec publish_contest_handler_request(contest()) -> 'ok'.
+publish_contest_handler_request(#contest{id=Id}) ->
+    API = [{<<"Contest-ID">>, Id}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(API, fun wapi_caller10:publish_contest_handler_req/1).
+
+-spec contests_needing_handlers() -> contests().
+contests_needing_handlers() ->
+    Now = wh_util:current_tstamp(),
+    Match = [{#contest{begin_time='$1'
+                       ,handling_app='undefined'
+                       ,_='_'
+                       }
+              ,[{'>', '$1', Now}]
+              ,['$$']
+             }],
+    ets:select(table_id(), Match).
+
+-spec wait_for_loader(pid()) -> 'ok' | 'false'.
+wait_for_loader(LoadPid) ->
+    Ref = erlang:monitor('process', LoadPid),
+    erlang:is_process_alive(LoadPid) andalso
+        receive
+            {'DOWN', Ref, 'process', LoadPid, _Reason} -> 'ok'
+        after 5000 -> wait_for_loader(LoadPid)
+        end.
