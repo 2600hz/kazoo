@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%% Handles authentication requests, responses, queue bindings
 %%% @end
@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(wapi_authn).
 
--compile({no_auto_import, [error/1]}).
+-compile({'no_auto_import', [error/1]}).
 
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
@@ -77,14 +77,15 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req(api_terms()) ->
+                 {'ok', iolist()} |
+                 {'error', string()}.
 req(Prop) when is_list(Prop) ->
-        case req_v(Prop) of
-            true -> wh_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
-            false -> {error, "Proplist failed validation for authn_req"}
+    case req_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for authn_req"}
     end;
-req(JObj) ->
-    req(wh_json:to_proplist(JObj)).
+req(JObj) -> req(wh_json:to_proplist(JObj)).
 
 -spec req_v(api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
@@ -101,27 +102,29 @@ req_event_type() ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp(api_terms()) ->
+                  {'ok', iolist()} |
+                  {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
-        true -> wh_api:build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for authn_resp"}
+        'true' -> wh_api:build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for authn_resp"}
     end;
-resp(JObj) ->
-    resp(wh_json:to_proplist(JObj)).
+resp(JObj) -> resp(wh_json:to_proplist(JObj)).
 
 -spec resp_v(api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHN_RESP_HEADERS, ?AUTHN_RESP_VALUES, ?AUTHN_RESP_TYPES);
-resp_v(JObj) ->
-    resp_v(wh_json:to_proplist(JObj)).
+resp_v(JObj) -> resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Error - see wiki
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec error(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec error(api_terms()) ->
+                   {'ok', iolist()} |
+                   {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?AUTHN_ERR_HEADERS, ?OPTIONAL_AUTHN_ERR_HEADERS);
@@ -166,7 +169,7 @@ declare_exchanges() ->
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Req, ?AUTHN_REQ_VALUES, fun ?MODULE:req/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?AUTHN_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_authn_req_routing(Req)).
 
 -spec publish_resp(ne_binary(), api_terms()) -> 'ok'.
@@ -204,7 +207,7 @@ get_authn_req_routing(Req) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_auth_user(wh_json:object()) -> api_binary().
-get_auth_user(ApiJObj) -> 
+get_auth_user(ApiJObj) ->
     case wh_json:get_value(<<"Auth-User">>, ApiJObj) of
         'undefined' -> 'undefined';
          Username -> wh_util:to_lower_binary(Username)
@@ -220,8 +223,8 @@ get_auth_user(ApiJObj) ->
 -spec get_auth_realm(wh_json:object() | wh_proplist()) -> ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     AuthRealm = props:get_value(<<"Auth-Realm">>, ApiProp, <<"missing.realm">>),
-    case wh_network_utils:is_ipv4(AuthRealm) 
-        orelse wh_network_utils:is_ipv6(AuthRealm) 
+    case wh_network_utils:is_ipv4(AuthRealm)
+        orelse wh_network_utils:is_ipv6(AuthRealm)
     of
         'false' -> wh_util:to_lower_binary(AuthRealm);
         'true' ->
