@@ -278,7 +278,7 @@ handle_info(?HANDLER_START_MSG(ContestId), State) ->
                          {'ok', Sup} -> Sup
                      end,
             lager:debug("updating contest ~s with supervisor ~p", [ContestId, SupPid]),
-            ets:insert(Contest#contest{sup=SupPid})
+            ets:insert(table_id(), Contest#contest{sup=SupPid})
     end,
     {'noreply', State};
 handle_info(_Info, State) ->
