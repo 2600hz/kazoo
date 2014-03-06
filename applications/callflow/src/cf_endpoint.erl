@@ -762,17 +762,15 @@ generate_sip_headers(Endpoint, Call) ->
                                   wh_json:merge_jobjs(CustomHeaders, J)
                           end
                   end
-                  ,fun(J) when Inception =:= <<"off-net">> ->
-                           case wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
-                               'undefined' -> J;
-                               Ringtone ->
-                                   wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
-                           end;
-                      (J) ->
+                  ,fun (J) when Inception =:= 'undefined' ->
                            case wh_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
                                'undefined' -> J;
-                               Ringtone ->
-                                   wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
+                               Ringtone -> wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
+                           end;
+                       (J) ->
+                           case wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
+                               'undefined' -> J;
+                               Ringtone -> wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
                            end
                    end
                  ],

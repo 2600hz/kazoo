@@ -98,7 +98,6 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Authorizing-ID">>, AuthUser#auth_user.authorizing_id}
              ,{<<"Authorizing-Type">>, AuthUser#auth_user.authorizing_type}
              ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
-             ,{<<"Inception">>, <<"on-net">>}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 

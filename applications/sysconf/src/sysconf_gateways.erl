@@ -23,10 +23,10 @@ get_gateways() ->
 get_local_gateways(Gateways) ->
     ViewOptions = [],
     case couch_mgr:get_results(?WH_SIP_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("unable to fetch resource registrations: ~p", [_R]),
             Gateways;
-        {ok, JObjs} ->
+        {'ok', JObjs} ->
             lists:foldl(fun(JObj, J) ->
                                 Gateway = wh_json:get_value(<<"value">>, JObj),
                                 Id = wh_json:get_value(<<"id">>, Gateway),
@@ -37,10 +37,10 @@ get_local_gateways(Gateways) ->
 get_offnet_gateways(Gateways) ->
     ViewOptions = [],
     case couch_mgr:get_results(?WH_OFFNET_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
-        {error, _R} ->
+        {'error', _R} ->
             lager:debug("unable to fetch resource registrations: ~p", [_R]),
             Gateways;
-        {ok, JObjs} ->
+        {'ok', JObjs} ->
             lists:foldl(fun(JObj, J) ->
                                 Gateway = wh_json:get_value(<<"value">>, JObj),
                                 Id = wh_json:get_value(<<"id">>, Gateway),
@@ -49,13 +49,13 @@ get_offnet_gateways(Gateways) ->
     end.
 
 format_gateway(JObj) ->
-    DefaultProxy = undefined,
+    DefaultProxy = 'undefined',
     Variables = [{<<"Account-ID">>, wh_json:get_value(<<"account_id">>, JObj)}
                  ,{<<"Username">>, wh_json:get_value(<<"username">>, JObj)}
                  ,{<<"Realm">>, wh_json:get_value(<<"realm">>, JObj)}
                  ,{<<"Authorizing-Type">>, wh_json:get_value(<<"resource">>, JObj)}
                  ,{<<"Authorizing-ID">>, wh_json:get_value(<<"id">>, JObj)}
-                 ,{<<"Inception">>, <<"off-net">>}
+                 ,{<<"Inception">>, <<"${destination_number}">>}
                  ,{<<"Gateway-Version">>, wh_json:get_value(<<"version">>, JObj)}
                 ],
     Gateway = [{<<"Username">>, wh_json:get_value(<<"username">>, JObj, <<"none">>)}

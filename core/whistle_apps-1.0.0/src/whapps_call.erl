@@ -170,11 +170,6 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
     Request = wh_json:get_value(<<"Request">>, RouteReq, OldRequest),
     From = wh_json:get_value(<<"From">>, RouteReq, OldFrom),
     To = wh_json:get_value(<<"To">>, RouteReq, OldTo),
-    Inception = case wh_json:get_value(<<"Inception">>, CCVs) of
-                    <<"on-net">> -> <<"on-net">>;
-                    <<"off-net">> -> <<"off-net">>;
-                    _Else -> inception(Call)
-                end,
     AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, account_id(Call)),
     AccountDb = case is_binary(AccountId) of
                     'false' -> account_db(Call);
@@ -194,9 +189,9 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
                      ,to=To
                      ,to_user=ToUser
                      ,to_realm=ToRealm
-                     ,inception=Inception
                      ,account_id=AccountId
                      ,account_db=AccountDb
+                     ,inception = wh_json:get_value(<<"Inception">>, CCVs, inception(Call))
                      ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, RouteReq, switch_hostname(Call))
                      ,switch_nodename = wh_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, switch_nodename(Call))
                      ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
@@ -223,28 +218,21 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                      }=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
     put('callid', CallId),
-
     CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteWin, wh_json:new())),
-    Inception = case wh_json:get_value(<<"Inception">>, CCVs) of
-                    <<"on-net">> -> <<"on-net">>;
-                    <<"off-net">> -> <<"off-net">>;
-                    _Else -> OldInception
-                end,
     AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, OldAccountId),
     AccountDb = case is_binary(AccountId) of
                     'false' -> OldAccountDb;
                     'true' ->  wh_util:format_account_id(AccountId, 'encoded')
                 end,
-
     Call#whapps_call{call_id=CallId
-                     ,control_q=wh_json:get_value(<<"Control-Queue">>, RouteWin)
-                     ,inception=Inception
                      ,account_id=AccountId
                      ,account_db=AccountDb
-                     ,authorizing_id=wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
-                     ,authorizing_type=wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, OldAuthzType)
-                     ,owner_id=wh_json:get_ne_value(<<"Owner-ID">>, CCVs, OldOwnerId)
-                     ,ccvs = CCVs
+                     ,ccvs=CCVs
+                     ,control_q = wh_json:get_value(<<"Control-Queue">>, RouteWin)
+                     ,inception = wh_json:get_value(<<"Inception">>, CCVs, OldInception)
+                     ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
+                     ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, OldAuthzType)
+                     ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, OldOwnerId)
                     }.
 
 -spec from_json(wh_json:object()) -> call().
@@ -552,10 +540,10 @@ switch_nodename(#whapps_call{switch_nodename=Srv}) ->
     Srv.
 
 -spec set_inception(ne_binary(), call()) -> call().
-set_inception(<<"on-net">>, #whapps_call{}=Call) ->
-    set_custom_channel_var(<<"Inception">>, <<"on-net">>, Call#whapps_call{inception = <<"on-net">>});
-set_inception(<<"off-net">>, #whapps_call{}=Call) ->
-    set_custom_channel_var(<<"Inception">>, <<"off-net">>, Call#whapps_call{inception = <<"off-net">>}).
+set_inception('undefined', #whapps_call{}=Call) ->
+    Call#whapps_call{inception='undefined'};
+set_inception(Inception, #whapps_call{}=Call) ->
+    set_custom_channel_var(<<"Inception">>, Inception, Call#whapps_call{inception=Inception}).
 
 -spec inception(call()) -> api_binary().
 inception(#whapps_call{inception=Inception}) ->
@@ -770,7 +758,6 @@ retrieve(CallId) ->
                    ,fun(C) -> whapps_call:set_to(<<"to_user@to_domain">>, C) end
                    ,fun(C) -> whapps_call:set_account_db(<<"account%2F12%2F3456789">>, C) end
                    ,fun(C) -> whapps_call:set_account_id(<<"123456789">>, C) end
-                   ,fun(C) -> whapps_call:set_inception(<<"on-net">>, C) end
                    ,fun(C) -> whapps_call:set_authorizing_id(<<"987654321">>, C) end
                    ,fun(C) -> whapps_call:set_authorizing_type(<<"test">>, C) end
                    ,fun(C) -> whapps_call:set_owner_id(<<"abcdefghi">>, C) end

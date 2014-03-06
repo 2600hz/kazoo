@@ -149,7 +149,7 @@ get_account_code(JObj) ->
                     AID -> binary:part(AID, {erlang:byte_size(AID), -17})
                 end,
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
-        <<"off-net">> -> << AccountID/binary, "-IN">>;
-        _ -> AccountID
+        'undefined' -> AccountID;
+        _Else -> << AccountID/binary, "-IN">>
     end.
 

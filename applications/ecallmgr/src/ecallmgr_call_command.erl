@@ -863,6 +863,11 @@ bridge_handle_ccvs(DP, _Node, _UUID, JObj) ->
 bridge_pre_exec(DP, _, _, _) ->
     [{"application", "set continue_on_fail=true"}
      ,{"application", "export sip_redirect_context=context_2"}
+     ,{"application", lists:concat(["export "
+                                    ,?CHANNEL_VAR_PREFIX, "Inception"
+                                    ,"="
+                                    ,"${", ?CHANNEL_VAR_PREFIX, "Inception}"
+                                   ])}
      |DP
     ].
 

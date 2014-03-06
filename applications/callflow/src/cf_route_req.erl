@@ -157,7 +157,7 @@ get_ringback_media(Flow, JObj) ->
 -spec pre_park_action(whapps_call:call()) -> ne_binary().
 pre_park_action(Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ring_ready_offnet">>, 'true')
-        andalso whapps_call:inception(Call) =:= <<"off-net">>
+        andalso whapps_call:inception(Call) =/= 'undefined'
         andalso whapps_call:authorizing_type(Call) =:= 'undefined'
     of
         'false' -> <<"none">>;

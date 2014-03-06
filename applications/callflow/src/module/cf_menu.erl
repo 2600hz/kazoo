@@ -103,7 +103,7 @@ menu_loop(#cf_menu_data{retries=Retries
             %% if it finds a callflow, the main CFPid will move on to it and try_match_digits
             %% will return true, matching here, and causing menu_loop to exit; this is
             %% expected behaviour as CFPid has moved on from this invocation
-            AllowRecord = RecOffnet orelse whapps_call:inception(Call) =:= <<"on-net">>,
+            AllowRecord = RecOffnet orelse whapps_call:inception(Call) =:= 'undefined',
             case try_match_digits(Digits, Menu, Call) of
                 'true' -> lager:debug("hunt callflow found");
                 'false' when Digits =:= RecordPin, AllowRecord ->

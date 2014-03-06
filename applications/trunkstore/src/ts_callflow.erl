@@ -21,6 +21,7 @@
 -export([get_request_data/1
          ,get_my_queue/1
          ,get_control_queue/1
+         ,get_custom_channel_vars/1
          ,set_endpoint_data/2
          ,set_account_id/2
          ,get_aleg_id/1
@@ -214,6 +215,10 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
 %%%-----------------------------------------------------------------------------
 -spec get_request_data(ts_state()) -> wh_json:object().
 get_request_data(#ts_callflow_state{route_req_jobj=JObj}) -> JObj.
+
+-spec get_custom_channel_vars(ts_state()) -> wh_json:object().
+get_custom_channel_vars(#ts_callflow_state{route_req_jobj=JObj}) ->
+    wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()).
 
 -spec set_endpoint_data(ts_state(), wh_json:object()) -> ts_state().
 set_endpoint_data(State, Data) -> State#ts_callflow_state{ep_data=Data}.

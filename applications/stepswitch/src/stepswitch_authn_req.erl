@@ -51,14 +51,11 @@ maybe_send_auth_resp(JObj) ->
 send_auth_resp(JObj, Props) ->
     Category = wh_json:get_value(<<"Event-Category">>, JObj),
     Username = props:get_value('username', Props),
-
     CCVs = props:filter_undefined(
-             [{<<"Inception">>, <<"off-net">>}
-              ,{<<"Username">>, Username}
+             [{<<"Username">>, Username}
               ,{<<"Authorizing-ID">>, props:get_value('resource_id', Props)}
               ,{<<"Realm">>, props:get_value('realm', Props)}
              ]),
-
     Resp = props:filter_undefined(
              [{<<"Auth-Method">>, <<"password">>}
               ,{<<"Auth-Username">>, Username}

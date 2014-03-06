@@ -43,9 +43,7 @@ maybe_restrict_call(JObj, Call) ->
 -spec should_restrict_call(whapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
     case cf_endpoint:get(Call) of
-        {'error', _R} ->
-            lager:info("call does not have a known originating endpoint (IE: carrier, ect): ~p", [_R]),
-            'false';
+        {'error', _R} -> 'false';
         {'ok', JObj} ->
             maybe_closed_group_restriction(JObj, Call)
 end.
@@ -174,14 +172,13 @@ store_owner_id(Call) ->
 %%-----------------------------------------------------------------------------
 -spec update_ccvs(whapps_call:call()) -> whapps_call:call().
 update_ccvs(Call) ->
-    Inception = whapps_call:inception(Call),
-    CallerIdType = case Inception of
-                       <<"on-net">> -> <<"internal">>;
+    CallerIdType = case whapps_call:inception(Call) of
+                       'undefined' -> <<"internal">>;
                        _Else -> <<"external">>
                    end,
     {CIDNumber, CIDName} = cf_attributes:caller_id(CallerIdType, Call),
-    lager:info("inception ~s bootstrapping with caller id type ~s: \"~s\" ~s"
-               ,[Inception, CallerIdType, CIDName, CIDNumber]),
+    lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
+               ,[CallerIdType, CIDName, CIDNumber]),
     Props = props:filter_undefined(
               [{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
                ,{<<"Caller-ID-Name">>, CIDName}

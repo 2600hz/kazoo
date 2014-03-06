@@ -236,10 +236,11 @@ build_local_extension(#state{number_props=Props
     {CIDNum, CIDName} = local_extension_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = props:get_value('number', Props),
+    Realm = get_account_realm(JObj),
     AccountId = props:get_value('account_id', Props),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     CCVUpdates = props:filter_undefined(
-                   [{<<"Inception">>, <<"off-net">>}
+                   [{<<"Inception">>, <<Number/binary, "@", Realm>>}
                     ,{<<"Retain-CID">>, <<"true">>}
                     ,{<<"Global-Resource">>, <<"false">>}
                     ,{<<"Account-ID">>, AccountId}
@@ -265,6 +266,15 @@ get_account_name(Number, AccountId) when is_binary(Number) ->
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', JObj} -> wh_json:get_ne_value(<<"name">>, JObj, Number);
         _ -> Number
+    end.
+
+
+-spec get_account_realm(ne_binary()) -> ne_binary().
+get_account_realm(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> wh_json:get_ne_value(<<"realm">>, JObj, AccountId);
+        _ -> AccountId
     end.
 
 -spec local_extension_caller_id(wh_json:object()) -> {api_binary(), api_binary()}.

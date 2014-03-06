@@ -77,7 +77,8 @@ set_account_id(NumberProps, JObj) ->
 -spec set_inception(wh_proplist(), wh_json:object()) ->
                            wh_json:object().
 set_inception(_, JObj) ->
-    wh_json:set_value(?CCV(<<"Inception">>), <<"off-net">>, JObj).
+    Request = wh_json:get_value(<<"Request">>, JObj),
+    wh_json:set_value(?CCV(<<"Inception">>), Request, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
