@@ -495,7 +495,7 @@ save(#wh_transaction{}=Transaction) ->
 -spec save_transaction(transaction()) -> {'ok', transaction()} | {'error', _}.
 save_transaction(#wh_transaction{pvt_account_id=AccountId, pvt_created=Created}=Transaction) ->
     JObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
-    case kazoo_mod:save_doc(AccountId, JObj, Created) of
+    case kazoo_modb:save_doc(AccountId, JObj, Created) of
         {'ok', J} -> {'ok', from_json(J)};
         {'error', _}=E -> E
     end.

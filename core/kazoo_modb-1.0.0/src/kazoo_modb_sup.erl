@@ -5,14 +5,14 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(kazoo_mod_sup).
+-module(kazoo_modb_sup).
 
 -behaviour(supervisor).
 
 -export([start_link/0]).
 -export([init/1]).
 
--include("kazoo_mod.hrl").
+-include("kazoo_modb.hrl").
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), fun(N, T) -> {N, {N, 'start_link', []}, 'permanent', 5000, T, [N]} end(Name, Type)).

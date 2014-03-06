@@ -5,13 +5,13 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(kazoo_mod_app).
+-module(kazoo_modb_app).
 
 -behaviour(application).
 
 -export([start/2, stop/1]).
 
--include("kazoo_mod.hrl").
+-include("kazoo_modb.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -21,7 +21,7 @@
 %%--------------------------------------------------------------------
 -spec start(term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
 start(_Type, _Args) ->
-    case kazoo_mod_sup:start_link() of
+    case kazoo_modb_sup:start_link() of
         {'ok', P} -> {'ok', P};
         {error, {'already_started', P} } -> {'ok', P};
         {'error', _}=E -> E

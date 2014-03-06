@@ -6,9 +6,9 @@
 %%% @contributors
 %%% Peter Defebvre
 %%%-------------------------------------------------------------------
--module(kazoo_mod).
+-module(kazoo_modb).
 
--include("kazoo_mod.hrl").
+-include("kazoo_modb.hrl").
 
 -export([get_results/3]).
 -export([open_doc/2, open_doc/3, open_doc/4]).
@@ -29,12 +29,13 @@ get_results(Account, View, ViewOptions, 0) ->
 get_results(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+    io:format("kazoo_modb.erl:MARKER:32 ~p~n", [AccountMODb]),
     case couch_mgr:get_results(EncodedMODb, View, ViewOptions) of
         {'error', 'not_found'} ->
-            io:format("kazoo_mod.erl:MARKER:34 ~p~n", [{not_found, AccountMODb}]),
+            io:format("kazoo_modb.erl:MARKER:35 ~p~n", [{not_found, AccountMODb}]),
             get_results_not_found(Account, View, ViewOptions, Retry);
         Results ->
-            io:format("kazoo_mod.erl:MARKER:37 ~p~n", [Results]),
+            io:format("kazoo_modb.erl:MARKER:38 ~p~n", [Results]),
             Results
     end.
 
@@ -124,23 +125,23 @@ maybe_create(<<_:32/binary, "-", Year:4/binary, Month:2/binary>>=AccountMODb) ->
     {Y, M, _} = erlang:date(),
     case {wh_util:to_binary(Y), wh_util:pad_month(M)} of
         {Year, Month} ->
-            io:format("kazoo_mod.erl:MARKER:126 ~p~n", [AccountMODb]),
+            io:format("kazoo_modb.erl:MARKER:128 ~p~n", [AccountMODb]),
             create(AccountMODb),
             'true';
         _ ->
-            io:format("kazoo_mod.erl:MARKER:129 ~p~n", [AccountMODb]),
+            io:format("kazoo_modb.erl:MARKER:132 ~p~n", [AccountMODb]),
             'false'
     end.
 
 create(AccountMODb) ->
-    io:format("kazoo_mod.erl:MARKER:134 ~p~n", [{create, AccountMODb}]),
+    io:format("kazoo_modb.erl:MARKER:137 ~p~n", [{create, AccountMODb}]),
     EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
     _ = couch_mgr:db_create(EncodedMODb),
     _ = init_db(EncodedMODb),
     create_routines(AccountMODb).
 
 init_db(AccountMODb) ->
-    io:format("kazoo_mod.erl:MARKER:141 ~p~n", [{init, AccountMODb}]),
+    io:format("kazoo_modb.erl:MARKER:144 ~p~n", [{init, AccountMODb}]),
     EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
     _ = couch_mgr:revise_views_from_folder(EncodedMODb, ?MODULE),
     'ok'.

@@ -112,7 +112,7 @@ previous_balance(Account, Year, Month) ->
 -spec get_balance(ne_binary(), wh_proplist()) -> integer().
 get_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
-    case kazoo_mod:get_results(Account, View, ViewOptions) of
+    case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} ->
             get_balance_from_account(Account, ViewOptions);
         {'ok', [ViewRes|_]} ->
