@@ -235,7 +235,6 @@ originate_call(Contact, JObj, AccountId) ->
             ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, JObj)}
             ,{<<"Inherit-Codec">>, <<"false">>}
             ,{<<"Authorizing-Type">>, <<"device">>}
-            ,{<<"Inception">>, <<"on-net">>}
            ],
 
     Endpoint = [{<<"Invite-Format">>, <<"route">>}

@@ -51,7 +51,6 @@ replay_route_req(JObj, Doc) ->
                [{<<"Account-ID">>, AccountID}
                 ,{<<"Owner-ID">>, OwnerID}
                 ,{<<"Authorizing-ID">>, wh_json:get_value(<<"id">>, Doc)}
-                ,{<<"Inception">>, <<"on-net">>}
                 ,{<<"Authorizing-Type">>, AuthType}
                ])
              ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),

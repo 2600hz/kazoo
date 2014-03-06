@@ -38,7 +38,7 @@
               ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
               ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>, <<"Enable-T38-Gateway">>
               ,<<"Format-From-URI">>, <<"From-URI-Realm">>, <<"Bypass-E164">>
-              ,<<"Hunt-Account-ID">>
+              ,<<"Hunt-Account-ID">>, <<"Diversions">>, <<"Inception">>
          ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
         ,[{<<"Event-Category">>, <<"resource">>}

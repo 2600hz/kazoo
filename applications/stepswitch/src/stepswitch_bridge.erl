@@ -273,6 +273,7 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
        ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
+       ,{<<"SIP-Headers">>, get_sip_headers(JObj)}
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -494,3 +495,29 @@ bridge_failure(JObj, Request) ->
      ,{<<"Resource-Response">>, JObj}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+-spec get_sip_headers(wh_json:object()) -> 'undefined' | wh_json:object().
+get_sip_headers(JObj) ->
+    case get_diversions(JObj) of
+        'undefined' -> 'undefined';
+        Diversion ->
+            wh_json:from_list([{<<"Diversion">>, Diversion}])
+    end.
+
+-spec get_diversions(wh_json:object()) -> 'undefined' | wh_json:object().
+get_diversions(JObj) ->
+    Inception = wh_json:get_value(<<"Inception">>, JObj),
+    Diversions = wh_json:get_value(<<"Diversions">>, JObj, []),
+    get_diversions(Inception, Diversions).
+
+-spec get_diversions(api_binary(), wh_json:object()) -> 'undefined' | wh_json:object().
+get_diversions('undefined', _) -> 'undefined';
+get_diversions(Inception, Diversions) ->
+    wh_json:from_list([{<<"address">>, <<"sip:", Inception/binary>>}
+                       ,{<<"counter">>, find_diversion_count(Diversions) + 1}
+                      ]).
+
+-spec find_diversion_count(wh_json:objects()) -> non_neg_integer().
+find_diversion_count([]) -> 0;
+find_diversion_count(Diversions) -> 
+    lists:max([kzsip_diversion:counter(Diversion) || Diversion <- Diversions]).

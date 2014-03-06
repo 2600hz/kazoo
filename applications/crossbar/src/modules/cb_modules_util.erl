@@ -65,7 +65,6 @@ maybe_originate_quickcall(Context) ->
 create_call_from_context(Context) ->
     Routines = [fun(C) -> whapps_call:set_account_db(cb_context:account_db(Context), C) end
                 ,fun(C) -> whapps_call:set_account_id(cb_context:account_id(Context), C) end
-                ,fun(C) -> whapps_call:set_inception(<<"on-net">>, C) end
                 ,fun(C) ->
                          case wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context)) of
                              'undefined' -> C;
@@ -148,7 +147,6 @@ originate_quickcall(Endpoints, Call, Context) ->
     CCVs = [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Inherit-Codec">>, <<"false">>}
-            ,{<<"Inception">>, <<"on-net">>}
             ,{<<"Authorizing-Type">>, whapps_call:authorizing_type(Call)}
             ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
            ],

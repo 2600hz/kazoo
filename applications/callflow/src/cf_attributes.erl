@@ -64,8 +64,8 @@ groups(Call, ViewOptions) ->
 caller_id(Attribute, Call) ->
     CCVs = whapps_call:custom_channel_vars(Call),
     Inception = whapps_call:inception(Call),
-    case (Inception =:= <<"off-net">>
-              andalso not wh_json:is_true(<<"Call-Forward">>, CCVs))
+    case (Inception =/= 'undefined'
+          andalso not wh_json:is_true(<<"Call-Forward">>, CCVs))
         orelse wh_json:is_true(<<"Retain-CID">>, CCVs)
     of
         'true' ->
@@ -300,7 +300,7 @@ maybe_normalize_callee(Number, Name, _, _) ->
 
 -spec determine_callee_attribute(whapps_call:call()) -> ne_binary().
 determine_callee_attribute(Call) ->
-    case whapps_call:inception(Call) =:= <<"off-net">> of
+    case whapps_call:inception(Call) =/= 'undefined' of
         'true' -> <<"external">>;
         'false' -> <<"internal">>
     end.
@@ -315,9 +315,7 @@ determine_callee_attribute(Call) ->
 
 moh_attributes(Attribute, Call) ->
     case cf_endpoint:get(Call) of
-        {'error', _R} ->
-            lager:warning("unable to get endpoint: ~p", [_R]),
-            'undefined';
+        {'error', _R} -> 'undefined';
         {'ok', Endpoint} ->
             Value = wh_json:get_ne_value([<<"music_on_hold">>, Attribute], Endpoint),
             maybe_normalize_moh_attribute(Value, Attribute, Call)

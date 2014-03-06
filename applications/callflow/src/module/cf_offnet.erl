@@ -74,6 +74,8 @@ build_offnet_request(Data, Call) ->
                             ,{<<"To-DID">>, get_to_did(Data, Call)}
                             ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
                             ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
+                            ,{<<"Diversions">>, get_diversions(Call)}
+                            ,{<<"Inception">>, get_inception(Call)}
                             | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
 
@@ -246,6 +248,18 @@ is_flag_exported(Flag, [{F, 1}|Funs]) ->
         'false' -> is_flag_exported(Flag, Funs)
     end;
 is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
+
+-spec get_diversions(whapps_call:call()) -> 'undefined' | wh_json:object().
+get_diversions(Call) ->
+    case wh_json:get_value(<<"Diversions">>, whapps_call:custom_channel_vars(Call)) of
+        'undefined' -> 'undefined';
+        [] -> 'undefined';
+        Diversions ->  Diversions
+    end.
+
+-spec get_inception(whapps_call:call()) -> api_binary().
+get_inception(Call) ->
+    wh_json:get_value(<<"Inception">>, whapps_call:custom_channel_vars(Call)).
 
 %%--------------------------------------------------------------------
 %% @private
