@@ -67,11 +67,16 @@
                   ,handling_vote :: 0..100 | '_'
                   ,numbers :: ne_binaries() | '_'
                   ,account_id :: ne_binary() | '_'
+                  ,sup :: api_pid() | '_'
                   ,listener_pid :: api_pid() | '_'
                   ,fsm_pid :: api_pid() | '_'
                  }).
 -type contest() :: #contest{}.
 -type contests() :: [contest(),...] | [].
+
+-export_type([contest/0
+              ,contests/0
+             ]).
 
 %%%===================================================================
 %%% API
@@ -268,7 +273,12 @@ handle_info(?HANDLER_START_MSG(ContestId), State) ->
     case lookup_by_id(ContestId) of
         'undefined' -> lager:debug("ignoring start_handler msg for contest ~s", [ContestId]);
         #contest{handling_app=App}=Contest ->
-            maybe_start_contest_handler(Contest, App, my_app())
+            SupPid = case maybe_start_contest_handler(Contest, App, my_app()) of
+                         'ok' -> 'undefined';
+                         {'ok', Sup} -> Sup
+                     end,
+            lager:debug("updating contest ~s with supervisor ~p", [ContestId, SupPid]),
+            ets:insert(Contest#contest{sup=SupPid})
     end,
     {'noreply', State};
 handle_info(_Info, State) ->
@@ -488,14 +498,22 @@ maybe_update_contest_from_response(JObj, #contest{id=Id
 maybe_update_contest_from_response(JObj, #contest{id=Id
                                                   ,handling_app=App
                                                   ,handling_vote=Vote
+                                                  ,cutoff_time=Cutoff
                                                  }) ->
     ApiApp = wapi_caller10:handling_app(JObj),
     ApiVote = wapi_caller10:vote(JObj),
-    case should_update_app({App, Vote}, {ApiApp, ApiVote}) of
+
+    PastCutoff = Cutoff > wh_util:current_tstamp(),
+
+    case should_update_app({App, Vote}, {ApiApp, ApiVote})
+        andalso PastCutoff
+    of
         'true' ->
             gen_server:cast(?MODULE, {'handler_update', Id, ApiApp, ApiVote});
         'false' ->
-            lager:debug("sticking with contest ~s's current app/vote ~s / ~b", [Id, App, Vote])
+            lager:debug("sticking with contest ~s's current app/vote ~s / ~b (past cutoff: ~s)"
+                        ,[Id, App, Vote, PastCutoff]
+                       )
     end.
 
 -spec should_update_app({ne_binary(), pos_integer()}, {ne_binary(), pos_integer()}) ->
@@ -511,7 +529,12 @@ my_app() ->
 maybe_start_handler_start_timer(App, App, ContestId) ->
     erlang:start_timer(?HANDLER_START_TIME, self(), ?HANDLER_START_MSG(ContestId)).
 
-maybe_start_contest_handler(#contest{id=_Id}=Contest, App, App) ->
-    lager:debug("am handling app for contest ~s, maybe starting contest handler", [_Id]);
+-spec maybe_start_contest_handler(contest(), ne_binary(), ne_binary()) ->
+                                         'ok' |
+                                         {'ok', pid()}.
+maybe_start_contest_handler(#contest{id=_Id
+                                     ,sup='undefined'
+                                    }=Contest, App, App) ->
+    caller10_contests_sup:new(Contest);
 maybe_start_contest_handler(_Contest, _App, _MyApp) ->
     'ok'.
