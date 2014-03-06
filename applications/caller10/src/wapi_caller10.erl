@@ -19,6 +19,8 @@
 
          ,account_id/1
          ,contest_id/1
+         ,handling_app/1
+         ,vote/1
         ]).
 
 -include("caller10.hrl").
@@ -131,3 +133,15 @@ contest_id(Props) when is_list(Props) ->
     props:get_value(<<"Contest-ID">>, Props);
 contest_id(JObj) ->
     wh_json:get_value(<<"Contest-ID">>, JObj).
+
+-spec handling_app(api_terms()) -> api_binary().
+handling_app(Props) when is_list(Props) ->
+    props:get_value(<<"Handling-App">>, Props);
+handling_app(JObj) ->
+    wh_json:get_value(<<"Handling-App">>, JObj).
+
+-spec vote(api_terms()) -> api_binary().
+vote(Props) when is_list(Props) ->
+    props:get_integer_value(<<"Handling-Vote">>, Props);
+vote(JObj) ->
+    wh_json:get_integer_value(<<"Handling-Vote">>, JObj).

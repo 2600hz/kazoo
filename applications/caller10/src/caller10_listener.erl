@@ -41,6 +41,9 @@
                      ,{{'caller10_handlers', 'handle_contest_handler_request'}
                        ,[{<<"caller10">>, <<"contest_handler_request">>}]
                       }
+                     ,{{'caller10_handlers', 'handle_contest_handler_response'}
+                       ,[{<<"caller10">>, <<"contest_handler_response">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).

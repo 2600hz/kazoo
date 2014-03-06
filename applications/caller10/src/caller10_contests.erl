@@ -17,6 +17,7 @@
          ,deleted/1
 
          ,handle_contest_handler_request/1
+         ,handle_contest_handler_response/1
         ]).
 
 %% gen_server callbacks
@@ -44,7 +45,11 @@
 
 -define(LOAD_WINDOW, whapps_config:get_integer(<<"caller10">>, <<"load_window_size_s">>, 3600)).
 -define(CUTOFF_WINDOW, whapps_config:get_integer(<<"caller10">>, <<"cutoff_window_size_s">>, 360)).
+
 -define(REFRESH_WINDOW_MSG, 'refresh_window').
+
+-define(HANDLER_START_TIME, whapps_config:get_integer(<<"caller10">>, <<"handler_delayed_start_s">>, 360)).
+-define(HANDLER_START_MSG(ContestId), {'handler_delayed_start', ContestId}).
 
 -record(state, {is_writable = 'false' :: boolean()
                 ,refresh_ref :: reference()
@@ -63,6 +68,7 @@
                   ,numbers :: ne_binaries() | '_'
                   ,account_id :: ne_binary() | '_'
                   ,listener_pid :: api_pid() | '_'
+                  ,fsm_pid :: api_pid() | '_'
                  }).
 -type contest() :: #contest{}.
 -type contests() :: [contest(),...] | [].
@@ -106,11 +112,29 @@ deleted(DocId) ->
 -spec handle_contest_handler_request(wh_json:object()) -> 'ok'.
 handle_contest_handler_request(JObj) ->
     ContestId = wapi_caller10:contest_id(JObj),
-    case ets:lookup(table_id(), ContestId) of
-        [] -> lager:debug("no contest ~s in our ETS", [ContestId]);
-        [#contest{}=Contest] ->
-            publish_contest_handler_response(Contest)
+    case lookup_by_id(ContestId) of
+        'undefined' -> lager:debug("no contest ~s in our ETS", [ContestId]);
+        #contest{}=Contest -> publish_contest_handler_response(Contest)
     end.
+
+-spec handle_contest_handler_response(wh_json:object()) -> 'ok'.
+handle_contest_handler_response(JObj) ->
+    ContestId = wapi_caller10:contest_id(JObj),
+    case lookup_by_id(ContestId) of
+        'undefined' -> lager:debug("no contest ~s in our ETS", [ContestId]);
+        #contest{}=Contest -> maybe_update_contest_from_response(JObj, Contest)
+    end.
+
+-spec lookup_by_id(ne_binary() | contest() | wh_json:object()) -> contest() | 'undefined'.
+lookup_by_id(Id) when is_binary(Id) ->
+    case ets:lookup(table_id(), Id) of
+        [] -> 'undefined';
+        [#contest{}=Contest] -> Contest
+    end;
+lookup_by_id(#contest{id=Id}) ->
+    lookup_by_id(Id);
+lookup_by_id(JObj) ->
+    lookup_by_id(wh_json:get_first_defined([<<"Contest-ID">>, <<"_id">>], JObj)).
 
 -spec table_id() -> ?MODULE.
 table_id() -> ?MODULE. %% Any atom will do
@@ -195,6 +219,25 @@ handle_cast({'delete_contest', Id}
     'true' = ets:delete(table_id(), Id),
     lager:debug("maybe deleted contest ~s", [Id]),
     {'noreply', State};
+handle_cast({'handler_update', ContestId, ApiApp, ApiVote}, State) ->
+    case lookup_by_id(ContestId) of
+        'undefined' -> lager:debug("failed to find contest ~s for handler_update", [ContestId]);
+        #contest{handling_app=App
+                 ,handling_vote=Vote
+                }=Contest ->
+            case should_update_app({App, Vote}, {ApiApp, ApiVote}) of
+                'true' ->
+                    ets:insert(table_id(), Contest#contest{handling_app=ApiApp
+                                                           ,handling_vote=ApiVote
+                                                          }),
+                    maybe_start_handler_start_timer(ApiApp, my_app(), ContestId);
+                'false' ->
+                    lager:debug("API handler update for ~s no longer valid, sticking with ~s(~b)"
+                                ,[ContestId, App, Vote]
+                               )
+            end
+    end,
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -221,6 +264,13 @@ handle_info(?REFRESH_WINDOW_MSG, State) ->
     _AddPid = spawn(?MODULE, 'add_contest_handlers', [LoadPid]),
     lager:debug("loading contests in ~p and adding handlers in ~p", [LoadPid, _AddPid]),
     {'noreply', State#state{refresh_ref=start_refresh_timer()}};
+handle_info(?HANDLER_START_MSG(ContestId), State) ->
+    case lookup_by_id(ContestId) of
+        'undefined' -> lager:debug("ignoring start_handler msg for contest ~s", [ContestId]);
+        #contest{handling_app=App}=Contest ->
+            maybe_start_contest_handler(Contest, App, my_app())
+    end,
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -385,7 +435,7 @@ publish_contest_handler_response(#contest{id=Id
     lager:debug("contest ~s has no handling_app, sending ourselves with vote ~b", [Id, Vote]),
     API = [{<<"Contest-ID">>, Id}
            ,{<<"Account-ID">>, AccountId}
-           ,{<<"Handling-App">>, wh_util:to_binary(node())}
+           ,{<<"Handling-App">>, my_app()}
            ,{<<"Handling-Vote">>, Vote}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
@@ -425,3 +475,43 @@ wait_for_loader(LoadPid) ->
             {'DOWN', Ref, 'process', LoadPid, _Reason} -> 'ok'
         after 5000 -> wait_for_loader(LoadPid)
         end.
+
+-spec maybe_update_contest_from_response(wh_json:object(), contest()) -> 'ok'.
+maybe_update_contest_from_response(JObj, #contest{id=Id
+                                                  ,handling_app='undefined'
+                                                 }) ->
+    lager:debug("we have no handling app for ~s, update contest and try to update it", [Id]),
+    gen_server:cast(?MODULE, {'handler_update', Id
+                              ,wapi_caller10:handling_app(JObj)
+                              ,wapi_caller10:vote(JObj)
+                             });
+maybe_update_contest_from_response(JObj, #contest{id=Id
+                                                  ,handling_app=App
+                                                  ,handling_vote=Vote
+                                                 }) ->
+    ApiApp = wapi_caller10:handling_app(JObj),
+    ApiVote = wapi_caller10:vote(JObj),
+    case should_update_app({App, Vote}, {ApiApp, ApiVote}) of
+        'true' ->
+            gen_server:cast(?MODULE, {'handler_update', Id, ApiApp, ApiVote});
+        'false' ->
+            lager:debug("sticking with contest ~s's current app/vote ~s / ~b", [Id, App, Vote])
+    end.
+
+-spec should_update_app({ne_binary(), pos_integer()}, {ne_binary(), pos_integer()}) ->
+                               boolean().
+should_update_app({_App, Vote}, {_ApiApp, ApiVote}) when ApiVote > Vote -> 'true';
+should_update_app(_Current, _Api) -> 'false'.
+
+-spec my_app() -> ne_binary().
+my_app() ->
+    wh_util:to_binary(node()).
+
+-spec maybe_start_handler_start_timer(ne_binary(), ne_binary(), ne_binary()) -> reference().
+maybe_start_handler_start_timer(App, App, ContestId) ->
+    erlang:start_timer(?HANDLER_START_TIME, self(), ?HANDLER_START_MSG(ContestId)).
+
+maybe_start_contest_handler(#contest{id=_Id}=Contest, App, App) ->
+    lager:debug("am handling app for contest ~s, maybe starting contest handler", [_Id]);
+maybe_start_contest_handler(_Contest, _App, _MyApp) ->
+    'ok'.

@@ -12,6 +12,7 @@
          ,handle_route_win/2
          ,handle_config_change/2
          ,handle_contest_handler_request/2
+         ,handle_contest_handler_response/2
         ]).
 
 -include("caller10.hrl").
@@ -79,3 +80,7 @@ handle_contest_change(JObj, <<"doc_deleted">>) ->
 handle_contest_handler_request(JObj, _Props) ->
     'true' = wapi_caller10:contest_handler_request_v(JObj),
     caller10_contests:handle_contest_handler_request(JObj).
+
+handle_contest_handler_response(JObj, _Props) ->
+    'true' = wapi_caller10:contest_handler_response_v(JObj),
+    caller10_contests:handle_contest_handler_response(JObj).
