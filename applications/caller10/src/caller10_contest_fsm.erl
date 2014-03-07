@@ -11,7 +11,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/1]).
+-export([start_link/2]).
 
 %% gen_fsm callbacks
 -export([init/1
@@ -53,9 +53,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(wh_json:object()) -> startlink_ret().
-start_link(ContestJObj) ->
-    gen_fsm:start_link(?MODULE, [ContestJObj], []).
+-spec start_link(pid(), wh_json:object()) -> startlink_ret().
+start_link(Sup, ContestJObj) ->
+    gen_fsm:start_link(?MODULE, [Sup, ContestJObj], []).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -74,8 +74,8 @@ start_link(ContestJObj) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
--spec init(wh_json:objects()) -> {'ok', fsm_state(), state()}.
-init([ContestJObj]) ->
+-spec init(wh_json:objects() | pids()) -> {'ok', fsm_state(), state()}.
+init([Sup, ContestJObj]) ->
     {'ok', 'prior', #state{}}.
 
 -spec prior(term(), state()) -> {'next_state', fsm_state(), state()}.
