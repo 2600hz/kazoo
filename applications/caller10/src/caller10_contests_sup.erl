@@ -35,7 +35,7 @@
 -spec start_link() -> startlink_ret().
 start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec new(caller10_contests:contest()) -> sup_startchild_ret().
+-spec new(wh_json:object()) -> sup_startchild_ret().
 new(Contest) ->
     supervisor:start_child(?MODULE, [Contest]).
 

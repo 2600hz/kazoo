@@ -544,7 +544,8 @@ maybe_start_handler_start_timer(App, App, ContestId) ->
                                          {'ok', pid()}.
 maybe_start_contest_handler(#contest{id=_Id
                                      ,sup='undefined'
-                                    }=Contest, App, App) ->
-    caller10_contests_sup:new(Contest);
+                                     ,doc=JObj
+                                    }, App, App) ->
+    caller10_contests_sup:new(JObj);
 maybe_start_contest_handler(_Contest, _App, _MyApp) ->
     'ok'.

@@ -25,7 +25,7 @@
 %%%===================================================================
 %%% API functions
 %%%===================================================================
--spec start_link(caller10_contests:contest()) -> startlink_ret().
+-spec start_link(wh_json:object()) -> startlink_ret().
 start_link(Contest) -> supervisor:start_link(?MODULE, [Contest]).
 
 -spec stop(pid()) -> 'ok' | {'error', 'not_found'}.
