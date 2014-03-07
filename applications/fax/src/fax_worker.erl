@@ -405,10 +405,16 @@ release_failed_job('job_timeout', _Error, JObj) ->
 
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
-    Result = [{<<"time_elapsed">>, elapsed_time(JObj)}
-              ,{<<"pvt_delivered_date">>, wh_util:now()}
+    Result = props:filter_undefined([
+               {<<"time_elapsed">>, elapsed_time(JObj)}
+              ,{<<"pvt_delivered_date">>,
+                case wh_json:is_true([<<"Fax-Success">>,<<"Application-Data">>]) of
+                    'true' -> wh_util:now();
+                    'false' -> 'undefined'
+                end
+               }
               | fax_util:fax_properties(wh_json:get_value(<<"Application-Data">>, Resp, Resp))
-             ],
+             ]),
     release_job(Result, JObj, Resp).
 
 -spec release_job(wh_proplist(), wh_json:object()) -> 'ok' | 'failure'.
