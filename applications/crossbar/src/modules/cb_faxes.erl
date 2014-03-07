@@ -15,10 +15,10 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_provided/4
          ,validate/1, validate/2, validate/3, validate/4
-         ,get/1, get/2, get/3, get/4
          ,put/1, put/2
          ,post/1, post/3
          ,delete/3
+        ,get_delivered_date/1
         ]).
 
 -include("../crossbar.hrl").
@@ -30,6 +30,10 @@
 
 -define(CB_LIST, <<"media/listing_private_media">>).
 -define(FAX_FILE_TYPE, <<"tiff">>).
+
+-define(OUTGOING_FAX_DOC_MAP, [{<<"created">>,<<"pvt_created">>},
+                               {<<"delivered">>, fun get_delivered_date/1}
+                               ]).
 
 %%%===================================================================
 %%% API
@@ -47,7 +51,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.faxes">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.faxes">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.validate.faxes">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.faxes">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxes">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
@@ -159,12 +162,12 @@ validate_outgoing_fax(Context, ?HTTP_PUT) ->
     create(cb_context:set_account_db(Context, ?WH_FAXES)).
 
 validate(Context, ?INCOMING, Id) ->
-    read(Id, Context);
+    load_incoming_fax_doc(Id, Context);
 validate(Context, ?OUTGOING, Id) ->
     validate_outgoing_fax(Context, Id, cb_context:req_verb(Context)).
 
 validate_outgoing_fax(Context, Id, ?HTTP_GET) ->
-    read(Id, cb_context:set_account_db(Context, ?WH_FAXES));
+    load_outgoing_fax_doc(Id, cb_context:set_account_db(Context, ?WH_FAXES));
 validate_outgoing_fax(Context, Id, ?HTTP_POST) ->
     update(Id, cb_context:set_account_db(Context, ?WH_FAXES));
 validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
@@ -173,27 +176,6 @@ validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
 validate(Context, ?INCOMING, Id, ?ATTACHMENT) ->
     load_fax_binary(Id, Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is a GET, execute necessary code to fulfill the GET
-%% request. Generally, this will involve stripping pvt fields and loading
-%% the resource into the resp_data, resp_headers, etc...
-%% @end
-%%--------------------------------------------------------------------
--spec get(cb_context:context()) -> cb_context:context().
--spec get(cb_context:context(), path_token()) -> cb_context:context().
--spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec get(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-
-get(Context) ->
-    Context.
-get(Context, _) ->
-    Context.
-get(Context, _, _) ->
-    Context.
-get(Context, _, _, _) ->
-    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -252,6 +234,27 @@ create(Context) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
+
+-spec load_incoming_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
+load_incoming_fax_doc(Id, Context) ->
+    read(Id, Context).
+
+-spec load_outgoing_fax_doc(ne_binary(), cb_context:context()) -> cb_context:context().
+load_outgoing_fax_doc(Id, Context) ->
+    Ctx = read(Id, Context),
+    crossbar_util:apply_response_map(Ctx, ?OUTGOING_FAX_DOC_MAP).
+
+
+-spec get_delivered_date(wh_json:object()) -> any().
+get_delivered_date(JObj) ->
+    case wh_json:get_value(<<"pvt_delivered_date">>, JObj) of
+        'undefined' ->
+            case wh_json:get_value(<<"pvt_job_status">>, JObj) of
+                <<"completed">> -> wh_json:get_value(<<"pvt_modified">>, JObj);
+                _ -> 'undefined'
+            end;
+        Date -> Date
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -30,6 +30,7 @@
 -export([get_path/2]).
 -export([get_user_lang/2, get_account_lang/1]).
 -export([get_user_timezone/2, get_account_timezone/1]).
+-export([apply_response_map/2]).
 
 -include("crossbar.hrl").
 
@@ -439,6 +440,18 @@ get_account_timezone(AccountId) ->
             wh_json:get_value(<<"timezone">>, JObj);
         {'error', _E} -> 'undefined'
     end.
+
+-spec apply_response_map(cb_context:context(), wh_proplist()) -> cb_context:context().
+apply_response_map(Context, Map) ->
+    JObj = cb_context:doc(Context),
+    RespJObj = cb_context:resp_data(Context),
+    RespData = lists:foldl(
+                 fun({Key, Fun}, J) when is_function(Fun,1) ->
+                         wh_json:set_value(Key,Fun(JObj),J);
+                    ({Key, ExistingKey}, J) ->
+                         wh_json:set_value(Key, wh_json:get_value(ExistingKey, JObj), J)
+                 end, RespJObj, Map),
+    cb_context:set_resp_data(Context, RespData).
 
 -spec get_path(cowboy_req:req(), ne_binary()) -> ne_binary().
 get_path(Req, Relative) ->
