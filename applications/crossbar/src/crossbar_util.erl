@@ -445,14 +445,12 @@ get_account_timezone(AccountId) ->
 apply_response_map(Context, Map) ->
     JObj = cb_context:doc(Context),
     RespJObj = cb_context:resp_data(Context),
-    RespData = lists:foldl(fun({Key, Value}, J) when is_function(Value) ->
-                            wh_json:set_value(Key,Value(JObj),J);
-                       ({Key, ExistingKey}, J) ->
-                            wh_json:set_value(Key, wh_json:get_value(ExistingKey, JObj), J)
-                    end
-                   ,RespJObj
-                   ,Map
-                   ),
+    RespData = lists:foldl(
+                 fun({Key, Fun}, J) when is_function(Fun,1) ->
+                         wh_json:set_value(Key,Fun(JObj),J);
+                    ({Key, ExistingKey}, J) ->
+                         wh_json:set_value(Key, wh_json:get_value(ExistingKey, JObj), J)
+                 end, RespJObj, Map),
     cb_context:set_resp_data(Context, RespData).
 
 -spec get_path(cowboy_req:req(), ne_binary()) -> ne_binary().
