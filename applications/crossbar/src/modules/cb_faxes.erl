@@ -15,7 +15,6 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,content_types_provided/4
          ,validate/1, validate/2, validate/3, validate/4
-         ,get/1, get/2, get/3, get/4
          ,put/1, put/2
          ,post/1, post/3
          ,delete/3
@@ -52,7 +51,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.faxes">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.faxes">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.validate.faxes">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.faxes">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.faxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.faxes">>, ?MODULE, 'post'),
     crossbar_bindings:bind(<<"*.execute.delete.faxes">>, ?MODULE, 'delete').
@@ -178,35 +176,6 @@ validate_outgoing_fax(Context, Id, ?HTTP_DELETE) ->
 validate(Context, ?INCOMING, Id, ?ATTACHMENT) ->
     load_fax_binary(Id, Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is a GET, execute necessary code to fulfill the GET
-%% request. Generally, this will involve stripping pvt fields and loading
-%% the resource into the resp_data, resp_headers, etc...
-%% @end
-%%--------------------------------------------------------------------
--spec get(cb_context:context()) -> cb_context:context().
--spec get(cb_context:context(), path_token()) -> cb_context:context().
--spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec get(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-
-get(Context) ->
-    lager:info("GET GET"),
-    Context.
-get(Context, _) ->
-    lager:info("GET GET"),
-    Context.
-get(Context, _, _) ->
-    lager:info("GET GET"),
-    JObj = cb_context:doc(Context),
-    RespJObj = cb_context:resp_data(Context),
-    Created = wh_json:get_value(<<"pvt_created">>, JObj),
-    cb_context:set_resp_data(Context
-                            ,wh_json:set_value(<<"created">>, Created, RespJObj)).
-get(Context, _, _, _) ->
-    lager:info("GET GET"),
-    Context.
 
 %%--------------------------------------------------------------------
 %% @public
