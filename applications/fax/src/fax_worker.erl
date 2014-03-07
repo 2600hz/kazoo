@@ -409,7 +409,7 @@ release_successful_job(Resp, JObj) ->
                {<<"time_elapsed">>, elapsed_time(JObj)}
               ,{<<"pvt_delivered_date">>,
                 case wh_json:is_true([<<"Fax-Success">>,<<"Application-Data">>]) of
-                    'true' -> wh_util:now();
+                    'true' -> wh_util:current_tstamp();
                     'false' -> 'undefined'
                 end
                }
