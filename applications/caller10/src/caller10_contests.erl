@@ -54,6 +54,7 @@
 -record(state, {is_writable = 'false' :: boolean()
                 ,refresh_ref :: reference()
                }).
+-type state() :: #state{}.
 
 -record(contest, {id :: ne_binary() | '_'
                   ,cutoff_time :: pos_integer() | '_'
@@ -89,6 +90,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
@@ -173,6 +175,7 @@ gift_data() -> 'ok'.
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     wh_util:put_callid(?MODULE),
     {'ok', #state{refresh_ref=start_refresh_timer()}}.
@@ -191,6 +194,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(term(), pid_ref(), state()) -> {'reply', _, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -204,6 +208,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(term(), state()) -> {'noreply', state()} |
+                                      {'noreply', state(), 'hibernate'}.
 handle_cast({'load_contest', #contest{id=Id}=Contest}
             ,#state{is_writable='true'}=State
            ) ->
@@ -242,7 +248,7 @@ handle_cast({'handler_update', ContestId, ApiApp, ApiVote}, State) ->
                                )
             end
     end,
-    {'noreply', State};
+    {'noreply', State, 'hibernate'};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -257,6 +263,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(term(), state()) -> {'noreply', state()} |
+                                      {'noreply', state(), 'hibernate'}.
 handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     lager:debug("recv ETS table ~p from ~p", [_TableId, _From]),
     LoadPid = spawn(?MODULE, 'load_contests', []),
@@ -268,7 +276,7 @@ handle_info(?REFRESH_WINDOW_MSG, State) ->
     LoadPid = spawn(?MODULE, 'load_contests', []),
     _AddPid = spawn(?MODULE, 'add_contest_handlers', [LoadPid]),
     lager:debug("loading contests in ~p and adding handlers in ~p", [LoadPid, _AddPid]),
-    {'noreply', State#state{refresh_ref=start_refresh_timer()}};
+    {'noreply', State#state{refresh_ref=start_refresh_timer()}, 'hibernate'};
 handle_info(?HANDLER_START_MSG(ContestId), State) ->
     case lookup_by_id(ContestId) of
         'undefined' -> lager:debug("ignoring start_handler msg for contest ~s", [ContestId]);
@@ -296,6 +304,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(term(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("caller10_contests terminating: ~p", [_Reason]).
 
@@ -307,6 +316,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(term(), state(), term()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

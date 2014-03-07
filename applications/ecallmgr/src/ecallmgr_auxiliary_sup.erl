@@ -42,6 +42,7 @@
 -spec start_link() -> startlink_ret().
 start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
+-spec cache_proc() -> ?ECALLMGR_UTIL_CACHE.
 cache_proc() -> ?ECALLMGR_UTIL_CACHE.
 
 %% ===================================================================

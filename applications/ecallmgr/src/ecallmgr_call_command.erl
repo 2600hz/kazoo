@@ -223,7 +223,7 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
             end
     end;
 
-get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
+get_fs_app(Node, UUID, JObj, App = <<"store_fax">>) ->
     case wapi_dialplan:store_fax_v(JObj) of
         'false' -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
         'true' ->
