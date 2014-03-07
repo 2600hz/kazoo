@@ -406,6 +406,7 @@ release_failed_job('job_timeout', _Error, JObj) ->
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
     Result = [{<<"time_elapsed">>, elapsed_time(JObj)}
+              ,{<<"pvt_delivered_date">>, wh_util:now()}
               | fax_util:fax_properties(wh_json:get_value(<<"Application-Data">>, Resp, Resp))
              ],
     release_job(Result, JObj, Resp).
