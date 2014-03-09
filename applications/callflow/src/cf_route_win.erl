@@ -46,7 +46,7 @@ should_restrict_call(Call) ->
         {'error', _R} -> 'false';
         {'ok', JObj} ->
             maybe_closed_group_restriction(JObj, Call)
-end.
+    end.
 
 -spec maybe_closed_group_restriction(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_closed_group_restriction(JObj, Call) ->
@@ -183,8 +183,19 @@ update_ccvs(Call) ->
               [{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
                ,{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}
+               | get_incoming_security(Call)
               ]),
     whapps_call:set_custom_channel_vars(Props, Call).
+
+-spec get_incoming_security(whapps_call:call()) -> wh_proplist().
+ get_incoming_security(Call) ->
+    case cf_endpoint:get(Call) of
+        {'error', _R} -> [];
+        {'ok', JObj} -> 
+            wh_json:to_proplist(
+              cf_util:encryption_method_map(wh_json:new(), JObj)
+            )
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
