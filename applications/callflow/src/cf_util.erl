@@ -19,6 +19,10 @@
 -define(MANUAL_PRESENCE_KEY(Db), {?MODULE, 'manual_presence', Db}).
 -define(OPERATOR_KEY, whapps_config:get(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
 
+-define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
+                        ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
+                                      ,{<<"ZRTP-Enrollment">>, <<"true">>}]}]).
+
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
 -export([unsolicited_owner_mwi_update/2]).
@@ -32,6 +36,7 @@
 -export([get_operator_callflow/1]).
 -export([endpoint_id_by_sip_username/2]).
 -export([owner_ids_by_sip_username/2]).
+-export([encryption_method_map/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -724,6 +729,23 @@ maybe_get_endpoint_assigned_owner(JObj) ->
         'undefined' -> 'undefined';
         OwnerId -> OwnerId
     end.
+
+-spec encryption_method_map(api_object(), api_binaries()) -> api_object().
+encryption_method_map(JObj, []) -> JObj;
+encryption_method_map(JObj, [Method|Methods]) ->
+    case props:get_value(Method, ?ENCRYPTION_MAP, []) of
+        [] -> encryption_method_map(JObj, Methods);
+        Values ->
+            encryption_method_map(wh_json:set_values(Values , JObj), Method)
+    end;
+encryption_method_map(JObj, Endpoint) ->
+    encryption_method_map(
+      JObj
+      ,wh_json:get_value([<<"media">>
+                          ,<<"encryption">>
+                          ,<<"methods">>
+                         ], Endpoint, [])).
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
