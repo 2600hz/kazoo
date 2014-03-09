@@ -240,8 +240,8 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
                                  ,{<<"require_keypress">>, 'false'}
                                  ,{<<"substribute">>, 'true'}
                                 ]),
-    EP = cf_endpoint:create_call_fwd_endpoint(wh_json:new(), wh_json:new()
-                                              ,CallFwd, Call),
+    Endpoint = wh_json:from_list([{<<"call_forward">>, CallFwd}]),
+    EP = cf_endpoint:create_call_fwd_endpoint(Endpoint, wh_json:new(), Call),
 
     xml_elements_to_endpoints(Call, EPs, [EP|Acc]);
 

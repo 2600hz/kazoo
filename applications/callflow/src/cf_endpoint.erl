@@ -14,7 +14,7 @@
 -export([get/1, get/2]).
 -export([flush/2]).
 -export([build/2, build/3]).
--export([create_call_fwd_endpoint/4
+-export([create_call_fwd_endpoint/3
          ,create_sip_endpoint/3
         ]).
 
@@ -23,6 +23,13 @@
 -define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
                         ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
                                       ,{<<"ZRTP-Enrollment">>, <<"true">>}]}]).
+
+-define(CF_MOBILE_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".mobile">>).
+-define(DEFAULT_MOBILE_FORMATER, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>).
+-define(DEFAULT_MOBILE_PREFIX, <<"">>).
+-define(DEFAULT_MOBILE_SUFFIX, <<"">>).
+-define(DEFAULT_MOBILE_REALM, <<"mobile.k.zswitch.net">>).
+-define(DEFAULT_MOBILE_PATH, <<"">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -503,7 +510,7 @@ create_endpoints(Endpoint, Properties, Call) ->
 -type ep_routine() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  {'error', _} | wh_json:object()).
 -spec try_create_endpoint(ep_routine(), wh_json:objects(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                       wh_json:objects().
+                                       wh_json:objects().    
 try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_function(Routine, 3) ->
     try Routine(Endpoint, Properties, Call) of
         {'error', _R} ->
@@ -519,41 +526,47 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
 
 -spec maybe_create_fwd_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                        wh_json:object() |
-                                       {'error', 'cf_not_appropriate'}.
+                                       {'error', 'call_forward_not_appropriate'}.
 maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
-    CallFowarding = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
-    Source = wh_json:get_value(<<"source">>, Properties),
-    Number = wh_json:get_value(<<"number">>, CallFowarding),
-    case wh_json:is_true(<<"enabled">>, CallFowarding)
-        andalso not wh_util:is_empty(Number)
-        andalso (wh_json:is_false(<<"direct_calls_only">>, CallFowarding, 'true')
-                 orelse
-                   (not lists:member(Source, ?NON_DIRECT_MODULES)))
-    of
-        'false' -> {'error', 'cf_not_appropriate'};
+    case is_call_forward_enabled(Endpoint, Properties) of
+        'false' -> {'error', 'call_forward_not_appropriate'};
         'true' ->
             lager:info("creating call forwarding endpoint"),
-            create_call_fwd_endpoint(Endpoint, Properties, CallFowarding, Call)
+            create_call_fwd_endpoint(Endpoint, Properties, Call)
     end.
 
 -spec maybe_create_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                    wh_json:object() |
-                                   {'error', 'cf_substitute'}.
+                                   {'error', 'call_forward_substitute'}.
 maybe_create_endpoint(Endpoint, Properties, Call) ->
-    CallFowarding = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
-    case wh_json:is_true(<<"enabled">>, CallFowarding)
-        andalso wh_json:is_true(<<"substitute">>, CallFowarding)
+    case is_call_forward_enabled(Endpoint, Properties)
+        andalso wh_json:is_true([<<"call_forward">>, <<"substitute">>], Endpoint)
     of
-        'true' -> {'error', 'cf_substitute'};
+        'true' -> {'error', 'call_forward_substitute'};
         'false' ->
-            maybe_create_endpoint(get_endpoint_type(Endpoint), Endpoint, Properties, Call)
+            EndpointType = get_endpoint_type(Endpoint),
+            maybe_create_endpoint(EndpointType, Endpoint, Properties, Call)
     end.
 
+-spec is_call_forward_enabled(wh_json:object(), wh_json:object()) -> boolean().
+is_call_forward_enabled(Endpoint, Properties) ->
+    CallForwarding = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
+    Source = wh_json:get_value(<<"source">>, Properties),
+    Number = wh_json:get_value(<<"number">>, CallForwarding),
+    wh_json:is_true(<<"enabled">>, CallForwarding)
+        andalso not wh_util:is_empty(Number)
+        andalso (wh_json:is_false(<<"direct_calls_only">>, CallForwarding, 'true')
+                 orelse
+                   (not lists:member(Source, ?NON_DIRECT_MODULES))).
+        
 -spec maybe_create_endpoint(ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                    wh_json:object() | {'error', ne_binary()}.
 maybe_create_endpoint(<<"sip">>, Endpoint, Properties, Call) ->
     lager:info("building a SIP endpoint"),
     create_sip_endpoint(Endpoint, Properties, Call);
+maybe_create_endpoint(<<"mobile">>, Endpoint, Properties, Call) ->
+    lager:info("building a mobile endpoint"),
+    create_mobile_endpoint(Endpoint, Properties, Call);
 maybe_create_endpoint(<<"skype">>, Endpoint, Properties, Call) ->
     lager:info("building a Skype endpoint"),
     create_skype_endpoint(Endpoint, Properties, Call);
@@ -562,14 +575,41 @@ maybe_create_endpoint(UnknownType, _, _, _) ->
 
 -spec get_endpoint_type(wh_json:object()) -> ne_binary().
 get_endpoint_type(Endpoint) ->
-    case wh_json:get_value(<<"endpoint_type">>, Endpoint) of
-        'undefined' -> guess_endpoint_type(Endpoint);
-        Type -> Type
+    Type = wh_json:get_first_defined([<<"endpoint_type">>
+                                      ,<<"device_type">>
+                                     ], Endpoint),
+    case convert_endpoint_type(Type) of
+        'undefined' -> maybe_guess_endpoint_type(Endpoint);
+        Else -> Else
+    end.
+
+-spec convert_endpoint_type(ne_binary()) -> api_binary().
+convert_endpoint_type(<<"sip_", _/binary>>) -> <<"sip">>;
+convert_endpoint_type(<<"smartphone">>) -> <<"sip">>;
+convert_endpoint_type(<<"softphone">>) -> <<"sip">>;
+convert_endpoint_type(<<"cellphone">>) -> <<"sip">>;
+convert_endpoint_type(<<"landline">>) -> <<"sip">>;
+convert_endpoint_type(<<"fax">>) -> <<"sip">>;
+convert_endpoint_type(<<"skype">>) -> <<"skype">>;
+convert_endpoint_type(<<"mobile">>) -> <<"mobile">>;
+convert_endpoint_type(_Else) -> 'undefined'.
+
+-spec maybe_guess_endpoint_type(wh_json:object()) -> ne_binary().
+maybe_guess_endpoint_type(Endpoint) ->    
+    case whapps_config:get_is_true(?CF_CONFIG_CAT, <<"restrict_to_known_types">>, 'false') of
+        'false' -> guess_endpoint_type(Endpoint);
+        'true' ->
+            lager:info("unknown endpoint type and callflows restrictued to known types", []),
+            <<"unknown">>
     end.
 
 -spec guess_endpoint_type(wh_json:object()) -> ne_binary().
 guess_endpoint_type(Endpoint) ->
-    guess_endpoint_type(Endpoint, [<<"sip">>, <<"skype">>]).
+    guess_endpoint_type(Endpoint, [<<"mobile">>
+                                   ,<<"sip">>
+                                   ,<<"skype">>
+                                  ]).
+-spec guess_endpoint_type(wh_json:object(), ne_binaries()) -> ne_binary().
 guess_endpoint_type(Endpoint, [Type|Types]) ->
     case wh_json:get_value(Type, Endpoint) of
         'undefined' -> guess_endpoint_type(Endpoint, Types);
@@ -662,10 +702,12 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
 -spec maybe_build_failover(wh_json:object(), whapps_call:call()) -> api_object().
 maybe_build_failover(Endpoint, Call) ->
     CallForward = wh_json:get_value(<<"call_forward">>, Endpoint),
-    case wh_json:is_true(<<"failover">>, CallForward) of
+    Number = wh_json:get_value(<<"number">>, CallForward),
+    case wh_json:is_true(<<"failover">>, CallForward)
+        andalso not wh_util:is_empty(Number)
+    of
         'false' -> 'undefined';
-        'true' ->
-            create_call_fwd_endpoint(Endpoint, wh_json:new(), CallForward, Call)
+        'true' -> create_call_fwd_endpoint(Endpoint, wh_json:new(), Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -700,7 +742,6 @@ validate_sip_transport(_) -> 'undefined'.
                                          wh_json:object().
 create_skype_endpoint(Endpoint, Properties, _Call) ->
     SkypeJObj = wh_json:get_value(<<"skype">>, Endpoint),
-
     Prop =
         [{<<"Invite-Format">>, <<"username">>}
          ,{<<"To-User">>, get_to_user(SkypeJObj, Properties)}
@@ -709,6 +750,7 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
          ,{<<"Endpoint-Options">>, wh_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -720,19 +762,20 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
 %% the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_call_fwd_endpoint(wh_json:object(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                            wh_json:object().
-create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
-    lager:info("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
-    IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallFwd)
-                           orelse not wh_json:is_true(<<"substitute">>, CallFwd)
+-spec create_call_fwd_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                      wh_json:object().
+create_call_fwd_endpoint(Endpoint, Properties, Call) ->
+    CallForward = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
+    lager:info("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallForward)]),
+    IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallForward)
+                           orelse not wh_json:is_true(<<"substitute">>, CallForward)
                        of
                            'true' -> <<"true">>;
-                           'false' -> wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd)
+                           'false' -> wh_json:get_binary_boolean(<<"ignore_early_media">>, CallForward)
                        end,
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, whapps_call:request_user(Call))}
-            ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallFwd, <<"unknown">>))/binary>>}
+            ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary>>}
             ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
             ,{<<"Bypass-Media">>, <<"false">>}
             ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
@@ -740,9 +783,68 @@ create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
             ,{<<"Endpoint-Delay">>, get_delay(Properties)}
             ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
-            ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallFwd)}
+            ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
            ],
     wh_json:from_list(props:filter_undefined(Prop)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec create_mobile_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                    wh_json:object().
+create_mobile_endpoint(Endpoint, Properties, Call) ->
+    case maybe_build_mobile_route(Endpoint) of
+        {'error', _R}=Error ->
+            lager:info("unable to build mobile endpoint: ~s", [_R]),
+            Error;
+        Route ->
+            Prop = [{<<"Invite-Format">>, <<"route">>}
+                    ,{<<"Route">>, Route}
+                    ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
+                    ,{<<"Endpoint-Delay">>, get_delay(Properties)}
+                    ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+                    ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+                    ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, wh_json:new())}
+                   ],
+            wh_json:from_list(props:filter_undefined(Prop))
+    end.
+
+-spec maybe_build_mobile_route(wh_json:object()) -> ne_binary() | {'error', 'mdn_missing'}.
+maybe_build_mobile_route(Endpoint) ->
+    case wh_json:get_ne_value([<<"mobile">>, <<"mdn">>], Endpoint) of
+        'undefined' ->
+            lager:info("unable to build mobile endpoint, MDM missing", []),
+            {'error', 'mdn_missing'};
+        MDN -> build_mobile_route(MDN)
+    end.
+
+-spec build_mobile_route(ne_binary()) -> ne_binary() | {'error', 'invalid_mdm'}.
+build_mobile_route(MDN) ->
+    Regex = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"formatter">>, ?DEFAULT_MOBILE_FORMATER),
+    case re:run(MDN, Regex, [{'capture', 'all', 'binary'}]) of
+        'nomatch' ->
+            lager:info("unable to build mobile endpoint, invalid MDM ~s", [MDN]),
+            {'error', 'invalid_mdm'};
+        {'match', Captures} ->
+            Root = lists:last(Captures),
+            Prefix = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"prefix">>, ?DEFAULT_MOBILE_PREFIX),
+            Suffix = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"suffix">>, ?DEFAULT_MOBILE_SUFFIX),
+            Realm = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"realm">>, ?DEFAULT_MOBILE_REALM),
+            Route = <<"sip:"
+                      ,Prefix/binary, Root/binary, Suffix/binary
+                      ,"@", Realm/binary>>,
+            maybe_add_mobile_path(Route)
+    end.
+
+maybe_add_mobile_path(Route) ->    
+    Path = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"path">>, ?DEFAULT_MOBILE_PATH),
+    case wh_util:is_empty(Path) of
+        'false' -> <<Route/binary, ";fs_path=sip:", Path/binary>>;
+        'true' -> Route
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
