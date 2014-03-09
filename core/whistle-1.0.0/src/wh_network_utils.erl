@@ -38,7 +38,7 @@ is_ipv4(Address) when is_binary(Address) ->
     is_ipv4(wh_util:to_list(Address));
 is_ipv4(Address) when is_list(Address) ->
     case inet_parse:ipv4_address(Address) of
-        {'ok', _} -> 'true';
+        {'ok', _} -> lists:member($., Address);
         {'error', _} -> 'false'
     end.
 
@@ -47,7 +47,7 @@ is_ipv6(Address) when is_binary(Address) ->
     is_ipv6(wh_util:to_list(Address));
 is_ipv6(Address) when is_list(Address) ->
     case inet_parse:ipv6_address(Address) of
-        {'ok', _} -> 'true';
+        {'ok', _} -> lists:member($:, Address);
         {'error', _} -> 'false'
     end.
 
