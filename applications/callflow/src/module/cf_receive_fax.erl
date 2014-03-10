@@ -25,8 +25,10 @@ handle(Data, Call) ->
     lager:info("receive fax for owner: ~s", [wh_json:get_value(<<"owner_id">>, Data)]),
     wapi_fax:publish_req(
       props:filter_empty([{<<"Call">>, whapps_call:to_json(Call)}
-                          ,{<<"Action">>, <<"receive">>}
-                          ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Data)}
+                         ,{<<"Action">>, <<"receive">>}
+                         ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Data)}
+                         ,{<<"Enable-T38-Fax">>, wh_json:get_value(<<"enable_t38">>, Data)}
+                         ,{<<"Enable-T38-Fax-Request">>, wh_json:get_value(<<"enable_t38">>, Data)}
                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                          ])
      ),

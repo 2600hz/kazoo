@@ -92,7 +92,8 @@ maybe_find_resource(_NumberProps, JObj) ->
     case stepswitch_resources:reverse_lookup(JObj) of
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
-            maybe_add_resource_id(JObj, ResourceProps)
+            maybe_add_resource_id(JObj, ResourceProps),
+            maybe_add_t38_settings(JObj, ResourceProps)
     end.
 
 -spec maybe_add_resource_id(wh_json:object(), wh_proplist()) -> wh_json:object().
@@ -105,6 +106,10 @@ maybe_add_resource_id(JObj, ResourceProps) ->
                               ,JObj
                              )
     end.
+
+-spec maybe_add_t38_settings(wh_json:object(), wh_proplist()) -> wh_json:object().
+maybe_add_t38_settings(JObj, ResourceProps) ->
+    lager:debug(
 
 -spec maybe_format_destination(wh_proplist(), wh_json:object()) -> wh_json:object().
 maybe_format_destination(_NumberProps, JObj) ->
