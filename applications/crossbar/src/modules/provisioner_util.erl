@@ -16,6 +16,7 @@
 -export([get_old_mac_address/1]).
 -export([maybe_provision/1]).
 -export([maybe_delete_provision/1]).
+-export([maybe_update_account/1]).
 -export([maybe_delete_account/1]).
 -export([maybe_send_contact_list/1]).
 -export([get_provision_defaults/1]).
@@ -76,7 +77,7 @@ get_old_mac_address(Context) ->
 -spec maybe_provision(cb_context:context(), crossbar_status()) -> boolean().
 maybe_provision(Context) ->
     maybe_provision(Context, cb_context:resp_status(Context)).
-maybe_provision(Context, 'success') ->
+maybe_provision(#cb_context{doc=JObj, auth_token=AuthToken}=Context, 'success') ->
     MACAddress = get_mac_address(Context),
     case MACAddress =/= 'undefined'
         andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
@@ -93,6 +94,9 @@ maybe_provision(Context, 'success') ->
         <<"simple_provisioner">>  ->
             _ = spawn(fun() -> do_simple_provision(MACAddress, Context) end),
             'true';
+        <<"provisioner_v5">>  ->
+            _ = spawn(fun() -> provisioner_v5:do(JObj, AuthToken) end),
+            'true';
         _ -> 'false'
     end;
 maybe_provision(_Context, _Status) -> 'false'.
@@ -107,7 +111,7 @@ maybe_provision(_Context, _Status) -> 'false'.
 -spec maybe_delete_provision(cb_context:context(), crossbar_status()) -> boolean().
 maybe_delete_provision(Context) ->
     maybe_delete_provision(Context, cb_context:resp_status(Context)).
-maybe_delete_provision(Context, 'success') ->
+maybe_delete_provision(#cb_context{doc=JObj, auth_token=AuthToken}=Context, 'success') ->
     MACAddress = get_mac_address(Context),
     case MACAddress =/= 'undefined'
         andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
@@ -116,6 +120,9 @@ maybe_delete_provision(Context, 'success') ->
             _ = spawn(fun() ->
                               delete_full_provision(MACAddress, Context)
                       end),
+            'true';
+        <<"provisioner_v5">>  ->
+            _ = spawn(fun() -> provisioner_v5:undo(JObj, AuthToken) end),
             'true';
         _ -> 'false'
     end;
@@ -127,16 +134,37 @@ maybe_delete_provision(_Context, _Status) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_update_account(cb_context:context()) -> boolean().
+maybe_update_account(#cb_context{account_id=AccountId
+                                 ,auth_token=AuthToken
+                                 ,doc=Doc}=Context) ->
+    case cb_context:is_context(Context)
+        andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
+    of
+        'false' -> 'false';
+        <<"provisioner_v5">> ->
+            _ = spawn(fun() -> provisioner_v5:update_account(AccountId, Doc, AuthToken) end),
+            'true';
+        _ -> 'false'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_delete_account(cb_context:context()) -> boolean().
-maybe_delete_account(Context) ->
+maybe_delete_account(#cb_context{account_id=AccountId, auth_token=AuthToken}=Context) ->
     case cb_context:is_context(Context)
         andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
     of
         'false' -> 'false';
         <<"super_awesome_provisioner">> ->
-            _ = spawn(fun() ->
-                              delete_account(Context)
-                      end),
+            _ = spawn(fun() -> delete_account(Context) end),
+            'true';
+        <<"provisioner_v5">> ->
+            _ = spawn(fun() -> provisioner_v5:delete_account(AccountId, AuthToken) end),
             'true';
         _ -> 'false'
     end.
