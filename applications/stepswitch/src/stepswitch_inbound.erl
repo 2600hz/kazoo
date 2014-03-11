@@ -111,9 +111,7 @@ maybe_add_resource_id(JObj, ResourceProps) ->
 maybe_add_t38_settings(JObj, ResourceProps) ->
     T38Props = stepswitch_resources:get_inbound_t38_settings(
                  props:get_value('t38_setting', ResourceProps)),
-    NewJObj = wh_json:merge_jobjs(JObj, wh_json:from_list(props:filter_undefined(T38Props))),
-    lager:debug("bwann - new json obj ~p", [NewJObj]),
-    NewJObj.
+    wh_json:merge_jobjs(JObj, wh_json:from_list(props:filter_undefined(T38Props))).
     
 
 -spec maybe_format_destination(wh_proplist(), wh_json:object()) -> wh_json:object().
