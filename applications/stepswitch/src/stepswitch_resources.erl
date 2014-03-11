@@ -13,6 +13,8 @@
 
 -export([fetch_global_resources/0]).
 
+-export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
+
 -include("stepswitch.hrl").
 
 -record(gateway, {
@@ -244,6 +246,7 @@ search_resources(IP, Realm, [#resrc{id=Id
                        ,{'realm', Gateway#gateway.realm}
                        ,{'username', Gateway#gateway.username}
                        ,{'password', Gateway#gateway.password}
+                       ,{'t38_setting', Gateway#gateway.t38_setting}
                       ]),
             {'ok', Props}
     end.
@@ -680,7 +683,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
              ,format_from_uri=wh_json:is_true(<<"format_from_uri">>, JObj, FormatFrom)
              ,from_uri_realm=wh_json:get_ne_value(<<"from_uri_realm">>, JObj, FromRealm)
              ,is_emergency=wh_json:is_true(<<"emergency">>, JObj, IsEmergency)
-             ,t38_setting=wh_json:is_true(<<"fax_option">>, JObj, T38)
+             ,t38_setting=wh_json:get_first_defined([<<"t38_setting">>, <<"fax_option">>], JObj, T38)
              ,codecs=wh_json:get_value(<<"codecs">>, JObj, Codecs)
              ,bypass_media=wh_json:is_true(<<"bypass_media">>, JObj, BypassMedia)
              ,route=gateway_route(JObj)
@@ -831,7 +834,7 @@ get_inbound_t38_settings('true', 'false') ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"self">>}
+     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ];
 get_inbound_t38_settings('false', 'false') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
@@ -843,7 +846,7 @@ get_inbound_t38_settings('false','true') ->
     [{<<"Enable-T38-Fax">>, 'true'}
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
+     ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ].
 
 -spec get_inbound_t38_settings(boolean()) -> wh_proplist().

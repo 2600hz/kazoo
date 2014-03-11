@@ -92,7 +92,7 @@ maybe_find_resource(_NumberProps, JObj) ->
     case stepswitch_resources:reverse_lookup(JObj) of
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
-            maybe_add_resource_id(JObj, ResourceProps),
+            maybe_add_resource_id(JObj, ResourceProps),    
             maybe_add_t38_settings(JObj, ResourceProps)
     end.
 
@@ -109,7 +109,12 @@ maybe_add_resource_id(JObj, ResourceProps) ->
 
 -spec maybe_add_t38_settings(wh_json:object(), wh_proplist()) -> wh_json:object().
 maybe_add_t38_settings(JObj, ResourceProps) ->
-    lager:debug(
+    T38Props = stepswitch_resources:get_inbound_t38_settings(
+                 props:get_value('t38_setting', ResourceProps)),
+    NewJObj = wh_json:merge_jobjs(JObj, wh_json:from_list(props:filter_undefined(T38Props))),
+    lager:debug("bwann - new json obj ~p", [NewJObj]),
+    NewJObj.
+    
 
 -spec maybe_format_destination(wh_proplist(), wh_json:object()) -> wh_json:object().
 maybe_format_destination(_NumberProps, JObj) ->
