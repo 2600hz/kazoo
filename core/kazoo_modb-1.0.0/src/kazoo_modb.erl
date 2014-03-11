@@ -107,13 +107,50 @@ couch_save(AccountMODb, Doc, Retry) ->
     case couch_mgr:save_doc(EncodedMODb, Doc) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-            lager:warning("modb ~p not found creating...", [AccountMODb]),
+            lager:warning("modb ~p not found, creating...", [AccountMODb]),
             _ = maybe_create(AccountMODb),
             couch_save(AccountMODb, Doc, Retry-1);
         {'error', _E}=Error ->
             lager:error("account mod save error: ~p", [_E]),
             Error
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+get_modb(Account) ->
+    {Year, Month, _} = erlang:date(),
+    get_modb(Account, Year, Month).
+
+get_modb(Account, Props) when is_list(Props) ->
+    case props:get_value('month', Props) of
+        'undefined' -> get_modb(Account);
+        Month ->
+            case props:get_value('year', Props) of
+                'undefined' ->
+                    {Year, _, _} = erlang:date(),
+                    get_modb(Account, Year, Month);
+                Year ->
+                    get_modb(Account, Year, Month)
+             end
+     end;
+get_modb(Account, Timestamp) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    <<AccountId/binary
+      ,"-"
+      ,(wh_util:to_binary(Year))/binary
+      ,(wh_util:pad_month(Month))/binary>>.
+
+get_modb(Account, Year, Month) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    <<AccountId/binary
+      ,"-"
+      ,(wh_util:to_binary(Year))/binary
+      ,(wh_util:pad_month(Month))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -163,40 +200,3 @@ create_routines(AccountMODb) ->
         ,'ok'
         ,Routines
     ).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-get_modb(Account) ->
-    {Year, Month, _} = erlang:date(),
-    get_modb(Account, Year, Month).
-
-get_modb(Account, Props) when is_list(Props) ->
-    case props:get_value('month', Props) of
-        'undefined' -> get_modb(Account);
-        Month ->
-            case props:get_value('year', Props) of
-                'undefined' ->
-                    {Year, _, _} = erlang:date(),
-                    get_modb(Account, Year, Month);
-                Year ->
-                    get_modb(Account, Year, Month)
-             end
-     end;
-get_modb(Account, Timestamp) ->
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    <<AccountId/binary
-      ,"-"
-      ,(wh_util:to_binary(Year))/binary
-      ,(wh_util:pad_month(Month))/binary>>.
-
-get_modb(Account, Year, Month) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    <<AccountId/binary
-      ,"-"
-      ,(wh_util:to_binary(Year))/binary
-      ,(wh_util:pad_month(Month))/binary>>.

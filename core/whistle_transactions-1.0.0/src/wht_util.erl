@@ -114,7 +114,10 @@ get_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} ->
-            get_balance_from_account(Account, ViewOptions);
+            Balance = get_balance_from_account(Account, ViewOptions),
+            AccountMODb = kazoo_modb:get_modb(Account),
+            rollup(AccountMODb, Balance),
+            Balance;
         {'ok', [ViewRes|_]} ->
             wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {'error', _E} ->
