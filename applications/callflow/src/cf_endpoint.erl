@@ -1045,7 +1045,11 @@ get_force_fax(JObj) ->
 
 -spec get_ignore_completed_elsewhere(wh_json:object()) -> boolean().
 get_ignore_completed_elsewhere(JObj) ->
-    wh_json:is_true([<<"sip">>, <<"ignore_completed_elsewhere">>], JObj)
-        orelse wh_json:is_true([<<"caller_id_options">>, <<"ignore_completed_elsewhere">>], JObj)
-        orelse wh_json:is_true(<<"ignore_complete_elsewhere">>, JObj)
-        orelse whapps_config:get_is_true(?CF_CONFIG_CAT, <<"default_ignore_completed_elsewhere">>, 'false').
+    case wh_json:get_first_defined([[<<"caller_id_options">>, <<"ignore_completed_elsewhere">>]
+                                   ,[<<"sip">>, <<"ignore_completed_elsewhere">>]
+                                   ,<<"ignore_completed_elsewhere">>
+                                   ], JObj)
+    of
+        'undefined' -> whapps_config:get_is_true(?CF_CONFIG_CAT, <<"default_ignore_completed_elsewhere">>, 'true');
+        IgnoreCompletedElsewhere -> wh_util:is_true(IgnoreCompletedElsewhere)
+    end.
