@@ -37,6 +37,7 @@
 -export([ring/1]).
 -export([receive_fax/1
          ,receive_fax/2
+         ,receive_fax/3
          ,b_receive_fax/1
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
@@ -530,24 +531,25 @@ b_ring(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec receive_fax(whapps_call:call()) -> 'ok'.
--spec receive_fax(
-        whapps_call:call(), 
-        boolean() | {boolean() | api_binary(), boolean() | api_binary()}) -> 'ok'.
--spec b_receive_fax(whapps_call:call()) ->
-                           wait_for_fax_ret().
+-spec receive_fax(boolean(), whapps_call:call()) -> 'ok'.
+-spec receive_fax(boolean() | api_binary()
+                 ,boolean() | api_binary()
+                 ,whapps_call:call()) -> 'ok'.
+-spec b_receive_fax(whapps_call:call()) -> wait_for_fax_ret().
 receive_fax(Call) ->
     DefaultFlag = whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true'),
-    receive_fax(Call, DefaultFlag).
-receive_fax(Call, {'undefined', 'undefined'}) ->
-    DefaultFlag = whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true'),
-    receive_fax(Call, DefaultFlag);
-receive_fax(Call, {ResourceFlag, ReceiveFlag}) ->
-    T38Settings = props:filter_undefined(get_inbound_t38_settings(ResourceFlag, ReceiveFlag)),
-    Commands = [{<<"Application-Name">>, <<"receive_fax">>}] ++ T38Settings,
-    lager:debug("bwann - commands ~p", [Commands]),
-    send_command(Commands, Call);
-receive_fax(Call, DefaultFlag) ->
+    receive_fax(DefaultFlag, Call).
+
+receive_fax(DefaultFlag, Call) ->
     T38Settings = props:filter_undefined(get_inbound_t38_settings(DefaultFlag)),
+    Commands = [{<<"Application-Name">>, <<"receive_fax">>}] ++ T38Settings,
+    send_command(Commands, Call).
+
+receive_fax('undefined', 'undefined', Call) ->
+    DefaultFlag = whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true'),
+    receive_fax(DefaultFlag, Call);
+receive_fax(ResourceFlag, ReceiveFlag, Call) ->
+    T38Settings = props:filter_undefined(get_inbound_t38_settings(ResourceFlag, ReceiveFlag)),
     Commands = [{<<"Application-Name">>, <<"receive_fax">>}] ++ T38Settings,
     send_command(Commands, Call).
 

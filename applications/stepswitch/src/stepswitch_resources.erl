@@ -26,7 +26,7 @@
           ,codecs = [] :: ne_binaries()
           ,bypass_media = 'false' :: boolean()
           ,caller_id_type = <<"external">> :: ne_binary()
-          ,fax_option = <<"auto">> :: ne_binary()
+          ,fax_option :: ne_binary() | boolean()
           ,sip_headers :: 'undefined' | wh_json:object()
           ,sip_interface :: api_binary()
           ,progress_timeout = 8 :: 1..100
@@ -53,7 +53,7 @@
           ,global = 'true' :: boolean()
           ,format_from_uri = 'false' :: boolean()
           ,from_uri_realm :: api_binary()
-          ,fax_option = <<"auto">> :: ne_binary()
+          ,fax_option :: ne_binary() | boolean()
           ,codecs = [] :: ne_binaries()
           ,bypass_media = 'false' :: boolean()
           ,formatters :: api_objects()

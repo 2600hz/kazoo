@@ -29,7 +29,7 @@ handle_req(JObj, _Props) ->
 %% @private
 %% @doc
 %% handle a request inbound from offnet
-%% @endb
+%% @end
 %%--------------------------------------------------------------------
 -spec maybe_relay_request(wh_json:object()) -> 'ok'.
 maybe_relay_request(JObj) ->
@@ -113,9 +113,7 @@ maybe_add_resource_id(JObj, ResourceProps) ->
     end.
 
 maybe_add_t38_settings(JObj, ResourceProps) ->
-    lager:debug("bwann - Resource Props ~p", [ResourceProps]),
     case props:get_value('fax_option', ResourceProps) of
-        'false' -> JObj;
         'true' ->
             wh_json:set_value(?CCV(<<"Resource-Fax-Option">>)
                              ,props:get_value('fax_option', ResourceProps)

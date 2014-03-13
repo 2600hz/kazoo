@@ -249,7 +249,7 @@ start_receive_fax(#state{call=Call}=State) ->
     CallflowJObj = whapps_call:kvs_fetch('cf_flow', Call),
     ReceiveFlag = wh_json:get_value([<<"data">>, <<"media">>, <<"fax_option">>], CallflowJObj),    
     whapps_call_command:answer(Call),
-    whapps_call_command:receive_fax(Call, {ResourceFlag, ReceiveFlag}),
+    whapps_call_command:receive_fax(ResourceFlag, ReceiveFlag, Call),
     {'noreply', NewState}.
 
 

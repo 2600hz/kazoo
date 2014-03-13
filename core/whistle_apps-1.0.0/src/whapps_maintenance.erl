@@ -241,7 +241,6 @@ refresh(Account, Views) ->
 
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} ->
-            lager:debug("AccountDB ~p AccountID: ~p", [AccountDb, AccountId]),
             _ = refresh_from_accounts_db(AccountDb, AccountId),
             'remove';
         {'ok', JObj} ->
