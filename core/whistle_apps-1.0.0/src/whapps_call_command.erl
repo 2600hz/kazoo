@@ -2189,6 +2189,12 @@ get_inbound_t38_settings('true', 'false') ->
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
      ,{<<"Enable-T38-Gateway">>, <<"peer">>}
     ];
+get_inbound_t38_settings('true', 'undefined') ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
+    ];
 get_inbound_t38_settings('false', 'false') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
      ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
@@ -2200,7 +2206,14 @@ get_inbound_t38_settings('false','true') ->
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
      ,{<<"Enable-T38-Gateway">>, <<"self">>}
+    ];
+get_inbound_t38_settings('undefined','true') ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, <<"self">>}
     ].
+
 
 -spec get_inbound_t38_settings(boolean()) -> wh_proplist().
 get_inbound_t38_settings('true') ->

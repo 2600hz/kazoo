@@ -221,6 +221,7 @@
                                ,{<<"Enable-T38-Fax">>, <<"fax_enable_t38">>}
                                ,{<<"Enable-T38-Fax-Request">>, <<"fax_enable_t38_request">>}
                                ,{<<"Enable-T38-Passthrough">>, <<"t38_passthru">>}
+                               ,{<<"execute_on_answer">>, <<"execute_on_answer">>}
                                ,{<<"Fax-Identity-Number">>, <<"fax_ident">>}
                                ,{<<"Fax-Identity-Name">>, <<"fax_header">>}
                                ,{<<"Fax-Timezone">>, <<"fax_timezone">>}

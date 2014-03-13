@@ -47,4 +47,4 @@ header_to_fs_var(<<"Enable-T38-Passthrough">>, Value ) ->
         'false' -> {<<"t38_passthru">>, 'undefined'}
     end;
 header_to_fs_var(<<"Enable-T38-Gateway">>, Direction) ->    
-    {<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>}.
+    {<<"execute_on_answer">>, <<"t38_gateway ", Direction/binary>>}.
