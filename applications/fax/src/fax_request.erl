@@ -32,7 +32,7 @@
           call :: whapps_call:call()
          ,action = 'receive' :: 'receive' | 'transmit'
          ,owner_id :: api_binary()
-         ,fax_id :: api_binary()
+         ,fax_id :: api_binary()         
          ,fax_result :: api_object()
          ,fax_notify :: api_binaries()      
          }).
@@ -104,11 +104,10 @@ handle_fax_event(JObj, Props) ->
 init([Call, JObj]) ->
     whapps_call:put_callid(Call),
     gen_listener:cast(self(), 'start_action'),
-    {'ok', #state{
-       call = Call
-       ,action = get_action(JObj)
-       ,owner_id = wh_json:get_value(<<"Owner-ID">>, JObj)
-      }}.
+    {'ok', #state{call = Call
+                 ,action = get_action(JObj)
+                 ,owner_id = wh_json:get_value(<<"Owner-ID">>, JObj)
+             }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -245,9 +244,12 @@ get_action(JObj) ->
 -spec start_receive_fax(state()) -> {'noreply', state()}.
 start_receive_fax(#state{call=Call}=State) ->
     whapps_call:put_callid(Call),
-    NewState = maybe_update_fax_settings(State),
+    NewState = maybe_update_fax_settings(State),    
+    ResourceFlag = whapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call),
+    CallflowJObj = whapps_call:kvs_fetch('cf_flow', Call),
+    ReceiveFlag = wh_json:get_value([<<"data">>, <<"media">>, <<"fax_option">>], CallflowJObj),    
     whapps_call_command:answer(Call),
-    whapps_call_command:receive_fax(Call),
+    whapps_call_command:receive_fax(Call, {ResourceFlag, ReceiveFlag}),
     {'noreply', NewState}.
 
 
@@ -307,7 +309,7 @@ update_fax_settings(Call, JObj) ->
     whapps_call_command:set(wh_json:from_list(ChannelVars), 'undefined', Call).
 
 -spec build_fax_settings(whapps_call:call(), wh_json:object()) -> wh_proplist().
-build_fax_settings(Call, JObj) ->    
+build_fax_settings(Call, JObj) ->
     props:filter_undefined(
       [case wh_json:is_true(<<"override_fax_identity">>, JObj, 'false') of
            'false' ->

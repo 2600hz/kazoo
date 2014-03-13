@@ -13,8 +13,6 @@
 
 -export([fetch_global_resources/0]).
 
--export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
-
 -include("stepswitch.hrl").
 
 -record(gateway, {
@@ -28,7 +26,7 @@
           ,codecs = [] :: ne_binaries()
           ,bypass_media = 'false' :: boolean()
           ,caller_id_type = <<"external">> :: ne_binary()
-          ,t38_setting = 'false' :: boolean()
+          ,fax_option = <<"auto">> :: ne_binary()
           ,sip_headers :: 'undefined' | wh_json:object()
           ,sip_interface :: api_binary()
           ,progress_timeout = 8 :: 1..100
@@ -55,7 +53,7 @@
           ,global = 'true' :: boolean()
           ,format_from_uri = 'false' :: boolean()
           ,from_uri_realm :: api_binary()
-          ,t38_setting = 'false' :: boolean()
+          ,fax_option = <<"auto">> :: ne_binary()
           ,codecs = [] :: ne_binaries()
           ,bypass_media = 'false' :: boolean()
           ,formatters :: api_objects()
@@ -96,7 +94,7 @@ resource_to_props(#resrc{}=Resource) ->
        ,{<<"From-URI-Realm">>, Resource#resrc.from_uri_realm}
        ,{<<"Require-Flags">>, Resource#resrc.require_flags}
        ,{<<"Is-Emergency">>, Resource#resrc.is_emergency}
-       ,{<<"T38">>, Resource#resrc.t38_setting}
+       ,{<<"T38">>, Resource#resrc.fax_option}
        ,{<<"Bypass-Media">>, Resource#resrc.bypass_media}
        ,{<<"Grace-Period">>, Resource#resrc.grace_period}
        ,{<<"Flags">>, Resource#resrc.flags}
@@ -246,7 +244,7 @@ search_resources(IP, Realm, [#resrc{id=Id
                        ,{'realm', Gateway#gateway.realm}
                        ,{'username', Gateway#gateway.username}
                        ,{'password', Gateway#gateway.password}
-                       ,{'t38_setting', Gateway#gateway.t38_setting}
+                       ,{'fax_option', Gateway#gateway.fax_option}
                       ]),
             {'ok', Props}
     end.
@@ -418,7 +416,7 @@ gateway_to_endpoint(Number, Gateway, JObj) ->
          ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
          ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(Gateway#gateway.progress_timeout)}
          ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-         | get_outbound_t38_settings(Gateway#gateway.t38_setting
+         | whapps_call_command:get_outbound_t38_settings(Gateway#gateway.fax_option
                                      ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj)
                                     )
         ])).
@@ -561,7 +559,7 @@ resource_from_jobj(JObj) ->
                       ,require_flags=wh_json:is_true(<<"require_flags">>, JObj)
                       ,format_from_uri=wh_json:is_true(<<"format_from_uri">>, JObj)
                       ,from_uri_realm=wh_json:get_ne_value(<<"from_uri_realm">>, JObj)
-                      ,t38_setting=wh_json:is_true([<<"media">>, <<"fax_option">>], JObj)
+                      ,fax_option=wh_json:is_true([<<"media">>, <<"fax_option">>], JObj)
                       ,raw_rules=wh_json:get_value(<<"rules">>, JObj, [])
                       ,rules=resource_rules(JObj)
                       ,weight=resource_weight(JObj)
@@ -667,7 +665,7 @@ gateways_from_jobjs([JObj|JObjs], Resource, Gateways) ->
 gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
                                ,format_from_uri=FormatFrom
                                ,from_uri_realm=FromRealm
-                               ,t38_setting=T38
+                               ,fax_option=T38
                                ,codecs=Codecs
                                ,bypass_media=BypassMedia
                               }) ->
@@ -683,7 +681,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
              ,format_from_uri=wh_json:is_true(<<"format_from_uri">>, JObj, FormatFrom)
              ,from_uri_realm=wh_json:get_ne_value(<<"from_uri_realm">>, JObj, FromRealm)
              ,is_emergency=wh_json:is_true(<<"emergency">>, JObj, IsEmergency)
-             ,t38_setting=wh_json:get_first_defined([<<"t38_setting">>, <<"fax_option">>], JObj, T38)
+             ,fax_option=wh_json:is_true([<<"media">>, <<"fax_option">>], JObj, T38)
              ,codecs=wh_json:get_value(<<"codecs">>, JObj, Codecs)
              ,bypass_media=wh_json:is_true(<<"bypass_media">>, JObj, BypassMedia)
              ,route=gateway_route(JObj)
@@ -758,107 +756,3 @@ gateway_dialstring(#gateway{route='undefined'
 gateway_dialstring(#gateway{route=Route}, _) ->
     lager:debug("using pre-configured gateway route ~s", [Route]),
     Route.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get the t38 settings for an endpoint based on carrier and device
-%% @end
-%%--------------------------------------------------------------------
--spec get_outbound_t38_settings(boolean(), api_binary() | boolean()) -> wh_proplist().
-get_outbound_t38_settings(CarrierFlag, <<"auto">>) ->
-    get_outbound_t38_settings(CarrierFlag, 'true');
-get_outbound_t38_settings(CarrierFlag, 'undefined') ->
-    get_outbound_t38_settings(CarrierFlag);
-get_outbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
-    get_outbound_t38_settings(CarrierFlag, wh_util:is_true(CallerFlag));
-get_outbound_t38_settings('true', 'true') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_outbound_t38_settings('true', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"self">>}
-    ];
-get_outbound_t38_settings('false', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_outbound_t38_settings('false','true') ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
-    ].
-
--spec get_outbound_t38_settings(boolean()) -> wh_proplist().
-get_outbound_t38_settings('true') ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_outbound_t38_settings('false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get the t38 settings for an endpoint based on carrier and device
-%% @end
-%%--------------------------------------------------------------------
--spec get_inbound_t38_settings(boolean(), api_binary() | boolean()) -> wh_proplist().
-get_inbound_t38_settings(CarrierFlag, <<"auto">>) ->
-    get_inbound_t38_settings(CarrierFlag, 'true');
-get_inbound_t38_settings(CarrierFlag, 'undefined') ->
-    get_inbound_t38_settings(CarrierFlag);
-get_inbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
-    get_inbound_t38_settings(CarrierFlag, wh_util:is_true(CallerFlag));
-get_inbound_t38_settings('true', 'true') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_inbound_t38_settings('true', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
-    ];
-get_inbound_t38_settings('false', 'false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'true'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_inbound_t38_settings('false','true') ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, <<"self">>}
-    ].
-
--spec get_inbound_t38_settings(boolean()) -> wh_proplist().
-get_inbound_t38_settings('true') ->
-    [{<<"Enable-T38-Fax">>, 'true'}
-     ,{<<"Enable-T38-Fax-Request">>, 'true'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ];
-get_inbound_t38_settings('false') ->
-    [{<<"Enable-T38-Fax">>, 'undefined'}
-     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
-     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
-     ,{<<"Enable-T38-Gateway">>, 'undefined'}
-    ].

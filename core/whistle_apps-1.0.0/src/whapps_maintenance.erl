@@ -176,6 +176,12 @@ refresh(?WH_SCHEMA_DB) ->
     couch_mgr:db_create(?WH_SCHEMA_DB),
     couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, 'crossbar', "schemas"),
     'ok';
+refresh(?WH_CONFIG_DB) ->
+    couch_mgr:db_create(?WH_CONFIG_DB),
+    'ok';
+refresh(?WH_MEDIA_DB) ->
+    couch_mgr:db_create(?WH_MEDIA_DB),
+    'ok';
 refresh(?WH_RATES_DB) ->
     couch_mgr:db_create(?WH_RATES_DB),
     couch_mgr:revise_docs_from_folder(?WH_RATES_DB, 'hotornot', "views"),
@@ -235,6 +241,7 @@ refresh(Account, Views) ->
 
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', 'not_found'} ->
+            lager:debug("AccountDB ~p AccountID: ~p", [AccountDb, AccountId]),
             _ = refresh_from_accounts_db(AccountDb, AccountId),
             'remove';
         {'ok', JObj} ->

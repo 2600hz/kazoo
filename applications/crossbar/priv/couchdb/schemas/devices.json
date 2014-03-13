@@ -193,7 +193,7 @@
                   }
                }
             },
-            "fax":{
+             ["fax"]]:{
                "description":"The device fax media parameters",
                "type":"object",
                "properties":{

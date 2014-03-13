@@ -36,6 +36,7 @@
 -export([echo/1]).
 -export([ring/1]).
 -export([receive_fax/1
+         ,receive_fax/2
          ,b_receive_fax/1
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
@@ -143,6 +144,9 @@
          ,default_message_timeout/0
          ,default_application_timeout/0
         ]).
+
+-export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
+-export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), binary()} |
@@ -526,11 +530,26 @@ b_ring(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec receive_fax(whapps_call:call()) -> 'ok'.
+-spec receive_fax(
+        whapps_call:call(), 
+        boolean() | {boolean() | api_binary(), boolean() | api_binary()}) -> 'ok'.
 -spec b_receive_fax(whapps_call:call()) ->
                            wait_for_fax_ret().
 receive_fax(Call) ->
-    Command = [{<<"Application-Name">>, <<"receive_fax">>}],
-    send_command(Command, Call).
+    DefaultFlag = whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true'),
+    receive_fax(Call, DefaultFlag).
+receive_fax(Call, {'undefined', 'undefined'}) ->
+    DefaultFlag = whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true'),
+    receive_fax(Call, DefaultFlag);
+receive_fax(Call, {ResourceFlag, ReceiveFlag}) ->
+    T38Settings = props:filter_undefined(get_inbound_t38_settings(ResourceFlag, ReceiveFlag)),
+    Commands = [{<<"Application-Name">>, <<"receive_fax">>}] ++ T38Settings,
+    lager:debug("bwann - commands ~p", [Commands]),
+    send_command(Commands, Call);
+receive_fax(Call, DefaultFlag) ->
+    T38Settings = props:filter_undefined(get_inbound_t38_settings(DefaultFlag)),
+    Commands = [{<<"Application-Name">>, <<"receive_fax">>}] ++ T38Settings,
+    send_command(Commands, Call).
 
 b_receive_fax(Call) ->
     receive_fax(Call),
@@ -2084,8 +2103,113 @@ send_command(Command, Call) when is_list(Command) ->
             Prop = Command ++ [{<<"Call-ID">>, CallId}
                                | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
                               ],
-
             wapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Prop));
         'false' -> 'ok'
     end;
 send_command(JObj, Call) -> send_command(wh_json:to_proplist(JObj), Call).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get the t38 settings for an endpoint based on carrier and device
+%% @end
+%%--------------------------------------------------------------------
+-spec get_outbound_t38_settings(boolean(), api_binary() | boolean()) -> wh_proplist().
+get_outbound_t38_settings(CarrierFlag, <<"auto">>) ->
+    get_outbound_t38_settings(CarrierFlag, 'true');
+get_outbound_t38_settings(CarrierFlag, 'undefined') ->
+    get_outbound_t38_settings(CarrierFlag);
+get_outbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
+    get_outbound_t38_settings(CarrierFlag, wh_util:is_true(CallerFlag));
+get_outbound_t38_settings('true', 'true') ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'true'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
+get_outbound_t38_settings('true', 'false') ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, <<"self">>}
+    ];
+get_outbound_t38_settings('false', 'false') ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'true'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
+get_outbound_t38_settings('false','true') ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
+    ].
+
+-spec get_outbound_t38_settings(boolean()) -> wh_proplist().
+get_outbound_t38_settings('true') ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
+get_outbound_t38_settings('false') ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+
+-spec get_inbound_t38_settings(boolean(), api_binary() | boolean()) -> wh_proplist().
+get_inbound_t38_settings(CarrierFlag, <<"auto">>) ->
+    get_inbound_t38_settings(CarrierFlag, 'true');
+get_inbound_t38_settings(CarrierFlag, 'undefined') ->
+    get_inbound_t38_settings(CarrierFlag);
+get_inbound_t38_settings(CarrierFlag, CallerFlag) when not is_boolean(CallerFlag) ->
+    get_inbound_t38_settings(CarrierFlag, wh_util:is_true(CallerFlag));
+get_inbound_t38_settings('true', 'true') ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'true'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
+get_inbound_t38_settings('true', 'false') ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, <<"peer">>}
+    ];
+get_inbound_t38_settings('false', 'false') ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'true'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
+get_inbound_t38_settings('false','true') ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, <<"self">>}
+    ].
+
+-spec get_inbound_t38_settings(boolean()) -> wh_proplist().
+get_inbound_t38_settings('true') ->
+    [{<<"Enable-T38-Fax">>, 'true'}
+     ,{<<"Enable-T38-Fax-Request">>, 'true'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
+get_inbound_t38_settings('false') ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ].

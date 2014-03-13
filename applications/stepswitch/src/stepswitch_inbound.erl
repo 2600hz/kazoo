@@ -29,7 +29,7 @@ handle_req(JObj, _Props) ->
 %% @private
 %% @doc
 %% handle a request inbound from offnet
-%% @end
+%% @endb
 %%--------------------------------------------------------------------
 -spec maybe_relay_request(wh_json:object()) -> 'ok'.
 maybe_relay_request(JObj) ->
@@ -92,8 +92,13 @@ maybe_find_resource(_NumberProps, JObj) ->
     case stepswitch_resources:reverse_lookup(JObj) of
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
-            maybe_add_resource_id(JObj, ResourceProps),    
-            maybe_add_t38_settings(JObj, ResourceProps)
+            Routines = [fun maybe_add_resource_id/2
+                       ,fun maybe_add_t38_settings/2                        
+                       ],
+            lists:foldl(fun(F, J) ->  F(J, ResourceProps) end
+                       ,JObj
+                       ,Routines
+                       )           
     end.
 
 -spec maybe_add_resource_id(wh_json:object(), wh_proplist()) -> wh_json:object().
@@ -107,12 +112,22 @@ maybe_add_resource_id(JObj, ResourceProps) ->
                              )
     end.
 
--spec maybe_add_t38_settings(wh_json:object(), wh_proplist()) -> wh_json:object().
 maybe_add_t38_settings(JObj, ResourceProps) ->
-    T38Props = stepswitch_resources:get_inbound_t38_settings(
-                 props:get_value('t38_setting', ResourceProps)),
-    wh_json:merge_jobjs(JObj, wh_json:from_list(props:filter_undefined(T38Props))).
-    
+    lager:debug("bwann - Resource Props ~p", [ResourceProps]),
+    case props:get_value('fax_option', ResourceProps) of
+        'false' -> JObj;
+        'true' ->
+            wh_json:set_value(?CCV(<<"Resource-Fax-Option">>)
+                             ,props:get_value('fax_option', ResourceProps)
+                             ,JObj
+                             );
+        <<"auto">> ->
+            wh_json:set_value(?CCV(<<"Resource-Fax-Option">>)
+                             ,props:get_value('fax_option', ResourceProps)
+                             ,JObj
+                             );
+        _ -> JObj                
+    end.
 
 -spec maybe_format_destination(wh_proplist(), wh_json:object()) -> wh_json:object().
 maybe_format_destination(_NumberProps, JObj) ->

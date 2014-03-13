@@ -302,15 +302,8 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
     {<<"ring_ready">>, <<>>};
 
 %% receive a fax from the caller
-get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
-    Vars = [{<<"fax_enable_t38_request">>, <<"true">>}
-            ,{<<"fax_enable_t38">>, <<"true">>}
-           ],
-    _ = ecallmgr_util:set(Node, UUID, Vars),
-
-    [{<<"playback">>, <<"silence_stream://2000">>}
-     ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
-    ];
+get_fs_app(Node, UUID, JObj, <<"receive_fax">>) ->
+    ecallmgr_fs_fax:receive_fax(Node, UUID, JObj);
 
 get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
     case wh_json:get_value(<<"Hold-Media">>, JObj) of
