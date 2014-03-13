@@ -115,7 +115,7 @@
                        ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
                        ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
                        ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
-                       ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that where provided with the route request
+                       ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that were provided with the route request
                        ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       }).
 
