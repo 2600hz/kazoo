@@ -195,7 +195,7 @@ set_basic(JObj) ->
                     wh_json:set_value(<<"display_name">>, Name, J)
                 end
                 ,fun(J) ->
-                    Enabled = wh_json:get_value(<<"enabled">>, JObj),
+                    Enabled = wh_json:get_value(<<"enabled">>, JObj, 1),
                     wh_json:set_value(<<"enable">>, Enabled, J)
                 end
                ],
@@ -228,11 +228,11 @@ set_sip(JObj) ->
 -spec set_advanced(wh_json:object()) -> wh_json:object().
 set_advanced(JObj) ->
     Routines = [fun(J) ->
-                    Expire = wh_json:get_value([<<"sip">>, <<"expire_seconds">>], JObj),
+                    Expire = wh_json:get_value([<<"sip">>, <<"expire_seconds">>], JObj, 360),
                     wh_json:set_value(<<"expire">>, Expire, J)
                 end
                 ,fun(J) ->
-                    Srtp = wh_json:get_value([<<"media">>, <<"secure_rtp">>], JObj),
+                    Srtp = wh_json:get_value([<<"media">>, <<"secure_rtp">>], JObj, 0),
                     wh_json:set_value(<<"srtp">>, Srtp, J)
                 end
                ],
