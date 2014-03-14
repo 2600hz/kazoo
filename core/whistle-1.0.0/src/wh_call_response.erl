@@ -1,3 +1,11 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2013-2014, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%-------------------------------------------------------------------
 -module(wh_call_response).
 
 -export([send/3, send/4, send/5]).
@@ -5,8 +13,8 @@
 -export([get_response/1]).
 -export([default_response/1]).
 
--include("../include/wh_types.hrl").
--include("../include/wh_log.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(CALL_RESPONSE_CONF, <<"call_response">>).
 
@@ -28,14 +36,15 @@
                         {'error', 'no_response'}.
 
 send(CallId, CtrlQ, Code) ->
-    send(CallId, CtrlQ, Code, undefined).
+    send(CallId, CtrlQ, Code, <<>>).
 
 send(CallId, CtrlQ, Code, 'undefined') ->
     send(CallId, CtrlQ, Code, <<>>);
 send(CallId, CtrlQ, Code, Cause) ->
     send(CallId, CtrlQ, Code, Cause, 'undefined').
 
-send(_, _, 'undefined', 'undefined', 'undefined') -> {'error', 'no_response'};
+send(_, _, 'undefined', 'undefined', 'undefined') ->
+    {'error', 'no_response'};
 send(CallId, CtrlQ, 'undefined', 'undefined', Media) ->
     NoopId = couch_mgr:get_uuid(),
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
@@ -128,7 +137,7 @@ send_default(CallId, CtrlQ, Cause) ->
 %% returns the configured response proplist
 %% @end
 %%--------------------------------------------------------------------
--spec get_response(ne_binary()) -> 'undefined' | wh_proplist().
+-spec get_response(ne_binary()) -> wh_proplist() | 'undefined'.
 get_response(Cause) ->
     case default_response(Cause) of
         'undefined' -> whapps_config:get(?CALL_RESPONSE_CONF, Cause);
