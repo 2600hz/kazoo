@@ -30,8 +30,8 @@ get_realm(From) when is_binary(From) ->
 get_realm(JObj) ->
     AuthRealm = wh_json:get_value(<<"Auth-Realm">>, JObj),
     case wh_util:is_empty(AuthRealm)
-        orelse wh_network_utils:is_ipv4(AuthRealm) 
-        orelse wh_network_utils:is_ipv6(AuthRealm) 
+        orelse wh_network_utils:is_ipv4(AuthRealm)
+        orelse wh_network_utils:is_ipv6(AuthRealm)
     of
         'false' -> AuthRealm;
         'true' ->
@@ -41,7 +41,7 @@ get_realm(JObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_inbound_destination(wh_json:object()) -> ne_binary().
@@ -59,7 +59,7 @@ assume_e164(Number) -> <<$+, Number/binary>>.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_outbound_destination(wh_json:object()) -> ne_binary().
@@ -73,7 +73,7 @@ get_outbound_destination(JObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_number(ne_binary()) ->
@@ -82,7 +82,7 @@ get_outbound_destination(JObj) ->
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
-        {'ok', {AccountId, Props}} -> 
+        {'ok', {AccountId, Props}} ->
             lager:debug("found number properties in stepswitch cache"),
             {'ok', AccountId, Props};
         {'error', 'not_found'} -> fetch_number(Num)
@@ -115,7 +115,7 @@ cache_key_number(Number) ->
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec correct_shortdial(ne_binary(), wh_json:object()) -> ne_binary() | 'undefined'.
+-spec correct_shortdial(ne_binary(), wh_json:object()) -> api_binary().
 correct_shortdial(Number, JObj) ->
     CIDNum = wh_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
                                         ,<<"Emergency-Caller-ID-Number">>
