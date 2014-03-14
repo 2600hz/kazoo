@@ -32,9 +32,9 @@
           call :: whapps_call:call()
          ,action = 'receive' :: 'receive' | 'transmit'
          ,owner_id :: api_binary()
-         ,fax_id :: api_binary()         
+         ,fax_id :: api_binary()
          ,fax_result :: api_object()
-         ,fax_notify :: api_binaries()      
+         ,fax_notify :: api_binaries()
          }).
 -type state() :: #state{}.
 
