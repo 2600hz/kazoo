@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%-------------------------------------------------------------------
 %%% @copyright (C) 2013, 2600hz
 %%% @doc
 %%%
@@ -116,7 +116,6 @@ handle_cast({'connect_socket', Pid}, #state{pids=Pids}=State) ->
     blackhole_sockets:send_event( sets:to_list(NewPidSet), <<"calls">>, []),
     {'noreply', State#state{pids = NewPidSet}};
 handle_cast(_Message, State) ->
-    io:format("got: ~p~n", [_Message]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -144,7 +143,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    io:format("~p~n", [_JObj]),
+    lager:debug("got event: ~p", [_JObj]),
     {'reply', []}.
 
 %%--------------------------------------------------------------------
@@ -175,6 +174,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec handle_call_event(ne_binary(), ne_binary(), json:object(), set()) -> 'ok'.
 handle_call_event(_AccountId, _Event, JObj, Pids) ->
     lager:debug("Event Obj: ~p", [JObj]),
     blackhole_sockets:send_event(sets:to_list(Pids)

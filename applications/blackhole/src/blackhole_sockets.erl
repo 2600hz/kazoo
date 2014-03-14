@@ -12,6 +12,7 @@
 
 -export([send_event/3]).
 
+-spec send_event(pids(), api_binary(), json:object()) -> 'ok'.
 send_event(Pids, Event, Data) ->
     lager:debug("going to send event data"),
     lists:foldl(

@@ -43,12 +43,12 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec start_listener(ne_binary()) -> startlink_ret().
-start_listener(AcctId) ->
-    case already_started(AcctId) of
+start_listener(AccountId) ->
+    case already_started(AccountId) of
         {'true', Pid} ->
             {'ok', Pid};
         {'false', 'not_found'} ->
-        	ChildSpec = {AcctId, {'blackhole_call_events_listener', 'start_link', [AcctId]}
+        	ChildSpec = {AccountId, {'blackhole_call_events_listener', 'start_link', [AccountId]}
                          ,'temporary', 5000, 'worker', [?MODULE]
                         },
             supervisor:start_child(?MODULE, ChildSpec)
@@ -60,18 +60,18 @@ start_listener(AcctId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_listener(ne_binary()) -> startlink_ret() | 'not_found'.
-get_listener(CallId) ->
+get_listener(AccountId) ->
     Children = supervisor:which_children(?MODULE),
     lists:foldl(fun({Id, _, _, _}=Child, Acc) ->
-                    case Id =:= CallId of
-                        'true' ->
-                            Child;
-                        'false' ->
-                            Acc
-                    end
+                        case Id =:= AccountId of
+                            'true' ->
+                                Child;
+                            'false' ->
+                                Acc
+                        end
                 end
-                ,'not_found'
-                ,Children).
+               ,'not_found'
+               ,Children).
 
 
 %%--------------------------------------------------------------------
@@ -80,10 +80,10 @@ get_listener(CallId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec already_started(ne_binary()) -> {boolean(), 'not_found' | pid()}.
-already_started(AcctId) ->
+already_started(AccountId) ->
     Children = supervisor:which_children(?MODULE),
     lists:foldl(fun({Id, Pid, _, _}, Acc) ->
-                        case Id =:= AcctId of
+                        case Id =:= AccountId of
                             'true' ->
                                 {'true', Pid};
                             'false' ->
