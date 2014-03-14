@@ -13,7 +13,8 @@ DIRS =  .
 
 .PHONY: all compile clean
 
-all: compile
+all: include/tz_index.hrl
+	make compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 
@@ -22,6 +23,9 @@ compile: ebin/$(PROJECT).app
 		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
+
+include/tz_index.hrl: src/ibuild.erl include/tz_database.hrl
+	cd include && ln -s ../src/ibuild.erl && escript ibuild.erl; EV=$$?; rm ibuild.erl; exit $$EV
 
 ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
