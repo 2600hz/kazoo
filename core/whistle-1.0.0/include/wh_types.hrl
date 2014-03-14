@@ -173,6 +173,8 @@
                       ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
                       ,<<"CHANNEL_REPLACED">>, <<"CALL_SECURE">>, <<"CHANNEL_FAX_STATUS">>
                      ]).
+-type xml_thing() :: xml_el() | xml_text().
+-type xml_things() :: xml_els() | xml_texts().
 
 -define(WHISTLE_TYPES_INCLUDED, 'true').
 -endif.

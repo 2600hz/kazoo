@@ -157,7 +157,8 @@ say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, N) ->
                        {'error', _, whapps_call:call()}.
 play_loop(Call, PlayMe, N) -> play_loop(Call, PlayMe, 'undefined', N).
 
-play_loop(Call, <<>>, _, _) -> {'error', Call};
+play_loop(Call, <<>>, _Terminators, _N) ->
+    {'error', 'no_media', Call};
 play_loop(Call, _, _, 0) -> {'ok', Call};
 play_loop(Call, PlayMe, Terminators, N) ->
     NoopId = whapps_call_command:play(PlayMe, Terminators, Call),
