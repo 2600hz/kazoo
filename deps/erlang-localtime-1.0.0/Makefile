@@ -45,6 +45,7 @@ clean:
 	rm -f ebin/*
 	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
+	rm -f include/tz_index.hrl
 
 test: clean compile-test eunit
 
