@@ -93,7 +93,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
-handle(Data,Call) ->
+handle(Data, Call) ->
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
         <<"menu">> ->
@@ -202,6 +202,13 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Now, Rules) ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
             get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
         {'ok', JObj} ->
+            Days = lists:foldr(
+                        fun(Day, Acc) ->
+                            [wh_util:to_integer(Day)|Acc]
+                        end
+                        ,[]
+                        ,wh_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
+                   ),
             Rule = #rule{id = Route
                          ,enabled =
                              wh_json:is_true(<<"enabled">>, JObj, 'undefined')
@@ -211,14 +218,13 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Now, Rules) ->
                              wh_json:get_value(<<"cycle">>, JObj, ?RULE_DEFAULT_CYCLE)
                          ,interval =
                              wh_json:get_integer_value(<<"interval">>, JObj, ?RULE_DEFAULT_INTERVAL)
-                         ,days =
-                             wh_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
+                         ,days = Days
                          ,wdays =
                              wh_json:get_value(<<"wdays">>, JObj, ?RULE_DEFAULT_WDAYS)
                          ,ordinal =
                              wh_json:get_value(<<"ordinal">>, JObj, ?RULE_DEFAULT_ORDINAL)
                          ,month =
-                             wh_json:get_value(<<"month">>, JObj, ?RULE_DEFAULT_MONTH)
+                             wh_json:get_integer_value(<<"month">>, JObj, ?RULE_DEFAULT_MONTH)
                          ,start_date =
                              get_date(wh_json:get_integer_value(<<"start_date">>, JObj, LSec), TZ)
                          ,wtime_start =
