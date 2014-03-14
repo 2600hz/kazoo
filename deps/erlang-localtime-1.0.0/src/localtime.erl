@@ -49,6 +49,10 @@ utc_to_local(UtcDateTime, Timezone) ->
 %  UtcDateTime = DateTime()
 %  DstUtcDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
+local_to_utc(LocalDateTime, "UTC") ->
+    LocalDateTime;
+local_to_utc(LocalDateTime, Timezone) when is_binary(Timezone) ->
+    local_to_utc(LocalDateTime, binary_to_list(Timezone));
 local_to_utc(LocalDateTime, Timezone) ->
    case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
       false ->
@@ -74,6 +78,10 @@ local_to_utc(LocalDateTime, Timezone) ->
 %  TimezoneFrom = String()
 %  TimezoneTo = String()
 %  ErrDescr = atom(), unknown_tz
+local_to_local(LocalDateTime, TzFrom, TzTo) when is_binary(TzFrom) ->
+    local_to_local(LocalDateTime, binary_to_list(TzFrom), TzTo);
+local_to_local(LocalDateTime, TzFrom, TzTo) when is_binary(TzTo) ->
+    local_to_local(LocalDateTime, TzFrom, binary_to_list(TzTo));
 local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) ->
    case local_to_utc(LocalDateTime, TimezoneFrom) of
       UtcDateTime = {{_,_,_},{_,_,_}} ->
@@ -95,6 +103,10 @@ local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) ->
 %  TimezoneFrom = String()
 %  TimezoneTo = String()
 %  ErrDescr = atom(), unknown_tz
+local_to_local_dst(LocalDateTime, TzFrom, TzTo) when is_binary(TzFrom) ->
+    local_to_local_dst(LocalDateTime, binary_to_list(TzFrom), TzTo);
+local_to_local_dst(LocalDateTime, TzFrom, TzTo) when is_binary(TzTo) ->
+    local_to_local_dst(LocalDateTime, TzFrom, binary_to_list(TzTo));
 local_to_local_dst(LocalDateTime, TimezoneFrom, TimezoneTo) ->
    case local_to_utc(LocalDateTime, TimezoneFrom) of
       UtcDateTime = {{_,_,_},{_,_,_}} ->
@@ -122,6 +134,8 @@ local_to_local_dst(LocalDateTime, TimezoneFrom, TimezoneTo) ->
 %  ErrDesc = atom(), unknown_tz
 tz_name(_UtcDateTime, "UTC") ->
    {"UTC", "UTC"};
+tz_name(LocalDateTime, Timezone) when is_binary(Timezone) ->
+    tz_name(LocalDateTime, binary_to_list(Timezone));
 tz_name(LocalDateTime, Timezone) ->
    case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
       false ->
@@ -152,6 +166,8 @@ tz_name(LocalDateTime, Timezone) ->
 %  ErrDesc = atom(), unknown_tz
 tz_shift(_UtcDateTime, "UTC") ->
    0;
+tz_shift(LocalDateTime, Timezone) when is_binary(Timezone) ->
+    tz_shift(LocalDateTime, binary_to_list(Timezone));
 tz_shift(LocalDateTime, Timezone) ->
    case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
       false ->
@@ -172,6 +188,10 @@ tz_shift(LocalDateTime, Timezone) ->
    end.
 
 % the same as tz_shift/2, but calculates time difference between two local timezones
+tz_shift(LocalDateTime, TimezoneFrom, TimezoneTo) when is_binary(TimezoneFrom) ->
+    tz_shift(LocalDateTime, binary_to_list(TimezoneFrom), TimezoneTo);
+tz_shift(LocalDateTime, TimezoneFrom, TimezoneTo) when is_binary(TimezoneTo) ->
+    tz_shift(LocalDateTime, TimezoneFrom, binary_to_list(TimezoneTo));
 tz_shift(LocalDateTime, TimezoneFrom, TimezoneTo) ->
    F = fun() ->
       FromShift = fmt_shift(tz_shift(LocalDateTime, TimezoneFrom)),
@@ -222,6 +242,8 @@ tr_char([H|T], From, To, Acc) ->
    end.
 
 -define(SPACE_CHAR, 32).
+get_timezone(TimeZone) when is_binary(TimeZone) ->
+    get_timezone(binary_to_list(TimeZone));
 get_timezone(TimeZone) ->
    TimeZoneNoSpaces = tr_char(TimeZone, ?SPACE_CHAR, $_),
    case dict:find(TimeZoneNoSpaces, ?tz_index)  of
