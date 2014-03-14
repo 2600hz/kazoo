@@ -15,6 +15,7 @@
          ,stop_app/1
          ,restart_app/1
          ,running_apps/0, running_apps/1
+         ,list_apps/0
         ]).
 
 -include("whistle_apps.hrl").
@@ -74,7 +75,8 @@ restart_app(App) when is_atom(App) ->
 -define(HIDDEN_APPS, ['kernel', 'stdlib', 'ibrowse', 'cowboy', 'ranch', 'crypto'
                       ,'inets', 'ssl', 'public_key', 'whistle_apps', 'whistle_couch'
                       ,'whistle_amqp', 'whistle_stats', 'sasl', 'lager', 'gproc'
-                      ,'amqp_client', 'syslog', 'asn1', 'folsom', 'socketio'
+                      ,'amqp_client', 'syslog', 'asn1', 'folsom', 'kazoo_token_buckets'
+                      ,'socketio'			
                      ]).
 -spec running_apps() -> atoms() | string().
 -spec running_apps(boolean()) -> atoms() | string().
@@ -117,6 +119,19 @@ initialize_whapps() ->
     %_ = whistle_apps_sup:initialize_whapps([]),
     [?MODULE:start_app(A) || A <- StartWhApps],
     lager:notice("auto-started whapps ~p", [StartWhApps]).
+
+-spec list_apps() -> [atom(),...] | [].
+list_apps() ->
+    case [App
+          || {App, _, _} <- application:which_applications(),
+             not lists:member(App, ?HIDDEN_APPS)
+         ]
+    of
+        [] ->
+            WhApps = whapps_config:get(?MODULE, <<"whapps">>, ?DEFAULT_WHAPPS),
+            [wh_util:to_atom(WhApp, 'true') || WhApp <- WhApps];
+        Resp -> Resp
+    end.
 
 %%%===================================================================
 %%% Internal functions
