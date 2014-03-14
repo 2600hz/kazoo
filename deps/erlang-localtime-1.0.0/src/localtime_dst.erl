@@ -1,18 +1,5 @@
-%% Copyright (C) 07/01/2010 Dmitry S. Melnikov (dmitryme@gmail.com)
-%%
-%% This program is free software; you can redistribute it and/or
-%% modify it under the terms of the GNU General Public License
-%% as published by the Free Software Foundation; either version 2
-%% of the License, or (at your option) any later version.
-%%
-%% This program is distributed in the hope that it will be useful,
-%% but WITHOUT ANY WARRANTY; without even the implied warranty of
-%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-%% GNU General Public License for more details.
-%%
-%% You should have received a copy of the GNU General Public License
-%% along with this program; if not, write to the Free Software
-%% Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+%% @author  Dmitry S. Melnikov (dmitryme@gmail.com)
+%% @copyright 2010 Dmitry S. Melnikov
 
 -module(localtime_dst).
 
@@ -29,7 +16,6 @@
 % check(DateTime, TimeZone) -> is_in_dst | is_not_in_dst | ambiguous_time | time_not_exists
 %  DateTime = DateTime()
 %  TimeZone = tuple()
-check(_, {_,_,undef,_,_,_,_,_,_}) -> is_not_in_dst;
 check({Date = {Year, _, _},Time}, {_, _, _, _Shift, DstShift, DstStartRule, DstStartTime, DstEndRule, DstEndTime}) ->
    DstStartDay = get_dst_day_of_year(DstStartRule, Year),
    DstEndDay = get_dst_day_of_year(DstEndRule, Year),
@@ -94,7 +80,7 @@ get_dst_day_of_year({WeekDay,DayOfWeek,Month}, Year) when (WeekDay > 0) and (Wee
          end,
          AdjustedDstDays + (WeekDay - 1) * 7
       end;
-get_dst_day_of_year(_A, _B) ->
+get_dst_day_of_year(_, _) ->
    throw({error, wrong_week_day}).
 
 get_last_dst(IntDayOfWeek, IntMonth, Year) ->
@@ -159,5 +145,46 @@ check_test() ->
    ?assertEqual(ambiguous_time, check({{2010, 10, 31}, {2, 10, 0}}, Tz)),
    ?assertEqual(ambiguous_time, check({{2010, 10, 31}, {2, 30, 0}}, Tz)),
    ?assertEqual(ambiguous_time, check({{2010, 10, 31}, {2, 59, 0}}, Tz)),
-   ?assertEqual(is_not_in_dst, check({{2010, 10, 31}, {3, 00, 0}}, Tz)).
+   ?assertEqual(is_not_in_dst, check({{2010, 10, 31}, {3, 00, 0}}, Tz)),
+
+   %% DST starts at hour 24; DST ends at hour 0:
+   TzGaza = {"Asia/Gaza",{"EET","EET"},{"EEST","EEST"},120,60,{last,thu,mar},{24,0},{4,fri,sep},{0,0}},
+   ?assertEqual(is_not_in_dst,   check({{2014, 3, 27}, {23, 59, 59}}, TzGaza)),
+   %% Currently ST->DT transitions in the last hour of the day are not handled correctly.
+   %?assertEqual(time_not_exists, check({{2014, 3, 28}, { 0, 00, 00}}, TzGaza)),
+   %?assertEqual(time_not_exists, check({{2014, 3, 28}, { 0, 59, 59}}, TzGaza)),
+   ?assertEqual(is_in_dst,       check({{2014, 3, 28}, { 0, 59, 59}}, TzGaza)), % WRONG
+   ?assertEqual(is_in_dst,       check({{2014, 3, 28}, { 1, 00, 00}}, TzGaza)),
+   ?assertEqual(is_in_dst,       check({{2014, 9, 25}, {22, 59, 59}}, TzGaza)),
+   %% Currently DT->ST transitions in the first hour of the day are not handled correctly.
+   %?assertEqual(ambiguous_time,  check({{2014, 9, 25}, {23, 00, 00}}, TzGaza)),
+   %?assertEqual(ambiguous_time,  check({{2014, 9, 25}, {23, 59, 59}}, TzGaza)),
+   ?assertEqual(is_in_dst,       check({{2014, 9, 25}, {23, 59, 59}}, TzGaza)), % WRONG
+   ?assertEqual(is_not_in_dst,   check({{2014, 9, 26}, { 0, 00, 00}}, TzGaza)),
+
+   %% DST starts at hour 0; DST ends at hour 0.
+   TzDamascus = {"Asia/Damascus",{"EET","EET"},{"EEST","EEST"},120,60,{last,fri,mar},{0,0},{last,fri,oct},{0,0}},
+   ?assertEqual(is_not_in_dst,   check({{2014,  3, 27}, {23, 59, 59}}, TzDamascus)),
+   ?assertEqual(time_not_exists, check({{2014,  3, 28}, { 0, 00, 00}}, TzDamascus)),
+   ?assertEqual(time_not_exists, check({{2014,  3, 28}, { 0, 59, 59}}, TzDamascus)),
+   ?assertEqual(is_in_dst,       check({{2014,  3, 28}, { 1, 00, 00}}, TzDamascus)),
+   ?assertEqual(is_in_dst,       check({{2014, 10, 30}, {22, 59, 59}}, TzDamascus)),
+   %% Currently DT->ST transitions in the first hour of the day are not handled correctly.
+   %?assertEqual(ambiguous_time,  check({{2014, 10, 30}, {23, 00, 00}}, TzDamascus)),
+   %?assertEqual(ambiguous_time,  check({{2014, 10, 30}, {23, 59, 59}}, TzDamascus)),
+   ?assertEqual(is_not_in_dst,   check({{2014, 10, 31}, { 0, 00, 00}}, TzDamascus)),
+
+   %% DST ends before starts (southern hemisphere):
+   TzMontevideo = {"America/Montevideo",{"UYT","UYT"},{"UYST","UYST"},-180,60,{1,sun,oct},{2,0},{2,sun,mar},{2,0}},
+   ?assertEqual(is_in_dst,       check({{2014,  3, 09}, { 0, 59, 59}}, TzMontevideo)),
+   ?assertEqual(ambiguous_time,  check({{2014,  3, 09}, { 1, 00, 00}}, TzMontevideo)),
+   ?assertEqual(ambiguous_time,  check({{2014,  3, 09}, { 1, 59, 59}}, TzMontevideo)),
+   ?assertEqual(is_not_in_dst,   check({{2014,  3, 09}, { 2, 00, 00}}, TzMontevideo)),
+   ?assertEqual(is_not_in_dst,   check({{2014, 10, 05}, { 1, 59, 59}}, TzMontevideo)),
+   ?assertEqual(time_not_exists, check({{2014, 10, 05}, { 2, 00, 00}}, TzMontevideo)),
+   ?assertEqual(time_not_exists, check({{2014, 10, 05}, { 2, 59, 59}}, TzMontevideo)),
+   ?assertEqual(is_in_dst,       check({{2014, 10, 05}, { 3, 00, 00}}, TzMontevideo)),
+
+   true.
+
 -endif.
