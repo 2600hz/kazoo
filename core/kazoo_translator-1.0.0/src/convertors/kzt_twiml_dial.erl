@@ -23,7 +23,29 @@ exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
             exec(Call, kz_xml:elements(DialMeTxts), Attrs);
         DialMe -> dial_me(Call, Attrs, DialMe)
     end;
+exec(Call
+     ,[#xmlElement{name='Number'
+                   ,content=Number
+                   ,attributes=Attrs
+                  }
+      ]
+     ,Attrs) ->
+    lager:debug("single <Number>"),
+    case wnm_util:to_e164(cleanup_dial_me(kz_xml:texts_to_binary(Number))) of
+        <<>> ->
+            lager:debug("no dialable Number in tag, continuing"),
+            {'ok', Call};
+        DialMe ->
+            Props = kz_xml:attributes_to_proplist(Attrs),
 
+            SendDigits = props:get_value('sendDigis', Props),
+            _Url = props:get_value('url', Props),
+            _Method = props:get_value('method', Props),
+
+            lager:debug("maybe sending number ~s: send ~s", [DialMe, SendDigits]),
+
+            dial_me(Call, Attrs, DialMe)
+    end;
 exec(Call, [#xmlElement{name='Conference'
                         ,content=ConfIdTxts
                         ,attributes=ConfAttrs
