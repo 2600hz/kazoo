@@ -132,11 +132,43 @@
                      "PCMA"
                   ]
                },
-                "t38_setting":{
-                    "name":"T38 Setting",
-                    "description":"Whether this gateway is capable of supporting the t38 protocol",
-                    "type":"boolean",
-                    "default":true
+                "media":{
+                    "description":"The media parameters for the device",
+                    "type":"object",
+                    "properties":{
+                        "fax_option":{
+                            "description":"The fax mode to option",
+                            "type":"string",
+                            "enum":[
+                                "true",
+                                "false",
+                                "auto"
+                            ],
+                            "default":"auto"
+                        },
+                        "codecs":{
+                            "name":"Codecs (gateways)",
+                            "description":"A list of audio codecs supported by this gateway",
+                            "type":"array",
+                            "enum":[
+                                "G729",
+                                "PCMU",
+                                "PCMA",
+                                "G722_16",
+                                "G722_32",
+                                "CELT_48",
+                                "CELT_64",
+                                "OPUS",
+                                "H261",
+                                "H263",
+                                "H264"
+                            ],
+                            "default":[
+                                "PCMU",
+                                "PCMA"
+                            ]
+                        }
+                    }
                 },
                "custom_sip_headers":{
                   "name":"Custom SIP Headers (gateways)",

@@ -267,7 +267,11 @@
 
 %% Recv Fax
 -define(RECV_FAX_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_RECV_FAX_HEADERS, []).
+-define(OPTIONAL_RECV_FAX_HEADERS, [<<"Enable-T38-Fax">>
+                                    ,<<"Enable-T38-Fax-Request">>
+                                    ,<<"Enable-T38-Passthrough">>
+                                    ,<<"Enable-T38-Gateway">>
+                                   ]).
 -define(RECV_FAX_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"receive_fax">>}
