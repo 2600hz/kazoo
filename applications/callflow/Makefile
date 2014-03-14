@@ -40,7 +40,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl src/module/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $(PA) $?
 
 clean:
 	rm -f ebin/*
@@ -50,7 +50,7 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES),$(CF_MODULES)], [verbose])" -s init stop
+	erl -noshell -pa test $(PA) -eval "eunit:test([$(MODULES),$(CF_MODULES)], [verbose])" -s init stop
 
 dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
