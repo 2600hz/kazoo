@@ -20,7 +20,7 @@ exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     case wnm_util:to_e164(cleanup_dial_me(kz_xml:texts_to_binary(DialMeTxts))) of
         <<>> ->
             lager:debug("no text to dial, using only xml elements"),
-            exec(Call, kzt_util:xml_elements(DialMeTxts), Attrs);
+            exec(Call, kz_xml:elements(DialMeTxts), Attrs);
         DialMe -> dial_me(Call, Attrs, DialMe)
     end;
 
@@ -33,8 +33,8 @@ exec(Call, [#xmlElement{name='Conference'
     ConfId = conference_id(ConfIdTxts),
     lager:info("dialing into conference '~s'", [ConfId]),
 
-    ConfProps = kzt_util:xml_attributes_to_proplist(ConfAttrs),
-    DialProps = kzt_util:xml_attributes_to_proplist(DialAttrs),
+    ConfProps = kz_xml:attributes_to_proplist(ConfAttrs),
+    DialProps = kz_xml:attributes_to_proplist(DialAttrs),
 
     gen_listener:add_binding(kzt_util:get_amqp_listener(Call)
                              ,'conference'
@@ -72,10 +72,10 @@ exec(Call, [#xmlElement{name='Queue'
                         ,content=QueueIdTxts
                         ,attributes=QueueAttrs
                        }], DialAttrs) ->
-    DialProps = kzt_util:xml_attributes_to_proplist(DialAttrs),
+    DialProps = kz_xml:attributes_to_proplist(DialAttrs),
 
-    QueueId = kzt_util:xml_text_to_binary(QueueIdTxts),
-    QueueProps = kzt_util:xml_attributes_to_proplist(QueueAttrs),
+    QueueId = kz_xml:texts_to_binary(QueueIdTxts),
+    QueueProps = kz_xml:attributes_to_proplist(QueueAttrs),
 
     %% Fetch TwiML to play to caller before connecting agent
     _Url = props:get_value('url', QueueProps),
@@ -92,7 +92,7 @@ exec(Call, [#xmlElement{name='Queue'
 exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
     lager:debug("dialing endpoints"),
 
-    Props = kzt_util:xml_attributes_to_proplist(Attrs),
+    Props = kz_xml:attributes_to_proplist(Attrs),
     Call1 = setup_call_for_dial(Call, Props),
 
     case xml_elements_to_endpoints(Call1, Endpoints) of
@@ -117,7 +117,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
 dial_me(Call, Attrs, DialMe) ->
     lager:info("dial text DID '~s'", [DialMe]),
 
-    Props = kzt_util:xml_attributes_to_proplist(Attrs),
+    Props = kz_xml:attributes_to_proplist(Attrs),
 
     Call1 = setup_call_for_dial(whapps_call:set_request(request_id(DialMe, Call), Call)
                                 ,Props
@@ -207,7 +207,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
                                             }
                                  | EPs], Acc
                          ) ->
-    DeviceId = kzt_util:xml_text_to_binary(DeviceIdTxt),
+    DeviceId = kz_xml:texts_to_binary(DeviceIdTxt),
     lager:debug("maybe adding device ~s to ring group", [DeviceId]),
     case cf_endpoint:build(DeviceId, Call) of
         {'ok', []} ->
@@ -223,7 +223,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
                                             ,attributes=_UserAttrs
                                             }
                                 | EPs], Acc) ->
-    UserId = kzt_util:xml_text_to_binary(UserIdTxt),
+    UserId = kz_xml:texts_to_binary(UserIdTxt),
     lager:debug("maybe adding user ~s to ring group", [UserId]),
 
     case cf_user:get_endpoints(UserId, wh_json:new(), Call) of
@@ -237,13 +237,13 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
                                              ,attributes=Attrs
                                             }
                                  | EPs], Acc) ->
-    Props = kzt_util:xml_attributes_to_proplist(Attrs),
+    Props = kz_xml:attributes_to_proplist(Attrs),
 
     SendDigits = props:get_value('sendDigis', Props),
     _Url = props:get_value('url', Props),
     _Method = props:get_value('method', Props),
 
-    DialMe = wnm_util:to_e164(kzt_util:xml_text_to_binary(Number)),
+    DialMe = wnm_util:to_e164(kz_xml:texts_to_binary(Number)),
 
     lager:debug("maybe add number ~s: send ~s", [DialMe, SendDigits]),
 
@@ -261,9 +261,9 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
                                              ,attributes=Attrs
                                             }
                                  | EPs], Acc) ->
-    _Props = kzt_util:xml_attributes_to_proplist(Attrs),
+    _Props = kz_xml:attributes_to_proplist(Attrs),
 
-    try wnm_sip:parse(kzt_util:xml_text_to_binary(Number)) of
+    try wnm_sip:parse(kz_xml:texts_to_binary(Number)) of
         Uri ->
             lager:debug("maybe add SIP ~s", [wnm_sip:encode(Uri)]),
             SipJObj = wh_json:from_list([{<<"invite_format">>, <<"route">>}
@@ -365,7 +365,7 @@ moderator_flags(ConfProps, 'true') ->
 moderator_flags(_, _) -> wh_json:new().
 
 conference_id(Txts) ->
-    Id = kzt_util:xml_text_to_binary(Txts),
+    Id = kz_xml:texts_to_binary(Txts),
     MD5 = wh_util:to_hex_binary(erlang:md5(Id)),
     lager:debug("conf name: ~s (~s)", [Id, MD5]),
     MD5.
