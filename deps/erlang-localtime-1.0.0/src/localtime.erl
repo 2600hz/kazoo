@@ -1,18 +1,6 @@
-%% Copyright (C) 07/01/2010 Dmitry S. Melnikov (dmitryme@gmail.com)
-%%
-%% This program is free software; you can redistribute it and/or
-%% modify it under the terms of the GNU General Public License
-%% as published by the Free Software Foundation; either version 2
-%% of the License, or (at your option) any later version.
-%%
-%% This program is distributed in the hope that it will be useful,
-%% but WITHOUT ANY WARRANTY; without even the implied warranty of
-%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-%% GNU General Public License for more details.
-%%
-%% You should have received a copy of the GNU General Public License
-%% along with this program; if not, write to the Free Software
-%% Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+%% @author  Dmitry S. Melnikov (dmitryme@gmail.com)
+%% @copyright 2010 Dmitry S. Melnikov
+
 -module(localtime).
 
 -author("Dmitry Melnikov <dmitryme@gmail.com>").
@@ -25,88 +13,115 @@
      utc_to_local/2
      ,local_to_utc/2
      ,local_to_local/3
+     ,local_to_local_dst/3
      ,tz_name/2
      ,tz_shift/2
      ,tz_shift/3
   ]).
 
-% utc_to_local(UtcDateTime, Timezone) -> LocalDateTime | {error, ErrDescr}
+% utc_to_local(UtcDateTime, Timezone) -> LocalDateTime | [LocalDateTime, DstLocalDateTime] | {error, ErrDescr}
 %  UtcDateTime = DateTime()
 %  Timezone = String()
 %  LocalDateTime = DateTime()
+%  DstLocalDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
--spec utc_to_local/2 :: (calendar:t_datetime(), binary() | nonempty_string()) -> calendar:t_datetime() | {'error', 'unknown_tz'}.
-utc_to_local(UtcDateTime, "UTC") ->
-    UtcDateTime;
-utc_to_local(UtcDateTime, TZ) when is_list(TZ) ->
-    case get_timezone(TZ) of
-        {tzrule, TzRule} -> process_tz_rule(UtcDateTime, TzRule);
-        {error, _}=E -> E
-    end;
-utc_to_local(UtcDateTime, TZ) when is_binary(TZ) ->
-    utc_to_local(UtcDateTime, binary_to_list(TZ)).
+utc_to_local(UtcDateTime, Timezone) ->
+   case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
+      false ->
+         {error, unknown_tz};
+      {_Tz, _, _, Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
+         adjust_datetime(UtcDateTime, Shift);
+      TzRule = {_, _, _, Shift, DstShift, _, _, _, _} ->
+         LocalDateTime = adjust_datetime(UtcDateTime, Shift),
+         case localtime_dst:check(LocalDateTime, TzRule) of
+            Res when (Res == is_in_dst) or (Res == time_not_exists) ->
+               adjust_datetime(LocalDateTime, DstShift);
+            is_not_in_dst ->
+               LocalDateTime;
+            ambiguous_time ->
+               [LocalDateTime, adjust_datetime(LocalDateTime, DstShift)]
+         end
+   end.
 
-process_tz_rule(UtcDateTime, {_, _, _, Shift, DstShift, _, _, _, _}=TzRule) ->
-    LocalDateTime = adjust_datetime(UtcDateTime, Shift),
-    case localtime_dst:check(LocalDateTime, TzRule) of
-        Res when (Res == is_in_dst) or (Res == time_not_exists) ->
-            adjust_datetime(LocalDateTime, DstShift);
-        is_not_in_dst ->
-            LocalDateTime;
-        ambiguous_time ->
-            RecheckIt = adjust_datetime(LocalDateTime, DstShift),
-            case localtime_dst:check(RecheckIt, TzRule) of
-                ambiguous_time ->
-                    RecheckIt;
-                _ ->
-                    LocalDateTime
-            end
-    end.
-
-% local_to_utc(LocalDateTime, Timezone) -> UtcDateTime | tim_not_exists | {error, ErrDescr}
+% local_to_utc(LocalDateTime, Timezone) -> UtcDateTime | [UtcDateTime, DstUtcDateTime] | time_not_exists | {error, ErrDescr}
 %  LocalDateTime = DateTime()
 %  Timezone = String()
 %  UtcDateTime = DateTime()
+%  DstUtcDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
--spec local_to_utc/2 :: (calendar:t_datetime(), binary() | nonempty_string()) ->
-                                calendar:t_datetime() |
-                                {'error', 'unknown_tz' | 'time_not_exists'}.
 local_to_utc(LocalDateTime, "UTC") ->
     LocalDateTime;
-local_to_utc(LocalDateTime, Timezone) when is_list(Timezone) ->
-    case get_timezone(Timezone) of
-        {tzrule, {_, _, _, Shift, DstShift, _, _, _, _}=TzRule} ->
-            UtcDateTime = adjust_datetime(LocalDateTime, invert_shift(Shift)),
-            case localtime_dst:check(LocalDateTime, TzRule) of
-                is_in_dst ->
-                    adjust_datetime(UtcDateTime, invert_shift(DstShift));
-                Res when (Res == is_not_in_dst) or (Res == ambiguous_time) ->
-                    UtcDateTime;
-                time_not_exists ->
-                    {error, time_not_exists}
-            end;
-        E -> E
-    end;
 local_to_utc(LocalDateTime, Timezone) when is_binary(Timezone) ->
-    local_to_utc(LocalDateTime, binary_to_list(Timezone)).
+    local_to_utc(LocalDateTime, binary_to_list(Timezone));
+local_to_utc(LocalDateTime, Timezone) ->
+   case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
+      false ->
+         {error, unknown_tz};
+      {_Tz, _, _, Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
+         adjust_datetime(LocalDateTime, invert_shift(Shift));
+      TzRule = {_, _, _, Shift, DstShift, _, _, _, _} ->
+         UtcDateTime = adjust_datetime(LocalDateTime, invert_shift(Shift)),
+         case localtime_dst:check(LocalDateTime, TzRule) of
+            is_in_dst ->
+               adjust_datetime(UtcDateTime, invert_shift(DstShift));
+            is_not_in_dst ->
+               UtcDateTime;
+            ambiguous_time ->
+               [UtcDateTime, adjust_datetime(UtcDateTime, invert_shift(DstShift))];
+            time_not_exists ->
+               time_not_exists
+         end
+   end.
 
-% local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) -> LocalDateTime | tim_not_exists | {error, ErrDescr}
+% local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) -> LocalDateTime | ambiguous | time_not_exists | {error, ErrDescr}
 %  LocalDateTime = DateTime()
 %  TimezoneFrom = String()
 %  TimezoneTo = String()
 %  ErrDescr = atom(), unknown_tz
--spec local_to_local/3 :: (calendar:t_datetime(), binary() | string(), binary() | string()) -> calendar:t_datetime().
-local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) when is_list(TimezoneFrom), is_list(TimezoneTo) ->
-    case local_to_utc(LocalDateTime, TimezoneFrom) of
-        Date = {{_,_,_},{_,_,_}} ->
-            utc_to_local(Date, TimezoneTo);
-        Res ->
-            Res
-    end;
-local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) when is_binary(TimezoneFrom) ->
-    local_to_local(LocalDateTime, binary_to_list(TimezoneFrom), TimezoneTo);
-local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) when is_binary(TimezoneTo) ->
-    local_to_local(LocalDateTime, TimezoneFrom, binary_to_list(TimezoneTo)).
+local_to_local(LocalDateTime, TzFrom, TzTo) when is_binary(TzFrom) ->
+    local_to_local(LocalDateTime, binary_to_list(TzFrom), TzTo);
+local_to_local(LocalDateTime, TzFrom, TzTo) when is_binary(TzTo) ->
+    local_to_local(LocalDateTime, TzFrom, binary_to_list(TzTo));
+local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) ->
+   case local_to_utc(LocalDateTime, TimezoneFrom) of
+      UtcDateTime = {{_,_,_},{_,_,_}} ->
+         LocalDateTime2 = utc_to_local(UtcDateTime, TimezoneTo);
+      [UtcDateTime, {{_,_,_},{_,_,_}}] ->
+         LocalDateTime2 = utc_to_local(UtcDateTime, TimezoneTo);
+      Res ->
+         LocalDateTime2 = Res
+   end,
+   case LocalDateTime2 of
+      [DateTimeToReturn, {{_,_,_},{_,_,_}}] ->
+         DateTimeToReturn;
+      Other ->
+         Other
+   end.
+
+% local_to_local_dst(LocalDateTime, TimezoneFrom, TimezoneTo) -> LocalDateTime | ambiguous | time_not_exists | {error, ErrDescr}
+%  LocalDateTime = DateTime()
+%  TimezoneFrom = String()
+%  TimezoneTo = String()
+%  ErrDescr = atom(), unknown_tz
+local_to_local_dst(LocalDateTime, TzFrom, TzTo) when is_binary(TzFrom) ->
+    local_to_local_dst(LocalDateTime, binary_to_list(TzFrom), TzTo);
+local_to_local_dst(LocalDateTime, TzFrom, TzTo) when is_binary(TzTo) ->
+    local_to_local_dst(LocalDateTime, TzFrom, binary_to_list(TzTo));
+local_to_local_dst(LocalDateTime, TimezoneFrom, TimezoneTo) ->
+   case local_to_utc(LocalDateTime, TimezoneFrom) of
+      UtcDateTime = {{_,_,_},{_,_,_}} ->
+         LocalDateTime2 = utc_to_local(UtcDateTime, TimezoneTo);
+      [{{_,_,_},{_,_,_}}, UtcDateTime] ->
+         LocalDateTime2 = utc_to_local(UtcDateTime, TimezoneTo);
+      Res ->
+         LocalDateTime2 = Res
+   end,
+   case LocalDateTime2 of
+      [{{_,_,_},{_,_,_}}, DateTimeToReturn] ->
+         DateTimeToReturn;
+      Other ->
+         Other
+   end.
 
 % tz_name(DateTime(), Timezone) -> {Abbr, Name} | {{StdAbbr, StdName}, {DstAbbr, DstName}} | unable_to_detect | {error, ErrDesc}
 %  Timezone = String()
@@ -117,26 +132,28 @@ local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) when is_binary(TimezoneT
 %  DstAbbr = String()
 %  DstName = String()
 %  ErrDesc = atom(), unknown_tz
--spec tz_name/2 :: (calendar:t_datetime(), string()) -> {string(), string()} | 'undef' |
-                                                        {{string(), string()} | 'undef', {string(), string()} | 'undef'} |
-                                                        'unable_to_detect' | {'error', 'unknown_tz'} |
-                                                        {'shift', integer()}.
-tz_name(_UtcDateTime, "UTC") -> {"UTC", "UTC"};
+tz_name(_UtcDateTime, "UTC") ->
+   {"UTC", "UTC"};
+tz_name(LocalDateTime, Timezone) when is_binary(Timezone) ->
+    tz_name(LocalDateTime, binary_to_list(Timezone));
 tz_name(LocalDateTime, Timezone) ->
-    case get_timezone(Timezone) of
-        {tzrule, {_, StdName, DstName, _Shift, _DstShift, _, _, _, _}=TzRule} ->
-            case localtime_dst:check(LocalDateTime, TzRule) of
-                is_in_dst ->
-                    DstName;
-                is_not_in_dst ->
-                    StdName;
-                ambiguous_time ->
-                    {StdName, DstName};
-                time_not_exists ->
-                    unable_to_detect
-            end;
-        E -> E
-    end.
+   case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
+      false ->
+         {error, unknown_tz};
+      {_Tz, StdName, undef, _Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
+         StdName;
+      TzRule = {_, StdName, DstName, _Shift, _DstShift, _, _, _, _} ->
+         case localtime_dst:check(LocalDateTime, TzRule) of
+            is_in_dst ->
+               DstName;
+            is_not_in_dst ->
+               StdName;
+            ambiguous_time ->
+               {StdName, DstName};
+            time_not_exists ->
+               unable_to_detect
+         end
+   end.
 
 % tz_shift(LocalDateTime, Timezone) ->  Shift | {Shift, DstSift} | unable_to_detect | {error, ErrDesc}
 %  returns time shift from GMT
@@ -147,85 +164,107 @@ tz_name(LocalDateTime, Timezone) ->
 %  Hours = Minutes = Integer(),
 %  {Shift, DstShift} - returns, when shift is ambiguous
 %  ErrDesc = atom(), unknown_tz
--spec tz_shift/2 :: (calendar:t_datetime(), nonempty_string() | binary()) -> 0 | fmt_min_ret() | 'unable_to_detect' | {fmt_min_ret(), fmt_min_ret()} | {'error', 'unknown_tz'}.
-tz_shift(DT, TZ) when is_binary(TZ) ->
-    tz_shift(DT, binary_to_list(TZ));
 tz_shift(_UtcDateTime, "UTC") ->
    0;
+tz_shift(LocalDateTime, Timezone) when is_binary(Timezone) ->
+    tz_shift(LocalDateTime, binary_to_list(Timezone));
 tz_shift(LocalDateTime, Timezone) ->
-    case get_timezone(Timezone) of
-        {tzrule, {_, _StdName, _DstName, Shift, DstShift, _, _, _, _}=TzRule} ->
-            case localtime_dst:check(LocalDateTime, TzRule) of
-                is_in_dst ->
-                    fmt_min(Shift + DstShift);
-                is_not_in_dst ->
-                    fmt_min(Shift);
-                ambiguous_time ->
-                    {fmt_min(Shift), fmt_min(Shift + DstShift)};
-                time_not_exists ->
-                    unable_to_detect
-            end;
-        {error, unknown_tz}=E -> E
-    end.
+   case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
+      false ->
+         {error, unknown_tz};
+      {_Tz, _StdName, undef, Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
+         fmt_min(Shift);
+      TzRule = {_, _StdName, _DstName, Shift, DstShift, _, _, _, _} ->
+         case localtime_dst:check(LocalDateTime, TzRule) of
+            is_in_dst ->
+               fmt_min(Shift + DstShift);
+            is_not_in_dst ->
+               fmt_min(Shift);
+            ambiguous_time ->
+               {fmt_min(Shift), fmt_min(Shift + DstShift)};
+            time_not_exists ->
+               unable_to_detect
+         end
+   end.
 
 % the same as tz_shift/2, but calculates time difference between two local timezones
--spec tz_shift/3 :: (calendar:t_datetime(), nonempty_string() | binary(), nonempty_string() | binary()) -> fmt_min_ret().
-tz_shift(DT, TzFrom, TzTo) when is_binary(TzFrom) ->
-    tz_shift(DT, binary_to_list(TzFrom), TzTo);
-tz_shift(DT, TzFrom, TzTo) when is_binary(TzTo) ->
-    tz_shift(DT, TzFrom, binary_to_list(TzTo));
+tz_shift(LocalDateTime, TimezoneFrom, TimezoneTo) when is_binary(TimezoneFrom) ->
+    tz_shift(LocalDateTime, binary_to_list(TimezoneFrom), TimezoneTo);
+tz_shift(LocalDateTime, TimezoneFrom, TimezoneTo) when is_binary(TimezoneTo) ->
+    tz_shift(LocalDateTime, TimezoneFrom, binary_to_list(TimezoneTo));
 tz_shift(LocalDateTime, TimezoneFrom, TimezoneTo) ->
-    FromShift = fmt_shift(tz_shift(LocalDateTime, TimezoneFrom)),
-    DateTimeTo = localtime:local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo),
-    ToShift = fmt_shift(tz_shift(DateTimeTo, TimezoneTo)),
-    fmt_min(ToShift-FromShift).
+   F = fun() ->
+      FromShift = fmt_shift(tz_shift(LocalDateTime, TimezoneFrom)),
+      DateTimeTo = localtime:local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo),
+      ToShift = fmt_shift(tz_shift(DateTimeTo, TimezoneTo)),
+      fmt_min(ToShift-FromShift)
+   end,
+   try F()
+   catch
+      _:Err ->
+         Err
+   end.
 
 % =======================================================================
 % privates
 % =======================================================================
 
--spec adjust_datetime/2 :: (calendar:t_datetime(), non_neg_integer()) -> calendar:t_datetime().
 adjust_datetime(DateTime, Minutes) ->
    Seconds = calendar:datetime_to_gregorian_seconds(DateTime) + Minutes * 60,
    calendar:gregorian_seconds_to_datetime(Seconds).
 
--spec invert_shift/1 :: (integer()) -> integer().
 invert_shift(Minutes) ->
    -Minutes.
 
--type fmt_min_ret() :: {'-' | '+', non_neg_integer(), non_neg_integer()}.
--spec fmt_min/1 :: (integer()) -> fmt_min_ret().
 fmt_min(Shift) when Shift < 0 ->
    {'-', abs(Shift) div 60, abs(Shift) rem 60};
 fmt_min(Shift) ->
    {'+', Shift div 60, Shift rem 60}.
 
--spec fmt_shift/1 :: ({'+' | '-', non_neg_integer(), non_neg_integer()} | 0) -> integer().
 fmt_shift({'+', H, M}) ->
    H * 60 + M;
 fmt_shift({'-', H, M}) ->
    -(H * 60 + M);
-fmt_shift(0) ->
-    0.
+fmt_shift(Any) ->
+   throw(Any).
 
--spec get_timezone/1 :: (nonempty_string() | binary()) -> {'error', 'unknown_tz'} |
-                                                          {'tzrule', tz_db_row()}.
-get_timezone(TZ) when is_binary(TZ) ->
-    get_timezone(binary_to_list(TZ));
-get_timezone(TZ) ->
-    Timezone = re:replace(TZ, "_", " ", [{return, list}, global]),
-    case lists:keyfind(get_timezone_from_index(Timezone), 1, ?tz_database) of
-        false -> {error, unknown_tz};
-        {_,_,_,_,_,_,_,_,_}=TzRule -> {tzrule, TzRule}
-    end.
+tr_char(String, From, To) ->
+   case string:chr(String, From) of
+      0 -> String; % Optimize for String does not contain From.
+      _ -> tr_char(String, From, To, [])
+   end.
+tr_char([], _From, _To, Acc) ->
+   lists:reverse(Acc);
+tr_char([H|T], From, To, Acc) ->
+   case H of
+      From -> tr_char(T, From, To, [To|Acc]);
+      _ -> tr_char(T, From, To, [H|Acc])
+   end.
 
--spec get_timezone_from_index/1 :: (string() | binary()) -> string().
-get_timezone_from_index(TZ) when is_binary(TZ) ->
-    get_timezone(binary_to_list(TZ));
-get_timezone_from_index(TimeZone) ->
-    case lists:keyfind(TimeZone, 1, ?tz_index)  of
-        false ->
-            TimeZone;
-        {_, [TZName | _]} ->
+-define(SPACE_CHAR, 32).
+get_timezone(TimeZone) when is_binary(TimeZone) ->
+    get_timezone(binary_to_list(TimeZone));
+get_timezone(TimeZone) ->
+   TimeZoneNoSpaces = tr_char(TimeZone, ?SPACE_CHAR, $_),
+   case dict:find(TimeZoneNoSpaces, ?tz_index)  of
+      error ->
+         TimeZoneNoSpaces;
+      {ok, [TZName | _]} ->
             TZName
-    end.
+   end.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+tr_char_test() ->
+   ?assertEqual("ABCDE", tr_char("ABCDE", ?SPACE_CHAR, $_)),
+   ?assertEqual("AB_DE", tr_char("AB DE", ?SPACE_CHAR, $_)),
+   ?assertEqual("A_C_E", tr_char("A C E", ?SPACE_CHAR, $_)).
+
+get_timezone_test() ->
+   ?assertEqual("America/Los_Angeles", get_timezone("America/Los Angeles")).
+
+tz_shift_test() ->
+   ?assertEqual({'+',3,0}, tz_shift({{2014,1,1},{12,0,0}}, "America/Los_Angeles", "America/New_York")).
+
+-endif. % TEST
