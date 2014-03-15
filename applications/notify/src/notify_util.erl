@@ -34,8 +34,8 @@
 %%--------------------------------------------------------------------
 -spec send_email(ne_binary(), 'undefined' | binary(), term()) ->
                               'ok' | {'error', _}.
-send_email(_, 'undefined', _) -> 'ok';
-send_email(_, <<>>, _) -> 'ok';
+send_email(_, 'undefined', _) -> lager:debug("no email to send to");
+send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
     Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
