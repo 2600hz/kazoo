@@ -690,7 +690,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
          ,{<<"Force-Fax">>, get_force_fax(Endpoint)}
-         ,{<<"Ignore-Completed-Elsewhere">>, wh_json:is_true(<<"ignore_complete_elsewhere">>, Endpoint)}
+         ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
          ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
@@ -953,7 +953,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                ,fun(J) -> cf_util:encryption_method_map(J, Endpoint) end
                ,fun(J) -> wh_json:set_value(<<"SIP-Invite-Domain">>, whapps_call:request_realm(Call), J) end
                ,fun(J) ->
-                        case wh_json:is_true([<<"sip">>, <<"ignore_completed_elsewhere">>], Endpoint) of
+                        case get_ignore_completed_elsewhere(Endpoint) of
                             'false' -> J;
                             'true' ->
                                 wh_json:set_value(<<"Ignore-Completed-Elsewhere">>, <<"true">>, J)
@@ -961,7 +961,6 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                 end
               ],
     lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), CCVFuns).
-
 
 -spec get_invite_format(wh_json:object()) -> ne_binary().
 get_invite_format(SIPJObj) ->
@@ -1042,4 +1041,15 @@ get_force_fax(JObj) ->
     case wh_json:is_true([<<"media">>, <<"fax_option">>], JObj) of
         'false' -> 'undefined';
         'true' -> <<"self">>
+    end.
+
+-spec get_ignore_completed_elsewhere(wh_json:object()) -> boolean().
+get_ignore_completed_elsewhere(JObj) ->
+    case wh_json:get_first_defined([[<<"caller_id_options">>, <<"ignore_completed_elsewhere">>]
+                                   ,[<<"sip">>, <<"ignore_completed_elsewhere">>]
+                                   ,<<"ignore_completed_elsewhere">>
+                                   ], JObj)
+    of
+        'undefined' -> whapps_config:get_is_true(?CF_CONFIG_CAT, <<"default_ignore_completed_elsewhere">>, 'true');
+        IgnoreCompletedElsewhere -> wh_util:is_true(IgnoreCompletedElsewhere)
     end.
