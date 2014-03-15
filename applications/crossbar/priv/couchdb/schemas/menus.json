@@ -56,13 +56,13 @@
          "name":"Hunt Deny",
          "type":"string",
          "minLength":1,
-         "maxLength":32
+         "maxLength":255
       },
       "hunt_allow":{
          "name":"Hun Allow",
          "type":"string",
          "minLength":1,
-         "maxLength":32
+         "maxLength":255
       },
       "media":{
          "description":"The media (prompt) parameters",
