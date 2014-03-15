@@ -407,9 +407,16 @@ handle_chunked(Req) ->
 -spec handle_chunked(cowboy_req:req(), binary()) -> {binary(), cowboy_req:req()}.
 handle_chunked(Req, Body) ->
     case cowboy_req:stream_body(Req) of
-        {'done', Req2} -> {Body, Req2};
+        {'done', Req2} ->
+            {Body, Req2};
         {'ok', Data, Req2} ->
-            handle_chunked(Req2, <<Body/binary, Data/binary>>)
+            handle_chunked(Req2, <<Body/binary, Data/binary>>);
+        {'error', 'timeout'} ->
+            lager:debug("timed out recv chunked request body, using none"),
+            {Body, Req};
+        {'error', _E} ->
+            lager:debug("error while fetching chunk: ~p", [_E]),
+            {Body, Req}
     end.
 
 -type get_json_return() :: {wh_json:object(), cowboy_req:req()} |
