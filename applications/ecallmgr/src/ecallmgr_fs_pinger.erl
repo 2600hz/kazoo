@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% When connecting to a FreeSWITCH node, we create three processes: one to
@@ -28,7 +28,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
-                ,options = [] :: proplist()
+                ,options = [] :: wh_proplist()
                 ,timeout = 2000
                }).
 
@@ -54,10 +54,10 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Props]) ->
-    put(callid, Node),
-    self() ! initialize_pinger,
+    put('callid', Node),
+    self() ! 'initialize_pinger',
     lager:info("node ~s not responding, periodically retrying connection", [Node]),
-    {ok, #state{node=Node, options=Props}}.
+    {'ok', #state{node=Node, options=Props}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -75,7 +75,7 @@ init([Node, Props]) ->
 %% #state{nodes=[{FSNode, HandlerPid}]}
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
-    {reply, {error, not_implemented}, State, Timeout}.
+    {'reply', {'error', 'not_implemented'}, State, Timeout}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,7 +88,8 @@ handle_call(_Request, _From, #state{timeout=Timeout}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, #state{timeout=Timeout}=State) ->
-    {noreply, State, Timeout}.
+    lager:debug("unhandled cast: ~p", [_Msg]),
+    {'noreply', State, Timeout}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,38 +101,39 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(initialize_pinger, #state{node=Node, options=Props}=State) ->
+handle_info('initialize_pinger', #state{node=Node, options=Props}=State) ->
     wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
-    _ = case props:get_value(cookie, Props) of
-            undefined -> ok;
+    _ = case props:get_value('cookie', Props) of
+            'undefined' -> 'ok';
             Cookie when is_atom(Cookie) ->
                 lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
                 erlang:set_cookie(Node, Cookie)
         end,
     GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10000)),
-    erlang:send_after(GracePeriod, self(), {flush_channels, Node}),
-    self() ! check_node_status,
-    {noreply, State};
-handle_info({flush_channels, Node}, State) ->
+    erlang:send_after(GracePeriod, self(), {'flush_channels', Node}),
+    self() ! 'check_node_status',
+    {'noreply', State};
+handle_info({'flush_channels', Node}, State) ->
     lager:info("node ~s has been down past the grace period, flushing channels", [Node]),
     ecallmgr_fs_channels:flush_node(Node),
     ecallmgr_fs_conferences:flush_node(Node),
-    {noreply, State};
-handle_info(check_node_status, #state{node=Node, timeout=Timeout}=State) ->
+    {'noreply', State};
+handle_info('check_node_status', #state{node=Node, timeout=Timeout}=State) ->
     case net_adm:ping(Node) of
-        pong ->
+        'pong' ->
             %% give the node a moment to init
             timer:sleep(1000),
             wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
-            ok = ecallmgr_fs_nodes:nodeup(Node),
-            {stop, normal, State};
+            'ok' = ecallmgr_fs_nodes:nodeup(Node),
+            {'stop', 'normal', State};
         _Else ->
             lager:debug("node ~s not responding, waiting ~b seconds to ping again", [Node, Timeout div 1000]),
-            erlang:send_after(Timeout, self(), check_node_status),
-            {noreply, State}
+            erlang:send_after(Timeout, self(), 'check_node_status'),
+            {'noreply', State, 'hibernate'}
     end;
 handle_info(_Info, State) ->
-    {noreply, State}.
+    lager:debug("unhandled msg: ~p", [_Info]),
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -156,7 +158,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
 
 %%%===================================================================
 %%% Internal functions
