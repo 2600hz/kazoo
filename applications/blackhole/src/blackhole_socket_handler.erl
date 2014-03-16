@@ -28,7 +28,7 @@ recv(_Pid, _SId, {message, <<>>, Message}, State) ->
 %% Custom Events
 recv(Pid, _SId, {event, <<>>, Event, Message}, State) ->
     lager:debug("receive message ~p on socket ~p with event ~p", [Message, _SId, Event]),
-    {'ok', handle_event(Event, Message, Pid, State)};
+    {'ok', handle_event(Event, Message, Pid)};
 %% Catch all
 recv(_Pid, _SId, Message, State) ->
     lager:info("receive unknown message ~p on socket ~p", [Message, _SId]),
@@ -41,31 +41,12 @@ close(_Pid, _SId, #state{listener=PidListener}) ->
     lager:debug("closing socket ~p", [_SId]),
     'ok' = gen_server:call(PidListener, {'disconnect_socket'}).
 
-handle_event(Event, Data, Pid, State) ->
-    blackhole_dispatcher:handle_event(Event, Data, SessionPid).
-
-handle_event(<<"connection">>, Data, Pid, State) ->
-    lager:debug('connection happened'),
-    ConfId = wh_json:get_value(<<"conference_id">>, Data),
-    User = wh_json:get_value(<<"user_name">>, Data),
-    {'ok', PidListener} = blackhole_events_sup:start_listener(ConfId),
-    gen_server:cast(PidListener, {'connect_socket', Pid, User}),
-    socketio_session:send_event(Pid, <<"connected">>, [User, ConfId]),
-    State#state{listener=PidListener};
-handle_event(<<"conference.disconnection">>, _, _Pid, #state{listener='undefined'}) ->
-    #state{};
-handle_event(<<"conference.connection_status">>, _, Pid, #state{listener='undefined'}) ->
-    socketio_session:send_event(Pid, <<"connection_status">>, ['false']),
-    #state{};
-handle_event(<<"conference.connection_status">>, _, Pid, #state{listener=PidListener}=State) ->
-    Status = gen_server:call(PidListener, 'get_socket'),
-    socketio_session:send_event(Pid, <<"connection_status">>, [Status]),
-    State;
+handle_event(Event, Data, SessionPid) ->
+    blackhole_dispatcher:handle_event(Event, Data, SessionPid);
 %% Unknown Event
-handle_event(Event, Data, Pid, State) ->
+handle_event(Event, Data, SessionPid) ->
     lager:info("receive unknown event ~p", [Event]),
     Unknown = [{<<"event">>, Event}
               ,{<<"data">>, Data}
               ],
-    socketio_session:send_event(Pid, <<"unknown_event">>, Unknown),
-    State.
+    blackhole_data_emitter:emit(SessionPid, <<"unknown_event">>, Unknown).

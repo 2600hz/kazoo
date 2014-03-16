@@ -38,7 +38,7 @@ start_link() ->
                                              ,[socketio_session:configure([{'heartbeat', 5000}
                                                                           ,{'heartbeat_timeout', 30000}
                                                                           ,{'session_timeout', 30000}
-                                                                          ,{'callback', 'blackhole_socket'}
+                                                                          ,{'callback', 'blackhole_socket_handler'}
                                                                           ,{'protocol', 'socketio_data_protocol'}
                                                                           ])]}
                                             ]

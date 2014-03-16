@@ -12,5 +12,7 @@
 -define(BLACKHOLE_CONFIG_CAT, <<"blackhole">>).
 -define(TOKEN_DB, <<"token_auth">>).
 
+-define(DEFAULT_MODULES, ['bh_call']).
+
 -define(BLACKHOLE_HRL, 'true').
 -endif.

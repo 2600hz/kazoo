@@ -2,6 +2,8 @@
 
 -behavior(gen_server).
 
+-include("blackhole.hrl").
+
 -define(MOD_CONFIG_CAT, <<(?BLACKHOLE_CONFIG_CAT)/binary>>).
 
 %% API
@@ -17,7 +19,7 @@
          ,status/1
         ]).
 
--record(state, {event_list :: wh_proplist()
+-record(state, {module_bindings :: wh_proplist()
                 ,loaded_modules :: wh_proplist()
        }).
 
@@ -56,7 +58,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("blackhole_dispatcher init"),
-    gen_server:cast(self(), 'start_dispatcher'),
+    gen_server:cast(self(), 'init_dispatcher'),
         {'ok', #state{}}.
 
 -spec status(pid()) -> handle_call_ret() | wh_std_return().
@@ -82,8 +84,8 @@ status(ServerPid) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(atom(), any(), state()) -> handle_call_ret().
-handle_call('status', _, #state{bound_events=BoundEvents}=State) -> 
-    Status = {'num_accounts_left', length(BoundEvents)},
+handle_call('status', _, #state{loaded_modules=LoadedModules}=State) -> 
+    Status = {'num_loaded_modules', length(LoadedModules)},
     {'reply', Status, State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled handle_call executed ~p~p", [_Request, _From]),
@@ -100,14 +102,16 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('start_dispatcher', State) ->
-    Modules = whapps_config:get_list(?MOD_CONFIG_CAT, <<"autoload_modules">>, []),
-    lager:debug("unhandled handle_cast ~p", [_Msg]),
-    {'noreply', State};
+handle_cast('init_dispatcher', State) ->    
+    Modules = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES),
+    [ maybe_init_mod_supervisor(ModuleName) || ModuleName <- Modules ],
+    Bindings = [collect_module_bindings(ModuleName) || ModuleName <- Modules],
+    {'noreply', State#state{loaded_modules=Modules
+                           ,module_bindings=Bindings
+                           }};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
     {'noreply', State}.
-
 
 terminate(_Reason, #state{pid=PID}=_State) ->
     lager:debug("blackhole_event_dispatcher terminated: ~p", [_Reason]),
@@ -120,3 +124,19 @@ terminate(_Reason, #state{pid=PID}=_State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
+
+collect_module_bindings(ModuleName) ->
+    try (wh_util:to_atom(ModuleName, 'true')):init() of
+        _ -> 'ok'
+    catch
+        _E:_R ->           
+            lager:warning("failed to collect bingins for module ~s: ~p, ~p.", [ModuleName, _E, _R])
+    end.
+
+maybe_init_module_supervisor(ModuleName) ->    
+    try (wh_util:to_atom(<<ModuleName, "_sup">>, 'true')):init() of
+        _ -> 'ok'
+    catch
+        _E:_R ->           
+            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
+    end.
