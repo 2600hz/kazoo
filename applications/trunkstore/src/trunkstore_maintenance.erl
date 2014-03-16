@@ -161,9 +161,15 @@ clear_old_calls(Super) ->
      end || P <- Ps
     ].
 
+%%
+%% Usage example: sup trunkstore_maintenance classifier_allow international pbx_username@realm.domain.tld
+%%
 classifier_allow(Classifier, UserR) ->
     set_classifier_action(<<"allow">>, Classifier, UserR).
 
+%%
+%% Usage example: sup trunkstore_maintenance classifier_deny international pbx_username@realm.domain.tld
+%%
 classifier_deny(Classifier, UserR) ->
     set_classifier_action(<<"deny">>, Classifier, UserR).
 
