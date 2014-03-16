@@ -41,18 +41,9 @@ close(_Pid, _SId, #state{listener=PidListener}) ->
     lager:debug("closing socket ~p", [_SId]),
     'ok' = gen_server:call(PidListener, {'disconnect_socket'}).
 
-%% Connection Event
-handle_event(<<"calls.connect">>, Data, Pid, State) ->
-    AccountId = wh_json:get_value(<<"account_id">>, Data),
-    lager:debug("listening for call events for account: ~p", [AccountId]),
-    {'ok', PidListener} = blackhole_call_events_sup:start_listener(AccountId),
-    gen_server:cast(PidListener, {'connect_socket', Pid}),
-    State#state{listener=PidListener};
-handle_event(<<"calls.disconnect">>, Data, Pid, State) ->
-    AccountId = wh_json:get_value(<<"account_id">>, Data),
-    {'ok', PidListener} = blackhole_call_events_sup:get_listener(AccountId),
-    gen_server:cast(PidListener, {'disconnect_socket', Pid}),
-    State#state{listener = 'undefined'};
+handle_event(Event, Data, Pid, State) ->
+    blackhole_dispatcher:handle_event(Event, Data, SessionPid).
+
 handle_event(<<"connection">>, Data, Pid, State) ->
     lager:debug('connection happened'),
     ConfId = wh_json:get_value(<<"conference_id">>, Data),

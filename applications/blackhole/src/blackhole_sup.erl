@@ -16,8 +16,8 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('blackhole_cache')
-                  ,?SUPER('blackhole_conference_events_sup')
-                  ,?SUPER('blackhole_call_events_sup')
+                  ,?SUPER('blackhole_module_sup')
+                  ,?WORKER('blackhole_dispatcher')
                   ]).
 
 %% ===================================================================
@@ -45,7 +45,7 @@ start_link() ->
                                       }
                                      ]),
     {'ok', _} = cowboy:start_http('socketio_http_listener', 100, [{'port', 5555}],
-                                [{'env', [{'dispatch', Dispatch}]}]),
+                                  [{'env', [{'dispatch', Dispatch}]}]),
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================

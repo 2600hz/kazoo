@@ -6,19 +6,19 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 
--module(blackhole_sockets).
+-module(blackhole_data_emitter).
 
 -include("blackhole.hrl").
 
--export([send_event/3]).
+-export([emit/3]).
 
--spec send_event(pids(), api_binary(), json:object()) -> 'ok'.
-send_event(Pids, Event, Data) ->
+-spec emit(pids(), api_binary(), json:object()) -> 'ok'.
+emit(SessionPids, Event, Data) ->
     lager:debug("going to send event data"),
     lists:foldl(
-      fun(Pid, _) ->
-              socketio_session:send_event(Pid, Event, Data)
+      fun(SessionPid, _) ->
+              socketio_session:send_event(SessionPid, Event, Data)
       end
                ,'ok'
-               ,Pids
+               ,SessionPids
      ).

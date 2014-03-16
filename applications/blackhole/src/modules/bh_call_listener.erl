@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(blackhole_call_events_listener).
+-module(bh_call_listener).
 
 -behaviour(gen_listener).
 
@@ -18,6 +18,8 @@
         ,terminate/2
         ,code_change/3
         ]).
+
+-export([subscribe/2, unsubscribe/2]).
 
 -include("../blackhole.hrl").
 
@@ -69,6 +71,14 @@ init(AccountId) ->
     wh_hooks:register(AccountId),
     {'ok', #state{account_id = AccountId, pids = sets:new()}}.
 
+-spec subscribe(pid(), pid()) -> 'ok'.
+subscribe(ListenerPid, SessionPid) ->
+    gen_server:cast(ListenerPid, {'connect_socket', SessionPid}).
+
+-spec unsubscribe(pid(), pid()) -> 'ok'.
+unsubscribe(ListenerPid, SessionPid) ->
+    gen_server:cast(ListenerPid, {'disconnect_socket', SessionPid}).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -113,7 +123,7 @@ handle_cast({'disconnect_socket', Pid}, #state{pids=Pids}=State) ->
 handle_cast({'connect_socket', Pid}, #state{pids=Pids}=State) ->
     lager:debug("connecting socket...."),
     NewPidSet = sets:add_element(Pid, Pids),
-    blackhole_sockets:send_event( sets:to_list(NewPidSet), <<"calls">>, []),
+    blackhole_data_emitter:emit(sets:to_list(NewPidSet), <<"calls">>, []),
     {'noreply', State#state{pids = NewPidSet}};
 handle_cast(_Message, State) ->
     {'noreply', State}.
@@ -128,8 +138,8 @@ handle_cast(_Message, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(?HOOK_EVT(AccountId, EventType, JObj), #state{pids=Pids}=State) ->
-    handle_call_event(AccountId, EventType, JObj, Pids),
+handle_info(?HOOK_EVT(AccountId, EventType, JObj), #state{pids=SessionPids}=State) ->
+    handle_call_event(AccountId, EventType, JObj, SessionPids),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -175,8 +185,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec handle_call_event(ne_binary(), ne_binary(), json:object(), set()) -> 'ok'.
-handle_call_event(_AccountId, _Event, JObj, Pids) ->
+handle_call_event(_AccountId, _Event, JObj, SessionPids) ->
     lager:debug("Event Obj: ~p", [JObj]),
-    blackhole_sockets:send_event(sets:to_list(Pids)
-                                ,<<"calls">>
+    blackhole_data_emitter:emit(sets:to_list(SessionPids)
+                                ,<<"call.events">>
                                 ,[JObj]).
