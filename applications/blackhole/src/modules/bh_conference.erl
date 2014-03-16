@@ -1,27 +1,28 @@
 -module(bh_conference).
 
--export([init/0, subscribe/2, unsubscribe/2, create/2]).
+-export([init/0]).
+-export([subscribe/3, unsubscribe/3]).
+-export([subscription_status/3, create/3]).
 
 init() ->
-    [{<<"conference.events.subscribe">>, {?MODULE, 'subscribe'}}
-    ,{<<"conference.events.subscription.status">>, {?MODULE, 'subscription_status'}}
-    ,{<<"conference.create">>, {?MODULE, 'create'}}
-    ,{<<"conference.events.unsubscribe">>, {?MODULE, 'unsubscribe'}}
-    ].
+    _ = blackhole_bindings:bind(<<"conference.events.subscribe">>, ?MODULE, 'subscribe'),
+    _ = blackhole_bindings:bind(<<"conference.events.subscription.status">>, ?MODULE, 'subscription_status'),
+    _ = blackhole_bindings:bind(<<"conference.create">>, ?MODULE, 'create'),
+    _ = blackhole_bindings:bind(<<"conference.events.unsubscribe">>, ?MODULE, 'unsubscribe').
 
-subscribe(Data, SessionPid) ->
-    lager:debug('conferenceconnection happened'),
+subscribe(Data, SessionId, SessionPid) ->
+    lager:debug('conference connection happened'),
     ConfId = wh_json:get_value(<<"conference_id">>, Data),
     User = wh_json:get_value(<<"user_name">>, Data),
     {'ok', ListenerPid} = bh_conference_sup:start_listener(ConfId),
     bh_conference_listener:subscribe(ListenerPid, SessionPid),
     blackhole_data_emitter:send_data(SessionPid, <<"connected">>, [User, ConfId]).
 
-subscription_status(Data, SessionPid) ->
-    
-
-create(Data, Pid) ->
+subscription_status(Data, SessionId, SessionPid) ->
     'ok'.
 
-unsubscribe(Data, Pid) ->
+create(Data, SessionId, SessionPid) ->
+    'ok'.
+
+unsubscribe(Data, SessionId, SessionPid) ->
     'ok'.

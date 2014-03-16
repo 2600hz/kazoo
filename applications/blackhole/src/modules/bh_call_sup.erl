@@ -41,7 +41,7 @@ start_listener(AccountId) ->
         {'true', Pid} ->
             {'ok', Pid};
         {'false', 'not_found'} ->
-        	ChildSpec = {AccountId, {'blackhole_call_events_listener', 'start_link', [AccountId]}
+        	ChildSpec = {AccountId, {'bh_call_listener', 'start_link', [AccountId]}
                          ,'temporary', 5000, 'worker', [?MODULE]
                         },
             supervisor:start_child(?MODULE, ChildSpec)

@@ -98,7 +98,7 @@ handle_call('get_socket', {Pid, _}, State) ->
     {'reply', Reply, State};
 handle_call('get_state', _, State) ->
     {'reply', State, State};
-handle_call(_Request, _From, State) ->
+handle_call(_Rexquest, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
@@ -117,7 +117,7 @@ handle_cast({'disconnect_socket', Pid}, #state{pids=Pids}=State) ->
         0 ->
             {'stop', 'normal', 'ok', State#state{pids = NewPids}};
         _Size ->
-            blackhole_sockets:send_event(sets:to_list(Pids), <<"calls">>, [<<"ok">>]),
+            blackhole_data_emitter:emit(sets:to_list(Pids), <<"calls">>, [<<"ok">>]),
             {'reply', 'ok', State#state{pids = NewPids}}
     end;
 handle_cast({'connect_socket', Pid}, #state{pids=Pids}=State) ->

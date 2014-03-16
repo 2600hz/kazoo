@@ -4,7 +4,7 @@
 
 %% API
 -export([start_link/0
-         ,add_module_supervisor/1
+         ,start_child/1, start_child/2
         ]).
 
 %% Supervisor callbacks
@@ -12,26 +12,57 @@
 
 -include("blackhole.hrl").
 
-%% ===================================================================
-%% API functions
-%% ===================================================================
--spec start_link() -> startlink_ret().
-start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+-define(SERVER, ?MODULE).
 
--spec add_module_supervisor() -> 'ok' | wh_std_return().
-add_module_supervisor(SupervisorModuleName) ->
-    ChildSpec = {SupervisorModuleName
-                ,{SupervisorModuleName, 'start_link', []}
-                ,'permanent'
-                ,5000
-                ,'supervisor'
-                ,[SupervisorModuleName]
-                },
-    case supervisor:start_child(?MODULE, ChildSpec) of
-        {'error', 'already_present'} ->
-            supervisor:restart_child(?MODULE, SupervisorModuleName);
-        {'error', _E} -> lager:debug("error starting ~p: ~p", [SupervisorModuleName, _E]);
-        {'ok', _} -> 'ok'
-    end.
-    
+%%%===================================================================
+%%% API functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the supervisor
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link() ->
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+
+start_child(Mod) ->
+    start_child(Mod, 'worker').
+start_child(Mod, 'worker') ->
+    supervisor:start_child(?SERVER, ?WORKER(Mod));
+start_child(start_child(Mod, 'supervisor') ->
+    supervisor:start_child(?SERVER, ?SUPER(Mod)).
+
+%%%===================================================================
+%%% Supervisor callbacks
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%% this function is called by the new process to find out about
+%% restart strategy, maximum restart frequency and child
+%% specifications.
+%%
+%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
+%%                     ignore |
+%%                     {error, Reason}
+%% @end
+%%--------------------------------------------------------------------
+init([]) ->
+    RestartStrategy = 'one_for_one',
+    MaxRestarts = 1000,
+    MaxSecondsBetweenRestarts = 3600,
+
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+
+    Children = [],
+
+    {'ok', {SupFlags, Children}}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================) ->

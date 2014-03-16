@@ -17,7 +17,8 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('blackhole_cache')
                   ,?SUPER('blackhole_module_sup')
-                  ,?WORKER('blackhole_dispatcher')
+                  ,?WORKER('blackhole_bindings')
+                  ,?WORKER('blackhole_handler')
                   ]).
 
 %% ===================================================================
@@ -38,7 +39,7 @@ start_link() ->
                                              ,[socketio_session:configure([{'heartbeat', 5000}
                                                                           ,{'heartbeat_timeout', 30000}
                                                                           ,{'session_timeout', 30000}
-                                                                          ,{'callback', 'blackhole_socket_handler'}
+                                                                          ,{'callback', 'blackhole_socket'}
                                                                           ,{'protocol', 'socketio_data_protocol'}
                                                                           ])]}
                                             ]

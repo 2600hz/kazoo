@@ -15,10 +15,4 @@
 -spec emit(pids(), api_binary(), json:object()) -> 'ok'.
 emit(SessionPids, Event, Data) ->
     lager:debug("going to send event data"),
-    lists:foldl(
-      fun(SessionPid, _) ->
-              socketio_session:send_event(SessionPid, Event, Data)
-      end
-               ,'ok'
-               ,SessionPids
-     ).
+    [socketio_session:send_event(SessionPid,x Event, Data) || SessionPid <- SessionPids].
