@@ -36,7 +36,9 @@
          ,offnet_flags/1
         ]).
 
--export([maybe_ensure_cid_valid/4]).
+-export([maybe_ensure_cid_valid/4
+         ,maybe_restrict_call/2
+        ]).
 
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
@@ -337,6 +339,16 @@ valid_emergency_numbers(AccountId) ->
            DefaultECID
     end.
 
-valid_emergency_number(AccountId)->
+valid_emergency_number(AccountId) ->
     [H|_] = valid_emergency_numbers(AccountId),
     H.
+
+maybe_restrict_call(#ts_callflow_state{acctid=AccountId, route_req_jobj=RRObj}, Command) ->
+    Number = props:get_value(<<"To-DID">>, Command),
+    Classification = wnm_util:classify_number(Number),
+    lager:debug("Trunkstore classified number as ~p", [Classification]),
+    Username = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Username">>], RRObj),
+    Realm = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Realm">>], RRObj),
+    {'ok', Opts} = ts_util:lookup_user_flags(Username, Realm, AccountId),
+    lager:debug("Trunkstore lookup_user_flag results: ~p", [Opts]),
+    wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], Opts) =:= <<"deny">>.

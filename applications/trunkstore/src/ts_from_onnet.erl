@@ -152,7 +152,13 @@ wait_for_win(State, Command) ->
     case ts_callflow:wait_for_win(State) of
         {'lost', _} -> 'normal';
         {'won', State1} ->
-            send_offnet(State1, Command)
+            case ts_util:maybe_restrict_call(State1, Command) of
+                'true' ->
+                      lager:debug("Trunkstore call to ~p restricted", [props:get_value(<<"To-DID">>, Command)]),
+                      ts_callflow:send_hangup(State1, <<"403">>);
+                 _ ->
+                      send_offnet(State1, Command)
+            end
     end.
 
 send_offnet(State, Command) ->

@@ -11,6 +11,8 @@
 -export([migrate/0
          ,i_understand_migrate/0
          ,clear_old_calls/0
+         ,classifier_allow/2
+         ,classifier_deny/2
         ]).
 
 -include("ts.hrl").
@@ -158,3 +160,31 @@ clear_old_calls(Super) ->
          end
      end || P <- Ps
     ].
+
+classifier_allow(Classifier, UserR) ->
+    set_classifier_action(<<"allow">>, Classifier, UserR).
+
+classifier_deny(Classifier, UserR) ->
+    set_classifier_action(<<"deny">>, Classifier, UserR).
+
+set_classifier_action(Action, Classifier, UserR) ->
+    io:format("Classifier: ~p",[Classifier]),
+    {Classifiers} = wnm_util:available_classifiers(),
+    case lists:member(Classifier, proplists:get_keys(Classifiers)) of
+        'false' -> 
+            io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, proplists:get_keys(Classifiers)]),
+            exit(no_such_classifier);
+        _ -> 
+            io:format("  ... found\n")
+    end,
+    [User, Realm] = re:split(UserR, <<"@">>, [{return,binary},{parts,2}]),
+    case account_exists_with_realm(Realm) of
+        {'true', AcctDB, AcctID} ->
+            {'ok', Opts} = ts_util:lookup_user_flags(User, Realm, AcctID),
+            TSDocId = wh_json:get_first_defined([<<"_id">>, <<"id">>], Opts),
+            couch_mgr:update_doc(AcctDB, TSDocId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+            wh_cache:flush(),
+            io:format("Success\n");
+        'false' ->
+            io:format("Failed: account with realm ~p does not exist\n", [Realm])
+    end.
