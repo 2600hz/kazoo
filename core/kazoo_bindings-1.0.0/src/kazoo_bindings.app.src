@@ -1,0 +1,13 @@
+{application, kazoo_bindings,
+ [
+  {description, "Bindings Server - routing things to places"},
+  {vsn, "1.0.0"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { kazoo_bindings_app, []}},
+  {env, []}
+ ]}.
