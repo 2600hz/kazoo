@@ -22,8 +22,8 @@
 
 %% 1 month
 -define(FETCH_DEFAULT, 60*60*24*30).
-%% 2 month
--define(FETCH_MAX, 60*60*24*30*2).
+%% 1 month
+-define(FETCH_MAX, 60*60*24*30).
 
 %%%===================================================================
 %%% API
@@ -525,7 +525,7 @@ validate_date(From, To) when is_integer(From) andalso is_integer(To) ->
         {'true', _} ->
             {'false', <<"created_from is gretter than created_to">>};
         {_, 'true'} ->
-            {'false', <<"Max range is 2 month">>};
+            {'false', <<"Max range is 2 months">>};
         {'false', 'false'} ->
             {'true', From, To}
     end;
