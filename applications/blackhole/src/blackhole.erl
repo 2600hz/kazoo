@@ -20,7 +20,9 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
-    blackhole_sup:start_link().
+    OK = blackhole_sup:start_link(),
+    _ = blackhole_bindings:init(),
+    OK.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -48,6 +50,7 @@ start_deps() ->
                                                ,'lager'
                                                ,'whistle_amqp'
                                                ,'whistle_couch'
+                                               ,'kazoo_bindings'
                                                ,'ranch'
                                                ,'cowboy'
                                                ,'public_key'
