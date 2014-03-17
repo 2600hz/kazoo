@@ -537,8 +537,7 @@ b_ring(Call) ->
                  ,whapps_call:call()) -> 'ok'.
 -spec b_receive_fax(whapps_call:call()) -> wait_for_fax_ret().
 receive_fax(Call) ->
-    DefaultFlag = whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true'),
-    receive_fax(DefaultFlag, Call).
+    receive_fax(get_default_t38_setting(), Call).
 
 receive_fax(DefaultFlag, Call) ->
     T38Settings = props:filter_undefined(get_inbound_t38_settings(DefaultFlag)),
@@ -546,8 +545,7 @@ receive_fax(DefaultFlag, Call) ->
     send_command(Commands, Call).
 
 receive_fax('undefined', 'undefined', Call) ->
-    DefaultFlag = whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true'),
-    receive_fax(DefaultFlag, Call);
+    receive_fax(get_default_t38_setting(), Call);
 receive_fax(ResourceFlag, ReceiveFlag, Call) ->
     T38Settings = props:filter_undefined(get_inbound_t38_settings(ResourceFlag, ReceiveFlag)),
     Commands = [{<<"Application-Name">>, <<"receive_fax">>}] ++ T38Settings,
@@ -556,6 +554,13 @@ receive_fax(ResourceFlag, ReceiveFlag, Call) ->
 b_receive_fax(Call) ->
     receive_fax(Call),
     wait_for_fax().
+
+-spec get_default_t38_setting() -> boolean() | ne_binary().
+get_default_t38_setting() ->
+    case whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true') of 
+        <<"auto">> -> <<"auto">>; 
+        Otherwise -> wh_util:is_true(Otherwise) 
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
