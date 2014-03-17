@@ -83,6 +83,5 @@ upgrade() ->
 init([]) ->
     {'ok', {{'one_for_one', 10, 10}, [?CACHE(?CROSSBAR_CACHE)
                                       ,?SUPER('crossbar_module_sup')
-                                      ,?WORKER('crossbar_bindings')
                                       ,?WORKER('crossbar_cleanup')
                                      ]}}.

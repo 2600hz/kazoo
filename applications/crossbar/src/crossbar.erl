@@ -59,7 +59,9 @@ start_link() ->
 
     maybe_start_plaintext(Dispatch),
     maybe_start_ssl(Dispatch),
-    crossbar_sup:start_link().
+    OK = crossbar_sup:start_link(),
+    _ = crossbar_bindings:init(),
+    OK.
 
 start() ->
     application:start('crossbar').
@@ -116,6 +118,7 @@ start_deps() ->
                                                 ,'lager'
                                                 ,'whistle_amqp'
                                                 ,'whistle_couch'
+                                                ,'kazoo_bindings'
                                                 ,'ranch'
                                                 ,'cowboy'
                                                ]],
