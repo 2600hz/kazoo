@@ -537,7 +537,7 @@ b_ring(Call) ->
                  ,whapps_call:call()) -> 'ok'.
 -spec b_receive_fax(whapps_call:call()) -> wait_for_fax_ret().
 receive_fax(Call) ->
-    DefaultFlag = whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true'),
+    DefaultFlag = whapps_config:get_atom(<<"fax">>, <<"inbound_t38_default">>, 'true'),
     receive_fax(DefaultFlag, Call).
 
 receive_fax(DefaultFlag, Call) ->
@@ -546,7 +546,7 @@ receive_fax(DefaultFlag, Call) ->
     send_command(Commands, Call).
 
 receive_fax('undefined', 'undefined', Call) ->
-    DefaultFlag = whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true'),
+    DefaultFlag = whapps_config:get_atom(<<"fax">>, <<"inbound_t38_default">>, 'true'),
     receive_fax(DefaultFlag, Call);
 receive_fax(ResourceFlag, ReceiveFlag, Call) ->
     T38Settings = props:filter_undefined(get_inbound_t38_settings(ResourceFlag, ReceiveFlag)),
