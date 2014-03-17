@@ -13,7 +13,7 @@ DIRS =  . \
 	$(ROOT)/core/whistle-1.0.0 \
 	$(ROOT)/core/whistle_amqp-1.0.0 \
 	$(ROOT)/core/whistle_couch-1.0.0 \
-	$(ROOT)/corewhistle_apps-1.0.0
+	$(ROOT)/core/whistle_apps-1.0.0
 
 .PHONY: all compile clean
 
