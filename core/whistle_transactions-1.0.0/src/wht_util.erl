@@ -14,7 +14,9 @@
 -export([dollars_to_units/1]).
 -export([units_to_dollars/1]).
 -export([base_call_cost/3]).
--export([current_balance/1]).
+-export([current_balance/1
+         ,previous_balance/3
+        ]).
 -export([call_cost/1]).
 -export([per_minute_cost/1]).
 -export([calculate_cost/5]).
@@ -22,6 +24,8 @@
 -export([is_valid_reason/1]).
 -export([reason_code/1]).
 -export([collapse_call_transactions/1]).
+-export([modb/1]).
+
 
 -include("whistle_transactions.hrl").
 
@@ -39,6 +43,7 @@
                   ,{<<"auto_addition">>, 3003}
                   ,{<<"sub_account_auto_addition">>, 3004}
                   ,{<<"admin_discretion">>, 3005}
+                  ,{<<"database_rollup">>, 4000}
                   ,{<<"unknown">>, 9999}
                  ]).
 
@@ -98,16 +103,41 @@ base_call_cost(RateCost, RateMin, RateSurcharge) when is_integer(RateCost),
 %% @end
 %%--------------------------------------------------------------------
 -spec current_balance/1 :: (ne_binary()) -> integer().
-current_balance(AccountId) ->
-    AccountDB = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:get_results(AccountDB, <<"transactions/credit_remaining">>, []) of
+current_balance(Account) -> get_balance(Account, []).
+
+-spec previous_balance(ne_binary(), ne_binary(), ne_binary()) -> integer().
+previous_balance(Account, Year, Month) ->
+    get_balance(Account, [{'year', Year}, {'month', Month}]).
+
+-spec get_balance(ne_binary(), wh_proplist()) -> integer().
+get_balance(Account, ViewOptions) ->
+    View = <<"transactions/credit_remaining">>,
+    case kazoo_modb:get_results(Account, View, ViewOptions) of
+        {'ok', []} ->
+            Balance = get_balance_from_account(Account, ViewOptions),
+            AccountMODb = kazoo_modb:get_modb(Account),
+            rollup(AccountMODb, Balance),
+            Balance;
+        {'ok', [ViewRes|_]} ->
+            wh_json:get_integer_value(<<"value">>, ViewRes, 0);
+        {'error', _E} ->
+            lager:warning("unable to get current balance for ~s: ~p", [Account, _E]),
+            0
+    end.
+
+-spec get_balance_from_account(ne_binary(), wh_proplist()) -> integer().
+get_balance_from_account(Account, ViewOptions) ->
+    View = <<"transactions/credit_remaining">>,
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:get_results(AccountDb, View, ViewOptions) of
         {'ok', []} ->
             lager:debug("no current balance for ~s", [AccountId]),
             0;
         {'ok', [ViewRes|_]} ->
             wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {'error', _R} ->
-            lager:debug("unable to get current balance for ~s: ~p", [AccountId, _R]),
+            lager:warning("unable to get current balance for ~s: ~p", [AccountId, _R]),
             0
     end.
 
@@ -243,6 +273,50 @@ collapse_call_transactions(Transactions) ->
     collapse_call_transactions(Transactions
                                ,dict:new()
                                ,[]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec modb(ne_binary()) -> 'ok'.
+modb(AccountMODb) ->
+    Routines = [fun(MoDb) -> find_previous_modb(MoDb) end
+                ,fun({Year, Month}) -> previous_balance(AccountMODb, Year, Month) end
+                ,fun(Ballance) -> rollup(AccountMODb, Ballance) end
+               ],
+    lists:foldl(fun(F, A) -> F(A) end, AccountMODb, Routines).
+
+-spec find_previous_modb(ne_binary()) -> ne_binary().
+find_previous_modb(<<_:32/binary, "-", Year:4/binary, Month:2/binary>>) ->
+    prev_year_month(wh_util:to_integer(Year)
+                    ,wh_util:to_integer(Month)).
+
+
+-spec prev_year_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
+prev_year_month(Year, 1) -> {Year-1, 12};
+prev_year_month(Year, Month) -> {Year, Month-1}.
+
+-spec rollup(wh_transaction:transaction()) -> 'ok'.
+-spec rollup(ne_binary(), integer()) -> wh_transaction:transaction().
+rollup(Transaction) ->
+    Transaction1 = wh_transaction:set_reason(<<"database_rollup">>, Transaction),
+    Transaction2 = wh_transaction:set_description(<<"monthly rollup">>, Transaction1),
+    case wh_transaction:save(Transaction2) of
+        {'error', _E} ->
+            lager:error("monthly rollup transaction failed: ~p", [_E]);
+        {'ok', _} ->
+            lager:debug("monthly rollup transaction success", [])
+    end.
+
+rollup(AccountMODb, Ballance) when Ballance > 0 ->
+    AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
+    rollup(wh_transaction:credit(AccountId, Ballance));
+rollup(AccountMODb, Ballance) ->
+    AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
+    rollup(wh_transaction:debit(AccountId, -1*Ballance)).
+
 
 %%--------------------------------------------------------------------
 %% @private
