@@ -145,7 +145,7 @@ compile_default_template(TemplateModule, Category, Key) ->
                    Else -> Else
                end,
     lager:debug("compiling ~s: '~s'", [TemplateModule, Template]),
-    {'ok', TemplateModule} = erlydtl:compile_template(Template, TemplateModule).
+    {'ok', TemplateModule} = erlydtl:compile_template(Template, TemplateModule, [{'out_dir', 'false'}]).
 
 get_default_template(Category, Key) ->
     File = category_to_file(Category),
@@ -182,7 +182,7 @@ render_template(Template, DefaultTemplate, Props) ->
                                                         ])
                                          ,'true'),
         lager:debug("compiling custom ~s template", [DefaultTemplate]),
-        {'ok', CustomTemplate} = erlydtl:compile_template(Template, CustomTemplate),
+        {'ok', CustomTemplate} = erlydtl:compile_template(Template, CustomTemplate, [{'out_dir', 'false'}]),
 
         lager:debug("rendering custom template ~s", [CustomTemplate]),
         Result = CustomTemplate:render(Props),
