@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Handle processing of the pivot call
 %%% @end
@@ -242,17 +242,21 @@ handle_cast(_Req, State) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'ibrowse_async_headers', ReqId, "200", RespHeaders}
+handle_info({'ibrowse_async_headers', ReqId, "200", Hdrs}
             ,#state{request_id=ReqId}=State) ->
-    {'noreply', State#state{response_content_type=find_content_type(RespHeaders)}};
+    RespHeaders = normalize_resp_headers(Hdrs),
+    lager:debug("recv resp headers"),
 
-handle_info({'ibrowse_async_headers', ReqId, "302", RespHeaders}
+    {'noreply', State#state{response_content_type=props:get_value(<<"content-type">>, RespHeaders)}};
+
+handle_info({'ibrowse_async_headers', ReqId, "302", Hdrs}
             ,#state{voice_uri=Uri
                     ,method=Method
                     ,request_id=ReqId
                     ,request_params=Params
                    }=State) ->
-    Redirect = props:get_value("Location", RespHeaders),
+    RespHeaders = normalize_resp_headers(Hdrs),
+    Redirect = props:get_value("location", RespHeaders),
     lager:info("recv 302: redirect to ~s", [Redirect]),
     Redirect1 = kzt_util:resolve_uri(Uri, Redirect),
 
@@ -391,15 +395,16 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
             {'ok', ReqId, Call};
         {'ok', "200", RespHdrs, RespBody} ->
             lager:info("recv 200: ~s", [RespBody]),
-            handle_resp(Call, RespHdrs, RespBody);
+            process_resp(Call, normalize_resp_headers(RespHdrs), RespBody);
         {'ok', "302", Hdrs, _RespBody} ->
-            Redirect = props:get_value("Location", Hdrs),
+            RespHdrs = normalize_resp_headers(Hdrs),
+            Redirect = props:get_value("location", RespHdrs),
             lager:info("recv 302: redirect to ~s", [Redirect]),
             Redirect1 = kzt_util:resolve_uri(Uri, Redirect),
             send(Call, Redirect1, Method, ReqHdrs, ReqBody);
         {'ok', _RespCode, _Hdrs, _RespBody} ->
             lager:info("recv other: ~s: ~s", [_RespCode, _RespBody]),
-            [lager:debug("other hrds: ~p", [_Hdr]) || _Hdr <- _Hdrs],
+            [lager:debug("other hrds: ~p", [_Hdr]) || _Hdr <- normalize_resp_headers(_Hdrs)],
             {'stop', Call};
         {'error', {'conn_failed', {'error', 'econnrefused'}}} ->
             lager:debug("connection to host refused, going down"),
@@ -408,6 +413,10 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
             lager:debug("error with req: ~p", [_Reason]),
             {'stop', Call}
     end.
+
+-spec normalize_resp_headers(wh_proplist()) -> wh_proplist().
+normalize_resp_headers(Headers) ->
+    [{wh_util:to_lower_binary(K), wh_util:to_binary(V)} || {K, V} <- Headers].
 
 -spec handle_resp(whapps_call:call(), ne_binary(), binary()) -> 'ok'.
 handle_resp(Call, CT, RespBody) ->
@@ -435,7 +444,7 @@ process_resp(Call, _, <<>>) ->
     lager:debug("no response body, finishing up"),
     {'stop', Call};
 process_resp(Call, Hdrs, RespBody) when is_list(Hdrs) ->
-    handle_resp(Call, find_content_type(Hdrs), RespBody);
+    handle_resp(Call, props:get_value(<<"content-type">>, Hdrs), RespBody);
 process_resp(Call, CT, RespBody) ->
     lager:info("finding translator for content type ~s", [CT]),
     try kzt_translator:exec(Call, wh_util:to_list(RespBody), CT) of
@@ -462,14 +471,6 @@ process_resp(Call, CT, RespBody) ->
             lager:info("no translators recognize the supplied commands: ~s", [RespBody]),
             {'stop', Call}
     end.
-
--spec find_content_type(wh_proplist()) -> api_binary().
-find_content_type([{K, V}|Hdrs]) ->
-    case wh_json:normalize_key(wh_util:to_binary(K)) of
-        <<"content_type">> -> wh_util:to_binary(V);
-        _ -> find_content_type(Hdrs)
-    end;
-find_content_type([]) -> 'undefined'.
 
 -spec uri(ne_binary(), iolist()) -> iolist().
 uri(URI, QueryString) ->
