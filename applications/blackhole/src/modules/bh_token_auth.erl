@@ -32,19 +32,19 @@ init() ->
 
     _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, 'crossbar', "views/token_auth.json"),
 
-    crossbar_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'clean_expired'),
+    blackhole_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'clean_expired'),
 
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
+    _ = blackhole_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    blackhole_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
 
--spec finish_request(cb_context:context()) -> 'ok'.
--spec finish_request(cb_context:context(), api_object()) -> 'ok'.
+-spec finish_request(bh_context:context()) -> 'ok'.
+-spec finish_request(bh_context:context(), api_object()) -> 'ok'.
 finish_request(Context) ->
-    finish_request(Context, cb_context:auth_doc(Context)).
+    finish_request(Context, bh_context:auth_doc(Context)).
 
 finish_request(_Context, 'undefined') -> 'ok';
 finish_request(Context, AuthDoc) ->
-    cb_context:put_reqid(Context),
+    bh_context:put_reqid(Context),
     couch_mgr:suppress_change_notice(),
     lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
                                              ,wh_json:get_value(<<"_rev">>, AuthDoc)
@@ -90,26 +90,24 @@ prepare_token_for_deletion(Token) ->
                           'false' |
                           {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
-    _ = cb_context:put_reqid(Context),
+    _ = bh_context:put_reqid(Context),
     case kz_buckets:consume_token(bucket_name(Context)) of
-        'true' -> check_auth_token(Context, cb_context:auth_token(Context), cb_context:magic_pathed(Context));
+        'true' -> check_auth_token(Context, bh_context:auth_token(Context));
         'false' ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
-            {'halt', cb_context:add_system_error('too_many_requests', Context)}
+            {'halt', 'badness'}
     end.
 
--spec check_auth_token(cb_context:context(), api_binary(), boolean()) ->
+-spec check_auth_token(bh_context:context(), api_binary()) ->
                               boolean() |
                               {'true', cb_context:context()}.
-check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;
-check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
-check_auth_token(Context, AuthToken, _MagicPathed) ->
+check_auth_token(Context, AuthToken) ->
     lager:debug("checking auth token: ~s", [AuthToken]),
     case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
-            {'true', cb_context:set_auth_doc(
-                       cb_context:set_auth_account_id(Context
+            {'true', bh_context:set_auth_doc(
+                       bh_context:set_auth_account_id(Context
                                                       ,wh_json:get_ne_value(<<"account_id">>, JObj))
                        ,wh_json:set_value(<<"modified">>, wh_util:current_tstamp(), JObj)
                       )
@@ -119,11 +117,11 @@ check_auth_token(Context, AuthToken, _MagicPathed) ->
             'false'
     end.
 
--spec bucket_name(cb_context:context()) -> ne_binary().
+-spec bucket_name(bh_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
 bucket_name(Context) ->
-    bucket_name(cb_context:client_ip(Context)
-                ,cb_context:account_id(Context)
+    bucket_name(bh_context:client_ip(Context)
+                ,bh_context:account_id(Context)
                ).
 
 bucket_name('undefined', 'undefined') ->
@@ -134,5 +132,3 @@ bucket_name('undefined', AccountId) ->
     <<"no_ip/", AccountId/binary>>;
 bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
-
-

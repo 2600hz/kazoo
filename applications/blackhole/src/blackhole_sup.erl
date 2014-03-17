@@ -1,9 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%% Karl Anderson
+%%% James Aimonetti
+%%% Peter Defebvre
+%%% Ben Wann
 %%%-------------------------------------------------------------------
 -module(blackhole_sup).
 
@@ -17,7 +21,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('blackhole_cache')
                   ,?SUPER('blackhole_module_sup')
-                  ,?WORKER('blackhole_handler')
+                  ,?WORKER('blackhole_resource')
                   ]).
 
 %% ===================================================================
@@ -38,7 +42,7 @@ start_link() ->
                                              ,[socketio_session:configure([{'heartbeat', 5000}
                                                                           ,{'heartbeat_timeout', 30000}
                                                                           ,{'session_timeout', 30000}
-                                                                          ,{'callback', 'blackhole_socket'}
+                                                                          ,{'callback', 'blackhole_socket_callback'}
                                                                           ,{'protocol', 'socketio_data_protocol'}
                                                                           ])]}
                                             ]

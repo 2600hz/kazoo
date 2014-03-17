@@ -20,25 +20,25 @@ DIRS =  . \
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
-CF_MODULES = $(shell ls src/events/*.erl | sed 's/src\/events\///;s/\.erl/,/' | sed '$$s/.$$//')
+BH_MODULES = $(shell ls src/modules/*.erl | sed 's/src\/modules\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{events, \[\]}/{events, \[$(MODULES),$(CF_MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(BH_MODULES)\]}/' \
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-ebin/$(PROJECT).app: src/*.erl src/events/*.erl
+ebin/$(PROJECT).app: src/*.erl src/modules/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{events, \[\]}/{events, \[$(MODULES),$(CF_MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(BH_MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl src/events/*.erl
+test/$(PROJECT).app: src/*.erl src/modules/*.erl
 	@mkdir -p test/
 	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
 
@@ -50,7 +50,7 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES),$(CF_MODULES)], [verbose])" -s init stop
+	erl -noshell -pa test -eval "eunit:test([$(MODULES),$(BH_MODULES)], [verbose])" -s init stop
 
 dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \

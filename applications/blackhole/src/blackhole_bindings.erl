@@ -39,14 +39,7 @@
 
 -include("blackhole.hrl").
 
--type payload() :: path_tokens() | % mapping over path tokens in URI
-                   [cb_context:context() | path_token() | 'undefined',...] |
-                   cb_context:context() |
-                   {cb_context:context(), wh_proplist()} | % v1_resource:rest_init/2
-                   {'error', _} | % v1_util:execute_request/2
-                   {wh_json:json_strings(), cb_context:context(), path_tokens()} |
-                   {wh_datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
-                   {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
+-type payload() :: 'ok'.
 
 %%%===================================================================
 %%% API
@@ -59,10 +52,7 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--type map_results() :: [boolean() |
-                        http_methods() |
-                        {boolean() | 'halt', cb_context:context()}
-                        ,...] | [].
+-type map_results() :: list().
 -spec map(ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     kazoo_bindings:map(Routing, Payload).
@@ -155,7 +145,7 @@ flush() -> kazoo_bindings:flush().
 flush(Binding) -> kazoo_bindings:flush(Binding).
 
 -spec flush_mod(atom()) -> 'ok'.
-flush_mod(CBMod) -> kazoo_binding:flush(CBMod).
+flush_mod(BHMod) -> kazoo_binding:flush(BHMod).
 
 -spec modules_loaded() -> atoms().
 modules_loaded() -> kazoo_bindings:modules_loaded().
@@ -163,17 +153,29 @@ modules_loaded() -> kazoo_bindings:modules_loaded().
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing bindings"),
-
     put('callid', ?LOG_SYSTEM_ID),
-    _ = [maybe_init_mod(Mod)
+    _ = [init_mod(Mod)
          || Mod <- whapps_config:get(?BLACKHOLE_CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
-    ],
+        ],
     'ok'.
 
-maybe_init_mod(ModBin) ->
-    try (wh_util:to_atom(ModBin, 'true')):init() of
+init_mod(ModuleName) ->
+    maybe_init_mod(ModuleName),
+    maybe_init_mod_supervisor(ModuleName).
+
+maybe_init_mod(ModuleName) ->
+    try (wh_util:to_atom(ModuleName, 'true')):init() of
         _ -> 'ok'
     catch
         _E:_R ->
-            lager:warning("failed to initialize ~s: ~p, ~p.", [ModBin, _E, _R]),
+            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
+    end.
+
+maybe_init_mod_supervisor(ModuleName) ->
+    SupervisorName = wh_util:to_atom(<<ModuleName/binary, "_sup">>, 'true'),
+    try blackhole_module_sup:start_child(SupervisorName, 'supervisor') of
+        _ -> 'ok'
+    catch
+        _E:_R ->
+            lager:warning("failed to initialize ~s: ~p, ~p.", [SupervisorName, _E, _R])
     end.

@@ -5,9 +5,17 @@
   <body>
     <div id="content"></div>
     <script>
-      var socket = io.connect('http://192.168.10.111:5555');
-      socket.emit("calls.connect", { account_id: "4b31dd1d32ce6d249897c06332375d65" });
-      socket.on("calls", function (data) {
+      var socket = io.connect('http://192.168.56.111:5555');
+      socket.emit("v1.calls.CHANNEL_CREATE", { account_id: "4b31dd1d32ce6d249897c06332375d65", auth_token: "placeauthtokenhere", verb: "SUBSCRIBE" });
+      socket.emit("v1.calls.CHANNEL_ANSWER", { account_id: "4b31dd1d32ce6d249897c06332375d65", auth_token: "placeauthtokenhere", verb: "SUBSCRIBE" });
+      socket.emit("v1.calls.CHANNEL_DESTROY", { account_id: "4b31dd1d32ce6d249897c06332375d65", auth_token: "placeauthtokenhere", verb: "SUBSCRIBE" });
+      socket.on("CHANNEL_CREATE", function (data) {
+      console.log(data);
+      });
+      socket.on("CHANNEL_ANSWER", function (data) {
+      console.log(data);
+      });
+      socket.on("CHANNEL_DESTROY", function (data) {
       console.log(data);
       });
     </script>

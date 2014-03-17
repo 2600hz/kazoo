@@ -32,7 +32,7 @@ start_child(Mod) ->
     start_child(Mod, 'worker').
 start_child(Mod, 'worker') ->
     supervisor:start_child(?SERVER, ?WORKER(Mod));
-start_child(start_child(Mod, 'supervisor') ->
+start_child(Mod, 'supervisor') ->
     supervisor:start_child(?SERVER, ?SUPER(Mod)).
 
 %%%===================================================================
