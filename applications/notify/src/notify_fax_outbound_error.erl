@@ -130,6 +130,17 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
 
+    Charset = props:get_value(<<"template_charset">>, Service),
+    ContentTypeParams = case Charset of
+                            <<>> -> [];
+                            <<_/binary>> -> [{<<"content-type-params">>,[{<<"charset">>,Charset}]}];
+                            _ -> []
+                        end,
+    CharsetString = case Charset of
+                            <<>> -> <<>>;
+                            <<_/binary>> -> iolist_to_binary([<<";charset=">>, Charset]);
+                            _ -> <<>>
+                        end,
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -137,10 +148,10 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
                    ,{<<"To">>, To}
                    ,{<<"Subject">>, Subject}
                   ]
-             ,[]
+             ,ContentTypeParams
              ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}], [], iolist_to_binary(TxtBody)}
+                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}], [], iolist_to_binary(HTMLBody)}
                  ]
                }
               ]
