@@ -199,8 +199,16 @@ unique(List) ->
 -spec unique(wh_proplist(), wh_proplist()) -> wh_proplist().
 unique([], Uniques) -> lists:reverse(Uniques);
 unique([{Key, _}=H|T], Uniques) ->
-    unique(lists:filter(fun({K, _}) -> not (K =:= Key) end, T)
+    unique(lists:filter(fun({K, _}) -> not (K =:= Key);
+                           (K) -> not (K =:= Key)
+                        end, T)
            ,[H|Uniques]
+          );
+unique([Key|T], Uniques) ->
+    unique(lists:filter(fun({K, _}) -> not (K =:= Key);
+                           (K) -> not (K =:= Key)
+                        end, T)
+          ,[Key|Uniques]
           ).
 
 get_values_and_keys(Props) ->
