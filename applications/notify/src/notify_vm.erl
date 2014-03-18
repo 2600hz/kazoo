@@ -216,6 +216,8 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
 %%--------------------------------------------------------------------
 -spec get_file_name(proplist()) -> ne_binary().
 get_file_name(Props) ->
+    lager:debug("filename props"),
+    [lager:debug("p: ~p", [P]) || P <- Props],
     %% CallerID_Date_Time.mp3
     Voicemail = props:get_value(<<"voicemail">>, Props),
     CallerID = case {props:get_value(<<"caller_id_name">>, Voicemail), props:get_value(<<"caller_id_number">>, Voicemail)} of
