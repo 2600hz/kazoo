@@ -393,6 +393,7 @@ event_listener_name(Call, Module) ->
 %%--------------------------------------------------------------------
 handle_info('initialize', #state{call=Call}) ->
     log_call_information(Call),
+    spawn(fun() -> cf_singular_call_hooks:maybe_send_init_hook(Call) end),
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [fun(C) -> whapps_call:kvs_store('cf_exe_pid', self(), C) end
                 ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
@@ -474,6 +475,9 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                     'false' -> control_usurped(Self);
                     'true' -> 'ok'
                 end,
+            'ignore';
+        {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, _} ->
+            spawn(fun() -> cf_singular_call_hooks:maybe_send_end_hook(Call, JObj) end),
             'ignore';
         {{<<"error">>, _}, _} ->
             case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
