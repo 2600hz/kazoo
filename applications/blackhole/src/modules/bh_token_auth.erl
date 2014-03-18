@@ -86,15 +86,15 @@ prepare_token_for_deletion(Token) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate(cb_context:context()) ->
+-spec authenticate(bh_context:context()) ->
                           'false' |
-                          {'true' | 'halt', cb_context:context()}.
+                          {'true' | 'halt', bh_context:context()}.
 authenticate(Context) ->
     _ = bh_context:put_reqid(Context),
     case kz_buckets:consume_token(bucket_name(Context)) of
         'true' -> check_auth_token(Context, bh_context:auth_token(Context));
         'false' ->
-            lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
+            lager:warning("rate limiting threshold hit for ~s!", [bh_context:session_id(Context)]),
             {'halt', 'badness'}
     end.
 
@@ -118,17 +118,5 @@ check_auth_token(Context, AuthToken) ->
     end.
 
 -spec bucket_name(bh_context:context()) -> ne_binary().
--spec bucket_name(api_binary(), api_binary()) -> ne_binary().
 bucket_name(Context) ->
-    bucket_name(bh_context:client_ip(Context)
-                ,bh_context:account_id(Context)
-               ).
-
-bucket_name('undefined', 'undefined') ->
-    <<"no_ip/no_account">>;
-bucket_name(IP, 'undefined') ->
-    <<IP/binary, "/no_account">>;
-bucket_name('undefined', AccountId) ->
-    <<"no_ip/", AccountId/binary>>;
-bucket_name(IP, AccountId) ->
-    <<IP/binary, "/", AccountId/binary>>.
+    bh_context:session_id(Context).

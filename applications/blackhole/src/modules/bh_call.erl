@@ -1,27 +1,20 @@
 -module(bh_call).
 
--export([init/0]).
--export([subscribe/3, unsubscribe/3]).
--export([create/3]).
+-export([handle_event/2]).
 
-init() ->
-    _ = blackhole_bindings:bind(<<"v1.calls.*">>, ?MODULE, 'subscribe'),
-    _ = blackhole_bindings:bind(<<"call.create">>, ?MODULE, 'create'),
-    _ = blackhole_bindings:bind(<<"v1.calls.*">>, ?MODULE, 'unsubscribe').
+-include("../blackhole.hrl").
 
-subscribe(Data, SessionId, SessionPid) ->
-    AccountId = wh_json:get_value(<<"account_id">>, Data),
-    lager:debug("listening for call events for account: ~p", [AccountId]),
-    {'ok', ListenerPid} = bh_call_sup:start_listener(AccountId),
-    bh_call_listener:subscribe(ListenerPid, SessionPid),
-    blackhole_handler:add_listener_to_context(ListenerPid, 'bh_call_listener', SessionId, SessionPid),
-    blackhole_data_emitter:send_data(SessionPid, <<"connected">>, [AccountId]).
+-spec handle_event(bh_context:context(), wh_json:object()) -> any().
+handle_event(Context, EventJObj) ->
+    'true' = wapi_call:event_v(EventJObj) andalso is_account_event(Context, EventJObj),
+    blackhole_data_emitter:emit(bh_context:session_pid(Context), event_name(EventJObj), EventJObj).
 
-create(_Data, _SessionId, _SessionPid) ->
-    'ok'.
+is_account_event(Context, EventJObj) ->
+    wh_json:get_first_defined([<<"Account-ID">>
+                               ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                              ], EventJObj
+                             ) =:=
+        bh_context:account_id(Context).
 
-unsubscribe(Data, SessionId, SessionPid) ->
-    AccountId = wh_json:get_value(<<"account_id">>, Data),
-    {'ok', ListenerPid} = blackhole_call_events_sup:get_listener(AccountId),
-    bh_call_listener:unsubscribe(ListenerPid, SessionPid),
-    blackhole_handler:remove_listener_from_context(ListenerPid,'bh_call_listener', SessionId, SessionPid).
+event_name(JObj) ->
+    wh_json:get_value(<<"Event-Name">>, JObj).

@@ -152,7 +152,7 @@ modules_loaded() -> kazoo_bindings:modules_loaded().
 
 -spec init() -> 'ok'.
 init() ->
-    lager:debug("initializing bindings"),
+    lager:debug("initializing blackhole bindings"),
     put('callid', ?LOG_SYSTEM_ID),
     _ = [init_mod(Mod)
          || Mod <- whapps_config:get(?BLACKHOLE_CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
@@ -160,22 +160,14 @@ init() ->
     'ok'.
 
 init_mod(ModuleName) ->
-    maybe_init_mod(ModuleName),
-    maybe_init_mod_supervisor(ModuleName).
+    lager:debug("initializing module: ~p", [ModuleName]),
+    maybe_init_mod(ModuleName).
 
 maybe_init_mod(ModuleName) ->
+    lager:debug("trying to init module: ~p", [ModuleName]),
     try (wh_util:to_atom(ModuleName, 'true')):init() of
         _ -> 'ok'
     catch
         _E:_R ->
             lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
-    end.
-
-maybe_init_mod_supervisor(ModuleName) ->
-    SupervisorName = wh_util:to_atom(<<ModuleName/binary, "_sup">>, 'true'),
-    try blackhole_module_sup:start_child(SupervisorName, 'supervisor') of
-        _ -> 'ok'
-    catch
-        _E:_R ->
-            lager:warning("failed to initialize ~s: ~p, ~p.", [SupervisorName, _E, _R])
     end.

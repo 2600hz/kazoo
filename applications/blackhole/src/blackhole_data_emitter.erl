@@ -13,6 +13,8 @@
 -export([emit/3]).
 
 -spec emit(pids(), api_binary(), json:object()) -> 'ok'.
-emit(SessionPids, Event, Data) ->
+emit(SessionPid, Event, Data) when is_pid(SessionPid) ->
+    socketio_session:send_event(SessionPid, Event, Data);
+emit([_|_]=SessionPids, Event, Data) ->
     lager:debug("going to send event data"),
     [socketio_session:send_event(SessionPid, Event, Data) || SessionPid <- SessionPids].

@@ -1,34 +1,41 @@
-%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600hz
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(blackhole_call_events_listener).
+-module(blackhole_listener).
 
 -behaviour(gen_listener).
 
--export([start_link/1]).
+-export([start_link/0
+         ,handle_amqp_event/3
+         ,add_call_binding/1
+        ]).
 -export([init/1
-        ,handle_call/3
-        ,handle_cast/2
-        ,handle_info/2
-        ,handle_event/2
-        ,terminate/2
-        ,code_change/3
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
         ]).
 
--include("../blackhole.hrl").
+-include("blackhole.hrl").
+-include_lib("rabbitmq_server/include/rabbit_framing.hrl").
+
+-record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, []).
--define(RESPONDERS, []).
+-define(RESPONDERS, [{{?MODULE, 'handle_amqp_event'}
+                      ,[{<<"*">>, <<"*">>}]
+                      }
+                    ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
-
--record(state, {pids, account_id}).
 
 %%%===================================================================
 %%% API
@@ -41,13 +48,24 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Args) ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
+start_link() ->
+    gen_listener:start_link(?MODULE, [
+                                      {'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                     ], Args).
+                                     ], []).
+
+-spec handle_amqp_event(wh_json:object(), _, #'basic.deliver'{} | ne_binary()) -> any().
+handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
+    handle_amqp_event(EventJObj, Props, RoutingKey);
+handle_amqp_event(EventJObj, _Props, RoutingKey) ->
+    blackhole_bindings:map(RoutingKey, EventJObj).
+
+-spec add_call_binding(ne_binary()) -> 'ok'.
+add_call_binding(AccountId) ->
+    gen_listener:cast(?MODULE, {'add_call_binding', AccountId}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -64,10 +82,8 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init(AccountId) ->
-    lager:debug('new call event listener ~p', [AccountId]),
-    wh_hooks:register(AccountId),
-    {'ok', #state{account_id = AccountId, pids = sets:new()}}.
+init([]) ->
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -83,11 +99,6 @@ init(AccountId) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call('get_socket', {Pid, _}, State) ->
-    Reply = lists:member(Pid, State),
-    {'reply', Reply, State};
-handle_call('get_state', _, State) ->
-    {'reply', State, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -101,21 +112,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'disconnect_socket', Pid}, #state{pids=Pids}=State) ->
-    NewPids = sets:del_element(Pid, Pids),
-    case sets:size(NewPids) of
-        0 ->
-            {'stop', 'normal', 'ok', State#state{pids = NewPids}};
-        _Size ->
-            blackhole_sockets:send_event(sets:to_list(Pids), <<"calls">>, [<<"ok">>]),
-            {'reply', 'ok', State#state{pids = NewPids}}
-    end;
-handle_cast({'connect_socket', Pid}, #state{pids=Pids}=State) ->
-    lager:debug("connecting socket...."),
-    NewPidSet = sets:add_element(Pid, Pids),
-    blackhole_sockets:send_event( sets:to_list(NewPidSet), <<"calls">>, []),
-    {'noreply', State#state{pids = NewPidSet}};
-handle_cast(_Message, State) ->
+handle_cast({'add_call_binding', AccountId}, State) ->
+    wh_hooks:register(AccountId),
+    {'noreply', State};
+handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -128,11 +132,14 @@ handle_cast(_Message, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(?HOOK_EVT(AccountId, EventType, JObj), #state{pids=Pids}=State) ->
-    handle_call_event(AccountId, EventType, JObj, Pids),
+handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
+    spawn(?MODULE, 'handle_amqp_event', [JObj, 'ok', call_routing(EventType, JObj)]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
+
+call_routing(EventType, JObj) ->
+    wapi_call:event_routing_key(EventType, wh_json:get_value(<<"Call-ID">>, JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -143,7 +150,6 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    lager:debug("got event: ~p", [_JObj]),
     {'reply', []}.
 
 %%--------------------------------------------------------------------
@@ -174,9 +180,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_call_event(ne_binary(), ne_binary(), json:object(), set()) -> 'ok'.
-handle_call_event(_AccountId, _Event, JObj, Pids) ->
-    lager:debug("Event Obj: ~p", [JObj]),
-    blackhole_sockets:send_event(sets:to_list(Pids)
-                                ,<<"calls">>
-                                ,[JObj]).

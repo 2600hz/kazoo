@@ -20,8 +20,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('blackhole_cache')
-                  ,?SUPER('blackhole_module_sup')
-                  ,?WORKER('blackhole_resource')
+                   ,?WORKER('blackhole_listener')
                   ]).
 
 %% ===================================================================
