@@ -1,12 +1,19 @@
 -module(bh_conference).
 
--export([handle_event/2]).
+-export([handle_event/2
+         ,add_amqp_binding/2
+        ]).
 
 -include("../blackhole.hrl").
+
+%% conference.event.{conference_id}
 
 -spec handle_event(bh_context:context(), wh_json:object()) -> any().
 handle_event(Context, EventJObj) ->
     blackhole_data_emitter:emit(bh_context:session_pid(Context), event_name(EventJObj), EventJObj).
+
+add_amqp_binding(Binding, Context) ->
+    'ok'.
 
 %%%===================================================================
 %%% Internal functions

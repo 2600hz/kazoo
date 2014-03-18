@@ -22,7 +22,7 @@
 -module(blackhole_bindings).
 
 %% API
--export([bind/3
+-export([bind/4
          ,map/2
          ,fold/2
          ,flush/0, flush/1, flush_mod/1
@@ -131,12 +131,12 @@ filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result(),...] | [].
--spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
+-spec bind(ne_binary() | ne_binaries(), atom(), atom(), term()) ->
                   bind_result() | bind_results().
-bind([_|_]=Bindings, Module, Fun) ->
-    [bind(Binding, Module, Fun) || Binding <- Bindings];
-bind(Binding, Module, Fun) when is_binary(Binding) ->
-    kazoo_bindings:bind(Binding, Module, Fun).
+bind([_|_]=Bindings, Module, Fun, Payload) ->
+    [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
+bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
+    kazoo_bindings:bind(Binding, Module, Fun, Payload).
 
 -spec flush() -> 'ok'.
 flush() -> kazoo_bindings:flush().

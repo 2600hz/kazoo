@@ -34,7 +34,7 @@ init() ->
 
     blackhole_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'clean_expired'),
 
-    _ = blackhole_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = blackhole_bindings:bind(<<"blackhole.authenticate">>, ?MODULE, 'authenticate'),
     blackhole_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
 
 -spec finish_request(bh_context:context()) -> 'ok'.

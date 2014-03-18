@@ -16,5 +16,5 @@
 emit(SessionPid, Event, Data) when is_pid(SessionPid) ->
     socketio_session:send_event(SessionPid, Event, Data);
 emit([_|_]=SessionPids, Event, Data) ->
-    lager:debug("going to send event data"),
+    lager:debug("event: ~s: Data: ~p", [Event, Data),
     [socketio_session:send_event(SessionPid, Event, Data) || SessionPid <- SessionPids].

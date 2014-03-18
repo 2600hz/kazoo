@@ -1,6 +1,8 @@
 -module(bh_call).
 
--export([handle_event/2]).
+-export([handle_event/2
+         ,add_amqp_binding/2
+        ]).
 
 -include("../blackhole.hrl").
 
@@ -18,3 +20,8 @@ is_account_event(Context, EventJObj) ->
 
 event_name(JObj) ->
     wh_json:get_value(<<"Event-Name">>, JObj).
+
+add_amqp_binding(<<"call.", _/binary>>, Context) ->
+    blackhole_listener:add_call_binding(bh_context:account_id(Context));
+add_amqp_binding(_Binding, _Context) ->
+    'ok'.

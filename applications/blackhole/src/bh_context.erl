@@ -11,6 +11,7 @@
         ,from_subscription/1, from_subscription/2
         ,is_context/1
         ,account_id/1, set_account_id/2
+        ,binding/1, set_binding/2
         ,auth_token/1, set_auth_token/2
         ,auth_account_id/1, set_auth_account_id/2
         ,websocket_session_id/1, set_websocket_session_id/2
@@ -23,6 +24,7 @@
           auth_token = <<>> :: ne_binary() | 'undefined'
           ,auth_account_id :: api_binary()
           ,account_id :: api_binary()
+          ,binding :: ne_binary()
           ,websocket_session_id :: ne_binary()
           ,websocket_pid :: pid()
          }).
@@ -47,7 +49,8 @@ from_subscription(Data) ->
 -spec from_subscription(context(), wh_json:object()) -> context().
 from_subscription(Context, Data) ->
     Context#bh_context{account_id=wh_json:get_value(<<"account_id">>,Data)
-                      ,auth_token=wh_json:get_value(<<"auth_token">>,Data)               
+                      ,auth_token=wh_json:get_value(<<"auth_token">>,Data)
+                      ,binding=wh_json:get_value(<<"binding">>,Data)
                       }.
 
 -spec is_context(any()) -> boolean().
@@ -57,17 +60,20 @@ is_context(_) -> 'false'.
 account_id(#bh_context{account_id=AcctId}) -> AcctId.
 auth_token(#bh_context{auth_token=AuthToken}) -> AuthToken.
 auth_account_id(#bh_context{auth_account_id=AuthBy}) -> AuthBy.
+binding(#bh_context{binding=Binding}) -> Binding.
 websocket_session_id(#bh_context{websocket_session_id=SessionId}) -> SessionId.
 websocket_pid(#bh_context{websocket_pid=SocketPid}) -> SocketPid.
 
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_auth_token(context(), ne_binary()) -> context().
 -spec set_auth_account_id(context(), ne_binary()) -> context().
+-spec set_binding(context(), ne_binary()) -> context().
 -spec set_websocket_session_id(context(), ne_binary()) -> context().
 -spec set_websocket_pid(context(), pid()) -> context().
 set_account_id(#bh_context{}=Context, AcctId) -> Context#bh_context{account_id=AcctId}.
 set_auth_token(#bh_context{}=Context, AuthToken) -> Context#bh_context{auth_token=AuthToken}.
 set_auth_account_id(#bh_context{}=Context, AuthBy) -> Context#bh_context{auth_account_id=AuthBy}.
+set_binding(#bh_context{}=Context, Binding) -> Context#bh_context{binding=Binding}.
 set_websocket_session_id(#bh_context{}=Context, SessionId) -> 
     Context#bh_context{websocket_session_id=SessionId}.
 set_websocket_pid(#bh_context{}=Context, SocketPid) ->

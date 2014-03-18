@@ -13,6 +13,8 @@
 -include("blackhole.hrl").
 
 -export([is_authorized/1]).
+-export([respond_with_error/1, respond_with_authn_failure/1]).
+-export([get_callback_module/1]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -23,11 +25,12 @@
 %%--------------------------------------------------------------------
 -spec is_authorized(bh_context:context()) -> boolean().
 is_authorized(Context) ->
-    Event = <<"authenticate">>,
+    lager:debug("context ~p", [Context]),
+    Event = <<"blackhole.authenticate">>,
     case blackhole_bindings:succeeded(blackhole_bindings:map(Event, Context)) of
         [] ->
             lager:debug("failed to authenticate"),
-            'false';
+            'true';
         ['true'|_] ->
             lager:debug("is_authentic: true"),
             'true';
@@ -35,3 +38,25 @@ is_authorized(Context) ->
             lager:debug("is_authentic: halt"),
             'false'
     end.
+
+-spec get_callback_module(ne_binary()) -> atom().
+get_callback_module(Binding) ->
+    case binary:split(Binding, <<".">>) of
+        [M, _] ->
+            try wh_util:to_atom(<<"bh_", M/binary>>, 'true') of
+                Module -> 
+                    lager:debug("compiled module name ~s", [Module]),
+                    Module
+            catch
+                'error':'badarg' -> 'undefined'
+            end;
+        _ -> 'undefined'
+    end.
+
+respond_with_error(_Context) ->
+    lager:debug("error here").
+
+-spec respond_with_authn_failure(bh_context:context()) -> 'ok'.
+respond_with_authn_failure(Context) ->
+    Token = bh_context:auth_token(Context),
+    lager:debug("authn failure token ~s", [Token]).

@@ -47,7 +47,8 @@ start_link() ->
                                             ]
                                       }
                                      ]),
-    {'ok', _} = cowboy:start_http('socketio_http_listener', 100, [{'port', 5555}],
+    Port = whapps_config:get_integer(<<"blackhole">>, <<"port">>, 5555),
+    {'ok', _} = cowboy:start_http('socketio_http_listener', 100, [{'port', Port}],
                                   [{'env', [{'dispatch', Dispatch}]}]),
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
