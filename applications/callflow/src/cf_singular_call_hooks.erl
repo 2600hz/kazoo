@@ -103,15 +103,15 @@ send_init_hook(Call) ->
     lager:debug("===CALL STARTED===", []),
     lager:debug("Event: init", []),
     lager:debug("CallId: ~s", [whapps_call:call_id(Call)]),
-    lager:debug("To: ~s", [whapps_call:to_user(Call)]),
-    lager:debug("From: ~s", [whapps_call:caller_id_number(Call)]),
+    lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
+    lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
     lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"init">>}
             ,{<<"CallId">>, whapps_call:call_id(Call)}
-            ,{<<"To">>, whapps_call:to_user(Call)}
-            ,{<<"From">>, whapps_call:caller_id_number(Call)}
+            ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
+            ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
             ],
 
@@ -146,8 +146,8 @@ send_end_hook(Call, Event)  ->
     lager:debug("===CALL ENDED===", []),
     lager:debug("Event: end", []),
     lager:debug("CallId: ~s", [whapps_call:call_id(Call)]),
-    lager:debug("To: ~s", [whapps_call:to_user(Call)]),
-    lager:debug("From: ~s", [whapps_call:caller_id_number(Call)]),
+    lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
+    lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
     lager:debug("CallDuration: ~s", [wh_json:get_value(<<"Duration-Seconds">>, Event)]),
     lager:debug("HangupReason: ~s", [wh_json:get_value(<<"Hangup-Cause">>, Event)]),
@@ -156,8 +156,8 @@ send_end_hook(Call, Event)  ->
     
     Prop = [{<<"Event">>, <<"destroy">>}
             ,{<<"CallId">>, whapps_call:call_id(Call)}
-            ,{<<"To">>, whapps_call:to_user(Call)}
-            ,{<<"From">>, whapps_call:caller_id_number(Call)}
+            ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
+            ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
             ,{<<"Duration-Seconds">>, wh_json:get_value(<<"Duration-Seconds">>, Event)}
             ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, Event)}
