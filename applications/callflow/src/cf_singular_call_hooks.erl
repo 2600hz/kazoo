@@ -72,7 +72,6 @@ maybe_send_init_hook(Call) ->
 -spec maybe_send_end_hook(whapps_call:call(), wh_json:object()) -> boolean().
 maybe_send_end_hook(Call, Event) ->
     %% Never invoke anything if we are disabled
-    lager:error("~p ~p", [Call, Event]),
     case should_send_hook(Call) of
         'true' -> send_end_hook(Call, Event);
         'false' -> 'false'
@@ -89,13 +88,13 @@ maybe_send_end_hook(Call, Event) ->
 %%--------------------------------------------------------------------
 -spec send_init_hook(whapps_call:call()) -> boolean().
 send_init_hook(Call) ->
-    lager:error("===CALL STARTED===", []),
-    lager:error("Event: init", []),
-    lager:error("CallId: ~s", [whapps_call:call_id_direct(Call)]),
-    lager:error("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
-    lager:error("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
-    lager:error("Inception: ~s", [get_inception(Call)]),
-    lager:error("================", []),
+    lager:debug("===CALL STARTED===", []),
+    lager:debug("Event: init", []),
+    lager:debug("CallId: ~s", [whapps_call:call_id_direct(Call)]),
+    lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
+    lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
+    lager:debug("Inception: ~s", [get_inception(Call)]),
+    lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"init">>}
             ,{<<"CallId">>, whapps_call:call_id(Call)}
@@ -136,16 +135,16 @@ send_init_hook(Call) ->
 %%--------------------------------------------------------------------
 -spec send_end_hook(whapps_call:call(), wh_json:object()) -> boolean().
 send_end_hook(Call, Event) ->
-    lager:error("===CALL ENDED===", []),
-    lager:error("Event: end", []),
-    lager:error("CallId: ~s", [whapps_call:call_id_direct(Call)]),
-    lager:error("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
-    lager:error("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
-    lager:error("Inception: ~s", [get_inception(Call)]),
-    lager:error("CallDuration: ~s", [wh_json:get_value(<<"Duration-Seconds">>, Event)]),
-    lager:error("HangupReason: ~s", [wh_json:get_value(<<"Hangup-Cause">>, Event)]),
-    lager:error("Disposition: ~s", [wh_json:get_value(<<"Disposition">>, Event)]),
-    lager:error("================", []),
+    lager:debug("===CALL ENDED===", []),
+    lager:debug("Event: end", []),
+    lager:debug("CallId: ~s", [whapps_call:call_id_direct(Call)]),
+    lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
+    lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
+    lager:debug("Inception: ~s", [get_inception(Call)]),
+    lager:debug("CallDuration: ~s", [wh_json:get_value(<<"Duration-Seconds">>, Event)]),
+    lager:debug("HangupReason: ~s", [wh_json:get_value(<<"Hangup-Cause">>, Event)]),
+    lager:debug("Disposition: ~s", [wh_json:get_value(<<"Disposition">>, Event)]),
+    lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"destroy">>}
             ,{<<"CallId">>, whapps_call:call_id_direct(Call)}
