@@ -28,6 +28,7 @@
          ,map/2
          ,fold/2
          ,flush/0, flush/1, flush_mod/1
+         ,filter/1
          ,stop/0
          ,modules_loaded/0
         ]).
@@ -210,6 +211,11 @@ flush(Binding) -> gen_server:cast(?MODULE, {'flush', Binding}).
 -spec flush_mod(atom()) -> 'ok'.
 flush_mod(Module) -> gen_server:cast(?MODULE, {'flush_mod', Module}).
 
+-type filter_fun() :: fun((ne_binary(), atom(), atom(), term()) -> boolean()).
+-spec filter(filter_fun()) -> 'ok'.
+filter(Predicate) when is_function(Predicate, 4) ->
+    gen_server:cast(?MODULE, {'filter', Predicate}).
+
 -spec modules_loaded() -> atoms().
 modules_loaded() ->
     ets:foldl(fun(#kz_binding{binding_responders=Responders}, Acc) ->
@@ -338,6 +344,9 @@ handle_cast({'flush_mod', Mod}, State) ->
     lager:debug("trying to flush ~s", [Mod]),
     ets:foldl(fun(El, _) -> flush_mod(Mod, El) end, 'ok', table_id()),
     {'noreply', State};
+handle_cast({'filter', Predicate}, State) ->
+    filter_bindings(Predicate),
+    {'noreply', State};
 handle_cast('stop', State) ->
     {'stop', 'normal', State}.
 
@@ -352,6 +361,29 @@ flush_mod(ClientMod, #kz_binding{binding=Binding
             lager:debug("removing mod ~s from ~s", [ClientMod, Binding]),
             ets:update_element(table_id(), Binding, {3, Filtered})
     end.
+
+-spec filter_bindings(filter_fun()) -> 'ok'.
+-spec filter_bindings(filter_fun(), ne_binary() | '$end_of_table') -> 'ok'.
+filter_bindings(Predicate) ->
+    filter_bindings(Predicate, ets:first(table_id())).
+
+filter_bindings(_Predicate, '$end_of_table') ->
+    'ok';
+filter_bindings(Predicate, Key) ->
+    [#kz_binding{binding=Binding
+                 ,binding_responders=Responders
+                }] = ets:lookup(table_id(), Key),
+    NewResponders = queue:filter(fun(#kz_responder{module=M
+                                                   ,function=F
+                                                   ,payload=P
+                                                  }) ->
+                                         Predicate(Binding, M, F, P)
+                                 end, Responders),
+    case queue:len(NewResponders) of
+        0 -> ets:delete(table_id(), Key);
+        _Len -> ets:update_element(table_id(), Key, {#kz_binding.binding_responders, NewResponders})
+    end,
+    filter_bindings(Predicate, ets:next()).
 
 %%--------------------------------------------------------------------
 %% @private
