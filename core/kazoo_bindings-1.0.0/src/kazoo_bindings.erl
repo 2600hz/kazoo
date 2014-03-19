@@ -25,6 +25,7 @@
 %% API
 -export([start_link/0
          ,bind/3, bind/4
+         ,unbind/3, unbind/4
          ,map/2
          ,fold/2
          ,flush/0, flush/1, flush_mod/1
@@ -202,6 +203,26 @@ bind(Binding, Module, Fun, Payload) ->
     lager:debug("adding binding ~s for ~s:~s (~p)", [Binding, Module, Fun, Payload]),
     gen_server:call(?MODULE, {'bind', Binding, Module, Fun, Payload}, 'infinity').
 
+-type unbind_result() :: {'ok', 'deleted_binding' | 'updated_binding'} |
+                         {'error', 'not_found'}.
+-type unbind_results() :: [unbind_result(),...] | [].
+
+-spec unbind(ne_binary() | ne_binaries(), atom(), atom()) ->
+                    unbind_result() | unbind_results().
+-spec unbind(ne_binary() | ne_binaries(), atom(), atom(), term()) ->
+                    unbind_result() | unbind_results().
+unbind([_|_]=Bindings, Module, Fun) ->
+    [unbind(Binding, Module, Fun) || Binding <- Bindings];
+unbind(Binding, Module, Fun) when is_binary(Binding) ->
+    unbind(Binding, Module, Fun, 'undefined').
+
+unbind([_|_]=Bindings, Module, Fun, Payload) ->
+    [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings];
+unbind(Binding, Module, Fun, Payload) ->
+    lager:debug("removing binding ~s for ~s:~s (~p)", [Binding, Module, Fun, Payload]),
+    gen_server:call(?MODULE, {'unbind', Binding, Module, Fun, Payload}, 'infinity').
+
+
 -spec flush() -> 'ok'.
 flush() -> gen_server:cast(?MODULE, 'flush').
 
@@ -276,6 +297,10 @@ handle_call('current_bindings', _, #state{bindings=Bs}=State) ->
 handle_call({'bind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
     Resp = maybe_add_binding(Binding, Mod, Fun, Payload),
     lager:debug("maybe add binding ~s: ~p", [Binding, Resp]),
+    {'reply', Resp, State};
+handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
+    Resp = maybe_rm_binding(Binding, Mod, Fun, Payload),
+    lager:debug("maybe rm binding ~s: ~p", [Binding, Resp]),
     {'reply', Resp, State}.
 
 -spec maybe_add_binding(ne_binary(), atom(), atom(), term()) -> 'ok' |
@@ -307,6 +332,39 @@ maybe_add_binding(Binding, Mod, Fun, Payload) ->
                     lager:debug("adding responder to existing binding ~s", [Binding]),
                     ets:insert(table_id(), Bind1),
                     'ok'
+            end
+    end.
+
+-spec maybe_rm_binding(ne_binary(), atom(), atom(), term()) ->
+                              {'ok', 'deleted_binding' | 'updated_binding'} |
+                              {'error', 'not_found'}.
+maybe_rm_binding(Binding, Mod, Fun, Payload) ->
+    Responder = #kz_responder{module=Mod
+                              ,function=Fun
+                              ,payload=Payload
+                             },
+    case ets:lookup(table_id(), Binding) of
+        [] -> {'error', 'not_found'};
+        [#kz_binding{}=Bind] ->
+            maybe_rm_responder(Binding, Responder, Bind)
+    end.
+
+-spec maybe_rm_responder(ne_binary(), kz_responder(), kz_binding()) ->
+                                {'ok', 'deleted_binding' | 'updated_binding'} |
+                                {'error', 'not_found'}.
+maybe_rm_responder(Binding, Responder, #kz_binding{binding_responders=Responders}=Bind) ->
+    case queue:member(Responder, Responders) of
+        'false' ->
+            {'error', 'not_found'};
+        'true' ->
+            NewResponders = queue:filter(fun(QueueResponder) -> QueueResponder =/= Responder end, Responders),
+            case queue:len(NewResponders) of
+                0 ->
+                    ets:delete_object(table_id(), Bind),
+                    {'ok', 'deleted_binding'};
+                _Len ->
+                    ets:update_element(table_id(), Binding, {#kz_binding.binding_responders, NewResponders}),
+                    {'ok', 'updated_binding'}
             end
     end.
 
