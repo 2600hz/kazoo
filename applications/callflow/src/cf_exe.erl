@@ -477,6 +477,14 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                     'true' -> 'ok'
                 end,
             'ignore';
+<<<<<<< HEAD
+=======
+        {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
+            spawn(fun() -> cf_singular_call_hooks:maybe_send_end_hook(Call, JObj) end),
+            {'reply', [{'cf_module_pid', get_pid(PidRef)}
+                       ,{'cf_event_pids', Others}
+                      ]};
+>>>>>>> master
         {{<<"error">>, _}, _} ->
             case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
                 CallId -> {'reply', [{'cf_module_pid', get_pid(PidRef)}

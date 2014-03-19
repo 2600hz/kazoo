@@ -131,18 +131,11 @@ filter_by_reason(Reason, Transactions) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_last(ne_binary(), integer()) -> wh_transaction:wh_transactions().
-fetch_last(AccountId, Count) ->
-    AccountDB = wh_util:format_account_id(AccountId, 'encoded'),
+fetch_last(Account, Count) ->
     ViewOptions = [{'limit', Count}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDB, <<"transactions/by_timestamp">>, ViewOptions) of
-        {'ok', []} ->
-            lager:debug("no transactions for that account ~p", [AccountId]),
-            [];
-        {'ok', ViewRes} ->
-            viewres_to_recordlist(ViewRes)
-    end.
+    fetch(Account, ViewOptions).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -150,16 +143,40 @@ fetch_last(AccountId, Count) ->
 %% fetch last transaction from date to now
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_since(ne_binary(), integer(), integer()) -> wh_transactions().
-fetch_since(AccountId, From, To) ->
-    AccountDB = wh_util:format_account_id(AccountId, 'encoded'),
-    ViewOptions = [{'startkey', From}
-                   ,{'endkey', To}
-                   ,'include_docs'
-                  ],
-    case couch_mgr:get_results(AccountDB, <<"transactions/by_timestamp">>, ViewOptions) of
+-spec fetch_since(ne_binary(), integer(), integer()) -> {'ok', wh_transactions()} | {'error', ne_binary()}.
+fetch_since(Account, From, To) ->
+    {{YearFrom, MonthFrom, _}, _} = calendar:gregorian_seconds_to_datetime(From),
+    {{YearTo, MonthTo, _}, _} = calendar:gregorian_seconds_to_datetime(To),
+    ViewOptionsFrom = [{'startkey', From}
+                       ,{'endkey', To}
+                       ,{'year', YearFrom}
+                       ,{'month', MonthFrom}
+                       ,'include_docs'
+                      ],
+    ViewOptionsTo = [{'startkey', From}
+                      ,{'endkey', To}
+                      ,{'year', YearTo}
+                      ,{'month', MonthTo}
+                      ,'include_docs'
+                    ],
+    case {YearTo - YearFrom, MonthTo - MonthFrom} of
+        {0, M} when M > 2 ->
+            {'error', <<"max range 2 consecutive month">>};
+        {0, _M} ->
+            {'ok', fetch(Account, ViewOptionsFrom) ++ fetch(Account, ViewOptionsTo)};
+        {1, -11} ->
+            {'ok', fetch(Account, ViewOptionsFrom) ++ fetch(Account, ViewOptionsTo)};
+        {1, _M} ->
+            {'error', <<"max range 2 consecutive month">>};
+        {_Y, _M} ->
+            {'error', <<"max range 2 consecutive month">>}
+    end.
+
+-spec fetch(ne_binary(), wh_proplist()) -> wh_transactions().
+fetch(Account, ViewOptions) ->
+    case kazoo_modb:get_results(Account, <<"transactions/by_timestamp">>, ViewOptions) of
         {'ok', []} ->
-            lager:debug("no transactions for that range from ~p to ~p on ~p", [From, To, AccountId]),
+            lager:debug("no transactions for account: ~p options ~p", [Account, ViewOptions]),
             [];
         {'ok', ViewRes} ->
             viewres_to_recordlist(ViewRes)
@@ -210,7 +227,7 @@ remove([Transaction | Transactions], Acc) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec to_json/1 :: (wh_transactions()) -> [wh_json:object(), ...].
@@ -220,7 +237,7 @@ to_json(Transactions) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec to_public_json/1 :: (wh_transactions()) -> [wh_json:object(), ...].

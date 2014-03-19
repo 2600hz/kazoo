@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Standard interface for client modules to use to get dialplan commands
 %%% translated into 2600Hz-specific commands
@@ -17,14 +17,16 @@
 -include("kzt.hrl").
 
 -spec exec(whapps_call:call(), list()) -> exec_return().
--spec exec(whapps_call:call(), list(), ne_binary() | list()) -> exec_return().
+-spec exec(whapps_call:call(), list(), api_binary() | list()) -> exec_return().
 exec(Call, Cmds) ->
     exec(Call, Cmds, <<"text/xml">>).
 
+exec(Call, Cmds, 'undefined') ->
+    exec(Call, Cmds, <<"text/xml">>);
 exec(Call, Cmds, CT) when not is_binary(CT) ->
     exec(Call, Cmds, wh_util:to_binary(CT));
 exec(Call, Cmds, CT) ->
-    case find_candidate_translators(CT) of
+    case find_candidate_translators(just_the_type(CT)) of
         [] -> throw({'error', 'no_translators', CT});
         Mods ->
             case [{M, Cmd1} || M <- Mods,
@@ -33,6 +35,14 @@ exec(Call, Cmds, CT) ->
                 [] -> throw({'error', 'unrecognized_cmds'});
                 [{Translator, Cmds1}|_] -> Translator:exec(Call, Cmds1)
             end
+    end.
+
+just_the_type(ContentType) ->
+    case binary:split(ContentType, <<";">>) of
+        [ContentType] -> wh_util:strip_binary(ContentType);
+        [JustContentType | _Other] ->
+            lager:debug("just using content type ~s, ignoring ~p", [JustContentType, _Other]),
+            wh_util:strip_binary(JustContentType)
     end.
 
 -spec get_user_vars(whapps_call:call()) -> wh_json:object().

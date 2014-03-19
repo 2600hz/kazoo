@@ -22,8 +22,8 @@
 
 %% 1 month
 -define(FETCH_DEFAULT, 60*60*24*30).
-%% 1 year
--define(FETCH_MAX, 60*60*24*30*12).
+%% 1 month
+-define(FETCH_MAX, 60*60*24*30).
 
 %%%===================================================================
 %%% API
@@ -196,10 +196,12 @@ fetch_braintree_subscriptions(Context) ->
                     cb_context:context().
 filter(From, To, Context) ->
     try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
-        Transactions ->
+        {'ok', Transactions} ->
             JObj = wh_transactions:to_public_json(Transactions),
             JObj1 = wht_util:collapse_call_transactions(JObj),
-            send_resp({'ok', JObj1}, Context)
+            send_resp({'ok', JObj1}, Context);
+        {'error', _}=Error ->
+            send_resp(Error, Context)
     catch
         _:_ ->
             send_resp({'error', <<"error while fetching transactions">>}, Context)
@@ -207,11 +209,13 @@ filter(From, To, Context) ->
 
 filter(From, To, Context, Reason) ->
     try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
-        Transactions ->
+        {'ok', Transactions} ->
             Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
             JObj = wh_transactions:to_public_json(Filtered),
             JObj1 = wht_util:collapse_call_transactions(JObj),
-            send_resp({'ok', JObj1}, Context)
+            send_resp({'ok', JObj1}, Context);
+        {'error', _}=Error ->
+            send_resp(Error, Context)
     catch
         _:_ ->
             send_resp({'error', <<"error while fetching transactions">>}, Context)
@@ -510,19 +514,18 @@ timestamp_to_braintree(Timestamp) ->
 -spec validate_date(any(), any()) -> {'true', pos_integer(), pos_integer()} |
                                      {'false', ne_binary()}.
 validate_date(0, 0) ->
-    validate_date(wh_util:current_tstamp()-?FETCH_DEFAULT, wh_util:current_tstamp());
+    validate_date(wh_util:current_tstamp() - ?FETCH_DEFAULT, wh_util:current_tstamp());
 validate_date(0, To) ->
-    validate_date(To-?FETCH_DEFAULT, To);
+    validate_date(To - ?FETCH_DEFAULT, To);
 validate_date(From, 0) ->
-    validate_date(From, From+?FETCH_DEFAULT);
+    validate_date(From, From + ?FETCH_DEFAULT);
 validate_date(From, To) when is_integer(From) andalso is_integer(To) ->
-    Max = ?FETCH_MAX,
     Diff = To - From,
-    case {Diff < 0, Diff > Max} of
+    case {Diff < 0, Diff > ?FETCH_MAX} of
         {'true', _} ->
             {'false', <<"created_from is gretter than created_to">>};
         {_, 'true'} ->
-            {'false', <<"Max range is a year">>};
+            {'false', <<"Max range is 2 months">>};
         {'false', 'false'} ->
             {'true', From, To}
     end;

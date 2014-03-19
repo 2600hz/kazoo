@@ -493,9 +493,9 @@ save(#wh_transaction{}=Transaction) ->
     end.
 
 -spec save_transaction(transaction()) -> {'ok', transaction()} | {'error', _}.
-save_transaction(#wh_transaction{pvt_account_db=AccountDb}=Transaction) ->
+save_transaction(#wh_transaction{pvt_account_id=AccountId, pvt_created=Created}=Transaction) ->
     JObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
-    case couch_mgr:save_doc(AccountDb, JObj) of
+    case kazoo_modb:save_doc(AccountId, JObj, Created) of
         {'ok', J} -> {'ok', from_json(J)};
         {'error', _}=E -> E
     end.
@@ -571,7 +571,7 @@ create(Ledger, Amount, Type) ->
     #wh_transaction{pvt_type=Type
                     ,pvt_amount=abs(Amount)
                     ,pvt_account_id=wh_util:format_account_id(Ledger, 'raw')
-                    ,pvt_account_db=wh_util:format_account_id(Ledger, 'encoded')
+                    ,pvt_account_db=wh_util:format_account_mod_id(Ledger)
                     ,pvt_created=wh_util:current_tstamp()
                     ,pvt_modified=wh_util:current_tstamp()
                    }.
