@@ -246,7 +246,8 @@ get_http_url(JObj) ->
             {'ok', Url} = render(JObj, Template),
             lists:flatten(Url);
         _Else ->
-            {'ok', Url} = render(JObj, Template),
+            {'ok', UrlIOList} = render(JObj, Template),
+            Url = iolist_to_binary(UrlIOList),
             case mochiweb_util:urlsplit(wh_util:to_list(Url)) of
                 {_Scheme, _Host, _Path, "", _Segment} ->
                     lists:flatten([Url, "?ref=2600hz&format=pbx"]);
