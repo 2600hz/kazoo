@@ -40,21 +40,31 @@
 -spec register(ne_binary()) -> 'true'.
 -spec register(ne_binary(), ne_binary()) -> 'true'.
 register() ->
-    'true' = gproc:reg(?HOOK_REG).
+    maybe_add_hook(?HOOK_REG).
 register(AccountId) ->
-    'true' = gproc:reg(?HOOK_REG(AccountId)).
+    maybe_add_hook(?HOOK_REG(AccountId)).
 register(AccountId, EventName) ->
-    'true' = gproc:reg(?HOOK_REG(AccountId, EventName)).
+    maybe_add_hook(?HOOK_REG(AccountId, EventName)).
 
 -spec register_rr() -> 'true'.
 -spec register_rr(ne_binary()) -> 'true'.
 -spec register_rr(ne_binary(), ne_binary()) -> 'true'.
 register_rr() ->
-    'true' = gproc:reg(?HOOK_REG_RR).
+    maybe_add_hook(?HOOK_REG_RR).
 register_rr(AccountId) ->
-    'true' = gproc:reg(?HOOK_REG_RR(AccountId)).
+    maybe_add_hook(?HOOK_REG_RR(AccountId)).
 register_rr(AccountId, EventName) ->
-    'true' = gproc:reg(?HOOK_REG_RR(AccountId, EventName)).
+    maybe_add_hook(?HOOK_REG_RR(AccountId, EventName)).
+
+maybe_add_hook(Hook) ->
+    case gproc:lookup_pids(Hook) of
+        [] -> 'true' = gproc:reg(Hook);
+        Pids ->
+            case lists:member(self(), Pids) of
+                'true' -> 'true';
+                'false' -> 'true' = gproc:reg(Hook)
+            end
+    end.
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
