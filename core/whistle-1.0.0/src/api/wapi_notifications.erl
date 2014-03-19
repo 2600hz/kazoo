@@ -203,8 +203,11 @@
 -define(NEW_ACCOUNT_TYPES, []).
 
 %% Notify Port Request
--define(PORT_REQUEST_HEADERS, [<<"Account-ID">>, <<"Port-Request-ID">>]).
--define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>]).
+-define(PORT_REQUEST_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
+                                        ,<<"Number-State">>, <<"Local-Number">>
+                                        ,<<"Number">>, <<"Port">>
+                                       ]).
 -define(PORT_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"port_request">>}
                              ]).
