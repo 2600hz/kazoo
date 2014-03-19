@@ -77,15 +77,15 @@ get_old_mac_address(Context) ->
 -spec maybe_provision(cb_context:context(), crossbar_status()) -> boolean().
 maybe_provision(Context) ->
     maybe_provision(Context, cb_context:resp_status(Context)).
-maybe_provision(#cb_context{doc=JObj, auth_token=AuthToken}=Context, 'success') ->
+maybe_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
     case MACAddress =/= 'undefined'
         andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
     of
         <<"super_awesome_provisioner">> ->
             _ = spawn(fun() ->
-                              do_full_provisioner_provider(MACAddress, Context),
-                              do_full_provision(MACAddress, Context)
+                        do_full_provisioner_provider(MACAddress, Context),
+                        do_full_provision(MACAddress, Context)
                       end),
             'true';
         <<"awesome_provisioner">> ->
@@ -95,11 +95,32 @@ maybe_provision(#cb_context{doc=JObj, auth_token=AuthToken}=Context, 'success') 
             _ = spawn(fun() -> do_simple_provision(MACAddress, Context) end),
             'true';
         <<"provisioner_v5">>  ->
-            _ = spawn(fun() -> provisioner_v5:do(JObj, AuthToken) end),
-            'true';
+            maybe_provision_v5(Context, cb_context:req_verb(Context)),
+            true;
         _ -> 'false'
     end;
 maybe_provision(_Context, _Status) -> 'false'.
+
+-spec maybe_provision_v5(cb_context:context(), ne_binary()) -> 'ok'.
+maybe_provision_v5(Context, ?HTTP_PUT) ->
+    JObj = cb_context:doc(Context),
+    AuthToken =  cb_context:auth_token(Context),
+    _ = spawn(fun() -> provisioner_v5:put(JObj, AuthToken) end),
+    'ok';
+maybe_provision_v5(Context, ?HTTP_POST) ->
+    JObj = cb_context:doc(Context),
+    AuthToken =  cb_context:auth_token(Context),
+    NewAddress = cb_context:req_value(Context, <<"mac_address">>),
+    OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch(Context, 'db_doc')),
+    case NewAddress =:= OldAddress of
+        'true' ->
+            _ = spawn(fun() -> provisioner_v5:post(JObj, AuthToken) end);
+        'false' ->
+            JObj1 = wh_json:set_value(<<"mac_address">>, OldAddress, JObj),
+            _ = spawn(fun() -> provisioner_v5:delete(JObj1, AuthToken) end),
+            _ = spawn(fun() -> provisioner_v5:put(JObj, AuthToken) end)
+    end,
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -122,7 +143,7 @@ maybe_delete_provision(#cb_context{doc=JObj, auth_token=AuthToken}=Context, 'suc
                       end),
             'true';
         <<"provisioner_v5">>  ->
-            _ = spawn(fun() -> provisioner_v5:undo(JObj, AuthToken) end),
+            _ = spawn(fun() -> provisioner_v5:delete(JObj, AuthToken) end),
             'true';
         _ -> 'false'
     end;
