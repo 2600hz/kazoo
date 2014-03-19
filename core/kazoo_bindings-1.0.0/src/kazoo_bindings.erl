@@ -362,14 +362,17 @@ flush_mod(ClientMod, #kz_binding{binding=Binding
             ets:update_element(table_id(), Binding, {3, Filtered})
     end.
 
+-type filter_updates() :: [{ne_binary(), {pos_integer(), queue()}}] | [].
 -spec filter_bindings(filter_fun()) -> 'ok'.
--spec filter_bindings(filter_fun(), ne_binary() | '$end_of_table') -> 'ok'.
+-spec filter_bindings(filter_fun(), ne_binary() | '$end_of_table', filter_updates(), ne_binaries()) -> 'ok'.
 filter_bindings(Predicate) ->
-    filter_bindings(Predicate, ets:first(table_id())).
+    filter_bindings(Predicate, ets:first(table_id()), [], []).
 
-filter_bindings(_Predicate, '$end_of_table') ->
+filter_bindings(_Predicate, '$end_of_table', Updates, Deletes) ->
+    [ets:delete(table_id(), DeleteKey) || DeleteKey <- Deletes],
+    [ets:update_element(table_id(), Key, Update) || {Key, Update} <- Updates],
     'ok';
-filter_bindings(Predicate, Key) ->
+filter_bindings(Predicate, Key, Updates, Deletes) ->
     [#kz_binding{binding=Binding
                  ,binding_responders=Responders
                 }] = ets:lookup(table_id(), Key),
@@ -380,10 +383,9 @@ filter_bindings(Predicate, Key) ->
                                          Predicate(Binding, M, F, P)
                                  end, Responders),
     case queue:len(NewResponders) of
-        0 -> ets:delete(table_id(), Key);
-        _Len -> ets:update_element(table_id(), Key, {#kz_binding.binding_responders, NewResponders})
-    end,
-    filter_bindings(Predicate, ets:next()).
+        0 -> filter_bindings(Predicate, ets:next(table_id(), Key), Updates, [Key | Deletes]);
+        _Len -> filter_bindings(Predicate, ets:next(table_id(), Key), [{Key, {#kz_binding.binding_responders, NewResponders}} | Updates], Deletes)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
