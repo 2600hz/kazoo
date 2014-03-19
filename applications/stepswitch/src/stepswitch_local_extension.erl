@@ -236,11 +236,11 @@ build_local_extension(#state{number_props=Props
     {CIDNum, CIDName} = local_extension_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = props:get_value('number', Props),
-    Realm = get_account_realm(JObj),
     AccountId = props:get_value('account_id', Props),
+    Realm = get_account_realm(AccountId),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     CCVUpdates = props:filter_undefined(
-                   [{<<"Inception">>, <<Number/binary, "@", Realm>>}
+                   [{<<"Inception">>, <<Number/binary, "@", Realm/binary>>}
                     ,{<<"Retain-CID">>, <<"true">>}
                     ,{<<"Global-Resource">>, <<"false">>}
                     ,{<<"Account-ID">>, AccountId}
