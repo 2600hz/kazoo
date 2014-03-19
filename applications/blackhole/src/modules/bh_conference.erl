@@ -14,6 +14,13 @@
         ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
+%%%-------------------------------------------------------------------
+%%% THIS REQUIRES WORK FROM KAZ-27 TO OPERATE
+%%% THIS IS HERE ONLY AS A PLACEHOLDER FOR NOW
+%%% DO NOT WORRY ABOUT IT UNTIL KAZ-27 IS DONE
+%%% AND COMMITTED
+%%%-------------------------------------------------------------------
+
 -include("../blackhole.hrl").
 
 -spec handle_event(bh_context:context(), wh_json:object()) -> any().
@@ -25,7 +32,6 @@ handle_event(Context, EventJObj) ->
 
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 add_amqp_binding(<<"conference.event.", ConfId/binary>>, _Context) ->
-    lager:debug("adding amqp binding....."),
     blackhole_listener:add_binding('conference', [{'restrict_to', [{'conference', ConfId}]}]);
 add_amqp_binding(Binding, _Context) ->
     lager:debug("unmatched binding ~p", [Binding]),
@@ -33,7 +39,6 @@ add_amqp_binding(Binding, _Context) ->
 
 -spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 rm_amqp_binding(<<"conference.event.", ConfId/binary>>, _Context) ->
-    lager:debug("removing amqp binding....."),
     blackhole_listener:remove_binding('conference', [{'restrict_to', [{'conference', ConfId}]}]);
 rm_amqp_binding(Binding, _Context) ->
     lager:debug("unmatched binding ~p", [Binding]),

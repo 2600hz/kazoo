@@ -76,7 +76,6 @@ remove_call_binding(AccountId) ->
 
 -spec add_binding(atom(), wh_proplist()) -> 'ok'.
 add_binding(Wapi, Options) ->
-    lager:debug("listener is at ~p", [whereis(?MODULE)]),
     gen_listener:add_binding(?MODULE, Wapi, Options).
 
 -spec remove_binding(atom(), wh_proplist()) -> 'ok'.

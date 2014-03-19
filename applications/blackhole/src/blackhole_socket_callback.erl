@@ -29,7 +29,6 @@ recv(_SessionPid, _SessionId, {'event', _Ignore, <<"subscribe">>, SubscriptionJO
     case blackhole_util:is_authorized(Context1) of
         'true' ->
             Binding = bh_context:binding(Context1),
-            lager:debug("going to bind with binding: ~s", [Binding]),
             case blackhole_util:get_callback_module(Binding) of
                 'undefined' -> blackhole_util:respond_with_error(Context1);
                 Module ->
@@ -57,7 +56,6 @@ close(SessionPid, SessionId, _Context) ->
                                               case not (bh_context:websocket_pid(BindingContext) =:= SessionPid) of
                                                   'true' -> 'true';
                                                   'false' ->
-                                                      lager:debug("remove binding ~s", [Binding]),
                                                       spawn(fun() -> blackhole_util:remove_binding(Binding, BindingContext) end),
                                                       'false'
                                               end
