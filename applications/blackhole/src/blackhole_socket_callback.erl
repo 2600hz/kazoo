@@ -32,9 +32,9 @@ recv(_SessionPid, _SessionId, {'event', _Ignore, <<"subscribe">>, SubscriptionJO
             lager:debug("going to bind with binding: ~s", [Binding]),
             case blackhole_util:get_callback_module(Binding) of
                 'undefined' -> blackhole_util:respond_with_error(Context1);
-                M ->
-                    maybe_add_binding_to_listener(M, Binding, Context1),
-                    blackhole_bindings:bind(Binding, M, 'handle_event', Context1)
+                Module ->
+                    blackhole_util:maybe_add_binding_to_listener(Module, Binding, Context1),
+                    blackhole_bindings:bind(Binding, Module, 'handle_event', Context1)
             end;
         'false' ->
             blackhole_util:respond_with_authn_failure(Context1)
@@ -48,14 +48,13 @@ recv(_SessionPid, SessionId, Message, Context) ->
     lager:info("receive unknown message ~p on socket ~p", [Message, SessionId]),
     {'ok', Context}.
 
-maybe_add_binding_to_listener(Module, Binding, Context) ->
-    try Module:add_amqp_binding(Binding, Context) of
-        _ -> 'ok'
-    catch
-        _:_ -> 'ok'
-    end.
-
-close(_SessionPid, SessionId, _State) ->
+close(SessionPid, SessionId, _Context) ->
     lager:debug("closing socket ~p", [SessionId]),
-    %%TODO - Remmove ourselves from binding server
+    blackhole_bindings:filter(fun(_Binding, _Module, _Function, BindingContext) ->
+                                      case bh_context:is_context(BindingContext) of
+                                          'false' -> 'true';
+                                          'true' ->
+                                              not (bh_context:websocket_pid(BindingContext) =:= SessionPid)
+                                      end
+                              end),
     'ok'.

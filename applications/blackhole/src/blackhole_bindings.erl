@@ -26,6 +26,7 @@
          ,map/2
          ,fold/2
          ,flush/0, flush/1, flush_mod/1
+         ,filter/1
          ,modules_loaded/0
          ,init/0
         ]).
@@ -145,7 +146,10 @@ flush() -> kazoo_bindings:flush().
 flush(Binding) -> kazoo_bindings:flush(Binding).
 
 -spec flush_mod(atom()) -> 'ok'.
-flush_mod(BHMod) -> kazoo_binding:flush(BHMod).
+flush_mod(BHMod) -> kazoo_bindings:flush(BHMod).
+
+filter(Predicate) ->
+    kazoo_bindings:filter(Predicate).
 
 -spec modules_loaded() -> atoms().
 modules_loaded() -> kazoo_bindings:modules_loaded().

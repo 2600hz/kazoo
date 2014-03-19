@@ -13,6 +13,7 @@
 -include("blackhole.hrl").
 
 -export([is_authorized/1]).
+-export([maybe_add_binding_to_listener/3]).
 -export([respond_with_error/1, respond_with_authn_failure/1]).
 -export([get_callback_module/1]).
 
@@ -37,6 +38,14 @@ is_authorized(Context) ->
         [{'halt', _}|_] ->
             lager:debug("is_authentic: halt"),
             'false'
+    end.
+
+-spec maybe_add_binding_to_listener(ne_binary(), ne_binary(), bh_context:context()) -> 'ok'.
+maybe_add_binding_to_listener(Module, Binding, Context) ->
+    try Module:add_amqp_binding(Binding, Context) of
+        _ -> 'ok'
+    catch
+        _:_ -> 'ok'
     end.
 
 -spec get_callback_module(ne_binary()) -> atom().
