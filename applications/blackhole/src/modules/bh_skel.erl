@@ -10,11 +10,12 @@
 %%%-------------------------------------------------------------------
 -module(bh_skel).
 
--include("../blackhole.erl").
-
 -export([handle_event/2
          ,add_amqp_binding/2
         ]).
+
+-include("../blackhole.hrl").
+
 
 -spec handle_event(bh_context:context(), wh_json:object()) -> any().
 handle_event(Context, EventJObj) ->

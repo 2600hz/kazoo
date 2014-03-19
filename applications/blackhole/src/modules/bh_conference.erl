@@ -1,7 +1,7 @@
 -module(bh_conference).
 
 -export([handle_event/2
-         ,add_amqp_binding/2
+         ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
 -include("../blackhole.hrl").
@@ -10,16 +10,26 @@
 
 -spec handle_event(bh_context:context(), wh_json:object()) -> any().
 handle_event(Context, EventJObj) ->
-    blackhole_data_emitter:emit(bh_context:session_pid(Context), event_name(EventJObj), EventJObj).
+    blackhole_data_emitter:emit(bh_context:session_pid(Context)
+                               ,get_response_key(EventJObj)
+                               ,EventJObj).
 
+add_amqp_binding(<<"conference.events.", ConfId/binary>>, Context) ->
+    lager:debug("adding amqp binding....."),
+    blackhole_listener:add_binding('conference', [{'restrict_to', [{'conference', ConfId}]}]);
 add_amqp_binding(Binding, Context) ->
+    'ok'.
+
+rm_amqp_binding(<<"conference.events.", ConfId/binary>>, Context) ->
+    blackhole_listener:remove_binding('conference', [{'restrict_to', [{'conference', ConfId}]}]);
+rm_amqp_binding(Binding, Context) ->
     'ok'.
 
 %%%===================================================================
 %%% Internal functions
 %%%==================================================================
-event_name(JObj) ->
-    wh_json:get_value(<<"Event-Name">>, JObj).
+get_response_key(JObj) ->
+    wh_json:get_first_defined([<<"Application-Name">>, <<"Event-Name">>], JObj).
 
 fw_participant_event(JObj, Pids) ->
     Event = cleanup_binary(wh_json:get_value(<<"Event">>, JObj)),

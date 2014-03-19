@@ -50,11 +50,25 @@ recv(_SessionPid, SessionId, Message, Context) ->
 
 close(SessionPid, SessionId, _Context) ->
     lager:debug("closing socket ~p", [SessionId]),
-    blackhole_bindings:filter(fun(_Binding, _Module, _Function, BindingContext) ->
+    blackhole_bindings:filter(fun(Binding, _Module, _Function, BindingContext) ->
                                       case bh_context:is_context(BindingContext) of
                                           'false' -> 'true';
                                           'true' ->
-                                              not (bh_context:websocket_pid(BindingContext) =:= SessionPid)
+                                              case not (bh_context:websocket_pid(BindingContext) =:= SessionPid) of
+                                                  'true' -> 'true';
+                                                  'false' ->
+                                                      lager:debug("remove binding ~s", [Binding]),
+                                                      spawn(fun() -> remove_binding(Binding, BindingContext) end),
+                                                      'false'
+                                              end
                                       end
                               end),
     'ok'.
+
+remove_binding(Binding, Context) ->
+    case blackhole_util:get_callback_module(Binding) of
+        'undefined' -> 'ok';
+        Module -> 
+            blackhole_util:maybe_rm_binding_from_listener(Module, Binding, Context),
+            blackhole_bindings:unbind(Binding, Module, 'handle_event', Context)
+    end.

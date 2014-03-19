@@ -23,6 +23,7 @@
 
 %% API
 -export([bind/4
+         ,unbind/4
          ,map/2
          ,fold/2
          ,flush/0, flush/1, flush_mod/1
@@ -138,6 +139,13 @@ bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
     kazoo_bindings:bind(Binding, Module, Fun, Payload).
+
+-spec unbind(ne_binary() | ne_binaries(), atom(), atom(), term()) -> 'ok'.
+unbind([_|_]=Bindings, Module, Fun, Payload) ->
+    [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings],
+    'ok';
+unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
+    kazoo_bindings:unbind(Binding, Module, Fun, Payload).
 
 -spec flush() -> 'ok'.
 flush() -> kazoo_bindings:flush().

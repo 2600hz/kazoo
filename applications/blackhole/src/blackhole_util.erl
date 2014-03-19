@@ -13,7 +13,9 @@
 -include("blackhole.hrl").
 
 -export([is_authorized/1]).
--export([maybe_add_binding_to_listener/3]).
+-export([maybe_add_binding_to_listener/3
+         ,maybe_rm_binding_from_listener/3
+        ]).
 -export([respond_with_error/1, respond_with_authn_failure/1]).
 -export([get_callback_module/1]).
 
@@ -43,6 +45,13 @@ is_authorized(Context) ->
 -spec maybe_add_binding_to_listener(ne_binary(), ne_binary(), bh_context:context()) -> 'ok'.
 maybe_add_binding_to_listener(Module, Binding, Context) ->
     try Module:add_amqp_binding(Binding, Context) of
+        _ -> 'ok'
+    catch
+        _:_ -> 'ok'
+    end.
+
+maybe_rm_binding_from_listener(Module, Binding, Context) ->
+    try Module:rm_amqp_binding(Binding, Context) of
         _ -> 'ok'
     catch
         _:_ -> 'ok'
