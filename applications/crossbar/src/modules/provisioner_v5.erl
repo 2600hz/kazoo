@@ -10,8 +10,9 @@
 %%%-------------------------------------------------------------------
 -module(provisioner_v5).
 
--export([do/2]).
--export([undo/2]).
+-export([put/2]).
+-export([post/2]).
+-export([delete/2]).
 -export([delete_account/2]).
 -export([update_account/3]).
 
@@ -28,8 +29,8 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec do(ne_binary(), wh_json:object()) -> 'ok'.
-do(JObj, AuthToken) ->
+-spec put(ne_binary(), wh_json:object()) -> 'ok'.
+put(JObj, AuthToken) ->
     Routines = [fun(J) -> set_account(J) end
                 ,fun(J) -> set_owner(J) end
                 ,fun(J) -> device_settings(J) end
@@ -47,8 +48,27 @@ do(JObj, AuthToken) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec undo(ne_binary(), wh_json:object()) -> 'ok'.
-undo(JObj, AuthToken) ->
+-spec post(ne_binary(), wh_json:object()) -> 'ok'.
+post(JObj, AuthToken) ->
+    Routines = [fun(J) -> set_account(J) end
+                ,fun(J) -> set_owner(J) end
+                ,fun(J) -> device_settings(J) end
+               ],
+    Data = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
+    send_req('devices_post'
+             ,Data
+             ,AuthToken
+             ,wh_json:get_value(<<"pvt_account_id">>, JObj)
+             ,wh_json:get_value(<<"mac_address">>, JObj)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(ne_binary(), wh_json:object()) -> 'ok'.
+delete(JObj, AuthToken) ->
     send_req('devices_delete'
              ,'none'
              ,AuthToken
@@ -279,6 +299,14 @@ send_req('devices_put', JObj, AuthToken, AccountId, MACAddress) ->
     UrlString = req_uri('devices', AccountId, MACAddress),
     lager:debug("provisioning via ~s", [UrlString]),
     Resp = ibrowse:send_req(UrlString, Headers, 'put', Data, HTTPOptions),
+    handle_resp(Resp);
+send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
+    Data = wh_json:encode(wh_json:set_value(<<"data">>, JObj, wh_json:new())),
+    Headers = req_headers(AuthToken),
+    HTTPOptions = [],
+    UrlString = req_uri('devices', AccountId, MACAddress),
+    lager:debug("provisioning via ~s", [UrlString]),
+    Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
     handle_resp(Resp);
 send_req('devices_delete', _, AuthToken, AccountId, MACAddress) ->
     Headers = req_headers(AuthToken),
