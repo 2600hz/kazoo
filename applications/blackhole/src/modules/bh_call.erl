@@ -1,7 +1,17 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012-2014, 2600Hz Inc
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%% James Aimonetti
+%%% Peter Defebvre
+%%% Ben Wann
+%%%-------------------------------------------------------------------
 -module(bh_call).
 
 -export([handle_event/2
-         ,add_amqp_binding/2
+        ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
 -include("../blackhole.hrl").
@@ -21,11 +31,20 @@ is_account_event(Context, EventJObj) ->
                              ) =:=
         bh_context:account_id(Context).
 
+-spec event_name(wh_json:object()) -> ne_binary().
 event_name(JObj) ->
     wh_json:get_value(<<"Event-Name">>, JObj).
 
+-spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 add_amqp_binding(<<"call.", _/binary>>, Context) ->
     lager:debug("adding amqp binding....."),
     blackhole_listener:add_call_binding(bh_context:account_id(Context));
 add_amqp_binding(_Binding, _Context) ->
+    'ok'.
+
+-spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
+rm_amqp_binding(<<"call.", _/binary>>, Context) ->
+    lager:debug("removing amqp binding....."),
+    blackhole_listener:remove_call_binding(bh_context:account_id(Context));
+rm_amqp_binding(_Binding, _Context) ->
     'ok'.

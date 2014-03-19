@@ -58,17 +58,9 @@ close(SessionPid, SessionId, _Context) ->
                                                   'true' -> 'true';
                                                   'false' ->
                                                       lager:debug("remove binding ~s", [Binding]),
-                                                      spawn(fun() -> remove_binding(Binding, BindingContext) end),
+                                                      spawn(fun() -> blackhole_util:remove_binding(Binding, BindingContext) end),
                                                       'false'
                                               end
                                       end
                               end),
     'ok'.
-
-remove_binding(Binding, Context) ->
-    case blackhole_util:get_callback_module(Binding) of
-        'undefined' -> 'ok';
-        Module -> 
-            blackhole_util:maybe_rm_binding_from_listener(Module, Binding, Context),
-            blackhole_bindings:unbind(Binding, Module, 'handle_event', Context)
-    end.

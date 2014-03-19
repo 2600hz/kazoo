@@ -11,7 +11,7 @@
 
 -export([start_link/0
          ,handle_amqp_event/3
-         ,add_call_binding/1
+         ,add_call_binding/1, remove_call_binding/1
          ,add_binding/2, remove_binding/2
         ]).
 -export([init/1
@@ -63,14 +63,20 @@ start_link() ->
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
     handle_amqp_event(EventJObj, Props, RoutingKey);
 handle_amqp_event(EventJObj, _Props, RoutingKey) ->
+    lager:debug("recv event ~p (~s)", [wh_util:get_event_type(EventJObj), RoutingKey]),
     blackhole_bindings:map(RoutingKey, EventJObj).
 
 -spec add_call_binding(ne_binary()) -> 'ok'.
 add_call_binding(AccountId) ->
     gen_listener:cast(?MODULE, {'add_call_binding', AccountId}).
 
+-spec remove_call_binding(ne_binary()) -> 'ok'.
+remove_call_binding(AccountId) ->
+    gen_listener:cast(?MODULE, {'remove_call_binding', AccountId}).
+
 -spec add_binding(atom(), wh_proplist()) -> 'ok'.
 add_binding(Wapi, Options) ->
+    lager:debug("listener is at ~p", [whereis(?MODULE)]),
     gen_listener:add_binding(?MODULE, Wapi, Options).
 
 -spec remove_binding(atom(), wh_proplist()) -> 'ok'.

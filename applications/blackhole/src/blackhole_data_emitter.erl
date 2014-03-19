@@ -14,6 +14,7 @@
 
 -spec emit(pids(), api_binary(), json:object()) -> 'ok'.
 emit(SessionPid, Event, Data) when is_pid(SessionPid) ->
+    lager:debug("sending event data: ~s", [Event]),
     socketio_session:send_event(SessionPid, Event, Data);
 emit([_|_]=SessionPids, Event, Data) ->
     lager:debug("event: ~s: Data: ~p", [Event, Data]),

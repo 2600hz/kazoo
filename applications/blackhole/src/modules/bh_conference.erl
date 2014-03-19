@@ -1,28 +1,42 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012-2014, 2600Hz Inc
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%% James Aimonetti
+%%% Peter Defebvre
+%%% Ben Wann
+%%%-------------------------------------------------------------------
 -module(bh_conference).
 
 -export([handle_event/2
-         ,add_amqp_binding/2, rm_amqp_binding/2
+        ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
 -include("../blackhole.hrl").
 
-%% conference.event.{conference_id}
-
 -spec handle_event(bh_context:context(), wh_json:object()) -> any().
 handle_event(Context, EventJObj) ->
-    blackhole_data_emitter:emit(bh_context:session_pid(Context)
+    lager:debug("handling conference event ~s", [get_response_key(EventJObj)]),
+    blackhole_data_emitter:emit(bh_context:websocket_pid(Context)
                                ,get_response_key(EventJObj)
                                ,EventJObj).
 
-add_amqp_binding(<<"conference.events.", ConfId/binary>>, Context) ->
+-spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
+add_amqp_binding(<<"conference.event.", ConfId/binary>>, _Context) ->
     lager:debug("adding amqp binding....."),
     blackhole_listener:add_binding('conference', [{'restrict_to', [{'conference', ConfId}]}]);
-add_amqp_binding(Binding, Context) ->
+add_amqp_binding(Binding, _Context) ->
+    lager:debug("unmatched binding ~p", [Binding]),
     'ok'.
 
-rm_amqp_binding(<<"conference.events.", ConfId/binary>>, Context) ->
+-spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
+rm_amqp_binding(<<"conference.event.", ConfId/binary>>, _Context) ->
+    lager:debug("removing amqp binding....."),
     blackhole_listener:remove_binding('conference', [{'restrict_to', [{'conference', ConfId}]}]);
-rm_amqp_binding(Binding, Context) ->
+rm_amqp_binding(Binding, _Context) ->
+    lager:debug("unmatched binding ~p", [Binding]),
     'ok'.
 
 %%%===================================================================

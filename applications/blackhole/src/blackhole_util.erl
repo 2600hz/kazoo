@@ -18,6 +18,7 @@
         ]).
 -export([respond_with_error/1, respond_with_authn_failure/1]).
 -export([get_callback_module/1]).
+-export([remove_binding/2]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -44,17 +45,25 @@ is_authorized(Context) ->
 
 -spec maybe_add_binding_to_listener(ne_binary(), ne_binary(), bh_context:context()) -> 'ok'.
 maybe_add_binding_to_listener(Module, Binding, Context) ->
+    lager:debug("add some amqp bindings for module: ~s ~s", [Module, Binding]),
     try Module:add_amqp_binding(Binding, Context) of
-        _ -> 'ok'
+        Result -> 
+            lager:debug("weird result: ~p", [Result]),
+            'ok'
     catch
-        _:_ -> 'ok'
+        _ -> 
+            lager:debug("could not exec ~s:add_amqp_binding", [Module]),
+            'ok'
     end.
 
 maybe_rm_binding_from_listener(Module, Binding, Context) ->
+    lager:debug("remove some amqp bindings for module: ~s ~s", [Module, Binding]),
     try Module:rm_amqp_binding(Binding, Context) of
         _ -> 'ok'
     catch
-        _:_ -> 'ok'
+        _ -> 
+            lager:debug("could not exec ~s:rm_amqp_binding", [Module]),
+            'ok'
     end.
 
 -spec get_callback_module(ne_binary()) -> atom().
@@ -78,3 +87,12 @@ respond_with_error(_Context) ->
 respond_with_authn_failure(Context) ->
     Token = bh_context:auth_token(Context),
     lager:debug("authn failure token ~s", [Token]).
+
+-spec remove_binding(ne_binary(), bh_context:context()) -> 'ok'.
+remove_binding(Binding, Context) ->
+    case blackhole_util:get_callback_module(Binding) of
+        'undefined' -> 'ok';
+        Module -> 
+            blackhole_util:maybe_rm_binding_from_listener(Module, Binding, Context),
+            blackhole_bindings:unbind(Binding, Module, 'handle_event', Context)
+    end.
