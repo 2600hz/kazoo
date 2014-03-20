@@ -506,7 +506,7 @@ create_endpoints(Endpoint, Properties, Call) ->
 -type ep_routine() :: fun((wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  {'error', _} | wh_json:object()).
 -spec try_create_endpoint(ep_routine(), wh_json:objects(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                       wh_json:objects().    
+                                       wh_json:objects().
 try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_function(Routine, 3) ->
     try Routine(Endpoint, Properties, Call) of
         {'error', _R} ->
@@ -554,7 +554,7 @@ is_call_forward_enabled(Endpoint, Properties) ->
         andalso (wh_json:is_false(<<"direct_calls_only">>, CallForwarding, 'true')
                  orelse
                    (not lists:member(Source, ?NON_DIRECT_MODULES))).
-        
+
 -spec maybe_create_endpoint(ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                    wh_json:object() | {'error', ne_binary()}.
 maybe_create_endpoint(<<"sip">>, Endpoint, Properties, Call) ->
@@ -591,7 +591,7 @@ convert_endpoint_type(<<"mobile">>) -> <<"mobile">>;
 convert_endpoint_type(_Else) -> 'undefined'.
 
 -spec maybe_guess_endpoint_type(wh_json:object()) -> ne_binary().
-maybe_guess_endpoint_type(Endpoint) ->    
+maybe_guess_endpoint_type(Endpoint) ->
     case whapps_config:get_is_true(?CF_CONFIG_CAT, <<"restrict_to_known_types">>, 'false') of
         'false' -> guess_endpoint_type(Endpoint);
         'true' ->
@@ -689,7 +689,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
          ,{<<"Force-Fax">>, get_force_fax(Endpoint)}
-         ,{<<"Ignore-Completed-Elsewhere">>, wh_json:is_true(<<"ignore_complete_elsewhere">>, Endpoint)}
+         ,{<<"Ignore-Completed-Elsewhere">>, wh_json:is_true(<<"ignore_completed_elsewhere">>, Endpoint)}
          ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
@@ -786,7 +786,7 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec create_mobile_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
@@ -835,7 +835,7 @@ build_mobile_route(MDN) ->
             maybe_add_mobile_path(Route)
     end.
 
-maybe_add_mobile_path(Route) ->    
+maybe_add_mobile_path(Route) ->
     Path = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"path">>, ?DEFAULT_MOBILE_PATH),
     case wh_util:is_empty(Path) of
         'false' -> <<Route/binary, ";fs_path=sip:", Path/binary>>;
