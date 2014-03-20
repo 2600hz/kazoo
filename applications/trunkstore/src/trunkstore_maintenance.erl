@@ -178,7 +178,7 @@ set_classifier_action(Action, Classifier, UserR) ->
     Classifiers = wnm_util:available_classifiers(),
     case lists:member(Classifier, wh_json:get_keys(Classifiers)) of
         'false' -> 
-            io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, proplists:get_keys(Classifiers)]),
+            io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, wh_json:get_keys(Classifiers)]),
             exit(no_such_classifier);
         _ -> 
             io:format("  ... found\n")
