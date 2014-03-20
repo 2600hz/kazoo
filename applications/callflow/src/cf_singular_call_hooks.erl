@@ -10,11 +10,11 @@
 %%% in the system_config / callflow configuration is populated.
 %%%
 %%% Example of JSON hook sent via post on call init:
-%%% {"Event":"init","CallId":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
+%%% {"Event":"init","CallID":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
 %%%  "To":"+14088317607","From":"+16505811111","Inception":"onnet"}
 %%%
 %%% Example of JSON hook sent via post on call destroy:
-%%% {"Event":"destroy","CallId":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
+%%% {"Event":"destroy","CallID":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
 %%%  "To":"+14088317607","From":"+16505811111","Inception":"onnet","Duration-Seconds":"33",
 %%%  "Hangup-Cause":"NORMAL_CLEARING","Disposition":"SUCCESS"}
 %%%
@@ -30,8 +30,9 @@
 -include("callflow.hrl").
 
 %% API to send hooks
--export([maybe_send_init_hook/1
-         ,maybe_send_end_hook/2
+-export([maybe_hook_call/1
+         ,send_init_hook/1
+         ,send_end_hook/2
         ]).
 
 %% Helper functions
@@ -44,34 +45,20 @@
 %% @doc
 %% First we check if this feature is enabled - if not, we return false.
 %% Next we check if the call is an indicator for the start of a singular call (A-leg),
-%% and if so, we invoke the function to send the init hook.
+%% and if so, then we know the call should be hooked. 
+%% We then can start the event listener, which will send init and end hooks.
 %%
-%% @spec maybe_send_init_hook(whapps_call:call()) -> ok.
+%% @spec maybe_hook_call(whapps_call:call()) -> ok.
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_init_hook(whapps_call:call()) -> boolean().
-maybe_send_init_hook(Call) ->
+-spec maybe_hook_call(whapps_call:call()) -> boolean().
+maybe_hook_call(Call) ->
     %% Never invoke anything if we are disabled
-    case should_send_hook(Call) of
-        'true' -> send_init_hook(Call);
-        'false' -> 'false'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% First we check if this feature is enabled - if not, we return false.
-%% Next we check if the call is an indicator for the end of a singular call (A-leg),
-%% and if so, we invoke the function to send the end hook.
-%%
-%% @spec maybe_send_end_hook(whapps_call:call(), wh_json:object()) -> ok.
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_send_end_hook(whapps_call:call(), wh_json:object()) -> boolean().
-maybe_send_end_hook(Call, Event) ->
-    %% Never invoke anything if we are disabled
-    case should_send_hook(Call) of
-        'true' -> send_end_hook(Call, Event);
+    case should_hook(Call) of
+        'true' -> 
+            %% start event listener, which will be responsible for sending all hooks, 
+            %% including the init hook (we want to do it this way to make sure we are listening)
+            cf_exe:add_event_listener(Call, {'cf_singular_call_hooks_listener', []});
         'false' -> 'false'
     end.
 
@@ -88,14 +75,15 @@ maybe_send_end_hook(Call, Event) ->
 send_init_hook(Call) ->
     lager:debug("===CALL STARTED===", []),
     lager:debug("Event: init", []),
-    lager:debug("CallId: ~s", [whapps_call:call_id(Call)]),
+    lager:debug("Call-ID: ~s", [whapps_call:call_id_direct(Call)]),
     lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
     lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
     lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"init">>}
-            ,{<<"CallId">>, whapps_call:call_id(Call)}
+            ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+            ,{<<"Bridge-ID">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
             ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
             ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
@@ -115,7 +103,8 @@ send_init_hook(Call) ->
         {'error', Reason} ->
             lager:warning("Ibrowse error when sending singular call init hook: ~p", [Reason]),
             'false';
-        _ -> 'true'
+        _ -> 
+            'true'
     end.
 
 %%--------------------------------------------------------------------
@@ -131,7 +120,7 @@ send_init_hook(Call) ->
 send_end_hook(Call, Event) ->
     lager:debug("===CALL ENDED===", []),
     lager:debug("Event: end", []),
-    lager:debug("CallId: ~s", [whapps_call:call_id(Call)]),
+    lager:debug("Call-ID: ~s", [whapps_call:call_id_direct(Call)]),
     lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
     lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
@@ -141,7 +130,8 @@ send_end_hook(Call, Event) ->
     lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"destroy">>}
-            ,{<<"CallId">>, whapps_call:call_id(Call)}
+            ,{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
+            ,{<<"Bridge-ID">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
             ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
             ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
@@ -170,14 +160,11 @@ send_end_hook(Call, Event) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Checks if there is a non-empty hook url and the call is
-%% the originating leg (in which case it will not have a Bridge-ID
-%%  because the originating leg exports its Call-ID as Bridge-ID
-%%  on to all legs that it spawns)
+%% Checks if there is a non-empty hook url and that the call is singular (or a transfer)
 %% @end
 %%--------------------------------------------------------------------
--spec should_send_hook(whapps_call:call()) -> boolean().
-should_send_hook(Call) ->
+-spec should_hook(whapps_call:call()) -> boolean().
+should_hook(Call) ->
     is_enabled() andalso call_is_singular(Call).
 
 %%--------------------------------------------------------------------
@@ -198,7 +185,8 @@ is_enabled() ->
 %% @private
 %% @doc
 %% This function identifies if a call is the first of the conversation by checking if it
-%% has an existing bridge.
+%% has an existing bridge. We also check the presence of referredby and 
+%% want to send the hook if it is a call transfer 
 %%
 %% @spec call_is_singular(whapps_call:call()) -> boolean().
 %% @end
@@ -206,9 +194,11 @@ is_enabled() ->
 -spec call_is_singular(whapps_call:call()) -> boolean().
 call_is_singular(Call) ->
     BridgeID = whapps_call:custom_channel_var(<<"Bridge-ID">>, Call),
-    CallId = whapps_call:call_id_direct(Call),
+    ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
+    CallID = whapps_call:call_id_direct(Call),
     (BridgeID =:= 'undefined')
-        orelse (BridgeID =:= CallId).
+        orelse (BridgeID =:= CallID)
+        orelse (ReferredBy =/= 'undefined').
 
 %%--------------------------------------------------------------------
 %% @private

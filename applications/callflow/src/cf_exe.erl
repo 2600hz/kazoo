@@ -393,13 +393,14 @@ event_listener_name(Call, Module) ->
 %%--------------------------------------------------------------------
 handle_info('initialize', #state{call=Call}) ->
     log_call_information(Call),
-    spawn(fun() -> cf_singular_call_hooks:maybe_send_init_hook(Call) end),
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [fun(C) -> whapps_call:kvs_store('cf_exe_pid', self(), C) end
                 ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
                 ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
                ],
-    {'noreply', #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)
+    CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
+    spawn('cf_singular_call_hooks', 'maybe_hook_call', [CallWithHelpers]),
+    {'noreply', #state{call=CallWithHelpers
                        ,flow=Flow
                       }};
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
@@ -476,11 +477,6 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                     'true' -> 'ok'
                 end,
             'ignore';
-        {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            spawn(fun() -> cf_singular_call_hooks:maybe_send_end_hook(Call, JObj) end),
-            {'reply', [{'cf_module_pid', get_pid(PidRef)}
-                       ,{'cf_event_pids', Others}
-                      ]};
         {{<<"error">>, _}, _} ->
             case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
                 CallId -> {'reply', [{'cf_module_pid', get_pid(PidRef)}
