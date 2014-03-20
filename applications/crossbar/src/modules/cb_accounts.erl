@@ -805,11 +805,13 @@ is_unique_realm(AccountId, Realm) ->
 %%--------------------------------------------------------------------
 -spec is_unique_account_name(ne_binary()) -> boolean().
 is_unique_account_name(Name) ->
-    ViewOptions = [{<<"key">>, Name}],
+    ViewOptions = [{'key', Name}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
         {'ok', []} -> 'true';
         {'error', 'not_found'} -> 'true';
-        _Else -> 'false'
+        _Else ->
+            lager:error("error ~p checking view ~p in ~p", [_Else, ?AGG_VIEW_NAME, ?WH_ACCOUNTS_DB]),
+            'false'
     end.
 
 %%--------------------------------------------------------------------
