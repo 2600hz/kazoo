@@ -131,7 +131,7 @@ send_end_hook(Call, Event) ->
 
     Prop = [{<<"Event">>, <<"destroy">>}
             ,{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
-            ,{<<"Bridge-Id">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
+            ,{<<"Bridge-ID">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
             ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
             ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
