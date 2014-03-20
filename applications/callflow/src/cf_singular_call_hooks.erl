@@ -160,10 +160,7 @@ send_end_hook(Call, Event) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Checks if there is a non-empty hook url and the call is
-%% the originating leg (in which case it will not have a Bridge-ID
-%%  because the originating leg exports its Call-ID as Bridge-ID
-%%  on to all legs that it spawns)
+%% Checks if there is a non-empty hook url and that the call is singular (or a transfer)
 %% @end
 %%--------------------------------------------------------------------
 -spec should_hook(whapps_call:call()) -> boolean().
@@ -188,7 +185,8 @@ is_enabled() ->
 %% @private
 %% @doc
 %% This function identifies if a call is the first of the conversation by checking if it
-%% has an existing bridge. 
+%% has an existing bridge. We also check the presence of referredby and 
+%% want to send the hook if it is a call transfer 
 %%
 %% @spec call_is_singular(whapps_call:call()) -> boolean().
 %% @end

@@ -153,6 +153,6 @@ terminate(_Reason, _State) ->
 %% Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(term(), state(), term()) -> {'ok', state()}.
+-spec code_change(term(), state(), term()) -> {ok, state()} | {error, term()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
