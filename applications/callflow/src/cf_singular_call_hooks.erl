@@ -30,8 +30,7 @@
 -include("callflow.hrl").
 
 %% API to send hooks
--export([maybe_send_init_hook/1
-         ,maybe_send_end_hook/2
+-export([maybe_hook_call/1
          ,send_init_hook/1
          ,send_end_hook/2
         ]).
@@ -46,34 +45,22 @@
 %% @doc
 %% First we check if this feature is enabled - if not, we return false.
 %% Next we check if the call is an indicator for the start of a singular call (A-leg),
-%% and if so, we invoke the function to send the init hook.
+%% and if so, then we know the call should be hooked. 
+%% We then can send the init hook and also add an event listener to send the end hook.
 %%
-%% @spec maybe_send_init_hook(whapps_call:call()) -> ok.
+%% @spec maybe_hook_call(whapps_call:call()) -> ok.
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_init_hook(whapps_call:call()) -> boolean().
-maybe_send_init_hook(Call) ->
+-spec maybe_hook_call(whapps_call:call()) -> boolean().
+maybe_hook_call(Call) ->
     %% Never invoke anything if we are disabled
-    case should_send_hook(Call) of
-        'true' -> send_init_hook(Call);
-        'false' -> 'false'
-    end.
+    case should_hook(Call) of
+        'true' -> 
+            %% start a listener for channel destroy to handle the ending hook later
+            cf_exe:add_event_listener(Call, {'cf_singular_call_hooks_listener', [<<"">>]}),
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% First we check if this feature is enabled - if not, we return false.
-%% Next we check if the call is an indicator for the end of a singular call (A-leg),
-%% and if so, we invoke the function to send the end hook.
-%%
-%% @spec maybe_send_end_hook(whapps_call:call(), wh_json:object()) -> ok.
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_send_end_hook(whapps_call:call(), wh_json:object()) -> boolean().
-maybe_send_end_hook(Call, Event) ->
-    %% Never invoke anything if we are disabled
-    case should_send_hook(Call) of
-        'true' -> send_end_hook(Call, Event);
+            % send the init hook now
+            send_init_hook(Call);
         'false' -> 'false'
     end.
 
@@ -105,9 +92,6 @@ send_init_hook(Call) ->
 
     JObj = wh_json:from_list(props:filter_undefined(Prop)),
     URI = binary_to_list(get_hook_url()),
-
-    %% Start a listener for channel destroy to handle the ending hook later
-    cf_exe:add_event_listener(Call, {'cf_singular_call_hooks_listener', [<<"">>]}),
 
     case ibrowse:send_req(URI
                          ,[{"Content-Type", "application/json"}]
@@ -182,8 +166,8 @@ send_end_hook(Call, Event) ->
 %%  on to all legs that it spawns)
 %% @end
 %%--------------------------------------------------------------------
--spec should_send_hook(whapps_call:call()) -> boolean().
-should_send_hook(Call) ->
+-spec should_hook(whapps_call:call()) -> boolean().
+should_hook(Call) ->
     is_enabled() andalso call_is_singular(Call).
 
 %%--------------------------------------------------------------------
@@ -204,7 +188,7 @@ is_enabled() ->
 %% @private
 %% @doc
 %% This function identifies if a call is the first of the conversation by checking if it
-%% has an existing bridge.
+%% has an existing bridge. 
 %%
 %% @spec call_is_singular(whapps_call:call()) -> boolean().
 %% @end
