@@ -10,11 +10,11 @@
 %%% in the system_config / callflow configuration is populated.
 %%%
 %%% Example of JSON hook sent via post on call init:
-%%% {"Event":"init","CallId":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
+%%% {"Event":"init","CallID":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
 %%%  "To":"+14088317607","From":"+16505811111","Inception":"onnet"}
 %%%
 %%% Example of JSON hook sent via post on call destroy:
-%%% {"Event":"destroy","CallId":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
+%%% {"Event":"destroy","CallID":"OTdlYzFkMDZlZmRhYWY1YmEzN2RhNmMxZWNiYTQ4NDc",
 %%%  "To":"+14088317607","From":"+16505811111","Inception":"onnet","Duration-Seconds":"33",
 %%%  "Hangup-Cause":"NORMAL_CLEARING","Disposition":"SUCCESS"}
 %%%
@@ -195,9 +195,9 @@ is_enabled() ->
 call_is_singular(Call) ->
     BridgeID = whapps_call:custom_channel_var(<<"Bridge-ID">>, Call),
     ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
-    CallId = whapps_call:call_id_direct(Call),
+    CallID = whapps_call:call_id_direct(Call),
     (BridgeID =:= 'undefined')
-        orelse (BridgeID =:= CallId)
+        orelse (BridgeID =:= CallID)
         orelse (ReferredBy =/= 'undefined').
 
 %%--------------------------------------------------------------------

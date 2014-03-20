@@ -30,7 +30,7 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS(CallId), [{'call', [{'callid', CallId}
+-define(BINDINGS(CallID), [{'call', [{'callid', CallID}
                                      ,{'restrict_to', [<<"CHANNEL_DESTROY">>
                                                       ]}
                                     ]}
