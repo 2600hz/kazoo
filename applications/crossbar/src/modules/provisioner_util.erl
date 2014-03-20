@@ -164,7 +164,7 @@ maybe_update_account(#cb_context{account_id=AccountId
     of
         'false' -> 'false';
         <<"provisioner_v5">> ->
-            _ = spawn(fun() -> provisioner_v5:update_account(AccountId, Doc, AuthToken) end),
+            _ = spawn('provisioner_v5', 'update_account', [AccountId, Doc, AuthToken]),
             'true';
         _ -> 'false'
     end.
@@ -185,7 +185,7 @@ maybe_delete_account(#cb_context{account_id=AccountId, auth_token=AuthToken}=Con
             _ = spawn(fun() -> delete_account(Context) end),
             'true';
         <<"provisioner_v5">> ->
-            _ = spawn(fun() -> provisioner_v5:delete_account(AccountId, AuthToken) end),
+            _ = spawn('provisioner_v5', 'delete_account', [AccountId, AuthToken]),
             'true';
         _ -> 'false'
     end.
