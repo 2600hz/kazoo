@@ -403,31 +403,41 @@ del_doc(#server{}=Conn, DbName, DocId) when is_binary(DocId) ->
     end;
 del_doc(#server{}=Conn, DbName, Doc) ->
     Db = get_db(Conn, DbName),
-    do_delete_doc(Db, Doc).
+    do_delete_doc(Conn, Db, Doc).
 
 -spec del_docs(server(), ne_binary(), wh_json:objects()) ->
                       {'ok', wh_json:objects()}.
 del_docs(#server{}=Conn, DbName, Doc) ->
     Db = get_db(Conn, DbName),
-    do_delete_docs(Db, Doc).
+    do_delete_docs(Conn, Db, Doc).
 
 %% Internal Doc functions
--spec do_delete_doc(couchbeam_db(), wh_json:object()) ->
+-spec do_delete_doc(server(), ne_binary(), wh_json:object() | ne_binary()) ->
                            {'ok', wh_json:objects()}.
-do_delete_doc(#db{}=Db, Doc) ->
-    do_delete_docs(Db, [Doc]).
+do_delete_doc(Conn, #db{}=Db, Doc) ->
+    do_delete_docs(Conn, Db, [Doc]).
 
--spec do_delete_docs(couchbeam_db(), wh_json:objects()) ->
+-spec do_delete_docs(server(), ne_binary(), wh_json:object() | ne_binary()) ->
                             {'ok', wh_json:objects()}.
-do_delete_docs(#db{}=Db, Docs) ->
-    do_save_docs(Db, [prepare_doc_for_del(Doc) || Doc <- Docs], []).
+do_delete_docs(Conn, #db{}=Db, Docs) ->
+    do_save_docs(Db, [prepare_doc_for_del(Conn, Db, Doc) || Doc <- Docs], []).
 
 %% Save only the minimal amount of document needed, since couch can't fully
 %% delete the doc off the node's disk
 %% See https://wiki.apache.org/couchdb/FUQ, point 4 for Documents
 %% and http://grokbase.com/t/couchdb/user/11cpvasem0/database-size-seems-off-even-after-compaction-runs
--spec prepare_doc_for_del(wh_json:object()) -> wh_json:object().
-prepare_doc_for_del(Doc) ->
+-spec prepare_doc_for_del(server(), ne_binary(), wh_json:object() | ne_binary()) -> wh_json:object().
+prepare_doc_for_del(Conn, #db{name=DbName}=Db, Doc) when is_binary(Doc) ->
+    case lookup_doc_rev(Conn, DbName, Doc) of
+        {'error', _E} ->
+            lager:error("doc ~p : ~p", [Doc, _E]),
+            prepare_doc_for_del(Conn, Db, wh_json:new());
+        {'ok', Rev} ->
+            prepare_doc_for_del(Conn, Db, wh_json:from_list([{<<"_id">>, Doc}
+                                                                 ,{<<"_rev">>, Rev}
+                                                                ]))
+    end;
+prepare_doc_for_del(_, _, Doc) ->
     wh_json:from_list([{<<"_id">>, wh_json:get_value(<<"_id">>, Doc)}
                        ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, Doc)}
                        ,{<<"_deleted">>, 'true'}
