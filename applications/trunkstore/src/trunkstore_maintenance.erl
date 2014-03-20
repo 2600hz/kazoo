@@ -175,8 +175,8 @@ classifier_deny(Classifier, UserR) ->
 
 set_classifier_action(Action, Classifier, UserR) ->
     io:format("Classifier: ~p",[Classifier]),
-    {Classifiers} = wnm_util:available_classifiers(),
-    case lists:member(Classifier, proplists:get_keys(Classifiers)) of
+    Classifiers = wh_json:to_proplist(wnm_util:available_classifiers()),
+    case lists:member(Classifier, props:get_keys(Classifiers)) of
         'false' -> 
             io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, proplists:get_keys(Classifiers)]),
             exit(no_such_classifier);
