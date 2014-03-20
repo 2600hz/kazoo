@@ -58,7 +58,7 @@ maybe_hook_call(Call) ->
         'true' -> 
             %% start event listener, which will be responsible for sending all hooks, 
             %% including the init hook (we want to do it this way to make sure we are listening)
-            cf_exe:add_event_listener(Call, {'cf_singular_call_hooks_listener', [<<"">>]});
+            cf_exe:add_event_listener(Call, {'cf_singular_call_hooks_listener', []});
         'false' -> 'false'
     end.
 
@@ -75,15 +75,15 @@ maybe_hook_call(Call) ->
 send_init_hook(Call) ->
     lager:debug("===CALL STARTED===", []),
     lager:debug("Event: init", []),
-    lager:debug("CallId: ~s", [whapps_call:call_id_direct(Call)]),
+    lager:debug("Call-Id: ~s", [whapps_call:call_id_direct(Call)]),
     lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
     lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
     lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"init">>}
-            ,{<<"CallId">>, whapps_call:call_id(Call)}
-            ,{<<"BridgeId">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
+            ,{<<"Call-Id">>, whapps_call:call_id(Call)}
+            ,{<<"Bridge-ID">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
             ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
             ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
@@ -130,8 +130,8 @@ send_end_hook(Call, Event) ->
     lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"destroy">>}
-            ,{<<"CallId">>, whapps_call:call_id_direct(Call)}
-            ,{<<"BridgeId">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
+            ,{<<"Call-Id">>, whapps_call:call_id_direct(Call)}
+            ,{<<"Bridge-Id">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
             ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
             ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}

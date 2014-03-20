@@ -12,7 +12,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/2
+-export([start_link/1
          ,handle_call_event/2
         ]).
 -export([init/1
@@ -49,8 +49,8 @@
 %% Starts the listener and binds to the call channel destroy events
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(whapps_call:call(), term()) -> startlink_ret().
-start_link(Call, _) ->
+-spec start_link(whapps_call:call()) -> startlink_ret().
+start_link(Call) ->
     gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
@@ -85,7 +85,8 @@ handle_call_event(JObj, Props) ->
 -spec init([whapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->
     % send the init hook now
-    cf_singular_call_hooks:send_init_hook(Call),
+    gen_listener:cast(self(), {'init_hook'}),
+
     lager:debug("started event listener for cf_singular_hook"),
     {'ok', #state{call=Call}}.
 
@@ -105,7 +106,10 @@ handle_call(_Request, _From, State) ->
 %% Handle cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> {'noreply', state()}.
+-spec handle_cast(term(), state()) -> {'noreply', state()} | {'stop', 'normal', state()}.
+handle_cast({'init_hook'}, #state{call=Call}=State) ->
+    cf_singular_call_hooks:send_init_hook(Call),
+    {'noreply', State};
 handle_cast({'end_hook', JObj}, #state{call=Call}=State) ->
     cf_singular_call_hooks:send_end_hook(Call, JObj),
     {'stop', 'normal', State};
