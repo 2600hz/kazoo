@@ -80,11 +80,13 @@ handle_call_event(JObj, Props) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Initializes the server
+%% Initializes the listener, and sends the init hook
 %%--------------------------------------------------------------------
 -spec init([whapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->
-    lager:info("starting event listener for cf_singular_hook"),
+    % send the init hook now
+    cf_singular_call_hooks:send_init_hook(Call),
+    lager:debug("started event listener for cf_singular_hook"),
     {'ok', #state{call=Call}}.
 
 %%--------------------------------------------------------------------
@@ -128,7 +130,7 @@ handle_info(Info, State) ->
 %% Allows listener to pass options to handlers
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(wh_json:object(), state()) -> {'reply', state()}.
+-spec handle_event(wh_json:object(), state()) -> {'reply', []}.
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -143,7 +145,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate(term(), state()) -> any().
 terminate(_Reason, _State) ->
-    lager:error("hook listener terminating: ~p", [_Reason]).
+    lager:debug("singular call hook listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -151,6 +153,6 @@ terminate(_Reason, _State) ->
 %% Convert process state when code is changed
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(term(), state(), term()) -> {ok, state()}.
+-spec code_change(term(), state(), term()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.

@@ -46,7 +46,7 @@
 %% First we check if this feature is enabled - if not, we return false.
 %% Next we check if the call is an indicator for the start of a singular call (A-leg),
 %% and if so, then we know the call should be hooked. 
-%% We then can send the init hook and also add an event listener to send the end hook.
+%% We then can start the event listener, which will send init and end hooks.
 %%
 %% @spec maybe_hook_call(whapps_call:call()) -> ok.
 %% @end
@@ -56,11 +56,9 @@ maybe_hook_call(Call) ->
     %% Never invoke anything if we are disabled
     case should_hook(Call) of
         'true' -> 
-            %% start a listener for channel destroy to handle the ending hook later
-            cf_exe:add_event_listener(Call, {'cf_singular_call_hooks_listener', [<<"">>]}),
-
-            % send the init hook now
-            send_init_hook(Call);
+            %% start event listener, which will be responsible for sending all hooks, 
+            %% including the init hook (we want to do it this way to make sure we are listening)
+            cf_exe:add_event_listener(Call, {'cf_singular_call_hooks_listener', [<<"">>]});
         'false' -> 'false'
     end.
 
@@ -85,6 +83,7 @@ send_init_hook(Call) ->
 
     Prop = [{<<"Event">>, <<"init">>}
             ,{<<"CallId">>, whapps_call:call_id(Call)}
+            ,{<<"BridgeId">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
             ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
             ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
@@ -132,6 +131,7 @@ send_end_hook(Call, Event) ->
 
     Prop = [{<<"Event">>, <<"destroy">>}
             ,{<<"CallId">>, whapps_call:call_id_direct(Call)}
+            ,{<<"BridgeId">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
             ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
             ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
             ,{<<"Inception">>, get_inception(Call)}
@@ -196,9 +196,11 @@ is_enabled() ->
 -spec call_is_singular(whapps_call:call()) -> boolean().
 call_is_singular(Call) ->
     BridgeID = whapps_call:custom_channel_var(<<"Bridge-ID">>, Call),
+    ReferredBy = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
     CallId = whapps_call:call_id_direct(Call),
     (BridgeID =:= 'undefined')
-        orelse (BridgeID =:= CallId).
+        orelse (BridgeID =:= CallId)
+        orelse (ReferredBy =/= 'undefined').
 
 %%--------------------------------------------------------------------
 %% @private
