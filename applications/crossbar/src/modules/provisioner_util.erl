@@ -105,7 +105,7 @@ maybe_provision(_Context, _Status) -> 'false'.
 maybe_provision_v5(Context, ?HTTP_PUT) ->
     JObj = cb_context:doc(Context),
     AuthToken =  cb_context:auth_token(Context),
-    _ = spawn(fun() -> provisioner_v5:put(JObj, AuthToken) end),
+    _ = spawn('provisioner_v5', 'put', [JObj, AuthToken]),
     'ok';
 maybe_provision_v5(Context, ?HTTP_POST) ->
     JObj = cb_context:doc(Context),
@@ -114,11 +114,11 @@ maybe_provision_v5(Context, ?HTTP_POST) ->
     OldAddress = wh_json:get_ne_value(<<"mac_address">>, cb_context:fetch(Context, 'db_doc')),
     case NewAddress =:= OldAddress of
         'true' ->
-            _ = spawn(fun() -> provisioner_v5:post(JObj, AuthToken) end);
+            _ = spawn('provisioner_v5', 'post', [JObj, AuthToken]);
         'false' ->
             JObj1 = wh_json:set_value(<<"mac_address">>, OldAddress, JObj),
-            _ = spawn(fun() -> provisioner_v5:delete(JObj1, AuthToken) end),
-            _ = spawn(fun() -> provisioner_v5:put(JObj, AuthToken) end)
+            _ = spawn('provisioner_v5', 'delete', [JObj1, AuthToken]),
+            _ = spawn('provisioner_v5', 'put', [JObj, AuthToken])
     end,
     'ok'.
 
