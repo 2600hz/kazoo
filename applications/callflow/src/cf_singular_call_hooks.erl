@@ -75,14 +75,14 @@ maybe_hook_call(Call) ->
 send_init_hook(Call) ->
     lager:debug("===CALL STARTED===", []),
     lager:debug("Event: init", []),
-    lager:debug("Call-Id: ~s", [whapps_call:call_id_direct(Call)]),
+    lager:debug("Call-ID: ~s", [whapps_call:call_id_direct(Call)]),
     lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
     lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
     lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"init">>}
-            ,{<<"Call-Id">>, whapps_call:call_id(Call)}
+            ,{<<"Call-ID">>, whapps_call:call_id(Call)}
             ,{<<"Bridge-ID">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
             ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
             ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
@@ -120,7 +120,7 @@ send_init_hook(Call) ->
 send_end_hook(Call, Event) ->
     lager:debug("===CALL ENDED===", []),
     lager:debug("Event: end", []),
-    lager:debug("CallId: ~s", [whapps_call:call_id_direct(Call)]),
+    lager:debug("Call-ID: ~s", [whapps_call:call_id_direct(Call)]),
     lager:debug("To: ~s", [wnm_util:to_e164(whapps_call:to_user(Call))]),
     lager:debug("From: ~s", [wnm_util:to_e164(whapps_call:caller_id_number(Call))]),
     lager:debug("Inception: ~s", [get_inception(Call)]),
@@ -130,7 +130,7 @@ send_end_hook(Call, Event) ->
     lager:debug("================", []),
 
     Prop = [{<<"Event">>, <<"destroy">>}
-            ,{<<"Call-Id">>, whapps_call:call_id_direct(Call)}
+            ,{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
             ,{<<"Bridge-Id">>, whapps_call:custom_channel_var(<<"Bridge-ID">>, Call)}
             ,{<<"To">>, wnm_util:to_e164(whapps_call:to_user(Call))}
             ,{<<"From">>, wnm_util:to_e164(whapps_call:caller_id_number(Call))}
