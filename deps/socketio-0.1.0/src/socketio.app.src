@@ -1,0 +1,16 @@
+{application, socketio, [
+	{description, "Socketio for cowboy."},
+	{vsn, "0.1.0"},
+	{modules, []},
+	{registered, [socketio_sup]},
+	{applications, [
+		kernel,
+		stdlib,
+		crypto,
+		public_key,
+		ssl,
+		cowboy
+	]},
+	{mod, {socketio, []}},
+	{env, []}
+]}.

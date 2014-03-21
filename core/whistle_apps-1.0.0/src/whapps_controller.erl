@@ -76,6 +76,7 @@ restart_app(App) when is_atom(App) ->
                       ,'inets', 'ssl', 'public_key', 'whistle_apps', 'whistle_couch'
                       ,'whistle_amqp', 'whistle_stats', 'sasl', 'lager', 'gproc'
                       ,'amqp_client', 'syslog', 'asn1', 'folsom', 'kazoo_token_buckets'
+                      ,'socketio'			
                      ]).
 -spec running_apps() -> atoms() | string().
 -spec running_apps(boolean()) -> atoms() | string().

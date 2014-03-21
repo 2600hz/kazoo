@@ -44,14 +44,14 @@
 -define('SERVER', ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
-                      ,[{<<"call_event">>, <<"*">>}]
+                     ,[{<<"call_event">>, <<"*">>}]
                      }
-                     ,{{?MODULE, 'handle_participants_event'}
-                       ,[{<<"conference">>, <<"participants_event">>}]
-                      }
-                     ,{{?MODULE, 'handle_conference_error'}
-                       ,[{<<"conference">>, <<"error">>}]
-                      }
+                    ,{{?MODULE, 'handle_participants_event'}
+                     ,[{<<"conference">>, <<"participants_event">>}]
+                     }
+                    ,{{?MODULE, 'handle_conference_error'}
+                     ,[{<<"conference">>, <<"error">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -269,7 +269,7 @@ handle_cast({'remove_consumer', C}, #participant{call_event_consumers=Cs}=P) ->
 handle_cast({'set_conference', Conference}, Participant) ->
     ConferenceId = whapps_conference:id(Conference),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
-    gen_listener:add_binding(self(), 'conference', [{'conference', ConferenceId}]),
+    gen_listener:add_binding(self(), 'conference', [{'restrict_to', [{'conference', ConferenceId}]}]),
     {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};

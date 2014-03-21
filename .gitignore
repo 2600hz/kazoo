@@ -24,6 +24,7 @@ deps/rabbitmq_server-*/dist/
 deps/rabbitmq_server-*/include/rabbit_framing.hrl
 deps/rabbitmq_server-*/plugins-src/*/build/
 deps/rabbitmq_server-*/plugins-src/*/dist/
+deps/rabbitmq_server-*/plugins-src/sockjs-erlang-wrapper/hash.mk
 deps/rabbitmq_server-*/plugins-src/eldap-wrapper/eldap-git/generated/
 deps/rabbitmq_server-*/plugins-src/rabbitmq-erlang-client/deps.mk
 deps/rabbitmq_server-*/plugins-src/rabbitmq-erlang-client/deps/

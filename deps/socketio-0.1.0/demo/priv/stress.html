@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <title>Shadow world test</title>
+    <script src="/js/socket.io/socket.io.js"></script>
+    <script>
+     var received_amount = 0;
+     var messages, start;
+     var updater;
+	 var socket = io.connect('http://localhost:8080');
+
+     socket.on('connect', function() {
+       // console.log("Connected");
+     })
+     socket.on('message', function(){
+       received_amount++;
+       if (received_amount >= messages) {
+         clearInterval(updater);
+         update_result();
+       }
+     })
+
+     socket.on('disconnect', function(){
+      // console.log("Disconnected");
+     })
+
+     function update_result() {
+       var result;
+       if (!result) {
+         result = document.getElementById('result')
+       }
+       result.innerHTML = "Received " + received_amount +  " messages in " + (new Date().getTime() - start) + "ms";
+     }
+
+     function stress() {
+       received_amount = 0;
+       updater = setInterval(function() {
+         if (received_amount > 0) {
+           update_result();
+         }
+       }, 1000);
+       messages = parseInt(document.getElementById('messages').value);
+       start = new Date().getTime();
+       for (var i=0; i < messages; i++) {
+         socket.send("PING");
+       };
+       document.getElementById('sent').innerHTML = "Sent " + messages + " messages in " + (new Date().getTime() - start) + "ms";
+     }
+    </script>
+  </head>
+  <body>
+    # of messages to send: <input type="text" id="messages" value="10000">
+    <button onclick="stress();">Stress</button>
+    <div id="sent"></div>
+    <div id="received"></div>
+    <div id="result"></div>
+  </body>
+</html>
