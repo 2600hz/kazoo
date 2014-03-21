@@ -31,6 +31,7 @@
               ,<<"Media">>, <<"Hold-Media">>, <<"Ringback">>
               ,<<"Custom-Channel-Vars">>, <<"Secure-RTP">>, <<"Force-Fax">>
               ,<<"SIP-Transport">>, <<"SIP-Headers">>
+              ,<<"Ignore-Completed-Elsewhere">>
               ,<<"Enable-T38-Fax">>
               ,<<"Enable-T38-Fax-Request">>
               ,<<"Enable-T38-Passthrough">>
@@ -68,6 +69,7 @@
                ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
                ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
                ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
+               ,<<"Ignore-Completed-Elsewhere">>
                ,<<"SIP-Interface">>
                ,<<"Enable-T38-Fax">>
                ,<<"Enable-T38-Fax-Request">>
