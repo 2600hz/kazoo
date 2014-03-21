@@ -21,12 +21,12 @@
 -include("blackhole.hrl").
 
 -record(bh_context, {
-          auth_token = <<>> :: ne_binary() | 'undefined'
+          auth_token = <<>> :: binary() | 'undefined'
           ,auth_account_id :: api_binary()
           ,account_id :: api_binary()
-          ,binding :: ne_binary()
-          ,websocket_session_id :: ne_binary()
-          ,websocket_pid :: pid()
+          ,binding :: api_binary()
+          ,websocket_session_id :: api_binary()
+          ,websocket_pid :: api_pid()
          }).
 
 -type context() :: #bh_context{}.
@@ -43,10 +43,10 @@ new(SessionPid, SessionId) ->
                }.
 
 -spec from_subscription(wh_json:object()) -> context().
+-spec from_subscription(context(), wh_json:object()) -> context().
 from_subscription(Data) ->
     from_subscription(new(), Data).
 
--spec from_subscription(context(), wh_json:object()) -> context().
 from_subscription(Context, Data) ->
     Context#bh_context{account_id=wh_json:get_value(<<"account_id">>,Data)
                       ,auth_token=wh_json:get_value(<<"auth_token">>,Data)

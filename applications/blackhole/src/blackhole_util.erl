@@ -29,13 +29,15 @@
 %%--------------------------------------------------------------------
 -spec is_authorized(bh_context:context()) -> boolean().
 is_authorized(Context) ->
-    lager:debug("context ~p", [Context]),
-    Event = <<"blackhole.authenticate">>,
-    case blackhole_bindings:succeeded(blackhole_bindings:map(Event, Context)) of
+    AuthEvent = <<"blackhole.authenticate">>,
+    case blackhole_bindings:succeeded(blackhole_bindings:map(AuthEvent, Context)) of        
         [] ->
             lager:debug("failed to authenticate"),
-            'true';
+            'false';
         ['true'|_] ->
+            lager:debug("is_authentic: true"),
+            'true';
+        [{'true', _}|_] ->
             lager:debug("is_authentic: true"),
             'true';
         [{'halt', _}|_] ->
@@ -43,16 +45,17 @@ is_authorized(Context) ->
             'false'
     end.
 
--spec maybe_add_binding_to_listener(ne_binary(), ne_binary(), bh_context:context()) -> 'ok'.
+-spec maybe_add_binding_to_listener(atom(), ne_binary(), bh_context:context()) -> 'ok'.
 maybe_add_binding_to_listener(Module, Binding, Context) ->
     try Module:add_amqp_binding(Binding, Context) of
-        Result -> 'ok'
+        _Result -> 'ok'
     catch
         _ -> 
             lager:debug("could not exec ~s:add_amqp_binding", [Module]),
             'ok'
     end.
 
+-spec maybe_rm_binding_from_listener(atom(), ne_binary(), bh_context:context()) -> 'ok'.
 maybe_rm_binding_from_listener(Module, Binding, Context) ->
     lager:debug("remove some amqp bindings for module: ~s ~s", [Module, Binding]),
     try Module:rm_amqp_binding(Binding, Context) of
@@ -68,8 +71,7 @@ get_callback_module(Binding) ->
     case binary:split(Binding, <<".">>) of
         [M, _] ->
             try wh_util:to_atom(<<"bh_", M/binary>>, 'true') of
-                Module -> 
-                    Module
+                Module -> Module
             catch
                 'error':'badarg' -> 'undefined'
             end;

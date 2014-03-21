@@ -22,26 +22,26 @@
 -module(blackhole_bindings).
 
 %% API
--export([bind/4
-         ,unbind/4
-         ,map/2
-         ,fold/2
-         ,flush/0, flush/1, flush_mod/1
-         ,filter/1
-         ,modules_loaded/0
-         ,init/0
+-export([bind/3,bind/4
+        ,unbind/3,unbind/4
+        ,map/2
+        ,fold/2
+        ,flush/0, flush/1, flush_mod/1
+        ,filter/1
+        ,modules_loaded/0
+        ,init/0
         ]).
 
 %% Helper Functions for Results of a map/2
 -export([any/1
-         ,all/1
-         ,succeeded/1
-         ,failed/1
+        ,all/1
+        ,succeeded/1
+        ,failed/1
         ]).
 
 -include("blackhole.hrl").
 
--type payload() :: 'ok'.
+-type payload() :: bh_context:context() | ne_binary().
 
 %%%===================================================================
 %%% API
@@ -133,12 +133,21 @@ filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result(),...] | [].
+-spec bind(ne_binary() | ne_binaries(), atom(), atom()) ->
+                  bind_result() | bind_results().
+bind(Bindings, Module, Fun) ->
+    bind(Bindings, Module, Fun, 'undefined').
+
 -spec bind(ne_binary() | ne_binaries(), atom(), atom(), term()) ->
                   bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
     kazoo_bindings:bind(Binding, Module, Fun, Payload).
+
+-spec unbind(ne_binary() | ne_binaries(), atom(), atom()) -> 'ok'.
+unbind(Bindings, Module, Fun) ->
+    unbind(Bindings, Module, Fun, 'undefined').
 
 -spec unbind(ne_binary() | ne_binaries(), atom(), atom(), term()) -> 'ok'.
 unbind([_|_]=Bindings, Module, Fun, Payload) ->
