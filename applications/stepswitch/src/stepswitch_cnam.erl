@@ -221,7 +221,7 @@ fetch_cnam(Number, JObj) ->
     CNAM.
 
 make_request(Number, JObj) ->
-    Url = get_http_url(JObj),
+    Url = wh_util:to_list(get_http_url(JObj)),
     Body = get_http_body(JObj),
     Method = get_http_method(),
     Headers = get_http_headers(),
@@ -244,11 +244,10 @@ get_http_url(JObj) ->
     case binary:match(Template, <<"opencnam">>) of
         'nomatch' ->
             {'ok', Url} = render(JObj, Template),
-            lists:flatten(Url);
+            wh_util:to_binary(lists:flatten(Url));
         _Else ->
-            {'ok', UrlIOList} = render(JObj, Template),
-            Url = iolist_to_binary(UrlIOList),
-            case mochiweb_util:urlsplit(wh_util:to_list(Url)) of
+            {'ok', Url} = render(JObj, Template),
+            case mochiweb_util:urlsplit(wh_util:to_list(iolist_to_binary(Url))) of
                 {_Scheme, _Host, _Path, "", _Segment} ->
                     lists:flatten([Url, "?ref=2600hz&format=pbx"]);
                 {Scheme, Host, Path, QS, Segment} ->
