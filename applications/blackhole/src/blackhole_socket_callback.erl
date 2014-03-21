@@ -56,7 +56,7 @@ close(SessionPid, SessionId, _Context) ->
                                               case not (bh_context:websocket_pid(BindingContext) =:= SessionPid) of
                                                   'true' -> 'true';
                                                   'false' ->
-                                                      spawn(fun() -> blackhole_util:remove_binding(Binding, BindingContext) end),
+                                                      spawn('blackhole_util', 'remove_bindings', [Binding, BindingContext]),
                                                       'false'
                                               end
                                       end
