@@ -87,8 +87,9 @@ create_available(#number{number=Number
                          ,number_doc=Doc
                         }=N) ->
     Num = wnm_util:normalize_number(Number),
+    ModuleName = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"available_module_name">>, <<"wnm_local">>),
     Updates = [{<<"_id">>, Num}
-               ,{<<"pvt_module_name">>, <<"wnm_local">>}
+               ,{<<"pvt_module_name">>, ModuleName}
                ,{<<"pvt_module_data">>, wh_json:new()}
                ,{<<"pvt_number_state">>, ?NUMBER_STATE_AVAILABLE}
                ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
@@ -149,7 +150,7 @@ get(Number, PublicFields) ->
                 ,fun(#number{number_db=Db}=N) ->
                          case couch_mgr:open_doc(Db, Num) of
                              {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
-                             {'error', 'not_found'} -> 
+                             {'error', 'not_found'} ->
                                  lager:debug("unable to find number ~s/~s"
                                              ,[Db, Num]),
                                  error_number_not_found(N);
@@ -1187,7 +1188,7 @@ activate_phone_number(#number{billing_id='undefined', assigned_to=Account}=N) ->
     activate_phone_number(N#number{billing_id=wh_services:get_billing_id(Account)});
 activate_phone_number(#number{services='undefined', billing_id=Account}=N) ->
     activate_phone_number(N#number{services=wh_services:fetch(Account)});
-activate_phone_number(#number{services=Services, number=Number}=N) ->        
+activate_phone_number(#number{services=Services, number=Number}=N) ->
     Units = wh_service_phone_numbers:phone_number_activation_charge(Number, Services),
     activate_phone_number(Units, N).
 
