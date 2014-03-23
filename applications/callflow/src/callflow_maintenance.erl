@@ -18,6 +18,14 @@
 -export([migrate_recorded_name/0, migrate_recorded_name/1]).
 -export([show_calls/0]).
 -export([flush/0]).
+-export([account_set_classifier_allow/2
+         ,account_set_classifier_deny/2
+         ,all_accounts_set_classifier_allow/1
+         ,all_accounts_set_classifier_deny/1
+         ,device_classifier_allow/2
+         ,device_classifier_inherit/2
+         ,device_classifier_deny/2
+        ]).
 
 -include("callflow.hrl").
 
@@ -241,3 +249,162 @@ update_doc(Key, Value, Id, Db) ->
         {'error', _}=E ->
             lager:info("unable to update ~s in ~s, ~p", [Id, Db, E])
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%        Set call_restriction flag on account level
+%%        Usage: sup callflow_maintenance account_set_classifier_allow international accountname
+%%        Usage: sup callflow_maintenance account_set_classifier_deny international accountname
+%%        Usage: sup callflow_maintenance all_accounts_set_classifier_allow international
+%%        Usage: sup callflow_maintenance all_accounts_set_classifier_deny international
+%% @end
+%%--------------------------------------------------------------------
+
+-spec account_set_classifier_allow(binary(), binary()) ->
+                        'ok' |
+                        {'error', atom()}.
+account_set_classifier_allow(Classifier, Account) ->
+    {ok, AcctDB} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
+    set_account_classifier_action(<<"allow">>, Classifier, AcctDB),
+    wh_cache:flush().
+
+-spec account_set_classifier_deny(binary(), binary()) ->
+                        'ok' |
+                        {'error', atom()}.
+account_set_classifier_deny(Classifier, Account) ->
+    {ok, AcctDB} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
+    set_account_classifier_action(<<"deny">>, Classifier, AcctDB),
+    wh_cache:flush().
+
+-spec all_accounts_set_classifier_allow(binary()) ->
+                        'ok' |
+                        {'error', atom()}.
+all_accounts_set_classifier_allow(Classifier) ->
+    all_accounts_set_classifier(<<"allow">>, Classifier),
+    wh_cache:flush().
+
+-spec all_accounts_set_classifier_deny(binary()) ->
+                        'ok' |
+                        {'error', atom()}.
+all_accounts_set_classifier_deny(Classifier) ->
+    all_accounts_set_classifier(<<"deny">>, Classifier),
+    wh_cache:flush().
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%       
+%% @end
+%%--------------------------------------------------------------------
+-spec set_account_classifier_action(binary(), binary(), binary()) ->
+                        'ok' |
+                        {'error', atom()}.
+set_account_classifier_action(Action, Classifier, AcctDB) ->
+    is_classifier(Classifier),
+    io:format("Found account: ~p", [get_account_name_by_db(AcctDB)]),
+    AcctID = wh_util:format_account_id(AcctDB, 'raw'),
+    couch_mgr:update_doc(AcctDB, AcctID, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    couch_mgr:update_doc(<<"accounts">>, AcctID, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    io:format("  ...  classifier ~p switched to action ~p\n", [Classifier, Action]).
+
+all_accounts_set_classifier(Action, Classifier) ->
+    is_classifier(Classifier),
+    lists:foreach(fun(AccountDb) ->
+                          timer:sleep(2000),  % Not shure if this interruption is realy needed. 
+                                              %  Keeping it as it was taken as an example from whapps_util:update_all_accounts/1
+                          set_account_classifier_action(Action, Classifier, AccountDb)
+                  end, whapps_util:get_all_accounts()).
+
+-spec get_account_name_by_db(ne_binary()) -> ne_binary() | 'undefined'.
+get_account_name_by_db(AcctDB) ->
+    AcctID = wh_util:format_account_id(AcctDB, 'raw'),
+    case couch_mgr:open_cache_doc(AcctDB, AcctID) of
+        {'error', _Error} ->
+            lager:error('error opening ~p in ~p', [AcctID, AcctDB]),
+            'undefined';
+        {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj, 'undefined')
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%        Set call_restriction flag on device level
+%%        Usage: sup callflow_maintenance device_classifier_allow international  username@realm.tld
+%%        Usage: sup callflow_maintenance device_classifier_inherit international  username@realm.tld
+%%        Usage: sup callflow_maintenance device_classifier_deny international username@realm.tld 
+%% @end
+%%--------------------------------------------------------------------
+
+-spec device_classifier_allow(binary(), binary()) ->
+                        'ok' |
+                        {'error', atom()}.
+device_classifier_allow(Classifier, Uri) ->
+    set_device_classifier_action(<<"allow">>, Classifier, Uri).
+
+-spec device_classifier_inherit(binary(), binary()) ->
+                        'ok' |
+                        {'error', atom()}.
+device_classifier_inherit(Classifier, Uri) ->
+    set_device_classifier_action(<<"inherit">>, Classifier, Uri).
+
+-spec device_classifier_deny(binary(), binary()) ->
+                        'ok' |
+                        {'error', atom()}.
+device_classifier_deny(Classifier, Uri) ->
+    set_device_classifier_action(<<"deny">>, Classifier, Uri).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_device_classifier_action(binary(), binary(), binary()) ->
+                        'ok' |
+                        {'error', atom()}.
+set_device_classifier_action(Action, Classifier, Uri) ->
+    is_classifier(Classifier),
+    [User, Realm] = re:split(Uri, <<"@">>),
+    {ok, AcctDB} = whapps_util:get_account_by_realm(Realm),
+    Options = [{'key', User}],
+    {'ok', [DeviceDoc|_]} = couch_mgr:get_results(AcctDB, <<"devices/sip_credentials">>, Options),
+    DeviceID = wh_json:get_first_defined([<<"_id">>, <<"id">>], DeviceDoc),
+    couch_mgr:update_doc(AcctDB, DeviceID, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    wh_cache:flush().
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%           Checks if classifier defined in system_config -> number_manager doc
+%% @end
+%%--------------------------------------------------------------------
+is_classifier(Classifier) ->
+    Classifiers = wnm_util:available_classifiers(),
+    case lists:member(Classifier, wh_json:get_keys(Classifiers)) of
+        'false' -> 
+            io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, wh_json:get_keys(Classifiers)]),
+            exit(no_such_classifier);
+        _ -> 
+            'ok'
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalize the account name by converting the name to lower case
+%% and then removing all non-alphanumeric characters.
+%%
+%% Function taken from cb_user_auth.erl. It is possibly worth to move it to util and export.
+%%
+%% This can possibly return an empty binary.
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_account_name(api_binary()) -> api_binary().
+normalize_account_name('undefined') -> 'undefined';
+normalize_account_name(AccountName) ->
+    << <<Char>> || <<Char>> <= wh_util:to_lower_binary(AccountName)
+                   ,(Char >= $a andalso Char =< $z) orelse (Char >= $0 andalso Char =< $9) >>.
+
+
