@@ -15,8 +15,8 @@
 -include("konami.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('konami_cache')
-                   ,?WORKER('konami_listener')
+-define(CHILDREN, [?WORKER('konami_listener')
+                   ,?WORKER('konami_init')
                   ]).
 
 %% ===================================================================
