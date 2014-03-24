@@ -1,6 +1,6 @@
 {application, konami,
  [
-  {description, "Skel - A konamieton application useful for quickly creating services"},
+  {description, "Konami - Map in-call DTMF sequences to call features"},
   {vsn, "0.0.1"},
   {modules, []},
   {registered, []},
