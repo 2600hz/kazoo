@@ -365,19 +365,17 @@ req_headers(Token) ->
 
 req_uri('files') ->
     Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
-    binary:bin_to_list(<<Url/binary, "api/files/generate">>).
+    Uri = wh_util:uri(Url, [<<"api/files/generate">>]),
+    binary:bin_to_list(Uri).
 
 req_uri('accounts', AccountId) ->
     Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
-    binary:bin_to_list(<<Url/binary
-                       ,"api/accounts/"
-                       ,AccountId/binary>>).
+    Uri = wh_util:uri(Url, [<<"api/accounts">>, AccountId]),
+    binary:bin_to_list(Uri).
 
 req_uri('devices', AccountId, MACAddress) ->
     Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
     EncodedAddress = binary:replace(MACAddress, <<":">>, <<>>, ['global']),
-    binary:bin_to_list(<<Url/binary
-                       ,"api/devices/"
-                       ,AccountId/binary
-                       ,"/"
-                       ,EncodedAddress/binary>>).
+    Uri = wh_util:uri(Url, [<<"api/devices">>, AccountId, EncodedAddress]),
+    binary:bin_to_list(Uri).
+
