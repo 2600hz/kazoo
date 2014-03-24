@@ -139,7 +139,7 @@
 -define(FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
                               ,<<"Account-ID">>, <<"Fax-JobId">>
                               ]).
--define(OPTIONAL_FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">> 
+-define(OPTIONAL_FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
                                        ,<<"Call-ID">>, <<"Fax-Info">>
                                        ,<<"Owner-ID">>, <<"Fax-BoxId">>
                                        ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
@@ -269,8 +269,11 @@
 -define(NEW_ACCOUNT_TYPES, []).
 
 %% Notify Port Request
--define(PORT_REQUEST_HEADERS, [<<"Account-ID">>, <<"Port-Request-ID">>]).
--define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>]).
+-define(PORT_REQUEST_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
+                                        ,<<"Number-State">>, <<"Local-Number">>
+                                        ,<<"Number">>, <<"Port">>
+                                       ]).
 -define(PORT_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"port_request">>}
                              ]).
@@ -900,7 +903,7 @@ publish_fax_outbound_error(Fax, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_ERROR_VALUES, fun ?MODULE:fax_outbound_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_ERROR, Payload, ContentType).
 
- 
+
 -spec publish_mwi_update(api_terms()) -> 'ok'.
 -spec publish_mwi_update(api_terms(), ne_binary()) -> 'ok'.
 publish_mwi_update(JObj) -> publish_mwi_update(JObj, ?DEFAULT_CONTENT_TYPE).

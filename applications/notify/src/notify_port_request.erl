@@ -96,10 +96,10 @@ handle_req(JObj, _Props) ->
 create_template_props(NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, NotifyJObj)),
 
-    {'ok', PortDoc} = couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, wh_json:get_value(<<"Port-Request-ID">>, NotifyJObj)),
+    PortDoc = find_port_doc(NotifyJObj),
 
     PortData = notify_util:json_to_template_props(wh_doc:public_fields(PortDoc)),
-    Numbers = props:get_value(<<"numbers">>, PortData, []),
+    Numbers = find_numbers(PortData, NotifyJObj),
     Request = props:delete_keys([<<"uploads">>, <<"numbers">>], PortData),
 
     [{<<"numbers">>, Numbers}
@@ -108,6 +108,26 @@ create_template_props(NotifyJObj, AccountJObj) ->
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
      ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
     ].
+
+-spec find_numbers(wh_json:object(), wh_json:object()) -> ne_binaries().
+-spec find_numbers(wh_json:object()) -> ne_binaries().
+find_numbers(PortData, NotifyJObj) ->
+    case props:get_value(<<"numbers">>, PortData) of
+        'undefined' -> find_numbers(NotifyJObj);
+        Ns -> Ns
+    end.
+find_numbers(NotifyJObj) ->
+    case wh_json:get_value(<<"Number">>, NotifyJObj) of
+        'undefined' -> [];
+        N -> [N]
+    end.
+
+-spec find_port_doc(wh_json:object()) -> wh_json:object().
+find_port_doc(NotifyJObj) ->
+    case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, wh_json:get_value(<<"Port-Request-ID">>, NotifyJObj)) of
+        {'ok', PortDoc} -> PortDoc;
+        {'error', _} -> wh_json:new()
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
