@@ -54,6 +54,8 @@
          ,code_change/3
         ]).
 
+-export([maybe_init_mod/1, maybe_init_mod_versions/2]).
+
 -include("crossbar.hrl").
 
 -ifdef(TEST).
@@ -210,6 +212,7 @@ init([]) ->
 
     {'ok', #state{}}.
 
+-spec maybe_init_mod(ne_binary()) -> any().
 maybe_init_mod(ModBin) ->
     try (wh_util:to_atom(ModBin, 'true')):init() of
         _ -> 'ok'
@@ -219,6 +222,7 @@ maybe_init_mod(ModBin) ->
             maybe_init_mod_versions(?VERSION_SUPPORTED, ModBin)
     end.
 
+-spec maybe_init_mod_versions(ne_binaries(), ne_binary()) -> any().
 maybe_init_mod_versions([], _) -> 'ok';
 maybe_init_mod_versions([Version|Versions], ModBin) ->
     Module = <<ModBin/binary, "_", Version/binary>>,
