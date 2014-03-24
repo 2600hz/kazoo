@@ -35,6 +35,7 @@
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 -define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
+-define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
 
 -define(PVT_TYPE, <<"account">>).
 -define(CHANNELS, <<"channels">>).
@@ -304,11 +305,24 @@ cleanup_leaky_keys(AccountId, Context) ->
 validate_realm_is_unique(AccountId, Context) ->
     Realm = wh_json:get_ne_value(<<"realm">>, cb_context:req_data(Context)),
     case is_unique_realm(AccountId, Realm) of
-        'true' -> validate_account_schema(AccountId, Context);
+        'true' -> validate_account_name_is_unique(AccountId, Context);
         'false' ->
             C = cb_context:add_validation_error([<<"realm">>]
                                                 ,<<"unique">>
                                                 ,<<"Account realm already in use">>
+                                                ,Context),
+            validate_account_name_is_unique(AccountId, C)
+    end.
+
+-spec validate_account_name_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
+validate_account_name_is_unique(AccountId, Context) ->
+    Name = wh_json:get_ne_value(<<"name">>, cb_context:req_data(Context)),
+    case is_unique_account_name(Name) of
+        'true' -> validate_account_schema(AccountId, Context);
+        'false' ->
+            C = cb_context:add_validation_error([<<"name">>]
+                                                ,<<"unique">>
+                                                ,<<"Account name already in use">>
                                                 ,Context),
             validate_account_schema(AccountId, C)
     end.
@@ -781,6 +795,23 @@ is_unique_realm(AccountId, Realm) ->
         {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= AccountId;
         {'error', 'not_found'} -> 'true';
         _Else -> 'false'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will determine if the account name is unique
+%% @end
+%%--------------------------------------------------------------------
+-spec is_unique_account_name(ne_binary()) -> boolean().
+is_unique_account_name(Name) ->
+    ViewOptions = [{'key', Name}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'error', 'not_found'} -> 'true';
+        _Else ->
+            lager:error("error ~p checking view ~p in ~p", [_Else, ?AGG_VIEW_NAME, ?WH_ACCOUNTS_DB]),
+            'false'
     end.
 
 %%--------------------------------------------------------------------
