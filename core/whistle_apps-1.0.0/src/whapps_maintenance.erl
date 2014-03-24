@@ -61,27 +61,19 @@ get_messages(Account) ->
     ViewOptions = ['include_docs'],
     case couch_mgr:get_results(AccountDb, ?VMBOX_VIEW, ViewOptions) of
         {'ok', ViewRes} ->
-            lists:foldl(fun(JObj, Acc) ->
-                            Doc = wh_json:get_value(<<"doc">>, JObj),
-                            Messages = extract_messages(Doc),
-                            Messages ++ Acc
-                        end
-                        ,[]
-                        ,ViewRes);
+            lists:foldl(fun extract_messages/2, [], ViewRes);
         {'error', _E} ->
             lager:error("coumd not load view ~p: ~p", [?VMBOX_VIEW, _E]),
             []
     end.
 
--spec extract_messages(wh_json:object()) -> ne_binaries().
--spec extract_messages(wh_json:objects(), ne_binaries()) -> ne_binaries().
-extract_messages(Doc) ->
-    Messages = wh_json:get_value(<<"messages">>, Doc, []),
-    extract_messages(Messages, []).
-
-extract_messages([], Acc) -> Acc;
-extract_messages([Mess|Messages], Acc) ->
-    extract_messages(Messages, [wh_json:get_value(<<"media_id">>, Mess)|Acc]).
+-spec extract_messages(wh_json:objects() | wh_json:object(), ne_binaries()) -> ne_binaries().
+extract_messages([], CurMessages) -> CurMessages;
+extract_messages([Mess|Messages], CurMessages) ->
+    extract_messages(Messages, [wh_json:get_value(<<"media_id">>, Mess)|CurMessages]);
+extract_messages(JObj, CurMessages) ->
+    Messages = wh_json:get_value([<<"doc">>, <<"messages">>], JObj),
+    extract_messages(Messages, CurMessages).
 
 -spec get_medias(ne_binary()) -> ne_binaries().
 get_medias(Account) ->
@@ -89,12 +81,7 @@ get_medias(Account) ->
     ViewOptions = [],
     case couch_mgr:get_results(AccountDb, ?PMEDIA_VIEW, ViewOptions) of
         {'ok', ViewRes} ->
-            lists:foldl(fun(JObj, Acc) ->
-                            Id = wh_json:get_value(<<"id">>, JObj),
-                            [Id|Acc]
-                        end
-                        ,[]
-                        ,ViewRes);
+            [wh_json:get_value(<<"id">>, JObj) || JObj<- ViewRes];
         {'error', _E} ->
             lager:error("coumd not load view ~p: ~p", [?PMEDIA_VIEW, _E]),
             []
