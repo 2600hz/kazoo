@@ -165,7 +165,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_query_string(context(), wh_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
 -spec set_doc(context(), api_object() | wh_json:objects()) -> context().
--spec set_start(context(), wh_timeout()) -> context().
+-spec set_start(context(), wh_now()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
 -spec set_resp_status(context(), crossbar_status()) -> context().
 -spec set_resp_expires(context(), wh_datetime()) -> context().
