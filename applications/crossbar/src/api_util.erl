@@ -259,9 +259,9 @@ try_json(ReqBody, QS, Context, Req) ->
     catch
         'throw':_R ->
             lager:debug("failed to get JSON too: ~p", [_R]),
-            {'halt', Req, Context};
+            ?MODULE:halt(Req, Context);
         _:_ ->
-            {'halt', Req, Context}
+            ?MODULE:halt(Req, Context)
     end.
 
 -spec get_url_encoded_body(ne_binary()) -> wh_json:object().
@@ -295,7 +295,8 @@ extract_multipart_content({'body', Datum, Req}, JObj) ->
                              ).
 
 -spec extract_file(cb_context:context(), ne_binary(), cowboy_req:req()) ->
-                          {cb_context:context(), cowboy_req:req()}.
+                          {cb_context:context(), cowboy_req:req()} |
+                          halt_return().
 extract_file(Context, ContentType, Req0) ->
     case cowboy_req:body(Req0) of
         {'error', 'badarg'} ->
@@ -942,7 +943,7 @@ create_pull_response(Req0, Context) ->
     lager:debug("pull response content: ~s", [wh_util:to_binary(Content)]),
     Req2 = set_resp_headers(Req1, Context),
     case succeeded(Context) of
-        'false' -> {'halt', Req2, Context};
+        'false' -> ?MODULE:halt(Req2, Context);
         'true' -> {Content, Req2, Context}
     end.
 
