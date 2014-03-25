@@ -18,7 +18,10 @@
 
 -define(DEFAULT_BINDING_KEY, <<"*">>).
 -define(DEFAULT_DIGIT_TIMEOUT, 5000).
--define(DEFAULT_NUMBERS, wh_json:new()).
+-define(DEFAULT_NUMBERS, wh_json:from_list([{<<"2">>, wh_json:new()}
+                                            ,{<<"3">>, wh_json:new()}
+                                            ,{<<"666">>, wh_json:new()}
+                                           ])).
 -define(DEFAULT_PATTERNS, wh_json:new()).
 
 -type default_fun() :: fun(() -> term()).
@@ -75,6 +78,7 @@ constrain_binding_key(BindingKey) ->
 -spec timeout(ne_binary()) -> non_neg_integer().
 timeout() ->
     whapps_config:get_integer(<<"konami_codes">>, <<"digit_timeout_ms">>, ?DEFAULT_DIGIT_TIMEOUT).
+
 timeout(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case konami_doc(AccountDb) of
