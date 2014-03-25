@@ -121,7 +121,7 @@ get_cors_headers(Allow) ->
     [{<<"access-control-allow-origin">>, <<"*">>}
      ,{<<"access-control-allow-methods">>, wh_util:join_binary(Allow, <<", ">>)}
      ,{<<"access-control-allow-headers">>, <<"Content-Type, Depth, User-Agent, X-Http-Method-Override, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-control, X-Auth-Token, If-Match">>}
-     ,{<<"access-control-expose-Headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
+     ,{<<"access-control-expose-headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
      ,{<<"access-control-max-age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
     ].
 
@@ -1008,12 +1008,17 @@ fix_header(H, V, _) ->
 halt(Req0, Context) ->
     StatusCode = cb_context:resp_error_code(Context),
     lager:debug("halting execution here"),
+
     {Content, Req1} = create_resp_content(Req0, Context),
     lager:debug("setting resp body: ~s", [Content]),
     Req2 = cowboy_req:set_resp_body(Content, Req1),
+
+    Req3 = ?MODULE:add_cors_headers(Req2, Context),
+    lager:debug("ensured CORS headers are on the response"),
+
     lager:debug("setting status code: ~p", [StatusCode]),
-    {'ok', Req3} = cowboy_req:reply(StatusCode, Req2),
-    {'halt', Req3, Context}.
+    {'ok', Req4} = cowboy_req:reply(StatusCode, Req3),
+    {'halt', Req4, Context}.
 
 -spec create_event_name(cb_context:context(), ne_binary() | ne_binaries()) -> ne_binary().
 create_event_name(Context, Segments) when is_list(Segments) ->
