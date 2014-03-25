@@ -183,8 +183,7 @@ allowed_methods(Req0, Context) ->
             %% we have to check and see if we need to override the actual
             %% HTTP method with the tunneled version
             case api_util:get_req_data(Context, Req0) of
-                {'halt', Req1, Context1} ->
-                    api_util:halt(Req1, cb_context:add_system_error('parse_error', Context1));
+                {'halt', _R, _C}=Halt -> Halt;
                 {Context1, Req1} ->
                     determine_http_verb(Req1, cb_context:set_req_nouns(Context1, Nouns))
             end;
