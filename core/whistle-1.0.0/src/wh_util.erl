@@ -47,6 +47,8 @@
          ,uri_decode/1
         ]).
 
+-export([uri/2]).
+
 -export([pad_month/1]).
 
 -export([binary_md5/1]).
@@ -546,6 +548,12 @@ uri_encode(String) when is_list(String) ->
 uri_encode(Atom) when is_atom(Atom) ->
     to_atom(http_uri:encode(to_list(Atom)), 'true').
 
+-spec uri(binary(), ne_binaries()) -> binary().
+uri(BaseUrl, Tokens) ->
+    [Pro, Url] = binary:split(BaseUrl, <<"://">>),
+    Uri = filename:join([Url, filename:join(Tokens)]),
+    <<Pro/binary, "://", Uri/binary>>.
+
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
 -spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
 to_integer(X) -> to_integer(X, 'notstrict').
@@ -1008,15 +1016,19 @@ to_boolean_test() ->
                                              _ -> 'true'
                                          catch _:_ -> 'false'
                                          end
-                                 end, All)),
+                                   end, All)),
     ?assertEqual('true', lists:all(fun(X) ->
                                          try to_boolean(X) of
                                              _ -> 'false'
                                          catch _:_ -> 'true'
                                          end
-                                 end, NotAll)).
+                                   end, NotAll)).
 
 strip_test() ->
     ?assertEqual(strip_binary(<<"...Hello.....">>, $.), <<"Hello">>).
 
+uri_test() ->
+    ?assertEqual(<<"http://test.com/path1/path2">>, uri(<<"http://test.com">>, [<<"path1">>, <<"path2">>])),
+    ?assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>])),
+    ?assertEqual(<<"http://test.com/path1/path2">>, uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>])).
 -endif.

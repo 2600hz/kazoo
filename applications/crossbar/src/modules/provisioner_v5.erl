@@ -36,11 +36,13 @@ put(JObj, AuthToken) ->
                 ,fun(J) -> device_settings(J) end
                ],
     Data = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
-    send_req('devices_put'
-             ,Data
-             ,AuthToken
-             ,wh_json:get_value(<<"pvt_account_id">>, JObj)
-             ,wh_json:get_value(<<"mac_address">>, JObj)).
+    MACAddress = wh_json:get_value(<<"mac_address">>, JObj),
+    _ = send_req('devices_put'
+                 ,Data
+                 ,AuthToken
+                 ,wh_json:get_value(<<"pvt_account_id">>, JObj)
+                 ,MACAddress),
+    send_req('files_post', AuthToken, MACAddress).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -55,11 +57,13 @@ post(JObj, AuthToken) ->
                 ,fun(J) -> device_settings(J) end
                ],
     Data = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
-    send_req('devices_post'
-             ,Data
-             ,AuthToken
-             ,wh_json:get_value(<<"pvt_account_id">>, JObj)
-             ,wh_json:get_value(<<"mac_address">>, JObj)).
+    MACAddress = wh_json:get_value(<<"mac_address">>, JObj),
+    _ = send_req('devices_post'
+                 ,Data
+                 ,AuthToken
+                 ,wh_json:get_value(<<"pvt_account_id">>, JObj)
+                 ,MACAddress),
+    send_req('files_post', AuthToken, MACAddress).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -292,6 +296,17 @@ set_audio([Codec|Codecs], [Key|Keys], JObj) ->
 %% Send provisioning request
 %% @end
 %%--------------------------------------------------------------------
+send_req('files_post', AuthToken, MACAddress) ->
+    Addr = binary:replace(MACAddress, <<":">>, <<>>, ['global']),
+    JObj =  wh_json:from_list([{<<"mac_address">>, Addr}]),
+    Data = wh_json:encode(wh_json:set_value(<<"data">>, JObj, wh_json:new())),
+    Headers = req_headers(AuthToken),
+    HTTPOptions = [],
+    UrlString = req_uri('files'),
+    lager:debug("provisioning via ~s", [UrlString]),
+    Resp = ibrowse:send_req(UrlString, Headers, 'post', Data, HTTPOptions),
+    handle_resp(Resp).
+
 send_req('devices_put', JObj, AuthToken, AccountId, MACAddress) ->
     Data = wh_json:encode(wh_json:set_value(<<"data">>, JObj, wh_json:new())),
     Headers = req_headers(AuthToken),
@@ -348,17 +363,19 @@ req_headers(Token) ->
          ,{"User-Agent", wh_util:to_list(erlang:node())}
     ]).
 
+req_uri('files') ->
+    Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
+    Uri = wh_util:uri(Url, [<<"api/files/generate">>]),
+    binary:bin_to_list(Uri).
+
 req_uri('accounts', AccountId) ->
     Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
-    binary:bin_to_list(<<Url/binary
-                       ,"api/accounts/"
-                       ,AccountId/binary>>).
+    Uri = wh_util:uri(Url, [<<"api/accounts">>, AccountId]),
+    binary:bin_to_list(Uri).
 
 req_uri('devices', AccountId, MACAddress) ->
     Url = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_url">>),
     EncodedAddress = binary:replace(MACAddress, <<":">>, <<>>, ['global']),
-    binary:bin_to_list(<<Url/binary
-                       ,"api/devices/"
-                       ,AccountId/binary
-                       ,"/"
-                       ,EncodedAddress/binary>>).
+    Uri = wh_util:uri(Url, [<<"api/devices">>, AccountId, EncodedAddress]),
+    binary:bin_to_list(Uri).
+
