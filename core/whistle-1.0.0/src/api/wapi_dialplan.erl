@@ -951,7 +951,7 @@ publish_metaflow(API, ContentType) ->
 
 -spec metaflow_callid(api_terms()) -> api_binary().
 metaflow_callid([_|_]=Props) ->
-    wh_json:get_value(<<"Call-ID">>, props:get_value([<<"Call">>], Props, wh_json:new()));
+    wh_json:get_value(<<"Call-ID">>, props:get_value(<<"Call">>, Props));
 metaflow_callid(JObj) ->
     wh_json:get_value([<<"Call">>, <<"Call-ID">>], JObj).
 
