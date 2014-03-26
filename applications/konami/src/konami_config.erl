@@ -17,10 +17,13 @@
 -include("konami.hrl").
 
 -define(DEFAULT_BINDING_KEY, <<"*">>).
--define(DEFAULT_DIGIT_TIMEOUT, 5000).
--define(DEFAULT_NUMBERS, wh_json:from_list([{<<"2">>, wh_json:new()}
-                                            ,{<<"3">>, wh_json:new()}
-                                            ,{<<"666">>, wh_json:new()}
+-define(DEFAULT_DIGIT_TIMEOUT, 3000).
+
+-define(META_SAY_HI, wh_json:from_list([{<<"module">>, <<"say">>}
+                                        ,{<<"data">>, wh_json:from_list([{<<"text">>, <<"hi">>}])}
+                                       ])).
+
+-define(DEFAULT_NUMBERS, wh_json:from_list([{<<"2">>, ?META_SAY_HI}
                                            ])).
 -define(DEFAULT_PATTERNS, wh_json:new()).
 
@@ -56,7 +59,7 @@ patterns(Account) ->
 -spec binding_key() -> <<_:8>>.
 -spec binding_key(ne_binary()) -> <<_:8>>.
 binding_key() ->
-    BindingKey = whapps_config:get_integer(<<"konami_codes">>, <<"binding_key">>, ?DEFAULT_BINDING_KEY),
+    BindingKey = whapps_config:get(<<"konami_codes">>, <<"binding_key">>, ?DEFAULT_BINDING_KEY),
     constrain_binding_key(BindingKey).
 
 binding_key(Account) ->
