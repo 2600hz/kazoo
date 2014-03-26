@@ -690,15 +690,16 @@ handle_sofia_replaced(ReplacedBy, #state{callid=CallId
 %%--------------------------------------------------------------------
 -spec handle_channel_create(wh_proplist(), state()) -> state().
 handle_channel_create(Props, #state{callid=CallId}=State) ->
-    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) =:= CallId of
-        'true' -> add_leg(Props, State);
+    LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
+    case ecallmgr_fs_channel:get_other_leg(LegId, Props) =:= CallId of
+        'true' -> add_leg(Props, LegId, State);
         'false' -> State
     end.
 
--spec add_leg(wh_proplist(), state()) -> state().
-add_leg(Props, #state{other_legs=Legs
-                      ,callid=CallId}=State) ->
-    LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
+-spec add_leg(wh_proplist(), api_binary(), state()) -> state().
+add_leg(Props, LegId, #state{other_legs=Legs
+                             ,callid=CallId
+                            }=State) ->
     case is_atom(LegId) orelse lists:member(LegId, Legs) of
         'true' -> State;
         'false' ->
@@ -727,7 +728,8 @@ publish_leg_addition(Props) ->
 %%--------------------------------------------------------------------
 -spec handle_channel_destroy(wh_proplist(), state()) -> state().
 handle_channel_destroy(Props, #state{callid=CallId}=State) ->
-    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) =:= CallId of
+    LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
+    case ecallmgr_fs_channel:get_other_leg(LegId, Props) =:= CallId of
         'true' -> remove_leg(Props, State);
         'false' -> State
     end.
