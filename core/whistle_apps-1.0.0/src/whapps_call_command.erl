@@ -557,9 +557,9 @@ b_receive_fax(Call) ->
 
 -spec get_default_t38_setting() -> boolean() | ne_binary().
 get_default_t38_setting() ->
-    case whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true') of 
-        <<"auto">> -> <<"auto">>; 
-        Otherwise -> wh_util:is_true(Otherwise) 
+    case whapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true') of
+        <<"auto">> -> <<"auto">>;
+        Otherwise -> wh_util:is_true(Otherwise)
     end.
 
 %%--------------------------------------------------------------------
@@ -1633,9 +1633,6 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
 handle_collect_digit_event(JObj, NoopId) ->
     handle_collect_digit_event(JObj, NoopId, get_event_type(JObj)).
 
-handle_collect_digit_event(_JObj, _NoopId, {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _}) ->
-    lager:debug("channel was unbridged while collecting digits"),
-    {'error', 'channel_unbridge'};
 handle_collect_digit_event(_JObj, _NoopId, {<<"call_event">>, <<"CHANNEL_DESTROY">>, _}) ->
     lager:debug("channel was hungup while collecting digits"),
     {'error', 'channel_hungup'};
@@ -2171,7 +2168,7 @@ get_outbound_t38_settings('false') ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 
