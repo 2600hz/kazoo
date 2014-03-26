@@ -23,12 +23,69 @@
 
 -export([get_all_account_views/0]).
 
+-export([cleanup_voicemail_media/1]).
+
+
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
 -define(FAXES_VIEW_FILE, <<"views/faxes.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
+
+-define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
+-define(PMEDIA_VIEW, <<"media/listing_private_media">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_voicemail_media(ne_binary()) -> {'ok', wh_json:objects()} | {'error', any()}.
+cleanup_voicemail_media(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    Medias = get_medias(Account),
+    Messages = get_messages(Account),
+    ExtraMedia = lists:subtract(Medias, Messages),
+    case couch_mgr:del_docs(AccountDb, ExtraMedia) of
+        {'ok', _}=Res -> Res;
+        {'error', _E}=Err ->
+            lager:error("could not delete docs ~p: ~p", [ExtraMedia, _E]),
+            Err
+    end.
+
+-spec get_messages(ne_binary()) -> ne_binaries().
+get_messages(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    ViewOptions = ['include_docs'],
+    case couch_mgr:get_results(AccountDb, ?VMBOX_VIEW, ViewOptions) of
+        {'ok', ViewRes} ->
+            lists:foldl(fun extract_messages/2, [], ViewRes);
+        {'error', _E} ->
+            lager:error("coumd not load view ~p: ~p", [?VMBOX_VIEW, _E]),
+            []
+    end.
+
+-spec extract_messages(wh_json:objects() | wh_json:object(), ne_binaries()) -> ne_binaries().
+extract_messages([], CurMessages) -> CurMessages;
+extract_messages([Mess|Messages], CurMessages) ->
+    extract_messages(Messages, [wh_json:get_value(<<"media_id">>, Mess)|CurMessages]);
+extract_messages(JObj, CurMessages) ->
+    Messages = wh_json:get_value([<<"doc">>, <<"messages">>], JObj, []),
+    extract_messages(Messages, CurMessages).
+
+-spec get_medias(ne_binary()) -> ne_binaries().
+get_medias(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    ViewOptions = [],
+    case couch_mgr:get_results(AccountDb, ?PMEDIA_VIEW, ViewOptions) of
+        {'ok', ViewRes} ->
+            [wh_json:get_value(<<"id">>, JObj) || JObj<- ViewRes];
+        {'error', _E} ->
+            lager:error("coumd not load view ~p: ~p", [?PMEDIA_VIEW, _E]),
+            []
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
