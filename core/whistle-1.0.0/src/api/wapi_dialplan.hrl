@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013 2600Hz INC
+%%% @copyright (C) 2011-2014 2600Hz INC
 %%% @doc
 %%% Dialplan API definitions
 %%% @end
@@ -8,6 +8,7 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -include_lib("whistle/include/wh_api.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
@@ -165,6 +166,21 @@
                            ,?INSERT_AT_TUPLE
                           ]).
 -define(SEND_DTMF_TYPES, []).
+
+-define(METAFLOW_HEADERS, [<<"Call">>]).
+-define(OPTIONAL_METAFLOW_HEADERS, [<<"Numbers">>, <<"Patterns">>
+                                    ,<<"Binding-Key">>, <<"Digit-Timeout">>
+                                   ]).
+-define(METAFLOW_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"metaflow">>}
+                          ,{<<"Binding-Key">>, ?ANY_DIGIT}
+                         ]).
+-define(METAFLOW_TYPES, [{<<"Numbers">>, fun wh_json:is_json_object/1}
+                         ,{<<"Patterns">>, fun wh_json:is_json_object/1}
+                         ,{<<"Digit-Timeout">>, fun(X) -> is_integer(wh_util:to_integer(X)) end}
+                        ]).
+-define(METAFLOW_ROUTING_KEY(CallId), <<"call.metaflow.", (amqp_util:encode(CallId))/binary>>).
 
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
