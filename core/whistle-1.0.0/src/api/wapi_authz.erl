@@ -27,6 +27,7 @@
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
                                 ,<<"Call-ID">>, <<"Call-Direction">>
+                                ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>
                                      ,<<"Other-Leg-Call-ID">>
