@@ -21,7 +21,9 @@
          ,import_moh/1
          ,set_account_id/2
          ,fetch/1, fetch/2
-         ,renew/2]).
+         ,renew/2
+         ,get_other_leg/2
+        ]).
 -export([to_json/1
          ,to_props/1
         ]).
@@ -502,10 +504,8 @@ props_to_record(Props, Node) ->
              ,reseller_id=props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)
              ,reseller_billing=props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)
              ,precedence=wh_util:to_integer(props:get_value(?GET_CCV(<<"Precedence">>), Props, 5))
-             ,realm=props:get_value(?GET_CCV(<<"Realm">>), Props
-                                    ,props:get_value(<<"variable_domain_name">>, Props))
-             ,username=props:get_value(?GET_CCV(<<"Username">>), Props
-                                       ,props:get_value(<<"variable_user_name">>, Props))
+             ,realm=get_realm(Props)
+             ,username=get_username(Props)
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'
              ,answered=props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>
              ,node=Node
@@ -515,6 +515,20 @@ props_to_record(Props, Node) ->
              ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
              ,other_leg=get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props)
             }.
+
+-spec get_username(wh_proplist()) -> api_binary().
+get_username(Props) ->
+    case props:get_first_defined([?GET_CCV(<<"Username">>), <<"variable_user_name">>], Props) of
+        'undefined' -> 'undefined';
+        Username -> wh_util:to_lower_binary(Username)
+    end.
+
+-spec get_realm(wh_proplist()) -> api_binary().
+get_realm(Props) ->
+    case props:get_first_defined([?GET_CCV(<<"Realm">>), <<"variable_domain_name">>], Props) of
+        'undefined' -> 'undefined';
+        Realm -> wh_util:to_binary_lower(Realm)
+    end.
 
 props_to_update(Props) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
@@ -533,10 +547,8 @@ props_to_update(Props) ->
                             ,{#channel.reseller_id, props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)}
                             ,{#channel.reseller_billing, props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)}
                             ,{#channel.precedence, wh_util:to_integer(props:get_value(?GET_CCV(<<"Precedence">>), Props, 5))}
-                            ,{#channel.realm, props:get_value(?GET_CCV(<<"Realm">>), Props
-                                                             ,props:get_value(<<"variable_domain_name">>, Props))}
-                            ,{#channel.username, props:get_value(?GET_CCV(<<"Username">>), Props
-                                                                ,props:get_value(<<"variable_user_name">>, Props))}
+                            ,{#channel.realm, get_realm(Props)}
+                            ,{#channel.username, get_username(Props)}
                             ,{#channel.import_moh, props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'}
                             ,{#channel.answered, props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>}
                             ,{#channel.profile, props:get_value(<<"variable_sofia_profile_name">>, Props)}
