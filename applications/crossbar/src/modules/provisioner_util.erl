@@ -21,8 +21,8 @@
 -export([maybe_send_contact_list/1]).
 -export([get_provision_defaults/1]).
 
-
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
+-define(PROVISIONER_CONFIG, <<"provisioner">>).
 -define(TEMPLATE_ATTCH, <<"template">>).
 
 %%--------------------------------------------------------------------
@@ -79,9 +79,7 @@ maybe_provision(Context) ->
     maybe_provision(Context, cb_context:resp_status(Context)).
 maybe_provision(Context, 'success') ->
     MACAddress = get_mac_address(Context),
-    case MACAddress =/= 'undefined'
-        andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
-    of
+    case MACAddress =/= 'undefined' andalso get_provisioning_type() of
         <<"super_awesome_provisioner">> ->
             _ = spawn(fun() ->
                         do_full_provisioner_provider(MACAddress, Context),
@@ -134,9 +132,7 @@ maybe_delete_provision(Context) ->
     maybe_delete_provision(Context, cb_context:resp_status(Context)).
 maybe_delete_provision(#cb_context{doc=JObj, auth_token=AuthToken}=Context, 'success') ->
     MACAddress = get_mac_address(Context),
-    case MACAddress =/= 'undefined'
-        andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
-    of
+    case MACAddress =/= 'undefined' andalso get_provisioning_type() of
         <<"super_awesome_provisioner">> ->
             _ = spawn(fun() ->
                               delete_full_provision(MACAddress, Context)
@@ -159,9 +155,7 @@ maybe_delete_provision(_Context, _Status) -> 'false'.
 maybe_update_account(#cb_context{account_id=AccountId
                                  ,auth_token=AuthToken
                                  ,doc=Doc}=Context) ->
-    case cb_context:is_context(Context)
-        andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
-    of
+    case cb_context:is_context(Context) andalso get_provisioning_type() of
         'false' -> 'false';
         <<"provisioner_v5">> ->
             _ = spawn('provisioner_v5', 'update_account', [AccountId, Doc, AuthToken]),
@@ -177,9 +171,7 @@ maybe_update_account(#cb_context{account_id=AccountId
 %%--------------------------------------------------------------------
 -spec maybe_delete_account(cb_context:context()) -> boolean().
 maybe_delete_account(#cb_context{account_id=AccountId, auth_token=AuthToken}=Context) ->
-    case cb_context:is_context(Context)
-        andalso whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>)
-    of
+    case cb_context:is_context(Context) andalso get_provisioning_type() of
         'false' -> 'false';
         <<"super_awesome_provisioner">> ->
             _ = spawn(fun() -> delete_account(Context) end),
@@ -195,7 +187,7 @@ maybe_delete_account(#cb_context{account_id=AccountId, auth_token=AuthToken}=Con
 maybe_send_contact_list(Context) ->
     maybe_send_contact_list(Context, cb_context:resp_status(Context)).
 maybe_send_contact_list(Context, 'success') ->
-    _ = case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
+    _ = case get_provisioning_type() of
             <<"super_awesome_provisioner">> ->
                 spawn(fun() -> do_full_provision_contact_list(Context) end);
             _ -> 'ok'
@@ -717,3 +709,20 @@ send_provisioning_request(Template, MACAddress) ->
         {'ok', Code, _, Response} ->
             lager:debug("ERROR! OH NO! ~s. ~s", [Code, Response])
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_provisioning_type() -> ne_binary() | 'undefined'.
+get_provisioning_type() ->
+    case whapps_config:get_non_empty(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
+        'undefined' ->
+            lager:debug("using ~p for provisioner_type", [?PROVISIONER_CONFIG]),
+            whapps_config:get_non_empty(?PROVISIONER_CONFIG, <<"provisioning_type">>);
+        Result ->
+            lager:debug("using ~p for provisioner_type", [?MOD_CONFIG_CAT]),
+            Result
+    end.
+
