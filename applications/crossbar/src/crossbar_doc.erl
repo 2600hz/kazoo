@@ -12,6 +12,7 @@
 -export([load/2, load/3
          ,load_from_file/2
          ,load_merge/2, load_merge/3
+         ,load_full_merge/2, load_full_merge/3
          ,merge/3
          ,load_view/3, load_view/4
          ,load_attachment/3, load_docs/2
@@ -136,6 +137,44 @@ load_merge(_, _, #cb_context{load_merge_bypass=JObj}=Context) ->
 merge(DataJObj, JObj, Context) ->
     PrivJObj = wh_json:private_fields(JObj),
     handle_couch_mgr_success(wh_json:merge_jobjs(PrivJObj, DataJObj), Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function attempts to merge the submitted data with
+%% fields of an existing account document, if successful it will
+%% load the context with the account details
+%%
+%% Failure here returns 410, 500, or 503
+%% @end
+%%--------------------------------------------------------------------
+-spec load_full_merge(ne_binary(), cb_context:context()) ->
+                        cb_context:context().
+-spec load_full_merge(ne_binary(), wh_json:object(), cb_context:context()) ->
+                        cb_context:context().
+
+load_full_merge(DocId, #cb_context{}=Context) ->
+    load_full_merge(DocId, cb_context:doc(Context), Context).
+
+load_full_merge(DocId, DataJObj, #cb_context{load_merge_bypass='undefined'}=Context) ->
+    Context1 = load(DocId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            lager:debug("loaded doc ~s(~s), merging"
+                        ,[DocId, wh_json:get_value(<<"_rev">>, cb_context:doc(Context1))]
+                       ),
+            full_merge(DataJObj, cb_context:doc(Context1), Context1);
+        _Status -> Context1
+    end;
+load_full_merge(_, _, #cb_context{load_merge_bypass=JObj}=Context) ->
+    handle_couch_mgr_success(JObj, Context).
+
+-spec full_merge(wh_json:object(), wh_json:object(), cb_context:context()) ->
+                   cb_context:context().
+full_merge(DataJObj, JObj, Context) ->
+    handle_couch_mgr_success(wh_json:merge_jobjs(DataJObj, JObj), Context).
+
+
 
 %%--------------------------------------------------------------------
 %% @public

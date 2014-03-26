@@ -1,0 +1,17 @@
+{
+   "_id":"lists",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Schema for a match list",
+   "properties":{
+      "listname":{
+         "name":"Match list name",
+         "description":"A friendly match list name",
+         "required": true,
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      }
+   },
+   "additionalProperties": false
+}
