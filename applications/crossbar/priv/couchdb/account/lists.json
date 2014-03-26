@@ -1,0 +1,12 @@
+{
+    "_id": "_design/lists"
+    ,"language": "javascript"
+    ,"views": {
+        "crossbar_listing": {
+            "map": "function(doc) { if (doc.pvt_type == 'list' && !doc.pvt_deleted) emit(doc._id, {'id': doc._id, 'listname': doc.listname, 'entries': doc.entries}) };"
+        }
+    }
+    ,"filters": {
+        "export":"function(doc, req) { return ( doc.pvt_type == 'list' ); }"
+    }
+}
