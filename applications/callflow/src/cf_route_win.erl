@@ -191,7 +191,7 @@ update_ccvs(Call) ->
 -spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
 maybe_start_metaflow(Call) ->
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
-    case wh_json:get_value(<<"metaflow">>, Flow) of
+    case wh_json:get_value(<<"metaflow">>, Flow, 'true') of
         'undefined' -> Call;
         MetaFlow -> maybe_start_metaflow(Call, MetaFlow)
     end.
@@ -219,6 +219,7 @@ start_metaflow(Call, MetaFlow) ->
                      ,{<<"Patterns">>, wh_json:get_value(<<"pumbers">>, MetaFlow)}
                      ,{<<"Binding-Key">>, wh_json:get_value(<<"binding_key">>, MetaFlow)}
                      ,{<<"Digit-Timeout">>, wh_json:get_integer_value(<<"digit_timeout">>, MetaFlow)}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
             lager:debug("sending metaflow request"),
             whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
