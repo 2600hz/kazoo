@@ -163,7 +163,7 @@ maybe_check_account(#number{assigned_to=AssignedTo
                             ,state=State
                             ,number=_Number
                            }) ->
-    lager:debug("number ~p assigned to acccount id ~p but in state ~p", [_Number, AssignedTo, State]),
+    lager:debug("number ~p assigned to account id ~p but in state ~p", [_Number, AssignedTo, State]),
     {'error', {'not_in_service', AssignedTo}}.
 
 -spec check_account(wnm_number()) ->
@@ -295,7 +295,9 @@ create_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                          N#number{dry_run=DryRun}
                  end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo, auth_by=AuthBy})
+                    (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo
+                                                                  ,auth_by=AuthBy
+                                                                 })
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
@@ -306,7 +308,9 @@ create_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                     (#number{dry_run='true'
                              ,services=Services
                              ,activations=ActivationCharges}) ->
-                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
+                            {'dry_run', [{'services', Services}
+                                         ,{'activation_charges', ActivationCharges}
+                                        ]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("create number successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
@@ -382,8 +386,11 @@ port_in(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                          {E, Reason};
                     (#number{dry_run='true'
                              ,services=Services
-                             ,activations=ActivationCharges}) ->
-                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
+                             ,activations=ActivationCharges
+                            }) ->
+                            {'dry_run', [{'services', Services}
+                                         ,{'activation_charges', ActivationCharges}
+                                        ]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("port in number successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
@@ -485,7 +492,8 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                    (#number{}=N) ->
                         wnm_number:reserved(N#number{assign_to=AssignTo
                                                      ,auth_by=AuthBy
-                                                     ,dry_run=DryRun})
+                                                     ,dry_run=DryRun
+                                                    })
                 end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
@@ -495,8 +503,11 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                          {E, Reason};
                     (#number{dry_run='true'
                              ,services=Services
-                             ,activations=ActivationCharges}) ->
-                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
+                             ,activations=ActivationCharges
+                            }) ->
+                            {'dry_run', [{'services', Services}
+                                         ,{'activation_charges', ActivationCharges}
+                                        ]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("reserve successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
@@ -513,10 +524,10 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
 
 -spec assign_number_to_account(ne_binary(), ne_binary(), ne_binary()) ->
                                       operation_return().
--spec assign_number_to_account(ne_binary(), ne_binary(), ne_binary(), api_object())->
+-spec assign_number_to_account(ne_binary(), ne_binary(), ne_binary(), api_object()) ->
                                       operation_return().
--spec assign_number_to_account(ne_binary(), ne_binary(), ne_binary(), wh_json:object() | 'undefined', boolean())
-                                    -> operation_return().
+-spec assign_number_to_account(ne_binary(), ne_binary(), ne_binary(), api_object(), boolean()) ->
+                                      operation_return().
 
 assign_number_to_account(Number, AssignTo, AuthBy) ->
     assign_number_to_account(Number, AssignTo, AuthBy, 'undefined', 'false').
@@ -543,7 +554,9 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                  end
                 ,fun ({_, #number{}}=E) -> E;
                      (#number{}=N) ->
-                         wnm_number:in_service(N#number{assign_to=AssignTo, auth_by=AuthBy})
+                         wnm_number:in_service(N#number{assign_to=AssignTo
+                                                        ,auth_by=AuthBy
+                                                       })
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
@@ -553,8 +566,11 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                          {E, Reason};
                     (#number{dry_run='true'
                              ,services=Services
-                             ,activations=ActivationCharges}) ->
-                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
+                             ,activations=ActivationCharges
+                            }) ->
+                            {'dry_run', [{'services', Services}
+                                         ,{'activation_charges', ActivationCharges}
+                                        ]};
                     (#number{number_doc=JObj}) ->
                         lager:debug("assign number to account successfully completed"),
                         {'ok', wh_json:public_fields(JObj)}
@@ -781,8 +797,11 @@ set_public_fields(Number, PublicFields, AuthBy, DryRun) ->
                          {E, Reason};
                     (#number{dry_run='true'
                              ,services=Services
-                             ,activations=ActivationCharges}) ->
-                            {'dry_run', [{'services', Services}, {'activation_charges', ActivationCharges}]};
+                             ,activations=ActivationCharges
+                            }) ->
+                            {'dry_run', [{'services', Services}
+                                         ,{'activation_charges', ActivationCharges}
+                                        ]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("set public fields successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
