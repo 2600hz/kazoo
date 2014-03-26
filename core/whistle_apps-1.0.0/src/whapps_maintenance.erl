@@ -72,7 +72,7 @@ extract_messages([], CurMessages) -> CurMessages;
 extract_messages([Mess|Messages], CurMessages) ->
     extract_messages(Messages, [wh_json:get_value(<<"media_id">>, Mess)|CurMessages]);
 extract_messages(JObj, CurMessages) ->
-    Messages = wh_json:get_value([<<"doc">>, <<"messages">>], JObj),
+    Messages = wh_json:get_value([<<"doc">>, <<"messages">>], JObj, []),
     extract_messages(Messages, CurMessages).
 
 -spec get_medias(ne_binary()) -> ne_binaries().
