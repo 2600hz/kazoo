@@ -24,8 +24,12 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'self', []}]).
--define(RESPONDERS, []).
+-define(BINDINGS, [{'self', []}
+                   ,{'dialplan', ['metaflow']}
+                  ]).
+-define(RESPONDERS, [{{'konami_handlers', 'handle_metaflow'}
+                      ,[{<<"call">>, <<"command">>}]
+                     }]).
 -define(QUEUE_NAME, <<"konami_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).

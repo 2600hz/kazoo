@@ -21,6 +21,7 @@ start_link() ->
 
 -spec init() -> 'ok'.
 init() ->
+    wh_util:put_callid(?MODULE),
     %% Preload configs
     _Ns = konami_config:numbers(),
     _Ps = konami_config:patterns(),
