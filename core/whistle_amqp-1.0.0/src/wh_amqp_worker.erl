@@ -470,8 +470,18 @@ handle_cast({'publish', ReqProp, _}, #state{queue='undefined'}=State) ->
     {'noreply', reset(State), 'hibernate'};
 handle_cast({'publish', ReqProp, PublishFun}, State) ->
     try PublishFun(ReqProp) of
-        'ok' -> 'ok'
+        'ok' -> 'ok';
+        _Other ->
+            lager:debug("publisher fun returned ~p instead of 'ok'", [_Other])
     catch
+        'error':'badarg' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("badarg error when publishing:"),
+            wh_util:log_stacktrace(ST);
+        'error':'function_clause' ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("function clause error when publishing:"),
+            wh_util:log_stacktrace(ST);
         _E:_R -> lager:debug("failed to publish request: ~s:~p", [_E, _R])
     end,
     {'noreply', reset(State)};
