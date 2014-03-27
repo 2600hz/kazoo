@@ -16,6 +16,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('konami_listener')
+                   ,?WORKER('konami_dtmf_listener')
                    ,?WORKER('konami_init')
                   ]).
 
