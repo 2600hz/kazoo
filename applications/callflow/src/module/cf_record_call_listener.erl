@@ -38,12 +38,7 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallId), [{'call', [{'callid', CallId}
-                                     ,{'restrict_to', [<<"RECORD_STOP">>
-                                                       ,<<"CHANNEL_DESTROY">>
-                                                       ,<<"CHANNEL_EXECUTE_COMPLETE">>
-                                                       ,<<"CHANNEL_BRIDGE">>
-                                                       ,<<"RECORD_START">>
-                                                      ]}
+                                     ,{'restrict_to', ['events', 'cdr']}
                                     ]}
                            ,{'self', []}
                           ]).
@@ -77,8 +72,6 @@ start_link(Call, Data) ->
 
 handle_call_event(JObj, Props) ->
     wh_util:put_callid(JObj),
-    lager:debug("cf_record_call_listener:handle_call_event() JObj ~p", [JObj]),
-    lager:debug("cf_record_call_listener:handle_call_event() Props ~p", [Props]),
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
           lager:debug("channel bridge maybe start recording"),
