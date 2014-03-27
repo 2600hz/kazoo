@@ -44,7 +44,7 @@ handle(Data, Call, <<"start">>) ->
 
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
-    RecordOnAnswer = get_record_on_answer(wh_json:get_value(<<"record_on_answer">>, Data, <<"true">>)),
+    RecordOnAnswer = get_record_on_answer(wh_json:get_value(<<"record_on_answer">>, Data, <<"false">>)),
 
     'ok' = cf_exe:add_event_listener(Call, {'cf_record_call_listener', [Data]}),
 
