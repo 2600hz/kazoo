@@ -279,6 +279,12 @@ authz_req(Props) ->
        ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
        ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
        ,{<<"Other-Leg-Call-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}
+       ,{<<"Caller-ID-Name">>, props:get_first_defined([<<"variable_effective_caller_id_name">>
+                                                      ,<<"Caller-Caller-ID-Name">>
+                                                     ], Props, <<"Unknown">>)}
+       ,{<<"Caller-ID-Number">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
+                                                        ,<<"Caller-Caller-ID-Number">>
+                                                     ], Props, <<"Unknown">>)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
