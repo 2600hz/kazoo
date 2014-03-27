@@ -25,7 +25,8 @@
 
 -define(DEFAULT_NUMBERS, wh_json:from_list([{<<"2">>, ?META_SAY_HI}
                                            ])).
--define(DEFAULT_PATTERNS, wh_json:new()).
+-define(DEFAULT_PATTERNS, wh_json:from_list([{<<"^2$">>, ?META_SAY_HI}
+                                            ])).
 
 -type default_fun() :: fun(() -> term()).
 -type formatter_fun() :: fun((term()) -> term()).
