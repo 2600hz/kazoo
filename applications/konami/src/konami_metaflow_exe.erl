@@ -23,4 +23,3 @@ handle(Metaflow, Call) ->
         _E:_R ->
             lager:debug("failed to exe metaflow 'konami_~s': ~s: ~p", [M, _E, _R])
     end.
-
