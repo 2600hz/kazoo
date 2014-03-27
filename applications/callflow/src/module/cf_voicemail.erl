@@ -293,6 +293,7 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
                                      }
                           }=Box, _, Call) ->
     lager:debug("playing mailbox greeting to caller"),
+    _ = play_greeting_intro(Box, Call),
     _ = play_greeting(Box, Call),
     _ = play_instructions(Box, Call),
     _NoopId = whapps_call_command:noop(Call),
@@ -327,8 +328,24 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec play_greeting_intro(mailbox(), whapps_call:call()) -> ne_binary() | 'ok'.
+play_greeting_intro(#mailbox{play_greeting_intro='true'}, Call) ->
+    whapps_call_command:audio_macro([{'prompt', <<"vm-greeting_intro">>}], Call);
+play_greeting_intro(_}, _) -> 'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec play_greeting(mailbox(), whapps_call:call()) -> ne_binary() | 'ok'.
 play_greeting(#mailbox{skip_greeting='true'}, _) -> 'ok';
+play_greeting(#mailbox{use_person_not_available='true'
+                       ,unavailable_media_id='undefined'
+                      }, Call) ->
+    lager:debug("mailbox has no greeting, playing the customized generic"),
+    whapps_call_command:audio_macro([{'prompt', <<"vm-person_not_available">>}], Call);
 play_greeting(#mailbox{unavailable_media_id='undefined'
                        ,mailbox_number=Mailbox
                       }, Call) ->
