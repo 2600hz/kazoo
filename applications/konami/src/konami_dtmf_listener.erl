@@ -9,7 +9,12 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/0
+         ,add_call_binding/1
+         ,rm_call_binding/1
+         ,handle_destroy/2
+        ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -24,14 +29,21 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'call', [{'restrict_to', ['DTMF']}]}]).
+-define(BINDINGS, []).
 -define(RESPONDERS, [{{'konami_handlers', 'handle_dtmf'}
-                       ,[{<<"call_event">>, <<"DTMF">>}]
-                      }
+                      ,[{<<"call_event">>, <<"DTMF">>}]
+                     }
+                     ,{{?MODULE, 'handle_destroy'}
+                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
+
+-define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ['DTMF', 'CHANNEL_DESTROY']}
+                                        ,{'callid', CallId}
+                                       ]}).
 
 %%%===================================================================
 %%% API
@@ -45,12 +57,35 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                     ], []).
+    gen_listener:start_link({'local', ?MODULE}
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                             ]
+                            ,[]
+                           ).
+
+-spec add_call_binding(ne_binary() | whapps_call:call()) -> 'ok'.
+add_call_binding(CallId) when is_binary(CallId) ->
+    lager:debug("add binding for call ~s", [CallId]),
+    gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId));
+add_call_binding(Call) ->
+    add_call_binding(whapps_call:call_id_direct(Call)).
+
+-spec rm_call_binding(ne_binary() | whapps_call:call()) -> 'ok'.
+rm_call_binding(CallId) when is_binary(CallId) ->
+    lager:debug("rm binding for call ~s", [CallId]),
+    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId));
+rm_call_binding(Call) ->
+    rm_call_binding(whapps_call:call_id_direct(Call)).
+
+-spec handle_destroy(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_destroy(JObj, _Props) ->
+    'true' = wapi_call:event_v(JObj),
+    rm_call_binding(wh_json:get_value(<<"Call-ID">>, JObj)).
 
 %%%===================================================================
 %%% gen_server callbacks
