@@ -20,8 +20,10 @@
          ,get_format/1
          ,get_url/1
          ,get_media_name/2
+         ,get_record_on_answer/1
          ,should_store_recording/1
          ,save_recording/4
+         ,start_recording/3
         ]).
 
 -include("../callflow.hrl").
@@ -37,16 +39,22 @@ handle(Data, Call) ->
     handle(Data, Call, Action),
     cf_exe:continue(Call).
 
-handle(Data, Call, <<"start">> = Action) ->
+handle(Data, Call, <<"start">>) ->
     TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
 
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
+    RecordOnAnswer = get_record_on_answer(wh_json:get_value(<<"record_on_answer">>, Data, <<"false">>)),
 
     'ok' = cf_exe:add_event_listener(Call, {'cf_record_call_listener', [Data]}),
 
-    lager:debug("starting recording of ~s", [MediaName]),
-    whapps_call_command:record_call(MediaName, Action, TimeLimit, Call);
+    case RecordOnAnswer of
+      'true' ->
+        lager:debug("deferring the start of call recording until bridge leg is answered");
+      _ ->
+        start_recording(Call, MediaName, TimeLimit)
+    end;
+
 handle(Data, Call, <<"stop">> = Action) ->
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
@@ -55,6 +63,10 @@ handle(Data, Call, <<"stop">> = Action) ->
     lager:info("recording of ~s stopped", [MediaName]),
 
     save_recording(Call, MediaName, Format, should_store_recording(get_url(Data))).
+
+start_recording(Call, MediaName, TimeLimit) ->
+  lager:debug("starting recording of ~s", [MediaName]),
+  whapps_call_command:record_call(MediaName, <<"start">>, TimeLimit, Call).
 
 save_recording(_Call, _MediaName, _Format, 'false') ->
     lager:debug("not configured to store recording ~s", [_MediaName]);
@@ -90,6 +102,11 @@ append_path(Url, MediaName) ->
 get_action('undefined') -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.
+
+-spec get_record_on_answer(api_binary()) -> 'true' | 'false'.
+get_record_on_answer('undefined') -> 'false';
+get_record_on_answer(<<"true">>) -> 'true';
+get_record_on_answer(_) -> 'false'.
 
 -spec get_timelimit('undefined' | integer()) -> pos_integer().
 get_timelimit('undefined') ->
