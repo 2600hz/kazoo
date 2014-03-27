@@ -109,6 +109,7 @@ get_attribute(JObj, K, DefaultFun, FormatterFun) ->
 konami_doc(AccountDb) ->
     case couch_mgr:open_cache_doc(AccountDb, <<"konami_codes">>) of
         {'ok', JObj} -> JObj;
+        {'error', 'not_found'} -> 'undefined';
         {'error', _E} ->
             lager:debug("failed to open account(~s)'s konami doc: ~p", [wh_util:format_account_id(AccountDb, 'raw')
                                                                         ,_E
