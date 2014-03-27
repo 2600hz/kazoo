@@ -24,12 +24,9 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'call', [{'restrict_to', ['DTMF', 'CHANNEL_DESTROY']}]}]).
+-define(BINDINGS, [{'call', [{'restrict_to', ['DTMF']}]}]).
 -define(RESPONDERS, [{{'konami_handlers', 'handle_dtmf'}
                        ,[{<<"call_event">>, <<"DTMF">>}]
-                      }
-                     ,{{'konami_handlers', 'handle_destroy'}
-                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
