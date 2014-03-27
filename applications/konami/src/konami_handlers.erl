@@ -31,6 +31,7 @@ handle_metaflow(JObj, _Props) ->
     whapps_call:put_callid(Call),
 
     gproc:reg(?KONAMI_REG(whapps_call:call_id_direct(Call))),
+    konami_dtmf_listener:add_call_binding(Call),
 
     try konami_code_fsm:start_fsm(Call, JObj) of
         _ -> 'ok'
