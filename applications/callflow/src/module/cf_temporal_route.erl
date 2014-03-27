@@ -207,7 +207,7 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Now, Rules) ->
                             [wh_util:to_integer(Day)|Acc]
                         end
                         ,[]
-                        ,wh_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS),
+                        ,wh_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
                    ),
             Rule = #rule{id = Route
                          ,enabled =
