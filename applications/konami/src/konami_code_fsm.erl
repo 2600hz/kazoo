@@ -35,9 +35,12 @@
                 ,patterns :: api_object()
                 ,binding_key = konami_config:binding_key() :: ne_binary()
                 ,digit_timeout = konami_config:timeout() :: pos_integer()
+                ,digit_timeout_ref :: api_reference()
                 ,collected_dtmf = <<>> :: binary()
                 ,call :: whapps_call:call()
+                ,call_id :: ne_binary()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -52,6 +55,7 @@ start_fsm(Call, JObj) ->
                                ,binding_key=binding_key(Call, JObj)
                                ,digit_timeout=digit_timeout(Call, JObj)
                                ,call=Call
+                               ,call_id=whapps_call:call_id_direct(Call)
                               }).
 
 -spec dtmf(pid(), ne_binary(), ne_binary()) -> 'ok'.
@@ -65,6 +69,18 @@ dtmf(FSM, CallId, DTMF) ->
 init([]) ->
     {'ok', 'unarmed', #state{}}.
 
+unarmed({'dtmf', CallId, BindingKey}, #state{call_id=CallId
+                                             ,binding_key=BindingKey
+                                             ,digit_timeout=Timeout
+                                            }=State) ->
+    lager:debug("recv binding key ~s, arming", [BindingKey]),
+    Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
+    {'next_state', 'armed', State#state{digit_timeout_ref = Ref
+                                        ,collected_dtmf = <<>>
+                                       }};
+unarmed({'dtmf', _CallId, _DTMF}, State) ->
+    lager:debug("ignoring dtmf '~s' while unarmed", [_DTMF]),
+    {'next_state', 'unarmed', State};
 unarmed(_Event, State) ->
     lager:debug("unhandled unarmed/2: ~p", [_Event]),
     {'next_state', 'unarmed', State}.
@@ -73,6 +89,37 @@ unarmed(_Event, _From, State) ->
     lager:debug("unhandled unarmed/3: ~p", [_Event]),
     {'reply', {'error', 'not_implemented'}, 'unarmed', State}.
 
+armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
+                                                ,patterns=Ps
+                                                ,collected_dtmf = Collected
+                                                ,digit_timeout_ref = Ref
+                                                ,call=Call
+                                                }=State) ->
+    lager:debug("DTMF timeout, let's check '~s'", [Collected]),
+    case has_metaflow(Collected, Ns, Ps) of
+        'false' ->
+            lager:debug("no handler for '~s', unarming", [Collected]),
+            {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
+        {'number', N} ->
+            _Pid = spawn('konami_metaflow_exe', 'handle', [N, Call]),
+            lager:debug("number exe in ~p: ~p", [_Pid, N]),
+            {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
+        {'pattern', P} ->
+            _Pid = spawn('konami_metaflow_exe', 'handle', [P, Call]),
+            lager:debug("pattern exe in ~p: ~p", [_Pid, P]),
+            {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
+    end;
+armed({'dtmf', CallId, DTMF}, #state{call_id=CallId
+                                     ,collected_dtmf=Collected
+                                     ,digit_timeout=Timeout
+                                     ,digit_timeout_ref=OldRef
+                                    }=State) ->
+    gen_fsm:cancel_timer(OldRef),
+    lager:debug("recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
+    Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
+    {'next_state', 'armed', State#state{digit_timeout_ref=Ref
+                                        ,collected_dtmf = <<Collected/binary, DTMF/binary>>
+                                       }};
 armed(_Event, State) ->
     lager:debug("unhandled armed/2: ~p", [_Event]),
     {'next_state', 'armed', State}.
@@ -141,3 +188,47 @@ digit_timeout(Call, JObj) ->
         Timeout -> Timeout
     end.
 
+-spec has_metaflow(ne_binary(), wh_json:object(), wh_json:object()) ->
+                          'false' |
+                          {'number', wh_json:object()} |
+                          {'patterm', wh_json:object()}.
+has_metaflow(Collected, Ns, Ps) ->
+    case has_number(Collected, Ns) of
+        'false' -> has_pattern(Collected, Ps);
+        N -> N
+    end.
+
+-spec has_number(ne_binary(), wh_json:object()) ->
+                        'false' |
+                        {'number', wh_json:object()}.
+has_number(Collected, Ns) ->
+    case wh_json:get_value(Collected, Ns) of
+        'undefined' -> 'false';
+        N -> {'number', N}
+    end.
+
+-spec has_pattern(ne_binary(), wh_json:object()) ->
+                         'false' |
+                         {'pattern', wh_json:object()}.
+has_pattern(Collected, Ps) ->
+    Regexes = wh_json:get_keys(Ps),
+    has_pattern(Collected, Ps, Regexes).
+has_pattern(_Collected, _Ps, []) ->
+    'false';
+has_pattern(Collected, Ps, [Regex|Regexes]) ->
+    case re:run(Collected, Regex, [{'capture', 'all', 'binary'}]) of
+        'nomatch' -> has_pattern(Collected, Ps, Regexes);
+        {'match', Captured} ->
+            P = wh_json:get_value(Regex, Ps),
+            {'pattern', wh_json:set_values([{[<<"data">>, <<"collected">>], Collected}
+                                            ,{[<<"data">>, <<"captured">>], Captured}
+                                           ], P)
+            }
+    end.
+
+-spec disarm_state(state()) -> state().
+disarm_state(State) ->
+    lager:debug("disarming state"),
+    State#state{digit_timeout_ref='undefined'
+                ,collected_dtmf = <<>>
+               }.
