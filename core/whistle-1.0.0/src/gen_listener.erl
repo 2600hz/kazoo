@@ -266,7 +266,7 @@ rm_binding(Srv, {Binding, Props}) ->
 
 -spec rm_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 rm_binding(Srv, Binding, Props) ->
-    gen_server:cast(Srv, {'rm_binding', wh_util:to_binary(Binding), Props}).
+    gen_server:cast(Srv, {'rm_binding', Binding, Props}).
 
 -spec federated_event(server_ref(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
 federated_event(Srv, JObj, BasicDeliver) ->
@@ -462,7 +462,7 @@ handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
     KeepBs = lists:filter(fun({B, P}) when B =:= Binding, P =:= Props ->
                                   remove_binding(B, P, Q),
                                   'false';
-                             (_) -> 'true'
+                             ({_B, _P}) -> 'true'
                           end, Bs),
     {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
 handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
@@ -802,9 +802,10 @@ set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
 start_consumer(Q, 'undefined') -> amqp_util:basic_consume(Q, []);
 start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 
--spec remove_binding(ne_binary(), wh_proplist(), ne_binary()) -> any().
+-spec remove_binding(binding(), wh_proplist(), ne_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
+
     try (wh_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
         Return -> Return
     catch
