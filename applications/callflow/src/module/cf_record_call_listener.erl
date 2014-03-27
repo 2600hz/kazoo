@@ -28,7 +28,10 @@
                 ,format                    :: ne_binary()
                 ,media_name                :: ne_binary()
                 ,call                      :: whapps_call:call()
+                ,record_on_answer          :: ne_binary()
+                ,time_limit                :: pos_integer()
                 ,store_attempted = 'false' :: boolean()
+                ,record_started = 'false'  :: boolean()
                 ,channel_status_ref        :: reference() | 'undefined'
                 ,time_limit_ref            :: reference() | 'undefined'
                }).
@@ -37,7 +40,9 @@
 -define(BINDINGS(CallId), [{'call', [{'callid', CallId}
                                      ,{'restrict_to', [<<"RECORD_STOP">>
                                                        ,<<"CHANNEL_DESTROY">>
-                                                       ,<<"CHANNEL_EXECUTE_COMPLETE">>   
+                                                       ,<<"CHANNEL_EXECUTE_COMPLETE">>
+                                                       ,<<"CHANNEL_BRIDGE">>
+                                                       ,<<"RECORD_START">>
                                                       ]}
                                     ]}
                            ,{'self', []}
@@ -72,11 +77,21 @@ start_link(Call, Data) ->
 
 handle_call_event(JObj, Props) ->
     wh_util:put_callid(JObj),
+    lager:debug("cf_record_call_listener:handle_call_event() JObj ~p", [JObj]),
+    lager:debug("cf_record_call_listener:handle_call_event() Props ~p", [Props]),
     case wh_util:get_event_type(JObj) of
+        {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
+          lager:debug("channel bridge maybe start recording"),
+          gen_listener:cast(props:get_value('server', Props), 'maybe_start_recording');
+      {<<"call_event">>, <<"RECORD_START">>} ->
+        lager:debug("record_start event recv'd"),
+        gen_listener:cast(props:get_value('server', Props), 'record_start');
         {<<"call_event">>, <<"RECORD_STOP">>} ->
             lager:debug("record_stop event recv'd"),
             gen_listener:cast(props:get_value('server', Props), 'store_recording');
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+            gen_listener:cast(props:get_value('server', Props), 'stop_call');
+        {<<"call_detail">>, <<"cdr">>} ->
             gen_listener:cast(props:get_value('server', Props), 'stop_call');
         {<<"call_event">>, <<"channel_status_resp">>} ->
             gen_listener:cast(props:get_value('server', Props), {'channel_status', wh_json:get_value(<<"Status">>, JObj)});
@@ -123,8 +138,8 @@ init([Call, Data]) ->
                   ,format=Format
                   ,media_name=cf_record_call:get_media_name(whapps_call:call_id(Call), Format)
                   ,call=Call
-                  ,channel_status_ref=start_check_call_timer()
-                  ,time_limit_ref=start_time_limit_timer(Data)
+                  ,time_limit = cf_record_call:get_timelimit(Data)
+                  ,record_on_answer = cf_record_call:get_record_on_answer(Data)
                  }}.
 
 %%--------------------------------------------------------------------
@@ -154,6 +169,25 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast('record_start', #state{time_limit=TimeLimit}=State) ->
+  {'noreply', State#state{record_started='true'
+                          ,channel_status_ref=start_check_call_timer()
+                          ,time_limit_ref=start_time_limit_timer(TimeLimit)
+  }};
+
+handle_cast('maybe_start_recording', #state{record_started='true'}=State) ->
+  lager:debug("we've already starting a recording for this call"),
+  {'noreply', State};
+handle_cast('maybe_start_recording', #state{record_started='false'
+                                            ,call=Call
+                                            ,media_name=MediaName
+                                            ,time_limit=TimeLimit
+                                           }=State) ->
+  cf_record_call:start_recording(Call, MediaName, TimeLimit),
+  {'noreply', State};
+handle_cast('maybe_start_recording', State) ->
+  {'noreply', State};
+
 handle_cast('stop_call', #state{store_attempted='true'}=State) ->
     lager:debug("we've already sent a store attempt, waiting to hear back"),
     {'noreply', State};
@@ -173,7 +207,7 @@ handle_cast('store_recording', #state{media_name=MediaName
                                      }=State) ->
     lager:debug("recv store_recording event"),
     cf_record_call:save_recording(Call, MediaName, Format, cf_record_call:should_store_recording(Url)),
-    {'noreply', State#state{store_attempted='true'}};
+    {'noreply', State#state{store_attempted='true',record_started='false'}};
 
 handle_cast({'channel_status',<<"active">>}, #state{channel_status_ref='undefined'}=State) ->
     {'noreply', State#state{channel_status_ref=start_check_call_timer()}};
@@ -280,8 +314,7 @@ start_check_call_timer() ->
     CheckRef.
 
 -spec start_time_limit_timer(wh_json:object()) -> reference().
-start_time_limit_timer(Data) ->
-    TimeLimit = cf_record_call:get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
+start_time_limit_timer(TimeLimit) ->
     TLRef = erlang:make_ref(),
     {'ok', _} = timer:send_after((TimeLimit+10) * 1000, self(), {'stop_recording', TLRef}),
     TLRef.
