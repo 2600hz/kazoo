@@ -126,13 +126,15 @@ init([Call, Data]) ->
     lager:info("starting event listener for cf_record_call"),
 
     Format = cf_record_call:get_format(wh_json:get_value(<<"format">>, Data)),
+    TimeLimit = cf_record_call:get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
+    RecordOnAnswer = cf_record_call:get_record_on_answer(wh_json:get_value(<<"record_on_answer">>, Data)),
 
     {'ok', #state{url=cf_record_call:get_url(Data)
                   ,format=Format
                   ,media_name=cf_record_call:get_media_name(whapps_call:call_id(Call), Format)
                   ,call=Call
-                  ,time_limit = cf_record_call:get_timelimit(Data)
-                  ,record_on_answer = cf_record_call:get_record_on_answer(Data)
+                  ,time_limit=TimeLimit
+                  ,record_on_answer=RecordOnAnswer
                  }}.
 
 %%--------------------------------------------------------------------
