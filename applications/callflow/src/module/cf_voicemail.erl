@@ -106,6 +106,8 @@
           ,notifications :: wh_json:object()
           ,delete_after_notify = 'false' :: boolean()
           ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
+          ,play_greeting_intro = 'false' :: boolean()
+          ,use_person_not_available = 'false' :: boolean()
          }).
 -type mailbox() :: #mailbox{}.
 
@@ -331,7 +333,7 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
 -spec play_greeting_intro(mailbox(), whapps_call:call()) -> ne_binary() | 'ok'.
 play_greeting_intro(#mailbox{play_greeting_intro='true'}, Call) ->
     whapps_call_command:audio_macro([{'prompt', <<"vm-greeting_intro">>}], Call);
-play_greeting_intro(_}, _) -> 'ok'.
+play_greeting_intro(_, _) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1122,6 +1124,10 @@ get_mailbox_profile(Data, Call) ->
                          wh_json:is_true(<<"delete_after_notify">>, JObj, 'false')
                      ,interdigit_timeout =
                          wh_json:find(<<"interdigit_timeout">>, [JObj, Data], whapps_call_command:default_interdigit_timeout())
+                     ,play_greeting_intro =
+                         wh_json:is_true(<<"play_greeting_intro">>, JObj, Default#mailbox.play_greeting_intro)
+                     ,use_person_not_available =
+                         wh_json:is_true(<<"use_person_not_available">>, JObj, Default#mailbox.use_person_not_available)
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
