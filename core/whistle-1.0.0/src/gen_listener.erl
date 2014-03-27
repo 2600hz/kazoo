@@ -82,7 +82,9 @@
         ]).
 
 -export([federated_event/3]).
--export([handle_event/4]).
+-export([handle_event/4
+         ,client_handle_event/6
+        ]).
 -export([distribute_event/3]).
 
 -include_lib("whistle/include/wh_amqp.hrl").
@@ -721,18 +723,25 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                    ,consumer_key=ConsumerKey
                                                   }) ->
     Key = wh_util:get_event_type(JObj),
-    _ = [spawn(fun() ->
-                       _ = wh_util:put_callid(JObj),
-                       _ = wh_amqp_channel:consumer_pid(ConsumerKey),
-                       case erlang:function_exported(Module, Fun, 3) of
-                           'true' -> Module:Fun(JObj, Props, BasicDeliver);
-                           'false' -> Module:Fun(JObj, Props)
-                       end
-               end)
+    _ = [proc_lib:spawn(?MODULE, 'client_handle_event', [JObj
+                                                         ,ConsumerKey
+                                                         ,Module, Fun
+                                                         ,Props
+                                                         ,BasicDeliver
+                                                        ])
          || {Evt, {Module, Fun}} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
     'ok'.
+
+-spec client_handle_event(wh_json:object(), ne_binary(), atom(), atom(), wh_proplist(), #'basic.deliver'{}) -> any().
+client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
+    _ = wh_util:put_callid(JObj),
+    _ = wh_amqp_channel:consumer_pid(ConsumerKey),
+    case erlang:function_exported(Module, Fun, 3) of
+        'true' -> Module:Fun(JObj, Props, BasicDeliver);
+        'false' -> Module:Fun(JObj, Props)
+    end.
 
 -spec callback_handle_event(wh_json:object(), #'basic.deliver'{}, state()) -> 'ignore' | wh_proplist().
 callback_handle_event(JObj
