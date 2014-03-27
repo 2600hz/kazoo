@@ -527,7 +527,7 @@ get_username(Props) ->
 get_realm(Props) ->
     case props:get_first_defined([?GET_CCV(<<"Realm">>), <<"variable_domain_name">>], Props) of
         'undefined' -> 'undefined';
-        Realm -> wh_util:to_binary_lower(Realm)
+        Realm -> wh_util:to_lower_binary(Realm)
     end.
 
 props_to_update(Props) ->
