@@ -65,7 +65,7 @@ binding_key() ->
 binding_key(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case konami_doc(AccountDb) of
-        'undefined' -> patterns();
+        'undefined' -> binding_key();
         KonamiDoc ->
             get_attribute(KonamiDoc, <<"binding_key">>, fun binding_key/0, fun constrain_binding_key/1)
     end.
