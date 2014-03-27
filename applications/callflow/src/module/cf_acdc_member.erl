@@ -69,7 +69,7 @@ maybe_enter_queue(#member_call{call=Call}, 'true') ->
 maybe_enter_queue(#member_call{call=Call
                                ,config_data=MemberCall
                                ,queue_id=QueueId
-                               ,max_wait= MaxWait
+                               ,max_wait=MaxWait
                               }=MC
                   ,'false') ->
     lager:info("asking for an agent, waiting up to ~p ms", [MaxWait]),
@@ -83,19 +83,25 @@ maybe_enter_queue(#member_call{call=Call
 -spec wait_for_bridge(member_call(), max_wait()) -> 'ok'.
 -spec wait_for_bridge(member_call(), max_wait(), wh_now()) -> 'ok'.
 wait_for_bridge(MC, Timeout) ->
-    wait_for_bridge(MC, Timeout, erlang:now()).
+    wait_for_bridge(MC, Timeout, os:timestamp()).
+wait_for_bridge(#member_call{call=Call}, Timeout, _Start) when Timeout < 0 ->
+    lager:debug("timeout is less than 0: ~p", [Timeout]),
+    end_member_call(Call);
 wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
-    Wait = erlang:now(),
+    Wait = os:timestamp(),
+    lager:debug("timeout: ~p", [Timeout]),
     receive
         {'amqp_msg', JObj} ->
             process_message(MC, Timeout, Start, Wait, JObj, wh_util:get_event_type(JObj))
     after Timeout ->
             lager:info("failed to handle the call in time, proceeding"),
-            cancel_member_call(Call, <<"member_timeout">>),
-
-            stop_hold_music(Call),
-            cf_exe:continue(Call)
+            end_member_call(Call)
     end.
+
+end_member_call(Call) ->
+    cancel_member_call(Call, <<"member_timeout">>),
+    stop_hold_music(Call),
+    cf_exe:continue(Call).
 
 -spec process_message(member_call(), max_wait(), wh_now()
                       ,wh_now(), wh_json:object()
@@ -122,7 +128,7 @@ process_message(#member_call{call=Call
             cf_exe:continue(Call);
         'false' ->
             lager:info("failure json was for a different queue, ignoring"),
-            wait_for_bridge(MC, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start)
+            wait_for_bridge(MC, wh_util:decr_timeout(Timeout, Wait), Start)
     end;
 process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}) ->
     DigitPressed = wh_json:get_value(<<"DTMF-Digit">>, JObj),
@@ -135,18 +141,14 @@ process_message(#member_call{call=Call}=MC, Timeout, Start, Wait, JObj, {<<"call
             cf_exe:continue(Call);
         'false' ->
             lager:info("caller pressed ~s, ignoring", [DigitPressed]),
-            wait_for_bridge(MC, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start)
+            wait_for_bridge(MC, wh_util:decr_timeout(Timeout, Wait), Start)
     end;
 process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}) ->
     lager:info("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
 process_message(MC, Timeout, Start, Wait, _JObj, _Type) ->
     lager:debug("ignoring ~p", [_Type]),
-    wait_for_bridge(MC, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
-
--spec reduce_timeout(max_wait(), integer()) -> max_wait().
-reduce_timeout('infinity', _) -> 'infinity';
-reduce_timeout(T, R) -> T-R.
+    wait_for_bridge(MC, wh_util:decr_timeout(Timeout, Wait), Start).
 
 %% convert from seconds to milliseconds, or infinity
 -spec max_wait(integer()) -> max_wait().
