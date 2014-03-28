@@ -12,6 +12,7 @@
 -export([log_stacktrace/0, log_stacktrace/1
          ,format_account_id/1, format_account_id/2, format_account_id/3
          ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
+         ,normalize_account_name/1
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1
@@ -233,6 +234,14 @@ pad_month(Month) when Month < 10 ->
     <<"0", (to_binary(Month))/binary>>;
 pad_month(Month) ->
     to_binary(Month).
+
+-spec normalize_account_name(api_binary()) -> api_binary().
+normalize_account_name('undefined') -> 'undefined';
+normalize_account_name(AccountName) ->
+    << <<Char>> || <<Char>> <= wh_util:to_lower_binary(AccountName),
+                   (Char >= $a andalso Char =< $z)
+                       orelse (Char >= $0 andalso Char =< $9)
+    >>.
 
 %%--------------------------------------------------------------------
 %% @public
