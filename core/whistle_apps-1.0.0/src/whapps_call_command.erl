@@ -2100,7 +2100,7 @@ send_command(Command, Call) when is_list(Command) ->
             CallId = whapps_call:call_id(Call),
             AppName = whapps_call:application_name(Call),
             AppVersion = whapps_call:application_version(Call),
-            case whapps_call:kvs_fetch('cf_exe_pid', Call) of
+            case whapps_call:kvs_fetch('consumer_pid', Call) of
                 Pid when is_pid(Pid) -> _ = wh_amqp_channel:consumer_pid(Pid), 'ok';
                 _Else -> 'ok'
             end,
