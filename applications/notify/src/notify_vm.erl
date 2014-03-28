@@ -188,7 +188,9 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
              ,ContentTypeParams
              ,[{<<"multipart">>, <<"alternative">>, [], []
                 ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>,CharsetString])}], [], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>,CharsetString])}], [], iolist_to_binary(HTMLBody)}
+                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>,CharsetString])}
+                                             ,{<<"Content-Transfer-Encoding">>, <<"quoted-printable">>}
+                                            ], [], iolist_to_binary(HTMLBody)}
                  ]
                }
                ,{<<"audio">>, <<"mpeg">>
