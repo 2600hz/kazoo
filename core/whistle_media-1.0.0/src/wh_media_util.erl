@@ -79,6 +79,6 @@ media_path(<<"system_media", _/binary>> = Path, _AccountId) -> Path;
 media_path(<<"local_stream://",_/binary>> = Path, _AccountId) -> Path;
 media_path(<<"silence_stream://",_/binary>> = Path, _AccountId) -> Path;
 media_path(_Path, 'undefined') -> 'undefined';
-media_path(Path, AccountId) when AccountId =/= 'undefined' ->
+media_path(Path, AccountId) ->
     <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>.
 

@@ -18,11 +18,11 @@ handle(Data, Call) ->
     Path = wh_json:get_value(<<"id">>, Data),
     case wh_media_util:media_path(Path, AccountId) of
         'undefined' -> lager:info("invalid data in the play metaflow");
-        Path -> play(Data, Call, Path)
+        Media -> play(Data, Call, Media)
     end,
     {'continue', Call}.
 
--spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> whapps_api_std_return().
+-spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> any().
 play(Data, Call, Media) ->
     case wh_json:is_false(<<"answer">>, Data) of
         'true' -> 'ok';
