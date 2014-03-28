@@ -156,17 +156,15 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     From = props:get_value(<<"send_from">>, Service),
     To = props:get_value(<<"email_address">>, Props),
 
-    Charset = props:get_value(<<"template_charset">>, Service),
-    ContentTypeParams = case Charset of
-                            <<>> -> [];
-                            <<_/binary>> -> [{<<"content-type-params">>,[{<<"charset">>,Charset}]}];
-                            _ -> []
-                        end,
-    CharsetString = case Charset of
-                            <<>> -> <<>>;
-                            <<_/binary>> -> iolist_to_binary([<<";charset=">>, Charset]);
-                            _ -> <<>>
-                        end,
+    {ContentTypeParams, CharsetString} =
+        case props:get_value(<<"template_charset">>, Service) of
+            <<>> -> {[], <<>>};
+            <<_/binary>> = Charset ->
+                {[{<<"content-type-params">>,[{<<"charset">>,Charset}]}]
+                 ,iolist_to_binary([<<";charset=">>, Charset])
+                };
+            _ -> {[], <<>>}
+        end,
 
     lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),
     {'ok', VMJObj} = couch_mgr:open_doc(DB, DocId),
@@ -178,6 +176,9 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     AttachmentFileName = get_file_name(Props),
     lager:debug("attachment renamed to ~s", [AttachmentFileName]),
 
+    PlainTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>),
+    HTMLTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>),
+
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}
@@ -187,10 +188,18 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
                   ]
              ,ContentTypeParams
              ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>,CharsetString])}], [], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>,CharsetString])}
-                                             ,{<<"Content-Transfer-Encoding">>, <<"quoted-printable">>}
-                                            ], [], iolist_to_binary(HTMLBody)}
+                ,[{<<"text">>, <<"plain">>
+                   ,props:filter_undefined(
+                      [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
+                       ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
+                      ])
+                   ,[], iolist_to_binary(TxtBody)}
+                  ,{<<"text">>, <<"html">>
+                    ,props:filter_undefined(
+                       [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
+                        ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
+                       ])
+                    ,[], iolist_to_binary(HTMLBody)}
                  ]
                }
                ,{<<"audio">>, <<"mpeg">>
