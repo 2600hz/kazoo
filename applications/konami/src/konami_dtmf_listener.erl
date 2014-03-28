@@ -13,6 +13,7 @@
          ,add_call_binding/1
          ,rm_call_binding/1
          ,handle_destroy/2
+         ,handle_dtmf/2
         ]).
 
 -export([init/1
@@ -30,7 +31,7 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, []).
--define(RESPONDERS, [{{'konami_handlers', 'handle_dtmf'}
+-define(RESPONDERS, [{{?MODULE, 'handle_dtmf'}
                       ,[{<<"call_event">>, <<"DTMF">>}]
                      }
                      ,{{?MODULE, 'handle_destroy'}
@@ -44,6 +45,8 @@
 -define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ['DTMF', 'CHANNEL_DESTROY']}
                                         ,{'callid', CallId}
                                        ]}).
+
+-define(KONAMI_REG(CallId), {'p', 'l', {'dtmf', CallId}}).
 
 %%%===================================================================
 %%% API
@@ -71,6 +74,7 @@ start_link() ->
 -spec add_call_binding(ne_binary() | whapps_call:call()) -> 'ok'.
 add_call_binding(CallId) when is_binary(CallId) ->
     lager:debug("add binding for call ~s", [CallId]),
+    gproc:reg(?KONAMI_REG(CallId)),
     gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId));
 add_call_binding(Call) ->
     add_call_binding(whapps_call:call_id_direct(Call)).
@@ -81,6 +85,15 @@ rm_call_binding(CallId) when is_binary(CallId) ->
     gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId));
 rm_call_binding(Call) ->
     rm_call_binding(whapps_call:call_id_direct(Call)).
+
+-spec handle_dtmf(wh_json:object(), wh_proplist()) -> any().
+handle_dtmf(JObj, _Props) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+    DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    lager:debug("recv DTMF ~s", [DTMF]),
+    [konami_code_fsm:dtmf(FSM, CallId, DTMF) || FSM <- gproc:lookup_pids(?KONAMI_REG(CallId))].
 
 -spec handle_destroy(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_destroy(JObj, _Props) ->

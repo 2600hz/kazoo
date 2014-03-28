@@ -9,7 +9,10 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/0
+         ,handle_metaflow/2
+        ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -25,7 +28,7 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'dialplan', ['metaflow']}]).
--define(RESPONDERS, [{{'konami_handlers', 'handle_metaflow'}
+-define(RESPONDERS, [{{?MODULE, 'handle_metaflow'}
                       ,[{<<"call">>, <<"command">>}]
                      }
                     ]).
@@ -51,6 +54,28 @@ start_link() ->
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
+
+-spec handle_metaflow(wh_json:object(), wh_proplist()) -> no_return().
+handle_metaflow(JObj, Props) ->
+    'true' = wapi_dialplan:metaflow_v(JObj),
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
+    whapps_call:put_callid(Call),
+
+    konami_dtmf_listener:add_call_binding(Call),
+
+    try konami_code_fsm:start_fsm(
+          whapps_call:kvs_store('consumer_pid', props:get_value('server', Props), Call)
+          ,JObj
+         )
+    of
+        _ -> 'ok'
+    catch
+        'exit':'normal' -> 'ok';
+        _E:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("failed to start FSM: ~s: ~p", [_E, _R]),
+            wh_util:log_stacktrace(ST)
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
