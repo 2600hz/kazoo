@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,6 +9,7 @@
 
 -export([base_url/1, base_url/2, base_url/3]).
 -export([convert_stream_type/1]).
+-export([media_path/1, media_path/2]).
 
 -include("whistle_media.hrl").
 
@@ -68,3 +69,16 @@ build_url(H, P, User, Pwd) ->
 convert_stream_type(<<"extant">>) -> <<"continuous">>;
 convert_stream_type(<<"store">>) -> <<"store">>;
 convert_stream_type(_) -> <<"single">>.
+
+-spec media_path(api_binary()) -> api_binary().
+-spec media_path(api_binary(), api_binary()) -> api_binary().
+media_path(Path) -> media_path(Path, 'undefined').
+media_path('undefined', _AccountId) -> 'undefined';
+media_path(<<"/system_media", _/binary>> = Path, _AccountId) -> Path;
+media_path(<<"system_media", _/binary>> = Path, _AccountId) -> Path;
+media_path(<<"local_stream://",_/binary>> = Path, _AccountId) -> Path;
+media_path(<<"silence_stream://",_/binary>> = Path, _AccountId) -> Path;
+media_path(_Path, 'undefined') -> 'undefined';
+media_path(Path, AccountId) when AccountId =/= 'undefined' ->
+    <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>.
+

@@ -1,34 +1,28 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2014, 2600Hz
 %%% @doc
-%%%
+%%% Say something
 %%% @end
 %%% @contributors
-%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cf_play).
-
--include("../callflow.hrl").
+-module(konami_play).
 
 -export([handle/2]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Entry point for this module
-%% @end
-%%--------------------------------------------------------------------
--spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
+-include("../konami.hrl").
+
+-spec handle(wh_json:object(), whapps_call:call()) -> {'continue', whapps_call:call()}.
 handle(Data, Call) ->
     AccountId = whapps_call:account_id(Call),
     Path = wh_json:get_value(<<"id">>, Data),
     case wh_media_util:media_path(Path, AccountId) of
-        'undefined' -> lager:info("invalid data in the play callflow");
+        'undefined' -> lager:info("invalid data in the play metaflow");
         Path -> play(Data, Call, Path)
     end,
-    cf_exe:continue(Call).
+    {'continue', Call}.
 
--spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> any().
+-spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> whapps_api_std_return().
 play(Data, Call, Media) ->
     case wh_json:is_false(<<"answer">>, Data) of
         'true' -> 'ok';
