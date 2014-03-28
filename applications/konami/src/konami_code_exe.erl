@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(konami_metaflow_exe).
+-module(konami_code_exe).
 
 -export([handle/2]).
 
