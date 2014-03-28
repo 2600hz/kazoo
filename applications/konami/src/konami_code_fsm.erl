@@ -73,7 +73,7 @@ unarmed({'dtmf', CallId, BindingKey}, #state{call_id=CallId
                                              ,binding_key=BindingKey
                                              ,digit_timeout=Timeout
                                             }=State) ->
-    lager:debug("recv binding key ~s, arming", [BindingKey]),
+    lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
     Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
     {'next_state', 'armed', State#state{digit_timeout_ref = Ref
                                         ,collected_dtmf = <<>>

@@ -30,7 +30,9 @@ handle(Metaflow, Call) ->
         _ -> lager:debug("finished handling metaflow for konami_~s", [M])
     catch
         _E:_R ->
-            lager:debug("failed to exe metaflow 'konami_~s': ~s: ~p", [M, _E, _R])
+            ST = erlang:get_stacktrace(),
+            lager:debug("failed to exe metaflow 'konami_~s': ~s: ~p", [M, _E, _R]),
+            wh_util:log_stacktrace(ST)
     end.
 
 -spec find_child_metaflow(api_binary(), wh_json:object()) -> api_object().
