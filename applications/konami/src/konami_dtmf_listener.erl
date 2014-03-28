@@ -71,7 +71,8 @@ start_link() ->
                             ,[]
                            ).
 
--spec add_call_binding(ne_binary() | whapps_call:call()) -> 'ok'.
+-spec add_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
+add_call_binding('undefined') -> 'ok';
 add_call_binding(CallId) when is_binary(CallId) ->
     lager:debug("add binding for call ~s", [CallId]),
     gproc:reg(?KONAMI_REG(CallId)),
@@ -79,7 +80,8 @@ add_call_binding(CallId) when is_binary(CallId) ->
 add_call_binding(Call) ->
     add_call_binding(whapps_call:call_id_direct(Call)).
 
--spec rm_call_binding(ne_binary() | whapps_call:call()) -> 'ok'.
+-spec rm_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
+rm_call_binding('undefined') -> 'ok';
 rm_call_binding(CallId) when is_binary(CallId) ->
     lager:debug("rm binding for call ~s", [CallId]),
     gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId));
