@@ -29,7 +29,7 @@
 -define(DEFAULT_PATTERNS, wh_json:from_list([{<<"^2$">>, ?META_SAY_HI}
                                             ])).
 
--define(DEFAULT_LISTEN_ON, <<"a">>).
+-define(DEFAULT_LISTEN_ON, 'a').
 
 -type default_fun() :: fun(() -> term()).
 -type formatter_fun() :: fun((term()) -> term()).
@@ -101,9 +101,9 @@ listen_on() ->
 listen_on(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case konami_doc(AccountDb) of
-        'undefined' -> timeout();
+        'undefined' -> listen_on();
         KonamiDoc ->
-            get_attribute(KonamiDoc, <<"listen_on">>, fun timeout/0, fun constrain_listen_on/1)
+            get_attribute(KonamiDoc, <<"listen_on">>, fun listen_on/0, fun constrain_listen_on/1)
     end.
 
 -spec constrain_listen_on(api_binary()) -> 'a' | 'b' | 'ab'.

@@ -35,11 +35,16 @@
                 ,patterns :: api_object()
                 ,binding_key = konami_config:binding_key() :: ne_binary()
                 ,digit_timeout = konami_config:timeout() :: pos_integer()
+                ,call :: whapps_call:call()
+
                 ,listen_on = 'a' :: 'a' | 'b' | 'ab'
 
-                ,digit_timeout_ref :: api_reference()
-                ,collected_dtmf = <<>> :: binary()
-                ,call :: whapps_call:call()
+                ,a_digit_timeout_ref :: api_reference()
+                ,a_collected_dtmf = <<>> :: binary()
+
+                ,b_digit_timeout_ref :: api_reference()
+                ,b_collected_dtmf = <<>> :: binary()
+
                 ,call_id :: ne_binary()
                 ,other_leg :: api_binary()
                }).
@@ -77,16 +82,51 @@ init([]) ->
     {'ok', 'unarmed', #state{}}.
 
 unarmed({'dtmf', CallId, BindingKey}, #state{call_id=CallId
+                                             ,listen_on='a'
                                              ,binding_key=BindingKey
                                              ,digit_timeout=Timeout
                                             }=State) ->
     lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
     Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
-    {'next_state', 'armed', State#state{digit_timeout_ref = Ref
-                                        ,collected_dtmf = <<>>
+    {'next_state', 'armed', State#state{a_digit_timeout_ref = Ref
+                                        ,a_collected_dtmf = <<>>
                                        }};
-unarmed({'dtmf', _CallId, _DTMF}, State) ->
-    lager:debug("ignoring dtmf '~s' while unarmed", [_DTMF]),
+unarmed({'dtmf', CallId, BindingKey}, #state{call_id=CallId
+                                             ,listen_on='ab'
+                                             ,binding_key=BindingKey
+                                             ,digit_timeout=Timeout
+                                            }=State) ->
+    lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
+    Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
+    {'next_state', 'armed', State#state{a_digit_timeout_ref = Ref
+                                        ,a_collected_dtmf = <<>>
+                                       }};
+unarmed({'dtmf', CallId, BindingKey}, #state{other_leg=CallId
+                                             ,listen_on='ab'
+                                             ,binding_key=BindingKey
+                                             ,digit_timeout=Timeout
+                                            }=State) ->
+    lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
+    Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
+    {'next_state', 'armed', State#state{b_digit_timeout_ref = Ref
+                                        ,b_collected_dtmf = <<>>
+                                       }};
+unarmed({'dtmf', CallId, BindingKey}, #state{other_leg=CallId
+                                             ,listen_on='b'
+                                             ,binding_key=BindingKey
+                                             ,digit_timeout=Timeout
+                                            }=State) ->
+    lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
+    Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
+    {'next_state', 'armed', State#state{b_digit_timeout_ref = Ref
+                                        ,b_collected_dtmf = <<>>
+                                       }};
+unarmed({'dtmf', _CallId, _DTMF}, #state{call_id=_Id
+                                         ,other_leg=_Oleg
+                                         ,listen_on=_ListenOn
+                                        }=State) ->
+    lager:debug("ignoring dtmf '~s' from ~s while unarmed", [_DTMF, _CallId]),
+    lager:debug("call id '~s' other_leg '~s' listen_on '~s'", [_Id, _Oleg, _ListenOn]),
     {'next_state', 'unarmed', State};
 unarmed(_Event, State) ->
     lager:debug("unhandled unarmed/2: ~p", [_Event]),
@@ -98,11 +138,13 @@ unarmed(_Event, _From, State) ->
 
 armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
                                                 ,patterns=Ps
-                                                ,collected_dtmf = Collected
-                                                ,digit_timeout_ref = Ref
+                                                ,listen_on=ListenOn
+                                                ,a_collected_dtmf = Collected
+                                                ,a_digit_timeout_ref = Ref
                                                 ,call=Call
-                                                }=State) ->
-    lager:debug("DTMF timeout, let's check '~s'", [Collected]),
+                                                }=State)
+  when ListenOn =:= 'a' orelse ListenOn =:= 'ab' ->
+    lager:debug("a DTMF timeout, let's check '~s'", [Collected]),
     case has_metaflow(Collected, Ns, Ps) of
         'false' ->
             lager:debug("no handler for '~s', unarming", [Collected]),
@@ -116,16 +158,50 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
             lager:debug("pattern exe in ~p: ~p", [_Pid, P]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
     end;
+armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
+                                                ,patterns=Ps
+                                                ,listen_on=ListenOn
+                                                ,b_collected_dtmf = Collected
+                                                ,b_digit_timeout_ref = Ref
+                                                ,call=Call
+                                                }=State)
+  when ListenOn =:= 'b' orelse ListenOn =:= 'ab' ->
+    lager:debug("b DTMF timeout, let's check '~s'", [Collected]),
+    case has_metaflow(Collected, Ns, Ps) of
+        'false' ->
+            lager:debug("no handler for '~s', unarming", [Collected]),
+            {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
+        {'number', N} ->
+            _Pid = spawn('konami_code_exe', 'handle', [N, Call]),
+            lager:debug("number exe in ~p: ~p", [_Pid, N]),
+            {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
+        {'pattern', P} ->
+            _Pid = spawn('konami_code_exe', 'handle', [P, Call]),
+            lager:debug("pattern exe in ~p: ~p", [_Pid, P]),
+            {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
+    end;
+
 armed({'dtmf', CallId, DTMF}, #state{call_id=CallId
-                                     ,collected_dtmf=Collected
+                                     ,a_collected_dtmf=Collected
                                      ,digit_timeout=Timeout
-                                     ,digit_timeout_ref=OldRef
+                                     ,a_digit_timeout_ref=OldRef
                                     }=State) ->
     gen_fsm:cancel_timer(OldRef),
-    lager:debug("recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
+    lager:debug("a recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
     Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
-    {'next_state', 'armed', State#state{digit_timeout_ref=Ref
-                                        ,collected_dtmf = <<Collected/binary, DTMF/binary>>
+    {'next_state', 'armed', State#state{a_digit_timeout_ref=Ref
+                                        ,a_collected_dtmf = <<Collected/binary, DTMF/binary>>
+                                       }};
+armed({'dtmf', CallId, DTMF}, #state{other_leg=CallId
+                                     ,b_collected_dtmf=Collected
+                                     ,digit_timeout=Timeout
+                                     ,b_digit_timeout_ref=OldRef
+                                    }=State) ->
+    gen_fsm:cancel_timer(OldRef),
+    lager:debug("b recv dtmf '~s' while armed, adding to '~s'", [DTMF, Collected]),
+    Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
+    {'next_state', 'armed', State#state{b_digit_timeout_ref=Ref
+                                        ,b_collected_dtmf = <<Collected/binary, DTMF/binary>>
                                        }};
 armed(_Event, State) ->
     lager:debug("unhandled armed/2: ~p", [_Event]),
@@ -143,12 +219,18 @@ handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync_event in ~s: ~p", [StateName, _Event]),
     {'reply', {'error', 'not_implemented'}, StateName, State}.
 
-handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, #state{call_id=CallId}=State) ->
-    case wh_json:get_value(<<"Call-ID">>, Evt) =:= CallId of
-        'true' ->
-            lager:debug("recv channel_destroy while in ~s, going down", [StateName]),
+handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, #state{call_id=CallId
+                                                                                 ,other_leg=OtherLeg
+                                                                                }=State) ->
+    case wh_json:get_value(<<"Call-ID">>, Evt) of
+        CallId ->
+            lager:debug("recv a-leg channel_destroy while in ~s, going down", [StateName]),
             {'stop', 'normal', State};
-        'false' ->
+        OtherLeg ->
+            lager:debug("recv b-leg channel_destroy while in ~s", [StateName]),
+            {'next_state', StateName, State};
+        _CallId ->
+            lager:debug("unknown call leg ~s went down", [_CallId]),
             {'next_state', StateName, State}
     end;
 handle_info(_Info, StateName, State) ->
@@ -244,8 +326,21 @@ has_pattern(Collected, Ps, [Regex|Regexes]) ->
     end.
 
 -spec disarm_state(state()) -> state().
-disarm_state(State) ->
+disarm_state(#state{a_digit_timeout_ref=ARef
+                    ,b_digit_timeout_ref=BRef
+                   }=State) ->
     lager:debug("disarming state"),
-    State#state{digit_timeout_ref='undefined'
-                ,collected_dtmf = <<>>
+    maybe_cancel_timer(ARef),
+    maybe_cancel_timer(BRef),
+
+    State#state{a_digit_timeout_ref='undefined'
+                ,a_collected_dtmf = <<>>
+                ,b_digit_timeout_ref='undefined'
+                ,b_collected_dtmf = <<>>
                }.
+
+maybe_cancel_timer(Ref) when is_reference(Ref) ->
+    catch erlang:cancel_timer(Ref),
+    'ok';
+maybe_cancel_timer(_) ->
+    'ok'.
