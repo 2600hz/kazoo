@@ -49,7 +49,7 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES,$(K_MODULES))], [verbose])" -s init stop
+	erl -noshell -pa test -eval "eunit:test([$(MODULES),$(K_MODULES)], [verbose])" -s init stop
 
 dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
