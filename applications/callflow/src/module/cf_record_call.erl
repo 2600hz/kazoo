@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%% Handles starting/stopping a call recording
 %%%
@@ -8,6 +8,7 @@
 %%%   ,"time_limit":600 // in seconds, how long to record the call
 %%%   ,"format":["mp3","wav"] // what format to store the recording in
 %%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
+%%%   ,"record_on_answer": boolean() // whether to delay the start of the recording
 %%% }
 %%% @end
 %%% @contributors
@@ -20,7 +21,6 @@
          ,get_format/1
          ,get_url/1
          ,get_media_name/2
-         ,get_record_on_answer/1
          ,should_store_recording/1
          ,save_recording/4
          ,start_recording/3
@@ -44,17 +44,15 @@ handle(Data, Call, <<"start">>) ->
 
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
-    RecordOnAnswer = get_record_on_answer(wh_json:get_value(<<"record_on_answer">>, Data, <<"false">>)),
 
     'ok' = cf_exe:add_event_listener(Call, {'cf_record_call_listener', [Data]}),
 
-    case RecordOnAnswer of
-      'true' ->
-        lager:debug("deferring the start of call recording until bridge leg is answered");
-      _ ->
-        start_recording(Call, MediaName, TimeLimit)
+    case wh_json:is_true(<<"record_on_answer">>, Data, 'false') of
+        'true' ->
+            lager:debug("deferring the start of call recording until bridge leg is answered");
+        'false' ->
+            start_recording(Call, MediaName, TimeLimit)
     end;
-
 handle(Data, Call, <<"stop">> = Action) ->
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
@@ -102,11 +100,6 @@ append_path(Url, MediaName) ->
 get_action('undefined') -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.
-
--spec get_record_on_answer(api_binary()) -> 'true' | 'false'.
-get_record_on_answer('undefined') -> 'false';
-get_record_on_answer(<<"true">>) -> 'true';
-get_record_on_answer(_) -> 'false'.
 
 -spec get_timelimit('undefined' | integer()) -> pos_integer().
 get_timelimit('undefined') ->

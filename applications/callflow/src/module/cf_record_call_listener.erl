@@ -28,7 +28,7 @@
                 ,format                    :: ne_binary()
                 ,media_name                :: ne_binary()
                 ,call                      :: whapps_call:call()
-                ,record_on_answer          :: ne_binary()
+                ,record_on_answer          :: boolean()
                 ,time_limit                :: pos_integer()
                 ,store_attempted = 'false' :: boolean()
                 ,record_started = 'false'  :: boolean()
@@ -38,7 +38,10 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallId), [{'call', [{'callid', CallId}
-                                     ,{'restrict_to', ['events', 'cdr']}
+                                     ,{'restrict_to', ['CHANNEL_ANSWER', 'CHANNEL_DESTROY'
+                                                       ,'CHANNEL_BRIDGE', 'CHANNEL_EXECUTE_COMPLETE'
+                                                       ,'RECORD_START', 'RECORD_STOP'
+                                                      ]}
                                     ]}
                            ,{'self', []}
                           ]).
@@ -84,8 +87,6 @@ handle_call_event(JObj, Props) ->
             gen_listener:cast(props:get_value('server', Props), 'store_recording');
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             gen_listener:cast(props:get_value('server', Props), 'stop_call');
-        {<<"call_detail">>, <<"cdr">>} ->
-            gen_listener:cast(props:get_value('server', Props), 'stop_call');
         {<<"call_event">>, <<"channel_status_resp">>} ->
             gen_listener:cast(props:get_value('server', Props), {'channel_status', wh_json:get_value(<<"Status">>, JObj)});
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
@@ -96,7 +97,7 @@ handle_call_event(JObj, Props) ->
                     gen_listener:cast(props:get_value('server', Props), 'store_succeeded');
                 {_App, _Res} -> lager:debug("ignore exec complete: ~s: ~s", [_App, _Res])
             end;
-        {<<"error">>,<<"dialplan">>} ->
+        {<<"error">>, <<"dialplan">>} ->
             case wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj) of
                 <<"store">> ->
                     gen_listener:cast(props:get_value('server', Props), 'store_failed');
@@ -127,7 +128,7 @@ init([Call, Data]) ->
 
     Format = cf_record_call:get_format(wh_json:get_value(<<"format">>, Data)),
     TimeLimit = cf_record_call:get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
-    RecordOnAnswer = cf_record_call:get_record_on_answer(wh_json:get_value(<<"record_on_answer">>, Data)),
+    RecordOnAnswer = wh_json:is_true(<<"record_on_answer">>, Data, 'false'),
 
     {'ok', #state{url=cf_record_call:get_url(Data)
                   ,format=Format
@@ -165,23 +166,21 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('record_start', #state{time_limit=TimeLimit}=State) ->
-  {'noreply', State#state{record_started='true'
-                          ,channel_status_ref=start_check_call_timer()
-                          ,time_limit_ref=start_time_limit_timer(TimeLimit)
-  }};
+    {'noreply', State#state{record_started='true'
+                            ,channel_status_ref=start_check_call_timer()
+                            ,time_limit_ref=start_time_limit_timer(TimeLimit)
+                           }};
 
 handle_cast('maybe_start_recording', #state{record_started='true'}=State) ->
-  lager:debug("we've already starting a recording for this call"),
-  {'noreply', State};
+    lager:debug("we've already starting a recording for this call"),
+    {'noreply', State};
 handle_cast('maybe_start_recording', #state{record_started='false'
                                             ,call=Call
                                             ,media_name=MediaName
                                             ,time_limit=TimeLimit
                                            }=State) ->
-  cf_record_call:start_recording(Call, MediaName, TimeLimit),
-  {'noreply', State};
-handle_cast('maybe_start_recording', State) ->
-  {'noreply', State};
+    cf_record_call:start_recording(Call, MediaName, TimeLimit),
+    {'noreply', State};
 
 handle_cast('stop_call', #state{store_attempted='true'}=State) ->
     lager:debug("we've already sent a store attempt, waiting to hear back"),
@@ -202,8 +201,9 @@ handle_cast('store_recording', #state{media_name=MediaName
                                      }=State) ->
     lager:debug("recv store_recording event"),
     cf_record_call:save_recording(Call, MediaName, Format, cf_record_call:should_store_recording(Url)),
-    {'noreply', State#state{store_attempted='true',record_started='false'}};
-
+    {'noreply', State#state{store_attempted='true'
+                            ,record_started='false'
+                           }};
 handle_cast({'channel_status',<<"active">>}, #state{channel_status_ref='undefined'}=State) ->
     {'noreply', State#state{channel_status_ref=start_check_call_timer()}};
 handle_cast({'channel_status', <<"terminated">>}, #state{channel_status_ref='undefined'
@@ -250,8 +250,17 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('stop_recording', #state{media_name=MediaName
                                      ,call=Call
+                                     ,time_limit_ref=TLRef
                                     }=State) ->
     lager:debug("recv stop_recording event"),
+    maybe_stop_timer(TLRef),
+    whapps_call_command:record_call(MediaName, <<"stop">>, Call),
+    {'noreply', State};
+handle_info({'timeout', TLRef, 'stop_recording'}, #state{media_name=MediaName
+                                                         ,call=Call
+                                                         ,time_limit_ref=TLRef
+                                                        }=State) ->
+    lager:debug("recv stop_recording timer, forcing recording to stop"),
     whapps_call_command:record_call(MediaName, <<"stop">>, Call),
     {'noreply', State};
 handle_info({'check_call', Ref}, #state{call=Call
@@ -310,6 +319,12 @@ start_check_call_timer() ->
 
 -spec start_time_limit_timer(wh_json:object()) -> reference().
 start_time_limit_timer(TimeLimit) ->
-    TLRef = erlang:make_ref(),
-    {'ok', _} = timer:send_after((TimeLimit+10) * 1000, self(), {'stop_recording', TLRef}),
-    TLRef.
+    erlang:start_timer((TimeLimit+10) * 1000, self(), 'stop_recording').
+
+-spec maybe_stop_timer(term()) -> 'ok'.
+maybe_stop_timer(Timer) when is_reference(Timer) ->
+    catch erlang:cancel_timer(Timer),
+    'ok';
+maybe_stop_timer(_) -> 'ok'.
+
+
