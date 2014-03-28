@@ -12,7 +12,9 @@
 
 -include("../konami.hrl").
 
+-spec handle(wh_json:object(), whapps_call:call()) -> {'continue', whapps_call:call()}.
 handle(Data, Call) ->
     Say = wh_json:get_value(<<"text">>, Data),
     lager:debug("saying '~s'", [Say]),
-    whapps_call_command:say(Say, Call).
+    whapps_call_command:b_say(Say, Call),
+    {'continue', Call}.

@@ -24,6 +24,9 @@ handle(Metaflow, Call) ->
         {'branch', ChildBranch, Call1} ->
             lager:debug("continuing to child metaflow from konami_~s", [M]),
             handle(find_child_metaflow(ChildBranch, Metaflow), Call1);
+        {'continue', Call1} ->
+            lager:debug("continuing to default child from konami_~s", [M]),
+            handle(find_child_metaflow('undefined', Metaflow), Call1);
         _ -> lager:debug("finished handling metaflow for konami_~s", [M])
     catch
         _E:_R ->
