@@ -130,10 +130,8 @@ put(Context, <<"recovery">>) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_account_name(api_binary()) -> api_binary().
-normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
-    << <<Char>> || <<Char>> <= wh_util:to_lower_binary(AccountName)
-                   ,(Char >= $a andalso Char =< $z) orelse (Char >= $0 andalso Char =< $9) >>.
+    wh_util:normalize_account_name(AccountName).
 
 %%--------------------------------------------------------------------
 %% @private
