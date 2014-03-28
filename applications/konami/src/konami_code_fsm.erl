@@ -66,7 +66,7 @@ start_fsm(Call, JObj) ->
                                ,digit_timeout=digit_timeout(Call, JObj)
                                ,listen_on=listen_on(Call, JObj)
 
-                               ,call=Call
+                               ,call=whapps_call:clear_helpers(Call)
                                ,call_id=whapps_call:call_id_direct(Call)
                               }).
 
@@ -219,6 +219,31 @@ handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync_event in ~s: ~p", [StateName, _Event]),
     {'reply', {'error', 'not_implemented'}, StateName, State}.
 
+handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, #state{call_id=CallId
+                                                                                ,other_leg=OtherLeg
+                                                                               }=State) ->
+    case wh_json:get_value(<<"Call-ID">>, Evt) of
+        CallId ->
+            case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+                'undefined' ->
+                    lager:debug("channel is answered (~s)", [OtherLeg]),
+                    {'next_state', StateName, State};
+                OtherLeg ->
+                    lager:debug("channel is answered (~s)", [OtherLeg]),
+                    {'next_state', StateName, State};
+                NewOtherLeg ->
+                    lager:debug("channel is bridged to ~s", [NewOtherLeg]),
+                    konami_dtmf_listener:add_call_binding(NewOtherLeg),
+                    {'next_state', StateName, State#state{other_leg=NewOtherLeg}}
+            end;
+        OtherLeg ->
+            lager:debug("b leg ~s is answered", [OtherLeg]),
+            {'next_state', StateName, State};
+        NewOtherLeg ->
+            konami_dtmf_listener:add_call_binding(NewOtherLeg),
+            lager:debug("b leg ~s is answered, bridged to us ~s", [NewOtherLeg, wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)]),
+            {'next_state', StateName, State#state{other_leg=NewOtherLeg}}
+    end;
 handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, #state{call_id=CallId
                                                                                  ,other_leg=OtherLeg
                                                                                 }=State) ->
@@ -228,6 +253,7 @@ handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, #state
             {'stop', 'normal', State};
         OtherLeg ->
             lager:debug("recv b-leg channel_destroy while in ~s", [StateName]),
+            konami_dtmf_listener:rm_call_binding(OtherLeg),
             {'next_state', StateName, State};
         _CallId ->
             lager:debug("unknown call leg ~s went down", [_CallId]),
@@ -237,8 +263,11 @@ handle_info(_Info, StateName, State) ->
     lager:debug("unhandled msg in ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
 
-terminate(_Reason, _StateName, #state{call_id=CallId}) ->
+terminate(_Reason, _StateName, #state{call_id=CallId
+                                      ,other_leg=OtherLeg
+                                     }) ->
     konami_dtmf_listener:rm_call_binding(CallId),
+    konami_dtmf_listener:rm_call_binding(OtherLeg),
     lager:debug("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
 code_change(_OldVsn, StateName, State, _Extra) ->
