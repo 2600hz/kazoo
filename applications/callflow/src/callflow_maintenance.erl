@@ -261,67 +261,58 @@ update_doc(Key, Value, Id, Db) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec account_set_classifier_allow(binary(), binary()) ->
-                        'ok' |
-                        {'error', atom()}.
+-spec account_set_classifier_allow(ne_binary(), ne_binary()) -> 'ok'.
 account_set_classifier_allow(Classifier, Account) ->
-    {ok, AcctDB} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
-    set_account_classifier_action(<<"allow">>, Classifier, AcctDB),
-    wh_cache:flush().
+    {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
+    set_account_classifier_action(<<"allow">>, Classifier, AccountDb).
 
--spec account_set_classifier_deny(binary(), binary()) ->
-                        'ok' |
-                        {'error', atom()}.
+-spec account_set_classifier_deny(ne_binary(), ne_binary()) -> 'ok'.
 account_set_classifier_deny(Classifier, Account) ->
-    {ok, AcctDB} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
-    set_account_classifier_action(<<"deny">>, Classifier, AcctDB),
-    wh_cache:flush().
+    {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
+    set_account_classifier_action(<<"deny">>, Classifier, AccountDb).
 
--spec all_accounts_set_classifier_allow(binary()) ->
-                        'ok' |
-                        {'error', atom()}.
+-spec all_accounts_set_classifier_allow(ne_binary()) -> 'ok'.
 all_accounts_set_classifier_allow(Classifier) ->
-    all_accounts_set_classifier(<<"allow">>, Classifier),
-    wh_cache:flush().
+    all_accounts_set_classifier(<<"allow">>, Classifier).
 
--spec all_accounts_set_classifier_deny(binary()) ->
-                        'ok' |
-                        {'error', atom()}.
+-spec all_accounts_set_classifier_deny(ne_binary()) -> 'ok'.
 all_accounts_set_classifier_deny(Classifier) ->
-    all_accounts_set_classifier(<<"deny">>, Classifier),
-    wh_cache:flush().
+    all_accounts_set_classifier(<<"deny">>, Classifier).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%       
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec set_account_classifier_action(binary(), binary(), binary()) ->
-                        'ok' |
-                        {'error', atom()}.
-set_account_classifier_action(Action, Classifier, AcctDB) ->
-    is_classifier(Classifier),
-    io:format("Found account: ~p", [get_account_name_by_db(AcctDB)]),
-    AcctID = wh_util:format_account_id(AcctDB, 'raw'),
-    couch_mgr:update_doc(AcctDB, AcctID, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
-    couch_mgr:update_doc(<<"accounts">>, AcctID, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
-    io:format("  ...  classifier ~p switched to action ~p\n", [Classifier, Action]).
+-spec set_account_classifier_action(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+set_account_classifier_action(Action, Classifier, AccountDb) ->
+    'true' = is_classifier(Classifier),
+    io:format("found account: ~p", [get_account_name_by_db(AccountDb)]),
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+
+    couch_mgr:update_doc(AccountDb, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    couch_mgr:update_doc(<<"accounts">>, AccountId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+
+    cf_endpoint:flush_account(AccountDb),
+
+    io:format("  ...  classifier '~s' switched to action '~s'\n", [Classifier, Action]).
 
 all_accounts_set_classifier(Action, Classifier) ->
-    is_classifier(Classifier),
+    'true' = is_classifier(Classifier),
     lists:foreach(fun(AccountDb) ->
-                          timer:sleep(2000),  % Not shure if this interruption is realy needed. 
-                                              %  Keeping it as it was taken as an example from whapps_util:update_all_accounts/1
+                          timer:sleep(2000),
+                          %% Not shure if this interruption is realy needed.
+                          %%  Keeping it as it was taken as an example from whapps_util:update_all_accounts/1
                           set_account_classifier_action(Action, Classifier, AccountDb)
                   end, whapps_util:get_all_accounts()).
 
 -spec get_account_name_by_db(ne_binary()) -> ne_binary() | 'undefined'.
-get_account_name_by_db(AcctDB) ->
-    AcctID = wh_util:format_account_id(AcctDB, 'raw'),
-    case couch_mgr:open_cache_doc(AcctDB, AcctID) of
+get_account_name_by_db(AccountDb) ->
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _Error} ->
-            lager:error('error opening ~p in ~p', [AcctID, AcctDB]),
+            lager:error('error opening ~p in ~p', [AccountId, AccountDb]),
             'undefined';
         {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj, 'undefined')
     end.
@@ -332,25 +323,19 @@ get_account_name_by_db(AcctDB) ->
 %%        Set call_restriction flag on device level
 %%        Usage: sup callflow_maintenance device_classifier_allow international  username@realm.tld
 %%        Usage: sup callflow_maintenance device_classifier_inherit international  username@realm.tld
-%%        Usage: sup callflow_maintenance device_classifier_deny international username@realm.tld 
+%%        Usage: sup callflow_maintenance device_classifier_deny international username@realm.tld
 %% @end
 %%--------------------------------------------------------------------
 
--spec device_classifier_allow(binary(), binary()) ->
-                        'ok' |
-                        {'error', atom()}.
+-spec device_classifier_allow(ne_binary(), ne_binary()) -> 'ok'.
 device_classifier_allow(Classifier, Uri) ->
     set_device_classifier_action(<<"allow">>, Classifier, Uri).
 
--spec device_classifier_inherit(binary(), binary()) ->
-                        'ok' |
-                        {'error', atom()}.
+-spec device_classifier_inherit(ne_binary(), ne_binary()) -> 'ok'.
 device_classifier_inherit(Classifier, Uri) ->
     set_device_classifier_action(<<"inherit">>, Classifier, Uri).
 
--spec device_classifier_deny(binary(), binary()) ->
-                        'ok' |
-                        {'error', atom()}.
+-spec device_classifier_deny(ne_binary(), ne_binary()) -> 'ok'.
 device_classifier_deny(Classifier, Uri) ->
     set_device_classifier_action(<<"deny">>, Classifier, Uri).
 
@@ -360,18 +345,16 @@ device_classifier_deny(Classifier, Uri) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_device_classifier_action(binary(), binary(), binary()) ->
-                        'ok' |
-                        {'error', atom()}.
+-spec set_device_classifier_action(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 set_device_classifier_action(Action, Classifier, Uri) ->
-    is_classifier(Classifier),
+    'true' = is_classifier(Classifier),
     [User, Realm] = re:split(Uri, <<"@">>),
-    {ok, AcctDB} = whapps_util:get_account_by_realm(Realm),
+    {'ok', AccountDb} = whapps_util:get_account_by_realm(Realm),
     Options = [{'key', User}],
-    {'ok', [DeviceDoc|_]} = couch_mgr:get_results(AcctDB, <<"devices/sip_credentials">>, Options),
-    DeviceID = wh_json:get_first_defined([<<"_id">>, <<"id">>], DeviceDoc),
-    couch_mgr:update_doc(AcctDB, DeviceID, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
-    wh_cache:flush().
+    {'ok', [DeviceDoc]} = couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, Options),
+    DeviceId = wh_json:get_first_defined([<<"_id">>, <<"id">>], DeviceDoc),
+    couch_mgr:update_doc(AccountDb, DeviceId, [{[<<"call_restriction">>, Classifier, <<"action">>], Action}]),
+    cf_endpoint:flush(AccountDb, DeviceId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -379,16 +362,17 @@ set_device_classifier_action(Action, Classifier, Uri) ->
 %%           Checks if classifier defined in system_config -> number_manager doc
 %% @end
 %%--------------------------------------------------------------------
+-spec is_classifier(ne_binary()) -> boolean().
 is_classifier(Classifier) ->
-    Classifiers = wnm_util:available_classifiers(),
-    case lists:member(Classifier, wh_json:get_keys(Classifiers)) of
-        'false' -> 
-            io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, wh_json:get_keys(Classifiers)]),
-            exit(no_such_classifier);
-        _ -> 
-            'ok'
+    Classifiers = wh_json:get_keys(wnm_util:available_classifiers()),
+    case lists:member(Classifier, Classifiers) of
+        'false' ->
+            io:format("classifier '~s' not among configured classifiers: ~p\n"
+                      ,[Classifier, Classifiers]
+                     ),
+            'false';
+        'true' -> 'true'
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -402,9 +386,5 @@ is_classifier(Classifier) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_account_name(api_binary()) -> api_binary().
-normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
-    << <<Char>> || <<Char>> <= wh_util:to_lower_binary(AccountName)
-                   ,(Char >= $a andalso Char =< $z) orelse (Char >= $0 andalso Char =< $9) >>.
-
-
+    wh_util:normalize_account_name(AccountName).
