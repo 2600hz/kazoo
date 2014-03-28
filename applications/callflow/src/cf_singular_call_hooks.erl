@@ -218,8 +218,6 @@ call_is_singular(Call) ->
 get_inception(Call) ->
     case whapps_call:inception(Call) of
         'undefined' -> <<"onnet">>;
-        <<"onnet">> -> <<"onnet">>;
-        <<"on-net">> -> <<"onnet">>;
         _Else -> <<"offnet">>
     end.
 
