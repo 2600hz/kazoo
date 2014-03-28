@@ -190,9 +190,8 @@ update_ccvs(Call) ->
 
 -spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
 maybe_start_metaflow(Call) ->
-    Flow = whapps_call:kvs_fetch('cf_flow', Call),
-    case wh_json:get_value(<<"metaflow">>, Flow, 'true') of
-        'undefined' -> Call;
+    case whapps_call:kvs_fetch('cf_metaflow', Call) of
+        'undefined' -> lager:debug("no metaflow"), Call;
         MetaFlow -> maybe_start_metaflow(Call, MetaFlow)
     end.
 
@@ -210,6 +209,7 @@ maybe_start_metaflow(Call, MetaFlow) ->
 start_metaflow(Call) ->
     start_metaflow(Call, wh_json:new()).
 start_metaflow(Call, MetaFlow) ->
+    lager:debug("metaflow: ~p", [MetaFlow]),
     case wh_json:is_json_object(MetaFlow) of
         'false' -> 'ok';
         'true' ->
