@@ -35,10 +35,13 @@
                 ,patterns :: api_object()
                 ,binding_key = konami_config:binding_key() :: ne_binary()
                 ,digit_timeout = konami_config:timeout() :: pos_integer()
+                ,listen_on = 'a' :: 'a' | 'b' | 'ab'
+
                 ,digit_timeout_ref :: api_reference()
                 ,collected_dtmf = <<>> :: binary()
                 ,call :: whapps_call:call()
                 ,call_id :: ne_binary()
+                ,other_leg :: api_binary()
                }).
 -type state() :: #state{}.
 
@@ -49,11 +52,15 @@
 -spec start_fsm(whapps_call:call(), wh_json:object()) -> any().
 start_fsm(Call, JObj) ->
     wh_hooks:register(whapps_call:account_id(Call), <<"CHANNEL_DESTROY">>),
+    wh_hooks:register(whapps_call:account_id(Call), <<"CHANNEL_ANSWER">>),
+
     gen_fsm:enter_loop(?MODULE, [], 'unarmed'
                        ,#state{numbers=numbers(Call, JObj)
                                ,patterns=patterns(Call, JObj)
                                ,binding_key=binding_key(Call, JObj)
                                ,digit_timeout=digit_timeout(Call, JObj)
+                               ,listen_on=listen_on(Call, JObj)
+
                                ,call=Call
                                ,call_id=whapps_call:call_id_direct(Call)
                               }).
@@ -136,8 +143,8 @@ handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync_event in ~s: ~p", [StateName, _Event]),
     {'reply', {'error', 'not_implemented'}, StateName, State}.
 
-handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, #state{call=Call}=State) ->
-    case wh_json:get_value(<<"Call-ID">>, Evt) =:= whapps_call:call_id_direct(Call) of
+handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, #state{call_id=CallId}=State) ->
+    case wh_json:get_value(<<"Call-ID">>, Evt) =:= CallId of
         'true' ->
             lager:debug("recv channel_destroy while in ~s, going down", [StateName]),
             {'stop', 'normal', State};
@@ -187,6 +194,15 @@ digit_timeout(Call, JObj) ->
     case wh_json:get_integer_value(<<"Digit-Timeout">>, JObj) of
         'undefined' -> konami_config:timeout(whapps_call:account_id(Call));
         Timeout -> Timeout
+    end.
+
+listen_on(Call, JObj) ->
+    case wh_json:get_value(<<"Listen-On">>, JObj) of
+        'undefined' -> konami_config:listen_on(whapps_call:account_id(Call));
+        <<"a">> -> 'a';
+        <<"b">> -> 'b';
+        <<"ab">> -> 'ab';
+        _ -> 'a'
     end.
 
 -spec has_metaflow(ne_binary(), wh_json:object(), wh_json:object()) ->

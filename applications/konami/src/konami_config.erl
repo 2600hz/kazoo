@@ -12,6 +12,7 @@
          ,patterns/0, patterns/1
          ,binding_key/0, binding_key/1
          ,timeout/0, timeout/1
+         ,listen_on/0, listen_on/1
         ]).
 
 -include("konami.hrl").
@@ -27,6 +28,8 @@
                                            ])).
 -define(DEFAULT_PATTERNS, wh_json:from_list([{<<"^2$">>, ?META_SAY_HI}
                                             ])).
+
+-define(DEFAULT_LISTEN_ON, <<"a">>).
 
 -type default_fun() :: fun(() -> term()).
 -type formatter_fun() :: fun((term()) -> term()).
@@ -90,6 +93,25 @@ timeout(Account) ->
         KonamiDoc ->
             get_attribute(KonamiDoc, <<"digit_timeout_ms">>, fun timeout/0, fun wh_util:to_integer/1)
     end.
+
+-spec listen_on() -> 'a' | 'b' | 'ab'.
+-spec listen_on(ne_binary()) -> 'a' | 'b' | 'ab'.
+listen_on() ->
+    constrain_listen_on(whapps_config:get(<<"konami_codes">>, <<"listen_on">>, ?DEFAULT_LISTEN_ON)).
+listen_on(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case konami_doc(AccountDb) of
+        'undefined' -> timeout();
+        KonamiDoc ->
+            get_attribute(KonamiDoc, <<"listen_on">>, fun timeout/0, fun constrain_listen_on/1)
+    end.
+
+-spec constrain_listen_on(api_binary()) -> 'a' | 'b' | 'ab'.
+constrain_listen_on(<<"a">>) -> 'a';
+constrain_listen_on(<<"b">>) -> 'b';
+constrain_listen_on(<<"ab">>) -> 'ab';
+constrain_listen_on(<<"both">>) -> 'ab';
+constrain_listen_on(_) -> ?DEFAULT_LISTEN_ON.
 
 -spec identity(X) -> X.
 identity(X) -> X.
