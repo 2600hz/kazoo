@@ -19,6 +19,7 @@
 -export([get_is_false/2, get_is_false/3, get_is_false/4]).
 -export([get_is_true/2, get_is_true/3, get_is_true/4]).
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
+-export([get_ne_binary/2, get_ne_binary/3, get_ne_binary/4]).
 
 -export([set/3, set/4, set_default/3, set_node/4]).
 -export([flush/0, flush/1, flush/2, flush/3]).
@@ -168,9 +169,9 @@ get_is_true(Category, Key, Default, Node) ->
 %% get a configuration key for a given category and cast it as a is_true
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_non_empty(config_category(), config_key()) -> api_boolean().
--spec get_non_empty(config_category(), config_key(), Default) -> boolean() | Default.
--spec get_non_empty(config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
+-spec get_non_empty(config_category(), config_key()) -> term() | 'undefined'.
+-spec get_non_empty(config_category(), config_key(), Default) -> term() | Default.
+-spec get_non_empty(config_category(), config_key(), Default, ne_binary()) -> term() | Default.
 get_non_empty(Category, Key) ->
     get_non_empty(Category, Key, 'undefined').
 
@@ -179,8 +180,23 @@ get_non_empty(Category, Key, Default) ->
 get_non_empty(Category, Key, Default, Node) ->
     Value = get(Category, Key, Default, Node),
     case wh_util:is_empty(Value) of
-        'true' -> 'undefined';
+        'true' -> Default;
         'false' -> Value
+    end.
+
+-spec get_ne_binary(config_category(), config_key()) -> api_binary().
+-spec get_ne_binary(config_category(), config_key(), Default) -> ne_binary() | Default.
+-spec get_ne_binary(config_category(), config_key(), Default, ne_binary()) -> ne_binary() | Default.
+get_ne_binary(Category, Key) ->
+    get_ne_binary(Category, Key, 'undefined').
+
+get_ne_binary(Category, Key, Default) ->
+    get_ne_binary(Category, Key, Default, wh_util:to_binary(node())).
+get_ne_binary(Category, Key, Default, Node) ->
+    Value = get(Category, Key, Default, Node),
+    case wh_util:is_empty(Value) of
+        'true' -> Default;
+        'false' -> wh_util:to_binary(Value)
     end.
 
 %%-----------------------------------------------------------------------------
@@ -337,7 +353,7 @@ update_category(Category, Keys, Value, Node, Opts, JObj) ->
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%-----------------------------------------------------------------------------
 maybe_save_category(Category, JObj) ->
@@ -357,7 +373,7 @@ maybe_save_category(Category, JObj, Looped) ->
         {'error', _R} ->
             lager:warning("unable to update ~s system config doc: ~p", [Category, _R]),
             cache_jobj(Category, JObj1)
-    end.    
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -426,7 +442,7 @@ get_db_config(Category) ->
             lager:debug("could not fetch config ~s from db: ~p", [Category, _R]),
             E
     end.
- 
+
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
