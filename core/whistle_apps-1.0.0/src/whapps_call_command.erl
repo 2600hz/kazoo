@@ -71,7 +71,10 @@
          ,play_and_collect_digits/6, play_and_collect_digits/7
          ,play_and_collect_digits/8, play_and_collect_digits/9
         ]).
--export([say/2, say/3, say/4, say/5]).
+-export([say/2, say/3, say/4, say/5
+         ,say_command/2, say_command/3, say_command/4, say_command/5
+         ,b_say/2, b_say/3, b_say/4, b_say/5
+        ]).
 
 -export([conference/2, conference/3
          ,conference/4, conference/5
@@ -109,7 +112,7 @@
          ,b_play_and_collect_digits/6, b_play_and_collect_digits/7
          ,b_play_and_collect_digits/8, b_play_and_collect_digits/9
         ]).
--export([b_say/2, b_say/3, b_say/4, b_say/5]).
+
 -export([b_noop/1]).
 -export([b_flush/1]).
 -export([b_privacy/1
@@ -1344,25 +1347,44 @@ say(Say, Type, Call) ->
     say(Say, Type, <<"pronounced">>, Call).
 say(Say, Type, Method, Call) ->
     say(Say, Type, Method, <<"en">>, Call).
-say(Say, Type, Method, Language,Call) ->
-    Command = [{<<"Application-Name">>, <<"say">>}
-               ,{<<"Say-Text">>, Say}
-               ,{<<"Type">>, Type}
-               ,{<<"Method">>, Method}
-               ,{<<"Language">>, Language}
-              ],
+say(Say, Type, Method, Language, Call) ->
+    Command = props:filter_undefined(
+                [{<<"Application-Name">>, <<"say">>}
+                 ,{<<"Say-Text">>, Say}
+                 ,{<<"Type">>, Type}
+                 ,{<<"Method">>, Method}
+                 ,{<<"Language">>, Language}
+                ]),
     send_command(Command, Call).
 
+-spec say_command(ne_binary(), whapps_call:call()) -> wh_json:object().
+-spec say_command(ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
+-spec say_command(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
 -spec say_command(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
+say_command(Say, Call) ->
+    say_command(Say, <<"name_spelled">>, Call).
+say_command(Say, Type, Call) ->
+    say_command(Say, Type, <<"pronounced">>, Call).
+say_command(Say, Type, Method, Call) ->
+    say_command(Say, Type, Method, <<"en">>, Call).
 say_command(Say, Type, Method, Language, Call) ->
-    CallId = whapps_call:call_id(Call),
-    wh_json:from_list([{<<"Application-Name">>, <<"say">>}
-                       ,{<<"Say-Text">>, Say}
-                       ,{<<"Type">>, Type}
-                       ,{<<"Method">>, Method}
-                       ,{<<"Language">>, Language}
-                       ,{<<"Call-ID">>, CallId}
-                      ]).
+    wh_json:from_list(
+        [{<<"Application-Name">>, <<"say">>}
+         ,{<<"Say-Text">>, Say}
+         ,{<<"Type">>, say_type(Type)}
+         ,{<<"Method">>, say_method(Method)}
+         ,{<<"Language">>, say_language(Language)}
+         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+        ]).
+
+say_type('undefined') -> <<"name_spelled">>;
+say_type(T) -> T.
+
+say_method('undefined') -> <<"pronounced">>;
+say_method(M) -> M.
+
+say_language('undefined') -> <<"en">>;
+say_language(L) -> L.
 
 b_say(Say, Call) ->
     b_say(Say, <<"name_spelled">>, Call).
@@ -2111,7 +2133,6 @@ send_command(Command, Call) when is_list(Command) ->
         'false' -> 'ok'
     end;
 send_command(JObj, Call) -> send_command(wh_json:to_proplist(JObj), Call).
-
 
 %%--------------------------------------------------------------------
 %% @private
