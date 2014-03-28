@@ -120,7 +120,8 @@
 
 -type handle_event_return() :: {'reply', wh_proplist()} | 'ignore'.
 
--type binding() :: {atom() | ne_binary(), wh_proplist()}. %% {wapi_module, options}
+-type binding_module() :: atom() | ne_binary().
+-type binding() :: {binding_module(), wh_proplist()}. %% {wapi_module, options}
 -type bindings() :: [binding(),...] | [].
 
 -type responder_callback_mod() :: atom() | {atom(), atom()}.
@@ -795,14 +796,14 @@ start_amqp(Props) ->
     end.
 
 -spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
-set_qos('undefined') -> ok;
+set_qos('undefined') -> 'ok';
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
 
 -spec start_consumer(ne_binary(), wh_proplist()) -> 'ok'.
 start_consumer(Q, 'undefined') -> amqp_util:basic_consume(Q, []);
 start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 
--spec remove_binding(binding(), wh_proplist(), ne_binary()) -> any().
+-spec remove_binding(binding_module(), wh_proplist(), api_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
 

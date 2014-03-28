@@ -90,10 +90,10 @@
 -type wh_second() :: 0..59.
 -type wh_daynum() :: 1..7.
 -type wh_weeknum() :: 1..53.
--type wh_date() :: calendar:t_date(). %%{wh_year(), wh_month(), wh_day()}.
--type wh_time() :: calendar:t_time(). %%{wh_hour(), wh_minute(), wh_second()}.
--type wh_datetime() :: calendar:t_datetime(). %%{wh_date(), wh_time()}.
--type wh_iso_week() :: calendar:t_yearweeknum(). %%{wh_year(), wh_weeknum()}.
+-type wh_date() :: calendar:date(). %%{wh_year(), wh_month(), wh_day()}.
+-type wh_time() :: calendar:time(). %%{wh_hour(), wh_minute(), wh_second()}.
+-type wh_datetime() :: calendar:datetime(). %%{wh_date(), wh_time()}.
+-type wh_iso_week() :: calendar:yearweeknum(). %%{wh_year(), wh_weeknum()}.
 
 -type wh_timeout() :: non_neg_integer() | 'infinity'.
 
