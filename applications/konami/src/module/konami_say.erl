@@ -18,7 +18,8 @@
 
 -include("../konami.hrl").
 
--spec handle(wh_json:object(), whapps_call:call()) -> {'continue', whapps_call:call()}.
+-spec handle(wh_json:object(), whapps_call:call()) ->
+                    {'continue', whapps_call:call()}.
 handle(Data, Call) ->
     Say = wh_json:get_value(<<"text">>, Data),
     lager:debug("saying '~s'", [Say]),
