@@ -46,7 +46,10 @@
          ,b_hold/1, b_hold/2, b_hold/3
          ,park/1
         ]).
--export([play/2, play/3]).
+-export([play/2, play/3, play/4
+         ,play_command/2, play_command/3, play_command/4
+         ,b_play/2, b_play/3, b_play/4
+        ]).
 -export([prompt/2, prompt/3]).
 
 -export([tts/2, tts/3, tts/4, tts/5, tts/6
@@ -96,7 +99,7 @@
 -export([b_ring/1]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
 -export([b_page/2, b_page/3, b_page/4, b_page/5, b_page/6]).
--export([b_play/2, b_play/3]).
+
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5
@@ -821,29 +824,59 @@ b_prompt(Prompt, Lang, Call) -> b_play(whapps_util:get_prompt(Prompt, Lang, Call
 %% can use to skip playback.
 %% @end
 %%--------------------------------------------------------------------
--spec play(ne_binary(), whapps_call:call()) -> ne_binary().
--spec play(ne_binary(), ne_binaries(), whapps_call:call()) -> ne_binary().
+-spec play(ne_binary(), whapps_call:call()) ->
+                  ne_binary().
+-spec play(ne_binary(), ne_binaries(), whapps_call:call()) ->
+                  ne_binary().
+-spec play(ne_binary(), ne_binaries(), api_binary(), whapps_call:call()) ->
+                  ne_binary().
 
--spec b_play(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_play(ne_binary(), ne_binaries(), whapps_call:call()) -> whapps_api_std_return().
+-spec play_command(ne_binary(), whapps_call:call()) ->
+                          wh_json:object().
+-spec play_command(ne_binary(), ne_binaries(), whapps_call:call()) ->
+                          wh_json:object().
+-spec play_command(ne_binary(), ne_binaries(), api_binary(), whapps_call:call()) ->
+                          wh_json:object().
+
+-spec b_play(ne_binary(), whapps_call:call()) ->
+                    whapps_api_std_return().
+-spec b_play(ne_binary(), ne_binaries(), whapps_call:call()) ->
+                    whapps_api_std_return().
+-spec b_play(ne_binary(), ne_binaries(), api_binary(), whapps_call:call()) ->
+                    whapps_api_std_return().
+
+play_command(Media, Call) ->
+    play_command(Media, ?ANY_DIGIT, Call).
+play_command(Media, Terminators, Call) ->
+    play_command(Media, Terminators, 'undefined', Call).
+play_command(Media, Terminators, Leg, Call) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"play">>}
+         ,{<<"Media-Name">>, Media}
+         ,{<<"Terminators">>, play_terminators(Terminators)}
+         ,{<<"Leg">>, play_leg(Leg)}
+         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+        ])).
+
+-spec play_terminators(api_binaries()) -> ne_binaries().
+play_terminators('undefined') -> ?ANY_DIGIT;
+play_terminators(Ts) -> Ts.
+
+-spec play_leg(api_binary()) -> api_binary().
+play_leg('undefined') -> 'undefined';
+play_leg(Leg) -> wh_util:ucfirst_binary(Leg).
 
 play(Media, Call) -> play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
+    play(Media, Terminators, 'undefined', Call).
+play(Media, Terminators, Leg, Call) ->
     NoopId = couch_mgr:get_uuid(),
-    CallId = whapps_call:call_id(Call),
-
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
-                                   ,{<<"Call-ID">>, CallId}
+                                   ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                                    ,{<<"Msg-ID">>, NoopId}
                                   ])
-                ,wh_json:from_list(
-                   props:filter_undefined(
-                     [{<<"Application-Name">>, <<"play">>}
-                      ,{<<"Media-Name">>, Media}
-                      ,{<<"Terminators">>, Terminators}
-                      ,{<<"Call-ID">>, CallId}
-                     ])
-                  )
+                ,play_command(Media, Terminators, Leg, Call)
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Commands}
@@ -854,15 +887,9 @@ play(Media, Terminators, Call) ->
 b_play(Media, Call) ->
     b_play(Media, ?ANY_DIGIT, Call).
 b_play(Media, Terminators, Call) ->
-    wait_for_noop(Call, play(Media, Terminators, Call)).
-
--spec play_command(ne_binary(), ne_binaries(), whapps_call:call()) -> wh_json:object().
-play_command(Media, Terminators, Call) ->
-    wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-                       ,{<<"Media-Name">>, Media}
-                       ,{<<"Terminators">>, Terminators}
-                       ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-                      ]).
+    b_play(Media, Terminators, 'undefined', Call).
+b_play(Media, Terminators, Leg, Call) ->
+    wait_for_noop(Call, play(Media, Terminators, Leg, Call)).
 
 %%--------------------------------------------------------------------
 %% @public
