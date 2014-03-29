@@ -91,10 +91,8 @@ rm_call_binding(Call) ->
 -spec handle_dtmf(wh_json:object(), wh_proplist()) -> any().
 handle_dtmf(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
     DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    lager:debug("recv DTMF ~s", [DTMF]),
     [konami_code_fsm:dtmf(FSM, CallId, DTMF) || FSM <- gproc:lookup_pids(?KONAMI_REG(CallId))].
 
 -spec handle_destroy(wh_json:object(), wh_proplist()) -> 'ok'.
