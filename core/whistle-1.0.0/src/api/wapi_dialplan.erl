@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Dialplan API commands
 %%% @end
@@ -22,7 +22,6 @@
 -export([optional_bridge_req_endpoint_headers/0]).
 
 -export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1
-         ,b_leg_events_v/1
          ,page/1, page_v/1
          ,store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
          ,store_http_resp/1, store_http_resp_v/1

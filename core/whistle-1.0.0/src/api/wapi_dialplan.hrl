@@ -47,7 +47,7 @@
                            ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                            ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
                            ,{<<"Secure-RTP">>, fun wh_util:is_boolean/1}
-                           ,{<<"B-Leg-Events">>, fun wapi_dialplan:b_leg_events_v/1}
+                           ,{<<"B-Leg-Events">>, fun b_leg_events_v/1}
                           ]).
 
 %% Bridge Endpoints
@@ -533,10 +533,13 @@
 %% IMPORTANT: to use the filter-applications list, Insert-At must be "now"
 
 -define(NOOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Insert-At">>, <<"Filter-Applications">>]).
+-define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Insert-At">>, <<"Filter-Applications">>
+                                    ,<<"B-Leg-Events">>
+                                   ]).
 -define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"noop">>}
+                          ,{<<"B-Leg-Events">>, fun b_leg_events_v/1}
                           ,?INSERT_AT_TUPLE
                          ]).
 -define(NOOP_REQ_TYPES, []).
