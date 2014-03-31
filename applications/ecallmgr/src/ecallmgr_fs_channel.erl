@@ -563,7 +563,9 @@ get_other_leg_name(UUID, Props, <<"loopback/", _/binary>>) ->
     %% loopback channel, use channel var BridgeId
     get_other_leg(UUID, Props, props:get_value(?GET_CCV(<<"Bridge-ID">>), Props));
 get_other_leg_name(UUID, Props, _ChannelName) ->
-    get_other_leg(UUID, Props, props:get_value(<<"Other-Leg-Unique-ID">>, Props)).
+    get_other_leg(UUID, Props, props:get_first_defined([<<"Other-Leg-Unique-ID">>
+                                                        ,<<"Other-Leg-Call-ID">>
+                                                       ], Props)).
 
 get_other_leg(UUID, Props, 'undefined') ->
     maybe_other_bridge_leg(UUID

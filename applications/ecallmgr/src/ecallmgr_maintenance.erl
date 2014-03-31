@@ -251,7 +251,7 @@ deny_sbc(Name, IP, 'false') ->
 acl_summary() ->
     list_acls(get_acls(), 'undefined').
 
--spec acl_summary(wh_json:object()) -> 'no_return'.
+-spec acl_summary(api_binary() | boolean()) -> 'no_return'.
 acl_summary(AsDefault) when not is_boolean(AsDefault) ->
     acl_summary(wh_util:is_true(AsDefault));
 acl_summary('true') ->
