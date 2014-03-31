@@ -158,5 +158,16 @@
 -type xml_text() :: #xmlText{value :: iolist()}.
 -type xml_texts() :: [xml_text(),...] | [].
 
+%% Used by ecallmgr and wapi_dialplan at least
+-define(CALL_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_EXECUTE_ERROR">>
+                      ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+                      ,<<"CHANNEL_CREATE">>, <<"CHANNEL_DESTROY">>
+                      ,<<"RECORD_START">>, <<"RECORD_STOP">>
+                      ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
+                      ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PROGRESS_MEDIA">>
+                      ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
+                      ,<<"CHANNEL_REPLACED">>, <<"CALL_SECURE">>, <<"CHANNEL_FAX_STATUS">>
+                     ]).
+
 -define(WHISTLE_TYPES_INCLUDED, 'true').
 -endif.
