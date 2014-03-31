@@ -22,6 +22,7 @@
 -export([optional_bridge_req_endpoint_headers/0]).
 
 -export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1
+         ,b_leg_events_v/1
          ,page/1, page_v/1
          ,store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
          ,store_http_resp/1, store_http_resp_v/1
@@ -85,13 +86,29 @@
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
 
--spec optional_bridge_req_headers() -> [ne_binary(),...].
+-spec optional_bridge_req_headers() -> ne_binaries().
 optional_bridge_req_headers() ->
     ?OPTIONAL_BRIDGE_REQ_HEADERS.
 
--spec optional_bridge_req_endpoint_headers() -> [ne_binary(),...].
+-spec optional_bridge_req_endpoint_headers() -> ne_binaries().
 optional_bridge_req_endpoint_headers() ->
     ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS.
+
+-spec b_leg_events_v(ne_binaries()) -> boolean().
+b_leg_events_v(Events) ->
+    lists:all(fun(ApiEvent) ->
+                      lists:member(ApiEvent, ?CALL_EVENTS)
+              end, Events).
+
+-spec terminators_v(api_binaries() | binary()) -> boolean().
+-spec terminator_v(ne_binary()) -> boolean().
+terminators_v(Ts) when is_list(Ts) ->
+    lists:all(fun terminator_v/1, Ts);
+terminators_v(<<>>) -> 'true';
+terminators_v(<<"none">>) -> 'true';
+terminators_v(_) -> 'false'.
+
+terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
 -spec v(api_terms()) -> boolean().
@@ -237,6 +254,10 @@ store_http_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_VALUES, ?STORE_HTTP_RESP_TYPES);
 store_http_resp_v(JObj) -> store_http_resp_v(wh_json:to_proplist(JObj)).
 
+-spec store_media_content_v(binary() | 'eof') -> boolean().
+store_media_content_v(V) ->
+    is_binary(V) orelse V =:= 'eof'.
+
 %%--------------------------------------------------------------------
 %% @doc Create a DTMF (or DTMFs) on the channel - see wiki
 %% Takes proplist, creates JSON string or error
@@ -279,6 +300,16 @@ tones(JObj) -> tones(wh_json:to_proplist(JObj)).
 tones_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?TONES_REQ_HEADERS, ?TONES_REQ_VALUES, ?TONES_REQ_TYPES);
 tones_v(JObj) -> tones_v(wh_json:to_proplist(JObj)).
+
+-spec tone_timeout_v(term()) -> boolean().
+tone_timeout_v(Timeout) ->
+    %% <<"+123">> converts to 123, so yay!
+    try wh_util:to_integer(Timeout) of
+        T when T < 0 -> 'false';
+        _ -> 'true'
+    catch
+        _:_ -> 'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc A Tone within a Tones request - see wiki
@@ -1008,6 +1039,10 @@ metaflow(JObj) -> metaflow(wh_json:to_proplist(JObj)).
 metaflow_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?METAFLOW_HEADERS, ?METAFLOW_VALUES, ?METAFLOW_TYPES);
 metaflow_v(JObj) -> metaflow_v(wh_json:to_proplist(JObj)).
+
+-spec metaflow_digit_timeout_v(term()) -> boolean().
+metaflow_digit_timeout_v(X) ->
+    is_integer(wh_util:to_integer(X)).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
