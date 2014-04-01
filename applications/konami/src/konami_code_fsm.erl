@@ -394,12 +394,12 @@ has_pattern(Collected, Ps) ->
 has_pattern(_Collected, _Ps, []) ->
     'false';
 has_pattern(Collected, Ps, [Regex|Regexes]) ->
-    case re:run(Collected, Regex, [{'capture', 'all', 'binary'}]) of
+    case re:run(Collected, Regex, [{'capture', 'all_but_first', 'binary'}]) of
         'nomatch' -> has_pattern(Collected, Ps, Regexes);
         {'match', Captured} ->
             P = wh_json:get_value(Regex, Ps),
             {'pattern', wh_json:set_values([{[<<"data">>, <<"collected">>], Collected}
-                                            ,{[<<"data">>, <<"captured">>], Captured}
+                                            ,{[<<"data">>, <<"captures">>], Captured}
                                            ], P)
             }
     end.
@@ -446,6 +446,9 @@ should_stop_fsm(CallId, _OtherLeg, 'ab', CallId) ->
     'true';
 should_stop_fsm(CallId, _OtherLeg, _ListenOn, CallId) ->
     lager:debug("recv a-leg channel_destroy, ignoring"),
+    'false';
+should_stop_fsm(_CallId, 'undefined', _ListenOn, _DownCallId) ->
+    lager:debug("no b-leg, ignoring destroy for ~s", [_DownCallId]),
     'false';
 should_stop_fsm(_CallId, OtherLeg, 'b', OtherLeg) ->
     lager:debug("recv b-leg channel_destroy, going down"),

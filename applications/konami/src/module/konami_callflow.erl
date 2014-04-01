@@ -33,19 +33,21 @@ callflow(Data, Call) ->
     callflow(Data, Call, wh_json:get_value(<<"id">>, Data)).
 
 callflow(Data, Call, 'undefined') ->
-    captured_callflow(Call, wh_json:get_first_defined([<<"captured">>
-                                                          ,<<"collected">>
-                                                         ], Data));
+    captured_callflow(Call, wh_json:get_first_defined([<<"captures">>
+                                                       ,<<"collected">>
+                                                      ], Data));
 callflow(_Data, Call, CallflowId) ->
     couch_mgr:open_cache_doc(whapps_call:account_db(Call)
                              ,CallflowId
                             ).
 
 captured_callflow(_Call, 'undefined') -> 'undefined';
+captured_callflow(Call, [Number]) ->
+    captured_callflow(Call, Number);
 captured_callflow(Call, Number) ->
     Options = [{'key', Number}, 'include_docs'],
     case couch_mgr:get_results(whapps_call:account_db(Call), ?LIST_BY_NUMBER, Options) of
-        {'ok', [JObj]} -> {'ok', JObj};
+        {'ok', [JObj]} -> {'ok', wh_json:get_value(<<"doc">>, JObj)};
         E -> E
     end.
 
