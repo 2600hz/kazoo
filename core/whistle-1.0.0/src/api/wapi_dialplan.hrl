@@ -168,6 +168,7 @@
 -define(METAFLOW_HEADERS, [<<"Call">>]).
 -define(OPTIONAL_METAFLOW_HEADERS, [<<"Numbers">>, <<"Patterns">>
                                     ,<<"Binding-Key">>, <<"Digit-Timeout">>
+                                    ,<<"Endpoint-ID">>
                                    ]).
 -define(METAFLOW_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
@@ -539,10 +540,9 @@
 -define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"noop">>}
-                          ,{<<"B-Leg-Events">>, fun b_leg_events_v/1}
                           ,?INSERT_AT_TUPLE
                          ]).
--define(NOOP_REQ_TYPES, []).
+-define(NOOP_REQ_TYPES, [{<<"B-Leg-Events">>, fun b_leg_events_v/1}]).
 
 %% Conference
 -define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
