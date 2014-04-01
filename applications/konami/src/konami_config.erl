@@ -118,7 +118,7 @@ get_attribute(JObj, K, DefaultFun) ->
 
 get_attribute(JObj, K, DefaultFun, FormatterFun) ->
     case wh_json:get_value(K, JObj) of
-        'undefined' -> DefaultFun;
+        'undefined' -> DefaultFun();
         V -> FormatterFun(V)
     end.
 
