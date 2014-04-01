@@ -28,7 +28,6 @@
 %%% API
 %%%===================================================================
 init() ->
-    io:format("init cb_cidlistmatch_v2~n"),
     Bindings =
         [
          {<<"v2_resource.allowed_methods.lists">>, 'allowed_methods'}
@@ -135,7 +134,20 @@ on_successful_validation(ListId, Context) ->
     crossbar_doc:load_full_merge(ListId, Context).
 
 check_list_entry_schema(ListId, EntryId, Context) ->
-    OnSuccess = fun(C) -> on_entry_successful_validation(ListId, EntryId, C) end,
+    OnSuccess =
+        fun(C) ->
+                EntryJObj = cb_context:doc(C),
+                Pattern = wh_json:get_value(<<"pattern">>, EntryJObj),
+                case re:compile(Pattern) of
+                    {ok, _CompiledRe} ->
+                        on_entry_successful_validation(ListId, EntryId, C);
+                    {error, {Reason0, Pos}} ->
+                        Reason = io_lib:format("Error: ~s in position ~p", [Reason0, Pos]),
+                        BinReason = iolist_to_binary(Reason),
+                        cb_context:add_validation_error(
+                          <<"pattern">>, <<"type">>, BinReason, C)
+                end
+        end,
     cb_context:validate_request_data(<<"list_entries">>, Context, OnSuccess).
 
 on_entry_successful_validation(ListId, 'undefined', Context) ->
