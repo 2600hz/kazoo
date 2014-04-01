@@ -50,5 +50,3 @@ captured_callflow(Call, Number) ->
         {'ok', [JObj]} -> {'ok', wh_json:get_value(<<"doc">>, JObj)};
         E -> E
     end.
-
-
