@@ -57,5 +57,21 @@ bridge_to_endpoints(Data, Call) ->
         {'ok', Endpoints} ->
             Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
             IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
+            _ = maybe_start_metaflows(Call, Endpoints),
             whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
+    end.
+
+maybe_start_metaflows(Call, Endpoints) ->
+    [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
+    'ok'.
+maybe_start_metaflow(Call, Endpoint) ->
+    case wh_json:get_value(<<"Metaflows">>, Endpoint) of
+        'undefined' -> 'ok';
+        JObj ->
+            API = wh_json:set_values([{<<"Endpoint-ID">>, wh_json:get_value(<<"Endpoint-ID">>, Endpoint)}
+                                      ,{<<"Call">>, whapps_call:to_json(Call)}
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ], JObj),
+            lager:debug("sending endpoint metaflow req: ~s", [wh_json:get_value(<<"Endpoint-ID">>, Endpoint)]),
+            whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
     end.
