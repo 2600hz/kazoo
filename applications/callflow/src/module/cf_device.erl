@@ -68,10 +68,15 @@ maybe_start_metaflow(Call, Endpoint) ->
     case wh_json:get_value(<<"Metaflows">>, Endpoint) of
         'undefined' -> 'ok';
         JObj ->
-            API = wh_json:set_values([{<<"Endpoint-ID">>, wh_json:get_value(<<"Endpoint-ID">>, Endpoint)}
-                                      ,{<<"Call">>, whapps_call:to_json(Call)}
-                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                     ], JObj),
-            lager:debug("sending endpoint metaflow req: ~s", [wh_json:get_value(<<"Endpoint-ID">>, Endpoint)]),
+            API = props:filter_undefined(
+                    [{<<"Endpoint-ID">>, wh_json:get_value(<<"Endpoint-ID">>, Endpoint)}
+                     ,{<<"Call">>, whapps_call:to_json(Call)}
+                     ,{<<"Numbers">>, wh_json:get_value(<<"numbers">>, JObj)}
+                     ,{<<"Patterns">>, wh_json:get_value(<<"patterns">>, JObj)}
+                     ,{<<"Binding-Digit">>, wh_json:get_value(<<"binding_digit">>, JObj)}
+                     ,{<<"Digit-Timeout">>, wh_json:get_value(<<"digit_timeout">>, JObj)}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ]),
+            lager:debug("sending metaflow for endpoint: ~s", [wh_json:get_value(<<"Endpoint-ID">>, Endpoint)]),
             whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
     end.
