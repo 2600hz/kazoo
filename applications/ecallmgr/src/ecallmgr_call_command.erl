@@ -54,11 +54,12 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                         {'return', 'error'} |
                         {'error', ne_binary()} |
                         [fs_app(),...].
-get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
+get_fs_app(Node, UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
         'false' ->
             {'error', <<"noop failed to execute as JObj did not validate">>};
         'true' ->
+            _ = ecallmgr_fs_bridge:maybe_b_leg_events(Node, UUID, JObj),
             Args = case wh_json:get_value(<<"Msg-ID">>, JObj) of
                        'undefined' ->
                            <<"Event-Subclass=whistle::noop,Event-Name=CUSTOM"

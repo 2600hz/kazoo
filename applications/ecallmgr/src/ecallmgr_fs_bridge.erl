@@ -11,7 +11,9 @@
 
 -include("ecallmgr.hrl").
 
--export([call_command/3]).
+-export([call_command/3
+         ,maybe_b_leg_events/3
+        ]).
 
 call_command(Node, UUID, JObj) ->
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
