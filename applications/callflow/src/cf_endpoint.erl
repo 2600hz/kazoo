@@ -117,12 +117,14 @@ merge_attributes(Endpoint) ->
             ,<<"do_not_disturb">>
             ,<<"call_forward">>
             ,<<"dial_plan">>
+            ,<<"metaflows">>
             ,?CF_ATTR_LOWER_KEY
            ],
     merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
 
 -spec merge_attributes(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
                               wh_json:object().
+merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
 merge_attributes(Keys, Account, Endpoint, 'undefined') ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     JObj = get_user(AccountDb, Endpoint),
@@ -140,9 +142,6 @@ merge_attributes(Keys, 'undefined', Endpoint, Owner) ->
         {'error', _} ->
             merge_attributes(Keys, wh_json:new(), Endpoint, Owner)
     end;
-merge_attributes([], _, Endpoint, _) -> Endpoint;
-
-
 merge_attributes([<<"call_restriction">>|Keys], Account, Endpoint, Owner) ->
     Classifiers = wh_json:get_keys(wnm_util:available_classifiers()),
     Update = merge_call_restrictions(Classifiers, Account, Endpoint, Owner),
@@ -192,7 +191,8 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
     OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
     Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
-                                     ,fun(_, V) -> wh_util:is_not_empty(V) end),
+                                     ,fun(_, V) -> wh_util:is_not_empty(V) end
+                                    ),
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
 
 -spec caller_id_owner_attr(wh_json:object()) -> wh_json:object().
@@ -701,6 +701,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Force-Fax">>, get_force_fax(Endpoint)}
          ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
          ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
+         ,{<<"Metaflows">>, wh_json:get_value(<<"metaflows">>, Endpoint)}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
 
