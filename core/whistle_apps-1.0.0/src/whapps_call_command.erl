@@ -54,6 +54,7 @@
 
 -export([tts/2, tts/3, tts/4, tts/5, tts/6
          ,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
+         ,tts_command/2, tts_command/3, tts_command/4, tts_command/5, tts_command/6
         ]).
 
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -933,25 +934,40 @@ tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
 -spec tts_command(api_binary(), api_binary(), api_binary(), whapps_call:call()) -> wh_json:object().
 -spec tts_command(api_binary(), api_binary(), api_binary(), api_binaries(), whapps_call:call()) -> wh_json:object().
 -spec tts_command(api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), whapps_call:call()) -> wh_json:object().
-tts_command(SayMe, Call) -> tts_command(SayMe, <<"female">>, Call).
-tts_command(SayMe, Voice, Call) -> tts_command(SayMe, Voice, <<"en-US">>, Call).
-tts_command(SayMe, Voice, Lang, Call) -> tts_command(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
-tts_command(SayMe, Voice, Lang, Terminators, Call) ->
-    tts_command(SayMe, Voice, Lang, Terminators
+tts_command(SayMe, Call) ->
+    tts_command(SayMe, <<"female">>, Call).
+tts_command(SayMe, Voice, Call) ->
+    tts_command(SayMe, Voice, <<"en-US">>, Call).
+tts_command(SayMe, Voice, Language, Call) ->
+    tts_command(SayMe, Voice, Language, ?ANY_DIGIT, Call).
+tts_command(SayMe, Voice, Language, Terminators, Call) ->
+    tts_command(SayMe, Voice, Language, Terminators
                 ,whapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
                 ,Call
                ).
-tts_command(SayMe, Voice, Lang, Terminators, Engine, Call) ->
+tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"tts">>}
          ,{<<"Text">>, SayMe}
-         ,{<<"Terminators">>, Terminators}
-         ,{<<"Voice">>, Voice}
-         ,{<<"Language">>, Lang}
-         ,{<<"Engine">>, Engine}
+         ,{<<"Terminators">>, tts_terminators(Terminators)}
+         ,{<<"Voice">>, tts_voice(Voice)}
+         ,{<<"Language">>, tts_language(Language)}
+         ,{<<"Engine">>, tts_engine(Engine)}
          ,{<<"Call-ID">>, whapps_call:call_id(Call)}
         ])).
+
+tts_terminators('undefined') -> ?ANY_DIGIT;
+tts_terminators(Terminators) -> Terminators.
+
+tts_voice('undefined') -> <<"female">>;
+tts_voice(Voice) -> Voice.
+
+tts_language('undefined') -> <<"en-US">>;
+tts_language(Language) -> Language.
+
+tts_engine('undefined') -> <<"flite">>;
+tts_engine(Engine) -> Engine.
 
 -spec b_tts(api_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_tts(api_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
