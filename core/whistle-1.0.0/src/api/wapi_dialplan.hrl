@@ -168,12 +168,13 @@
 -define(METAFLOW_HEADERS, [<<"Call">>]).
 -define(OPTIONAL_METAFLOW_HEADERS, [<<"Numbers">>, <<"Patterns">>
                                     ,<<"Binding-Key">>, <<"Digit-Timeout">>
-                                    ,<<"Endpoint-ID">>
+                                    ,<<"Endpoint-ID">>, <<"Listen-On">>
                                    ]).
 -define(METAFLOW_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"metaflow">>}
                           ,{<<"Binding-Key">>, ?ANY_DIGIT}
+                          ,{<<"Listen-On">>, [<<"a">>, <<"b">>, <<"ab">>, <<"both">>]}
                          ]).
 -define(METAFLOW_TYPES, [{<<"Numbers">>, fun wh_json:is_json_object/1}
                          ,{<<"Patterns">>, fun wh_json:is_json_object/1}
