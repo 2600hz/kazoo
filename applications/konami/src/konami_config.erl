@@ -37,11 +37,10 @@
 -spec numbers() -> wh_json:object().
 -spec numbers(ne_binary()) -> wh_json:object().
 numbers() ->
-    whapps_config:get(<<"konami_codes">>, <<"numbers">>, ?DEFAULT_NUMBERS).
+    whapps_config:get(<<"metaflows">>, <<"numbers">>, ?DEFAULT_NUMBERS).
 
 numbers(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case konami_doc(AccountDb) of
+    case konami_doc(Account) of
         'undefined' -> numbers();
         KonamiDoc ->
             get_attribute(KonamiDoc, <<"numbers">>, fun numbers/0)
@@ -50,11 +49,10 @@ numbers(Account) ->
 -spec patterns() -> wh_json:object().
 -spec patterns(ne_binary()) -> wh_json:object().
 patterns() ->
-    whapps_config:get(<<"konami_codes">>, <<"patterns">>, ?DEFAULT_PATTERNS).
+    whapps_config:get(<<"metaflows">>, <<"patterns">>, ?DEFAULT_PATTERNS).
 
 patterns(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case konami_doc(AccountDb) of
+    case konami_doc(Account) of
         'undefined' -> patterns();
         KonamiDoc ->
             get_attribute(KonamiDoc, <<"patterns">>, fun patterns/0)
@@ -63,12 +61,11 @@ patterns(Account) ->
 -spec binding_key() -> <<_:8>>.
 -spec binding_key(ne_binary()) -> <<_:8>>.
 binding_key() ->
-    BindingKey = whapps_config:get(<<"konami_codes">>, <<"binding_key">>, ?DEFAULT_BINDING_KEY),
+    BindingKey = whapps_config:get(<<"metaflows">>, <<"binding_key">>, ?DEFAULT_BINDING_KEY),
     constrain_binding_key(BindingKey).
 
 binding_key(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case konami_doc(AccountDb) of
+    case konami_doc(Account) of
         'undefined' -> binding_key();
         KonamiDoc ->
             get_attribute(KonamiDoc, <<"binding_key">>, fun binding_key/0, fun constrain_binding_key/1)
@@ -84,11 +81,10 @@ constrain_binding_key(BindingKey) ->
 -spec timeout() -> non_neg_integer().
 -spec timeout(ne_binary()) -> non_neg_integer().
 timeout() ->
-    whapps_config:get_integer(<<"konami_codes">>, <<"digit_timeout_ms">>, ?DEFAULT_DIGIT_TIMEOUT).
+    whapps_config:get_integer(<<"metaflows">>, <<"digit_timeout_ms">>, ?DEFAULT_DIGIT_TIMEOUT).
 
 timeout(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case konami_doc(AccountDb) of
+    case konami_doc(Account) of
         'undefined' -> timeout();
         KonamiDoc ->
             get_attribute(KonamiDoc, <<"digit_timeout_ms">>, fun timeout/0, fun wh_util:to_integer/1)
@@ -97,10 +93,9 @@ timeout(Account) ->
 -spec listen_on() -> 'a' | 'b' | 'ab'.
 -spec listen_on(ne_binary()) -> 'a' | 'b' | 'ab'.
 listen_on() ->
-    constrain_listen_on(whapps_config:get(<<"konami_codes">>, <<"listen_on">>, ?DEFAULT_LISTEN_ON)).
+    constrain_listen_on(whapps_config:get(<<"metaflows">>, <<"listen_on">>, ?DEFAULT_LISTEN_ON)).
 listen_on(Account) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case konami_doc(AccountDb) of
+    case konami_doc(Account) of
         'undefined' -> listen_on();
         KonamiDoc ->
             get_attribute(KonamiDoc, <<"listen_on">>, fun listen_on/0, fun constrain_listen_on/1)
@@ -128,9 +123,12 @@ get_attribute(JObj, K, DefaultFun, FormatterFun) ->
     end.
 
 -spec konami_doc(ne_binary()) -> api_object().
-konami_doc(AccountDb) ->
-    case couch_mgr:open_cache_doc(AccountDb, <<"konami_codes">>) of
-        {'ok', JObj} -> JObj;
+konami_doc(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> wh_json:get_value(<<"metaflows">>, JObj);
         {'error', 'not_found'} -> 'undefined';
         {'error', _E} ->
             lager:debug("failed to open account(~s)'s konami doc: ~p", [wh_util:format_account_id(AccountDb, 'raw')
