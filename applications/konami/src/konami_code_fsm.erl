@@ -59,12 +59,15 @@ start_fsm(Call, JObj) ->
     wh_hooks:register(whapps_call:account_id(Call), <<"CHANNEL_DESTROY">>),
     wh_hooks:register(whapps_call:account_id(Call), <<"CHANNEL_ANSWER">>),
 
+    ListenOn = listen_on(Call, JObj),
+    _ = maybe_start_b_leg_listener(Call, ListenOn),
+
     gen_fsm:enter_loop(?MODULE, [], 'unarmed'
                        ,#state{numbers=numbers(Call, JObj)
                                ,patterns=patterns(Call, JObj)
                                ,binding_key=binding_key(Call, JObj)
                                ,digit_timeout=digit_timeout(Call, JObj)
-                               ,listen_on=listen_on(Call, JObj)
+                               ,listen_on=ListenOn
 
                                ,call=whapps_call:clear_helpers(Call)
                                ,call_id=whapps_call:call_id_direct(Call)
@@ -308,12 +311,16 @@ digit_timeout(Call, JObj) ->
     end.
 
 listen_on(Call, JObj) ->
+    EndpointId = wh_json:get_value(<<"Endpoint-ID">>, JObj),
+    IsALegEndpoint = (EndpointId =:= 'undefined') orelse
+        EndpointId =:= whapps_call:authorizing_id(Call),
     case wh_json:get_value(<<"Listen-On">>, JObj) of
         'undefined' -> konami_config:listen_on(whapps_call:account_id(Call));
         <<"a">> -> 'a';
         <<"b">> -> 'b';
         <<"ab">> -> 'ab';
-        _ -> 'a'
+        _ when IsALegEndpoint -> 'a';
+        _ -> 'b'
     end.
 
 -spec has_metaflow(ne_binary(), wh_json:object(), wh_json:object()) ->
@@ -373,3 +380,14 @@ maybe_cancel_timer(Ref) when is_reference(Ref) ->
     'ok';
 maybe_cancel_timer(_) ->
     'ok'.
+
+maybe_start_b_leg_listener(_Call, 'a') ->
+    'ok';
+maybe_start_b_leg_listener(Call, _) ->
+    API = [{<<"Application-Name">>, <<"noop">>}
+           ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
+           ,{<<"Insert-At">>, <<"now">>}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("sending noop for b leg events"),
+    whapps_call_command:send_command(API, Call).
