@@ -73,6 +73,7 @@ convert_stream_type(_) -> <<"single">>.
 -spec media_path(api_binary()) -> api_binary().
 -spec media_path(api_binary(), api_binary()) -> api_binary().
 media_path(Path) -> media_path(Path, 'undefined').
+
 media_path('undefined', _AccountId) -> 'undefined';
 media_path(<<"/system_media", _/binary>> = Path, _AccountId) -> Path;
 media_path(<<"system_media", _/binary>> = Path, _AccountId) -> Path;
