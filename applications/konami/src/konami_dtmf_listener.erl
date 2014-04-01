@@ -93,7 +93,9 @@ handle_dtmf(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
     DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    [konami_code_fsm:dtmf(FSM, CallId, DTMF) || FSM <- gproc:lookup_pids(?KONAMI_REG(CallId))].
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+
+    [konami_code_fsm:dtmf(FSM, CallId, DTMF, CCVs) || FSM <- gproc:lookup_pids(?KONAMI_REG(CallId))].
 
 -spec handle_destroy(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_destroy(JObj, _Props) ->

@@ -73,7 +73,7 @@ handle_metaflow(JObj, Props) ->
         'exit':'normal' -> 'ok';
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug("failed to start FSM: ~s: ~p", [_E, _R]),
+            lager:debug("failed to run FSM: ~s: ~p", [_E, _R]),
             wh_util:log_stacktrace(ST)
     end.
 
