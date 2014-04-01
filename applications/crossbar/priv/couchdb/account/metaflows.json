@@ -3,10 +3,7 @@
     ,"language": "javascript"
     ,"views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'metaflow' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'type': doc.type, 'numbers': Object.keys(doc.numbers), 'patterns': Object.keys(doc.patterns), 'owner_id': doc.owner_id, 'group_id': doc.group_id}); }"
+            "map": "function(doc) { if (!doc.metaflows || doc.pvt_deleted) return; emit(doc._id, doc.metaflows); }"
         }
-    }
-    ,"filters": {
-        "export":"function(doc, req) { return ( doc.pvt_type == 'metaflow' ); }"
     }
 }
