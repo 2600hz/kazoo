@@ -24,7 +24,7 @@ handle(Data, Call) ->
     Path = wh_json:get_value(<<"id">>, Data),
     case wh_media_util:media_path(Path, AccountId) of
         'undefined' -> lager:info("invalid data in the play callflow");
-        Path -> play(Data, Call, Path)
+        Media -> play(Data, Call, Media)
     end,
     cf_exe:continue(Call).
 
