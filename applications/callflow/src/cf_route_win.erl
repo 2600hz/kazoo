@@ -219,6 +219,7 @@ start_metaflow(Call, MetaFlow) ->
                      ,{<<"Patterns">>, wh_json:get_value(<<"pumbers">>, MetaFlow)}
                      ,{<<"Binding-Key">>, wh_json:get_value(<<"binding_key">>, MetaFlow)}
                      ,{<<"Digit-Timeout">>, wh_json:get_integer_value(<<"digit_timeout">>, MetaFlow)}
+                     ,{<<"Listen-On">>, wh_json:get_integer_value(<<"listen_on">>, MetaFlow)}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
             lager:debug("sending metaflow request"),
