@@ -932,7 +932,7 @@ get_caller_id_name(Call) ->
     CallerIdName = whapps_call:caller_id_name(Call),
     case whapps_call:kvs_fetch('prepend_cid_name', Call) of
         'undefined' -> CallerIdName;
-        Prepend -> <<Prepend/binary, CallerIdName/binary>>
+        Prepend -> <<(wh_util:to_binary(Prepend))/binary, CallerIdName/binary>>
     end.
 
 -spec get_caller_id_number(whapps_call:call()) -> ne_binary().
@@ -940,7 +940,7 @@ get_caller_id_number(Call) ->
     CallerIdNumber = whapps_call:caller_id_number(Call),
     case whapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> CallerIdNumber;
-        Prepend -> <<Prepend/binary, CallerIdNumber/binary>>
+        Prepend -> <<(wh_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>
     end.
 
 maybe_save_meta(Length, #mailbox{delete_after_notify='false'}=Box, Call, MediaId, _UpdateJObj) ->
@@ -960,8 +960,8 @@ save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
                  [{<<"timestamp">>, new_timestamp()}
                   ,{<<"from">>, whapps_call:from(Call)}
                   ,{<<"to">>, whapps_call:to(Call)}
-                  ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
-                  ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                  ,{<<"caller_id_number">>, get_caller_id_number(Call)}
+                  ,{<<"caller_id_name">>, get_caller_id_name(Call)}
                   ,{<<"call_id">>, whapps_call:call_id(Call)}
                   ,{<<"folder">>, ?FOLDER_NEW}
                   ,{<<"length">>, Length}
