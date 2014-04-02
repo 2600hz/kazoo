@@ -13,6 +13,7 @@
 %% API
 -export([start_fsm/2
          ,dtmf/4
+         ,event/4
         ]).
 
 %% gen_fsm callbacks
@@ -78,6 +79,9 @@ start_fsm(Call, JObj) ->
 -spec dtmf(pid(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
 dtmf(FSM, CallId, DTMF, CCVs) ->
     gen_fsm:send_event(FSM, {'dtmf', CallId, DTMF, CCVs}).
+
+event(FSM, CallId, Event, JObj) ->
+    gen_fsm:send_event(FSM, {'event', CallId, Event, JObj}).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -271,14 +275,14 @@ handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, #state{
                     {'next_state', StateName, State};
                 NewOtherLeg ->
                     lager:debug("channel is bridged to ~s", [NewOtherLeg]),
-                    konami_dtmf_listener:add_call_binding(NewOtherLeg),
+                    konami_event_listener:add_call_binding(NewOtherLeg),
                     {'next_state', StateName, State#state{other_leg=NewOtherLeg}}
             end;
         OtherLeg ->
             lager:debug("b leg ~s is answered", [OtherLeg]),
             {'next_state', StateName, State};
         NewOtherLeg ->
-            konami_dtmf_listener:add_call_binding(NewOtherLeg),
+            konami_event_listener:add_call_binding(NewOtherLeg),
             lager:debug("b leg ~s is answered, bridged to us ~s", [NewOtherLeg, wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)]),
             {'next_state', StateName, State#state{other_leg=NewOtherLeg}}
     end;
@@ -300,8 +304,8 @@ handle_info(_Info, StateName, State) ->
 terminate(_Reason, _StateName, #state{call_id=CallId
                                       ,other_leg=OtherLeg
                                      }) ->
-    konami_dtmf_listener:rm_call_binding(CallId),
-    konami_dtmf_listener:rm_call_binding(OtherLeg),
+    konami_event_listener:rm_call_binding(CallId),
+    konami_event_listener:rm_call_binding(OtherLeg),
     lager:debug("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
 code_change(_OldVsn, StateName, State, _Extra) ->
@@ -438,11 +442,11 @@ maybe_start_b_leg_listener(Call, _) ->
 -spec should_stop_fsm(ne_binary(), api_binary(), 'a' | 'ab' | 'b', ne_binary()) -> boolean().
 should_stop_fsm(CallId, _OtherLeg, 'a', CallId) ->
     lager:debug("recv a-leg channel_destroy, going down"),
-    konami_dtmf_listener:rm_call_binding(CallId),
+    konami_event_listener:rm_call_binding(CallId),
     'true';
 should_stop_fsm(CallId, _OtherLeg, 'ab', CallId) ->
     lager:debug("recv a-leg channel_destroy, going down"),
-    konami_dtmf_listener:rm_call_binding(CallId),
+    konami_event_listener:rm_call_binding(CallId),
     'true';
 should_stop_fsm(CallId, _OtherLeg, _ListenOn, CallId) ->
     lager:debug("recv a-leg channel_destroy, ignoring"),
@@ -452,7 +456,7 @@ should_stop_fsm(_CallId, 'undefined', _ListenOn, _DownCallId) ->
     'false';
 should_stop_fsm(_CallId, OtherLeg, 'b', OtherLeg) ->
     lager:debug("recv b-leg channel_destroy, going down"),
-    konami_dtmf_listener:rm_call_binding(OtherLeg),
+    konami_event_listener:rm_call_binding(OtherLeg),
     'true';
 should_stop_fsm(_CallId, OtherLeg, _ListenOn, OtherLeg) ->
     lager:debug("recv b-leg channel_destroy, ignoring"),

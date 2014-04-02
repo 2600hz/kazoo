@@ -61,7 +61,7 @@ handle_metaflow(JObj, Props) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     whapps_call:put_callid(Call),
 
-    konami_dtmf_listener:add_call_binding(Call),
+    konami_event_listener:add_call_binding(Call),
 
     try konami_code_fsm:start_fsm(
           whapps_call:kvs_store('consumer_pid', props:get_value('server', Props), Call)
