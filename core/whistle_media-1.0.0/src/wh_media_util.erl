@@ -80,6 +80,10 @@ media_path(<<"system_media", _/binary>> = Path, _AccountId) -> Path;
 media_path(<<"local_stream://",_/binary>> = Path, _AccountId) -> Path;
 media_path(<<"silence_stream://",_/binary>> = Path, _AccountId) -> Path;
 media_path(_Path, 'undefined') -> 'undefined';
-media_path(Path, AccountId) ->
-    <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>.
-
+media_path(Path, AccountId) when is_binary(AccountId) ->
+    case binary:match(Path, <<"/">>) of
+        'nomatch' -> <<$/, AccountId/binary, $/, Path/binary>>;
+        _Else -> Path
+    end;
+media_path(Path, Call) ->
+    media_path(Path, whapps_call:account_id(Call)).

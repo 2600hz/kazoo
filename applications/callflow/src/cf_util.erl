@@ -235,15 +235,8 @@ ignore_early_media(Endpoints) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec correct_media_path(api_binary(), whapps_call:call()) -> api_binary().
-correct_media_path('undefined', _) -> 'undefined';
-correct_media_path(<<>>, _) -> 'undefined';
-correct_media_path(<<"silence_stream://", _/binary>> = Media, _) -> Media;
-correct_media_path(<<"tone_stream://", _/binary>> = Media, _) -> Media;
 correct_media_path(Media, Call) ->
-    case binary:match(Media, <<"/">>) of
-        'nomatch' -> <<$/, (whapps_call:account_id(Call))/binary, $/, Media/binary>>;
-        _Else -> Media
-    end.
+    wh_media_util:media_path(Media, Call).
 
 %%--------------------------------------------------------------------
 %% @public
