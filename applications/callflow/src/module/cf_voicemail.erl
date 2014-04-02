@@ -902,8 +902,8 @@ update_mailbox(#mailbox{mailbox_id=Id
             ,{<<"Account-ID">>, whapps_call:account_id(Call)}
             ,{<<"Voicemail-Box">>, Id}
             ,{<<"Voicemail-Name">>, MediaId}
-            ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-            ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+            ,{<<"Caller-ID-Number">>, get_caller_id_number(Call)}
+            ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
             ,{<<"Voicemail-Timestamp">>, new_timestamp()}
             ,{<<"Voicemail-Length">>, Length}
             ,{<<"Voicemail-Transcription">>, Transcription}
@@ -926,6 +926,22 @@ update_mailbox(#mailbox{mailbox_id=Id
     timer:sleep(2500),
     _ = cf_util:unsolicited_owner_mwi_update(whapps_call:account_db(Call), OwnerId),
     'ok'.
+
+-spec get_caller_id_name(whapps_call:call()) -> ne_binary().
+get_caller_id_name(Call) ->
+    CallerIdName = whapps_call:caller_id_name(Call),
+    case whapps_call:kvs_fetch('prepend_cid_name', Call) of
+        'undefined' -> CallerIdName;
+        Prepend -> <<Prepend/binary, CallerIdName/binary>>
+    end.
+
+-spec get_caller_id_number(whapps_call:call()) -> ne_binary().
+get_caller_id_number(Call) ->
+    CallerIdNumber = whapps_call:caller_id_number(Call),
+    case whapps_call:kvs_fetch('prepend_cid_number', Call) of
+        'undefined' -> CallerIdNumber;
+        Prepend -> <<Prepend/binary, CallerIdNumber/binary>>
+    end.
 
 maybe_save_meta(Length, #mailbox{delete_after_notify='false'}=Box, Call, MediaId, _UpdateJObj) ->
     save_meta(Length, Box, Call, MediaId);
