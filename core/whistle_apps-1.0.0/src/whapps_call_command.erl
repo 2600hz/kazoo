@@ -43,6 +43,7 @@
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
+         ,hold_command/1, hold_command/2
          ,b_hold/1, b_hold/2, b_hold/3
          ,park/1
         ]).
@@ -771,17 +772,33 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
 -spec hold(whapps_call:call()) -> 'ok'.
 -spec hold(api_binary(), whapps_call:call()) -> 'ok'.
 
--spec b_hold(whapps_call:call()) -> whapps_api_std_return().
--spec b_hold(wh_timeout() | api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_hold(wh_timeout(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec hold_command(whapps_call:call()) ->
+                          wh_json:object().
+-spec hold_command(api_binary(), whapps_call:call()) ->
+                          wh_json:object().
+
+-spec b_hold(whapps_call:call()) ->
+                    whapps_api_std_return().
+-spec b_hold(wh_timeout() | api_binary(), whapps_call:call()) ->
+                    whapps_api_std_return().
+-spec b_hold(wh_timeout(), api_binary(), whapps_call:call()) ->
+                    whapps_api_std_return().
 
 hold(Call) -> hold('undefined', Call).
 hold(MOH, Call) ->
-    Command = [{<<"Application-Name">>, <<"hold">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Hold-Media">>, MOH}
-              ],
+    Command = hold_command(MOH, Call),
     send_command(Command, Call).
+
+hold_command(Call) ->
+    hold_command('undefined', Call).
+hold_command(MOH, Call) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"hold">>}
+         ,{<<"Insert-At">>, <<"now">>}
+         ,{<<"Hold-Media">>, wh_media_util:media_path(MOH, Call)}
+         ,{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
+        ])).
 
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
 b_hold(Timeout, Call) when is_integer(Timeout) orelse Timeout =:= 'infinity' ->
