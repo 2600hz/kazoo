@@ -16,7 +16,7 @@
 -export([b_channel_status/1]).
 -export([response/2, response/3, response/4]).
 
--export([relay_event/2
+-export([relay_event/2, relay_event/3
          ,receive_event/1, receive_event/2
         ]).
 
@@ -278,8 +278,13 @@ channel_status_filter([JObj|JObjs]) ->
 %%      for them in the receive blocks below.
 %% @end
 %%--------------------------------------------------------------------
+-type relay_fun() :: fun((pid() | atom(), term()) -> any()).
 -spec relay_event(pid(), wh_json:object()) -> any().
-relay_event(Pid, JObj) -> Pid ! {'amqp_msg', JObj}.
+-spec relay_event(pid(), wh_json:object(), relay_fun()) -> any().
+relay_event(Pid, JObj) ->
+    relay_event(Pid, JObj, fun erlang:send/2).
+relay_event(Pid, JObj, RelayFun) ->
+    RelayFun(Pid, {'amqp_msg', JObj}).
 
 -spec receive_event(wh_timeout()) ->
                            {'ok', wh_json:object()} |
