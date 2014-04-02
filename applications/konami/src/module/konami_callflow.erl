@@ -18,7 +18,7 @@
 -define(LIST_BY_NUMBER, <<"callflow/listing_by_number">>).
 
 -spec handle(wh_json:object(), whapps_call:call()) ->
-                    {'continue', whapps_call:call()}.
+                    {'stop', whapps_call:call()}.
 handle(Data, Call) ->
     {'ok', CallflowJObj} = callflow(Data, Call),
     Flow = wh_json:get_value(<<"flow">>, CallflowJObj),

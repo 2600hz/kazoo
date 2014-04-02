@@ -748,7 +748,7 @@ maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
             <<Prefix/binary, Root/binary, Suffix/binary>>
     end.
 
--spec encryption_method_map(api_object(), api_binaries()) -> api_object().
+-spec encryption_method_map(api_object(), api_binaries() | wh_json:object()) -> api_object().
 encryption_method_map(JObj, []) -> JObj;
 encryption_method_map(JObj, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of

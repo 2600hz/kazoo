@@ -205,7 +205,7 @@ maybe_start_metaflow(Call, MetaFlow) ->
     Call.
 
 -spec start_metaflow(whapps_call:call()) -> 'ok'.
--spec start_metaflow(whapps_call:call(), wh_json:object()) -> 'ok'.
+-spec start_metaflow(whapps_call:call(), wh_json:object() | ne_binary() | boolean()) -> 'ok'.
 start_metaflow(Call) ->
     start_metaflow(Call, wh_json:new()).
 start_metaflow(Call, MetaFlow) ->

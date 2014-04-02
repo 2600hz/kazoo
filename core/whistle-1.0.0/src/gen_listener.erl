@@ -137,7 +137,10 @@
                          {'basic_qos', non_neg_integer()}
                         ].
 
--export_type([handle_event_return/0]).
+-export_type([handle_event_return/0
+              ,binding/0
+              ,bindings/0
+             ]).
 
 %%%===================================================================
 %%% API
@@ -172,7 +175,7 @@
 -callback terminate('normal' | 'shutdown' | {'shutdown', term()} | term(), module_state()) ->
     term().
 -callback code_change(term() | {'down', term()}, module_state(), term()) ->
-    {'ok', state()} | {'error', term()}.
+    {'ok', module_state()} | {'error', term()}.
 
   -spec start_link(atom(), start_params(), list()) -> startlink_ret().
 start_link(Module, Params, InitArgs) ->

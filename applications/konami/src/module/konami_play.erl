@@ -37,7 +37,7 @@ play(Data, Call, Media) ->
     end,
     lager:info("playing media ~s", [Media]),
 
-    PlayCommand = whapps_call_command:play_command(Media, 'undefined', wh_json:get_value(<<"leg">>, Data), Call),
+    PlayCommand = whapps_call_command:play_command(Media, ?ANY_DIGIT, wh_json:get_value(<<"leg">>, Data), Call),
     whapps_call_command:send_command(
       wh_json:set_value(<<"Insert-At">>, <<"now">>, PlayCommand)
       ,Call

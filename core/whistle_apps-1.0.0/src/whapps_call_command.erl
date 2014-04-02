@@ -851,9 +851,9 @@ b_prompt(Prompt, Lang, Call) -> b_play(whapps_util:get_prompt(Prompt, Lang, Call
 
 -spec play_command(ne_binary(), whapps_call:call()) ->
                           wh_json:object().
--spec play_command(ne_binary(), ne_binaries(), whapps_call:call()) ->
+-spec play_command(ne_binary(), api_binaries(), whapps_call:call()) ->
                           wh_json:object().
--spec play_command(ne_binary(), ne_binaries(), api_binary(), whapps_call:call()) ->
+-spec play_command(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
                           wh_json:object().
 
 -spec b_play(ne_binary(), whapps_call:call()) ->

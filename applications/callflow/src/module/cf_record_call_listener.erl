@@ -317,7 +317,7 @@ start_check_call_timer() ->
     {'ok', _} = timer:send_after(5000, self(), {'check_call', CheckRef}),
     CheckRef.
 
--spec start_time_limit_timer(wh_json:object()) -> reference().
+-spec start_time_limit_timer(pos_integer()) -> reference().
 start_time_limit_timer(TimeLimit) ->
     erlang:start_timer((TimeLimit+10) * 1000, self(), 'stop_recording').
 
