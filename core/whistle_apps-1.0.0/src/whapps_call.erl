@@ -23,6 +23,7 @@
 -export([set_application_name/2, application_name/1]).
 -export([set_application_version/2, application_version/1]).
 -export([set_call_id/2, call_id/1, call_id_direct/1]).
+-export([set_other_leg_call_id/2, other_leg_call_id/1]).
 -export([call_id_helper/2, clear_call_id_helper/1]).
 -export([set_control_queue/2, control_queue/1, control_queue_direct/1]).
 -export([control_queue_helper/2, clear_control_queue_helper/1]).
@@ -87,36 +88,37 @@
 -export([default_helper_function/2]).
 
 -record(whapps_call, {call_id :: api_binary()                       %% The UUID of the call
-                       ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
-                       ,control_q :: api_binary()                   %% The control queue provided on route win
-                       ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
-                       ,controller_q :: api_binary()                %%
-                       ,caller_id_name = <<"Unknown">> :: ne_binary()      %% The caller name
-                       ,caller_id_number = <<"0000000000">> :: ne_binary() %% The caller number
-                       ,callee_id_name = <<>> :: binary()                  %% The callee name
-                       ,callee_id_number = <<>> :: binary()                %% The callee number
-                       ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
-                       ,switch_hostname :: ne_binary()                     %% The switch hostname (as reported by the switch)
-                       ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
-                       ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
-                       ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
-                       ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
-                       ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
-                       ,from_realm = <<"norealm">> :: api_binary()         %% SIP from host
-                       ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
-                       ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
-                       ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
-                       ,inception :: api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
-                       ,account_db :: api_binary()                  %% The database name of the account that authorized this call
-                       ,account_id :: api_binary()                  %% The account id that authorized this call
-                       ,authorizing_id :: api_binary()              %% The ID of the record that authorized this call
-                       ,authorizing_type :: api_binary()            %% The pvt_type of the record that authorized this call
-                       ,owner_id :: api_binary()                    %% The ID of the owner of this calling device, if any
-                       ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
-                       ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
-                       ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
-                       ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that where provided with the route request
-                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
+                      ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,control_q :: api_binary()                   %% The control queue provided on route win
+                      ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,controller_q :: api_binary()                %%
+                      ,caller_id_name = <<"Unknown">> :: ne_binary()      %% The caller name
+                      ,caller_id_number = <<"0000000000">> :: ne_binary() %% The caller number
+                      ,callee_id_name = <<>> :: binary()                  %% The callee name
+                      ,callee_id_number = <<>> :: binary()                %% The callee number
+                      ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
+                      ,switch_hostname :: ne_binary()                     %% The switch hostname (as reported by the switch)
+                      ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
+                      ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
+                      ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
+                      ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
+                      ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
+                      ,from_realm = <<"norealm">> :: api_binary()         %% SIP from host
+                      ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
+                      ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
+                      ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
+                      ,inception :: api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
+                      ,account_db :: api_binary()                  %% The database name of the account that authorized this call
+                      ,account_id :: api_binary()                  %% The account id that authorized this call
+                      ,authorizing_id :: api_binary()              %% The ID of the record that authorized this call
+                      ,authorizing_type :: api_binary()            %% The pvt_type of the record that authorized this call
+                      ,owner_id :: api_binary()                    %% The ID of the owner of this calling device, if any
+                      ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
+                      ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
+                      ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
+                      ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that where provided with the route request
+                      ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
+                      ,other_leg_callid :: api_binary()
                       }).
 
 -type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()).
@@ -280,6 +282,7 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
       ,app_version = wh_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
       ,ccvs = CCVs
       ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Call#whapps_call.kvs, KVS)
+      ,other_leg_callid = wh_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
      }.
 
 %%--------------------------------------------------------------------
@@ -334,6 +337,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Owner-ID">>, owner_id(Call)}
      ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
+     ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
     ].
 
 -spec is_call(term()) -> boolean().
@@ -375,6 +379,10 @@ application_version(#whapps_call{app_version=AppVersion}) ->
 set_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
     Call#whapps_call{call_id=CallId}.
 
+-spec set_other_leg_call_id(ne_binary(), call()) -> call().
+set_other_leg_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
+    Call#whapps_call{other_leg_callid=CallId}.
+
 -spec call_id(call()) -> api_binary().
 -spec call_id_direct(call()) -> api_binary().
 call_id(#whapps_call{call_id=CallId, call_id_helper=Fun}=Call) when is_function(Fun, 2) ->
@@ -383,6 +391,10 @@ call_id(#whapps_call{call_id=CallId}=Call) ->
     default_helper_function(CallId, Call).
 
 call_id_direct(#whapps_call{call_id=CallId}) ->
+    CallId.
+
+-spec other_leg_call_id(call()) -> api_binary().
+other_leg_call_id(#whapps_call{other_leg_callid=CallId}=_Call) ->
     CallId.
 
 -spec call_id_helper(whapps_helper_function(), call()) -> call().
