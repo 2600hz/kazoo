@@ -12,7 +12,6 @@
 
 %% API
 -export([start_fsm/2
-         ,dtmf/4
          ,event/4
         ]).
 
@@ -76,10 +75,13 @@ start_fsm(Call, JObj) ->
                                ,other_leg_endpoint_id=wh_json:get_value(<<"Endpoint-ID">>, JObj)
                               }).
 
--spec dtmf(pid(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
-dtmf(FSM, CallId, DTMF, CCVs) ->
-    gen_fsm:send_event(FSM, {'dtmf', CallId, DTMF, CCVs}).
-
+-spec event(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+event(FSM, CallId, <<"DTMF">>, JObj) ->
+    gen_fsm:send_event(FSM, {'dtmf'
+                             ,CallId
+                             ,wh_json:get_value(<<"DTMF-Digit">>, JObj)
+                             ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)
+                            });
 event(FSM, CallId, Event, JObj) ->
     gen_fsm:send_event(FSM, {'event', CallId, Event, JObj}).
 
