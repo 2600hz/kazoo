@@ -5,15 +5,14 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(konami_dtmf_listener).
+-module(konami_event_listener).
 
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,add_call_binding/1
-         ,rm_call_binding/1
-         ,handle_destroy/2
-         ,handle_dtmf/2
+         ,add_call_binding/1, add_call_binding/2
+         ,rm_call_binding/1, rm_call_binding/2
+         ,handle_call_event/2
         ]).
 
 -export([init/1
@@ -27,15 +26,13 @@
 
 -include("konami.hrl").
 
--record(state, {}).
+%% {callid, [event,...]}
+-record(state, {bindings = dict:new() :: dict()}).
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, []).
--define(RESPONDERS, [{{?MODULE, 'handle_dtmf'}
-                      ,[{<<"call_event">>, <<"DTMF">>}]
-                     }
-                     ,{{?MODULE, 'handle_destroy'}
-                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+-define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
+                      ,[{<<"call_event">>, <<"*">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -45,8 +42,11 @@
 -define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ['DTMF', 'CHANNEL_DESTROY']}
                                         ,{'callid', CallId}
                                        ]}).
+-define(DYN_BINDINGS(CallId, Events), {'call', [{'restrict_to', Events}
+                                                ,{'callid', CallId}
+                                               ]}).
 
--define(KONAMI_REG(CallId), {'p', 'l', {'dtmf', CallId}}).
+-define(KONAMI_REG(CallId), {'p', 'l', {'event', CallId}}).
 
 %%%===================================================================
 %%% API
@@ -72,35 +72,49 @@ start_link() ->
                            ).
 
 -spec add_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
-add_call_binding('undefined') -> 'ok';
-add_call_binding(CallId) when is_binary(CallId) ->
-    lager:debug("add binding for call ~s", [CallId]),
+-spec add_call_binding(api_binary() | whapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
+add_call_binding(CallId) ->
+    add_call_binding(CallId, ['DTMF', 'CHANNEL_DESTROY']).
+
+add_call_binding('undefined', _) -> 'ok';
+add_call_binding(CallId, Events) when is_binary(CallId) ->
+    lager:debug("add binding for call ~s: ~p", [CallId, Events]),
     gproc:reg(?KONAMI_REG(CallId)),
-    gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId));
-add_call_binding(Call) ->
-    add_call_binding(whapps_call:call_id_direct(Call)).
+    gen_listener:cast(?MODULE, {'add_bindings', CallId, Events}),
+    gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events));
+add_call_binding(Call, Events) ->
+    add_call_binding(whapps_call:call_id_direct(Call), Events).
 
 -spec rm_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
 rm_call_binding('undefined') -> 'ok';
-rm_call_binding(CallId) when is_binary(CallId) ->
-    lager:debug("rm binding for call ~s", [CallId]),
-    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId));
-rm_call_binding(Call) ->
-    rm_call_binding(whapps_call:call_id_direct(Call)).
+rm_call_binding(CallId) ->
+    lager:debug("remove all bindings for ~s", [CallId]),
+    gen_listener:cast(?MODULE, {'rm_bindings', CallId}).
 
--spec handle_dtmf(wh_json:object(), wh_proplist()) -> any().
-handle_dtmf(JObj, _Props) ->
+rm_call_binding('undefined', _) -> 'ok';
+rm_call_binding(CallId, Events) when is_binary(CallId) ->
+    lager:debug("rm binding for call ~s: ~p", [CallId, Events]),
+    gen_listener:cast(?MODULE, {'rm_bindings', CallId, Events}),
+    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, Events));
+rm_call_binding(Call, Events) ->
+    rm_call_binding(whapps_call:call_id_direct(Call), Events).
+
+-spec handle_call_event(wh_json:object(), wh_proplist()) -> any().
+handle_call_event(JObj, Props) ->
     'true' = wapi_call:event_v(JObj),
+    handle_call_event(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
+handle_call_event(JObj, _Props, <<"DTMF">>) ->
     DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
 
-    [konami_code_fsm:dtmf(FSM, CallId, DTMF, CCVs) || FSM <- gproc:lookup_pids(?KONAMI_REG(CallId))].
-
--spec handle_destroy(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_destroy(JObj, _Props) ->
-    'true' = wapi_call:event_v(JObj),
-    rm_call_binding(wh_json:get_value(<<"Call-ID">>, JObj)).
+    [konami_code_fsm:dtmf(FSM, CallId, DTMF, CCVs) || FSM <- gproc:lookup_pids(?KONAMI_REG(CallId))];
+handle_call_event(JObj, _Props, <<"CHANNEL_DESTROY">>) ->
+    rm_call_binding(wh_json:get_value(<<"Call-ID">>, JObj));
+handle_call_event(JObj, _Props, Event) ->
+    lager:debug("relaying event ~s", [Event]),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    [konami_code_fsm:event(FSM, CallId, Event, JObj) || FSM <- gproc:lookup_pids(?KONAMI_REG(CallId))].
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -147,11 +161,40 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'add_bindings', CallId, Events}, #state{bindings=Bs}=State) ->
+    lager:debug("adding events for ~s: ~p", [CallId, Events]),
+    EventsSet = sets:from_list(Events),
+    CurrentEventsSet = call_events(CallId, Bs),
+    NewEventsSet = sets:union(CurrentEventsSet, EventsSet),
+    {'noreply', State#state{bindings=dict:store(CallId, NewEventsSet, Bs)}, 'hibernate'};
+handle_cast({'rm_bindings', CallId, Events}, #state{bindings=Bs}=State) ->
+    lager:debug("removing events for ~s: ~p", [CallId, Events]),
+    EventsSet = sets:from_list(Events),
+    CurrentEventsSet = call_events(CallId, Bs),
+    NewEventsSet = sets:subtract(CurrentEventsSet, EventsSet),
+
+    Bs1 = case sets:size(NewEventsSet) of
+              0 -> dict:erase(CallId, Bs);
+              _Size -> dict:store(CallId, NewEventsSet, Bs)
+          end,
+
+    {'noreply', State#state{bindings=Bs1}, 'hibernate'};
+handle_cast({'rm_bindings', CallId}, #state{bindings=Bs}=State) ->
+    EventsSet = call_events(CallId, Bs),
+    case sets:to_list(EventsSet) of
+        [] -> {'noreply', State};
+        Events ->
+            lager:debug("removing all events for ~s: ~p", [CallId, Events]),
+            gen_listener:rm_binding(self(), ?DYN_BINDINGS(CallId, Events)),
+            {'noreply', State#state{bindings=dict:erase(CallId, Bs)}, 'hibernate'}
+    end;
+
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -206,3 +249,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec call_events(ne_binary(), dict()) -> set().
+call_events(CallId, Bindings) ->
+    try dict:fetch(CallId, Bindings) of
+        Events -> Events
+    catch
+        'error':'badarg' -> sets:new()
+    end.
