@@ -1,14 +1,20 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
+%%% Handles starting/stopping a call recording
 %%%
+%%% "data":{
+%%%   "action":["start","stop"] // one of these
+%%%   ,"time_limit":600 // in seconds, how long to record the call
+%%%   ,"format":["mp3","wav"] // what format to store the recording in
+%%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
+%%%   ,"record_on_answer": boolean() // whether to delay the start of the recording
+%%% }
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cf_record_call_listener).
-
--behaviour(gen_listener).
+-module(wh_media_recording).
 
 -export([start_link/2
          ,handle_call_event/2
@@ -22,7 +28,7 @@
          ,code_change/3
         ]).
 
--include("../callflow.hrl").
+-include("whistle_media.hrl").
 
 -record(state, {url                        :: ne_binary()
                 ,format                    :: ne_binary()
@@ -35,6 +41,7 @@
                 ,channel_status_ref        :: reference() | 'undefined'
                 ,time_limit_ref            :: reference() | 'undefined'
                }).
+-type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallId), [{'call', [{'callid', CallId}
@@ -53,17 +60,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
-%%%===================================================================
-%%% API
-%%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
 -spec start_link(whapps_call:call(), wh_json:object()) -> startlink_ret().
 start_link(Call, Data) ->
     gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
@@ -77,11 +74,11 @@ handle_call_event(JObj, Props) ->
     wh_util:put_callid(JObj),
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
-          lager:debug("channel bridge maybe start recording"),
-          gen_listener:cast(props:get_value('server', Props), 'maybe_start_recording');
-      {<<"call_event">>, <<"RECORD_START">>} ->
-        lager:debug("record_start event recv'd"),
-        gen_listener:cast(props:get_value('server', Props), 'record_start');
+            lager:debug("channel bridge maybe start recording"),
+            gen_listener:cast(props:get_value('server', Props), 'maybe_start_recording');
+        {<<"call_event">>, <<"RECORD_START">>} ->
+            lager:debug("record_start event recv'd"),
+            gen_listener:cast(props:get_value('server', Props), 'record_start');
         {<<"call_event">>, <<"RECORD_STOP">>} ->
             lager:debug("record_stop event recv'd"),
             gen_listener:cast(props:get_value('server', Props), 'store_recording');
@@ -107,21 +104,7 @@ handle_call_event(JObj, Props) ->
         {_, _Evt} -> lager:debug("ignore event ~p", [_Evt])
     end.
 
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
+-spec init(list()) -> {'ok', state()}.
 init([Call, Data]) ->
     whapps_call:put_callid(Call),
     lager:info("starting event listener for cf_record_call"),
@@ -326,5 +309,3 @@ maybe_stop_timer(Timer) when is_reference(Timer) ->
     catch erlang:cancel_timer(Timer),
     'ok';
 maybe_stop_timer(_) -> 'ok'.
-
-
