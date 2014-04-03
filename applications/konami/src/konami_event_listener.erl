@@ -95,14 +95,11 @@ add_call_binding(Call, Events) ->
 -spec rm_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
 rm_call_binding('undefined') -> 'ok';
 rm_call_binding(CallId) ->
-    lager:debug("remove all bindings for ~s", [CallId]),
     gen_listener:cast(?MODULE, {'rm_bindings', CallId}).
 
 rm_call_binding('undefined', _) -> 'ok';
 rm_call_binding(CallId, Events) when is_binary(CallId) ->
-    lager:debug("rm binding for call ~s: ~p", [CallId, Events]),
-    gen_listener:cast(?MODULE, {'rm_bindings', CallId, Events}),
-    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, Events));
+    gen_listener:cast(?MODULE, {'rm_bindings', CallId, Events});
 rm_call_binding(Call, Events) ->
     rm_call_binding(whapps_call:call_id_direct(Call), Events).
 
@@ -115,7 +112,6 @@ handle_call_event(JObj, _Props, <<"CHANNEL_DESTROY">>) ->
     rm_call_binding(CallId),
     relay_to_pids(CallId, JObj);
 handle_call_event(JObj, _Props, Event) ->
-    lager:debug("relaying event ~s", [Event]),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     relay_to_fsms(CallId, Event, JObj),
     relay_to_pids(CallId, JObj).
@@ -188,6 +184,10 @@ handle_cast({'rm_bindings', CallId, Events}, #state{bindings=Bs}=State) ->
     EventsSet = sets:from_list(Events),
     CurrentEventsSet = call_events(CallId, Bs),
     NewEventsSet = sets:subtract(CurrentEventsSet, EventsSet),
+    RemoveEventsSet = sets:intersection(CurrentEventsSet, EventsSet),
+
+    _ = gen_listener:rm_binding(self(), ?DYN_BINDINGS(CallId, sets:to_list(RemoveEventsSet))),
+    lager:debug("removing from ~s: ~p", [CallId, sets:to_list(RemoveEventsSet)]),
 
     Bs1 = case sets:size(NewEventsSet) of
               0 -> dict:erase(CallId, Bs);
