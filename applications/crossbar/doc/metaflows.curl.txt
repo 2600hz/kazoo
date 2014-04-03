@@ -10,7 +10,7 @@ curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:800
 curl -v -X GET -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/metaflows | pp
 
 # Update the account metaflows
-curl -v -X POST -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/metaflows -d '{"data":{"numbers":{"2":{"module":"say","data":{"text":"2 pressed"}}},"binding_digit":"*"}}' | pp
+curl -v -X POST -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/metaflows -d '{"data":{"numbers":{"2":{"module":"say","data":{"text":"2 pressed"}}},"binding_digit":"*","patterns": {"^1(\\d+)$": {"module": "callflow"}}}}' | pp
 
 # Delete the account metaflow
 curl -v -X DELETE -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/metaflows | pp

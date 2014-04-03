@@ -31,24 +31,22 @@
         ,"patterns":{
             "description":"A list of regular expressions that the callflow should execute for, with optional capture groups",
             "type":"object",
-            "patternProperties":{
-                "[0-9\\*\\#]+":{
-                    "type":"object"
-                    ,"properties":{
-                        "module":{
-                            "type":"string"
-                            ,"required":true
-                            ,"maxLength":15
-                        },
-                        "data":{
-                            "type":"object"
-                            ,"required":true
-                            ,"default":{}
-                        },
-                        "children":{
-                            "type":"#/flow"
-                            ,"default":{}
-                        }
+            "additionalProperties":{
+                "type":"object"
+                ,"properties":{
+                    "module":{
+                        "type":"string"
+                        ,"required":true
+                        ,"maxLength":15
+                    },
+                    "data":{
+                        "type":"object"
+                        ,"required":true
+                        ,"default":{}
+                    },
+                    "children":{
+                        "type":"#/flow"
+                        ,"default":{}
                     }
                 }
             }
