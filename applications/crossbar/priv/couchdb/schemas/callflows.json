@@ -58,5 +58,9 @@
             }
          }
       }
+       ,"metaflow":{
+           "description":"Actions applied to a call outside of the normal callflow, initiated by the caller(s)"
+           ,"type":["object", "boolean"]
+       }
    }
 }

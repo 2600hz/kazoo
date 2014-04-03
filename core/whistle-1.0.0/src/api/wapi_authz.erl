@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Handles authorization requests, responses, queue bindings
 %%% @end
@@ -26,8 +26,8 @@
 
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>
-                                ,<<"Call-ID">>, <<"Call-Direction">>
-                                ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                            ,<<"Call-ID">>, <<"Call-Direction">>
+                            ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>
                                      ,<<"Other-Leg-Call-ID">>
@@ -64,7 +64,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec authz_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec authz_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 authz_req(Prop) when is_list(Prop) ->
     case authz_req_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?AUTHZ_REQ_HEADERS, ?OPTIONAL_AUTHZ_REQ_HEADERS);
@@ -73,7 +73,7 @@ authz_req(Prop) when is_list(Prop) ->
 authz_req(JObj) ->
     authz_req(wh_json:to_proplist(JObj)).
 
--spec authz_req_v/1 :: (api_terms()) -> boolean().
+-spec authz_req_v(api_terms()) -> boolean().
 authz_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHZ_REQ_HEADERS, ?AUTHZ_REQ_VALUES, ?AUTHZ_REQ_TYPES);
 authz_req_v(JObj) ->
@@ -84,7 +84,7 @@ authz_req_v(JObj) ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec authz_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec authz_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 authz_resp(Prop) when is_list(Prop) ->
     case authz_resp_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?AUTHZ_RESP_HEADERS, ?OPTIONAL_AUTHZ_RESP_HEADERS);
@@ -93,7 +93,7 @@ authz_resp(Prop) when is_list(Prop) ->
 authz_resp(JObj) ->
     authz_resp(wh_json:to_proplist(JObj)).
 
--spec authz_resp_v/1 :: (api_terms()) -> boolean().
+-spec authz_resp_v(api_terms()) -> boolean().
 authz_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHZ_RESP_HEADERS, ?AUTHZ_RESP_VALUES, ?AUTHZ_RESP_TYPES);
 authz_resp_v(JObj) ->
@@ -103,8 +103,7 @@ authz_resp_v(JObj) ->
 %% @doc Setup and tear down bindings for authz gen_listeners
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-
+-spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
@@ -118,7 +117,7 @@ bind_to_q(Q, ['broadcast'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(_Q, []) -> 'ok'.
 
--spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     unbind_q_from(Q, props:get_value('restrict_to', Props)).
 
@@ -145,24 +144,24 @@ declare_exchanges() ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_authz_req/1 :: (api_terms()) -> 'ok'.
--spec publish_authz_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec publish_authz_req(api_terms()) -> 'ok'.
+-spec publish_authz_req(api_terms(), ne_binary()) -> 'ok'.
 publish_authz_req(JObj) ->
     publish_authz_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_authz_req(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?AUTHZ_REQ_VALUES, fun ?MODULE:authz_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_REQ).
 
--spec publish_authz_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_authz_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+-spec publish_authz_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_authz_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_authz_resp(Queue, JObj) ->
     publish_authz_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_authz_resp(Queue, Resp, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Resp, ?AUTHZ_RESP_VALUES, fun ?MODULE:authz_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec broadcast_authz_resp/1 :: (api_terms()) -> 'ok'.
--spec broadcast_authz_resp/2 :: (api_terms(), ne_binary()) -> 'ok'.
+-spec broadcast_authz_resp(api_terms()) -> 'ok'.
+-spec broadcast_authz_resp(api_terms(), ne_binary()) -> 'ok'.
 broadcast_authz_resp(JObj) ->
     broadcast_authz_resp(JObj, ?DEFAULT_CONTENT_TYPE).
 broadcast_authz_resp(Resp, ContentType) ->

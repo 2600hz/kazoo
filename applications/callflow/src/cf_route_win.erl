@@ -124,7 +124,7 @@ get_group_associations(Id, Groups, Set) ->
 
 -spec get_callee_extension_info(whapps_call:call()) -> {ne_binary(), ne_binary()} | 'undefined'.
 get_callee_extension_info(Call) ->
-    Flow = whapps_call:kvs_fetch(cf_flow, Call),
+    Flow = whapps_call:kvs_fetch('cf_flow', Call),
     FirstModule = wh_json:get_value(<<"module">>, Flow),
     FirstId = wh_json:get_value([<<"data">>, <<"id">>], Flow),
     SecondModule = wh_json:get_value([<<"_">>, <<"module">>], Flow),
@@ -149,6 +149,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                 ,fun update_ccvs/1
                 %% all funs above here return whapps_call:call()
+                ,fun maybe_start_metaflow/1
                 ,fun execute_callflow/1
                ],
     lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
@@ -187,11 +188,49 @@ update_ccvs(Call) ->
               ]),
     whapps_call:set_custom_channel_vars(Props, Call).
 
+-spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
+maybe_start_metaflow(Call) ->
+    case whapps_call:kvs_fetch('cf_metaflow', Call) of
+        'undefined' -> Call;
+        MetaFlow -> maybe_start_metaflow(Call, MetaFlow)
+    end.
+
+-spec maybe_start_metaflow(whapps_call:call(), ne_binary() | boolean() | wh_json:object()) ->
+                                  whapps_call:call().
+maybe_start_metaflow(Call, MetaFlow) ->
+    case wh_util:is_true(MetaFlow) of
+        'true' -> start_metaflow(Call);
+        'false' -> start_metaflow(Call, MetaFlow)
+    end,
+    Call.
+
+-spec start_metaflow(whapps_call:call()) -> 'ok'.
+-spec start_metaflow(whapps_call:call(), wh_json:object() | ne_binary() | boolean()) -> 'ok'.
+start_metaflow(Call) ->
+    start_metaflow(Call, wh_json:new()).
+start_metaflow(Call, MetaFlow) ->
+    lager:debug("metaflow: ~p", [MetaFlow]),
+    case wh_json:is_json_object(MetaFlow) of
+        'false' -> 'ok';
+        'true' ->
+            API = props:filter_undefined(
+                    [{<<"Call">>, whapps_call:to_json(Call)}
+                     ,{<<"Numbers">>, wh_json:get_value(<<"numbers">>, MetaFlow)}
+                     ,{<<"Patterns">>, wh_json:get_value(<<"pumbers">>, MetaFlow)}
+                     ,{<<"Binding-Key">>, wh_json:get_value(<<"binding_key">>, MetaFlow)}
+                     ,{<<"Digit-Timeout">>, wh_json:get_integer_value(<<"digit_timeout">>, MetaFlow)}
+                     ,{<<"Listen-On">>, wh_json:get_integer_value(<<"listen_on">>, MetaFlow)}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ]),
+            lager:debug("sending metaflow request"),
+            whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
+    end.
+
 -spec get_incoming_security(whapps_call:call()) -> wh_proplist().
  get_incoming_security(Call) ->
     case cf_endpoint:get(Call) of
         {'error', _R} -> [];
-        {'ok', JObj} -> 
+        {'ok', JObj} ->
             wh_json:to_proplist(
               cf_util:encryption_method_map(wh_json:new(), JObj)
             )

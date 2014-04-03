@@ -1,0 +1,13 @@
+{application, konami,
+ [
+  {description, "Konami - Map in-call DTMF sequences to call features"},
+  {vsn, "0.0.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { konami_app, []}},
+  {env, []}
+ ]}.

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -69,20 +69,19 @@
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>
-                                             ,<<"Originate-Immediate">>
-                                             ,<<"Custom-Channel-Vars">>
-                                             ,<<"Export-Custom-Channel-Vars">>
-                                             ,<<"Outbound-Call-ID">>
-                                             ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore                                                                  %% Eavesdrop
-                                             ,<<"Eavesdrop-Call-ID">>
-                                             ,<<"Eavesdrop-Mode">>
-                                             ,<<"Eavesdrop-Group-ID">>
-                                             ,<<"Fax-Identity-Number">>
-                                             ,<<"Fax-Identity-Name">>
-                                             ,<<"Fax-Timezone">>
-                                         | fun() ->
-                                                   wapi_dialplan:optional_bridge_req_headers()
-                                           end()
+                                         ,<<"Originate-Immediate">>
+                                         ,<<"Custom-Channel-Vars">>
+                                         ,<<"Export-Custom-Channel-Vars">>
+                                         ,<<"Outbound-Call-ID">>
+                                         ,<<"Existing-Call-ID">> % If set, use this node, otherwise ignore
+                                         %% Eavesdrop
+                                         ,<<"Eavesdrop-Call-ID">>
+                                         ,<<"Eavesdrop-Mode">>
+                                         ,<<"Eavesdrop-Group-ID">>
+                                         ,<<"Fax-Identity-Number">>
+                                         ,<<"Fax-Identity-Name">>
+                                         ,<<"Fax-Timezone">>
+                                         | wapi_dialplan:optional_bridge_req_headers()
                                         ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_req">>}
@@ -102,7 +101,7 @@
 
 %% Originate Endpoints
 -define(ORIGINATE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
--define(OPTIONAL_ORIGINATE_REQ_ENDPOINT_HEADERS, fun() -> wapi_dialplan:optional_bridge_req_endpoint_headers() end()).
+-define(OPTIONAL_ORIGINATE_REQ_ENDPOINT_HEADERS, wapi_dialplan:optional_bridge_req_endpoint_headers()).
 -define(ORIGINATE_REQ_ENDPOINT_VALUES, [{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
                                        ]).
 -define(ORIGINATE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
@@ -114,7 +113,7 @@
 
 %% Origintate Resp
 -define(ORIGINATE_RESP_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_ORIGINATE_RESP_HEADERS, fun() -> [<<"Channel-Call-State">> | wapi_call:optional_call_event_headers()] end()).
+-define(OPTIONAL_ORIGINATE_RESP_HEADERS, [<<"Channel-Call-State">> | wapi_call:optional_call_event_headers()]).
 -define(ORIGINATE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                 ,{<<"Event-Name">>, <<"originate_resp">>}
                                ]).
@@ -122,7 +121,7 @@
 
 %% Origintate Started
 -define(ORIGINATE_STARTED_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_ORIGINATE_STARTED_HEADERS, fun() -> [<<"Channel-Call-State">> | wapi_call:optional_call_event_headers()] end()).
+-define(OPTIONAL_ORIGINATE_STARTED_HEADERS, [<<"Channel-Call-State">> | wapi_call:optional_call_event_headers()]).
 -define(ORIGINATE_STARTED_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                    ,{<<"Event-Name">>, <<"originate_started">>}
                                   ]).

@@ -1,0 +1,26 @@
+# Credentials Hash: 4d02ff46ad889921836b706c3c0e0b36
+# Account Name: Master
+# Auth Token ID: 033090db117f51379a1c52101523eb07
+# Account ID: 5b78db2f23f35aa022f5c3c0a5df1b92
+
+# Create an auth token on the master account
+curl -v -X PUT -H "content-type:application/json" http://thinky64.2600hz.com:8000/v1/user_auth -d '{"data":{"credentials":"4d02ff46ad889921836b706c3c0e0b36", "account_name":"Master"}}' | pp
+
+# List account metaflows
+curl -v -X GET -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/metaflows | pp
+
+# Update the account metaflows
+curl -v -X POST -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/metaflows -d '{"data":{"numbers":{"2":{"module":"say","data":{"text":"2 pressed"}}},"binding_digit":"*","patterns": {"^1(\\d+)$": {"module": "callflow"}}}}' | pp
+
+# Delete the account metaflow
+curl -v -X DELETE -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/metaflows | pp
+
+
+# Get a Device's metaflows
+curl -v -X GET -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/devices/1d9466f4ab760561ae5b8f897b27d3ae/metaflows | pp
+
+# Edit a Device's metaflows
+curl -v -X POST -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/devices/1d9466f4ab760561ae5b8f897b27d3ae/metaflows -d '{"data":{"numbers":{"2":{"module":"tts","data":{"text":"2 pressed"}}},"binding_digit":"*"}}' | pp
+
+# Delete a Device's metaflows
+curl -v -X DELETE -H "X-Auth-Token: 033090db117f51379a1c52101523eb07" http://thinky64.2600hz.com:8000/v1/accounts/5b78db2f23f35aa022f5c3c0a5df1b92/devices/1d9466f4ab760561ae5b8f897b27d3ae/metaflows | pp

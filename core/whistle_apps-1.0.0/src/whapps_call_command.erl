@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -16,7 +16,7 @@
 -export([b_channel_status/1]).
 -export([response/2, response/3, response/4]).
 
--export([relay_event/2
+-export([relay_event/2, relay_event/3
          ,receive_event/1, receive_event/2
         ]).
 
@@ -43,14 +43,19 @@
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
+         ,hold_command/1, hold_command/2
          ,b_hold/1, b_hold/2, b_hold/3
          ,park/1
         ]).
--export([play/2, play/3]).
+-export([play/2, play/3, play/4
+         ,play_command/2, play_command/3, play_command/4
+         ,b_play/2, b_play/3, b_play/4
+        ]).
 -export([prompt/2, prompt/3]).
 
 -export([tts/2, tts/3, tts/4, tts/5, tts/6
          ,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
+         ,tts_command/2, tts_command/3, tts_command/4, tts_command/5, tts_command/6
         ]).
 
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -71,7 +76,10 @@
          ,play_and_collect_digits/6, play_and_collect_digits/7
          ,play_and_collect_digits/8, play_and_collect_digits/9
         ]).
--export([say/2, say/3, say/4, say/5]).
+-export([say/2, say/3, say/4, say/5
+         ,say_command/2, say_command/3, say_command/4, say_command/5
+         ,b_say/2, b_say/3, b_say/4, b_say/5
+        ]).
 
 -export([conference/2, conference/3
          ,conference/4, conference/5
@@ -93,7 +101,7 @@
 -export([b_ring/1]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
 -export([b_page/2, b_page/3, b_page/4, b_page/5, b_page/6]).
--export([b_play/2, b_play/3]).
+
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5
@@ -109,7 +117,7 @@
          ,b_play_and_collect_digits/6, b_play_and_collect_digits/7
          ,b_play_and_collect_digits/8, b_play_and_collect_digits/9
         ]).
--export([b_say/2, b_say/3, b_say/4, b_say/5]).
+
 -export([b_noop/1]).
 -export([b_flush/1]).
 -export([b_privacy/1
@@ -270,8 +278,13 @@ channel_status_filter([JObj|JObjs]) ->
 %%      for them in the receive blocks below.
 %% @end
 %%--------------------------------------------------------------------
+-type relay_fun() :: fun((pid() | atom(), term()) -> any()).
 -spec relay_event(pid(), wh_json:object()) -> any().
-relay_event(Pid, JObj) -> Pid ! {'amqp_msg', JObj}.
+-spec relay_event(pid(), wh_json:object(), relay_fun()) -> any().
+relay_event(Pid, JObj) ->
+    relay_event(Pid, JObj, fun erlang:send/2).
+relay_event(Pid, JObj, RelayFun) ->
+    RelayFun(Pid, {'amqp_msg', JObj}).
 
 -spec receive_event(wh_timeout()) ->
                            {'ok', wh_json:object()} |
@@ -764,22 +777,40 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
 -spec hold(whapps_call:call()) -> 'ok'.
 -spec hold(api_binary(), whapps_call:call()) -> 'ok'.
 
--spec b_hold(whapps_call:call()) -> whapps_api_std_return().
--spec b_hold(wh_timeout() | api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_hold(wh_timeout(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec hold_command(whapps_call:call()) ->
+                          wh_json:object().
+-spec hold_command(api_binary(), whapps_call:call()) ->
+                          wh_json:object().
+
+-spec b_hold(whapps_call:call()) ->
+                    whapps_api_std_return().
+-spec b_hold(wh_timeout() | api_binary(), whapps_call:call()) ->
+                    whapps_api_std_return().
+-spec b_hold(wh_timeout(), api_binary(), whapps_call:call()) ->
+                    whapps_api_std_return().
 
 hold(Call) -> hold('undefined', Call).
 hold(MOH, Call) ->
-    Command = [{<<"Application-Name">>, <<"hold">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Hold-Media">>, MOH}
-              ],
+    Command = hold_command(MOH, Call),
     send_command(Command, Call).
 
+hold_command(Call) ->
+    hold_command('undefined', Call).
+hold_command(MOH, Call) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"hold">>}
+         ,{<<"Insert-At">>, <<"now">>}
+         ,{<<"Hold-Media">>, wh_media_util:media_path(MOH, Call)}
+         ,{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
+        ])).
+
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
+
 b_hold(Timeout, Call) when is_integer(Timeout) orelse Timeout =:= 'infinity' ->
     b_hold(Timeout, 'undefined', Call);
 b_hold(MOH, Call) -> b_hold('infinity', MOH, Call).
+
 b_hold(Timeout, MOH, Call) ->
     hold(MOH, Call),
     wait_for_message(Call, <<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
@@ -818,29 +849,59 @@ b_prompt(Prompt, Lang, Call) -> b_play(whapps_util:get_prompt(Prompt, Lang, Call
 %% can use to skip playback.
 %% @end
 %%--------------------------------------------------------------------
--spec play(ne_binary(), whapps_call:call()) -> ne_binary().
--spec play(ne_binary(), ne_binaries(), whapps_call:call()) -> ne_binary().
+-spec play(ne_binary(), whapps_call:call()) ->
+                  ne_binary().
+-spec play(ne_binary(), ne_binaries(), whapps_call:call()) ->
+                  ne_binary().
+-spec play(ne_binary(), ne_binaries(), api_binary(), whapps_call:call()) ->
+                  ne_binary().
 
--spec b_play(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_play(ne_binary(), ne_binaries(), whapps_call:call()) -> whapps_api_std_return().
+-spec play_command(ne_binary(), whapps_call:call()) ->
+                          wh_json:object().
+-spec play_command(ne_binary(), api_binaries(), whapps_call:call()) ->
+                          wh_json:object().
+-spec play_command(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
+                          wh_json:object().
+
+-spec b_play(ne_binary(), whapps_call:call()) ->
+                    whapps_api_std_return().
+-spec b_play(ne_binary(), ne_binaries(), whapps_call:call()) ->
+                    whapps_api_std_return().
+-spec b_play(ne_binary(), ne_binaries(), api_binary(), whapps_call:call()) ->
+                    whapps_api_std_return().
+
+play_command(Media, Call) ->
+    play_command(Media, ?ANY_DIGIT, Call).
+play_command(Media, Terminators, Call) ->
+    play_command(Media, Terminators, 'undefined', Call).
+play_command(Media, Terminators, Leg, Call) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"play">>}
+         ,{<<"Media-Name">>, Media}
+         ,{<<"Terminators">>, play_terminators(Terminators)}
+         ,{<<"Leg">>, play_leg(Leg)}
+         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+        ])).
+
+-spec play_terminators(api_binaries()) -> ne_binaries().
+play_terminators('undefined') -> ?ANY_DIGIT;
+play_terminators(Ts) -> Ts.
+
+-spec play_leg(api_binary()) -> api_binary().
+play_leg('undefined') -> 'undefined';
+play_leg(Leg) -> wh_util:ucfirst_binary(Leg).
 
 play(Media, Call) -> play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
+    play(Media, Terminators, 'undefined', Call).
+play(Media, Terminators, Leg, Call) ->
     NoopId = couch_mgr:get_uuid(),
-    CallId = whapps_call:call_id(Call),
-
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
-                                   ,{<<"Call-ID">>, CallId}
+                                   ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                                    ,{<<"Msg-ID">>, NoopId}
                                   ])
-                ,wh_json:from_list(
-                   props:filter_undefined(
-                     [{<<"Application-Name">>, <<"play">>}
-                      ,{<<"Media-Name">>, Media}
-                      ,{<<"Terminators">>, Terminators}
-                      ,{<<"Call-ID">>, CallId}
-                     ])
-                  )
+                ,play_command(Media, Terminators, Leg, Call)
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Commands}
@@ -851,15 +912,9 @@ play(Media, Terminators, Call) ->
 b_play(Media, Call) ->
     b_play(Media, ?ANY_DIGIT, Call).
 b_play(Media, Terminators, Call) ->
-    wait_for_noop(Call, play(Media, Terminators, Call)).
-
--spec play_command(ne_binary(), ne_binaries(), whapps_call:call()) -> wh_json:object().
-play_command(Media, Terminators, Call) ->
-    wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-                       ,{<<"Media-Name">>, Media}
-                       ,{<<"Terminators">>, Terminators}
-                       ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-                      ]).
+    b_play(Media, Terminators, 'undefined', Call).
+b_play(Media, Terminators, Leg, Call) ->
+    wait_for_noop(Call, play(Media, Terminators, Leg, Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -903,25 +958,40 @@ tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
 -spec tts_command(api_binary(), api_binary(), api_binary(), whapps_call:call()) -> wh_json:object().
 -spec tts_command(api_binary(), api_binary(), api_binary(), api_binaries(), whapps_call:call()) -> wh_json:object().
 -spec tts_command(api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), whapps_call:call()) -> wh_json:object().
-tts_command(SayMe, Call) -> tts_command(SayMe, <<"female">>, Call).
-tts_command(SayMe, Voice, Call) -> tts_command(SayMe, Voice, <<"en-US">>, Call).
-tts_command(SayMe, Voice, Lang, Call) -> tts_command(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
-tts_command(SayMe, Voice, Lang, Terminators, Call) ->
-    tts_command(SayMe, Voice, Lang, Terminators
+tts_command(SayMe, Call) ->
+    tts_command(SayMe, <<"female">>, Call).
+tts_command(SayMe, Voice, Call) ->
+    tts_command(SayMe, Voice, <<"en-US">>, Call).
+tts_command(SayMe, Voice, Language, Call) ->
+    tts_command(SayMe, Voice, Language, ?ANY_DIGIT, Call).
+tts_command(SayMe, Voice, Language, Terminators, Call) ->
+    tts_command(SayMe, Voice, Language, Terminators
                 ,whapps_account_config:get_global(Call, ?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
                 ,Call
                ).
-tts_command(SayMe, Voice, Lang, Terminators, Engine, Call) ->
+tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"tts">>}
          ,{<<"Text">>, SayMe}
-         ,{<<"Terminators">>, Terminators}
-         ,{<<"Voice">>, Voice}
-         ,{<<"Language">>, Lang}
-         ,{<<"Engine">>, Engine}
+         ,{<<"Terminators">>, tts_terminators(Terminators)}
+         ,{<<"Voice">>, tts_voice(Voice)}
+         ,{<<"Language">>, tts_language(Language)}
+         ,{<<"Engine">>, tts_engine(Engine)}
          ,{<<"Call-ID">>, whapps_call:call_id(Call)}
         ])).
+
+tts_terminators('undefined') -> ?ANY_DIGIT;
+tts_terminators(Terminators) -> Terminators.
+
+tts_voice('undefined') -> <<"female">>;
+tts_voice(Voice) -> Voice.
+
+tts_language('undefined') -> <<"en-US">>;
+tts_language(Language) -> Language.
+
+tts_engine('undefined') -> <<"flite">>;
+tts_engine(Engine) -> Engine.
 
 -spec b_tts(api_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_tts(api_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
@@ -1344,25 +1414,44 @@ say(Say, Type, Call) ->
     say(Say, Type, <<"pronounced">>, Call).
 say(Say, Type, Method, Call) ->
     say(Say, Type, Method, <<"en">>, Call).
-say(Say, Type, Method, Language,Call) ->
-    Command = [{<<"Application-Name">>, <<"say">>}
-               ,{<<"Say-Text">>, Say}
-               ,{<<"Type">>, Type}
-               ,{<<"Method">>, Method}
-               ,{<<"Language">>, Language}
-              ],
+say(Say, Type, Method, Language, Call) ->
+    Command = props:filter_undefined(
+                [{<<"Application-Name">>, <<"say">>}
+                 ,{<<"Say-Text">>, Say}
+                 ,{<<"Type">>, Type}
+                 ,{<<"Method">>, Method}
+                 ,{<<"Language">>, Language}
+                ]),
     send_command(Command, Call).
 
+-spec say_command(ne_binary(), whapps_call:call()) -> wh_json:object().
+-spec say_command(ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
+-spec say_command(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
 -spec say_command(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
+say_command(Say, Call) ->
+    say_command(Say, <<"name_spelled">>, Call).
+say_command(Say, Type, Call) ->
+    say_command(Say, Type, <<"pronounced">>, Call).
+say_command(Say, Type, Method, Call) ->
+    say_command(Say, Type, Method, <<"en">>, Call).
 say_command(Say, Type, Method, Language, Call) ->
-    CallId = whapps_call:call_id(Call),
-    wh_json:from_list([{<<"Application-Name">>, <<"say">>}
-                       ,{<<"Say-Text">>, Say}
-                       ,{<<"Type">>, Type}
-                       ,{<<"Method">>, Method}
-                       ,{<<"Language">>, Language}
-                       ,{<<"Call-ID">>, CallId}
-                      ]).
+    wh_json:from_list(
+        [{<<"Application-Name">>, <<"say">>}
+         ,{<<"Say-Text">>, Say}
+         ,{<<"Type">>, say_type(Type)}
+         ,{<<"Method">>, say_method(Method)}
+         ,{<<"Language">>, say_language(Language)}
+         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+        ]).
+
+say_type('undefined') -> <<"name_spelled">>;
+say_type(T) -> T.
+
+say_method('undefined') -> <<"pronounced">>;
+say_method(M) -> M.
+
+say_language('undefined') -> <<"en">>;
+say_language(L) -> L.
 
 b_say(Say, Call) ->
     b_say(Say, <<"name_spelled">>, Call).
@@ -2100,7 +2189,7 @@ send_command(Command, Call) when is_list(Command) ->
             CallId = whapps_call:call_id(Call),
             AppName = whapps_call:application_name(Call),
             AppVersion = whapps_call:application_version(Call),
-            case whapps_call:kvs_fetch('cf_exe_pid', Call) of
+            case whapps_call:kvs_fetch('consumer_pid', Call) of
                 Pid when is_pid(Pid) -> _ = wh_amqp_channel:consumer_pid(Pid), 'ok';
                 _Else -> 'ok'
             end,
@@ -2111,7 +2200,6 @@ send_command(Command, Call) when is_list(Command) ->
         'false' -> 'ok'
     end;
 send_command(JObj, Call) -> send_command(wh_json:to_proplist(JObj), Call).
-
 
 %%--------------------------------------------------------------------
 %% @private

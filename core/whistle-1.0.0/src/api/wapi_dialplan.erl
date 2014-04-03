@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Dialplan API commands
 %%% @end
@@ -57,6 +57,7 @@
          ,conference/1, conference_v/1
          ,originate_ready/1, originate_ready_v/1
          ,originate_execute/1, originate_execute_v/1
+         ,metaflow/1, metaflow_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -79,17 +80,34 @@
 -export([publish_action/2, publish_action/3
          ,publish_error/2, publish_error/3
          ,publish_command/2, publish_command/3
+         ,publish_metaflow/1, publish_metaflow/2
          ,publish_originate_ready/2, publish_originate_ready/3
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
 
--spec optional_bridge_req_headers() -> [ne_binary(),...].
+-spec optional_bridge_req_headers() -> ne_binaries().
 optional_bridge_req_headers() ->
     ?OPTIONAL_BRIDGE_REQ_HEADERS.
 
--spec optional_bridge_req_endpoint_headers() -> [ne_binary(),...].
+-spec optional_bridge_req_endpoint_headers() -> ne_binaries().
 optional_bridge_req_endpoint_headers() ->
     ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS.
+
+-spec b_leg_events_v(ne_binaries()) -> boolean().
+b_leg_events_v(Events) ->
+    lists:all(fun(ApiEvent) ->
+                      lists:member(ApiEvent, ?CALL_EVENTS)
+              end, Events).
+
+-spec terminators_v(api_binaries() | binary()) -> boolean().
+-spec terminator_v(ne_binary()) -> boolean().
+terminators_v(Ts) when is_list(Ts) ->
+    lists:all(fun terminator_v/1, Ts);
+terminators_v(<<>>) -> 'true';
+terminators_v(<<"none">>) -> 'true';
+terminators_v(_) -> 'false'.
+
+terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
 -spec v(api_terms()) -> boolean().
@@ -235,6 +253,10 @@ store_http_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_VALUES, ?STORE_HTTP_RESP_TYPES);
 store_http_resp_v(JObj) -> store_http_resp_v(wh_json:to_proplist(JObj)).
 
+-spec store_media_content_v(binary() | 'eof') -> boolean().
+store_media_content_v(V) ->
+    is_binary(V) orelse V =:= 'eof'.
+
 %%--------------------------------------------------------------------
 %% @doc Create a DTMF (or DTMFs) on the channel - see wiki
 %% Takes proplist, creates JSON string or error
@@ -277,6 +299,16 @@ tones(JObj) -> tones(wh_json:to_proplist(JObj)).
 tones_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?TONES_REQ_HEADERS, ?TONES_REQ_VALUES, ?TONES_REQ_TYPES);
 tones_v(JObj) -> tones_v(wh_json:to_proplist(JObj)).
+
+-spec tone_timeout_v(term()) -> boolean().
+tone_timeout_v(Timeout) ->
+    %% <<"+123">> converts to 123, so yay!
+    try wh_util:to_integer(Timeout) of
+        T when T < 0 -> 'false';
+        _ -> 'true'
+    catch
+        _:_ -> 'false'
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc A Tone within a Tones request - see wiki
@@ -938,6 +970,21 @@ publish_command(CtrlQ, Prop, DPApp) ->
         _:R -> throw({R, Prop})
     end.
 
+-spec publish_metaflow(api_terms()) -> 'ok'.
+-spec publish_metaflow(api_terms(), ne_binary()) -> 'ok'.
+publish_metaflow(API) ->
+    publish_metaflow(API, ?DEFAULT_CONTENT_TYPE).
+publish_metaflow(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?METAFLOW_VALUES, fun ?MODULE:metaflow/1),
+    CallId = metaflow_callid(API),
+    amqp_util:whapps_publish(?METAFLOW_ROUTING_KEY(CallId), Payload, ContentType).
+
+-spec metaflow_callid(api_terms()) -> api_binary().
+metaflow_callid([_|_]=Props) ->
+    wh_json:get_value(<<"Call-ID">>, props:get_value(<<"Call">>, Props));
+metaflow_callid(JObj) ->
+    wh_json:get_value([<<"Call">>, <<"Call-ID">>], JObj).
+
 %% sending DP actions to CallControl Queue
 publish_action(Queue, JSON) ->
     publish_action(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
@@ -974,12 +1021,49 @@ dial_method_single() -> ?DIAL_METHOD_SINGLE.
 
 dial_method_simultaneous() -> ?DIAL_METHOD_SIMUL.
 
-bind_q(Queue, _Prop) ->
-    _ = amqp_util:bind_q_to_callctl(Queue),
-    'ok'.
+%%--------------------------------------------------------------------
+%% @doc Asks for metaflows to be enabled for a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec metaflow(api_terms()) -> api_formatter_return().
+metaflow(Prop) when is_list(Prop) ->
+    case metaflow_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?METAFLOW_HEADERS, ?OPTIONAL_METAFLOW_HEADERS);
+        'false' -> {'error', "Proplist failed validation for metaflow"}
+    end;
+metaflow(JObj) -> metaflow(wh_json:to_proplist(JObj)).
 
-unbind_q(Queue, _Prop) ->
-    amqp_util:unbind_q_from_callctl(Queue).
+-spec metaflow_v(api_terms()) -> boolean().
+metaflow_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?METAFLOW_HEADERS, ?METAFLOW_VALUES, ?METAFLOW_TYPES);
+metaflow_v(JObj) -> metaflow_v(wh_json:to_proplist(JObj)).
+
+-spec metaflow_digit_timeout_v(term()) -> boolean().
+metaflow_digit_timeout_v(X) ->
+    is_integer(wh_util:to_integer(X)).
+
+-spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
+bind_q(Queue, Props) ->
+    bind_q(Queue, Props, props:get_value('metaflow', Props)).
+
+-spec bind_q(ne_binary(), wh_proplist(), 'undefined' | 'true') -> 'ok'.
+bind_q(Queue, _Props, 'undefined') ->
+    amqp_util:bind_q_to_callctl(Queue);
+bind_q(Queue, Props, 'true') ->
+    CallId = props:get_value('callid', Props, <<"*">>),
+    amqp_util:bind_q_to_whapps(Queue, ?METAFLOW_ROUTING_KEY(CallId)).
+
+-spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
+unbind_q(Queue, Props) ->
+    unbind_q(Queue, Props, props:get_value('metaflow', Props)).
+
+-spec unbind_q(ne_binary(), wh_proplist(), 'undefined' | 'true') -> 'ok'.
+unbind_q(Queue, _Props, 'undefined') ->
+    amqp_util:unbind_q_from_callctl(Queue);
+unbind_q(Queue, Props, 'true') ->
+    CallId = props:get_value('callid', Props, <<"*">>),
+    amqp_util:unbind_q_from_whapps(Queue, ?METAFLOW_ROUTING_KEY(CallId)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -988,7 +1072,8 @@ unbind_q(Queue, _Prop) ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:callctl_exchange().
+    amqp_util:callctl_exchange(),
+    amqp_util:whapps_exchange().
 
 -spec terminators(api_binary()) -> ne_binaries().
 terminators(Bin) when is_binary(Bin) ->

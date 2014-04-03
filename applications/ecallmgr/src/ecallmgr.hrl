@@ -192,23 +192,23 @@
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
                                ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
-                              
+
                                ,{<<"SIP-Invite-Domain">>, <<"sip_invite_domain">>}
                                ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
-                              
+
                                ,{<<"Secure-RTP">>, <<"rtp_secure_media">>}
                                ,{<<"RTP-Secure-Media">>, <<"rtp_secure_media">>}
                                ,{<<"RTP-Secure-Media-Confirmed">>, <<"rtp_secure_media_confirmed">>}
                                ,{<<"RTP-Secure-Audio-Confirmed">>, <<"rtp_secure_media_confirmed_audio">>}
                                ,{<<"RTP-Secure-Video-Confirmed">>, <<"rtp_secure_media_confirmed_video">>}
-                              
+
                                ,{<<"Secure-ZRTP">>, <<"zrtp_secure_media">>}
                                ,{<<"ZRTP-Secure-Media">>, <<"zrtp_secure_media">>}
                                ,{<<"ZRTP-Secure-Media-Confirmed">>, <<"zrtp_secure_media_confirmed">>}
                                ,{<<"ZRTP-Secure-Audio-Confirmed">>, <<"zrtp_secure_media_confirmed_audio">>}
                                ,{<<"ZRTP-Secure-Video-Confirmed">>, <<"zrtp_secure_media_confirmed_video">>}
                                ,{<<"ZRTP-Enrollment">>, <<"zrtp_enrollment">>}
-                              
+
                                ,{<<"Ignore-Completed-Elsewhere">>, <<"ignore_completed_elsewhere">>}
                                ,{<<"tts_engine">>, <<"tts_engine">>}
                                ,{<<"tts_voice">>, <<"tts_voice">>}
@@ -281,16 +281,6 @@
                                ,{<<"conference">>, <<"page">>}
                               ]).
 
--define(CALL_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_EXECUTE_ERROR">>
-                          ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
-                          ,<<"CHANNEL_CREATE">>, <<"CHANNEL_DESTROY">>
-                          ,<<"RECORD_START">>, <<"RECORD_STOP">>
-                          ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>
-                          ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PROGRESS_MEDIA">>
-                          ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
-                          ,<<"CHANNEL_REPLACED">>, <<"CALL_SECURE">>, <<"CHANNEL_FAX_STATUS">>
-                     ]).
-
 -define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_DESTROY'
                     ,'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
@@ -307,15 +297,15 @@
                            ,'spandsp::txfaxpageresult'
                            ,'spandsp::rxfaxpageresult'
                            ,'spandsp::txfaxnegociateresult'
-                           ,'spandsp::rxfaxnegociateresult'                          
+                           ,'spandsp::rxfaxnegociateresult'
                            ,?CHANNEL_MOVE_RELEASED_EVENT
                            ,?CHANNEL_MOVE_COMPLETE_EVENT
                           ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
-                              ,<<"FreeSWITCH-IPv4">>, <<"FreeSWITCH-IPv6">>, <<"Event-Date-Local">>
-                              ,<<"Event-Date-GMT">>, <<"Event-Date-Timestamp">>, <<"Event-Calling-File">>
-                              ,<<"Event-Calling-Function">>, <<"Event-Calling-Line-Number">>, <<"Event-Sequence">>
+                          ,<<"FreeSWITCH-IPv4">>, <<"FreeSWITCH-IPv6">>, <<"Event-Date-Local">>
+                          ,<<"Event-Date-GMT">>, <<"Event-Date-Timestamp">>, <<"Event-Calling-File">>
+                          ,<<"Event-Calling-Function">>, <<"Event-Calling-Line-Number">>, <<"Event-Sequence">>
                          ]).
 
 -define(FS_CHANNEL_STATES, [{<<"CS_NEW">>, <<"new">>}
@@ -336,9 +326,9 @@
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).
 
 -define(FS_CMD_SAFELIST, ["load", "set", "uuid_dump", "uuid_record"
-                              ,"uuid_kill", "uuid_getvar", "show"
-                              ,"uuid_exists", "reload", "reloadxml"
-                              ,"reloadacl"
+                          ,"uuid_kill", "uuid_getvar", "show"
+                          ,"uuid_exists", "reload", "reloadxml"
+                          ,"reloadacl"
                          ]).
 
 -define(FS_CONFERNCE_ATTRS, [{'name', <<"Conference-ID">>}

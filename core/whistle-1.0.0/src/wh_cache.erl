@@ -153,7 +153,7 @@ flush() -> flush_local(?SERVER).
 -spec fetch_keys() -> [term(),...] | [].
 fetch_keys() -> fetch_keys_local(?SERVER).
 
--spec filter(fun((term(), term()) -> boolean())) -> wh_proplist().
+-spec filter(fun((term(), term()) -> boolean())) -> [{term(), term()},...] | [].
 filter(Pred) when is_function(Pred, 2) -> filter_local(?SERVER, Pred).
 
 -spec dump() -> 'ok'.
@@ -218,15 +218,15 @@ flush_local(Srv) -> gen_server:cast(Srv, {'flush'}).
 
 -spec fetch_keys_local(atom()) -> list().
 fetch_keys_local(Srv) ->
-    MatchSpec = [{#cache_obj{key = '$1', type = normal, _ = '_'}
+    MatchSpec = [{#cache_obj{key = '$1', type = 'normal', _ = '_'}
                   ,[]
                   ,['$1']
                  }],
     ets:select(Srv, MatchSpec).
 
--spec filter_local(atom(), fun((term(), term()) -> boolean())) -> wh_proplist().
+-spec filter_local(atom(), fun((term(), term()) -> boolean())) -> [{term(), term()},...] | [].
 filter_local(Srv, Pred)  when is_function(Pred, 2) ->
-    ets:foldl(fun(#cache_obj{key=K, value=V, type = normal}, Acc) ->
+    ets:foldl(fun(#cache_obj{key=K, value=V, type = 'normal'}, Acc) ->
                       case Pred(K, V) of
                           'true' -> [{K, V}|Acc];
                           'false' -> Acc
@@ -245,30 +245,37 @@ dump_local(Srv, ShowValue) when not is_atom(ShowValue) ->
 dump_local(Srv, ShowValue) ->
     Now = wh_util:current_tstamp(),
     _ = [begin
-             io:format("Key: ~300p~n", [Obj#cache_obj.key]),
-             case Obj#cache_obj.type =/= normal of
-                 true -> io:format("Value: ~300p~n", [Obj#cache_obj.value]);
-                 false -> ok
+             io:format("Key: ~300p~n", [Key]),
+             case Type =/= 'normal' of
+                 'true' -> io:format("Value: ~300p~n", [Value]);
+                 'false' -> 'ok'
              end,
-             io:format("Type: ~s~n", [Obj#cache_obj.type]),
-             io:format("Expires: ~30p~n", [Obj#cache_obj.expires]),
-             case is_number(Obj#cache_obj.expires) of
-                 true ->
-                     io:format("Remaining: ~30p~n", [(Obj#cache_obj.timestamp
-                                                      + Obj#cache_obj.expires)
+             io:format("Type: ~s~n", [Type]),
+             io:format("Expires: ~30p~n", [Expires]),
+             case is_number(Expires) of
+                 'true' ->
+                     io:format("Remaining: ~30p~n", [(Timestamp
+                                                      + Expires)
                                                      - Now
                                                     ]);
-                 false -> ok
+                 'false' -> 'ok'
              end,
-             io:format("Origin: ~300p~n", [Obj#cache_obj.origin]),
-             io:format("Callback: ~s~n", [Obj#cache_obj.callback =/= undefined]),
-             case Obj#cache_obj.type =:= normal  andalso ShowValue of
-                 true -> io:format("Value: ~p~n", [Obj#cache_obj.value]);
-                 false -> ok
+             io:format("Origin: ~300p~n", [Origin]),
+             io:format("Callback: ~s~n", [Callback =/= 'undefined']),
+             case Type =:= 'normal'  andalso ShowValue of
+                 'true' -> io:format("Value: ~p~n", [Value]);
+                 'false' -> 'ok'
              end,
              io:format("~n", [])
          end
-         || Obj <- ets:match_object(Srv, #cache_obj{_ = '_'})
+         || #cache_obj{type=Type
+                       ,key=Key
+                       ,value=Value
+                       ,timestamp=Timestamp
+                       ,expires=Expires
+                       ,origin=Origin
+                       ,callback=Callback
+                      } <- ets:match_object(Srv, #cache_obj{_ = '_'})
         ],
     'ok'.
 

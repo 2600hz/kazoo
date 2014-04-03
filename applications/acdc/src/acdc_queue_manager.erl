@@ -173,7 +173,7 @@ start_queue_call(JObj, Props, Call) ->
     lager:debug("answering call"),
     whapps_call_command:answer_now(Call),
 
-    case cf_util:correct_media_path(props:get_value('moh', Props), Call) of
+    case wh_media_util:media_path(props:get_value('moh', Props), Call) of
         'undefined' ->
             lager:debug("using default moh"),
             whapps_call_command:hold(Call);

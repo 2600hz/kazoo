@@ -520,6 +520,9 @@ add_validation_error(Property, <<"date_range">> = C, Message, Context) ->
 %% Value was required to locate a resource, but failed (like account_name)
 add_validation_error(Property, <<"not_found">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
+%% Value's keys didn't match property
+add_validation_error(Property, <<"patternProperties">> = C, Message, Context) ->
+    add_depreciated_validation_error(Property, C, Message, Context);
 
 add_validation_error(Property, Code, Message, Context) ->
     lager:debug("UNKNOWN ERROR CODE: ~p", [Code]),

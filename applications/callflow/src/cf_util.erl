@@ -38,6 +38,7 @@
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
 -export([encryption_method_map/2]).
+-export([maybe_start_metaflows/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -234,15 +235,8 @@ ignore_early_media(Endpoints) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec correct_media_path(api_binary(), whapps_call:call()) -> api_binary().
-correct_media_path('undefined', _) -> 'undefined';
-correct_media_path(<<>>, _) -> 'undefined';
-correct_media_path(<<"silence_stream://", _/binary>> = Media, _) -> Media;
-correct_media_path(<<"tone_stream://", _/binary>> = Media, _) -> Media;
 correct_media_path(Media, Call) ->
-    case binary:match(Media, <<"/">>) of
-        'nomatch' -> <<$/, (whapps_call:account_id(Call))/binary, $/, Media/binary>>;
-        _Else -> Media
-    end.
+    wh_media_util:media_path(Media, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -745,7 +739,7 @@ maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
     case re:run(Number, Regex, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->
             maybe_apply_dialplan(Regexs, DialPlan, Number);
-        'match' -> 
+        'match' ->
             Number;
         {'match', Captures} ->
             Root = lists:last(Captures),
@@ -754,7 +748,7 @@ maybe_apply_dialplan([Regex|Regexs], DialPlan, Number) ->
             <<Prefix/binary, Root/binary, Suffix/binary>>
     end.
 
--spec encryption_method_map(api_object(), api_binaries()) -> api_object().
+-spec encryption_method_map(api_object(), api_binaries() | wh_json:object()) -> api_object().
 encryption_method_map(JObj, []) -> JObj;
 encryption_method_map(JObj, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of
@@ -769,6 +763,31 @@ encryption_method_map(JObj, Endpoint) ->
                           ,<<"encryption">>
                           ,<<"methods">>
                          ], Endpoint, [])).
+
+-spec maybe_start_metaflows(whapps_call:call(), wh_json:objects()) -> 'ok'.
+-spec maybe_start_metaflow(whapps_call:call(), wh_json:object()) -> 'ok'.
+
+maybe_start_metaflows(Call, Endpoints) ->
+    [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
+    'ok'.
+
+maybe_start_metaflow(Call, Endpoint) ->
+    case wh_json:get_value(<<"Metaflows">>, Endpoint) of
+        'undefined' -> 'ok';
+        JObj ->
+            API = props:filter_undefined(
+                    [{<<"Endpoint-ID">>, wh_json:get_value(<<"Endpoint-ID">>, Endpoint)}
+                     ,{<<"Call">>, whapps_call:to_json(Call)}
+                     ,{<<"Numbers">>, wh_json:get_value(<<"numbers">>, JObj)}
+                     ,{<<"Patterns">>, wh_json:get_value(<<"patterns">>, JObj)}
+                     ,{<<"Binding-Digit">>, wh_json:get_value(<<"binding_digit">>, JObj)}
+                     ,{<<"Digit-Timeout">>, wh_json:get_value(<<"digit_timeout">>, JObj)}
+                     ,{<<"Listen-On">>, wh_json:get_value(<<"listen_on">>, JObj, <<"b">>)}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ]),
+            lager:debug("sending metaflow for endpoint: ~s", [wh_json:get_value(<<"Endpoint-ID">>, Endpoint)]),
+            whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
+    end.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

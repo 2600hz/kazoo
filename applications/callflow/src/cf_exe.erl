@@ -86,12 +86,12 @@ start_link(Call) ->
 get_call(Srv) when is_pid(Srv) ->
     gen_server:call(Srv, 'get_call', 1000);
 get_call(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     get_call(Srv).
 
 -spec set_call(whapps_call:call()) -> 'ok'.
 set_call(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     gen_server:cast(Srv, {'set_call', Call}).
 
 -spec continue(whapps_call:call() | pid()) -> 'ok'.
@@ -101,47 +101,47 @@ continue(Srv) -> continue(<<"_">>, Srv).
 continue(Key, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'continue', Key});
 continue(Key, Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     continue(Key, Srv).
 
 -spec branch(wh_json:object(), whapps_call:call() | pid()) -> 'ok'.
 branch(Flow, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'branch', Flow});
 branch(Flow, Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     branch(Flow, Srv).
 
 add_event_listener(Srv, {_,_}=SpawnInfo) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'add_event_listener', SpawnInfo});
 add_event_listener(Call, {_,_}=SpawnInfo) ->
-    add_event_listener(whapps_call:kvs_fetch('cf_exe_pid', Call), SpawnInfo).
+    add_event_listener(whapps_call:kvs_fetch('consumer_pid', Call), SpawnInfo).
 
 -spec stop(whapps_call:call() | pid()) -> 'ok'.
 stop(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'stop');
 stop(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     stop(Srv).
 
 -spec transfer(whapps_call:call() | pid()) -> 'ok'.
 transfer(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'transfer');
 transfer(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     transfer(Srv).
 
 -spec control_usurped(whapps_call:call() | pid()) -> 'ok'.
 control_usurped(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'control_usurped');
 control_usurped(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     control_usurped(Srv).
 
 -spec callid_update(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
 callid_update(CallId, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'callid_update', CallId});
 callid_update(CallId, Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     callid_update(CallId, Srv).
 
 -spec callid(whapps_call:call() | pid()) -> ne_binary().
@@ -152,7 +152,7 @@ callid(Srv) when is_pid(Srv) ->
     put('callid', CallId),
     CallId;
 callid(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     callid(Srv).
 
 callid(_, Call) ->
@@ -162,28 +162,28 @@ callid(_, Call) ->
 queue_name(Srv) when is_pid(Srv) ->
     gen_listener:queue_name(Srv);
 queue_name(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     queue_name(Srv).
 
 -spec control_queue(whapps_call:call() | pid()) -> ne_binary().
 -spec control_queue(api_binary(), whapps_call:call() | pid()) -> ne_binary().
 
 control_queue(Srv) when is_pid(Srv) -> gen_listener:call(Srv, 'control_queue_name');
-control_queue(Call) -> control_queue(whapps_call:kvs_fetch('cf_exe_pid', Call)).
+control_queue(Call) -> control_queue(whapps_call:kvs_fetch('consumer_pid', Call)).
 control_queue(_, Call) -> control_queue(Call).
 
 -spec get_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
 get_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, 'get_branch_keys');
 get_branch_keys(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     get_branch_keys(Srv).
 
 -spec get_all_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'get_branch_keys', 'all'});
 get_all_branch_keys(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     get_all_branch_keys(Srv).
 
 -spec attempt(whapps_call:call() | pid()) ->
@@ -197,14 +197,14 @@ attempt(Srv) -> attempt(<<"_">>, Srv).
 attempt(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'attempt', Key});
 attempt(Key, Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     attempt(Key, Srv).
 
 -spec wildcard_is_empty(whapps_call:call() | pid()) -> boolean().
 wildcard_is_empty(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, 'wildcard_is_empty');
 wildcard_is_empty(Call) ->
-    Srv = whapps_call:kvs_fetch('cf_exe_pid', Call),
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     wildcard_is_empty(Srv).
 
 -spec relay_amqp(wh_json:object(), wh_proplist()) -> any().
@@ -219,7 +219,7 @@ relay_amqp(JObj, Props) ->
 send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
     gen_listener:cast(Srv, {'send_amqp', API, PubFun});
 send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
-    send_amqp(whapps_call:kvs_fetch('cf_exe_pid', Call), API, PubFun).
+    send_amqp(whapps_call:kvs_fetch('consumer_pid', Call), API, PubFun).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -394,7 +394,7 @@ event_listener_name(Call, Module) ->
 handle_info('initialize', #state{call=Call}) ->
     log_call_information(Call),
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
-    Updaters = [fun(C) -> whapps_call:kvs_store('cf_exe_pid', self(), C) end
+    Updaters = [fun(C) -> whapps_call:kvs_store('consumer_pid', self(), C) end
                 ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
                 ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
                ],

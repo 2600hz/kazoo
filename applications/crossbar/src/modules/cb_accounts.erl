@@ -417,6 +417,7 @@ leak_pvt_allow_additions(Context) ->
     JObj = cb_context:doc(Context),
     RespJObj = cb_context:resp_data(Context),
     AllowAdditions = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj, 'false'),
+
     leak_pvt_superduper_admin(
       cb_context:set_resp_data(Context
                                ,wh_json:set_value(<<"wnm_allow_additions">>, AllowAdditions, RespJObj))
@@ -495,8 +496,8 @@ leak_billing_mode(Context) ->
 %%--------------------------------------------------------------------
 -spec load_children(ne_binary(), cb_context:context()) -> cb_context:context().
 load_children(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [{<<"startkey">>, [AccountId]}
-                                                ,{<<"endkey">>, [AccountId, wh_json:new()]}
+    crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [{'startkey', [AccountId]}
+                                                ,{'endkey', [AccountId, wh_json:new()]}
                                                ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -507,8 +508,8 @@ load_children(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_descendants(ne_binary(), cb_context:context()) -> cb_context:context().
 load_descendants(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [{<<"startkey">>, [AccountId]}
-                                                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [{'startkey', [AccountId]}
+                                                   ,{'endkey', [AccountId, wh_json:new()]}
                                                   ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -519,8 +520,8 @@ load_descendants(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_siblings(ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings(AccountId, Context) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT, [{<<"startkey">>, AccountId}
-                                                         ,{<<"endkey">>, AccountId}
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT, [{'startkey', AccountId}
+                                                         ,{'endkey', AccountId}
                                                         ], Context),
     case cb_context:resp_status(Context1) of
         'success' ->

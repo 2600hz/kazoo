@@ -58,6 +58,8 @@
          ,cast/2
          ,delayed_cast/3
          ,reply/2
+
+         ,enter_loop/3, enter_loop/4, enter_loop/5
         ]).
 
 %% gen_listener API
@@ -82,7 +84,9 @@
         ]).
 
 -export([federated_event/3]).
--export([handle_event/4]).
+-export([handle_event/4
+         ,client_handle_event/6
+        ]).
 -export([distribute_event/3]).
 
 -include_lib("whistle/include/wh_amqp.hrl").
@@ -118,7 +122,8 @@
 
 -type handle_event_return() :: {'reply', wh_proplist()} | 'ignore'.
 
--type binding() :: {atom() | ne_binary(), wh_proplist()}. %% {wapi_module, options}
+-type binding_module() :: atom() | ne_binary().
+-type binding() :: {binding_module(), wh_proplist()}. %% {wapi_module, options}
 -type bindings() :: [binding(),...] | [].
 
 -type responder_callback_mod() :: atom() | {atom(), atom()}.
@@ -134,7 +139,10 @@
                          {'basic_qos', non_neg_integer()}
                         ].
 
--export_type([handle_event_return/0]).
+-export_type([handle_event_return/0
+              ,binding/0
+              ,bindings/0
+             ]).
 
 %%%===================================================================
 %%% API
@@ -169,7 +177,7 @@
 -callback terminate('normal' | 'shutdown' | {'shutdown', term()} | term(), module_state()) ->
     term().
 -callback code_change(term() | {'down', term()}, module_state(), term()) ->
-    {'ok', state()} | {'error', term()}.
+    {'ok', module_state()} | {'error', term()}.
 
   -spec start_link(atom(), start_params(), list()) -> startlink_ret().
 start_link(Module, Params, InitArgs) ->
@@ -206,14 +214,31 @@ cast(Name, Request) -> gen_server:cast(Name, Request).
 
 -spec delayed_cast(server_ref(), term(), pos_integer()) -> 'ok'.
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
-    spawn(fun() ->
-                  timer:sleep(Wait),
-                  cast(Name, Request)
-          end),
+    _ = spawn(fun() ->
+                      timer:sleep(Wait),
+                      cast(Name, Request)
+              end),
     'ok'.
 
 -spec reply({pid(), reference()}, term()) -> no_return().
 reply(From, Msg) -> gen_server:reply(From, Msg).
+
+-type server_name() :: {'global' | 'local', atom()} | pid().
+
+-spec enter_loop(atom(), list(), term()) -> no_return().
+-spec enter_loop(atom(), list(), term(), wh_timeout() | server_name()) -> no_return().
+-spec enter_loop(atom(), list(), term(), server_name(), wh_timeout()) -> no_return().
+enter_loop(Module, Options, ModuleState) ->
+    enter_loop(Module, Options, ModuleState, self(), 'infinity').
+enter_loop(Module, Options, ModuleState, {Scope, _Name}=ServerName)
+  when Scope =:= 'local' orelse Scope =:= 'global' ->
+    enter_loop(Module, Options, ModuleState, ServerName, 'infinity');
+enter_loop(Module, Option, ModuleState, Timeout) ->
+    enter_loop(Module, Option, ModuleState, self(), Timeout).
+
+enter_loop(Module, Options, ModuleState, ServerName, Timeout) ->
+    {'ok', MyState} = init_state([Module, Options, ModuleState]),
+    gen_server:enter_loop(?MODULE, [], MyState, ServerName, Timeout).
 
 -spec add_responder(server_ref(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
 add_responder(Srv, Responder, Key) when not is_list(Key) ->
@@ -264,7 +289,7 @@ rm_binding(Srv, {Binding, Props}) ->
 
 -spec rm_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 rm_binding(Srv, Binding, Props) ->
-    gen_server:cast(Srv, {'rm_binding', wh_util:to_binary(Binding), Props}).
+    gen_server:cast(Srv, {'rm_binding', Binding, Props}).
 
 -spec federated_event(server_ref(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
 federated_event(Srv, JObj, BasicDeliver) ->
@@ -286,17 +311,16 @@ execute(Srv, Function) when is_function(Function) ->
 %%% gen_server callbacks
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {'ok', State} |
-%%                     {'ok', State, Timeout} |
-%%                     ignore |
-%%                     {'stop', Reason}
-%% @end
-%%--------------------------------------------------------------------
+%% Takes an existing process and turns it into a gen_listener
+-spec init_state(list()) -> {'ok', state()} |
+                            {'stop', term()} |
+                            'ignore'.
+init_state([Module, Params, ModuleState]) ->
+    process_flag('trap_exit', 'true'),
+    put('callid', Module),
+    lager:debug("continuing as a gen_listener proc"),
+    init(Module, Params, ModuleState, 'undefined').
+
 -spec init([atom() | wh_proplist(),...]) ->
                   {'ok', state()} |
                   {'stop', term()} |
@@ -460,7 +484,7 @@ handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
     KeepBs = lists:filter(fun({B, P}) when B =:= Binding, P =:= Props ->
                                   remove_binding(B, P, Q),
                                   'false';
-                             (_) -> 'true'
+                             ({_B, _P}) -> 'true'
                           end, Bs),
     {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
 handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
@@ -721,18 +745,25 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                    ,consumer_key=ConsumerKey
                                                   }) ->
     Key = wh_util:get_event_type(JObj),
-    _ = [spawn(fun() ->
-                       _ = wh_util:put_callid(JObj),
-                       _ = wh_amqp_channel:consumer_pid(ConsumerKey),
-                       case erlang:function_exported(Module, Fun, 3) of
-                           'true' -> Module:Fun(JObj, Props, BasicDeliver);
-                           'false' -> Module:Fun(JObj, Props)
-                       end
-               end)
+    _ = [proc_lib:spawn(?MODULE, 'client_handle_event', [JObj
+                                                         ,ConsumerKey
+                                                         ,Module, Fun
+                                                         ,Props
+                                                         ,BasicDeliver
+                                                        ])
          || {Evt, {Module, Fun}} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
     'ok'.
+
+-spec client_handle_event(wh_json:object(), ne_binary(), atom(), atom(), wh_proplist(), #'basic.deliver'{}) -> any().
+client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
+    _ = wh_util:put_callid(JObj),
+    _ = wh_amqp_channel:consumer_pid(ConsumerKey),
+    case erlang:function_exported(Module, Fun, 3) of
+        'true' -> Module:Fun(JObj, Props, BasicDeliver);
+        'false' -> Module:Fun(JObj, Props)
+    end.
 
 -spec callback_handle_event(wh_json:object(), #'basic.deliver'{}, state()) -> 'ignore' | wh_proplist().
 callback_handle_event(JObj
@@ -786,16 +817,17 @@ start_amqp(Props) ->
     end.
 
 -spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
-set_qos('undefined') -> ok;
+set_qos('undefined') -> 'ok';
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
 
 -spec start_consumer(ne_binary(), wh_proplist()) -> 'ok'.
 start_consumer(Q, 'undefined') -> amqp_util:basic_consume(Q, []);
 start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 
--spec remove_binding(ne_binary(), wh_proplist(), ne_binary()) -> any().
+-spec remove_binding(binding_module(), wh_proplist(), api_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
+
     try (wh_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
         Return -> Return
     catch

@@ -21,27 +21,20 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     AccountId = whapps_call:account_id(Call),
-    case wh_json:get_value(<<"id">>, Data) of
+    Path = wh_json:get_value(<<"id">>, Data),
+    case wh_media_util:media_path(Path, AccountId) of
         'undefined' -> lager:info("invalid data in the play callflow");
-        <<"/system_media", _/binary>> = Path -> play(Data, Call, Path);
-        <<"system_media", _/binary>> = Path -> play(Data, Call, Path);
-        <<"local_stream://",_/binary>> = Path -> play(Data, Call, Path);
-        <<"silence_stream://",_/binary>> = Path -> play(Data, Call, Path);
-        Path when AccountId =/= 'undefined' ->
-            lager:info("prepending media ID with /~s/", [AccountId]),
-            Path1 = <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>,
-            play(Data, Call, Path1);
-        _Path ->
-            lager:info("unable to play ~s, as account id is undefined", [_Path])
+        Media -> play(Data, Call, Media)
     end,
     cf_exe:continue(Call).
 
--spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> whapps_api_std_return().
+-spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> any().
 play(Data, Call, Media) ->
     case wh_json:is_false(<<"answer">>, Data) of
         'true' -> 'ok';
-        'false' -> whapps_call_command:answer(Call),
-                   timer:sleep(100)
+        'false' ->
+            whapps_call_command:answer(Call),
+            timer:sleep(100)
     end,
     lager:info("playing media ~s", [Media]),
     _ = whapps_call_command:b_play(Media, Call).

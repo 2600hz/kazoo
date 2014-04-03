@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -46,7 +46,7 @@ handle_bridge_failure(Cause, Code, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_offnet_request(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec build_offnet_request(wh_json:object(), whapps_call:call()) -> wh_proplist().
 build_offnet_request(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
@@ -132,7 +132,7 @@ get_to_did(Data, Call) ->
     end.
 
 -spec get_to_did(wh_json:object(), whapps_call:call(), ne_binary()) -> ne_binary().
-get_to_did(Data, Call, Number) ->
+get_to_did(_Data, Call, Number) ->
     case cf_endpoint:get(Call) of
         {'ok', Endpoint} ->
             case wh_json:get_value(<<"dial_plan">>, Endpoint, []) of

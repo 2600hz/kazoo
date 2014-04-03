@@ -22,7 +22,9 @@
 -export([graceful_shutdown/2]).
 -export([shutdown/2]).
 -export([to_json/1]).
--export([swap_call_legs/1]).
+-export([swap_call_legs/1
+         ,listen_for_other_leg/3
+        ]).
 -export([create_event/1
          ,create_event/2
          ,create_event/3
@@ -34,6 +36,7 @@
 -export([get_application_name/1]).
 -export([queue_name/1
          ,callid/1
+         ,other_leg/1
          ,node/1
          ,update_node/2
         ]).
@@ -58,6 +61,8 @@
 -record(state, {
           node :: atom()
           ,callid :: api_binary()
+          ,other_leg :: api_binary()
+          ,other_leg_events = [] :: ne_binaries()
           ,is_node_up = 'true' :: boolean()
           ,failed_node_checks = 0 :: non_neg_integer()
           ,node_down_tref :: reference()
@@ -93,7 +98,7 @@ start_link(Node, CallId) ->
 
 -spec graceful_shutdown(atom(), ne_binary()) -> 'ok'.
 graceful_shutdown(Node, UUID) ->
-    _ = [gen_listener:cast(Pid, {'graceful_shutdown'})
+    _ = [gen_listener:cast(Pid, {'graceful_shutdown', UUID})
          || Pid <- gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)})
         ],
     'ok'.
@@ -105,8 +110,20 @@ shutdown(Node, UUID) ->
         ],
     'ok'.
 
+-spec listen_for_other_leg(atom(), ne_binary(), api_binaries()) -> 'ok'.
+listen_for_other_leg(_Node, _UUID, 'undefined') -> 'ok';
+listen_for_other_leg(_Node, _UUID, []) -> 'ok';
+listen_for_other_leg(Node, UUID, [_|_] = Events) ->
+    _ = [gen_listener:cast(Pid, {'b_leg_events', Events})
+         || Pid <- gproc:lookup_pids({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, UUID)})
+        ],
+    'ok'.
+
 -spec callid(pid()) -> ne_binary().
 callid(Srv) -> gen_listener:call(Srv, 'callid', 1000).
+
+-spec other_leg(pid()) -> api_binary().
+other_leg(Srv) -> gen_listener:call(Srv, 'other_leg', 1000).
 
 -spec node(pid()) -> ne_binary().
 node(Srv) -> gen_listener:call(Srv, 'node', 1000).
@@ -188,6 +205,8 @@ handle_call('node', _From, #state{node=Node}=State) ->
     {'reply', Node, State};
 handle_call('callid', _From, #state{callid=CallId}=State) ->
     {'reply', CallId, State};
+handle_call('other_leg', _From, #state{other_leg=CallId}=State) ->
+    {'reply', CallId, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -230,9 +249,14 @@ handle_cast({'channel_redirected', Props}, State) ->
     lager:debug("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props),
     {'stop', {'shutdown', 'redirect'}, State};
-handle_cast({'graceful_shutdown'}, #state{node=Node}=State) ->
+handle_cast({'graceful_shutdown', CallId}, #state{node=Node
+                                                  ,callid=CallId
+                                                 }=State) ->
     lager:debug("call event listener on node ~s received graceful shutdown request", [Node]),
     erlang:send_after(5000, self(), 'shutdown'),
+    {'noreply', State};
+handle_cast({'graceful_shutdown', _CallId}, #state{}=State) ->
+    lager:debug("ignoring graceful shutdown for ~s", [_CallId]),
     {'noreply', State};
 handle_cast('shutdown', #state{node=Node}=State) ->
     lager:debug("call event listener on node ~s received shutdown request", [Node]),
@@ -240,6 +264,19 @@ handle_cast('shutdown', #state{node=Node}=State) ->
 handle_cast({'transferer', _}, State) ->
     lager:debug("call control has been transfered."),
     {'stop', 'normal', State};
+handle_cast({'b_leg_events', Events}, State) ->
+    lager:debug("tracking b_leg events: ~p", [Events]),
+    {'noreply', State#state{other_leg_events=Events}};
+handle_cast({'other_leg', _OtherLeg}, #state{other_leg_events=[]}=State) ->
+    lager:debug("ignoring other leg events for ~s", [_OtherLeg]),
+    {'noreply', State};
+handle_cast({'other_leg', OtherLeg}, #state{other_leg_events=_Events
+                                            ,node=Node
+                                           }=State) ->
+    lager:debug("tracking other leg events for ~s", [OtherLeg]),
+    'true' = gproc:reg({'p', 'l', {'call_events_process', Node, OtherLeg}}),
+    'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, OtherLeg)}),
+    {'noreply', State#state{other_leg=OtherLeg}};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
@@ -266,7 +303,8 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
                                                 ,callid=CallId
                                                }=State) ->
     case {props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props))
-          ,props:get_value(<<"Application">>, Props)}
+          ,props:get_value(<<"Application">>, Props)
+         }
     of
         {_, <<"redirect">>} ->
             gen_listener:cast(self(), {'channel_redirected', Props}),
@@ -290,6 +328,21 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             {'noreply', State};
         {_, _} ->
             process_channel_event(Props),
+            {'noreply', State}
+    end;
+handle_info({'event', [CallId | Props]}, #state{other_leg=CallId
+                                                ,other_leg_events=Events
+                                               }=State) ->
+    Event = props:get_first_defined([<<"Event-Subclass">>
+                                     ,<<"Event-Name">>
+                                    ], Props),
+
+    case lists:member(Event, Events) of
+        'true' ->
+            process_channel_event(Props),
+            {'noreply', State};
+        'false' ->
+            lager:debug("ignoring b-leg event ~s", [Event]),
             {'noreply', State}
     end;
 handle_info({'nodedown', _}, #state{node=Node
@@ -420,8 +473,8 @@ code_change(_OldVsn, State, _Extra) ->
 -spec maybe_process_channel_destroy(atom(), ne_binary(), wh_proplist()) -> 'ok'.
 maybe_process_channel_destroy(Node, CallId, Props) ->
     case ecallmgr_fs_channel:node(CallId) of
-        {'ok', Node} -> gen_server:cast(self(), {'graceful_shutdown'});
-        {'error', _} -> gen_server:cast(self(), {'graceful_shutdown'});
+        {'ok', Node} -> gen_server:cast(self(), {'graceful_shutdown', CallId});
+        {'error', _} -> gen_server:cast(self(), {'graceful_shutdown', CallId});
         {'ok', _NewNode} ->
             lager:debug("channel is on ~s, not ~s: publishing channel move"
                         ,[CallId, _NewNode, Node]),
@@ -493,9 +546,7 @@ generic_call_event_props(Props) ->
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
-     ,{<<"Other-Leg-Call-ID">>, props:get_first_defined([<<"Other-Leg-Unique-ID">>
-                                                         ,<<"variable_holding_uuid">>
-                                                        ], Props)}
+     ,{<<"Other-Leg-Call-ID">>, get_other_leg(Props)}
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
      ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
@@ -514,8 +565,12 @@ publish_event(Props) ->
         {_, <<"dtmf">>} ->
             Pressed = props:get_value(<<"DTMF-Digit">>, Props),
             lager:debug("publishing received DTMF digit ~s", [Pressed]);
-        {<<>>, _} ->
-            lager:debug("publishing call event ~s", [wh_util:to_lower_binary(EventName)]);
+        {<<>>, <<"channel_bridge">>} ->
+            OtherLeg = get_other_leg(Props),
+            gen_listener:cast(self(), {'other_leg', OtherLeg}),
+            lager:debug("publishing channel_bridge to other leg ~s", [OtherLeg]);
+        {<<>>, _Event} ->
+            lager:debug("publishing call event ~s", [_Event]);
         {ApplicationName, <<"channel_execute_complete">>} ->
             ApplicationResponse = wh_util:to_lower_binary(props:get_value(<<"Application-Response">>, Props, <<>>)),
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
@@ -664,7 +719,7 @@ conference_specific(Props) ->
 
 -spec fax_specific(wh_proplist()) -> wh_proplist().
 fax_specific(Props) ->
-    props:filter_undefined(      
+    props:filter_undefined(
       [{<<"Fax-Success">>, get_fax_success(Props)}
        ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
        ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
@@ -739,6 +794,9 @@ get_call_id(Props) ->
                              ,<<"Channel-Call-UUID">>
                              ,<<"variable_sip_call_id">>
                             ], Props).
+
+get_other_leg(Props) ->
+    ecallmgr_fs_channel:get_other_leg(get_call_id(Props), Props).
 
 -spec get_event_name(wh_proplist()) -> api_binary().
 get_event_name(Props) ->

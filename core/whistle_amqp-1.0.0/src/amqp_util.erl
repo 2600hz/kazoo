@@ -210,11 +210,22 @@ document_routing_key(Action, Db, Type) ->
     document_routing_key(Action, Db, Type, <<"*">>).
 
 document_routing_key(<<"*">>, Db, Type, Id) ->
-    list_to_binary([<<"*.">>, Db, ".", Type, ".", Id]);
+    list_to_binary([<<"*.">>, wh_util:to_binary(Db)
+                    ,".", wh_util:to_binary(Type)
+                    ,".", wh_util:to_binary(Id)
+                   ]);
 document_routing_key(<<"doc_", _/binary>> = Action, Db, Type, Id) ->
-    list_to_binary([wh_util:to_list(Action), ".", Db, ".", Type, ".", Id]);
+    list_to_binary([wh_util:to_list(Action)
+                    ,".", wh_util:to_binary(Db)
+                    ,".", wh_util:to_binary(Type)
+                    ,".", wh_util:to_binary(Id)
+                   ]);
 document_routing_key(Action, Db, Type, Id) ->
-    list_to_binary(["doc_", wh_util:to_list(Action), ".", Db, ".", Type, ".", Id]).
+    list_to_binary(["doc_", wh_util:to_list(Action)
+                    ,".", wh_util:to_binary(Db)
+                    ,".", wh_util:to_binary(Type)
+                    ,".", wh_util:to_binary(Id)
+                   ]).
 
 -spec callctl_publish(ne_binary(), amqp_payload()) -> 'ok'.
 -spec callctl_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.

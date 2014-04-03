@@ -418,7 +418,7 @@ fetch_channel(UUID, FetchId, Node) ->
                     ],
             try_channel_resp(FetchId, Node, Props)
     end.
-        
+
 -spec channel_not_found(atom(), ne_binary()) -> 'ok'.
 channel_not_found(Node, FetchId) ->
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
@@ -557,15 +557,28 @@ props_to_update(Props) ->
                            ]).
 
 get_other_leg(UUID, Props) ->
-    get_other_leg(UUID, Props, props:get_value(<<"Other-Leg-Unique-ID">>, Props)).
+    get_other_leg_name(UUID, Props, props:get_value(<<"Other-Leg-Channel-Name">>, Props)).
+
+get_other_leg_name(UUID, Props, <<"loopback/", _/binary>>) ->
+    %% loopback channel, use channel var BridgeId
+    get_other_leg(UUID, Props, props:get_value(?GET_CCV(<<"Bridge-ID">>), Props));
+get_other_leg_name(UUID, Props, _ChannelName) ->
+    get_other_leg(UUID, Props, props:get_first_defined([<<"Other-Leg-Unique-ID">>
+                                                        ,<<"Other-Leg-Call-ID">>
+                                                       ], Props)).
 
 get_other_leg(UUID, Props, 'undefined') ->
     maybe_other_bridge_leg(UUID
+                           ,Props
                            ,props:get_value(<<"Bridge-A-Unique-ID">>, Props)
                            ,props:get_value(<<"Bridge-B-Unique-ID">>, Props)
                           );
 get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
 
-maybe_other_bridge_leg(UUID, UUID, OtherLeg) -> OtherLeg;
-maybe_other_bridge_leg(UUID, OtherLeg, UUID) -> OtherLeg;
-maybe_other_bridge_leg(_, _, _) -> 'undefined'.
+maybe_other_bridge_leg(UUID, _Props, UUID, OtherLeg) -> OtherLeg;
+maybe_other_bridge_leg(UUID, _Props, OtherLeg, UUID) -> OtherLeg;
+maybe_other_bridge_leg(UUID, Props, _, _) ->
+    case props:get_value(?GET_CCV(<<"Bridge-ID">>), Props) of
+        UUID -> 'undefined';
+        BridgeId -> BridgeId
+    end.

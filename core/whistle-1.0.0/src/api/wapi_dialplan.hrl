@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013 2600Hz INC
+%%% @copyright (C) 2011-2014 2600Hz INC
 %%% @doc
 %%% Dialplan API definitions
 %%% @end
@@ -8,14 +8,11 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -include_lib("whistle/include/wh_api.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
--define(IS_TERMINATOR, fun(X) when is_list(X) -> 'true';
-                          (<<>>) -> 'true';
-                          (<<"none">>) -> 'true';
-                          (_) -> 'false'
-                       end).
+-define(IS_TERMINATOR, fun terminators_v/1).
 
 -define(DIAL_METHOD_SINGLE, <<"single">>).
 -define(DIAL_METHOD_SIMUL, <<"simultaneous">>).
@@ -23,19 +20,18 @@
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_BRIDGE_REQ_HEADERS
         ,[<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
-              ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-              ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
-              ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-              ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-              ,<<"Dial-Endpoint-Method">>, <<"Insert-At">>
-              ,<<"Media">>, <<"Hold-Media">>, <<"Ringback">>
-              ,<<"Custom-Channel-Vars">>, <<"Secure-RTP">>, <<"Force-Fax">>
-              ,<<"SIP-Transport">>, <<"SIP-Headers">>
-              ,<<"Ignore-Completed-Elsewhere">>
-              ,<<"Enable-T38-Fax">>
-              ,<<"Enable-T38-Fax-Request">>
-              ,<<"Enable-T38-Passthrough">>
-              ,<<"Enable-T38-Gateway">>
+          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
+          ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+          ,<<"Dial-Endpoint-Method">>, <<"Insert-At">>
+          ,<<"Media">>, <<"Hold-Media">>, <<"Ringback">>
+          ,<<"Custom-Channel-Vars">>, <<"Secure-RTP">>, <<"Force-Fax">>
+          ,<<"SIP-Transport">>, <<"SIP-Headers">>
+          ,<<"Ignore-Completed-Elsewhere">>
+          ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
+          ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
+          ,<<"B-Leg-Events">>
          ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -51,31 +47,30 @@
                            ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                            ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
                            ,{<<"Secure-RTP">>, fun wh_util:is_boolean/1}
+                           ,{<<"B-Leg-Events">>, fun b_leg_events_v/1}
                           ]).
 
 %% Bridge Endpoints
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS
         ,[<<"Route">>, <<"To-User">>
-               ,<<"To-Realm">>, <<"To-DID">>, <<"To-URI">>
-               ,<<"To-IP">>, <<"To-Username">>
-               ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
-               ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
-               ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-               ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-               ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
-               ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-               ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
-               ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
-               ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
-               ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
-               ,<<"Ignore-Completed-Elsewhere">>
-               ,<<"SIP-Interface">>
-               ,<<"Enable-T38-Fax">>
-               ,<<"Enable-T38-Fax-Request">>
-               ,<<"Enable-T38-Passthrough">>
-               ,<<"Enable-T38-Gateway">>
-               ,<<"Failover">>
+          ,<<"To-Realm">>, <<"To-DID">>, <<"To-URI">>
+          ,<<"To-IP">>, <<"To-Username">>
+          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
+          ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+          ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
+          ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
+          ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
+          ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
+          ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
+          ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
+          ,<<"Ignore-Completed-Elsewhere">>
+          ,<<"SIP-Interface">>
+          ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
+          ,<<"Enable-T38-Passthrough">>, <<"Enable-T38-Gateway">>
+          ,<<"Failover">>
          ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
@@ -92,9 +87,9 @@
 %% Page Request
 -define(PAGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_PAGE_REQ_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                        ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                        ,<<"Timeout">>, <<"Insert-At">>
-                                        ,<<"Custom-Channel-Vars">>, <<"SIP-Headers">>
+                                    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                    ,<<"Timeout">>, <<"Insert-At">>
+                                    ,<<"Custom-Channel-Vars">>, <<"SIP-Headers">>
                                    ]).
 -define(PAGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
@@ -107,8 +102,9 @@
                         ]).
 
 %% Store Request
--define(STORE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>, <<"Media-Transfer-Method">>
-                                ,<<"Media-Transfer-Destination">>
+-define(STORE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
+                            ,<<"Media-Name">>, <<"Media-Transfer-Method">>
+                            ,<<"Media-Transfer-Destination">>
                            ]).
 -define(OPTIONAL_STORE_REQ_HEADERS, [<<"Additional-Headers">>, <<"Insert-At">>]).
 -define(STORE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
@@ -120,8 +116,9 @@
 -define(STORE_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}]).
 
 %% Store Fax
--define(STORE_FAX_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Transfer-Method">>
-                                ,<<"Media-Transfer-Destination">>
+-define(STORE_FAX_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
+                            ,<<"Media-Transfer-Method">>
+                            ,<<"Media-Transfer-Destination">>
                            ]).
 -define(OPTIONAL_STORE_FAX_HEADERS, [<<"Additional-Headers">>, <<"Insert-At">>]).
 -define(STORE_FAX_VALUES, [{<<"Event-Category">>, <<"call">>}
@@ -132,22 +129,24 @@
                           ]).
 -define(STORE_FAX_TYPES, [{<<"Additional-Headers">>, fun is_list/1}]).
 
-
 %% Store (via AMQP) Response
--define(STORE_AMQP_RESP_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Media-Transfer-Method">>
-                                      ,<<"Media-Name">>, <<"Media-Content">>
+-define(STORE_AMQP_RESP_HEADERS, [<<"Call-ID">>, <<"Application-Name">>
+                                  ,<<"Media-Transfer-Method">>
+                                  ,<<"Media-Name">>, <<"Media-Content">>
                                  ]).
 -define(OPTIONAL_STORE_AMQP_RESP_HEADERS, [<<"Media-Sequence-ID">>]).
 -define(STORE_AMQP_RESP_VALUES, [{<<"Application-Name">>, <<"store">>}
                                  ,{<<"Media-Transfer-Method">>, <<"stream">>}
                                 ]).
--define(STORE_AMQP_RESP_TYPES, [{<<"Media-Content">>, fun(V) -> is_binary(V) orelse V =:= 'eof' end}
+-define(STORE_AMQP_RESP_TYPES, [{<<"Media-Content">>, fun store_media_content_v/1}
                                 ,{<<"Media-Name">>, fun is_binary/1}
                                ]).
 
 %% Store (via HTTP) Response
--define(STORE_HTTP_RESP_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Media-Transfer-Method">>,
-                                  <<"Media-Name">>, <<"Media-Transfer-Results">>]).
+-define(STORE_HTTP_RESP_HEADERS, [<<"Call-ID">>, <<"Application-Name">>
+                                  ,<<"Media-Transfer-Method">>
+                                  ,<<"Media-Name">>, <<"Media-Transfer-Results">>
+                                 ]).
 -define(OPTIONAL_STORE_HTTP_RESP_HEADERS, []).
 -define(STORE_HTTP_RESP_VALUES, [{<<"Application-Name">>, <<"store">>}
                                  ,{<<"Media-Transfer-Method">>, [<<"put">>, <<"post">>]}
@@ -166,10 +165,27 @@
                           ]).
 -define(SEND_DTMF_TYPES, []).
 
+-define(METAFLOW_HEADERS, [<<"Call">>]).
+-define(OPTIONAL_METAFLOW_HEADERS, [<<"Numbers">>, <<"Patterns">>
+                                    ,<<"Binding-Key">>, <<"Digit-Timeout">>
+                                    ,<<"Endpoint-ID">>, <<"Listen-On">>
+                                   ]).
+-define(METAFLOW_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"metaflow">>}
+                          ,{<<"Binding-Key">>, ?ANY_DIGIT}
+                          ,{<<"Listen-On">>, [<<"a">>, <<"b">>, <<"ab">>, <<"both">>]}
+                         ]).
+-define(METAFLOW_TYPES, [{<<"Numbers">>, fun wh_json:is_json_object/1}
+                         ,{<<"Patterns">>, fun wh_json:is_json_object/1}
+                         ,{<<"Digit-Timeout">>, fun metaflow_digit_timeout_v/1}
+                        ]).
+-define(METAFLOW_ROUTING_KEY(CallId), <<"call.metaflow.", (amqp_util:encode(CallId))/binary>>).
+
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
 -define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>, <<"Terminators">>
-                                         ,<<"Conference-ID">>, <<"Group-ID">>
+                                     ,<<"Conference-ID">>, <<"Group-ID">>
                                     ]).
 -define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
@@ -186,8 +202,12 @@
 -define(TONES_REQ_TONE_TYPES, []).
 
 %% Tone Detect
--define(TONE_DETECT_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tone-Detect-Name">>, <<"Frequencies">>]).
--define(OPTIONAL_TONE_DETECT_REQ_HEADERS, [<<"Sniff-Direction">>, <<"Timeout">>, <<"On-Success">>, <<"Hits-Needed">>, <<"Insert-At">>]).
+-define(TONE_DETECT_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>
+                                  ,<<"Tone-Detect-Name">>, <<"Frequencies">>
+                                 ]).
+-define(OPTIONAL_TONE_DETECT_REQ_HEADERS, [<<"Sniff-Direction">>, <<"Timeout">>
+                                           ,<<"On-Success">>, <<"Hits-Needed">>, <<"Insert-At">>
+                                          ]).
 -define(TONE_DETECT_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"tone_detect">>}
@@ -195,15 +215,7 @@
                                  ,?INSERT_AT_TUPLE
                                 ]).
 -define(TONE_DETECT_REQ_TYPES, [{<<"On-Success">>, fun is_list/1}
-                                ,{<<"Timeout">>, fun(Timeout) ->
-                                                         %% <<"+123">> converts to 123, so yay!
-                                                         try wh_util:to_integer(Timeout) of
-                                                             T when T < 0 -> 'false';
-                                                             _ -> 'true'
-                                                         catch
-                                                             _:_ -> 'false'
-                                                         end
-                                                 end}
+                                ,{<<"Timeout">>, fun tone_timeout_v/1}
                                ]).
 
 %% Queue Request
@@ -251,20 +263,20 @@
 -define(PROGRESS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PROGRESS_REQ_HEADERS, [<<"Insert-At">>]).
 -define(PROGRESS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
-                            ,{<<"Event-Name">>, <<"command">>}
-                            ,{<<"Application-Name">>, <<"progress">>}
-                            ,?INSERT_AT_TUPLE
-                           ]).
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"progress">>}
+                              ,?INSERT_AT_TUPLE
+                             ]).
 -define(PROGRESS_REQ_TYPES, []).
 
 %% Ring
 -define(RING_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_RING_REQ_HEADERS, [<<"Insert-At">>, <<"Ringback">>]).
 -define(RING_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
-                            ,{<<"Event-Name">>, <<"command">>}
-                            ,{<<"Application-Name">>, <<"ring">>}
-                            ,?INSERT_AT_TUPLE
-                           ]).
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"ring">>}
+                          ,?INSERT_AT_TUPLE
+                         ]).
 -define(RING_REQ_TYPES, []).
 
 %% Recv Fax
@@ -314,13 +326,15 @@
 -define(PARK_REQ_TYPES, []).
 
 %% Set
--define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>, <<"Custom-Call-Vars">>]).
+-define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
+                          ,<<"Custom-Channel-Vars">>, <<"Custom-Call-Vars">>
+                         ]).
 -define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>]).
 -define(SET_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                          ,{<<"Event-Name">>, <<"command">>}
                          ,{<<"Application-Name">>, <<"set">>}
                          ,?INSERT_AT_TUPLE
-                         ]).
+                        ]).
 -define(SET_REQ_TYPES, [{<<"Custom-Channel-Vars">>,fun wh_json:is_json_object/1}
                         ,{<<"Custom-Call-Vars">>, fun wh_json:is_json_object/1}
                        ]).
@@ -329,9 +343,9 @@
 -define(SET_TERM_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Terminators">>]).
 -define(OPTIONAL_SET_TERM_HEADERS, [<<"Insert-At">>]).
 -define(SET_TERM_VALUES, [{<<"Event-Category">>, <<"call">>}
-                         ,{<<"Event-Name">>, <<"command">>}
-                         ,{<<"Application-Name">>, <<"set_terminators">>}
-                         ,?INSERT_AT_TUPLE
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"set_terminators">>}
+                          ,?INSERT_AT_TUPLE
                          ]).
 -define(SET_TERM_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
@@ -343,17 +357,15 @@
                            ,{<<"Application-Name">>, <<"fetch">>}
                            ,?INSERT_AT_TUPLE
                           ]).
--define(FETCH_REQ_TYPES, [
-                          {<<"From-Other-Leg">>, fun wh_util:is_boolean/1}
-                         ]).
+-define(FETCH_REQ_TYPES, [{<<"From-Other-Leg">>, fun wh_util:is_boolean/1}]).
 
 %% Call Pickup
 -define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Target-Call-ID">>]).
 -define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>, <<"Unbridged-Only">>, <<"Unanswered-Only">>
-                                               ,<<"Other-Leg">>
-                                               ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
-                                               ,<<"Park-After-Pickup">> %% Will park either leg after cancel
-                                               ,<<"Move-Channel-If-Necessary">>
+                                           ,<<"Other-Leg">>
+                                           ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
+                                           ,<<"Park-After-Pickup">> %% Will park either leg after cancel
+                                           ,<<"Move-Channel-If-Necessary">>
                                           ]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
@@ -367,8 +379,8 @@
 %% Play Request
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>, <<"Leg">>
-                                        ,<<"Voice">>, <<"Language">>, <<"Format">>
-                                        ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
+                                    ,<<"Voice">>, <<"Language">>, <<"Format">>
+                                    ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
                                    ]).
 -define(PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
@@ -391,7 +403,7 @@
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>
-                                          ,<<"Silence-Hits">>, <<"Insert-At">>
+                                      ,<<"Silence-Hits">>, <<"Insert-At">>
                                      ]).
 -define(RECORD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -404,7 +416,7 @@
 %% Stream-To = local results in the recording being stored on the media server
 %% Stream-To = remote will stream the recording to the handling ecallmgr server
 -define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>
-                                      ,<<"Record-Action">>
+                                  ,<<"Record-Action">>
                                  ]).
 -define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
@@ -418,8 +430,8 @@
 %% Play and Record Digits
 -define(PLAY_COLLECT_DIGITS_REQ_HEADERS
         ,[<<"Application-Name">>, <<"Call-ID">>, <<"Minimum-Digits">>
-              ,<<"Maximum-Digits">>, <<"Media-Name">>, <<"Media-Tries">>
-              ,<<"Digits-Regex">>, <<"Timeout">>, <<"Terminators">>
+          ,<<"Maximum-Digits">>, <<"Media-Name">>, <<"Media-Tries">>
+          ,<<"Digits-Regex">>, <<"Timeout">>, <<"Terminators">>
          ]).
 -define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Insert-At">>, <<"Failed-Media-Name">>]).
 -define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
@@ -431,7 +443,7 @@
 
 %% Say
 -define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>
-                              ,<<"Type">>, <<"Method">>, <<"Say-Text">>
+                          ,<<"Type">>, <<"Method">>, <<"Say-Text">>
                          ]).
 -define(OPTIONAL_SAY_REQ_HEADERS, [<<"Insert-At">>]).
 -define(SAY_REQ_VALUES
@@ -439,14 +451,14 @@
           ,{<<"Event-Name">>, <<"command">>}
           ,{<<"Application-Name">>, <<"say">>}
           ,{<<"Type">>, [<<"number">>, <<"items">>, <<"persons">>, <<"messages">>
-                             ,<<"currency">>, <<"time_measurement">>
-                             ,<<"current_date">>, <<"current_time">>
-                             ,<<"current_date_time">>, <<"telephone_number">>
-                             ,<<"telephone_extension">>, <<"url">>
-                             ,<<"ip_address">>, <<"e-mail_address">>
-                             ,<<"postal_address">>, <<"account_number">>
-                             ,<<"name_spelled">>, <<"name_phonetic">>
-                             ,<<"short_date_time">>
+                         ,<<"currency">>, <<"time_measurement">>
+                         ,<<"current_date">>, <<"current_time">>
+                         ,<<"current_date_time">>, <<"telephone_number">>
+                         ,<<"telephone_extension">>, <<"url">>
+                         ,<<"ip_address">>, <<"e-mail_address">>
+                         ,<<"postal_address">>, <<"account_number">>
+                         ,<<"name_spelled">>, <<"name_phonetic">>
+                         ,<<"short_date_time">>
                         ]}
           ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
           ,?INSERT_AT_TUPLE
@@ -472,10 +484,10 @@
 -define(RESPOND_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Response-Code">>]).
 -define(OPTIONAL_RESPOND_REQ_HEADERS, [<<"Insert-At">>, <<"Response-Message">>]).
 -define(RESPOND_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
-                            ,{<<"Event-Name">>, <<"command">>}
-                            ,{<<"Application-Name">>, <<"respond">>}
-                            ,?INSERT_AT_TUPLE
-                           ]).
+                             ,{<<"Event-Name">>, <<"command">>}
+                             ,{<<"Application-Name">>, <<"respond">>}
+                             ,?INSERT_AT_TUPLE
+                            ]).
 -define(RESPOND_REQ_TYPES, [{<<"Response-Code">>, fun is_binary/1}
                             ,{<<"Response-Message">>, fun is_binary/1}
                            ]).
@@ -484,24 +496,24 @@
 -define(REDIRECT_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Redirect-Contact">>]).
 -define(OPTIONAL_REDIRECT_REQ_HEADERS, [<<"Insert-At">>, <<"Redirect-Server">>]).
 -define(REDIRECT_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
-                            ,{<<"Event-Name">>, <<"command">>}
-                            ,{<<"Application-Name">>, <<"redirect">>}
-                            ,?INSERT_AT_TUPLE
-                           ]).
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"redirect">>}
+                              ,?INSERT_AT_TUPLE
+                             ]).
 -define(REDIRECT_REQ_TYPES, [{<<"Redirect-Contact">>, fun is_binary/1}
-                            ,{<<"Redirect-Server">>, fun is_binary/1}
-                           ]).
+                             ,{<<"Redirect-Server">>, fun is_binary/1}
+                            ]).
 
 %% Execute_Extension
 -define(EXECUTE_EXTENSION_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Extension">>]).
 -define(OPTIONAL_EXECUTE_EXTENSION_REQ_HEADERS, [<<"Insert-At">>, <<"Reset">>, <<"Custom-Channel-Vars">>]).
 -define(EXECUTE_EXTENSION_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
-                            ,{<<"Event-Name">>, <<"command">>}
-                            ,{<<"Application-Name">>, <<"execute_extension">>}
-                            ,?INSERT_AT_TUPLE
-                           ]).
+                                       ,{<<"Event-Name">>, <<"command">>}
+                                       ,{<<"Application-Name">>, <<"execute_extension">>}
+                                       ,?INSERT_AT_TUPLE
+                                      ]).
 -define(EXECUTE_EXTENSION_REQ_TYPES, [{<<"Extension">>, fun is_binary/1}
-                           ]).
+                                     ]).
 %% Sleep
 -define(SLEEP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Time">>]).
 -define(OPTIONAL_SLEEP_REQ_HEADERS, [<<"Insert-At">>]).
@@ -523,13 +535,15 @@
 %% IMPORTANT: to use the filter-applications list, Insert-At must be "now"
 
 -define(NOOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Insert-At">>, <<"Filter-Applications">>]).
+-define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Insert-At">>, <<"Filter-Applications">>
+                                    ,<<"B-Leg-Events">>
+                                   ]).
 -define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"noop">>}
                           ,?INSERT_AT_TUPLE
                          ]).
--define(NOOP_REQ_TYPES, []).
+-define(NOOP_REQ_TYPES, [{<<"B-Leg-Events">>, fun b_leg_events_v/1}]).
 
 %% Conference
 -define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>
