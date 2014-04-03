@@ -390,6 +390,10 @@ get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
 get_media_name(CallId, Ext) ->
     <<(get_recording_doc_id(CallId))/binary, ".", Ext/binary>>.
 
+-spec get_url(wh_json:object()) -> api_binary().
+get_url(Data) ->
+    wh_json:get_value(<<"url">>, Data).
+
 -spec store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
 store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
@@ -398,7 +402,9 @@ store_url(Call, JObj) ->
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
     URL.
 
--spec should_store_recording(api_binary()) -> {'true', ne_binary() | 'local'} | 'false'.
+-type store_url() :: 'false' | {'true', 'local' | ne_binary()}.
+
+-spec should_store_recording(api_binary()) -> store_url().
 should_store_recording('undefined') ->
     case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
         'true' -> {'true', 'local'};
@@ -406,9 +412,7 @@ should_store_recording('undefined') ->
     end;
 should_store_recording(Url) -> {'true', Url}.
 
-get_url(Data) ->
-    wh_json:get_value(<<"url">>, Data).
-
+-spec save_recording(whapps_call:call(), ne_binary(), ne_binary(), store_url()) -> 'ok'.
 save_recording(_Call, _MediaName, _Format, 'false') ->
     lager:debug("not configured to store recording ~s", [_MediaName]);
 save_recording(Call, MediaName, Format, {'true', 'local'}) ->
@@ -429,6 +433,7 @@ store_recording(MediaName, Url, Call) ->
     lager:debug("appending filename to url: ~s", [StoreUrl]),
     'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
+-spec append_path(ne_binary(), ne_binary()) -> ne_binary().
 append_path(Url, MediaName) ->
     S = byte_size(Url)-1,
 

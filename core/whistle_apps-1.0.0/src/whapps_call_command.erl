@@ -806,9 +806,11 @@ hold_command(MOH, Call) ->
         ])).
 
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
+
 b_hold(Timeout, Call) when is_integer(Timeout) orelse Timeout =:= 'infinity' ->
     b_hold(Timeout, 'undefined', Call);
 b_hold(MOH, Call) -> b_hold('infinity', MOH, Call).
+
 b_hold(Timeout, MOH, Call) ->
     hold(MOH, Call),
     wait_for_message(Call, <<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).

@@ -71,7 +71,7 @@ convert_stream_type(<<"store">>) -> <<"store">>;
 convert_stream_type(_) -> <<"single">>.
 
 -spec media_path(api_binary()) -> api_binary().
--spec media_path(api_binary(), api_binary()) -> api_binary().
+-spec media_path(api_binary(), api_binary() | whapps_call:call()) -> api_binary().
 media_path(Path) -> media_path(Path, 'undefined').
 
 media_path('undefined', _AccountId) -> 'undefined';
