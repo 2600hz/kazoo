@@ -58,6 +58,8 @@
          ,cast/2
          ,delayed_cast/3
          ,reply/2
+
+         ,enter_loop/3, enter_loop/4, enter_loop/5
         ]).
 
 %% gen_listener API
@@ -212,14 +214,31 @@ cast(Name, Request) -> gen_server:cast(Name, Request).
 
 -spec delayed_cast(server_ref(), term(), pos_integer()) -> 'ok'.
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
-    spawn(fun() ->
-                  timer:sleep(Wait),
-                  cast(Name, Request)
-          end),
+    _ = spawn(fun() ->
+                      timer:sleep(Wait),
+                      cast(Name, Request)
+              end),
     'ok'.
 
 -spec reply({pid(), reference()}, term()) -> no_return().
 reply(From, Msg) -> gen_server:reply(From, Msg).
+
+-type server_name() :: {'global' | 'local', atom()}.
+
+-spec enter_loop(atom(), list(), term()) -> no_return().
+-spec enter_loop(atom(), list(), term(), wh_timeout() | server_name()) -> no_return().
+-spec enter_loop(atom(), list(), term(), server_name(), wh_timeout()) -> no_return().
+enter_loop(Module, Options, ModuleState) ->
+    enter_loop(Module, Options, ModuleState, self(), 'infinity').
+enter_loop(Module, Options, ModuleState, {Scope, _Name}=ServerName)
+  when Scope =:= 'local' orelse Scope =:= 'global' ->
+    enter_loop(Module, Options, ModuleState, ServerName, 'infinity');
+enter_loop(Module, Option, ModuleState, Timeout) ->
+    enter_loop(Module, Option, ModuleState, self(), Timeout).
+
+enter_loop(Module, Options, ModuleState, ServerName, Timeout) ->
+    MyState = init_state([Module, Options, ModuleState]),
+    gen_server:enter_loop(?MODULE, [], MyState, ServerName, Timeout).
 
 -spec add_responder(server_ref(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
 add_responder(Srv, Responder, Key) when not is_list(Key) ->
@@ -292,17 +311,16 @@ execute(Srv, Function) when is_function(Function) ->
 %%% gen_server callbacks
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {'ok', State} |
-%%                     {'ok', State, Timeout} |
-%%                     ignore |
-%%                     {'stop', Reason}
-%% @end
-%%--------------------------------------------------------------------
+%% Takes an existing process and turns it into a gen_listener
+-spec init_state(list()) -> {'ok', state()} |
+                            {'stop', term()} |
+                            'ignore'.
+init_state([Module, Params, ModuleState]) ->
+    process_flag('trap_exit', 'true'),
+    put('callid', Module),
+    lager:debug("continuing as a gen_listener proc"),
+    init(Module, Params, ModuleState, 'undefined').
+
 -spec init([atom() | wh_proplist(),...]) ->
                   {'ok', state()} |
                   {'stop', term()} |
