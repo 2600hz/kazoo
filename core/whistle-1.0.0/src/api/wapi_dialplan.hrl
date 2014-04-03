@@ -10,6 +10,18 @@
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
+
+-spec terminators_v(api_binaries() | binary()) -> boolean().
+-spec terminator_v(ne_binary()) -> boolean().
+terminators_v(Ts) when is_list(Ts) ->
+    lists:all(fun terminator_v/1, Ts);
+terminators_v(<<>>) -> 'true';
+terminators_v(<<"none">>) -> 'true';
+terminators_v(_) -> 'false'.
+
+terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
+
+
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
 -define(IS_TERMINATOR, fun terminators_v/1).
