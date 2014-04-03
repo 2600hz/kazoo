@@ -26,6 +26,7 @@
 
 -define(WHITELABEL_ID, <<"whitelabel">>).
 -define(LOGO_REQ, <<"logo">>).
+-define(ICON_REQ, <<"icon">>).
 
 -define(WHITELABEL_MIME_TYPES, [{<<"image">>, <<"jpg">>}
                                 ,{<<"image">>, <<"jpeg">>}
@@ -69,11 +70,14 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(?LOGO_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
+allowed_methods(?ICON_REQ) ->
+    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_) ->
     [?HTTP_GET].
 allowed_methods(_, ?LOGO_REQ) ->
+    [?HTTP_GET];
+allowed_methods(_, ?ICON_REQ) ->
     [?HTTP_GET].
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -88,8 +92,10 @@ allowed_methods(_, ?LOGO_REQ) ->
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(?LOGO_REQ) -> 'true';
+resource_exists(?ICON_REQ) -> 'true';
 resource_exists(_) -> 'true'.
-resource_exists(_, ?LOGO_REQ) -> 'true'.
+resource_exists(_, ?LOGO_REQ) -> 'true';
+resource_exists(_, ?ICON_REQ) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -101,9 +107,10 @@ authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}]
                       ,req_verb= ?HTTP_GET
                      }) ->
     'true';
-authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [?LOGO_REQ]]}]
+authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [AttachType]]}]
                       ,req_verb= ?HTTP_GET
-                     }) ->
+                     }) when
+            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
     'true';
 authorize(_) ->
     'false'.
@@ -118,10 +125,11 @@ authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}]
                          ,req_verb= ?HTTP_GET
                         }) ->
     'true';
-authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [?LOGO_REQ]]}]
+authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [AttachType]]}]
                          ,req_verb= ?HTTP_GET
-                        }) ->
+                        }) when (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
     'true';
+
 authenticate(_) ->
     'false'.
 
@@ -134,10 +142,11 @@ authenticate(_) ->
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, ?LOGO_REQ) ->
-    case find_whitelabel(?WHITELABEL_ID, Context, 'meta') of
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, AttachType) when
+                       (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
+    case load_whitelabel_meta(?WHITELABEL_ID, Context) of
         #cb_context{resp_status='success', doc=JObj} ->
-            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
+            case filter_attachment_type(AttachType, wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
                 [] -> Context;
                 [Attachment|_] ->
                     CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
@@ -150,10 +159,11 @@ content_types_provided(Context, _) ->
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Domain, ?LOGO_REQ) ->
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Domain, AttachType) when
+                       (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
     case find_whitelabel(Domain, Context, 'meta') of
         #cb_context{resp_status='success', doc=JObj} ->
-            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj)) of
+            case filter_attachment_type(AttachType, wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
                 [] -> Context;
                 [Attachment|_] ->
                     CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
@@ -163,7 +173,8 @@ content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Domain, ?LOGO_
     end.
 
 -spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
-content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, ?LOGO_REQ) ->
+content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, AttachType) when
+                        (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
     CTA = [{'from_binary', ?WHITELABEL_MIME_TYPES}],
     Context#cb_context{content_types_accepted=CTA};
 content_types_accepted(Context, _) ->
@@ -192,16 +203,19 @@ validate(#cb_context{req_verb = ?HTTP_DELETE
                     }=Context) ->
     load_whitelabel_meta(?WHITELABEL_ID, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?LOGO_REQ) ->
-    load_whitelabel_binary(?WHITELABEL_ID, Context);
+validate(#cb_context{req_verb = ?HTTP_GET}=Context, AttachType) when
+                       (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
+    load_whitelabel_binary(AttachType, ?WHITELABEL_ID, Context);
 validate(#cb_context{req_verb = ?HTTP_POST
                      ,req_files=[]
-                    }=Context, ?LOGO_REQ) ->
+                    }=Context, AttachType) when
+            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
     Message = <<"please provide an image file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
 validate(#cb_context{req_verb = ?HTTP_POST
                      ,req_files=[{_Filename, FileObj}]
-                    }=Context, ?LOGO_REQ) ->
+                    }=Context, AttachType) when
+            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
     case load_whitelabel_meta(?WHITELABEL_ID, Context) of
         #cb_context{resp_status='success', doc=JObj}=C ->
             CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
@@ -214,7 +228,8 @@ validate(#cb_context{req_verb = ?HTTP_POST
             validate_request(?WHITELABEL_ID, C#cb_context{req_data=wh_json:set_values(Props, JObj)});
         Else -> Else
     end;
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?LOGO_REQ) ->
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, AttachType) when
+            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
     Message = <<"please provide a single image file">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
 validate(#cb_context{req_verb = ?HTTP_GET
@@ -224,12 +239,14 @@ validate(#cb_context{req_verb = ?HTTP_GET
 
 validate(#cb_context{req_verb = ?HTTP_GET
                      ,account_id='undefined'
-                    }=Context, Domain, ?LOGO_REQ) ->
-    find_whitelabel(Domain, Context, binary).
+                    }=Context, Domain, AttachType) when
+            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
+    find_whitelabel(AttachType, Domain, Context, binary).
 
 
 -spec get(cb_context:context(), path_token()) -> cb_context:context().
-get(Context, ?LOGO_REQ) ->
+get(Context, AttachType) when
+            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
     Context#cb_context{resp_headers=[{<<"Content-Type">>
                                           ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
                                      ,{<<"Content-Length">>
@@ -239,7 +256,8 @@ get(Context, ?LOGO_REQ) ->
 
 
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-get(Context, _, ?LOGO_REQ) ->
+get(Context, _, AttachType) when
+            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
     Context#cb_context{resp_headers=[{<<"Content-Type">>
                                           ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
                                      ,{<<"Content-Length">>
@@ -257,8 +275,8 @@ put(#cb_context{}=Context) ->
 post(#cb_context{}=Context) ->
     maybe_update_account_definition(crossbar_doc:save(Context)).
 
-post(Context, ?LOGO_REQ) ->
-    update_whitelabel_binary(?WHITELABEL_ID, Context).
+post(Context, AttachType) when (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
+    update_whitelabel_binary(AttachType, ?WHITELABEL_ID, Context).
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(#cb_context{}=Context) ->
@@ -272,6 +290,8 @@ delete(#cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec find_whitelabel(ne_binary(), cb_context:context(), 'meta' | 'binary') ->
                              cb_context:context().
+-spec find_whitelabel(ne_binary(), ne_binary(), cb_context:context(), 'binary') ->
+                             cb_context:context().
 find_whitelabel(Domain, Context, LookingFor) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
     case crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions, Context#cb_context{db_name=?WH_ACCOUNTS_DB}) of
@@ -282,6 +302,18 @@ find_whitelabel(Domain, Context, LookingFor) ->
                 'meta' -> load_whitelabel_meta(?WHITELABEL_ID, C#cb_context{db_name=Db, account_id=Id});
                 'binary' -> load_whitelabel_binary(?WHITELABEL_ID, C#cb_context{db_name=Db, account_id=Id})
             end;
+        #cb_context{resp_status='success'} ->
+            cb_context:add_system_error('bad_identifier', [{'details', Domain}], Context);
+        Else -> Else
+    end.
+
+find_whitelabel(AttachType, Domain, Context, 'binary') ->
+    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
+    case crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions, Context#cb_context{db_name=?WH_ACCOUNTS_DB}) of
+        #cb_context{resp_status='success', doc=[JObj]}=C ->
+            Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
+            Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
+            load_whitelabel_binary(AttachType, ?WHITELABEL_ID, C#cb_context{db_name=Db, account_id=Id});
         #cb_context{resp_status='success'} ->
             cb_context:add_system_error('bad_identifier', [{'details', Domain}], Context);
         Else -> Else
@@ -340,6 +372,7 @@ on_successful_validation(WhitelabelId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_whitelabel_binary(path_token(), cb_context:context()) -> cb_context:context().
+-spec load_whitelabel_binary(ne_binary(), path_token(), cb_context:context()) -> cb_context:context().
 load_whitelabel_binary(WhitelabelId, #cb_context{resp_headers=RespHeaders}=Context) ->
     case load_whitelabel_meta(WhitelabelId, Context) of
         #cb_context{resp_status='success', doc=JObj} ->
@@ -357,6 +390,32 @@ load_whitelabel_binary(WhitelabelId, #cb_context{resp_headers=RespHeaders}=Conte
             end;
         Context1 -> Context1
     end.
+%% At present, AttachType should be either ?LOGO_REQ or ?ICON_REQ
+load_whitelabel_binary(AttachType, WhitelabelId, #cb_context{resp_headers=RespHeaders}=Context) ->
+    case load_whitelabel_meta(WhitelabelId, Context) of
+        #cb_context{resp_status='success', doc=JObj} ->
+            WhitelabelMeta = wh_json:get_value([<<"_attachments">>], JObj, wh_json:new()),
+            case filter_attachment_type(AttachType, WhitelabelMeta) of
+                [] -> crossbar_util:response_bad_identifier(WhitelabelId, Context);
+                [Attachment|_] ->
+                    Context1 = crossbar_doc:load_attachment(JObj, Attachment, Context),
+                    Context1#cb_context{resp_headers=[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
+                                                        ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], WhitelabelMeta)}
+                                                        ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], WhitelabelMeta)}
+                                                        | RespHeaders
+                                                       ]
+                                        ,resp_etag='undefined'}
+            end;
+        Context1 -> Context1
+    end.
+
+%% Pull out value from list that matches <<AttachType, _>> as Attachment
+filter_attachment_type(AttachType, JObj) ->
+    lists:filter(
+                fun (A) ->
+                    {0, byte_size(AttachType)} =:= binary:match(A, AttachType)
+                end,
+            wh_json:get_keys(JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -365,6 +424,7 @@ load_whitelabel_binary(WhitelabelId, #cb_context{resp_headers=RespHeaders}=Conte
 %% @end
 %%--------------------------------------------------------------------
 -spec update_whitelabel_binary(path_token(), cb_context:context()) -> cb_context:context().
+-spec update_whitelabel_binary(ne_binary(), path_token(), cb_context:context()) -> cb_context:context().
 update_whitelabel_binary(WhitelabelId, #cb_context{doc=JObj
                                                    ,req_files=[{Filename, FileObj}]
                                                    ,db_name=Db
@@ -380,6 +440,21 @@ update_whitelabel_binary(WhitelabelId, #cb_context{doc=JObj
         ],
     crossbar_doc:save_attachment(WhitelabelId, attachment_name(Filename, CT), Contents, Context, Opts).
 
+update_whitelabel_binary(AttachType, WhitelabelId, #cb_context{doc=JObj
+                                                   ,req_files=[{Filename, FileObj}]
+                                                   ,db_name=Db
+                                                  }=Context) ->
+    Contents = wh_json:get_value(<<"contents">>, FileObj),
+    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
+    lager:debug("file content type: ~s", [CT]),
+    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+    OldAttachments = filter_attachment_type(AttachType, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    _ = [couch_mgr:delete_attachment(Db, Id, Attachment)
+         || Attachment <- wh_json:get_keys(OldAttachments)
+        ],
+    crossbar_doc:save_attachment(WhitelabelId, attachment_name(AttachType, Filename, CT), Contents, Context, Opts).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -388,6 +463,7 @@ update_whitelabel_binary(WhitelabelId, #cb_context{doc=JObj
 %% @end
 %%--------------------------------------------------------------------
 -spec attachment_name(ne_binary(), ne_binary()) -> ne_binary().
+-spec attachment_name(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
                           case wh_util:is_empty(A) of
@@ -404,6 +480,9 @@ attachment_name(Filename, CT) ->
                    end
                  ],
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
+
+attachment_name(AttachType, Filename, CT) ->
+    <<AttachType/binary, "-", (attachment_name(Filename, CT))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
