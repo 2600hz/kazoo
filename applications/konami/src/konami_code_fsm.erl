@@ -424,12 +424,14 @@ disarm_state(#state{a_digit_timeout_ref=ARef
                 ,b_collected_dtmf = <<>>
                }.
 
+-spec maybe_cancel_timer(term()) -> 'ok'.
 maybe_cancel_timer(Ref) when is_reference(Ref) ->
     catch erlang:cancel_timer(Ref),
     'ok';
 maybe_cancel_timer(_) ->
     'ok'.
 
+-spec maybe_start_b_leg_listener(whapps_call:call(), 'a' | 'b' | 'ab') -> 'ok'.
 maybe_start_b_leg_listener(_Call, 'a') ->
     'ok';
 maybe_start_b_leg_listener(Call, _) ->
