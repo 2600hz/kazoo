@@ -7,7 +7,7 @@
             "description":"A list of static numbers that the metaflow should match for",
             "type":"object",
             "patternProperties":{
-                "[0-9]\\*\\#":{
+                "[0-9\\*\\#]+":{
                     "type":"object"
                     ,"properties":{
                         "module":{
@@ -32,7 +32,7 @@
             "description":"A list of regular expressions that the callflow should execute for, with optional capture groups",
             "type":"object",
             "patternProperties":{
-                "[0-9]\\*\\#":{
+                "[0-9\\*\\#]+":{
                     "type":"object"
                     ,"properties":{
                         "module":{
@@ -52,6 +52,24 @@
                     }
                 }
             }
+        }
+        ,"binding_key":{
+            "description":"What DTMF will trigger the collection and analysis of the subsequent DTMF sequence"
+            ,"type":"string"
+            ,"maxLength":1
+            ,"minLength":1
+            ,"enum":["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "*", "#"]
+            ,"default":"*"
+        }
+        ,"digit_timeout_ms":{
+            "description":"How long to wait between DTMF presses before processing the collected sequence"
+            ,"type":"integer"
+            ,"minimum":0
+        }
+        ,"listen_on":{
+            "description":"Which leg(s) of the call to listen for DTMF"
+            ,"type":"string"
+            ,"enum":["a", "ab", "b", "both"]
         }
     }
 }
