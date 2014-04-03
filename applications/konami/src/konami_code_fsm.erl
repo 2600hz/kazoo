@@ -194,11 +194,11 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
             lager:debug("no handler for '~s', unarming", [Collected]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'number', N} ->
-            _Pid = spawn('konami_code_exe', 'handle', [N, Call]),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [N, Call]),
             lager:debug("number exe in ~p: ~p", [_Pid, N]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'pattern', P} ->
-            _Pid = spawn('konami_code_exe', 'handle', [P, Call]),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [P, Call]),
             lager:debug("pattern exe in ~p: ~p", [_Pid, P]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
     end;
@@ -216,11 +216,11 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
             lager:debug("no handler for '~s', unarming", [Collected]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'number', N} ->
-            _Pid = spawn('konami_code_exe', 'handle', [N, Call]),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [N, Call]),
             lager:debug("number exe in ~p: ~p", [_Pid, N]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'pattern', P} ->
-            _Pid = spawn('konami_code_exe', 'handle', [P, Call]),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [P, Call]),
             lager:debug("pattern exe in ~p: ~p", [_Pid, P]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
     end;
