@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Menus module
 %%%
@@ -29,12 +29,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.menus">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.menus">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.menus">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.menus">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.menus">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"*.execute.delete.menus">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.menus">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.menus">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.menus">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.menus">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.menus">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.menus">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -62,8 +62,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -74,30 +74,36 @@ resource_exists(_) -> true.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context) ->
+    validate_menus(Context, cb_context:req_verb(Context)).
+
+validate_menus(Context, ?HTTP_GET) ->
     load_menu_summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_menus(Context, ?HTTP_PUT) ->
     create_menu(Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
+validate(Context, DocId) ->
+    validate_menu(Context, DocId, cb_context:req_verb(Context)).
+
+validate_menu(Context, DocId, ?HTTP_GET) ->
     load_menu(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId) ->
+validate_menu(Context, DocId, ?HTTP_POST) ->
     update_menu(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId) ->
+validate_menu(Context, DocId, ?HTTP_DELETE) ->
     load_menu(DocId, Context).
 
--spec put(#cb_context{}) -> #cb_context{}.
-put(#cb_context{}=Context) ->
+-spec put(cb_context:context()) -> cb_context:context().
+put(Context) ->
     crossbar_doc:save(Context).
 
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
-post(#cb_context{}=Context, _DocId) ->
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, _DocId) ->
     crossbar_doc:save(Context).
 
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{}=Context, _DocId) ->
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, _DocId) ->
     crossbar_doc:delete(Context).
 
 %%%===================================================================
@@ -110,7 +116,7 @@ delete(#cb_context{}=Context, _DocId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_menu_summary(#cb_context{}) -> #cb_context{}.
+-spec load_menu_summary(cb_context:context()) -> cb_context:context().
 load_menu_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -120,9 +126,9 @@ load_menu_summary(Context) ->
 %% Create a new menu document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_menu(#cb_context{}) -> #cb_context{}.
-create_menu(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+-spec create_menu(cb_context:context()) -> cb_context:context().
+create_menu(Context) ->
+    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -131,7 +137,7 @@ create_menu(#cb_context{}=Context) ->
 %% Load a menu document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_menu(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_menu(ne_binary(), cb_context:context()) -> cb_context:context().
 load_menu(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -142,23 +148,26 @@ load_menu(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_menu(ne_binary(), #cb_context{}) -> #cb_context{}.
-update_menu(DocId, #cb_context{}=Context) ->
+-spec update_menu(ne_binary(), cb_context:context()) -> cb_context:context().
+update_menu(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
-on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"menu">>}
-                                               ,{<<"pvt_vsn">>, <<"2">>}
-                                              ], JObj)};
-on_successful_validation(DocId, #cb_context{}=Context) ->
+-spec on_successful_validation(api_binary(), cb_context:context()) ->
+                                      cb_context:context().
+on_successful_validation('undefined', Context) ->
+    cb_context:set_doc(Context, wh_json:set_values([{<<"pvt_type">>, <<"menu">>}
+                                                    ,{<<"pvt_vsn">>, <<"2">>}
+                                                   ]
+                                                   ,cb_context:doc(Context)
+                                                  ));
+on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context).
 
 %%--------------------------------------------------------------------
