@@ -2,6 +2,13 @@
 %%% @copyright (C) 2014, 2600Hz
 %%% @doc
 %%% Record something
+%%% "data":{
+%%%   "action":["start","stop"] // one of these
+%%%   ,"time_limit":600 // in seconds, how long to record the call
+%%%   ,"format":["mp3","wav"] // what format to store the recording in
+%%%   ,"url":"http://server.com/path/to/dump/file" // what URL to PUT the file to
+%%%   ,"record_on_answer": boolean() // whether to delay the start of the recording
+%%% }
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -13,41 +20,23 @@
 -include("../konami.hrl").
 
 -spec handle(wh_json:object(), whapps_call:call()) ->
-                    {'continue', whapps_call:call()}.
+                    {'continue', whapps_call:call()} |
+                    no_return().
 handle(Data, Call) ->
-    handle(Data, Call, wh_json:get_value(<<"action">>, Data, <<"start">>)),
+    handle(Data, Call, get_action(wh_json:get_value(<<"action">>, Data))),
     {'continue', Call}.
 
-handle(Data, Call, <<"start">> = Action) ->
-    Timelimit = timelimit(Data),
-    MediaName = media_name(whapps_call:call_id_direct(Call), format(Data)),
-    lager:debug("starting recording for ~s", [MediaName]),
-    whapps_call_command:record_call(MediaName, Action, Timelimit, Call).
+handle(Data, Call, <<"start">>) ->
+    lager:debug("starting recording, see you on the other side"),
+    wh_media_recording:start_recording(Call, Data);
+handle(Data, Call, <<"stop">> = Action) ->
+    Format = wh_media_recording:get_format(wh_json:get_value(<<"format">>, Data)),
+    MediaName = wh_media_recording:get_media_name(whapps_call:call_id(Call), Format),
 
--spec recording_doc_id(ne_binary()) -> ne_binary().
-recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
+    _ = whapps_call_command:record_call(MediaName, Action, Call),
+    lager:debug("sent command to stop recording").
 
--spec media_name(ne_binary(), ne_binary()) -> ne_binary().
-media_name(CallId, Ext) ->
-    <<(recording_doc_id(CallId))/binary, ".", Ext/binary>>.
-
--spec timelimit(wh_json:object()) -> non_neg_integer().
-timelimit(JObj) ->
-    Max = whapps_config:get(?CF_CONFIG_CAT, <<"max_recording_time_limit">>, 600),
-    case wh_json:get_integer_value(<<"time_limit">>, JObj) of
-        'undefined' -> Max;
-        N when N > Max -> Max;
-        N when N =< 0 -> Max;
-        N -> N
-    end.
-
--spec url(wh_json:object()) -> ne_binary().
-url(Data) ->
-    wh_json:get_value(<<"url">>, Data).
-
--spec format(wh_json:object()) -> ne_binary().
-format(Data) ->
-    case wh_json:get_value(<<"format">>, Data) of
-        <<"mp3">> -> <<"mp3">>;
-        _ -> <<"wav">>
-    end.
+-spec get_action(api_binary()) -> ne_binary().
+get_action('undefined') -> <<"start">>;
+get_action(<<"stop">>) -> <<"stop">>;
+get_action(_) -> <<"start">>.
