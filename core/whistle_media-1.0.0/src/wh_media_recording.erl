@@ -17,8 +17,16 @@
 -module(wh_media_recording).
 
 -export([start_link/2
+         ,start_recording/2
          ,handle_call_event/2
+
+         ,get_timelimit/1
+         ,get_format/1
+         ,get_url/1
+         ,get_media_name/2
+         ,should_store_recording/1
         ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -70,6 +78,15 @@ start_link(Call, Data) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], [Call, Data]).
 
+start_recording(Call, Data) ->
+    {'ok', State} = init([Call, Data]),
+    gen_listener:enter_loop(?MODULE, [{'bindings', ?BINDINGS(whapps_call:call_id(Call))}
+                                      ,{'responders', ?RESPONDERS}
+                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                                     ], State).
+
 handle_call_event(JObj, Props) ->
     wh_util:put_callid(JObj),
     case wh_util:get_event_type(JObj) of
@@ -107,15 +124,15 @@ handle_call_event(JObj, Props) ->
 -spec init(list()) -> {'ok', state()}.
 init([Call, Data]) ->
     whapps_call:put_callid(Call),
-    lager:info("starting event listener for cf_record_call"),
+    lager:info("starting event listener for record_call"),
 
-    Format = cf_record_call:get_format(wh_json:get_value(<<"format">>, Data)),
-    TimeLimit = cf_record_call:get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
+    Format = get_format(wh_json:get_value(<<"format">>, Data)),
+    TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
     RecordOnAnswer = wh_json:is_true(<<"record_on_answer">>, Data, 'false'),
 
-    {'ok', #state{url=cf_record_call:get_url(Data)
+    {'ok', #state{url=get_url(Data)
                   ,format=Format
-                  ,media_name=cf_record_call:get_media_name(whapps_call:call_id(Call), Format)
+                  ,media_name=get_media_name(whapps_call:call_id(Call), Format)
                   ,call=Call
                   ,time_limit=TimeLimit
                   ,record_on_answer=RecordOnAnswer
@@ -162,7 +179,7 @@ handle_cast('maybe_start_recording', #state{record_started='false'
                                             ,media_name=MediaName
                                             ,time_limit=TimeLimit
                                            }=State) ->
-    cf_record_call:start_recording(Call, MediaName, TimeLimit),
+    start_recording(Call, MediaName, TimeLimit),
     {'noreply', State};
 
 handle_cast('stop_call', #state{store_attempted='true'}=State) ->
@@ -174,7 +191,7 @@ handle_cast('stop_call', #state{media_name=MediaName
                                 ,call=Call
                                }=State) ->
     lager:debug("recv stop_call event"),
-    cf_record_call:save_recording(Call, MediaName, Format, cf_record_call:should_store_recording(Url)),
+    save_recording(Call, MediaName, Format, should_store_recording(Url)),
     lager:debug("sent store command"),
     {'noreply', State};
 handle_cast('store_recording', #state{media_name=MediaName
@@ -183,7 +200,7 @@ handle_cast('store_recording', #state{media_name=MediaName
                                       ,call=Call
                                      }=State) ->
     lager:debug("recv store_recording event"),
-    cf_record_call:save_recording(Call, MediaName, Format, cf_record_call:should_store_recording(Url)),
+    save_recording(Call, MediaName, Format, should_store_recording(Url)),
     {'noreply', State#state{store_attempted='true'
                             ,record_started='false'
                            }};
@@ -309,3 +326,107 @@ maybe_stop_timer(Timer) when is_reference(Timer) ->
     catch erlang:cancel_timer(Timer),
     'ok';
 maybe_stop_timer(_) -> 'ok'.
+
+-spec get_timelimit('undefined' | integer()) -> pos_integer().
+get_timelimit('undefined') ->
+    whapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600);
+get_timelimit(TL) ->
+    case (Max = whapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600)) > TL of
+        'true' -> TL;
+        'false' when Max > 0 -> Max;
+        'false' -> Max
+    end.
+
+get_format('undefined') -> whapps_config:get(?CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
+get_format(<<"mp3">> = MP3) -> MP3;
+get_format(<<"wav">> = WAV) -> WAV;
+get_format(_) -> get_format('undefined').
+
+-spec store_recording_meta(whapps_call:call(), ne_binary(), api_binary()) ->
+                                  {'ok', wh_json:object()} |
+                                  {'error', any()}.
+store_recording_meta(Call, MediaName, Ext) ->
+    AcctDb = whapps_call:account_db(Call),
+    CallId = whapps_call:call_id(Call),
+
+    MediaDoc = wh_doc:update_pvt_parameters(
+                 wh_json:from_list(
+                   [{<<"name">>, MediaName}
+                    ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                    ,{<<"content_type">>, ext_to_mime(Ext)}
+                    ,{<<"media_type">>, Ext}
+                    ,{<<"media_source">>, <<"recorded">>}
+                    ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
+                    ,{<<"pvt_type">>, <<"private_media">>}
+                    ,{<<"from">>, whapps_call:from(Call)}
+                    ,{<<"to">>, whapps_call:to(Call)}
+                    ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
+                    ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                    ,{<<"call_id">>, CallId}
+                    ,{<<"_id">>, get_recording_doc_id(CallId)}
+                   ])
+                 ,AcctDb
+                ),
+    couch_mgr:save_doc(AcctDb, MediaDoc).
+
+ext_to_mime(<<"wav">>) -> <<"audio/x-wav">>;
+ext_to_mime(_) -> <<"audio/mp3">>.
+
+get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
+
+-spec get_media_name(ne_binary(), api_binary()) -> ne_binary().
+get_media_name(CallId, Ext) ->
+    <<(get_recording_doc_id(CallId))/binary, ".", Ext/binary>>.
+
+-spec store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
+store_url(Call, JObj) ->
+    AccountDb = whapps_call:account_db(Call),
+    MediaId = wh_json:get_value(<<"_id">>, JObj),
+    MediaName = wh_json:get_value(<<"name">>, JObj),
+    {'ok', URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
+    URL.
+
+-spec should_store_recording(api_binary()) -> {'true', ne_binary() | 'local'} | 'false'.
+should_store_recording('undefined') ->
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
+        'true' -> {'true', 'local'};
+        'false' -> 'false'
+    end;
+should_store_recording(Url) -> {'true', Url}.
+
+get_url(Data) ->
+    wh_json:get_value(<<"url">>, Data).
+
+start_recording(Call, MediaName, TimeLimit) ->
+  lager:debug("starting recording of ~s", [MediaName]),
+  whapps_call_command:record_call(MediaName, <<"start">>, TimeLimit, Call).
+
+save_recording(_Call, _MediaName, _Format, 'false') ->
+    lager:debug("not configured to store recording ~s", [_MediaName]);
+save_recording(Call, MediaName, Format, {'true', 'local'}) ->
+    {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
+    lager:info("stored meta: ~p", [MediaJObj]),
+
+    StoreUrl = store_url(Call, MediaJObj),
+    lager:info("store local url: ~s", [StoreUrl]),
+
+    store_recording(MediaName, StoreUrl, Call);
+save_recording(Call, MediaName, _Format, {'true', Url}) ->
+    lager:info("store remote url: ~s", [Url]),
+    store_recording(MediaName, Url, Call).
+
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+store_recording(MediaName, Url, Call) ->
+    StoreUrl = append_path(Url, MediaName),
+    lager:debug("appending filename to url: ~s", [StoreUrl]),
+    'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
+
+append_path(Url, MediaName) ->
+    S = byte_size(Url)-1,
+
+    Encoded = cowboy_http:urlencode(MediaName),
+
+    case Url of
+        <<_:S/binary, "/">> -> <<Url/binary, Encoded/binary>>;
+        _ -> <<Url/binary, "/", Encoded/binary>>
+    end.
