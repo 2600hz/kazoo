@@ -12,10 +12,6 @@
 -compile({'no_auto_import', [error/1]}).
 
 %% Accessors
-
--include("wapi_dialplan.hrl").
--include_lib("whistle/include/wh_log.hrl").
-
 -export([v/1]).
 
 -export([optional_bridge_req_headers/0]).
@@ -85,6 +81,9 @@
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
 
+-include("wapi_dialplan.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+
 -spec optional_bridge_req_headers() -> ne_binaries().
 optional_bridge_req_headers() ->
     ?OPTIONAL_BRIDGE_REQ_HEADERS.
@@ -98,16 +97,6 @@ b_leg_events_v(Events) ->
     lists:all(fun(ApiEvent) ->
                       lists:member(ApiEvent, ?CALL_EVENTS)
               end, Events).
-
--spec terminators_v(api_binaries() | binary()) -> boolean().
--spec terminator_v(ne_binary()) -> boolean().
-terminators_v(Ts) when is_list(Ts) ->
-    lists:all(fun terminator_v/1, Ts);
-terminators_v(<<>>) -> 'true';
-terminators_v(<<"none">>) -> 'true';
-terminators_v(_) -> 'false'.
-
-terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
 -spec v(api_terms()) -> boolean().
