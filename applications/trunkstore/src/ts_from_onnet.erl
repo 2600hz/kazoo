@@ -51,7 +51,7 @@ maybe_onnet_data(State) ->
         end,
     SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, wh_json:new()),
     case wnm_util:is_reconcilable(ToDID)
-         orelse wh_json:is_true(<<"hunt_non_reconcilable">>, SrvOptions, 'false')
+         orelse wh_json:is_true(<<"hunt_non_reconcilable">>, SrvOptions, 'true')
     of
         'false' ->
             lager:debug("number ~p is non_reconcilable and the server does not allow it", [ToDID]);
