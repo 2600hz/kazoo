@@ -416,8 +416,8 @@ leak_pvt_fields(Context, _Status) -> Context.
 leak_pvt_allow_additions(Context) ->
     JObj = cb_context:doc(Context),
     RespJObj = cb_context:resp_data(Context),
-
     AllowAdditions = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj, 'false'),
+
     leak_pvt_superduper_admin(
       cb_context:set_resp_data(Context
                                ,wh_json:set_value(<<"wnm_allow_additions">>, AllowAdditions, RespJObj))

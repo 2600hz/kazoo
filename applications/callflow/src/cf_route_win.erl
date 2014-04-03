@@ -191,7 +191,7 @@ update_ccvs(Call) ->
 -spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
 maybe_start_metaflow(Call) ->
     case whapps_call:kvs_fetch('cf_metaflow', Call) of
-        'undefined' -> lager:debug("no metaflow"), Call;
+        'undefined' -> Call;
         MetaFlow -> maybe_start_metaflow(Call, MetaFlow)
     end.
 
