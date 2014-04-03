@@ -156,15 +156,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     From = props:get_value(<<"send_from">>, Service),
     To = props:get_value(<<"email_address">>, Props),
 
-    {ContentTypeParams, CharsetString} =
-        case props:get_value(<<"template_charset">>, Service) of
-            <<>> -> {[], <<>>};
-            <<_/binary>> = Charset ->
-                {[{<<"content-type-params">>,[{<<"charset">>,Charset}]}]
-                 ,iolist_to_binary([<<";charset=">>, Charset])
-                };
-            _ -> {[], <<>>}
-        end,
+    {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
 
     lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),
     {'ok', VMJObj} = couch_mgr:open_doc(DB, DocId),
