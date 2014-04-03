@@ -223,7 +223,7 @@ delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
 -spec reply({pid(), reference()}, term()) -> no_return().
 reply(From, Msg) -> gen_server:reply(From, Msg).
 
--type server_name() :: {'global' | 'local', atom()}.
+-type server_name() :: {'global' | 'local', atom()} | pid().
 
 -spec enter_loop(atom(), list(), term()) -> no_return().
 -spec enter_loop(atom(), list(), term(), wh_timeout() | server_name()) -> no_return().
@@ -237,7 +237,7 @@ enter_loop(Module, Option, ModuleState, Timeout) ->
     enter_loop(Module, Option, ModuleState, self(), Timeout).
 
 enter_loop(Module, Options, ModuleState, ServerName, Timeout) ->
-    MyState = init_state([Module, Options, ModuleState]),
+    {'ok', MyState} = init_state([Module, Options, ModuleState]),
     gen_server:enter_loop(?MODULE, [], MyState, ServerName, Timeout).
 
 -spec add_responder(server_ref(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
