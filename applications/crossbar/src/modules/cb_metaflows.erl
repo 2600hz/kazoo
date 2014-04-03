@@ -85,9 +85,7 @@ validate(Context) ->
 validate_metaflows(Context, ?HTTP_GET) ->
     validate_get_metaflows(Context, cb_context:doc(Context));
 validate_metaflows(Context, ?HTTP_POST) ->
-    Metaflows = cb_context:req_data(Context),
-
-    validate_set_metaflows(Context, Metaflows, cb_context:doc(Context));
+    cb_context:validate_request_data(<<"metaflows">>, Context, fun validate_set_metaflows/1);
 validate_metaflows(Context, ?HTTP_DELETE) ->
     validate_delete_metaflows(Context, cb_context:doc(Context)).
 
@@ -115,6 +113,13 @@ validate_delete_metaflows(Context, Doc) ->
                            ,cb_context:set_doc(Context
                                                ,wh_json:delete_key(<<"metaflows">>, Doc)
                                               )).
+
+-spec validate_set_metaflows(cb_context:context()) ->
+                                    cb_context:context().
+-spec validate_set_metaflows(cb_context:context(), wh_json:object(), api_object()) ->
+                                    cb_context:context().
+validate_set_metaflows(Context) ->
+    validate_set_metaflows(Context, cb_context:req_data(Context), cb_context:doc(Context)).
 
 validate_set_metaflows(Context, Metaflows, 'undefined') ->
     lager:debug("no doc found, using account doc"),
