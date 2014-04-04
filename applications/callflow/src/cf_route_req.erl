@@ -178,7 +178,7 @@ cache_call(Flow, NoMatch, ControllerQ, Call) ->
                                  ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
                                  ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
                                  ,{'cf_no_match', NoMatch}
-                                 ,{'cf_metaflow', wh_json:get_value(<<"metaflow">>, Flow)}
+                                 ,{'cf_metaflow', wh_json:get_value(<<"metaflows">>, Flow)}
                                 ],
                         whapps_call:kvs_store_proplist(Props, C)
                 end
