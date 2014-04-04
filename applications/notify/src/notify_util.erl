@@ -21,6 +21,7 @@
          ,find_admin/1
          ,get_account_doc/1
          ,qr_code_image/1
+         ,get_charset_params/1
         ]).
 
 -include("notify.hrl").
@@ -412,3 +413,16 @@ qr_code_image(Text) ->
             lager:debug("failed to generate QR code: ~p", [_E]),
             'undefined'
     end.
+
+
+-spec get_charset_params(term()) -> tuple().
+get_charset_params(Service) ->
+        case props:get_value(<<"template_charset">>, Service) of
+            <<>> -> {[], <<>>};
+            <<_/binary>> = Charset ->
+                {[{<<"content-type-params">>,[{<<"charset">>,Charset}]}]
+                 ,iolist_to_binary([<<";charset=">>, Charset])
+                };
+            _ -> {[], <<>>}
+        end.
+

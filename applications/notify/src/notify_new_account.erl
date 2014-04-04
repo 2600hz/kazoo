@@ -120,16 +120,31 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
+
+    {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
+    PlainTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>),
+    HTMLTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"html_content_transfer_encoding">>),
+
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}
                    ,{<<"To">>, To}
                    ,{<<"Subject">>, Subject}
                   ]
-             ,[]
+             ,ContentTypeParams
              ,[{<<"multipart">>, <<"alternative">>, [], []
-                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
-                  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+               ,[{<<"text">>, <<"plain">>
+                   ,props:filter_undefined(
+                      [{<<"Content-Type">>, iolist_to_binary([<<"text/plain">>, CharsetString])}
+                       ,{<<"Content-Transfer-Encoding">>, PlainTransferEncoding}
+                      ])
+                   ,[], iolist_to_binary(TxtBody)}
+                  ,{<<"text">>, <<"html">>
+                    ,props:filter_undefined(
+                       [{<<"Content-Type">>, iolist_to_binary([<<"text/html">>, CharsetString])}
+                        ,{<<"Content-Transfer-Encoding">>, HTMLTransferEncoding}
+                       ])
+                    ,[], iolist_to_binary(HTMLBody)}
                  ]
                }
               ]
