@@ -133,17 +133,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     {ContentType, AttachmentFileName, AttachmentBin} = get_attachment(Props),
     [ContentTypeA,ContentTypeB] = binary:split(ContentType,<<"/">>),
 
-    Charset = props:get_value(<<"template_charset">>, Service),
-    ContentTypeParams = case Charset of
-                            <<>> -> [];
-                            <<_/binary>> -> [{<<"content-type-params">>,[{<<"charset">>,Charset}]}];
-                            _ -> []
-                        end,
-    CharsetString = case Charset of
-                            <<>> -> <<>>;
-                            <<_/binary>> -> iolist_to_binary([<<";charset=">>, Charset]);
-                            _ -> <<>>
-                        end,
+    {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
