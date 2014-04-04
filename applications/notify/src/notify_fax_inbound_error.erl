@@ -34,16 +34,16 @@ handle_req(JObj, _Props) ->
     _ = whapps_util:put_callid(JObj),
 
     lager:debug("new fax error left, sending to email if enabled"),
-    
+
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
 
-    Emails = wh_json:get_value([<<"Fax-Notifications">>,<<"email">>,<<"send_to">>], JObj, []),   
+    Emails = wh_json:get_value([<<"Fax-Notifications">>,<<"email">>,<<"send_to">>], JObj, []),
 
     {ok, AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     Docs = [JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
-    
+
 
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>,
@@ -52,14 +52,14 @@ handle_req(JObj, _Props) ->
     CustomHtmlTemplate = wh_json:get_value([<<"notifications">>,
                                             <<"inbound_fax_error_to_email">>,
                                             <<"email_html_template">>], AcctObj),
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, 
-                                               <<"inbound_fax_error_to_email">>, 
+    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>,
+                                               <<"inbound_fax_error_to_email">>,
                                                <<"email_subject_template">>], AcctObj),
 
     {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
     {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-    
+
     try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props)) of
         _ -> lager:debug("built and sent")
     catch
@@ -68,9 +68,9 @@ handle_req(JObj, _Props) ->
             ST = erlang:get_stacktrace(),
             wh_util:log_stacktrace(ST)
     end.
-    
-    
-    
+
+
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -129,10 +129,10 @@ fax_values(Event) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
+build_and_send_email(_TxtBody, _HTMLBody, _Subject, 'undefined', _Props) ->
+    lager:debug("no TO email, not sending");
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
-build_and_send_email(TxtBody, HTMLBody, Subject, 'undefined', Props) ->
-    'ok';
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
