@@ -165,7 +165,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
     lager:debug("attachment id ~s", [AttachmentId]),
     {'ok', AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
-    AttachmentFileName = get_file_name(Props),
+    AttachmentFileName = get_file_name(VMJObj, Props),
     lager:debug("attachment renamed to ~s", [AttachmentFileName]),
 
     PlainTransferEncoding = whapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"text_content_transfer_encoding">>),
@@ -214,20 +214,51 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, {RespQ, MsgId}) ->
 %% create a friendly file name
 %% @end
 %%--------------------------------------------------------------------
--spec get_file_name(proplist()) -> ne_binary().
-get_file_name(Props) ->
-    lager:debug("filename props"),
-    [lager:debug("p: ~p", [P]) || P <- Props],
+-spec get_file_name(wh_json:object(), wh_proplist()) -> ne_binary().
+get_file_name(MediaJObj, Props) ->
     %% CallerID_Date_Time.mp3
     Voicemail = props:get_value(<<"voicemail">>, Props),
-    CallerID = case {props:get_value(<<"caller_id_name">>, Voicemail), props:get_value(<<"caller_id_number">>, Voicemail)} of
-                   {'undefined', 'undefined'} -> <<"Unknown">>;
-                   {'undefined', Num} -> wnm_util:pretty_print(wh_util:to_binary(Num));
-                   {Name, _} -> wnm_util:pretty_print(wh_util:to_binary(Name))
-               end,
+    CallerID =
+        case {props:get_value(<<"caller_id_name">>, Voicemail)
+              ,props:get_value(<<"caller_id_number">>, Voicemail)
+             }
+        of
+            {'undefined', 'undefined'} -> <<"Unknown">>;
+            {'undefined', Num} -> wnm_util:pretty_print(wh_util:to_binary(Num));
+            {Name, _} -> wnm_util:pretty_print(wh_util:to_binary(Name))
+        end,
+
     LocalDateTime = props:get_value(<<"date_called">>, Voicemail, <<"0000-00-00_00-00-00">>),
-    FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".mp3"]),
+    Extension = get_extension(MediaJObj),
+    FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Extension]),
+
     binary:replace(wh_util:to_lower_binary(FName), <<" ">>, <<"_">>).
+
+-spec get_extension(wh_json:object()) -> ne_binary().
+get_extension(MediaJObj) ->
+    case wh_json:get_value(<<"media_type">>, MediaJObj) of
+        'undefined' ->
+            lager:debug("getting extension from attachment mime"),
+            attachment_to_extension(wh_json:get_value(<<"_attachments">>, MediaJObj));
+        MediaType -> MediaType
+    end.
+
+-spec attachment_to_extension(wh_json:object()) -> ne_binary().
+attachment_to_extension(AttachmentsJObj) ->
+    wh_json:get_value(<<"extension">>
+                      ,wh_json:map(fun attachment_to_extension/2, AttachmentsJObj)
+                      ,whapps_config:get(<<"callflow">>, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
+                     ).
+
+-spec attachment_to_extension(ne_binary(), wh_json:object()) -> {ne_binary(), ne_binary()}.
+attachment_to_extension(_Id, Meta) ->
+    CT = wh_json:get_value(<<"content_type">>, Meta),
+    Ext = mime_to_extension(CT),
+    {<<"extension">>, Ext}.
+
+-spec mime_to_extension(ne_binary()) -> ne_binary().
+mime_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
+mime_to_extension(_) -> <<"wav">>.
 
 %%--------------------------------------------------------------------
 %% @private
