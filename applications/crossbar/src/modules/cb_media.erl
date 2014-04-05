@@ -436,24 +436,11 @@ update_media_binary(MediaId, Context) ->
     lager:debug("file content type: ~s", [CT]),
     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
 
-    Context1 = maybe_remove_old_attachments(Context),
+    Context1 = crossbar_util:maybe_remove_attachments(Context),
 
     crossbar_doc:save_attachment(MediaId, cb_modules_util:attachment_name(Filename, CT)
                                  ,Contents, Context1, Opts
                                 ).
-
-maybe_remove_old_attachments(Context) ->
-    MediaJObj = cb_context:doc(Context),
-    maybe_remove_old_attachments(Context, MediaJObj
-                                 ,wh_json:get_value(<<"_attachments">>, MediaJObj)
-                                ).
-maybe_remove_old_attachments(Context, _MediaJObj, 'undefined') ->
-    Context;
-maybe_remove_old_attachments(Context, MediaJObj, _Attachments) ->
-    lager:debug("removing old attachments"),
-    crossbar_doc:save(cb_context:set_doc(Context
-                                         ,wh_json:delete_key(<<"_attachments">>, MediaJObj)
-                                        )).
 
 %%--------------------------------------------------------------------
 %% @private

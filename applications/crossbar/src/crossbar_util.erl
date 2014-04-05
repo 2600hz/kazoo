@@ -31,6 +31,7 @@
 -export([get_user_lang/2, get_account_lang/1]).
 -export([get_user_timezone/2, get_account_timezone/1]).
 -export([apply_response_map/2]).
+-export([maybe_remove_attachments/1]).
 
 -include("crossbar.hrl").
 
@@ -472,6 +473,20 @@ get_path1(RawPath, Relative) ->
                        (Segment, PathTokens) -> [Segment | PathTokens]
                     end, PathTokensRev, UrlTokens)
        ), <<"/">>).
+
+-spec maybe_remove_attachments(cb_context:context()) -> cb_context:context().
+maybe_remove_attachments(Context) ->
+    JObj = cb_context:doc(Context),
+    maybe_remove_attachments(Context, JObj
+                             ,wh_json:get_value(<<"_attachments">>, JObj)
+                            ).
+maybe_remove_attachments(Context, _JObj, 'undefined') ->
+    Context;
+maybe_remove_attachments(Context, JObj, _Attachments) ->
+    lager:debug("removing old attachments"),
+    crossbar_doc:save(cb_context:set_doc(Context
+                                         ,wh_json:delete_key(<<"_attachments">>, JObj)
+                                        )).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

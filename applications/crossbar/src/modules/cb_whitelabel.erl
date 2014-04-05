@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Account module
 %%%
@@ -36,6 +36,14 @@
                                 ,{<<"application">>, <<"x-base64">>}
                                ]).
 
+%% Commonly found ico mime types
+-define(WHITELABEL_ICON_MIME_TYPES, [{<<"image">>, <<"ico">>}
+                                     ,{<<"image">>, <<"vnd.microsoft.icon">>}
+                                     ,{<<"image">>, <<"x-icon">>}
+                                     ,{<<"image">>, <<"icon">>}
+                                     | ?WHITELABEL_MIME_TYPES
+                                    ]).
+
 -define(AGG_VIEW_WHITELABEL_DOMAIN, <<"accounts/list_by_whitelabel_domain">>).
 
 %%%===================================================================
@@ -68,12 +76,14 @@ init() ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+
 allowed_methods(?LOGO_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?ICON_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_) ->
     [?HTTP_GET].
+
 allowed_methods(_, ?LOGO_REQ) ->
     [?HTTP_GET];
 allowed_methods(_, ?ICON_REQ) ->
@@ -91,9 +101,11 @@ allowed_methods(_, ?ICON_REQ) ->
 -spec resource_exists(path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
 resource_exists(?LOGO_REQ) -> 'true';
 resource_exists(?ICON_REQ) -> 'true';
 resource_exists(_) -> 'true'.
+
 resource_exists(_, ?LOGO_REQ) -> 'true';
 resource_exists(_, ?ICON_REQ) -> 'true'.
 
@@ -103,16 +115,16 @@ resource_exists(_, ?ICON_REQ) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
-authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}]
-                      ,req_verb= ?HTTP_GET
-                     }) ->
+authorize(Context) ->
+    authorize(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+
+authorize([{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
     'true';
-authorize(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [AttachType]]}]
-                      ,req_verb= ?HTTP_GET
-                     }) when
-            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
+authorize([{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
     'true';
-authorize(_) ->
+authorize([{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
+    'true';
+authorize(_Nouns, _Verb) ->
     'false'.
 
 %%--------------------------------------------------------------------
@@ -121,16 +133,16 @@ authorize(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
-authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_]}]
-                         ,req_verb= ?HTTP_GET
-                        }) ->
-    'true';
-authenticate(#cb_context{req_nouns=[{<<"whitelabel">>, [_ | [AttachType]]}]
-                         ,req_verb= ?HTTP_GET
-                        }) when (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    'true';
+authenticate(Context) ->
+    authenticate(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
-authenticate(_) ->
+authenticate([{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
+    'true';
+authenticate([{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
+    'true';
+authenticate([{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
+    'true';
+authenticate(_Nouns, _Verb) ->
     'false'.
 
 %%--------------------------------------------------------------------
@@ -142,42 +154,66 @@ authenticate(_) ->
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, AttachType) when
-                       (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    case load_whitelabel_meta(?WHITELABEL_ID, Context) of
-        #cb_context{resp_status='success', doc=JObj} ->
-            case filter_attachment_type(AttachType, wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
-                [] -> Context;
-                [Attachment|_] ->
-                    CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
-                    [Type, SubType] = binary:split(CT, <<"/">>),
-                    Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
-            end
-    end;
-content_types_provided(Context, _) ->
+content_types_provided(Context, AttachType) ->
+    content_types_provided_for_attachments(Context, AttachType, cb_context:req_verb(Context)).
+
+content_types_provided_for_attachments(Context, ?LOGO_REQ, ?HTTP_GET) ->
+    content_types_provided_for_attachments(Context, ?LOGO_REQ);
+content_types_provided_for_attachments(Context, ?ICON_REQ, ?HTTP_GET) ->
+    content_types_provided_for_attachments(Context, ?ICON_REQ);
+content_types_provided_for_attachments(Context, _Type, _Verb) ->
     Context.
+
+content_types_provided_for_attachments(Context, AttachType) ->
+    Context1 = load_whitelabel_meta(?WHITELABEL_ID, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            maybe_add_content_types_provided(Context1, AttachType);
+        _Status -> Context1
+    end.
+
+maybe_add_content_types_provided(Context, AttachType) ->
+    JObj = cb_context:doc(Context),
+    case filter_attachment_type(AttachType, wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
+        [] -> Context;
+        [Attachment|_] ->
+            CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
+            [Type, SubType] = binary:split(CT, <<"/">>),
+            cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
+    end.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Domain, AttachType) when
-                       (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    case find_whitelabel(Domain, Context, 'meta') of
-        #cb_context{resp_status='success', doc=JObj} ->
-            case filter_attachment_type(AttachType, wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
-                [] -> Context;
-                [Attachment|_] ->
-                    CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
-                    [Type, SubType] = binary:split(CT, <<"/">>),
-                    Context#cb_context{content_types_provided=[{'to_binary', [{Type, SubType}]}]}
-            end
+
+content_types_provided(Context, Domain, AttachType) ->
+    content_types_provided_for_domain_attachments(Context, Domain, AttachType, cb_context:req_verb(Context)).
+
+content_types_provided_for_domain_attachments(Context, Domain, ?LOGO_REQ, ?HTTP_GET) ->
+    content_types_provided_for_domain_attachments(Context, Domain, ?LOGO_REQ);
+content_types_provided_for_domain_attachments(Context, Domain, ?ICON_REQ, ?HTTP_GET) ->
+    content_types_provided_for_domain_attachments(Context, Domain, ?ICON_REQ);
+content_types_provided_for_domain_attachments(Context, _Domain, _AttachType, _Verb) ->
+    Context.
+
+content_types_provided_for_domain_attachments(Context, Domain, AttachType) ->
+    Context1 = find_whitelabel(Domain, Context, 'meta'),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            maybe_add_content_types_provided(Context1, AttachType);
+        _Status -> Context1
     end.
 
 -spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
-content_types_accepted(#cb_context{req_verb = ?HTTP_POST}=Context, AttachType) when
-                        (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
+content_types_accepted(Context, AttachType) ->
+    content_types_accepted(Context, AttachType, cb_context:req_verb(Context)).
+
+content_types_accepted(Context, ?LOGO_REQ, ?HTTP_POST) ->
     CTA = [{'from_binary', ?WHITELABEL_MIME_TYPES}],
-    Context#cb_context{content_types_accepted=CTA};
-content_types_accepted(Context, _) ->
+    cb_context:set_content_types_accepted(Context, CTA);
+content_types_accepted(Context, ?ICON_REQ, ?HTTP_POST) ->
+    CTA = [{'from_binary', ?WHITELABEL_ICON_MIME_TYPES}],
+    cb_context:set_content_types_accepted(Context, CTA);
+content_types_accepted(Context, _AttachType, _Verb) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -192,94 +228,130 @@ content_types_accepted(Context, _) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
+    validate_whitelabel(Context, cb_context:req_verb(Context)).
+
+validate_whitelabel(Context, ?HTTP_GET) ->
     load_whitelabel_meta(?WHITELABEL_ID, Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    validate_request(undefined, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context) ->
+validate_whitelabel(Context, ?HTTP_PUT) ->
+    validate_request('undefined', Context);
+validate_whitelabel(Context, ?HTTP_POST) ->
     validate_request(?WHITELABEL_ID, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE
-                     ,req_data=_Data
-                    }=Context) ->
+validate_whitelabel(Context, ?HTTP_DELETE) ->
     load_whitelabel_meta(?WHITELABEL_ID, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, AttachType) when
-                       (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    load_whitelabel_binary(AttachType, ?WHITELABEL_ID, Context);
-validate(#cb_context{req_verb = ?HTTP_POST
-                     ,req_files=[]
-                    }=Context, AttachType) when
-            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
+validate(Context, ?LOGO_REQ) ->
+    validate_attachment(Context, ?LOGO_REQ, cb_context:req_verb(Context));
+validate(Context, ?ICON_REQ) ->
+    validate_attachment(Context, ?ICON_REQ, cb_context:req_verb(Context));
+validate(Context, Domain) ->
+    validate_domain(Context, Domain, cb_context:req_verb(Context)).
+
+validate_attachment(Context, ?LOGO_REQ, ?HTTP_GET) ->
+    load_whitelabel_binary(?LOGO_REQ, ?WHITELABEL_ID, Context);
+validate_attachment(Context, ?ICON_REQ, ?HTTP_GET) ->
+    load_whitelabel_binary(?ICON_REQ, ?WHITELABEL_ID, Context);
+
+validate_attachment(Context, AttachType, ?HTTP_POST) ->
+    validate_attachment_post(Context, AttachType, cb_context:req_files(Context)).
+
+validate_attachment_post(Context, ?LOGO_REQ, []) ->
     Message = <<"please provide an image file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
-validate(#cb_context{req_verb = ?HTTP_POST
-                     ,req_files=[{_Filename, FileObj}]
-                    }=Context, AttachType) when
-            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    case load_whitelabel_meta(?WHITELABEL_ID, Context) of
-        #cb_context{resp_status='success', doc=JObj}=C ->
-            CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
+validate_attachment_post(Context, ?ICON_REQ, []) ->
+    Message = <<"please provide an image file">>,
+    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+validate_attachment_post(Context, ?LOGO_REQ, [{_Filename, FileJObj}]) ->
+    validate_upload(Context, FileJObj);
+validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
+    validate_upload(Context, FileJObj);
+validate_attachment_post(Context, ?LOGO_REQ, _Files) ->
+    Message = <<"please provide a single image file">>,
+    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
+validate_attachment_post(Context, ?ICON_REQ, _Files) ->
+    Message = <<"please provide a single image file">>,
+    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+
+validate_upload(Context, FileJObj) ->
+    Context1 = load_whitelabel_meta(?WHITELABEL_ID, Context),
+    case cb_context:resp_status(Context) of
+        'success' ->
+            CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj, <<"application/octet-stream">>),
             Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
-                                             ,FileObj
-                                             ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))),
+                                             ,FileJObj
+                                             ,byte_size(wh_json:get_value(<<"contents">>, FileJObj, <<>>))
+                                            ),
             Props = [{<<"content_type">>, CT}
                      ,{<<"content_length">>, Size}
                     ],
-            validate_request(?WHITELABEL_ID, C#cb_context{req_data=wh_json:set_values(Props, JObj)});
-        Else -> Else
-    end;
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, AttachType) when
-            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    Message = <<"please provide a single image file">>,
-    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
-validate(#cb_context{req_verb = ?HTTP_GET
-                     ,account_id='undefined'
-                    }=Context, Domain) ->
-    find_whitelabel(Domain, Context, 'meta').
+            validate_request(?WHITELABEL_ID
+                             ,cb_context:set_req_data(Context1
+                                                      ,wh_json:set_values(Props, cb_context:doc(Context))
+                                                     )
+                            );
+        _Status -> Context1
+    end.
 
-validate(#cb_context{req_verb = ?HTTP_GET
-                     ,account_id='undefined'
-                    }=Context, Domain, AttachType) when
-            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    find_whitelabel(AttachType, Domain, Context, binary).
+validate_domain(Context, Domain, ?HTTP_GET) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> find_whitelabel(Domain, Context, 'meta');
+        _AccountId -> Context
+    end.
 
+validate(Context, Domain, AttachType) ->
+    validate_domain_attachment(Context, Domain, AttachType, cb_context:req_verb(Context)).
+
+validate_domain_attachment(Context, Domain, ?LOGO_REQ, ?HTTP_GET) ->
+    validate_get_domain_attachment(Context, Domain, ?LOGO_REQ, cb_context:account_id(Context));
+validate_domain_attachment(Context, Domain, ?ICON_REQ, ?HTTP_GET) ->
+    validate_get_domain_attachment(Context, Domain, ?ICON_REQ, cb_context:account_id(Context)).
+
+validate_get_domain_attachment(Context, Domain, AttachType, 'undefined') ->
+    find_whitelabel(AttachType, Domain, Context, 'binary').
 
 -spec get(cb_context:context(), path_token()) -> cb_context:context().
-get(Context, AttachType) when
-            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    Context#cb_context{resp_headers=[{<<"Content-Type">>
-                                          ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
-                                     ,{<<"Content-Length">>
-                                           ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
-                                     | Context#cb_context.resp_headers
-                                    ]}.
+get(Context, ?LOGO_REQ) ->
+    add_attachment_response_headers(Context);
+get(Context, ?ICON_REQ) ->
+    add_attachment_response_headers(Context);
+get(Context, _) -> Context.
+
+add_attachment_response_headers(Context) ->
+    cb_context:add_resp_headers(Context
+                                ,[{<<"Content-Type">>
+                                   ,wh_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>)
+                                  }
+                                  ,{<<"Content-Length">>
+                                    ,wh_util:to_binary(binary:referenced_byte_size(cb_context:resp_data(Context)))
+                                   }
+                                 ]).
 
 
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-get(Context, _, AttachType) when
-            (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    Context#cb_context{resp_headers=[{<<"Content-Type">>
-                                          ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
-                                     ,{<<"Content-Length">>
-                                           ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
-                                     | Context#cb_context.resp_headers
-                                    ]}.
+get(Context, _Domain, ?LOGO_REQ) ->
+    add_attachment_response_headers(Context);
+get(Context, _Domain, ?ICON_REQ) ->
+    add_attachment_response_headers(Context);
+get(Context, _Domain, _AttachType) ->
+    Context.
 
 -spec put(cb_context:context()) -> cb_context:context().
-put(#cb_context{}=Context) ->
+put(Context) ->
     maybe_update_account_definition(crossbar_doc:save(Context)).
 
 -spec post(cb_context:context()) -> cb_context:context().
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 
-post(#cb_context{}=Context) ->
+post(Context) ->
     maybe_update_account_definition(crossbar_doc:save(Context)).
 
-post(Context, AttachType) when (AttachType =:= ?LOGO_REQ) or (AttachType =:= ?ICON_REQ) ->
-    update_whitelabel_binary(AttachType, ?WHITELABEL_ID, Context).
+post(Context, ?LOGO_REQ) ->
+    update_whitelabel_binary(?LOGO_REQ, ?WHITELABEL_ID, Context);
+post(Context, ?ICON_REQ) ->
+    update_whitelabel_binary(?ICON_REQ, ?WHITELABEL_ID, Context).
 
 -spec delete(cb_context:context()) -> cb_context:context().
-delete(#cb_context{}=Context) ->
+delete(Context) ->
     maybe_cleanup_account_definition(crossbar_doc:delete(Context, 'permanent')).
 
 %%--------------------------------------------------------------------
@@ -293,30 +365,47 @@ delete(#cb_context{}=Context) ->
 -spec find_whitelabel(ne_binary(), ne_binary(), cb_context:context(), 'binary') ->
                              cb_context:context().
 find_whitelabel(Domain, Context, LookingFor) ->
-    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
-    case crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions, Context#cb_context{db_name=?WH_ACCOUNTS_DB}) of
-        #cb_context{resp_status='success', doc=[JObj]}=C ->
-            Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
-            Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
-            case LookingFor of
-                'meta' -> load_whitelabel_meta(?WHITELABEL_ID, C#cb_context{db_name=Db, account_id=Id});
-                'binary' -> load_whitelabel_binary(?WHITELABEL_ID, C#cb_context{db_name=Db, account_id=Id})
+    ViewOptions = [{'key', wh_util:to_lower_binary(Domain)}],
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions, cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            case cb_context:doc(Context1) of
+                [JObj] ->
+                    Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
+                    Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
+                    Context2 = cb_context:setters(Context1
+                                                  ,[{fun cb_context:set_account_db/2, Db}
+                                                    ,{fun cb_context:set_account_id/2, Id}
+                                                   ]),
+                    case LookingFor of
+                        'meta' -> load_whitelabel_meta(?WHITELABEL_ID, Context2);
+                        'binary' -> load_whitelabel_binary(?WHITELABEL_ID, Context2)
+                    end;
+                _Doc ->
+                    cb_context:add_system_error('bad_identifier', [{'details', Domain}], Context1)
             end;
-        #cb_context{resp_status='success'} ->
-            cb_context:add_system_error('bad_identifier', [{'details', Domain}], Context);
-        Else -> Else
+        _Status -> Context1
     end.
 
 find_whitelabel(AttachType, Domain, Context, 'binary') ->
-    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
-    case crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions, Context#cb_context{db_name=?WH_ACCOUNTS_DB}) of
-        #cb_context{resp_status='success', doc=[JObj]}=C ->
-            Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
-            Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
-            load_whitelabel_binary(AttachType, ?WHITELABEL_ID, C#cb_context{db_name=Db, account_id=Id});
-        #cb_context{resp_status='success'} ->
-            cb_context:add_system_error('bad_identifier', [{'details', Domain}], Context);
-        Else -> Else
+    ViewOptions = [{'key', wh_util:to_lower_binary(Domain)}],
+    Context1 = crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions, cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            case cb_context:doc(Context1) of
+                [JObj] ->
+                    Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
+                    Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
+                    Context2 = cb_context:setters(Context1
+                                                  ,[{fun cb_context:set_account_db/2, Db}
+                                                    ,{fun cb_context:set_account_id/2, Id}
+                                                   ]),
+
+                    load_whitelabel_binary(AttachType, ?WHITELABEL_ID, Context2);
+                _Doc ->
+                    cb_context:add_system_error('bad_identifier', [{'details', Domain}], Context1)
+            end;
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -339,29 +428,28 @@ load_whitelabel_meta(WhitelabelId, Context) ->
 validate_request(WhitelabelId, Context) ->
     validate_unique_domain(WhitelabelId, Context).
 
-validate_unique_domain(WhitelabelId, #cb_context{req_data=JObj
-                                                 ,account_id=AccountId
-                                                }=Context) ->
-    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
-    case is_domain_unique(AccountId, Domain) of
+validate_unique_domain(WhitelabelId, Context) ->
+    Domain = wh_json:get_ne_value(<<"domain">>, cb_context:req_data(Context)),
+    case is_domain_unique(cb_context:account_id(Context), Domain) of
         'true' -> check_whitelabel_schema(WhitelabelId, Context);
         'false' ->
-            C = cb_context:add_validation_error(<<"domain">>
-                                                ,<<"unique">>
-                                                ,<<"Whitelable domain is already in use">>
-                                                ,Context),
-            check_whitelabel_schema(WhitelabelId, C)
+            Context1 = cb_context:add_validation_error(<<"domain">>
+                                                       ,<<"unique">>
+                                                       ,<<"Whitelable domain is already in use">>
+                                                       ,Context
+                                                      ),
+            check_whitelabel_schema(WhitelabelId, Context1)
     end.
 
 check_whitelabel_schema(WhitelabelId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(WhitelabelId, C) end,
     cb_context:validate_request_data(<<"whitelabel">>, Context, OnSuccess).
 
-on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
-    Props = [{<<"pvt_type">>, <<"whitelabel">>}
-             ,{<<"_id">>, ?WHITELABEL_ID}
-            ],
-    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
+on_successful_validation('undefined', Context) ->
+    Doc = wh_json:set_values([{<<"pvt_type">>, <<"whitelabel">>}
+                              ,{<<"_id">>, ?WHITELABEL_ID}
+                             ], cb_context:doc(Context)),
+    cb_context:set_doc(Context, Doc);
 on_successful_validation(WhitelabelId, Context) ->
     crossbar_doc:load_merge(WhitelabelId, Context).
 
@@ -373,49 +461,53 @@ on_successful_validation(WhitelabelId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_whitelabel_binary(path_token(), cb_context:context()) -> cb_context:context().
 -spec load_whitelabel_binary(ne_binary(), path_token(), cb_context:context()) -> cb_context:context().
-load_whitelabel_binary(WhitelabelId, #cb_context{resp_headers=RespHeaders}=Context) ->
-    case load_whitelabel_meta(WhitelabelId, Context) of
-        #cb_context{resp_status='success', doc=JObj} ->
-            WhitelabelMeta = wh_json:get_value([<<"_attachments">>], JObj, wh_json:new()),
+load_whitelabel_binary(WhitelabelId, Context) ->
+    Context1 = load_whitelabel_meta(WhitelabelId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            WhitelabelMeta = wh_json:get_value([<<"_attachments">>], cb_context:doc(Context1), wh_json:new()),
             case wh_json:get_keys(WhitelabelMeta) of
-                [] -> crossbar_util:response_bad_identifier(WhitelabelId, Context);
-                [Attachment|_] ->
-                    Context1 = crossbar_doc:load_attachment(JObj, Attachment, Context),
-                    Context1#cb_context{resp_headers=[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-                                                        ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], WhitelabelMeta)}
-                                                        ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], WhitelabelMeta)}
-                                                        | RespHeaders
-                                                       ]
-                                        ,resp_etag='undefined'}
+                [] -> crossbar_util:response_bad_identifier(WhitelabelId, Context1);
+                [AttachmentId|_] ->
+                    update_response_with_attachment(Context1, WhitelabelMeta, AttachmentId)
             end;
-        Context1 -> Context1
+        _Status -> Context1
     end.
+
+-spec update_response_with_attachment(cb_context:context(), wh_json:object(), ne_binary()) -> cb_context:context().
+update_response_with_attachment(Context, WhitelabelMeta, AttachmentId) ->
+    cb_context:set_resp_etag(
+      cb_context:add_resp_headers(crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, Context)
+                                  ,[{<<"Content-Disposition">>, <<"attachment; filename=", AttachmentId/binary>>}
+                                    ,{<<"Content-Type">>, wh_json:get_value([AttachmentId, <<"content_type">>], WhitelabelMeta)}
+                                    ,{<<"Content-Length">>, wh_json:get_value([AttachmentId, <<"length">>], WhitelabelMeta)}
+
+                                   ])
+      ,'undefined'
+     ).
+
 %% At present, AttachType should be either ?LOGO_REQ or ?ICON_REQ
-load_whitelabel_binary(AttachType, WhitelabelId, #cb_context{resp_headers=RespHeaders}=Context) ->
-    case load_whitelabel_meta(WhitelabelId, Context) of
-        #cb_context{resp_status='success', doc=JObj} ->
-            WhitelabelMeta = wh_json:get_value([<<"_attachments">>], JObj, wh_json:new()),
+load_whitelabel_binary(AttachType, WhitelabelId, Context) ->
+    Context1 = load_whitelabel_meta(WhitelabelId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            WhitelabelMeta = wh_json:get_value([<<"_attachments">>], cb_context:doc(Context1), wh_json:new()),
             case filter_attachment_type(AttachType, WhitelabelMeta) of
                 [] -> crossbar_util:response_bad_identifier(WhitelabelId, Context);
-                [Attachment|_] ->
-                    Context1 = crossbar_doc:load_attachment(JObj, Attachment, Context),
-                    Context1#cb_context{resp_headers=[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-                                                        ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], WhitelabelMeta)}
-                                                        ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], WhitelabelMeta)}
-                                                        | RespHeaders
-                                                       ]
-                                        ,resp_etag='undefined'}
+                [AttachmentId|_] ->
+                    update_response_with_attachment(Context, WhitelabelMeta, AttachmentId)
             end;
-        Context1 -> Context1
+        _Status -> Context1
     end.
 
 %% Pull out value from list that matches <<AttachType, _>> as Attachment
+-spec filter_attachment_type(ne_binary(), wh_json:object()) -> ne_binaries().
 filter_attachment_type(AttachType, JObj) ->
-    lists:filter(
-                fun (A) ->
-                    {0, byte_size(AttachType)} =:= binary:match(A, AttachType)
-                end,
-            wh_json:get_keys(JObj)).
+    lists:filter(fun(A) ->
+                         {0, byte_size(AttachType)} =:= binary:match(A, AttachType)
+                 end
+                 ,wh_json:get_keys(JObj)
+                ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -423,37 +515,36 @@ filter_attachment_type(AttachType, JObj) ->
 %% Update the binary attachment of a whitelabel doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_whitelabel_binary(path_token(), cb_context:context()) -> cb_context:context().
--spec update_whitelabel_binary(ne_binary(), path_token(), cb_context:context()) -> cb_context:context().
-update_whitelabel_binary(WhitelabelId, #cb_context{doc=JObj
-                                                   ,req_files=[{Filename, FileObj}]
-                                                   ,db_name=Db
-                                                  }=Context) ->
-    Contents = wh_json:get_value(<<"contents">>, FileObj),
-    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
-    lager:debug("file content type: ~s", [CT]),
-    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
-    OldAttachments = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    _ = [couch_mgr:delete_attachment(Db, Id, Attachment)
-         || Attachment <- wh_json:get_keys(OldAttachments)
-        ],
-    crossbar_doc:save_attachment(WhitelabelId, attachment_name(Filename, CT), Contents, Context, Opts).
+-spec update_whitelabel_binary(path_token(), cb_context:context()) ->
+                                      cb_context:context().
+-spec update_whitelabel_binary(ne_binary(), path_token(), cb_context:context()) ->
+                                      cb_context:context().
+update_whitelabel_binary(WhitelabelId, Context) ->
+    [{Filename, FileObj}] = cb_context:req_files(Context),
 
-update_whitelabel_binary(AttachType, WhitelabelId, #cb_context{doc=JObj
-                                                   ,req_files=[{Filename, FileObj}]
-                                                   ,db_name=Db
-                                                  }=Context) ->
+    Contents = wh_json:get_value(<<"contents">>, FileObj),
+    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
+    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+
+    Context1 = crossbar_util:maybe_remove_attachments(Context),
+
+    crossbar_doc:save_attachment(WhitelabelId, attachment_name(Filename, CT), Contents, Context1, Opts).
+
+update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
+    JObj = cb_context:doc(Context),
+    [{Filename, FileObj}] = cb_context:req_files(Context),
     Contents = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
     lager:debug("file content type: ~s", [CT]),
     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
-    OldAttachments = filter_attachment_type(AttachType, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    _ = [couch_mgr:delete_attachment(Db, Id, Attachment)
-         || Attachment <- wh_json:get_keys(OldAttachments)
-        ],
-    crossbar_doc:save_attachment(WhitelabelId, attachment_name(AttachType, Filename, CT), Contents, Context, Opts).
+
+    OldAttachmentIds = filter_attachment_type(AttachType, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
+    JObj1 = lists:foldl(fun(AttachmentId, Acc) ->
+                                wh_json:delete_key([<<"_attachments">>, AttachmentId], Acc)
+                        end, JObj, OldAttachmentIds),
+    Context1 = crossbar_doc:save(cb_context:set_doc(Context, JObj1)),
+
+    crossbar_doc:save_attachment(WhitelabelId, attachment_name(AttachType, Filename, CT), Contents, Context1, Opts).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -522,20 +613,20 @@ is_domain_unique(AccountId, Domain) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_account_definition(cb_context:context()) -> cb_context:context().
-maybe_update_account_definition(#cb_context{resp_status='success'
-                                            ,account_id=AccountId
-                                            ,doc=JObj
-                                           }=Context) ->
-    case crossbar_doc:load(AccountId, Context) of
-        #cb_context{resp_status='success', doc=AccountDoc}=AccountContext ->
-            Domain = wh_json:get_ne_value(<<"domain">>, JObj),
+maybe_update_account_definition(Context) ->
+    maybe_update_account_definition(Context, cb_context:resp_status(Context)).
+maybe_update_account_definition(Context, 'success') ->
+    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            AccountDoc = cb_context:doc(Context1),
+            Domain = wh_json:get_ne_value(<<"domain">>, cb_context:doc(Context)),
             AccountDoc1 = wh_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
-            _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
+            _ = cb_accounts:post(cb_context:set_doc(Context1, AccountDoc1), cb_context:account_id(Context)),
             Context;
-        Else ->
-            Else
+        _Status -> Context1
     end;
-maybe_update_account_definition(Context) -> Context.
+maybe_update_account_definition(Context, _Status) -> Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -544,15 +635,17 @@ maybe_update_account_definition(Context) -> Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_cleanup_account_definition(cb_context:context()) -> cb_context:context().
-maybe_cleanup_account_definition(#cb_context{resp_status='success'
-                                             ,account_id=AccountId
-                                            }=Context) ->
-    case crossbar_doc:load(AccountId, Context) of
-        #cb_context{resp_status='success', doc=AccountDoc}=AccountContext ->
+maybe_cleanup_account_definition(Context) ->
+    maybe_cleanup_account_definition(Context, cb_context:resp_status(Context)).
+
+maybe_cleanup_account_definition(Context, 'success') ->
+    Context1 = crossbar_doc:load(cb_context:account_id(Context), Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            AccountDoc = cb_context:doc(Context),
             AccountDoc1 = wh_json:delete_key(<<"pvt_whitelabel_domain">>, AccountDoc),
-            _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
+            _ = cb_accounts:post(cb_context:set_doc(Context1, AccountDoc1), cb_context:account_id(Context)),
             Context;
-        Else ->
-            Else
+        _Status -> Context1
     end;
-maybe_cleanup_account_definition(Context) -> Context.
+maybe_cleanup_account_definition(Context, _Status) -> Context.
