@@ -54,7 +54,9 @@ start_link(_) ->
 
 lookup(Number) when is_binary(Number) ->
     Num = wnm_util:normalize_number(Number),
-    lookup(wh_json:set_value(<<"phone_number">>, wh_util:uri_encode(Num), wh_json:new()));
+    lookup(wh_json:set_values([{<<"phone_number">>, wh_util:uri_encode(Num)}
+                               ,{<<"Caller-ID-Number">>, Num}
+                              ], wh_json:new()));
 lookup(JObj) ->
     CNAM =
         case get_cnam(JObj) of
@@ -226,6 +228,7 @@ make_request(Number, JObj) ->
     Method = get_http_method(),
     Headers = get_http_headers(),
     HTTPOptions = get_http_options(Url),
+
     case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions, 1500) of
         {'ok', Status, _, ResponseBody} when size (ResponseBody) > 18 ->
             lager:debug("cnam lookup for ~p returned ~p: ~p", [Number, Status, ResponseBody]),
@@ -238,23 +241,23 @@ make_request(Number, JObj) ->
             <<>>
     end.
 
--spec get_http_url(wh_json:object()) -> list().
+-spec get_http_url(wh_json:object()) -> ne_binary().
 get_http_url(JObj) ->
     Template = whapps_config:get_binary(?CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
+    {'ok', Url} = render(JObj, Template),
+
     case binary:match(Template, <<"opencnam">>) of
-        'nomatch' ->
-            {'ok', Url} = render(JObj, Template),
-            wh_util:to_binary(lists:flatten(Url));
+        'nomatch' -> iolist_to_binary(Url);
         _Else ->
-            {'ok', Url} = render(JObj, Template),
             case mochiweb_util:urlsplit(wh_util:to_list(iolist_to_binary(Url))) of
                 {_Scheme, _Host, _Path, "", _Segment} ->
-                    lists:flatten([Url, "?ref=2600hz&format=pbx"]);
+                    iolist_to_binary([Url, "?ref=2600hz&format=pbx"]);
                 {Scheme, Host, Path, QS, Segment} ->
-                    mochiweb_util:urlunsplit({Scheme, Host, Path
-                                              ,[QS, "&ref=2600hz&format=pbx"]
-                                              ,Segment
-                                             })
+                    iolist_to_binary(
+                      mochiweb_util:urlunsplit({Scheme, Host, Path
+                                                ,[QS, "&ref=2600hz&format=pbx"]
+                                                ,Segment
+                                               }))
             end
     end.
 
