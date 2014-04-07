@@ -16,10 +16,11 @@
 %%
 %% Wrapper around <em>ssl</em> implementing the Ranch transport API.
 %%
-%% This transport requires the <em>crypto</em>, <em>public_key</em>
-%% and <em>ssl</em> applications to be started. If they aren't started,
-%% it will try to start them itself before opening a port to listen.
-%% Applications aren't stopped when the listening socket is closed, though.
+%% This transport requires the <em>crypto</em>, <em>asn1</em>,
+%% <em>public_key</em> and <em>ssl</em> applications to be started.
+%% If they aren't started, it will try to start them itself before
+%% opening a port to listen. Applications aren't stopped when the
+%% listening socket is closed, though.
 %%
 %% @see ssl
 -module(ranch_ssl).
@@ -33,11 +34,37 @@
 -export([recv/3]).
 -export([send/2]).
 -export([sendfile/2]).
+-export([sendfile/4]).
+-export([sendfile/5]).
 -export([setopts/2]).
 -export([controlling_process/2]).
 -export([peername/1]).
 -export([sockname/1]).
 -export([close/1]).
+
+-type opts() :: [{backlog, non_neg_integer()}
+	| {cacertfile, string()}
+	| {cacerts, [Der::binary()]}
+	| {cert, Der::binary()}
+	| {certfile, string()}
+	| {ciphers, [ssl:erl_cipher_suite()] | string()}
+	| {fail_if_no_peer_cert, boolean()}
+	| {hibernate_after, integer() | undefined}
+	| {ip, inet:ip_address()}
+	| {key, Der::binary()}
+	| {keyfile, string()}
+	| {next_protocols_advertised, [binary()]}
+	| {nodelay, boolean()}
+	| {password, string()}
+	| {port, inet:port_number()}
+	| {raw, non_neg_integer(), non_neg_integer(),
+		non_neg_integer() | binary()}
+	| {reuse_session, fun()}
+	| {reuse_sessions, boolean()}
+	| {secure_renegotiate, boolean()}
+	| {verify, ssl:verify_type()}
+	| {verify_fun, {fun(), InitialUserState::term()}}].
+-export_type([opts/0]).
 
 %% @doc Name of this transport, <em>ssl</em>.
 name() -> ssl.
@@ -56,6 +83,8 @@ messages() -> {ssl, ssl_closed, ssl_error}.
 %%  <dt>cacertfile</dt><dd>Optional. Path to file containing PEM encoded
 %%   CA certificates (trusted certificates used for verifying a peer
 %%   certificate).</dd>
+%%  <dt>cert</dt><dd>Optional. The DER encoded users certificate. If this
+%%   option is supplied it will override the certfile option.</dd>
 %%  <dt>certfile</dt><dd>Mandatory. Path to a file containing the user's
 %%   certificate.</dd>
 %%  <dt>ciphers</dt><dd>Optional. The cipher suites that should be supported.
@@ -66,8 +95,14 @@ messages() -> {ssl, ssl_closed, ssl_error}.
 %%   to send, i.e. sends a empty certificate, if set to false (that is by default)
 %%   it will only fail if the client sends an invalid certificate (an empty
 %%   certificate is considered valid).</dd>
+%%  <dt>hibernate_after</dt><dd>When an integer-value is specified, the ssl_connection
+%%   will go into hibernation after the specified number of milliseconds of inactivity,
+%%   thus reducing its memory footprint. When undefined is specified (this is the
+%%   default), the process will never go into hibernation.</dd>
 %%  <dt>ip</dt><dd>Interface to listen on. Listen on all interfaces
 %%   by default.</dd>
+%%  <dt>key</dt><dd>Optional. The DER encoded users private key. If this option
+%%   is supplied it will override the keyfile option.</dd>
 %%  <dt>keyfile</dt><dd>Optional. Path to the file containing the user's
 %%   private PEM encoded key.</dd>
 %%  <dt>next_protocols_advertised</dt><dd>Optional. Erlang R16B+ required.
@@ -77,8 +112,22 @@ messages() -> {ssl, ssl_closed, ssl_error}.
 %%  <dt>password</dt><dd>Optional. String containing the user's password.
 %%   All private keyfiles must be password protected currently.</dd>
 %%  <dt>port</dt><dd>TCP port number to open. Defaults to 0 (see below)</dd>
+%%  <dt>reuse_session</dt><dd>Optional. Enables the ssl server to have a local
+%%   policy for deciding if a session should be reused or not, only meaningful
+%%   if reuse_sessions is set to true.</dd>
+%%  <dt>reuse_sessions</dt><dd>Optional. Specifies if the server should agree
+%%   to reuse sessions when the clients request to do so.</dd>
+%%  <dt>secure_renegotiate</dt><dd>Optional. Specifies if to reject renegotiation
+%%   attempt that does not live up to RFC 5746. By default secure_renegotiate is
+%%   set to false i.e. secure renegotiation will be used if possible but it will
+%%   fallback to unsecure renegotiation if the peer does not support RFC 5746.</dd>
 %%  <dt>verify</dt><dd>Optional. If set to verify_peer, performs an x509-path
 %%   validation and request the client for a certificate.</dd>
+%%  <dt>verify_fun</dt><dd>Optional. The verify fun will be called during the
+%%   X509-path validation when an error or an extension unknown to the ssl
+%%   application is encountered. Additionally it will be called when a certificate
+%%   is considered valid by the path validation to allow access to each certificate
+%%   in the path to the user application.</dd>
 %% </dl>
 %%
 %% You can listen to a random port by setting the port option to 0.
@@ -88,25 +137,22 @@ messages() -> {ssl, ssl_closed, ssl_error}.
 %% ranch:get_port/1 instead.
 %%
 %% @see ssl:listen/2
--spec listen([{backlog, non_neg_integer()} | {cacertfile, string()}
-	| {certfile, string()} | {ciphers, [ssl:erl_cipher_suite()] | string()}
-	| {fail_if_no_peer_cert, boolean()}
-	| {ip, inet:ip_address()} | {keyfile, string()}
-	| {next_protocols_advertised, [binary()]} | {nodelay, boolean()}
-	| {password, string()} | {port, inet:port_number()}
-	| {verify, ssl:verify_type()}])
-	-> {ok, ssl:sslsocket()} | {error, atom()}.
+-spec listen(opts()) -> {ok, ssl:sslsocket()} | {error, atom()}.
 listen(Opts) ->
-	ranch:require([crypto, public_key, ssl]),
-	{certfile, _} = lists:keyfind(certfile, 1, Opts),
+	ranch:require([crypto, asn1, public_key, ssl]),
+	true = lists:keymember(cert, 1, Opts)
+		orelse lists:keymember(certfile, 1, Opts),
 	Opts2 = ranch:set_option_default(Opts, backlog, 1024),
+	Opts3 = ranch:set_option_default(Opts2, ciphers, unbroken_cipher_suites()),
 	%% We set the port to 0 because it is given in the Opts directly.
 	%% The port in the options takes precedence over the one in the
 	%% first argument.
-	ssl:listen(0, ranch:filter_options(Opts2,
-		[backlog, cacertfile, certfile, ciphers, fail_if_no_peer_cert, ip,
-			keyfile, next_protocols_advertised, nodelay, password, port,
-			raw, verify],
+	ssl:listen(0, ranch:filter_options(Opts3,
+		[backlog, cacertfile, cacerts, cert, certfile, ciphers,
+			fail_if_no_peer_cert, hibernate_after, ip, key, keyfile,
+			next_protocols_advertised, nodelay, password, port, raw,
+			reuse_session, reuse_sessions,
+			secure_renegotiate, verify, verify_fun],
 		[binary, {active, false}, {packet, raw},
 			{reuseaddr, true}, {nodelay, true}])).
 
@@ -150,33 +196,32 @@ recv(Socket, Length, Timeout) ->
 send(Socket, Packet) ->
 	ssl:send(Socket, Packet).
 
-%% @doc Send a file on a socket.
+%% @equiv sendfile(Socket, Filename, 0, 0, [])
+-spec sendfile(ssl:sslsocket(), file:name_all())
+	-> {ok, non_neg_integer()} | {error, atom()}.
+sendfile(Socket, Filename) ->
+	sendfile(Socket, Filename, 0, 0, []).
+
+%% @equiv sendfile(Socket, File, Offset, Bytes, [])
+-spec sendfile(ssl:sslsocket(), file:name_all() | file:fd(),
+		non_neg_integer(), non_neg_integer())
+	-> {ok, non_neg_integer()} | {error, atom()}.
+sendfile(Socket, File, Offset, Bytes) ->
+	sendfile(Socket, File, Offset, Bytes, []).
+
+%% @doc Send part of a file on a socket.
 %%
 %% Unlike with TCP, no syscall can be used here, so sending files
-%% through SSL will be much slower in comparison.
+%% through SSL will be much slower in comparison. Note that unlike
+%% file:sendfile/5 this function accepts either a file or a file name.
 %%
-%% @see file:sendfile/2
--spec sendfile(ssl:sslsocket(), file:name())
+%% @see ranch_transport:sendfile/6
+%% @see file:sendfile/5
+-spec sendfile(ssl:sslsocket(), file:name_all() | file:fd(),
+		non_neg_integer(), non_neg_integer(), ranch_transport:sendfile_opts())
 	-> {ok, non_neg_integer()} | {error, atom()}.
-sendfile(Socket, Filepath) ->
-	{ok, IoDevice} = file:open(Filepath, [read, binary, raw]),
-	sendfile(Socket, IoDevice, 0).
-
--spec sendfile(ssl:sslsocket(), file:io_device(), non_neg_integer())
-	-> {ok, non_neg_integer()} | {error, atom()}.
-sendfile(Socket, IoDevice, Sent) ->
-	case file:read(IoDevice, 16#1FFF) of
-		eof ->
-			ok = file:close(IoDevice),
-			{ok, Sent};
-		{ok, Bin} ->
-			case send(Socket, Bin) of
-				ok ->
-					sendfile(Socket, IoDevice, Sent + byte_size(Bin));
-				{error, Reason} ->
-					{error, Reason}
-			end
-	end.
+sendfile(Socket, File, Offset, Bytes, Opts) ->
+	ranch_transport:sendfile(?MODULE, Socket, File, Offset, Bytes, Opts).
 
 %% @doc Set options on the given socket.
 %% @see ssl:setopts/2
@@ -230,5 +275,23 @@ ssl_accept(Socket, Timeout) ->
 		ok ->
 			{ok, Socket};
 		{error, Reason} ->
+			ok = close(Socket),
 			{error, {ssl_accept, Reason}}
+	end.
+
+%% Unfortunately the implementation of elliptic-curve ciphers that has
+%% been introduced in R16B01 is incomplete.  Depending on the particular
+%% client, this can cause the TLS handshake to break during key
+%% agreement.  Depending on the ssl application version, this function
+%% returns a list of all cipher suites that are supported by default,
+%% minus the elliptic-curve ones.
+-spec unbroken_cipher_suites() -> [ssl:erl_cipher_suite()].
+unbroken_cipher_suites() ->
+	case proplists:get_value(ssl_app, ssl:versions()) of
+		Version when Version =:= "5.3"; Version =:= "5.3.1" ->
+			lists:filter(fun(Suite) ->
+				string:left(atom_to_list(element(1, Suite)), 4) =/= "ecdh"
+			end, ssl:cipher_suites());
+		_ ->
+			ssl:cipher_suites()
 	end.

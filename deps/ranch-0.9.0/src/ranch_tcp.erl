@@ -28,11 +28,21 @@
 -export([recv/3]).
 -export([send/2]).
 -export([sendfile/2]).
+-export([sendfile/4]).
+-export([sendfile/5]).
 -export([setopts/2]).
 -export([controlling_process/2]).
 -export([peername/1]).
 -export([sockname/1]).
 -export([close/1]).
+
+-type opts() :: [{backlog, non_neg_integer()}
+	| {ip, inet:ip_address()}
+	| {nodelay, boolean()}
+	| {port, inet:port_number()}
+	| {raw, non_neg_integer(), non_neg_integer(),
+		non_neg_integer() | binary()}].
+-export_type([opts/0]).
 
 %% @doc Name of this transport, <em>tcp</em>.
 name() -> tcp.
@@ -62,9 +72,7 @@ messages() -> {tcp, tcp_closed, tcp_error}.
 %% ranch:get_port/1 instead.
 %%
 %% @see gen_tcp:listen/2
--spec listen([{backlog, non_neg_integer()} | {ip, inet:ip_address()}
-	| {nodelay, boolean()} | {port, inet:port_number()}])
-	-> {ok, inet:socket()} | {error, atom()}.
+-spec listen(opts()) -> {ok, inet:socket()} | {error, atom()}.
 listen(Opts) ->
 	Opts2 = ranch:set_option_default(Opts, backlog, 1024),
 	%% We set the port to 0 because it is given in the Opts directly.
@@ -104,21 +112,52 @@ recv(Socket, Length, Timeout) ->
 send(Socket, Packet) ->
 	gen_tcp:send(Socket, Packet).
 
-%% @doc Send a file on a socket.
-%%
-%% This is the optimal way to send files using TCP. It uses a syscall
-%% which means there is no context switch between opening the file
-%% and writing its contents on the socket.
-%%
-%% @see file:sendfile/2
--spec sendfile(inet:socket(), file:name())
+%% @equiv sendfile(Socket, File, Offset, Bytes, [])
+-spec sendfile(inet:socket(), file:name_all())
 	-> {ok, non_neg_integer()} | {error, atom()}.
 sendfile(Socket, Filename) ->
-	try file:sendfile(Filename, Socket) of
+	sendfile(Socket, Filename, 0, 0, []).
+
+%% @equiv sendfile(Socket, File, Offset, Bytes, [])
+-spec sendfile(inet:socket(), file:name_all() | file:fd(), non_neg_integer(),
+		non_neg_integer())
+	-> {ok, non_neg_integer()} | {error, atom()}.
+sendfile(Socket, File, Offset, Bytes) ->
+	sendfile(Socket, File, Offset, Bytes, []).
+
+%% @doc Send part of a file on a socket.
+%%
+%% As with sendfile/2 this is the optimal way to send (parts) of files using
+%% TCP. Note that unlike file:sendfile/5 this function accepts either a raw file
+%% or a file name and the ordering of arguments is different.
+%%
+%% @see file:sendfile/5
+-spec sendfile(inet:socket(), file:name_all() | file:fd(), non_neg_integer(),
+		non_neg_integer(), [{chunk_size, non_neg_integer()}])
+	-> {ok, non_neg_integer()} | {error, atom()}.
+sendfile(Socket, Filename, Offset, Bytes, Opts)
+		when is_list(Filename) orelse is_atom(Filename)
+		orelse is_binary(Filename) ->
+	case file:open(Filename, [read, raw, binary]) of
+		{ok, RawFile} ->
+			try sendfile(Socket, RawFile, Offset, Bytes, Opts) of
+				Result -> Result
+			after
+				ok = file:close(RawFile)
+			end;
+		{error, _} = Error ->
+			Error
+	end;
+sendfile(Socket, RawFile, Offset, Bytes, Opts) ->
+	Opts2 = case Opts of
+		[] -> [{chunk_size, 16#1FFF}];
+		_ -> Opts
+	end,
+	try file:sendfile(RawFile, Socket, Offset, Bytes, Opts2) of
 		Result -> Result
 	catch
 		error:{badmatch, {error, enotconn}} ->
-			%% file:sendfile/2 might fail by throwing a {badmatch, {error, enotconn}}
+			%% file:sendfile/5 might fail by throwing a {badmatch, {error, enotconn}}
 			%% this is because its internal implementation fails with a badmatch in
 			%% prim_file:sendfile/10 if the socket is not connected.
 			{error, closed}

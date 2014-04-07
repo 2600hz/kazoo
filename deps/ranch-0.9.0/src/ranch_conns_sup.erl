@@ -20,19 +20,22 @@
 -module(ranch_conns_sup).
 
 %% API.
--export([start_link/3]).
+-export([start_link/4]).
 -export([start_protocol/2]).
 -export([active_connections/1]).
 
 %% Supervisor internals.
--export([init/4]).
+-export([init/5]).
 -export([system_continue/3]).
 -export([system_terminate/4]).
 -export([system_code_change/4]).
 
+-type conn_type() :: worker | supervisor.
+
 -record(state, {
 	parent = undefined :: pid(),
-	ref :: any(),
+	ref :: ranch:ref(),
+	conn_type :: conn_type(),
 	transport = undefined :: module(),
 	protocol = undefined :: module(),
 	opts :: any(),
@@ -41,9 +44,10 @@
 
 %% API.
 
--spec start_link(any(), module(), module()) -> {ok, pid()}.
-start_link(Ref, Transport, Protocol) ->
-	proc_lib:start_link(?MODULE, init, [self(), Ref, Transport, Protocol]).
+-spec start_link(ranch:ref(), conn_type(), module(), module()) -> {ok, pid()}.
+start_link(Ref, ConnType, Transport, Protocol) ->
+	proc_lib:start_link(?MODULE, init,
+		[self(), Ref, ConnType, Transport, Protocol]).
 
 %% We can safely assume we are on the same node as the supervisor.
 %%
@@ -71,7 +75,7 @@ start_protocol(SupPid, Socket) ->
 -spec active_connections(pid()) -> non_neg_integer().
 active_connections(SupPid) ->
 	Tag = erlang:monitor(process, SupPid),
-	erlang:send(SupPid, {?MODULE, active_connections, self(), Tag},
+	catch erlang:send(SupPid, {?MODULE, active_connections, self(), Tag},
 		[noconnect]),
 	receive
 		{Tag, Ret} ->
@@ -88,17 +92,18 @@ active_connections(SupPid) ->
 
 %% Supervisor internals.
 
--spec init(pid(), any(), module(), module()) -> no_return().
-init(Parent, Ref, Transport, Protocol) ->
+-spec init(pid(), ranch:ref(), conn_type(), module(), module()) -> no_return().
+init(Parent, Ref, ConnType, Transport, Protocol) ->
 	process_flag(trap_exit, true),
 	ok = ranch_server:set_connections_sup(Ref, self()),
 	MaxConns = ranch_server:get_max_connections(Ref),
 	Opts = ranch_server:get_protocol_options(Ref),
 	ok = proc_lib:init_ack(Parent, {ok, self()}),
-	loop(#state{parent=Parent, ref=Ref, transport=Transport,
-		protocol=Protocol, opts=Opts, max_conns=MaxConns}, 0, 0, []).
+	loop(#state{parent=Parent, ref=Ref, conn_type=ConnType,
+		transport=Transport, protocol=Protocol, opts=Opts,
+		max_conns=MaxConns}, 0, 0, []).
 
-loop(State=#state{parent=Parent, ref=Ref,
+loop(State=#state{parent=Parent, ref=Ref, conn_type=ConnType,
 		transport=Transport, protocol=Protocol, opts=Opts,
 		max_conns=MaxConns}, CurConns, NbChildren, Sleepers) ->
 	receive
@@ -119,6 +124,7 @@ loop(State=#state{parent=Parent, ref=Ref,
 					end;
 				_ ->
 					To ! self(),
+					Transport:close(Socket),
 					loop(State, CurConns, NbChildren, Sleepers)
 			end;
 		{?MODULE, active_connections, To, Tag} ->
@@ -142,11 +148,13 @@ loop(State=#state{parent=Parent, ref=Ref,
 				CurConns, NbChildren, Sleepers);
 		{'EXIT', Parent, Reason} ->
 			exit(Reason);
-		{'EXIT', Pid, _} when Sleepers =:= [] ->
+		{'EXIT', Pid, Reason} when Sleepers =:= [] ->
+			report_error(Ref, Protocol, Pid, Reason),
 			erase(Pid),
 			loop(State, CurConns - 1, NbChildren - 1, Sleepers);
 		%% Resume a sleeping acceptor if needed.
-		{'EXIT', Pid, _} ->
+		{'EXIT', Pid, Reason} ->
+			report_error(Ref, Protocol, Pid, Reason),
 			erase(Pid),
 			[To|Sleepers2] = Sleepers,
 			To ! self(),
@@ -157,18 +165,25 @@ loop(State=#state{parent=Parent, ref=Ref,
 		%% Calls from the supervisor module.
 		{'$gen_call', {To, Tag}, which_children} ->
 			Pids = get_keys(true),
-			Children = [{Protocol, Pid, worker, [Protocol]}
-				|| Pid <- Pids],
+			Children = [{Protocol, Pid, ConnType, [Protocol]}
+				|| Pid <- Pids, is_pid(Pid)],
 			To ! {Tag, Children},
 			loop(State, CurConns, NbChildren, Sleepers);
 		{'$gen_call', {To, Tag}, count_children} ->
-			Counts = [{specs, 1}, {active, NbChildren},
-				{supervisors, 0}, {workers, NbChildren}],
-			To ! {Tag, Counts},
+			Counts = case ConnType of
+				worker -> [{supervisors, 0}, {workers, NbChildren}];
+				supervisor -> [{supervisors, NbChildren}, {workers, 0}]
+			end,
+			Counts2 = [{specs, 1}, {active, NbChildren}|Counts],
+			To ! {Tag, Counts2},
 			loop(State, CurConns, NbChildren, Sleepers);
 		{'$gen_call', {To, Tag}, _} ->
 			To ! {Tag, {error, ?MODULE}},
-			loop(State, CurConns, NbChildren, Sleepers)
+			loop(State, CurConns, NbChildren, Sleepers);
+		Msg ->
+			error_logger:error_msg(
+				"Ranch listener ~p received unexpected message ~p~n",
+				[Ref, Msg])
 	end.
 
 system_continue(_, _, {State, CurConns, NbChildren, Sleepers}) ->
@@ -180,3 +195,17 @@ system_terminate(Reason, _, _, _) ->
 
 system_code_change(Misc, _, _, _) ->
 	{ok, Misc}.
+
+%% We use ~999999p here instead of ~w because the latter doesn't
+%% support printable strings.
+report_error(_, _, _, normal) ->
+	ok;
+report_error(_, _, _, shutdown) ->
+	ok;
+report_error(_, _, _, {shutdown, _}) ->
+	ok;
+report_error(Ref, Protocol, Pid, Reason) ->
+	error_logger:error_msg(
+		"Ranch listener ~p had connection process started with "
+		"~p:start_link/4 at ~p exit with reason: ~999999p~n",
+		[Ref, Protocol, Pid, Reason]).

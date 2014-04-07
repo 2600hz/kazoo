@@ -55,7 +55,7 @@ You can try this out by compiling and running the `tcp_echo` example in the
 examples directory. To do so, open a shell in the `examples/tcp_echo/`
 directory and run the following commands:
 
-```
+``` bash
 % rebar get-deps compile
 % ./start.sh
 Listening on port 5555
@@ -80,6 +80,17 @@ It works!
 telnet> quit
 Connection closed.
 ```
+
+Default transport options
+-------------------------
+
+By default the socket will be set to return `binary` data, with the
+options `{active, false}`, `{packet, raw}`, `{reuseaddr, true}` set.
+These values can't be overriden when starting the listener, but
+they can be overriden using `Transport:setopts/2` in the protocol.
+
+It will also set `{backlog, 1024}` and `{nodelay, true}`, which
+can be overriden at listener startup.
 
 Listening on a random port
 --------------------------

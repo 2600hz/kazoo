@@ -24,7 +24,7 @@
 
 %% API.
 
--spec start_link(any(), non_neg_integer(), module(), any(), module(), any())
+-spec start_link(ranch:ref(), non_neg_integer(), module(), any(), module(), any())
 	-> {ok, pid()}.
 start_link(Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts) ->
 	MaxConns = proplists:get_value(max_connections, TransOpts, 1024),
@@ -36,10 +36,11 @@ start_link(Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts) ->
 %% supervisor.
 
 init({Ref, NbAcceptors, Transport, TransOpts, Protocol}) ->
+	ConnType = proplists:get_value(connection_type, TransOpts, worker),
 	ChildSpecs = [
 		%% conns_sup
 		{ranch_conns_sup, {ranch_conns_sup, start_link,
-				[Ref, Transport, Protocol]},
+				[Ref, ConnType, Transport, Protocol]},
 			permanent, infinity, supervisor, [ranch_conns_sup]},
 		%% acceptors_sup
 		{ranch_acceptors_sup, {ranch_acceptors_sup, start_link,
