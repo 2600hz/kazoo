@@ -14,6 +14,7 @@
 -export([open_doc/2, open_doc/3, open_doc/4]).
 -export([save_doc/2, save_doc/3, save_doc/4]).
 -export([get_modb/1, get_modb/2, get_modb/3]).
+-export([maybe_archive_modb/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -22,8 +23,12 @@
 %% @end
 %%--------------------------------------------------------------------
 
--spec get_results(ne_binary(), ne_binary(), wh_proplist()) -> {'ok', wh_json:object()}  | {'error', atom()}.
--spec get_results(ne_binary(), ne_binary(), wh_proplist(), integer()) -> {'ok', wh_json:object()}  | {'error', atom()}.
+-spec get_results(ne_binary(), ne_binary(), wh_proplist()) ->
+                         {'ok', wh_json:object()} |
+                         {'error', atom()}.
+-spec get_results(ne_binary(), ne_binary(), wh_proplist(), integer()) ->
+                         {'ok', wh_json:object()} |
+                         {'error', atom()}.
 get_results(Account, View, ViewOptions) ->
     get_results(Account, View, ViewOptions, 3).
 
@@ -38,7 +43,9 @@ get_results(Account, View, ViewOptions, Retry) ->
         Results -> Results
     end.
 
--spec get_results_not_found(ne_binary(), ne_binary(), wh_proplist(), integer()) -> {'ok', wh_json:object()}  | {'error', atom()}.
+-spec get_results_not_found(ne_binary(), ne_binary(), wh_proplist(), integer()) ->
+                                   {'ok', wh_json:object()} |
+                                   {'error', atom()}.
 get_results_not_found(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
@@ -60,9 +67,15 @@ get_results_not_found(Account, View, ViewOptions, Retry) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec open_doc(ne_binary(), ne_binary()) -> {'ok', wh_json:object()}  | {'error', atom()}.
--spec open_doc(ne_binary(), ne_binary(), integer()) -> {'ok', wh_json:object()}  | {'error', atom()}.
--spec open_doc(ne_binary(), ne_binary(), integer(), integer()) -> {'ok', wh_json:object()}  | {'error', atom()}.
+-spec open_doc(ne_binary(), ne_binary()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', atom()}.
+-spec open_doc(ne_binary(), ne_binary(), integer()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', atom()}.
+-spec open_doc(ne_binary(), ne_binary(), integer(), integer()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', atom()}.
 open_doc(Account, DocId) ->
     AccountMODb = get_modb(Account),
     couch_open(AccountMODb, DocId).
@@ -75,7 +88,9 @@ open_doc(Account, DocId, Year, Month) ->
     AccountMODb = get_modb(Account, Year, Month),
     couch_open(AccountMODb, DocId).
 
--spec couch_open(ne_binary(), ne_binary()) -> {'ok', wh_json:object()}  | {'error', atom()}.
+-spec couch_open(ne_binary(), ne_binary()) ->
+                        {'ok', wh_json:object()} |
+                        {'error', atom()}.
 couch_open(AccountMODb, DocId) ->
     EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
     case couch_mgr:open_doc(EncodedMODb, DocId) of
@@ -85,16 +100,21 @@ couch_open(AccountMODb, DocId) ->
             Error
     end.
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save_doc(ne_binary(), ne_binary()) -> {'ok', wh_json:object()}  | {'error', atom()}.
--spec save_doc(ne_binary(), ne_binary(), integer()) -> atom().
--spec save_doc(ne_binary(), ne_binary(), integer(), integer()) -> atom().
+-spec save_doc(ne_binary(), ne_binary()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', atom()}.
+-spec save_doc(ne_binary(), ne_binary(), integer()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', atom()}.
+-spec save_doc(ne_binary(), ne_binary(), integer(), integer()) ->
+                      {'ok', wh_json:object()} |
+                      {'error', atom()}.
 save_doc(Account, Doc) ->
     AccountMODb = get_modb(Account),
     couch_save(AccountMODb, Doc, 3).
@@ -107,7 +127,9 @@ save_doc(Account, Doc, Year, Month) ->
     AccountMODb = get_modb(Account, Year, Month),
     couch_save(AccountMODb, Doc, 3).
 
--spec couch_save(ne_binary(), ne_binary(), integer()) -> atom().
+-spec couch_save(ne_binary(), ne_binary(), integer()) ->
+                        {'ok', wh_json:object()} |
+                        {'error', atom()}.
 couch_save(AccountMODb, _Doc, 0) ->
     lager:error("failed to save doc in ~p", AccountMODb);
 couch_save(AccountMODb, Doc, Retry) ->
@@ -161,7 +183,8 @@ get_modb(Account, Year, Month) ->
     <<AccountId/binary
       ,"-"
       ,(wh_util:to_binary(Year))/binary
-      ,(wh_util:pad_month(Month))/binary>>.
+      ,(wh_util:pad_month(Month))/binary
+    >>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -212,3 +235,90 @@ create_routines(AccountMODb) ->
         ,'ok'
         ,Routines
     ).
+
+maybe_archive_modb(AccountMODb) ->
+    {Year, Month, _} = erlang:date(),
+
+    case should_archive(AccountMODb, Year, Month) of
+        'true' ->
+            lager:info("account modb ~s needs archiving", [AccountMODb]),
+            'ok' = archive_modb(AccountMODb),
+            lager:info("account modb ~s archived, removing the db", [AccountMODb]),
+            Rm = couch_mgr:db_delete(AccountMODb),
+            lager:info("account modb ~s deleted: ~p", [AccountMODb, Rm]);
+        'false' ->
+            lager:info("account modb ~s still current enough to keep", [AccountMODb])
+    end.
+
+should_archive(AccountMODb, Year, Month) ->
+    case modb_year_month(AccountMODb) of
+        {Year, Month} -> 'false';
+        {ModbYear, ModbMonth} ->
+            Months = (Year * 12) + Month,
+            ModbMonths = (ModbYear * 12) + ModbMonth,
+            (Months - ModbMonths) > whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6)
+    end.
+
+-spec modb_year_month(ne_binary()) -> {pos_integer(), pos_integer()}.
+modb_year_month(AccountMODb) ->
+    Size = byte_size(AccountMODb),
+    YearPos = {Size - 6, 4},
+    MonthPos = {Size -2, 2},
+    {wh_util:to_integer(binary:part(AccountMODb, YearPos))
+     ,wh_util:to_integer(binary:part(AccountMODb, MonthPos))
+    }.
+
+archive_modb(AccountMODb) ->
+    {'ok', DbInfo} = couch_mgr:db_info(AccountMODb),
+
+    MaxDocs = whapps_config:get_integer(?CONFIG_CAT, <<"max_concurrent_docs_to_archive">>, 500),
+    Filename = filename:join(["/tmp", <<AccountMODb/binary, ".archive.json">>]),
+    {'ok', File} = file:open(Filename, ['write']),
+
+    lager:debug("archiving to ~s", [Filename]),
+    archive_modb(AccountMODb, File, MaxDocs, wh_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
+    file:close(File).
+
+archive_modb(AccountMODb, _File,  _MaxDocs, 0, _Pos) ->
+    lager:debug("account modb ~s done with exportation", [AccountMODb]);
+archive_modb(AccountMODb, File, MaxDocs, N, Pos) when N =< MaxDocs ->
+    lager:debug("fetching next ~b docs", [N]),
+    ViewOptions = [{'limit', N}
+                   ,{'skip', Pos}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:all_docs(AccountMODb, ViewOptions) of
+        {'ok', []} -> lager:debug("no docs left after pos ~p, done", [Pos]);
+        {'ok', Docs} ->
+            'ok' = archive_modb_docs(File, Docs),
+            lager:debug("archived ~p docs, done here", [N]);
+        {'error', _E} ->
+            lager:debug("error ~p asking for ~p docs from pos ~p", [_E, N, Pos]),
+            timer:sleep(500),
+            archive_modb(AccountMODb, File, MaxDocs, N, Pos)
+    end;
+archive_modb(AccountMODb, File, MaxDocs, N, Pos) ->
+    lager:debug("fetching next ~b docs", [MaxDocs]),
+    ViewOptions = [{'limit', MaxDocs}
+                   ,{'skip', Pos}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:all_docs(AccountMODb, ViewOptions) of
+        {'ok', []} -> lager:debug("no docs left after pos ~p, done", [Pos]);
+        {'ok', Docs} ->
+            'ok' = archive_modb_docs(File, Docs),
+            lager:debug("archived ~p docs", [MaxDocs]),
+            archive_modb(AccountMODb, File, MaxDocs, N - MaxDocs, Pos + MaxDocs);
+        {'error', _E} ->
+            lager:debug("error ~p asking for ~p docs from pos ~p", [_E, N, Pos]),
+            timer:sleep(500),
+            archive_modb(AccountMODb, File, MaxDocs, N, Pos)
+    end.
+
+archive_modb_docs(File, Docs) ->
+    [archive_modb_doc(File, wh_json:get_value(<<"doc">>, D)) || D <- Docs],
+    'ok'.
+
+archive_modb_doc(File, Doc) ->
+    'ok' = file:write(File, [wh_json:encode(Doc), $\n]).
+
