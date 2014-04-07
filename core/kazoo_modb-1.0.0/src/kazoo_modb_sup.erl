@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -14,8 +14,6 @@
 
 -include("kazoo_modb.hrl").
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type), fun(N, T) -> {N, {N, 'start_link', []}, 'permanent', 5000, T, [N]} end(Name, Type)).
 -define(CHILDREN, []).
 
 %% ===================================================================
@@ -52,6 +50,4 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
-
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

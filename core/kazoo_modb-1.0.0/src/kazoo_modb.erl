@@ -236,6 +236,7 @@ create_routines(AccountMODb) ->
         ,Routines
     ).
 
+-spec maybe_archive_modb(ne_binary()) -> 'ok'.
 maybe_archive_modb(AccountMODb) ->
     {Year, Month, _} = erlang:date(),
 
@@ -250,6 +251,7 @@ maybe_archive_modb(AccountMODb) ->
             lager:info("account modb ~s still current enough to keep", [AccountMODb])
     end.
 
+-spec should_archive(ne_binary(), wh_year(), wh_month()) -> boolean().
 should_archive(AccountMODb, Year, Month) ->
     case modb_year_month(AccountMODb) of
         {Year, Month} -> 'false';
@@ -268,6 +270,7 @@ modb_year_month(AccountMODb) ->
      ,wh_util:to_integer(binary:part(AccountMODb, MonthPos))
     }.
 
+-spec archive_modb(ne_binary()) -> 'ok'.
 archive_modb(AccountMODb) ->
     {'ok', DbInfo} = couch_mgr:db_info(AccountMODb),
 
@@ -279,6 +282,10 @@ archive_modb(AccountMODb) ->
     archive_modb(AccountMODb, File, MaxDocs, wh_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
     file:close(File).
 
+%% MaxDocs = The biggest set of docs to pull from Couch
+%% N = The number of docs in the DB that haven't been archived
+%% Pos = Which doc will the next query start from (the offset)
+-spec archive_modb(ne_binary(), file:io_device(), pos_integer(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 archive_modb(AccountMODb, _File,  _MaxDocs, 0, _Pos) ->
     lager:debug("account modb ~s done with exportation", [AccountMODb]);
 archive_modb(AccountMODb, File, MaxDocs, N, Pos) when N =< MaxDocs ->
@@ -315,10 +322,12 @@ archive_modb(AccountMODb, File, MaxDocs, N, Pos) ->
             archive_modb(AccountMODb, File, MaxDocs, N, Pos)
     end.
 
+-spec archive_modb_docs(file:io_device(), wh_json:objects()) -> 'ok'.
 archive_modb_docs(File, Docs) ->
     [archive_modb_doc(File, wh_json:get_value(<<"doc">>, D)) || D <- Docs],
     'ok'.
 
+-spec archive_modb_doc(file:io_device(), wh_json:object()) -> 'ok'.
 archive_modb_doc(File, Doc) ->
     'ok' = file:write(File, [wh_json:encode(Doc), $\n]).
 
