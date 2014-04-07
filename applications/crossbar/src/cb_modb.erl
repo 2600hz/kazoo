@@ -19,9 +19,16 @@
 
 -include("crossbar.hrl").
 
+-spec init() -> 'ok'.
 init() ->
-    crossbar_bindings:bind(crossbar_cleanup:binding_account_modb(), ?MODULE, 'clean_modb').
+    case whapps_config:get_is_true(?MODULE, <<"maybe_archive_modbs">>, 'false') of
+        'true' ->
+            crossbar_bindings:bind(crossbar_cleanup:binding_account_modb(), ?MODULE, 'clean_modb');
+        'false' ->
+            'ok'
+    end.
 
+-spec clean_modb(ne_binary()) -> 'ok'.
 clean_modb(AccountMODb) ->
     kazoo_modb:maybe_archive_modb(AccountMODb).
 
