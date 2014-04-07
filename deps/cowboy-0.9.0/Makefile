@@ -1,31 +1,56 @@
-# See LICENSE for licensing information.
-
 PROJECT = cowboy
+ROOT = ../..
+REBAR = $(ROOT)/utils/rebar/rebar
+DIALYZER = dialyzer
 
-# Options.
+EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
+PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-COMPILE_FIRST = cowboy_middleware cowboy_sub_protocol
-CT_SUITES = eunit http spdy ws
-PLT_APPS = crypto public_key ssl
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
+     # +bin_opt_info
 
-# Dependencies.
+DIRS =  . \
+    $(ROOT)/deps/ranch-0.8.1
 
-DEPS = cowlib ranch
-dep_cowlib = pkg://cowlib 0.4.0
-dep_ranch = pkg://ranch 0.9.0
+.PHONY: all compile clean
 
-TEST_DEPS = ct_helper gun
-dep_ct_helper = https://github.com/extend/ct_helper.git master
-dep_gun = pkg://gun master
+all: compile
 
-# Standard targets.
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 
-include erlang.mk
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
 
-# Extra targets.
+COMPILE_FIRST = src/cowboy_middleware.erl src/cowboy_sub_protocol.erl
 
-.PHONY: autobahn
+ebin/$(PROJECT).app: src/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(COMPILE_FIRST) $?
 
-autobahn: clean clean-deps deps app build-tests
-	@mkdir -p logs/
-	@$(CT_RUN) -suite autobahn_SUITE
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
+
+test/$(PROJECT).app: src/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+
+clean:
+	rm -f ebin/*
+	rm -f test/*.beam test/$(PROJECT).app
+	rm -f erl_crash.dump
+
+test: clean compile-test eunit
+
+eunit: compile-test
+	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+
+dialyze:
+	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
+		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
+		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
