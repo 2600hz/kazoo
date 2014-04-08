@@ -426,10 +426,10 @@ print_users_level_call_restrictions(DbName) ->
         {'ok', JObj} ->
             io:format("\n\nUser level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
-                             io:format("\nUsername: ~s\n\n", [wh_json:get_value(<<"username">>,props:get_value(<<"value">>,UserObj))]),
-                             print_call_restrictions(DbName, props:get_value(<<"id">>,UserObj)) 
+                             io:format("\nUsername: ~s\n\n", [wh_json:get_value([<<"value">>,<<"username">>],UserObj)]),
+                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj)) 
                           end,
-                          wh_json:to_proplist(JObj));
+                          JObj);
         {'error', E} ->
             io:format("An error occurred: ~p", [E])
     end.
@@ -440,10 +440,10 @@ print_devices_level_call_restrictions(DbName) ->
         {'ok', JObj} ->
             io:format("\n\nDevice level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
-                             io:format("\nDevice: ~s\n\n", [wh_json:get_value(<<"name">>,props:get_value(<<"value">>,UserObj))]),
-                             print_call_restrictions(DbName, props:get_value(<<"id">>,UserObj)) 
+                             io:format("\nDevice: ~s\n\n", [wh_json:get_value([<<"value">>,<<"name">>],UserObj)]),
+                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj)) 
                           end,
-                          wh_json:to_proplist(JObj));
+                          JObj);
         {'error', E} ->
             io:format("An error occurred: ~p", [E])
     end.
@@ -454,10 +454,10 @@ print_trunkstore_call_restrictions(DbName) ->
         {'ok', JObj} ->
             io:format("\n\nTrunkstore classifiers:\n\n"),
             lists:foreach(fun(UserObj) ->
-                             io:format("Trunk: ~s@~s\n\n", lists:reverse(props:get_value(<<"key">>,UserObj))),
-                             print_call_restrictions(DbName, props:get_value(<<"id">>,UserObj)) 
+                             io:format("Trunk: ~s@~s\n\n", lists:reverse(wh_json:get_value(<<"key">>,UserObj))),
+                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj)) 
                           end,
-                          wh_json:to_proplist(JObj));
+                          JObj);
         {'error', E} ->
             io:format("An error occurred: ~p", [E])
     end.
