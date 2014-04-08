@@ -21,6 +21,7 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/1, content_types_provided/2, content_types_provided/3
          ,validate/1, validate/2, validate/3
+         ,post/2
         ]).
 
 -include("../crossbar.hrl").
@@ -44,6 +45,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.system_stats">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.system_stats">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.validate.system_stats">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.system_stats">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
 
 %%--------------------------------------------------------------------
@@ -92,7 +94,7 @@ allowed_methods() ->
 allowed_methods(?PATH_TOKEN_HANGUPS) ->
     [?HTTP_GET];
 allowed_methods(?PATH_TOKEN_COMPACTOR) ->
-    [?HTTP_GET];
+    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_) ->
     [].
 
@@ -170,6 +172,7 @@ validate(Context, ?PATH_TOKEN_HANGUPS) ->
 validate(Context, ?PATH_TOKEN_COMPACTOR) ->
     validate_compactor(Context, cb_context:req_verb(Context)).
 
+-spec validate_compactor(cb_context:context(), http_method()) -> cb_context:context().
 validate_compactor(Context, ?HTTP_GET) ->
     case couch_compactor_fsm:status() of
         {'ok', 'not_running'} ->
@@ -177,9 +180,7 @@ validate_compactor(Context, ?HTTP_GET) ->
         {'ok', 'ready'} ->
             crossbar_util:response(<<"ready">>, Context);
         {'ok', Props} ->
-            lager:debug("compactor props: ~p", [Props]),
             JObj = compactor_props_to_json(Props),
-            lager:debug("jobj: ~p", [JObj]),
             crossbar_util:response(JObj, Context)
     end;
 validate_compactor(Context, ?HTTP_POST) ->
@@ -191,58 +192,63 @@ validate_compactor(Context, ?HTTP_POST) ->
         <<"compact_db">> ->
             validate_compactor_compact_db(Context);
         _ ->
-            cb_context:add_validation_error(<<"command">>, <<"required">>, <<"db is required">>, Context)
+            cb_context:add_validation_error(<<"command">>, <<"required">>, <<"invalid command">>, Context)
     end.
 
+-spec validate_compactor_compact(cb_context:context()) -> cb_context:context().
 validate_compactor_compact(Context) ->
-    cb_context:resp_status(
+    cb_context:set_resp_status(
       cb_context:store(Context
                        ,'compactor_fun'
-                       ,fun couch_compactor_fsm:compact/0
+                       ,{'compact', []}
                       )
       ,'success'
      ).
 
+-spec validate_compactor_compact_node(cb_context:context()) -> cb_context:context().
 validate_compactor_compact_node(Context) ->
     Node = cb_context:req_value(Context, <<"node">>),
-    cb_context:resp_status(
+    cb_context:set_resp_status(
       cb_context:store(Context
                        ,'compactor_fun'
-                       ,fun() -> couch_compactor_fsm:compact_node(Node) end
+                       ,{'compact_node', [Node]}
                       )
       ,'success'
      ).
 
+-spec validate_compactor_compact_db(cb_context:context()) ->
+                                           cb_context:context().
+-spec validate_compactor_compact_db(cb_context:context(), api_binary(), api_binary()) ->
+                                           cb_context:context().
 validate_compactor_compact_db(Context) ->
-    case compact_db_fun_builder(Context) of
-        'false' ->
-            cb_context:add_validation_error(<<"db">>, <<"required">>, <<"db is required">>, Context);
-        Fun ->
-            cb_context:resp_status(
-              cb_context:store(Context
-                               ,'compactor_fun'
-                               ,Fun
-                              )
-              ,'success'
-             )
-    end.
+    validate_compactor_compact_db(Context
+                                  ,cb_context:req_value(Context, <<"db">>)
+                                  ,cb_context:req_value(Context, <<"node">>)
+                                 ).
+validate_compactor_compact_db(Context, 'undefined', _Node) ->
+    cb_context:add_validation_error(<<"db">>, <<"required">>, <<"db is required">>, Context);
+validate_compactor_compact_db(Context, Db, 'undefined') ->
+    cb_context:set_resp_status(
+      cb_context:store(Context
+                       ,'compactor_fun'
+                       ,{'compact_db', [Db]}
+                      )
+      ,'success'
+     );
+validate_compactor_compact_db(Context, Db, Node) ->
+    cb_context:set_resp_status(
+      cb_context:store(Context
+                       ,'compactor_fun'
+                       ,{'compact_db', [Node, Db]}
+                      )
+      ,'success'
+     ).
 
--spec compact_db_fun_builder(cb_context:context()) -> 'false' |
-                                                      fun().
-compact_db_fun_builder(Context) ->
-    compact_db_fun_builder(cb_context:req_value(Context, <<"node">>)
-                           ,cb_context:req_value(Context, <<"db">>)
-                          ).
-compact_db_fun_builder('undefined', 'undefined') ->
-    'false';
-compact_db_fun_builder('undefined', Db) ->
-    fun() -> couch_compactor_fsm:compact_db(Db) end;
-compact_db_fun_builder(Node, Db) ->
-    fun() -> couch_compactor_fsm:compact_db(Node, Db) end.
-
+-spec validate(cb_context:context(), ne_binary(), path_token()) -> cb_context:context().
 validate(Context, ?PATH_TOKEN_HANGUPS, HangupCause) ->
     fetch_hangups(Context, HangupCause).
 
+-spec fetch_hangups(cb_context:context(), ne_binary()) -> cb_context:context().
 fetch_hangups(Context, HangupCause) ->
     lager:debug("req ~s", [HangupCause]),
     Req = props:filter_undefined(
@@ -258,7 +264,8 @@ fetch_hangups(Context, HangupCause) ->
         {'ok', Stats} ->
             crossbar_util:response(filter_stats(Stats), Context);
         {'error', _E} ->
-            lager:debug("err: ~p", [_E]);
+            lager:debug("err: ~p", [_E]),
+            Context;
         {'timeout', Collected} ->
             lager:debug("partial response collected"),
             crossbar_util:response(filter_stats(Collected), Context)
@@ -283,10 +290,18 @@ compactor_prop_to_json('nodes_left', N) ->
     {<<"nodes_left">>, N};
 compactor_prop_to_json('dbs_left', N) ->
     {<<"dbs_left">>, N};
+compactor_prop_to_json('queued_jobs', 'none') ->
+    {<<"queued_jobs">>, <<"none">>};
 compactor_prop_to_json('queued_jobs', Jobs) ->
     {<<"queued_jobs">>, queued_jobs_to_json(Jobs)};
 compactor_prop_to_json('wait_left', N) ->
-    {<<"wait_left">>, N};
+    {<<"wait_left_ms">>, N};
+compactor_prop_to_json('start_time', Start) ->
+    {<<"start_timestamp">>, calendar:datetime_to_gregorian_seconds(
+                              calendar:now_to_datetime(Start)
+                             )};
+compactor_prop_to_json('elapsed_s', Elapsed) ->
+    {<<"elapsed_s">>, Elapsed};
 compactor_prop_to_json(K, V) ->
     {wh_util:to_binary(K), wh_util:to_binary(V)}.
 
@@ -300,3 +315,10 @@ queued_job_to_json(Job) ->
     wh_json:from_list([{<<"job">>, Fun}
                        ,{<<"args">>, Args}
                       ]).
+
+-spec post(cb_context:context(), ne_binary()) -> cb_context:context().
+post(Context, ?PATH_TOKEN_COMPACTOR) ->
+    {Fun, Args} = cb_context:fetch(Context, 'compactor_fun'),
+    lager:debug("applying couch_compactor_fsm:~s(~p)", [Fun, Args]),
+    _Resp = apply('couch_compactor_fsm', Fun, Args),
+    crossbar_util:response_202(<<"queued job">>, Context).
