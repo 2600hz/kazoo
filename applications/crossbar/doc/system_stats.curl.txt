@@ -14,3 +14,6 @@ curl -v -X GET -H "X-Auth-Token: d30c8357f6227442439f0fb1f796c2ea" http://thinky
 
 # Compactor stats
 curl -v -X GET -H "X-Auth-Token: d30c8357f6227442439f0fb1f796c2ea" http://thinky64.2600hz.com:8000/v1/system_stats/compactor | pp
+
+# Queue up a compactor job
+curl -v -X POST -H "X-Auth-Token: d30c8357f6227442439f0fb1f796c2ea" -H "Content-Type: application/json" http://thinky64.2600hz.com:8000/v1/system_stats/compactor -d '{"data":{"command":"compact_db", "db":"token_auth"}}' | pp
