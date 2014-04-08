@@ -114,6 +114,7 @@
           ,current_job_pid :: pid()
           ,current_job_ref :: reference()
           ,current_job_heuristic = ?HEUR_NONE :: compactor_heuristic()
+          ,current_job_start :: wh_now() | 'undefined'
          }).
 
 %%%===================================================================
@@ -282,6 +283,7 @@ ready('compact', State) ->
                                           ,current_node='undefined'
                                           ,current_db='undefined'
                                           ,current_job_heuristic=?HEUR_RATIO
+                                          ,current_job_start=os:timestamp()
                                          }};
 ready({'compact_node', N, Opts}, State) ->
     lager:debug("start compaction on node w/ options"),
@@ -292,6 +294,7 @@ ready({'compact_node', N, Opts}, State) ->
                                           ,current_node={N, Opts}
                                           ,current_db='undefined'
                                           ,current_job_heuristic=?HEUR_RATIO
+                                          ,current_job_start=os:timestamp()
                                          }};
 ready({'compact_db', D}, State) ->
     [N|Ns] = get_nodes(D),
@@ -304,6 +307,7 @@ ready({'compact_db', D}, State) ->
                                           ,current_node=N
                                           ,current_db=D
                                           ,current_job_heuristic=?HEUR_NONE
+                                          ,current_job_start=os:timestamp()
                                          }};
 ready({'compact_db', N, D, Opts}, State) ->
     lager:debug("start compaction on node's db"),
@@ -315,6 +319,7 @@ ready({'compact_db', N, D, Opts}, State) ->
                                           ,current_node=N
                                           ,current_db=D
                                           ,current_job_heuristic=?HEUR_NONE
+                                          ,current_job_start=os:timestamp()
                                          }};
 ready('next_job', #state{queued_jobs=Jobs}=State) ->
     case queue:out(Jobs) of
@@ -323,6 +328,7 @@ ready('next_job', #state{queued_jobs=Jobs}=State) ->
             lager:debug("returning to 'ready'"),
             {'next_state', 'ready', State#state{current_job_pid='undefined'
                                                 ,current_job_ref='undefined'
+                                                ,current_job_start='undefined'
                                                }};
         {{'value', {Job, P, Ref}}, Jobs1} ->
             maybe_send_update(P, Ref, 'job_starting'),
@@ -333,6 +339,7 @@ ready('next_job', #state{queued_jobs=Jobs}=State) ->
             {'next_state', 'ready', State#state{queued_jobs=Jobs1
                                                 ,current_job_pid=P
                                                 ,current_job_ref=Ref
+                                                ,current_job_start=os:timestamp()
                                                }}
     end;
 ready(_Msg, State) ->
@@ -362,6 +369,7 @@ ready('cancel_all_jobs', _, #state{queued_jobs=Jobs}=State) ->
                                                              ,current_job_pid='undefined'
                                                              ,current_job_ref='undefined'
                                                              ,current_job_heuristic = ?HEUR_NONE
+                                                             ,current_job_start='undefined'
                                                             }};
 
 ready(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
@@ -382,6 +390,7 @@ ready(Msg, {NewP, _}, #state{queued_jobs=Jobs}=State) ->
             {'reply', {'queued', Ref2}, 'ready', State#state{queued_jobs=Jobs2
                                                              ,current_job_pid=P
                                                              ,current_job_ref=Ref
+                                                             ,current_job_start=os:timestamp()
                                                             }}
     end.
 
@@ -421,6 +430,7 @@ compact({'compact', N}, #state{conn='undefined'
                           ,current_db='undefined'
                           ,current_job_pid='undefined'
                           ,current_job_ref='undefined'
+                          ,current_job_start='undefined'
                          }
              ,'hibernate'
             };
@@ -444,6 +454,7 @@ compact({'compact', N}, #state{conn='undefined'
                           ,current_node='undefined'
                           ,current_job_pid='undefined'
                           ,current_job_ref='undefined'
+                          ,current_job_start='undefined'
                          }
              ,'hibernate'
             }
@@ -497,6 +508,7 @@ compact({'compact_db', N, D}=Msg, #state{conn='undefined'
                           ,current_db='undefined'
                           ,current_job_pid='undefined'
                           ,current_job_ref='undefined'
+                          ,current_job_start='undefined'
                          }
              ,'hibernate'
             };
@@ -522,6 +534,7 @@ compact({'compact_db', N, D}=Msg, #state{conn='undefined'
                           ,current_db='undefined'
                           ,current_job_pid='undefined'
                           ,current_job_ref='undefined'
+                          ,current_job_start='undefined'
                          }
              ,'hibernate'
             }
@@ -575,6 +588,7 @@ compact('compact', #state{nodes=[]
                   ,current_db='undefined'
                   ,current_job_pid='undefined'
                   ,current_job_ref='undefined'
+                  ,current_job_start='undefined'
                  }
      ,'hibernate'
     };
@@ -583,14 +597,16 @@ compact('compact', #state{nodes=[{N, _}=Node|Ns]}=State) ->
     lager:debug("compact node ~s", [N]),
     gen_fsm:send_event(self(), {'compact', Node}),
     {'next_state', 'compact', State#state{conn='undefined'
-                                         ,admin_conn='undefined'
-                                         ,nodes=Ns}};
+                                          ,admin_conn='undefined'
+                                          ,nodes=Ns
+                                         }};
 compact('compact', #state{nodes=[N|Ns]}=State) ->
     lager:debug("compact node ~s", [N]),
     gen_fsm:send_event(self(), {'compact', N}),
     {'next_state', 'compact', State#state{conn='undefined'
-                                         ,admin_conn='undefined'
-                                         ,nodes=Ns}};
+                                          ,admin_conn='undefined'
+                                          ,nodes=Ns
+                                         }};
 
 compact({'compact', {N, _}}, #state{admin_conn=AdminConn}=State) ->
     lager:debug("compacting node ~s w/ options", [N]),
@@ -702,6 +718,7 @@ compact({'compact_db', N, D}, #state{conn=Conn
                           ,current_db='undefined'
                           ,current_job_pid='undefined'
                           ,current_job_ref='undefined'
+                          ,current_job_start='undefined'
                          }
              ,'hibernate'
             };
@@ -816,6 +833,7 @@ compact({'compact_db', N, D, [], _}, #state{nodes=[]
                   ,current_db='undefined'
                   ,current_job_pid='undefined'
                   ,current_job_ref='undefined'
+                  ,current_job_start='undefined'
                   ,next_compaction_msg='undefined'
                  }
      ,'hibernate'
@@ -864,12 +882,15 @@ compact('status', _, #state{current_node=N
                             ,queued_jobs=Jobs
                             ,dbs=Dbs
                             ,nodes=Ns
+                            ,current_job_start=Start
                            }= State) ->
     {'reply', {'ok', [{'node', N}
                       ,{'db', D}
                       ,{'queued_jobs', queued_jobs_status(Jobs)}
                       ,{'nodes_left', length(Ns)}
                       ,{'dbs_left', length(Dbs)}
+                      ,{'start_time', Start}
+                      ,{'elapsed_s', wh_util:elapsed_s(Start)}
                      ]}, 'compact', State};
 
 compact('cancel_current_shard', _, #state{shards_pid_ref='undefined'}=State) ->
@@ -897,6 +918,7 @@ compact('cancel_current_job', _, #state{current_job_pid=Pid
                   ,wait_ref='undefined'
                   ,current_job_pid='undefined'
                   ,current_job_ref='undefined'
+                  ,current_job_start='undefined'
                  }
      ,'hibernate'
     };
@@ -922,6 +944,7 @@ compact('cancel_all_jobs', _, #state{queued_jobs=Jobs
                   ,wait_ref='undefined'
                   ,current_job_pid='undefined'
                   ,current_job_ref='undefined'
+                  ,current_job_start='undefined'
                   ,queued_jobs=queue:new()
                  }
      ,'hibernate'
@@ -946,6 +969,7 @@ wait('status', _, #state{current_node=N
                          ,queued_jobs=Jobs
                          ,nodes=Ns
                          ,dbs=Dbs
+                         ,current_job_start=Start
                         }= State) ->
     {'reply'
      ,{'ok', [{'node', N}
@@ -954,6 +978,8 @@ wait('status', _, #state{current_node=N
               ,{'queued_jobs', queued_jobs_status(Jobs)}
               ,{'nodes_left', length(Ns)}
               ,{'dbs_left', length(Dbs)}
+              ,{'start_time', Start}
+              ,{'elapsed_s', wh_util:elapsed_s(Start)}
              ]}
      ,'wait'
      ,State
@@ -981,6 +1007,7 @@ wait('cancel_current_job', _, #state{current_job_pid=Pid
                   ,wait_ref='undefined'
                   ,current_job_pid='undefined'
                   ,current_job_ref='undefined'
+                  ,current_job_start='undefined'
                  }
      ,'hibernate'
     };
@@ -1008,6 +1035,7 @@ wait('cancel_all_jobs', _, #state{queued_jobs=Jobs
                   ,wait_ref='undefined'
                   ,current_job_pid='undefined'
                   ,current_job_ref='undefined'
+                  ,current_job_start='undefined'
                   ,queued_jobs=queue:new()
                  }
      ,'hibernate'
