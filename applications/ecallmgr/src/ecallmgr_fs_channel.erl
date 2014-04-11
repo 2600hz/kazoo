@@ -418,7 +418,7 @@ fetch_channel(UUID, FetchId, Node) ->
                     ],
             try_channel_resp(FetchId, Node, Props)
     end.
-        
+
 -spec channel_not_found(atom(), ne_binary()) -> 'ok'.
 channel_not_found(Node, FetchId) ->
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
@@ -527,7 +527,7 @@ get_username(Props) ->
 get_realm(Props) ->
     case props:get_first_defined([?GET_CCV(<<"Realm">>), <<"variable_domain_name">>], Props) of
         'undefined' -> 'undefined';
-        Realm -> wh_util:to_binary_lower(Realm)
+        Realm -> wh_util:to_lower_binary(Realm)
     end.
 
 props_to_update(Props) ->
