@@ -107,7 +107,20 @@ create_template_props(NotifyJObj, AccountJObj) ->
      ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
      ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
+     ,{<<"send_from">>, get_send_from()}
     ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_send_from() -> ne_binary().
+get_send_from() ->
+    DefaultFrom = wh_util:to_binary(node()),
+    whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom).
+
 
 -spec find_numbers(wh_json:object(), wh_json:object()) -> ne_binaries().
 -spec find_numbers(wh_json:object()) -> ne_binaries().
