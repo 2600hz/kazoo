@@ -367,8 +367,8 @@ from_binary_extensions_test() ->
     ?assertEqual(Header, to_binary(JObj)).
 
 to_binary_fix_address_test() ->
-    Header = <<"sip:096660060@114.23.22.210;counter=1 ">>,
+    Header = <<"sip:0123456789@1.22.133.4;counter=1 ">>,
     NewHeader = to_binary(from_binary(Header)),
-    ?assertEqual(<<"<sip:096660060@114.23.22.210>;counter=1">>, NewHeader).
+    ?assertEqual(<<"<sip:0123456789@1.22.133.4>;counter=1">>, NewHeader).
 
 -endif.
