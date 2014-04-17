@@ -265,9 +265,10 @@ to_binary(JObj) ->
 
 -spec fix_address(ne_binary()) -> ne_binary().
 fix_address(<<$", _Rest/binary>> = Address) -> Address;
-fix_address(<<$<, _Rest/binary>> = Address) -> Address;
+fix_address(<<"<sip", _Rest/binary>> = Address) -> Address;
 fix_address(<<"sip", _Rest/binary>> = Address) ->
-    list_to_binary([$<, Address, $>]).
+    list_to_binary([$<, Address, $>]);
+fix_address(Address) -> Address.
 
 -spec maybe_add_params(wh_json:object(), ne_binary()) -> ne_binary().
 maybe_add_params(JObj, Address) ->
