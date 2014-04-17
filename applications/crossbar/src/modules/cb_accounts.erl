@@ -102,19 +102,26 @@ resource_exists(_, Path) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
+-spec validate(cb_context:context()) ->
+                      cb_context:context().
+-spec validate(cb_context:context(), path_token()) ->
+                      cb_context:context().
+-spec validate(cb_context:context(), path_token(), ne_binary()) ->
+                      cb_context:context().
 
 validate(Context) ->
     validate_accounts(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+-spec validate_accounts(cb_context:context(), http_method(), req_nouns()) ->
+                               cb_context:context().
 validate_accounts(Context, ?HTTP_PUT, [{?WH_ACCOUNTS_DB, _}]) ->
     validate_request('undefined', prepare_context('undefined', Context)).
 
 validate(Context, AccountId) ->
     validate_account(Context, AccountId, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+-spec validate_account(cb_context:context(), ne_binary(), http_method(), req_nouns()) ->
+                              cb_context:context().
 validate_account(Context, AccountId, ?HTTP_GET, [{?WH_ACCOUNTS_DB, _}]) ->
     load_account(AccountId, prepare_context(AccountId, Context));
 validate_account(Context, _AccountId, ?HTTP_PUT, [{?WH_ACCOUNTS_DB, _}]) ->
@@ -129,6 +136,8 @@ validate_account(Context, AccountId, _Verb, _Nouns) ->
 validate(Context, AccountId, PathToken) ->
     validate_account_path(Context, AccountId, PathToken, cb_context:req_verb(Context)).
 
+-spec validate_account_path(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
+                                   cb_context:context().
 validate_account_path(Context, AccountId, ?CHANNELS, ?HTTP_GET) ->
     get_channels(AccountId, Context);
 validate_account_path(Context, AccountId, <<"children">>, ?HTTP_GET) ->
@@ -790,7 +799,7 @@ replicate_account_definition(JObj) ->
 %%--------------------------------------------------------------------
 -spec is_unique_realm(api_binary(), ne_binary()) -> boolean().
 is_unique_realm(AccountId, Realm) ->
-    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Realm)}],
+    ViewOptions = [{'key', wh_util:to_lower_binary(Realm)}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= AccountId;
