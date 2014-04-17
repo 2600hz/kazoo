@@ -107,8 +107,7 @@ validate(Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1);
-        _Status ->
-            Context1
+        _Status -> Context1
     end.
 
 validate(Context, <<"recovery">>) ->
@@ -501,8 +500,8 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
     case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
-                                   ,?USER_AUTH_TOKENS
-                                  )
+                                         ,?USER_AUTH_TOKENS
+                                        )
     of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->

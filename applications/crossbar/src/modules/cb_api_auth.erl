@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Account API auth module
 %%%
@@ -29,6 +29,7 @@
 
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_API, <<"accounts/listing_by_api">>).
+-define(API_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"api_auth_tokens">>, 35)).
 
 %%%===================================================================
 %%% API
@@ -90,7 +91,12 @@ authenticate(_) -> 'false'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    cb_context:validate_request_data(<<"api_auth">>, Context, fun on_successful_validation/1).
+    Context1 = consume_tokens(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:validate_request_data(<<"api_auth">>, Context, fun on_successful_validation/1);
+        _Status -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,4 +166,15 @@ create_token(#cb_context{doc=JObj}=Context) ->
                     lager:debug("could not create new local auth token, ~p", [R]),
                     cb_context:add_system_error('datastore_fault', Context)
             end
+    end.
+
+-spec consume_tokens(cb_context:context()) -> cb_context:context().
+consume_tokens(Context) ->
+    case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
+                                         ,?API_AUTH_TOKENS
+                                        )
+    of
+        'true' -> cb_context:set_resp_status(Context, 'success');
+        'false' ->
+            cb_context:add_system_error('too_many_requests', Context)
     end.
