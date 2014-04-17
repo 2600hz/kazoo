@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Functions shared between crossbar modules
 %%% @end
@@ -14,6 +14,7 @@
          ,maybe_originate_quickcall/1
          ,is_superduper_admin/1
          ,attachment_name/2
+         ,bucket_name/1
         ]).
 
 -include("../crossbar.hrl").
@@ -298,3 +299,20 @@ content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
 content_type_to_extension(<<"application/x-pdf">>) -> <<"pdf">>;
 content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>.
+
+
+-spec bucket_name(cb_context:context()) -> ne_binary().
+-spec bucket_name(api_binary(), api_binary()) -> ne_binary().
+bucket_name(Context) ->
+    bucket_name(cb_context:client_ip(Context)
+                ,cb_context:account_id(Context)
+               ).
+
+bucket_name('undefined', 'undefined') ->
+    <<"no_ip/no_account">>;
+bucket_name(IP, 'undefined') ->
+    <<IP/binary, "/no_account">>;
+bucket_name('undefined', AccountId) ->
+    <<"no_ip/", AccountId/binary>>;
+bucket_name(IP, AccountId) ->
+    <<IP/binary, "/", AccountId/binary>>.
