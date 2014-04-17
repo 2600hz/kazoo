@@ -21,6 +21,8 @@
 %% API
 -export([start_link/2, start_link/3, start_link/4
          ,consume/2
+         ,consume_until/2
+         ,credit/2
          ,tokens/1
          ,set_name/2
         ]).
@@ -81,6 +83,14 @@ start_link(Max, FillRate, FillBlock, FillTime) when is_integer(FillRate), FillRa
 consume(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
     gen_server:call(Srv, {'consume', Tokens}).
 
+-spec consume_until(pid(), pos_integer()) -> boolean().
+consume_until(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
+    gen_server:call(Srv, {'consume_until', Tokens}).
+
+-spec credit(pid(), pos_integer()) -> 'ok'.
+credit(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
+    gen_server:cast(Srv, {'credit', Tokens}).
+
 -spec tokens(pid()) -> non_neg_integer().
 tokens(Srv) -> gen_server:call(Srv, {'tokens'}).
 
@@ -138,6 +148,15 @@ handle_call({'consume', Req}, _From, #state{tokens=Current}=State) ->
             lager:debug("not enough tokens (~p) to consume ~p", [Current, Req]),
             {'reply', 'false', State}
     end;
+handle_call({'consume_until', Req}, _From, #state{tokens=Current}=State) ->
+    case Current - Req of
+        N when N >= 0 ->
+            lager:debug("consumed ~p, ~p left", [Req, N]),
+            {'reply', 'true', State#state{tokens=N}};
+        _N ->
+            lager:debug("not enough tokens (~p) to consume ~p, zeroing out tokens", [Current, Req]),
+            {'reply', 'false', State#state{tokens=0}}
+    end;
 handle_call({'tokens'}, _From, #state{tokens=Current}=State) ->
     {'reply', Current, State};
 handle_call(_Request, _From, State) ->
@@ -154,6 +173,17 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'credit', Req}, #state{tokens=Current
+                                    ,max_tokens=Max
+                                   }=State) ->
+    case Current + Req of
+        N when N > Max ->
+            lager:debug("credit of ~p tokens overfills, setting to ~p", [Req, Max]),
+            {'noreply', State#state{tokens=Max}};
+        N ->
+            lager:debug("crediting ~p tokens, now at ~p", [Req, N]),
+            {'noreply', State#state{tokens=N}}
+    end;
 handle_cast({'name', Name}, State) ->
     wh_util:put_callid(Name),
     lager:debug("updated name to ~s", [Name]),

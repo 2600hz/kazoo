@@ -14,6 +14,8 @@
          ,consume_token/1, consume_token/2
          ,consume_tokens/2, consume_tokens/3
 
+         ,consume_tokens_until/2, consume_tokens_until/3
+
          ,start_bucket/1, start_bucket/2, start_bucket/3, start_bucket/4
          ,exists/1
          ,tokens/0
@@ -65,34 +67,63 @@ start_link() ->
 %% @doc
 %% consume_tokens(Name, [Count, [StartIfMissing]])
 %% Name :: name of the bucket
-%% Count ::
+%% Count :: how many tokens to try to consume
+%% StartIfMissing :: start the token bucket if it doesn't exist yet
 %% @end
 %%--------------------------------------------------------------------
 -spec consume_token(api_binary()) -> boolean().
 -spec consume_token(api_binary(), boolean()) -> boolean().
 
--spec consume_tokens(api_binary(), pos_integer()) -> boolean().
--spec consume_tokens(api_binary(), pos_integer(), boolean()) -> boolean().
 consume_token(Name) ->
     consume_tokens(Name, 1).
 
 consume_token(Name, StartIfMissing) ->
     consume_tokens(Name, 1, StartIfMissing).
 
+-spec consume_tokens(api_binary(), pos_integer()) -> boolean().
+-spec consume_tokens(api_binary(), pos_integer(), boolean()) -> boolean().
 consume_tokens(Key, Count) ->
     consume_tokens(Key, Count, 'true').
 
-consume_tokens(Key, Count, StartBucketIfMissing) ->
-    case ets:lookup(?MODULE, Key) of
-        [] when StartBucketIfMissing ->
+consume_tokens(Key, Count, StartIfMissing) ->
+    consume_tokens(Key, Count, StartIfMissing, fun kz_token_bucket:consume/2).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% consume_tokens_until(Name, Count, [StartIfMissing])
+%% Name :: name of the bucket
+%% Count :: how many tokens to try to consume
+%% StartIfMissing :: start the token bucket if it doesn't exist yet
+%%
+%% If Bucket is started and has fewer than Count tokens, consume the
+%% remaining tokens and return false
+%% @end
+%%--------------------------------------------------------------------
+-spec consume_tokens_until(api_binary(), pos_integer()) -> boolean().
+-spec consume_tokens_until(api_binary(), pos_integer(), boolean()) -> boolean().
+consume_tokens_until(Key, Count) ->
+    consume_tokens_until(Key, Count, 'true').
+
+consume_tokens_until(Key, Count, StartIfMissing) ->
+    consume_tokens(Key, Count, StartIfMissing, fun kz_token_bucket:consume_until/2).
+
+consume_tokens(Key, Count, StartIfMissing, BucketFun) ->
+    case get_bucket(Key) of
+        'undefined' when StartIfMissing ->
             lager:debug("bucket ~s missing, starting", [Key]),
             case start_bucket(Key) of
                 'error' -> 'false';
-                _OK -> consume_tokens(Key, Count, StartBucketIfMissing)
+                _OK -> consume_tokens(Key, Count, StartIfMissing, BucketFun)
             end;
-        [] -> 'false';
-        [#bucket{srv=Srv}] ->
-            kz_token_bucket:consume(Srv, Count)
+        'undefined' -> 'false';
+        Srv -> BucketFun(Srv, Count)
+    end.
+
+-spec get_bucket(ne_binary()) -> api_pid().
+get_bucket(Key) ->
+    case ets:lookup(?MODULE, Key) of
+        [] -> 'undefined';
+        [#bucket{srv=Srv}] -> Srv
     end.
 
 -spec exists(api_binary()) -> boolean().
