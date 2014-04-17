@@ -589,7 +589,7 @@ compile_template(Template, Name) ->
 -spec do_compile_template(nonempty_string() | ne_binary(), template_name()) ->
                                  'undefined' | template_name().
 do_compile_template(Template, Name) ->
-    case erlydtl:compile_template(Template, Name) of
+    case erlydtl:compile_template(Template, Name, [{'out_dir', 'false'}]) of
         {'ok', Name} ->
             lager:debug("compiled ~s template", [Name]),
             Name;
