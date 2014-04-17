@@ -116,7 +116,7 @@ mwi_update(JObj, Props) ->
         {'ok', Contact} ->
             Node = props:get_value('node', Props),
             send_mwi_update(JObj, Node, Username, Realm, Contact)
-    end. 
+    end.
 
 send_mwi_update(JObj, Node, Username, Realm, Contact) ->
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
@@ -127,8 +127,11 @@ send_mwi_update(JObj, Node, Username, Realm, Contact) ->
                                      ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
                                      ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
                                     ]),
+
+    LowerUsername = wh_util:to_lower_binary(Username),
+
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-               ,{"contact", Contact}
+               ,{"contact", binary:replace(Contact, LowerUsername, Username, ['global'])}
                ,{"to-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
                ,{"from-uri", <<"sip:", Username/binary, "@", Realm/binary>>}
                ,{"event-str", "message-summary"}
