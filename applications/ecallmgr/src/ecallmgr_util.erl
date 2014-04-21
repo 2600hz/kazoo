@@ -115,6 +115,9 @@ send_cmd(Node, _UUID, "broadcast", Args) ->
 send_cmd(Node, _UUID, "call_pickup", Args) ->
     lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
     freeswitch:api(Node, 'uuid_bridge', wh_util:to_list(Args));
+send_cmd(Node, _UUID, "eavesdrop", Args) ->
+    lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
+    freeswitch:api(Node, 'uuid_bridge', wh_util:to_list(Args));
 send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
     freeswitch:api(Node, 'uuid_kill', wh_util:to_list(UUID));
