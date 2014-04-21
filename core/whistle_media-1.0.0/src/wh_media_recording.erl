@@ -423,9 +423,48 @@ save_recording(Call, MediaName, Format, {'true', 'local'}) ->
     lager:info("store local url: ~s", [StoreUrl]),
 
     store_recording(MediaName, StoreUrl, Call);
+save_recording(Call, MediaName, Format, {'true', <<>>}) ->
+    case whapps_config:get(?CONFIG_CAT, <<"third_party_bigcouch_host">>, <<>>) of
+        <<>> ->  lager:info("Nor URL for call recording provided, neither third-party bigcouch defined");
+        BCHost -> store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost)
+    end;
 save_recording(Call, MediaName, _Format, {'true', Url}) ->
     lager:info("store remote url: ~s", [Url]),
     store_recording(MediaName, Url, Call).
+
+
+store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
+    BCPort = whapps_config:get(?CONFIG_CAT, <<"third_party_bigcouch_port">>, <<"5984">>),
+    lager:info("storing to third-party bigcouch. Host: ~p. Port: ~p", [BCHost, BCPort]),
+    AcctMODb = wh_util:format_account_id(kazoo_modb:get_modb(whapps_call:account_db(Call)),'encoded'),
+    CallId = whapps_call:call_id(Call),
+    RecDocId = get_recording_doc_id(CallId),
+    MediaDoc = wh_doc:update_pvt_parameters(
+                 wh_json:from_list(
+                   [{<<"name">>, MediaName}
+                    ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                    ,{<<"content_type">>, ext_to_mime(Format)}
+                    ,{<<"media_type">>, Format}
+                    ,{<<"media_source">>, <<"recorded">>}
+                    ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
+                    ,{<<"pvt_type">>, <<"call_recording">>}
+                    ,{<<"from">>, whapps_call:from(Call)}
+                    ,{<<"to">>, whapps_call:to(Call)}
+                    ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
+                    ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                    ,{<<"call_id">>, CallId}
+                    ,{<<"_id">>, RecDocId}
+                   ])
+                 ,AcctMODb
+                ),
+    Options = [],
+    S = couchbeam:server_connection(BCHost, wh_util:to_list(BCPort)),
+    {ok, Db} = couchbeam:open_or_create_db(S, AcctMODb, Options),
+    {ok, DocRes} = couchbeam:save_doc(Db, MediaDoc),
+    DocRev = wh_json:get_value(<<"_rev">>, DocRes),
+    StoreUrl = <<"http://", BCHost/binary, ":", BCPort/binary,"/", AcctMODb/binary, "/", RecDocId/binary, "/", MediaName/binary, "?rev=", DocRev/binary>>,
+    lager:info("store to third-party modb url: ~s", [StoreUrl]),
+    'ok' = whapps_call_command:store(MediaName, StoreUrl, Call).
 
 -spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 store_recording(MediaName, Url, Call) ->
