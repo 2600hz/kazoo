@@ -69,14 +69,7 @@ handle_req(JObj, _Props) ->
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     lager:debug("subject: ~s", [Subject]),
 
-    PortRequestId = wh_json:get_value(<<"Port-Request-ID">>, JObj),
-    EmailAttachments =
-        case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
-            {'ok', PortJObj} ->
-                Attachments = wh_json:get_value(<<"_attachments">>, PortJObj, wh_json:new()),
-                get_attachments(wh_json:to_proplist(Attachments), PortRequestId);
-            _ -> []
-        end,
+    EmailAttachments = get_attachments(JObj),
 
     case notify_util:get_rep_email(AccountJObj) of
         'undefined' ->
@@ -96,48 +89,64 @@ handle_req(JObj, _Props) ->
 create_template_props(NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, NotifyJObj)),
 
-    PortDoc = find_port_doc(NotifyJObj),
-
+    PortDoc = find_port_info(NotifyJObj),
     PortData = notify_util:json_to_template_props(wh_doc:public_fields(PortDoc)),
-    Numbers = find_numbers(PortData, NotifyJObj),
     Request = props:delete_keys([<<"uploads">>, <<"numbers">>], PortData),
 
+    [Number|_]=Numbers = find_numbers(PortData, NotifyJObj),
+
     [{<<"numbers">>, Numbers}
+     ,{<<"number">>, Number}
      ,{<<"request">>, Request}
      ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
      ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
-     ,{<<"send_from">>, get_send_from()}
+     ,{<<"send_from">>, get_send_from(PortDoc, Admin)}
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_send_from() -> ne_binary().
-get_send_from() ->
+-spec get_send_from(wh_json:object(), wh_json:object()) -> ne_binary().
+get_send_from(PortDoc, Admin) ->
+    case wh_json:get_first_defined([<<"email">>
+                                    ,[<<"Port">>, <<"email">>]
+                                   ], PortDoc)
+    of
+        'undefined' -> get_admin_send_from(Admin);
+        Email -> Email
+    end.
+
+-spec get_admin_send_from(wh_json:object()) -> ne_binary().
+get_admin_send_from(Admin) ->
+    case wh_json:get_ne_value(<<"email">>, Admin) of
+        'undefined' -> get_default_from();
+        Email -> Email
+    end.
+
+-spec get_default_from() -> ne_binary().
+get_default_from() ->
     DefaultFrom = wh_util:to_binary(node()),
     whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom).
 
-
 -spec find_numbers(wh_json:object(), wh_json:object()) -> ne_binaries().
--spec find_numbers(wh_json:object()) -> ne_binaries().
 find_numbers(PortData, NotifyJObj) ->
     case props:get_value(<<"numbers">>, PortData) of
         'undefined' -> find_numbers(NotifyJObj);
         Ns -> Ns
     end.
+
+-spec find_numbers(wh_json:object()) -> ne_binaries().
 find_numbers(NotifyJObj) ->
-    case wh_json:get_value(<<"Number">>, NotifyJObj) of
-        'undefined' -> [];
-        N -> [N]
+    [wh_json:get_value(<<"Number">>, NotifyJObj)].
+
+-spec find_port_info(wh_json:object()) -> wh_json:object().
+find_port_info(NotifyJObj) ->
+    case wh_json:get_ne_value(<<"Port-Request-ID">>, NotifyJObj) of
+        'undefined' -> NotifyJObj;
+        PortRequestId -> find_port_doc(PortRequestId)
     end.
 
--spec find_port_doc(wh_json:object()) -> wh_json:object().
-find_port_doc(NotifyJObj) ->
-    case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, wh_json:get_value(<<"Port-Request-ID">>, NotifyJObj)) of
+-spec find_port_doc(ne_binary()) -> wh_json:object().
+find_port_doc(PortRequestId) ->
+    case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortDoc} -> PortDoc;
         {'error', _} -> wh_json:new()
     end.
@@ -178,31 +187,64 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec get_attachments(wh_proplist(), ne_binary()) -> list().
--spec get_attachments(wh_proplist(), ne_binary(), list()) -> list().
-get_attachments(Attachments, PortRequestId) ->
-    get_attachments(Attachments, PortRequestId, []).
-get_attachments([], _PortRequestId, EmailAttachments) -> EmailAttachments;
-get_attachments([{AttachmentName, AttachmentJObj}|Attachments], PortRequestId, EmailAttachments) ->
-    case couch_mgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortRequestId, fix_attachment_name(AttachmentName)) of
-        {'ok', AttachmentBin} ->
-            [Type, Subtype] =
-                binary:split(wh_json:get_ne_value(<<"content_type">>, AttachmentJObj, <<"application/octet-stream">>), <<"/">>),
+-type attachment() :: {ne_binary(), ne_binary(), wh_proplist(), wh_proplist(), ne_binary()}.
+-type attachments() :: [attachment(),...] | [].
 
-            Attachment =
-                {Type, Subtype
-                 ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentName, "\""])}
-                   ,{<<"Content-Type">>, list_to_binary([Type, "/", Subtype, <<"; name=\"">>, AttachmentName, "\""])}
-                   ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
-                  ]
-                 ,[], AttachmentBin
-                },
-            lager:debug("adding attachment ~s (~s/~s)", [AttachmentName, Type, Subtype]),
-            get_attachments(Attachments, PortRequestId, [Attachment|EmailAttachments]);
+-spec get_attachments(wh_json:object()) -> attachments().
+get_attachments(JObj) ->
+    case wh_json:get_ne_value(<<"Port-Request-ID">>, JObj) of
+        'undefined' -> get_number_attachments(JObj);
+        PortRequestId -> get_port_attachments(PortRequestId)
+    end.
+
+-spec get_number_attachments(wh_json:object()) -> attachments().
+get_number_attachments(JObj) ->
+    Number = wnm_util:normalize_number(wh_json:get_value(<<"Number">>, JObj)),
+    NumberDb = wnm_util:number_to_db_name(Number),
+    case couch_mgr:open_doc(NumberDb, Number) of
+        {'ok', NumberJObj} ->
+            Attachments = wh_json:get_value(<<"_attachments">>, NumberJObj, wh_json:new()),
+            fetch_attachments(wh_json:to_proplist(Attachments), NumberDb, Number);
+        _ -> []
+    end.
+
+-spec get_port_attachments(wh_json:object()) -> attachments().
+get_port_attachments(PortRequestId) ->
+    case couch_mgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
+        {'ok', PortJObj} ->
+            Attachments = wh_json:get_value(<<"_attachments">>, PortJObj, wh_json:new()),
+            fetch_attachments(wh_json:to_proplist(Attachments), ?KZ_PORT_REQUESTS_DB, PortRequestId);
+        _ -> []
+    end.
+
+-spec fetch_attachments(wh_proplist(), ne_binary(), ne_binary()) -> attachments().
+fetch_attachments(Attachments, Db, Id) ->
+    fetch_attachments(Attachments, Db, Id, []).
+
+-spec fetch_attachments(wh_proplist(), ne_binary(), ne_binary(), attachments()) -> attachments().
+fetch_attachments([], _, _, EmailAttachments) -> EmailAttachments;
+fetch_attachments([{AttachmentName, AttachmentJObj}|Attachments], Db, Id, EmailAttachments) ->
+    case couch_mgr:fetch_attachment(Db, Id, fix_attachment_name(AttachmentName)) of
+        {'ok', AttachmentBin} ->
+            Attachment = create_attachment(AttachmentName, AttachmentJObj, AttachmentBin),
+            fetch_attachments(Attachments, Db, Id, [Attachment|EmailAttachments]);
         _E ->
             lager:debug("failed to attach ~s: ~p", [AttachmentName, _E]),
-            get_attachments(Attachments, PortRequestId, EmailAttachments)
+            fetch_attachments(Attachments, Db, Id, EmailAttachments)
     end.
+
+-spec create_attachment(ne_binary(), wh_json:object(), ne_binary()) -> attachment().
+create_attachment(AttachmentName, AttachmentJObj, AttachmentBin) ->
+    [Type, Subtype] =
+        binary:split(wh_json:get_ne_value(<<"content_type">>, AttachmentJObj, <<"application/octet-stream">>), <<"/">>),
+    lager:debug("found attachment ~s (~s/~s)", [AttachmentName, Type, Subtype]),
+    {Type, Subtype
+     ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentName, "\""])}
+       ,{<<"Content-Type">>, list_to_binary([Type, "/", Subtype, <<"; name=\"">>, AttachmentName, "\""])}
+       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+      ]
+     ,[], AttachmentBin
+    }.
 
 %%--------------------------------------------------------------------
 %% @private

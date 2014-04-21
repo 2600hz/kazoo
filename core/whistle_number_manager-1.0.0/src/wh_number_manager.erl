@@ -14,7 +14,10 @@
 -export([lookup_account_by_number/1]).
 -export([ported/1]).
 -export([create_number/3, create_number/4, create_number/5]).
--export([port_in/3, port_in/5]).
+-export([port_in/3
+         ,port_in/4
+         ,port_in/5
+        ]).
 -export([reconcile_number/3]).
 -export([free_numbers/1]).
 -export([reserve_number/3, reserve_number/5]).
@@ -356,11 +359,16 @@ create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N) ->
 %%--------------------------------------------------------------------
 -spec port_in(ne_binary(), ne_binary(), ne_binary()) ->
                      operation_return().
+-spec port_in(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->
+                     operation_return().
 -spec port_in(ne_binary(), ne_binary(), ne_binary(), wh_json:object(), boolean()) ->
                      operation_return().
 
 port_in(Number, AssignTo, AuthBy) ->
-    port_in(Number, AssignTo, AuthBy, wh_json:new(), 'false').
+    port_in(Number, AssignTo, AuthBy, wh_json:new()).
+
+port_in(Number, AssignTo, AuthBy, PublicFields) ->
+    port_in(Number, AssignTo, AuthBy, PublicFields, 'false').
 
 port_in(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
     lager:debug("attempting to port_in number ~s for account ~s", [Number, AssignTo]),
