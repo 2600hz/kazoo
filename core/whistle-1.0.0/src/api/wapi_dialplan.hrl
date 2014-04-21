@@ -388,6 +388,20 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
                                 ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
                                ]).
 
+%% Eavesdrop
+-define(EAVESDROP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Target-Call-ID">>]).
+-define(OPTIONAL_EAVESDROP_REQ_HEADERS, [<<"Insert-At">>, <<"Enable-DTMF">>
+                                           ,<<"Other-Leg">>
+                                           ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
+                                           ,<<"Move-Channel-If-Necessary">>
+                                          ]).
+-define(EAVESDROP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                                 ,{<<"Event-Name">>, <<"command">>}
+                                 ,{<<"Application-Name">>, <<"eavesdrop">>}
+                                 ,?INSERT_AT_TUPLE
+                                ]).
+-define(EAVESDROP_REQ_TYPES, [{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}]).
+
 %% Play Request
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>, <<"Leg">>
