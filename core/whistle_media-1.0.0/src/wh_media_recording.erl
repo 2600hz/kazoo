@@ -410,7 +410,11 @@ should_store_recording('undefined') ->
         'true' -> {'true', 'local'};
         'false' -> 'false'
     end;
-should_store_recording(Url) -> {'true', Url}.
+should_store_recording(Url) ->
+    case wh_util:is_empty(Url) of
+        'true' -> {'true', 'third_party'};
+        'false' -> {'true', Url}
+    end.
 
 -spec save_recording(whapps_call:call(), ne_binary(), ne_binary(), store_url()) -> 'ok'.
 save_recording(_Call, _MediaName, _Format, 'false') ->
@@ -418,24 +422,22 @@ save_recording(_Call, _MediaName, _Format, 'false') ->
 save_recording(Call, MediaName, Format, {'true', 'local'}) ->
     {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
     lager:info("stored meta: ~p", [MediaJObj]),
-
     StoreUrl = store_url(Call, MediaJObj),
     lager:info("store local url: ~s", [StoreUrl]),
-
     store_recording(MediaName, StoreUrl, Call);
-save_recording(Call, MediaName, Format, {'true', <<>>}) ->
-    case whapps_config:get(?CONFIG_CAT, <<"third_party_bigcouch_host">>, <<>>) of
-        <<>> ->  lager:info("Nor URL for call recording provided, neither third-party bigcouch defined");
+save_recording(Call, MediaName, Format, {'true', 'third_party'}) ->
+    case whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>, <<>>) of
+        'undefined' -> lager:debug("no URL for call recording provided, third_party_bigcouch_host undefined");
         BCHost -> store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost)
     end;
 save_recording(Call, MediaName, _Format, {'true', Url}) ->
     lager:info("store remote url: ~s", [Url]),
     store_recording(MediaName, Url, Call).
 
-
+-spec store_recording_to_third_party_bigcouch(whapps_call:call(), ne_binary(), ne_binary(), store_url()) -> 'ok'.
 store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
     BCPort = whapps_config:get(?CONFIG_CAT, <<"third_party_bigcouch_port">>, <<"5984">>),
-    lager:info("storing to third-party bigcouch. Host: ~p. Port: ~p", [BCHost, BCPort]),
+    lager:info("storing to third-party bigcouch ~s:~p", [BCHost, BCPort]),
     AcctMODb = wh_util:format_account_id(kazoo_modb:get_modb(whapps_call:account_db(Call)),'encoded'),
     CallId = whapps_call:call_id(Call),
     MediaDocId = get_recording_doc_id(CallId),
@@ -459,8 +461,8 @@ store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
                 ),
     Options = [],
     S = couchbeam:server_connection(BCHost, wh_util:to_list(BCPort)),
-    {ok, Db} = couchbeam:open_or_create_db(S, AcctMODb, Options),
-    {ok, DocRes} = couchbeam:save_doc(Db, MediaDoc),
+    {'ok', Db} = couchbeam:open_or_create_db(S, AcctMODb, Options),
+    {'ok', DocRes} = couchbeam:save_doc(Db, MediaDoc),
     DocRev = wh_json:get_value(<<"_rev">>, DocRes),
     StoreUrl = <<"http://", BCHost/binary, ":", BCPort/binary,"/", AcctMODb/binary, "/", MediaDocId/binary, "/", MediaName/binary, "?rev=", DocRev/binary>>,
     lager:info("store to third-party modb url: ~s", [StoreUrl]),
