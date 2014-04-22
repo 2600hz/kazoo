@@ -16,6 +16,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,billing/1
          ,authenticate/1
          ,authorize/1
          ,validate/1, validate/2, validate/3, validate/4
@@ -49,6 +50,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.users">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"v2_resource.billing">>, ?MODULE, 'billing'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate.users">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.users">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.users">>, ?MODULE, 'post'),
@@ -111,6 +113,23 @@ authenticate(#cb_context{req_nouns=?USERS_QCALL_NOUNS, req_verb = ?HTTP_GET}) ->
 authorize(#cb_context{req_nouns=?USERS_QCALL_NOUNS, req_verb = ?HTTP_GET}) ->
     lager:debug("authorizing request"),
     'true'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Ensure we will be able to bill for users
+%% @end
+%%--------------------------------------------------------------------
+billing(#cb_context{req_nouns=[{<<"users">>, _}|_], req_verb = ?HTTP_GET}=Context) ->
+    Context;
+billing(#cb_context{req_nouns=[{<<"users">>, _}|_]}=Context) ->
+    try wh_services:allow_updates(cb_context:account_id(Context)) of
+        'true' -> Context
+    catch
+        'throw':{Error, Reason} ->
+            crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
+    end;
+billing(Context) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public

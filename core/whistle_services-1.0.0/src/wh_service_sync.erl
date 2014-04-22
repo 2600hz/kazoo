@@ -41,7 +41,12 @@ start_link() ->
 
 -spec sync(ne_binary()) -> wh_std_return().
 sync(Account) ->
-    immediate_sync(Account).
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {'error', _}=E -> E;
+        {'ok', ServiceJObj} ->
+            sync(AccountId, ServiceJObj)
+    end.
 
 -spec clean(ne_binary()) -> wh_std_return().
 clean(Account) ->
@@ -154,6 +159,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec sync(ne_binary(), wh_json:object()) -> wh_std_return().
+sync(AccountId, ServiceJObj) ->
+    case get_billing_id(AccountId, ServiceJObj) of
+        AccountId -> maybe_sync_services(AccountId, ServiceJObj);
+        BillingId ->
+            io:format("Account ~s is configured to use the credit card of ~s, following billing tree~n"
+                ,[AccountId, BillingId]),
+            sync(BillingId)
+    end.
+
 -spec maybe_sync_service() -> wh_std_return().
 maybe_sync_service() ->
     SyncBufferPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
@@ -195,6 +210,8 @@ maybe_follow_billing_id(AccountId, ServiceJObj) ->
 
 -spec follow_billing_id(ne_binary(), ne_binary(), wh_json:object()) -> wh_std_return().
 follow_billing_id(BillingId, AccountId, ServiceJObj) ->
+    %% NOTE: First try to make the parent (to be billed) as dirty
+    %%  if that is successful then mark the current service doc cleans
     case mark_dirty(BillingId) of
         {'ok', _} ->
             lager:debug("following billing id ~s", [BillingId]),
@@ -222,16 +239,17 @@ sync_services(AccountId, ServiceJObj, ServiceItems) ->
     try sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) of
         'ok' ->
             _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
+            io:format("synchronization with bookkeeper complete~n", []),
             lager:debug("synchronization with bookkeeper complete", []),
             maybe_sync_reseller(AccountId, ServiceJObj)
     catch
         'throw':{Reason, _}=_R ->
             lager:info("bookkeeper error: ~p", [_R]),
-            _ = mark_status(wh_util:to_binary(Reason), ServiceJObj),
+            _ = mark_clean_and_status(wh_util:to_binary(Reason), ServiceJObj),
             maybe_sync_reseller(AccountId, ServiceJObj);
         _E:R ->
             %% TODO: certain errors (such as no CC or expired, ect) should
-            %% move the account of good standing...
+            %%    move the account of good standing...
             lager:info("unable to sync services(~p): ~p", [_E, R]),
             {'error', R}
     end.
@@ -311,17 +329,7 @@ maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
             end
     end.
 
--spec immediate_sync(ne_binary()) -> wh_std_return().
 -spec immediate_sync(ne_binary(), wh_json:object()) -> wh_std_return().
-
-immediate_sync(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {'error', _}=E -> E;
-        {'ok', ServiceJObj} ->
-            immediate_sync(AccountId, ServiceJObj)
-    end.
-
 immediate_sync(AccountId, ServiceJObj) ->
     case wh_service_plans:create_items(ServiceJObj) of
         {'error', 'no_plans'}=E -> E;
