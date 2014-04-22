@@ -280,6 +280,7 @@ post(Context, ?CUSTOMER_PATH_TOKEN) ->
     try braintree_customer:update(cb_context:fetch(Context, 'braintree')) of
         #bt_customer{}=Customer ->
             Resp = braintree_customer:record_to_json(Customer),
+            _ = sync(Context),
             crossbar_util:response(Resp, Context)
     catch
         'throw':{'api_error', Reason} ->
@@ -294,6 +295,7 @@ post(Context, ?CARDS_PATH_TOKEN, CardId) ->
     try braintree_card:update(cb_context:fetch(Context, 'braintree')) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
+            _ = sync(Context),
             crossbar_util:response(Resp, Context)
     catch
         'throw':{'api_error', Reason} ->
@@ -361,6 +363,7 @@ put(Context, ?CARDS_PATH_TOKEN) ->
     try braintree_card:create(cb_context:fetch(Context, 'braintree')) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
+            _ = sync(Context),
             crossbar_util:response(Resp, Context)
     catch
         'throw':{'api_error', Reason} ->
@@ -479,3 +482,9 @@ add_credit_to_account(BraintreeData, Units, LedgerId, AccountId) ->
                ],
     Transaction = lists:foldl(fun(F, T) -> F(T) end, wh_transaction:credit(LedgerId, Units), Routines),
     wh_transaction:save(Transaction).
+
+-spec sync(cb_context:context()) -> 'ok'.
+sync(Context) ->
+    AccountId = cb_context:account_id(Context),
+    _P = spawn('wh_service_sync', 'sync', [AccountId]),
+    'ok'.

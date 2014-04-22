@@ -14,6 +14,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,billing/1
          ,content_types_accepted/4
          ,validate/1 ,validate/2, validate/3, validate/4
          ,validate_request/1
@@ -60,6 +61,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, 'billing'),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.phone_numbers">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>, ?MODULE, 'validate'),
@@ -154,6 +156,23 @@ resource_exists(_, _) -> 'false'.
 
 resource_exists(_, ?PORT_DOCS, _) -> 'true';
 resource_exists(_, _, _) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Ensure we will be able to bill for phone_numbers
+%% @end
+%%--------------------------------------------------------------------
+billing(#cb_context{req_nouns=[{<<"phone_numbers">>, _}|_], req_verb= ?HTTP_GET}=Context) ->
+    Context;
+billing(#cb_context{req_nouns=[{<<"phone_numbers">>, _}|_]}=Context) ->
+    try wh_services:allow_updates(cb_context:account_id(Context)) of
+        'true' -> Context
+    catch
+        'throw':{Error, Reason} ->
+            crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context)
+    end;
+billing(Context) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public
