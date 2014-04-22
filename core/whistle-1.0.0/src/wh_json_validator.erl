@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Takes a JSON object and a JSON schema, and validates the object against
 %%% the schema.
@@ -315,7 +315,7 @@ is_valid_attribute({<<"minItems">>, Min, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     try {check_valid_type(Instance, <<"array">>), wh_util:to_integer(Min)} of
         {'false', _} -> {'pass', JObj};
-        {'true', Int} when length(Instance) >= Int -> {'pass', JObj};
+        {'true', MinItems} when length(Instance) >= MinItems -> {'pass', JObj};
         {'true', _} ->
             {'fail', {Key, list_to_binary([<<"minItems:The list is not at least ">>, wh_util:to_binary(Min), <<" items">>])}}
     catch
@@ -328,7 +328,7 @@ is_valid_attribute({<<"maxItems">>, Max, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     try {check_valid_type(Instance, <<"array">>), wh_util:to_integer(Max)} of
         {'false', _} -> {'pass', JObj};
-        {'true', Int} when length(Instance) =< Int -> {'pass', JObj};
+        {'true', MaxItems} when length(Instance) =< MaxItems -> {'pass', JObj};
         {'true', _Int} ->
             {'fail', {Key, list_to_binary([<<"maxItems:The list is more than ">>, wh_util:to_binary(Max), <<" items">>])}}
     catch
@@ -358,9 +358,11 @@ is_valid_attribute({<<"pattern">>, Pattern, _}, JObj, Key) ->
 %% 5.17
 is_valid_attribute({<<"minLength">>, Min, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
+    InstanceSize = instance_size(Instance),
+
     try {check_valid_type(Instance, <<"string">>), wh_util:to_integer(Min)} of
         {'false', _} -> {'pass', JObj};
-        {'true', Int} when erlang:byte_size(Instance) >= Int -> {'pass', JObj};
+        {'true', MinSize} when InstanceSize >= MinSize -> {'pass', JObj};
         {'true', _} ->
             {'fail', {Key, list_to_binary([<<"minLength:String must be at least ">>, wh_util:to_binary(Min), <<" characters">>])}}
     catch
@@ -371,10 +373,12 @@ is_valid_attribute({<<"minLength">>, Min, _}, JObj, Key) ->
 %% 5.18
 is_valid_attribute({<<"maxLength">>, Max, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
+    InstanceSize = instance_size(Instance),
     try {check_valid_type(Instance, <<"string">>), wh_util:to_integer(Max)} of
         {'false', _} -> {'pass', JObj};
-        {'true', Int} when erlang:byte_size(Instance) =< Int -> {'pass', JObj};
+        {'true', MaxSize} when InstanceSize =< MaxSize -> {'pass', JObj};
         {'true', _} ->
+            lager:debug("instance '~w' size ~b", [Instance, InstanceSize]),
             {'fail', {Key, list_to_binary([<<"maxLength:String must not be more than ">>, wh_util:to_binary(Max), <<" characters">>])}}
     catch
         'error':'badarg' ->
@@ -758,9 +762,16 @@ is_valid_format(_,_) ->
 %%     _ItemSchemaJObj = wh_json:get_value(<<"items">>, _SchemaItemsJObj, wh_json:new()),
 %%     'true'.
 
--include_lib("eunit/include/eunit.hrl").
+-spec instance_size(binary()) -> non_neg_integer().
+instance_size(Bin) ->
+    try unicode:characters_to_binary(Bin, 'unicode', 'latin1') of
+        LatinBin -> byte_size(LatinBin)
+    catch
+        'error':'badarg' -> byte_size(Bin)
+    end.
 
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 -define(NULL, null).
 -define(TRUE, 'true').
