@@ -4,7 +4,11 @@
 -define(UPDATES_EXCHANGE, <<"dialoginfo">>).
 
 -define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Expires">>]).
--define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>, <<"From">>]).
+-define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>, <<"From">>
+                                    ,<<"Event-Package">>, <<"Call-ID">>
+                                    ,<<"From-Tag">>, <<"To-Tag">>
+                                    ,<<"Contact">>
+                                    ]).
 -define(SUBSCRIBE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                            ,{<<"Event-Name">>, <<"subscription">>}
                           ]).
@@ -16,16 +20,20 @@
 
 -define(UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>]).
 -define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>
-                                  ,<<"Call-ID">>, <<"Direction">>
+                                 ,<<"Call-ID">>, <<"Direction">>
+                                 ,<<"Event-Package">>
+                                 ,<<"From-Tag">>, <<"To-Tag">>
+                                 ,<<"Messages-Waiting">>, <<"Messages-New">>
+                                 ,<<"Messages-Saved">>, <<"Messages-Urgent">>
+                                 ,<<"Messages-Urgent-Saved">>, <<"Message-Account">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
-                        ,{<<"Event-Name">>, <<"update">>}
-                        ,{<<"State">>, ?PRESENCE_STATES}
+                        ,{<<"Event-Name">>, <<"update">>}                        
                        ]).
--define(UPDATE_TYPES, []).
+-define(UPDATE_TYPES, [{<<"State">>, ?PRESENCE_STATES}]).
 
 -define(FLUSH_HEADERS, [<<"Type">>]).
--define(OPTIONAL_FLUSH_HEADERS, [<<"User">>]).
+-define(OPTIONAL_FLUSH_HEADERS, [<<"User">>, <<"Event-Package">>]).
 -define(FLUSH_VALUES, [{<<"Event-Category">>, <<"presence">>}
                         ,{<<"Event-Name">>, <<"flush">>}
                        ]).
@@ -34,7 +42,7 @@
 -define(KEY_SEARCH_REQ, <<"presence.search_req">>).
 
 -define(SEARCH_REQ_HEADERS, [<<"Realm">>]).
--define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Username">>]).
+-define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Username">>, <<"Event-Package">>]).
 -define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}
                            ,{<<"Event-Name">>, <<"search_req">>}
                           ]).
@@ -49,7 +57,7 @@
 -define(KEY_RESET, <<"presence.reset">>).
 
 -define(RESET_HEADERS, [<<"Realm">>, <<"Username">>]).
--define(OPTIONAL_RESET_HEADERS, []).
+-define(OPTIONAL_RESET_HEADERS, [<<"Event-Package">>]).
 -define(RESET_VALUES, [{<<"Event-Category">>, <<"presence">>}
                        ,{<<"Event-Name">>, <<"reset">>}
                       ]).

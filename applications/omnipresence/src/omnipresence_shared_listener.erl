@@ -38,10 +38,13 @@
                               ,'federate'
                              ]}
                    ,{'presence', [{'restrict_to', ['update', 'reset']}]}
-                   ,{'notifications', [{'restrict_to', ['presence_update']}]}
+                   ,{'notifications', [{'restrict_to', ['presence_update','mwi_update']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_presence_update'}
                        ,[{<<"notification">>, <<"presence_update">>}]
+                      }
+                    ,{{'omnip_subscriptions', 'handle_mwi_update'}
+                       ,[{<<"notification">>, <<"mwi_update">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_subscribe'}
                        ,[{<<"presence">>, <<"subscription">>}]
