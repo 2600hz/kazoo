@@ -261,7 +261,14 @@ maybe_unquote(Value) -> Value.
 -spec to_binary(wh_json:object()) -> ne_binary().
 to_binary(JObj) ->
     Address = wh_json:get_value(?PARAM_ADDRESS, JObj),
-    maybe_add_params(JObj, Address).
+    maybe_add_params(JObj, fix_address(Address)).
+
+-spec fix_address(ne_binary()) -> ne_binary().
+fix_address(<<$", _Rest/binary>> = Address) -> Address;
+fix_address(<<"<sip", _Rest/binary>> = Address) -> Address;
+fix_address(<<"sip", _Rest/binary>> = Address) ->
+    list_to_binary([$<, Address, $>]);
+fix_address(Address) -> Address.
 
 -spec maybe_add_params(wh_json:object(), ne_binary()) -> ne_binary().
 maybe_add_params(JObj, Address) ->
@@ -359,5 +366,9 @@ from_binary_extensions_test() ->
     ?assertEqual('true', props:get_value(<<"some_extension">>, Extensions)),
     ?assertEqual(Header, to_binary(JObj)).
 
+to_binary_fix_address_test() ->
+    Header = <<"sip:0123456789@1.22.133.4;counter=1 ">>,
+    NewHeader = to_binary(from_binary(Header)),
+    ?assertEqual(<<"<sip:0123456789@1.22.133.4>;counter=1">>, NewHeader).
 
 -endif.
