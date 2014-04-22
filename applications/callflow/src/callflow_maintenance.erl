@@ -25,6 +25,7 @@
          ,device_classifier_allow/2
          ,device_classifier_inherit/2
          ,device_classifier_deny/2
+         ,list_account_restrictions/1
         ]).
 
 -include("callflow.hrl").
@@ -388,3 +389,76 @@ is_classifier(Classifier) ->
 -spec normalize_account_name(api_binary()) -> api_binary().
 normalize_account_name(AccountName) ->
     wh_util:normalize_account_name(AccountName).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%        Lists call restrictions on all levels of an account
+%%        Usage: sup callflow_maintenance list_account_restrictions accountname
+%% @end
+%%--------------------------------------------------------------------
+
+-spec list_account_restrictions(ne_binary()) -> 'ok'.
+list_account_restrictions(Account) ->
+    {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
+    DbNameEncoded = wh_util:format_account_id(AccountDb,'encoded'),
+    io:format("\nAccount level classifiers:\n\n"),
+    print_call_restrictions(DbNameEncoded, wh_util:format_account_id(AccountDb,'raw')),
+    print_users_level_call_restrictions(DbNameEncoded),
+    print_devices_level_call_restrictions(DbNameEncoded),
+    print_trunkstore_call_restrictions(DbNameEncoded).
+
+-spec print_call_restrictions(ne_binary(), ne_binary()) -> 'ok'.
+print_call_restrictions(DbName, DocId) ->
+    case couch_mgr:open_doc(DbName, DocId) of
+        {'ok', JObj} ->
+            lists:foreach(fun(Classifier) ->
+                             io:format("Classifier ~p:\t\t action ~p\n",[Classifier, wh_json:get_value([<<"call_restriction">>,Classifier,<<"action">>], JObj)])
+                          end,
+                          wh_json:get_keys(<<"call_restriction">>, JObj));
+        {'error', E} ->
+            io:format("An error occurred: ~p\n", [E])
+    end.
+
+-spec print_users_level_call_restrictions(ne_binary()) -> 'ok'.
+print_users_level_call_restrictions(DbName) ->
+        case couch_mgr:get_results(DbName, <<"users/crossbar_listing">>) of
+        {'ok', JObj} ->
+            io:format("\n\nUser level classifiers:\n"),
+            lists:foreach(fun(UserObj) ->
+                             io:format("\nUsername: ~s\n\n", [wh_json:get_value([<<"value">>,<<"username">>],UserObj)]),
+                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj)) 
+                          end,
+                          JObj);
+        {'error', E} ->
+            io:format("An error occurred: ~p", [E])
+    end.
+
+-spec print_devices_level_call_restrictions(ne_binary()) -> 'ok'.
+print_devices_level_call_restrictions(DbName) ->
+        case couch_mgr:get_results(DbName, <<"devices/crossbar_listing">>) of
+        {'ok', JObj} ->
+            io:format("\n\nDevice level classifiers:\n"),
+            lists:foreach(fun(UserObj) ->
+                             io:format("\nDevice: ~s\n\n", [wh_json:get_value([<<"value">>,<<"name">>],UserObj)]),
+                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj)) 
+                          end,
+                          JObj);
+        {'error', E} ->
+            io:format("An error occurred: ~p", [E])
+    end.
+
+-spec print_trunkstore_call_restrictions(ne_binary()) -> 'ok'.
+print_trunkstore_call_restrictions(DbName) ->
+        case couch_mgr:get_results(DbName, <<"trunkstore/LookUpUserFlags">>) of
+        {'ok', JObj} ->
+            io:format("\n\nTrunkstore classifiers:\n\n"),
+            lists:foreach(fun(UserObj) ->
+                             io:format("Trunk: ~s@~s\n\n", lists:reverse(wh_json:get_value(<<"key">>,UserObj))),
+                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj)) 
+                          end,
+                          JObj);
+        {'error', E} ->
+            io:format("An error occurred: ~p", [E])
+    end.
+
