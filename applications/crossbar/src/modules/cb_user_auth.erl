@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%% User auth module
 %%% @end
@@ -24,6 +24,7 @@
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
 -define(USERNAME_LIST, <<"users/list_by_username">>).
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
+-define(USER_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"user_auth_tokens">>, 35)).
 
 %%%===================================================================
 %%% API
@@ -88,7 +89,7 @@ authenticate(Context) ->
 
 authenticate_nouns([{<<"user_auth">>, _}]) -> 'true';
 authenticate_nouns([{<<"user_auth">>, [<<"recovery">>]}]) -> 'true';
-authenticate_nouns(_) -> 'false'.
+authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -102,7 +103,12 @@ authenticate_nouns(_) -> 'false'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
-    cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1).
+    Context1 = consume_tokens(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:validate_request_data(<<"user_auth">>, Context, fun maybe_authenticate_user/1);
+        _Status -> Context1
+    end.
 
 validate(Context, <<"recovery">>) ->
     cb_context:validate_request_data(<<"user_auth_recovery">>, Context, fun maybe_recover_user_password/1).
@@ -195,10 +201,12 @@ maybe_authenticate_user(Context, Credentials, <<"sha">>, Account) ->
         'success' -> load_sha1_results(Context1, cb_context:doc(Context1));
         _Status ->
             lager:debug("credentials do not belong to any user"),
+
             cb_context:add_system_error('invalid_credentials', Context)
     end;
 maybe_authenticate_user(Context, _, _, _) ->
     lager:debug("invalid creds"),
+
     cb_context:add_system_error('invalid_credentials', Context).
 
 -spec maybe_account_is_enabled(cb_context:context(), ne_binary(), ne_binary(), wh_json:key() | wh_json:keys()) ->
@@ -487,4 +495,15 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
                                                 ,<<"The provided phone number could not be found">>
                                                 ,Context),
             find_account('undefined', AccountRealm, AccountName, C)
+    end.
+
+-spec consume_tokens(cb_context:context()) -> cb_context:context().
+consume_tokens(Context) ->
+    case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
+                                         ,?USER_AUTH_TOKENS
+                                        )
+    of
+        'true' -> cb_context:set_resp_status(Context, 'success');
+        'false' ->
+            cb_context:add_system_error('too_many_requests', Context)
     end.

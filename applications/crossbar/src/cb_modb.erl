@@ -23,7 +23,7 @@
 init() ->
     case whapps_config:get_is_true(?MODULE, <<"maybe_archive_modbs">>, 'false') of
         'true' ->
-            crossbar_bindings:bind(crossbar_cleanup:binding_account_modb(), ?MODULE, 'clean_modb');
+            crossbar_bindings:bind(crossbar_cleanup:binding_account_mod(), ?MODULE, 'clean_modb');
         'false' ->
             'ok'
     end.
@@ -31,4 +31,3 @@ init() ->
 -spec clean_modb(ne_binary()) -> 'ok'.
 clean_modb(AccountMODb) ->
     kazoo_modb:maybe_archive_modb(AccountMODb).
-

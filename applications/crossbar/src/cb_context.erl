@@ -74,7 +74,9 @@
 -type context() :: #cb_context{}.
 -type setter_fun_2() :: fun((context(), term()) -> context()).
 -type setter_fun_3() :: fun((context(), term(), term()) -> context()).
+-type setter_fun() :: setter_fun_2() | setter_fun_3().
 -export_type([context/0
+              ,setter_fun/0
               ,setter_fun_2/0
               ,setter_fun_3/0
              ]).
