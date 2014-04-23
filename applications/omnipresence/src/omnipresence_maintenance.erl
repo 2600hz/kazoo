@@ -12,6 +12,7 @@
 
 -export([current_subscriptions/0, current_subscriptions/1, current_subscriptions/2
          ,subscribe/2
+        , send_mwi_update/3
         ]).
 
 current_subscriptions() ->
@@ -44,10 +45,11 @@ print_subscription(JObj, Now) ->
     ExpiresIn = wh_json:get_integer_value(<<"expires">>, JObj) -
         (Now - wh_json:get_integer_value(<<"timestamp">>, JObj)),
 
-    io:format(" ~50.s | ~30s | ~10.ss |~n"
+    io:format(" ~50.s | ~30s | ~10.ss | ~20s |~n"
               ,[[wh_json:get_value(<<"username">>, JObj), "@", wh_json:get_value(<<"realm">>, JObj)]
                 ,wh_json:get_value(<<"from">>, JObj)
                 ,wh_util:to_binary(ExpiresIn)
+                ,wh_json:get_value(<<"event">>, JObj)
                ]).
 
 subscribe(Realm, User) ->
@@ -71,3 +73,23 @@ subscribe(Realm, User) ->
         _E ->
             io:format("Sent subscription for ~s@~s, recv'd error: ~p~n", [User, Realm, _E])
     end.
+
+-spec send_mwi_update(ne_binary(), ne_binary() | integer(), ne_binary() | integer() ) -> 'ok'.
+send_mwi_update(User, New, Saved ) when is_binary(New) ->
+  send_mwi_update(User, wh_util:to_integer(New), Saved );
+send_mwi_update(User, New, Saved ) when is_binary(Saved) ->
+  send_mwi_update(User, New, wh_util:to_integer(Saved) );
+send_mwi_update(User, New, Saved ) ->
+    DefaultAccount = <<"sip:", User/binary>>,
+    [Username, Realm] = binary:split(User, <<"@">>),
+    Command = [{<<"Messages-New">>, New}
+               ,{<<"Messages-Saved">>, Saved}
+               ,{<<"Call-ID">>, wh_util:rand_hex_binary(16) }
+               ,{<<"Notify-User">>, Username}
+               ,{<<"Notify-Realm">>, Realm}
+               ,{<<"Message-Account">>, DefaultAccount}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    whapps_util:amqp_pool_send(Command, fun wapi_notifications:publish_mwi_update/1),
+    'ok'.
+
