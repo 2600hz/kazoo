@@ -23,6 +23,7 @@
 
 -spec meter_name(ne_binary()) -> ne_binary().
 -spec meter_name(ne_binary(), api_binary()) -> ne_binary().
+meter_name(<<"*">>) -> <<"*">>;
 meter_name(HangupCause) ->
     <<?METER_PREFIX_LIST, ".", HangupCause/binary>>.
 meter_name(HangupCause, 'undefined') ->

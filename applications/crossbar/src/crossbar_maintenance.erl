@@ -47,6 +47,7 @@ migrate() ->
                    ,fun(L) -> sets:del_element(<<"cb_global_provisioner_templates">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_servers">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_schema">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_system_stats">>, L) end
 
                    ,fun(L) -> sets:add_element(<<"cb_phone_numbers">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_templates">>, L) end
@@ -67,6 +68,7 @@ migrate() ->
                    ,fun(L) -> sets:add_element(<<"cb_bulk">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_modb">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_metaflows">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_sup">>, L) end
                   ],
     UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),

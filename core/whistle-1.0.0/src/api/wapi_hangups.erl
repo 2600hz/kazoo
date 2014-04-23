@@ -28,14 +28,15 @@
                           ]).
 -define(QUERY_REQ_TYPES, [{<<"Raw-Data">>, fun wh_util:is_boolean/1}]).
 
--define(QUERY_RESP_HEADERS, [<<"one">>, <<"five">>, <<"fifteen">>, <<"day">>
-                             ,<<"count">>
-                            ]).
+-define(QUERY_RESP_HEADERS, []).
 -define(OPTIONAL_QUERY_RESP_HEADERS, [<<"mean">>
                                       ,<<"one_to_five">>, <<"five_to_fifteen">>, <<"one_to_fifteen">>
                                       ,<<"start_time">>
                                       ,<<"account_id">>
                                       ,<<"hangup_cause">>
+                                      ,<<"one">>, <<"five">>, <<"fifteen">>, <<"day">>
+                                      ,<<"count">>
+                                      ,<<"meters">>
                                      ]).
 -define(QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"hangups">>}
                             ,{<<"Event-Name">>, <<"query_resp">>}

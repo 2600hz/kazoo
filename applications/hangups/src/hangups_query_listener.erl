@@ -73,7 +73,7 @@ handle_query(JObj, N, 'true') ->
     lager:debug("finding raw stats for ~s", [N]),
     publish_resp(JObj, raw_resp(N));
 handle_query(JObj, N, 'false') ->
-    lager:debug("finding meter stats for ~s", [N]),
+    lager:debug("finding meter stats for '~p'", [N]),
     publish_resp(JObj, meter_resp(N)).
 
 -spec raw_resp(#meter{} | ne_binary()) -> wh_proplist().
@@ -112,6 +112,10 @@ ewma_to_json(#ewma{alpha=Alpha
 
 -spec meter_resp(ne_binary()) -> wh_proplist().
 -spec meter_resp(ne_binary(), wh_proplist()) -> wh_proplist().
+meter_resp(<<"*">>) ->
+    [{<<"meters">>, [wh_json:from_list(meter_resp(Name))
+                     || {Name, _Info} <- folsom_metrics:get_metrics_info()
+                    ]}];
 meter_resp(N) ->
     meter_resp(N, folsom_metrics_meter:get_values(N)).
 
@@ -120,10 +124,11 @@ meter_resp(N, [_|_]=Values) ->
           || {K, V} <- Values,
              K =/= 'acceleration'
          ],
-    [{<<"hangup_cause">>, hangups_util:meter_hangup_cause(N)}
-     ,{<<"account_id">>, hangups_util:meter_account_id(N)}
-     | get_accel(props:get_value('acceleration', Values))
-    ] ++ Vs;
+    props:filter_undefined(
+      [{<<"hangup_cause">>, hangups_util:meter_hangup_cause(N)}
+       ,{<<"account_id">>, hangups_util:meter_account_id(N)}
+       | get_accel(props:get_value('acceleration', Values))
+      ] ++ Vs);
 meter_resp(_, []) -> [].
 
 -spec publish_resp(wh_json:object(), wh_proplist()) -> 'ok'.
