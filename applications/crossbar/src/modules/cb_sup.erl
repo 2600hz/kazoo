@@ -208,7 +208,10 @@ does_resource_exist(ModuleBin, FunctionBin, Args) ->
     end.
 
 module_name(ModuleBin) ->
-    Module = wh_util:to_atom(<<ModuleBin/binary, "_maintenance">>),
+    %% NOTE: the unsafe convertion to an atom is not an issue
+    %%   in this module, despite coming from a user, because
+    %%   only the system admin has access...
+    Module = wh_util:to_atom(<<ModuleBin/binary, "_maintenance">>, 'true'),
     try Module:module_info() of
         _ -> Module
     catch
