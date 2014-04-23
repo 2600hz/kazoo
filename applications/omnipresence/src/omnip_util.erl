@@ -17,7 +17,6 @@
 -spec extract_user(ne_binary()) -> {ne_binary(), ne_binary(), ne_binaries()}.
 extract_user(User) ->
     [#uri{scheme=Proto, user=Username, domain=Realm }=Uri] = nksip_parse:uris(User),
-    lager:info("NKSIP URI ~p",[Uri]),
     {wh_util:to_binary(Proto), <<Username/binary, "@", Realm/binary>>, [Username, Realm]}.
 
 

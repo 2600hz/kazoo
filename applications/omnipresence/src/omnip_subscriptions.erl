@@ -118,7 +118,6 @@ handle_reset(JObj, _Props) ->
 %% queue, without the lookup of the current state
 -spec handle_subscribe(wh_json:object(), wh_proplist()) -> any().
 handle_subscribe(JObj, Props) ->
-    lager:info("OMNI NEW SUB  ~p", [JObj]),
     'true' = wapi_presence:subscribe_v(JObj),
     gen_listener:cast(props:get_value(?MODULE, Props)
                       ,{'subscribe', subscribe_to_record(JObj)}
@@ -126,7 +125,6 @@ handle_subscribe(JObj, Props) ->
 
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
-    lager:info("OMNI NEW MWI  ~p", [JObj]),
     'true' = wapi_notifications:mwi_update_v(JObj),
     maybe_send_mwi_update(JObj).
 
@@ -418,8 +416,6 @@ maybe_send_mwi_update(JObj) ->
                 ,{<<"Messages-Urgent-Saved">>, MessagesUrgentSaved }
                 ,{<<"Message-Account">>, MessageAccount }
                 ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-%                ,{<<"Event-Category">>, <<"message-summary">>}
-%                ,{<<"Event-Name">>, <<"message-summary">>}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     case find_subscriptions(?MWI_EVENT, To) of
@@ -441,7 +437,7 @@ send_mwi_update(Update, #omnip_subscription{stalker=S
     To = props:get_value(<<"To">>, Update),
     From = props:get_value(<<"From">>, Update, F),
 
-    lager:info("sending mwi update for '~s' from '~s' to '~s'", [To, From, S]),
+    lager:debug("sending mwi update for '~s' from '~s' to '~s'", [To, From, S]),
 
     whapps_util:amqp_pool_send([{<<"To">>, <<Proto/binary, ":", To/binary>>}
                                ,{<<"From">>, <<Proto/binary, ":", From/binary>>}
