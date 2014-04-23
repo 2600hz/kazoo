@@ -34,7 +34,6 @@
          ,content_type_matches/2
          ,ensure_content_type/1
          ,create_event_name/2
-         ,success_code/1
         ]).
 
 -include("crossbar.hrl").
@@ -969,7 +968,6 @@ do_create_resp_envelope(Context) ->
                     ,{<<"request_id">>, cb_context:req_id(Context)}
                     ,{<<"revision">>, wh_util:to_binary(cb_context:resp_etag(Context))}
                     ,{<<"data">>, RespData}
-                    ,{<<"success_code">>, success_code(cb_context:resp_error_code(Context))}
                    ];
                {'error', {ErrorCode, ErrorMsg, RespData}} ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
@@ -982,11 +980,6 @@ do_create_resp_envelope(Context) ->
                    ]
            end,
     props:filter_undefined(Resp).
-
-success_code(200) -> 200;
-success_code(201) -> 201;
-success_code(202) -> 202;
-success_code(_) -> 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @private
