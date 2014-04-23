@@ -402,10 +402,7 @@ maybe_send_mwi_update(JObj) ->
     MessagesUrgentSaved = wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0),
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
     MessageAccount = <<"sip:",To/binary>>,
-    
-                       
 
-    
     Update = props:filter_undefined(
                [{<<"To">>, To }
                 ,{<<"From">>, From }
