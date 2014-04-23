@@ -124,8 +124,17 @@ xml_el_to_kv_pair(#xmlElement{name='did'
                               ,content=Value
                              }) ->
     %% due to inconsistency in listdids
+    Num = kz_xml:texts_to_binary(Value),
     {<<"number">>
-     ,kz_xml:texts_to_binary(Value)
+     ,wnm_util:to_e164(Num)
+    };
+xml_el_to_kv_pair(#xmlElement{name='number'
+                              ,content=Value
+                             }) ->
+    %% due to inconsistency in listdids
+    Num = kz_xml:texts_to_binary(Value),
+    {<<"number">>
+     ,wnm_util:to_e164(Num)
     };
 xml_el_to_kv_pair(#xmlElement{name=Name
                               ,content=[]

@@ -184,8 +184,11 @@ process_xml_numbers(Prefix, Quantity, [El|Els], Acc) ->
 -spec number_matches_prefix(wh_json:object(), ne_binary()) -> boolean().
 number_matches_prefix(JObj, Prefix) ->
     PrefixLen = byte_size(Prefix),
+    CountryCode = wh_json:get_value(<<"country_code">>, JObj, <<"+1">>),
+    CountryCodeLen = byte_size(CountryCode),
     case wh_json:get_value(<<"number">>, JObj) of
         <<Prefix:PrefixLen/binary, _/binary>> -> 'true';
+        <<CountryCode:CountryCodeLen/binary, Prefix:PrefixLen/binary, _/binary>> -> 'true';
         _N -> 'false'
     end.
 
