@@ -44,7 +44,7 @@
                        ,[{<<"notification">>, <<"presence_update">>}]
                       }
                     ,{{'omnip_subscriptions', 'handle_mwi_update'}
-                       ,[{<<"notification">>, <<"mwi_update">>}]
+                       ,[{<<"notification">>, <<"mwi">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_subscribe'}
                        ,[{<<"presence">>, <<"subscription">>}]

@@ -18,19 +18,23 @@
                           ,<<"confirmed">>, <<"terminated">>
                          ]).
 
--define(UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>]).
+-define(UPDATE_HEADERS, [<<"To">>, <<"From">>]).
 -define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>
                                  ,<<"Call-ID">>, <<"Direction">>
-                                 ,<<"Event-Package">>
+                                 ,<<"Event-Package">>, <<"State">>
                                  ,<<"From-Tag">>, <<"To-Tag">>
                                  ,<<"Messages-Waiting">>, <<"Messages-New">>
                                  ,<<"Messages-Saved">>, <<"Messages-Urgent">>
                                  ,<<"Messages-Urgent-Saved">>, <<"Message-Account">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
-                        ,{<<"Event-Name">>, <<"update">>}                        
+                       ,{<<"Event-Name">>, <<"update">>}
                        ]).
--define(UPDATE_TYPES, [{<<"State">>, ?PRESENCE_STATES}]).
+-define(UPDATE_TYPES, [
+                       {<<"State">>, fun(A) -> lists:member(A, ?PRESENCE_STATES) end}
+                      ]).
+                                               
+
 
 -define(FLUSH_HEADERS, [<<"Type">>]).
 -define(OPTIONAL_FLUSH_HEADERS, [<<"User">>, <<"Event-Package">>]).

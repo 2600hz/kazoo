@@ -118,6 +118,7 @@ handle_reset(JObj, _Props) ->
 %% queue, without the lookup of the current state
 -spec handle_subscribe(wh_json:object(), wh_proplist()) -> any().
 handle_subscribe(JObj, Props) ->
+    lager:info("OMNI NEW SUB  ~p", [JObj]),
     'true' = wapi_presence:subscribe_v(JObj),
     gen_listener:cast(props:get_value(?MODULE, Props)
                       ,{'subscribe', subscribe_to_record(JObj)}
@@ -125,6 +126,7 @@ handle_subscribe(JObj, Props) ->
 
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
+    lager:info("OMNI NEW MWI  ~p", [JObj]),
     'true' = wapi_notifications:mwi_update_v(JObj),
     maybe_send_mwi_update(JObj).
 
@@ -416,8 +418,8 @@ maybe_send_mwi_update(JObj) ->
                 ,{<<"Messages-Urgent-Saved">>, MessagesUrgentSaved }
                 ,{<<"Message-Account">>, MessageAccount }
                 ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                ,{<<"Event-Category">>, <<"message-summary">>}
-                ,{<<"Event-Name">>, <<"message-summary">>}
+%                ,{<<"Event-Category">>, <<"message-summary">>}
+%                ,{<<"Event-Name">>, <<"message-summary">>}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     case find_subscriptions(?MWI_EVENT, To) of
@@ -429,7 +431,7 @@ maybe_send_mwi_update(JObj) ->
 
 -spec send_mwi_update(wh_proplist(), subscription()) -> 'ok'.
 send_mwi_update(Update, #omnip_subscription{stalker=S
-                                        ,protocol=P
+                                        ,protocol=Proto
                                         ,from=F
                                         ,call_id=CallID
                                         ,from_tag=FromTag
@@ -439,10 +441,10 @@ send_mwi_update(Update, #omnip_subscription{stalker=S
     To = props:get_value(<<"To">>, Update),
     From = props:get_value(<<"From">>, Update, F),
 
-    lager:debug("sending update for '~s' from '~s' to '~s'", [To, From, S]),
+    lager:info("sending mwi update for '~s' from '~s' to '~s'", [To, From, S]),
 
-    whapps_util:amqp_pool_send([{<<"To">>, <<P/binary, ":", To/binary>>}
-                               ,{<<"From">>, <<P/binary, ":", From/binary>>}
+    whapps_util:amqp_pool_send([{<<"To">>, <<Proto/binary, ":", To/binary>>}
+                               ,{<<"From">>, <<Proto/binary, ":", From/binary>>}
                                ,{<<"Call-ID">>, <<CallID/binary>>}
                                ,{<<"Event-Package">>, Event}
                                ,{<<"From-Tag">>, <<FromTag/binary>>}
@@ -527,7 +529,7 @@ subscribe_to_record(JObj) ->
                         ,stalker=wh_json:get_first_defined([<<"Queue">>
                                                             ,<<"Server-ID">>
                                                            ], JObj)
-                        ,event=wh_json:get_value(<<"Event-Package">>, JObj) 
+                        ,event=wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT) 
                         ,from_tag=wh_json:get_value(<<"From-Tag">>, JObj) 
                         ,to_tag=wh_json:get_value(<<"To-Tag">>, JObj) 
                         ,contact=wh_json:get_value(<<"Contact">>, JObj) 
