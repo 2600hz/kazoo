@@ -241,12 +241,15 @@ validate(Context, ModuleBin, FunctionBin, Args) ->
 validate_sup(Context, Module, Function, Args) ->
     OldGroupLeader = group_leader(),
     group_leader(whereis(?MODULE), self()),
+    lager:debug("attempting ~s_maintenance:~s/~p"
+                ,[Module, Function, length(Args)]),
     try apply(Module, Function, Args) of
+        'no_return' ->
+            group_leader(OldGroupLeader, self()),
+            aggregate_results(Context);
         'ok' ->
             group_leader(OldGroupLeader, self()),
-            Result = receive_io_results(),
-            lager:debug("~s_maintenance:~s/~p result: ~p", [Module, Function, length(Args), Result]),
-            crossbar_util:response(Result, Context);
+            aggregate_results(Context);
         {'error', E} ->
             group_leader(OldGroupLeader, self()),
             crossbar_util:response('error', E, Context);
@@ -262,13 +265,22 @@ validate_sup(Context, Module, Function, Args) ->
             Context
     end.
 
+-spec receive_io_results() -> binary().
 receive_io_results() ->
     receive
         {'io_result', Result} -> receive_io_results([Result])
-    after 50 -> []
+    after 50 -> <<>>
     end.
+
+-spec receive_io_results(iolist()) -> binary().
 receive_io_results(Acc) ->
     receive
         {'io_result', Result} -> receive_io_results([Result|Acc])
     after 50 -> iolist_to_binary(Acc)
     end.
+
+-spec aggregate_results(cb_context:context()) -> cb_context:context().
+aggregate_results(Context) ->
+    Result = receive_io_results(),
+    lager:debug("maintenance result: ~p", [Result]),
+    crossbar_util:response(Result, Context).
