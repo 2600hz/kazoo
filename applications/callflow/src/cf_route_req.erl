@@ -83,8 +83,16 @@ bucket_cost(Flow) ->
 -spec allow_no_match(whapps_call:call()) -> boolean().
 allow_no_match(Call) ->
     whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= 'undefined'
-        orelse (whapps_call:authorizing_type(Call) =/= 'undefined'
-                andalso whapps_call:authorizing_type(Call) =/= <<"resource">>).
+        orelse allow_no_match_type(Call).
+
+-spec allow_no_match_type(whapps_call:call()) -> boolean().
+allow_no_match_type(Call) ->
+    case whapps_call:authorizing_type(Call) of
+        'undefined' -> 'false';
+        <<"resource">> -> 'false';
+        <<"sys_info">> -> 'false';
+        _ -> 'true'
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
