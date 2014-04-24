@@ -14,6 +14,7 @@
 -export([start_link/0]).
 -export([cache_proc/0]).
 -export([listener_proc/0]).
+-export([smtp_sessions/0]).
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
@@ -57,6 +58,13 @@ listener_proc() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
                 Mod =:= 'fax_listener'],
     {'ok', P}.
+
+-spec smtp_sessions() -> any().
+smtp_sessions() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+                Mod =:= 'gen_smtp_server'],
+    Sessions = gen_smtp_server:sessions(P),
+    length(Sessions).
 
 %% ===================================================================
 %% Supervisor callbacks
