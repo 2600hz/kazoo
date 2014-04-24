@@ -222,18 +222,40 @@ save_fax_doc([],_FileContents, _CT) -> 'ok';
 save_fax_doc([Doc|Docs], FileContents, CT) ->
     case couch_mgr:save_doc(?WH_FAXES, Doc) of
         {'ok', JObj} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj),
-            Rev = wh_json:get_value(<<"_rev">>, JObj),
-            Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
-                    ,{'rev', Rev}
-                   ],
-            Name = attachment_name(<<>>, CT),
-            lager:debug("attachment name: ~s", [Name]),
-            couch_mgr:put_attachment(?WH_FAXES, DocId, Name, FileContents, Opts);
+            save_fax_attachment(JObj, FileContents, CT);
         _Else -> 'ok'
     end,
     save_fax_doc(Docs,FileContents,CT).
 
+save_fax_attachment(JObj, FileContents, CT) ->
+    DocId = wh_json:get_value(<<"_id">>, JObj),
+    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
+           ,{'rev', Rev}
+           ],
+    Name = attachment_name(<<>>, CT),    
+    case couch_mgr:put_attachment(?WH_FAXES, DocId, Name, FileContents, Opts) of
+        {'ok', DocObj} ->
+            save_fax_doc_completed(DocId);
+        {'error', E} -> 
+            lager:debug("Error ~p saving fax attachment on fax id ~s rev ~s",[E, DocId, Rev])
+    end.
+            
+save_fax_doc_completed(DocId) ->
+    case couch_mgr:open_doc(?WH_FAXES, DocId) of
+        {'error', E} ->
+            lager:debug("error ~p reading fax ~s while setting to pending",[E, DocId]);
+        {'ok', JObj} ->
+            case couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}],JObj)) of
+                {'ok', _} ->
+                    lager:debug("fax jobid ~s set to pending", [DocId]);
+                {'error', E} ->
+                    lager:debug("error ~p setting fax jobid ~s to pending",[E, DocId])
+            end
+    end.    
+            
+    
+    
 -spec check_faxbox(binary(), #state{}) ->
                           {'ok', #state{}} |
                           {'error', string(), #state{}}.
@@ -282,7 +304,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
               ]),
     { _ , JObj} = wh_json_validator:is_valid(wh_json:from_list(Props), <<"faxes">>),
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
-                              ,{<<"pvt_job_status">>, <<"pending">>}
+                              ,{<<"pvt_job_status">>, <<"attaching files">>}
                               ,{<<"pvt_created">>, wh_util:current_tstamp()}      
                               ,{<<"attempts">>, 0}
                               ,{<<"pvt_account_id">>, AccountId}
