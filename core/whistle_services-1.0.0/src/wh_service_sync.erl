@@ -262,7 +262,7 @@ sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) ->
         [] -> 'ok';
         Transactions ->
             BillingId = wh_json:get_value(<<"billing_id">>, ServiceJObj),
-            Bookkeeper:charge_transaction(BillingId, Transactions),
+            Bookkeeper:charge_transactions(BillingId, Transactions),
             case couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"transactions">>, [], ServiceJObj)) of
                 {'error', _E} -> lager:warning("failed to clean pending transactions ~p", [_E]);
                 {'ok', _} -> 'ok'
