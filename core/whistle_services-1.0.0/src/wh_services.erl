@@ -58,7 +58,10 @@
 -define(QUANTITIES, <<"quantities">>).
 
 -type services() :: #wh_services{}.
--export_type([services/0]).
+-type bookkeeper() :: 'wh_bookkeeper_braintree' | 'wh_bookkeeper_local'.
+-export_type([services/0
+              ,bookkeeper/0
+             ]).
 
 %%%===================================================================
 %%% Operations
@@ -345,7 +348,7 @@ commit_transactions(#wh_services{billing_id=BillingId}, Activations) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec select_bookkeeper(ne_binary()) -> atom().
+-spec select_bookkeeper(ne_binary()) -> bookkeeper().
 select_bookkeeper(BillingId) ->
     ResellerId = get_reseller_id(BillingId),
     MasterAccountId = whapps_util:get_master_account_id(),
