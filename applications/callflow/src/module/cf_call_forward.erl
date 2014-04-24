@@ -196,7 +196,7 @@ cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call)
                                             ,Call
                                            )
     of
-        {'ok', Short} when byte_size(Short) =< Min ->
+        {'ok', Short} when byte_size(Short) < Min ->
             lager:debug("too short of input(~p): '~s'", [Min, Short]),
             cf_update_number(CF, CaptureGroup, Call);
         {'ok', Number} ->
