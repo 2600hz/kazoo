@@ -10,7 +10,7 @@
 
 -include("kzt.hrl").
 
--export([wait_for_offnet/1
+-export([wait_for_offnet/1, wait_for_offnet/2
          ,wait_for_noop/2
          ,wait_for_hangup/1
          ,wait_for_conference/1
@@ -24,6 +24,7 @@
 
 -record(dial_req, {call :: whapps_call:call()
                    ,hangup_dtmf :: api_binary()
+                   ,collect_dtmf = 'false' :: boolean()
                    ,record_call :: boolean()
                    ,call_timeout :: integer()
                    ,call_time_limit :: integer()
@@ -82,9 +83,6 @@ collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected) ->
             end;
         {'other', OtherJObj} ->
             lager:debug("other message: ~p", [OtherJObj]),
-            collect_dtmfs(Call, FinishKey, collect_decr_timeout(Call, Timeout, Start), N, OnFirstFun, Collected);
-        _Msg ->
-            lager:debug("unhandled message: ~p", [_Msg]),
             collect_dtmfs(Call, FinishKey, collect_decr_timeout(Call, Timeout, Start), N, OnFirstFun, Collected)
     end.
 
@@ -151,13 +149,15 @@ say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, N) ->
         {'error', _, _}=ERR -> ERR
     end.
 
--spec play_loop(whapps_call:call(), ne_binary(), wh_timeout()) ->
+-spec play_loop(whapps_call:call(), binary(), wh_timeout()) ->
                        {'ok', whapps_call:call()} |
                        {'error', _, whapps_call:call()}.
--spec play_loop(whapps_call:call(), ne_binary(), list() | 'undefined', wh_timeout()) ->
+-spec play_loop(whapps_call:call(), binary(), list() | 'undefined', wh_timeout()) ->
                        {'ok', whapps_call:call()} |
                        {'error', _, whapps_call:call()}.
 play_loop(Call, PlayMe, N) -> play_loop(Call, PlayMe, 'undefined', N).
+
+play_loop(Call, <<>>, _, _) -> {'error', Call};
 play_loop(Call, _, _, 0) -> {'ok', Call};
 play_loop(Call, PlayMe, Terminators, N) ->
     NoopId = whapps_call_command:play(PlayMe, Terminators, Call),
@@ -266,16 +266,22 @@ process_noop_event(Call, NoopId, JObj) ->
 
 -spec wait_for_offnet(whapps_call:call()) -> {'ok', whapps_call:call()}.
 wait_for_offnet(Call) ->
+    wait_for_offnet(Call, []).
+
+wait_for_offnet(Call, DialProps) ->
     HangupDTMF = kzt_util:get_hangup_dtmf(Call),
     RecordCall = kzt_util:get_record_call(Call),
+
+    CollectDTMF = props:get_is_true('collect_dtmf', DialProps, 'false'),
 
     CallTimeLimit = kzt_util:get_call_time_limit(Call) * 1000,
     CallTimeout = kzt_util:get_call_timeout(Call) * 1000,
 
     lager:debug("tl: ~p t: ~p", [kzt_util:get_call_time_limit(Call), kzt_util:get_call_timeout(Call)]),
 
-    wait_for_offnet_events(#dial_req{call=Call
+    wait_for_offnet_events(#dial_req{call=kzt_util:clear_digits_collected(Call)
                                      ,hangup_dtmf=HangupDTMF
+                                     ,collect_dtmf=CollectDTMF
                                      ,record_call=RecordCall
                                      ,call_timeout=CallTimeout
                                      ,call_time_limit=CallTimeLimit
@@ -336,14 +342,12 @@ wait_for_offnet_events(#dial_req{call_timeout=CallTimeout
 
     case whapps_call_command:receive_event(RecvTimeout) of
         {'ok', JObj} -> process_offnet_event(OffnetReq, JObj);
-        {'error', 'timeout'} -> handle_offnet_timeout(OffnetReq);
-        _O ->
-            lager:debug("recv offnet other: ~p", [_O]),
-            wait_for_offnet_events(OffnetReq)
+        {'error', 'timeout'} -> handle_offnet_timeout(OffnetReq)
     end.
 
 process_offnet_event(#dial_req{call=Call
                                ,hangup_dtmf=HangupDTMF
+                               ,collect_dtmf=CollectDTMF
                                ,call_b_leg=CallBLeg
                               }=OffnetReq
                      ,JObj) ->
@@ -357,14 +361,16 @@ process_offnet_event(#dial_req{call=Call
             {'ok', kzt_util:update_call_status(call_status(RespMsg), Call)};
         {{<<"call_event">>, <<"DTMF">>}, CallId} ->
             case (DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj)) =:= HangupDTMF of
-                'false' ->
-                    lager:info("caller pressed dtmf tone '~s', adding to collection", [DTMF]),
-
+                'false' when CollectDTMF ->
+                    lager:info("collecting dtmf ~s", [DTMF]),
                     wait_for_offnet_events(
                       update_offnet_timers(
                         OffnetReq#dial_req{
                           call=kzt_util:add_digit_collected(DTMF, Call)
                          }));
+                'false' ->
+                    lager:info("caller pressed dtmf tone but we're not collecting it"),
+                    wait_for_offnet_events(update_offnet_timers(OffnetReq));
                 'true' ->
                     lager:info("recv'd hangup DTMF '~s'", [HangupDTMF]),
                     whapps_call_command:hangup(Call)
@@ -475,10 +481,7 @@ wait_for_conference_events(#dial_req{call_timeout=CallTimeout
 
     case whapps_call_command:receive_event(RecvTimeout) of
         {'ok', JObj} -> process_conference_event(OffnetReq, JObj);
-        {'error', 'timeout'} -> handle_conference_timeout(OffnetReq);
-        _O ->
-            lager:debug("recv offnet other: ~p", [_O]),
-            wait_for_conference_events(OffnetReq)
+        {'error', 'timeout'} -> handle_conference_timeout(OffnetReq)
     end.
 
 process_conference_event(#dial_req{call=Call
@@ -587,9 +590,6 @@ recording_meta(Call, MediaName) ->
                 ),
     couch_mgr:save_doc(AcctDb, MediaDoc).
 
-recording_name(ALeg) ->
-    DateTime = wh_util:pretty_print_datetime(calendar:universal_time()),
-    iolist_to_binary([DateTime, "_", ALeg, ".mp3"]).
 recording_name(ALeg, BLeg) ->
     DateTime = wh_util:pretty_print_datetime(calendar:universal_time()),
     iolist_to_binary([DateTime, "_", ALeg, "_to_", BLeg, ".mp3"]).
