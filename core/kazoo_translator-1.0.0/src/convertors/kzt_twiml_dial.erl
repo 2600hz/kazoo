@@ -65,7 +65,7 @@ exec(Call, [#xmlElement{name='Conference'
 
     lager:debug("waited for offnet, maybe ending dial"),
 
-    maybe_end_dial(Call1),
+    maybe_end_dial(Call1, DialProps),
     {'stop', Call1};
 
 exec(Call, [#xmlElement{name='Queue'
@@ -111,7 +111,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
                               kzt_util:update_call_status(?STATUS_RINGING, Call1)
                               ,Props
                              ),
-            maybe_end_dial(Call2)
+            maybe_end_dial(Call2, Props)
     end.
 
 dial_me(Call, Attrs, DialMe) ->
@@ -135,7 +135,7 @@ dial_me(Call, Attrs, DialMe) ->
                       kzt_util:update_call_status(?STATUS_RINGING, Call1)
                       ,Props
                      ),
-    maybe_end_dial(Call2).
+    maybe_end_dial(Call2, Props).
 
 send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     B = [{<<"Application-Name">>, <<"bridge">>}
@@ -160,15 +160,24 @@ setup_call_for_dial(Call, Props) ->
                 ,Setters
                ).
 
--spec maybe_end_dial(whapps_call:call()) ->
+-spec maybe_end_dial(whapps_call:call(), wh_proplist()) ->
                             {'ok' | 'stop', whapps_call:call()}.
-maybe_end_dial(Call) ->
-    case kzt_util:get_call_status(Call) of
-        ?STATUS_COMPLETED -> {'stop', Call};
-        _Status ->
-            lager:debug("a-leg status after bridge: ~s", [_Status]),
-            {'ok', Call} % will progress to next TwiML element
-    end.
+maybe_end_dial(Call, Props) ->
+    maybe_end_dial(Call, Props, kzt_twiml:action_url(Props)).
+
+maybe_end_dial(Call, _Props, 'undefined') ->
+    lager:debug("a-leg status after bridge: ~s", [kzt_util:get_call_status(Call)]),
+    {'ok', Call}; % will progress to next TwiML element
+maybe_end_dial(Call, Props, ActionUrl) ->
+    CurrentUri = kzt_util:get_voice_uri(Call),
+    NewUri = kzt_util:resolve_uri(CurrentUri, ActionUrl),
+    lager:debug("sending req to ~s: ~s", [ActionUrl, NewUri]),
+    Method = kzt_util:http_method(Props),
+
+    Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
+               ,{fun kzt_util:set_voice_uri/2, NewUri}
+              ],
+    {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}.
 
 -spec cleanup_dial_me(binary()) -> binary().
 cleanup_dial_me(Txt) -> << <<C>> || <<C>> <= Txt, is_numeric_or_plus(C)>>.
