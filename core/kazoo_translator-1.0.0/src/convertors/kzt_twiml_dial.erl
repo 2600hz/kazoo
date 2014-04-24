@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Handle the emulation of the Dial verb
 %%% @end
@@ -12,12 +12,12 @@
 
 -include("../kzt.hrl").
 
--spec exec(whapps_call:call(), xml_els(), xml_els()) ->
+-spec exec(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
                   {'ok' | 'stop', whapps_call:call()}.
 exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     whapps_call_command:answer(Call),
 
-    case wnm_util:to_e164(cleanup_dial_me(kzt_util:xml_text_to_binary(DialMeTxts))) of
+    case wnm_util:to_e164(cleanup_dial_me(kz_xml:texts_to_binary(DialMeTxts))) of
         <<>> ->
             lager:debug("no text to dial, using only xml elements"),
             exec(Call, kzt_util:xml_elements(DialMeTxts), Attrs);
@@ -109,6 +109,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
 
             {'ok', Call2} = kzt_receiver:wait_for_offnet(
                               kzt_util:update_call_status(?STATUS_RINGING, Call1)
+                              ,Props
                              ),
             maybe_end_dial(Call2)
     end.
@@ -132,6 +133,7 @@ dial_me(Call, Attrs, DialMe) ->
 
     {'ok', Call2} = kzt_receiver:wait_for_offnet(
                       kzt_util:update_call_status(?STATUS_RINGING, Call1)
+                      ,Props
                      ),
     maybe_end_dial(Call2).
 
@@ -168,7 +170,7 @@ maybe_end_dial(Call) ->
             {'ok', Call} % will progress to next TwiML element
     end.
 
--spec cleanup_dial_me(ne_binary()) -> ne_binary().
+-spec cleanup_dial_me(binary()) -> binary().
 cleanup_dial_me(Txt) -> << <<C>> || <<C>> <= Txt, is_numeric_or_plus(C)>>.
 
 -spec is_numeric_or_plus(pos_integer()) -> boolean().
