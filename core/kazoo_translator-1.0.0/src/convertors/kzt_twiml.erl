@@ -22,6 +22,7 @@
          ,get_engine/1
          ,get_voice/1
          ,exec_gather_els/3
+         ,action_url/1
         ]).
 
 parse_cmds(XMLString) ->
