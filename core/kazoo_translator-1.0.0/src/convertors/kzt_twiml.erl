@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -207,7 +207,7 @@ set_variable(Call, Attrs) ->
              ,Call
             )}.
 
--spec set_variables(whapps_call:call(), list()) -> whapps_call:call().
+-spec set_variables(whapps_call:call(), xml_els()) -> whapps_call:call().
 set_variables(Call, Els) when is_list(Els) ->
     lists:foldl(fun(#xmlElement{name='Variable'
                                 ,attributes=Attrs
@@ -216,7 +216,7 @@ set_variables(Call, Els) when is_list(Els) ->
                    (_, C) -> C
                 end, Call, Els).
 
--spec say(whapps_call:call(), list(), xml_attribs()) ->
+-spec say(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
                  {'ok', whapps_call:call()} |
                  {'error', _, whapps_call:call()}.
 say(Call, XmlText, Attrs) ->
@@ -238,12 +238,12 @@ say(Call, XmlText, Attrs) ->
         N when N > 0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, N)
     end.
 
--spec play(whapps_call:call(), list(), xml_attribs()) ->
+-spec play(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
                   {'ok', whapps_call:call()} |
                   {'error', _, whapps_call:call()}.
 play(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
-    PlayMe = kzt_util:xml_text_to_binary(XmlText),
+    PlayMe = kz_xml:texts_to_binary(XmlText),
     lager:info("PLAY '~s'", [PlayMe]),
 
     Props = kzt_util:xml_attributes_to_proplist(Attrs),
@@ -254,7 +254,7 @@ play(Call, XmlText, Attrs) ->
         N when N > 0 -> kzt_receiver:play_loop(Call, PlayMe, Terminators, N)
     end.
 
--spec redirect(whapps_call:call(), list(), xml_attribs()) ->
+-spec redirect(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
                       {'request', whapps_call:call()}.
 redirect(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
@@ -263,7 +263,7 @@ redirect(Call, XmlText, Attrs) ->
 
     CurrentUri = kzt_util:get_voice_uri(Call),
 
-    RedirectUri = kzt_util:xml_text_to_binary(XmlText),
+    RedirectUri = kz_xml:texts_to_binary(XmlText),
 
     Call1 = case kzt_util:xml_elements(XmlText) of
                 [] -> Call;
@@ -278,7 +278,7 @@ redirect(Call, XmlText, Attrs) ->
               ],
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
--spec exec_gather_els(pid(), whapps_call:call(), list()) -> 'ok'.
+-spec exec_gather_els(pid(), whapps_call:call(), xml_els()) -> 'ok'.
 exec_gather_els(_Parent, _Call, []) ->
     lager:info("finished gather sub elements");
 exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
@@ -290,7 +290,7 @@ exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
         {'ok', Call1} -> exec_gather_els(Parent, Call1, SubActions)
     end.
 
--spec exec_gather_els(whapps_call:call(), list()) ->
+-spec exec_gather_els(whapps_call:call(), xml_els()) ->
                              {'ok', whapps_call:call()}.
 exec_gather_els(Call, SubActions) ->
     {_Pid, _Ref}=PidRef =
@@ -298,7 +298,7 @@ exec_gather_els(Call, SubActions) ->
     lager:debug("started to exec gather els: ~p(~p)", [_Pid, _Ref]),
     {'ok', kzt_util:set_gather_pidref(PidRef, Call)}.
 
--spec gather(whapps_call:call(), list(), xml_attribs()) ->
+-spec gather(whapps_call:call(), xml_els(), xml_attribs()) ->
                     kzt_receiver:collect_dtmfs_return().
 gather(Call, [], Attrs) -> gather(Call, Attrs);
 gather(Call, SubActions, Attrs) ->
@@ -330,7 +330,6 @@ gather(Call, FinishKey, Timeout, Props, N) ->
         {'ok', 'timeout', C} -> gather_finished(C, Props);
         {'ok', 'dtmf_finish', C} -> gather_finished(C, Props);
         {'ok', C} -> gather_finished(C, Props);
-        {'error', _E, _C}=ERR -> ERR;
         {'stop', _C}=STOP -> STOP
     end.
 
