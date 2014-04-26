@@ -28,9 +28,9 @@
 
 -include("fax.hrl").
 
--define(BINDINGS, [{'fax', []}]).
+-define(BINDINGS, [{'fax', [{'restrict_to', ['req']}]}]).
 -define(RESPONDERS, [{{?MODULE, 'new_request'}
-                      ,[{<<"*">>, <<"*">>}]
+                      ,[{<<"dialplan">>, <<"fax_req">>}]
                      }]).
 -define(QUEUE_NAME, <<"fax_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
