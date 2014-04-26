@@ -12,8 +12,9 @@
 
 -export([start_link/1]).
 -export([handle_tx_resp/2
-         ,handle_call_event/2
          ,handle_fax_event/2
+         ,handle_channel_destroy/2
+         ,handle_job_status_query/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -30,19 +31,28 @@
                 ,pool :: api_pid()
                 ,job_id :: api_binary()
                 ,job :: api_object()
+                ,status :: binary()
+                ,pages  :: integer()
+                ,page   ::integer()
                }).
 -type state() :: #state{}.
 
 
--define(BINDINGS, [{'self', []}]).
+-define(BINDINGS, [
+                   {'self', []}
+                  ,{'fax', [{'restrict_to', ['query']}]}
+                  ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_tx_resp'}
                       ,[{<<"resource">>, <<"offnet_resp">>}]
                      }
-                     ,{{?MODULE, 'handle_call_event'}
-                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-                      }
                      ,{{?MODULE, 'handle_fax_event'}
                        ,[{<<"call_event">>, <<"CHANNEL_FAX_STATUS">>}]
+                      }
+                     ,{{?MODULE, 'handle_channel_destroy'}
+                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+                      }
+                     ,{{?MODULE, 'handle_job_status_query'}
+                       ,[{<<"fax">>, <<"query">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -69,18 +79,32 @@ start_link(_) ->
                                      ], []).
 
 handle_tx_resp(JObj, Props) ->
+    lager:info("TXRESP ~p", [JObj]),
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
-handle_call_event(JObj, Props) ->
-    Srv = props:get_value('server', Props),
-    gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
 handle_fax_event(JObj, Props) ->
+    lager:info("FAX_EVENT ~p", [JObj]),
     Srv = props:get_value('server', Props),
     JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
     Event = wh_json:get_value(<<"Application-Event">>, JObj),
     gen_server:cast(Srv, {'fax_status', Event , JobId, JObj}).
+
+handle_channel_destroy(JObj, Props) ->
+    lager:info("CHANNEL DESTROY ~p", [JObj]),
+    Srv = props:get_value('server', Props),
+    JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
+    gen_server:cast(Srv, {'channel_destroy', JobId, JObj}).
+
+handle_job_status_query(JObj, Props) ->
+    lager:info("STATUS QUERY ~p", [JObj]),
+    'true' = wapi_fax:query_v(JObj),
+    Srv = props:get_value('server', Props),
+    JobId = wh_json:get_value(<<"Job-ID">>, JObj),
+    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    gen_server:cast(Srv, {'query_status', JobId, Queue, MsgId, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -134,40 +158,68 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
     case wh_json:get_value(<<"Response-Message">>, JObj) of
         <<"SUCCESS">> ->
             lager:debug("received successful attempt to originate fax, continue processing"),
-            {'noreply', State};
+            send_status(JobId, [
+                   <<"received successful attempt to originate fax">>
+                   ,<<"negotiating">>
+                               ]),
+            {'noreply', State#state{status = <<"negotiating">>}};
         _Else ->
             lager:debug("received failed attempt to tx fax, releasing job: ~s", [_Else]),
             release_failed_job('tx_resp', JObj, Job),
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)}
     end;
-handle_cast({'tx_resp', _, _}, State) ->
+handle_cast({'tx_resp', JobId2, _}, #state{job_id=JobId}=State) ->
+    lager:debug("received txresp for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
-handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{job=Job
-                                                                      }=State) ->
+handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
+                                                    ,job=Job
+                                                    ,pool=Pid
+                                            }=State) ->
+    lager:debug("received channel destroy for ~s",[JobId]),
+    release_failed_job('channel_destroy', JObj, Job),
+    gen_server:cast(Pid, {'job_complete', self()}),
+    {'noreply', reset(State)};
+handle_cast({'channel_destroy', JobId2, JObj}, #state{job_id=JobId}=State) ->
+    lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
+    {'noreply', State};
+handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}
+           , #state{job=Job, pages=Pages}=State) ->
     TransferRate = wh_json:get_integer_value([<<"Application-Data">>,<<"Fax-Transfer-Rate">>], JObj, 1),
     lager:debug("fax status - negociate result - ~s : ~p",[JobId, TransferRate]),
-    %% TODO update stats/websockets/job
-    %%      maybe setup timer to cancel job bassed on transmission rate     
-    {'noreply', State};
-handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}, State) ->
+    Status = list_to_binary(["sending Page 1 of ", wh_util:to_list(Pages)]),
+    send_status(JobId, Status),     
+    {'noreply', State#state{status = Status, page = 1}};
+handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
+           , #state{job=Job, pages=Pages, page=Page}=State) ->
     TransferredPages = wh_json:get_value([<<"Application-Data">>, <<"Fax-Transferred-Pages">>], JObj),
     lager:debug("fax status - page result - ~s : ~p : ~p"
                 ,[JobId, TransferredPages, wh_util:current_tstamp()]),
-    _ = bump_modified(JobId),
-    %% TODO update stats/websockets/job 
-    {'noreply', State};
+    Status = list_to_binary(["sending Page ", wh_util:to_list(Page + 1), " of ", wh_util:to_list(Pages)]),
+    send_status(JobId, Status),     
+
+    {'noreply', State#state{page= Page + 1, status=Status}};
 handle_cast({'fax_status', <<"result">>, JobId, JObj}, #state{job_id=JobId
                                                               ,job=Job
                                                               ,pool=Pid
                                                              }=State) ->
-    %% TODO update stats/websockets/job 
-    release_successful_job(JObj, Job),
+    case wh_json:is_true([<<"Application-Data">>, <<"Fax-Success">>], JObj) of
+        'true' -> release_successful_job(JObj, Job);
+        'false' -> release_failed_job('fax_result', JObj, Job)
+    end,
     gen_server:cast(Pid, {'job_complete', self()}),            
     {'noreply', reset(State)};
 handle_cast({'fax_status', Event, JobId, _}, State) ->
-    lager:debug("fax status - ~s - ~s",[Event, JobId]),
-    %% TODO update stats/websockets/job 
+    lager:debug("fax status ~s - ~s event not handled",[JobId, Event]),
+    {'noreply', State};
+handle_cast({'query_status', JobId, Queue, MsgId, JObj}, #state{status=Status,job_id=JobId}=State) ->
+    lager:debug("query fax status ~s handled by this queue",[JobId]),
+    send_reply_status(Queue, MsgId, JobId, Status),
+    {'noreply', State};
+handle_cast({'query_status', JobId, Queue, MsgId, JObj}, State) ->
+    lager:debug("query fax status ~s not handled by this queue",[JobId]),
+    Status = list_to_binary(["Fax ", JobId, " not being processed by this Queue"]),
+    send_reply_status(Queue, MsgId, JobId, Status),
     {'noreply', State};
 handle_cast({_, Pid, _}, #state{queue_name='undefined'}=State) when is_pid(Pid) ->
     lager:debug("worker received request with unknown queue name, rejecting", []),
@@ -180,14 +232,16 @@ handle_cast({_, Pid, _}, #state{job_id=JobId}=State) when is_binary(JobId), is_p
 handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
     JobId = wh_json:get_value(<<"id">>, Job),
     put('callid', JobId),
-    case attempt_to_acquire_job(JobId) of
+    case attempt_to_acquire_job(JobId, Q) of
         {'ok', JObj} ->
             lager:debug("acquired job, attempting to send fax ~s", [JobId]),
             try execute_job(JObj, Q) of
                 'ok' ->
+                    Status = <<"sending">>,
                     {'noreply', State#state{job_id=JobId
                                             ,pool=Pid
                                             ,job=JObj
+                                           ,status=Status
                                            }};
                 'failure' ->
                     gen_server:cast(Pid, {'job_complete', self()}),
@@ -213,7 +267,7 @@ handle_cast({'set_sizes', NumberOfPages, FileSize}, #state{job=JObj}=State) ->
     Values = [{<<"pvt_pages">>, NumberOfPages}
               ,{<<"pvt_size">>, FileSize}
              ],
-    {'noreply',State#state{job=wh_json:set_values(Values, JObj)}};
+    {'noreply',State#state{job=wh_json:set_values(Values, JObj),pages=NumberOfPages}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -274,10 +328,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec attempt_to_acquire_job(ne_binary()) ->
+-spec attempt_to_acquire_job(ne_binary(), ne_binary()) ->
                                     {'ok', wh_json:object()} |
                                     {'error', term()}.
-attempt_to_acquire_job(Id) ->
+attempt_to_acquire_job(Id, Q) ->
     case couch_mgr:open_doc(?WH_FAXES, Id) of
         {'error', _}=E -> E;
         {'ok', JObj} ->
@@ -286,6 +340,7 @@ attempt_to_acquire_job(Id) ->
                     couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
                                                                       ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
                                                                       ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                                                      ,{<<"pvt_queue">>, Q}
                                                                      ],JObj));
                 _Else ->
                     lager:debug("job not in an available status: ~s", [_Else]),
@@ -293,20 +348,6 @@ attempt_to_acquire_job(Id) ->
             end
     end.
 
--spec bump_modified(ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
-bump_modified(JobId) ->
-    case couch_mgr:open_doc(?WH_FAXES, JobId) of
-        {'error', _}=E -> E;
-        {'ok', JObj} ->
-            case wh_json:get_value(<<"pvt_job_status">>, JObj) of
-                <<"processing">> ->
-                    lager:debug("bumped modified time for fax job ~s", [JobId]),
-                    couch_mgr:save_doc(?WH_FAXES, wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj));
-                _Else ->
-                    lager:debug("job not in an available status: ~s", [_Else]),
-                    {'error', 'invalid_job_status'}
-            end
-    end.
 
 -spec release_failed_job('fetch_failed', string(), wh_json:object()) -> 'failure';
                         ('bad_file', ne_binary(), wh_json:object()) -> 'failure';
@@ -367,16 +408,17 @@ release_failed_job('fetch_error', {Cause, _}, JObj) ->
     release_job(Result, JObj);
 release_failed_job('tx_resp', Resp, JObj) ->
     Msg = wh_json:get_value(<<"Error-Message">>, Resp),
+    <<"sip:", Code/binary>> = wh_json:get_value(<<"Response-Code">>, Resp),
     Result = [{<<"success">>, 'false'}
-              ,{<<"result_code">>, 0}
+              ,{<<"result_code">>, wh_util:to_integer(Code)}
               ,{<<"result_text">>, Msg}
               ,{<<"pages_sent">>, 0}
               ,{<<"time_elapsed">>, elapsed_time(JObj)}
-              ,{<<"fax_bad_rows">>, 0}
-              ,{<<"fax_speed">>, 0}
-              ,{<<"fax_receiver_id">>, <<>>}
-              ,{<<"fax_error_correction">>, 'false'}
              ],
+    release_job(Result, JObj, Resp);
+release_failed_job('channel_destroy', Resp, JObj) ->
+    Result = [{<<"success">>, 'false'}] 
+               ++ fax_util:collect_channel_props(Resp),
     release_job(Result, JObj, Resp);
 release_failed_job('exception', _Error, JObj) ->
     Result = [{<<"success">>, 'false'}
@@ -390,6 +432,16 @@ release_failed_job('exception', _Error, JObj) ->
               ,{<<"fax_error_correction">>, 'false'}
              ],
     release_job(Result, JObj);
+release_failed_job('fax_result', Resp, JObj) ->
+    <<"sip:", Code/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp),
+    Result = props:filter_undefined([
+               {<<"time_elapsed">>, elapsed_time(JObj)}
+              ,{<<"result_code">>, wh_util:to_integer(Code)}
+              ,{<<"result_cause">>, wh_json:get_value(<<"Hangup-Cause">>, Resp)}
+              ,{<<"success">>, 'false'}
+              | fax_util:fax_properties(wh_json:get_value(<<"Application-Data">>, Resp, Resp))
+             ]),
+    release_job(Result, JObj, Resp);
 release_failed_job('job_timeout', _Error, JObj) ->
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 0}
@@ -403,12 +455,18 @@ release_failed_job('job_timeout', _Error, JObj) ->
              ],
     release_job(Result, JObj).
 
+                      
+
+
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
+    <<"sip:", Code/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp),
     Result = props:filter_undefined([
                {<<"time_elapsed">>, elapsed_time(JObj)}
+              ,{<<"result_code">>, wh_util:to_integer(Code)}
+              ,{<<"result_cause">>, wh_json:get_value(<<"Hangup-Cause">>, Resp)}
               ,{<<"pvt_delivered_date">>,
-                case wh_json:is_true([<<"Fax-Success">>,<<"Application-Data">>], Resp) of
+                case wh_json:is_true([<<"Application-Data">>, <<"Fax-Success">>], Resp) of
                     'true' -> wh_util:current_tstamp();
                     'false' -> 'undefined'
                 end
@@ -424,7 +482,8 @@ release_job(Result, JObj) ->
 -spec release_job(wh_proplist(), wh_json:object(), wh_json:object()) -> 'ok' | 'failure'.
 release_job(Result, JObj, Resp) ->
     Success = props:is_true(<<"success">>, Result, 'false'),
-    Updaters = [fun(J) -> wh_json:set_value(<<"tx_result">>, wh_json:from_list(Result), J) end
+    Updaters = [ fun(J) -> wh_json:set_value(<<"tx_result">>, wh_json:from_list(Result), J) end
+                ,fun(J) -> wh_json:delete_key(<<"pvt_queue">>, J) end
                 ,fun(J) ->
                          Attempts = wh_json:get_integer_value(<<"attempts">>, J, 0),
                          Retries = wh_json:get_integer_value(<<"retries">>, J, 1),
@@ -453,7 +512,7 @@ release_job(Result, JObj, Resp) ->
 
 -spec maybe_notify(wh_proplist(), wh_json:object(), wh_json:object(), ne_binary()) -> any().
 maybe_notify(Result, JObj, Resp, <<"completed">>) ->
-    Message = notify_fields(JObj, Resp),                                     
+    Message = notify_fields(JObj, Resp),
     wapi_notifications:publish_fax_outbound(Message);
 maybe_notify(Result, JObj, Resp, <<"failed">>) ->
     Message = notify_fields(JObj, Resp),                                     
@@ -462,8 +521,14 @@ maybe_notify(Result, JObj, Resp, Status) ->
     lager:debug("notify Status ~p not handled",[Status]).
 
 
--spec notify_fields(wh_json:object(), wh_json:object()) -> any().
+-spec notify_fields(wh_json:object(), wh_json:object()) -> wh_proplist().
 notify_fields(JObj, Resp) ->
+    <<"sip:", HangupCode/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp),
+    HangupCause =  wh_json:get_value(<<"Hangup-Cause">>, Resp),
+    FaxFields = [{"Fax-Hangup-Code", wh_util:to_integer(HangupCode)}
+                ,{"Fax-Hangup-Cause", HangupCause}
+                 ] ++ fax_fields(wh_json:get_value(<<"Application-Data">>, Resp)),
+    
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
     Notify = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], JObj),
@@ -478,26 +543,26 @@ notify_fields(JObj, Resp) ->
       ,{<<"Fax-Notifications">>,
         wh_json:from_list([{<<"email">>,
           wh_json:from_list([{<<"send_to">>, Notify}])}])}
-      ,{<<"Fax-Info">>, fax_info(wh_json:get_value(<<"Application-Data">>, Resp)) }
+      ,{<<"Fax-Info">>, wh_json:from_list(FaxFields) }
       ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).    
 
--spec fax_info(wh_json:object()) -> api_object().
-fax_info('undefined') ->
-    'undefined';
-fax_info(JObj) ->
-    wh_json:from_list( fax_fields(JObj)).    
 
 -spec fax_fields(wh_json:object()) -> wh_proplist().
 fax_fields('undefined') ->
-    'undefined';
+    [];
 fax_fields(JObj) ->
     [{K,V} || {<<"Fax-", _/binary>> = K, V} <- wh_json:to_proplist(JObj)].
 
 -spec elapsed_time(wh_json:object()) -> non_neg_integer().
 elapsed_time(JObj) ->
     wh_util:current_tstamp() - wh_json:get_integer_value(<<"pvt_created">>, JObj, wh_util:current_tstamp()).
+
+
+
+
+
 
 -spec execute_job(wh_json:object(), ne_binary()) -> 'ok' | 'failure'.
 execute_job(JObj, Q) ->
@@ -647,9 +712,8 @@ send_fax(JobId, JObj, Q) ->
                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
               ]),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-                                              ,{'restrict_to', [<<"CHANNEL_DESTROY">>
-                                                                ,<<"CHANNEL_FAX_STATUS">>
-                                                               ]}
+                                             ,{'restrict_to',[<<"CHANNEL_FAX_STATUS">>]
+                                              }
                                              ]),
     wapi_offnet_resource:publish_req(Request).
 
@@ -668,3 +732,27 @@ reset(State) ->
                 ,job='undefined'
                 ,pool='undefined'
                }.
+
+-spec send_status(ne_binary(), ne_binary() | ne_binaries()) -> any().
+send_status(JobId, []) ->
+    'ok';
+send_status(JobId, [Status|Other]) ->
+    send_status(JobId, Status),
+    send_status(JobId, Other);
+send_status(JobId, Status) ->
+    Payload = props:filter_undefined(
+      [{<<"Job-ID">>, JobId}
+      ,{<<"Status">>, Status}
+      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]),
+    wapi_fax:publish_status(Payload).    
+
+-spec send_reply_status(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_reply_status(Q, MsgId, JobId, Status) ->
+    Payload = props:filter_undefined(
+      [{<<"Job-ID">>, JobId}
+      ,{<<"Status">>, Status}
+      ,{<<"Msg-ID">>, MsgId}
+      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]),    
+    wapi_fax:publish_targeted_status(Q, Payload).    
