@@ -291,7 +291,7 @@ relay_event(Pid, JObj, RelayFun) ->
                            {'error', 'timeout'}.
 -spec receive_event(wh_timeout(), boolean()) ->
                            {'ok', wh_json:object()} |
-                           {'other', wh_json:object()} |
+                           {'other', wh_json:object() | term()} |
                            {'error', 'timeout'}.
 receive_event(Timeout) -> receive_event(Timeout, 'true').
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
@@ -300,7 +300,7 @@ receive_event(Timeout, IgnoreOthers) ->
     receive
         {'amqp_msg', JObj} -> {'ok', JObj};
         _ when IgnoreOthers ->
-            receive_event(Timeout - wh_util:elapsed_ms(Start), IgnoreOthers);
+            receive_event(wh_util:decr_timeout(Timeout, Start), IgnoreOthers);
         Other -> {'other', Other}
     after
         Timeout -> {'error', 'timeout'}
@@ -851,9 +851,9 @@ b_prompt(Prompt, Lang, Call) -> b_play(whapps_util:get_prompt(Prompt, Lang, Call
 %%--------------------------------------------------------------------
 -spec play(ne_binary(), whapps_call:call()) ->
                   ne_binary().
--spec play(ne_binary(), ne_binaries(), whapps_call:call()) ->
+-spec play(ne_binary(), api_binaries(), whapps_call:call()) ->
                   ne_binary().
--spec play(ne_binary(), ne_binaries(), api_binary(), whapps_call:call()) ->
+-spec play(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
                   ne_binary().
 
 -spec play_command(ne_binary(), whapps_call:call()) ->
@@ -865,9 +865,9 @@ b_prompt(Prompt, Lang, Call) -> b_play(whapps_util:get_prompt(Prompt, Lang, Call
 
 -spec b_play(ne_binary(), whapps_call:call()) ->
                     whapps_api_std_return().
--spec b_play(ne_binary(), ne_binaries(), whapps_call:call()) ->
+-spec b_play(ne_binary(), api_binaries(), whapps_call:call()) ->
                     whapps_api_std_return().
--spec b_play(ne_binary(), ne_binaries(), api_binary(), whapps_call:call()) ->
+-spec b_play(ne_binary(), api_binaries(), api_binary(), whapps_call:call()) ->
                     whapps_api_std_return().
 
 play_command(Media, Call) ->

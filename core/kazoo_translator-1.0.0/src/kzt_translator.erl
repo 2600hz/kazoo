@@ -26,15 +26,11 @@ exec(Call, Cmds, 'undefined') ->
 exec(Call, Cmds, CT) when not is_binary(CT) ->
     exec(Call, Cmds, wh_util:to_binary(CT));
 exec(Call, Cmds, CT) ->
-    case find_candidate_translators(just_the_type(CT)) of
-        [] -> throw({'error', 'no_translators', CT});
-        Mods ->
-            case [{M, Cmd1} || M <- Mods,
-                               begin {IsRecognized, Cmd1} = is_recognized(M, Cmds), IsRecognized end
-                 ] of
-                [] -> throw({'error', 'unrecognized_cmds'});
-                [{Translator, Cmds1}|_] -> Translator:exec(Call, Cmds1)
-            end
+    case [{M, Cmd1} || M <- find_candidate_translators(just_the_type(CT)),
+                       begin {IsRecognized, Cmd1} = is_recognized(M, Cmds), IsRecognized end
+         ] of
+        [] -> throw({'error', 'unrecognized_cmds'});
+        [{Translator, Cmds1}|_] -> Translator:exec(Call, Cmds1)
     end.
 
 just_the_type(ContentType) ->
@@ -55,6 +51,7 @@ set_user_vars(Prop, Call) ->
     UserVars = get_user_vars(Call),
     whapps_call:kvs_store(?KZT_USER_VARS, wh_json:set_values(Prop, UserVars), Call).
 
+-spec find_candidate_translators(ne_binary()) -> atoms().
 find_candidate_translators(<<"text/xml">>) ->
     ['kzt_twiml'];
 find_candidate_translators(<<"application/xml">>) ->
@@ -62,7 +59,7 @@ find_candidate_translators(<<"application/xml">>) ->
 find_candidate_translators(<<"application/json">>) ->
     ['kzt_kazoo'];
 find_candidate_translators(_) ->
-    ['kzt_twiml'].
+    ['kzt_twiml', 'kzt_kazoo'].
 
 is_recognized(M, Cmds) ->
     case catch M:parse_cmds(Cmds) of

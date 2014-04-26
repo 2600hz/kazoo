@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Handle the emulation of the Dial verb
 %%% @end
@@ -12,12 +12,12 @@
 
 -include("../kzt.hrl").
 
--spec exec(whapps_call:call(), xml_els(), xml_els()) ->
+-spec exec(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
                   {'ok' | 'stop', whapps_call:call()}.
 exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     whapps_call_command:answer(Call),
 
-    case wnm_util:to_e164(cleanup_dial_me(kzt_util:xml_text_to_binary(DialMeTxts))) of
+    case wnm_util:to_e164(cleanup_dial_me(kz_xml:texts_to_binary(DialMeTxts))) of
         <<>> ->
             lager:debug("no text to dial, using only xml elements"),
             exec(Call, kzt_util:xml_elements(DialMeTxts), Attrs);
@@ -65,7 +65,7 @@ exec(Call, [#xmlElement{name='Conference'
 
     lager:debug("waited for offnet, maybe ending dial"),
 
-    maybe_end_dial(Call1),
+    maybe_end_dial(Call1, DialProps),
     {'stop', Call1};
 
 exec(Call, [#xmlElement{name='Queue'
@@ -109,8 +109,9 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
 
             {'ok', Call2} = kzt_receiver:wait_for_offnet(
                               kzt_util:update_call_status(?STATUS_RINGING, Call1)
+                              ,Props
                              ),
-            maybe_end_dial(Call2)
+            maybe_end_dial(Call2, Props)
     end.
 
 dial_me(Call, Attrs, DialMe) ->
@@ -132,8 +133,9 @@ dial_me(Call, Attrs, DialMe) ->
 
     {'ok', Call2} = kzt_receiver:wait_for_offnet(
                       kzt_util:update_call_status(?STATUS_RINGING, Call1)
+                      ,Props
                      ),
-    maybe_end_dial(Call2).
+    maybe_end_dial(Call2, Props).
 
 send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     B = [{<<"Application-Name">>, <<"bridge">>}
@@ -158,17 +160,26 @@ setup_call_for_dial(Call, Props) ->
                 ,Setters
                ).
 
--spec maybe_end_dial(whapps_call:call()) ->
+-spec maybe_end_dial(whapps_call:call(), wh_proplist()) ->
                             {'ok' | 'stop', whapps_call:call()}.
-maybe_end_dial(Call) ->
-    case kzt_util:get_call_status(Call) of
-        ?STATUS_COMPLETED -> {'stop', Call};
-        _Status ->
-            lager:debug("a-leg status after bridge: ~s", [_Status]),
-            {'ok', Call} % will progress to next TwiML element
-    end.
+maybe_end_dial(Call, Props) ->
+    maybe_end_dial(Call, Props, kzt_twiml:action_url(Props)).
 
--spec cleanup_dial_me(ne_binary()) -> ne_binary().
+maybe_end_dial(Call, _Props, 'undefined') ->
+    lager:debug("a-leg status after bridge: ~s", [kzt_util:get_call_status(Call)]),
+    {'ok', Call}; % will progress to next TwiML element
+maybe_end_dial(Call, Props, ActionUrl) ->
+    CurrentUri = kzt_util:get_voice_uri(Call),
+    NewUri = kzt_util:resolve_uri(CurrentUri, ActionUrl),
+    lager:debug("sending req to ~s: ~s", [ActionUrl, NewUri]),
+    Method = kzt_util:http_method(Props),
+
+    Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
+               ,{fun kzt_util:set_voice_uri/2, NewUri}
+              ],
+    {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}.
+
+-spec cleanup_dial_me(binary()) -> binary().
 cleanup_dial_me(Txt) -> << <<C>> || <<C>> <= Txt, is_numeric_or_plus(C)>>.
 
 -spec is_numeric_or_plus(pos_integer()) -> boolean().
