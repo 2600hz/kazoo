@@ -24,6 +24,7 @@
 -export([activation_charges/3]).
 -export([commit_transactions/2]).
 -export([select_bookkeeper/1]).
+-export([check_bookkeeper/2]).
 -export([set_billing_id/2]).
 -export([get_billing_id/1]).
 -export([find_reseller_id/1]).
@@ -356,6 +357,22 @@ select_bookkeeper(BillingId) ->
         'true' -> 'wh_bookkeeper_local';
         'false' ->
             whapps_config:get_atom(?WHS_CONFIG_CAT, <<"master_account_bookkeeper">>, 'wh_bookkeeper_local')
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec check_bookkeeper(ne_binary(), integer()) -> boolean().
+check_bookkeeper(BillingId, Amount) ->
+    Bookkeeper = select_bookkeeper(BillingId),
+    case Bookkeeper of
+        'wh_bookkeeper_braintree' -> 'true';
+        'wh_bookkeeper_local' ->
+            Balance = wht_util:current_balance(BillingId),
+            Balance - Amount =< 0
     end.
 
 %%--------------------------------------------------------------------
