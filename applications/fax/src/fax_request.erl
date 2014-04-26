@@ -179,7 +179,7 @@ handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
     lager:debug("worker discovered queue name ~s", [QueueName]),
     {'noreply', State };
 handle_cast({'gen_listener',{'is_consuming',_}}, State) ->
-    start_receive_fax(State);    
+    start_receive_fax(State);
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
