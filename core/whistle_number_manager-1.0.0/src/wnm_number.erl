@@ -1160,21 +1160,22 @@ activate_feature(Feature, #number{services=Services}=N) ->
 activate_feature(Feature, 0, #number{features=Features}=N) ->
     lager:debug("no activation charge for ~s", [Feature]),
     N#number{features=sets:add_element(Feature, Features)};
-activate_feature(Feature, Units, #number{current_balance='undefined'
-                                         ,billing_id=Account
-                                        }=N) ->
-    activate_feature(Feature, Units, N#number{current_balance=wht_util:current_balance(Account)});
-activate_feature(Feature, Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
-    Reason = io_lib:format("not enough credit to activate feature '~s' for $~p", [Feature, wht_util:units_to_dollars(Units)]),
-    lager:debug("failed to activate: ~s", [Reason]),
-    error_service_restriction(Reason, N);
-activate_feature(Feature, Units, #number{current_balance=Balance
+activate_feature(Feature, Units, #number{feature_activation_charges=Charges
+                                         ,billing_id=BillingId
                                          ,features=Features
                                         }=N) ->
-    N#number{activations=append_feature_debit(Feature, Units, N)
-             ,features=sets:add_element(Feature, Features)
-             ,current_balance=Balance - Units
-            }.
+    Charge = Charges + Units,
+    case wh_services:check_bookkeeper(BillingId, Charge) of
+        'false' ->
+            Reason = io_lib:format("not enough credit to activate feature '~s' for $~p", [Feature, wht_util:units_to_dollars(Units)]),
+            lager:debug("failed to activate: ~s", [Reason]),
+            error_service_restriction(Reason, N);
+        'true' ->
+            N#number{activations=append_feature_debit(Feature, Units, N)
+                     ,features=sets:add_element(Feature, Features)
+                     ,feature_activation_charges=Charge
+                    }
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1195,16 +1196,19 @@ activate_phone_number(#number{services=Services, number=Number}=N) ->
 activate_phone_number(0, #number{number=Number}=N) ->
     lager:debug("no activation charge for ~s", [Number]),
     N;
-activate_phone_number(Units, #number{current_balance='undefined', billing_id=Account}=N) ->
-    activate_phone_number(Units, N#number{current_balance=wht_util:current_balance(Account)});
-activate_phone_number(Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
-    Reason = io_lib:format("not enough credit to activate number for $~p", [wht_util:units_to_dollars(Units)]),
-    lager:debug("~s", [Reason]),
-    error_service_restriction(Reason, N);
-activate_phone_number(Units, #number{current_balance=Balance}=N) ->
-    N#number{activations=append_phone_number_debit(Units, N)
-             ,current_balance=Balance - Units
-            }.
+activate_phone_number(Units, #number{phone_number_activation_charges=Charges
+                                     ,billing_id=BillingId}=N) ->
+    Charge = Charges + Units,
+    case wh_services:check_bookkeeper(BillingId, Charge) of
+        'false' ->
+            Reason = io_lib:format("not enough credit to activate number for $~p", [wht_util:units_to_dollars(Units)]),
+            lager:debug("~s", [Reason]),
+            error_service_restriction(Reason, N);
+        'true' ->
+            N#number{activations=append_phone_number_debit(Units, N)
+                     ,phone_number_activation_charges=Charge
+            }
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
