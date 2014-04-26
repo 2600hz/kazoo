@@ -536,10 +536,10 @@ originate_execute(Node, Dialstrings, Timeout) ->
             {'ok', wh_util:strip_binary(binary:replace(UUID, <<"\n">>, <<>>))};
         {'ok', Other} ->
             lager:debug("recv other 'ok': ~s", [Other]),
-            {'error', Other};
-        {'error', _E}=Error ->
-            lager:debug("error originating: ~s", [_E]),
-            Error
+            {'error', wh_util:strip_binary(binary:replace(Other, <<"\n">>, <<>>))};
+        {'error', Error} ->
+            lager:debug("error originating: ~s", [Error]),
+            {'error', wh_util:strip_binary(binary:replace(Error, <<"\n">>, <<>>))}                        
     end.
 
 -spec bind_to_call_events(ne_binary()) -> 'ok'.
