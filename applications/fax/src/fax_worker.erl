@@ -33,6 +33,7 @@
                 ,job :: api_object()
                 ,account_id :: api_binary()
                 ,status :: binary()
+                ,fax_status :: api_object()
                 ,pages  :: integer()
                 ,page   ::integer()
                }).
@@ -163,7 +164,7 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
             send_status(JobId, [
                    <<"received successful attempt to originate fax">>
                    ,<<"negotiating">>
-                               ], AccountId),
+                               ], AccountId, wh_json:new()),
             {'noreply', State#state{status = <<"negotiating">>}};
         _Else ->
             lager:debug("received failed attempt to tx fax, releasing job: ~s", [_Else]),
@@ -187,31 +188,34 @@ handle_cast({'channel_destroy', JobId2, JObj}, #state{job_id=JobId}=State) ->
     {'noreply', State};
 handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}
            , #state{job=Job, pages=Pages, account_id=AccountId}=State) ->
-    TransferRate = wh_json:get_integer_value([<<"Application-Data">>,<<"Fax-Transfer-Rate">>], JObj, 1),
+    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
+    TransferRate = wh_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
     lager:debug("fax status - negociate result - ~s : ~p",[JobId, TransferRate]),
     Status = list_to_binary(["sending Page 1 of ", wh_util:to_list(Pages)]),
-    send_status(JobId, Status, AccountId),     
-    {'noreply', State#state{status = Status, page = 1}};
+    send_status(JobId, Status, AccountId, Data),     
+    {'noreply', State#state{status=Status, page=1, fax_status=Data}};
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
            , #state{job=Job, pages=Pages, page=Page, account_id=AccountId}=State) ->
-    TransferredPages = wh_json:get_value([<<"Application-Data">>, <<"Fax-Transferred-Pages">>], JObj),
+    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
+    TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, Data),
     lager:debug("fax status - page result - ~s : ~p : ~p"
                 ,[JobId, TransferredPages, wh_util:current_tstamp()]),
     Status = case Pages =:= Page of
                  'true' -> list_to_binary(["sent Page ", wh_util:to_list(Page), " of ", wh_util:to_list(Pages)]);
                  'false' -> list_to_binary(["sending Page ", wh_util:to_list(Page + 1), " of ", wh_util:to_list(Pages)])
              end,
-    send_status(JobId, Status, AccountId),
+    send_status(JobId, Status, AccountId, Data),
 
-    {'noreply', State#state{page= Page + 1, status=Status}};
+    {'noreply', State#state{page=Page + 1, status=Status, fax_status=Data}};
 handle_cast({'fax_status', <<"result">>, JobId, JObj}
            , #state{job_id=JobId,job=Job,pool=Pid,account_id=AccountId}=State) ->
+    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
     case wh_json:is_true([<<"Application-Data">>, <<"Fax-Success">>], JObj) of
         'true' ->
-            send_status(JobId, <<"Fax Successfuly sent">>, AccountId),
+            send_status(JobId, <<"Fax Successfuly sent">>, AccountId, Data),
             release_successful_job(JObj, Job);
         'false' -> 
-            send_status(JobId, <<"Erro sending fax">>, AccountId),
+            send_status(JobId, <<"Erro sending fax">>, AccountId, Data),
             release_failed_job('fax_result', JObj, Job)
     end,
     gen_server:cast(Pid, {'job_complete', self()}),            
@@ -220,14 +224,14 @@ handle_cast({'fax_status', Event, JobId, _}, State) ->
     lager:debug("fax status ~s - ~s event not handled",[JobId, Event]),
     {'noreply', State};
 handle_cast({'query_status', JobId, Queue, MsgId, JObj}
-           , #state{status=Status,job_id=JobId, account_id=AccountId}=State) ->
+           , #state{status=Status,job_id=JobId, account_id=AccountId, fax_status=Data}=State) ->
     lager:debug("query fax status ~s handled by this queue",[JobId]),
-    send_reply_status(Queue, MsgId, JobId, Status, AccountId),
+    send_reply_status(Queue, MsgId, JobId, Status, AccountId, Data),
     {'noreply', State};
 handle_cast({'query_status', JobId, Queue, MsgId, JObj}, State) ->
     lager:debug("query fax status ~s not handled by this queue",[JobId]),
     Status = list_to_binary(["Fax ", JobId, " not being processed by this Queue"]),
-    send_reply_status(Queue, MsgId, JobId, Status, <<"*">>),
+    send_reply_status(Queue, MsgId, JobId, Status, <<"*">>,'undefined'),
     {'noreply', State};
 handle_cast({_, Pid, _}, #state{queue_name='undefined'}=State) when is_pid(Pid) ->
     lager:debug("worker received request with unknown queue name, rejecting", []),
@@ -252,6 +256,7 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
                                            ,job=JObj
                                            ,account_id=AccountId
                                            ,status=Status
+                                           ,fax_status=wh_json:new()                                           
                                            }};
                 'failure' ->
                     gen_server:cast(Pid, {'job_complete', self()}),
@@ -743,28 +748,30 @@ reset(State) ->
                 ,pool='undefined'
                }.
 
--spec send_status(ne_binary(), ne_binary() | ne_binaries(), ne_binary()) -> any().
-send_status(JobId, [], _) ->
+-spec send_status(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), api_object()) -> any().
+send_status(JobId, [], _, _) ->
     'ok';
-send_status(JobId, [Status|Other], AccountId) ->
-    send_status(JobId, Status, AccountId),
-    send_status(JobId, Other, AccountId);
-send_status(JobId, Status, AccountId) ->
+send_status(JobId, [Status|Other], AccountId, JObj) ->
+    send_status(JobId, Status, AccountId, JObj),
+    send_status(JobId, Other, AccountId, JObj);
+send_status(JobId, Status, AccountId, JObj) ->
     Payload = props:filter_undefined(
       [{<<"Job-ID">>, JobId}
       ,{<<"Status">>, Status}
       ,{<<"Account-ID">>, AccountId}
+      ,{<<"Fax-Info">>, JObj}
       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]),
     wapi_fax:publish_status(Payload).    
 
--spec send_reply_status(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_reply_status(Q, MsgId, JobId, Status, AccountId) ->
+-spec send_reply_status(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
+send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
     Payload = props:filter_undefined(
       [{<<"Job-ID">>, JobId}
       ,{<<"Status">>, Status}
       ,{<<"Msg-ID">>, MsgId}
       ,{<<"Account-ID">>, AccountId}
+      ,{<<"Fax-Info">>, JObj}
       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]),    
     wapi_fax:publish_targeted_status(Q, Payload).    

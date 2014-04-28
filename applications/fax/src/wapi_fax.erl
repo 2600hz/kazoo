@@ -43,7 +43,7 @@
 
 
 -define(FAX_STATUS_HEADERS, [<<"Job-ID">>]).
--define(OPTIONAL_FAX_STATUS_HEADERS, [<<"Status">>, <<"Fax-BoxId">>, <<"Account-ID">>]).
+-define(OPTIONAL_FAX_STATUS_HEADERS, [<<"Status">>, <<"Fax-BoxId">>, <<"Account-ID">>, <<"Fax-Info">>]).
 -define(FAX_STATUS_VALUES, [{<<"Event-Category">>,<<"fax">>}
                          ,{<<"Event-Name">>, <<"status">>}
                         ]).
