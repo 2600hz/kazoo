@@ -197,15 +197,22 @@ handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
     TransferredPages = wh_json:get_value([<<"Application-Data">>, <<"Fax-Transferred-Pages">>], JObj),
     lager:debug("fax status - page result - ~s : ~p : ~p"
                 ,[JobId, TransferredPages, wh_util:current_tstamp()]),
-    Status = list_to_binary(["sending Page ", wh_util:to_list(Page + 1), " of ", wh_util:to_list(Pages)]),
-    send_status(JobId, Status, AccountId),     
+    Status = case Pages =:= Page of
+                 'true' -> list_to_binary(["sent Page ", wh_util:to_list(Page), " of ", wh_util:to_list(Pages)]);
+                 'false' -> list_to_binary(["sending Page ", wh_util:to_list(Page + 1), " of ", wh_util:to_list(Pages)])
+             end,
+    send_status(JobId, Status, AccountId),
 
     {'noreply', State#state{page= Page + 1, status=Status}};
 handle_cast({'fax_status', <<"result">>, JobId, JObj}
-           , #state{job_id=JobId,job=Job,pool=Pid}=State) ->
+           , #state{job_id=JobId,job=Job,pool=Pid,account_id=AccountId}=State) ->
     case wh_json:is_true([<<"Application-Data">>, <<"Fax-Success">>], JObj) of
-        'true' -> release_successful_job(JObj, Job);
-        'false' -> release_failed_job('fax_result', JObj, Job)
+        'true' ->
+            send_status(JobId, <<"Fax Successfuly sent">>, AccountId),
+            release_successful_job(JObj, Job);
+        'false' -> 
+            send_status(JobId, <<"Erro sending fax">>, AccountId),
+            release_failed_job('fax_result', JObj, Job)
     end,
     gen_server:cast(Pid, {'job_complete', self()}),            
     {'noreply', reset(State)};
@@ -232,18 +239,18 @@ handle_cast({_, Pid, _}, #state{job_id=JobId}=State) when is_binary(JobId), is_p
     {'noreply', State};
 handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
     JobId = wh_json:get_value(<<"id">>, Job),
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, Job),
     put('callid', JobId),
     case attempt_to_acquire_job(JobId, Q) of
         {'ok', JObj} ->
             lager:debug("acquired job, attempting to send fax ~s", [JobId]),
             try execute_job(JObj, Q) of
                 'ok' ->
+                    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
                     Status = <<"sending">>,
                     {'noreply', State#state{job_id=JobId
                                            ,pool=Pid
                                            ,job=JObj
-                                           ,account_id = AccountId
+                                           ,account_id=AccountId
                                            ,status=Status
                                            }};
                 'failure' ->
@@ -436,7 +443,7 @@ release_failed_job('exception', _Error, JObj) ->
              ],
     release_job(Result, JObj);
 release_failed_job('fax_result', Resp, JObj) ->
-    <<"sip:", Code/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp),
+    <<"sip:", Code/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:487">>),
     Result = props:filter_undefined([
                {<<"time_elapsed">>, elapsed_time(JObj)}
               ,{<<"result_code">>, wh_util:to_integer(Code)}
@@ -463,7 +470,7 @@ release_failed_job('job_timeout', _Error, JObj) ->
 
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
-    <<"sip:", Code/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp),
+    <<"sip:", Code/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:200">>),
     Result = props:filter_undefined([
                {<<"time_elapsed">>, elapsed_time(JObj)}
               ,{<<"result_code">>, wh_util:to_integer(Code)}
