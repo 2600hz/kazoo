@@ -584,7 +584,7 @@ update_quantity(Category, Item, #wh_services{updates=JObj}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec category_quantity(ne_binary(), ne_binaries(), services()) -> integer().
-category_quantity(_, _, #wh_services{deleted='true'}) -> 'true';
+category_quantity(_, _, #wh_services{deleted='true'}) -> 0;
 category_quantity(Category, Exceptions, #wh_services{updates=UpdatedQuantities
                                                      ,jobj=JObj
                                                     }) ->
