@@ -34,6 +34,8 @@
 
 -define(INBOUND_FORMATS, [<<"E.164">>, <<"NPANXXXXXX">>, <<"1NPANXXXXXX">>, <<"e164">>, <<"npan">>, <<"1npan">>]).
 
+-define(TS_CONFIG_CAT, <<"trunkstore">>).
+
 % just want to deal with binary K/V pairs
 %%-type proplist() :: list(tuple(binary(), binary())) | [].
 -type active_calls() :: list(tuple(binary(), flat_rate | per_min)) | [].

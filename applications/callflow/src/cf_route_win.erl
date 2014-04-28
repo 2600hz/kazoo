@@ -44,8 +44,7 @@ maybe_restrict_call(JObj, Call) ->
 should_restrict_call(Call) ->
     case cf_endpoint:get(Call) of
         {'error', _R} -> 'false';
-        {'ok', JObj} ->
-            maybe_closed_group_restriction(JObj, Call)
+        {'ok', JObj} -> maybe_closed_group_restriction(JObj, Call)
     end.
 
 -spec maybe_closed_group_restriction(wh_json:object(), whapps_call:call()) -> boolean().
