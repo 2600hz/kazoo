@@ -97,43 +97,45 @@ status_v(JObj) ->
 
 
 bind_q(Queue, Props) ->
+    AccountId = props:get_value('account_id', Props, <<"*">>),
     JobId = props:get_value('jobid', Props, <<"*">>),
-    bind_q(Queue, JobId, props:get_value('restrict_to', Props)).    
+    bind_q(Queue, AccountId, JobId, props:get_value('restrict_to', Props)).    
 
-bind_q(Queue, JobId, 'undefined') ->
+bind_q(Queue, AccountId, JobId, 'undefined') ->
     amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
-    amqp_util:bind_q_to_exchange(Queue, status_routing_key(JobId), ?FAX_EXCHANGE),
+    amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, JobId), ?FAX_EXCHANGE),
     amqp_util:bind_q_to_targeted(Queue);
-bind_q(Queue, JobId, ['status'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, status_routing_key(JobId), ?FAX_EXCHANGE),
-    bind_q(Queue, JobId, Restrict);
-bind_q(Queue, JobId, ['query'|Restrict]) ->
+bind_q(Queue, AccountId, JobId, ['status'|Restrict]) ->
+    amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, JobId), ?FAX_EXCHANGE),
+    bind_q(Queue, AccountId, JobId, Restrict);
+bind_q(Queue, AccountId, JobId, ['query'|Restrict]) ->
     amqp_util:bind_q_to_targeted(Queue),
-    bind_q(Queue, JobId, Restrict);
-bind_q(Queue, JobId, ['req'|Restrict]) ->
+    bind_q(Queue, AccountId, JobId, Restrict);
+bind_q(Queue, AccountId, JobId, ['req'|Restrict]) ->
     amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
-    bind_q(Queue, JobId, Restrict);
-bind_q(_, _, []) -> 'ok'.
+    bind_q(Queue, AccountId, JobId, Restrict);
+bind_q(_, _, _, []) -> 'ok'.
 
 
 unbind_q(Queue, Props) ->
+    AccountId = props:get_value('account_id', Props, <<"*">>),
     JobId = props:get_value('jobid', Props, <<"*">>),
-    unbind_q(Queue, JobId, props:get_value('restrict_to', Props)).    
+    unbind_q(Queue, AccountId, JobId, props:get_value('restrict_to', Props)).    
 
-unbind_q(Queue, JobId, 'undefined') ->
+unbind_q(Queue, AccountId, JobId, 'undefined') ->
     amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
-    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(JobId), ?FAX_EXCHANGE),
+    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, JobId), ?FAX_EXCHANGE),
     amqp_util:unbind_q_from_targeted(Queue);
-unbind_q(Queue, JobId, ['status'|Restrict]) ->
-    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(JobId), ?FAX_EXCHANGE),
-    unbind_q(Queue, JobId, Restrict);
-unbind_q(Queue, JobId, ['query'|Restrict]) ->
+unbind_q(Queue, AccountId, JobId, ['status'|Restrict]) ->
+    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, JobId), ?FAX_EXCHANGE),
+    unbind_q(Queue, AccountId, JobId, Restrict);
+unbind_q(Queue, AccountId, JobId, ['query'|Restrict]) ->
     amqp_util:unbind_q_from_targeted(Queue),
-    unbind_q(Queue, JobId, Restrict);
-unbind_q(Queue, JobId, ['req'|Restrict]) ->
+    unbind_q(Queue, AccountId, JobId, Restrict);
+unbind_q(Queue, AccountId, JobId, ['req'|Restrict]) ->
     amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
-    unbind_q(Queue, JobId, Restrict);
-unbind_q(_, _, []) -> 'ok'.
+    unbind_q(Queue, AccountId, JobId, Restrict);
+unbind_q(_, _, _, []) -> 'ok'.
 
 
 %%--------------------------------------------------------------------
@@ -166,7 +168,8 @@ publish_status(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?FAX_STATUS_VALUES, fun status/1),
     lager:info("STATUS ~p",[Payload]),
     JobId = props:get_value(<<"Job-ID">>, API),
-    amqp_util:basic_publish(?FAX_EXCHANGE, status_routing_key(JobId), Payload, ContentType).
+    AccountId = props:get_value(<<"Account-ID">>, API),
+    amqp_util:basic_publish(?FAX_EXCHANGE, status_routing_key(AccountId, JobId), Payload, ContentType).
 
 publish_targeted_status(Q, JObj) ->
     publish_targeted_status(Q, JObj, ?DEFAULT_CONTENT_TYPE).
@@ -177,6 +180,6 @@ publish_targeted_status(Q, Api, ContentType) ->
 
 fax_routing_key() ->
     <<"fax.req">>.
-status_routing_key(JobId) ->
-    list_to_binary(["fax.status.", amqp_util:encode(JobId)]).
+status_routing_key(AccountId, JobId) ->
+    list_to_binary(["fax.status.", amqp_util:encode(AccountId), ".", amqp_util:encode(JobId) ]).
 
