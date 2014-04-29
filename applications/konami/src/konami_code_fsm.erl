@@ -77,6 +77,7 @@ start_fsm(Call, JObj) ->
 
 -spec event(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 event(FSM, CallId, <<"DTMF">>, JObj) ->
+lager:debug("dtmf event: ~p", [JObj]),
     gen_fsm:send_event(FSM, {'dtmf'
                              ,CallId
                              ,wh_json:get_value(<<"DTMF-Digit">>, JObj)
@@ -152,7 +153,7 @@ unarmed({'dtmf', CallId, BindingKey, CCVs}, #state{other_leg=CallId
                                                 ,b_collected_dtmf = <<>>
                                                }};
         'undefined' ->
-            lager:debug("no endpoint id was on ccvs, using the dtmf"),
+            lager:debug("no endpoint id was on ccvs, using the dtmf: ~p", [CCVs]),
             lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
             Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
             {'next_state', 'armed', State#state{b_digit_timeout_ref = Ref
@@ -265,6 +266,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 
 handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, #state{call_id=CallId
                                                                                 ,other_leg=OtherLeg
+                                                                                ,call=Call
                                                                                }=State) ->
     case wh_json:get_value(<<"Call-ID">>, Evt) of
         CallId ->
@@ -276,17 +278,22 @@ handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, #state{
                     lager:debug("channel is answered (~s)", [OtherLeg]),
                     {'next_state', StateName, State};
                 NewOtherLeg ->
-                    lager:debug("channel is bridged to ~s", [NewOtherLeg]),
+                    lager:debug("channel is bridged to ~s: ~p", [NewOtherLeg, Evt]),
                     konami_event_listener:add_call_binding(NewOtherLeg),
-                    {'next_state', StateName, State#state{other_leg=NewOtherLeg}}
+                    {'next_state', StateName, State#state{other_leg=NewOtherLeg
+                                                          ,call=whapps_call:set_other_call_id(NewOtherLeg, Call)
+                                                         }}
             end;
         OtherLeg ->
             lager:debug("b leg ~s is answered", [OtherLeg]),
             {'next_state', StateName, State};
         NewOtherLeg ->
             konami_event_listener:add_call_binding(NewOtherLeg),
-            lager:debug("b leg ~s is answered, bridged to us ~s", [NewOtherLeg, wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)]),
-            {'next_state', StateName, State#state{other_leg=NewOtherLeg}}
+            konami_event_listener:rm_call_binding(OtherLeg),
+            lager:debug("new b leg ~s is answered (was ~s): ~p", [NewOtherLeg, OtherLeg, Evt]),
+            {'next_state', StateName, State#state{other_leg=NewOtherLeg
+                                                  ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
+                                                 }}
     end;
 handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, #state{call_id=CallId
                                                                                  ,other_leg=OtherLeg
@@ -368,6 +375,10 @@ listen_on(Call, JObj) ->
         <<"b">> -> 'b';
         <<"ab">> -> 'ab';
         <<"both">> -> 'ab';
+        <<"self">> when IsALegEndpoint -> 'a';
+        <<"self">> -> 'b';
+        <<"peer">> when IsALegEndpoint -> 'b';
+        <<"peer">> -> 'a';
         _ when IsALegEndpoint -> 'a';
         _ -> 'b'
     end.
@@ -464,4 +475,7 @@ should_stop_fsm(_CallId, OtherLeg, 'b', OtherLeg) ->
     'true';
 should_stop_fsm(_CallId, OtherLeg, _ListenOn, OtherLeg) ->
     lager:debug("recv b-leg channel_destroy, ignoring"),
+    'false';
+should_stop_fsm(_CallId, _OtherLeg, _ListenOn, _CLeg) ->
+    lager:debug("recv c-leg ~s channel_destroy, ignoring", [_CLeg]),
     'false'.

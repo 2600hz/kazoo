@@ -465,7 +465,7 @@ intercept_unbridged_only(ExistingCallId, JObj) ->
         'true' ->
             <<" 'set:intercept_unbridged_only=true,intercept:", ExistingCallId/binary, "' inline ">>;
         'false' ->
-            <<" 'set:intercept:", ExistingCallId/binary, "' inline ">>
+            <<" 'set:intercept_unbridged_only=false,intercept:", ExistingCallId/binary, "' inline ">>
     end.
 
 -spec get_bridge_action(wh_json:object()) -> ne_binary().

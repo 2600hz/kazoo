@@ -190,8 +190,21 @@ update_ccvs(Call) ->
 -spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
 maybe_start_metaflow(Call) ->
     case whapps_call:kvs_fetch('cf_metaflow', Call) of
-        'undefined' -> Call;
+        'undefined' -> 'ok';
         MetaFlow -> maybe_start_metaflow(Call, MetaFlow)
+    end,
+    maybe_start_endpoint_metaflow(Call, whapps_call:authorizing_id(Call)),
+    Call.
+
+maybe_start_endpoint_metaflow(_Call, 'undefined') -> lager:debug("no endpoint metaflow");
+maybe_start_endpoint_metaflow(Call, EndpointId) ->
+    lager:debug("looking up endpoint for ~s", [EndpointId]),
+    Params = wh_json:from_list([{<<"can_call_self">>, 'true'}]),
+    case cf_endpoint:build(EndpointId, Params, Call) of
+        {'ok', Endpoints} ->
+            lager:debug("trying to send metaflow for a-leg endpiont ~s", [EndpointId]),
+            cf_util:maybe_start_metaflows(Call, Endpoints);
+        {'error', _E} -> lager:debug("failed to build endpoint ~s: ~p", [EndpointId, _E])
     end.
 
 -spec maybe_start_metaflow(whapps_call:call(), ne_binary() | boolean() | wh_json:object()) ->

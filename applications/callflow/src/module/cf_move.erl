@@ -46,7 +46,6 @@ get_endpoints(Data, Call) ->
 
 send_originate_req(Endpoints, Call) ->
     Originate = build_originate(Endpoints, Call),
-    io:format("cf_move.erl:MARKER:50 ~p~n", [Originate]),
     'ok' = wapi_resource:publish_originate_req(Originate).
 
 build_originate(Endpoints, Call) ->

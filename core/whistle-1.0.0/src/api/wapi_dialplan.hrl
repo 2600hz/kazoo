@@ -186,7 +186,7 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"metaflow">>}
                           ,{<<"Binding-Key">>, ?ANY_DIGIT}
-                          ,{<<"Listen-On">>, [<<"a">>, <<"b">>, <<"ab">>, <<"both">>]}
+                          ,{<<"Listen-On">>, [<<"a">>, <<"b">>, <<"ab">>, <<"both">>, <<"self">>, <<"peer">>]}
                          ]).
 -define(METAFLOW_TYPES, [{<<"Numbers">>, fun wh_json:is_json_object/1}
                          ,{<<"Patterns">>, fun wh_json:is_json_object/1}
