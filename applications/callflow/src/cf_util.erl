@@ -10,6 +10,7 @@
 -module(cf_util).
 
 -include("callflow.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -define(OWNER_KEY(Db, User), {?MODULE, 'owner_id', Db, User}).
 -define(CF_FLOW_CACHE_KEY(Number, Db), {'cf_flow', Number, Db}).
@@ -774,6 +775,7 @@ maybe_start_metaflows(Call, Endpoints) ->
 maybe_start_metaflow(Call, Endpoint) ->
     case wh_json:get_value(<<"Metaflows">>, Endpoint) of
         'undefined' -> 'ok';
+        ?EMPTY_JSON_OBJECT -> 'ok';
         JObj ->
             API = props:filter_undefined(
                     [{<<"Endpoint-ID">>, wh_json:get_value(<<"Endpoint-ID">>, Endpoint)}
