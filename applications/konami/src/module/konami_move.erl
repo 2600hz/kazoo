@@ -1,6 +1,8 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2014, 2600Hz
 %%% @doc
+%%% data:
+%%%   owner_id: User-ID to fetch devices for
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
@@ -14,16 +16,32 @@
 -spec handle(wh_json:object(), whapps_call:call()) ->
                     {'continue', whapps_call:call()}.
 handle(Data, Call) ->
-    % Endpoints = get_endpoints(Data, Call),
-    % send_originate_req(Endpoints, Call),
-    io:format("konami_move.erl:MARKER:19 ~p~n", [Data]),
-    io:format("konami_move.erl:MARKER:20 ~p~n", [whapps_call:to_json(Call)]),
+    Req = get_originate_req(Data, Call),
+    Resp = send_originate_req(Req, Call),
+    lager:debug("resp to orig: ~p", [Resp]),
     {'continue', Call}.
 
-get_endpoints(Data, Call) ->
-    Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
-    OwnerId = whapps_call:owner_id(Call),
+get_originate_req(Data, Call) ->
+    Params = wh_json:set_values([{<<"source">>, ?MODULE}
+                                 ,{<<"can_call_self">>, 'true'}
+                                ], Data),
+    OwnerId = wh_json:get_value(<<"owner_id">>, Data),
     DeviceId = whapps_call:authorizing_id(Call),
+
+    DeviceIds = cf_attributes:owned_by(OwnerId, <<"device">>, Call),
+
+    case lists:member(DeviceId, DeviceIds) of
+        'true' ->
+            lager:debug("filter a-leg devices, intercept b-leg"),
+            Endpoints = build_endpoints(DeviceId, OwnerId, Params, Call),
+            build_originate(Endpoints, whapps_call:other_leg_call_id(Call), Call);
+        'false' ->
+            lager:debug("filter b-leg devices, intercept a-leg"),
+            Endpoints = build_endpoints(DeviceId, OwnerId, Params, Call),
+            build_originate(Endpoints, whapps_call:call_id(Call), Call)
+    end.
+
+build_endpoints(DeviceId, OwnerId, Params, Call) ->
     lists:foldr(
         fun(EndpointId, Acc) when EndpointId =:= DeviceId ->
             Acc;
@@ -31,7 +49,7 @@ get_endpoints(Data, Call) ->
             case cf_endpoint:build(EndpointId, Params, Call) of
                 {'ok', Endpoint} -> Endpoint ++ Acc;
                 _Else ->
-                    lager:error("~p", [_Else]),
+                    lager:error("could not build enpoint ~p", [_Else]),
                     Acc
             end
         end
@@ -39,17 +57,18 @@ get_endpoints(Data, Call) ->
         ,cf_attributes:owned_by(OwnerId, <<"device">>, Call)
     ).
 
-send_originate_req(Endpoints, Call) ->
-    Originate = build_originate(Endpoints, Call),
-    io:format("cf_move.erl:MARKER:50 ~p~n", [Originate]),
-    'ok' = wapi_resource:publish_originate_req(Originate).
+send_originate_req(OriginateProps, Call) ->
+    lager:debug("originate: ~p", [OriginateProps]),
+    whapps_util:amqp_pool_collect(OriginateProps, fun wapi_resource:publish_originate_req/1, fun is_resp/1, 20000).
 
-build_originate(Endpoints, Call) ->
-    Fs = whapps_call:switch_nodename(Call),
+is_resp([JObj|_]) ->
+    wapi_resource:originate_resp_v(JObj).
+
+build_originate(Endpoints, CallId, _Call) ->
     props:filter_undefined(
         [{<<"Application-Name">>, <<"bridge">>}
          ,{<<"Endpoints">>, Endpoints}
-         ,{<<"Existing-Call-ID">>, whapps_call:call_id(Call)}
-         ,{<<"Intercept-Unbridged-Only">>, <<"false">>}
-         | wh_api:default_headers(Fs, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+         ,{<<"Existing-Call-ID">>, CallId}
+         ,{<<"Intercept-Unbridged-Only">>, 'false'}
+         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ]).
