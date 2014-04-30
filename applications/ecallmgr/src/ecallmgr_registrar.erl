@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Listener for reg_success, and reg_query AMQP requests
 %%% @end
@@ -11,7 +11,9 @@
 -behaviour(gen_listener).
 
 -export([start_link/0]).
--export([lookup_contact/2]).
+-export([lookup_contact/2
+         ,lookup_original_contact/2
+        ]).
 -export([reg_success/2
          ,reg_query/2
          ,reg_flush/2
@@ -65,37 +67,39 @@
 
 -record(state, {started = wh_util:current_tstamp()}).
 
--record(registration, {id
-                       ,username
-                       ,realm
-                       ,network_port
-                       ,network_ip
-                       ,to_host
-                       ,to_user
-                       ,from_host
-                       ,from_user
-                       ,call_id
-                       ,user_agent
-                       ,expires
-                       ,contact
-                       ,previous_contact
-                       ,last_registration
-                       ,initial_registration
-                       ,registrar_node
-                       ,registrar_hostname
-                       ,suppress_unregister = 'true'
-                       ,register_overwrite_notify = 'false'
-                       ,account_db
-                       ,account_id
-                       ,authorizing_id
-                       ,authorizing_type
-                       ,owner_id
-                       ,initial = 'true'
-                       ,account_realm
-                       ,account_name
+-record(registration, {id :: {ne_binary(), ne_binary()} | '_' | '$1'
+                       ,username :: ne_binary() | '_'
+                       ,realm :: ne_binary() | '_' | '$1'
+                       ,network_port :: ne_binary() | '_'
+                       ,network_ip :: ne_binary() | '_'
+                       ,to_host :: ne_binary() | '_'
+                       ,to_user :: ne_binary() | '_'
+                       ,from_host :: ne_binary() | '_'
+                       ,from_user :: ne_binary() | '_'
+                       ,call_id :: ne_binary() | '_'
+                       ,user_agent :: ne_binary() | '_'
+                       ,expires :: non_neg_integer() | '_' | '$1'
+                       ,contact :: ne_binary() | '_'
+                       ,previous_contact :: api_binary() | '_'
+                       ,original_contact :: ne_binary() | '_'
+                       ,last_registration :: non_neg_integer() | '_' | '$2'
+                       ,initial_registration :: non_neg_integer() | '_'
+                       ,registrar_node :: ne_binary() | '_'
+                       ,registrar_hostname :: ne_binary() | '_'
+                       ,suppress_unregister = 'true' :: boolean() | '_'
+                       ,register_overwrite_notify = 'false' :: boolean() | '_'
+                       ,account_db :: api_binary() | '_'
+                       ,account_id :: api_binary() | '_'
+                       ,authorizing_id :: api_binary() | '_'
+                       ,authorizing_type :: api_binary() | '_'
+                       ,owner_id :: api_binary() | '_'
+                       ,initial = 'true' :: boolean() | '_'
+                       ,account_realm :: api_binary() | '_' | '$2'
+                       ,account_name :: api_binary() | '_'
                       }).
 
 -type registration() :: #registration{}.
+-type registrations() :: [registration(),...] | [].
 
 %%%===================================================================
 %%% API
@@ -155,6 +159,18 @@ lookup_contact(Realm, Username) ->
                        ,[Username, Realm, Contact]),
             {'ok', Contact};
         _Else -> fetch_contact(Username, Realm)
+    end.
+
+-spec lookup_original_contact(ne_binary(), ne_binary()) ->
+                                     {'ok', ne_binary()} |
+                                     {'error', 'not_found'}.
+lookup_original_contact(Realm, Username) ->
+    case ets:lookup(?MODULE, registration_id(Username, Realm)) of
+        [#registration{original_contact=Contact}] ->
+            lager:info("found user ~s@~s original contact ~s"
+                       ,[Username, Realm, Contact]),
+            {'ok', Contact};
+        _Else -> fetch_original_contact(Username, Realm)
     end.
 
 -spec summary() -> 'ok'.
@@ -445,6 +461,39 @@ fetch_contact(Username, Realm) ->
             {'error', 'not_found'}
     end.
 
+-spec fetch_original_contact(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_found'}.
+fetch_original_contact(Username, Realm) ->
+    Reg = [{<<"Username">>, Username}
+           ,{<<"Realm">>, Realm}
+           ,{<<"Fields">>, [<<"Original-Contact">>]}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case wh_amqp_worker:call_collect(?ECALLMGR_AMQP_POOL
+                                     ,Reg
+                                     ,fun wapi_registration:publish_query_req/1
+                                     ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
+                                     ,2000)
+    of
+        {'ok', JObjs} ->
+            case [Contact
+                  || JObj <- JObjs
+                         ,wapi_registration:query_resp_v(JObj)
+                         ,(Contact = wh_json:get_value([<<"Fields">>, 1, <<"Original-Contact">>]
+                                                       ,JObj)) =/= 'undefined'
+                 ]
+            of
+                [Contact|_] ->
+                    lager:info("fetched user ~s@~s original contact ~s", [Username, Realm, Contact]),
+                    {'ok', Contact};
+                _Else ->
+                    lager:info("original contact query for user ~s@~s returned an empty result", [Username, Realm]),
+                    {'error', 'not_found'}
+            end;
+        _Else ->
+            lager:info("original contact query for user ~s@~s failed: ~p", [Username, Realm, _Else]),
+            {'error', 'not_found'}
+    end.
+
 -spec expire_objects() -> 'ok'.
 expire_objects() ->
     Now = wh_util:current_tstamp(),
@@ -511,10 +560,11 @@ build_query_spec(JObj, CountOnly) ->
                     'undefined' ->
                         {#registration{realm = '$1'
                                        ,account_realm = '$2'
-                                       ,_ = '_'}
+                                       ,_ = '_'
+                                      }
                          ,{'orelse', {'=:=', '$1', {'const', Realm}}
-                            ,{'=:=', '$2', {'const', Realm}}}
-                          };
+                           ,{'=:=', '$2', {'const', Realm}}}
+                        };
                     Username ->
                         Id = registration_id(Username, Realm),
                         {#registration{id = '$1', _ = '_'}
@@ -531,7 +581,6 @@ build_query_spec(JObj, CountOnly) ->
       ,[QueryFormat]
       ,[ResultFormat]
      }].
-
 
 -spec resp_to_query(wh_json:object()) -> 'ok'.
 resp_to_query(JObj) ->
@@ -579,6 +628,8 @@ create_registration(JObj) ->
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     Reg = existing_or_new_registration(Username, Realm),
+    OriginalContact = wh_json:get_value(<<"Contact">>, JObj),
+
     Reg#registration{username=Username
                      ,realm=Realm
                      ,network_port=wh_json:get_value(<<"Network-Port">>, JObj)
@@ -590,7 +641,8 @@ create_registration(JObj) ->
                      ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
                      ,user_agent=wh_json:get_value(<<"User-Agent">>, JObj)
                      ,expires=wh_json:get_integer_value(<<"Expires">>, JObj, 60)
-                     ,contact=fix_contact(wh_json:get_value(<<"Contact">>, JObj))
+                     ,contact=fix_contact(OriginalContact)
+                     ,original_contact=OriginalContact
                      ,last_registration=wh_util:current_tstamp()
                      ,registrar_node=wh_json:get_value(<<"Node">>, JObj)
                      ,registrar_hostname=wh_json:get_value(<<"Hostname">>, JObj)
@@ -608,7 +660,7 @@ fix_contact(Contact) ->
 -spec existing_or_new_registration(ne_binary(), ne_binary()) -> registration().
 existing_or_new_registration(Username, Realm) ->
     case ets:lookup(?MODULE, registration_id(Username, Realm)) of
-        [#registration{contact=Contact}=Reg] -> 
+        [#registration{contact=Contact}=Reg] ->
             Reg#registration{previous_contact=Contact};
         _Else ->
             lager:debug("new registration ~s@~s", [Username, Realm]),
@@ -751,7 +803,7 @@ update_cache(#registration{authorizing_id=AuthorizingId
              ,{#registration.authorizing_type, AuthorizingType}
              ,{#registration.owner_id, OwnerId}
              ,{#registration.suppress_unregister, SuppressUnregister}
-             ,{#registration.register_overwrite_notify, RegisterOverwrite}            
+             ,{#registration.register_overwrite_notify, RegisterOverwrite}
              ,{#registration.account_realm, AccountRealm}
              ,{#registration.account_name, AccountName}
             ],
@@ -795,6 +847,7 @@ to_props(Reg) ->
      ,{<<"Network-Port">>, Reg#registration.network_port}
      ,{<<"Event-Timestamp">>, Reg#registration.last_registration}
      ,{<<"Contact">>, Reg#registration.contact}
+     ,{<<"Original-Contact">>, Reg#registration.original_contact}
      ,{<<"Expires">>, Reg#registration.expires}
      ,{<<"Account-ID">>, Reg#registration.account_id}
      ,{<<"Account-DB">>, Reg#registration.account_db}
@@ -838,6 +891,11 @@ oldest_registrar(Username, Realm) ->
         _Else -> 'true'
     end.
 
+-type ets_continuation() :: '$end_of_table' |
+                            {registrations(), term()}.
+
+-spec print_summary(ets_continuation()) -> 'ok'.
+-spec print_summary(ets_continuation(), non_neg_integer()) -> 'ok'.
 print_summary('$end_of_table') ->
     io:format("No registrations found!~n", []);
 print_summary(Match) ->
@@ -871,6 +929,8 @@ print_summary({[#registration{username=Username
         end,
     print_summary(ets:select(Continuation), Count + 1).
 
+-spec print_details(ets_continuation()) -> 'ok'.
+-spec print_details(ets_continuation(), non_neg_integer()) -> 'ok'.
 print_details('$end_of_table') ->
     io:format("No registrations found!~n", []);
 print_details(Match) ->
@@ -878,9 +938,7 @@ print_details(Match) ->
 
 print_details('$end_of_table', Count) ->
     io:format("~nFound ~p registrations~n", [Count]);
-print_details({[#registration{}=Reg]
-               ,Continuation}
-              ,Count) ->
+print_details({[#registration{}=Reg], Continuation}, Count) ->
     io:format("~n"),
     _ = [io:format("~-19s: ~s~n", [K, wh_util:to_binary(V)])
          || {K, V} <- to_props(Reg)
