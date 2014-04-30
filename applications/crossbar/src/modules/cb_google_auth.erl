@@ -264,12 +264,19 @@ filter_apps(JObjs, Lang) -> filter_apps(JObjs, Lang, []).
 filter_apps([], _, Acc) -> Acc;
 filter_apps([JObj|JObjs], Lang, Acc) ->
     App = wh_json:get_value(<<"value">>, JObj, wh_json:new()),
-    NewApp = wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, App)}
-                                ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
-                                ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
-                                ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], App)}
-                               ]),
-    filter_apps(JObjs, Lang, [NewApp|Acc]).
+    DefaultLabel = wh_json:get_value([<<"i18n">>, ?DEFAULT_LANGUAGE, <<"label">>], App),
+    FormatedApp =
+        wh_json:from_list(
+            props:filter_undefined(
+                [{<<"id">>, wh_json:get_value(<<"id">>, App)}
+                 ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
+                 ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
+                 ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
+                 ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], App, DefaultLabel)}
+                ]
+            )
+        ),
+    filter_apps(JObjs, Lang, [FormatedApp|Acc]).
 
 -spec get_language(ne_binary(), ne_binary()) -> ne_binary().
 get_language(AccountId, UserId) ->
