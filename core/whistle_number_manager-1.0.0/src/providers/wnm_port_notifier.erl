@@ -33,7 +33,10 @@ save(#number{current_state = <<"port_in">>
     _ = publish_ported(Port, Number),
     Number;
 save(#number{state = <<"port_in">>}=Number) ->
-    maybe_publish_port(Number);
+    Routines = [fun maybe_port_feature/1
+                ,fun maybe_activate_feature/1
+               ],
+    lists:foldl(fun(F, N) -> F(N) end, Number, Routines);
 save(Number) -> Number.
 
 %%--------------------------------------------------------------------
@@ -52,23 +55,36 @@ delete(#number{features=Features}=N) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_publish_port(wnm_number()) -> wnm_number().
-maybe_publish_port(#number{current_number_doc=CurrentJObj
-                           ,number_doc=JObj
+-spec maybe_port_feature(wnm_number()) -> wnm_number().
+maybe_port_feature(#number{number_doc=JObj
                            ,features=Features
-                          }=N) ->
-    CurrentPort = wh_json:get_ne_value(<<"port">>, CurrentJObj),
-    Port = wh_json:get_ne_value(<<"port">>, JObj),
-    NotChanged = wnm_util:are_jobjs_identical(CurrentPort, Port),
-    case wh_util:is_empty(Port) of
-        'true' -> N#number{features=sets:del_element(<<"port">>, Features)};
-        'false' when NotChanged -> N#number{features=sets:add_element(<<"port">>, Features)};
-        'false' ->
-            lager:debug("port information has been changed: ~s", [wh_json:encode(Port)]),
-            N1 = wnm_number:activate_feature(<<"port">>, N),
-            publish_port_update(Port, N),
-            N1
+                          }=Number) ->
+    case wh_json:get_ne_value(<<"port">>, JObj) of
+        'undefined' ->
+            F = sets:del_element(<<"port">>, Features),
+            Number#number{features=F};
+        Port ->
+            F = sets:add_element(<<"port">>, Features),
+            maybe_port_changed(Port, Number#number{features=F})
     end.
+
+-spec maybe_port_changed(wh_json:object(), wnm_number()) -> wnm_number().
+maybe_port_changed(_, #number{dry_run='true'}=Number) -> Number;
+maybe_port_changed(Port, #number{current_number_doc=CurrentJObj}=Number) ->
+    CurrentPort = wh_json:get_ne_value(<<"port">>, CurrentJObj),
+    case wnm_util:are_jobjs_identical(CurrentPort, Port) of
+        'true' -> Number;
+        'false' ->
+            lager:debug("port information has been changed: ~s"
+                        ,[wh_json:encode(Port)]),
+            publish_port_update(Port, Number),
+            Number
+    end.
+
+-spec maybe_activate_feature(wnm_number()) -> wnm_number().
+maybe_activate_feature(#number{is_new='false'}=Number) -> Number;
+maybe_activate_feature(#number{is_new='true'}=Number) ->
+    wnm_number:activate_feature(<<"port">>, Number).
 
 %%--------------------------------------------------------------------
 %% @private

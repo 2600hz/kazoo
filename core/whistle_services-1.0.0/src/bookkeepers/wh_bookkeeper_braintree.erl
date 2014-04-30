@@ -37,10 +37,25 @@
 %%--------------------------------------------------------------------
 -spec is_good_standing(ne_binary()) -> boolean().
 is_good_standing(AccountId) ->
-    try braintree_customer:default_payment_token(AccountId) of
-        _ ->
-            lager:debug("braintree customer ~s is believed to be in good standing", [AccountId]),
-            'true'
+    try braintree_customer:find(AccountId) of
+        Customer -> customer_has_card(Customer, AccountId)
+    catch
+        'throw':_R ->
+            lager:debug("braintree customer ~s is not in good standing: ~p", [AccountId, _R]),
+            'false'
+    end.
+
+customer_has_card(Customer, AccountId) ->
+    try braintree_customer:default_payment_card(Customer) of
+        Card ->
+            case braintree_card:expired(Card) of
+                'false' ->
+                    lager:debug("braintree customer ~s has a valid credit card on file", [AccountId]),
+                    'true';
+                'true' ->
+                    lager:debug("braintree customer ~s has an expired credit card", [AccountId]),
+                    'false'
+            end
     catch
         'throw':_R ->
             lager:debug("braintree customer ~s is not in good standing: ~p", [AccountId, _R]),
@@ -173,7 +188,7 @@ charge_transactions(BillingId, Transactions) ->
                          ,0
                          ,Transactions
                         ),
-     braintree_transaction:quick_sale(BillingId, Amount),
+     braintree_transaction:quick_sale(BillingId, wht_util:units_to_dollars(Amount)),
      'ok'.
 
 %%--------------------------------------------------------------------

@@ -106,6 +106,9 @@ update_number_quantities(Number, Services, JObj) ->
 
 is_number_billable(DID, 'undefined') ->
     case catch wnm_number:get(DID) of
+        #number{module_name='undefined'} ->
+            lager:debug("number ~s had no number manager module, not billable", [DID]),
+            'false';
         #number{module_name=Module}=Number ->
             case catch Module:is_number_billable(Number) of
                 'true' ->

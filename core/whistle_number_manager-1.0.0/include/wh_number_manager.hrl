@@ -29,6 +29,7 @@
                  ,billing_id :: api_binary()
                  ,used_by = <<>> :: binary()
                  ,dry_run = 'false' :: boolean()
+                 ,is_new = 'false' :: boolean()
                 }).
 
 -type wnm_number() :: #number{}.

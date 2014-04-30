@@ -630,6 +630,7 @@ maybe_update_locality(Context) ->
 update_locality(Context, []) -> Context;
 update_locality(Context, Numbers) ->
     case get_locality(Numbers, ?FREE_URL) of
+        {'error', <<"missing phonebook url">>} -> Context;
         {'error', _} -> Context;
         {'ok', Localities} ->
             _ = spawn(fun() ->
