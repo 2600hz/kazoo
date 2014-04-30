@@ -10,11 +10,15 @@
 
 -export([url/0, url/1]).
 -export([default_payment_token/1]).
+-export([default_payment_card/1]).
 -export([find/1]).
 -export([create/1, create/2]).
 -export([update/1]).
 -export([delete/1]).
--export([expired/0, expiring/2]).
+-export([expired/0
+         ,expired/1
+         ,expiring/2
+        ]).
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1, record_to_xml/2]).
 -export([json_to_record/1]).
@@ -57,6 +61,14 @@ default_payment_token(Cards) ->
     case lists:keyfind('true', #bt_card.default, Cards) of
         'false' -> braintree_util:error_no_payment_token();
         Card -> Card#bt_card.token
+    end.
+
+
+-spec default_payment_card(cards()) -> api_binary().
+default_payment_card(Cards) ->
+    case lists:keyfind('true', #bt_card.default, Cards) of
+        'false' -> braintree_util:error_no_payment_token();
+        Card -> Card
     end.
 
 %%--------------------------------------------------------------------
@@ -125,6 +137,9 @@ expired() ->
     [get_xml_value("/item/text()", Item)
      || Item <- xmerl_xpath:string("/search-results/ids/item", Xml)
     ].
+
+-spec expired(card()) -> boolean().
+expired(#bt_card{expired=Expired}) -> Expired.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -123,7 +123,7 @@ load_callflow_summary(Context) ->
 -spec load_callflow(ne_binary(), cb_context:context()) -> cb_context:context().
 load_callflow(DocId, Context) ->
     case crossbar_doc:load(DocId, Context) of
-        #cb_context{resp_status=success, doc=Doc, resp_data=Data, db_name=Db}=Context1 ->
+        #cb_context{resp_status='success', doc=Doc, resp_data=Data, db_name=Db}=Context1 ->
             Meta = get_metadata(wh_json:get_value(<<"flow">>, Doc), Db, wh_json:new()),
             Context1#cb_context{resp_data=wh_json:set_value(<<"metadata">>, Meta, Data)};
         Else ->
@@ -172,11 +172,11 @@ validate_unique_numbers(CallflowId, _, #cb_context{db_name=undefined}=Context) -
 validate_unique_numbers(CallflowId, [], Context) ->
     check_callflow_schema(CallflowId, Context);
 validate_unique_numbers(CallflowId, Numbers, #cb_context{db_name=Db}=Context) ->
-    case couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]) of
-        {error, _R} ->
+    case couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, 'true'}]) of
+        {'error', _R} ->
             lager:debug("failed to load callflows from account: ~p", [_R]),
             check_callflow_schema(CallflowId, Context);
-        {ok, JObjs} ->
+        {'ok', JObjs} ->
             FilteredJObjs = filter_callflow_list(CallflowId, JObjs),
             C = check_uniqueness(Numbers, FilteredJObjs, Context),
             check_callflow_schema(CallflowId, C)
@@ -186,7 +186,7 @@ check_callflow_schema(CallflowId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(CallflowId, C) end,
     cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
 
-on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
+on_successful_validation('undefined', #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"callflow">>}],
     Context#cb_context{doc=wh_json:set_values(Props, Doc)};
 on_successful_validation(CallflowId, Context) ->
@@ -210,7 +210,7 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 maybe_reconcile_numbers(#cb_context{resp_status='success'}=Context) ->
-    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, 'true') of
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, 'false') of
         'false' -> Context;
         'true' ->
             CurrentJObj = cb_context:fetch(Context, 'db_doc', wh_json:new()),
