@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -948,7 +948,7 @@ unbind_from_q(_Q, [], _) -> 'ok'.
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:conference_exchange().
-    
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Publish to the conference exchange

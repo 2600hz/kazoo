@@ -46,6 +46,7 @@
                                        ,<<"FreeSWITCH-Nodename">>
                                        ,<<"Network-IP">>, <<"Network-Port">>
                                        ,<<"Suppress-Unregister-Notify">>
+                                       ,<<"Original-Contact">>
                                       ]).
 -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
                              ,{<<"Event-Name">>, <<"reg_success">>}
