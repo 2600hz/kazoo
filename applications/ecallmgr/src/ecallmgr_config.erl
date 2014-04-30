@@ -217,13 +217,9 @@ set_default(Key, Value) ->
 set_node(Key, Value) ->
     set(Key, Value, wh_util:to_binary(node()), [{'node_specific', 'true'}]).
 
--spec set(wh_json:key(), wh_json:json_term(), 'undefined' | wh_json:key() | atom(), wh_proplist()) -> 'ok'.
-set(Key, Value, 'undefined', Opt) ->
-    set(Key, Value, <<"default">>, Opt);
+-spec set(wh_json:key(), wh_json:json_term(), wh_json:key(), wh_proplist()) -> 'ok'.
 set(Key, Value, Node, Opt) when not is_binary(Key) ->
     set(wh_util:to_binary(Key), Value, Node, Opt);
-set(Key, Value, Node, Opt) when not is_binary(Node) ->
-    set(Key, Value, wh_util:to_binary(Node), Opt);
 set(Key, Value, Node, Opt) ->
     Props = [{<<"Category">>, <<"ecallmgr">>}
              ,{<<"Key">>, Key}
@@ -231,9 +227,9 @@ set(Key, Value, Node, Opt) ->
              ,{<<"Node-Specific">>, props:is_true('node_specific', Opt, 'false')}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    Req =[{<<"Node">>, Node}
-          | lists:keydelete(<<"Node">>, 1, Props)
-         ],
+    Req = [{<<"Node">>, Node}
+           | lists:keydelete(<<"Node">>, 1, Props)
+          ],
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,props:filter_undefined(Req)
                                   ,fun wapi_sysconf:publish_set_req/1
