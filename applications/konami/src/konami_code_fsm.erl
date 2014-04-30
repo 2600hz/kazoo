@@ -77,11 +77,9 @@ start_fsm(Call, JObj) ->
 
 -spec event(pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 event(FSM, CallId, <<"DTMF">>, JObj) ->
-lager:debug("dtmf event: ~p", [JObj]),
     gen_fsm:send_event(FSM, {'dtmf'
                              ,CallId
                              ,wh_json:get_value(<<"DTMF-Digit">>, JObj)
-                             ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)
                             });
 event(FSM, CallId, Event, JObj) ->
     gen_fsm:send_event(FSM, {'event', CallId, Event, JObj}).
@@ -93,79 +91,46 @@ event(FSM, CallId, Event, JObj) ->
 init([]) ->
     {'ok', 'unarmed', #state{}}.
 
-unarmed({'dtmf', CallId, BindingKey, _CCVs}, #state{call_id=CallId
-                                                    ,listen_on='a'
-                                                    ,binding_key=BindingKey
-                                                    ,digit_timeout=Timeout
-                                                   }=State) ->
+unarmed({'dtmf', CallId, BindingKey}, #state{call_id=CallId
+                                             ,listen_on='a'
+                                             ,binding_key=BindingKey
+                                             ,digit_timeout=Timeout
+                                            }=State) ->
     lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
     Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
     {'next_state', 'armed', State#state{a_digit_timeout_ref = Ref
                                         ,a_collected_dtmf = <<>>
                                        }};
-unarmed({'dtmf', CallId, BindingKey, _CCVs}, #state{call_id=CallId
-                                                    ,listen_on='ab'
-                                                    ,binding_key=BindingKey
-                                                    ,digit_timeout=Timeout
-                                                   }=State) ->
+unarmed({'dtmf', CallId, BindingKey}, #state{call_id=CallId
+                                             ,listen_on='ab'
+                                             ,binding_key=BindingKey
+                                             ,digit_timeout=Timeout
+                                            }=State) ->
     lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
     Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
     {'next_state', 'armed', State#state{a_digit_timeout_ref = Ref
                                         ,a_collected_dtmf = <<>>
                                        }};
-unarmed({'dtmf', CallId, BindingKey, CCVs}, #state{other_leg=CallId
-                                                   ,other_leg_endpoint_id=EndpointId
-                                                   ,listen_on='ab'
-                                                   ,binding_key=BindingKey
-                                                   ,digit_timeout=Timeout
-                                                  }=State) ->
-    case wh_json:get_value(<<"Endpoint-ID">>, CCVs) of
-        EndpointId ->
-            lager:debug("recv binding key ~s for endpoint ~s, arming (~bms)", [BindingKey, EndpointId, Timeout]),
-            Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
-            {'next_state', 'armed', State#state{b_digit_timeout_ref = Ref
-                                                ,b_collected_dtmf = <<>>
-                                               }};
-        'undefined' ->
-            lager:debug("no endpoint id was on ccvs, using the dtmf"),
-            lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
-            Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
-            {'next_state', 'armed', State#state{b_digit_timeout_ref = Ref
-                                                ,b_collected_dtmf = <<>>
-                                               }};
-        _OtherEndpointId ->
-            lager:debug("recv dtmf '~s' for b leg ~s but for endpoint ~s while we want ~s"
-                        ,[BindingKey, CallId, _OtherEndpointId, EndpointId]
-                       ),
-            {'next_state', 'unarmed', State}
-    end;
-unarmed({'dtmf', CallId, BindingKey, CCVs}, #state{other_leg=CallId
-                                                   ,other_leg_endpoint_id=EndpointId
-                                                   ,listen_on='b'
-                                                   ,binding_key=BindingKey
-                                                   ,digit_timeout=Timeout
-                                                  }=State) ->
-    case wh_json:get_value(<<"Endpoint-ID">>, CCVs) of
-        EndpointId ->
-            lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
-            Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
-            {'next_state', 'armed', State#state{b_digit_timeout_ref = Ref
-                                                ,b_collected_dtmf = <<>>
-                                               }};
-        'undefined' ->
-            lager:debug("no endpoint id was on ccvs, using the dtmf: ~p", [CCVs]),
-            lager:debug("recv binding key ~s, arming (~bms)", [BindingKey, Timeout]),
-            Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
-            {'next_state', 'armed', State#state{b_digit_timeout_ref = Ref
-                                                ,b_collected_dtmf = <<>>
-                                               }};
-        _OtherEndpointId ->
-            lager:debug("recv dtmf '~s' for b leg ~s but for endpoint ~s while we want ~s"
-                        ,[BindingKey, CallId, _OtherEndpointId, EndpointId]
-                       ),
-            lager:debug("ccvs: ~p", [CCVs]),
-            {'next_state', 'unarmed', State}
-    end;
+unarmed({'dtmf', CallId, BindingKey}, #state{other_leg=CallId
+                                             ,listen_on='ab'
+                                             ,binding_key=BindingKey
+                                             ,digit_timeout=Timeout
+                                            }=State) ->
+    lager:debug("recv binding key '~s' for other leg ~s arming (~bms)", [BindingKey, CallId, Timeout]),
+    Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
+    {'next_state', 'armed', State#state{b_digit_timeout_ref = Ref
+                                        ,b_collected_dtmf = <<>>
+                                       }};
+unarmed({'dtmf', CallId, BindingKey}, #state{other_leg=CallId
+                                             ,listen_on='b'
+                                             ,binding_key=BindingKey
+                                             ,digit_timeout=Timeout
+                                            }=State) ->
+    lager:debug("recv binding key '~s' for other leg ~s arming (~bms)", [BindingKey, CallId, Timeout]),
+    Ref = gen_fsm:start_timer(Timeout, 'digit_timeout'),
+    {'next_state', 'armed', State#state{b_digit_timeout_ref = Ref
+                                        ,b_collected_dtmf = <<>>
+                                       }};
 unarmed({'dtmf', _CallId, _DTMF}, #state{call_id=_Id
                                          ,other_leg=_Oleg
                                          ,listen_on=_ListenOn
@@ -187,7 +152,7 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
                                                 ,a_collected_dtmf = Collected
                                                 ,a_digit_timeout_ref = Ref
                                                 ,call=Call
-                                                }=State)
+                                               }=State)
   when ListenOn =:= 'a' orelse ListenOn =:= 'ab' ->
     lager:debug("a DTMF timeout, let's check '~s'", [Collected]),
     case has_metaflow(Collected, Ns, Ps) of
@@ -209,7 +174,7 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
                                                 ,b_collected_dtmf = Collected
                                                 ,b_digit_timeout_ref = Ref
                                                 ,call=Call
-                                                }=State)
+                                               }=State)
   when ListenOn =:= 'b' orelse ListenOn =:= 'ab' ->
     lager:debug("b DTMF timeout, let's check '~s'", [Collected]),
     case has_metaflow(Collected, Ns, Ps) of
@@ -226,7 +191,7 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
     end;
 
-armed({'dtmf', CallId, DTMF, _CCVs}, #state{call_id=CallId
+armed({'dtmf', CallId, DTMF}, #state{call_id=CallId
                                      ,a_collected_dtmf=Collected
                                      ,digit_timeout=Timeout
                                      ,a_digit_timeout_ref=OldRef
@@ -237,7 +202,7 @@ armed({'dtmf', CallId, DTMF, _CCVs}, #state{call_id=CallId
     {'next_state', 'armed', State#state{a_digit_timeout_ref=Ref
                                         ,a_collected_dtmf = <<Collected/binary, DTMF/binary>>
                                        }};
-armed({'dtmf', CallId, DTMF, _CCVs}, #state{other_leg=CallId
+armed({'dtmf', CallId, DTMF}, #state{other_leg=CallId
                                      ,b_collected_dtmf=Collected
                                      ,digit_timeout=Timeout
                                      ,b_digit_timeout_ref=OldRef
@@ -278,10 +243,10 @@ handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, #state{
                     lager:debug("channel is answered (~s)", [OtherLeg]),
                     {'next_state', StateName, State};
                 NewOtherLeg ->
-                    lager:debug("channel is bridged to ~s: ~p", [NewOtherLeg, Evt]),
+                    lager:debug("channel is now bridged to ~s (was ~s)", [NewOtherLeg, OtherLeg]),
                     konami_event_listener:add_call_binding(NewOtherLeg),
                     {'next_state', StateName, State#state{other_leg=NewOtherLeg
-                                                          ,call=whapps_call:set_other_call_id(NewOtherLeg, Call)
+                                                          ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
                                                          }}
             end;
         OtherLeg ->
@@ -290,7 +255,7 @@ handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, #state{
         NewOtherLeg ->
             konami_event_listener:add_call_binding(NewOtherLeg),
             konami_event_listener:rm_call_binding(OtherLeg),
-            lager:debug("new b leg ~s is answered (was ~s): ~p", [NewOtherLeg, OtherLeg, Evt]),
+            lager:debug("new b leg ~s is answered (was ~s)", [NewOtherLeg, OtherLeg]),
             {'next_state', StateName, State#state{other_leg=NewOtherLeg
                                                   ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
                                                  }}
