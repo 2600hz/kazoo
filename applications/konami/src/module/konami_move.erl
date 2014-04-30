@@ -48,17 +48,14 @@ build_endpoints(DeviceId, OwnerId, Params, Call) ->
         (EndpointId, Acc) ->
             case cf_endpoint:build(EndpointId, Params, Call) of
                 {'ok', Endpoint} -> Endpoint ++ Acc;
-                _Else ->
-                    lager:error("could not build enpoint ~p", [_Else]),
-                    Acc
+                _Else -> Acc
             end
         end
         ,[]
         ,cf_attributes:owned_by(OwnerId, <<"device">>, Call)
     ).
 
-send_originate_req(OriginateProps, Call) ->
-    lager:debug("originate: ~p", [OriginateProps]),
+send_originate_req(OriginateProps, _Call) ->
     whapps_util:amqp_pool_collect(OriginateProps, fun wapi_resource:publish_originate_req/1, fun is_resp/1, 20000).
 
 is_resp([JObj|_]) ->
