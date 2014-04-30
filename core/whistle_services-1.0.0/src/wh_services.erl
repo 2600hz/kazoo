@@ -369,10 +369,10 @@ select_bookkeeper(BillingId) ->
 check_bookkeeper(BillingId, Amount) ->
     Bookkeeper = select_bookkeeper(BillingId),
     case Bookkeeper of
-        'wh_bookkeeper_braintree' -> 'true';
         'wh_bookkeeper_local' ->
             Balance = wht_util:current_balance(BillingId),
-            Balance - Amount =< 0
+            Balance - Amount =< 0;
+        _Else -> Bookkeeper:is_good_standing(BillingId)
     end.
 
 %%--------------------------------------------------------------------
@@ -473,6 +473,7 @@ maybe_follow_billling_id(AccountId, ServicesJObj) ->
             allow_updates(BillingId)
     end.
 
+-spec maybe_allow_updates(ne_binary(), wh_json:object()) -> boolean().
 maybe_allow_updates(AccountId, ServicesJObj) ->
     Plans = wh_service_plans:plan_summary(ServicesJObj),
     case wh_util:is_empty(Plans) orelse wh_json:get_value(<<"pvt_status">>, ServicesJObj) of
@@ -482,15 +483,24 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
         <<"good_standing">> ->
             lager:debug("allowing request for account in good standing"),
             'true';
-        Status ->
-            %% TODO: support other bookkeepers
-            case wh_bookkeeper_braintree:is_good_standing(AccountId) of
-                'true' -> 'true';
-                'false' ->
-                    lager:debug("denying update request for services with status '~s'", [Status]),
-                    Error = io_lib:format("Unable to continue due to billing account ~s status", [AccountId]),
-                    throw({Status, wh_util:to_binary(Error)})
-            end
+        Status -> maybe_local_bookkeeper_allow_updates(AccountId, Status)
+    end.
+
+-spec maybe_local_bookkeeper_allow_updates(ne_binary(), ne_binary()) -> boolean().
+maybe_local_bookkeeper_allow_updates(AccountId, Status) ->
+    case select_bookkeeper(AccountId) of
+        'wh_bookkeeper_local' -> spawn_move_to_good_standing(AccountId);
+        Bookkeeper -> maybe_bookkeeper_allow_updates(Bookkeeper, AccountId, Status)
+    end.
+
+-spec maybe_bookkeeper_allow_updates(atom(), ne_binary(), ne_binary()) -> boolean().
+maybe_bookkeeper_allow_updates(Bookkeeper, AccountId, Status) ->
+    case Bookkeeper:is_good_standing(AccountId) of
+        'true' -> spawn_move_to_good_standing(AccountId);
+        'false' ->
+            lager:debug("denying update request for services ~s due to status ~s", [AccountId, Status]),
+            Error = io_lib:format("Unable to continue due to billing account ~s status", [AccountId]),
+            throw({Status, wh_util:to_binary(Error)})
     end.
 
 default_maybe_allow_updates(AccountId) ->
@@ -501,6 +511,16 @@ default_maybe_allow_updates(AccountId) ->
             Error = io_lib:format("Service updates are disallowed by default for billing account ~s", [AccountId]),
             throw({<<"updates_disallowed">>, wh_util:to_binary(Error)})
     end.
+
+-spec spawn_move_to_good_standing(ne_binary()) -> 'true'.
+spawn_move_to_good_standing(AccountId) ->
+    spawn(fun() -> move_to_good_standing(AccountId) end),
+    'true'.
+
+-spec move_to_good_standing(ne_binary()) -> #wh_services{}.
+move_to_good_standing(AccountId) ->
+    #wh_services{jobj=JObj}=Services = fetch(AccountId),
+    save(Services#wh_services{jobj=wh_json:set_value(<<"pvt_status">>, <<"good_standing">>, JObj)}).
 
 %%--------------------------------------------------------------------
 %% @public

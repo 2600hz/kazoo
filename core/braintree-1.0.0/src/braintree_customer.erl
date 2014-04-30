@@ -12,6 +12,7 @@
 -export([new/1]).
 -export([new_subscription/2]).
 -export([default_payment_token/1]).
+-export([default_payment_card/1]).
 -export([get_id/1]).
 -export([get_cards/1]).
 -export([get_subscriptions/1, get_subscription/2]).
@@ -83,6 +84,12 @@ default_payment_token(#bt_customer{}=Customer) ->
     braintree_card:default_payment_token(get_cards(Customer));
 default_payment_token(CustomerId) ->
     default_payment_token(find(CustomerId)).
+
+-spec default_payment_card(ne_binary() | customer()) -> api_binary().
+default_payment_card(#bt_customer{}=Customer) ->
+    braintree_card:default_payment_card(get_cards(Customer));
+default_payment_card(CustomerId) ->
+    default_payment_card(find(CustomerId)).
 
 %%--------------------------------------------------------------------
 %% @public
