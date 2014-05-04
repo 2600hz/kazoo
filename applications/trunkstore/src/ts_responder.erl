@@ -28,8 +28,12 @@
 
 -include("ts.hrl").
 
--define(RESPONDERS, [{'ts_route_req', [{<<"dialplan">>, <<"route_req">>}]}]).
--define(BINDINGS, [{'route', []}]).
+-define(RESPONDERS, [{'ts_route_req', [{<<"dialplan">>, <<"route_req">>}]}
+                    ,{{'ts_util', 'handle_config_change'}, [{<<"configuration">>, <<"*">>}]}
+                    ]).
+-define(BINDINGS, [{'route', []}
+                  ,{'conf', [{'doc_type', <<"sys_info">>}]}
+                  ]).
 
 -define(SERVER, ?MODULE).
 -define(ROUTE_QUEUE_NAME, <<"trunkstore_listener">>).
