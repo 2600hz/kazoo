@@ -38,6 +38,7 @@
 
 -export([maybe_ensure_cid_valid/4
          ,maybe_restrict_call/2
+         ,handle_config_change/2
         ]).
 
 -include("ts.hrl").
@@ -352,3 +353,8 @@ maybe_restrict_call(#ts_callflow_state{acctid=AccountId, route_req_jobj=RRObj}, 
     {'ok', Opts} = ts_util:lookup_user_flags(Username, Realm, AccountId),
     lager:debug("Trunkstore lookup_user_flag results: ~p", [Opts]),
     wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], Opts) =:= <<"deny">>.
+
+handle_config_change(JObj, Props) ->
+    lager:info("Trunkstore doc change detected: ~p", [JObj]),
+    'ok' = wh_cache:flush(),
+    lager:info("Cache flushed due to doc change").
