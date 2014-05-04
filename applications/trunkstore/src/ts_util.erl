@@ -38,8 +38,9 @@
 
 -export([maybe_ensure_cid_valid/4
          ,maybe_restrict_call/2
-         ,handle_config_change/2
         ]).
+
+-export([handle_config_change/2]).
 
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
@@ -354,7 +355,7 @@ maybe_restrict_call(#ts_callflow_state{acctid=AccountId, route_req_jobj=RRObj}, 
     lager:debug("Trunkstore lookup_user_flag results: ~p", [Opts]),
     wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], Opts) =:= <<"deny">>.
 
-handle_config_change(JObj, Props) ->
+handle_config_change(JObj, _Props) ->
     lager:info("Trunkstore doc change detected: ~p", [JObj]),
     'ok' = wh_cache:flush(),
-    lager:info("Cache flushed due to doc change").
+    lager:info("Cache flushed due to Trunkstore doc change").
