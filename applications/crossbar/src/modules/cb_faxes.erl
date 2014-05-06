@@ -273,7 +273,7 @@ get_execution_status(Id, JObj) ->
 get_fax_running_status(Id, Q) ->
     Api = [{<<"Job-ID">>, Id} | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     case whapps_util:amqp_pool_request(Api
-                                      ,fun(A) -> wapi_fax:publish_query(Q, A) end
+                                      ,fun(A) -> wapi_fax:publish_query_status(Q, A) end
                                       ,fun wapi_fax:status_v/1) of
         {'ok', JObj } -> wh_json:get_value(<<"Status">>, JObj);
         _ -> <<"not available">>

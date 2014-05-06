@@ -42,7 +42,7 @@
 
 -define(BINDINGS, [
                    {'self', []}
-                  ,{'fax', [{'restrict_to', ['query']}]}
+                  ,{'fax', [{'restrict_to', ['query_status']}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_tx_resp'}
                       ,[{<<"resource">>, <<"offnet_resp">>}]
@@ -54,7 +54,7 @@
                        ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                       }
                      ,{{?MODULE, 'handle_job_status_query'}
-                       ,[{<<"fax">>, <<"query">>}]
+                       ,[{<<"fax">>, <<"query_status">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -99,7 +99,7 @@ handle_channel_destroy(JObj, Props) ->
 
 -spec handle_job_status_query(wh_json:object(), wh_proplist()) -> any(). 
 handle_job_status_query(JObj, Props) ->
-    'true' = wapi_fax:query_v(JObj),
+    'true' = wapi_fax:query_status_v(JObj),
     Srv = props:get_value('server', Props),
     JobId = wh_json:get_value(<<"Job-ID">>, JObj),
     Queue = wh_json:get_value(<<"Server-ID">>, JObj),

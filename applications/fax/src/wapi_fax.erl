@@ -10,12 +10,12 @@
 
 -export([
           req/1, req_v/1
-         ,query/1, query_v/1
+         ,query_status/1, query_status_v/1
          ,status/1, status_v/1
          ,bind_q/2, unbind_q/2
          ,declare_exchanges/0
          ,publish_req/1, publish_req/2
-         ,publish_query/2, publish_query/3
+         ,publish_query_status/2, publish_query_status/3
          ,publish_status/1, publish_status/2
          ,publish_targeted_status/2, publish_targeted_status/3
         ]).
@@ -37,7 +37,7 @@
 -define(FAX_QUERY_HEADERS, [<<"Job-ID">>]).
 -define(OPTIONAL_FAX_QUERY_HEADERS, []).
 -define(FAX_QUERY_VALUES, [{<<"Event-Category">>,<<"fax">>}
-                         ,{<<"Event-Name">>, <<"query">>}
+                         ,{<<"Event-Name">>, <<"query_status">>}
                         ]).
 -define(FAX_QUERY_TYPES, []).
 
@@ -64,24 +64,24 @@ req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
 
 
-query(Prop) when is_list(Prop) ->
-    case query_v(Prop) of
-        'false' -> {'error', "Proplist failed validation for fax_query"};
+query_status(Prop) when is_list(Prop) ->
+    case query_status_v(Prop) of
+        'false' -> {'error', "Proplist failed validation for fax_query_status"};
         'true' -> wh_api:build_message(Prop, ?FAX_QUERY_HEADERS, ?OPTIONAL_FAX_QUERY_HEADERS)
     end;
-query(JObj) ->
-    query(wh_json:to_proplist(JObj)).
+query_status(JObj) ->
+    query_status(wh_json:to_proplist(JObj)).
 
-query_v(Prop) when is_list(Prop) ->
+query_status_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?FAX_QUERY_HEADERS, ?FAX_QUERY_VALUES, ?FAX_QUERY_TYPES);
-query_v(JObj) ->
-    query_v(wh_json:to_proplist(JObj)).
+query_status_v(JObj) ->
+    query_status_v(wh_json:to_proplist(JObj)).
 
 
 
 status(Prop) when is_list(Prop) ->
     case status_v(Prop) of
-        'false' -> {'error', "Proplist failed validation for fax_query"};
+        'false' -> {'error', "Proplist failed validation for fax_query_status"};
         'true' -> wh_api:build_message(Prop, ?FAX_STATUS_HEADERS, ?OPTIONAL_FAX_STATUS_HEADERS)
     end;
 status(JObj) ->
@@ -107,7 +107,7 @@ bind_q(Queue, AccountId, FaxId, 'undefined') ->
 bind_q(Queue, AccountId, FaxId, ['status'|Restrict]) ->
     amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
     bind_q(Queue, AccountId, FaxId, Restrict);
-bind_q(Queue, AccountId, FaxId, ['query'|Restrict]) ->
+bind_q(Queue, AccountId, FaxId, ['query_status'|Restrict]) ->
     amqp_util:bind_q_to_targeted(Queue),
     bind_q(Queue, AccountId, FaxId, Restrict);
 bind_q(Queue, AccountId, FaxId, ['req'|Restrict]) ->
@@ -127,7 +127,7 @@ unbind_q(Queue, AccountId, FaxId, 'undefined') ->
 unbind_q(Queue, AccountId, FaxId, ['status'|Restrict]) ->
     amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
     unbind_q(Queue, AccountId, FaxId, Restrict);
-unbind_q(Queue, AccountId, FaxId, ['query'|Restrict]) ->
+unbind_q(Queue, AccountId, FaxId, ['query_status'|Restrict]) ->
     amqp_util:unbind_q_from_targeted(Queue),
     unbind_q(Queue, AccountId, FaxId, Restrict);
 unbind_q(Queue, AccountId, FaxId, ['req'|Restrict]) ->
@@ -153,10 +153,10 @@ publish_req(Api, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Api, ?FAX_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, fax_routing_key()).
 
-publish_query(Q, JObj) ->
-    publish_query(Q, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_query(Q, API, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?FAX_QUERY_VALUES, fun ?MODULE:query/1),
+publish_query_status(Q, JObj) ->
+    publish_query_status(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_status(Q, API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?FAX_QUERY_VALUES, fun ?MODULE:query_status/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 
