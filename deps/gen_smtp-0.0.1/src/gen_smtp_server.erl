@@ -28,7 +28,7 @@
 
 -define(PORT, 2525).
 
--include_lib("whistle/include/wh_log.hrl").
+-compile([{'parse_transform', 'lager_transform'}]).
 
 %% External API
 -export([start_link/3, start_link/2, start_link/1,
@@ -211,7 +211,7 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 		error_logger:error_msg("Error in socket acceptor: ~p.~n", [Error]),
 		{noreply, State}
 	end;
-handle_info({'EXIT', From, Reason}, #state{module = Module, listeners = Listeners, sessions = CurSessions} = State) ->
+handle_info({'EXIT', From, _Reason}, #state{module = Module, sessions = CurSessions} = State) ->
 	case lists:member(From, State#state.sessions) of
 		true ->
             lager:info("smtp session closed on module ~s. current sessions ~p",[Module, length(CurSessions) - 1]),
@@ -228,7 +228,7 @@ handle_info({inet_async, _ListenSocket,_, Error}, State) ->
 	{stop, Error, State};
 
 handle_info({tcp_closed, _Socket}, #state{module = Module, sessions = CurSessions} = State) ->
-%    lager:debug("tcp_closed ~p on smtp_server module ~s. sessions = ~p",[_Socket, Module, length(CurSessions)]),
+    lager:debug("tcp_closed ~p on smtp_server module ~s. sessions = ~p",[_Socket, Module, length(CurSessions)]),
     {noreply, State};
     
 handle_info(_Info, #state{module = Module, sessions = CurSessions} = State) ->
