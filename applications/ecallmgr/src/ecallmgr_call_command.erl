@@ -667,7 +667,7 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
                         ,ControlUsurp
                         ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
                        ),
-    io:format("published ~p for ~s~n", [ControlUsurp, Target]),
+    lager:debug("published ~p for ~s", [ControlUsurp, Target]),
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
     ecallmgr_util:export(Node, UUID, Exports),
