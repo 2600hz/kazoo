@@ -52,6 +52,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 -spec get_fs_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                         fs_app() |
                         {'return', 'error'} |
+                        {'return', ne_binary()} |
                         {'error', ne_binary()} |
                         [fs_app(),...].
 get_fs_app(Node, UUID, JObj, <<"noop">>) ->
@@ -523,6 +524,7 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %%--------------------------------------------------------------------
 -spec call_pickup(atom(), ne_binary(), wh_json:object()) ->
                          {ne_binary(), ne_binary()} |
+                         {'return', ne_binary()} |
                          {'error', ne_binary()}.
 call_pickup(Node, UUID, JObj) ->
     Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
@@ -542,6 +544,10 @@ call_pickup(Node, UUID, JObj) ->
             call_pickup_via_amqp(Node, UUID, JObj, Target)
     end.
 
+-spec call_pickup_via_amqp(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
+                                  {ne_binary(), ne_binary()} |
+                                  {'return', ne_binary()} |
+                                  {'error', ne_binary()}.
 call_pickup_via_amqp(Node, UUID, JObj, TargetCallId) ->
     case wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                              ,[{<<"Call-ID">>, TargetCallId}
@@ -561,7 +567,8 @@ call_pickup_via_amqp(Node, UUID, JObj, TargetCallId) ->
     end.
 
 -spec call_pickup_via_amqp(atom(), ne_binary(), wh_json:object(), ne_binary(), wh_json:object()) ->
-                                  {ne_binary(), ne_binary()}.
+                                  {ne_binary(), ne_binary()} |
+                                  {'return', ne_binary()}.
 call_pickup_via_amqp(Node, UUID, JObj, TargetCallId, Resp) ->
     TargetNode = wh_json:get_value(<<"Switch-Nodename">>, Resp),
     lager:debug("call ~s is on ~s", [TargetCallId, TargetNode]),
@@ -573,7 +580,8 @@ maybe_answer(Node, UUID, 'false') ->
     ecallmgr_util:send_cmd(Node, UUID, <<"answer">>, <<>>).
 
 -spec call_pickup_maybe_move(atom(), ne_binary(), wh_json:object(), ne_binary(), atom()) ->
-                                    {ne_binary(), ne_binary()}.
+                                    {ne_binary(), ne_binary()} |
+                                    {'return', ne_binary()}.
 call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
     case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of
         'true' ->
@@ -590,6 +598,9 @@ call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
             {'return', <<"target is on different media server: ", (wh_util:to_binary(OtherNode))/binary>>}
     end.
 
+-spec call_pickup_maybe_move_remote(atom(), ne_binary(), wh_json:object(), ne_binary(), atom(), wh_json:object()) ->
+                                           {ne_binary(), ne_binary()} |
+                                           {'return', ne_binary()}.
 call_pickup_maybe_move_remote(Node, UUID, JObj, TargetCallId, TargetNode, ChannelStatusJObj) ->
     case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of
         'true' ->
