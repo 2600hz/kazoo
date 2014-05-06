@@ -538,10 +538,36 @@ call_pickup(Node, UUID, JObj) ->
             lager:debug("target ~s is on other node (~s), not ~s", [Target, OtherNode, Node]),
             call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode);
         {'error', 'not_found'} ->
-            lager:debug("failed to find target callid ~s", [Target]),
-            {'error', <<"failed to find target callid ", Target/binary>>}
+            lager:debug("failed to find target callid ~s locally", [Target]),
+            call_pickup_via_amqp(Node, UUID, JObj, Target)
     end.
 
+call_pickup_via_amqp(Node, UUID, JObj, TargetCallId) ->
+    case wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                             ,[{<<"Call-ID">>, TargetCallId}
+                               ,{<<"Active-Only">>, 'true'}
+                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                              ]
+                             ,fun(C) -> wapi_call:publish_channel_status_req(TargetCallId, C) end
+                             ,fun wapi_call:channel_status_resp_v/1
+                            )
+    of
+        {'ok', Resp} ->
+            lager:debug("found response to channel query, checking for ~s: ~p", [TargetCallId, Resp]),
+            call_pickup_via_amqp(Node, UUID, JObj, TargetCallId, Resp);
+        {'error', _E} ->
+            lager:debug("error querying for channels for ~s: ~p", [TargetCallId, _E]),
+            {'error', <<"failed to find target callid ", TargetCallId/binary>>}
+    end.
+
+-spec call_pickup_via_amqp(atom(), ne_binary(), wh_json:object(), ne_binary(), wh_json:object()) ->
+                                  {ne_binary(), ne_binary()}.
+call_pickup_via_amqp(Node, UUID, JObj, TargetCallId, Resp) ->
+    TargetNode = wh_json:get_value(<<"Switch-Nodename">>, Resp),
+    lager:debug("call ~s is on ~s", [TargetCallId, TargetNode]),
+    call_pickup_maybe_move_remote(Node, UUID, JObj, TargetCallId, wh_util:to_atom(TargetNode, 'true'), Resp).
+
+-spec maybe_answer(atom(), ne_binary(), boolean()) -> 'ok'.
 maybe_answer(_Node, _UUID, 'true') -> 'ok';
 maybe_answer(Node, UUID, 'false') ->
     ecallmgr_util:send_cmd(Node, UUID, <<"answer">>, <<>>).
@@ -556,33 +582,54 @@ call_pickup_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
             get_call_pickup_app(Node, UUID, JObj, Target);
         'false' ->
             lager:debug("target ~s is on ~s, not ~s, need to redirect", [Target, OtherNode, Node]),
-            lager:debug("gotta usurp some fools first"),
 
-            ControlUsurp = [{<<"Call-ID">>, UUID}
-                            ,{<<"Reason">>, <<"redirect">>}
-                            ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                           ],
-            PublishUsurp = [{<<"Call-ID">>, UUID}
-                            ,{<<"Reference">>, wh_util:rand_hex_binary(4)}
-                            ,{<<"Media-Node">>, wh_util:to_binary(Node)}
-                            ,{<<"Reason">>, <<"redirect">>}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                           ],
-
-            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                                ,ControlUsurp
-                                ,fun(C) -> wapi_call:publish_usurp_control(UUID, C) end
-                               ),
-            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                                ,PublishUsurp
-                                ,fun(C) -> wapi_call:publish_usurp_publisher(UUID, C) end
-                               ),
+            _ = call_pickup_usurpers(Node, UUID),
 
             lager:debug("now issue the redirect to ~s", [OtherNode]),
             _ = ecallmgr_channel_redirect:redirect(UUID, OtherNode),
             {'return', <<"target is on different media server: ", (wh_util:to_binary(OtherNode))/binary>>}
     end.
+
+call_pickup_maybe_move_remote(Node, UUID, JObj, TargetCallId, TargetNode, ChannelStatusJObj) ->
+    case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of
+        'true' ->
+            lager:debug("target ~s is on ~s, not ~s...moving", [TargetCallId, TargetNode, Node]),
+            'true' = ecallmgr_channel_move:move(TargetCallId, TargetNode, Node),
+            get_call_pickup_app(Node, UUID, JObj, TargetCallId);
+        'false' ->
+            lager:debug("target ~s is on ~s, not ~s, need to redirect", [TargetCallId, TargetNode, Node]),
+
+            _ = call_pickup_usurpers(Node, UUID),
+
+            lager:debug("now issue the redirect to ~s", [TargetNode]),
+            _ = ecallmgr_channel_redirect:redirect_remote(UUID, ChannelStatusJObj),
+            {'return', <<"target is on different media server: ", (wh_util:to_binary(TargetNode))/binary>>}
+    end.
+
+-spec call_pickup_usurpers(atom(), ne_binary()) -> 'ok'.
+call_pickup_usurpers(Node, UUID) ->
+            lager:debug("gotta usurp some fools first"),
+    ControlUsurp = [{<<"Call-ID">>, UUID}
+                    ,{<<"Reason">>, <<"redirect">>}
+                    ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+    PublishUsurp = [{<<"Call-ID">>, UUID}
+                    ,{<<"Reference">>, wh_util:rand_hex_binary(4)}
+                    ,{<<"Media-Node">>, wh_util:to_binary(Node)}
+                    ,{<<"Reason">>, <<"redirect">>}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,ControlUsurp
+                        ,fun(C) -> wapi_call:publish_usurp_control(UUID, C) end
+                       ),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,PublishUsurp
+                        ,fun(C) -> wapi_call:publish_usurp_publisher(UUID, C) end
+                       ).
+
 
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
