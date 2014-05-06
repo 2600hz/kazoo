@@ -41,8 +41,9 @@
                            ibrowse_ret() |
                            {'ibrowse_req_id', ibrowse_req_id()}.
 -type create_resp() :: {'ok', ibrowse_req_id()} |
+                       provider_return() |
                        {'ok', ne_binary(), ne_binary()} | %% {'ok', ContentType, BinaryData}
-                       {'error', provider_errors() | 'tts_provider_failure'}.
+                       {'error', 'tts_provider_failure', binary()}.
 
 -type asr_resp() :: {'ok', ibrowse_req_id()} |
                     {'ok', wh_json:object()} | %% {'ok', JObj}
@@ -72,7 +73,7 @@ create(Text, Voice, Format, Options) ->
 -spec create(api_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> create_resp().
 create('undefined', Text, Voice, Format, Options) ->
     create(Text, Voice, Format, Options);
-create(<<"ispeech">>, Text, Voice, Format, Options) ->
+create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
     VoiceMappings = [{<<"female/en-US">>, <<"usenglishfemale">>}
                      ,{<<"male/en-US">>, <<"usenglishmale">>}
                      ,{<<"female/en-CA">>, <<"caenglishfemale">>}
@@ -135,7 +136,7 @@ create(<<"ispeech">>, Text, Voice, Format, Options) ->
             HTTPOptions = [{'response_format', 'binary'} | Options],
             Body = wh_json:encode(wh_json:from_list(Props)),
             Response = ibrowse:send_req(BaseUrl, Headers, 'post', Body, HTTPOptions),
-            create_response(Response)
+            create_response(Engine, Response)
     end;
 create(_, _, _, _, _) ->
     {'error', 'unknown_provider'}.
@@ -279,21 +280,32 @@ asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Options) ->
 asr_commands(_, _, _, _, _, _) ->
     {'error', 'unknown_provider'}.
 
-
-create_response({'error', _R}=E) ->
+-spec create_response(ne_binary(), ibrowse_ret()) ->
+                             {'ok', ibrowse_req_id()} |
+                             {'ok', ne_binary(), ne_binary()} |
+                             {'error', 'tts_provider_failure', binary()}.
+create_response(_Engine, {'error', _R}) ->
     lager:warning("creating speech file failed with error ~p", [_R]),
-    E;
-create_response({'ibrowse_req_id', ReqID}) ->
+    {'error', 'tts_provider_failure', <<"unexpected error encountered accessing provider">>};
+create_response(_Engine, {'ibrowse_req_id', ReqID}) ->
     lager:debug("speech file streaming as ~p", [ReqID]),
     {'ok', ReqID};
-create_response({'ok', "200", Headers, Content}) ->
+create_response(_Engine, {'ok', "200", Headers, Content}) ->
     ContentType = props:get_value("Content-Type", Headers),
     ContentLength = props:get_value("Content-Length", Headers),
     lager:debug("created speech file ~s of length ~s", [ContentType, ContentLength]),
     {'ok', wh_util:to_binary(ContentType), Content};
-create_response({'ok', Code, _, Content}) ->
+create_response(Engine, {'ok', Code, RespHeaders, Content}) ->
     lager:warning("creating speech file failed with code ~s: ~s", [Code, Content]),
-    {'error', 'tts_provider_failure'}.
+    [lager:debug("hdr: ~p", [H]) || H <- RespHeaders],
+
+    {'error', 'tts_provider_failure', create_error_response(Engine, RespHeaders, Content)}.
+
+-spec create_error_response(ne_binary(), wh_proplist(), binary()) -> binary().
+create_error_response(<<"ispeech">>, _RespHeaders, Content) ->
+    wh_json:get_value(<<"message">>, wh_json:decode(Content));
+create_error_response(_Engine, _RespHeaders, Content) ->
+    Content.
 
 -spec convert_content(binary(), ne_binary(), ne_binary()) -> binary() | 'error'.
 convert_content(Content, <<"audio/mpeg">>, <<"application/wav">> = _ContentType) ->
