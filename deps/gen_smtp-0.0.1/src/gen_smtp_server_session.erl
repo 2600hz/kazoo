@@ -33,7 +33,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include_lib("whistle/include/wh_log.hrl").
+-compile([{'parse_transform', 'lager_transform'}]).
 
 
 -define(MAXIMUMSIZE, 10485760). %10mb
