@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2013-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -8,16 +8,26 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_channel_redirect).
 
--export([redirect/2]).
+-export([redirect/2
+         ,redirect_remote/2
+        ]).
 
 -include("ecallmgr.hrl").
 
 -spec redirect(ne_binary(), atom() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
 redirect(UUID, DestinationNode) ->
-    DestNodeURL = ecallmgr_fs_node:sip_url(DestinationNode),
+    URL = ecallmgr_fs_node:sip_url(DestinationNode),
     case ecallmgr_config:get_boolean(<<"redirect_via_proxy">>, 'true') of
-        'true' -> redirect_via_proxy(DestNodeURL, UUID);
-        'false' -> redirect_via_endpoint(DestNodeURL, UUID)
+        'true' -> redirect_via_proxy(URL, UUID);
+        'false' -> redirect_via_endpoint(URL, UUID)
+    end.
+
+redirect_remote(UUID, ChannelStatusJObj) ->
+    URL = wh_json:get_value(<<"Switch-URL">>, ChannelStatusJObj),
+
+    case ecallmgr_config:get_boolean(<<"redirect_via_proxy">>, 'true') of
+        'true' -> redirect_via_proxy(URL, UUID);
+        'false' -> redirect_via_endpoint(URL, UUID)
     end.
 
 -spec redirect_via_proxy(ne_binary(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
@@ -26,6 +36,7 @@ redirect_via_proxy(DestNodeURL, UUID) ->
                     ,realm=Realm
                    }=Channel} = ecallmgr_fs_channel:fetch(UUID, 'record'),
     Contact = <<"sip:", ToUser/binary, "@", Realm/binary>>,
+
     RedirectURL = binary:replace(DestNodeURL, <<"mod_sofia@">>, <<>>),
     send_redirect(RedirectURL, Contact, Channel).
 
@@ -50,7 +61,5 @@ send_redirect(RedirectUrl, Contact, #channel{node=Node
     ecallmgr_util:send_cmd(Node, UUID, redirect_app(IsAnswered), Contact).
 
 -spec redirect_app(boolean()) -> ne_binary().
-redirect_app('true') ->
-    <<"deflect">>;
-redirect_app('false') ->
-    <<"redirect">>.
+redirect_app('true') -> <<"deflect">>;
+redirect_app('false') -> <<"redirect">>.
