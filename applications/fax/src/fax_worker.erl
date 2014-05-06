@@ -81,26 +81,24 @@ start_link(_) ->
                                      ], []).
 
 handle_tx_resp(JObj, Props) ->
-    lager:info("TXRESP ~p", [JObj]),
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'tx_resp', wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
 
 handle_fax_event(JObj, Props) ->
-    lager:info("FAX_EVENT ~p", [JObj]),
     Srv = props:get_value('server', Props),
     JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
     Event = wh_json:get_value(<<"Application-Event">>, JObj),
     gen_server:cast(Srv, {'fax_status', Event , JobId, JObj}).
 
+-spec handle_channel_destroy(wh_json:object(), wh_proplist()) -> any(). 
 handle_channel_destroy(JObj, Props) ->
-    lager:info("CHANNEL DESTROY ~p", [JObj]),
     Srv = props:get_value('server', Props),
     JobId = wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Authorizing-ID">>], JObj),
     gen_server:cast(Srv, {'channel_destroy', JobId, JObj}).
 
+-spec handle_job_status_query(wh_json:object(), wh_proplist()) -> any(). 
 handle_job_status_query(JObj, Props) ->
-    lager:info("STATUS QUERY ~p", [JObj]),
     'true' = wapi_fax:query_v(JObj),
     Srv = props:get_value('server', Props),
     JobId = wh_json:get_value(<<"Job-ID">>, JObj),
@@ -186,8 +184,10 @@ handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
 handle_cast({'channel_destroy', JobId2, JObj}, #state{job_id=JobId}=State) ->
     lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
-handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}
-           , #state{job=Job, pages=Pages, account_id=AccountId}=State) ->
+handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{job=Job
+                                                                      ,pages=Pages
+                                                                      ,account_id=AccountId
+                                                                      }=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
     TransferRate = wh_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
     lager:debug("fax status - negociate result - ~s : ~p",[JobId, TransferRate]),
@@ -432,8 +432,8 @@ release_failed_job('tx_resp', Resp, JObj) ->
              ],
     release_job(Result, JObj, Resp);
 release_failed_job('channel_destroy', Resp, JObj) ->
-    Result = [{<<"success">>, 'false'}] 
-               ++ fax_util:collect_channel_props(Resp),
+    Result = [{<<"success">>, 'false'} 
+               | fax_util:collect_channel_props(Resp)],
     release_job(Result, JObj, Resp);
 release_failed_job('exception', _Error, JObj) ->
     Result = [{<<"success">>, 'false'}
@@ -542,7 +542,7 @@ notify_fields(JObj, Resp) ->
     HangupCause =  wh_json:get_value(<<"Hangup-Cause">>, Resp),
     FaxFields = [{"Fax-Hangup-Code", wh_util:to_integer(HangupCode)}
                 ,{"Fax-Hangup-Cause", HangupCause}
-                 ] ++ fax_fields(wh_json:get_value(<<"Application-Data">>, Resp)),
+                | fax_fields(wh_json:get_value(<<"Application-Data">>, Resp))],
     
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
