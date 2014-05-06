@@ -304,6 +304,8 @@ rollup(Transaction) ->
     Transaction1 = wh_transaction:set_reason(<<"database_rollup">>, Transaction),
     Transaction2 = wh_transaction:set_description(<<"monthly rollup">>, Transaction1),
     case wh_transaction:save(Transaction2) of
+        {'error', 'conflict'} ->
+            lager:warning("monthly rollup transaction failed: document already exist", []);
         {'error', _E} ->
             lager:error("monthly rollup transaction failed: ~p", [_E]);
         {'ok', _} ->
