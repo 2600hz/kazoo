@@ -24,6 +24,7 @@ handle_event(Context, EventJObj) ->
     lager:debug("valid event and emitting to ~p: ~s", [bh_context:websocket_pid(Context), event_name(EventJObj)]),
     blackhole_data_emitter:emit(bh_context:websocket_pid(Context), event_name(EventJObj), EventJObj).
 
+-spec is_account_event(bh_context:context(), wh_json:object()) -> any().
 is_account_event(Context, EventJObj) ->
     wh_json:get_first_defined([<<"Account-ID">>
                                ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
@@ -34,7 +35,6 @@ is_account_event(Context, EventJObj) ->
 -spec event_name(wh_json:object()) -> ne_binary().
 event_name(JObj) ->
     <<"fax.status">>.
-%    wh_json:get_value(<<"fax.status">>, JObj).
 
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 add_amqp_binding(<<"fax.status.", FaxId/binary>>, Context) ->
