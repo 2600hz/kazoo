@@ -269,11 +269,12 @@ get_execution_status(Id, JObj) ->
         Status -> Status
     end.
 
+-spec get_fax_running_status(ne_binary(), ne_binary()) -> any().
 get_fax_running_status(Id, Q) ->
     Api = [{<<"Job-ID">>, Id} | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    case wh_amqp_worker:call(?CROSSBAR_AMQP_POOL, Api
-                             ,fun(A) -> wapi_fax:publish_query(Q, A) end
-                             ,fun wapi_fax:status_v/1) of
+    case whapps_util:amqp_pool_request(Api
+                                      ,fun(A) -> wapi_fax:publish_query(Q, A) end
+                                      ,fun wapi_fax:status_v/1) of
         {'ok', JObj } -> wh_json:get_value(<<"Status">>, JObj);
         _ -> <<"not available">>
     end.

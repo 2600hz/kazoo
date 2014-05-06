@@ -130,7 +130,5 @@
           ,magic_pathed = 'false' :: boolean()
          }).
 
--define(CROSSBAR_AMQP_POOL, 'whapps_amqp_pool').
-
 -define(CROSSBAR_HRL, 'true').
 -endif.
