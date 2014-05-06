@@ -103,8 +103,7 @@ bind_q(Queue, Props) ->
 
 bind_q(Queue, AccountId, FaxId, 'undefined') ->
     amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
-    amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
-    amqp_util:bind_q_to_targeted(Queue);
+    amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE);
 bind_q(Queue, AccountId, FaxId, ['status'|Restrict]) ->
     amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
     bind_q(Queue, AccountId, FaxId, Restrict);
@@ -124,8 +123,7 @@ unbind_q(Queue, Props) ->
 
 unbind_q(Queue, AccountId, FaxId, 'undefined') ->
     amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
-    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
-    amqp_util:unbind_q_from_targeted(Queue);
+    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE);
 unbind_q(Queue, AccountId, FaxId, ['status'|Restrict]) ->
     amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
     unbind_q(Queue, AccountId, FaxId, Restrict);
