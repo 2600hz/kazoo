@@ -519,6 +519,8 @@ prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 2003 =:= Co
     prepare_number_activation_transaction(Transaction);
 prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 3001 =:= Code orelse 3002 =:= Code ->
     prepare_manual_addition_transaction(Transaction);
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 4000 =:= Code ->
+    prepare_rollup_transaction(Transaction);
 prepare_transaction(Transaction) ->
     Transaction.
 
@@ -559,6 +561,10 @@ prepare_manual_addition_transaction(#wh_transaction{sub_account_id='undefined', 
     {'error', 'sub_accuont_id_missing'};
 prepare_manual_addition_transaction(Transaction) ->
     Transaction.
+-spec prepare_rollup_transaction(transaction()) -> transaction().
+prepare_rollup_transaction(Transaction) ->
+    Id = <<"monthly_rollup">>,
+    Transaction#wh_transaction{id=Id}.
 
 %%--------------------------------------------------------------------
 %% @private
