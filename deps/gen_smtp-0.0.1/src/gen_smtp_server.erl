@@ -196,14 +196,14 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
                         Pid ! {tcp_closed, ClientSocket},
                         CurSessions;
                     {'error', E} ->
-                        lager:info("error [~p] setting controlling process ~s : ~p", [E, Module, Pid]),
+                        lager:debug("error [~p] setting controlling process ~s : ~p", [E, Module, Pid]),
                         Pid ! {tcp_closed, ClientSocket},
                         CurSessions
                 end;				
             ignore ->
                 CurSessions;                       
 			_Other ->
-                lager:info("Session Start Error ~p",[_Other]),
+                lager:debug("Session Start Error ~p",[_Other]),
 				CurSessions
 		end,
 		{noreply, State#state{sessions = Sessions}}
@@ -214,13 +214,13 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 handle_info({'EXIT', From, _Reason}, #state{module = Module, sessions = CurSessions} = State) ->
 	case lists:member(From, State#state.sessions) of
 		true ->
-            lager:info("smtp session closed on module ~s. current sessions ~p",[Module, length(CurSessions) - 1]),
+            lager:debug("smtp session closed on module ~s. current sessions ~p",[Module, length(CurSessions) - 1]),
 			{noreply, State#state{sessions = lists:delete(From, State#state.sessions)}};
 		false ->
 			{noreply, State}
 	end;
 handle_info({inet_async, ListenSocket, _, {error, econnaborted}}, State) ->
-	lager:info("Client terminated connection with econnaborted~n"),
+	lager:debug("Client terminated connection with econnaborted~n"),
 	socket:begin_inet_async(ListenSocket),
 	{noreply, State};
 handle_info({inet_async, _ListenSocket,_, Error}, State) ->
@@ -238,7 +238,7 @@ handle_info(_Info, #state{module = Module, sessions = CurSessions} = State) ->
 %% @hidden
 -spec terminate(Reason :: any(), State :: #state{}) -> 'ok'.
 terminate(Reason, State) ->
-	lager:info("Terminating due to ~p~n", [Reason]),
+	lager:debug("Terminating due to ~p~n", [Reason]),
 	lists:foreach(fun(#listener{socket=S}) -> catch socket:close(S) end, State#state.listeners),
 	ok.
 
