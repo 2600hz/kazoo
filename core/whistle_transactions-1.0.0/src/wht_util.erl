@@ -114,15 +114,43 @@ get_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} ->
-            Balance = get_balance_from_account(Account, ViewOptions),
-            AccountMODb = kazoo_modb:get_modb(Account),
-            rollup(AccountMODb, Balance),
-            Balance;
+            get_balance_from_previous(Account, ViewOptions);
         {'ok', [ViewRes|_]} ->
-            wh_json:get_integer_value(<<"value">>, ViewRes, 0);
+            Balance = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
+            _ = maybe_rollup(Account, ViewOptions, Balance),
+            Balance;
         {'error', _E} ->
             lager:warning("unable to get current balance for ~s: ~p", [Account, _E]),
             0
+    end.
+
+-spec get_balance_from_previous(ne_binary(), wh_proplist()) -> integer().
+-spec get_balance_from_previous(ne_binary(), wh_proplist(), integer()) -> integer().
+get_balance_from_previous(Account, ViewOptions) ->
+    Retry = props:get_value('retry', ViewOptions, 3),
+    get_balance_from_previous(Account, ViewOptions, Retry).
+
+get_balance_from_previous(Account, ViewOptions, Retry) when Retry >= 0 ->
+    {DefaultYear, DefaultMonth, _} = erlang:date(),
+    Y = props:get_integer_value('year', ViewOptions, DefaultYear),
+    M = props:get_integer_value('month', ViewOptions, DefaultMonth),
+    {Year, Month} = prev_year_month(Y, M),
+    VOptions = [{'year', wh_util:to_binary(Year)}
+                ,{'month', wh_util:pad_month(Month)}
+                ,{'retry', Retry-1}],
+    lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
+    get_balance(Account, VOptions);
+get_balance_from_previous(Account, ViewOptions, _) ->
+    lager:error("3 attempt to find balance in previous modb getting from account", []),
+    get_balance_from_account(Account, ViewOptions).
+
+-spec maybe_rollup(ne_binary(), wh_proplist(), integer()) -> integer().
+maybe_rollup(Account, ViewOptions, Balance) ->
+    case props:is_defined('retry', ViewOptions) of
+        'false' -> 'ok';
+        'true' ->
+            AccountMODb = kazoo_modb:get_modb(Account),
+            rollup(AccountMODb, Balance)
     end.
 
 -spec get_balance_from_account(ne_binary(), wh_proplist()) -> integer().
@@ -284,7 +312,7 @@ collapse_call_transactions(Transactions) ->
 modb(AccountMODb) ->
     Routines = [fun(MoDb) -> find_previous_modb(MoDb) end
                 ,fun({Year, Month}) -> previous_balance(AccountMODb, Year, Month) end
-                ,fun(Ballance) -> rollup(AccountMODb, Ballance) end
+                ,fun(Balance) -> rollup(AccountMODb, Balance) end
                ],
     lists:foldl(fun(F, A) -> F(A) end, AccountMODb, Routines).
 
@@ -312,12 +340,12 @@ rollup(Transaction) ->
             lager:debug("monthly rollup transaction success", [])
     end.
 
-rollup(AccountMODb, Ballance) when Ballance > 0 ->
+rollup(AccountMODb, Balance) when Balance > 0 ->
     AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
-    rollup(wh_transaction:credit(AccountId, Ballance));
-rollup(AccountMODb, Ballance) ->
+    rollup(wh_transaction:credit(AccountId, Balance));
+rollup(AccountMODb, Balance) ->
     AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
-    rollup(wh_transaction:debit(AccountId, -1*Ballance)).
+    rollup(wh_transaction:debit(AccountId, -1*Balance)).
 
 
 %%--------------------------------------------------------------------

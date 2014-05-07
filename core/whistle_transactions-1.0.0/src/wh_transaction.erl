@@ -510,7 +510,7 @@ save_transaction(#wh_transaction{pvt_account_id=AccountId, pvt_created=Created}=
 prepare_transaction(#wh_transaction{pvt_account_id='undefined'}) ->
     {'error', 'account_id_missing'};
 prepare_transaction(#wh_transaction{pvt_account_db='undefined'}) ->
-    {'error', 'account_id_missing'};
+    {'error', 'account_db_missing'};
 prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 1001 =:= Code orelse 1002 =:= Code ->
     prepare_call_transaction(Transaction);
 prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 2001 =:= Code orelse 2002 =:= Code ->
