@@ -57,9 +57,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     spawn(?MODULE, 'cleanup_jobs', []),
-    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 180000),
-    _ = erlang:send_after(MaxTime, self(), 'expire_jobs'),
-    {'ok', #state{}, 0}.
+    {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,26 +103,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('expire_jobs', State) ->
-    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 180000),
-    ViewOptions = [{<<"key">>, wh_util:to_binary(node())}],
-    case couch_mgr:get_results(?WH_FAXES, <<"faxes/processing_by_node">>, ViewOptions) of
-        {'ok', JObjs} ->
-            [begin
-                 DocId = wh_json:get_value(<<"id">>, JObj),
-                 lager:debug("moving expired job ~s status to pending", [DocId]),
-                 couch_mgr:update_doc(?WH_FAXES, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
-             end
-             || JObj <- JObjs
-                    ,(wh_util:current_tstamp() - wh_json:get_integer_value([<<"value">>,<<"modified">>], JObj, 0)) > (MaxTime div 1000)
-            ],
-            'ok';
-        {'error', _R} ->
-            lager:debug("unable to expire jobs: ~p", [_R]),
-            'ok'
-    end,
-    _ = erlang:send_after(MaxTime, self(), 'expire_jobs'),
-    {'noreply', State, ?POLLING_INTERVAL};
 handle_info('timeout', #state{jobs=[]}=State) ->
     ViewOptions = [{'limit', 100}],
     case couch_mgr:get_results(?WH_FAXES, <<"faxes/jobs">>, ViewOptions) of
@@ -136,6 +114,9 @@ handle_info('timeout', #state{jobs=[]}=State) ->
             lager:debug("failed to fetch fax jobs: ~p", [_Reason]),
             {'noreply', State, ?POLLING_INTERVAL}
     end;
+handle_info({'DOWN', Ref, process, Pid, Reason}, State) ->
+    lager:debug("Fax Worker crashed ? ~p / ~p / ~p",[Ref, Pid, Reason]),
+    {'noreply', State, ?POLLING_INTERVAL};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -193,3 +174,5 @@ cleanup_jobs() ->
             'ok';
         {'error', _R} -> lager:debug("unable to cleanup jobs: ~p", [_R])
     end.
+
+

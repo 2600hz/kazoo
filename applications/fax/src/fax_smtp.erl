@@ -30,6 +30,7 @@
 -include("fax.hrl").
 
 -define(RELAY, 'true').
+-define(SMTP_MAX_SESSIONS, whapps_config:get_integer(?CONFIG_CAT, <<"smtp_sessions">>, 50)).
 
 -record(state, {
           options = [] :: list()
@@ -47,7 +48,7 @@
                   {'ok', string(), #state{}} |
                   {'stop', any(), string()}.
 init(Hostname, SessionCount, Address, Options) ->
-    case SessionCount > 20 of
+    case SessionCount > ?SMTP_MAX_SESSIONS  of
         'false' ->
             Banner = [Hostname, " Kazoo Email to Fax Server"],
             State = #state{options = Options, peer_ip = Address},
@@ -208,7 +209,7 @@ terminate('normal', #state{filename=Filename
         'false' ->
             lager:info("terminate normal saving docs"),
             {'ok', FileContents} = file:read_file(Filename),
-            save_fax_doc(Docs, FileContents,CT),
+            fax_util:save_fax_doc(Docs, FileContents,CT),
             file:delete(Filename);
         _  -> 'ok'
     end,
@@ -218,35 +219,22 @@ terminate(Reason, State) ->
     {'ok', Reason, State}.
 
 %%% Internal Functions %%%
-save_fax_doc([],_FileContents, _CT) -> 'ok';
-save_fax_doc([Doc|Docs], FileContents, CT) ->
-    case couch_mgr:save_doc(?WH_FAXES, Doc) of
-        {'ok', JObj} ->
-            DocId = wh_json:get_value(<<"_id">>, JObj),
-            Rev = wh_json:get_value(<<"_rev">>, JObj),
-            Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
-                    ,{'rev', Rev}
-                   ],
-            Name = attachment_name(<<>>, CT),
-            lager:debug("attachment name: ~s", [Name]),
-            couch_mgr:put_attachment(?WH_FAXES, DocId, Name, FileContents, Opts);
-        _Else -> 'ok'
-    end,
-    save_fax_doc(Docs,FileContents,CT).
-
+            
+    
+    
 -spec check_faxbox(binary(), #state{}) ->
                           {'ok', #state{}} |
                           {'error', string(), #state{}}.
 check_faxbox(To, State) ->
-    [FaxNumber,FaxBoxId] = binary:split(wh_util:to_lower_binary(To),<<"@">>),
-    ViewOptions = [{'key', FaxBoxId}
+    [FaxNumber,Domain] = binary:split(wh_util:to_lower_binary(To),<<"@">>),
+    ViewOptions = [{'key', Domain}
                    ,'include_docs'
                   ],
     case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
-        {'ok', []} -> {'error', <<"Not Found">>, State};
+        {'ok', []} -> {'error', "Not Found", State};
         {'ok', [JObj]} -> check_faxbox_permissions(FaxNumber, wh_json:get_value(<<"doc">>,JObj), State );
-        {'error', 'not_found'} -> {'error', <<"Not Found">>, State};
-        _ -> {'error', <<"Unknown Error">>, State}
+        {'error', 'not_found'} -> {'error', "Not Found", State};
+        _ -> {'error', "Unknown Error", State}
     end.
 
 -spec check_faxbox_permissions(binary(), wh_json:object(), #state{}) ->
@@ -282,7 +270,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
               ]),
     { _ , JObj} = wh_json_validator:is_valid(wh_json:from_list(Props), <<"faxes">>),
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
-                              ,{<<"pvt_job_status">>, <<"pending">>}
+                              ,{<<"pvt_job_status">>, <<"attaching files">>}
                               ,{<<"pvt_created">>, wh_util:current_tstamp()}      
                               ,{<<"attempts">>, 0}
                               ,{<<"pvt_account_id">>, AccountId}
@@ -343,39 +331,4 @@ process_part(_ContentType, _Headers, _Parameters, _Body, State) ->
     lager:debug("ignoring Part ~s",[_ContentType]),
     {'ok', State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generate an attachment name if one is not provided and ensure
-%% it has an extension (for the associated content type)
-%% @end
-%%--------------------------------------------------------------------
--spec attachment_name(ne_binary(), ne_binary()) -> ne_binary().
-attachment_name(Filename, CT) ->
-    Generators = [fun maybe_generate_random_filename/1
-                  ,fun(A) -> maybe_attach_extension(A, CT) end
-                 ],
-    lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
 
-maybe_generate_random_filename(A) ->
-    case wh_util:is_empty(A) of
-        'true' -> wh_util:to_hex_binary(crypto:rand_bytes(16));
-        'false' -> A
-    end.
-
--spec maybe_attach_extension(ne_binary(), ne_binary()) -> ne_binary().
-maybe_attach_extension(A, CT) ->
-    case wh_util:is_empty(filename:extension(A)) of
-        'false' -> A;
-        'true' -> <<A/binary, ".", (content_type_to_extension(CT))/binary>>
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known media types to extensions
-%% @end
-%%--------------------------------------------------------------------
--spec content_type_to_extension(ne_binary()) -> ne_binary().
-content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>;
-content_type_to_extension(<<"image/tiff">>) -> <<"tiff">>.

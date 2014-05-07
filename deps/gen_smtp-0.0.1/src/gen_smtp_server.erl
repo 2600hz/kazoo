@@ -28,6 +28,8 @@
 
 -define(PORT, 2525).
 
+-compile([{'parse_transform', 'lager_transform'}]).
+
 %% External API
 -export([start_link/3, start_link/2, start_link/1,
     start/3, start/2, start/1,
@@ -183,13 +185,25 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 				end || L <- Listeners]),
 		{ok, ClientSocket} = socket:handle_inet_async(Listener#listener.socket, ClientAcceptSocket, Listener#listener.listenoptions),
 		%% New client connected
-		% io:format("new client connection.~n", []),
-		Sessions = case gen_smtp_server_session:start(ClientSocket, Module, [{hostname, Listener#listener.hostname}, {sessioncount, length(CurSessions) + 1} | Listener#listener.sessionoptions]) of
+		Sessions = case gen_smtp_server_session:start(ClientSocket, Module, [{hostname, Listener#listener.hostname}, {sessioncount, length(CurSessions) } | Listener#listener.sessionoptions]) of
 			{ok, Pid} ->
 				link(Pid),
-				socket:controlling_process(ClientSocket, Pid),
-				CurSessions ++[Pid];
+				case socket:controlling_process(ClientSocket, Pid) of
+                    'ok' ->
+                        lager:debug("new smtp session on ~s : current sessions ~p", [Module , length(CurSessions) + 1]),
+                        CurSessions ++[Pid];
+                    {'error', closed} ->
+                        Pid ! {tcp_closed, ClientSocket},
+                        CurSessions;
+                    {'error', E} ->
+                        lager:debug("error [~p] setting controlling process ~s : ~p", [E, Module, Pid]),
+                        Pid ! {tcp_closed, ClientSocket},
+                        CurSessions
+                end;				
+            ignore ->
+                CurSessions;                       
 			_Other ->
+                lager:debug("Session Start Error ~p",[_Other]),
 				CurSessions
 		end,
 		{noreply, State#state{sessions = Sessions}}
@@ -197,27 +211,34 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 		error_logger:error_msg("Error in socket acceptor: ~p.~n", [Error]),
 		{noreply, State}
 	end;
-handle_info({'EXIT', From, Reason}, State) ->
+handle_info({'EXIT', From, _Reason}, #state{module = Module, sessions = CurSessions} = State) ->
 	case lists:member(From, State#state.sessions) of
 		true ->
+            lager:debug("smtp session closed on module ~s. current sessions ~p",[Module, length(CurSessions) - 1]),
 			{noreply, State#state{sessions = lists:delete(From, State#state.sessions)}};
 		false ->
 			{noreply, State}
 	end;
 handle_info({inet_async, ListenSocket, _, {error, econnaborted}}, State) ->
-	io:format("Client terminated connection with econnaborted~n"),
+	lager:debug("Client terminated connection with econnaborted~n"),
 	socket:begin_inet_async(ListenSocket),
 	{noreply, State};
 handle_info({inet_async, _ListenSocket,_, Error}, State) ->
 	error_logger:error_msg("Error in socket acceptor: ~p.~n", [Error]),
 	{stop, Error, State};
-handle_info(_Info, State) ->
+
+handle_info({tcp_closed, _Socket}, #state{module = Module, sessions = CurSessions} = State) ->
+    lager:debug("tcp_closed ~p on smtp_server module ~s. sessions = ~p",[_Socket, Module, length(CurSessions)]),
+    {noreply, State};
+    
+handle_info(_Info, #state{module = Module, sessions = CurSessions} = State) ->
+    lager:debug("unhandled info ~p on smtp_server module ~s. sessions = ~p",[_Info, Module, length(CurSessions) ]),
 	{noreply, State}.
 
 %% @hidden
 -spec terminate(Reason :: any(), State :: #state{}) -> 'ok'.
 terminate(Reason, State) ->
-	io:format("Terminating due to ~p~n", [Reason]),
+	lager:debug("Terminating due to ~p~n", [Reason]),
 	lists:foreach(fun(#listener{socket=S}) -> catch socket:close(S) end, State#state.listeners),
 	ok.
 

@@ -12,5 +12,18 @@
 -define(APP_VERSION, <<"1.0.0">>).
 
 -define(FAX_CACHE, 'fax_cache').
+
+-define(FAX_CHANNEL_DESTROY_PROPS, [
+                                    <<"Ringing-Seconds">>, <<"Billing-Seconds">>,<<"0">>, <<"Duration-Seconds">>
+                                   ,<<"User-Agent">>
+                                   ,<<"Hangup-Code">>, <<"Hangup-Cause">>
+                                   ,{<<"Custom-Channel-Vars">>, [
+                                                                 <<"Resource-ID">>, <<"Ecallmgr-Node">>
+                                                                ,<<"Call-ID">>, <<"Fetch-ID">>
+                                                                 ]}
+                                    ]).
+
+
+
 -define(FAX_HRL, 'true').
 -endif.

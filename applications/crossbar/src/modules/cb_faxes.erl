@@ -19,6 +19,7 @@
          ,post/1, post/3
          ,delete/3
         ,get_delivered_date/1
+        ,get_execution_status/2
         ]).
 
 -include("../crossbar.hrl").
@@ -31,8 +32,9 @@
 -define(CB_LIST, <<"media/listing_private_media">>).
 -define(FAX_FILE_TYPE, <<"tiff">>).
 
--define(OUTGOING_FAX_DOC_MAP, [{<<"created">>,<<"pvt_created">>},
-                               {<<"delivered">>, fun get_delivered_date/1}
+-define(OUTGOING_FAX_DOC_MAP, [{<<"created">>,<<"pvt_created">>}
+                              ,{<<"delivered">>, fun get_delivered_date/1}
+                              ,{<<"status">>, fun get_execution_status/2}
                                ]).
 
 %%%===================================================================
@@ -255,6 +257,28 @@ get_delivered_date(JObj) ->
             end;
         Date -> Date
     end.
+
+-spec get_execution_status(ne_binary(), wh_json:object()) -> any().
+get_execution_status(Id, JObj) ->
+    case wh_json:get_value(<<"pvt_job_status">>, JObj) of
+        <<"processing">> = S -> 
+            case wh_json:get_value(<<"pvt_queue">>, JObj) of
+                'undefined' -> S;
+                Q -> get_fax_running_status(Id, Q)
+            end;
+        Status -> Status
+    end.
+
+-spec get_fax_running_status(ne_binary(), ne_binary()) -> any().
+get_fax_running_status(Id, Q) ->
+    Api = [{<<"Job-ID">>, Id} | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+    case whapps_util:amqp_pool_request(Api
+                                      ,fun(A) -> wapi_fax:publish_query_status(Q, A) end
+                                      ,fun wapi_fax:status_v/1) of
+        {'ok', JObj } -> wh_json:get_value(<<"Status">>, JObj);
+        _ -> <<"not available">>
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private

@@ -60,7 +60,7 @@ guess_FQDN() ->
 %% @doc Compute the CRAM digest of `Key' and `Data'
 -spec(compute_cram_digest/2 :: (Key :: binary(), Data :: string()) -> binary()).
 compute_cram_digest(Key, Data) ->
-	Bin = crypto:md5_mac(Key, Data),
+    Bin = crypto:hmac(md5,Key, Data),
 	list_to_binary([io_lib:format("~2.16.0b", [X]) || <<X>> <= Bin]).
 
 %% @doc Generate a seed string for CRAM.
