@@ -215,7 +215,7 @@ handle_cast({'fax_status', <<"result">>, JobId, JObj}
             send_status(JobId, <<"Fax Successfuly sent">>, AccountId, Data),
             release_successful_job(JObj, Job);
         'false' -> 
-            send_status(JobId, <<"Erro sending fax">>, AccountId, Data),
+            send_status(JobId, <<"Error sending fax">>, AccountId, Data),
             release_failed_job('fax_result', JObj, Job)
     end,
     gen_server:cast(Pid, {'job_complete', self()}),            
