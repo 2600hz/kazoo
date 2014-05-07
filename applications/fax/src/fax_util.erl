@@ -19,19 +19,23 @@ fax_properties(JObj) ->
     [{wh_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(JObj)].
 
 
+-spec collect_channel_props(wh_json:object()) -> wh_proplist().
 collect_channel_props(JObj) ->
     collect_channel_props(JObj, ?FAX_CHANNEL_DESTROY_PROPS).
 
+-spec collect_channel_props(wh_json:object(), wh_proplist()) -> wh_proplist().
 collect_channel_props(JObj, List) ->
+    collect_channel_props(JObj, List, []).
+
+    -spec collect_channel_props(wh_json:object(), wh_proplist(), list()) -> wh_proplist().
+collect_channel_props(JObj, List, Acumulator) ->
     lists:foldl(fun({Key, Keys}, Acc0) ->
-                        Acc = collect_channel_props(wh_json:get_value(Key, JObj), Keys) ,
-                        lists:foldl(fun({K, V}, Acc1) ->
-                                            [{K, V} | Acc0]
-                                    end, [], Acc);
+                        collect_channel_props(wh_json:get_value(Key, JObj), Keys, Acc0);
                    (Key, Acc) ->
                         [collect_channel_prop(Key, JObj)  | Acc]
-                end, [], List).
+                end, Acumulator, List).
                         
+-spec collect_channel_prop(ne_binary(), wh_json:object()) -> tuple().
 collect_channel_prop(<<"Hangup-Code">> = Key, JObj) ->
     <<"sip:", Code/binary>> = wh_json:get_value(Key, JObj),
     {Key, Code};
@@ -64,6 +68,7 @@ attachment_name(Filename, CT) ->
                  ],
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
 
+-spec maybe_generate_random_filename(binary()) -> ne_binary().
 maybe_generate_random_filename(A) ->
     case wh_util:is_empty(A) of
         'true' -> wh_util:to_hex_binary(crypto:rand_bytes(16));
