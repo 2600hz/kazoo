@@ -723,12 +723,12 @@ error(Condition, {Lang, Text}) ->
             exmpp_xml:append_child(Error_El0, Text_El)
     end.
 
-%% @spec (XML_El) -> bool()
+%% @spec (XML_El) -> boolean()
 %%     XML_El = exmpp_xml:xmlel()
 %% @doc Tell if this element is a stream error.
 
 -spec is_error
-(xmlel()) -> bool().
+(xmlel()) -> boolean().
 
 is_error(#xmlel{ns = ?NS_XMPP, name = 'error'}) ->
     true;

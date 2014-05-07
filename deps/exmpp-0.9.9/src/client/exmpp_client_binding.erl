@@ -37,7 +37,7 @@
 %% Feature announcement.
 %% --------------------------------------------------------------------
 
-%% @spec (Features_Announcement) -> bool()
+%% @spec (Features_Announcement) -> boolean()
 %%     Features_Announcement = exmpp_xml:xmlel()
 %% @throws {resource_binding, announced_support, invalid_feature, Feature}
 %% @doc Tell if the Resource Binding feature is supported.

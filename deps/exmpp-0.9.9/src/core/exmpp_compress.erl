@@ -115,13 +115,9 @@ start_link() ->
     register_builtin_engines(),
     Ret.
 
--ifdef(HAVE_ZLIB).
 -define(REGISTER_ZLIB,
 	register_builtin_engine(zlib, exmpp_compress_zlib,
 				[{zlib, 10}, {gzip, 10}])).
--else.
--define(REGISTER_ZLIB, ok).
--endif.
 
 register_builtin_engines() ->
     ?REGISTER_ZLIB,
@@ -215,7 +211,7 @@ get_prefered_engine(Compress_Method) ->
         [Engine | _] -> Engine
     end.
 
-%% @spec (Engine_Name) -> bool()
+%% @spec (Engine_Name) -> boolean()
 %%     Engine_Name = atom()
 %% @doc Tell if `Engine_Name' is available.
 

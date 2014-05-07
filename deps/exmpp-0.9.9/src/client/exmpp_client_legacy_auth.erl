@@ -341,7 +341,7 @@ get_prefered_auth(IQ) when ?IS_IQ(IQ) ->
         _    -> plain
     end.
 
-%% @spec (IQ) -> bool()
+%% @spec (IQ) -> boolean()
 %%     IQ = exmpp_xml:xmlel()
 %% @doc Tell if the authentication succeeded.
 

@@ -116,7 +116,7 @@ failure(Password_IQ, Condition) when ?IS_IQ(Password_IQ) ->
 %% Accessing informations.
 %% --------------------------------------------------------------------
 
-%% @spec (Request_IQ) -> bool()
+%% @spec (Request_IQ) -> boolean()
 %%     Request_IQ = exmpp_xml:xmlel()
 %% @doc Tell if the initiating entity asks for the authentication fields.
 

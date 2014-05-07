@@ -74,7 +74,7 @@ verify_request(From, To, ID, Key) ->
 
 %% @spec (Request, Is_Valid) -> Response
 %%     Request = exmpp_xml:xmlel()
-%%     Is_Valid = bool()
+%%     Is_Valid = boolean()
 %%     Response = exmpp_xml:xmlel()
 %% @doc Prepare a `<db:verify/>' element to answer to the Receiving
 %% Server.

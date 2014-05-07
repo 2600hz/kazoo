@@ -137,7 +137,7 @@ start_link() ->
     register_builtin_engines(),
     Ret.
 
--ifdef(HAVE_OPENSSL).
+
 -define(REGISTER_OPENSSL,
 	%% crypto module installs various global OpenSSL callbacks
 	%% that make OpenSSL thread-safe. The OpenSSL driver will
@@ -146,9 +146,6 @@ start_link() ->
 	crypto:start(),
 	register_builtin_engine(openssl, exmpp_tls_openssl,
 				[{x509, 10}])).
--else.
--define(REGISTER_OPENSSL, ok).
--endif.
 
 -ifdef(HAVE_GNUTLS).
 -define(REGISTER_GNUTLS,
@@ -159,6 +156,7 @@ start_link() ->
 -endif.
 
 register_builtin_engines() ->
+	 %io:format("exmpp tls builtin~n",[]),
     ?REGISTER_OPENSSL,
     ?REGISTER_GNUTLS,
     ok.
@@ -246,7 +244,7 @@ get_prefered_engine_name(Auth_Method) ->
         [Engine | _] -> Engine#tls_engine.name
     end.
 
-%% @spec (Engine_Name) -> bool()
+%% @spec (Engine_Name) -> boolean()
 %%     Engine_Name = atom()
 %% @doc Tell if `Engine_Name' is available.
 
@@ -279,7 +277,7 @@ get_engine_driver(Engine_Name) ->
 %%     Auth_Method = atom()
 %%     Certificate = string()
 %%     Private_Key = string()
-%%     Peer_Verification = bool() | Peer_Name
+%%     Peer_Verification = boolean() | Peer_Name
 %%     Peer_Name = string()
 %%     Options = [Option]
 %%     Option = {engine, Engine} | {mode, Mode} | {trusted_certs, Auth_Method, Certs} | peer_cert_required | accept_expired_cert | accept_revoked_cert | accept_non_trusted_cert | accept_corrupted_cert
@@ -299,7 +297,7 @@ connect(Socket_Desc, Identity, Peer_Verification, Options) ->
 %%     Auth_Method = atom()
 %%     Certificate = string()
 %%     Private_Key = string()
-%%     Peer_Verification = bool() | Peer_Name
+%%     Peer_Verification = boolean() | Peer_Name
 %%     Peer_Name = string()
 %%     Options = [Option]
 %%     Option = {engine, Engine} | {mode, Mode} | {trusted_certs, {Auth_Method, Certs}} | peer_cert_required | accept_expired_cert | accept_revoked_cert | accept_non_trusted_cert | accept_corrupted_cert

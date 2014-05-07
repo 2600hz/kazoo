@@ -56,7 +56,7 @@ feature() ->
     feature(false).
 
 %% @spec (Is_Required) -> Feature
-%%     Is_Required = bool()
+%%     Is_Required = boolean()
 %%     Feature = exmpp_xml:xmlel()
 %% @doc Make a feature announcement child.
 %%
