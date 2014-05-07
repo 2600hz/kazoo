@@ -209,7 +209,7 @@ terminate('normal', #state{filename=Filename
         'false' ->
             lager:info("terminate normal saving docs"),
             {'ok', FileContents} = file:read_file(Filename),
-            fax_util:save_fax_doc(Docs, FileContents,CT),
+            fax_util:save_fax_docs(Docs, FileContents,CT),
             file:delete(Filename);
         _  -> 'ok'
     end,

@@ -10,7 +10,7 @@
 
 -export([fax_properties/1]).
 -export([collect_channel_props/1]).
--export([save_fax_doc/3]).
+-export([save_fax_docs/3]).
 
 -include("fax.hrl").
 
@@ -27,7 +27,7 @@ collect_channel_props(JObj) ->
 collect_channel_props(JObj, List) ->
     collect_channel_props(JObj, List, []).
 
-    -spec collect_channel_props(wh_json:object(), wh_proplist(), list()) -> wh_proplist().
+-spec collect_channel_props(wh_json:object(), wh_proplist(), list()) -> wh_proplist().
 collect_channel_props(JObj, List, Acumulator) ->
     lists:foldl(fun({Key, Keys}, Acc0) ->
                         collect_channel_props(wh_json:get_value(Key, JObj), Keys, Acc0);
@@ -83,15 +83,15 @@ maybe_attach_extension(A, CT) ->
     end.
 
 
--spec save_fax_doc(api_objects(), binary(), ne_binary())-> any().            
-save_fax_doc([],_FileContents, _CT) -> 'ok';
-save_fax_doc([Doc|Docs], FileContents, CT) ->
+-spec save_fax_docs(api_objects(), binary(), ne_binary())-> any().            
+save_fax_docs([],_FileContents, _CT) -> 'ok';
+save_fax_docs([Doc|Docs], FileContents, CT) ->
     case couch_mgr:save_doc(?WH_FAXES, Doc) of
         {'ok', JObj} ->
             save_fax_attachment(JObj, FileContents, CT);
         _Else -> 'ok'
     end,
-    save_fax_doc(Docs,FileContents,CT).
+    save_fax_docs(Docs,FileContents,CT).
 
 -spec save_fax_attachment(api_object(), binary(), ne_binary())-> any().            
 save_fax_attachment(JObj, FileContents, CT) ->
