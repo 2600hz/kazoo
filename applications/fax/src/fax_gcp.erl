@@ -243,7 +243,7 @@ maybe_process_job([JObj | JObjs], Authorization) ->
             lager:debug("no fax number in job ticket"),
             update_job_status(PrinterId, JobId, <<"ABORT">>);
         FaxNumber ->
-            maybe_add_fax_document(JObj, JobId, PrinterId, FaxNumber, FileURL )
+            maybe_save_fax_document(JObj, JobId, PrinterId, FaxNumber, FileURL )
     end,
     maybe_process_job(JObjs,Authorization).
 
@@ -326,27 +326,31 @@ download_file(URL, Authorization) ->
     end.
 
 
-maybe_add_fax_document(JObj, JobId, PrinterId, FaxNumber, FileURL ) ->
+maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
+    case save_fax_document(Job, JobId, PrinterId, FaxNumber) of
+        {'ok', JObj} ->
+            maybe_save_fax_attachment(JObj, JobId, PrinterId, FaxNumber, FileURL );
+        {'error', 'conflict'} ->
+            lager:debug("got conflict saving fax job ~s", [JobId]);
+        {'error', _E} ->
+            lager:debug("got error saving fax job ~s : ~p", [JobId, _E])
+    end.    
+
+maybe_save_fax_attachment(JObj, JobId, PrinterId, FaxNumber, FileURL ) ->
     case get_printer_oauth_credentials(PrinterId) of
         {'ok', Authorization} ->
             case download_file(FileURL,Authorization) of
                 {'ok', CT, FileContents} ->
-                    add_fax_document(JObj, JobId, PrinterId, Authorization, FaxNumber, CT, FileContents );
+                    fax_util:save_fax_attachment(JObj, FileContents, CT),
+                    update_job_status(PrinterId, JobId, <<"IN_PROGRESS">>);
                 {'error', Error} ->
                     lager:debug("error downloading file for JobId ~s : ~p",[JobId, Error])
             end;
         {'error', E} ->
             lager:debug("error getting printer (~s) oauth credentials for JobId (~s) : ~p",[PrinterId, JobId, E])            
     end.
-
-notifications('undefined') -> 'undefined';
-notifications(Notifications) ->
-    fax_cloud_printer_util:recursive_from_list(
-      [{<<"email">>, [ {<<"send_to">>, lists:usort(Notifications)} ]}]
-      ).
-
-add_fax_document(Job, JobId, PrinterId, Authorization, FaxNumber, CT, FileContents ) ->
-     
+    
+save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->     
     {'ok', FaxBoxDoc} = couch_mgr:open_doc(?WH_FAXES, PrinterId),
     AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
@@ -371,13 +375,21 @@ add_fax_document(Job, JobId, PrinterId, Authorization, FaxNumber, CT, FileConten
              ]),
     { _ , JObjTemp} = wh_json_validator:is_valid(wh_json:from_list(Props), <<"faxes">>),
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
+                             ,{<<"_id">>, JobId}
                              ,{<<"pvt_job_status">>, <<"queued">>}
                              ,{<<"pvt_created">>, wh_util:current_tstamp()}
                              ,{<<"attempts">>, 0}
                              ,{<<"pvt_account_id">>, AccountId}
                              ,{<<"pvt_account_db">>, AccountDb}], JObjTemp),
-    fax_util:save_fax_docs([Doc], FileContents, CT),
-    update_job_status(PrinterId, JobId, <<"IN_PROGRESS">>).
+    couch_mgr:save_doc(?WH_FAXES, Doc).
+
+
+notifications('undefined') -> 'undefined';
+notifications(Notifications) ->
+    fax_cloud_printer_util:recursive_from_list(
+      [{<<"email">>, [ {<<"send_to">>, lists:usort(Notifications)} ]}]
+      ).
+
 
 
 

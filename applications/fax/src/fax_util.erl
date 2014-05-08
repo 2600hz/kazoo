@@ -10,7 +10,8 @@
 
 -export([fax_properties/1]).
 -export([collect_channel_props/1]).
--export([save_fax_docs/3]).
+-export([save_fax_docs/3, save_fax_attachment/3]).
+-export([content_type_to_extension/1]).
 
 -include("fax.hrl").
 
@@ -49,10 +50,15 @@ collect_channel_prop(Key, JObj) ->
 %% Convert known media types to extensions
 %% @end
 %%--------------------------------------------------------------------
--spec content_type_to_extension(ne_binary()) -> ne_binary().
+-spec content_type_to_extension(ne_binary() | string() | list()) -> ne_binary().
+content_type_to_extension(CT) when not is_binary(CT) ->
+    content_type_to_extension(wh_util:to_binary(CT));
 content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>;
-content_type_to_extension(<<"image/tiff">>) -> <<"tiff">>.
-
+content_type_to_extension(<<"image/tiff">>) -> <<"tiff">>;
+content_type_to_extension(CT) when is_binary(CT) ->
+    lager:debug("content-type ~s not handled, returning 'tmp'",[CT]),
+    <<"tmp">>.
+    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -92,6 +98,7 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
         _Else -> 'ok'
     end,
     save_fax_docs(Docs,FileContents,CT).
+
 
 -spec save_fax_attachment(api_object(), binary(), ne_binary())-> any().            
 save_fax_attachment(JObj, FileContents, CT) ->
