@@ -81,9 +81,7 @@
                                          ,<<"Fax-Identity-Name">>
                                          ,<<"Fax-Timezone">>
                                          ,<<"Intercept-Unbridged-Only">>
-                                         | fun() ->
-                                                   wapi_dialplan:optional_bridge_req_headers()
-                                           end()
+                                         | wapi_dialplan:optional_bridge_req_headers()
                                         ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_req">>}
