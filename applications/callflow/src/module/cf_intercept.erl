@@ -51,7 +51,8 @@ maybe_allowed_to_intercept(Data, Call) ->
             case wh_json:get_value(<<"approved_user_id">>, Data) of
                 'undefined' ->
                     case wh_json:get_value(<<"approved_group_id">>, Data) of
-                        'undefined' -> 'true'
+                        'undefined' -> 'true';
+                        GroupId -> maybe_belongs_to_group(GroupId, Call)
                     end;
                 UserId -> maybe_belongs_to_user(UserId, Call)
             end;
@@ -59,6 +60,33 @@ maybe_allowed_to_intercept(Data, Call) ->
             % Compare approved device_id with calling one
             DeviceId == whapps_call:authorizing_id(Call)
     end.
+
+-spec maybe_belongs_to_group(ne_binary(), whapps_call:call()) -> boolean().
+maybe_belongs_to_group(GroupId, Call) ->
+  is_in_list(whapps_call:authorizing_id(Call), find_group_endpoints(GroupId, Call)).
+
+-spec find_group_endpoints(ne_binary(), whapps_call:call()) -> ne_binaries().
+find_group_endpoints(GroupId, Call) ->
+  GroupsJObj = cf_attributes:groups(Call),
+  case [wh_json:get_value(<<"value">>, JObj)
+    || JObj <- GroupsJObj,
+    wh_json:get_value(<<"id">>, JObj) =:= GroupId
+  ]
+  of
+    [] -> [];
+    [GroupEndpoints] ->
+      Ids = wh_json:get_keys(GroupEndpoints),
+      find_endpoints(Ids, GroupEndpoints, Call)
+  end.
+
+-spec find_endpoints(ne_binaries(), wh_json:object(), whapps_call:call()) ->
+  ne_binaries().
+find_endpoints(Ids, GroupEndpoints, Call) ->
+  {DeviceIds, UserIds} =
+    lists:partition(fun(Id) ->
+      wh_json:get_value([Id, <<"type">>], GroupEndpoints) =:= <<"device">>
+    end, Ids),
+  find_user_endpoints(UserIds, lists:sort(DeviceIds), Call).
 
 -spec maybe_belongs_to_user(ne_binary(), whapps_call:call()) -> boolean().
 maybe_belongs_to_user(UserId, Call) ->
@@ -198,6 +226,8 @@ find_sip_endpoints(Data, Call) ->
     case wh_json:get_value(<<"device_id">>, Data) of
         'undefined' ->
             case wh_json:get_value(<<"user_id">>, Data) of
+                'undefuned' ->
+                    find_sip_users(wh_json:get_value(<<"group_id">>, Data), Call);
                 UserId ->
                     sip_users_from_endpoints(
                       find_user_endpoints([UserId], [], Call), Call
@@ -206,6 +236,10 @@ find_sip_endpoints(Data, Call) ->
         DeviceId ->
              sip_users_from_endpoints([DeviceId], Call)
     end.
+
+-spec find_sip_users(ne_binary(), whapps_call:call()) -> ne_binaries().
+find_sip_users(GroupId, Call) ->
+  sip_users_from_endpoints(find_group_endpoints(GroupId, Call), Call).
 
 -spec sip_users_from_endpoints(ne_binaries(), whapps_call:call()) -> ne_binaries().
 sip_users_from_endpoints(EndpointIds, Call) ->
