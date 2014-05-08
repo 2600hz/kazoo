@@ -4,7 +4,7 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   Karl Anderson
+%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(cf_move).
 
@@ -23,7 +23,7 @@ handle(_Data, Call) ->
     case whapps_call:owner_id(Call) of
         'undefined' ->
             lager:warning('call has no owner_id', []),
-            whapps_call_command:b_tts(<<"call does not hava an owner.">>, Call),
+            whapps_call_command:b_prompt(<<"call does not have an owner.">>, Call),
             cf_exe:stop(Call);
         OwnerId ->
             Channels = get_channels(OwnerId, Call),
@@ -45,7 +45,7 @@ handle(_Data, Call) ->
                     cf_exe:stop(Call)
             end
     end.
-
+-spec get_channels(ne_binary(), whapps_call:call()) -> wh_json:objects().
 get_channels(OwnerId, Call) ->
     DeviceIds = cf_attributes:owned_by(OwnerId, <<"device">>, Call),
     Realm = whapps_call:custom_channel_var(<<"Realm">>, 'undefined', Call),
@@ -58,10 +58,14 @@ get_channels(OwnerId, Call) ->
                                        ,fun wapi_call:publish_query_user_channels_req/1
                                        ,{'ecallmgr', 'true'})
     of
-        {'error', _E} -> lager:error("could not reach ecallmgr channels: ~p", [_E]);
+        {'error', _E} ->
+            lager:error("could not reach ecallmgr channels: ~p", [_E]),
+            [];
         {_, Resp} -> clean_channels(Resp)
     end.
 
+-spec get_sip_usernames(whapps_call:call(), ne_binaries()) -> ne_binaries().
+-spec get_sip_usernames(whapps_call:call(), ne_binaries(), ne_binaries()) -> ne_binaries().
 get_sip_usernames(Call, DeviceIds) ->
     get_sip_usernames(Call, DeviceIds, []).
 
@@ -80,7 +84,8 @@ get_sip_usernames(Call, [DeviceId|DeviceIds], Acc) ->
             end
     end.
 
-
+-spec clean_channels(wh_json:objects()) -> dict().
+-spec clean_channels(wh_json:objects(), dict()) -> dict().
 clean_channels(JObjs) ->
     clean_channels(JObjs, dict:new()).
 
@@ -99,6 +104,7 @@ clean_channel(JObj, Dict) ->
         ,wh_json:get_value(<<"Channels">>, JObj, [])
     ).
 
+-spec filter_channels(wh_json:objects(), whapps_call:call()) -> {'ok', wh_json:object()} | {'error', atom()}.
 filter_channels(Channels, Call) ->
     CallId = whapps_call:call_id(Call),
     NChannels = dict:erase(CallId, Channels),
