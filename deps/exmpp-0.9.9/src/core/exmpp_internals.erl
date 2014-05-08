@@ -109,11 +109,9 @@ load_driver(Driver_Name, Dirs) ->
 load_driver1(Driver_Name, [Dir | Rest], _Reason) ->
     case erl_ddll:load_driver(Dir, Driver_Name) of
         ok ->
-            io:format("LOADED ~p from ~p",[Driver_Name, Dir]),
             ok;
         {error, Reason} ->
 	    %% Next directory.
-            io:format("ERROR LOADING ~p from ~p : ~p",[Driver_Name, Dir, Reason]),
             load_driver1(Driver_Name, Rest, Reason)
     end;
 load_driver1(Driver_Name, [], Reason) ->
