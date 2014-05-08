@@ -386,9 +386,11 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
 
 notifications('undefined') -> 'undefined';
 notifications(Notifications) ->
-    fax_cloud_printer_util:recursive_from_list(
-      [{<<"email">>, [ {<<"send_to">>, lists:usort(Notifications)} ]}]
-      ).
+    wh_json:from_list(
+      [{<<"email">>, wh_json:from_list( 
+          [ {<<"send_to">>, lists:usort(Notifications)} ] 
+                                      ) 
+       }]).
 
 
 
