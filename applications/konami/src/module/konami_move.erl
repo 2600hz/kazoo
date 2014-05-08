@@ -59,7 +59,8 @@ build_originate(Endpoints, CallId, _Call) ->
          ,{<<"Existing-Call-ID">>, CallId}
          ,{<<"Intercept-Unbridged-Only">>, 'false'}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-        ]).
+        ]
+    ).
 
 send_originate_req(OriginateProps, _Call) ->
     whapps_util:amqp_pool_collect(OriginateProps, fun wapi_resource:publish_originate_req/1, fun is_resp/1, 20000).
