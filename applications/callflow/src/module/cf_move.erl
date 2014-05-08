@@ -30,11 +30,11 @@ handle(_Data, Call) ->
             case filter_channels(Channels, Call) of
                 {'error', 'no_channel'} ->
                     lager:warning('cannot move call no channel up', []),
-                    whapps_call_command:b_tts(<<"cannot move call, no channel up">>, Call),
+                    whapps_call_command:b_prompt(<<"cf-move-no_channel">>, Call),
                     cf_exe:stop(Call);
                 {'error', 'too_many_channels'} ->
                     lager:warning('cannot decide which channel to move to, too many channels', []),
-                    whapps_call_command:b_tts(<<"cannot decide which channel to move to, too many channels">>, Call),
+                    whapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call),
                     cf_exe:stop(Call);
                 {'error', _E} ->
                     lager:error('error while filtering channels ~p', [_E]),
@@ -42,7 +42,7 @@ handle(_Data, Call) ->
                 {'ok', Channel} ->
                     OtherLegId = wh_json:get_value(<<"other_leg">>, Channel),
                     whapps_call_command:pickup(OtherLegId, Call),
-                    cf_exe:continue(Call)
+                    cf_exe:stop(Call)
             end
     end.
 

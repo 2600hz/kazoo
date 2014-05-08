@@ -62,6 +62,8 @@ cf-not_available: Call forwarding is not available on this line.
 cf-enter_number: Enter the number to forward to, followed by the pound key.
 cf-enabled_menu: To disable call forwarding press 1, to change the number press 2.
 cf-disabled_menu: To enable call forwarding press 1, to change the number press 2.
+cf-move-too_many_channels: The user assigned to the device is on more than one call. This feature does not support multiple calls.
+cf-move-no_channel: no calls found for the user assigned to this device.
 
 park-already_in_use: This parking spot is already in use, please choose a different spot number.This parking spot is already in use, please choose a different spot number.
 park-no_caller: This parking extension is empty, the caller may have been retrieved by a different user or hungup.
