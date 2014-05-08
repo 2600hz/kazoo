@@ -66,7 +66,12 @@ handle(Data, Call) ->
     InterceptType = wh_json:get_value(<<"type">>, Data),
     case build_intercept_params(Number, InterceptType, Call) of
         {'ok', Params} ->
-            cf_intercept:handle(wh_json:from_list(Params), Call);
+            SecureParams = [
+                {<<"approved_device_id">>, wh_json:get_value(<<"approved_device_id">>, Data)},
+                {<<"approved_user_id">>, wh_json:get_value(<<"approved_user_id">>, Data)},
+                {<<"approved_group_id">>, wh_json:get_value(<<"approved_group_id">>, Data)}
+            ],
+            cf_intercept:handle(wh_json:from_list(props:filter_undefined(SecureParams) ++ Params), Call);
         {'error', _E} ->
             lager:info("Error <<~s>> processing intercept '~s' for number ~s"
                        ,[_E, InterceptType, Number]),
