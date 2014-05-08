@@ -87,6 +87,7 @@ start_deps() ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     _ = wapi_fax:declare_exchanges(),
+    _ = wapi_xmpp:declare_exchanges(),
     _ = wapi_notifications:declare_exchanges(),
     _ = wapi_offnet_resource:declare_exchanges(),
     _ = wapi_call:declare_exchanges(),
