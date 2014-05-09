@@ -45,12 +45,38 @@ finish_request(_Context, 'undefined') -> 'ok';
 finish_request(Context, AuthDoc) ->
     cb_context:put_reqid(Context),
     couch_mgr:suppress_change_notice(),
-    lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
-                                             ,wh_json:get_value(<<"_rev">>, AuthDoc)
-                                            ]),
-    couch_mgr:save_doc(?TOKEN_DB, AuthDoc),
+    lager:debug("maybe updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
+                                                   ,wh_json:get_value(<<"_rev">>, AuthDoc)
+                                                  ]),
+
+    case couch_mgr:open_cache_doc(?TOKEN_DB, cb_context:auth_token(Context)) of
+        {'ok', OldAuthDoc} ->
+            lager:debug("found old doc, checking to see if we should save"),
+            maybe_save_auth_doc(AuthDoc, OldAuthDoc);
+        {'error', _E} ->
+            lager:debug("failed to open auth doc, trying to save our version: ~p", [_E]),
+            couch_mgr:ensure_saved(?TOKEN_DB, AuthDoc)
+    end,
     couch_mgr:enable_change_notice(),
     'ok'.
+
+maybe_save_auth_doc(AuthDoc, OldAuthDoc) ->
+    AuthModified = wh_json:get_integer_value(<<"pvt_modified">>, AuthDoc, 0),
+    OldAuthModified = wh_json:get_integer_value(<<"pvt_modified">>, OldAuthDoc, 0),
+
+    Timeout = ?LOOP_TIMEOUT div 2,
+
+    try AuthModified > (OldAuthModified + Timeout) of
+        'true' ->
+            lager:debug("auth doc is past time to be saved, saving"),
+            couch_mgr:ensure_saved(?TOKEN_DB, AuthDoc);
+        'false' ->
+            lager:debug("auth doc is too new, not saving")
+    catch
+        _E:_R ->
+            lager:debug("comparison failed, saving: ~s: ~p", [_E, _R]),
+            couch_mgr:ensure_saved(?TOKEN_DB, AuthDoc)
+    end.
 
 -spec clean_expired() -> 'ok'.
 clean_expired() ->
@@ -104,13 +130,14 @@ check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;
 check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->
     lager:debug("checking auth token: ~s", [AuthToken]),
-    case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
+    case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
             {'true', cb_context:set_auth_doc(
                        cb_context:set_auth_account_id(Context
-                                                      ,wh_json:get_ne_value(<<"account_id">>, JObj))
-                       ,wh_json:set_value(<<"modified">>, wh_util:current_tstamp(), JObj)
+                                                      ,wh_json:get_ne_value(<<"account_id">>, JObj)
+                                                     )
+                       ,wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj)
                       )
             };
         {'error', R} ->
