@@ -15,9 +15,27 @@
          ,is_superduper_admin/1
          ,attachment_name/2
          ,bucket_name/1
+         ,reconcile_services/1
         ]).
 
 -include("../crossbar.hrl").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Bill for devices
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile_services(cb_context:context()) -> cb_context:context().
+reconcile_services(Context) ->
+    reconcile_services(Context, cb_context:req_verb(Context), cb_context:resp_status(Context)).
+
+reconcile_services(Context, _Verb, 'success') ->
+    lager:debug("successful ~s, reconciling services", [_Verb]),
+    _ = wh_services:reconcile(cb_context:account_id(Context), <<"devices">>),
+    Context;
+reconcile_services(Context, _Verb, _Status) ->
+    Context.
 
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
@@ -26,7 +44,7 @@ pass_hashes(Username, Password) ->
     MD5 = wh_util:to_hex_binary(erlang:md5(Creds)),
     {MD5, SHA1}.
 
--spec update_mwi('undefined' | ne_binary(), ne_binary()) -> pid().
+-spec update_mwi(api_binary(), ne_binary()) -> pid().
 update_mwi(OwnerId, AccountDb) ->
     spawn(fun() ->
                   timer:sleep(1000),
