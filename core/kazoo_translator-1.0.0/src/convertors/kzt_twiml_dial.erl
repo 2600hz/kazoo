@@ -169,6 +169,7 @@ send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
         ],
     whapps_call_command:send_command(B, Call).
 
+-spec setup_call_for_dial(whapps_call:call(), wh_proplist()) -> whapps_call:call().
 setup_call_for_dial(Call, Props) ->
     Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
                ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
@@ -176,11 +177,7 @@ setup_call_for_dial(Call, Props) ->
                ,{fun kzt_util:set_call_timeout/2, kzt_twiml:timeout_s(Props)}
                ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
               ],
-
-    lists:foldl(fun({F, V}, C) when is_function(F, 2) -> F(V, C) end
-                ,Call
-                ,Setters
-               ).
+    whapps_call:exec(Setters, Call).
 
 -spec maybe_end_dial(whapps_call:call(), wh_proplist()) ->
                             {'ok' | 'stop', whapps_call:call()}.
@@ -199,7 +196,7 @@ maybe_end_dial(Call, Props, ActionUrl) ->
     Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
                ,{fun kzt_util:set_voice_uri/2, NewUri}
               ],
-    {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}.
+    {'request', whapps_call:exec(Setters, Call)}.
 
 -spec cleanup_dial_me(binary()) -> binary().
 cleanup_dial_me(Txt) -> << <<C>> || <<C>> <= Txt, is_numeric_or_plus(C)>>.
@@ -307,6 +304,8 @@ xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
 
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, whapps_call:from_realm(Call)]).
 
+-spec media_processing(whapps_call:call()) -> ne_binary().
+-spec media_processing(boolean(), api_binary()) -> ne_binary().
 media_processing(Call) ->
     media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
 
