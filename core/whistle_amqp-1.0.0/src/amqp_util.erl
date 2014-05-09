@@ -553,7 +553,7 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,exclusive = ?P_GET('exclusive', Options, 'false')
       ,auto_delete = ?P_GET('auto_delete', Options, 'true')
       ,nowait = ?P_GET('nowait', Options, 'false')
-      ,arguments = ?P_GET('arguments', Options, [])
+      ,arguments = queue_arguments(?P_GET('arguments', Options, []))
      },
 
     %% can be queue | message_count | consumer_count | all
@@ -576,6 +576,19 @@ new_queue(Queue, Options) when is_binary(Queue) ->
 -spec new_queue_name() -> ne_binary().
 new_queue_name() ->
     list_to_binary(io_lib:format("~s-~p-~s", [node(), self(), wh_util:rand_hex_binary(4)])).
+
+-spec queue_arguments(wh_proplist()) -> [{ne_binary(), atom(), any()}, ...].
+queue_arguments(Arguments) ->
+    Routines = [
+        fun(Args, Acc) ->
+            case props:get_value(<<"x-max-length">>, Args) of
+                'undefined' -> [{<<"x-max-length">>, 'signedint', 1000}|Acc];
+                Value -> [{<<"x-max-length">>, 'signedint', Value}|Acc]
+            end
+        end
+    ],
+    lists:foldl(fun(F, Acc) -> F(Arguments, Acc) end, [], Routines).
+
 
 %%------------------------------------------------------------------------------
 %% @public
