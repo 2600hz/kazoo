@@ -676,7 +676,7 @@ is_reseller(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec calculate_charges(services(), any()) -> wh_json:object().
+-spec calculate_charges(services(), list()) -> wh_json:object().
 calculate_charges(Services, Transactions) ->
     TransactionCharges = calculate_transactions_charges(Transactions),
     case calculate_services_charges(Services) of
