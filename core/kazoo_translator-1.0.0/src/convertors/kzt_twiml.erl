@@ -25,6 +25,8 @@
          ,action_url/1
         ]).
 
+-spec parse_cmds(iolist()) -> {'ok', xml_els()} |
+                              {'error', 'not_parsed'}.
 parse_cmds(XMLString) ->
     try xmerl_scan:string(wh_util:to_list(XMLString)) of
         {#xmlElement{name='Response'}=XML, _} -> {'ok', XML};
@@ -143,7 +145,11 @@ exec_element(_Call, #xmlElement{name=Unknown
                                 ,content=_Content
                                 ,attributes=_Attrs
                                }) ->
-    throw({'unknown_element', Unknown}).
+    throw({'unknown_element', Unknown});
+exec_element(Call, _Xml) ->
+    lager:debug("unhandled XML object: ~p", [_Xml]),
+    {'ok', Call}.
+
 
 -spec req_params(whapps_call:call()) -> wh_proplist().
 req_params(Call) ->
@@ -184,6 +190,7 @@ reject(Call, Attrs) ->
     Reason = reject_reason(Props),
     Code = reject_code(Reason),
 
+    lager:debug("rejecting call with ~s(~s)", [Reason, Code]),
     _ = whapps_call_command:response(Code, Reason, reject_prompt(Props), Call),
     {'stop', kzt_util:update_call_status(reject_status(Code), Call)}.
 
@@ -517,8 +524,10 @@ pause_for(Props) ->
         N when is_integer(N), N > 3600 -> 3600000
     end.
 
-action_url(Props) -> props:get_value('action', Props).
+-spec action_url(wh_proplist()) -> api_binary().
+action_url(Props) -> props:get_binary_value('action', Props).
 
+-spec reject_prompt(wh_proplist()) -> api_binary().
 reject_prompt(Props) -> props:get_binary_value('prompt', Props).
 
 -spec timeout_s(wh_proplist()) -> pos_integer().
@@ -536,6 +545,7 @@ num_digits(Props) ->
         N when is_integer(N), N > 0 -> N
     end.
 
+-spec reject_reason(wh_proplist()) -> ne_binary().
 reject_reason(Props) ->
     case props:get_binary_value('reason', Props) of
         'undefined' -> <<"rejected">>;
@@ -543,8 +553,10 @@ reject_reason(Props) ->
         <<"busy">> -> <<"busy">>
     end.
 
+-spec reject_code(ne_binary()) -> ne_binary().
 reject_code(<<"busy">>) -> <<"486">>;
 reject_code(<<"rejected">>) -> <<"503">>.
 
+-spec reject_status(ne_binary()) -> ne_binary().
 reject_status(<<"486">>) -> ?STATUS_BUSY;
 reject_status(<<"503">>) -> ?STATUS_NOANSWER.
