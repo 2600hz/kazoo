@@ -579,15 +579,24 @@ new_queue_name() ->
 
 -spec queue_arguments(wh_proplist()) -> [{ne_binary(), atom(), any()}, ...].
 queue_arguments(Arguments) ->
-    Routines = [
-        fun(Args, Acc) ->
-            case props:get_value(<<"x-max-length">>, Args) of
-                'undefined' -> [{<<"x-max-length">>, 'signedint', 1000}|Acc];
-                Value -> [{<<"x-max-length">>, 'signedint', Value}|Acc]
-            end
-        end
-    ],
+    Routines = [fun max_length/2
+                ,fun message_ttl/2
+               ],
     lists:foldl(fun(F, Acc) -> F(Arguments, Acc) end, [], Routines).
+
+-spec max_length(wh_proplist(), [{ne_binary(), atom(), any()}, ...]) -> [{ne_binary(), atom(), any()}, ...].
+max_length(Args, Acc) ->
+    case props:get_value(<<"x-max-length">>, Args) of
+        'undefined' -> [{<<"x-max-length">>, 'short', 100}|Acc];
+        Value -> [{<<"x-max-length">>, 'short', Value}|Acc]
+    end.
+
+-spec message_ttl(wh_proplist(), [{ne_binary(), atom(), any()}, ...]) -> [{ne_binary(), atom(), any()}, ...].
+message_ttl(Args, Acc) ->
+    case props:get_value(<<"x-message-ttl">>, Args) of
+        'undefined' -> [{<<"x-message-ttl">>, 'signedint', 60000}|Acc];
+        Value -> [{<<"x-message-ttl">>, 'signedint', Value}|Acc]
+    end.
 
 
 %%------------------------------------------------------------------------------
