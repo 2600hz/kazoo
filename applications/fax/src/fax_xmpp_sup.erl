@@ -21,7 +21,7 @@
 -export([init/1]).
 
 
--define(XMPP_PRINTER(PrinterId) ,?WORKER_NAME_ARGS('fax_xmpp',PrinterId,[PrinterId])).
+-define(XMPP_PRINTER(PrinterId) ,?WORKER_NAME_ARGS('fax_xmpp',wh_util:to_atom(PrinterId, 'true'),[PrinterId])).
 
 -define(CHILDREN, [?SUPER('exmpp_sup')]).
                   
@@ -46,7 +46,16 @@ start_printer(PrinterId) ->
 
 -spec stop_printer(ne_binary()) -> any().
 stop_printer(PrinterId) ->
-    [ gen_server:cast(Pid, stop) || {Id, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE), (Id == PrinterId) ].
+    [
+     begin
+%         supervisor:terminate_child(?MODULE, ?XMPP_PRINTER(PrinterId)),
+%         supervisor:delete_child(?MODULE, ?XMPP_PRINTER(PrinterId))
+         supervisor:terminate_child(?MODULE, Id),
+         supervisor:delete_child(?MODULE, Id)
+     end
+          
+%     gen_server:cast(Pid, stop) 
+    || {Id, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE), (Id == wh_util:to_atom(PrinterId, 'true')) ].
 
 
 -spec printers() -> [{ne_binary(), pid()},...].

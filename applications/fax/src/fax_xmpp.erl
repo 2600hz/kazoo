@@ -31,10 +31,10 @@
 
 
 start(PrinterId) -> 
-  gen_server:start({global, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
+  gen_server:start({local, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
 
 start_link(PrinterId) -> 
-  gen_server:start_link({global, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
+  gen_server:start_link({local, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
   
 stop(PrinterId) ->
   gen_server:cast({global, wh_util:to_atom(PrinterId, 'true')}, stop).
@@ -100,9 +100,11 @@ handle_info(_Info, State) ->
     lager:info("xmpp handle_info ~p",[_Info]),
   {noreply, State}.
 terminate(_Reason, #state{session=MySession}) -> 
+    lager:info("terminating xmpp session"),
   disconnect(MySession),
   ok;
 terminate(_Reason, State) -> 
+    lager:info("terminate xmpp module"),
   ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
@@ -167,4 +169,9 @@ init_session(Session, Password) ->
   ok.
 
 disconnect(MySession) ->
-  exmpp_session:stop(MySession).
+  try 
+        exmpp_session:stop(MySession)
+  catch
+    E:R ->
+        lager:debug("exception closing xmpp session ~p : ~p",[E,R])
+  end.

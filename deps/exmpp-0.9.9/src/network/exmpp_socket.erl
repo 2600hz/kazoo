@@ -136,9 +136,12 @@ receiver_loop(ClientPid, ESocket, StreamRef) ->
             From ! {ok, Ref, TSocket},
 	    receiver_loop(ClientPid, TSocket, StreamRef);
         {tcp, Socket, Data} ->
-            {ok, Str} = recv_data(ESocket, Data),
- %             io:format("- RECEIVING:~n~s~n", [Str]),
-	    {ok, NewStreamRef} = exmpp_xmlstream:parse(StreamRef, Str),
+            case recv_data(ESocket, Data) of
+                {ok, Str} -> 
+                    {ok, NewStreamRef} = exmpp_xmlstream:parse(StreamRef, Str);
+                {error, Error} ->
+                    NewStreamRef = StreamRef
+            end,                    
 	    receiver_loop(ClientPid, ESocket, NewStreamRef);
 	{ssl, Socket, Data} ->
             {ok, Str} = recv_data(ESocket, Data),
