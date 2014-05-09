@@ -193,7 +193,7 @@ record_loop(Call, SilenceTimeout) ->
                     Fs = [{fun kzt_util:set_digit_pressed/2, DTMF}
                           ,{fun kzt_util:set_recording_duration/2, Len}
                          ],
-                    {'ok', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Fs)}
+                    {'ok', whapps_call:exec(Fs, Call)}
             end;
         {'error', 'channel_destroy', EvtJObj} ->
             Len = wh_util:milliseconds_to_seconds(wh_json:get_value(<<"Length">>, EvtJObj, 0)),
@@ -203,7 +203,7 @@ record_loop(Call, SilenceTimeout) ->
             Fs = [{fun kzt_util:set_digit_pressed/2, <<"hangup">>}
                   ,{fun kzt_util:set_recording_duration/2, Len}
                  ],
-            {'ok', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Fs)};
+            {'ok', whapps_call:exec(Fs, Call)};
         {'error', E, _}=ERR ->
             lager:debug("error: ~p", [E]),
             ERR
@@ -266,6 +266,7 @@ process_noop_event(Call, NoopId, JObj) ->
     end.
 
 -spec wait_for_offnet(whapps_call:call()) -> {'ok', whapps_call:call()}.
+-spec wait_for_offnet(whapps_call:call(), wh_proplist()) -> {'ok', whapps_call:call()}.
 wait_for_offnet(Call) ->
     wait_for_offnet(Call, []).
 
@@ -325,6 +326,7 @@ wait_for_conference(Call) ->
                                          ,start=erlang:now()
                                         }).
 
+-spec call_status(ne_binary()) -> ne_binary().
 call_status(<<"ORIGINATOR_CANCEL">>) -> ?STATUS_COMPLETED;
 call_status(<<"NORMAL_CLEARING">>) -> ?STATUS_COMPLETED;
 call_status(<<"SUCCESS">>) -> ?STATUS_COMPLETED;
@@ -346,6 +348,7 @@ wait_for_offnet_events(#dial_req{call_timeout=CallTimeout
         {'error', 'timeout'} -> handle_offnet_timeout(OffnetReq)
     end.
 
+-spec process_offnet_event(dial_req(), wh_json:object()) -> {'ok', whapps_call:call()}.
 process_offnet_event(#dial_req{call=Call
                                ,hangup_dtmf=HangupDTMF
                                ,collect_dtmf=CollectDTMF
@@ -374,7 +377,8 @@ process_offnet_event(#dial_req{call=Call
                     wait_for_offnet_events(update_offnet_timers(OffnetReq));
                 'true' ->
                     lager:info("recv'd hangup DTMF '~s'", [HangupDTMF]),
-                    whapps_call_command:hangup(Call)
+                    whapps_call_command:hangup(Call),
+                    {'ok', Call}
             end;
         {{<<"call_event">>, <<"LEG_CREATED">>}, CallId} ->
             BLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
@@ -386,36 +390,30 @@ process_offnet_event(#dial_req{call=Call
                                                        ,{'restrict_to', ['events']}
                                                       ]),
 
-            Updates = [{BLeg, fun kzt_util:set_dial_call_sid/2}
-                       ,{?STATUS_RINGING, fun kzt_util:update_call_status/2}
-                       ,{?STATUS_RINGING, fun kzt_util:set_dial_call_status/2}
+            Updates = [{fun kzt_util:set_dial_call_sid/2, BLeg}
+                       ,{fun kzt_util:update_call_status/2, ?STATUS_RINGING}
+                       ,{fun kzt_util:set_dial_call_status/2, ?STATUS_RINGING}
                       ],
 
             wait_for_offnet_events(
               update_offnet_timers(
                 OffnetReq#dial_req{call_b_leg=BLeg
-                                     ,call=lists:foldl(fun({V, F}, CallAcc) ->
-                                                               F(V, CallAcc)
-                                                       end
-                                                       ,Call, Updates)
-                                    }));
+                                   ,call=whapps_call:exec(Updates, Call)
+                                  }));
         {{<<"call_event">>, <<"CHANNEL_BRIDGE">>}, CallId} ->
             MediaJObj = maybe_start_recording(OffnetReq),
             lager:debug("b-leg bridged: ~s", [wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)]),
 
-            Updates = [{MediaJObj, fun kzt_util:set_media_meta/2}
-                       ,{?STATUS_ANSWERED, fun kzt_util:update_call_status/2}
-                       ,{?STATUS_ANSWERED, fun kzt_util:set_dial_call_status/2}
+            Updates = [{fun kzt_util:set_media_meta/2, MediaJObj}
+                       ,{fun kzt_util:update_call_status/2, ?STATUS_ANSWERED}
+                       ,{fun kzt_util:set_dial_call_status/2, ?STATUS_ANSWERED}
                       ],
 
             wait_for_offnet_events(
               update_offnet_timers(
                 OffnetReq#dial_req{call_timeout='undefined'
-                                     ,call=lists:foldl(fun({V, F}, CallAcc) ->
-                                                               F(V, CallAcc)
-                                                       end
-                                                       ,Call, Updates)
-                                    }));
+                                   ,call=whapps_call:exec(Updates, Call)
+                                  }));
 
         {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, CallId} ->
             case wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj) of
@@ -436,15 +434,10 @@ process_offnet_event(#dial_req{call=Call
                     HangupCause = wh_json:get_value(<<"Application-Response">>, JObj),
                     lager:debug("bridge completed: ~s", [HangupCause]),
 
-                    Updates = [{call_status(HangupCause), fun kzt_util:set_dial_call_status/2}
-                               ,{dial_status(Call), fun kzt_util:set_dial_call_status/2}
+                    Updates = [{fun kzt_util:update_call_status/2, call_status(HangupCause)}
+                               ,{fun kzt_util:set_dial_call_status/2, dial_status(Call)}
                               ],
-                    wait_for_offnet_events(
-                      update_offnet_timers(
-                        OffnetReq#dial_req{call=lists:foldl(fun({V, F}, Acc) -> F(V, Acc) end
-                                                            ,Call, Updates)
-                                          }
-                       ));
+                    {'ok', whapps_call:exec(Updates, Call)};
                 _ -> wait_for_offnet_events(update_offnet_timers(OffnetReq))
             end;
 
@@ -452,13 +445,11 @@ process_offnet_event(#dial_req{call=Call
             HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
             lager:debug("caller channel finished: ~s", [HangupCause]),
 
-            Updates = [{call_status(HangupCause), fun kzt_util:update_call_status/2}
-                       ,{dial_status(Call), fun kzt_util:set_dial_call_status/2}
+            Updates = [{fun kzt_util:update_call_status/2, call_status(HangupCause)}
+                       ,{fun kzt_util:set_dial_call_status/2, dial_status(Call)}
                       ],
 
-            {'ok', lists:foldl(fun({V, F}, CallAcc) -> F(V, CallAcc) end
-                               ,Call, Updates)
-            };
+            {'ok', whapps_call:exec(Updates, Call)};
         {{<<"call_event">>, <<"CHANNEL_PARK">>}, CallId} ->
             lager:debug("channel ~s has parked, probably means none of the bridge strings succeeded", [CallId]),
             {'ok', Call};
@@ -469,9 +460,10 @@ process_offnet_event(#dial_req{call=Call
             wait_for_offnet_events(update_offnet_timers(OffnetReq))
     end.
 
+-spec dial_status(whapps_call:call() | ne_binary()) -> ne_binary().
 dial_status(?STATUS_ANSWERED) -> ?STATUS_COMPLETED;
 dial_status(?STATUS_RINGING) -> ?STATUS_NOANSWER;
-dial_status(Status) when is_binary(Status) -> ?STATUS_FAILED;
+dial_status(<<_/binary>>) -> ?STATUS_FAILED;
 dial_status(Call) -> dial_status(kzt_util:get_dial_call_status(Call)).
 
 -spec wait_for_conference_events(dial_req()) -> {'ok', whapps_call:call()}.
@@ -571,6 +563,8 @@ maybe_start_recording(#dial_req{record_call='true'
                                    ),
     MediaJObj.
 
+-spec recording_meta(whapps_call:call(), ne_binary()) -> {'ok', wh_json:object()} |
+                                                         {'error', _}.
 recording_meta(Call, MediaName) ->
     AcctDb = whapps_call:account_db(Call),
     MediaDoc = wh_doc:update_pvt_parameters(
