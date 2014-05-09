@@ -330,17 +330,19 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
             case open_doc(Conn, DbName, DocId, Options) of
                 {'error', _}=E -> E;
                 {'ok', JObj}=Ok ->
-                    CacheProps = [{'origin', {'db', DbName, DocId}}],
-                    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, JObj, CacheProps),
+                    cache_db_doc(DbName, DocId, JObj),
                     Ok
             end
     end.
 
 -spec cache_db_doc(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-cache_db_doc(DbName, DocId, Doc) ->
-    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, Doc).
+cache_db_doc(DbName, DocId, JObj) ->
+    CacheProps = [{'origin', {'db', DbName, DocId}}],
+    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, JObj, CacheProps).
 
--spec flush_cache_doc(server(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+-spec flush_cache_doc(server() | 'undefined', ne_binary() | db(), ne_binary(), wh_proplist()) -> 'ok'.
+flush_cache_doc(Server, #db{name=Name}, DocId, Options) ->
+    flush_cache_doc(Server, wh_util:to_binary(Name), DocId, Options);
 flush_cache_doc(_, DbName, DocId, _Options) ->
     wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}).
 
@@ -481,6 +483,7 @@ do_save_doc(#db{}=Db, Doc, Options) ->
     case ?RETRY_504(couchbeam:save_doc(Db, maybe_set_docid(Doc), Options)) of
         {'ok', JObj}=Ok ->
             _ = maybe_publish_doc(Db, Doc, JObj),
+            flush_cache_doc('undefined', Db, wh_json:get_value(<<"_id">>, JObj), []),
             Ok;
         Else -> Else
     end.
