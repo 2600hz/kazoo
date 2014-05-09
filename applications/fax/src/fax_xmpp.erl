@@ -37,10 +37,11 @@ start_link(PrinterId) ->
   gen_server:start_link({local, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
   
 stop(PrinterId) ->
-  gen_server:cast({global, wh_util:to_atom(PrinterId, 'true')}, stop).
+  gen_server:cast({local, wh_util:to_atom(PrinterId, 'true')}, stop).
   
 init([PrinterId]) ->
-    gen_server:cast(self(), 'start'),
+    process_flag(trap_exit, 'true'),
+    gen_server:cast(self(), 'start'),    
     {ok, #state{faxbox_id=PrinterId}}.
   
   
@@ -99,12 +100,14 @@ handle_info(#received_packet{}=Packet, State) ->
 handle_info(_Info, State) -> 
     lager:info("xmpp handle_info ~p",[_Info]),
   {noreply, State}.
-terminate(_Reason, #state{session=MySession}) -> 
-    lager:info("terminating xmpp session"),
+terminate(_Reason, #state{jid=MyJID
+                         ,session=MySession}) ->
+    {_, JFull, _JUser, _JDomain, _JResource} = MyJID,
+    lager:debug("terminating xmpp session ~s",[JFull]),
   disconnect(MySession),
   ok;
 terminate(_Reason, State) -> 
-    lager:info("terminate xmpp module"),
+    lager:debug("terminate xmpp module"),
   ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
