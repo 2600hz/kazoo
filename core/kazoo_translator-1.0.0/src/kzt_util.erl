@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -27,8 +27,6 @@
          ,set_digits_collected/2, get_digits_collected/1
          ,add_digit_collected/2, clear_digits_collected/1
 
-         ,xml_attributes_to_proplist/1
-
          ,set_recording_url/2, get_recording_url/1
          ,set_recording_duration/2, get_recording_duration/1
          ,set_recording_sid/2, get_recording_sid/1
@@ -55,9 +53,6 @@
          ,set_caller_controls/2, get_caller_controls/1
          ,set_advertise/2, get_advertise/1
          ,set_chat_permissions/2, get_chat_permissions/1
-
-         ,xml_elements/1
-         ,xml_text_to_binary/1, xml_text_to_binary/2
         ]).
 
 -include("kzt.hrl").
@@ -151,8 +146,11 @@ add_error(Call, K, V) ->
             whapps_call:kvs_append_list(<<"response_errors">>, [{K, V}|Vs], Call)
     end.
 
+-spec get_errors(whapps_call:call()) -> wh_proplist().
 get_errors(Call) -> whapps_call:kvs_fetch(<<"response_errors">>, Call).
 
+-spec set_hangup_dtmf(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_hangup_dtmf(whapps_call:call()) -> api_binary().
 set_hangup_dtmf(DTMF, Call) -> whapps_call:kvs_store(<<"hangup_dtmf">>, DTMF, Call).
 get_hangup_dtmf(Call) -> whapps_call:kvs_fetch(<<"hangup_dtmf">>, Call).
 
@@ -240,18 +238,27 @@ set_gather_pidref({_, _}=PidRef, Call) ->
     whapps_call:kvs_store(<<"gather_pidref">>, PidRef, Call).
 get_gather_pidref(Call) -> whapps_call:kvs_fetch(<<"gather_pidref">>, Call).
 
+-spec set_conference_profile(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+-spec get_conference_profile(whapps_call:call()) -> wh_json:object().
 set_conference_profile(JObj, Call) -> whapps_call:kvs_store(<<"conference_profile">>, JObj, Call).
 get_conference_profile(Call) -> whapps_call:kvs_fetch(<<"conference_profile">>, Call).
 
+-spec set_caller_controls(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+-spec get_caller_controls(whapps_call:call()) -> wh_json:object().
 set_caller_controls(JObj, Call) -> whapps_call:kvs_store(<<"caller_controls">>, JObj, Call).
 get_caller_controls(Call) -> whapps_call:kvs_fetch(<<"caller_controls">>, Call).
 
+-spec set_advertise(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+-spec get_advertise(whapps_call:call()) -> wh_json:object().
 set_advertise(JObj, Call) -> whapps_call:kvs_store(<<"advertise">>, JObj, Call).
 get_advertise(Call) -> whapps_call:kvs_fetch(<<"advertise">>, Call).
 
+-spec set_chat_permissions(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+-spec get_chat_permissions(whapps_call:call()) -> wh_json:object().
 set_chat_permissions(JObj, Call) -> whapps_call:kvs_store(<<"chat_permissions">>, JObj, Call).
 get_chat_permissions(Call) -> whapps_call:kvs_fetch(<<"chat_permissions">>, Call).
 
+-spec get_request_vars(whapps_call:call()) -> wh_json:object().
 get_request_vars(Call) ->
     wh_json:from_list(
       props:filter_empty(
@@ -265,22 +272,9 @@ get_request_vars(Call) ->
          ,{<<"CallStatus">>, get_call_status(Call)}
         ])).
 
--spec xml_attributes_to_proplist(xml_attribs()) -> wh_proplist().
-xml_attributes_to_proplist(L) ->
-    kz_xml:attributes_to_proplist(L).
-
--spec xml_text_to_binary(xml_texts()) -> binary().
-xml_text_to_binary(Vs) when is_list(Vs) ->
-    kz_xml:texts_to_binary(Vs).
-
-xml_text_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
-    kz_xml:texts_to_binary(Vs, Size).
-
--spec xml_elements(list()) -> xml_els().
-xml_elements(Els) -> kz_xml:elements(Els).
-
 -ifdef(TEST).
 
+-spec get_path_test() -> any().
 get_path_test() ->
     RawPath = <<"http://pivot/script.php">>,
     Relative = <<"script2.php">>,
