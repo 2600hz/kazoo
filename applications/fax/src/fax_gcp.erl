@@ -329,14 +329,14 @@ download_file(URL, Authorization) ->
 maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
     case save_fax_document(Job, JobId, PrinterId, FaxNumber) of
         {'ok', JObj} ->
-            maybe_save_fax_attachment(JObj, JobId, PrinterId, FaxNumber, FileURL );
+            maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL );
         {'error', 'conflict'} ->
             lager:debug("got conflict saving fax job ~s", [JobId]);
         {'error', _E} ->
             lager:debug("got error saving fax job ~s : ~p", [JobId, _E])
     end.    
 
-maybe_save_fax_attachment(JObj, JobId, PrinterId, FaxNumber, FileURL ) ->
+maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
     case get_printer_oauth_credentials(PrinterId) of
         {'ok', Authorization} ->
             case download_file(FileURL,Authorization) of
