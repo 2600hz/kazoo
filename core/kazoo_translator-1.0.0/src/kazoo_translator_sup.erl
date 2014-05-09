@@ -31,4 +31,3 @@ start_link() ->
 -spec init([]) -> sup_init_ret().
 init([]) ->
     {'ok', { {'one_for_one', 5, 10}, []} }.
-
