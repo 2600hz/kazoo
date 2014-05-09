@@ -35,5 +35,6 @@ init([]) ->
              ,[?SUPER('ts_onnet_sup') %% handles calls originating on-net (customer)
                ,?WORKER('ts_offnet_sup') %% handles calls originating off-net (carrier)
                ,?WORKER('ts_responder')
+               ,?WORKER('trunkstore_listener')
               ]}
     }.

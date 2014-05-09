@@ -1,21 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
-%%% Trunk-Store responder waits for Auth and Route requests on the broadcast
-%%% Exchange, and delievers the requests to the corresponding handler.
-%%% TS responder also receives responses from the handlers and returns them
-%%% to the requester.
-%%% Each request received by TS_RESPONDER should be put into a new spawn()
-%%% to avoid blocking on each request.
+%%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(ts_responder).
+-module(trunkstore_listener).
 
 -behaviour(gen_listener).
 
-%% API
 -export([start_link/0]).
 -export([init/1
          ,handle_call/3
@@ -28,13 +21,17 @@
 
 -include("ts.hrl").
 
--define(RESPONDERS, [{'ts_route_req', [{<<"dialplan">>, <<"route_req">>}]}]).
--define(BINDINGS, [{'route', []}]).
+-record(state, {}).
 
--define(SERVER, ?MODULE).
--define(ROUTE_QUEUE_NAME, <<"trunkstore_listener">>).
--define(ROUTE_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(ROUTE_CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+%% By convention, we put the options here in macros, but not required.
+-define(BINDINGS, [{'self', []}
+                   ,{'conf', [{'doc_type', <<"sys_info">>}]}
+                  ]).
+-define(RESPONDERS, [{{'trunkstore_handlers', 'handle_config_change'}, [{<<"configuration">>, <<"*">>}]}
+                    ]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -48,11 +45,13 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
-                                      ,{'bindings', ?BINDINGS}
-                                      ,{'queue_name', ?ROUTE_QUEUE_NAME}
-                                      ,{'queue_options', ?ROUTE_QUEUE_OPTIONS}
-                                      ,{'consume_options', ?ROUTE_CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [
+                                      {'bindings', ?BINDINGS}
+                                      ,{'responders', ?RESPONDERS}
+                                      ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                                      ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                                      ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                                      %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 
 %%%===================================================================
@@ -71,8 +70,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:info("started ts_responder"),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -89,7 +87,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {'reply', 'ignored', State}.
+    {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,6 +99,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -114,8 +116,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Unhandled, State) ->
-    lager:info("unknown message: ~p", [_Unhandled]),
+handle_info(_Info, State) ->
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -140,8 +141,8 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _) ->
-    lager:info("ts_responder terminating: ~p", [_Reason]).
+terminate(_Reason, _State) ->
+    lager:debug("listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
