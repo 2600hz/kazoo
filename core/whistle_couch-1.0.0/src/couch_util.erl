@@ -428,20 +428,28 @@ do_delete_docs(Conn, #db{}=Db, Docs) ->
 %% delete the doc off the node's disk
 %% See https://wiki.apache.org/couchdb/FUQ, point 4 for Documents
 %% and http://grokbase.com/t/couchdb/user/11cpvasem0/database-size-seems-off-even-after-compaction-runs
+
 -spec prepare_doc_for_del(server(), ne_binary(), wh_json:object() | ne_binary()) -> wh_json:object().
-prepare_doc_for_del(Conn, #db{name=DbName}=Db, Doc) when is_binary(Doc) ->
-    case lookup_doc_rev(Conn, DbName, Doc) of
+prepare_doc_for_del(Conn, #db{name=DbName}=Db, DocId) when is_binary(DocId) ->
+    case lookup_doc_rev(Conn, DbName, DocId) of
         {'error', _E} ->
-            lager:error("doc ~p : ~p", [Doc, _E]),
+            lager:error("doc ~p : ~p", [DocId, _E]),
             prepare_doc_for_del(Conn, Db, wh_json:new());
         {'ok', Rev} ->
-            prepare_doc_for_del(Conn, Db, wh_json:from_list([{<<"_id">>, Doc}
-                                                                 ,{<<"_rev">>, Rev}
-                                                                ]))
+            prepare_doc_for_del(Conn, Db, wh_json:from_list([{<<"_id">>, DocId}
+                                                             ,{<<"_rev">>, Rev}
+                                                            ]))
     end;
-prepare_doc_for_del(_, _, Doc) ->
-    wh_json:from_list([{<<"_id">>, wh_json:get_value(<<"_id">>, Doc)}
-                       ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+prepare_doc_for_del(Conn, #db{name=DbName}, Doc) ->
+    Id = doc_id(Doc),
+    DocRev = case doc_rev(Doc) of
+                 'undefined' ->
+                     {'ok', Rev} = lookup_doc_rev(Conn, DbName, Id),
+                     Rev;
+                 Rev -> Rev
+             end,
+    wh_json:from_list([{<<"_id">>, Id}
+                       ,{<<"_rev">>, DocRev}
                        ,{<<"_deleted">>, 'true'}
                       ]).
 
@@ -454,17 +462,17 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
             _ = maybe_publish_doc(Db, Doc, JObj),
             Ok;
         {'error', 'conflict'} ->
-            case do_fetch_rev(Db, wh_json:get_value(<<"_id">>, Doc, <<>>)) of
-                ?NE_BINARY = Rev ->
-                    do_ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, Doc), Opts);
+            case do_fetch_rev(Db, doc_id(Doc)) of
                 {'error', 'not_found'} ->
-                    do_ensure_saved(Db, wh_json:delete_key(<<"_rev">>, Doc), Opts)
+                    do_ensure_saved(Db, wh_json:delete_key(<<"_rev">>, Doc), Opts);
+                Rev ->
+                    do_ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, Doc), Opts)
             end;
         {'error', _}=E -> E
     end.
 
--spec do_fetch_rev(couchbeam_db(), ne_binary()) ->
-                          ne_binary() |
+-spec do_fetch_rev(couchbeam_db(), api_binary()) ->
+                          api_binary() |
                           couchbeam_error().
 do_fetch_rev(#db{}=Db, DocId) -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId)).
 
@@ -496,7 +504,7 @@ do_save_docs(#db{}=Db, Docs, Options) ->
 
 -spec maybe_set_docid(wh_json:object()) -> wh_json:object().
 maybe_set_docid(Doc) ->
-    case wh_json:get_value(<<"_id">>, Doc) of
+    case doc_id(Doc) of
         'undefined' -> wh_json:set_value(<<"_id">>, couch_mgr:get_uuid(), Doc);
         _ -> Doc
     end.
@@ -745,17 +753,11 @@ publish(Action, DbName, Doc) ->
 
 -spec doc_rev(wh_json:object()) -> ne_binary().
 doc_rev(Doc) ->
-    wh_json:get_first_defined([<<"_rev">>, <<"rev">>]
-                              ,Doc
-                              ,<<"undefined">>
-                             ).
+    wh_json:get_first_defined([<<"_rev">>, <<"rev">>], Doc).
 
--spec doc_id(wh_json:object()) -> ne_binary().
+-spec doc_id(wh_json:object()) -> api_binary().
 doc_id(Doc) ->
-    wh_json:get_first_defined([<<"_id">>, <<"id">>]
-                              ,Doc
-                              ,<<"undefined">>
-                             ).
+    wh_json:get_first_defined([<<"_id">>, <<"id">>], Doc).
 
 -spec doc_type(wh_json:object()) -> ne_binary().
 doc_type(Doc) ->
