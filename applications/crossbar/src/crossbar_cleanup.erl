@@ -13,7 +13,7 @@
 %% API
 -export([start_link/0
          ,cleanup_soft_deletes/1
-         ,start_cleanup_pass/0
+         ,start_cleanup_pass/1
          ,binding_account/0
          ,binding_account_mod/0
          ,binding_system/0
@@ -149,6 +149,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'cleanup_finished', Ref}, #state{cleanup_timer_ref=Ref}=State) ->
+    lager:debug("cleanup finished for ~p, starting timer", [Ref]),
+    {'noreply', State#state{cleanup_timer_ref=start_cleanup_timer()}, 'hibernate'};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -164,10 +167,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('cleanup', #state{cleanup_timer_ref=Ref}=State) ->
-    _Pid = spawn(?MODULE, 'start_cleanup_pass', []),
-    lager:debug("cleaning up in ~p", [_Pid]),
-    _ = stop_timer(Ref),
-    {'noreply', State#state{cleanup_timer_ref=start_cleanup_timer()}};
+    _Pid = spawn(?MODULE, 'start_cleanup_pass', [Ref]),
+    lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
+    {'noreply', State};
 handle_info('minute_cleanup', #state{minute_timer_ref=Ref}=State) ->
     _Pid = spawn('crossbar_bindings', 'map', [binding_minute(), []]),
     _ = stop_timer(Ref),
@@ -212,15 +214,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_cleanup_pass() -> 'ok'.
-start_cleanup_pass() ->
+-spec start_cleanup_pass(reference()) -> 'ok'.
+start_cleanup_pass(Ref) ->
+    wh_util:put_callid(<<"cleanup_pass">>),
     {'ok', Dbs} = couch_mgr:db_info(),
     lager:debug("starting cleanup pass of databases"),
 
     _ = [crossbar_bindings:map(db_routing_key(Db), Db)
          || Db <- Dbs
         ],
-    lager:debug("pass completed").
+    lager:debug("pass completed for ~p", [Ref]),
+    gen_server:cast(?MODULE, {'cleanup_finished', Ref}).
 
 db_routing_key(Db) ->
     Classifiers = [{fun whapps_util:is_account_db/1, fun binding_account/0}
@@ -268,15 +272,26 @@ start_day_timer() ->
 
 -spec cleanup_soft_deletes(ne_binary()) -> any().
 cleanup_soft_deletes(Account) ->
+    case whapps_util:is_account_db(Account) of
+        'true' -> cleanup_account_soft_deletes(Account);
+        'false' -> cleanup_db_soft_deletes(Account)
+    end.
+
+cleanup_account_soft_deletes(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:get_results(AccountDb, <<"maintenance/soft_deletes">>, [{'limit', 1000}]) of
+    do_cleanup(AccountDb).
+cleanup_db_soft_deletes(Db) ->
+    do_cleanup(Db).
+
+do_cleanup(Db) ->
+    case couch_mgr:get_results(Db, <<"maintenance/soft_deletes">>, [{'limit', 1000}]) of
         {'ok', []} -> 'ok';
         {'ok', L} ->
-            lager:debug("removing ~b soft-deleted docs from ~s", [length(L), AccountDb]),
-            couch_mgr:del_docs(AccountDb, L);
+            lager:debug("removing ~b soft-deleted docs from ~s", [length(L), Db]),
+            couch_mgr:del_docs(Db, L);
         {'error', 'not_found'} ->
-            lager:debug("db ~s or view 'maintenance/soft_deletes' not found", [AccountDb]),
-            try whapps_maintenance:refresh(AccountDb) of
+            lager:debug("db ~s or view 'maintenance/soft_deletes' not found", [Db]),
+            try whapps_maintenance:refresh(Db) of
                 OK -> lager:debug("maintenance refresh: ~p", [OK])
             catch
                 _E:_R -> lager:debug("maintenance refresh died: ~s: ~p", [_E, _R])
