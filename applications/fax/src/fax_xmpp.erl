@@ -18,6 +18,8 @@
 -define(SCOPES,<<(?XMPP_SCOPE)/binary, " ", (?GCP_SCOPE)/binary>>).
 -define(XMPP_SERVER, "talk.google.com").
 
+-define(POLLING_INTERVAL, 3600000).
+
 -export([start/1, start_link/1, stop/1]).
 
 %% gen_server callbacks
@@ -42,14 +44,13 @@ stop(PrinterId) ->
 init([PrinterId]) ->
     process_flag(trap_exit, 'true'),
     gen_server:cast(self(), 'start'),    
-    {ok, #state{faxbox_id=PrinterId}}.
+    {ok, #state{faxbox_id=PrinterId}, ?POLLING_INTERVAL}.
   
   
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
 handle_cast('start', #state{faxbox_id=FaxBoxId} = State) ->
-    lager:info("START"),
     case couch_mgr:open_doc(?WH_FAXES, FaxBoxId) of
         {'ok', JObj} ->
             Cloud = wh_json:get_value(<<"pvt_cloud">>, JObj),
@@ -63,6 +64,7 @@ handle_cast('start', #state{faxbox_id=FaxBoxId} = State) ->
                                   oauth_app_id=AppId,
                                   full_jid=UID,
                                   refresh_token=RefreshToken}
+            , ?POLLING_INTERVAL
             };
           E ->
               {stop, E, State}
@@ -74,41 +76,51 @@ handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=Re
     case connect(wh_util:to_list(JID), wh_util:to_list(Token)) of
         {ok, {MySession, MyJID}} ->
             gen_server:cast(self(), 'subscribe'),
-            {noreply, State#state{session=MySession, jid=MyJID}};
+            {noreply, State#state{session=MySession, jid=MyJID}, ?POLLING_INTERVAL};
         _ -> 
             {stop, <<"Error connecting to xmpp server">>, State}
     end;
 
 handle_cast('status', State) ->
-    'ok';
+    {noreply, State, ?POLLING_INTERVAL};
 
 handle_cast('subscribe', #state{jid=MyJID, session=MySession}=State) ->
+    {_, JFull, _JUser, _JDomain, _JResource} = MyJID,
+    lager:debug("xmpp subscribe ~s",[JFull]),
     IQ = get_sub_msg(MyJID),
     PacketId = exmpp_session:send_packet(MySession, IQ),
-    {noreply, State};
+    {noreply, State, ?POLLING_INTERVAL};
 
 handle_cast(stop, State) -> {stop, normal, State};
 handle_cast(_Msg, State) -> {noreply, State}.
 
-handle_info(#received_packet{packet_type='message'}=Packet, State) ->
-    lager:info("received_packet"),
-  process_received_packet(Packet, State),
-  {noreply, State};
+handle_info(#received_packet{packet_type='message'}=Packet, State) ->    
+    process_received_packet(Packet, State),
+    {noreply, State, ?POLLING_INTERVAL};
+handle_info(#received_packet{packet_type='iq'
+                            ,raw_packet=Packet}, State) ->    
+    lager:debug("xmpp received iq packet ~s",[exmpp_xml:document_to_binary(Packet)]),
+    {noreply, State, ?POLLING_INTERVAL};
 handle_info(#received_packet{}=Packet, State) ->
-    lager:info("received_packet not message ~p",[Packet]),
-  {noreply, State};
+    lager:debug("xmpp received unknown packet type : ~p",[Packet]),
+    {noreply, State, ?POLLING_INTERVAL};
+handle_info(timeout, State) ->    
+    gen_server:cast(self(), 'subscribe'),
+    {noreply, State, ?POLLING_INTERVAL};
 handle_info(_Info, State) -> 
-    lager:info("xmpp handle_info ~p",[_Info]),
-  {noreply, State}.
+    lager:debug("xmpp handle_info ~p",[_Info]),
+  {noreply, State, ?POLLING_INTERVAL}.
+
+
 terminate(_Reason, #state{jid=MyJID
                          ,session=MySession}) ->
     {_, JFull, _JUser, _JDomain, _JResource} = MyJID,
     lager:debug("terminating xmpp session ~s",[JFull]),
   disconnect(MySession),
-  ok;
+  'ok';
 terminate(_Reason, State) -> 
     lager:debug("terminate xmpp module"),
-  ok.
+  'ok'.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
@@ -156,7 +168,7 @@ connect(JID, Password) ->
     
     try init_session(Session, Password)
     catch
-      _:Error -> io:format("got error: ~p~n", [Error]),
+      _:Error -> lager:debug("error connecting xmpp session: ~p", [Error]),
          {error, Error}
     end,
     {ok, {Session, Jid}}.

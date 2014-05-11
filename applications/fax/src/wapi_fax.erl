@@ -25,7 +25,7 @@
 -define(FAX_EXCHANGE, <<"fax">>).
 
 -define(FAX_REQ_HEADERS, [<<"Call">>, <<"Action">>]).
--define(OPTIONAL_FAX_REQ_HEADERS, [<<"Owner-ID">>]).
+-define(OPTIONAL_FAX_REQ_HEADERS, [<<"Owner-ID">>, <<"FaxBox-ID">>]).
 -define(FAX_REQ_VALUES, [{<<"Event-Category">>,<<"dialplan">>}
                          ,{<<"Event-Name">>, <<"fax_req">>}
                          ,{<<"Action">>, [<<"receive">>, <<"transmit">>]}
@@ -43,7 +43,7 @@
 
 
 -define(FAX_STATUS_HEADERS, [<<"Job-ID">>]).
--define(OPTIONAL_FAX_STATUS_HEADERS, [<<"Status">>, <<"Fax-BoxId">>, <<"Account-ID">>, <<"Fax-Info">>]).
+-define(OPTIONAL_FAX_STATUS_HEADERS, [<<"Status">>, <<"FaxBox-ID">>, <<"Account-ID">>, <<"Fax-Info">>]).
 -define(FAX_STATUS_VALUES, [{<<"Event-Category">>,<<"fax">>}
                          ,{<<"Event-Name">>, <<"status">>}
                         ]).

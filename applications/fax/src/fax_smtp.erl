@@ -54,7 +54,7 @@ init(Hostname, SessionCount, Address, Options) ->
             State = #state{options = Options, peer_ip = Address},
             {'ok', Banner, State};
         'true' ->
-            lager:info("connection limit exceeded ~p", [Address]),
+            lager:debug("connection limit exceeded ~p", [Address]),
             {'stop', 'normal', ["421 ", Hostname, " is too busy to accept mail right now"]}
     end.
 
@@ -68,7 +68,7 @@ handle_HELO(<<"invalid">>, State) ->
 handle_HELO(<<"trusted_host">>, State) ->
     {'ok', State}; %% no size limit because we trust them.
 handle_HELO(Hostname, State) ->
-    lager:info("HELO from ~s", [Hostname]),
+    lager:debug("HELO from ~s", [Hostname]),
     {'ok', 655360, State}. % 640kb of HELO should be enough for anyone.
 %% If {ok, State} was returned here, we'd use the default 10mb limit
 
@@ -79,7 +79,7 @@ handle_EHLO(<<"invalid">>, _Extensions, State) ->
     %% contrived example
     {'error', "554 invalid hostname", State};
 handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
-    lager:info("EHLO from ~s", [Hostname]),
+    lager:debug("EHLO from ~s", [Hostname]),
     %% You can advertise additional extensions, or remove some defaults
     MyExtensions = case props:get_is_true('auth', Options, 'false') of
                        'false' -> Extensions;
@@ -96,53 +96,53 @@ handle_EHLO(Hostname, Extensions, #state{options=Options}=State) ->
                          {'ok', #state{}} |
                          error_message().
 handle_MAIL(From, State) ->
-    lager:info("Checking Mail from ~s", [From]),
+    lager:debug("Checking Mail from ~s", [From]),
     {'ok', State#state{from=From}}.
 
 -spec handle_MAIL_extension(binary(), #state{}) ->
                                    {'ok', #state{}} |
                                    'error'.
 handle_MAIL_extension(Extension, _State) ->
-    lager:info("Unknown MAIL FROM extension ~s", [Extension]),
+    lager:debug("Unknown MAIL FROM extension ~s", [Extension]),
     'error'.
 
 -spec handle_RCPT(binary(), #state{}) ->
                          {'ok', #state{}} |
                          {'error', string(), #state{}}.
 handle_RCPT(To, State) ->
-    lager:info("Checking Mail to ~s", [To]),
+    lager:debug("Checking Mail to ~s", [To]),
     check_faxbox(To,State).
 
 -spec handle_RCPT_extension(binary(), #state{}) ->
                                    {'ok', #state{}} |
                                    'error'.
 handle_RCPT_extension(Extension, _State) ->
-    lager:info("Unknown RCPT TO extension ~s", [Extension]),
+    lager:debug("Unknown RCPT TO extension ~s", [Extension]),
     'error'.
 
 -spec handle_DATA(binary(), ne_binaries(), binary(), #state{}) ->
                          {'ok', string(), #state{}} |
                          {'error', string(), #state{}}.
 handle_DATA(From, To, <<>>, State) ->
-    lager:info("552 Message too small. From ~p to ~p", [From,To]),
+    lager:debug("552 Message too small. From ~p to ~p", [From,To]),
     {'error', "552 Message too small", State};
 handle_DATA(From, To, Data, #state{options=Options}=State) ->
-    lager:info("Handle Data From ~p to ~p", [From,To]),
+    lager:debug("Handle Data From ~p to ~p", [From,To]),
 
     %% JMA: Can this be done with wh_util:rand_hex_binary() ?
     Reference = lists:flatten([io_lib:format("~2.16.0b", [X]) || <<X>> <= erlang:md5(term_to_binary(erlang:now()))]),
 
     try mimemail:decode(Data) of
         {Type,SubType,Headers,Parameters,Body} ->
-            lager:info("Message decoded successfully!~n"),
+            lager:debug("Message decoded successfully!~n"),
             {ProcessResult, NewState} = process_message(Type,SubType,Headers,Parameters,Body,State),
             {ProcessResult, Reference, NewState};
         Other ->
-            lager:info("mime decode other ~p",[Other]),
+            lager:debug("mime decode other ~p",[Other]),
             {'error', <<"Message decode failed">>, State}
     catch
         _What:_Why ->
-            lager:info("Message decode FAILED with ~p:~p", [_What, _Why]),
+            lager:debug("Message decode FAILED with ~p:~p", [_What, _Why]),
             case props:get_is_true('dump', Options, 'false') of
                 'false' -> 'ok';
                 'true' ->
@@ -158,7 +158,7 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
 
 -spec handle_RSET(#state{}) -> #state{}.
 handle_RSET(State) ->
-    lager:info("RSET Called"),
+    lager:debug("RSET Called"),
     %% reset any relevant internal state
     State.
 
@@ -166,22 +166,19 @@ handle_RSET(State) ->
                          {'ok', string(), #state{}} |
                          {'error', string(), #state{}}.
 handle_VRFY(_Address, State) ->
-    lager:info("252 VRFY disabled by policy, just send some mail"),
+    lager:debug("252 VRFY disabled by policy, just send some mail"),
     {'error', "252 VRFY disabled by policy, just send some mail", State}.
 
 -spec handle_other(binary(), binary(), #state{}) ->
                           {string(), #state{}} | {#state{}}.
 handle_other(<<"PROXY">>, Args, State) ->
-    lager:info("PROXY : ~p",[Args]),
+    lager:debug("PROXY : ~p",[Args]),
     {State};
 
-%% TODO
-%% <<"PROXY">> / <<"TCP4 X.X.X.X Y.Y.Y.Y 59640 25">>
-%% TRANSPORT PEER_IP PROXY_IP PEER_PORT PROXY_PORT
 
 handle_other(Verb, Args, State) ->
     %% You can implement other SMTP verbs here, if you need to
-    lager:info("500 Error: command not recognized : ~p / ~p",[Verb,Args]),
+    lager:debug("500 Error: command not recognized : ~p / ~p",[Verb,Args]),
     {["500 Error: command not recognized : '", Verb, "'"], State}.
 
 -spec handle_AUTH('login' | 'plain' | 'cram-md5', binary(), binary() | {binary(), binary()}, #state{}) ->
@@ -192,7 +189,7 @@ handle_AUTH(_Type, _Username, _Password, _State) ->
 
 -spec handle_STARTTLS(#state{}) -> #state{}.
 handle_STARTTLS(State) ->
-    lager:info("SMTP TLS Started"),
+    lager:debug("SMTP TLS Started"),
     State.
 
 -spec code_change(any(), #state{}, any()) -> {'ok', #state{}}.
@@ -207,7 +204,7 @@ terminate('normal', #state{filename=Filename
                           }=State) ->
     case wh_util:is_empty(Filename) of
         'false' ->
-            lager:info("terminate normal saving docs"),
+            lager:debug("terminate normal saving docs"),
             {'ok', FileContents} = file:read_file(Filename),
             fax_util:save_fax_docs(Docs, FileContents,CT),
             file:delete(Filename);
@@ -215,7 +212,7 @@ terminate('normal', #state{filename=Filename
     end,
     {'ok', 'normal', State};
 terminate(Reason, State) ->
-    lager:info("terminate ~p", [Reason]),
+    lager:debug("terminate ~p", [Reason]),
     {'ok', Reason, State}.
 
 %%% Internal Functions %%%
@@ -241,7 +238,7 @@ check_faxbox(To, State) ->
                                       {'ok', #state{}} |
                                       {'error', string(), #state{}}.
 check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From}=State) ->
-    lager:info("checking if ~s can send to ~p. doc is ~p",[From,wh_json:get_value(<<"name">>,FaxBoxDoc),FaxBoxDoc]),
+    lager:debug("checking if ~s can send to ~p. doc is ~p",[From,wh_json:get_value(<<"name">>,FaxBoxDoc),FaxBoxDoc]),
     add_fax_document(FaxNumber, FaxBoxDoc, State).
 
 add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
@@ -285,20 +282,20 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
 %% Internal functions
 %% ====================================================================
 process_message(<<"multipart">>, <<"mixed">>, _Headers, _Parameters, Body, State) ->
-    lager:info("processing multipart/mixed"),
+    lager:debug("processing multipart/mixed"),
     case Body of
         {Type, SubType, HeadersPart, ParametersPart, BodyPart} ->
-            lager:info("processing ~s/~s",[Type,SubType]),
+            lager:debug("processing ~s/~s",[Type,SubType]),
             process_part(<<Type/binary,"/",SubType/binary>>,HeadersPart,ParametersPart,BodyPart, State);
         [{Type, SubType, _HeadersPart, _ParametersPart, _BodyParts}|_OtherParts]=Parts ->
-            lager:info("processing multiple parts, first is ~s/~s",[Type,SubType]),
+            lager:debug("processing multiple parts, first is ~s/~s",[Type,SubType]),
             process_parts(Parts, State);
         A ->
-            lager:info("missed processing ~p",[A]),
+            lager:debug("missed processing ~p",[A]),
             {'ok', State}
     end;
 process_message(_Type, _SubType, _Headers, _Parameters, _Body, State) ->
-    lager:info("skipping ~s/~s",[_Type, _SubType]),
+    lager:debug("skipping ~s/~s",[_Type, _SubType]),
     {'ok', State}.
 
 process_parts([], State) ->
@@ -309,19 +306,19 @@ process_parts([Part|Parts], State) ->
             {_ , NewState} = process_part(<<Type/binary,"/",SubType/binary>>,Headers,Parameters,BodyPart,State),
             process_parts(Parts,NewState);
         A ->
-            lager:info("missed parts processing ~p",[A]),
+            lager:debug("missed parts processing ~p",[A]),
             {'ok', State}
     end.
 
 process_part(<<"application/pdf">>=CT, _Headers, _Parameters, Body, State) ->
-    lager:info("part is application/pdf"),
+    lager:debug("part is application/pdf"),
     Filename = <<"/tmp/email_attachment_",(wh_util:to_binary(wh_util:current_tstamp()))/binary,".pdf">>,
     file:write_file(Filename, Body),
     {'ok', State#state{filename=Filename
                        ,content_type=CT
                       }};
 process_part(<<"image/tiff">>=CT, _Headers, _Parameters, Body, State) ->
-    lager:info("Part is image/tiff"),
+    lager:debug("Part is image/tiff"),
     Filename = <<"/tmp/email_attachment_",(wh_util:to_binary(wh_util:current_tstamp()))/binary,".tiff">>,
     file:write_file(Filename, Body),
     {'ok', State#state{filename=Filename

@@ -48,7 +48,7 @@
                   ,{xmpp,[{restrict_to,['push']}]}
                   ,{self, []}
                   ]).
--define(QUEUE_NAME, <<>>).
+-define(QUEUE_NAME, <<"fax_gcp_listener">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 
@@ -305,9 +305,7 @@ send_update_job_status(JobId, Status, Authorization) ->
 
     case ibrowse:send_req(wh_util:to_list(?JOBCTL_URL), Headers, 'post', Body) of
         {'ok', "200", RespHeaders, RespBody} ->
-            JObj = wh_json:decode(RespBody),
-            lager:debug("TICKET Result ~p", [JObj]),
-            JObj;
+            wh_json:decode(RespBody);
         Response -> lager:debug("POOL RESPONSE ~p",[Response])
     end.
 
@@ -414,3 +412,78 @@ get_printer_oauth_credentials(PrinterId) ->
     end.
 
 
+
+format_multipart_formdata(Boundary, Fields, Files) ->
+    FieldParts = lists:map(fun({FieldName, FieldContent}) ->
+                                   [<<"--", Boundary/binary>>,
+                                    <<"Content-Disposition: form-data; name=\"",FieldName/binary,"\"">>,
+                                    <<"">>,
+                                    FieldContent]
+                           end, Fields),
+    FieldParts2 = lists:append(FieldParts),
+    FileParts = lists:map(fun({FieldName, FileName, FileContent, FileContentType}) ->
+                                  [<<"--", Boundary/binary>>,
+                                   <<"Content-Disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>,
+                                   <<"Content-Type: ", FileContentType/binary>>,
+                                   <<"">>,
+                                   FileContent]
+                          end, Files),
+    FileParts2 = lists:append(FileParts),
+    EndingParts = [<<"--", Boundary/binary, "--">>, <<"">>],
+    Parts = lists:append([FieldParts2, FileParts2, EndingParts]),
+    lists:foldr(fun(A,B) -> string:join([binary_to_list(A), B], "\r\n") end, [], Parts).
+
+register_body(FaxboxId) ->
+    {'ok', Fields} = file:consult(
+                       [filename:join(
+                          [code:priv_dir('fax'), <<"gcp/register.props">>])
+                       ]),
+    Files = [
+             {<<"capabilities">>,<<"capabilities">>
+             ,file:read_file(
+                [filename:join(
+                          [code:priv_dir('fax'), <<"gcp/printer.json">>])
+                       ])
+             ,<<"application/json">>}
+             ],
+    format_multipart_formdata(?MULTIPART_BOUNDARY, [{<<"uuid">>, FaxboxId} | Fields], Files).
+
+    
+send_register(FaxboxId) ->
+    Body = register_body(FaxboxId),
+    ContentType = wh_util:to_list(<<"multipart/form-data; boundary=", ?MULTIPART_BOUNDARY/binary>>),
+    ContentLength = length(Body),
+    Options = [
+              {content_type, ContentType}
+              ,{content_length, ContentLength}
+               ],
+
+    Headers = [?GPC_PROXY_HEADER, {"Content-Type",ContentType}],
+
+    lager:info("Options ~p",[Options]),
+    lager:info("Body ~p",[Body]),
+    
+    Url = wh_util:to_list(?GPC_URL_REGISTER),
+    lager:info("Url ~p",[Url]),
+
+    case ibrowse:send_req(Url, Headers, 'post', Body, Options) of
+        {'ok', "200", _RespHeaders, RespXML} ->
+            JObj = wh_json:decode(RespXML),
+            lager:info("Register ~s",[RespXML]),
+            case wh_json:get_value(<<"success">>, JObj, 'false') of
+                'true' ->
+%                    save_printer(wh_json:get_value(<<"printers">>, JObj, []), AccountId),
+%                    spawn(?MODULE, 'pool_registration', [AppId, JObj,AccountId]),
+                    JObj;
+                Other -> lager:info("Response is ~s negative",[Other])
+            end;
+        {'ok', _RespCode, _RespHeaders, RespXML} ->
+            lager:info("recv ~s: ~s", [_RespCode, RespXML]);
+        {'error', _R} ->
+            lager:info("error querying: ~p", [_R]),
+            {'error', 'not_available'}
+    end.
+
+
+    
+    

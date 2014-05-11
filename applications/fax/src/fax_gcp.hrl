@@ -12,6 +12,7 @@
 -define(TICKET_URL,"https://www.google.com/cloudprint/ticket?use_cjt=true&jobid=").
 -define(JOBCTL_URL,"https://www.google.com/cloudprint/control").
 
+-define(MULTIPART_BOUNDARY,<<"------a450glvjfEoqerAc1p431paQlfDac152cadADfd">>).
 
 
 -define(FAX_GCP_HRL, 'true').
