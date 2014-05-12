@@ -238,32 +238,15 @@ maybe_reconcile_numbers(Context) -> Context.
 -spec  track_assignment(atom(), cb_context:context()) ->cb_context:context().
 track_assignment('update', Context) ->
     NewNums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
+    OldNums = wh_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), []),
 
-    Unassigned = lists:foldl(
-                   fun(Num, Acc) ->
-                        case lists:member(Num, NewNums) of
-                            'true' -> Acc;
-                            'false' -> [{Num, <<>>}|Acc]
-                        end
-                   end
-                   ,[]
-                   ,wh_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), [])
-                  ),
-    Assigned = lists:foldl(
-                 fun(Num, Acc) ->
-                    [{Num, <<"callflow">>}|Acc]
-                 end
-                 ,[]
-                 ,NewNums
-                ),
+    Unassigned = [{Num, <<>>} || Num <- OldNums, not(lists:member(Num, NewNums))],
+    Assigned =  [{Num, <<"callflow">>} || Num <- NewNums],
     'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned ++ Assigned),
     Context;
 track_assignment('delete', Context) ->
-    Unassigned = lists:foldl(
-                   fun(Num, Acc) ->
-                           [{Num, <<>>}|Acc]
-                   end, [], wh_json:get_value(<<"numbers">>, cb_context:doc(Context), [])
-                  ),
+    Nums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
+    Unassigned =  [{Num, <<>>} || Num <- Nums],
     'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned),
     Context.
 
