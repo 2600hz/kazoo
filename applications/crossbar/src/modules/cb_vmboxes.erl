@@ -335,7 +335,7 @@ load_message_binary(DocId, MediaId, Context) ->
             VMMetaJObj = cb_context:resp_data(Context1),
             Doc = cb_context:doc(Context1),
 
-            case couch_mgr:open_doc(cb_context:account_db(Context), MediaId) of
+            case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
                 {'error', 'not_found'} ->
                     cb_context:add_system_error('bad_identifier', [{'details', MediaId}], Context1);
                 {'error', _E} ->
@@ -475,7 +475,7 @@ cleanup_heard_voicemail(Account) ->
 
 cleanup_heard_voicemail(AccountDb, Duration) ->
     Today = wh_util:current_tstamp(),
-    DurationS = Duration * 86400, % duration in seconds
+    DurationS = Duration * ?SECONDS_IN_DAY, % duration in seconds
     case couch_mgr:get_results(AccountDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
         {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
         {'ok', View} ->
@@ -514,6 +514,9 @@ cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
             lager:debug("updated messages in voicemail box ~s", [wh_json:get_value(<<"_id">>, Box2)])
     end.
 
+-spec delete_media(ne_binary(), ne_binary()) ->
+                          {'ok', wh_json:object()} |
+                          {'error', _}.
 delete_media(AccountDb, MediaId) ->
-    {'ok', JObj} = couch_mgr:open_doc(AccountDb, MediaId),
+    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, MediaId),
     couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_deleted">>, 'true', JObj)).
