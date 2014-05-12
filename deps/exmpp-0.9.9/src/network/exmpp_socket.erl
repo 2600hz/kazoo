@@ -139,7 +139,7 @@ receiver_loop(ClientPid, ESocket, StreamRef) ->
             case recv_data(ESocket, Data) of
                 {ok, Str} -> 
                     {ok, NewStreamRef} = exmpp_xmlstream:parse(StreamRef, Str);
-                {error, Error} ->
+                {error, _Error} ->
                     NewStreamRef = StreamRef
             end,                    
 	    receiver_loop(ClientPid, ESocket, NewStreamRef);
