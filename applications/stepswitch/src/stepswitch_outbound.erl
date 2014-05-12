@@ -43,9 +43,7 @@ handle_audio_req(JObj) ->
     lager:debug("received outbound audio resource request for ~s", [Number]),
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
-            maybe_force_outbound([{'account_id', AccountId}
-                                  | Props
-                                 ], JObj);
+            maybe_force_outbound(props:set_value('account_id', AccountId, Props), JObj);
         _ -> maybe_bridge(Number, JObj)
     end.
 
