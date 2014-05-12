@@ -949,8 +949,8 @@ print_details({[#registration{}=Reg], Continuation}, Count) ->
 print_property(<<"Expires">> =Key, Value, #registration{expires=Expires
                                                         ,last_registration=LastRegistration
                                                        }) ->
-    Remaining = wh_util:to_binary((LastRegistration + Expires) - wh_util:current_tstamp()),
-    io:format("~-19s: ~s/~s~n", [Key, Remaining, wh_util:to_binary(Value)]);
+    Remaining = (LastRegistration + Expires) - wh_util:current_tstamp(),
+    io:format("~-19s: ~b/~s~n", [Key, Remaining, wh_util:to_binary(Value)]);
 print_property(Key, Value, _) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]).
 
