@@ -657,7 +657,7 @@ wait_for_stream_features(#xmlstreamelement{element=#xmlel{name='features'} = F},
             end
     end;
 
-wait_for_stream_features(X, State) ->
+wait_for_stream_features(_X, State) ->
     %io:format("Unknown element waiting for stream features ~p \n", [X]),
     {next_state, wait_for_stream_features, State}.
    
@@ -893,7 +893,7 @@ wait_for_sasl_response(#xmlstreamelement{element=#xmlel{name='challenge'} = Elem
             Module:send(ConnRef, exmpp_client_sasl:response("")),
             {next_state, wait_for_sasl_response, State }
     end;
-wait_for_sasl_response(#xmlstreamelement{element=#xmlel{} = Element}=Stream, State) ->
+wait_for_sasl_response(#xmlstreamelement{element=#xmlel{} = Element}=_Stream, State) ->
 	%io:format("wait_for_sasl_response ~p~n",[Stream]),
     #state{connection = Module, connection_ref = ConnRef, sasl_state = SASL_State} = State,
     Challenge = base64:decode_to_string(exmpp_xml:get_cdata(Element)),
