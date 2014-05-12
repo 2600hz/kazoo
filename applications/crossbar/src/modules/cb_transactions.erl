@@ -88,13 +88,20 @@ validate(Context) ->
 validate_transactions(Context, ?HTTP_GET) ->
     From = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, 0)),
     To = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, 0)),
-
-    case cb_context:req_value(Context, <<"reason">>) of
-        <<"no_call">> ->
-            Reasons = wht_util:reasons(2000),
-            fetch(From, To, Context, Reasons);
-        _ ->
-            fetch(From, To, Context)
+    case validate_date(From, To) of
+        {'true', VFrom, VTo} ->
+            Options = [{'from', VFrom}
+                       ,{'to', VTo}
+                       ,{'prorated', 'true'}
+                       ,{'reason', cb_context:req_value(Context, <<"reason">>)}
+                      ],
+            fetch(Context, Options);
+        {'false', R} ->
+            cb_context:add_validation_error(<<"created_from/created_to">>
+                                            ,<<"date_range">>
+                                            ,R
+                                            ,Context
+                                           )
     end.
 
 validate(Context, PathToken) ->
@@ -110,7 +117,20 @@ validate_transaction(Context, <<"current_balance">>, ?HTTP_GET) ->
 validate_transaction(Context, <<"monthly_recurring">>, ?HTTP_GET) ->
     From = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, 0)),
     To = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, 0)),
-    fetch_braintree_transactions(From, To, Context);
+    case validate_date(From, To) of
+        {'true', VFrom, VTo} ->
+            Options = [{'from', VFrom}
+                       ,{'to', VTo}
+                       ,{'prorated', 'false'}
+                      ],
+            fetch_monthly_recurring(Context, Options);
+        {'false', R} ->
+            cb_context:add_validation_error(<<"created_from/created_to">>
+                                            ,<<"date_range">>
+                                            ,R
+                                            ,Context
+                                           )
+    end;
 validate_transaction(Context, <<"subscriptions">>, ?HTTP_GET) ->
     fetch_braintree_subscriptions(Context);
 validate_transaction(Context, _PathToken, _Verb) ->
@@ -122,31 +142,16 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(pos_integer(), pos_integer(), cb_context:context()) ->
-                   cb_context:context().
--spec fetch(pos_integer(), pos_integer(), cb_context:context(), ne_binary()) ->
-                   cb_context:context().
-fetch(From, To, Context) ->
-    case validate_date(From, To) of
-        {'true', VFrom, VTo} -> filter(VFrom, VTo, Context);
-        {'false', R} ->
-            cb_context:add_validation_error(<<"created_from/created_to">>
-                                            ,<<"date_range">>
-                                            ,R
-                                            ,Context
-                                           )
-    end.
-
-fetch(From, To, Context, Reason) ->
-    case validate_date(From, To) of
-        {'true', VFrom, VTo} ->
-            filter(VFrom, VTo, Context, Reason);
-        {'false', R} ->
-            cb_context:add_validation_error(<<"created_from/created_to">>
-                                            ,<<"date_range">>
-                                            ,R
-                                            ,Context
-                                           )
+-spec  fetch(cb_context:context(), wh_proplist()) -> cb_context:context().
+fetch(Context, Options) ->
+    Transactions = fetch_transactions(Context, Options),
+    ProratedTransactions = fetch_braintree_transactions(Context, Options),
+    case {Transactions, ProratedTransactions} of
+        {{'ok', Trs}, {'ok', PTrs}} ->
+            send_resp({'ok', Trs ++ PTrs}, Context);
+        {{'error', _}=E,  {'error', _}} -> send_resp(E, Context);
+        {_, {'error', _}=E} -> send_resp(E, Context);
+        {{'error', _}=E, _} -> send_resp(E, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -155,22 +160,12 @@ fetch(From, To, Context, Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) ->
-                                          cb_context:context().
-fetch_braintree_transactions(Min, Max, Context) ->
-    case validate_date(Min, Max) of
-        {'true', From, To} ->
-            filter_braintree_transactions(
-              timestamp_to_braintree(From)
-              ,timestamp_to_braintree(To)
-              ,Context
-             );
-        {'false', R} ->
-            cb_context:add_validation_error(<<"created_from/created_to">>
-                                                ,<<"date_range">>
-                                                ,R
-                                            ,Context
-                                           )
+-spec  fetch_monthly_recurring(cb_context:context(), wh_proplist()) -> cb_context:context().
+fetch_monthly_recurring(Context, Options) ->
+    Transactions = fetch_braintree_transactions(Context, Options),
+    case Transactions of
+        {'ok', _}=Resp -> send_resp(Resp, Context);
+        {'error', _}=E -> send_resp(E, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -179,46 +174,18 @@ fetch_braintree_transactions(Min, Max, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_braintree_subscriptions(cb_context:context()) ->
-                                           cb_context:context().
-fetch_braintree_subscriptions(Context) ->
-    filter_braintree_subscriptions(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec filter(integer(), integer(), cb_context:context()) ->
-                    cb_context:context().
--spec filter(integer(), integer(), cb_context:context(), ne_binary()) ->
-                    cb_context:context().
-filter(From, To, Context) ->
+-spec  fetch_transactions(cb_context:context(), wh_proplist()) -> {'ok', wh_json:objects()} | {'error', ne_binary()}.
+fetch_transactions(Context, Options) ->
+    From = props:get_value('from', Options),
+    To = props:get_value('to', Options),
     try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
         {'ok', Transactions} ->
-            JObj = wh_transactions:to_public_json(Transactions),
-            JObj1 = wht_util:collapse_call_transactions(JObj),
-            send_resp({'ok', JObj1}, Context);
-        {'error', _}=Error ->
-            send_resp(Error, Context)
+            JObjs = maybe_filter_by_reason(Transactions, Options),
+            {'ok', wht_util:collapse_call_transactions(JObjs)};
+        {'error', _}=Error -> Error
     catch
         _:_ ->
-            send_resp({'error', <<"error while fetching transactions">>}, Context)
-    end.
-
-filter(From, To, Context, Reason) ->
-    try wh_transactions:fetch_since(cb_context:account_id(Context), From, To) of
-        {'ok', Transactions} ->
-            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
-            JObj = wh_transactions:to_public_json(Filtered),
-            JObj1 = wht_util:collapse_call_transactions(JObj),
-            send_resp({'ok', JObj1}, Context);
-        {'error', _}=Error ->
-            send_resp(Error, Context)
-    catch
-        _:_ ->
-            send_resp({'error', <<"error while fetching transactions">>}, Context)
+            {'error', <<"error while fetching transactions">>}
     end.
 
 %%--------------------------------------------------------------------
@@ -227,27 +194,30 @@ filter(From, To, Context, Reason) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_transactions(ne_binary(), ne_binary(), cb_context:context()) ->
-                                           cb_context:context().
-filter_braintree_transactions(From, To, Context) ->
+-spec  fetch_braintree_transactions(cb_context:context(), wh_proplist()) -> {'ok', wh_json:objects()} | {'error', ne_binary()}.
+fetch_braintree_transactions(Context, Options) ->
+    From = props:get_value('from', Options),
+    To = props:get_value('to', Options),
+    Prorated = props:get_value('prorated', Options, 'false'),
     case wh_service_transactions:current_billing_period(
            cb_context:account_id(Context)
            ,'transactions'
-           ,{From, To}
+           ,{timestamp_to_braintree(From), timestamp_to_braintree(To)}
           )
     of
         'not_found' ->
-            send_resp({'error', <<"no data found in braintree">>}, Context);
+            {'error', <<"no data found in braintree">>};
         'unknown_error' ->
-            send_resp({'error', <<"unknown braintree error">>}, Context);
+            {'error', <<"unknown braintree error">>};
         BTransactions ->
             JObjs = lists:foldl(fun(BTr, Acc) ->
-                        case is_prorated_braintree_transaction(BTr) of
-                            'false' -> Acc;
-                            _Id -> [filter_braintree_transaction(BTr)|Acc]
+                        IsProrated = braintree_transaction_is_prorated(BTr),
+                        case IsProrated =:= Prorated of
+                            'true' -> [filter_braintree_transaction(BTr)|Acc];
+                            'false' -> Acc
                         end
                     end, [], BTransactions),
-            send_resp({'ok', JObjs}, Context)
+            {'ok', JObjs}
     end.
 
 %%--------------------------------------------------------------------
@@ -256,17 +226,14 @@ filter_braintree_transactions(From, To, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_subscriptions(cb_context:context()) ->
-                                            cb_context:context().
-filter_braintree_subscriptions(Context) ->
-    case wh_service_transactions:current_billing_period(cb_context:account_id(Context), 'subscriptions') of
-        'not_found' ->
-            send_resp({'error', <<"no data found in braintree">>}, Context);
-        'unknow_error' ->
-            send_resp({'error', <<"unknown braintree error">>}, Context);
-        BSubscriptions ->
-            JObjs = [filter_braintree_subscirption(BSub) || BSub <- BSubscriptions],
-            send_resp({'ok', JObjs}, Context)
+-spec  maybe_filter_by_reason(any(), wh_proplist()) -> wh_json:objects().
+maybe_filter_by_reason(Transactions, Options) ->
+    case props:get_value('reason', Options) of
+        'undefined' ->
+            wh_transactions:to_public_json(Transactions);
+        Reason ->
+            Filtered = wh_transactions:filter_by_reason(Reason, Transactions),
+            wh_transactions:to_public_json(Filtered)
     end.
 
 %%--------------------------------------------------------------------
@@ -275,170 +242,15 @@ filter_braintree_subscriptions(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec filter_braintree_transaction(wh_json:object()) ->
-                                          wh_json:object().
-filter_braintree_transaction(BTransaction) ->
-    Routines = [fun(BTr) -> clean_braintree_transaction(BTr) end
-                ,fun(BTr) -> correct_date_braintree_transaction(BTr) end
-                ,fun(BTr) -> prorated_braintree_transaction(BTr) end
-               ],
-    lists:foldl(fun(F, BTr) -> F(BTr) end, BTransaction, Routines).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec filter_braintree_subscirption(wh_json:object()) ->
-                                           wh_json:object().
-filter_braintree_subscirption(BSubscription) ->
-    Routines = [fun(BSub) -> clean_braintree_subscription(BSub) end
-                ,fun(BSub) -> correct_date_braintree_subscription(BSub) end
-               ],
-    lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_prorated_braintree_transaction(wh_json:object()) ->
-                                               wh_json:object() |
-                                               'false'.
-is_prorated_braintree_transaction(BTransaction) ->
-    wh_json:get_value(<<"subscription_id">>, BTransaction, 'false').
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec clean_braintree_transaction(wh_json:object()) -> wh_json:object().
-clean_braintree_transaction(BTransaction) ->
-    RemoveKeys = [<<"status">>
-                  ,<<"type">>
-                  ,<<"currency_code">>
-                  ,<<"merchant_account_id">>
-                  ,<<"settlement_batch">>
-                  ,<<"avs_postal_response">>
-                  ,<<"avs_street_response">>
-                  ,<<"ccv_response_code">>
-                  ,<<"processor_authorization_code">>
-                  ,<<"processor_response_code">>
-                  ,<<"tax_exempt">>
-                  ,<<"billing_address">>
-                  ,<<"shipping_address">>
-                  ,<<"customer">>
-                  ,<<"card">>
-                 ],
-    wh_json:delete_keys(RemoveKeys, BTransaction).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec clean_braintree_subscription(wh_json:object()) -> wh_json:object().
-clean_braintree_subscription(BSubscription) ->
-    RemoveKeys = [<<"billing_dom">>
-                  ,<<"failure_count">>
-                  ,<<"merchant_account_id">>
-                  ,<<"never_expires">>
-                  ,<<"paid_through_date">>
-                  ,<<"payment_token">>
-                  ,<<"trial_period">>
-                  ,<<"do_not_inherit">>
-                  ,<<"start_immediately">>
-                  ,<<"prorate_charges">>
-                  ,<<"revert_on_prorate_fail">>
-                  ,<<"replace_add_ons">>
-                  ,<<"create">>
-                 ],
-    wh_json:delete_keys(RemoveKeys, BSubscription).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
-prorated_braintree_transaction(BTransaction) ->
-    case wh_json:get_value(<<"subscription_id">>, BTransaction, 'false') of
-        'false' -> wh_json:new();
-        _Id -> calculate_prorated(BTransaction)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec correct_date_braintree_transaction(wh_json:object()) -> wh_json:object().
-correct_date_braintree_transaction(BTransaction) ->
-    Keys = [<<"created_at">>, <<"update_at">>],
-    lists:foldl(fun correct_date_braintree_transaction_fold/2, BTransaction, Keys).
-
-correct_date_braintree_transaction_fold(Key, BTr) ->
-    case wh_json:get_value(Key, BTr, 'null') of
-        'null' -> BTr;
-        V1 ->
-            V2 = string:substr(binary:bin_to_list(V1), 1, 10),
-            [Y, M, D|_] = string:tokens(V2, "-"),
-            {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
-            DateTime = {{Y1, M1, D1}, {0, 0, 0}},
-            Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
-            wh_json:set_value(Key, Timestamp, BTr)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec correct_date_braintree_subscription(wh_json:object()) -> wh_json:object().
-correct_date_braintree_subscription(BSubscription) ->
-    Keys = [<<"billing_first_date">>
-            ,<<"billing_end_date">>
-            ,<<"billing_start_date">>
-            ,<<"next_bill_date">>
-           ],
-    lists:foldl(fun correct_date_braintree_subscription_fold/2, BSubscription, Keys).
-
-correct_date_braintree_subscription_fold(Key, BSub) ->
-    case wh_json:get_value(Key, BSub, 'null') of
-        'null' -> BSub;
-        V1 ->
-            V2 = binary:bin_to_list(V1),
-            [Y, M, D|_] = string:tokens(V2, "-"),
-            {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
-            DateTime = {{Y1, M1, D1}, {0, 0, 0}},
-            Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
-            wh_json:set_value(Key, Timestamp, BSub)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec calculate_prorated(wh_json:object()) -> wh_json:object().
-calculate_prorated(BTransaction) ->
-    Addon = calculate_addon(BTransaction),
-    Discount = calculate_discount(BTransaction),
-    Amount = wh_json:get_number_value(<<"amount">>, BTransaction, 0),
-    case (Addon - Discount) =:= Amount of
-        'true' ->
-            wh_json:set_value(<<"prorated">>, 'false', BTransaction);
-        'false' ->
-            wh_json:set_value(<<"prorated">>, 'true', BTransaction)
+-spec  braintree_transaction_is_prorated(wh_json:objects()) -> boolean().
+braintree_transaction_is_prorated(BTransaction) ->
+    case wh_json:get_value(<<"subscription_id">>, BTransaction) of
+        'undefined' -> 'true';
+        _Id ->
+            Addon = calculate_addon(BTransaction),
+            Discount = calculate_discount(BTransaction),
+            Amount = wh_json:get_number_value(<<"amount">>, BTransaction, 0),
+            (Addon - Discount) =/= Amount
     end.
 
 %%--------------------------------------------------------------------
@@ -470,11 +282,161 @@ calculate_discount(BTransaction) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec calculate(wh_json:objects(), number()) -> number().
-calculate([], Acc) -> Acc;
+calculate([], Acc) -> Acc/100;
 calculate([Addon|Addons], Acc) ->
-    Amount = wh_json:get_number_value(<<"amount">>, Addon, 0),
+    Amount = wh_json:get_number_value(<<"amount">>, Addon, 0)*100,
     Quantity = wh_json:get_number_value(<<"quantity">>, Addon, 0),
     calculate(Addons, (Amount*Quantity+Acc)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_transaction(wh_json:object()) ->
+                                          wh_json:object().
+filter_braintree_transaction(BTransaction) ->
+    Routines = [fun(BTr) -> clean_braintree_transaction(BTr) end
+                ,fun(BTr) -> correct_date_braintree_transaction(BTr) end
+                ,fun(BTr) -> prorated_braintree_transaction(BTr) end
+               ],
+    lists:foldl(fun(F, BTr) -> F(BTr) end, BTransaction, Routines).
+
+-spec clean_braintree_transaction(wh_json:object()) -> wh_json:object().
+clean_braintree_transaction(BTransaction) ->
+    RemoveKeys = [<<"status">>
+                  ,<<"type">>
+                  ,<<"currency_code">>
+                  ,<<"merchant_account_id">>
+                  ,<<"settlement_batch">>
+                  ,<<"avs_postal_response">>
+                  ,<<"avs_street_response">>
+                  ,<<"ccv_response_code">>
+                  ,<<"processor_authorization_code">>
+                  ,<<"processor_response_code">>
+                  ,<<"tax_exempt">>
+                  ,<<"billing_address">>
+                  ,<<"shipping_address">>
+                  ,<<"customer">>
+                  ,<<"card">>
+                 ],
+    wh_json:delete_keys(RemoveKeys, BTransaction).
+
+-spec correct_date_braintree_transaction(wh_json:object()) -> wh_json:object().
+correct_date_braintree_transaction(BTransaction) ->
+    Keys = [<<"created_at">>, <<"update_at">>],
+    lists:foldl(fun correct_date_braintree_transaction_fold/2, BTransaction, Keys).
+
+correct_date_braintree_transaction_fold(Key, BTr) ->
+    case wh_json:get_value(Key, BTr, 'null') of
+        'null' -> BTr;
+        V1 ->
+            V2 = string:substr(binary:bin_to_list(V1), 1, 10),
+            [Y, M, D|_] = string:tokens(V2, "-"),
+            {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
+            DateTime = {{Y1, M1, D1}, {0, 0, 0}},
+            Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
+            wh_json:set_value(Key, Timestamp, BTr)
+    end.
+
+-spec prorated_braintree_transaction(wh_json:object()) -> wh_json:object().
+prorated_braintree_transaction(BTransaction) ->
+    wh_json:set_value(<<"prorated">>
+                      ,braintree_transaction_is_prorated(BTransaction)
+                      ,BTransaction).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_braintree_subscriptions(cb_context:context()) -> cb_context:context().
+fetch_braintree_subscriptions(Context) ->
+    filter_braintree_subscriptions(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_subscriptions(cb_context:context()) -> cb_context:context().
+filter_braintree_subscriptions(Context) ->
+    case wh_service_transactions:current_billing_period(cb_context:account_id(Context), 'subscriptions') of
+        'not_found' ->
+            send_resp({'error', <<"no data found in braintree">>}, Context);
+        'unknow_error' ->
+            send_resp({'error', <<"unknown braintree error">>}, Context);
+        BSubscriptions ->
+            JObjs = [filter_braintree_subscription(BSub) || BSub <- BSubscriptions],
+            send_resp({'ok', JObjs}, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_braintree_subscription(wh_json:object()) -> wh_json:object().
+filter_braintree_subscription(BSubscription) ->
+    Routines = [fun(BSub) -> clean_braintree_subscription(BSub) end
+                ,fun(BSub) -> correct_date_braintree_subscription(BSub) end
+               ],
+    lists:foldl(fun(F, BSub) -> F(BSub) end, BSubscription, Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_braintree_subscription(wh_json:object()) -> wh_json:object().
+clean_braintree_subscription(BSubscription) ->
+    RemoveKeys = [<<"billing_dom">>
+                  ,<<"failure_count">>
+                  ,<<"merchant_account_id">>
+                  ,<<"never_expires">>
+                  ,<<"paid_through_date">>
+                  ,<<"payment_token">>
+                  ,<<"trial_period">>
+                  ,<<"do_not_inherit">>
+                  ,<<"start_immediately">>
+                  ,<<"prorate_charges">>
+                  ,<<"revert_on_prorate_fail">>
+                  ,<<"replace_add_ons">>
+                  ,<<"create">>
+                 ],
+    wh_json:delete_keys(RemoveKeys, BSubscription).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec correct_date_braintree_subscription(wh_json:object()) -> wh_json:object().
+correct_date_braintree_subscription(BSubscription) ->
+    Keys = [<<"billing_first_date">>
+            ,<<"billing_end_date">>
+            ,<<"billing_start_date">>
+            ,<<"next_bill_date">>
+           ],
+    lists:foldl(fun correct_date_braintree_subscription_fold/2, BSubscription, Keys).
+
+correct_date_braintree_subscription_fold(Key, BSub) ->
+    case wh_json:get_value(Key, BSub, 'null') of
+        'null' -> BSub;
+        V1 ->
+            V2 = binary:bin_to_list(V1),
+            [Y, M, D|_] = string:tokens(V2, "-"),
+            {{Y1, _}, {M1, _}, {D1, _}} = {string:to_integer(Y), string:to_integer(M), string:to_integer(D)},
+            DateTime = {{Y1, M1, D1}, {0, 0, 0}},
+            Timestamp = calendar:datetime_to_gregorian_seconds(DateTime),
+            wh_json:set_value(Key, Timestamp, BSub)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
