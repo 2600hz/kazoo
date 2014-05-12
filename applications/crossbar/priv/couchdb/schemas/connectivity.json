@@ -96,7 +96,13 @@
                         "minLength":1,
                         "required":true,
                         "description":"Password of the user@auth_realm"
-                     }
+                     },
+                      "ip":{
+                          "name":"IP (sip)",
+                          "type":"string",
+                          "description":"IP address for this device",
+                          "required":false
+                      }
                   }
                },
                "options":{
@@ -184,7 +190,13 @@
                   "timeout":{
                      "type":"integer",
                      "description":"The time, in seconds, to wait for an answer from the server"
-                  }
+                  },
+                   "ip":{
+                       "name":"IP (sip)",
+                       "type":"string",
+                       "description":"IP address for this device",
+                       "required":false
+                   }
                },
                "DIDs":{
                   "type":"object",
