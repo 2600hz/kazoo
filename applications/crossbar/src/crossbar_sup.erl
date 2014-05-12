@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -18,8 +18,6 @@
 -export([init/1]).
 
 -include("crossbar.hrl").
-
--define(CACHE(), {?CROSSBAR_CACHE, {'wh_cache', 'start_link', [?CROSSBAR_CACHE]}, 'permanent', 5000, 'worker', ['wh_cache']}).
 
 -define(DISPATCH_FILE, [code:lib_dir('crossbar', 'priv'), "/dispatch.conf"]).
 -define(DEFAULT_LOG_DIR, wh_util:to_binary(code:lib_dir('crossbar', 'log'))).
