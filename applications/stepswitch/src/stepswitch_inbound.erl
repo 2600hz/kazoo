@@ -65,7 +65,7 @@ maybe_relay_request(JObj) ->
 -spec set_account_id(wh_proplist(), wh_json:object()) ->
                             wh_json:object().
 set_account_id(NumberProps, JObj) ->
-    AccountId = props:get_value('account_id', NumberProps),
+    AccountId = wh_number_properties:account_id(NumberProps),
     wh_json:set_value(?CCV(<<"Account-ID">>), AccountId, JObj).
 
 %%--------------------------------------------------------------------
@@ -93,12 +93,12 @@ maybe_find_resource(_NumberProps, JObj) ->
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
             Routines = [fun maybe_add_resource_id/2
-                       ,fun maybe_add_t38_settings/2                        
+                       ,fun maybe_add_t38_settings/2
                        ],
             lists:foldl(fun(F, J) ->  F(J, ResourceProps) end
                        ,JObj
                        ,Routines
-                       )           
+                       )
     end.
 
 -spec maybe_add_resource_id(wh_json:object(), wh_proplist()) -> wh_json:object().
@@ -124,7 +124,7 @@ maybe_add_t38_settings(JObj, ResourceProps) ->
                              ,props:get_value('fax_option', ResourceProps)
                              ,JObj
                              );
-        _ -> JObj                
+        _ -> JObj
     end.
 
 -spec maybe_format_destination(wh_proplist(), wh_json:object()) -> wh_json:object().
@@ -239,7 +239,7 @@ apply_formatter(JObj, Key, Captured, Realm, Formatter) ->
 -spec maybe_set_ringback(wh_proplist(), wh_json:object()) ->
                                 wh_json:object().
 maybe_set_ringback(NumberProps, JObj) ->
-    case props:get_value('ringback_media', NumberProps) of
+    case wh_number_properties:ringback_media_id(NumberProps) of
         'undefined' -> JObj;
         MediaId ->
             wh_json:set_value(?CCV(<<"Ringback-Media">>), MediaId, JObj)
@@ -254,7 +254,7 @@ maybe_set_ringback(NumberProps, JObj) ->
 -spec maybe_set_transfer_media(wh_proplist(), wh_json:object()) ->
                                       wh_json:object().
 maybe_set_transfer_media(NumberProps, JObj) ->
-    case props:get_value('transfer_media', NumberProps) of
+    case wh_number_properties:transfer_media_id(NumberProps) of
         'undefined' -> JObj;
         MediaId ->
             wh_json:set_value(?CCV(<<"Transfer-Media">>), MediaId, JObj)
@@ -270,7 +270,7 @@ maybe_set_transfer_media(NumberProps, JObj) ->
 -spec maybe_lookup_cnam(wh_proplist(), wh_json:object()) ->
                                wh_json:object().
 maybe_lookup_cnam(NumberProps, JObj) ->
-    case props:get_value('inbound_cnam', NumberProps) of
+    case wh_number_properties:inbound_cnam_enabled(NumberProps) of
         'false' -> JObj;
         'true' -> stepswitch_cnam:lookup(JObj)
     end.
@@ -296,10 +296,10 @@ relay_request(_NumberProps, JObj) ->
 -spec maybe_transition_port_in(wh_proplist(), wh_json:object()) ->
                                       wh_json:object().
 maybe_transition_port_in(NumberProps, JObj) ->
-    _ = case props:get_value('pending_port', NumberProps) of
+    _ = case wh_number_properties:has_pending_port(NumberProps) of
             'false' -> 'ok';
             'true' ->
-                case wh_port_request:get(props:get_value('number', NumberProps)) of
+                case wh_port_request:get(wh_number_properties:number(NumberProps)) of
                     {'ok', PortReq} ->
                         _ = wh_port_request:transition_to_complete(PortReq);
                     _ -> 'ok'

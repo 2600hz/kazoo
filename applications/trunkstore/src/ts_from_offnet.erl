@@ -89,7 +89,7 @@ wait_for_bridge(State) ->
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State)
-          ,ts_callflow:get_failover(State)} 
+          ,ts_callflow:get_failover(State)}
     of
         {<<>>, _} ->
             lager:info("no callctl for failover");
@@ -111,7 +111,7 @@ failover(State, Failover) ->
             try_failover_sip(State, wh_json:get_value(<<"sip">>, Failover));
         DID ->
             try_failover_e164(State, DID)
-    end.    
+    end.
 
 try_failover_sip(_, 'undefined') ->
     lager:info("SIP failover undefined");
@@ -179,7 +179,7 @@ get_endpoint_data(JObj) ->
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = wnm_util:to_e164(ToUser),
     {'ok', AcctId, NumberProps} = wh_number_manager:lookup_account_by_number(ToDID),
-    ForceOut = props:get_value('force_outbound', NumberProps),
+    ForceOut = wh_number_properties:should_force_outbound(NumberProps),
     lager:info("acct ~s force out ~s", [AcctId, ForceOut]),
     RoutingData = routing_data(ToDID, AcctId),
     AuthUser = props:get_value(<<"To-User">>, RoutingData),
@@ -269,11 +269,11 @@ routing_data(ToDID, AcctID, Settings) ->
     IgnoreEarlyMedia = ts_util:ignore_early_media([wh_json:get_value(<<"ignore_early_media">>, DIDOptions)
                                                    ,wh_json:get_value(<<"ignore_early_media">>, SrvOptions)
                                                    ,wh_json:get_value(<<"ignore_early_media">>, AcctStuff)
-                                                  ]),    
+                                                  ]),
     Timeout = ts_util:ep_timeout([wh_json:get_value(<<"timeout">>, DIDOptions)
                                   ,wh_json:get_value(<<"timeout">>, SrvOptions)
                                   ,wh_json:get_value(<<"timeout">>, AcctStuff)
-                                 ]),    
+                                 ]),
     %% Bridge Endpoint fields go here
     %% See http://wiki.2600hz.org/display/whistle/Dialplan+Actions#DialplanActions-Endpoint
     [KV || {_,V}=KV <- [ {<<"Invite-Format">>, InboundFormat}
@@ -305,7 +305,7 @@ callee_id([JObj | T]) ->
         'false' -> callee_id(T);
         'true' ->
             case {wh_json:get_value(<<"cid_name">>, JObj)
-                  ,wh_json:get_value(<<"cid_number">>, JObj)} 
+                  ,wh_json:get_value(<<"cid_number">>, JObj)}
             of
                 {'undefined', 'undefined'} -> callee_id(T);
                 CalleeID -> CalleeID

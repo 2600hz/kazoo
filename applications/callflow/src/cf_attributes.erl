@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% @end
 %%% @contributors
@@ -117,7 +117,7 @@ maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
             Prefixed = <<(wh_util:to_binary(Prefix))/binary, Number/binary>>,
             maybe_prefix_cid_name(Prefixed, Name, Validate, Attribute, Call)
     end.
- 
+
 -spec maybe_prefix_cid_name(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
                                    {api_binary(), api_binary()}.
 maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
@@ -218,7 +218,8 @@ maybe_get_account_external_number(Number, Name, Account, Call) ->
             maybe_get_account_default_number(Number, Name, Account, Call)
     end.
 
--spec maybe_get_account_default_number(ne_binary(), ne_binary(), wh_json:object(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_get_account_default_number(ne_binary(), ne_binary(), wh_json:object(), whapps_call:call()) ->
+                                              {api_binary(), api_binary()}.
 maybe_get_account_default_number(Number, Name, Account, Call) ->
     Default = wh_json:get_ne_value([<<"caller_id">>, <<"default">>, <<"number">>], Account),
     case is_valid_caller_id(Default, Call) of
@@ -229,7 +230,8 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
             maybe_get_assigned_number(Number, Name, Call)
     end.
 
--spec maybe_get_assigned_number(ne_binary(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_get_assigned_number(ne_binary(), ne_binary(), whapps_call:call()) ->
+                                       {api_binary(), api_binary()}.
 maybe_get_assigned_number(_, Name, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
@@ -248,7 +250,8 @@ maybe_get_assigned_number(_, Name, Call) ->
             maybe_get_assigned_numbers(Numbers, Name, Call)
     end.
 
--spec maybe_get_assigned_numbers([] | [ne_binary(),...], ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_get_assigned_numbers(ne_binaries(), ne_binary(), whapps_call:call()) ->
+                                        {api_binary(), api_binary()}.
 maybe_get_assigned_numbers([], Name, _) ->
     Number = default_cid_number(),
     lager:info("failed to find any in-service numbers, using default <~s> ~s", [Name, Number]),

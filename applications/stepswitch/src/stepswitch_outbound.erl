@@ -75,12 +75,12 @@ handle_originate_req(JObj) ->
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound(Props, JObj) ->
-    case props:get_is_true('force_outbound', Props) orelse
+    case wh_number_properties:should_force_outbound(Props) orelse
         wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
     of
         'false' -> local_extension(Props, JObj);
         'true' ->
-            Number = props:get_value('number', Props),
+            Number = wh_number_properties:number(Props),
             maybe_bridge(Number, JObj)
     end.
 
