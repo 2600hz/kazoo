@@ -823,7 +823,7 @@ set_public_fields(Number, PublicFields, AuthBy, DryRun) ->
 -spec track_assignment(ne_binary(), wh_proplist(), integer()) ->
                               'ok' | 'error'.
 track_assignment(Account, Props) ->
-    track_assignment(Account, Props, 3).
+    track_assignment(Account, Props, 5).
 
 track_assignment(Account, Props, Try) when Try > 0 ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
@@ -841,16 +841,19 @@ track_assignment(Account, _Props, _) ->
 -spec update_assignment(ne_binary(), wh_json:object(), wh_proplist(), integer()) ->
                                'ok' | 'error'.
 update_assignment(AccountDb, JObj, Props, Try) ->
-    UpdatedDoc = lists:foldl(
-                   fun({Num, Assignment}, {Updated, Acc}) ->
-                           case wh_json:get_value(Num, Acc) of
-                               'undefined' -> {Updated, Acc};
-                               NumJobj ->
-                                   NumJobj1 = wh_json:set_value(<<"used_by">>, Assignment, NumJobj),
-                                   {'true', wh_json:set_value(Num, NumJobj1, Acc)}
-                           end
-                   end, {'false', JObj}, Props
-                  ),
+    UpdatedDoc =
+        lists:foldl(
+            fun({Num, Assignment}, {Updated, Acc}) ->
+                case wh_json:get_value(Num, Acc) of
+                    'undefined' -> {Updated, Acc};
+                    NumJobj ->
+                        NumJobj1 = wh_json:set_value(<<"used_by">>, Assignment, NumJobj),
+                        {'true', wh_json:set_value(Num, NumJobj1, Acc)}
+                end
+            end
+            ,{'false', JObj}
+            ,Props
+        ),
     case UpdatedDoc of
         {'false', _} ->
             lager:debug("no need to update phone_numbers in ~p", [AccountDb]),
@@ -867,8 +870,8 @@ save_assignment(AccountDb, Updated, Props, Try) ->
             lager:warning("could not save phone_numbers doc in ~p: conflict retrying...", [AccountDb]),
             track_assignment(AccountDb, Props, Try-1);
         {'error', _E} ->
-            lager:error("could not save phone_numbers doc in ~p: ~p ", [AccountDb ,_E]),
-            'error';
+            lager:error("could not save phone_numbers doc in ~p: ~p retrying...", [AccountDb ,_E]),
+            track_assignment(AccountDb, Props, Try-1);
         {'ok', _R} -> 'ok'
     end.
 

@@ -241,17 +241,17 @@ track_assignment('update', Context) ->
 
     Unassigned = lists:foldl(
                    fun(Num, Acc) ->
-                           case lists:member(Num, NewNums) of
-                               'true' -> Acc;
-                               'false' -> [{Num, <<>>}|Acc]
-                           end
+                        case lists:member(Num, NewNums) of
+                            'true' -> Acc;
+                            'false' -> [{Num, <<>>}|Acc]
+                        end
                    end
                    ,[]
                    ,wh_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), [])
                   ),
     Assigned = lists:foldl(
                  fun(Num, Acc) ->
-                         [{Num, <<"callflow">>}|Acc]
+                    [{Num, <<"callflow">>}|Acc]
                  end
                  ,[]
                  ,NewNums
