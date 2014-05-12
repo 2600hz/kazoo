@@ -221,7 +221,7 @@ on_faxbox_successful_validation('undefined', #cb_context{doc=JObj
 on_faxbox_successful_validation(DocId, #cb_context{doc=JObj}=Context) ->
     crossbar_doc:load_merge(DocId, Context).
 
-
+-spec generate_email_address() -> ne_binary().
 generate_email_address() ->
     Domain = whapps_config:get_binary(<<"fax">>, <<"default_smtp_domain">>, ?DEFAULT_FAX_SMTP_DOMAIN),
     New = wh_util:rand_hex_binary(4),
@@ -251,6 +251,7 @@ normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 
+-spec is_faxbox_email_global_unique(ne_binary(), ne_binary()) -> boolean().
 is_faxbox_email_global_unique(Email, FaxBoxId) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Email)}],
     case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
@@ -273,6 +274,7 @@ maybe_register_cloud_printer(#cb_context{doc=JObj}=Context) ->
         'false' -> Context
     end.    
 
+-spec register_cloud_printer(ne_binary()) -> wh_proplist().
 register_cloud_printer(FaxboxId) ->
     Body = register_body(FaxboxId),
     ContentType = wh_util:to_list(<<"multipart/form-data; boundary=", ?MULTIPART_BOUNDARY/binary>>),
@@ -301,6 +303,7 @@ register_cloud_printer(FaxboxId) ->
             []
     end.
 
+-spec get_cloud_registered_properties(wh_json:object()) -> wh_proplist().
 get_cloud_registered_properties(JObj) ->
     [PrinterDoc] = wh_json:get_value(<<"printers">>, JObj),   
     TokenDuration = wh_json:get_integer_value(<<"token_duration">>, JObj),
@@ -321,6 +324,7 @@ get_cloud_registered_properties(JObj) ->
     ].
     
 
+-spec register_body(ne_binary()) -> [string(),...].
 register_body(FaxboxId) ->
     {'ok', Fields} = file:consult(
                        [filename:join(
@@ -340,7 +344,7 @@ register_body(FaxboxId) ->
                                ,{<<"proxy">> , ?GPC_PROXY}
                                | Fields], Files).
 
-
+-spec format_multipart_formdata(ne_binary(), wh_proplist(), [tuple(),...]) -> [string(),...].
 format_multipart_formdata(Boundary, Fields, Files) ->
     FieldParts = lists:map(fun({FieldName, FieldContent}) ->
                                    [<<"--", Boundary/binary>>,

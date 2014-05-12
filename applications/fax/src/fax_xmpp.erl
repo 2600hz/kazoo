@@ -133,7 +133,7 @@ terminate(_Reason, State) ->
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
-
+-spec get_sub_msg(tuple()) -> ne_binary().
 get_sub_msg({_, JFull, JUser, JDomain,JResource} = JID) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     Document = <<"<iq type='set' from='", JFull/binary, "' to='",BareJID/binary,"'>"
@@ -181,6 +181,7 @@ connect(JID, Password) ->
          {error, Error}
     end,
     {ok, {Session, Jid}}.
+
 
 init_session(Session, Password) ->
   try exmpp_session:login(Session,"X-OAUTH2")

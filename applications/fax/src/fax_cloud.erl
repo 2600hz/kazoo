@@ -201,6 +201,7 @@ handle_job_notify(JObj, _Props) ->
             process_job_outcome(PrinterId, CloudJobId, wh_json:get_value(<<"Event-Name">>, JObj))
     end.
 
+-spec process_job_outcome(ne_binary(), ne_binary(), ne_binary()) -> any().
 process_job_outcome(PrinterId, JobId, <<"outbound_fax_error">>) ->
     process_job_outcome(PrinterId, JobId, <<"ABORTED">>);    
 process_job_outcome(PrinterId, JobId, <<"outbound_fax">>) ->
@@ -218,6 +219,7 @@ handle_push(JObj, _Props) ->
     handle_push_event(JID, AppName, AppEvent, AppData).
    
     
+-spec handle_push_event(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> any().
 handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->     
     URL = <<?POOL_URL,PrinterId/binary>>,
     case get_printer_oauth_credentials(PrinterId) of
@@ -239,6 +241,7 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
 handle_push_event(JID, AppName, AppEvent, AppData) ->
     lager:debug("unhandled xmpp push event ~s/~s/~s/~p",[JID, AppName, AppEvent, AppData]).
     
+-spec maybe_process_job(wh_json:objects(), ne_binary()) -> any().
 maybe_process_job([], Authorization) ->
     'ok';
 maybe_process_job([JObj | JObjs], Authorization) ->   
@@ -301,6 +304,7 @@ update_job_status(PrinterId, JobId, Status) ->
             lager:debug("error getting printer (~s) oauth credentials when updating job (~s) status : ~p",[PrinterId, JobId, E])
     end.
     
+-spec send_update_job_status(ne_binary(), ne_binary(), ne_binary()) -> any().
 send_update_job_status(JobId, Status, Authorization) ->
     Headers = [?GPC_PROXY_HEADER,
                {"Authorization",Authorization},
@@ -316,9 +320,12 @@ send_update_job_status(JobId, Status, Authorization) ->
     case ibrowse:send_req(wh_util:to_list(?JOBCTL_URL), Headers, 'post', Body) of
         {'ok', "200", RespHeaders, RespBody} ->
             wh_json:decode(RespBody);
-        Response -> lager:debug("POOL RESPONSE ~p",[Response])
+        Response ->
+            lager:debug("unexpected response  sending update_job_status : ~p",[Response])
     end.
 
+-spec download_file(ne_binary(), ne_binary()) ->
+          {'ok', ne_binary(), ne_binary()} | {'error', any()}.
 download_file(URL, Authorization) ->
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
     case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
@@ -334,6 +341,7 @@ download_file(URL, Authorization) ->
     end.
 
 
+-spec maybe_save_fax_document(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> any().
 maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
     case save_fax_document(Job, JobId, PrinterId, FaxNumber) of
         {'ok', JObj} ->
@@ -344,6 +352,7 @@ maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
             lager:debug("got error saving fax job ~s : ~p", [JobId, _E])
     end.    
 
+-spec maybe_save_fax_attachment(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> any().
 maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
     case get_printer_oauth_credentials(PrinterId) of
         {'ok', Authorization} ->
@@ -358,6 +367,9 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
             lager:debug("error getting printer (~s) oauth credentials for JobId (~s) : ~p",[PrinterId, JobId, E])            
     end.
     
+-spec save_fax_document(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> 
+          {'ok', wh_json:object()}
+        | {'error', any()}.
 save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     {'ok', FaxBoxDoc} = get_faxbox_doc(PrinterId),
     AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
