@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, VoIP INC
 %%% @doc
 %%% Calls coming from offnet (in this case, likely stepswitch) potentially
 %%% destined for a trunkstore client, or, if the account exists and
@@ -220,23 +220,30 @@ routing_data(ToDID, AcctID, Settings) ->
                     {'error', _} -> wh_json:new()
                 end,
     AuthU = wh_json:get_value(<<"auth_user">>, AuthOpts),
-    AuthR = wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct)),
-    {Srv, AcctStuff} = try
-                           {'ok', AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR, AcctID),
-                           lager:info("got account settings"),
-                           {wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
-                            ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
-                           }
-                       catch
-                           _A:_B ->
-                               lager:info("failed to get account settings: ~p: ~p", [_A, _B]),
-                               {wh_json:new(), wh_json:new()}
-                       end,
+    AuthR = wh_json:find(<<"auth_realm">>, [AuthOpts, Acct]),
+
+    {Srv, AcctStuff} =
+        try ts_util:lookup_user_flags(AuthU, AuthR, AcctID) of
+            {'ok', AccountSettings} ->
+                lager:info("got account settings"),
+                {wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
+                 ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
+                }
+        catch
+            _E:_R ->
+                lager:info("failed to get account settings: ~p: ~p", [_E, _R]),
+                {wh_json:new(), wh_json:new()}
+        end,
+
     SrvOptions = wh_json:get_value(<<"options">>, Srv, wh_json:new()),
-    case wh_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions, 'true')) of
+
+    ToIP = wh_json:find(<<"ip">>, [AuthOpts, SrvOptions]),
+
+    case wh_json:is_true(<<"enabled">>, SrvOptions, 'true') of
         'false' -> throw({'server_disabled', wh_json:get_value(<<"id">>, Srv)});
         'true' -> 'ok'
     end,
+
     InboundFormat = wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
     {CalleeName, CalleeNumber} = callee_id([wh_json:get_value(<<"caller_id">>, DIDOptions)
                                             ,wh_json:get_value(<<"callerid_account">>, Settings)
@@ -255,9 +262,10 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,wh_json:get_value(<<"failover">>, SrvOptions)
                          ,wh_json:get_value(<<"failover">>, AcctStuff)
                         ],
-    lager:info("looking for failover in ~p", [FailoverLocations]),
+
     Failover = ts_util:failover(FailoverLocations),
     lager:info("failover found: ~p", [Failover]),
+
     Delay = ts_util:delay([wh_json:get_value(<<"delay">>, DIDOptions)
                            ,wh_json:get_value(<<"delay">>, SrvOptions)
                            ,wh_json:get_value(<<"delay">>, AcctStuff)
@@ -290,6 +298,7 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,{<<"To-User">>, AuthU}
                          ,{<<"To-Realm">>, AuthR}
                          ,{<<"To-DID">>, ToDID}
+                         ,{<<"To-IP">>, ToIP}
                          ,{<<"Route-Options">>, RouteOpts}
                          ,{<<"Hunt-Account-ID">>, HuntAccountId}
                        ],
