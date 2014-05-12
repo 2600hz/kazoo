@@ -582,20 +582,24 @@ queue_arguments(Arguments) ->
     Routines = [fun max_length/2
                 ,fun message_ttl/2
                ],
-    lists:foldl(fun(F, Acc) -> F(Arguments, Acc) end, [], Routines).
+    lists:foldl(fun(F, Acc) -> F(Arguments, Acc) end, Arguments, Routines).
 
 -spec max_length(wh_proplist(), [{ne_binary(), atom(), any()}, ...]) -> [{ne_binary(), atom(), any()}, ...].
 max_length(Args, Acc) ->
     case props:get_value(<<"x-max-length">>, Args) of
         'undefined' -> [{<<"x-max-length">>, 'short', 100}|Acc];
-        Value -> [{<<"x-max-length">>, 'short', Value}|Acc]
+        Value ->
+            Acc1 = props:delete_key(<<"x-max-length">>, Acc),
+            [{<<"x-max-length">>, 'short', Value}|Acc1]
     end.
 
 -spec message_ttl(wh_proplist(), [{ne_binary(), atom(), any()}, ...]) -> [{ne_binary(), atom(), any()}, ...].
 message_ttl(Args, Acc) ->
     case props:get_value(<<"x-message-ttl">>, Args) of
         'undefined' -> [{<<"x-message-ttl">>, 'signedint', 60000}|Acc];
-        Value -> [{<<"x-message-ttl">>, 'signedint', Value}|Acc]
+        Value ->
+            Acc1 = props:delete_key(<<"x-message-ttl">>, Acc),
+            [{<<"x-message-ttl">>, 'signedint', Value}|Acc1]
     end.
 
 
