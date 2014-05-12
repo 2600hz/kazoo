@@ -29,7 +29,10 @@
 
 -define(ATTACHMENT, <<"attachment">>).
 
--define(CB_LIST, <<"media/listing_private_media">>).
+-define(CB_LIST_ALL, <<"faxes/crossbar_listing">>).
+-define(CB_LIST_BY_FAXBOX, <<"faxes/list_by_faxbox">>).
+
+
 -define(FAX_FILE_TYPE, <<"tiff">>).
 
 -define(OUTGOING_FAX_DOC_MAP, [{<<"created">>,<<"pvt_created">>}
@@ -348,14 +351,25 @@ maybe_reset_job(Context, _Status) -> Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec incoming_summary(cb_context:context()) -> cb_context:context().
-incoming_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST
-                           ,[{'startkey', [?FAX_FILE_TYPE]}
-                             ,{'endkey', [?FAX_FILE_TYPE, wh_json:new()]}
-                             ,'include_docs'
-                            ]
-                           ,Context
-                           ,fun normalize_incoming_view_results/2
+incoming_summary(#cb_context{doc=JObj}=Context) ->
+    case wh_json:get_value(<<"pvt_type">>, JObj) of
+        <<"faxbox">> ->
+            ViewOptions=[{'key', wh_json:get_value(<<"_id">>, JObj)}
+                        ,'include_docs'],
+            View = <<"faxes/list_by_faxbox">>;
+        <<"user">> ->
+            ViewOptions=[{'key', wh_json:get_value(<<"_id">>, JObj)}
+                        ,'include_docs'],
+            View = <<"faxes/list_by_ownerid">>;
+        _Else ->
+            ViewOptions=[{'key', cb_context:account_id(Context)}
+                        ,'include_docs'],
+            View = <<"faxes/crossbar_listing">>
+    end,
+    crossbar_doc:load_view(View
+                          ,ViewOptions
+                          ,Context
+                          ,fun normalize_incoming_view_results/2
                           ).
 
 %%--------------------------------------------------------------------
@@ -395,11 +409,18 @@ load_fax_binary(FaxId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec outgoing_summary(cb_context:context()) -> cb_context:context().
-outgoing_summary(Context) ->
-    ViewOptions=[{'key', cb_context:account_id(Context)}
-                 ,'include_docs'
-                ],
-    crossbar_doc:load_view(<<"faxes/crossbar_listing">>
+outgoing_summary(#cb_context{doc=JObj}=Context) ->
+    case wh_json:get_value(<<"pvt_type">>, JObj) of
+        <<"faxbox">> ->
+            ViewOptions=[{'key', wh_json:get_value(<<"_id">>, JObj)}
+                        ,'include_docs'],
+            View = <<"faxes/list_by_account">>;
+        _Else ->
+            ViewOptions=[{'key', cb_context:account_id(Context)}
+                        ,'include_docs'],
+            View = <<"faxes/list_by_faxbox">>
+    end,
+    crossbar_doc:load_view(View
                            ,ViewOptions
                            ,Context
                            ,fun normalize_view_results/2

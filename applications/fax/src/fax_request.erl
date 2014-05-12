@@ -32,9 +32,10 @@
           call :: whapps_call:call()
          ,action = 'receive' :: 'receive' | 'transmit'
          ,owner_id :: api_binary()
+         ,faxbox_id :: api_binary()
          ,fax_id :: api_binary()
          ,fax_result :: api_object()
-         ,fax_notify :: api_binaries()
+         ,fax_notify = 'undefined' :: api_binaries()
          }).
 -type state() :: #state{}.
 
@@ -107,6 +108,7 @@ init([Call, JObj]) ->
     {'ok', #state{call = Call
                  ,action = get_action(JObj)
                  ,owner_id = wh_json:get_value(<<"Owner-ID">>, JObj)
+                 ,faxbox_id = wh_json:get_value(<<"FaxBox-ID">>, JObj)
              }}.
 
 %%--------------------------------------------------------------------
@@ -137,10 +139,11 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('start_action', #state{call=Call
-                                   ,action='receive'
-                                   ,owner_id=OwnerId
+                                  ,action='receive'
+                                  ,owner_id=OwnerId
+                                  ,faxbox_id=FaxBoxId
                                   }=State) ->
-    lager:debug("receiving a fax for ~p", [OwnerId]),
+    lager:debug("receiving a fax for ~p/~p", [OwnerId,FaxBoxId]),
     {'noreply', State};
 handle_cast({'fax_status', <<"negociateresult">>, JObj}, State) ->
     TransferRate = wh_json:get_integer_value([<<"Application-Data">>,<<"Fax-Transfer-Rate">>], JObj, 1),
@@ -254,17 +257,20 @@ start_receive_fax(#state{call=Call}=State) ->
 
 
 -spec maybe_update_fax_settings(state()) -> state().
-maybe_update_fax_settings(#state{call=Call,owner_id=OwnerId}=State) ->
-    case couch_mgr:open_doc(?WH_FAXES, OwnerId) of
+maybe_update_fax_settings(#state{call=Call
+                                ,owner_id='undefined'
+                                ,faxbox_id=FaxBoxId}=State) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_doc(AccountDb, FaxBoxId) of
         {'ok', JObj} ->
             update_fax_settings(Call, JObj),
-            Notify = wh_json:get_value(<<"email_to">>, JObj),
+            Notify = wh_json:get_value([<<"notifications">>,<<"inbound">>], JObj),
             State#state{fax_notify=Notify};
-        {'error', _} -> maybe_update_fax_settings_from_user(State)
-    end.
-    
--spec maybe_update_fax_settings_from_user(state()) -> any().
-maybe_update_fax_settings_from_user(#state{call=Call,owner_id=OwnerId}=State) ->
+        {'error', _} -> maybe_update_fax_settings_from_account(State)
+    end;
+maybe_update_fax_settings(#state{call=Call
+                                ,owner_id=OwnerId
+                                ,faxbox_id='undefined'}=State) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', JObj} ->
@@ -276,13 +282,13 @@ maybe_update_fax_settings_from_user(#state{call=Call,owner_id=OwnerId}=State) ->
             end,
             case wh_json:is_true(<<"fax_to_email_enabled">>, JObj, 'false') of
                 'true' ->
-                    UserEmail = wh_json:get_value(<<"email">>, JObj),                    
-                    State#state{fax_notify=[UserEmail]};
+                    UserEmail = wh_json:get_value(<<"email">>, JObj),
+                    Notify = wh_json:set_value([<<"email">>,<<"send_to">>], [UserEmail] , wh_json:new()),
+                    State#state{fax_notify=Notify};
                 'false' -> State
             end;
         {'error', _} ->
-            maybe_update_fax_settings_from_account(State),
-            State
+            maybe_update_fax_settings_from_account(State)
     end.
 
 -spec maybe_update_fax_settings_from_account(state()) -> any().
@@ -300,12 +306,12 @@ maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
             end;
         {'error', _} ->
             lager:debug("no settings for local fax - missing account")
-    end.
+    end,
+    State.
 
 -spec update_fax_settings(whapps_call:call(), wh_json:object()) -> any().
 update_fax_settings(Call, JObj) ->
     ChannelVars = build_fax_settings(Call, JObj),
-    lager:debug("CHANNEL VARS ~p",[ChannelVars]),
     whapps_call_command:set(wh_json:from_list(ChannelVars), 'undefined', Call).
 
 -spec build_fax_settings(whapps_call:call(), wh_json:object()) -> wh_proplist().
@@ -335,7 +341,7 @@ build_fax_settings(Call, JObj) ->
 
     
 -spec end_receive_fax(wh_json:object(), state()) -> state().
-end_receive_fax(JObj, #state{call=Call, owner_id=OwnerId}=State) ->
+end_receive_fax(JObj, #state{call=Call}=State) ->
     whapps_call_command:hangup(Call),
     case wh_json:is_true([<<"Application-Data">>,<<"Fax-Success">>], JObj, 'false') of
         'false' -> notify_failure(JObj, State),
@@ -344,8 +350,8 @@ end_receive_fax(JObj, #state{call=Call, owner_id=OwnerId}=State) ->
     end.
 
 -spec maybe_store_fax(wh_json:object(), state() ) -> state().
-maybe_store_fax(JObj, #state{call=Call, owner_id=OwnerId, fax_notify=Notify}=State) ->
-    case store_fax(Call, OwnerId, JObj, Notify) of
+maybe_store_fax(JObj, State) ->
+    case store_fax(JObj, State) of
         {'ok', FaxId} ->
             lager:debug("fax stored successfully into ~s", [FaxId]),
             {'noreply', State#state{fax_id=FaxId, fax_result=JObj} };
@@ -356,10 +362,10 @@ maybe_store_fax(JObj, #state{call=Call, owner_id=OwnerId, fax_notify=Notify}=Sta
     end.
 
 
--spec store_fax(whapps_call:call(), ne_binary(), wh_json:object(), api_binaries()) -> 
+-spec store_fax(wh_json:object(), state() ) -> 
           {'ok', ne_binary()} | {'error', any()}.
-store_fax(Call, OwnerId, JObj, Notify) ->
-    case create_fax_doc(Call, OwnerId, JObj, Notify) of
+store_fax(JObj, #state{call=Call}=State) ->
+    case create_fax_doc(JObj, State) of
         {'ok', Doc} ->
             FaxDocId = wh_json:get_value(<<"_id">>, Doc),
             FaxFile = tmp_file(),
@@ -402,9 +408,13 @@ check_attachment_for_data(_JObj, FaxDoc, AttachmentName, #state{fax_result=JObj}
     'ok'.
 
 
--spec create_fax_doc(whapps_call:call(), ne_binary(), wh_json:object(), api_binaries()) -> 
+-spec create_fax_doc(wh_json:object(), state()) -> 
           {'ok', wh_json:object()} | {'error', any()}.
-create_fax_doc(Call, OwnerId, JObj, Notify) ->
+create_fax_doc(JObj, #state{owner_id = OwnerId
+                           ,faxbox_id = FaxBoxId
+                           ,fax_notify = Notify
+                           ,call=Call
+                           }) ->
     AccountDb = whapps_call:account_db(Call),
 
     {{Y,M,D}, {H,I,S}} = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
@@ -415,13 +425,15 @@ create_fax_doc(Call, OwnerId, JObj, Notify) ->
                            ," UTC"
                           ]),
 
-    Props = [{<<"name">>, Name}
+    Props = props:filter_undefined( 
+             [{<<"name">>, Name}
              ,{<<"to_number">>, whapps_call:request_user(Call)}
              ,{<<"from_number">>, whapps_call:from_user(Call)}
              ,{<<"description">>, <<"fax document received">>}
              ,{<<"source_type">>, <<"incoming_fax">>}
              ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
              ,{<<"owner_id">>, OwnerId}
+             ,{<<"faxbox_id">>, FaxBoxId}
              ,{<<"media_type">>, <<"tiff">>}
              ,{<<"call_id">>, whapps_call:call_id(Call)}
              ,{<<"rx_results">>, 
@@ -429,22 +441,16 @@ create_fax_doc(Call, OwnerId, JObj, Notify) ->
                  fax_util:fax_properties(
                    wh_json:get_value(<<"Application-Data">>, JObj)))}
              ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
-            ] ++ get_notifications(Notify),
+             ,{<<"notifications">>, Notify}
+            ]),
 
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props)
                                        ,AccountDb
-                                       ,[{'type', <<"private_media">>}]
+                                       ,[{'type', <<"fax">>}]
                                       ),
 
     couch_mgr:save_doc(AccountDb, Doc).
 
--spec get_notifications(api_binaries()) -> wh_proplist().
-get_notifications('undefined') ->
-    [];
-get_notifications(Notify) ->
-    [{<<"notifications">>,
-      wh_json:from_list([{<<"email">>,
-         wh_json:from_list([{<<"send_to">>, Notify}])}])}]. 
 
 -spec attachment_url(whapps_call:call(), ne_binary(), ne_binary()) -> ne_binary().
 attachment_url(Call, File, FaxDocId) ->
@@ -471,15 +477,14 @@ tmp_file() ->
 fax_fields(JObj) ->
     [{K,V} || {<<"Fax-", _/binary>> = K, V} <- wh_json:to_proplist(JObj)].
 
--spec notify_fields(whapps_call:call(), ne_binary(), wh_json:object()) -> wh_proplist().
-notify_fields(Call, OwnerId, JObj) ->
+-spec notify_fields(whapps_call:call(), wh_json:object()) -> wh_proplist().
+notify_fields(Call, JObj) ->
     props:filter_empty(      
       [{<<"From-User">>, whapps_call:from_user(Call)}
       ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
       ,{<<"To-User">>, whapps_call:to_user(Call)}
       ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
       ,{<<"Account-ID">>, whapps_call:account_id(Call)}
-      ,{<<"Owner-ID">>, OwnerId}
       ,{<<"Fax-Info">>, 
         wh_json:from_list(
           fax_fields(
@@ -498,25 +503,33 @@ notify_fields(Call, OwnerId, JObj) ->
 notify_failure(JObj, State) ->
     Reason = wh_json:get_value([<<"Application-Data">>,<<"Fax-Result">>], JObj),
     notify_failure(JObj, Reason, State).
-notify_failure(JObj, Reason, #state{call=Call, owner_id=OwnerId, fax_id=FaxId, fax_notify=Notify}=State) ->
+notify_failure(JObj, Reason, #state{call=Call
+                                   ,owner_id=OwnerId
+                                   ,faxbox_id=FaxBoxId
+                                   ,fax_id=FaxId
+                                   ,fax_notify=Notify}=State) ->
     Message = props:filter_undefined(
-                 notify_fields(Call, OwnerId, JObj) ++ 
+                 notify_fields(Call, JObj) ++ 
                      [{<<"Fax-ID">>, FaxId}
                      ,{<<"Fax-Error">>, Reason}
-                     ,{<<"Fax-Notifications">>, 
-                       wh_json:from_list([{<<"email">>,
-                            wh_json:from_list([{<<"send_to">>, Notify}])}])}                                     
+                     ,{<<"Owner-ID">>, OwnerId}
+                     ,{<<"FaxBox-ID">>, FaxBoxId}                     
+                     ,{<<"Fax-Notifications">>,  Notify}
                      ]),
     wapi_notifications:publish_fax_inbound_error(Message).
     
 -spec notify_success(wh_json:object(), state()) -> any().
-notify_success(JObj, #state{call=Call, owner_id=OwnerId, fax_id=FaxId, fax_notify=Notify}=State) ->
+notify_success(JObj, #state{call=Call
+                           ,owner_id=OwnerId
+                           ,faxbox_id=FaxBoxId
+                           ,fax_id=FaxId
+                           ,fax_notify=Notify}=State) ->
     Message = props:filter_undefined(
-                notify_fields(Call, OwnerId, JObj) ++ 
+                notify_fields(Call, JObj) ++ 
                     [{<<"Fax-ID">>, FaxId}
-                    ,{<<"Fax-Notifications">>, 
-                       wh_json:from_list([{<<"email">>,
-                           wh_json:from_list([{<<"send_to">>, Notify}])}])}                                     
+                    ,{<<"Owner-ID">>, OwnerId}
+                    ,{<<"FaxBox-ID">>, FaxBoxId}                     
+                    ,{<<"Fax-Notifications">>, Notify}
                     ]),
     wapi_notifications:publish_fax_inbound(Message).
                      

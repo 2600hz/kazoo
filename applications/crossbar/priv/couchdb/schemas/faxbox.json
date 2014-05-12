@@ -1,0 +1,149 @@
+{
+    "_id": "faxbox",
+    "id": "http://json-schema.org/draft-03/schema#",
+    "description": "FaxBoxes allow configuration of individual fax virtual machines",
+    "properties": {
+        "notifications": {
+            "description": "Status notifications",
+            "type": "object",
+            "properties": {
+                "inbound": {
+                    "description": "Inbound Status notifications",
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "description": "Email notifications",
+                            "type": "object",
+                            "properties": {
+                                "send_to": {
+                                    "description": "A list or string of email recipent(s)",
+                                    "type": ["string",
+                                    "array"]
+                                }
+                            }
+                        },
+                        "sms": {
+                            "description": "SMS notifications",
+                            "type": "object",
+                            "properties": {
+                                "send_to": {
+                                    "description": "A list or string of sms recipent(s)",
+                                    "type": ["string",
+                                    "array"]
+                                }
+                            }
+                        },
+                        "callback": {
+                            "description": "A URL to send results to",
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "description": "The URL to call back with the results",
+                                    "type": "string"
+                                },
+                                "method": {
+                                    "description": "The http method to use when sending the results",
+                                    "enum": ["post",
+                                    "put"]
+                                },
+                                "type": {
+                                    "description": "The content-type to use when sending the results",
+                                    "enum": ["json",
+                                    "www-url-form-encoded"]
+                                }
+                            }
+                        }
+                    }
+                },
+                "outbound": {
+                    "description": "Outbound Status notifications",
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "description": "Email notifications",
+                            "type": "object",
+                            "properties": {
+                                "send_to": {
+                                    "description": "A list or string of email recipent(s)",
+                                    "type": ["string",
+                                    "array"]
+                                }
+                            }
+                        },
+                        "sms": {
+                            "description": "SMS notifications",
+                            "type": "object",
+                            "properties": {
+                                "send_to": {
+                                    "description": "A list or string of sms recipent(s)",
+                                    "type": ["string",
+                                    "array"]
+                                }
+                            }
+                        },
+                        "callback": {
+                            "description": "A URL to send results to",
+                            "type": "object",
+                            "properties": {
+                                "url": {
+                                    "description": "The URL to call back with the results",
+                                    "type": "string"
+                                },
+                                "method": {
+                                    "description": "The http method to use when sending the results",
+                                    "enum": ["post",
+                                    "put"]
+                                },
+                                "type": {
+                                    "description": "The content-type to use when sending the results",
+                                    "enum": ["json",
+                                    "www-url-form-encoded"]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "retries": {
+            "description": "The number of times to retry",
+            "type": "integer",
+            "default": 1
+        },
+        "attempts": {
+            "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
+            "type": "integer",
+            "default": 0
+        },
+        "caller_name": {
+            "description": "The Caller-ID-Name",
+            "type": "string",
+            "default": "Kazoo Fax Printer"
+        },
+        "caller_id": {
+            "description": "The Caller-ID-Number",
+            "type": "string",
+            "default": "+15558978124"
+        },
+        "fax_header": {
+            "description": "The name printed at the top of the fax",
+            "type": "string",
+            "default": "Kazoo Fax Printer"
+        },
+        "fax_identity": {
+            "description": "The number printed at the top of the fax",
+            "type": "string",
+            "default": "+1 (555) (897) 8124"
+        },
+        "fax_timezone": {
+            "description": "The timezone announced",
+            "type": "string",
+            "default": "Europe/Lisbon"
+        },
+        "name": {
+            "description": "The name of this faxbox",
+            "type": "string",
+            "default": "Office Fax"
+        }
+    }
+}

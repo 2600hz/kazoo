@@ -16,6 +16,7 @@
 -export([start_link/0]).
 -export([start_printer/1, stop_printer/1]).
 -export([printers/0]).
+-export([start_all_printers/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -48,19 +49,21 @@ start_printer(PrinterId) ->
 stop_printer(PrinterId) ->
     [
      begin
-%         supervisor:terminate_child(?MODULE, ?XMPP_PRINTER(PrinterId)),
-%         supervisor:delete_child(?MODULE, ?XMPP_PRINTER(PrinterId))
          supervisor:terminate_child(?MODULE, Id),
          supervisor:delete_child(?MODULE, Id)
      end
-          
-%     gen_server:cast(Pid, stop) 
     || {Id, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE), (Id == wh_util:to_atom(PrinterId, 'true')) ].
 
 
 -spec printers() -> [{ne_binary(), pid()},...].
 printers() ->
     [ {Id, Pid} || {Id, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
+
+-spec start_all_printers() -> [sup_startchild_ret(),...].
+start_all_printers() ->
+    {'ok', Results} = couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>),
+    [ start_printer(Id) || {Id, <<"claimed">>} <- [ { wh_json:get_value(<<"id">>, Result)
+      , wh_json:get_value([<<"value">>,<<"state">>], Result)} || Result <- Results] ].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -82,5 +85,6 @@ init([]) ->
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
+    
+    spawn(?MODULE, start_all_printers, []),
     {'ok', {SupFlags, ?CHILDREN}}.

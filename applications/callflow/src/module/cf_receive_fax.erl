@@ -27,6 +27,7 @@ handle(Data, Call) ->
     Props = props:filter_empty([{<<"Call">>, whapps_call:to_json(Call)}
                                ,{<<"Action">>, <<"receive">>}
                                ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Data)}
+                               ,{<<"FaxBox-ID">>, wh_json:get_value(<<"faxbox_id">>, Data)}
                                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                ]),
     wapi_fax:publish_req(Props),

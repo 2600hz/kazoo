@@ -30,6 +30,7 @@
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
 -define(FAXES_VIEW_FILE, <<"views/faxes.json">>).
+-define(FAXBOX_VIEW_FILE, <<"views/faxbox.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
 
@@ -270,7 +271,8 @@ refresh(?WH_PROVISIONER_DB) ->
     'ok';
 refresh(?WH_FAXES) ->
     couch_mgr:db_create(?WH_FAXES),
-    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'whistle_apps', ?FAXES_VIEW_FILE),
+    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'fax', ?FAXES_VIEW_FILE),
+    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'fax', ?FAXBOX_VIEW_FILE),
     'ok';
 refresh(?KZ_PORT_REQUESTS_DB) ->
     couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
@@ -571,6 +573,29 @@ migrate_media(Account) ->
         {'error', _}=E2 ->
             io:format("unable to fetch private media files in db ~s: ~p~n", [AccountDb, E2])
     end.
+
+
+-spec migrate_faxes(atom() | string() | binary()) -> 'ok'.
+migrate_faxes(Account) when not is_binary(Account) ->
+    migrate_faxes(wh_util:to_binary(Account));
+migrate_faxes(Account) ->
+    AccountDb = case couch_mgr:db_exists(Account) of
+                    'true' -> Account;
+                    'false' -> wh_util:format_account_id(Account, 'encoded')
+                end,
+    case couch_mgr:get_results(AccountDb, <<"media/listing_private_media">>, []) of
+        {'ok', []} -> io:format("no private media files in db for fax migration ~s~n", [AccountDb]);
+        {'ok', JObjs3}->
+            _ = [migrate_fax(AccountDb, JObj) || JObj <- JObjs3],
+            'ok';
+        {'error', _}=E3 ->
+            io:format("unable to fetch private media files in db ~s: ~p~n", [AccountDb, E3])
+    end.
+
+-spec migrate_fax(ne_binary(), wh_json:object()) -> 'ok'.
+migrate_fax(AccountDb, JObj) ->
+    _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, JObj)),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private

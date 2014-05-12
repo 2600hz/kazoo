@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Luis Azedo
 %%%-------------------------------------------------------------------
--module(fax_gcp).
+-module(fax_cloud).
 
 -behaviour(gen_listener).
 
@@ -22,33 +22,43 @@
 
 -export([handle_job_notify/2
         ,handle_push/2
+        ,handle_faxbox_created/2
         ,maybe_process_job/2
+        ,pool_registration/2
         ]).
 
--include("fax_gcp.hrl").
+-include("fax_cloud.hrl").
 
--define(POLLING_INTERVAL, 60000).
+-define(NOTIFY_RESTRICT, [outbound_fax                         
+                         ,outbound_fax_error
+                         ]).
 
+-define(FAXBOX_RESTRICT, [{'action', <<"created">>}
+                         ,{'db', <<"faxes">>}
+                         ,{'doc_type', <<"faxbox">>}
+                         ]).
 
 
 -define(RESPONDERS, [{{?MODULE, 'handle_job_notify'}
-                     , [{<<"notification">>, <<"outbound_fax">>}]}
+                     ,[{<<"notification">>, <<"outbound_fax">>}]
+                     }
                     ,{{?MODULE, 'handle_job_notify'}
-                     , [{<<"notification">>, <<"outbound_fax_error">>}]}
+                     ,[{<<"notification">>, <<"outbound_fax_error">>}]
+                     }
                     ,{{?MODULE, 'handle_push'}
-                      ,[{<<"xmpp_event">>, <<"push">>}]
+                     ,[{<<"xmpp_event">>, <<"push">>}]
+                     }
+                    ,{{?MODULE, 'handle_faxbox_created'}
+                     ,[{<<"configuration">>, <<"doc_created">>}]
                      }
                     ]).
 
--define(NOTIFY_RESTRICT_TO, [outbound_fax
-                            ,outbound_fax_error
-                            ]).
-
--define(BINDINGS, [{notifications, [{restrict_to, ?NOTIFY_RESTRICT_TO}]}
+-define(BINDINGS, [{notifications, [{restrict_to, ?NOTIFY_RESTRICT}]}
                   ,{xmpp,[{restrict_to,['push']}]}
+                  ,{conf,[{restrict_to, ?FAXBOX_RESTRICT}]}
                   ,{self, []}
                   ]).
--define(QUEUE_NAME, <<"fax_gcp_listener">>).
+-define(QUEUE_NAME, <<"fax_cloud_listener">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 
@@ -348,13 +358,21 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
             lager:debug("error getting printer (~s) oauth credentials for JobId (~s) : ~p",[PrinterId, JobId, E])            
     end.
     
-save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->     
-    {'ok', FaxBoxDoc} = couch_mgr:open_doc(?WH_FAXES, PrinterId),
+save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
+    {'ok', FaxBoxDoc} = get_faxbox_doc(PrinterId),
     AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     OwnerId = wh_json:get_value(<<"ownerId">>, Job),
-    NotifyDef = wh_json:get_value(<<"email_to">>,FaxBoxDoc,[]),
-    Notify = [ OwnerId | NotifyDef ],
+    FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>
+                                          ,<<"outbound">>
+                                          ,<<"email">>
+                                          ,<<"send_to">>],FaxBoxDoc,[]),
+    FaxNoxNotify = wh_json:set_value([<<"notifications">>
+                                     ,<<"outbound">>
+                                     ,<<"email">>
+                                     ,<<"send_to">>]
+                                    ,lists:usort([OwnerId | FaxBoxEmailNotify]), FaxBoxDoc),
+    Notify = wh_json:get_value([<<"notifications">>,<<"outbound">>],FaxBoxDoc,[]),
     Props = props:filter_undefined([
              {<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
             ,{<<"fax_identity_name">>, wh_json:get_value(<<"caller_name">>, FaxBoxDoc)}     
@@ -364,8 +382,8 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
             ,{<<"to_name">>,FaxNumber}
             ,{<<"to_number">>,FaxNumber}
             ,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}
-            ,{<<"notifications">>,notifications(Notify) }
-            ,{<<"faxbox_id">>, PrinterId}
+            ,{<<"notifications">>, Notify }
+            ,{<<"faxbox_id">>, wh_json:get_value(<<"_id">>,FaxBoxDoc)}
             ,{<<"folder">>, <<"outbox">>}
             ,{<<"cloud_printer_id">>, PrinterId}
             ,{<<"cloud_job_id">>, JobId}
@@ -382,27 +400,33 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     couch_mgr:save_doc(?WH_FAXES, Doc).
 
 
-notifications('undefined') -> 'undefined';
-notifications(Notifications) ->
-    wh_json:from_list(
-      [{<<"email">>, wh_json:from_list( 
-          [ {<<"send_to">>, lists:usort(Notifications)} ] 
-                                      ) 
-       }]).
+-spec get_faxbox_doc(ne_binary()) -> {'ok', wh_json:object()}
+                                   | {'error', any()}.
+get_faxbox_doc(PrinterId) ->
+    case wh_cache:peek_local(?FAX_CACHE, {'faxbox', PrinterId }) of
+        {'ok', Doc}=OK -> OK;
+        {'error', _} ->
+            ViewOptions = [{'key', PrinterId}, 'include_docs'],
+            case couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>, ViewOptions) of
+                {'ok', JObj} ->
+                    Doc = wh_json:get_value(<<"doc">>, JObj),
+                    wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, Doc),
+                    {'ok', Doc};
+                {'error', _}=E -> E
+            end
+    end.
+    
 
-
-
-
-
+-spec get_printer_oauth_credentials(ne_binary()) -> {'ok', ne_binary()}
+                                                  | {'error', any()}.
 get_printer_oauth_credentials(PrinterId) ->
     case wh_cache:peek_local(?FAX_CACHE, {'gcp', PrinterId }) of
         {'ok', Auth}=OK -> OK;
         {'error', _} ->
-            case couch_mgr:open_cache_doc(?WH_FAXES, PrinterId) of
+            case get_faxbox_doc(PrinterId) of
                 {'ok', JObj} ->
-                    Cloud = wh_json:get_value(<<"pvt_cloud">>, JObj),
-                    {'ok',App} = kazoo_oauth_util:get_oauth_app(wh_json:get_value(<<"oauth_app">>, Cloud)),
-                    RefreshToken = #oauth_refresh_token{token = wh_json:get_value(<<"refresh_token">>, Cloud)},
+                    {'ok',App} = kazoo_oauth_util:get_oauth_app(wh_json:get_value(<<"pvt_cloud_oauth_app">>, JObj)),
+                    RefreshToken = #oauth_refresh_token{token = wh_json:get_value(<<"pvt_cloud_refresh_token">>, JObj)},
                     {'ok', #oauth_token{expires=Expires}=Token} = kazoo_oauth_util:token(App, RefreshToken),
                     Auth = wh_util:to_list(kazoo_oauth_util:authorization_header(Token)),
                     wh_cache:store_local(?FAX_CACHE, {'gcp', PrinterId }, Auth, [{'expires', Expires }]),
@@ -411,79 +435,68 @@ get_printer_oauth_credentials(PrinterId) ->
             end
     end.
 
+-spec handle_faxbox_created(wh_json:object(), wh_proplist()) -> any().
+handle_faxbox_created(JObj, _Props) ->
+    'true' = wapi_conf:doc_update_v(JObj),
+    ID = wh_json:get_value(<<"ID">>, JObj),
+    {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
+    AppId = whapps_config:get_binary(?CONFIG_CAT, <<"cloud_oauth_app">>),
+    spawn(?MODULE, pool_registration, [AppId, Doc]).
 
-
-format_multipart_formdata(Boundary, Fields, Files) ->
-    FieldParts = lists:map(fun({FieldName, FieldContent}) ->
-                                   [<<"--", Boundary/binary>>,
-                                    <<"Content-Disposition: form-data; name=\"",FieldName/binary,"\"">>,
-                                    <<"">>,
-                                    FieldContent]
-                           end, Fields),
-    FieldParts2 = lists:append(FieldParts),
-    FileParts = lists:map(fun({FieldName, FileName, FileContent, FileContentType}) ->
-                                  [<<"--", Boundary/binary>>,
-                                   <<"Content-Disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>,
-                                   <<"Content-Type: ", FileContentType/binary>>,
-                                   <<"">>,
-                                   FileContent]
-                          end, Files),
-    FileParts2 = lists:append(FileParts),
-    EndingParts = [<<"--", Boundary/binary, "--">>, <<"">>],
-    Parts = lists:append([FieldParts2, FileParts2, EndingParts]),
-    lists:foldr(fun(A,B) -> string:join([binary_to_list(A), B], "\r\n") end, [], Parts).
-
-register_body(FaxboxId) ->
-    {'ok', Fields} = file:consult(
-                       [filename:join(
-                          [code:priv_dir('fax'), <<"gcp/register.props">>])
-                       ]),
-    Files = [
-             {<<"capabilities">>,<<"capabilities">>
-             ,file:read_file(
-                [filename:join(
-                          [code:priv_dir('fax'), <<"gcp/printer.json">>])
-                       ])
-             ,<<"application/json">>}
-             ],
-    format_multipart_formdata(?MULTIPART_BOUNDARY, [{<<"uuid">>, FaxboxId} | Fields], Files).
-
-    
-send_register(FaxboxId) ->
-    Body = register_body(FaxboxId),
-    ContentType = wh_util:to_list(<<"multipart/form-data; boundary=", ?MULTIPART_BOUNDARY/binary>>),
-    ContentLength = length(Body),
-    Options = [
-              {content_type, ContentType}
-              ,{content_length, ContentLength}
-               ],
-
-    Headers = [?GPC_PROXY_HEADER, {"Content-Type",ContentType}],
-
-    lager:info("Options ~p",[Options]),
-    lager:info("Body ~p",[Body]),
-    
-    Url = wh_util:to_list(?GPC_URL_REGISTER),
-    lager:info("Url ~p",[Url]),
-
-    case ibrowse:send_req(Url, Headers, 'post', Body, Options) of
+-spec pool_registration(ne_binary(), wh_json:object() ) -> 'ok'.
+pool_registration('undefined', JObj) ->
+    'ok';
+pool_registration(AppId, JObj) ->
+    {'ok', App } = kazoo_oauth_util:get_oauth_app(AppId),
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    Scope = wh_json:get_value(<<"pvt_cloud_oauth_scope">>, JObj),
+    PoolingUrlPart = wh_json:get_value(<<"pvt_cloud_polling_url">>, JObj),
+    PoolingUrl = wh_util:to_list(<<PoolingUrlPart/binary, AppId/binary>>),
+    TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
+    CreatedTime = wh_json:get_integer_value(<<"pvt_cloud_created_time">>, JObj),   
+    PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
+    FaxBoxId = wh_json:get_value(<<"_id">>, JObj),
+   
+    case ibrowse:send_req(PoolingUrl, [?GPC_PROXY_HEADER], 'get') of
         {'ok', "200", _RespHeaders, RespXML} ->
-            JObj = wh_json:decode(RespXML),
-            lager:info("Register ~s",[RespXML]),
-            case wh_json:get_value(<<"success">>, JObj, 'false') of
+            JObjPool = wh_json:decode(RespXML),
+            case wh_json:get_value(<<"success">>, JObjPool, 'false') of
                 'true' ->
-%                    save_printer(wh_json:get_value(<<"printers">>, JObj, []), AccountId),
-%                    spawn(?MODULE, 'pool_registration', [AppId, JObj,AccountId]),
-                    JObj;
-                Other -> lager:info("Response is ~s negative",[Other])
-            end;
-        {'ok', _RespCode, _RespHeaders, RespXML} ->
-            lager:info("recv ~s: ~s", [_RespCode, RespXML]);
-        {'error', _R} ->
-            lager:info("error querying: ~p", [_R]),
-            {'error', 'not_available'}
+                    AuthorizationCode = wh_json:get_value(<<"authorization_code">>, JObjPool),
+                    JID = wh_json:get_value(<<"xmpp_jid">>, JObjPool),
+                    UserEmail = wh_json:get_value(<<"user_email">>, JObjPool),
+                    {'ok', Token} = kazoo_oauth_util:refresh_token(App, Scope, AuthorizationCode, [?GPC_PROXY_HEADER],'oob'),
+                    RefreshToken = wh_json:get_value(<<"refresh_token">>, Token),                                       
+                    update_printer(wh_json:set_values(
+                                     [{<<"pvt_cloud_authorization_code">>, AuthorizationCode}
+                                     ,{<<"pvt_cloud_refresh_token">>, RefreshToken}
+                                     ,{<<"pvt_cloud_user_email">>, UserEmail}
+                                     ,{<<"pvt_cloud_xmpp_jid">>, JID}
+                                     ,{<<"pvt_cloud_state">>, <<"claimed">>}
+                                     ,{<<"pvt_cloud_oauth_app">>, AppId}
+                                      ], JObj)),
+                    timer:sleep(30000),                    
+                    fax_xmpp_sup:start_printer(FaxBoxId);
+                Other ->
+                    case wh_util:elapsed_s(CreatedTime) > TokenDuration of
+                        'true' -> 
+                            lager:debug("Token expired before printer is claimed"),
+                            Keys = [ K || <<"pvt_cloud", _/binary>> = K <- wh_json:get_keys(JObj)],
+                            update_printer(wh_json:set_values(
+                                             [{<<"pvt_cloud_state">>, <<"expired">>}],
+                                             wh_json:delete_keys(Keys, JObj)));
+                        _ ->
+                            lager:debug("Printer not claimed, sleeping for 30 seconds."),
+                            timer:sleep(30000),
+                            pool_registration(AppId, JObj)
+                    end
+            end;                
+        A -> lager:debug("Error ~p",[A])
     end.
 
-
-    
+-spec update_printer(wh_json:object()) -> 'ok'.
+update_printer(JObj) ->
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    couch_mgr:ensure_saved(AccountDb, JObj),
+    couch_mgr:ensure_saved(?WH_FAXES, JObj).
     

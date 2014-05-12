@@ -9,16 +9,15 @@
 -module(fax_xmpp).
 -behaviour(gen_server).
 
--include("fax_gcp.hrl").
+-include("fax_cloud.hrl").
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
 
 -define(XMPP_SCOPE,<<"https://www.googleapis.com/auth/googletalk">>).
--define(GCP_SCOPE,<<"https://www.googleapis.com/auth/cloudprint">>).
 -define(SCOPES,<<(?XMPP_SCOPE)/binary, " ", (?GCP_SCOPE)/binary>>).
 -define(XMPP_SERVER, "talk.google.com").
 
--define(POLLING_INTERVAL, 3600000).
+-define(POLLING_INTERVAL, whapps_config:get_integer(?CONFIG_CAT, <<"xmpp_interval">> , 600000)).
 
 -export([start/1, start_link/1, stop/1]).
 
@@ -29,7 +28,17 @@
 -export([send_notify/2]).
 
 
--record(state, {faxbox_id, printer_id, oauth_app_id, refresh_token, session, jid, full_jid}).
+-record(state, 
+        {
+         faxbox_id :: ne_binary(),
+         printer_id = 'undefined' :: api_binary(),
+         oauth_app_id = 'undefined' :: api_binary(),
+         refresh_token = 'undefined' :: api_binary(),
+         connected = 'false' :: boolean(),
+         session :: any(),
+         jid :: any(),
+         full_jid :: any()
+        }).
 
 
 start(PrinterId) -> 
@@ -53,12 +62,11 @@ handle_call(_Request, _From, State) ->
 handle_cast('start', #state{faxbox_id=FaxBoxId} = State) ->
     case couch_mgr:open_doc(?WH_FAXES, FaxBoxId) of
         {'ok', JObj} ->
-            Cloud = wh_json:get_value(<<"pvt_cloud">>, JObj),
-            JID = wh_json:get_value(<<"xmpp_jid">>, Cloud),
-            PrinterId = wh_json:get_value(<<"printer_id">>, Cloud),
+            JID = wh_json:get_value(<<"pvt_cloud_xmpp_jid">>, JObj),
+            PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
             UID = <<JID/binary,"/",PrinterId/binary>>,
-            AppId = wh_json:get_value(<<"oauth_app">>, Cloud),
-            RefreshToken=#oauth_refresh_token{token=wh_json:get_value(<<"refresh_token">>, Cloud)},
+            AppId = wh_json:get_value(<<"pvt_cloud_oauth_app">>, JObj),
+            RefreshToken=#oauth_refresh_token{token=wh_json:get_value(<<"pvt_cloud_refresh_token">>, JObj)},
             gen_server:cast(self(), 'connect'),
             {noreply, State#state{printer_id=PrinterId,
                                   oauth_app_id=AppId,
@@ -76,7 +84,7 @@ handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=Re
     case connect(wh_util:to_list(JID), wh_util:to_list(Token)) of
         {ok, {MySession, MyJID}} ->
             gen_server:cast(self(), 'subscribe'),
-            {noreply, State#state{session=MySession, jid=MyJID}, ?POLLING_INTERVAL};
+            {noreply, State#state{session=MySession, jid=MyJID, connected='true'}, ?POLLING_INTERVAL};
         _ -> 
             {stop, <<"Error connecting to xmpp server">>, State}
     end;
@@ -113,13 +121,14 @@ handle_info(_Info, State) ->
 
 
 terminate(_Reason, #state{jid=MyJID
-                         ,session=MySession}) ->
+                         ,session=MySession
+                         ,connected='true'}) ->
     {_, JFull, _JUser, _JDomain, _JResource} = MyJID,
     lager:debug("terminating xmpp session ~s",[JFull]),
   disconnect(MySession),
   'ok';
 terminate(_Reason, State) -> 
-    lager:debug("terminate xmpp module"),
+    lager:debug("terminate xmpp module with reason ~p",[_Reason]),
   'ok'.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
@@ -127,7 +136,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 get_sub_msg({_, JFull, JUser, JDomain,JResource} = JID) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
-    Document = <<"<iq type='set' to='",BareJID/binary,"'>"
+    Document = <<"<iq type='set' from='", JFull/binary, "' to='",BareJID/binary,"'>"
                  ,   "<subscribe xmlns='google:push'>"
                  ,      "<item channel='cloudprint.google.com' from='cloudprint.google.com'/>"
                  ,   "</subscribe>"

@@ -31,7 +31,7 @@
                    ,?SUPER('fax_requests_sup')
                    ,?WORKER('fax_listener')
                    ,?SUPER('fax_xmpp_sup')
-                   ,?WORKER('fax_gcp')
+                   ,?WORKER('fax_cloud')
                    ,?WORKER_ARGS('gen_smtp_server',['fax_smtp'
                                                     ,[[{'port', whapps_config:get_integer(?CONFIG_CAT, <<"smtp_port">>, 19025)}]]
                                                    ])
