@@ -882,7 +882,19 @@ print_details({[#registration{}=Reg]
                ,Continuation}
               ,Count) ->
     io:format("~n"),
-    _ = [io:format("~-19s: ~s~n", [K, wh_util:to_binary(V)])
+    _ = [print_property(K, V, Reg)
          || {K, V} <- to_props(Reg)
         ],
     print_details(ets:select(Continuation), Count + 1).
+
+
+print_property(<<"Expires">> =Key, Value, #registration{expires=Expires
+                                                        ,last_registration=LastRegistration
+                                                       }) ->
+    Remaining = wh_util:to_binary((LastRegistration + Expires) - wh_util:current_tstamp()),
+    io:format("~-19s: ~s/~s~n", [Key, Remaining, wh_util:to_binary(Value)]);
+print_property(Key, Value, _) ->
+    io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]).
+
+
+
