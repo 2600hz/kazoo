@@ -604,9 +604,9 @@ maybe_exec_expired_callbacks([_|Objects], Tab) ->
 
 -spec maybe_remove_objects(list(), atom()) -> 'ok'.
 maybe_remove_objects([], _) -> 'ok';
-maybe_remove_objects([Object|Objects], Tab) ->
-    _ = maybe_remove_object(Object, Tab),
-    maybe_remove_objects(Objects, Tab).
+maybe_remove_objects(Objects, Tab) ->
+    [maybe_remove_object(Object, Tab) || Object <- Objects],
+    'ok'.
 
 -spec maybe_remove_object(term(), atom()) -> non_neg_integer().
 maybe_remove_object(#cache_obj{key = Key}, Tab) ->
@@ -617,7 +617,7 @@ maybe_remove_object(Key, Tab) ->
                      ,type = 'pointer'
                      ,_ = '_'
                     }
-          ,[{'=:=', {const, Key}, '$1'}]
+          ,[{'=:=', {'const', Key}, '$1'}]
           ,['true']
          }
          ,{#cache_obj{key = '$1'
