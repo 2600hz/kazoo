@@ -440,12 +440,8 @@ get_originate_action(<<"transfer">>, JObj) ->
     end;
 get_originate_action(<<"bridge">>, JObj) ->
     lager:debug("got originate with action bridge"),
-
-    case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
-        'undefined' -> get_bridge_action(JObj);
-        ExistingCallId -> <<" 'set:intercept_unbridged_only=true,intercept:", ExistingCallId/binary, "' inline ">>
-    end;
-
+    CallId = wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj),
+    intercept_unbridged_only(CallId, JObj);
 get_originate_action(<<"eavesdrop">>, JObj) ->
     lager:debug("got originate with action eavesdrop"),
     EavesdropCallId = wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj),
@@ -461,10 +457,20 @@ get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
 
+-spec intercept_unbridged_only(ne_binary() | 'undefined', wh_json:object()) -> ne_binary().
+intercept_unbridged_only('undefined', JObj) ->
+    get_bridge_action(JObj);
+intercept_unbridged_only(ExistingCallId, JObj) ->
+    case wh_json:is_true(<<"Intercept-Unbridged-Only">>, JObj, 'true') of
+        'true' ->
+            <<" 'set:intercept_unbridged_only=true,intercept:", ExistingCallId/binary, "' inline ">>;
+        'false' ->
+            <<" 'set:intercept_unbridged_only=false,intercept:", ExistingCallId/binary, "' inline ">>
+    end.
+
 -spec get_bridge_action(wh_json:object()) -> ne_binary().
 get_bridge_action(JObj) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
-
     case ecallmgr_util:build_channel(Data) of
         {'error', _} -> <<"error">>;
         {'ok', Channel} ->

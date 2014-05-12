@@ -10,6 +10,7 @@
 -module(cf_util).
 
 -include("callflow.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -define(OWNER_KEY(Db, User), {?MODULE, 'owner_id', Db, User}).
 -define(CF_FLOW_CACHE_KEY(Number, Db), {'cf_flow', Number, Db}).
@@ -774,6 +775,7 @@ maybe_start_metaflows(Call, Endpoints) ->
 maybe_start_metaflow(Call, Endpoint) ->
     case wh_json:get_value(<<"Metaflows">>, Endpoint) of
         'undefined' -> 'ok';
+        ?EMPTY_JSON_OBJECT -> 'ok';
         JObj ->
             API = props:filter_undefined(
                     [{<<"Endpoint-ID">>, wh_json:get_value(<<"Endpoint-ID">>, Endpoint)}
@@ -785,7 +787,7 @@ maybe_start_metaflow(Call, Endpoint) ->
                      ,{<<"Listen-On">>, wh_json:get_value(<<"listen_on">>, JObj, <<"b">>)}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
-            lager:debug("sending metaflow for endpoint: ~s", [wh_json:get_value(<<"Endpoint-ID">>, Endpoint)]),
+            lager:debug("sending metaflow for endpoint: ~s: ~p", [wh_json:get_value(<<"Endpoint-ID">>, Endpoint), wh_json:get_value(<<"listen_on">>, JObj)]),
             whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
     end.
 
