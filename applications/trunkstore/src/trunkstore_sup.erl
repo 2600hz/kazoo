@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -21,7 +21,7 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
--spec start_link() -> {'ok', pid()} | 'ignore' | {'error', term()}.
+-spec start_link() -> startlink_ret().
 start_link() ->
     _ = trunkstore:start_deps(),
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
@@ -35,5 +35,6 @@ init([]) ->
              ,[?SUPER('ts_onnet_sup') %% handles calls originating on-net (customer)
                ,?WORKER('ts_offnet_sup') %% handles calls originating off-net (carrier)
                ,?WORKER('ts_responder')
+               ,?WORKER('trunkstore_listener')
               ]}
     }.
