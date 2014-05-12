@@ -71,12 +71,23 @@
                                               ]}
                               ,'federate'
                              ]}
+                   ,{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
                   ]).
+
+-define(RESTRICT_TO, ['outbound_fax'
+                      ,'outbound_fax_error'
+                     ]).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
                       ,[{<<"configuration">>, <<"*">>}]
                      }
                      ,{{?MODULE, 'handle_channel_event'}
                        ,[{<<"call_event">>, <<"*">>}]
+                      }
+                     ,{{'webhooks_fax', 'handle_req'}
+                       ,[{<<"notification">>, <<"outbound_fax">>}
+                         ,{<<"notification">>, <<"outbound_fax_error">>}
+                        ]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).
