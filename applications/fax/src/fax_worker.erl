@@ -423,7 +423,7 @@ release_failed_job('fetch_error', {Cause, _}, JObj) ->
     release_job(Result, JObj);
 release_failed_job('tx_resp', Resp, JObj) ->
     Msg = wh_json:get_value(<<"Error-Message">>, Resp),
-    <<"sip:", Code/binary>> = wh_json:get_value(<<"Response-Code">>, Resp),
+    <<"sip:", Code/binary>> = wh_json:get_value(<<"Response-Code">>, Resp, <<"sip:500">>),
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, wh_util:to_integer(Code)}
               ,{<<"result_text">>, Msg}
