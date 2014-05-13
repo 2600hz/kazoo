@@ -142,7 +142,7 @@ validate_transaction(Context, _PathToken, _Verb) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  fetch(cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec fetch(cb_context:context(), wh_proplist()) -> cb_context:context().
 fetch(Context, Options) ->
     Transactions = fetch_transactions(Context, Options),
     ProratedTransactions = fetch_braintree_transactions(Context, Options),
@@ -160,7 +160,7 @@ fetch(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  fetch_monthly_recurring(cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec fetch_monthly_recurring(cb_context:context(), wh_proplist()) -> cb_context:context().
 fetch_monthly_recurring(Context, Options) ->
     Transactions = fetch_braintree_transactions(Context, Options),
     case Transactions of
@@ -174,7 +174,7 @@ fetch_monthly_recurring(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  fetch_transactions(cb_context:context(), wh_proplist()) -> {'ok', wh_json:objects()} | {'error', ne_binary()}.
+-spec fetch_transactions(cb_context:context(), wh_proplist()) -> {'ok', wh_json:objects()} | {'error', ne_binary()}.
 fetch_transactions(Context, Options) ->
     From = props:get_value('from', Options),
     To = props:get_value('to', Options),
@@ -194,7 +194,7 @@ fetch_transactions(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  fetch_braintree_transactions(cb_context:context(), wh_proplist()) -> {'ok', wh_json:objects()} | {'error', ne_binary()}.
+-spec fetch_braintree_transactions(cb_context:context(), wh_proplist()) -> {'ok', wh_json:objects()} | {'error', ne_binary()}.
 fetch_braintree_transactions(Context, Options) ->
     From = props:get_value('from', Options),
     To = props:get_value('to', Options),
@@ -226,7 +226,7 @@ fetch_braintree_transactions(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  maybe_filter_by_reason(any(), wh_proplist()) -> wh_json:objects().
+-spec maybe_filter_by_reason(any(), wh_proplist()) -> wh_json:objects().
 maybe_filter_by_reason(Transactions, Options) ->
     case props:get_value('reason', Options) of
         'undefined' ->
@@ -242,7 +242,7 @@ maybe_filter_by_reason(Transactions, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  braintree_transaction_is_prorated(wh_json:objects()) -> boolean().
+-spec braintree_transaction_is_prorated(wh_json:objects()) -> boolean().
 braintree_transaction_is_prorated(BTransaction) ->
     case wh_json:get_value(<<"subscription_id">>, BTransaction) of
         'undefined' -> 'true';
@@ -426,6 +426,7 @@ correct_date_braintree_subscription(BSubscription) ->
            ],
     lists:foldl(fun correct_date_braintree_subscription_fold/2, BSubscription, Keys).
 
+-spec correct_date_braintree_subscription_fold(ne_binary(), wh_json:object()) -> wh_json:objects().
 correct_date_braintree_subscription_fold(Key, BSub) ->
     case wh_json:get_value(Key, BSub, 'null') of
         'null' -> BSub;
