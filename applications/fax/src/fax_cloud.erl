@@ -55,7 +55,7 @@
 
 -define(BINDINGS, [{notifications, [{restrict_to, ?NOTIFY_RESTRICT}]}
                   ,{xmpp,[{restrict_to,['push']}]}
-                  ,{conf,[{restrict_to, ?FAXBOX_RESTRICT}]}
+                  ,{conf,?FAXBOX_RESTRICT}
                   ,{self, []}
                   ]).
 -define(QUEUE_NAME, <<"fax_cloud_listener">>).
@@ -452,7 +452,6 @@ get_printer_oauth_credentials(PrinterId) ->
 -spec handle_faxbox_created(wh_json:object(), wh_proplist()) -> any().
 handle_faxbox_created(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
-    lager:info("HANDLE_CREATED ~p",[JObj]),
     ID = wh_json:get_value(<<"ID">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
     AppId = whapps_config:get_binary(?CONFIG_CAT, <<"cloud_oauth_app">>),
