@@ -8,8 +8,9 @@
 %%% @end
 %%% @contributors
 %%%   Kozlov Yakov
+%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%----------------------------------------------------------------------------
--module(cb_lists_v2).
+-module(cb_lists).
 
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
@@ -30,12 +31,12 @@
 init() ->
     Bindings =
         [
-         {<<"v2_resource.allowed_methods.lists">>, 'allowed_methods'}
-         ,{<<"v2_resource.resource_exists.lists">>, 'resource_exists'}
-         ,{<<"v2_resource.validate.lists">>, 'validate'}
-         ,{<<"v2_resource.execute.put.lists">>, 'put'}
-         ,{<<"v2_resource.execute.post.lists">>, 'post'}
-         ,{<<"v2_resource.execute.delete.lists">>, 'delete'}
+         {<<"*.allowed_methods.lists">>, 'allowed_methods'}
+         ,{<<"*.resource_exists.lists">>, 'resource_exists'}
+         ,{<<"*.validate.lists">>, 'validate'}
+         ,{<<"*.execute.put.lists">>, 'put'}
+         ,{<<"*.execute.post.lists">>, 'post'}
+         ,{<<"*.execute.delete.lists">>, 'delete'}
         ],
     lists:foreach(
       fun({Binding, F}) ->
