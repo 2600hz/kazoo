@@ -109,6 +109,9 @@ migrate() ->
     %% Create missing limits doc
     _ = migrate_limits(),
 
+    %% Migrate Faxes with private_media to fax
+    _ = migrate_faxes(),
+    
     %% Ensure the phone_numbers doc in the account db is up-to-date
     _ = whistle_number_manager_maintenance:reconcile_numbers(),
 
@@ -575,7 +578,21 @@ migrate_media(Account) ->
     end.
 
 
+-spec migrate_faxes() -> 'ok'.
 -spec migrate_faxes(atom() | string() | binary()) -> 'ok'.
+
+migrate_faxes() ->
+    Accounts = whapps_util:get_all_accounts(),
+    Total = length(Accounts),
+    lists:foldr(fun(A, C) -> migrate_faxes_fold(A, C, Total) end, 1, Accounts),
+    'ok'.
+
+migrate_faxes_fold(AccountDb, Current, Total) ->
+    io:format("migrating faxes in database (~p/~p) '~s'", [Current, Total, AccountDb]),
+    _ = migrate_faxes(AccountDb),
+    couch_compactor_fsm:compact_db(AccountDb),
+    Current + 1.
+
 migrate_faxes(Account) when not is_binary(Account) ->
     migrate_faxes(wh_util:to_binary(Account));
 migrate_faxes(Account) ->
