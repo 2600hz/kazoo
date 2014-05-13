@@ -238,6 +238,7 @@ routing_data(ToDID, AcctID, Settings) ->
     SrvOptions = wh_json:get_value(<<"options">>, Srv, wh_json:new()),
 
     ToIP = wh_json:find(<<"ip">>, [AuthOpts, SrvOptions]),
+    ToPort = wh_json:find(<<"port">>, [AuthOpts, SrvOptions]),
 
     case wh_json:is_true(<<"enabled">>, SrvOptions, 'true') of
         'false' -> throw({'server_disabled', wh_json:get_value(<<"id">>, Srv)});
@@ -298,13 +299,20 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,{<<"To-User">>, AuthU}
                          ,{<<"To-Realm">>, AuthR}
                          ,{<<"To-DID">>, ToDID}
-                         ,{<<"To-IP">>, ToIP}
+                         ,{<<"To-IP">>, build_ip(ToIP, ToPort)}
                          ,{<<"Route-Options">>, RouteOpts}
                          ,{<<"Hunt-Account-ID">>, HuntAccountId}
                        ],
            V =/= 'undefined',
            V =/= <<>>
     ].
+
+-spec build_ip(api_binary(), api_binary() | integer()) -> api_binary().
+build_ip('undefined', _) -> 'undefined';
+build_ip(IP, 'undefined') -> IP;
+build_ip(IP, <<_/binary>> = PortBin) -> build_ip(IP, wh_util:to_integer(PortBin));
+build_ip(IP, 5060) -> IP;
+build_ip(IP, Port) -> list_to_binary([IP, ":", wh_util:to_binary(Port)]).
 
 callee_id([]) -> {'undefined', 'undefined'};
 callee_id(['undefined' | T]) -> callee_id(T);
