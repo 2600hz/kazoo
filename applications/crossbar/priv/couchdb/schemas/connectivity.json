@@ -102,6 +102,12 @@
                           "type":"string",
                           "description":"IP address for this device",
                           "required":false
+                      },
+                      "port":{
+                          "name":"Port (sip)"
+                          ,"type":"integer"
+                          ,"description":"Port to send SIP traffic for the remote device"
+                          ,"required":false
                       }
                   }
                },
@@ -196,7 +202,13 @@
                        "type":"string",
                        "description":"IP address for this device",
                        "required":false
-                   }
+                   },
+                   "port":{
+                          "name":"Port (sip)"
+                          ,"type":"integer"
+                          ,"description":"Port to send SIP traffic for the remote device"
+                          ,"required":false
+                      }
                },
                "DIDs":{
                   "type":"object",
