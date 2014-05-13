@@ -720,6 +720,7 @@ create_new_account_db(Context) ->
             _ = notify_new_account(C),
             _ = wh_services:reconcile(AccountDb),
             _ = create_account_mod(cb_context:account_id(C)),
+            _ = create_first_transacion(cb_context:account_id(C)),
             C
     end.
 
@@ -731,6 +732,11 @@ create_account_mod(AccountId) ->
                                    ,'crossbar'
                                    ,<<"account/cdrs.json">>
                                   ).
+
+-spec create_first_transacion(ne_binary()) -> any().
+create_first_transacion(AccountId) ->
+    AccountMODb = kazoo_modb:get_modb(AccountId),
+    wht_util:rollup(AccountMODb, 0).
 
 -spec ensure_accounts_db_exists() -> 'ok'.
 ensure_accounts_db_exists() ->

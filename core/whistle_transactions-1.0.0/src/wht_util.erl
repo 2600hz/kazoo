@@ -25,6 +25,8 @@
 -export([reason_code/1]).
 -export([collapse_call_transactions/1]).
 -export([modb/1]).
+-export([rollup/1
+         ,rollup/2]).
 
 
 -include("whistle_transactions.hrl").
@@ -340,7 +342,7 @@ rollup(Transaction) ->
             lager:debug("monthly rollup transaction success", [])
     end.
 
-rollup(AccountMODb, Balance) when Balance > 0 ->
+rollup(AccountMODb, Balance) when Balance >= 0 ->
     AccountId = wh_util:format_account_id(AccountMODb, 'raw'),
     rollup(wh_transaction:credit(AccountId, Balance));
 rollup(AccountMODb, Balance) ->
