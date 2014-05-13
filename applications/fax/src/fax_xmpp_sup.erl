@@ -16,7 +16,6 @@
 -export([start_link/0]).
 -export([start_printer/1, stop_printer/1]).
 -export([printers/0]).
--export([start_all_printers/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -59,11 +58,6 @@ stop_printer(PrinterId) ->
 printers() ->
     [ {Id, Pid} || {Id, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
 
--spec start_all_printers() -> [sup_startchild_ret(),...].
-start_all_printers() ->
-    {'ok', Results} = couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>),
-    [ start_printer(Id) || {Id, <<"claimed">>} <- [ { wh_json:get_value(<<"id">>, Result)
-      , wh_json:get_value([<<"value">>,<<"state">>], Result)} || Result <- Results] ].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -86,5 +80,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     
-    spawn(?MODULE, start_all_printers, []),
     {'ok', {SupFlags, ?CHILDREN}}.

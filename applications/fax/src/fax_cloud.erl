@@ -8,17 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(fax_cloud).
 
--behaviour(gen_listener).
-
--export([start_link/0]).
--export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,handle_event/2
-         ,terminate/2
-         ,code_change/3
-        ]).
 
 -export([handle_job_notify/2
         ,handle_push/2
@@ -30,153 +19,11 @@
 
 -include("fax_cloud.hrl").
 
--define(NOTIFY_RESTRICT, [outbound_fax                         
-                         ,outbound_fax_error
-                         ]).
-
--define(FAXBOX_RESTRICT, [{'action', <<"created">>}
-                         ,{'db', <<"faxes">>}
-                         ,{'doc_type', <<"faxbox">>}
-                         ]).
-
-
--define(RESPONDERS, [{{?MODULE, 'handle_job_notify'}
-                     ,[{<<"notification">>, <<"outbound_fax">>}]
-                     }
-                    ,{{?MODULE, 'handle_job_notify'}
-                     ,[{<<"notification">>, <<"outbound_fax_error">>}]
-                     }
-                    ,{{?MODULE, 'handle_push'}
-                     ,[{<<"xmpp_event">>, <<"push">>}]
-                     }
-                    ,{{?MODULE, 'handle_faxbox_created'}
-                     ,[{<<"configuration">>, <<"doc_created">>}]
-                     }
-                    ]).
-
--define(BINDINGS, [{notifications, [{restrict_to, ?NOTIFY_RESTRICT}]}
-                  ,{xmpp,[{restrict_to,['push']}]}
-                  ,{conf,?FAXBOX_RESTRICT}
-                  ,{self, []}
-                  ]).
--define(QUEUE_NAME, <<"fax_cloud_listener">>).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
-
-
--record(state, {}).
 
 
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link() ->    
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
-                                     ], []).
-
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init([]) ->
-    {'ok', #state{}}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {'reply', {'error', 'not_implemented'}, State}.
-
-handle_event(_JObj, _State) ->
-    {reply, []}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    lager:debug("unhandled cast: ~p", [_Msg]),
-    {'noreply', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
-    {'noreply', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("terminating fax gcp listener : ~p", [_Reason]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {'ok', State}.
 
 
 -spec handle_job_notify(wh_json:object(), wh_proplist()) -> any().
@@ -501,8 +348,16 @@ process_registration_result('true', AppId, JObj, Result) ->
                       ,{<<"pvt_cloud_state">>, <<"claimed">>}
                       ,{<<"pvt_cloud_oauth_app">>, AppId}
                      ], JObj)),
-    timer:sleep(30000),
-    fax_xmpp_sup:start_printer(FaxBoxId);
+    timer:sleep(15000),
+    Payload = props:filter_undefined(
+                [{<<"Event-Name">>, <<"start">>}
+                ,{<<"Application-Name">>, <<"fax">>}
+                ,{<<"Application-Event">>, <<"claimed">>}
+                ,{<<"Application-Data">>, FaxBoxId}
+                ,{<<"JID">>, JID}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    wapi_xmpp:publish_event(Payload);   
 process_registration_result('false', AppId, JObj, Result) ->    
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
     TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
@@ -524,7 +379,6 @@ process_registration_result('false', AppId, JObj, Result) ->
     end.
 
 
-    
 
 -spec update_printer(wh_json:object()) -> 'ok'.
 update_printer(JObj) ->
