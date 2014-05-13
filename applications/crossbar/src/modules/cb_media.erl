@@ -277,10 +277,13 @@ maybe_save_tts(Context, _Text, _Voice, _Status) ->
 maybe_update_tts(Context, Text, Voice, 'success') ->
     JObj = cb_context:doc(Context),
     Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
-    case whapps_speech:create(Text, Voice) of
-        {'error', R} ->
+    try whapps_speech:create(Text, Voice) of
+        {'error', Reason} ->
             crossbar_doc:delete(Context),
-            crossbar_util:response('error', wh_util:to_binary(R), Context);
+            crossbar_util:response('error', wh_util:to_binary(Reason), Context);
+        {'error', 'tts_provider_failure', Reason} ->
+            crossbar_doc:delete(Context),
+            crossbar_util:response('error', wh_util:to_binary(Reason), Context);
         {'ok', ContentType, Content} ->
             MediaId = wh_json:get_value(<<"_id">>, JObj),
             Headers = wh_json:from_list([{<<"content_type">>, ContentType}
@@ -299,6 +302,11 @@ maybe_update_tts(Context, Text, Voice, 'success') ->
                                        ,'error'
                                       )),
             crossbar_doc:load(MediaId, Context)
+    catch
+        _E:_R ->
+            lager:debug("creating tts excepted: ~s: ~p", [_E, _R]),
+            crossbar_doc:delete(Context),
+            crossbar_util:response('error', <<"creating TTS failed unexpectedly">>, Context)
     end;
 maybe_update_tts(Context, _Text, _Voice, _Status) -> Context.
 
