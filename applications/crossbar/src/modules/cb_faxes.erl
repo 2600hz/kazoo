@@ -31,6 +31,8 @@
 
 -define(CB_LIST_ALL, <<"faxes/crossbar_listing">>).
 -define(CB_LIST_BY_FAXBOX, <<"faxes/list_by_faxbox">>).
+-define(CB_LIST_BY_OWNERID, <<"faxes/list_by_ownerid">>).
+-define(CB_LIST_BY_ACCOUNT, <<"faxes/list_by_account">>).
 
 
 -define(FAX_FILE_TYPE, <<"tiff">>).
@@ -356,15 +358,15 @@ incoming_summary(#cb_context{doc=JObj}=Context) ->
         <<"faxbox">> ->
             ViewOptions=[{'key', wh_json:get_value(<<"_id">>, JObj)}
                         ,'include_docs'],
-            View = <<"faxes/list_by_faxbox">>;
+            View = ?CB_LIST_BY_FAXBOX;
         <<"user">> ->
             ViewOptions=[{'key', wh_json:get_value(<<"_id">>, JObj)}
                         ,'include_docs'],
-            View = <<"faxes/list_by_ownerid">>;
+            View = ?CB_LIST_BY_OWNERID;
         _Else ->
             ViewOptions=[{'key', cb_context:account_id(Context)}
                         ,'include_docs'],
-            View = <<"faxes/crossbar_listing">>
+            View = ?CB_LIST_ALL
     end,
     crossbar_doc:load_view(View
                           ,ViewOptions
@@ -414,11 +416,11 @@ outgoing_summary(#cb_context{doc=JObj}=Context) ->
         <<"faxbox">> ->
             ViewOptions=[{'key', wh_json:get_value(<<"_id">>, JObj)}
                         ,'include_docs'],
-            View = <<"faxes/list_by_account">>;
+            View = ?CB_LIST_BY_ACCOUNT;
         _Else ->
             ViewOptions=[{'key', cb_context:account_id(Context)}
                         ,'include_docs'],
-            View = <<"faxes/list_by_faxbox">>
+            View = ?CB_LIST_BY_FAXBOX
     end,
     crossbar_doc:load_view(View
                            ,ViewOptions

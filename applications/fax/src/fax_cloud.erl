@@ -24,7 +24,7 @@
         ,handle_push/2
         ,handle_faxbox_created/2
         ,maybe_process_job/2
-        ,pool_registration/2
+        ,check_registration/2
         ]).
 
 -include("fax_cloud.hrl").
@@ -260,6 +260,7 @@ maybe_process_job([JObj | JObjs], Authorization) ->
     end,
     maybe_process_job(JObjs,Authorization).
 
+-spec maybe_fax_number(wh_json:object(), wh_json:object()) -> wh_json:object().
 maybe_fax_number(A,B) ->
     case wh_json:get_value(<<"id">>,A) of
         <<"fax_number">> ->
@@ -269,6 +270,7 @@ maybe_fax_number(A,B) ->
     end.
     
 
+-spec fetch_ticket(ne_binary(), ne_binary()) -> wh_json:object().
 fetch_ticket(JobId, Authorization) ->
     URL = <<?TICKET_URL,JobId/binary>>,
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
@@ -450,61 +452,78 @@ get_printer_oauth_credentials(PrinterId) ->
 -spec handle_faxbox_created(wh_json:object(), wh_proplist()) -> any().
 handle_faxbox_created(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
+    lager:info("HANDLE_CREATED ~p",[JObj]),
     ID = wh_json:get_value(<<"ID">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
     AppId = whapps_config:get_binary(?CONFIG_CAT, <<"cloud_oauth_app">>),
-    spawn(?MODULE, pool_registration, [AppId, Doc]).
+    spawn(?MODULE, check_registration, [AppId, Doc]).
 
--spec pool_registration(ne_binary(), wh_json:object() ) -> 'ok'.
-pool_registration('undefined', JObj) ->
+-spec check_registration(ne_binary(), wh_json:object() ) -> 'ok'.
+check_registration('undefined', JObj) ->
     'ok';
-pool_registration(AppId, JObj) ->
-    {'ok', App } = kazoo_oauth_util:get_oauth_app(AppId),
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    Scope = wh_json:get_value(<<"pvt_cloud_oauth_scope">>, JObj),
+check_registration(AppId, JObj) ->
     PoolingUrlPart = wh_json:get_value(<<"pvt_cloud_polling_url">>, JObj),
     PoolingUrl = wh_util:to_list(<<PoolingUrlPart/binary, AppId/binary>>),
-    TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
-    CreatedTime = wh_json:get_integer_value(<<"pvt_cloud_created_time">>, JObj),   
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
+    TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
+    CloudCreatedTime = wh_json:get_integer_value(<<"pvt_cloud_created_time">>, JObj),
+    CreatedTime = wh_json:get_integer_value(<<"pvt_created">>, JObj),
     FaxBoxId = wh_json:get_value(<<"_id">>, JObj),
+    InviteUrl = wh_json:get_value(<<"cloud_connector_claim_url">>, JObj),
    
     case ibrowse:send_req(PoolingUrl, [?GPC_PROXY_HEADER], 'get') of
         {'ok', "200", _RespHeaders, RespXML} ->
             JObjPool = wh_json:decode(RespXML),
-            case wh_json:get_value(<<"success">>, JObjPool, 'false') of
-                'true' ->
-                    AuthorizationCode = wh_json:get_value(<<"authorization_code">>, JObjPool),
-                    JID = wh_json:get_value(<<"xmpp_jid">>, JObjPool),
-                    UserEmail = wh_json:get_value(<<"user_email">>, JObjPool),
-                    {'ok', Token} = kazoo_oauth_util:refresh_token(App, Scope, AuthorizationCode, [?GPC_PROXY_HEADER],'oob'),
-                    RefreshToken = wh_json:get_value(<<"refresh_token">>, Token),                                       
-                    update_printer(wh_json:set_values(
-                                     [{<<"pvt_cloud_authorization_code">>, AuthorizationCode}
-                                     ,{<<"pvt_cloud_refresh_token">>, RefreshToken}
-                                     ,{<<"pvt_cloud_user_email">>, UserEmail}
-                                     ,{<<"pvt_cloud_xmpp_jid">>, JID}
-                                     ,{<<"pvt_cloud_state">>, <<"claimed">>}
-                                     ,{<<"pvt_cloud_oauth_app">>, AppId}
-                                      ], JObj)),
-                    timer:sleep(30000),                    
-                    fax_xmpp_sup:start_printer(FaxBoxId);
-                Other ->
-                    case wh_util:elapsed_s(CreatedTime) > TokenDuration of
-                        'true' -> 
-                            lager:debug("Token expired before printer is claimed"),
-                            Keys = [ K || <<"pvt_cloud", _/binary>> = K <- wh_json:get_keys(JObj)],
-                            update_printer(wh_json:set_values(
-                                             [{<<"pvt_cloud_state">>, <<"expired">>}],
-                                             wh_json:delete_keys(Keys, JObj)));
-                        _ ->
-                            lager:debug("Printer not claimed, sleeping for 30 seconds."),
-                            timer:sleep(30000),
-                            pool_registration(AppId, JObj)
-                    end
-            end;                
-        A -> lager:debug("Error ~p",[A])
+            Result = wh_json:get_value(<<"success">>, JObjPool, 'false'),
+            process_registration_result(Result, AppId, JObj,JObjPool );
+        A ->
+            lager:debug("unexpected result checking registration of printer ~s :  ~p",[PrinterId, A])
     end.
+
+-spec process_registration_result(boolean(), ne_binary(), wh_json:object(), wh_json:object() ) -> any().
+process_registration_result('true', AppId, JObj, Result) ->    
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
+    FaxBoxId = wh_json:get_value(<<"_id">>, JObj),
+    Scope = wh_json:get_value(<<"pvt_cloud_oauth_scope">>, JObj),
+    {'ok', App } = kazoo_oauth_util:get_oauth_app(AppId),
+    AuthorizationCode = wh_json:get_value(<<"authorization_code">>, Result),
+    JID = wh_json:get_value(<<"xmpp_jid">>, Result),
+    UserEmail = wh_json:get_value(<<"user_email">>, Result),
+    {'ok', Token} = kazoo_oauth_util:refresh_token(App, Scope, AuthorizationCode, [?GPC_PROXY_HEADER],'oob'),
+    RefreshToken = wh_json:get_value(<<"refresh_token">>, Token),                                       
+    update_printer(wh_json:set_values(
+                     [{<<"pvt_cloud_authorization_code">>, AuthorizationCode}
+                      ,{<<"pvt_cloud_refresh_token">>, RefreshToken}
+                      ,{<<"pvt_cloud_user_email">>, UserEmail}
+                      ,{<<"pvt_cloud_xmpp_jid">>, JID}
+                      ,{<<"pvt_cloud_state">>, <<"claimed">>}
+                      ,{<<"pvt_cloud_oauth_app">>, AppId}
+                     ], JObj)),
+    timer:sleep(30000),
+    fax_xmpp_sup:start_printer(FaxBoxId);
+process_registration_result('false', AppId, JObj, Result) ->    
+    PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
+    TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
+    CreatedTime = wh_json:get_integer_value(<<"pvt_created">>, JObj),
+    InviteUrl = wh_json:get_value(<<"cloud_connector_claim_url">>, JObj),
+    Elapsed = wh_util:elapsed_s(CreatedTime), 
+    case Elapsed > TokenDuration of
+        'true' -> 
+            lager:debug("Token expired before printer ~s was claimed at ~s",[PrinterId,InviteUrl]),
+            Keys = [ K || <<"pvt_cloud", _/binary>> = K <- wh_json:get_keys(JObj)],
+            update_printer(wh_json:set_values(
+                             [{<<"pvt_cloud_state">>, <<"expired">>}],
+                             wh_json:delete_keys(Keys, JObj)));
+        _ ->
+            lager:debug("Printer ~s not claimed at ~s. sleeping for 30 seconds, Elapsed/Duration (~p/~p)."
+                        ,[PrinterId,InviteUrl,Elapsed, TokenDuration]),
+            timer:sleep(30000),
+            check_registration(AppId, JObj)
+    end.
+
+
+    
 
 -spec update_printer(wh_json:object()) -> 'ok'.
 update_printer(JObj) ->

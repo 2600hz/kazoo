@@ -40,6 +40,8 @@
          full_jid :: any()
         }).
 
+-type state() :: #state{}.
+-type packet() :: #received_packet{}.
 
 start(PrinterId) -> 
   gen_server:start({local, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
@@ -146,6 +148,7 @@ get_sub_msg({_, JFull, JUser, JDomain,JResource} = JID) ->
 -define(NS_PUSH, 'google:push').
 -define(XML_CTX_OPTIONS,[{namespace, [{"g", "google:push"}]}]).
 
+-spec process_received_packet(packet(), state()) -> any().
 process_received_packet(#received_packet{raw_packet=Packet},#state{jid=JID}=State) ->
     {_, JFull, JUser, JDomain,JResource} = JID,
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
@@ -158,6 +161,7 @@ process_received_packet(#received_packet{raw_packet=Packet},#state{jid=JID}=Stat
             send_notify(PrinterId, BareJID)
     end.
 
+-spec send_notify(ne_binary(), ne_binary()) -> any().
 send_notify(PrinterId, JID) ->
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"push">>}
@@ -168,12 +172,13 @@ send_notify(PrinterId, JID) ->
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     wapi_xmpp:publish_event(Payload).
-    
+
+-spec connect(ne_binary(), ne_binary()) -> {'ok', tuple()} | {'error', any()}.
 connect(JID, Password) ->
     Session = exmpp_session:start({1,0}),
     Jid = exmpp_jid:parse(JID),
     exmpp_session:auth(Session, Jid, Password, "X-OAUTH2"),
-    StreamId  = exmpp_session:connect_TCP(Session, ?XMPP_SERVER, 5222,[{starttls, enabled}]),
+    StreamId  = exmpp_session:connect_TCP(Session, ?XMPP_SERVER, 5222,[{'starttls', 'enabled'}]),
     
     try init_session(Session, Password)
     catch
@@ -182,7 +187,7 @@ connect(JID, Password) ->
     end,
     {ok, {Session, Jid}}.
 
-
+-spec init_session(pid(), ne_binary()) -> any().
 init_session(Session, Password) ->
   try exmpp_session:login(Session,"X-OAUTH2")
   catch

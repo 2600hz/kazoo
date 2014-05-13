@@ -27,7 +27,7 @@
 -define(GPC_URL_REGISTER, <<?GPC_URL,"register">>).
 -define(GPC_PROXY, <<"kazoo-cloud-fax-printer-proxy">>).
 -define(GPC_PROXY_HEADER,{"X-CloudPrint-Proxy","kazoo-cloud-fax-printer-proxy"}).
--define(MULTIPART_BOUNDARY,<<"------a450glvjfEoqerAc1p431paQlfDac152cadADfd">>).
+%-define(MULTIPART_BOUNDARY,<<"------a450glvjfEoqerAc1p431paQlfDac152cadADfd">>).
 -define(DEFAULT_FAX_SMTP_DOMAIN, <<"fax.kazoo.io">>).
 
 %%%===================================================================
@@ -138,8 +138,12 @@ validate_email_address(#cb_context{doc=JObj}=Context) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(#cb_context{}=Context) ->
     Ctx = maybe_register_cloud_printer(Context),
-    couch_mgr:ensure_saved(?WH_FAXES, wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx))),
-    crossbar_doc:save(Ctx).
+    Ctx2 = crossbar_doc:save(Ctx),
+    _ = crossbar_doc:save( 
+          cb_context:set_doc(
+            cb_context:set_account_db(Ctx2, ?WH_FAXES),
+            wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2)))),
+    Ctx2.
 
 
 %%--------------------------------------------------------------------
@@ -152,8 +156,13 @@ put(#cb_context{}=Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(#cb_context{}=Context, _Id) ->
     Ctx = maybe_register_cloud_printer(Context),
-    couch_mgr:ensure_saved(?WH_FAXES, wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx))),
-    crossbar_doc:save(Ctx).
+    Ctx2 = crossbar_doc:save(Ctx),
+    _ = crossbar_doc:save( 
+          cb_context:set_doc(
+            cb_context:set_account_db(Ctx2, ?WH_FAXES),
+            wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2)))),
+    Ctx2.
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -253,7 +262,7 @@ normalize_view_results(JObj, Acc) ->
 
 -spec is_faxbox_email_global_unique(ne_binary(), ne_binary()) -> boolean().
 is_faxbox_email_global_unique(Email, FaxBoxId) ->
-    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Email)}],
+    ViewOptions = [{'key', wh_util:to_lower_binary(Email)}],
     case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= FaxBoxId;
@@ -261,6 +270,7 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
         _ -> 'false'
     end.
 
+-spec maybe_register_cloud_printer(cb_context:context()) -> cb_context:context().
 maybe_register_cloud_printer(#cb_context{doc=JObj}=Context) ->
     case whapps_config:get_is_true(<<"fax">>, <<"enable_cloud_connector">>, 'true') of
         'true' -> case wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj) of
@@ -276,8 +286,9 @@ maybe_register_cloud_printer(#cb_context{doc=JObj}=Context) ->
 
 -spec register_cloud_printer(ne_binary()) -> wh_proplist().
 register_cloud_printer(FaxboxId) ->
-    Body = register_body(FaxboxId),
-    ContentType = wh_util:to_list(<<"multipart/form-data; boundary=", ?MULTIPART_BOUNDARY/binary>>),
+    Boundary = <<"------", (wh_util:rand_hex_binary(16))/binary>>,
+    Body = register_body(FaxboxId, Boundary),
+    ContentType = wh_util:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
     ContentLength = length(Body),
     Options = [
               {content_type, ContentType}
@@ -324,8 +335,8 @@ get_cloud_registered_properties(JObj) ->
     ].
     
 
--spec register_body(ne_binary()) -> [string(),...].
-register_body(FaxboxId) ->
+-spec register_body(ne_binary(), ne_binary()) -> [string(),...].
+register_body(FaxboxId, Boundary) ->
     {'ok', Fields} = file:consult(
                        [filename:join(
                           [code:priv_dir('fax'), "cloud/register.props"])
@@ -339,7 +350,7 @@ register_body(FaxboxId) ->
              ,PrinterDef
              ,<<"application/json">>}
              ],
-    format_multipart_formdata(?MULTIPART_BOUNDARY
+    format_multipart_formdata(Boundary
                               ,[{<<"uuid">>, FaxboxId}
                                ,{<<"proxy">> , ?GPC_PROXY}
                                | Fields], Files).
