@@ -13,7 +13,7 @@
         ,handle_push/2
         ,handle_faxbox_created/2
         ,maybe_process_job/2
-        ,check_registration/2
+        ,check_registration/3
         ]).
 
 
@@ -303,13 +303,16 @@ handle_faxbox_created(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
     ID = wh_json:get_value(<<"ID">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
+    State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
     AppId = whapps_config:get_binary(?CONFIG_CAT, <<"cloud_oauth_app">>),
-    spawn(?MODULE, check_registration, [AppId, Doc]).
+    spawn(?MODULE, check_registration, [AppId, State, Doc]).
 
--spec check_registration(ne_binary(), wh_json:object() ) -> 'ok'.
-check_registration('undefined', JObj) ->
+-spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
+check_registration('undefined', _, _JObj) ->
     'ok';
-check_registration(AppId, JObj) ->
+check_registration(_, 'undefined', _JObj) ->
+    'ok';
+check_registration(AppId, <<"registered">>, JObj) ->
     PoolingUrlPart = wh_json:get_value(<<"pvt_cloud_polling_url">>, JObj),
     PoolingUrl = wh_util:to_list(<<PoolingUrlPart/binary, AppId/binary>>),
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
@@ -375,7 +378,7 @@ process_registration_result('false', AppId, JObj, Result) ->
             lager:debug("Printer ~s not claimed at ~s. sleeping for 30 seconds, Elapsed/Duration (~p/~p)."
                         ,[PrinterId,InviteUrl,Elapsed, TokenDuration]),
             timer:sleep(30000),
-            check_registration(AppId, JObj)
+            check_registration(AppId, <<"registered">>, JObj)
     end.
 
 

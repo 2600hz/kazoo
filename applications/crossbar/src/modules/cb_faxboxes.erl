@@ -356,6 +356,7 @@ register_body(FaxboxId, Boundary) ->
 format_multipart_formdata(Boundary, Fields, Files) ->
     FieldParts = [[<<"--", Boundary/binary>>
                    ,<<"Content-Disposition: form-data; name=\"",FieldName/binary,"\"">>
+                   ,<<"">>
                    ,FieldContent
                   ]
                   || {FieldName, FieldContent} <- Fields
@@ -366,6 +367,7 @@ format_multipart_formdata(Boundary, Fields, Files) ->
     FileParts = [[<<"--", Boundary/binary>>
                   ,<<"Content-Disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>
                   ,<<"Content-Type: ", FileContentType/binary>>
+                  ,<<"">>
                   ,FileContent
                  ]
                  || {FieldName, FileName, FileContent, FileContentType} <- Files
@@ -373,7 +375,7 @@ format_multipart_formdata(Boundary, Fields, Files) ->
 
     FileParts2 = lists:append(FileParts),
 
-    EndingParts = [<<"--", Boundary/binary, "--">>],
+    EndingParts = [<<"--", Boundary/binary, "--">>, <<"">>],
 
     Parts = lists:append([FieldParts2, FileParts2, EndingParts]),
 
