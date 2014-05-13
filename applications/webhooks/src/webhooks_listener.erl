@@ -41,22 +41,6 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--type http_verb() :: 'get' | 'post'.
--type hook_retries() :: 1..5.
-
--record(webhook, {
-          id :: ne_binary() | '_'
-          ,uri :: ne_binary() | '_'
-          ,http_verb :: http_verb() | '_'
-          ,hook_event :: ne_binary() | '_' | '$2'
-          ,hook_id :: ne_binary() | '_'
-          ,retries = 3 :: hook_retries() | '_'
-          ,account_id :: ne_binary() | '_' | '$1'
-          ,custom_data :: wh_json:object()
-         }).
--type webhook() :: #webhook{}.
--type webhooks() :: [webhook(),...] | [].
-
 %% Three main call events
 -define(BINDINGS, [{'conf', [{'action', <<"*">>}
                              ,{'db', ?KZ_WEBHOOKS_DB}
@@ -683,7 +667,7 @@ hook_event_lowered(<<"channel_create">>) -> <<"CHANNEL_CREATE">>;
 hook_event_lowered(<<"channel_answer">>) -> <<"CHANNEL_ANSWER">>;
 hook_event_lowered(<<"channel_destroy">>) -> <<"CHANNEL_DESTROY">>;
 hook_event_lowered(<<"all">>) -> <<"all">>;
-hook_event_lowered(Bin) -> throw({'bad_hook', Bin}).
+hook_event_lowered(Bin) -> Bin.
 
 -spec retries(integer()) -> hook_retries().
 retries(N) when N > 0, N < 5 -> N;
