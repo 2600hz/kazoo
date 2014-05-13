@@ -17,7 +17,8 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   Mikhail Rodionov
+%%%   SIPLABS LLC (Mikhail Rodionov)
+%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cf_eavesdrop).
 
