@@ -37,14 +37,8 @@
 %%%
 %%% @end
 %%% @contributors
-%%%   Luis Azedo  <luis.azedo@factorlusitano.com>
-%%%-------------------------------------------------------------------
-%%% @author Luis Azedo
-%%% @copyright (C) 2013, VoIP INC
-%%% @doc
-%%%
-%%% @end
-%%% Created : 10 Oct 2013
+%%%   SIPLABS LLC (Mikhail Rodionov)
+%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(cf_intercept_feature).
 
