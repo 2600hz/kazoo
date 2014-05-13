@@ -84,7 +84,7 @@
 	 wait_for_sasl_response/2,
 	 wait_for_stream_features/2,
 	 wait_for_bind_response/2,
-	 wait_for_session_response/2,
+	 wait_for_session_response/2,wait_for_session_response/3,
 	 stream_error/2, stream_error/3,
 	 stream_closed/2, stream_closed/3,
 	 wait_for_legacy_auth_method/2,
@@ -517,12 +517,16 @@ setup({connect_socket, Host, Port, Options}, From, State) ->
 		end,
     case {proplists:get_value(domain, Options, undefined), State#state.auth_info} of
 	{undefined, undefined} ->
+		 %io:format("exmpp connect undefined~n",[]),
 	    {reply, {connect_error,
 		     authentication_or_domain_undefined}, setup, State};
 	{undefined, _Other} ->
+			 %io:format("exmpp connect other ~p~n",[_Other]),
 	    connect(exmpp_socket, {Host, Port, Options}, From, 
 		    State#state{host=Host, options=SessionOptions, whitespace_ping = WhitespacePingT});
 	{Domain, _Any} ->
+			 %io:format("exmpp connect ~p/~p~n",[Domain, _Any]),
+
     	    connect(exmpp_socket, {Host, Port, Options}, Domain, From, 
 		    State#state{host=Host, options=SessionOptions, whitespace_ping = WhitespacePingT})
     end;
@@ -653,8 +657,8 @@ wait_for_stream_features(#xmlstreamelement{element=#xmlel{name='features'} = F},
             end
     end;
 
-wait_for_stream_features(X, State) ->
-    io:format("Unknown element waiting for stream features ~p \n", [X]),
+wait_for_stream_features(_X, State) ->
+    %io:format("Unknown element waiting for stream features ~p \n", [X]),
     {next_state, wait_for_stream_features, State}.
    
 
@@ -718,6 +722,8 @@ wait_for_session_response(#xmlstreamelement{element = #xmlel{name='iq'} = IQ}, S
             {stop, {bind, IQ}, State}
     end.
 
+wait_for_session_response(_Event, _From, State) ->
+    {next_state, wait_for_session_response, State}.
 
 
 %% ---------------------------
@@ -728,12 +734,15 @@ wait_for_session_response(#xmlstreamelement{element = #xmlel{name='iq'} = IQ}, S
 
 %% Login using previously selected authentication method
 stream_opened({login}, _From,State=#state{auth_method=undefined}) ->
+ 	%io:format("exmpp stream_opened login~n",[]),
     {reply, {error, auth_method_undefined}, stream_opened, State};
 stream_opened({login}, _From,State=#state{auth_info=undefined}) ->
+ 	%io:format("exmpp stream_opened login2~n",[]),
     {reply, {error, auth_info_undefined}, stream_opened, State};
 stream_opened({login}, From, State=#state{connection_ref = ConnRef,
                                             connection = Module,
 					  auth_info=Auth}) ->
+ 	%io:format("exmpp stream_opened login3~n",[]),
     %% Retrieve supported authentication methods:
     %% TODO: Do different thing if we use basic or SASL auth
     %% For now, we consider everything is legacy (basic)
@@ -749,6 +758,7 @@ stream_opened({login, basic, _Method}, _From, State=#state{auth_info=undefined})
 stream_opened({login, basic, Method}, From, State=#state{connection = Module,
 					  connection_ref = ConnRef,
 					  auth_info=Auth}) when is_atom(Method)->
+ 	%io:format("exmpp stream_opened basic~n",[]),
     Domain = get_domain(Auth),
     Username = get_username(Auth),
     Module:send(ConnRef,
@@ -756,9 +766,24 @@ stream_opened({login, basic, Method}, From, State=#state{connection = Module,
     {next_state, wait_for_legacy_auth_method, State#state{from_pid=From, auth_method=Method}};
 
 %% Login using SASL mechanism
+stream_opened({login, sasl, "X-OAUTH2"}, From, State=#state{connection = Module,
+					  connection_ref = ConnRef,
+					  auth_info=Auth}) ->
+ 	%io:format("exmpp stream_opened x-oauth2~n",[]),
+	
+ %     Domain = get_domain(Auth),
+    Username = get_username(Auth),
+    Password = get_password(Auth),
+ %     InitialResp = iolist_to_binary([Domain, 0, Username, 0, Password]),
+    InitialResp = iolist_to_binary([0, Username, 0, Password]),
+	Stanza = exmpp_client_sasl:selected_mechanism("X-OAUTH2", InitialResp), 
+ 	%io:format("exmpp x-oauth2 ~p:~p/~p~n",[Username,Password,Stanza]),
+    Module:send(ConnRef, Stanza),
+    {next_state, wait_for_sasl_response, State#state{from_pid=From}};
 stream_opened({login, sasl, "PLAIN"}, From, State=#state{connection = Module,
 					  connection_ref = ConnRef,
 					  auth_info=Auth}) ->
+ 	%io:format("exmpp stream_opened plain~n",[]),
  %     Domain = get_domain(Auth),
     Username = get_username(Auth),
     Password = get_password(Auth),
@@ -770,6 +795,7 @@ stream_opened({login, sasl, "PLAIN"}, From, State=#state{connection = Module,
 stream_opened({login, sasl, "ANONYMOUS"}, From, State=#state{connection = Module,
 					  connection_ref = ConnRef
 					  }) ->
+ 	%io:format("exmpp stream_opened anonimous~n",[]),
     Module:send(ConnRef, exmpp_client_sasl:selected_mechanism("ANONYMOUS")),
     {next_state, wait_for_sasl_response, State#state{from_pid=From}};
 stream_opened({login, sasl, "DIGEST-MD5"}, From, State=#state{connection = Module,
@@ -777,6 +803,7 @@ stream_opened({login, sasl, "DIGEST-MD5"}, From, State=#state{connection = Modul
                                           auth_info = Auth,
                                           host = Host
 					  }) ->
+ 	%io:format("exmpp stream_opened digest~n",[]),
     Username = get_username(Auth),
     Domain = get_domain(Auth),
     Password = get_password(Auth),
@@ -788,11 +815,13 @@ stream_opened({register_account, Password}, From,
 	      State=#state{connection_ref = ConnRef,
                             connection = Module,
 			   auth_info=Auth}) ->
+ 	%io:format("exmpp stream_opened register~n",[]),
     Username = get_username(Auth),
     register_account(ConnRef, Module, Username, Password),
     {next_state, wait_for_register_result, State#state{from_pid=From}};
 stream_opened({register_account, Username, Password}, From,
 	      State=#state{connection = Module, connection_ref = ConnRef}) ->
+ 	%io:format("exmpp stream_opened register2~n",[]),
     register_account(ConnRef, Module, Username, Password),
     {next_state, wait_for_register_result, State#state{from_pid=From}};
 
@@ -854,6 +883,20 @@ wait_for_sasl_response(#xmlstreamelement{element=#xmlel{name='success'}}, State)
     {next_state, wait_for_stream, State#state{authenticated = true}};
 
 wait_for_sasl_response(#xmlstreamelement{element=#xmlel{name='challenge'} = Element}, State) ->
+    #state{connection = Module, connection_ref = ConnRef, sasl_state = SASL_State} = State,
+    Challenge = base64:decode_to_string(exmpp_xml:get_cdata(Element)),
+    case exmpp_sasl_digest:mech_step(SASL_State, Challenge) of
+         {error, Reason} ->
+              {error, Reason};
+         {continue, ClientIn, NewSASL_State} ->
+             Module:send(ConnRef, exmpp_client_sasl:response(ClientIn)),
+             {next_state, wait_for_sasl_response, State#state{sasl_state= NewSASL_State} };
+         ok ->
+            Module:send(ConnRef, exmpp_client_sasl:response("")),
+            {next_state, wait_for_sasl_response, State }
+    end;
+wait_for_sasl_response(#xmlstreamelement{element=#xmlel{} = Element}=_Stream, State) ->
+	%io:format("wait_for_sasl_response ~p~n",[Stream]),
     #state{connection = Module, connection_ref = ConnRef, sasl_state = SASL_State} = State,
     Challenge = base64:decode_to_string(exmpp_xml:get_cdata(Element)),
     case exmpp_sasl_digest:mech_step(SASL_State, Challenge) of
@@ -1189,7 +1232,11 @@ send_packet(ConnRef, Module, ?elementattrs) ->
  %     String = exmpp_xml:document_to_list(XMLPacket),
  %     Module:send(ConnRef, String),
     Module:send(ConnRef, XMLPacket),
-    Id.
+    Id;
+send_packet(ConnRef, Module, XMLPacket) ->
+    Module:send(ConnRef, XMLPacket),
+	3.
+
 
 send_whitespace_ping(ConnRef, Module) ->
 	Module:wping(ConnRef).

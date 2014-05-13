@@ -36,7 +36,7 @@
 %% Feature announcement.
 %% --------------------------------------------------------------------
 
-%% @spec (Features_Announcement) -> bool()
+%% @spec (Features_Announcement) -> boolean()
 %%     Features_Announcement = exmpp_xml:xmlel()
 %% @throws {session, announced_support, invalid_feature, Feature}
 %% @doc Tell if the Session Establishment feature is supported.

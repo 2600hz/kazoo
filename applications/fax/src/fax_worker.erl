@@ -423,7 +423,7 @@ release_failed_job('fetch_error', {Cause, _}, JObj) ->
     release_job(Result, JObj);
 release_failed_job('tx_resp', Resp, JObj) ->
     Msg = wh_json:get_value(<<"Error-Message">>, Resp),
-    <<"sip:", Code/binary>> = wh_json:get_value(<<"Response-Code">>, Resp),
+    <<"sip:", Code/binary>> = wh_json:get_value(<<"Response-Code">>, Resp, <<"sip:500">>),
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, wh_util:to_integer(Code)}
               ,{<<"result_text">>, Msg}
@@ -538,7 +538,7 @@ maybe_notify(Result, JObj, Resp, Status) ->
 
 -spec notify_fields(wh_json:object(), wh_json:object()) -> wh_proplist().
 notify_fields(JObj, Resp) ->
-    <<"sip:", HangupCode/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp),
+    <<"sip:", HangupCode/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:0">>),
     HangupCause =  wh_json:get_value(<<"Hangup-Cause">>, Resp),
     FaxFields = [{"Fax-Hangup-Code", wh_util:to_integer(HangupCode)}
                 ,{"Fax-Hangup-Cause", HangupCause}
@@ -554,7 +554,7 @@ notify_fields(JObj, Resp) ->
       ,{<<"Callee-ID-Name">>, ToName }
       ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
       ,{<<"Fax-JobId">>, wh_json:get_value(<<"_id">>, JObj)}
-      ,{<<"Fax-BoxId">>, wh_json:get_value(<<"fax_box_id">>, JObj)}
+      ,{<<"FaxBox-ID">>, wh_json:get_value(<<"faxbox_id">>, JObj)}
       ,{<<"Fax-Notifications">>,
         wh_json:from_list([{<<"email">>,
           wh_json:from_list([{<<"send_to">>, Notify}])}])}

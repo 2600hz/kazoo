@@ -29,6 +29,8 @@
                    ,?CACHE('fax_cache')
                    ,?WORKER('fax_jobs')
                    ,?SUPER('fax_requests_sup')
+                   ,?SUPER('fax_xmpp_sup')
+                   ,?WORKER('fax_shared_listener')
                    ,?WORKER('fax_listener')
                    ,?WORKER_ARGS('gen_smtp_server',['fax_smtp'
                                                     ,[[{'port', whapps_config:get_integer(?CONFIG_CAT, <<"smtp_port">>, 19025)}]]

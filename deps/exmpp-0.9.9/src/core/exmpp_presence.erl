@@ -194,7 +194,7 @@ error(Presence, Error) when ?IS_PRESENCE(Presence) ->
 %% You should probably use the `IS_PRESENCE(El)' guard expression.
 
 -spec is_presence
-(xmlel()) -> bool().
+(xmlel()) -> boolean().
 
 is_presence(Presence) when ?IS_PRESENCE(Presence) -> true;
 is_presence(_El)                                  -> false.

@@ -70,6 +70,7 @@ driver_dirs() ->
 		_ ->
 		    Base_Dir = filename:dirname(filename:dirname(Mod_Path)),
 		    [
+             filename:join([Base_Dir, "priv"]),
 		     filename:join([Base_Dir, "priv", "lib"]),
 		     filename:join([Base_Dir, "c_src", ".libs"]),
 		     filename:join([Base_Dir, "c_src"])

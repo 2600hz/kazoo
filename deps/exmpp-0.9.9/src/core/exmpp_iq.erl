@@ -348,24 +348,24 @@ iq_to_xmlel2(#iq{type = Type, id = ID, lang = Lang, payload = Payload,
 %% IQ standard attributes.
 %% --------------------------------------------------------------------
 
-%% @spec (El) -> bool()
+%% @spec (El) -> boolean()
 %%     El = exmpp_xml:xmlel()
 %% @doc Tell if `El' is an IQ.
 %%
 %% You should probably use the `IS_IQ(El)' guard expression.
 
--spec(is_iq/1 :: (#xmlel{}) -> bool()).
+-spec(is_iq/1 :: (#xmlel{}) -> boolean()).
 
 is_iq(IQ) when ?IS_IQ(IQ) -> true;
 is_iq(_El)                -> false.
 
-%% @spec (El) -> bool()
+%% @spec (El) -> boolean()
 %%     El = iq()
 %% @doc Tell if `El' is an IQ record.
 %%
 %% You should probably use the `IS_IQ_RECORD(El)' guard expression.
 
--spec(is_iq_record/1 :: (#iq{}) -> bool()).
+-spec(is_iq_record/1 :: (#iq{}) -> boolean()).
 
 is_iq_record(IQ) when ?IS_IQ_RECORD(IQ) -> true;
 is_iq_record(_El)                       -> false.
@@ -408,11 +408,11 @@ get_kind(IQ) when ?IS_IQ(IQ) ->
 get_kind(#iq{kind = Kind}) ->
     Kind.
 
-%% @spec (IQ) -> bool()
+%% @spec (IQ) -> boolean()
 %%     IQ = exmpp_xml:xmlel() | iq()
 %% @doc Tell if the IQ is a request.
 
--spec(is_request/1 :: (#xmlel{} | #iq{}) -> bool()).
+-spec(is_request/1 :: (#xmlel{} | #iq{}) -> boolean()).
 
 is_request(IQ) when ?IS_IQ(IQ) ->
     case get_kind(IQ) of
@@ -422,11 +422,11 @@ is_request(IQ) when ?IS_IQ(IQ) ->
 is_request(#iq{kind = Kind}) ->
     Kind == request.
 
-%% @spec (IQ) -> bool()
+%% @spec (IQ) -> boolean()
 %%     IQ = exmpp_xml:xmlel() | iq()
 %% @doc Tell if the IQ is a response.
 
--spec(is_response/1 :: (#xmlel{} | #iq{}) -> bool()).
+-spec(is_response/1 :: (#xmlel{} | #iq{}) -> boolean()).
 
 is_response(IQ) when ?IS_IQ(IQ) ->
     case get_kind(IQ) of
@@ -436,11 +436,11 @@ is_response(IQ) when ?IS_IQ(IQ) ->
 is_response(#iq{kind = Kind}) ->
     Kind == response.
 
-%% @spec (IQ) -> bool()
+%% @spec (IQ) -> boolean()
 %%     IQ = exmpp_xml:xmlel() | iq()
 %% @doc Tell if the IQ is a result (response of type `result').
 
--spec(is_result/1 :: (#xmlel{} | #iq{}) -> bool()).
+-spec(is_result/1 :: (#xmlel{} | #iq{}) -> boolean()).
 
 is_result(IQ) when ?IS_IQ(IQ) ->
     case get_type(IQ) of
@@ -450,11 +450,11 @@ is_result(IQ) when ?IS_IQ(IQ) ->
 is_result(#iq{type = Type}) ->
     Type == 'result'.
 
-%% @spec (IQ) -> bool()
+%% @spec (IQ) -> boolean()
 %%     IQ = exmpp_xml:xmlel() | iq()
 %% @doc Tell if the IQ is an error (response of type `error').
 
--spec(is_error/1 :: (#xmlel{} | #iq{}) -> bool()).
+-spec(is_error/1 :: (#xmlel{} | #iq{}) -> boolean()).
 
 is_error(IQ) when ?IS_IQ(IQ) ->
     case get_type(IQ) of

@@ -391,7 +391,7 @@ session_established(#xmlstreamelement{element=#xmlel{name=iq, attrs=Attrs}=IQEle
 %% Process unexpected packet
 session_established(_Packet, State) ->
     %% log it or do something better
-    io:format("!!!ALERT!!! Unknown packet:~p~p~n", [_Packet, State]),
+    %io:format("!!!ALERT!!! Unknown packet:~p~p~n", [_Packet, State]),
     {next_state, session_established, State}.
 
 %% TODO:

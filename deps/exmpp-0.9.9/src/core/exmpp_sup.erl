@@ -64,6 +64,7 @@ start_link() ->
 %% @hidden
 
 init(_Args) ->
+	 %io:format("exmpp sup init~n",[]),
     %% Stringprep.
     Stringprep = {stringprep,
 		  {exmpp_stringprep, start_link, []},

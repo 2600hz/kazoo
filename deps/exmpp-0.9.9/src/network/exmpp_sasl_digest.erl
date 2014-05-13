@@ -234,7 +234,7 @@ parse4([], Key, Val, Ts) ->
     parse1([], "", [{Key, lists:reverse(Val)} | Ts]).
 
 
-%% @spec (DigestURICase, JabberHost) -> bool()
+%% @spec (DigestURICase, JabberHost) -> boolean()
 %%     DigestURICase = string()
 %%     JabberHost = string()
 %%

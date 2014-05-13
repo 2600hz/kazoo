@@ -254,7 +254,7 @@ parse_request(Packet) ->
 	Request = binstr:strip(binstr:strip(binstr:strip(binstr:strip(Packet, right, $\n), right, $\r), right, $\s), left, $\s),
 	case binstr:strchr(Request, $\s) of
 		0 ->
-			lager:debug("got a ~s request~n", [Request]),
+			lager:debug("got a ~s request", [Request]),
 			case binstr:to_upper(Request) of
 				<<"QUIT">> = Res -> {Res, <<>>};
 				<<"DATA">> = Res -> {Res, <<>>};
@@ -264,7 +264,7 @@ parse_request(Packet) ->
 		Index ->
 			Verb = binstr:substr(Request, 1, Index - 1),
 			Parameters = binstr:strip(binstr:substr(Request, Index + 1), left, $\s),
-			lager:debug("got a ~s request with parameters ~s~n", [Verb, Parameters]),
+			lager:debug("got a ~s request with parameters ~s", [Verb, Parameters]),
 			{binstr:to_upper(Verb), Parameters}
 	end.
 

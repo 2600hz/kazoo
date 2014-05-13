@@ -72,6 +72,7 @@ announced_mechanisms3(
 announced_mechanisms3([El | _Rest], _Result) ->
     throw({sasl, announced_mechanisms, invalid_mechanism, El});
 announced_mechanisms3([], Result) ->
+ 	%io:format("exmpp announced_mechanisms3 ~p~n",[Result]),
     lists:reverse(Result).
 
 %% --------------------------------------------------------------------

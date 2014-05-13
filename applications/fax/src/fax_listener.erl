@@ -12,7 +12,8 @@
 
 %% API
 -export([start_link/0
-         ,new_request/2
+        ,handle_printer_start/2
+        ,start_all_printers/0
         ]).
 
 %% gen_listener callbacks
@@ -28,13 +29,16 @@
 
 -include("fax.hrl").
 
--define(BINDINGS, [{'fax', [{'restrict_to', ['req']}]}]).
--define(RESPONDERS, [{{?MODULE, 'new_request'}
-                      ,[{<<"dialplan">>, <<"fax_req">>}]
+-define(BINDINGS, [{'xmpp',[{restrict_to,['start']}]}
+                  ,{self, []}
+                  ]).
+-define(RESPONDERS, [{{?MODULE, 'handle_printer_start'}
+                      ,[{<<"xmpp_event">>, <<"start">>}]
                      }]).
--define(QUEUE_NAME, <<"fax_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -56,10 +60,11 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
                                      ], []).
 
--spec new_request(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
-new_request(JObj, _Props) ->
-    'true' = wapi_fax:req_v(JObj),
-    fax_requests_sup:new(whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)), JObj).
+-spec handle_printer_start(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
+handle_printer_start(JObj, _Props) ->
+    'true' = wapi_xmpp:event_v(JObj),
+    PrinterId = wh_json:get_value(<<"Application-Data">>, JObj),
+    fax_xmpp_sup:start_printer(PrinterId).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -106,6 +111,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
+    spawn(?MODULE, start_all_printers, []),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -155,3 +165,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec start_all_printers() -> any().
+start_all_printers() ->
+    {'ok', Results} = couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>),
+    [ send_start_printer(Id, Jid) 
+       || {Id, Jid, <<"claimed">>} 
+            <- [ { wh_json:get_value(<<"id">>, Result),
+                   wh_json:get_value([<<"value">>,<<"xmpp_jid">>], Result),
+                   wh_json:get_value([<<"value">>,<<"state">>], Result)} || Result <- Results] ].
+
+-spec send_start_printer(ne_binary(), ne_binary()) -> any().
+send_start_printer(PrinterId, JID) ->
+    Payload = props:filter_undefined(
+                [{<<"Event-Name">>, <<"start">>}
+                ,{<<"Application-Name">>, <<"fax">>}
+                ,{<<"Application-Event">>, <<"init">>}
+                ,{<<"Application-Data">>, PrinterId}
+                ,{<<"JID">>, JID}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    wapi_xmpp:publish_event(Payload).   

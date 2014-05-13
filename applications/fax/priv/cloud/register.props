@@ -1,0 +1,14 @@
+{<<"printer">>, <<"Kazoo">>}.
+{<<"default_display_name">>, <<"Kazoo Cloud Fax Printer">>}.
+{<<"manufacturer">>, <<"2600hz">>}.
+{<<"model">>, <<"Kazoo Fax">>}.
+{<<"gcp_version">>, <<"2.0">>}.
+{<<"setup_url">>, <<"https://fax.kazoo.io">>}.
+{<<"support_url">>, <<"https://support.kazoo.io">>}.
+{<<"update_url">>, <<"https://fax.kazoo.io">>}.
+{<<"firmware">>, <<"1.0">>}.
+{<<"local_settings">>, <<"{ \"current\": { \"xmpp_timeout_value\" : 300 } }">>}.
+{<<"semantic_state">>, <<"{ \"version\": \"2.0\", \"cloud_connection_state\" : \"ONLINE\", \"printer\": { \"state\": \"IDLE\" } } }">>}.
+{<<"use_cdd">>, <<"true">>}.
+{<<"tag">>, <<"kazoo">>}.
+{<<"tag">>, <<"fax">>}.

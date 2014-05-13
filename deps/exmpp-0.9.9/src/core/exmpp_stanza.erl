@@ -692,11 +692,11 @@ stanza_error_without_original(Stanza, Error) ->
     Stanza_Error = exmpp_xml:set_children(Stanza, [Error]),
     set_type(Stanza_Error, "error").
 
-%% @spec (Stanza) -> bool()
+%% @spec (Stanza) -> boolean()
 %%     Stanza = exmpp_xml:xmlel()
 %% @doc Tell if the stanza transports an error.
 
--spec(is_stanza_error/1 :: (#xmlel{}) -> bool()).
+-spec(is_stanza_error/1 :: (#xmlel{}) -> boolean()).
 
 is_stanza_error(Stanza) ->
     case get_type(Stanza) of

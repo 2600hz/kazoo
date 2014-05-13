@@ -112,7 +112,7 @@
 -define(OPTIONAL_FAX_INBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                       ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                       ,<<"Call-ID">>, <<"Fax-Info">>
-                                      ,<<"Owner-ID">>, <<"Fax-BoxId">>
+                                      ,<<"Owner-ID">>, <<"FaxBox-ID">>
                                       ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
                                       ]).
 -define(FAX_INBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -127,7 +127,7 @@
 -define(OPTIONAL_FAX_INBOUND_ERROR_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                             ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                             ,<<"Call-ID">>, <<"Fax-Info">>, <<"Fax-ID">>
-                                            ,<<"Owner-ID">>, <<"Fax-BoxId">>
+                                            ,<<"Owner-ID">>, <<"FaxBox-ID">>
                                             ,<<"Fax-Notifications">>, <<"Fax-Error">>
                                             ,<<"Fax-Timestamp">>
                                             ]).
@@ -141,7 +141,7 @@
                               ]).
 -define(OPTIONAL_FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
                                        ,<<"Call-ID">>, <<"Fax-Info">>
-                                       ,<<"Owner-ID">>, <<"Fax-BoxId">>
+                                       ,<<"Owner-ID">>, <<"FaxBox-ID">>
                                        ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
                                        ]).
 -define(FAX_OUTBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -153,7 +153,7 @@
 -define(OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
                                              ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
                                              ,<<"Call-ID">>, <<"Fax-Info">>
-                                             ,<<"Owner-ID">>, <<"Fax-BoxId">>
+                                             ,<<"Owner-ID">>, <<"FaxBox-ID">>
                                              ,<<"Fax-Notifications">>, <<"Fax-Error">>
                                              ,<<"Account-ID">>, <<"Fax-Timestamp">>
                                              ]).
