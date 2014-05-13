@@ -108,7 +108,7 @@ match_one_of([Entry|Rest], CallerIdNumber) ->
 get_list_entries(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, ListId) of
+    case couch_mgr:open_cache_doc(AccountDb, ListId) of
         {ok, ListJObj} ->
             lager:info("match list loaded: ~s", [ListId]),
             Entries = wh_json:get_value(<<"entries">>, ListJObj, []),
