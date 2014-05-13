@@ -35,30 +35,103 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
     _ = case maybe_allowed_to_intercept(Data, Call) of
-            'true' ->
-                case find_sip_endpoints(Data, Call) of
-                    [] -> no_users(Call);
-                    Usernames -> connect_to_channel(Usernames, Call)
-                end;
-            'false' -> no_permission_to_intercept(Call)
+            {ok, 'true'} ->
+                continue(Data, Call);
+            {'ok', 'false'} -> no_permission_to_intercept(Call);
+            {'error', 'not_found'} ->
+                case maybe_same_user(Data, Call) orelse maybe_same_group(Data, Call) of
+                    'true' -> continue(Data, Call);
+                    'false' -> no_permission_to_intercept(Call)
+                end
         end,
     cf_exe:stop(Call).
 
--spec maybe_allowed_to_intercept(wh_json:object(), whapps_call:call()) -> boolean().
+-spec maybe_same_user(wh_json:object(), whapps_call:call()) -> boolean().
+maybe_same_user(Data, Call) ->
+    CallerDevice = whapps_call:authorizing_id(Call),
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), CallerDevice) of
+        {'ok', DevDoc} ->
+            Caller = wh_json:get_value(<<"owner_id">>, DevDoc),
+            case wh_json:get_value(<<"user_id">>, Data) of
+                'undefined' ->
+                    case wh_json:get_value(<<"device_id">>, Data) of
+                        'undefined' ->
+                            'false';
+                        DevId ->
+                            case couch_mgr:open_cache_doc(whapps_call:account_db(Call), DevId) of
+                                {ok, Target} ->
+                                    Caller =:= wh_json:get_value(<<"owner_id">>, Target);
+                                Err ->
+                                    lager:info("Error while opening couch document: ~p", [Err]),
+                                    'false'
+                            end
+                    end;
+                UserId ->
+                    UserId =:= Caller
+            end;
+        Err ->
+            lager:info("Error while opening couch document: ~p", [Err]),
+            'false'
+    end.
+
+-spec maybe_same_group(wh_json:object(), whapps_call:call()) -> boolean().
+maybe_same_group(Data, Call) ->
+    CallerDevice = whapps_call:authorizing_id(Call),
+    Acc = whapps_call:account_db(Call),
+    case couch_mgr:open_cache_doc(Acc, CallerDevice) of
+        {'ok', DevDoc} ->
+            Caller = wh_json:get_value(<<"owner_id">>, DevDoc),
+            case wh_json:get_value(<<"group_id">>, Data) of
+                'undefined' ->
+                    'false';
+                GroupId ->
+                    case couch_mgr:open_cache_doc(Acc, GroupId) of
+                        {'ok', GroupDoc} ->
+                            lager:info("GroupDoc: ~p", GroupDoc),
+                            Endpoints = wh_json:get_ne_value(<<"endpoints">>, GroupDoc, []),
+                            lists:any(fun({Key, Descr}) ->
+                                case wh_json:get_value(<<"type">>, Descr) of
+                                    <<"device">> ->
+                                        Key =:= CallerDevice;
+                                    <<"user">> ->
+                                        Key =:= Caller;
+                                    Point ->
+                                        lager:info("Unknown group endpoint (~s) for key: ~s", [Point, Key]),
+                                        'false'
+                                end
+                            end, wh_json:to_proplist(Endpoints));
+                        Err ->
+                            lager:info("Error while opening couch document: ~p", [Err]),
+                            'false'
+                    end
+            end;
+        Err ->
+            lager:info("Error while opening couch document: ~p", [Err]),
+            'false'
+    end.
+
+-spec continue(wh_json:object(), whapps_call:call()) -> any().
+continue(Data, Call) ->
+  case find_sip_endpoints(Data, Call) of
+    [] -> no_users(Call);
+    Usernames -> connect_to_channel(Usernames, Call)
+  end.
+
+-spec maybe_allowed_to_intercept(wh_json:object(), whapps_call:call()) -> {'ok', boolean()} | {'error', 'not_found'}.
 maybe_allowed_to_intercept(Data, Call) ->
     case wh_json:get_value(<<"approved_device_id">>, Data) of
         'undefined' ->
             case wh_json:get_value(<<"approved_user_id">>, Data) of
                 'undefined' ->
                     case wh_json:get_value(<<"approved_group_id">>, Data) of
-                        'undefined' -> 'true';
-                        GroupId -> maybe_belongs_to_group(GroupId, Call)
+                        'undefined' -> {'error', 'not_found'};
+                        GroupId -> {'ok', maybe_belongs_to_group(GroupId, Call)}
                     end;
-                UserId -> maybe_belongs_to_user(UserId, Call)
+                UserId -> {'ok', maybe_belongs_to_user(UserId, Call)}
             end;
         DeviceId ->
             % Compare approved device_id with calling one
-            DeviceId == whapps_call:authorizing_id(Call)
+            {'ok', DeviceId == whapps_call:authorizing_id(Call)}
     end.
 
 -spec maybe_belongs_to_group(ne_binary(), whapps_call:call()) -> boolean().
@@ -226,7 +299,7 @@ find_sip_endpoints(Data, Call) ->
     case wh_json:get_value(<<"device_id">>, Data) of
         'undefined' ->
             case wh_json:get_value(<<"user_id">>, Data) of
-                'undefuned' ->
+                'undefined' ->
                     find_sip_users(wh_json:get_value(<<"group_id">>, Data), Call);
                 UserId ->
                     sip_users_from_endpoints(
