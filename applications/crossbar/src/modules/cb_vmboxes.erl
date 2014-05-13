@@ -20,6 +20,7 @@
          ,put/1
          ,post/2, post/4
          ,delete/2, delete/4
+         ,cleanup_heard_voicemail/1
         ]).
 
 -include("../crossbar.hrl").
@@ -40,7 +41,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.vmboxes">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.vmboxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), ?MODULE, 'cleanup_heard_voicemail').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -333,7 +335,7 @@ load_message_binary(DocId, MediaId, Context) ->
             VMMetaJObj = cb_context:resp_data(Context1),
             Doc = cb_context:doc(Context1),
 
-            case couch_mgr:open_doc(cb_context:account_db(Context), MediaId) of
+            case couch_mgr:open_cache_doc(cb_context:account_db(Context), MediaId) of
                 {'error', 'not_found'} ->
                     cb_context:add_system_error('bad_identifier', [{'details', MediaId}], Context1);
                 {'error', _E} ->
@@ -453,3 +455,68 @@ update_mwi(Context, 'success') ->
     Context;
 update_mwi(Context, _Status) ->
     Context.
+
+-spec cleanup_heard_voicemail(ne_binary()) -> any().
+-spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> any().
+-spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> any().
+cleanup_heard_voicemail(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case whapps_account_config:get_global(AccountDb
+                                          ,<<"callflow">>
+                                          ,[<<"voicemail">>, <<"message_retention_duration">>]
+                                          ,30 %% 30 days
+                                  )
+    of
+        'undefined' -> lager:debug("no limit to voicemail retention");
+        Duration ->
+            lager:debug("retaining messages for ~p days, delete those older for ~s", [Duration, Account]),
+            cleanup_heard_voicemail(AccountDb, wh_util:to_integer(Duration))
+    end.
+
+cleanup_heard_voicemail(AccountDb, Duration) ->
+    Today = wh_util:current_tstamp(),
+    DurationS = Duration * ?SECONDS_IN_DAY, % duration in seconds
+    case couch_mgr:get_results(AccountDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
+        {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AccountDb]);
+        {'ok', View} ->
+            lager:debug("cleaning up ~b voicemail boxes in ~s", [length(View), AccountDb]),
+            cleanup_heard_voicemail(AccountDb
+                                    ,Today - DurationS
+                                    ,[{wh_json:get_value(<<"doc">>, V)
+                                       ,wh_json:get_value([<<"doc">>, <<"messages">>], V)
+                                      }
+                                      || V <- View
+                                     ]
+                                   );
+        {'error', _E} ->
+            lager:debug("failed to get voicemail boxes in ~s: ~p", [AccountDb, _E])
+    end.
+cleanup_heard_voicemail(AccountDb, Timestamp, Boxes) ->
+    [cleanup_voicemail_box(AccountDb, Timestamp, Box) || Box <- Boxes].
+
+-spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> any().
+cleanup_voicemail_box(AccountDb, Timestamp, {Box, Msgs}) ->
+    case lists:partition(fun(Msg) ->
+                                 %% must be old enough, and not in the NEW folder
+                                 wh_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
+                                     andalso wh_json:get_value(<<"folder">>, Msg) =/= <<"new">>
+                         end, Msgs)
+    of
+        {[], _} -> lager:debug("there are no old messages to remove from ~s", [wh_json:get_value(<<"_id">>, Box)]);
+        {Older, Newer} ->
+            lager:debug("there are ~b old messages to remove", [length(Older)]),
+
+            _ = [catch delete_media(AccountDb, wh_json:get_value(<<"media_id">>, Msg)) || Msg <- Older],
+            lager:debug("soft-deleted old messages"),
+
+            Box1 = wh_json:set_value(<<"messages">>, Newer, Box),
+            {'ok', Box2} = couch_mgr:save_doc(AccountDb, Box1),
+            lager:debug("updated messages in voicemail box ~s", [wh_json:get_value(<<"_id">>, Box2)])
+    end.
+
+-spec delete_media(ne_binary(), ne_binary()) ->
+                          {'ok', wh_json:object()} |
+                          {'error', _}.
+delete_media(AccountDb, MediaId) ->
+    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, MediaId),
+    couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_deleted">>, 'true', JObj)).

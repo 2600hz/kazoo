@@ -281,7 +281,11 @@ refresh(?KZ_ACDC_DB) ->
     _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
     'ok';
 refresh(Account) when is_binary(Account) ->
-    refresh(Account, get_all_account_views());
+    case whapps_util:is_account_db(Account) of
+        'true' -> refresh(Account, get_all_account_views());
+        'false' ->
+            lager:debug("database ~s is unhandled", [Account])
+    end;
 refresh(Database) ->
     refresh(wh_util:to_binary(Database)).
 

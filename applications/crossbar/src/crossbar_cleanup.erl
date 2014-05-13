@@ -12,9 +12,8 @@
 
 %% API
 -export([start_link/0
-         ,cleanup_heard_voicemail/1
          ,cleanup_soft_deletes/1
-         ,start_cleanup_pass/0
+         ,start_cleanup_pass/1
          ,binding_account/0
          ,binding_account_mod/0
          ,binding_system/0
@@ -23,6 +22,8 @@
          ,binding_minute/0
          ,binding_hour/0
          ,binding_day/0
+
+         ,status/0
         ]).
 
 %% gen_server callbacks
@@ -35,6 +36,13 @@
         ]).
 
 -include("crossbar.hrl").
+
+-record(state, {cleanup_timer_ref=start_cleanup_timer()
+                ,minute_timer_ref=start_minute_timer()
+                ,hour_timer_ref=start_hour_timer()
+                ,day_timer_ref=start_day_timer()
+               }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -49,6 +57,10 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+
+-spec status() -> wh_proplist().
+status() ->
+    gen_server:call(?MODULE, 'status').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -66,15 +78,14 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put('callid', ?LOG_SYSTEM_ID),
+    put('callid', ?MODULE),
 
-    _ = crossbar_bindings:bind(binding_account(), ?MODULE, 'cleanup_heard_voicemail'),
     _ = crossbar_bindings:bind(binding_all_dbs(), ?MODULE, 'cleanup_soft_deletes'),
 
-    start_timers(),
+    State = start_timers(),
     lager:debug("started ~s", [?MODULE]),
 
-    {'ok', 'ok'}.
+    {'ok', State}.
 
 -define(BINDING_PREFIX, "v2_resource.cleanup.").
 
@@ -114,6 +125,17 @@ binding_all_dbs() ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call('status', _From, #state{cleanup_timer_ref=Cleanup
+                                    ,minute_timer_ref=Minute
+                                    ,hour_timer_ref=Hour
+                                    ,day_timer_ref=Day
+                                   }=State) ->
+    {'reply', [{'cleanup', erlang:read_timer(Cleanup)}
+               ,{'minute', erlang:read_timer(Minute)}
+               ,{'hour', erlang:read_timer(Hour)}
+               ,{'day', erlang:read_timer(Day)}
+              ]
+     , State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -127,6 +149,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'cleanup_finished', Ref}, #state{cleanup_timer_ref=Ref}=State) ->
+    lager:debug("cleanup finished for ~p, starting timer", [Ref]),
+    {'noreply', State#state{cleanup_timer_ref=start_cleanup_timer()}, 'hibernate'};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -141,26 +166,25 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('cleanup', 'ok') ->
-    _Pid = spawn(?MODULE, 'start_cleanup_pass', []),
-    lager:debug("cleaning up in ~p", [_Pid]),
-    start_cleanup_timer(),
-    {'noreply', 'ok'};
-handle_info('minute_cleanup', 'ok') ->
+handle_info('cleanup', #state{cleanup_timer_ref=Ref}=State) ->
+    _Pid = spawn(?MODULE, 'start_cleanup_pass', [Ref]),
+    lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
+    {'noreply', State};
+handle_info('minute_cleanup', #state{minute_timer_ref=Ref}=State) ->
     _Pid = spawn('crossbar_bindings', 'map', [binding_minute(), []]),
-    _ = start_minute_timer(),
-    {'noreply', 'ok'};
-handle_info('hour_cleanup', 'ok') ->
+    _ = stop_timer(Ref),
+    {'noreply', State#state{minute_timer_ref=start_minute_timer()}};
+handle_info('hour_cleanup', #state{hour_timer_ref=Ref}=State) ->
     _Pid = spawn('crossbar_bindings', 'map', [binding_hour(), []]),
-    _ = start_hour_timer(),
-    {'noreply', 'ok'};
-handle_info('day_cleanup', 'ok') ->
+    _ = stop_timer(Ref),
+    {'noreply', State#state{hour_timer_ref=start_hour_timer()}};
+handle_info('day_cleanup', #state{day_timer_ref=Ref}=State) ->
     _Pid = spawn('crossbar_bindings', 'map', [binding_day(), []]),
-    _ = start_day_timer(),
-    {'noreply', 'ok'};
-handle_info(_Msg, 'ok') ->
+    _ = stop_timer(Ref),
+    {'noreply', State#state{day_timer_ref=start_day_timer()}};
+handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
-    {'noreply', 'ok'}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -190,15 +214,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_cleanup_pass() -> 'ok'.
-start_cleanup_pass() ->
+-spec start_cleanup_pass(reference()) -> 'ok'.
+start_cleanup_pass(Ref) ->
+    wh_util:put_callid(<<"cleanup_pass">>),
     {'ok', Dbs} = couch_mgr:db_info(),
     lager:debug("starting cleanup pass of databases"),
 
     _ = [crossbar_bindings:map(db_routing_key(Db), Db)
          || Db <- Dbs
         ],
-    lager:debug("pass completed").
+    lager:debug("pass completed for ~p", [Ref]),
+    gen_server:cast(?MODULE, {'cleanup_finished', Ref}).
 
 db_routing_key(Db) ->
     Classifiers = [{fun whapps_util:is_account_db/1, fun binding_account/0}
@@ -214,13 +240,18 @@ db_routing_key(Db, [{Classifier, BindingFun} | Classifiers]) ->
         'false' -> db_routing_key(Db, Classifiers)
     end.
 
--spec start_timers() -> 'ok'.
+-spec start_timers() -> state().
 start_timers() ->
-    _ = start_cleanup_timer(),
-    _ = start_minute_timer(),
-    _ = start_hour_timer(),
-    _ = start_day_timer(),
-    'ok'.
+    #state{cleanup_timer_ref=start_cleanup_timer()
+           ,minute_timer_ref=start_minute_timer()
+           ,hour_timer_ref=start_hour_timer()
+           ,day_timer_ref=start_day_timer()
+          }.
+
+-spec stop_timer(any()) -> any().
+stop_timer(Ref) when is_reference(Ref) ->
+    erlang:cancel_timer(Ref);
+stop_timer(_) -> 'ok'.
 
 -spec start_timer(pos_integer(), any()) -> reference().
 start_timer(Expiry, Msg) ->
@@ -240,83 +271,31 @@ start_day_timer() ->
     start_timer(?MILLISECONDS_IN_DAY, 'day_cleanup').
 
 -spec cleanup_soft_deletes(ne_binary()) -> any().
-cleanup_soft_deletes(AcctDb) ->
-    case couch_mgr:get_results(AcctDb, <<"maintenance/soft_deleted">>, [{'limit', 1000}]) of
+cleanup_soft_deletes(Account) ->
+    case whapps_util:is_account_db(Account) of
+        'true' -> cleanup_account_soft_deletes(Account);
+        'false' -> cleanup_db_soft_deletes(Account)
+    end.
+
+cleanup_account_soft_deletes(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    do_cleanup(AccountDb).
+cleanup_db_soft_deletes(Db) ->
+    do_cleanup(Db).
+
+do_cleanup(Db) ->
+    case couch_mgr:get_results(Db, <<"maintenance/soft_deletes">>, [{'limit', 1000}]) of
         {'ok', []} -> 'ok';
         {'ok', L} ->
-            lager:debug("removing ~b soft-deleted docs from ~s", [length(L), AcctDb]),
-            couch_mgr:del_docs(AcctDb, prepare_docs_for_deletion(L));
+            lager:debug("removing ~b soft-deleted docs from ~s", [length(L), Db]),
+            couch_mgr:del_docs(Db, L);
         {'error', 'not_found'} ->
-            lager:debug("db ~s or view 'maintenance/soft_deleted' not found", [AcctDb]);
+            lager:debug("db ~s or view 'maintenance/soft_deletes' not found", [Db]),
+            try whapps_maintenance:refresh(Db) of
+                OK -> lager:debug("maintenance refresh: ~p", [OK])
+            catch
+                _E:_R -> lager:debug("maintenance refresh died: ~s: ~p", [_E, _R])
+            end;
         {'error', _E} ->
             lager:debug("failed to lookup soft-deleted tokens: ~p", [_E])
     end.
-
--spec cleanup_heard_voicemail(ne_binary()) -> any().
--spec cleanup_heard_voicemail(ne_binary(), pos_integer()) -> any().
--spec cleanup_heard_voicemail(ne_binary(), pos_integer(), wh_proplist()) -> any().
-cleanup_heard_voicemail(AcctDb) ->
-    case whapps_account_config:get(AcctDb
-                                   ,<<"callflow">>
-                                   ,[<<"voicemail">>, <<"message_retention_duration">>]
-                                  )
-    of
-        'undefined' -> lager:debug("no limit to voicemail retention");
-        Duration ->
-            lager:debug("retaining messages for ~p days, delete those older", [Duration]),
-            cleanup_heard_voicemail(AcctDb, wh_util:to_integer(Duration))
-    end.
-
-cleanup_heard_voicemail(AcctDb, Duration) ->
-    Today = wh_util:current_tstamp(),
-    DurationS = Duration * 86400, % duration in seconds
-    case couch_mgr:get_results(AcctDb, <<"vmboxes/crossbar_listing">>, ['include_docs']) of
-        {'ok', []} -> lager:debug("no voicemail boxes in ~s", [AcctDb]);
-        {'ok', View} ->
-            lager:debug("cleaning up ~b voicemail boxes in ~s", [length(View), AcctDb]),
-            cleanup_heard_voicemail(AcctDb
-                                    ,Today - DurationS
-                                    ,[{wh_json:get_value(<<"doc">>, V)
-                                       ,wh_json:get_value([<<"doc">>, <<"messages">>], V)
-                                      }
-                                      || V <- View
-                                     ]
-                                   );
-        {'error', _E} ->
-            lager:debug("failed to get voicemail boxes in ~s: ~p", [AcctDb, _E])
-    end.
-cleanup_heard_voicemail(AcctDb, Timestamp, Boxes) ->
-    [cleanup_voicemail_box(AcctDb, Timestamp, Box) || Box <- Boxes].
-
--spec cleanup_voicemail_box(ne_binary(), pos_integer(), {wh_json:object(), wh_json:objects()}) -> any().
-cleanup_voicemail_box(AcctDb, Timestamp, {Box, Msgs}) ->
-    case lists:partition(fun(Msg) ->
-                                 %% must be old enough, and not in the NEW folder
-                                 wh_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp
-                                     andalso wh_json:get_value(<<"folder">>, Msg) =/= <<"new">>
-                         end, Msgs)
-    of
-        {[], _} -> lager:debug("there are no old messages to remove from ~s", [wh_json:get_value(<<"_id">>, Box)]);
-        {Older, Newer} ->
-            lager:debug("there are ~b old messages to remove", [length(Older)]),
-
-            _ = [catch delete_media(AcctDb, wh_json:get_value(<<"media_id">>, Msg)) || Msg <- Older],
-            lager:debug("soft-deleted old messages"),
-
-            Box1 = wh_json:set_value(<<"messages">>, Newer, Box),
-            {'ok', Box2} = couch_mgr:save_doc(AcctDb, Box1),
-            lager:debug("updated messages in voicemail box ~s", [wh_json:get_value(<<"_id">>, Box2)])
-    end.
-
-delete_media(AcctDb, MediaId) ->
-    {'ok', JObj} = couch_mgr:open_doc(AcctDb, MediaId),
-    couch_mgr:ensure_saved(AcctDb, wh_json:set_value(<<"pvt_deleted">>, 'true', JObj)).
-
--spec prepare_docs_for_deletion(wh_json:objects()) -> wh_json:objects().
--spec prepare_doc_for_deletion(wh_json:object()) -> wh_json:object().
-prepare_docs_for_deletion(L) ->
-    [prepare_doc_for_deletion(D) || D <- L].
-prepare_doc_for_deletion(D) ->
-    wh_json:from_list([{<<"_id">>, wh_json:get_value(<<"id">>, D)}
-                       ,{<<"_rev">>, wh_json:get_value(<<"value">>, D)}
-                      ]).
