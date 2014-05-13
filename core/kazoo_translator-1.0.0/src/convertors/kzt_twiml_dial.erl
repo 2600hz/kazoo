@@ -20,10 +20,32 @@ exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     case wnm_util:to_e164(cleanup_dial_me(kz_xml:texts_to_binary(DialMeTxts))) of
         <<>> ->
             lager:debug("no text to dial, using only xml elements"),
-            exec(Call, kzt_util:xml_elements(DialMeTxts), Attrs);
+            exec(Call, kz_xml:elements(DialMeTxts), Attrs);
         DialMe -> dial_me(Call, Attrs, DialMe)
     end;
+exec(Call
+     ,[#xmlElement{name='Number'
+                   ,content=Number
+                   ,attributes=Attrs
+                  }
+      ]
+     ,Attrs) ->
+    lager:debug("single <Number>"),
+    case wnm_util:to_e164(cleanup_dial_me(kz_xml:texts_to_binary(Number))) of
+        <<>> ->
+            lager:debug("no dialable Number in tag, continuing"),
+            {'ok', Call};
+        DialMe ->
+            Props = kz_xml:attributes_to_proplist(Attrs),
 
+            SendDigits = props:get_value('sendDigis', Props),
+            _Url = props:get_value('url', Props),
+            _Method = props:get_value('method', Props),
+
+            lager:debug("maybe sending number ~s: send ~s", [DialMe, SendDigits]),
+
+            dial_me(Call, Attrs, DialMe)
+    end;
 exec(Call, [#xmlElement{name='Conference'
                         ,content=ConfIdTxts
                         ,attributes=ConfAttrs
@@ -33,8 +55,8 @@ exec(Call, [#xmlElement{name='Conference'
     ConfId = conference_id(ConfIdTxts),
     lager:info("dialing into conference '~s'", [ConfId]),
 
-    ConfProps = kzt_util:xml_attributes_to_proplist(ConfAttrs),
-    DialProps = kzt_util:xml_attributes_to_proplist(DialAttrs),
+    ConfProps = kz_xml:attributes_to_proplist(ConfAttrs),
+    DialProps = kz_xml:attributes_to_proplist(DialAttrs),
 
     gen_listener:add_binding(kzt_util:get_amqp_listener(Call)
                              ,'conference'
@@ -72,10 +94,10 @@ exec(Call, [#xmlElement{name='Queue'
                         ,content=QueueIdTxts
                         ,attributes=QueueAttrs
                        }], DialAttrs) ->
-    DialProps = kzt_util:xml_attributes_to_proplist(DialAttrs),
+    DialProps = kz_xml:attributes_to_proplist(DialAttrs),
 
-    QueueId = kzt_util:xml_text_to_binary(QueueIdTxts),
-    QueueProps = kzt_util:xml_attributes_to_proplist(QueueAttrs),
+    QueueId = kz_xml:texts_to_binary(QueueIdTxts),
+    QueueProps = kz_xml:attributes_to_proplist(QueueAttrs),
 
     %% Fetch TwiML to play to caller before connecting agent
     _Url = props:get_value('url', QueueProps),
@@ -92,7 +114,7 @@ exec(Call, [#xmlElement{name='Queue'
 exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
     lager:debug("dialing endpoints"),
 
-    Props = kzt_util:xml_attributes_to_proplist(Attrs),
+    Props = kz_xml:attributes_to_proplist(Attrs),
     Call1 = setup_call_for_dial(Call, Props),
 
     case xml_elements_to_endpoints(Call1, Endpoints) of
@@ -117,7 +139,7 @@ exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
 dial_me(Call, Attrs, DialMe) ->
     lager:info("dial text DID '~s'", [DialMe]),
 
-    Props = kzt_util:xml_attributes_to_proplist(Attrs),
+    Props = kz_xml:attributes_to_proplist(Attrs),
 
     Call1 = setup_call_for_dial(whapps_call:set_request(request_id(DialMe, Call), Call)
                                 ,Props
@@ -147,6 +169,7 @@ send_bridge_command(EPs, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
         ],
     whapps_call_command:send_command(B, Call).
 
+-spec setup_call_for_dial(whapps_call:call(), wh_proplist()) -> whapps_call:call().
 setup_call_for_dial(Call, Props) ->
     Setters = [{fun whapps_call:set_caller_id_number/2, caller_id(Props, Call)}
                ,{fun kzt_util:set_hangup_dtmf/2, hangup_dtmf(Props)}
@@ -154,11 +177,7 @@ setup_call_for_dial(Call, Props) ->
                ,{fun kzt_util:set_call_timeout/2, kzt_twiml:timeout_s(Props)}
                ,{fun kzt_util:set_call_time_limit/2, timelimit_s(Props)}
               ],
-
-    lists:foldl(fun({F, V}, C) when is_function(F, 2) -> F(V, C) end
-                ,Call
-                ,Setters
-               ).
+    whapps_call:exec(Setters, Call).
 
 -spec maybe_end_dial(whapps_call:call(), wh_proplist()) ->
                             {'ok' | 'stop', whapps_call:call()}.
@@ -177,7 +196,7 @@ maybe_end_dial(Call, Props, ActionUrl) ->
     Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
                ,{fun kzt_util:set_voice_uri/2, NewUri}
               ],
-    {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}.
+    {'request', whapps_call:exec(Setters, Call)}.
 
 -spec cleanup_dial_me(binary()) -> binary().
 cleanup_dial_me(Txt) -> << <<C>> || <<C>> <= Txt, is_numeric_or_plus(C)>>.
@@ -207,7 +226,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
                                             }
                                  | EPs], Acc
                          ) ->
-    DeviceId = kzt_util:xml_text_to_binary(DeviceIdTxt),
+    DeviceId = kz_xml:texts_to_binary(DeviceIdTxt),
     lager:debug("maybe adding device ~s to ring group", [DeviceId]),
     case cf_endpoint:build(DeviceId, Call) of
         {'ok', []} ->
@@ -223,7 +242,7 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='User'
                                             ,attributes=_UserAttrs
                                             }
                                 | EPs], Acc) ->
-    UserId = kzt_util:xml_text_to_binary(UserIdTxt),
+    UserId = kz_xml:texts_to_binary(UserIdTxt),
     lager:debug("maybe adding user ~s to ring group", [UserId]),
 
     case cf_user:get_endpoints(UserId, wh_json:new(), Call) of
@@ -237,13 +256,13 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Number'
                                              ,attributes=Attrs
                                             }
                                  | EPs], Acc) ->
-    Props = kzt_util:xml_attributes_to_proplist(Attrs),
+    Props = kz_xml:attributes_to_proplist(Attrs),
 
     SendDigits = props:get_value('sendDigis', Props),
     _Url = props:get_value('url', Props),
     _Method = props:get_value('method', Props),
 
-    DialMe = wnm_util:to_e164(kzt_util:xml_text_to_binary(Number)),
+    DialMe = wnm_util:to_e164(kz_xml:texts_to_binary(Number)),
 
     lager:debug("maybe add number ~s: send ~s", [DialMe, SendDigits]),
 
@@ -261,9 +280,9 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Sip'
                                              ,attributes=Attrs
                                             }
                                  | EPs], Acc) ->
-    _Props = kzt_util:xml_attributes_to_proplist(Attrs),
+    _Props = kz_xml:attributes_to_proplist(Attrs),
 
-    try wnm_sip:parse(kzt_util:xml_text_to_binary(Number)) of
+    try wnm_sip:parse(kz_xml:texts_to_binary(Number)) of
         Uri ->
             lager:debug("maybe add SIP ~s", [wnm_sip:encode(Uri)]),
             SipJObj = wh_json:from_list([{<<"invite_format">>, <<"route">>}
@@ -285,6 +304,8 @@ xml_elements_to_endpoints(Call, [_Xml|EPs], Acc) ->
 
 request_id(N, Call) -> iolist_to_binary([N, <<"@">>, whapps_call:from_realm(Call)]).
 
+-spec media_processing(whapps_call:call()) -> ne_binary().
+-spec media_processing(boolean(), api_binary()) -> ne_binary().
 media_processing(Call) ->
     media_processing(kzt_util:get_record_call(Call), kzt_util:get_hangup_dtmf(Call)).
 
@@ -365,7 +386,7 @@ moderator_flags(ConfProps, 'true') ->
 moderator_flags(_, _) -> wh_json:new().
 
 conference_id(Txts) ->
-    Id = kzt_util:xml_text_to_binary(Txts),
+    Id = kz_xml:texts_to_binary(Txts),
     MD5 = wh_util:to_hex_binary(erlang:md5(Id)),
     lager:debug("conf name: ~s (~s)", [Id, MD5]),
     MD5.
