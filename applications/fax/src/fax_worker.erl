@@ -538,7 +538,7 @@ maybe_notify(Result, JObj, Resp, Status) ->
 
 -spec notify_fields(wh_json:object(), wh_json:object()) -> wh_proplist().
 notify_fields(JObj, Resp) ->
-    <<"sip:", HangupCode/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp),
+    <<"sip:", HangupCode/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:0">>),
     HangupCause =  wh_json:get_value(<<"Hangup-Cause">>, Resp),
     FaxFields = [{"Fax-Hangup-Code", wh_util:to_integer(HangupCode)}
                 ,{"Fax-Hangup-Cause", HangupCause}
