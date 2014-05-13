@@ -63,7 +63,7 @@ maybe_same_user(Data, Call) ->
                                 {ok, Target} ->
                                     Caller =:= wh_json:get_value(<<"owner_id">>, Target);
                                 Err ->
-                                    lager:info("Error while opening couch document: ~p", [Err]),
+                                    lager:debug("Error while opening couch document: ~p", [Err]),
                                     'false'
                             end
                     end;
@@ -71,7 +71,7 @@ maybe_same_user(Data, Call) ->
                     UserId =:= Caller
             end;
         Err ->
-            lager:info("Error while opening couch document: ~p", [Err]),
+            lager:debug("Error while opening couch document: ~p", [Err]),
             'false'
     end.
 
@@ -88,7 +88,6 @@ maybe_same_group(Data, Call) ->
                 GroupId ->
                     case couch_mgr:open_cache_doc(Acc, GroupId) of
                         {'ok', GroupDoc} ->
-                            lager:info("GroupDoc: ~p", GroupDoc),
                             Endpoints = wh_json:get_ne_value(<<"endpoints">>, GroupDoc, []),
                             lists:any(fun({Key, Descr}) ->
                                 case wh_json:get_value(<<"type">>, Descr) of
@@ -97,17 +96,16 @@ maybe_same_group(Data, Call) ->
                                     <<"user">> ->
                                         Key =:= Caller;
                                     Point ->
-                                        lager:info("Unknown group endpoint (~s) for key: ~s", [Point, Key]),
                                         'false'
                                 end
                             end, wh_json:to_proplist(Endpoints));
                         Err ->
-                            lager:info("Error while opening couch document: ~p", [Err]),
+                            lager:debug("Error while opening couch document: ~p", [Err]),
                             'false'
                     end
             end;
         Err ->
-            lager:info("Error while opening couch document: ~p", [Err]),
+            lager:debug("Error while opening couch document: ~p", [Err]),
             'false'
     end.
 
