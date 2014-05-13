@@ -588,9 +588,8 @@ migrate_faxes() ->
     'ok'.
 
 migrate_faxes_fold(AccountDb, Current, Total) ->
-    io:format("migrating faxes in database (~p/~p) '~s'", [Current, Total, AccountDb]),
+    io:format("migrating faxes in database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
     _ = migrate_faxes(AccountDb),
-    couch_compactor_fsm:compact_db(AccountDb),
     Current + 1.
 
 migrate_faxes(Account) when not is_binary(Account) ->
@@ -611,7 +610,9 @@ migrate_faxes(Account) ->
 
 -spec migrate_fax(ne_binary(), wh_json:object()) -> 'ok'.
 migrate_fax(AccountDb, JObj) ->
-    _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, JObj)),
+    DocId = wh_json:get_value(<<"id">>, JObj),
+    {'ok', Doc } = couch_mgr:open_doc(AccountDb, DocId),
+    _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, Doc)),
     'ok'.
 
 %%--------------------------------------------------------------------
