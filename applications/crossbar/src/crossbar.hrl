@@ -85,6 +85,7 @@
                           ,'cb_users'
                           ,'cb_vmboxes'
                           ,'cb_whitelabel'
+                          ,'cb_faxboxes'
                          ]).
 
 -record(cb_context, {
