@@ -84,7 +84,7 @@
 	 wait_for_sasl_response/2,
 	 wait_for_stream_features/2,
 	 wait_for_bind_response/2,
-	 wait_for_session_response/2,
+	 wait_for_session_response/2,wait_for_session_response/3,
 	 stream_error/2, stream_error/3,
 	 stream_closed/2, stream_closed/3,
 	 wait_for_legacy_auth_method/2,
@@ -722,6 +722,8 @@ wait_for_session_response(#xmlstreamelement{element = #xmlel{name='iq'} = IQ}, S
             {stop, {bind, IQ}, State}
     end.
 
+wait_for_session_response(_Event, _From, State) ->
+    {next_state, wait_for_session_response, State}.
 
 
 %% ---------------------------

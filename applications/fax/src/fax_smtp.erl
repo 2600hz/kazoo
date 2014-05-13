@@ -241,10 +241,23 @@ check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From}=State) ->
     lager:debug("checking if ~s can send to ~p. doc is ~p",[From,wh_json:get_value(<<"name">>,FaxBoxDoc),FaxBoxDoc]),
     add_fax_document(FaxNumber, FaxBoxDoc, State).
 
-add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
+add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
+                                             ,from=From}=State) ->
     FaxBoxId = wh_json:get_value(<<"_id">>,FaxBoxDoc),
     AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+
+    FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>
+                                          ,<<"outbound">>
+                                          ,<<"email">>
+                                          ,<<"send_to">>],FaxBoxDoc,[]),
+    FaxBoxNotify = wh_json:set_value([<<"notifications">>
+                                     ,<<"outbound">>
+                                     ,<<"email">>
+                                     ,<<"send_to">>]
+                                    ,lists:usort([From | FaxBoxEmailNotify]), FaxBoxDoc),
+    Notify = wh_json:get_value([<<"notifications">>,<<"outbound">>],FaxBoxNotify),
+    
     Props = props:filter_undefined(
               [{<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
                ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_header">>, FaxBoxDoc)}
@@ -254,14 +267,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs}=State) ->
                ,{<<"to_name">>,FaxNumber}
                ,{<<"to_number">>,FaxNumber}
                ,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}
-               ,{<<"notifications">>
-                 ,wh_json:from_list([{<<"email">>
-                                      ,wh_json:from_list([{<<"send_to">>
-                                                           ,wh_json:get_value(<<"email_to">>, FaxBoxDoc)
-                                                          }
-                                                         ])
-                                     }
-                                    ])}
+               ,{<<"notifications">>, Notify }
                ,{<<"faxbox_id">>, FaxBoxId}
                ,{<<"folder">>, <<"outbox">>}
               ]),
