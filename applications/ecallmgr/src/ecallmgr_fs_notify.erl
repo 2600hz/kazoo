@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%% Notify-type requests, like MWI updates, received and processed here
 %%% @end
@@ -113,13 +113,13 @@ mwi_update(JObj, Props) ->
     'true' = wapi_notifications:mwi_update_v(JObj),
     Username = wh_json:get_value(<<"Notify-User">>, JObj),
     Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
-    case ecallmgr_registrar:lookup_contact(Realm, Username) of
+    case ecallmgr_registrar:lookup_original_contact(Realm, Username) of
         {'error', 'not_found'} ->
             lager:warning("failed to find contact for ~s@~s, dropping MWI update", [Username, Realm]);
         {'ok', Contact} ->
             Node = props:get_value('node', Props),
             send_mwi_update(JObj, Node, Username, Realm, Contact)
-    end. 
+    end.
 
 -spec register_overwrite(wh_json:object(), wh_proplist()) -> no_return().
 register_overwrite(JObj, Props) ->
@@ -129,35 +129,37 @@ register_overwrite(JObj, Props) ->
     SipUri = <<"sip:"
                ,(wh_json:get_binary_value(<<"Username">>, JObj))/binary
                ,"@"
-               ,(wh_json:get_binary_value(<<"Realm">>, JObj))/binary>>,
+               ,(wh_json:get_binary_value(<<"Realm">>, JObj))/binary
+             >>,
     PrevBody = wh_util:to_list(<<"Replaced-By:", NewContact/binary>>),
     NewBody = wh_util:to_list(<<"Overwrote:", PrevContact/binary>>),
     PrevContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
-                        ,{"contact", PrevContact}
-                        ,{"to-uri", SipUri}
-                        ,{"from-uri", SipUri}
-                        ,{"event-str", "registration-overwrite"}
-                        ,{"content-type", "text/plain"}
-                        ,{"content-length", wh_util:to_list(length(PrevBody))}
-                        ,{"body", PrevBody}
-                        ],
+                          ,{"contact", PrevContact}
+                          ,{"to-uri", SipUri}
+                          ,{"from-uri", SipUri}
+                          ,{"event-str", "registration-overwrite"}
+                          ,{"content-type", "text/plain"}
+                          ,{"content-length", wh_util:to_list(length(PrevBody))}
+                          ,{"body", PrevBody}
+                         ],
     NewContactHeaders = [{"profile", ?DEFAULT_FS_PROFILE}
-                        ,{"contact", NewContact}
-                        ,{"to-uri", SipUri}
-                        ,{"from-uri", SipUri}
-                        ,{"event-str", "registration-overwrite"}
-                        ,{"content-type", "text/plain"}
-                        ,{"content-length", wh_util:to_list(length(NewBody))}
-                        ,{"body", NewBody}
-                        ], 
+                         ,{"contact", NewContact}
+                         ,{"to-uri", SipUri}
+                         ,{"from-uri", SipUri}
+                         ,{"event-str", "registration-overwrite"}
+                         ,{"content-type", "text/plain"}
+                         ,{"content-length", wh_util:to_list(length(NewBody))}
+                         ,{"body", NewBody}
+                        ],
     _ = freeswitch:sendevent(Node, 'NOTIFY', PrevContactHeaders),
     _ = freeswitch:sendevent(Node, 'NOTIFY', NewContactHeaders),
     lager:debug("sent registration overwrite update of old '~s' new '~s' via '~s'"
-               ,[PrevContact
-                ,NewContact
-                ,Node
-                ]).
+                ,[PrevContact
+                  ,NewContact
+                  ,Node
+                 ]).
 
+-spec send_mwi_update(wh_json:object(), atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_mwi_update(JObj, Node, Username, Realm, Contact) ->
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     Body = io_lib:format(?MWI_BODY, [<<Username/binary, "@", Realm/binary>>
