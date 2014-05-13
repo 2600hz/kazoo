@@ -27,6 +27,7 @@
         ,check_registration/2
         ]).
 
+
 -include("fax_cloud.hrl").
 
 -define(NOTIFY_RESTRICT, [outbound_fax                         
@@ -381,12 +382,12 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                                           ,<<"outbound">>
                                           ,<<"email">>
                                           ,<<"send_to">>],FaxBoxDoc,[]),
-    FaxNoxNotify = wh_json:set_value([<<"notifications">>
+    FaxBoxNotify = wh_json:set_value([<<"notifications">>
                                      ,<<"outbound">>
                                      ,<<"email">>
                                      ,<<"send_to">>]
                                     ,lists:usort([OwnerId | FaxBoxEmailNotify]), FaxBoxDoc),
-    Notify = wh_json:get_value([<<"notifications">>,<<"outbound">>],FaxBoxDoc,[]),
+    Notify = wh_json:get_value([<<"notifications">>,<<"outbound">>],FaxBoxNotify),
     Props = props:filter_undefined([
              {<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
             ,{<<"fax_identity_name">>, wh_json:get_value(<<"caller_name">>, FaxBoxDoc)}     
@@ -417,13 +418,14 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
 -spec get_faxbox_doc(ne_binary()) -> {'ok', wh_json:object()}
                                    | {'error', any()}.
 get_faxbox_doc(PrinterId) ->
+    wh_cache:flush_local(?FAX_CACHE),
     case wh_cache:peek_local(?FAX_CACHE, {'faxbox', PrinterId }) of
         {'ok', Doc}=OK -> OK;
         {'error', _} ->
             ViewOptions = [{'key', PrinterId}, 'include_docs'],
             case couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>, ViewOptions) of
-                {'ok', JObj} ->
-                    Doc = wh_json:get_value(<<"doc">>, JObj),
+                {'ok', JObjs} ->
+                    [Doc] = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
                     wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, Doc),
                     {'ok', Doc};
                 {'error', _}=E -> E

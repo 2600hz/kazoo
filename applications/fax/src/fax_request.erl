@@ -258,17 +258,6 @@ start_receive_fax(#state{call=Call}=State) ->
 
 -spec maybe_update_fax_settings(state()) -> state().
 maybe_update_fax_settings(#state{call=Call
-                                ,owner_id='undefined'
-                                ,faxbox_id=FaxBoxId}=State) ->
-    AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, FaxBoxId) of
-        {'ok', JObj} ->
-            update_fax_settings(Call, JObj),
-            Notify = wh_json:get_value([<<"notifications">>,<<"inbound">>], JObj),
-            State#state{fax_notify=Notify};
-        {'error', _} -> maybe_update_fax_settings_from_account(State)
-    end;
-maybe_update_fax_settings(#state{call=Call
                                 ,owner_id=OwnerId
                                 ,faxbox_id='undefined'}=State) ->
     AccountDb = whapps_call:account_db(Call),
@@ -289,7 +278,18 @@ maybe_update_fax_settings(#state{call=Call
             end;
         {'error', _} ->
             maybe_update_fax_settings_from_account(State)
+    end;
+maybe_update_fax_settings(#state{call=Call
+                                ,faxbox_id=FaxBoxId}=State) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_doc(AccountDb, FaxBoxId) of
+        {'ok', JObj} ->
+            update_fax_settings(Call, JObj),
+            Notify = wh_json:get_value([<<"notifications">>,<<"inbound">>], JObj),
+            State#state{fax_notify=Notify};
+        {'error', _} -> maybe_update_fax_settings_from_account(State)
     end.
+
 
 -spec maybe_update_fax_settings_from_account(state()) -> any().
 maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
