@@ -149,7 +149,6 @@ fetch(Context, Options) ->
     case {Transactions, ProratedTransactions} of
         {{'ok', Trs}, {'ok', PTrs}} ->
             send_resp({'ok', Trs ++ PTrs}, Context);
-        {{'error', _}=E,  {'error', _}} -> send_resp(E, Context);
         {_, {'error', _}=E} -> send_resp(E, Context);
         {{'error', _}=E, _} -> send_resp(E, Context)
     end.
