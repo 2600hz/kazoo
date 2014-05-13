@@ -15,7 +15,7 @@
          ,inbound_cnam_enabled/1
          ,transfer_media_id/1
          ,ringback_media_id/1
-         ,account_id/1
+         ,account_id/1, set_account_id/2
          ,number/1
         ]).
 
@@ -55,6 +55,10 @@ ringback_media_id(Props) ->
 -spec account_id(wh_proplist()) -> api_binary().
 account_id(Props) ->
     props:get_value('account_id', Props).
+
+-spec set_account_id(wh_proplist(), ne_binary()) -> wh_proplist().
+set_account_id(Props, AccountId) ->
+    props:set_value('account_id', AccountId, Props).
 
 -spec number(wh_proplist()) -> api_binary().
 number(Props) ->
