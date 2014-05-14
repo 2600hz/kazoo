@@ -26,7 +26,8 @@
 -export([collapse_call_transactions/1]).
 -export([modb/1]).
 -export([rollup/1
-         ,rollup/2]).
+         ,rollup/2
+        ]).
 
 
 -include("whistle_transactions.hrl").
