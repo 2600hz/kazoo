@@ -55,12 +55,12 @@
                                               ]}
                               ,'federate'
                              ]}
-                   ,{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
+                   ,{'notifications', [{'restrict_to', ?FAX_NOTIFY_RESTRICT_TO}]}
                   ]).
 
--define(RESTRICT_TO, ['outbound_fax'
-                      ,'outbound_fax_error'
-                     ]).
+-define(FAX_NOTIFY_RESTRICT_TO, ['outbound_fax'
+                                 ,'outbound_fax_error'
+                                ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
                       ,[{<<"configuration">>, <<"*">>}]

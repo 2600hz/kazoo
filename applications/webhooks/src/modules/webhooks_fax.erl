@@ -44,10 +44,10 @@ format_outbound_fax_event(JObj) ->
                   ,<<"Event-Category">>
                   ,<<"Fax-Info">>
                  ],
-    FaxInfo = wh_util:clean_jobj(wh_json:get_value(<<"Fax-Info">>, JObj, wh_json:new())
+    FaxInfo = wh_json:normalize_jobj(wh_json:get_value(<<"Fax-Info">>, JObj, wh_json:new())
                          ,[]
                          ,[]),
     wh_json:merge_jobjs(FaxInfo
-                        ,wh_util:clean_jobj(JObj, RemoveKeys, [])).
+                        ,wh_json:normalize_jobj(JObj, RemoveKeys, [])).
 
 

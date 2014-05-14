@@ -93,33 +93,5 @@ clean_participant_event(JObj) ->
                  ,{<<"Event">>, <<"event">>, fun cleanup_binary/1}
                  ,{<<"Custom-Channel-Vars">>, <<"pin">>, fun(X) -> wh_json:get_value(<<"pin">>, X) end}
                 ],
-    clean_jobj(JObj, RemoveKeys, CleanKeys).
+    wh_json:normalize_jobj(JObj, RemoveKeys, CleanKeys).
 
-
-clean_jobj(JObj, RemoveKeys, []) ->
-    JObj1 = wh_json:delete_keys(RemoveKeys, JObj),
-    wh_json:foldl(
-        fun(K, V, Acc) ->
-            wh_json:set_value(cleanup_binary(K), V, Acc)
-        end
-        ,wh_json:new()
-        ,JObj1
-    );
-clean_jobj(JObj, RemoveKeys, [{OldKey, NewKey} | T]) ->
-    Value = wh_json:get_value(OldKey, JObj),
-    J1 = wh_json:set_value(NewKey, Value, JObj),
-    clean_jobj(wh_json:delete_key(OldKey, J1), RemoveKeys, T);
-clean_jobj(JObj, RemoveKeys, [{OldKey, NewKey, Fun} | T]) ->
-    case wh_json:get_value(OldKey, JObj) of
-        'undefined' ->
-            J1 = wh_json:set_value(NewKey, <<"undefined">>, JObj),
-            clean_jobj(wh_json:delete_key(OldKey, J1), RemoveKeys, T);
-        Value ->
-            J1 = wh_json:set_value(NewKey, Fun(Value), JObj),
-            clean_jobj(wh_json:delete_key(OldKey, J1), RemoveKeys, T)
-    end.
-
-cleanup_binary(Binary) ->
-    String = binary:bin_to_list(Binary),
-    Binary1 = binary:list_to_bin(string:to_lower(String)),
-    binary:replace(Binary1, <<"-">>, <<"_">>, [global]).
