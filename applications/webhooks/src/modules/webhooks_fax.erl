@@ -12,19 +12,19 @@
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, Props) ->
-    EventName = wh_json:get_value(<<"Event-Name">>, JObj, <<>>),
-    handle_event(EventName, JObj, Props).
+    EventName = wh_json:get_value(<<"Event-Name">>, JObj),
+    handle_event(JObj, Props, EventName).
 
--spec handle_event(binary(), wh_json:object(), wh_proplist()) -> 'ok'.
-handle_event(<<"outbound_fax">> =EventName, JObj, _Props) ->
+-spec handle_event(api_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
+handle_event(JObj, _Props, <<"outbound_fax">> =EventName) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Formated = format_outbound_fax_event(JObj),
     maybe_send_event(EventName, AccountId, Formated);
-handle_event(<<"outbound_fax_error">> =EventName, JObj, _Props) ->
+handle_event(JObj, _Props, <<"outbound_fax_error">> =EventName) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Formated = format_outbound_fax_event(JObj),
     maybe_send_event(EventName, AccountId, Formated);
-handle_event(Event, _JObj, _Props) ->
+handle_event(_JObj, _Props, Event) ->
     lager:error("received unhandle message ~p", [Event]).
 
 -spec maybe_send_event(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
