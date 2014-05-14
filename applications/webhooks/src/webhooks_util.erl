@@ -76,9 +76,9 @@ fire_hook(JObj, Hook, URI, 'post', Retries) ->
 
     fire_hook(JObj, Hook, URI, 'post', Retries
               ,ibrowse:send_req(URI
-                                ,[{"Content-Type", "application/json"}]
+                                ,[{"Content-Type", "application/x-www-form-urlencoded"}]
                                 ,'post'
-                                ,wh_json:encode(JObj)
+                                ,wh_json:to_querystring(JObj)
                                 ,[{'connect_timeout', 1000}]
                                 ,1000
                                )).
