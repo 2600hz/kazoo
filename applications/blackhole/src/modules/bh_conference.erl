@@ -95,3 +95,7 @@ clean_participant_event(JObj) ->
                 ],
     wh_json:normalize_jobj(JObj, RemoveKeys, CleanKeys).
 
+cleanup_binary(Binary) ->
+    String = binary:bin_to_list(Binary),
+    Binary1 = binary:list_to_bin(string:to_lower(String)),
+    binary:replace(Binary1, <<"-">>, <<"_">>, ['global']).
