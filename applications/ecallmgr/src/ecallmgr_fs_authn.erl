@@ -294,7 +294,7 @@ maybe_defered_error(Realm, Username, JObj) ->
                                      ,{'db', AccountDb, AccountId}
                                      ]}
                          ],
-  %          wh_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
+            wh_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             {'ok', JObj}
     end.
 
