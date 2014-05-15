@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -8,8 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(wapi_fax).
 
--export([
-          req/1, req_v/1
+-export([req/1, req_v/1
          ,query_status/1, query_status_v/1
          ,status/1, status_v/1
          ,bind_q/2, unbind_q/2
@@ -32,21 +31,18 @@
                         ]).
 -define(FAX_REQ_TYPES, [{<<"Call">>, fun wh_json:is_json_object/1}]).
 
-
-
 -define(FAX_QUERY_HEADERS, [<<"Job-ID">>]).
 -define(OPTIONAL_FAX_QUERY_HEADERS, []).
 -define(FAX_QUERY_VALUES, [{<<"Event-Category">>,<<"fax">>}
-                         ,{<<"Event-Name">>, <<"query_status">>}
-                        ]).
+                           ,{<<"Event-Name">>, <<"query_status">>}
+                          ]).
 -define(FAX_QUERY_TYPES, []).
-
 
 -define(FAX_STATUS_HEADERS, [<<"Job-ID">>]).
 -define(OPTIONAL_FAX_STATUS_HEADERS, [<<"Status">>, <<"FaxBox-ID">>, <<"Account-ID">>, <<"Fax-Info">>]).
 -define(FAX_STATUS_VALUES, [{<<"Event-Category">>,<<"fax">>}
-                         ,{<<"Event-Name">>, <<"status">>}
-                        ]).
+                            ,{<<"Event-Name">>, <<"status">>}
+                           ]).
 -define(FAX_STATUS_TYPES, []).
 
 -spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -64,7 +60,6 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
 
-
 -spec query_status(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 query_status(Prop) when is_list(Prop) ->
     case query_status_v(Prop) of
@@ -79,8 +74,6 @@ query_status_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?FAX_QUERY_HEADERS, ?FAX_QUERY_VALUES, ?FAX_QUERY_TYPES);
 query_status_v(JObj) ->
     query_status_v(wh_json:to_proplist(JObj)).
-
-
 
 -spec status(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 status(Prop) when is_list(Prop) ->
@@ -97,15 +90,11 @@ status_v(Prop) when is_list(Prop) ->
 status_v(JObj) ->
     status_v(wh_json:to_proplist(JObj)).
 
-
-
-
-
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
     FaxId = props:get_value('fax_id', Props, <<"*">>),
-    bind_q(Queue, AccountId, FaxId, props:get_value('restrict_to', Props)).    
+    bind_q(Queue, AccountId, FaxId, props:get_value('restrict_to', Props)).
 
 bind_q(Queue, AccountId, FaxId, 'undefined') ->
     amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
@@ -121,12 +110,11 @@ bind_q(Queue, AccountId, FaxId, ['req'|Restrict]) ->
     bind_q(Queue, AccountId, FaxId, Restrict);
 bind_q(_, _, _, []) -> 'ok'.
 
-
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
     FaxId = props:get_value('fax_id', Props, <<"*">>),
-    unbind_q(Queue, AccountId, FaxId, props:get_value('restrict_to', Props)).    
+    unbind_q(Queue, AccountId, FaxId, props:get_value('restrict_to', Props)).
 
 unbind_q(Queue, AccountId, FaxId, 'undefined') ->
     amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
@@ -141,7 +129,6 @@ unbind_q(Queue, AccountId, FaxId, ['req'|Restrict]) ->
     amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
     unbind_q(Queue, AccountId, FaxId, Restrict);
 unbind_q(_, _, _, []) -> 'ok'.
-
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -170,7 +157,6 @@ publish_query_status(Q, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?FAX_QUERY_VALUES, fun ?MODULE:query_status/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
-
 -spec publish_status(wh_json:object()) -> 'ok'.
 publish_status(API) ->
     publish_status(API, ?DEFAULT_CONTENT_TYPE).
@@ -193,4 +179,3 @@ fax_routing_key() ->
     <<"fax.req">>.
 status_routing_key(AccountId, FaxId) ->
     list_to_binary(["fax.status.", amqp_util:encode(AccountId), ".", amqp_util:encode(FaxId) ]).
-

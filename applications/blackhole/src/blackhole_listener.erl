@@ -27,6 +27,7 @@
 -include_lib("rabbitmq_server/include/rabbit_framing.hrl").
 
 -record(state, {}).
+-type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, []).
@@ -62,7 +63,7 @@ start_link() ->
 -spec handle_amqp_event(wh_json:object(), wh_proplist(), #'basic.deliver'{} | ne_binary()) -> any().
 handle_amqp_event(EventJObj, Props, #'basic.deliver'{routing_key=RoutingKey}) ->
     handle_amqp_event(EventJObj, Props, RoutingKey);
-handle_amqp_event(EventJObj, _Props, RoutingKey) when is_binary(RoutingKey) ->
+handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
     lager:debug("recv event ~p (~s)", [wh_util:get_event_type(EventJObj), RoutingKey]),
     blackhole_bindings:map(RoutingKey, EventJObj).
 
@@ -147,12 +148,15 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(?HOOK_EVT(ne_binary(), ne_binary(), wh_json:object()), state()) -> {'noreply', state()};
+                 (_, state()) -> {'noreply', state()}.
 handle_info(?HOOK_EVT(_AccountId, EventType, JObj), State) ->
-    spawn(?MODULE, 'handle_amqp_event', [JObj, 'ok', call_routing(EventType, JObj)]),
+    spawn(?MODULE, 'handle_amqp_event', [JObj, [], call_routing(EventType, JObj)]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 
+-spec call_routing(ne_binary(), wh_json:object()) -> ne_binary().
 call_routing(EventType, JObj) ->
     wapi_call:event_routing_key(EventType, wh_json:get_value(<<"Call-ID">>, JObj)).
 

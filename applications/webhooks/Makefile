@@ -19,20 +19,21 @@ DIRS =  . \
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+CB_MODULES = $(shell ls src/modules/*.erl | sed 's/src\/modules\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CB_MODULES)\]}/' \
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-ebin/$(PROJECT).app: src/*.erl
+ebin/$(PROJECT).app: src/*.erl src/*/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(CB_MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 

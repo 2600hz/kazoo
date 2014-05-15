@@ -4,14 +4,12 @@
 %%%
 %%% @end
 %%% @contributors
-%%% James Aimonetti
-%%% Peter Defebvre
-%%% Ben Wann
+%%%   Peter Defebvre
 %%%-------------------------------------------------------------------
 -module(bh_fax).
 
 -export([handle_event/2
-        ,add_amqp_binding/2, rm_amqp_binding/2
+         ,add_amqp_binding/2, rm_amqp_binding/2
         ]).
 
 -include("../blackhole.hrl").
@@ -29,28 +27,26 @@ is_account_event(Context, EventJObj) ->
     wh_json:get_first_defined([<<"Account-ID">>
                                ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
                               ], EventJObj
-                             ) =:=
-        bh_context:account_id(Context).
+                             )
+        =:= bh_context:account_id(Context).
 
 -spec event_name(wh_json:object()) -> ne_binary().
-event_name(JObj) ->
-    <<"fax.status">>.
+event_name(_JObj) -> <<"fax.status">>.
 
 -spec add_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 add_amqp_binding(<<"fax.status.", FaxId/binary>>, Context) ->
     blackhole_listener:add_binding('fax', [{'restrict_to', ['status']}
-                                          ,{'account_id', bh_context:account_id(Context)}
-                                          ,{'fax_id', FaxId}]);
-
+                                           ,{'account_id', bh_context:account_id(Context)}
+                                           ,{'fax_id', FaxId}
+                                          ]);
 add_amqp_binding(_Binding, _Context) ->
-    lager:debug("unmatched binding ~s", [_Binding]),
-    'ok'.
+    lager:debug("unmatched binding ~s", [_Binding]).
 
 -spec rm_amqp_binding(ne_binary(), bh_context:context()) -> 'ok'.
 rm_amqp_binding(<<"fax.status.", FaxId/binary>>, Context) ->
     blackhole_listener:remove_binding('fax', [{'restrict_to', ['status']}
-                                          ,{'account_id', bh_context:account_id(Context)}
-                                          ,{'fax_id', FaxId}]);
+                                              ,{'account_id', bh_context:account_id(Context)}
+                                              ,{'fax_id', FaxId}
+                                             ]);
 rm_amqp_binding(_Binding, _Context) ->
-    lager:debug("unmatched binding ~s", [_Binding]),
-    'ok'.
+    lager:debug("unmatched binding ~s", [_Binding]).
