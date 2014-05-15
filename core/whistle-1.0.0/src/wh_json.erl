@@ -765,35 +765,24 @@ normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % fr
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.
 
--spec normalize_jobj(object(), ne_binaries(), any()) -> object().
-normalize_jobj(JObj, RemoveKeys, []) ->
-    JObj1 = wh_json:delete_keys(RemoveKeys, JObj),
-    wh_json:foldl(
-        fun(K, V, Acc) ->
-            wh_json:set_value(cleanup_binary(K), V, Acc)
-        end
-        ,wh_json:new()
-        ,JObj1
-    );
-normalize_jobj(JObj, RemoveKeys, [{OldKey, NewKey} | T]) ->
-    Value = wh_json:get_value(OldKey, JObj),
-    J1 = wh_json:set_value(NewKey, Value, JObj),
-    normalize_jobj(wh_json:delete_key(OldKey, J1), RemoveKeys, T);
-normalize_jobj(JObj, RemoveKeys, [{OldKey, NewKey, Fun} | T]) ->
-    case wh_json:get_value(OldKey, JObj) of
-        'undefined' ->
-            J1 = wh_json:set_value(NewKey, <<"undefined">>, JObj),
-            normalize_jobj(wh_json:delete_key(OldKey, J1), RemoveKeys, T);
-        Value ->
-            J1 = wh_json:set_value(NewKey, Fun(Value), JObj),
-            normalize_jobj(wh_json:delete_key(OldKey, J1), RemoveKeys, T)
-    end.
+-type search_replace_format() :: {ne_binary(), ne_binary()} |
+                                  {ne_binary(), ne_binary(), fun((term()) -> term())}.
+-type search_replace_formatters() :: [search_replace_format(),...] | [].
+-spec normalize_jobj(object(), ne_binaries(), search_replace_formatters()) -> object().
+normalize_jobj(?JSON_WRAPPER(_)=JObj, RemoveKeys, SearchReplaceFormatters) ->
+    normalize_jobj(
+      lists:foldl(fun search_replace_format/2
+                  ,delete_keys(RemoveKeys, JObj)
+                  ,SearchReplaceFormatters
+                 )).
 
-cleanup_binary(Binary) ->
-    String = binary:bin_to_list(Binary),
-    Binary1 = binary:list_to_bin(string:to_lower(String)),
-    binary:replace(Binary1, <<"-">>, <<"_">>, ['global']).
-
+-spec search_replace_format(search_replace_format(), object()) -> object().
+search_replace_format({Old, New}, JObj) ->
+    V = get_value(Old, JObj),
+    set_value(New, V, delete_key(Old, JObj));
+search_replace_format({Old, New, Formatter}, JObj) when is_function(Formatter, 1) ->
+    V = get_value(Old, JObj),
+    set_value(New, Formatter(V), delete_key(Old, JObj)).
 
 %%--------------------------------------------------------------------
 %% @public
