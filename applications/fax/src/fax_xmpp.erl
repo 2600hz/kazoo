@@ -37,7 +37,8 @@
          connected = 'false' :: boolean(),
          session :: any(),
          jid :: any(),
-         full_jid :: any()
+         full_jid :: any(),
+         monitor :: reference() 
         }).
 
 -type state() :: #state{}.
@@ -85,8 +86,13 @@ handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=Re
     {'ok', #oauth_token{token=Token} = OAuthToken} = kazoo_oauth_util:token(App, RefreshToken),
     case connect(wh_util:to_list(JID), wh_util:to_list(Token)) of
         {ok, {MySession, MyJID}} ->
+            Monitor = erlang:monitor('process', MySession),
             gen_server:cast(self(), 'subscribe'),
-            {noreply, State#state{session=MySession, jid=MyJID, connected='true'}, ?POLLING_INTERVAL};
+            {noreply, State#state{monitor=Monitor
+                                 ,session=MySession
+                                 ,jid=MyJID
+                                 ,connected='true'}
+            , ?POLLING_INTERVAL};
         _ -> 
             {stop, <<"Error connecting to xmpp server">>, State}
     end;
@@ -117,21 +123,27 @@ handle_info(#received_packet{}=Packet, State) ->
 handle_info(timeout, State) ->    
     gen_server:cast(self(), 'subscribe'),
     {noreply, State, ?POLLING_INTERVAL};
-handle_info(_Info, State) -> 
+handle_info({'DOWN', MonitorRef, Type, Object, Info}=A, #state{monitor=MonitorRef}=State) -> 
+  lager:debug("xmpp session down ~p",[A]),
+  gen_server:cast(self(), 'start'),  
+  {noreply, State, ?POLLING_INTERVAL};
+handle_info(_Info, State) ->    
     lager:debug("xmpp handle_info ~p",[_Info]),
-  {noreply, State, ?POLLING_INTERVAL}.
-
+    {noreply, State, ?POLLING_INTERVAL}.
 
 terminate(_Reason, #state{jid=MyJID
                          ,session=MySession
+                         ,monitor=MonitorRef
                          ,connected='true'}) ->
+    
     {_, JFull, _JUser, _JDomain, _JResource} = MyJID,
     lager:debug("terminating xmpp session ~s",[JFull]),
-  disconnect(MySession),
-  'ok';
+    erlang:demonitor(MonitorRef, ['flush']),
+    disconnect(MySession),
+    'ok';
 terminate(_Reason, State) -> 
     lager:debug("terminate xmpp module with reason ~p",[_Reason]),
-  'ok'.
+    'ok'.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
