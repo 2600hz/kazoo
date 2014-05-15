@@ -176,14 +176,11 @@ handle_directory_lookup(Id, Props, Node) ->
             lookup_user(Node, Id, Method, Props);
         {<<"REQUEST_PARAMS">>, <<"reverse-auth-lookup">>} ->
             lookup_user(Node, Id, <<"reverse-lookup">>, Props);
-        {<<"REQUEST_PARAMS">>, 'undefined'} ->
-            lookup_user(Node, Id, <<"BLIND-REGISTER">>, Props);
         _Other ->
             {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
             _ = freeswitch:fetch_reply(Node, Id, 'directory', Resp),
             lager:debug("ignoring authn request from ~s for ~p", [Node, _Other])
     end.
-
 
 -spec lookup_user(atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->

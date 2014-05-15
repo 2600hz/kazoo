@@ -24,6 +24,7 @@
                     ,nonce
                     ,a3a8_kc
                     ,a3a8_sres
+                    ,primary_number
                    }).
 -type auth_user() :: #auth_user{}.
 

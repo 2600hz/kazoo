@@ -72,20 +72,17 @@ send_auth_resp(#auth_user{password=Password
                           ,suppress_unregister_notifications=SupressUnregister
                           ,register_overwrite_notify=RegisterOverwrite
                           ,nonce=Nonce
-                          ,a3a8_kc=KC
-                          ,a3a8_sres=SRES
                          }=AuthUser, JObj) ->
     Category = wh_json:get_value(<<"Event-Category">>, JObj),
     Resp = props:filter_undefined(
              [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
               ,{<<"Auth-Password">>, Password}
               ,{<<"Auth-Method">>, Method}
-              ,{<<"GSM-KC">>, KC}
-              ,{<<"GSM-SRES">>, SRES}
               ,{<<"Auth-Nonce">>, Nonce}
               ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
               ,{<<"Register-Overwrite-Notify">>, RegisterOverwrite}
               ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
+              ,{<<"Custom-Headers">>, create_headers(Method, AuthUser)}
               | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
              ]),
     lager:info("sending SIP authentication reply, with credentials for user ~s@~s",[Username,Realm]),
@@ -117,6 +114,35 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
+
+-spec create_headers(api_binary(), auth_user()) -> api_object().
+create_headers(?GSM_AUTH_METHOD, #auth_user{a3a8_kc=KC
+                                           ,a3a8_sres=SRES
+                                           ,primary_number=Number
+                                           ,realm=Realm
+                                           }=AuthUser) ->
+    Props = props:filter_undefined(
+              [{<<"P-GSM-Kc">>, KC}
+               ,{<<"P-GSM-SRes">>, SRES}
+               ,{<<"P-Asserted-Identity">>, get_asserted_identity(Number, Realm)}
+               ,{<<"P-Associated-URI">>, get_tel_uri(Number)}
+              ]),
+    case length(Props) of
+        0 -> 'undefined';
+        _ -> wh_json:from_list(props:filter_undefined(Props))
+    end;
+create_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
+
+
+-spec get_asserted_identity(api_binary(), api_binary()) -> api_binary().
+get_asserted_identity('undefined', _) -> 'undefined';
+get_asserted_identity(Number, Realm) ->
+    <<"<sip:", Number/binary, "@", Realm/binary, ">">>.
+
+-spec get_tel_uri(api_binary()) -> api_binary().
+get_tel_uri('undefined') -> 'undefined';
+get_tel_uri(Number) ->
+    <<"<tel:", Number/binary,">">>.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -294,9 +320,9 @@ maybe_auth_method(AuthUser, JObj, Req, ?GSM_AUTH_METHOD)->
                                 wh_json:get_value(<<"Auth-Nonce">>, Req,
                                                   wh_util:rand_hex_binary(16)))), 
     GsmKey = wh_json:get_value(<<"gsm_key">>, SipDoc),
-%    GsmSRes = wh_json:get_value(<<"gsm_sres">>, SipDoc),
-    %TODO - add custom headers
-    gsm_auth(AuthUser, Nonce, GsmKey); %, GsmSRes);
+    GsmNumber = wh_json:get_value(<<"gsm_primary_number">>, SipDoc),
+
+    gsm_auth(AuthUser#auth_user{primary_number=GsmNumber}, Nonce, GsmKey);
 maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)-> {'ok', AuthUser}.
 
 -spec gsm_auth(auth_user(), ne_binary(), api_binary()) -> {'ok', auth_user()}.
