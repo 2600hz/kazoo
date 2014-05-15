@@ -17,7 +17,7 @@
           ,hook_id :: ne_binary() | '_'
           ,retries = 3 :: hook_retries() | '_'
           ,account_id :: ne_binary() | '_' | '$1'
-          ,custom_data :: wh_json:object()
+          ,custom_data :: wh_json:object() | '_'
          }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook(),...] | [].
