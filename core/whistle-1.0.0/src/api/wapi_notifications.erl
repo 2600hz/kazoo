@@ -106,59 +106,59 @@
 
 %% Notify New Fax
 -define(FAX_INBOUND_HEADERS, [<<"From-User">>, <<"From-Realm">>
-                             ,<<"To-User">>, <<"To-Realm">>
-                             ,<<"Account-ID">>, <<"Fax-ID">>
+                              ,<<"To-User">>, <<"To-Realm">>
+                              ,<<"Account-ID">>, <<"Fax-ID">>
                              ]).
 -define(OPTIONAL_FAX_INBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                      ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                      ,<<"Call-ID">>, <<"Fax-Info">>
-                                      ,<<"Owner-ID">>, <<"FaxBox-ID">>
-                                      ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
+                                       ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                       ,<<"Call-ID">>, <<"Fax-Info">>
+                                       ,<<"Owner-ID">>, <<"FaxBox-ID">>
+                                       ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
                                       ]).
 -define(FAX_INBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                            ,{<<"Event-Name">>, <<"inbound_fax">>}
+                             ,{<<"Event-Name">>, <<"inbound_fax">>}
                             ]).
 -define(FAX_INBOUND_TYPES, []).
 
 -define(FAX_INBOUND_ERROR_HEADERS, [<<"From-User">>, <<"From-Realm">>
-                                   ,<<"To-User">>, <<"To-Realm">>
-                                   ,<<"Account-ID">>
+                                    ,<<"To-User">>, <<"To-Realm">>
+                                    ,<<"Account-ID">>
                                    ]).
 -define(OPTIONAL_FAX_INBOUND_ERROR_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                            ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                            ,<<"Call-ID">>, <<"Fax-Info">>, <<"Fax-ID">>
-                                            ,<<"Owner-ID">>, <<"FaxBox-ID">>
-                                            ,<<"Fax-Notifications">>, <<"Fax-Error">>
-                                            ,<<"Fax-Timestamp">>
+                                             ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                             ,<<"Call-ID">>, <<"Fax-Info">>, <<"Fax-ID">>
+                                             ,<<"Owner-ID">>, <<"FaxBox-ID">>
+                                             ,<<"Fax-Notifications">>, <<"Fax-Error">>
+                                             ,<<"Fax-Timestamp">>
                                             ]).
 -define(FAX_INBOUND_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                  ,{<<"Event-Name">>, <<"inbound_fax_error">>}
+                                   ,{<<"Event-Name">>, <<"inbound_fax_error">>}
                                   ]).
 -define(FAX_INBOUND_ERROR_TYPES, []).
 
 -define(FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
-                              ,<<"Account-ID">>, <<"Fax-JobId">>
+                               ,<<"Account-ID">>, <<"Fax-JobId">>
                               ]).
 -define(OPTIONAL_FAX_OUTBOUND_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
-                                       ,<<"Call-ID">>, <<"Fax-Info">>
-                                       ,<<"Owner-ID">>, <<"FaxBox-ID">>
-                                       ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
+                                        ,<<"Call-ID">>, <<"Fax-Info">>
+                                        ,<<"Owner-ID">>, <<"FaxBox-ID">>
+                                        ,<<"Fax-Notifications">>, <<"Fax-Timestamp">>
                                        ]).
 -define(FAX_OUTBOUND_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, <<"outbound_fax">>}
+                              ,{<<"Event-Name">>, <<"outbound_fax">>}
                              ]).
 -define(FAX_OUTBOUND_TYPES, []).
 
 -define(FAX_OUTBOUND_ERROR_HEADERS, [<<"Fax-JobId">>]).
 -define(OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS, [<<"Caller-ID-Name">>, <<"Callee-ID-Name">>
-                                             ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
-                                             ,<<"Call-ID">>, <<"Fax-Info">>
-                                             ,<<"Owner-ID">>, <<"FaxBox-ID">>
-                                             ,<<"Fax-Notifications">>, <<"Fax-Error">>
-                                             ,<<"Account-ID">>, <<"Fax-Timestamp">>
+                                              ,<<"Caller-ID-Number">>, <<"Callee-ID-Number">>
+                                              ,<<"Call-ID">>, <<"Fax-Info">>
+                                              ,<<"Owner-ID">>, <<"FaxBox-ID">>
+                                              ,<<"Fax-Notifications">>, <<"Fax-Error">>
+                                              ,<<"Account-ID">>, <<"Fax-Timestamp">>
                                              ]).
 -define(FAX_OUTBOUND_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                   ,{<<"Event-Name">>, <<"outbound_fax_error">>}
+                                    ,{<<"Event-Name">>, <<"outbound_fax_error">>}
                                    ]).
 -define(FAX_OUTBOUND_ERROR_TYPES, []).
 
