@@ -21,8 +21,14 @@
                     ,register_overwrite_notify
                     ,account_realm
                     ,account_name
+                    ,nonce
+                    ,a3a8_kc
+                    ,a3a8_sres
                    }).
 -type auth_user() :: #auth_user{}.
+
+-define(GSM_AUTH_METHOD, <<"gsm">>).
+-define(ANY_AUTH_METHOD, _ ).
 
 -define(REG_HRL, 'true').
 -endif.

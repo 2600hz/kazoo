@@ -723,8 +723,8 @@ maybe_query_authn(#registration{username=Username
                              ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CCVs)
                              ,authorizing_type = wh_json:get_value(<<"Authorizing-Type">>, CCVs)
                              ,owner_id = wh_json:get_value(<<"Owner-ID">>, CCVs)
-                             ,account_realm = wh_json:get_value(<<"Account-Realm">>, JObj)
-                             ,account_name = wh_json:get_value(<<"Account-Name">>, JObj)
+                             ,account_realm = wh_json:get_value(<<"Account-Realm">>, CCVs)
+                             ,account_name = wh_json:get_value(<<"Account-Name">>, CCVs)
                              ,suppress_unregister = wh_json:is_true(<<"Suppress-Unregister-Notifications">>, JObj)
                              ,register_overwrite_notify = wh_json:is_true(<<"Register-Overwrite-Notify">>, JObj)
                             }

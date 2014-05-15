@@ -176,11 +176,14 @@ handle_directory_lookup(Id, Props, Node) ->
             lookup_user(Node, Id, Method, Props);
         {<<"REQUEST_PARAMS">>, <<"reverse-auth-lookup">>} ->
             lookup_user(Node, Id, <<"reverse-lookup">>, Props);
+        {<<"REQUEST_PARAMS">>, 'undefined'} ->
+            lookup_user(Node, Id, <<"BLIND-REGISTER">>, Props);
         _Other ->
             {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
             _ = freeswitch:fetch_reply(Node, Id, 'directory', Resp),
             lager:debug("ignoring authn request from ~s for ~p", [Node, _Other])
     end.
+
 
 -spec lookup_user(atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
@@ -258,6 +261,11 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
            ,{<<"Method">>, Method}
            ,{<<"Auth-User">>, Username}
            ,{<<"Auth-Realm">>, Realm}
+           ,{<<"Auth-Nonce">>, props:get_value(<<"sip_auth_nonce">>, Props)}
+           ,{<<"Auth-Response">>, props:get_value(<<"sip_auth_response">>, Props)}
+           ,{<<"PHY-Info">>, props:get_value(<<"P-PHY-Info">>, Props)}
+           ,{<<"Access-Network-Info">>, props:get_value(<<"P-Access-Network-Info">>, Props)}
+           ,{<<"User-Agent">>, props:get_value(<<"sip_user_agent">>, Props)}
            ,{<<"Media-Server">>, wh_util:to_binary(Node)}
            ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -289,7 +297,7 @@ maybe_defered_error(Realm, Username, JObj) ->
                                      ,{'db', AccountDb, AccountId}
                                      ]}
                          ],
-            wh_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
+  %          wh_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             {'ok', JObj}
     end.
 

@@ -70,6 +70,17 @@ authn_resp_xml(JObj) ->
             {'ok', xmerl:export([SectionEl], 'fs_xml')}
     end.
 
+authn_resp_xml(<<"gsm">>, JObj) ->
+    PassEl1 = param_el(<<"password">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
+    PassEl2 = param_el(<<"nonce">>, wh_json:get_value(<<"Auth-Nonce">>, JObj)),
+    ParamsEl = params_el([PassEl1, PassEl2]),
+    
+    VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj) ],
+    VariablesEl = variables_el(VariableEls),
+    
+    HeaderEls = [header_el(K, V) || {K, V} <- get_custom_headers(JObj) ],
+    HeadersEl = headers_el(HeaderEls),       
+    {'ok', [VariablesEl, ParamsEl, HeadersEl]};
 authn_resp_xml(<<"password">>, JObj) ->
     PassEl = param_el(<<"password">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
     ParamsEl = params_el([PassEl]),
@@ -471,6 +482,13 @@ get_channel_params(JObj) ->
                         [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
                 end, CV1, Custom).
 
+-spec get_custom_headers(wh_json:object()) -> wh_json:json_proplist().
+get_custom_headers(JObj) ->
+    Custom = wh_json:to_proplist(wh_json:get_value(<<"Custom-Headers">>, JObj, wh_json:new())),
+    lists:foldl(fun({K,V}, CV) ->
+                        [{K, V} | CV]
+                end, [], Custom).
+
 -spec arrange_acl_node({ne_binary(), wh_json:object()}, orddict:orddict()) -> orddict:orddict().
 arrange_acl_node({_, JObj}, Dict) ->
     AclList = wh_json:get_value(<<"network-list-name">>, JObj),
@@ -575,7 +593,7 @@ domain_el(Name, Children) ->
 user_el(Id, Children) ->
     #xmlElement{name='user'
                 ,attributes=[xml_attrib('id', Id)
-                             ,xml_attrib('cacheable', 3600000000)
+%                             ,xml_attrib('cacheable', 3600000000)
                             ]
                 ,content=Children
                }.
@@ -666,6 +684,20 @@ variables_el(Children) ->
 -spec variable_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 variable_el(Name, Value) ->
     #xmlElement{name='variable'
+                ,attributes=[xml_attrib('name', Name)
+                             ,xml_attrib('value', Value)
+                            ]
+               }.
+
+-spec headers_el(xml_els()) -> xml_el().
+headers_el(Children) ->
+    #xmlElement{name='registration-headers'
+                ,content=Children
+               }.
+
+-spec header_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
+header_el(Name, Value) ->
+    #xmlElement{name='header'
                 ,attributes=[xml_attrib('name', Name)
                              ,xml_attrib('value', Value)
                             ]

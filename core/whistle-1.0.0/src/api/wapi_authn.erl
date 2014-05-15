@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(wapi_authn).
 
@@ -33,7 +34,10 @@
                             ,<<"Auth-User">>, <<"Auth-Realm">>
                            ]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>
-                                         ,<<"Orig-IP">>, <<"Call-ID">>
+                                     ,<<"Orig-IP">>, <<"Call-ID">>
+                                     ,<<"Auth-Nonce">>, <<"Auth-Response">>
+                                     ,<<"User-Agent">>
+                                     ,<<"Access-Network-Info">>, <<"PHY-Info">>
                                     ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
@@ -47,21 +51,24 @@
 
 %% Authentication Responses
 -define(AUTHN_RESP_HEADERS, [<<"Auth-Method">>, <<"Auth-Password">>]).
--define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>
-                                      ,<<"Auth-Username">>
-                                      ,<<"Account-Realm">>
-                                      ,<<"Account-Name">>
+-define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-Headers">>
+                                      ,<<"Auth-Username">>, <<"Auth-Nonce">>
+                                      ,<<"Access-Group">>, <<"Tenant-ID">>
                                       ,<<"Suppress-Unregister-Notifications">>
                                       ,<<"Register-Overwrite-Notify">>
                                      ]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"authn_resp">>}
-                           ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
+                           ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>
+                                                ,<<"a1-hash">>, <<"error">>
+                                                ,<<"gsm">>, <<"nonce">>, <<"a3a8">>
+                                                ]}
                          ]).
 -define(AUTHN_RESP_TYPES, [{<<"Auth-Password">>, fun is_binary/1}
                            ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                            ,{<<"Access-Group">>, fun is_binary/1}
                            ,{<<"Tenant-ID">>, fun is_binary/1}
+                           ,{<<"Custom-Headers">>, fun wh_json:is_json_object/1}
                           ]).
 
 %% Authentication Failure Response
