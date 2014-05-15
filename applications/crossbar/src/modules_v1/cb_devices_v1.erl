@@ -526,7 +526,9 @@ is_ip_sip_auth_unique(IP, DeviceId) ->
 maybe_aggregate_device(DeviceId, Context) ->
     maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
 maybe_aggregate_device(DeviceId, Context, 'success') ->
-    case wh_util:is_true(cb_context:fetch(Context, 'aggregate_device')) of
+    case wh_util:is_true(cb_context:fetch(Context, 'aggregate_device'))
+        andalso whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_aggregates">>, <<"true">>)
+    of
         'false' ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->
