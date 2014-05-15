@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -29,42 +29,38 @@
 -include("fax.hrl").
 
 
--define(NOTIFY_RESTRICT, [outbound_fax                         
-                         ,outbound_fax_error
+-define(NOTIFY_RESTRICT, ['outbound_fax'
+                          ,'outbound_fax_error'
                          ]).
 
 -define(FAXBOX_RESTRICT, [{'action', <<"created">>}
-                         ,{'db', <<"faxes">>}
-                         ,{'doc_type', <<"faxbox">>}
+                          ,{'db', <<"faxes">>}
+                          ,{'doc_type', <<"faxbox">>}
                          ]).
 
-
 -define(RESPONDERS, [{{'fax_cloud', 'handle_job_notify'}
-                     ,[{<<"notification">>, <<"outbound_fax">>}]
+                      ,[{<<"notification">>, <<"outbound_fax">>}]
                      }
-                    ,{{'fax_cloud', 'handle_job_notify'}
-                     ,[{<<"notification">>, <<"outbound_fax_error">>}]
-                     }
-                    ,{{'fax_cloud', 'handle_push'}
-                     ,[{<<"xmpp_event">>, <<"push">>}]
-                     }
-                    ,{{'fax_cloud', 'handle_faxbox_created'}
-                     ,[{<<"configuration">>, <<"doc_created">>}]
-                     }
-                    ,{{?MODULE, 'new_request'}
-                      ,[{<<"dialplan">>, <<"fax_req">>}]
-                     }
+                     ,{{'fax_cloud', 'handle_job_notify'}
+                       ,[{<<"notification">>, <<"outbound_fax_error">>}]
+                      }
+                     ,{{'fax_cloud', 'handle_push'}
+                       ,[{<<"xmpp_event">>, <<"push">>}]
+                      }
+                     ,{{'fax_cloud', 'handle_faxbox_created'}
+                       ,[{<<"configuration">>, <<"doc_created">>}]
+                      }
+                     ,{{?MODULE, 'new_request'}
+                       ,[{<<"dialplan">>, <<"fax_req">>}]
+                      }
                     ]).
 
--define(BINDINGS, [{'notifications', [{restrict_to, ?NOTIFY_RESTRICT}]}
-                  ,{'xmpp',[{restrict_to,['push']}]}
-                  ,{'conf',?FAXBOX_RESTRICT}
-                  ,{'fax', [{'restrict_to', ['req']}]}
-                  ,{self, []}
+-define(BINDINGS, [{'notifications', [{'restrict_to', ?NOTIFY_RESTRICT}]}
+                   ,{'xmpp',[{'restrict_to',['push']}]}
+                   ,{'conf',?FAXBOX_RESTRICT}
+                   ,{'fax', [{'restrict_to', ['req']}]}
+                   ,{'self', []}
                   ]).
-
-
-
 -define(QUEUE_NAME, <<"fax_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).

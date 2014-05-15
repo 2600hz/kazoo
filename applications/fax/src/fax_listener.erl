@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -29,8 +29,8 @@
 
 -include("fax.hrl").
 
--define(BINDINGS, [{'xmpp',[{restrict_to,['start']}]}
-                  ,{self, []}
+-define(BINDINGS, [{'xmpp', [{'restrict_to', ['start']}]}
+                   ,{'self', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_printer_start'}
                       ,[{<<"xmpp_event">>, <<"start">>}]
@@ -114,7 +114,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
-    spawn(?MODULE, start_all_printers, []),
+    spawn(?MODULE, 'start_all_printers', []),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -169,20 +169,24 @@ code_change(_OldVsn, State, _Extra) ->
 -spec start_all_printers() -> any().
 start_all_printers() ->
     {'ok', Results} = couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>),
-    [ send_start_printer(Id, Jid) 
-       || {Id, Jid, <<"claimed">>} 
-            <- [ { wh_json:get_value(<<"id">>, Result),
-                   wh_json:get_value([<<"value">>,<<"xmpp_jid">>], Result),
-                   wh_json:get_value([<<"value">>,<<"state">>], Result)} || Result <- Results] ].
+    [ send_start_printer(Id, Jid)
+       || {Id, Jid, <<"claimed">>}
+              <- [{wh_json:get_value(<<"id">>, Result)
+                   ,wh_json:get_value([<<"value">>,<<"xmpp_jid">>], Result)
+                   ,wh_json:get_value([<<"value">>,<<"state">>], Result)
+                  }
+                  || Result <- Results
+                 ]
+    ].
 
 -spec send_start_printer(ne_binary(), ne_binary()) -> any().
 send_start_printer(PrinterId, JID) ->
     Payload = props:filter_undefined(
                 [{<<"Event-Name">>, <<"start">>}
-                ,{<<"Application-Name">>, <<"fax">>}
-                ,{<<"Application-Event">>, <<"init">>}
-                ,{<<"Application-Data">>, PrinterId}
-                ,{<<"JID">>, JID}
-                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 ,{<<"Application-Name">>, <<"fax">>}
+                 ,{<<"Application-Event">>, <<"init">>}
+                 ,{<<"Application-Data">>, PrinterId}
+                 ,{<<"JID">>, JID}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
-    wapi_xmpp:publish_event(Payload).   
+    wapi_xmpp:publish_event(Payload).
