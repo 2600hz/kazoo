@@ -572,12 +572,23 @@ maybe_create_endpoint(<<"sip">>, Endpoint, Properties, Call) ->
     create_sip_endpoint(Endpoint, Properties, Call);
 maybe_create_endpoint(<<"mobile">>, Endpoint, Properties, Call) ->
     lager:info("building a mobile endpoint"),
-    create_mobile_endpoint(Endpoint, Properties, Call);
+    maybe_create_mobile_endpoint(Endpoint, Properties, Call);
 maybe_create_endpoint(<<"skype">>, Endpoint, Properties, Call) ->
     lager:info("building a Skype endpoint"),
     create_skype_endpoint(Endpoint, Properties, Call);
 maybe_create_endpoint(UnknownType, _, _, _) ->
     {'error', <<"unknown endpoint type ", (wh_util:to_binary(UnknownType))/binary>>}.
+
+-spec maybe_create_mobile_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                   wh_json:object() | {'error', ne_binary()}.
+maybe_create_mobile_endpoint(Endpoint, Properties, Call) ->
+    case whapps_config:get_is_true(?CF_MOBILE_CONFIG_CAT, <<"create_sip_endpoint">>, 'false') of
+        'true' ->
+            lager:info("building mobile as SIP endpoint"),
+            create_sip_endpoint(Endpoint, Properties, Call);
+        'false' ->
+            create_mobile_endpoint(Endpoint, Properties, Call)
+    end.
 
 -spec get_endpoint_type(wh_json:object()) -> ne_binary().
 get_endpoint_type(Endpoint) ->
