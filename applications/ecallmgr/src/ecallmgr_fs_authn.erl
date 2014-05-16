@@ -260,8 +260,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
            ,{<<"Auth-Realm">>, Realm}
            ,{<<"Auth-Nonce">>, props:get_value(<<"sip_auth_nonce">>, Props)}
            ,{<<"Auth-Response">>, props:get_value(<<"sip_auth_response">>, Props)}
-           ,{<<"PHY-Info">>, props:get_value(<<"P-PHY-Info">>, Props)}
-           ,{<<"Access-Network-Info">>, props:get_value(<<"P-Access-Network-Info">>, Props)}
+           ,{<<"Custom-Headers">>, create_custom_headers(Props)}
            ,{<<"User-Agent">>, props:get_value(<<"sip_user_agent">>, Props)}
            ,{<<"Media-Server">>, wh_util:to_binary(Node)}
            ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
@@ -276,6 +275,10 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
         {'error', _}=E -> E;
         {'ok', JObj} -> maybe_defered_error(Realm, Username, JObj)
     end.
+
+-spec create_custom_headers(wh_proplist()) -> wh_json:object().
+create_custom_headers(Props) ->
+    wh_json:from_list([ {K , V} || {<<"P-", _K1/binary>>=K , V} <- Props]).
 
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
 %%   timeout (at the moment) but when we seek auth for INVITEs we need

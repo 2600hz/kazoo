@@ -37,7 +37,7 @@
                                      ,<<"Orig-IP">>, <<"Call-ID">>
                                      ,<<"Auth-Nonce">>, <<"Auth-Response">>
                                      ,<<"User-Agent">>
-                                     ,<<"Access-Network-Info">>, <<"PHY-Info">>
+                                     ,<<"Custom-Headers">>
                                     ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
@@ -47,6 +47,7 @@
                           ,{<<"Orig-IP">>, fun is_binary/1}
                           ,{<<"Auth-User">>, fun is_binary/1}
                           ,{<<"Auth-Realm">>, fun is_binary/1}
+                          ,{<<"Custom-Headers">>, fun wh_json:is_json_object/1}
                          ]).
 
 %% Authentication Responses
