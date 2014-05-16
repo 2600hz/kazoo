@@ -11,6 +11,7 @@
 
 -export([start_link/0
          ,handle_metaflow/2
+         ,handle_channel_create/2
         ]).
 
 -export([init/1
@@ -27,10 +28,15 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'dialplan', ['metaflow']}]).
+-define(BINDINGS, [{'dialplan', ['metaflow']}
+                   ,{'call', [{'restrict_to', ['CHANNEL_CREATE']}]}
+                  ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_metaflow'}
                       ,[{<<"call">>, <<"command">>}]
                      }
+                     ,{{?MODULE, 'handle_channel_create'}
+                       ,[{<<"call_event">>, <<"CHANNEL_CREATE">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<"konami_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -76,6 +82,48 @@ handle_metaflow(JObj, Props) ->
             lager:debug("failed to run FSM: ~s: ~p", [_E, _R]),
             wh_util:log_stacktrace(ST)
     end.
+
+handle_channel_create(JObj, _Props) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    maybe_start_metaflows(wh_json:get_value(<<"Account-ID">>, CCVs)
+                          ,wh_json:get_value(<<"Authorizing-Type">>, CCVs)
+                          ,wh_json:get_value(<<"Authorizing-ID">>, CCVs)
+                          ,wh_json:get_value(<<"Owner-ID">>, CCVs)
+                          ,wh_json:get_value(<<"Call-ID">>, JObj)
+                         ).
+
+maybe_start_metaflows('undefined', _AuthorizingType, _AuthorizingId, _OwnerId, _CallId) ->
+    lager:debug("no account id for ~s(~s) owned by ~s", [_AuthorizingId, _AuthorizingType, _OwnerId]);
+maybe_start_metaflows(AccountId, <<"device">>, DeviceId, OwnerId, CallId) ->
+    maybe_start_device_metaflows(AccountId, DeviceId, CallId),
+    maybe_start_user_metaflows(AccountId, OwnerId, CallId);
+maybe_start_metaflows(AccountId, 'undefined', DeviceId, OwnerId, CallId) ->
+    maybe_start_device_metaflows(AccountId, DeviceId, CallId),
+    maybe_start_user_metaflows(AccountId, OwnerId, CallId);
+maybe_start_metaflows(_AccountId, _AuthorizingType, _AuthorizingId, _OwnerId, _CallId) ->
+    lager:debug("unhandled channel for account ~s: ~s(~s) owned by ~s"
+                ,[_AccountId, _AuthorizingId, _AuthorizingType, _OwnerId]).
+
+maybe_start_device_metaflows(_AccountId, 'undefined', _CallId) -> 'ok';
+maybe_start_device_metaflows(AccountId, DeviceId, CallId) ->
+    {'ok', Endpoint} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+                                                ,DeviceId
+                                               ),
+    maybe_start_metaflows(AccountId, CallId, wh_json:get_value(<<"metaflows">>, Endpoint)).
+
+maybe_start_user_metaflows(_AccountId, 'undefined', _CallId) -> 'ok';
+maybe_start_user_metaflows(AccountId, UserId, CallId) ->
+    {'ok', User} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
+                                            ,UserId
+                                           ),
+    maybe_start_metaflows(AccountId, CallId, wh_json:get_value(<<"metaflows">>, User)).
+
+maybe_start_metaflows(_AccountId, _CallId, 'undefined') -> 'ok';
+maybe_start_metaflows(AccountId, CallId, Metaflows) ->
+    lager:debug("starting ~p", [Metaflows]).
 
 %%%===================================================================
 %%% gen_server callbacks
