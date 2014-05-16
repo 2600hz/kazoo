@@ -279,8 +279,9 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
 -spec create_custom_headers(wh_proplist()) -> wh_json:object().
 create_custom_headers(Props) ->
     wh_json:from_list(
-      props:filter(fun({<<"P-",_/binary>>,_})-> 'true';
-                      ({<<"X-",_/binary>>,_})-> 'true'; 
+      props:filter(fun({<<"P-", _/binary>>,_})-> 'true';
+                      ({<<"X-", _/binary>>,_})-> 'true';
+                      ({<<"sip_h_", _/binary>>,_})-> 'true';
                       ({_,_})-> 'false'
                     end, Props)
                      ).
