@@ -155,8 +155,8 @@ put(Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
     Ctx = maybe_register_cloud_printer(Context),
-    Ctx2 = crossbar_doc:save(Ctx),
-    _ = crossbar_doc:save(
+    Ctx2 = crossbar_doc:save(Ctx),    
+    _ = crossbar_doc:ensure_saved(
           cb_context:set_doc(
             cb_context:set_account_db(Ctx2, ?WH_FAXES),
             wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
@@ -244,9 +244,7 @@ generate_email_address() ->
 %%--------------------------------------------------------------------
 -spec faxbox_listing(cb_context:context()) -> cb_context:context().
 faxbox_listing(Context) ->
-    ViewOptions = [{'key', cb_context:account_id(Context)}
-                   ,'include_docs'
-                  ],
+    ViewOptions = ['include_docs'],
     crossbar_doc:load_view(<<"faxbox/crossbar_listing">>
                            ,ViewOptions
                            ,Context
