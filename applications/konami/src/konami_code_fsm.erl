@@ -160,12 +160,14 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
             lager:debug("no handler for '~s', unarming", [Collected]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'number', N} ->
-            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [N, Call]),
-            lager:debug("number exe in ~p: ~p", [_Pid, N]),
+            Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], whapps_call:call_id(Call)}], N),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+            lager:debug("number exe in ~p: ~p", [_Pid, Metaflow]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'pattern', P} ->
-            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [P, Call]),
-            lager:debug("pattern exe in ~p: ~p", [_Pid, P]),
+            Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], whapps_call:call_id(Call)}], P),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+            lager:debug("pattern exe in ~p: ~p", [_Pid, Metaflow]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
     end;
 armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
@@ -182,12 +184,14 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
             lager:debug("no handler for '~s', unarming", [Collected]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'number', N} ->
-            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [N, Call]),
-            lager:debug("number exe in ~p: ~p", [_Pid, N]),
+            Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], whapps_call:other_leg_call_id(Call)}], N),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+            lager:debug("number exe in ~p: ~p", [_Pid, Metaflow]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'pattern', P} ->
-            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [P, Call]),
-            lager:debug("pattern exe in ~p: ~p", [_Pid, P]),
+            Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], whapps_call:other_leg_call_id(Call)}], P),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+            lager:debug("pattern exe in ~p: ~p", [_Pid, Metaflow]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
     end;
 
