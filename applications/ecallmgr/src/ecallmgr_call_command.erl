@@ -580,34 +580,6 @@ call_pickup_via_amqp(Node, UUID, JObj, TargetCallId, Resp) ->
     lager:debug("call ~s is on ~s", [TargetCallId, TargetNode]),
     call_pickup_maybe_move_remote(Node, UUID, JObj, TargetCallId, wh_util:to_atom(TargetNode, 'true'), Resp).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Eavesdrop command helpers
-%% @end
-%%--------------------------------------------------------------------
--spec eavesdrop(atom(), ne_binary(), wh_json:object()) ->
-                         {ne_binary(), ne_binary()} |
-                         {'error', ne_binary()}.
-eavesdrop(Node, UUID, JObj) ->
-    Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-
-    case ecallmgr_fs_channel:fetch(Target, 'record') of
-        {'ok', #channel{node=Node
-                        ,answered=IsAnswered
-                       }} ->
-            lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
-            maybe_answer(Node, UUID, IsAnswered),
-            get_eavesdrop_app(Node, UUID, JObj, Target);
-        {'ok', #channel{node=OtherNode}} ->
-            lager:debug("target ~s is on other node (~s), not ~s", [Target, OtherNode, Node]),
-            eavesdrop_maybe_move(Node, UUID, JObj, Target, OtherNode);
-        {'error', 'not_found'} ->
-            lager:debug("failed to find target callid ~s", [Target]),
-            {'error', <<"failed to find target callid ", Target/binary>>}
-    end.
-
-
 -spec maybe_answer(atom(), ne_binary(), boolean()) -> 'ok'.
 maybe_answer(_Node, _UUID, 'true') -> 'ok';
 maybe_answer(Node, UUID, 'false') ->
@@ -675,44 +647,6 @@ call_pickup_usurpers(Node, UUID) ->
                         ,fun(C) -> wapi_call:publish_usurp_publisher(UUID, C) end
                        ).
 
--spec eavesdrop_maybe_move(atom(), ne_binary(), wh_json:object(), ne_binary(), atom()) ->
-                                    {ne_binary(), ne_binary()}.
-eavesdrop_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
-    case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of
-        'true' ->
-            lager:debug("target ~s is on ~s, not ~s...moving", [Target, OtherNode, Node]),
-            'true' = ecallmgr_channel_move:move(Target, OtherNode, Node),
-            get_eavesdrop_app(Node, UUID, JObj, Target);
-        'false' ->
-            lager:debug("target ~s is on ~s, not ~s, need to redirect", [Target, OtherNode, Node]),
-            lager:debug("gotta usurp some fools first"),
-
-            ControlUsurp = [{<<"Call-ID">>, UUID}
-                            ,{<<"Reason">>, <<"redirect">>}
-                            ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                           ],
-            PublishUsurp = [{<<"Call-ID">>, UUID}
-                            ,{<<"Reference">>, wh_util:rand_hex_binary(4)}
-                            ,{<<"Media-Node">>, wh_util:to_binary(Node)}
-                            ,{<<"Reason">>, <<"redirect">>}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                           ],
-
-            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                                ,ControlUsurp
-                                ,fun(C) -> wapi_call:publish_usurp_control(UUID, C) end
-                               ),
-            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                                ,PublishUsurp
-                                ,fun(C) -> wapi_call:publish_usurp_publisher(UUID, C) end
-                               ),
-
-            lager:debug("now issue the redirect to ~s", [OtherNode]),
-            _ = ecallmgr_channel_redirect:redirect(UUID, OtherNode),
-            {'return', <<"target is on different media server: ", (wh_util:to_binary(OtherNode))/binary>>}
-    end.
-
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target) ->
@@ -744,6 +678,71 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
     ecallmgr_util:export(Node, UUID, Exports),
     {<<"intercept">>, Target}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Eavesdrop command helpers
+%% @end
+%%--------------------------------------------------------------------
+-spec eavesdrop(atom(), ne_binary(), wh_json:object()) ->
+    {ne_binary(), ne_binary()} |
+    {'error', ne_binary()}.
+eavesdrop(Node, UUID, JObj) ->
+    Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
+
+    case ecallmgr_fs_channel:fetch(Target, 'record') of
+        {'ok', #channel{node=Node
+            ,answered=IsAnswered
+        }} ->
+            lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
+            maybe_answer(Node, UUID, IsAnswered),
+            get_eavesdrop_app(Node, UUID, JObj, Target);
+        {'ok', #channel{node=OtherNode}} ->
+            lager:debug("target ~s is on other node (~s), not ~s", [Target, OtherNode, Node]),
+            eavesdrop_maybe_move(Node, UUID, JObj, Target, OtherNode);
+        {'error', 'not_found'} ->
+            lager:debug("failed to find target callid ~s", [Target]),
+            {'error', <<"failed to find target callid ", Target/binary>>}
+    end.
+
+-spec eavesdrop_maybe_move(atom(), ne_binary(), wh_json:object(), ne_binary(), atom()) ->
+    {ne_binary(), ne_binary()}.
+eavesdrop_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
+    case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of
+        'true' ->
+            lager:debug("target ~s is on ~s, not ~s...moving", [Target, OtherNode, Node]),
+            'true' = ecallmgr_channel_move:move(Target, OtherNode, Node),
+            get_eavesdrop_app(Node, UUID, JObj, Target);
+        'false' ->
+            lager:debug("target ~s is on ~s, not ~s, need to redirect", [Target, OtherNode, Node]),
+            lager:debug("gotta usurp some fools first"),
+
+            ControlUsurp = [{<<"Call-ID">>, UUID}
+                ,{<<"Reason">>, <<"redirect">>}
+                ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+            PublishUsurp = [{<<"Call-ID">>, UUID}
+                ,{<<"Reference">>, wh_util:rand_hex_binary(4)}
+                ,{<<"Media-Node">>, wh_util:to_binary(Node)}
+                ,{<<"Reason">>, <<"redirect">>}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+
+            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                ,ControlUsurp
+                ,fun(C) -> wapi_call:publish_usurp_control(UUID, C) end
+            ),
+            wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                ,PublishUsurp
+                ,fun(C) -> wapi_call:publish_usurp_publisher(UUID, C) end
+            ),
+
+            lager:debug("now issue the redirect to ~s", [OtherNode]),
+            _ = ecallmgr_channel_redirect:redirect(UUID, OtherNode),
+            {'return', <<"target is on different media server: ", (wh_util:to_binary(OtherNode))/binary>>}
+    end.
+
 -spec get_eavesdrop_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_eavesdrop_app(Node, UUID, JObj, Target) ->
@@ -768,7 +767,7 @@ get_eavesdrop_app(Node, UUID, JObj, Target) ->
                         ,ControlUsurp
                         ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
                        ),
-    io:format("published ~p for ~s~n", [ControlUsurp, Target]),
+    lager:debug("published ~p for ~s~n", [ControlUsurp, Target]),
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
     ecallmgr_util:export(Node, UUID, Exports),
