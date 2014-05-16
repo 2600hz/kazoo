@@ -278,7 +278,12 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
 
 -spec create_custom_headers(wh_proplist()) -> wh_json:object().
 create_custom_headers(Props) ->
-    wh_json:from_list([ {K , V} || {<<"P-", _K1/binary>>=K , V} <- Props]).
+    wh_json:from_list(
+      props:filter(fun({<<"P-",_/binary>>,_})-> 'true';
+                      ({<<"X-",_/binary>>,_})-> 'true'; 
+                      ({_,_})-> 'false'
+                    end, Props)
+                     ).
 
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
 %%   timeout (at the moment) but when we seek auth for INVITEs we need
