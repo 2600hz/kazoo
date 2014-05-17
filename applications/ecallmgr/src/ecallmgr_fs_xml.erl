@@ -1,12 +1,12 @@
-
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Generate the XML for various FS responses
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
@@ -20,6 +20,8 @@
         ]).
 
 -include("ecallmgr.hrl").
+
+-define(DEFAULT_USER_CACHE_TIME_IN_SECONDS, 3600). %% 1 hour
 
 -spec acl_xml(wh_json:object()) -> {'ok', iolist()}.
 acl_xml(AclsJObj) ->
@@ -593,7 +595,10 @@ domain_el(Name, Children) ->
 user_el(Id, Children) ->
     #xmlElement{name='user'
                 ,attributes=[xml_attrib('id', Id)
-                             ,xml_attrib('cacheable', 3600000000)
+                             ,xml_attrib('cacheable'
+                                         ,ecallmgr_config:get_integer(<<"user_cache_time_in_seconds">>
+                                                                      ,?DEFAULT_USER_CACHE_TIME_IN_SECONDS)
+                                        )
                             ]
                 ,content=Children
                }.
