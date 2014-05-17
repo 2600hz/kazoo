@@ -21,7 +21,7 @@
 
 -include("ecallmgr.hrl").
 
--define(DEFAULT_USER_CACHE_TIME_IN_SECONDS, 3600). %% 1 hour
+-define(DEFAULT_USER_CACHE_TIME_IN_MS, 3600000). %% 1 hour
 
 -spec acl_xml(wh_json:object()) -> {'ok', iolist()}.
 acl_xml(AclsJObj) ->
@@ -596,8 +596,8 @@ user_el(Id, Children) ->
     #xmlElement{name='user'
                 ,attributes=[xml_attrib('id', Id)
                              ,xml_attrib('cacheable'
-                                         ,ecallmgr_config:get_integer(<<"user_cache_time_in_seconds">>
-                                                                      ,?DEFAULT_USER_CACHE_TIME_IN_SECONDS)
+                                         ,ecallmgr_config:get_integer(<<"user_cache_time_in_ms">>
+                                                                      ,?DEFAULT_USER_CACHE_TIME_IN_MS)
                                         )
                             ]
                 ,content=Children
