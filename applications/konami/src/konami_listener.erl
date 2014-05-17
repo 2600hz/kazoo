@@ -67,8 +67,6 @@ handle_metaflow(JObj, Props) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     whapps_call:put_callid(Call),
 
-    konami_event_listener:add_call_binding(Call),
-
     try konami_code_fsm:start_fsm(
           whapps_call:kvs_store('consumer_pid', props:get_value('server', Props), Call)
           ,JObj
@@ -80,7 +78,8 @@ handle_metaflow(JObj, Props) ->
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:debug("failed to run FSM: ~s: ~p", [_E, _R]),
-            wh_util:log_stacktrace(ST)
+            wh_util:log_stacktrace(ST),
+            konami_tracker:untrack()
     end.
 
 handle_channel_create(JObj, _Props) ->
@@ -122,7 +121,7 @@ maybe_start_user_metaflows(AccountId, UserId, CallId) ->
     maybe_start_metaflows(AccountId, CallId, wh_json:get_value(<<"metaflows">>, User)).
 
 maybe_start_metaflows(_AccountId, _CallId, 'undefined') -> 'ok';
-maybe_start_metaflows(AccountId, CallId, Metaflows) ->
+maybe_start_metaflows(_AccountId, _CallId, Metaflows) ->
     lager:debug("starting ~p", [Metaflows]).
 
 %%%===================================================================

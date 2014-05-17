@@ -61,8 +61,11 @@ start_fsm(Call, JObj) ->
     wh_hooks:register(whapps_call:account_id(Call), <<"CHANNEL_ANSWER">>),
 
     ListenOn = listen_on(Call, JObj),
-    _ = maybe_start_b_leg_listener(Call, ListenOn),
+    _ = maybe_start_leg_listeners(Call, ListenOn),
 
+    konami_tracker:track(whapps_call:call_id(Call), whapps_call:other_leg_call_id(Call), ListenOn),
+
+    lager:debug("starting code FSM, listening on ~s", [ListenOn]),
     gen_fsm:enter_loop(?MODULE, [], 'unarmed'
                        ,#state{numbers=numbers(Call, JObj)
                                ,patterns=patterns(Call, JObj)
@@ -244,22 +247,28 @@ handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, #state{
                     lager:debug("channel is answered (~s)", [OtherLeg]),
                     {'next_state', StateName, State};
                 OtherLeg ->
+                    konami_tracker:update_other_leg(OtherLeg),
                     lager:debug("channel is answered (~s)", [OtherLeg]),
                     {'next_state', StateName, State};
                 NewOtherLeg ->
                     lager:debug("channel is now bridged to ~s (was ~s)", [NewOtherLeg, OtherLeg]),
                     konami_event_listener:add_call_binding(NewOtherLeg),
+                    konami_tracker:update_other_leg(NewOtherLeg),
                     {'next_state', StateName, State#state{other_leg=NewOtherLeg
                                                           ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
                                                          }}
             end;
         OtherLeg ->
             lager:debug("b leg ~s is answered", [OtherLeg]),
+            konami_tracker:update_other_leg(OtherLeg),
             {'next_state', StateName, State};
         NewOtherLeg ->
             konami_event_listener:add_call_binding(NewOtherLeg),
             konami_event_listener:rm_call_binding(OtherLeg),
             lager:debug("new b leg ~s is answered (was ~s)", [NewOtherLeg, OtherLeg]),
+
+            konami_tracker:update_other_leg(NewOtherLeg),
+
             {'next_state', StateName, State#state{other_leg=NewOtherLeg
                                                   ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
                                                  }}
@@ -282,6 +291,7 @@ handle_info(_Info, StateName, State) ->
 terminate(_Reason, _StateName, #state{call_id=CallId
                                       ,other_leg=OtherLeg
                                      }) ->
+    konami_tracker:untrack(),
     konami_event_listener:rm_call_binding(CallId),
     konami_event_listener:rm_call_binding(OtherLeg),
     lager:debug("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
@@ -327,22 +337,23 @@ digit_timeout(Call, JObj) ->
         Timeout -> Timeout
     end.
 
+-spec is_a_leg(whapps_call:call(), api_object() | ne_binary()) -> boolean().
+is_a_leg(_Call, 'undefined') -> 'true';
+is_a_leg(Call, <<_/binary>> = EndpointId) ->
+    EndpointId =:= whapps_call:authorizing_id(Call);
+is_a_leg(Call, JObj) ->
+    is_a_leg(Call, wh_json:get_value(<<"Endpoint-ID">>, JObj)).
+
+-spec listen_on(whapps_call:call(), wh_json:object()) -> 'a' | 'b' | 'ab'.
 listen_on(Call, JObj) ->
     EndpointId = wh_json:get_value(<<"Endpoint-ID">>, JObj),
-    IsALegEndpoint = (EndpointId =:= 'undefined') orelse
-        (EndpointId =:= whapps_call:authorizing_id(Call)),
+    IsALegEndpoint = is_a_leg(Call, EndpointId),
 
-    lager:debug("ep: '~s' is a leg: ~s lo: ~s", [EndpointId, IsALegEndpoint, wh_json:get_value(<<"Listen-On">>, JObj)]),
+    lager:debug("endpoint ~s is~s a-leg"
+                ,[EndpointId, case IsALegEndpoint of 'true' -> <<>>; 'false' -> <<" not">> end]
+               ),
 
     case wh_json:get_value(<<"Listen-On">>, JObj) of
-        'undefined' when IsALegEndpoint ->
-            Default = konami_config:listen_on(whapps_call:account_id(Call)),
-            lager:debug("lo default: ~p", [Default]),
-            Default;
-        'undefined' -> 'b';
-        <<"a">> -> 'a';
-        <<"b">> -> 'b';
-        <<"ab">> -> 'ab';
         <<"both">> -> 'ab';
         <<"self">> when IsALegEndpoint -> 'a';
         <<"self">> -> 'b';
@@ -411,10 +422,17 @@ maybe_cancel_timer(Ref) when is_reference(Ref) ->
 maybe_cancel_timer(_) ->
     'ok'.
 
--spec maybe_start_b_leg_listener(whapps_call:call(), 'a' | 'b' | 'ab') -> 'ok'.
-maybe_start_b_leg_listener(_Call, 'a') ->
-    'ok';
-maybe_start_b_leg_listener(Call, _) ->
+-spec maybe_start_leg_listeners(whapps_call:call(), 'a' | 'b' | 'ab') -> 'ok'.
+maybe_start_leg_listeners(Call, 'a') ->
+    konami_event_listener:add_call_binding(Call);
+maybe_start_leg_listeners(Call, 'b') ->
+    start_b_leg_listener(Call);
+maybe_start_leg_listeners(Call, 'ab') ->
+    konami_event_listener:add_call_binding(Call),
+    start_b_leg_listener(Call).
+
+-spec start_b_leg_listener(whapps_call:call()) -> 'ok'.
+start_b_leg_listener(Call) ->
     API = [{<<"Application-Name">>, <<"noop">>}
            ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
            ,{<<"Insert-At">>, <<"now">>}
@@ -428,23 +446,17 @@ should_stop_fsm(CallId, _OtherLeg, 'a', CallId) ->
     lager:debug("recv a-leg channel_destroy, going down"),
     konami_event_listener:rm_call_binding(CallId),
     'true';
-should_stop_fsm(CallId, _OtherLeg, 'ab', CallId) ->
+should_stop_fsm(CallId, OtherLeg, 'ab', CallId) ->
     lager:debug("recv a-leg channel_destroy, going down"),
     konami_event_listener:rm_call_binding(CallId),
+    konami_event_listener:rm_call_binding(OtherLeg),
     'true';
-should_stop_fsm(CallId, _OtherLeg, _ListenOn, CallId) ->
-    lager:debug("recv a-leg channel_destroy, ignoring"),
-    'false';
-should_stop_fsm(_CallId, 'undefined', _ListenOn, _DownCallId) ->
-    lager:debug("no b-leg, ignoring destroy for ~s", [_DownCallId]),
-    'false';
 should_stop_fsm(_CallId, OtherLeg, 'b', OtherLeg) ->
     lager:debug("recv b-leg channel_destroy, going down"),
     konami_event_listener:rm_call_binding(OtherLeg),
     'true';
-should_stop_fsm(_CallId, OtherLeg, _ListenOn, OtherLeg) ->
-    lager:debug("recv b-leg channel_destroy, ignoring"),
-    'false';
 should_stop_fsm(_CallId, _OtherLeg, _ListenOn, _CLeg) ->
-    lager:debug("recv c-leg ~s channel_destroy, ignoring", [_CLeg]),
+    lager:debug("recv c-leg ~s channel_destroy while listening on ~s for ~s->~s, ignoring"
+                ,[_CLeg, _ListenOn, _CallId, _OtherLeg]
+               ),
     'false'.
