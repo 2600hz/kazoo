@@ -358,13 +358,16 @@ is_valid_attribute({<<"pattern">>, Pattern, _}, JObj, Key) ->
 %% 5.17
 is_valid_attribute({<<"minLength">>, Min, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
-    InstanceSize = instance_size(Instance),
 
     try {check_valid_type(Instance, <<"string">>), wh_util:to_integer(Min)} of
         {'false', _} -> {'pass', JObj};
-        {'true', MinSize} when InstanceSize >= MinSize -> {'pass', JObj};
-        {'true', _} ->
-            {'fail', {Key, list_to_binary([<<"minLength:String must be at least ">>, wh_util:to_binary(Min), <<" characters">>])}}
+        {'true', MinSize} ->
+            InstanceSize = instance_size(Instance),
+            case InstanceSize >= MinSize of 
+                'true' -> {'pass', JObj};
+                'false' ->
+                    {'fail', {Key, list_to_binary([<<"minLength:String must be at least ">>, wh_util:to_binary(Min), <<" characters">>])}}
+            end
     catch
         'error':'badarg' ->
             {'fail', {Key, <<"minLength:Schema's minLength not an integer or value wasn't a string">>}}
@@ -373,13 +376,16 @@ is_valid_attribute({<<"minLength">>, Min, _}, JObj, Key) ->
 %% 5.18
 is_valid_attribute({<<"maxLength">>, Max, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
-    InstanceSize = instance_size(Instance),
     try {check_valid_type(Instance, <<"string">>), wh_util:to_integer(Max)} of
         {'false', _} -> {'pass', JObj};
-        {'true', MaxSize} when InstanceSize =< MaxSize -> {'pass', JObj};
-        {'true', _} ->
-            lager:debug("instance '~w' size ~b", [Instance, InstanceSize]),
-            {'fail', {Key, list_to_binary([<<"maxLength:String must not be more than ">>, wh_util:to_binary(Max), <<" characters">>])}}
+        {'true', MaxSize} ->
+            InstanceSize = instance_size(Instance),
+            case InstanceSize =< MaxSize of
+                'true' -> {'pass', JObj};
+                'false' ->
+                    lager:debug("instance '~w' size ~b", [Instance, InstanceSize]),
+                    {'fail', {Key, list_to_binary([<<"maxLength:String must not be more than ">>, wh_util:to_binary(Max), <<" characters">>])}}
+            end
     catch
         'error':'badarg' ->
             {'fail', {Key, <<"maxLength:Schema's maxLength not an integer or value wasn't a string">>}}
