@@ -96,7 +96,8 @@ create_ccvs(#auth_user{}=AuthUser) ->
 create_custom_sip_headers(?GSM_AUTH_METHOD, #auth_user{a3a8_kc=KC
                                            ,a3a8_sres=SRES
                                            ,primary_number=Number
-                                           ,account_realm=Realm
+                                           ,account_realm=AccountRealm
+                                           ,realm=Realm
                                            ,username=Username
                                            }=AuthUser) ->
     Props = props:filter_undefined(
@@ -104,12 +105,12 @@ create_custom_sip_headers(?GSM_AUTH_METHOD, #auth_user{a3a8_kc=KC
                ,{<<"P-GSM-SRes">>, SRES}
                ,{<<"P-Asserted-Identity">>, <<"<sip:", Username/binary, "@", Realm/binary, ">">>}
                ,{<<"P-Associated-URI">>, get_tel_uri(Number)}
-               ,{<<"P-Associated-URI">>, <<"<sip:", Username/binary, "@", Realm/binary, ">">>}
+               ,{<<"P-Associated-URI">>, <<"<sip:", Username/binary, "@", AccountRealm/binary, ">">>}
                ,{<<"P-Kazoo-Primary-Number">>, Number}
               ]),
     case Props of
         [] -> 'undefined';
-        _ -> wh_json:from_list(props:filter_undefined(Props))
+        _ -> wh_json:from_list(Props)
     end;
 create_custom_sip_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
 

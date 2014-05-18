@@ -101,8 +101,7 @@ handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=Re
 handle_cast('status', State) ->
     {noreply, State, ?POLLING_INTERVAL};
 
-handle_cast('subscribe', #state{jid=MyJID, session=MySession}=State) ->
-    {_, JFull, _JUser, _JDomain, _JResource} = MyJID,
+handle_cast('subscribe', #state{jid=#jid{raw=JFull}=MyJID, session=MySession}=State) ->
     lager:debug("xmpp subscribe ~s",[JFull]),
     IQ = get_sub_msg(MyJID),
     PacketId = exmpp_session:send_packet(MySession, IQ),
@@ -132,12 +131,11 @@ handle_info(_Info, State) ->
     lager:debug("xmpp handle_info ~p",[_Info]),
     {noreply, State, ?POLLING_INTERVAL}.
 
-terminate(_Reason, #state{jid=MyJID
+terminate(_Reason, #state{jid=#jid{raw=JFull}
                          ,session=MySession
                          ,monitor=MonitorRef
                          ,connected='true'}) ->
     
-    {_, JFull, _JUser, _JDomain, _JResource} = MyJID,
     lager:debug("terminating xmpp session ~s",[JFull]),
     erlang:demonitor(MonitorRef, ['flush']),
     disconnect(MySession),
@@ -148,8 +146,8 @@ terminate(_Reason, State) ->
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
--spec get_sub_msg(tuple()) -> ne_binary().
-get_sub_msg({_, JFull, JUser, JDomain,JResource} = JID) ->
+-spec get_sub_msg(exmpp_jid:jid()) -> ne_binary().
+get_sub_msg( #jid{raw=JFull, node=JUser, domain=JDomain} = JID) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     Document = <<"<iq type='set' from='", JFull/binary, "' to='",BareJID/binary,"'>"
                  ,   "<subscribe xmlns='google:push'>"

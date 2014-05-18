@@ -66,7 +66,7 @@ authn_resp_xml(JObj) ->
     case authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, JObj), JObj) of
         {'ok', []}=OK -> OK;
         {'ok', Elements} ->
-            Number = wh_json:get_value([<<"Custom-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
+            Number = wh_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
             Username = wh_json:get_value(<<"Auth-Username">>, JObj, UserId),
             UserEl = user_el([{'number-alias', Number} | user_el_default_props(Username) ]
                              ,Elements),
