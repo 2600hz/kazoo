@@ -37,7 +37,7 @@
                                      ,<<"Orig-IP">>, <<"Call-ID">>
                                      ,<<"Auth-Nonce">>, <<"Auth-Response">>
                                      ,<<"User-Agent">>
-                                     ,<<"Custom-Headers">>
+                                     ,<<"Custom-SIP-Headers">>
                                     ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
@@ -47,12 +47,12 @@
                           ,{<<"Orig-IP">>, fun is_binary/1}
                           ,{<<"Auth-User">>, fun is_binary/1}
                           ,{<<"Auth-Realm">>, fun is_binary/1}
-                          ,{<<"Custom-Headers">>, fun wh_json:is_json_object/1}
+                          ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                          ]).
 
 %% Authentication Responses
 -define(AUTHN_RESP_HEADERS, [<<"Auth-Method">>, <<"Auth-Password">>]).
--define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-Headers">>
+-define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                       ,<<"Auth-Username">>, <<"Auth-Nonce">>
                                       ,<<"Access-Group">>, <<"Tenant-ID">>
                                       ,<<"Suppress-Unregister-Notifications">>
@@ -69,7 +69,7 @@
                            ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                            ,{<<"Access-Group">>, fun is_binary/1}
                            ,{<<"Tenant-ID">>, fun is_binary/1}
-                           ,{<<"Custom-Headers">>, fun wh_json:is_json_object/1}
+                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                           ]).
 
 %% Authentication Failure Response

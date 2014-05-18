@@ -66,7 +66,10 @@ authn_resp_xml(JObj) ->
     case authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, JObj), JObj) of
         {'ok', []}=OK -> OK;
         {'ok', Elements} ->
-            UserEl = user_el(wh_json:get_value(<<"Auth-Username">>, JObj, UserId), Elements),
+            Number = wh_json:get_value([<<"Custom-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
+            Username = wh_json:get_value(<<"Auth-Username">>, JObj, UserId),
+            UserEl = user_el([{'number-alias', Number} | user_el_default_props(Username) ]
+                             ,Elements),
             DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
             {'ok', xmerl:export([SectionEl], 'fs_xml')}
@@ -80,8 +83,8 @@ authn_resp_xml(<<"gsm">>, JObj) ->
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj) ],
     VariablesEl = variables_el(VariableEls),
     
-    HeaderEls = [header_el(K, V) || {K, V} <- get_custom_headers(JObj) ],
-    HeadersEl = headers_el(HeaderEls),       
+    HeaderEls = [header_el(K, V) || {K, V} <- get_custom_sip_headers(JObj) ],
+    HeadersEl = registration_headers_el(HeaderEls),
     {'ok', [VariablesEl, ParamsEl, HeadersEl]};
 authn_resp_xml(<<"password">>, JObj) ->
     PassEl = param_el(<<"password">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
@@ -484,12 +487,9 @@ get_channel_params(JObj) ->
                         [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
                 end, CV1, Custom).
 
--spec get_custom_headers(wh_json:object()) -> wh_json:json_proplist().
-get_custom_headers(JObj) ->
-    Custom = wh_json:to_proplist(wh_json:get_value(<<"Custom-Headers">>, JObj, wh_json:new())),
-    lists:foldl(fun({K,V}, CV) ->
-                        [{K, V} | CV]
-                end, [], Custom).
+-spec get_custom_sip_headers(wh_json:object()) -> wh_json:json_proplist().
+get_custom_sip_headers(JObj) ->
+    wh_json:to_proplist(wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new())).
 
 -spec arrange_acl_node({ne_binary(), wh_json:object()}, orddict:orddict()) -> orddict:orddict().
 arrange_acl_node({_, JObj}, Dict) ->
@@ -591,17 +591,22 @@ domain_el(Name, Children) ->
                 ,content=Children
                }.
 
--spec user_el(xml_attrib_value(), xml_els()) -> xml_el().
-user_el(Id, Children) ->
+-spec user_el(xml_attrib_value() | wh_proplist(), xml_els()) -> xml_el().
+user_el(Id, Children) when not is_list(Id) ->
+    user_el(user_el_default_props(Id), Children);
+user_el(Props, Children) ->
     #xmlElement{name='user'
-                ,attributes=[xml_attrib('id', Id)
-                             ,xml_attrib('cacheable'
-                                         ,ecallmgr_config:get_integer(<<"user_cache_time_in_ms">>
-                                                                      ,?DEFAULT_USER_CACHE_TIME_IN_MS)
-                                        )
-                            ]
+                ,attributes=[xml_attrib(K, V) || {K , V} <- props:filter_undefined(Props)]
                 ,content=Children
                }.
+
+-spec user_el_default_props(xml_attrib_value()) -> wh_proplist().
+user_el_default_props(Id) ->
+    [{'id', Id}
+     ,{'cacheable', ecallmgr_config:get_integer(<<"user_cache_time_in_ms">>
+                                                ,?DEFAULT_USER_CACHE_TIME_IN_MS)}
+    ].
+                           
 
 -spec chat_user_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 chat_user_el(Name, Commands) ->
@@ -694,8 +699,8 @@ variable_el(Name, Value) ->
                             ]
                }.
 
--spec headers_el(xml_els()) -> xml_el().
-headers_el(Children) ->
+-spec registration_headers_el(xml_els()) -> xml_el().
+registration_headers_el(Children) ->
     #xmlElement{name='registration-headers'
                 ,content=Children
                }.

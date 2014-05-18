@@ -59,7 +59,7 @@ send_auth_resp(#auth_user{password=Password
               ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
               ,{<<"Register-Overwrite-Notify">>, RegisterOverwrite}
               ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
-              ,{<<"Custom-Headers">>, create_headers(Method, AuthUser)}
+              ,{<<"Custom-SIP-Headers">>, create_custom_sip_headers(Method, AuthUser)}
               | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
              ]),
     lager:info("sending SIP authentication reply, with credentials for user ~s@~s",[Username,Realm]),
@@ -92,8 +92,8 @@ create_ccvs(#auth_user{}=AuthUser) ->
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
--spec create_headers(api_binary(), auth_user()) -> api_object().
-create_headers(?GSM_AUTH_METHOD, #auth_user{a3a8_kc=KC
+-spec create_custom_sip_headers(api_binary(), auth_user()) -> api_object().
+create_custom_sip_headers(?GSM_AUTH_METHOD, #auth_user{a3a8_kc=KC
                                            ,a3a8_sres=SRES
                                            ,primary_number=Number
                                            ,account_realm=Realm
@@ -105,12 +105,13 @@ create_headers(?GSM_AUTH_METHOD, #auth_user{a3a8_kc=KC
                ,{<<"P-Asserted-Identity">>, <<"<sip:", Username/binary, "@", Realm/binary, ">">>}
                ,{<<"P-Associated-URI">>, get_tel_uri(Number)}
                ,{<<"P-Associated-URI">>, <<"<sip:", Username/binary, "@", Realm/binary, ">">>}
+               ,{<<"P-Kazoo-Primary-Number">>, Number}
               ]),
-    case length(Props) of
-        0 -> 'undefined';
+    case Props of
+        [] -> 'undefined';
         _ -> wh_json:from_list(props:filter_undefined(Props))
     end;
-create_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
+create_custom_sip_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
 
 
 -spec get_asserted_identity(api_binary(), api_binary()) -> api_binary().
@@ -287,7 +288,7 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                ,suppress_unregister_notifications = wh_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
                ,register_overwrite_notify = wh_json:is_true(<<"register_overwrite_notify">>, AuthDoc)
               },
-    maybe_auth_method(add_account_name(AuthUser), JObj, Req, Method).
+    maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
 
 -spec add_account_name(auth_user()) -> 'ok'.
 add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
@@ -303,8 +304,8 @@ add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
 -spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
           {'ok', auth_user()} | {'error', any()}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_AUTH_METHOD)->
-    SipDoc = wh_json:get_value([<<"doc">>,<<"sip">>], JObj),
-    Nonce = registrar_util:remove_dashes(
+    SipDoc = wh_json:get_value(<<"sip">>, JObj),
+    Nonce = remove_dashes(              
               wh_json:get_value(<<"nonce">>, SipDoc, 
                                 wh_json:get_value(<<"Auth-Nonce">>, Req,
                                                   wh_util:rand_hex_binary(16)))), 
@@ -320,10 +321,13 @@ gsm_auth(#auth_user{password=Password}=AuthUser, Nonce, 'undefined') ->
     {'ok', AuthUser#auth_user{a3a8_sres=Password
                              ,nonce=Nonce}};
 gsm_auth(AuthUser, NonceHex, GsmKey) ->
-    Key = registrar_util:hexstr_to_bin(GsmKey),
-    Nonce = registrar_util:hexstr_to_bin(NonceHex),
+%    Key = registrar_util:hexstr_to_bin(GsmKey),
+%    Nonce = registrar_util:hexstr_to_bin(NonceHex),
+    Key = wh_util:from_hex_binary(GsmKey),
+    Nonce = wh_util:from_hex_binary(NonceHex),
     SRes = registrar_crypto:a3a8(Nonce, Key),
-    SResHex = wh_util:to_lower_binary(registrar_util:bin_to_hexstr(SRes)),
+    %SResHex = wh_util:to_lower_binary(registrar_util:bin_to_hexstr(SRes)),
+    SResHex = wh_util:to_hex_binary(SRes),
     <<SRES:8/binary, KC/binary>> = SResHex,
     {'ok', AuthUser#auth_user{a3a8_sres=SRES
                              ,a3a8_kc=KC
@@ -367,3 +371,7 @@ get_account_db(JObj) ->
         'undefined' -> 'undefined';
         AccountDb -> wh_util:format_account_id(AccountDb, 'encoded')
     end.
+
+-spec remove_dashes(ne_binary()) -> ne_binary().
+remove_dashes(Bin) ->
+  << <<B>> || <<B>> <= Bin, B =/= $->>.

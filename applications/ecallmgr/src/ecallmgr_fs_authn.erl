@@ -17,6 +17,7 @@
         ]).
 -export([handle_directory_lookup/3]).
 -export([lookup_user/4]).
+-export([is_custom_sip_header/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -177,6 +178,7 @@ handle_directory_lookup(Id, Props, Node) ->
         {<<"REQUEST_PARAMS">>, <<"reverse-auth-lookup">>} ->
             lookup_user(Node, Id, <<"reverse-lookup">>, Props);
         _Other ->
+            props:to_log(Props, <<"AUTHN NOT HANDLED">>),
             {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
             _ = freeswitch:fetch_reply(Node, Id, 'directory', Resp),
             lager:debug("ignoring authn request from ~s for ~p", [Node, _Other])
@@ -260,7 +262,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
            ,{<<"Auth-Realm">>, Realm}
            ,{<<"Auth-Nonce">>, props:get_value(<<"sip_auth_nonce">>, Props)}
            ,{<<"Auth-Response">>, props:get_value(<<"sip_auth_response">>, Props)}
-           ,{<<"Custom-Headers">>, create_custom_headers(Props)}
+           ,{<<"Custom-SIP-Headers">>, get_custom_sip_headers(Props)}
            ,{<<"User-Agent">>, props:get_value(<<"sip_user_agent">>, Props)}
            ,{<<"Media-Server">>, wh_util:to_binary(Node)}
            ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
@@ -276,15 +278,18 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
         {'ok', JObj} -> maybe_defered_error(Realm, Username, JObj)
     end.
 
--spec create_custom_headers(wh_proplist()) -> wh_json:object().
-create_custom_headers(Props) ->
+-spec get_custom_sip_headers(wh_proplist()) -> wh_json:object().
+get_custom_sip_headers(Props) ->
     wh_json:from_list(
-      props:filter(fun({<<"P-", _/binary>>,_})-> 'true';
-                      ({<<"X-", _/binary>>,_})-> 'true';
-                      ({<<"sip_h_", _/binary>>,_})-> 'true';
-                      ({_,_})-> 'false'
-                    end, Props)
+      props:filter(fun is_custom_sip_header/1, Props)
                      ).
+
+-spec is_custom_sip_header(ne_binary()) -> boolean().
+is_custom_sip_header(<<"P-", _/binary>>) -> 'true';
+is_custom_sip_header(<<"X-", _/binary>>) -> 'true';
+is_custom_sip_header(<<"sip_h_", _/binary>>) -> 'true';
+is_custom_sip_header(Header) -> 'false'.
+    
 
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
 %%   timeout (at the moment) but when we seek auth for INVITEs we need

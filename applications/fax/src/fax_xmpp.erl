@@ -12,6 +12,7 @@
 -include("fax_cloud.hrl").
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
+-include_lib("exmpp/include/exmpp_jid.hrl").
 
 -define(XMPP_SCOPE,<<"https://www.googleapis.com/auth/googletalk">>).
 -define(SCOPES,<<(?XMPP_SCOPE)/binary, " ", (?GCP_SCOPE)/binary>>).
@@ -35,9 +36,9 @@
          oauth_app_id = 'undefined' :: api_binary(),
          refresh_token = 'undefined' :: api_binary(),
          connected = 'false' :: boolean(),
-         session :: any(),
-         jid :: any(),
-         full_jid :: any(),
+         session :: pid(),
+         jid :: exmpp_jid:jid(),
+         full_jid = 'undefined' :: api_binary(),
          monitor :: reference() 
         }).
 
@@ -161,8 +162,8 @@ get_sub_msg({_, JFull, JUser, JDomain,JResource} = JID) ->
 -define(XML_CTX_OPTIONS,[{namespace, [{"g", "google:push"}]}]).
 
 -spec process_received_packet(packet(), state()) -> any().
-process_received_packet(#received_packet{raw_packet=Packet},#state{jid=JID}=State) ->
-    {_, JFull, JUser, JDomain,JResource} = JID,
+process_received_packet(#received_packet{raw_packet=Packet}
+                       ,#state{jid=#jid{node=JUser,domain=JDomain}}=State) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     case exmpp_xml:get_element(Packet, ?NS_PUSH, 'push') of
         'undefined' -> 'undefined';
