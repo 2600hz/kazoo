@@ -321,12 +321,9 @@ gsm_auth(#auth_user{password=Password}=AuthUser, Nonce, 'undefined') ->
     {'ok', AuthUser#auth_user{a3a8_sres=Password
                              ,nonce=Nonce}};
 gsm_auth(AuthUser, NonceHex, GsmKey) ->
-%    Key = registrar_util:hexstr_to_bin(GsmKey),
-%    Nonce = registrar_util:hexstr_to_bin(NonceHex),
     Key = wh_util:from_hex_binary(GsmKey),
     Nonce = wh_util:from_hex_binary(NonceHex),
     SRes = registrar_crypto:a3a8(Nonce, Key),
-    %SResHex = wh_util:to_lower_binary(registrar_util:bin_to_hexstr(SRes)),
     SResHex = wh_util:to_hex_binary(SRes),
     <<SRES:8/binary, KC/binary>> = SResHex,
     {'ok', AuthUser#auth_user{a3a8_sres=SRES
