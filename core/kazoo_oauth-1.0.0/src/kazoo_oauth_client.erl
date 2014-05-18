@@ -53,17 +53,31 @@ add_oauth_user(#oauth_app{user_prefix=Prefix}=App, JObj, TokenObj) ->
     end.
 
 maybe_save_oauth_doc(DocId, JObj, TokenObj, App) ->
-    RefreshTokenObj = kazoo_oauth_util:refresh_token(App, JObj),
+    AuthorizationCode = wh_json:get_value(<<"code">>, JObj),
+    Scope = wh_json:get_value(<<"scope">>, TokenObj),
+    AccessType = wh_json:get_value(<<"access_type">>, TokenObj),
+    RefreshTokenObj = get_refresh_token(AccessType, App, Scope, AuthorizationCode),
     save_oauth_doc(App, DocId, JObj, TokenObj, RefreshTokenObj).
 
+
+-spec get_refresh_token(ne_binary(), ne_binary() | oauth_app()
+                       ,ne_binary(), ne_binary()) -> wh_json:object().
+get_refresh_token(<<"offline">>, App, Scope, AuthorizationCode) ->
+    case kazoo_oauth_util:refresh_token(App, Scope, AuthorizationCode, []) of
+        {'ok', Token} -> Token;
+        _ -> wh_json:new()
+    end;    
+get_refresh_token(_ , _, _ , _) -> wh_json:new().
+                                    
+
 save_oauth_doc(App, DocId, JObj, TokenObj, RefreshTokenObj) ->
-    Doc = [{<<"email">>, wh_json:get_value(<<"email">>, TokenObj) }
+    Doc = props:filter_undefined([{<<"email">>, wh_json:get_value(<<"email">>, TokenObj) }
            ,{<<"verified_email">>, wh_json:get_value(<<"verified_email">>, TokenObj) }
            ,{<<"access_type">>, wh_json:get_value(<<"access_type">>, TokenObj) }
            ,{<<"scope">>, wh_json:get_value(<<"scope">>, TokenObj) }
            ,{<<"scopes">>, binary:split(wh_json:get_value(<<"scope">>, TokenObj), <<" ">>) }
            ,{<<"refresh_token">>, wh_json:get_value(<<"refresh_token">>, RefreshTokenObj) }
-          ],
+          ]),
     case couch_mgr:update_doc(?OAUTH_DB, DocId, Doc) of
         {'ok', DocObj} -> load_profile(App, JObj, TokenObj, DocObj);
         {'error', _R} ->

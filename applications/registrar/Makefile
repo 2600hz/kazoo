@@ -26,10 +26,14 @@ compile: ebin/$(PROJECT).app
 		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
+	-@$(MAKE) priv/comp128.so
 
 ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+
+priv/comp128.so: c_src/comp128.c
+	gcc -o priv/comp128.so -I/usr/lib/erlang/usr/include -fpic -shared c_src/comp128.c  
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -43,6 +47,7 @@ test/$(PROJECT).app: src/*.erl
 
 clean:
 	rm -f ebin/*
+	rm -f priv/*.so
 	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 

@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Handle authn_req messages
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(reg_authn_req).
 
@@ -18,62 +19,50 @@ init() -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_authn:req_v(JObj),
     _ = wh_util:put_callid(JObj),
-    Username = wapi_authn:get_auth_user(JObj),
+    Username = get_auth_user(JObj),
     Realm = wapi_authn:get_auth_realm(JObj),
     lager:debug("trying to authenticate ~s@~s", [Username, Realm]),
-    case lookup_auth_user(Username, Realm) of
+    case lookup_auth_user(Username, Realm, JObj) of
         {'ok', #auth_user{}=AuthUser} ->
-            maybe_add_account_name(AuthUser, JObj);
+            send_auth_resp(AuthUser, JObj);
         {'error', _R} ->
             lager:notice("auth failure for ~s@~s: ~p"
                          ,[Username, Realm, _R]),
             send_auth_error(JObj)
     end.
 
--spec maybe_add_account_name(auth_user(), wh_json:object()) -> 'ok'.
-maybe_add_account_name(#auth_user{account_name='undefined'
-                                  ,account_id=AccountId}=AuthUser
-                       ,JObj) when is_binary(AccountId) ->
-    case wh_json:get_value(<<"Method">>, JObj) of
-        <<"INVITE">> -> send_auth_resp(AuthUser, JObj);
-        _Else -> add_account_name(AuthUser, JObj)
-    end;
-maybe_add_account_name(AuthUser, JObj) ->
-    send_auth_resp(AuthUser, JObj).
-
--spec add_account_name(auth_user(), wh_json:object()) -> 'ok'.
-add_account_name(#auth_user{account_id=AccountId}=AuthUser, JObj) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'error', _} -> send_auth_resp(AuthUser, JObj);
-        {'ok', Account} ->  
-            send_auth_resp(
-              AuthUser#auth_user{account_name=wh_json:get_value(<<"name">>, Account)
-                                 ,account_realm=wh_json:get_lower_binary(<<"realm">>, Account)}
-              ,JObj)
+-spec get_auth_user(wh_json:object()) -> ne_binary().
+get_auth_user(JObj) ->
+    case wapi_authn:get_auth_user(JObj) of
+        <<"unknown">> ->
+            To = wh_json:get_value(<<"To">>, JObj,<<"nouser@nodomain">>),
+            [ToUser, _ToDomain] = binary:split(To, <<"@">>),
+            wh_util:to_lower_binary(ToUser);
+        Username -> Username    
     end.
 
 -spec send_auth_resp(auth_user(), wh_json:object()) -> 'ok'.
 send_auth_resp(#auth_user{password=Password
+                          ,username=Username
                           ,method=Method
-                          ,account_realm=Realm
-                          ,account_name=Name
+                          ,realm=Realm
                           ,suppress_unregister_notifications=SupressUnregister
                           ,register_overwrite_notify=RegisterOverwrite
+                          ,nonce=Nonce
                          }=AuthUser, JObj) ->
     Category = wh_json:get_value(<<"Event-Category">>, JObj),
     Resp = props:filter_undefined(
              [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
               ,{<<"Auth-Password">>, Password}
-              ,{<<"Auth-Method">>, Method}             
-              ,{<<"Account-Realm">>, Realm}
-              ,{<<"Account-Name">>, Name}              
+              ,{<<"Auth-Method">>, Method}
+              ,{<<"Auth-Nonce">>, Nonce}
               ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
               ,{<<"Register-Overwrite-Notify">>, RegisterOverwrite}
               ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
+              ,{<<"Custom-SIP-Headers">>, create_custom_sip_headers(Method, AuthUser)}
               | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
              ]),
-    lager:debug("sending SIP authentication reply, with credentials"),
+    lager:info("sending SIP authentication reply, with credentials for user ~s@~s",[Username,Realm]),
     wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec send_auth_error(wh_json:object()) -> 'ok'.
@@ -98,8 +87,43 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Authorizing-ID">>, AuthUser#auth_user.authorizing_id}
              ,{<<"Authorizing-Type">>, AuthUser#auth_user.authorizing_type}
              ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
+             ,{<<"Account-Realm">>, AuthUser#auth_user.account_realm}
+             ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
+
+-spec create_custom_sip_headers(api_binary(), auth_user()) -> api_object().
+create_custom_sip_headers(?GSM_AUTH_METHOD, #auth_user{a3a8_kc=KC
+                                           ,a3a8_sres=SRES
+                                           ,primary_number=Number
+                                           ,account_realm=AccountRealm
+                                           ,realm=Realm
+                                           ,username=Username
+                                           }=AuthUser) ->
+    Props = props:filter_undefined(
+              [{<<"P-GSM-Kc">>, KC}
+               ,{<<"P-GSM-SRes">>, SRES}
+               ,{<<"P-Asserted-Identity">>, <<"<sip:", Username/binary, "@", Realm/binary, ">">>}
+               ,{<<"P-Associated-URI">>, get_tel_uri(Number)}
+               ,{<<"P-Associated-URI">>, <<"<sip:", Username/binary, "@", AccountRealm/binary, ">">>}
+               ,{<<"P-Kazoo-Primary-Number">>, Number}
+              ]),
+    case Props of
+        [] -> 'undefined';
+        _ -> wh_json:from_list(Props)
+    end;
+create_custom_sip_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
+
+
+-spec get_asserted_identity(api_binary(), api_binary()) -> api_binary().
+get_asserted_identity('undefined', _) -> 'undefined';
+get_asserted_identity(Number, Realm) ->
+    <<"<sip:", Number/binary, "@", Realm/binary, ">">>.
+
+-spec get_tel_uri(api_binary()) -> api_binary().
+get_tel_uri('undefined') -> 'undefined';
+get_tel_uri(Number) ->
+    <<"<tel:", Number/binary,">">>.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -107,13 +131,13 @@ create_ccvs(#auth_user{}=AuthUser) ->
 %% look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_auth_user(ne_binary(), ne_binary()) ->
+-spec lookup_auth_user(ne_binary(), ne_binary(), wh_json:object()) ->
                               {'ok', auth_user()} |
                               {'error', _}.
-lookup_auth_user(Username, Realm) ->
+lookup_auth_user(Username, Realm, Req) ->
     case get_auth_user(Username, Realm) of
         {'error', _}=E -> E;
-        {'ok', JObj} -> check_auth_user(JObj, Username, Realm)
+        {'ok', JObj} -> check_auth_user(JObj, Username, Realm, Req)
     end.
 
 -spec get_auth_user(ne_binary(), ne_binary()) ->
@@ -183,15 +207,15 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec check_auth_user(wh_json:object(), ne_binary(), ne_binary()) -> 
+-spec check_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 
                              {'ok', auth_user()} |
                              {'error', _}.                             
-check_auth_user(JObj, Username, Realm) ->
+check_auth_user(JObj, Username, Realm, Req) ->
     case is_account_enabled(JObj)
         andalso maybe_auth_type_enabled(JObj)
         andalso maybe_owner_enabled(JObj)
     of
-        'true' -> {'ok', jobj_to_auth_user(JObj, Username, Realm)};
+        'true' -> jobj_to_auth_user(JObj, Username, Realm, Req);
         'false' -> {'error', 'disabled'}
     end.
 
@@ -247,22 +271,67 @@ is_owner_enabled(AccountDb, OwnerId) ->
             'true'
     end.
 
--spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary()) -> auth_user().
-jobj_to_auth_user(JObj, Username, Realm) ->
+-spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 
+          {'ok', auth_user()} | {'error', any()}.
+jobj_to_auth_user(JObj, Username, Realm, Req) ->
     AuthValue = wh_json:get_value(<<"value">>, JObj),
     AuthDoc = wh_json:get_value(<<"doc">>, JObj),
-    #auth_user{realm = Realm
+    Method = wh_json:get_lower_binary(<<"method">>, AuthValue, <<"password">>),
+    AuthUser = #auth_user{realm = Realm
                ,username = Username
                ,account_id = get_account_id(AuthDoc)
                ,account_db = get_account_db(AuthDoc)
                ,password = wh_json:get_value(<<"password">>, AuthValue)
                ,authorizing_type = wh_json:get_value(<<"authorizing_type">>, AuthValue, <<"anonymous">>)
                ,authorizing_id = wh_json:get_value(<<"id">>, JObj)
-               ,method = wh_json:get_lower_binary(<<"method">>, AuthValue, <<"password">>)
+               ,method = Method
                ,owner_id = wh_json:get_value(<<"owner_id">>, AuthDoc)
                ,suppress_unregister_notifications = wh_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
                ,register_overwrite_notify = wh_json:is_true(<<"register_overwrite_notify">>, AuthDoc)
-              }.
+              },
+    maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
+
+-spec add_account_name(auth_user()) -> 'ok'.
+add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _} -> AuthUser;
+        {'ok', Account} ->
+              AuthUser#auth_user{account_name=wh_json:get_value(<<"name">>, Account)
+                                 ,account_realm=wh_json:get_lower_binary(<<"realm">>, Account)}
+    end.
+
+
+-spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
+          {'ok', auth_user()} | {'error', any()}.
+maybe_auth_method(AuthUser, JObj, Req, ?GSM_AUTH_METHOD)->
+    SipDoc = wh_json:get_value(<<"sip">>, JObj),
+    Nonce = remove_dashes(              
+              wh_json:get_value(<<"nonce">>, SipDoc, 
+                                wh_json:get_value(<<"Auth-Nonce">>, Req,
+                                                  wh_util:rand_hex_binary(16)))), 
+    GsmKey = wh_json:get_value(<<"gsm_key">>, SipDoc),
+    GsmNumber = wh_json:get_first_defined([[<<"sip">>,<<"gsm_primary_number">>]
+                                           ,[<<"mobile">>,<<"mdn">>]
+                                          ], JObj),
+    gsm_auth(AuthUser#auth_user{primary_number=GsmNumber}, Nonce, GsmKey);
+maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)-> {'ok', AuthUser}.
+
+-spec gsm_auth(auth_user(), ne_binary(), api_binary()) -> {'ok', auth_user()}.
+gsm_auth(#auth_user{password=Password}=AuthUser, Nonce, 'undefined') ->
+    {'ok', AuthUser#auth_user{a3a8_sres=Password
+                             ,nonce=Nonce}};
+gsm_auth(AuthUser, NonceHex, GsmKey) ->
+    Key = wh_util:from_hex_binary(GsmKey),
+    Nonce = wh_util:from_hex_binary(NonceHex),
+    SRes = registrar_crypto:a3a8(Nonce, Key),
+    SResHex = wh_util:to_hex_binary(SRes),
+    <<SRES:8/binary, KC/binary>> = SResHex,
+    {'ok', AuthUser#auth_user{a3a8_sres=SRES
+                             ,a3a8_kc=KC
+                             ,password=SRES
+                             ,nonce=NonceHex}}.
+
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -282,6 +351,7 @@ get_account_id(JObj) ->
         AccountId -> wh_util:format_account_id(AccountId, 'raw')
     end.
 
+
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
@@ -299,3 +369,7 @@ get_account_db(JObj) ->
         'undefined' -> 'undefined';
         AccountDb -> wh_util:format_account_id(AccountDb, 'encoded')
     end.
+
+-spec remove_dashes(ne_binary()) -> ne_binary().
+remove_dashes(Bin) ->
+  << <<B>> || <<B>> <= Bin, B =/= $->>.

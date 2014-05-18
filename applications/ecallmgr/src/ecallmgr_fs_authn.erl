@@ -17,6 +17,7 @@
         ]).
 -export([handle_directory_lookup/3]).
 -export([lookup_user/4]).
+-export([is_custom_sip_header/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -258,6 +259,10 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
            ,{<<"Method">>, Method}
            ,{<<"Auth-User">>, Username}
            ,{<<"Auth-Realm">>, Realm}
+           ,{<<"Auth-Nonce">>, props:get_value(<<"sip_auth_nonce">>, Props)}
+           ,{<<"Auth-Response">>, props:get_value(<<"sip_auth_response">>, Props)}
+           ,{<<"Custom-SIP-Headers">>, get_custom_sip_headers(Props)}
+           ,{<<"User-Agent">>, props:get_value(<<"sip_user_agent">>, Props)}
            ,{<<"Media-Server">>, wh_util:to_binary(Node)}
            ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -271,6 +276,19 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
         {'error', _}=E -> E;
         {'ok', JObj} -> maybe_defered_error(Realm, Username, JObj)
     end.
+
+-spec get_custom_sip_headers(wh_proplist()) -> wh_json:object().
+get_custom_sip_headers(Props) ->
+    wh_json:from_list(
+      props:filter(fun is_custom_sip_header/1, Props)
+                     ).
+
+-spec is_custom_sip_header(ne_binary()) -> boolean().
+is_custom_sip_header(<<"P-", _/binary>>) -> 'true';
+is_custom_sip_header(<<"X-", _/binary>>) -> 'true';
+is_custom_sip_header(<<"sip_h_", _/binary>>) -> 'true';
+is_custom_sip_header(Header) -> 'false'.
+    
 
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
 %%   timeout (at the moment) but when we seek auth for INVITEs we need

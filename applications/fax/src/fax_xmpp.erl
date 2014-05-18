@@ -12,6 +12,7 @@
 -include("fax_cloud.hrl").
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
+-include_lib("exmpp/include/exmpp_jid.hrl").
 
 -define(XMPP_SCOPE,<<"https://www.googleapis.com/auth/googletalk">>).
 -define(SCOPES,<<(?XMPP_SCOPE)/binary, " ", (?GCP_SCOPE)/binary>>).
@@ -35,9 +36,10 @@
          oauth_app_id = 'undefined' :: api_binary(),
          refresh_token = 'undefined' :: api_binary(),
          connected = 'false' :: boolean(),
-         session :: any(),
-         jid :: any(),
-         full_jid :: any()
+         session :: pid(),
+         jid :: exmpp_jid:jid(),
+         full_jid = 'undefined' :: api_binary(),
+         monitor :: reference() 
         }).
 
 -type state() :: #state{}.
@@ -85,8 +87,13 @@ handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=Re
     {'ok', #oauth_token{token=Token} = OAuthToken} = kazoo_oauth_util:token(App, RefreshToken),
     case connect(wh_util:to_list(JID), wh_util:to_list(Token)) of
         {ok, {MySession, MyJID}} ->
+            Monitor = erlang:monitor('process', MySession),
             gen_server:cast(self(), 'subscribe'),
-            {noreply, State#state{session=MySession, jid=MyJID, connected='true'}, ?POLLING_INTERVAL};
+            {noreply, State#state{monitor=Monitor
+                                 ,session=MySession
+                                 ,jid=MyJID
+                                 ,connected='true'}
+            , ?POLLING_INTERVAL};
         _ -> 
             {stop, <<"Error connecting to xmpp server">>, State}
     end;
@@ -94,8 +101,7 @@ handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=Re
 handle_cast('status', State) ->
     {noreply, State, ?POLLING_INTERVAL};
 
-handle_cast('subscribe', #state{jid=MyJID, session=MySession}=State) ->
-    {_, JFull, _JUser, _JDomain, _JResource} = MyJID,
+handle_cast('subscribe', #state{jid=#jid{raw=JFull}=MyJID, session=MySession}=State) ->
     lager:debug("xmpp subscribe ~s",[JFull]),
     IQ = get_sub_msg(MyJID),
     PacketId = exmpp_session:send_packet(MySession, IQ),
@@ -117,26 +123,31 @@ handle_info(#received_packet{}=Packet, State) ->
 handle_info(timeout, State) ->    
     gen_server:cast(self(), 'subscribe'),
     {noreply, State, ?POLLING_INTERVAL};
-handle_info(_Info, State) -> 
+handle_info({'DOWN', MonitorRef, Type, Object, Info}=A, #state{monitor=MonitorRef}=State) -> 
+  lager:debug("xmpp session down ~p",[A]),
+  gen_server:cast(self(), 'start'),  
+  {noreply, State, ?POLLING_INTERVAL};
+handle_info(_Info, State) ->    
     lager:debug("xmpp handle_info ~p",[_Info]),
-  {noreply, State, ?POLLING_INTERVAL}.
+    {noreply, State, ?POLLING_INTERVAL}.
 
-
-terminate(_Reason, #state{jid=MyJID
+terminate(_Reason, #state{jid=#jid{raw=JFull}
                          ,session=MySession
+                         ,monitor=MonitorRef
                          ,connected='true'}) ->
-    {_, JFull, _JUser, _JDomain, _JResource} = MyJID,
+    
     lager:debug("terminating xmpp session ~s",[JFull]),
-  disconnect(MySession),
-  'ok';
+    erlang:demonitor(MonitorRef, ['flush']),
+    disconnect(MySession),
+    'ok';
 terminate(_Reason, State) -> 
     lager:debug("terminate xmpp module with reason ~p",[_Reason]),
-  'ok'.
+    'ok'.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
--spec get_sub_msg(tuple()) -> ne_binary().
-get_sub_msg({_, JFull, JUser, JDomain,JResource} = JID) ->
+-spec get_sub_msg(exmpp_jid:jid()) -> ne_binary().
+get_sub_msg( #jid{raw=JFull, node=JUser, domain=JDomain} = JID) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     Document = <<"<iq type='set' from='", JFull/binary, "' to='",BareJID/binary,"'>"
                  ,   "<subscribe xmlns='google:push'>"
@@ -149,8 +160,8 @@ get_sub_msg({_, JFull, JUser, JDomain,JResource} = JID) ->
 -define(XML_CTX_OPTIONS,[{namespace, [{"g", "google:push"}]}]).
 
 -spec process_received_packet(packet(), state()) -> any().
-process_received_packet(#received_packet{raw_packet=Packet},#state{jid=JID}=State) ->
-    {_, JFull, JUser, JDomain,JResource} = JID,
+process_received_packet(#received_packet{raw_packet=Packet}
+                       ,#state{jid=#jid{node=JUser,domain=JDomain}}=State) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     case exmpp_xml:get_element(Packet, ?NS_PUSH, 'push') of
         'undefined' -> 'undefined';
