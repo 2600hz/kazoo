@@ -552,6 +552,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
     end.
 
 -spec set_music_on_hold(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+set_music_on_hold(_, _, 'undefined') -> 'ok';
 set_music_on_hold(Node, UUID, Media) ->
     Resp = ecallmgr_util:set(Node, UUID, [{<<"Hold-Media">>, Media}]),
     lager:debug("setting Hold-Media ~p", [Resp]).
