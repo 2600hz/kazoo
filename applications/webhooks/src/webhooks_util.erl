@@ -10,10 +10,36 @@
 
 -include("webhooks.hrl").
 
+-export([from_json/1
+         ,to_json/1
+        ]).
 -export([find_webhooks/2]).
 -export([fire_hooks/2]).
 
 -define(TABLE, 'webhooks_listener').
+
+-spec from_json(wh_json:object()) -> webhook().
+from_json(Hook) ->
+    #webhook{id = hook_id(Hook)
+             ,uri = wh_json:get_value(<<"uri">>, Hook)
+             ,http_verb = http_verb(wh_json:get_value(<<"http_verb">>, Hook))
+             ,hook_event = hook_event(wh_json:get_value(<<"hook">>, Hook))
+             ,hook_id = wh_json:get_first_defined([<<"_id">>, <<"ID">>], Hook)
+             ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
+             ,account_id = wh_json:get_value(<<"pvt_account_id">>, Hook)
+             ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
+            }.
+
+-spec to_json(webhook()) -> wh_json:object().
+to_json(Hook) ->
+    wh_json:from_list([
+        {<<"_id">>, Hook#webhook.id}
+        ,{<<"uri">>, Hook#webhook.uri}
+        ,{<<"http_verb">>, Hook#webhook.http_verb}
+        ,{<<"retries">>, Hook#webhook.retries}
+        ,{<<"account_id">>, Hook#webhook.account_id}
+        ,{<<"custom_data">>, Hook#webhook.custom_data}
+    ]).
 
 -spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
 find_webhooks(_HookEvent, 'undefined') -> [];
@@ -149,6 +175,10 @@ failed_hook(#webhook{hook_id=HookId
                                 ]),
     save_attempt(Attempt, AccountId).
 
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
 -spec save_attempt(wh_json:object(), api_binary()) -> 'ok'.
 save_attempt(Attempt, AccountId) ->
     Now = wh_util:current_tstamp(),
@@ -165,3 +195,40 @@ save_attempt(Attempt, AccountId) ->
 
     _ = couch_mgr:save_doc(ModDb, Doc),
     'ok'.
+
+-spec hook_id(wh_json:object()) -> ne_binary().
+-spec hook_id(ne_binary(), ne_binary()) -> ne_binary().
+hook_id(JObj) ->
+    hook_id(wh_json:get_first_defined([<<"pvt_account_id">>
+                                       ,<<"Account-ID">>
+                                      ], JObj)
+            ,wh_json:get_first_defined([<<"_id">>, <<"ID">>], JObj)
+           ).
+hook_id(AccountId, Id) ->
+    <<AccountId/binary, ".", Id/binary>>.
+
+-spec http_verb(atom() | binary()) -> http_verb().
+http_verb('get') -> 'get';
+http_verb('post') -> 'post';
+http_verb(Bin) when is_binary(Bin) ->
+    try wh_util:to_atom(wh_util:to_lower_binary(Bin)) of
+        Atom -> http_verb(Atom)
+    catch
+        'error':'badarg' -> 'get'
+    end;
+http_verb(_) -> 'get'.
+
+-spec hook_event(ne_binary()) -> ne_binary().
+-spec hook_event_lowered(ne_binary()) -> ne_binary().
+hook_event(Bin) -> hook_event_lowered(wh_util:to_lower_binary(Bin)).
+
+hook_event_lowered(<<"channel_create">>) -> <<"CHANNEL_CREATE">>;
+hook_event_lowered(<<"channel_answer">>) -> <<"CHANNEL_ANSWER">>;
+hook_event_lowered(<<"channel_destroy">>) -> <<"CHANNEL_DESTROY">>;
+hook_event_lowered(<<"all">>) -> <<"all">>;
+hook_event_lowered(Bin) -> Bin.
+
+-spec retries(integer()) -> hook_retries().
+retries(N) when N > 0, N < 5 -> N;
+retries(N) when N < 1 -> 1;
+retries(_) -> 5.
