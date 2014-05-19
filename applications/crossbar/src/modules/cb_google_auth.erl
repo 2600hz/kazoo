@@ -225,8 +225,7 @@ create_auth_token(Context) ->
                 {'ok', Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),
-                    JObj1 = populate_resp(wh_json:get_value(<<"User">>, JObj), AccountId, OwnerId),
-                    JObj2 = crossbar_util:response_auth(JObj1),
+                    JObj2 = crossbar_util:response_auth(wh_json:get_value(<<"User">>, JObj), AccountId, OwnerId),
                     JObj3 = wh_json:set_value(<<"profile">>, wh_json:get_value(<<"Profile">>, JObj), JObj2),
                     crossbar_util:response(JObj3
                                           ,cb_context:setters(Context, [{fun cb_context:set_auth_token/2, AuthToken}
@@ -238,58 +237,3 @@ create_auth_token(Context) ->
                     cb_context:add_system_error('invalid_credentials', Context)
             end
     end.
-
--spec populate_resp(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
-populate_resp(JObj, AccountId, UserId) ->
-    Routines = [fun(J) -> wh_json:set_value(<<"apps">>, load_apps(AccountId, UserId), J) end
-                ,fun(J) -> wh_json:set_value(<<"language">>, get_language(AccountId, UserId), J) end
-               ],
-    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
-
--spec load_apps(ne_binary(), ne_binary()) -> api_object().
-load_apps(AccountId, UserId) ->
-    MasterAccountDb = get_master_account_db(),
-    Lang = get_language(AccountId, UserId),
-    case couch_mgr:get_all_results(MasterAccountDb, <<"apps_store/crossbar_listing">>) of
-        {'error', _E} ->
-            lager:error("failed to load lookup apps in ~p", [MasterAccountDb]),
-            'undefined';
-        {'ok', JObjs} -> filter_apps(JObjs, Lang)
-    end.
-
--spec filter_apps(wh_json:objects(), ne_binary()) -> wh_json:objects().
-filter_apps(JObjs, Lang) -> filter_apps(JObjs, Lang, []).
-
--spec filter_apps(wh_json:objects(), ne_binary(), wh_json:objects()) -> wh_json:objects().
-filter_apps([], _, Acc) -> Acc;
-filter_apps([JObj|JObjs], Lang, Acc) ->
-    App = wh_json:get_value(<<"value">>, JObj, wh_json:new()),
-    DefaultLabel = wh_json:get_value([<<"i18n">>, ?DEFAULT_LANGUAGE, <<"label">>], App),
-    FormatedApp =
-        wh_json:from_list(
-            props:filter_undefined(
-                [{<<"id">>, wh_json:get_value(<<"id">>, App)}
-                 ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
-                 ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
-                 ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
-                 ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], App, DefaultLabel)}
-                ]
-            )
-        ),
-    filter_apps(JObjs, Lang, [FormatedApp|Acc]).
-
--spec get_language(ne_binary(), ne_binary()) -> ne_binary().
-get_language(AccountId, UserId) ->
-    case crossbar_util:get_user_lang(AccountId, UserId) of
-        {'ok', Lang} -> Lang;
-        'error' ->
-            case crossbar_util:get_account_lang(AccountId) of
-                {'ok', Lang} -> Lang;
-                'error' -> ?DEFAULT_LANGUAGE
-            end
-    end.
-
--spec get_master_account_db() -> ne_binary().
-get_master_account_db() ->
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    wh_util:format_account_id(MasterAccountId, 'encoded').
