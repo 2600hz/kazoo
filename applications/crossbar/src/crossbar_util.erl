@@ -380,7 +380,7 @@ response_auth(JObj, AccountId, UserId) ->
 populate_resp(JObj, AccountId, UserId) ->
     Routines = [fun(J) -> wh_json:set_value(<<"apps">>, load_apps(AccountId, UserId), J) end
                 ,fun(J) -> wh_json:set_value(<<"language">>, get_language(AccountId, UserId), J) end
-                ,fun(J) -> wh_json:set_value(<<"account_name">>, get_account_name(AccountId), J) end
+                ,fun(J) -> wh_json:set_value(<<"account_name">>, whapps_util:get_account_name(AccountId), J) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
 
@@ -427,15 +427,6 @@ get_language(AccountId, UserId) ->
                 'error' -> ?DEFAULT_LANGUAGE
             end
     end.
-
--spec get_account_name(ne_binary()) -> ne_binary().
-get_account_name(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'error', _} -> 'undefined';
-        {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj)
-    end.
-
 
 -spec get_master_account_db() -> ne_binary().
 get_master_account_db() ->

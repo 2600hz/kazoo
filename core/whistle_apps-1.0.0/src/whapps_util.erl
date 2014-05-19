@@ -28,6 +28,7 @@
          ,get_accounts_by_name/1
         ]).
 -export([get_master_account_id/0]).
+-export([get_account_name/1]).
 -export([find_oldest_doc/1]).
 -export([get_event_type/1, put_callid/1]).
 -export([get_call_termination_reason/1]).
@@ -157,6 +158,19 @@ get_master_account_id({'ok', Accounts}) ->
     lager:debug("setting ~s.master_account_id to ~s", [?WH_SYSTEM_CONFIG_ACCOUNT, OldestAccountId]),
     {'ok', _} = whapps_config:set(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
     Ok.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_name(ne_binary()) -> ne_binary().
+get_account_name(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _} -> 'undefined';
+        {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
