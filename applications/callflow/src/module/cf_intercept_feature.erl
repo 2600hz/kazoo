@@ -90,30 +90,32 @@ make_secure_params(Data) ->
 
 -spec maybe_allowed_to_intercept(whapps_call:call(), wh_proplist()) -> boolean().
 maybe_allowed_to_intercept(Call, Props) ->
-  Id = whapps_call:authorizing_id(Call),
-  case couch_mgr:open_cache_doc(whapps_call:account_db(Call), Id) of
-      {'ok', DeviceDoc} ->
-          Caller = wh_json:get_value(<<"owner_id">>, DeviceDoc),
-          case wh_json:get_value(<<"user_id">>, Props) of
-              'undefined' ->
-                  case wh_json:get_value(<<"device_id">>, Props) of
-                      'undefined' -> 'false';
-                      DevId ->
-                          case couch_mgr:open_cache_doc(whapps_call:account_db(Call), DevId) of
-                              {ok, Target} ->
-                                  Caller =:= wh_json:get_value(<<"owner_id">>, Target);
-                              Err ->
-                                  lager:info("Error while opening couch document: ~p", [Err]),
-                                  'false'
-                          end
-                  end;
-              UserId ->
-                  UserId =:= Caller
-          end;
-      Err ->
-          lager:info("Error while opening couch document: ~p", [Err]),
-          'false'
-  end.
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)) of
+        {'ok', DeviceDoc} ->
+            maybe_allowed_to_intercept(Call, Props, DeviceDoc);
+        {'error', _Err} ->
+            lager:info("error while opening couch document: ~p", [_Err]),
+            'false'
+    end.
+
+-spec maybe_allowed_to_intercept(whapps_call:call(), wh_proplist(), wh_json:object()) -> boolean().
+maybe_allowed_to_intercept(Call, Props, DeviceDoc) ->
+    case props:get_value(<<"user_id">>, Props) of
+        'undefined' ->
+            case props:get_value(<<"device_id">>, Props) of
+                'undefined' -> 'false';
+                DeviceId ->
+                    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), DeviceId) of
+                        {'ok', TargetDevice} ->
+                            wh_json:get_value(<<"owner_id">>, DeviceDoc) =:=
+                                wh_json:get_value(<<"owner_id">>, TargetDevice);
+                        Err ->
+                            lager:info("Error while opening couch document: ~p", [Err]),
+                            'false'
+                    end
+            end;
+        UserId -> UserId =:= wh_json:get_value(<<"owner_id">>, DeviceDoc)
+    end.
 
 -spec build_intercept_params(ne_binary(), ne_binary(), whapps_call:call()) ->
                                  {'ok', wh_proplist()} |
