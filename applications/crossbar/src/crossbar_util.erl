@@ -24,7 +24,9 @@
 -export([response_missing_view/1]).
 -export([response_db_missing/1]).
 -export([response_db_fatal/1]).
--export([response_auth/1]).
+-export([response_auth/1
+         ,response_auth/3
+        ]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
 -export([get_path/2]).
@@ -34,6 +36,8 @@
 -export([maybe_remove_attachments/1]).
 
 -include("crossbar.hrl").
+
+-define(DEFAULT_LANGUAGE, <<"en-US">>).
 
 -type fails() :: 'error' | 'fatal'.
 
@@ -342,6 +346,7 @@ enable_account(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec response_auth(wh_json:object()) -> wh_json:object().
+-spec response_auth(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
 response_auth(JObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj, 'undefined'),
     OwnerId = wh_json:get_value(<<"owner_id">>, JObj, 'undefined'),
@@ -366,6 +371,67 @@ response_auth(JObj) ->
             ]
         )
     ).
+
+response_auth(JObj, AccountId, UserId) ->
+    JObj1 = populate_resp(JObj, AccountId, UserId),
+    crossbar_util:response_auth(JObj1).
+
+-spec populate_resp(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
+populate_resp(JObj, AccountId, UserId) ->
+    Routines = [fun(J) -> wh_json:set_value(<<"apps">>, load_apps(AccountId, UserId), J) end
+                ,fun(J) -> wh_json:set_value(<<"language">>, get_language(AccountId, UserId), J) end
+                ,fun(J) -> wh_json:set_value(<<"account_name">>, whapps_util:get_account_name(AccountId), J) end
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+
+-spec load_apps(ne_binary(), ne_binary()) -> api_object().
+load_apps(AccountId, UserId) ->
+    MasterAccountDb = get_master_account_db(),
+    Lang = get_language(AccountId, UserId),
+    case couch_mgr:get_all_results(MasterAccountDb, <<"apps_store/crossbar_listing">>) of
+        {'error', _E} ->
+            lager:error("failed to load lookup apps in ~p", [MasterAccountDb]),
+            'undefined';
+        {'ok', JObjs} -> filter_apps(JObjs, Lang)
+    end.
+
+-spec filter_apps(wh_json:objects(), ne_binary()) -> wh_json:objects().
+-spec filter_apps(wh_json:objects(), ne_binary(), wh_json:objects()) -> wh_json:objects().
+filter_apps(JObjs, Lang) ->
+    filter_apps(JObjs, Lang, []).
+
+filter_apps([], _, Acc) -> Acc;
+filter_apps([JObj|JObjs], Lang, Acc) ->
+    App = wh_json:get_value(<<"value">>, JObj, wh_json:new()),
+    DefaultLabel = wh_json:get_value([<<"i18n">>, ?DEFAULT_LANGUAGE, <<"label">>], App),
+    FormatedApp =
+        wh_json:from_list(
+            props:filter_undefined(
+                [{<<"id">>, wh_json:get_value(<<"id">>, App)}
+                 ,{<<"name">>, wh_json:get_value(<<"name">>, App)}
+                 ,{<<"api_url">>, wh_json:get_value(<<"api_url">>, App)}
+                 ,{<<"source_url">>, wh_json:get_value(<<"source_url">>, App)}
+                 ,{<<"label">>, wh_json:get_value([<<"i18n">>, Lang, <<"label">>], App, DefaultLabel)}
+                ]
+            )
+        ),
+    filter_apps(JObjs, Lang, [FormatedApp|Acc]).
+
+-spec get_language(ne_binary(), ne_binary()) -> ne_binary().
+get_language(AccountId, UserId) ->
+    case crossbar_util:get_user_lang(AccountId, UserId) of
+        {'ok', Lang} -> Lang;
+        'error' ->
+            case crossbar_util:get_account_lang(AccountId) of
+                {'ok', Lang} -> Lang;
+                'error' -> ?DEFAULT_LANGUAGE
+            end
+    end.
+
+-spec get_master_account_db() -> ne_binary().
+get_master_account_db() ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    wh_util:format_account_id(MasterAccountId, 'encoded').
 
 %%--------------------------------------------------------------------
 %% @public
