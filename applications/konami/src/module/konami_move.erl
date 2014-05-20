@@ -19,7 +19,6 @@
 handle(Data, Call) ->
     case send_originate_req(get_originate_req(Data, Call), Call) of
         {'ok', Result} ->
-            lager:debug("resp to orig: ~p", [Result]),
             maybe_update_metaflow(Data, Call, Result);
         {'error', _E} ->
             lager:debug("failed to originate: ~p", [_E]),
@@ -29,43 +28,52 @@ handle(Data, Call) ->
             maybe_update_metaflow(Data, Call, Result)
     end.
 
+-spec maybe_update_metaflow(wh_json:object(), whapps_call:call(), wh_json:objects()) ->
+                                   {'stop', whapps_call:call()}.
 maybe_update_metaflow(Data, Call, Results) ->
     case [Result || Result <- Results, is_resp(Result)] of
         [] ->
             lager:debug("no useful responses"),
             {'stop', Call};
-        [Resp] ->
-            lager:debug("resp: ~p", [Resp]),
+        [Resp|_] ->
             CallId = wh_json:get_value(<<"Call-ID">>, Resp),
             maybe_update_metaflow(Data, Call, Results, CallId)
     end.
 
+-spec maybe_update_metaflow(wh_json:object(), whapps_call:call(), wh_json:objects(), api_binary()) ->
+                                   {'stop', whapps_call:call()}.
 maybe_update_metaflow(Data, Call, Results, CallId) ->
     case [Result || Result <- Results, is_originate_uuid(Result, CallId)] of
         [] ->
             lager:debug("no matching originate_uuid"),
             {'stop', Call};
         [OriginateUUID|_] ->
-            lager:debug("found originate for ~s: ~p", [CallId, OriginateUUID]),
             ControlQueue = wh_json:get_value(<<"Outbound-Call-Control-Queue">>, OriginateUUID),
-            lager:debug("should use ~s for control", [ControlQueue]),
+            lager:debug("should use ~s for control of ~s", [ControlQueue, CallId]),
             maybe_update_metaflow_control(Data, Call, CallId, ControlQueue, source_leg_of_dtmf(Data, Call))
     end.
 
+-spec maybe_update_metaflow_control(wh_json:object(), whapps_call:call(), ne_binary(), ne_binary(), 'a' | 'b') ->
+                                           {'stop', whapps_call:call()}.
 maybe_update_metaflow_control(_Data, Call, CallId, ControlQueue, 'a') ->
     lager:debug("update ~s to ~s with ctl ~s", [whapps_call:call_id(Call), CallId, ControlQueue]),
-    DeviceId = find_device_id_for_leg(CallId),
-    lager:debug("device ~s for new leg", [DeviceId]),
 
     konami_code_fsm:transfer_to(
       whapps_call:set_control_queue(ControlQueue
                                     ,whapps_call:set_call_id(CallId, Call)
                                    )
+      ,'a'
      ),
 
     {'stop', Call};
-maybe_update_metaflow_control(_Data, Call, _CallId, _ControlQueue, 'b') ->
-    lager:debug("ignoring originate for b-leg ~s", [_CallId]),
+maybe_update_metaflow_control(_Data, Call, CallId, _ControlQueue, 'b') ->
+    lager:debug("update ~s to ~s with ctl ~s", [whapps_call:other_leg_call_id(Call), CallId, _ControlQueue]),
+
+    konami_code_fsm:transfer_to(
+      whapps_call:set_other_leg_call_id(CallId, Call)
+      ,'b'
+     ),
+
     {'stop', Call}.
 
 -spec source_leg_of_dtmf(ne_binary() | wh_json:object(), whapps_call:call()) -> 'a' | 'b'.
@@ -77,7 +85,7 @@ source_leg_of_dtmf(<<_/binary>> = SourceDTMF, Call) ->
 source_leg_of_dtmf(Data, Call) ->
     source_leg_of_dtmf(wh_json:get_value(<<"dtmf_leg">>, Data), Call).
 
--spec get_originate_req(wh_json:object(), whapps_call:call()) -> wh_json:objects().
+-spec get_originate_req(wh_json:object(), whapps_call:call()) -> wh_proplist().
 get_originate_req(Data, Call) ->
     SourceOfDTMF = wh_json:get_value(<<"dtmf_leg">>, Data),
 
@@ -146,9 +154,7 @@ send_originate_req([], _Call) ->
 send_originate_req(OriginateProps, _Call) ->
     whapps_util:amqp_pool_collect(OriginateProps, fun wapi_resource:publish_originate_req/1, fun is_resp/1, 20000).
 
--spec is_resp(wh_json:objects() | wh_json:object()) ->
-                     {'ok', iolist()} |
-                     {'error', string()}.
+-spec is_resp(wh_json:objects() | wh_json:object()) -> boolean().
 is_resp([JObj|_]) ->
     is_resp(JObj);
 is_resp(JObj) ->

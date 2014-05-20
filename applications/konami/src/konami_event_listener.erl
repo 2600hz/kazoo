@@ -39,7 +39,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(TRACKED_CALL_EVENTS, ['DTMF', 'CHANNEL_DESTROY']).
+-define(TRACKED_CALL_EVENTS, ['DTMF', 'CHANNEL_BRIDGE', 'CHANNEL_DESTROY']).
 
 -define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ?TRACKED_CALL_EVENTS}
                                         ,{'callid', CallId}
