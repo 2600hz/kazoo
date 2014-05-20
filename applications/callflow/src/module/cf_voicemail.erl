@@ -52,6 +52,13 @@
         ,whapps_config:get_integer(?CF_CONFIG_CAT, [<<"voicemail">>, <<"max_pin_length">>], 6)
        ).
 
+-define(DEFAULT_DELETE_AFTER_NOTIFY
+        ,whapps_config:get(?CF_CONFIG_CAT
+                           ,[<<"voicemail">>, <<"delete_after_notify">>]
+                           ,'false'
+                          )
+       ).
+
 -record(keys, {
           %% Compose Voicemail
           operator = <<"0">>
@@ -1101,6 +1108,13 @@ get_mailbox_profile(Data, Call) ->
 
             lager:info("mailbox limited to ~p voicemail messages (has ~b currently)", [MaxMessageCount, MsgCount]),
 
+            DeleteAfterNotify =
+                case ?DEFAULT_DELETE_AFTER_NOTIFY of
+                    'true' -> 'true';
+                    'false' ->
+                        wh_json:is_true(<<"delete_after_notify">>, JObj, 'false')
+                end,
+
             #mailbox{mailbox_id = MailboxId
                      ,exists = 'true'
                      ,keys = populate_keys(Call)
@@ -1136,8 +1150,7 @@ get_mailbox_profile(Data, Call) ->
                          wh_json:is_true(<<"transcribe">>, JObj, 'false')
                      ,notifications =
                          wh_json:get_value(<<"notifications">>, JObj)
-                     ,delete_after_notify =
-                         wh_json:is_true(<<"delete_after_notify">>, JObj, 'false')
+                     ,delete_after_notify = DeleteAfterNotify
                      ,interdigit_timeout =
                          wh_json:find(<<"interdigit_timeout">>, [JObj, Data], whapps_call_command:default_interdigit_timeout())
                      ,play_greeting_intro =
