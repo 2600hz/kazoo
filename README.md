@@ -113,6 +113,7 @@ ensure 2600hz is always leading the way in cloud telecom.
 * gcc-c++
 * zip
 * unzip
+* expat-devel
 * make
 * nc
 
