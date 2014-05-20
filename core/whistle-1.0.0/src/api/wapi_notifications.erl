@@ -33,7 +33,7 @@
          ,low_balance/1, low_balance_v/1
          ,transaction/1, transaction_v/1
          ,system_alert/1, system_alert_v/1
-
+         ,webhook/1, webhook_v/1
          %% published on completion of notification
          ,notify_update/1, notify_update_v/1
         ]).
@@ -58,6 +58,7 @@
          ,publish_low_balance/1, publish_low_balance/2
          ,publish_transaction/1, publish_transaction/2
          ,publish_system_alert/1, publish_system_alert/2
+         ,publish_webhook/1, publish_webhook/2
          ,publish_notify_update/2, publish_notify_update/3
         ]).
 
@@ -86,6 +87,7 @@
 -define(NOTIFY_LOW_BALANCE, <<"notifications.account.low_balance">>).
 -define(NOTIFY_TRANSACTION, <<"notifications.account.transaction">>).
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
+-define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
 
 %% Notify New Voicemail
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
@@ -321,6 +323,16 @@
                              ]).
 -define(SYSTEM_ALERT_TYPES, []).
 
+
+%% Notify webhook
+-define(WEBHOOK_HEADERS, [<<"Hook">>, <<"Data">>]).
+-define(OPTIONAL_WEBHOOK_HEADERS, []).
+-define(WEBHOOK_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"webhook">>}
+                             ]).
+-define(WEBHOOK_TYPES, []).
+
+
 -define(NOTIFY_UPDATE_HEADERS, [<<"Status">>]).
 -define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>]).
 -define(NOTIFY_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
@@ -328,6 +340,8 @@
                                ,{<<"Status">>, [<<"completed">>, <<"failed">>]}
                               ]).
 -define(NOTIFY_UPDATE_TYPES, []).
+
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -676,6 +690,23 @@ system_alert_v(Prop) when is_list(Prop) ->
 system_alert_v(JObj) -> system_alert_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc webhook notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+webhook(Prop) when is_list(Prop) ->
+    case webhook_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?WEBHOOK_HEADERS, ?OPTIONAL_WEBHOOK_HEADERS);
+        'false' -> {'error', "Proplist failed validation for webhook"}
+    end;
+webhook(JObj) -> webhook(wh_json:to_proplist(JObj)).
+
+-spec webhook_v(api_terms()) -> boolean().
+webhook_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?WEBHOOK_HEADERS, ?WEBHOOK_VALUES, ?WEBHOOK_TYPES);
+webhook_v(JObj) -> webhook_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc System alert notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -772,6 +803,9 @@ bind_to_q(Q, ['transaction'|T]) ->
 bind_to_q(Q, ['system_alerts'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SYSTEM_ALERT),
     bind_to_q(Q, T);
+bind_to_q(Q, ['webhook'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_WEBHOOK_CALLFLOW),
+    bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     'ok'.
 
@@ -855,6 +889,9 @@ unbind_q_from(Q, ['transaction'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['system_alert'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SYSTEM_ALERT),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['webhook'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_WEBHOOK_CALLFLOW),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     'ok'.
@@ -1011,9 +1048,18 @@ publish_system_alert(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?SYSTEM_ALERT_VALUES, fun ?MODULE:system_alert/1),
     amqp_util:notifications_publish(?NOTIFY_SYSTEM_ALERT, Payload, ContentType).
 
+-spec publish_webhook(api_terms()) -> 'ok'.
+-spec publish_webhook(api_terms(), ne_binary()) -> 'ok'.
+publish_webhook(JObj) -> publish_webhook(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_webhook(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?WEBHOOK_VALUES, fun ?MODULE:webhook/1),
+    amqp_util:notifications_publish(?NOTIFY_WEBHOOK_CALLFLOW, Payload, ContentType).
+
 -spec publish_notify_update(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_notify_update(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_notify_update(RespQ, JObj) -> publish_notify_update(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_notify_update(RespQ, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?NOTIFY_UPDATE_VALUES, fun ?MODULE:notify_update/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+
