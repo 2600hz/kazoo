@@ -17,20 +17,19 @@
                     {'continue', whapps_call:call()} |
                     {'stop', whapps_call:call()}.
 handle(Data, Call) ->
-    Req = get_originate_req(Data, Call),
-    case send_originate_req(Req, Call) of
+    case send_originate_req(get_originate_req(Data, Call), Call) of
         {'ok', Result} ->
             lager:debug("resp to orig: ~p", [Result]),
-            maybe_update_metaflow(Result, Call);
+            maybe_update_metaflow(Data, Call, Result);
         {'error', _E} ->
             lager:debug("failed to originate: ~p", [_E]),
             {'stop', Call};
         {'timeout', Result} ->
             lager:debug("timed out, here's what we got: ~p", [Result]),
-            maybe_update_metaflow(Result, Call)
+            maybe_update_metaflow(Data, Call, Result)
     end.
 
-maybe_update_metaflow(Results, Call) ->
+maybe_update_metaflow(Data, Call, Results) ->
     case [Result || Result <- Results, is_resp(Result)] of
         [] ->
             lager:debug("no useful responses"),
@@ -38,10 +37,10 @@ maybe_update_metaflow(Results, Call) ->
         [Resp] ->
             lager:debug("resp: ~p", [Resp]),
             CallId = wh_json:get_value(<<"Call-ID">>, Resp),
-            maybe_update_metaflow(Results, Call, CallId)
+            maybe_update_metaflow(Data, Call, Results, CallId)
     end.
 
-maybe_update_metaflow(Results, Call, CallId) ->
+maybe_update_metaflow(Data, Call, Results, CallId) ->
     case [Result || Result <- Results, is_originate_uuid(Result, CallId)] of
         [] ->
             lager:debug("no matching originate_uuid"),
@@ -50,8 +49,33 @@ maybe_update_metaflow(Results, Call, CallId) ->
             lager:debug("found originate for ~s: ~p", [CallId, OriginateUUID]),
             ControlQueue = wh_json:get_value(<<"Outbound-Call-Control-Queue">>, OriginateUUID),
             lager:debug("should use ~s for control", [ControlQueue]),
-            {'stop', Call}
+            maybe_update_metaflow_control(Data, Call, CallId, ControlQueue, source_leg_of_dtmf(Data, Call))
     end.
+
+maybe_update_metaflow_control(_Data, Call, CallId, ControlQueue, 'a') ->
+    lager:debug("update ~s to ~s with ctl ~s", [whapps_call:call_id(Call), CallId, ControlQueue]),
+    DeviceId = find_device_id_for_leg(CallId),
+    lager:debug("device ~s for new leg", [DeviceId]),
+
+    konami_code_fsm:transfer_to(
+      whapps_call:set_control_queue(ControlQueue
+                                    ,whapps_call:set_call_id(CallId, Call)
+                                   )
+     ),
+
+    {'stop', Call};
+maybe_update_metaflow_control(_Data, Call, _CallId, _ControlQueue, 'b') ->
+    lager:debug("ignoring originate for b-leg ~s", [_CallId]),
+    {'stop', Call}.
+
+-spec source_leg_of_dtmf(ne_binary() | wh_json:object(), whapps_call:call()) -> 'a' | 'b'.
+source_leg_of_dtmf(<<_/binary>> = SourceDTMF, Call) ->
+    case whapps_call:call_id(Call) =:= SourceDTMF of
+        'true' -> 'a';
+        'false' -> 'b'
+    end;
+source_leg_of_dtmf(Data, Call) ->
+    source_leg_of_dtmf(wh_json:get_value(<<"dtmf_leg">>, Data), Call).
 
 -spec get_originate_req(wh_json:object(), whapps_call:call()) -> wh_json:objects().
 get_originate_req(Data, Call) ->
@@ -62,13 +86,13 @@ get_originate_req(Data, Call) ->
                                 ], Data),
 
     OwnerId = wh_json:get_value(<<"owner_id">>, Data),
-    {DeviceId, TargetCallId} =
-        case whapps_call:call_id(Call) =:= SourceOfDTMF of
-            'true' -> {whapps_call:authorizing_id(Call), whapps_call:other_leg_call_id(Call)};
-            'false' -> {find_device_id_for_leg(SourceOfDTMF), whapps_call:call_id(Call)}
+    {SourceDeviceId, TargetCallId} =
+        case source_leg_of_dtmf(SourceOfDTMF, Call) of
+            'a' -> {whapps_call:authorizing_id(Call), whapps_call:other_leg_call_id(Call)};
+            'b' -> {find_device_id_for_leg(SourceOfDTMF), whapps_call:call_id(Call)}
         end,
 
-    Endpoints = build_endpoints(DeviceId, OwnerId, Params, Call),
+    Endpoints = build_endpoints(SourceDeviceId, OwnerId, Params, Call),
     build_originate(Endpoints, TargetCallId, Call).
 
 -spec build_endpoints(ne_binary(), ne_binary(), wh_json:object(), whapps_call:call()) -> wh_json:objects().
