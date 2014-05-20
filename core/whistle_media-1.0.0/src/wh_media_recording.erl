@@ -16,6 +16,8 @@
 %%%-------------------------------------------------------------------
 -module(wh_media_recording).
 
+-behaviour(gen_listener).
+
 -export([start_link/2
          ,start_recording/2
          ,handle_call_event/2
