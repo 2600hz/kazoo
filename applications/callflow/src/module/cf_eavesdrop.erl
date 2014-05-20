@@ -52,22 +52,19 @@ maybe_allowed_to_eavesdrop(Data, Call) ->
             case wh_json:get_value(<<"approved_user_id">>, Data) of
                 'undefined' ->
                     case wh_json:get_value(<<"approved_group_id">>, Data) of
-                        'undefined' -> 'true'
+                        'undefined' -> 'true';
+                        GroupId -> cf_util:caller_belongs_to_group(GroupId, Call)
                     end;
-                UserId -> maybe_belongs_to_user(UserId, Call)
+                UserId -> cf_util:caller_belongs_to_user(UserId, Call)
             end;
         DeviceId ->
-            % Compare approved device_id with calling one
+            %% Compare approved device_id with calling one
             DeviceId == whapps_call:authorizing_id(Call)
     end.
 
--spec maybe_belongs_to_user(ne_binary(), whapps_call:call()) -> boolean().
-maybe_belongs_to_user(UserId, Call) ->
-    is_in_list(whapps_call:authorizing_id(Call), find_user_endpoints([UserId],[],Call)).
-
 -spec eavesdrop_channel(ne_binaries(), whapps_call:call()) -> 'ok'.
 eavesdrop_channel(Usernames, Call) ->
-    case find_channels(Usernames, Call) of
+    case cf_util:find_channels(Usernames, Call) of
         [] -> no_channels(Call);
         Channels -> eavesdrop_a_channel(Channels, Call)
     end,
@@ -133,10 +130,9 @@ maybe_add_other_leg(Channel, Legs) ->
 eavesdrop_call(UUID, Call) ->
     _ = whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
     case wait_for_eavesdrop(Call) of
-        {'error', _E} ->
-            lager:debug("failed to eavesdrop ~s: ~p", [UUID, _E]);
+        {'error', _E} -> 'ok';
         'ok' ->
-            lager:debug("call is being eavesdropper"),
+            lager:debug("caller is eavesdropping, waiting for hangup"),
             whapps_call_command:wait_for_hangup(),
             lager:debug("hangup recv")
     end.
@@ -149,9 +145,9 @@ eavesdrop_cmd(TargetCallId) ->
     ].
 
 -spec wait_for_eavesdrop(whapps_call:call()) ->
-                             'ok' |
-                             {'error', 'failed'} |
-                             {'error', 'timeout'}.
+                                'ok' |
+                                {'error', 'failed'} |
+                                {'error', 'timeout'}.
 wait_for_eavesdrop(Call) ->
     case whapps_call_command:receive_event(10000) of
         {'ok', Evt} ->
@@ -162,35 +158,19 @@ wait_for_eavesdrop(Call) ->
     end.
 
 -spec eavesdrop_event(whapps_call:call(), {ne_binary(), ne_binary()}, wh_json:object()) ->
-                          {'error', 'failed' | 'timeout'} |
-                          'ok'.
+                             {'error', 'failed' | 'timeout'} |
+                             'ok'.
 eavesdrop_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
     lager:debug("error in dialplan: ~s", [wh_json:get_value(<<"Error-Message">>, Evt)]),
     {'error', 'failed'};
 eavesdrop_event(_Call, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}, _Evt) ->
     lager:debug("channel bridged to ~s", [wh_json:get_value(<<"Other-Leg-Call-ID">>, _Evt)]);
+eavesdrop_event(_Call, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, _Evt) ->
+    lager:debug("channel died while waiting for eavesdrop"),
+    {'error', 'failed'};
 eavesdrop_event(Call, _Type, _Evt) ->
     lager:debug("unhandled evt ~p", [_Type]),
     wait_for_eavesdrop(Call).
-
--spec find_channels(ne_binaries(), whapps_call:call()) -> wh_json:objects().
-find_channels(Usernames, Call) ->
-    Realm = wh_util:get_account_realm(whapps_call:account_id(Call)),
-    lager:debug("finding channels for realm ~s, usernames ~p", [Realm, Usernames]),
-    Req = [{<<"Realm">>, Realm}
-           ,{<<"Usernames">>, Usernames}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_call:publish_query_user_channels_req/1
-                                       ,fun wapi_call:query_user_channels_resp_v/1
-                                      )
-    of
-        {'ok', Resp} -> wh_json:get_value(<<"Channels">>, Resp, []);
-        {'error', _E} ->
-            lager:debug("failed to get channels: ~p", [_E]),
-            []
-    end.
 
 -spec find_sip_endpoints(wh_json:object(), whapps_call:call()) ->
                                 ne_binaries().
@@ -200,11 +180,11 @@ find_sip_endpoints(Data, Call) ->
             case wh_json:get_value(<<"user_id">>, Data) of
                 UserId ->
                     sip_users_from_endpoints(
-                      find_user_endpoints([UserId], [], Call), Call
+                      cf_util:find_user_endpoints([UserId], [], Call), Call
                      )
             end;
         DeviceId ->
-             sip_users_from_endpoints([DeviceId], Call)
+            sip_users_from_endpoints([DeviceId], Call)
     end.
 
 -spec sip_users_from_endpoints(ne_binaries(), whapps_call:call()) -> ne_binaries().
@@ -224,14 +204,6 @@ sip_user_of_endpoint(EndpointId, Call) ->
             wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
     end.
 
--spec find_user_endpoints(ne_binaries(), ne_binaries(), whapps_call:call()) ->
-                                 ne_binaries().
-find_user_endpoints([], DeviceIds, _) -> DeviceIds;
-find_user_endpoints(UserIds, DeviceIds, Call) ->
-    UserDeviceIds = cf_attributes:owned_by(UserIds, <<"device">>, Call),
-    lists:merge(lists:sort(UserDeviceIds), DeviceIds).
-
-
 -spec no_users(whapps_call:call()) -> any().
 no_users(Call) ->
     whapps_call_command:answer(Call),
@@ -247,12 +219,3 @@ no_channels(Call) ->
 no_permission_to_eavesdrop(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_say(<<"you have no permission to eavesdrop this call">>, Call).
-
--spec is_in_list(api_binary(), ne_binaries()) -> boolean().
-%% NOTE: this could be replaced by list:member
-is_in_list(_, []) -> 'false';
-is_in_list(Suspect, [H|T]) ->
-    case Suspect == H of
-        'true' -> 'true';
-        _ -> is_in_list(Suspect, T)
-    end.
