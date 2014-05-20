@@ -38,10 +38,10 @@
 start_link() ->
     gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
--record(active_fsm, {pid :: pid()
-                     ,call_id :: api_binary()
-                     ,other_leg :: api_binary()
-                     ,listen_on :: 'a' | 'b' | 'ab'
+-record(active_fsm, {pid :: pid() | '_'
+                     ,call_id :: api_binary() | '_'
+                     ,other_leg :: api_binary() | '_'
+                     ,listen_on :: 'a' | 'b' | 'ab' | '_'
                     }).
 -type active_fsm() :: #active_fsm{}.
 -type active_fsms() :: [active_fsm(),...] | [].
