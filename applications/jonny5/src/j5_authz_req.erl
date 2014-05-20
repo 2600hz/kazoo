@@ -44,7 +44,7 @@ determine_account_id(Request) ->
 -spec maybe_local_resource(ne_binary(), wh_proplist(), j5_request:request()) -> 'ok'.
 maybe_local_resource(AccountId, Props, Request) ->
     %% TODO: we need to check system_config to determine if we authz local
-    case props:get_value('local', Props) of
+    case wh_number_properties:is_local_number(Props) of
         'false' ->
             maybe_account_limited(
               j5_request:set_account_id(AccountId, Request)
@@ -211,4 +211,3 @@ send_response(Request) ->
             j5_channels:authorized(wh_json:from_list(Resp));
         'false' -> j5_util:send_system_alert(Request)
     end.
-

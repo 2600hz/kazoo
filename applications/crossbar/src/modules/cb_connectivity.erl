@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for connectivity documents
@@ -28,12 +28,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.connectivity">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.connectivity">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.connectivity">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.connectivity">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.connectivity">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"*.execute.delete.connectivity">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.connectivity">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.connectivity">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.connectivity">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.connectivity">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.connectivity">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.connectivity">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -61,10 +61,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() ->
-    'true'.
-resource_exists(_) ->
-    'true'.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,30 +73,37 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+
+validate(Context) ->
+    validate_connectivity_listing(Context, cb_context:req_verb(Context)).
+
+validate_connectivity_listing(Context, ?HTTP_GET) ->
     summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_connectivity_listing(Context, ?HTTP_PUT) ->
     create(Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
+validate(Context, Id) ->
+    validate_connectivity_pbx(Context, Id, cb_context:req_verb(Context)).
+
+validate_connectivity_pbx(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
+validate_connectivity_pbx(Context, Id, ?HTTP_POST) ->
     update(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
+validate_connectivity_pbx(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     track_assignment('update', Context),
     crossbar_doc:save(Context).
 
--spec put(#cb_context{}) -> #cb_context{}.
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
 
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     track_assignment('delete', Context),
     crossbar_doc:delete(Context).
@@ -114,36 +119,20 @@ delete(Context, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  track_assignment(atom(), cb_context:context()) ->cb_context:context().
-track_assignment('update', #cb_context{doc=JObj, storage=Storage, account_id=AcctId}=Context) ->
-    OldNums = get_numbers(props:get_value('db_doc', Storage)),
-    NewNums = get_numbers(JObj),
-    Assigned = lists:foldl(
-        fun(Num, Acc) ->
-            case lists:member(Num, OldNums) of
-                'true' -> Acc;
-                'false' -> [{Num, <<"trunkstore">>}|Acc]
-            end
-        end, [], NewNums
-    ),
-    Unassigned = lists:foldl(
-        fun(Num, Acc) ->
-            case lists:member(Num, NewNums) of
-                'true' -> Acc;
-                'false' -> [{Num, <<>>}|Acc]
-            end
-        end, [], OldNums
-    ),
-    'ok' = wh_number_manager:track_assignment(AcctId, Assigned ++ Unassigned),
+-spec  track_assignment(atom(), cb_context:context()) -> cb_context:context().
+track_assignment('update', Context) ->
+    OldNums = get_numbers(cb_context:fetch(Context, 'db_doc')),
+    NewNums = get_numbers(cb_context:doc(Context)),
+
+    Assigned = [{Num, <<"trunkstore">>} || Num <- NewNums, not (lists:member(Num, OldNums))],
+    Unassigned = [{Num, <<>>} || Num <- OldNums, not (lists:member(Num, NewNums))],
+
+    'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Assigned ++ Unassigned),
     Context;
-track_assignment('delete', #cb_context{doc=JObj,account_id=AcctId}=Context) ->
-    Nums = get_numbers(JObj),
-    Unassigned = lists:foldl(
-        fun(Num, Acc) ->
-            [{Num, <<>>}|Acc]
-        end, [], Nums
-    ),
-    'ok' = wh_number_manager:track_assignment(AcctId, Unassigned),
+track_assignment('delete', Context) ->
+    Nums = get_numbers(cb_context:doc(Context)),
+    Unassigned = [{Num, <<>>} || Num <- Nums],
+    'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned),
     Context.
 
 %%--------------------------------------------------------------------
@@ -155,28 +144,11 @@ track_assignment('delete', #cb_context{doc=JObj,account_id=AcctId}=Context) ->
 -spec  get_numbers(wh_json:object()) -> ne_binaries().
 get_numbers(JObj) ->
     Servers = wh_json:get_value(<<"servers">>, JObj, []),
-    Numbers = lists:foldl(
-        fun(Server, Acc) ->
-            Dids = wh_json:get_value(<<"DIDs">>, Server),
-            [extract_dids(Dids)|Acc]
-        end, [], Servers
-    ),
-    lists:flatten(Numbers).
+    lists:foldl(fun get_numbers_fold/2, [], Servers).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec  extract_dids(wh_json:object()) -> [ne_binaries(), ...].
-extract_dids(DidsJObj) ->
-    Dids = wh_json:to_proplist(DidsJObj),
-    lists:foldl(
-        fun({Did, _}, Acc) ->
-            [Did|Acc]
-        end, [], Dids
-    ).
+-spec get_numbers_fold(wh_json:object(), ne_binaries()) -> ne_binaries().
+get_numbers_fold(Server, Acc) ->
+    wh_json:get_keys(wh_json:get_value(<<"DIDs">>, Server)) ++ Acc.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -184,9 +156,9 @@ extract_dids(DidsJObj) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(#cb_context{}) -> #cb_context{}.
-create(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+-spec create(cb_context:context()) -> cb_context:context().
+create(Context) ->
+    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -195,7 +167,7 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -206,8 +178,8 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{}=Context) ->
+-spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
@@ -217,10 +189,10 @@ update(Id, #cb_context{}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
-on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"sys_info">>, JObj)};
-on_successful_validation(Id, #cb_context{}=Context) ->
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', Context) ->
+    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_type">>, <<"sys_info">>, cb_context:doc(Context)));
+on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
 %%--------------------------------------------------------------------
@@ -230,9 +202,9 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(#cb_context{}) -> #cb_context{}.
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [{reduce, false}], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [{'reduce', 'false'}], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private

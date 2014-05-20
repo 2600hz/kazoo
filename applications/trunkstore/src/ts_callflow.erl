@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, VoIP INC
 %%% @doc
 %%% Common functionality for onnet and offnet call handling
 %%% @end
@@ -138,7 +138,7 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
             end;
         {<<"resource">>, <<"resource_error">>, _} ->
             Code = wh_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
-            Message = wh_json:get_value(<<"Failure-Message">>, JObj),     
+            Message = wh_json:get_value(<<"Failure-Message">>, JObj),
             lager:info("offnet failed: ~s ~s", [Code, Message]),
             %% send failure code to Call
             _ = wh_call_response:send(ALeg, CtlQ, Code, Message),
@@ -156,7 +156,7 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
                 'true' ->
                     lager:info("bridge completed sucessfully", []),
                     {'hangup', State};
-                'false' -> 
+                'false' ->
                     lager:info("bridge failed: ~s"
                                ,[wh_json:encode(JObj)]),
                     {'error', State}
@@ -256,7 +256,7 @@ is_trunkstore_acct(JObj) ->
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj) of
         <<"sys_info">> -> 'true';
         'undefined' -> 'true';
-        _ -> 'false'
+        _AuthType -> 'false'
     end.
 
 -spec pre_park_action() -> ne_binary().

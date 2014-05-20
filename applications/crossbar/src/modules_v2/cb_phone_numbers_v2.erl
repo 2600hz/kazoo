@@ -750,7 +750,7 @@ identify(Context, Number) ->
             set_response({wh_util:to_binary(E), <<>>}, Number, Context, Fun);
         {'ok', AccountId, Options} ->
             JObj = wh_json:set_values([{<<"account_id">>, AccountId}
-                                       ,{<<"number">>, props:get_value('number', Options)}
+                                       ,{<<"number">>, wh_number_properties:number(Options)}
                                       ]
                                       ,wh_json:new()
                                      ),
@@ -1040,7 +1040,6 @@ collection_action(#cb_context{auth_account_id=AuthBy
                               ,req_verb = ?HTTP_DELETE
                              }, Number, _) ->
     wh_number_manager:release_number(Number, AuthBy).
-
 
 %%--------------------------------------------------------------------
 %% @private

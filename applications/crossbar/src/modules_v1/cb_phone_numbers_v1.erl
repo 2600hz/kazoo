@@ -411,7 +411,7 @@ identify(Context, Number) ->
             set_response({wh_util:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, Options} ->
             JObj = wh_json:set_values([{<<"account_id">>, AccountId}
-                                       ,{<<"number">>, props:get_value('number', Options)}
+                                       ,{<<"number">>, wh_number_properties:number(Options)}
                                       ]
                                       ,wh_json:new()
                                      ),

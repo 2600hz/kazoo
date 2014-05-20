@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, VoIP INC
 %%% @doc
 %%% Calls coming from offnet (in this case, likely stepswitch) potentially
 %%% destined for a trunkstore client, or, if the account exists and
@@ -89,7 +89,7 @@ wait_for_bridge(State) ->
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State)
-          ,ts_callflow:get_failover(State)} 
+          ,ts_callflow:get_failover(State)}
     of
         {<<>>, _} ->
             lager:info("no callctl for failover");
@@ -111,7 +111,7 @@ failover(State, Failover) ->
             try_failover_sip(State, wh_json:get_value(<<"sip">>, Failover));
         DID ->
             try_failover_e164(State, DID)
-    end.    
+    end.
 
 try_failover_sip(_, 'undefined') ->
     lager:info("SIP failover undefined");
@@ -179,7 +179,7 @@ get_endpoint_data(JObj) ->
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = wnm_util:to_e164(ToUser),
     {'ok', AcctId, NumberProps} = wh_number_manager:lookup_account_by_number(ToDID),
-    ForceOut = props:get_value('force_outbound', NumberProps),
+    ForceOut = wh_number_properties:should_force_outbound(NumberProps),
     lager:info("acct ~s force out ~s", [AcctId, ForceOut]),
     RoutingData = routing_data(ToDID, AcctId),
     AuthUser = props:get_value(<<"To-User">>, RoutingData),
@@ -220,23 +220,31 @@ routing_data(ToDID, AcctID, Settings) ->
                     {'error', _} -> wh_json:new()
                 end,
     AuthU = wh_json:get_value(<<"auth_user">>, AuthOpts),
-    AuthR = wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct)),
-    {Srv, AcctStuff} = try
-                           {'ok', AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR, AcctID),
-                           lager:info("got account settings"),
-                           {wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
-                            ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
-                           }
-                       catch
-                           _A:_B ->
-                               lager:info("failed to get account settings: ~p: ~p", [_A, _B]),
-                               {wh_json:new(), wh_json:new()}
-                       end,
+    AuthR = wh_json:find(<<"auth_realm">>, [AuthOpts, Acct]),
+
+    {Srv, AcctStuff} =
+        try ts_util:lookup_user_flags(AuthU, AuthR, AcctID) of
+            {'ok', AccountSettings} ->
+                lager:info("got account settings"),
+                {wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
+                 ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
+                }
+        catch
+            _E:_R ->
+                lager:info("failed to get account settings: ~p: ~p", [_E, _R]),
+                {wh_json:new(), wh_json:new()}
+        end,
+
     SrvOptions = wh_json:get_value(<<"options">>, Srv, wh_json:new()),
-    case wh_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions, 'true')) of
+
+    ToIP = wh_json:find(<<"ip">>, [AuthOpts, SrvOptions]),
+    ToPort = wh_json:find(<<"port">>, [AuthOpts, SrvOptions]),
+
+    case wh_json:is_true(<<"enabled">>, SrvOptions, 'true') of
         'false' -> throw({'server_disabled', wh_json:get_value(<<"id">>, Srv)});
         'true' -> 'ok'
     end,
+
     InboundFormat = wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
     {CalleeName, CalleeNumber} = callee_id([wh_json:get_value(<<"caller_id">>, DIDOptions)
                                             ,wh_json:get_value(<<"callerid_account">>, Settings)
@@ -255,9 +263,10 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,wh_json:get_value(<<"failover">>, SrvOptions)
                          ,wh_json:get_value(<<"failover">>, AcctStuff)
                         ],
-    lager:info("looking for failover in ~p", [FailoverLocations]),
+
     Failover = ts_util:failover(FailoverLocations),
     lager:info("failover found: ~p", [Failover]),
+
     Delay = ts_util:delay([wh_json:get_value(<<"delay">>, DIDOptions)
                            ,wh_json:get_value(<<"delay">>, SrvOptions)
                            ,wh_json:get_value(<<"delay">>, AcctStuff)
@@ -269,11 +278,11 @@ routing_data(ToDID, AcctID, Settings) ->
     IgnoreEarlyMedia = ts_util:ignore_early_media([wh_json:get_value(<<"ignore_early_media">>, DIDOptions)
                                                    ,wh_json:get_value(<<"ignore_early_media">>, SrvOptions)
                                                    ,wh_json:get_value(<<"ignore_early_media">>, AcctStuff)
-                                                  ]),    
+                                                  ]),
     Timeout = ts_util:ep_timeout([wh_json:get_value(<<"timeout">>, DIDOptions)
                                   ,wh_json:get_value(<<"timeout">>, SrvOptions)
                                   ,wh_json:get_value(<<"timeout">>, AcctStuff)
-                                 ]),    
+                                 ]),
     %% Bridge Endpoint fields go here
     %% See http://wiki.2600hz.org/display/whistle/Dialplan+Actions#DialplanActions-Endpoint
     [KV || {_,V}=KV <- [ {<<"Invite-Format">>, InboundFormat}
@@ -290,12 +299,20 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,{<<"To-User">>, AuthU}
                          ,{<<"To-Realm">>, AuthR}
                          ,{<<"To-DID">>, ToDID}
+                         ,{<<"To-IP">>, build_ip(ToIP, ToPort)}
                          ,{<<"Route-Options">>, RouteOpts}
                          ,{<<"Hunt-Account-ID">>, HuntAccountId}
                        ],
            V =/= 'undefined',
            V =/= <<>>
     ].
+
+-spec build_ip(api_binary(), api_binary() | integer()) -> api_binary().
+build_ip('undefined', _) -> 'undefined';
+build_ip(IP, 'undefined') -> IP;
+build_ip(IP, <<_/binary>> = PortBin) -> build_ip(IP, wh_util:to_integer(PortBin));
+build_ip(IP, 5060) -> IP;
+build_ip(IP, Port) -> list_to_binary([IP, ":", wh_util:to_binary(Port)]).
 
 callee_id([]) -> {'undefined', 'undefined'};
 callee_id(['undefined' | T]) -> callee_id(T);
@@ -305,7 +322,7 @@ callee_id([JObj | T]) ->
         'false' -> callee_id(T);
         'true' ->
             case {wh_json:get_value(<<"cid_name">>, JObj)
-                  ,wh_json:get_value(<<"cid_number">>, JObj)} 
+                  ,wh_json:get_value(<<"cid_number">>, JObj)}
             of
                 {'undefined', 'undefined'} -> callee_id(T);
                 CalleeID -> CalleeID
