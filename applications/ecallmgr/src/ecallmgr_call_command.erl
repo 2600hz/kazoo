@@ -1,3 +1,4 @@
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%% Execute call commands
@@ -529,9 +530,9 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec eavesdrop(atom(), ne_binary(), wh_json:object()) ->
-                         {ne_binary(), ne_binary()} |
-                         {'return', ne_binary()} |
-                         {'error', ne_binary()}.
+                       {ne_binary(), ne_binary()} |
+                       {'return', ne_binary()} |
+                       {'error', ne_binary()}.
 eavesdrop(Node, UUID, JObj) ->
     case prepare_app(Node, UUID, JObj) of
         {'execute', AppNode, AppUUID, AppJObj, AppTarget} ->
@@ -566,10 +567,9 @@ prepare_app(Node, UUID, JObj) ->
     Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
 
     case ecallmgr_fs_channel:fetch(Target, 'record') of
-        {'ok', #channel{
-            node=Node,
-            answered=IsAnswered
-        }} ->
+        {'ok', #channel{node=Node
+                        ,answered=IsAnswered
+                       }} ->
             lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
             maybe_answer(Node, UUID, IsAnswered),
             {'execute', Node, UUID, JObj, Target};
