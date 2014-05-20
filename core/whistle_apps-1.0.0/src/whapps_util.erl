@@ -166,8 +166,8 @@ get_master_account_id({'ok', Accounts}) ->
 %%--------------------------------------------------------------------
 -spec get_account_name(ne_binary()) -> ne_binary().
 get_account_name(Account) ->
-    AccountId = wh_util:format_account_id(AccountId, 'raw'),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _} -> 'undefined';
         {'ok', JObj} -> wh_json:get_ne_value(<<"name">>, JObj)
