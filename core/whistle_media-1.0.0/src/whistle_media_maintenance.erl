@@ -1,8 +1,75 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2014, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%-------------------------------------------------------------------
 -module(whistle_media_maintenance).
 
--export([remove_empty_media_docs/1]).
+-export([remove_empty_media_docs/1
+         ,migrate/0
+        ]).
 
 -include("whistle_media.hrl").
+
+migrate() ->
+    io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?WHS_CONFIG_CAT]),
+
+    migrate_system_config(<<"callflow">>),
+
+    io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?WHS_CONFIG_CAT]),
+    migrate_system_config(<<"media_mgr">>),
+    'no_return'.
+
+migrate_system_config(ConfigId) ->
+    {'ok', ConfigJObj} = couch_mgr:open_doc(?WH_CONFIG_DB, ConfigId),
+    {'ok', MediaJObj} = get_media_config_doc(),
+
+    UpdatedMediaJObj = wh_json:foldl(fun migrate_system_config_fold/3, MediaJObj, ConfigJObj),
+    io:format("saving updated media config~n", []),
+    couch_mgr:save_doc(?WH_CONFIG_DB, UpdatedMediaJObj).
+
+-spec get_media_config_doc() -> {'ok', wh_json:object()}.
+get_media_config_doc() ->
+    case couch_mgr:open_doc(?WH_CONFIG_DB, ?WHS_CONFIG_CAT) of
+        {'ok', _MediaJObj}=OK -> OK;
+        {'error', 'not_found'} -> {'ok', wh_json:from_list([{<<"_id">>, ?WHS_CONFIG_CAT}])}
+    end.
+
+migrate_system_config_fold(<<"_id">>, _Id, MediaJObj) ->
+    MediaJObj;
+migrate_system_config_fold(<<"_rev">>, _Rev, MediaJObj) ->
+    MediaJObj;
+migrate_system_config_fold(Node, Settings, MediaJObj) ->
+    io:format("migrating node '~s' settings~n", [Node]),
+    migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS).
+
+migrate_node_config(_Node, _Settings, MediaJObj, []) -> MediaJObj;
+migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
+    case wh_json:get_value(K, Settings) of
+        'undefined' ->
+            io:format("  maybe setting ~p for node ~p to default '~p'~n", [K, Node, V]),
+            migrate_node_config(Node, Settings, maybe_update_media_config(Node, K, V, MediaJObj), KVs);
+        NodeV ->
+            io:format("  maybe setting ~p for node ~p to '~p'~n", [K, Node, NodeV]),
+            migrate_node_config(Node, Settings, wh_json:set_value([Node, K], NodeV, MediaJObj), KVs)
+    end.
+
+maybe_update_media_config(_Node, _K, 'undefined', MediaJObj) ->
+    io:format("    no value to set for ~p~n", [_K]),
+    MediaJObj;
+maybe_update_media_config(Node, K, V, MediaJObj) ->
+    Key = [Node, K],
+    case wh_json:get_value(Key, MediaJObj) of
+        'undefined' -> wh_json:set_value(Key, V, MediaJObj);
+        V ->
+            io:format("    media config has matching value for ~p~n", [Key]),
+            MediaJObj;
+        _V ->
+            io:format("    media config has existing value '~p' for ~p~n", [_V, Key]),
+            MediaJObj
+    end.
 
 remove_empty_media_docs(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
