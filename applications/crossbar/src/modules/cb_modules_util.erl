@@ -30,6 +30,7 @@
 reconcile_services(Context) ->
     reconcile_services(Context, cb_context:req_verb(Context), cb_context:resp_status(Context)).
 
+reconcile_services(Context, <<"GET">>, 'success') -> Context;
 reconcile_services(Context, _Verb, 'success') ->
     lager:debug("successful ~s, reconciling services", [_Verb]),
     _ = wh_services:reconcile(cb_context:account_id(Context), <<"devices">>),
