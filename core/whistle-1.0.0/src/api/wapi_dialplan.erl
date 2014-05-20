@@ -41,6 +41,7 @@
          ,park/1, park_v/1
          ,play_and_collect_digits/1, play_and_collect_digits_v/1
          ,call_pickup/1, call_pickup_v/1
+         ,eavesdrop/1, eavesdrop_v/1
          ,hangup/1, hangup_v/1
          ,say/1, say_v/1
          ,sleep/1, sleep_v/1
@@ -737,6 +738,26 @@ call_pickup_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_PICKUP_REQ_HEADERS, ?CALL_PICKUP_REQ_VALUES, ?CALL_PICKUP_REQ_TYPES);
 call_pickup_v(JObj) ->
     call_pickup_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Eavesdrop - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec eavesdrop(api_terms()) -> api_formatter_return().
+eavesdrop(Prop) when is_list(Prop) ->
+    case eavesdrop_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?EAVESDROP_REQ_HEADERS, ?OPTIONAL_EAVESDROP_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for eavesdrop_req"}
+    end;
+eavesdrop(JObj) ->
+    eavesdrop(wh_json:to_proplist(JObj)).
+
+-spec eavesdrop_v(api_terms()) -> boolean().
+eavesdrop_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?EAVESDROP_REQ_HEADERS, ?EAVESDROP_REQ_VALUES, ?EAVESDROP_REQ_TYPES);
+eavesdrop_v(JObj) ->
+    eavesdrop_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Say - convert text to speech - see wiki
