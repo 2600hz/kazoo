@@ -793,7 +793,7 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
                        end,
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, whapps_call:request_user(Call))}
-            ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary>>}
+            ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallForward, <<"unknown">>))/binary, "/context_2">>}
             ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
             ,{<<"Bypass-Media">>, <<"false">>}
             ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
