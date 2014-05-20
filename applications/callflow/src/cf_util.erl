@@ -43,6 +43,14 @@
 -export([encryption_method_map/2]).
 -export([maybe_start_metaflows/2]).
 
+-export([caller_belongs_to_group/2
+         ,caller_belongs_to_user/2
+         ,find_endpoints/3
+         ,find_channels/2
+         ,find_user_endpoints/3
+         ,find_group_endpoints/2
+        ]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -792,6 +800,64 @@ maybe_start_metaflow(Call, Endpoint) ->
             lager:debug("sending metaflow for endpoint: ~s: ~p", [wh_json:get_value(<<"Endpoint-ID">>, Endpoint), wh_json:get_value(<<"listen_on">>, JObj)]),
             whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
     end.
+
+-spec caller_belongs_to_group(ne_binary(), whapps_call:call()) -> boolean().
+caller_belongs_to_group(GroupId, Call) ->
+    lists:member(whapps_call:authorizing_id(Call), find_group_endpoints(GroupId, Call)).
+
+-spec caller_belongs_to_user(ne_binary(), whapps_call:call()) -> boolean().
+caller_belongs_to_user(UserId, Call) ->
+    lists:member(whapps_call:authorizing_id(Call), find_user_endpoints([UserId],[],Call)).
+
+-spec find_group_endpoints(ne_binary(), whapps_call:call()) -> ne_binaries().
+find_group_endpoints(GroupId, Call) ->
+    GroupsJObj = cf_attributes:groups(Call),
+    case [wh_json:get_value(<<"value">>, JObj)
+          || JObj <- GroupsJObj,
+             wh_json:get_value(<<"id">>, JObj) =:= GroupId
+         ]
+    of
+        [] -> [];
+        [GroupEndpoints] ->
+            Ids = wh_json:get_keys(GroupEndpoints),
+            find_endpoints(Ids, GroupEndpoints, Call)
+    end.
+
+-spec find_endpoints(ne_binaries(), wh_json:object(), whapps_call:call()) ->
+                            ne_binaries().
+find_endpoints(Ids, GroupEndpoints, Call) ->
+    {DeviceIds, UserIds} =
+        lists:partition(fun(Id) ->
+                                wh_json:get_value([Id, <<"type">>], GroupEndpoints) =:= <<"device">>
+                        end, Ids),
+    find_user_endpoints(UserIds, lists:sort(DeviceIds), Call).
+
+-spec find_user_endpoints(ne_binaries(), ne_binaries(), whapps_call:call()) ->
+                                 ne_binaries().
+find_user_endpoints([], DeviceIds, _) -> DeviceIds;
+find_user_endpoints(UserIds, DeviceIds, Call) ->
+    UserDeviceIds = cf_attributes:owned_by(UserIds, <<"device">>, Call),
+    lists:merge(lists:sort(UserDeviceIds), DeviceIds).
+
+-spec find_channels(ne_binaries(), whapps_call:call()) -> wh_json:objects().
+find_channels(Usernames, Call) ->
+    Realm = wh_util:get_account_realm(whapps_call:account_id(Call)),
+    lager:debug("finding channels for realm ~s, usernames ~p", [Realm, Usernames]),
+    Req = [{<<"Realm">>, Realm}
+           ,{<<"Usernames">>, Usernames}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_call:publish_query_user_channels_req/1
+                                       ,fun wapi_call:query_user_channels_resp_v/1
+                                      )
+    of
+        {'ok', Resp} -> wh_json:get_value(<<"Channels">>, Resp, []);
+        {'error', _E} ->
+            lager:debug("failed to get channels: ~p", [_E]),
+            []
+    end.
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
