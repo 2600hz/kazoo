@@ -104,10 +104,14 @@ handle_call_event(JObj, AccountId, HookEvent, _CallId, 'true') ->
 
 -spec lookup_account_id(wh_json:object()) -> {'ok', ne_binary()} | {'error', _}.
 lookup_account_id(JObj) ->
-    Number = get_inbound_destination(JObj),
-    case wh_cache:peek_local(?HOOKS_CACHE_NAME, cache_key_number(Number)) of
-        {'ok', AccountId} -> {'ok', AccountId};
-        {'error', 'not_found'} -> fetch_account_id(Number)
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
+        'undefined' ->
+            Number = get_inbound_destination(JObj),
+            case wh_cache:peek_local(?HOOKS_CACHE_NAME, cache_key_number(Number)) of
+                {'ok', AccountId} -> {'ok', AccountId};
+                {'error', 'not_found'} -> fetch_account_id(Number)
+            end;
+        Id -> {'ok', Id}
     end.
 
 -spec fetch_account_id(ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
