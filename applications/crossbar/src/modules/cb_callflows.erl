@@ -147,6 +147,7 @@ load_callflow(DocId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(CallflowId, Context) ->
     JObj = cb_context:req_data(Context),
     try [wnm_util:to_e164(Number) || Number <- wh_json:get_ne_value(<<"numbers">>, JObj, [])] of
@@ -157,11 +158,12 @@ validate_request(CallflowId, Context) ->
                                        ),
             validate_unique_numbers(CallflowId, Numbers, C)
     catch
-        _:_ ->
+        _E:_R ->
+            lager:debug("failed to convert all numbers to e164: ~s: ~p", [_E, _R]),
             C = cb_context:add_validation_error(<<"numbers">>
-                                                    ,<<"type">>
-                                                    ,<<"Value is not of type array">>
-                                                    ,Context
+                                                ,<<"type">>
+                                                ,<<"Value is not of type array">>
+                                                ,Context
                                                ),
             validate_unique_numbers(CallflowId
                                     ,[]
@@ -169,6 +171,7 @@ validate_request(CallflowId, Context) ->
                                    )
     end.
 
+-spec prepare_patterns(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_patterns(CallflowId, Context) ->
     JObj = cb_context:req_data(Context),
     case wh_json:get_value(<<"patterns">>, JObj, []) of
@@ -183,9 +186,12 @@ prepare_patterns(CallflowId, Context) ->
             check_callflow_schema(CallflowId, Context)
     end.
 
+-spec validate_unique_numbers(api_binary(), ne_binaries(), cb_context:context()) -> cb_context:context().
 validate_unique_numbers(CallflowId, Numbers, Context) ->
     validate_unique_numbers(CallflowId, Numbers, Context, cb_context:account_db(Context)).
 
+-spec validate_unique_numbers(api_binary(), ne_binaries(), cb_context:context(), api_binary()) ->
+                                     cb_context:context().
 validate_unique_numbers(CallflowId, _Numbers, Context, 'undefined') ->
     check_callflow_schema(CallflowId, Context);
 validate_unique_numbers(CallflowId, [], Context, _AccountDb) ->
@@ -201,15 +207,87 @@ validate_unique_numbers(CallflowId, Numbers, Context, AccountDb) ->
             check_callflow_schema(CallflowId, C)
     end.
 
+-spec check_callflow_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_callflow_schema(CallflowId, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(CallflowId, C) end,
+    OnSuccess = fun(C) ->
+                        validate_callflow_elements(
+                          on_successful_validation(CallflowId, C)
+                         )
+                end,
     cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
 
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"callflow">>}],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(CallflowId, Context) ->
     crossbar_doc:load_merge(CallflowId, Context).
+
+validate_callflow_elements(Context) ->
+    Flow = wh_json:get_value(<<"flow">>, cb_context:doc(Context)),
+    validate_callflow_elements(Context, Flow).
+
+validate_callflow_elements(Context, Flow) ->
+    Module = wh_json:get_value(<<"module">>, Flow),
+    Data = wh_json:get_value(<<"data">>, Flow),
+    C = validate_callflow_element(
+          validate_callflow_element_schema(Context, Module, Data)
+          ,Module
+          ,Data
+         ),
+
+    case cb_context:resp_status(C) of
+        'success' ->
+            validate_callflow_children(C, wh_json:get_value(<<"children">>, Flow));
+        _Status -> C
+    end.
+
+-spec validate_callflow_element_schema(cb_context:context(), ne_binary(), wh_json:object()) ->
+                                              cb_context:context().
+validate_callflow_element_schema(Context, Module, Data) ->
+    lager:debug("validating callflow el ~s", [Module]),
+    cb_context:validate_request_data(<<"callflows.", Module/binary>>
+                                     ,cb_context:set_req_data(Context, Data)
+                                     ,fun(_C) -> Context end
+                                     ,fun(C) -> cb_context:set_doc(C, cb_context:doc(Context)) end
+                                    ).
+
+validate_callflow_element(Context, <<"record_call">>, Data) ->
+    Max = wh_media_util:max_recording_time_limit(),
+    try wh_json:get_integer_value(<<"time_limit">>, Data) > Max of
+        'true' ->
+            lager:debug("the requested time limit is too damn high"),
+            cb_context:add_validation_error(<<"time_limit">>
+                                            ,<<"maximum">>
+                                            ,<<"Exceeds system limit of ", (wh_util:to_binary(Max))/binary, " seconds">>
+                                            ,Context
+                                           );
+        'false' -> Context
+    catch
+        _E:_R ->
+            lager:debug("failed to get integer from data: ~s: ~p", [_E, _R]),
+            cb_context:add_validation_error(<<"time_limit">>
+                                            ,<<"type">>
+                                            ,<<"Must be an integer">>
+                                            ,Context
+                                           )
+
+    end;
+validate_callflow_element(Context, _Module, _Data) ->
+    Context.
+
+-spec validate_callflow_children(cb_context:context(), api_object()) ->
+                                        cb_context:context().
+validate_callflow_children(Context, 'undefined') ->
+    Context;
+validate_callflow_children(Context, Children) ->
+    wh_json:foldl(fun validate_callflow_child/3, Context, Children).
+
+-spec validate_callflow_child(ne_binary(), wh_json:object(), cb_context:context()) ->
+                                     cb_context:context().
+validate_callflow_child(_Key, Branch, Context) ->
+    lager:debug("validating branch ~s", [_Key]),
+    validate_callflow_elements(Context, Branch).
 
 %%--------------------------------------------------------------------
 %% @private
