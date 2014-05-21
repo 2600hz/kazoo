@@ -92,7 +92,7 @@ is_callflow_child(Name, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec match_one_of(wh_json:object(), ne_binary()) -> {'match', wh_json:object()} | 'nomatch'.
+-spec match_one_of(wh_json:objects(), ne_binary()) -> {'match', wh_json:object()} | 'nomatch'.
 match_one_of([], _CallerIdNumber) ->
     'nomatch';
 match_one_of([Entry|Rest], CallerIdNumber) ->
@@ -111,10 +111,12 @@ get_list_entries(Data, Call) ->
     case couch_mgr:open_cache_doc(AccountDb, ListId) of
         {ok, ListJObj} ->
             lager:info("match list loaded: ~s", [ListId]),
-            Entries = wh_json:get_value(<<"entries">>, ListJObj, []),
-            EntriesIds = wh_json:get_keys(Entries),
-            [wh_json:set_value(<<"id">>, Id, wh_json:get_value(Id, Entries))
-             || Id <- EntriesIds];
+            lists:map(
+                fun ({K, V}) ->
+                    wh_json:set_value(<<"id">>, K, V)
+                end,
+                wh_json:to_proplist(ListJObj)
+            );
         {error, Reason} ->
             lager:info("failed to load match list box ~s, ~p", [ListId, Reason]),
             []
