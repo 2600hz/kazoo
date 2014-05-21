@@ -47,7 +47,7 @@
                 ,record_on_answer          :: boolean()
                 ,time_limit                :: pos_integer()
                 ,store_attempted = 'false' :: boolean()
-                ,is_recording = 'false  '  :: boolean()
+                ,is_recording = 'false'    :: boolean()
                 ,channel_status_ref        :: reference() | 'undefined'
                 ,time_limit_ref            :: reference() | 'undefined'
                }).
