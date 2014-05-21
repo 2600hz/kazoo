@@ -29,7 +29,7 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'dialplan', ['metaflow']}
-                   ,{'call', [{'restrict_to', ['CHANNEL_CREATE']}]}
+                   %%,{'call', [{'restrict_to', ['CHANNEL_CREATE']}]}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_metaflow'}
                       ,[{<<"call">>, <<"command">>}]
@@ -53,6 +53,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
@@ -82,6 +83,7 @@ handle_metaflow(JObj, Props) ->
             konami_tracker:untrack()
     end.
 
+-spec handle_channel_create(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_create(JObj, _Props) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
@@ -94,6 +96,7 @@ handle_channel_create(JObj, _Props) ->
                           ,wh_json:get_value(<<"Call-ID">>, JObj)
                          ).
 
+-spec maybe_start_metaflows(api_binary(), api_binary(), api_binary(), api_binary(), api_binary()) -> 'ok'.
 maybe_start_metaflows('undefined', _AuthorizingType, _AuthorizingId, _OwnerId, _CallId) ->
     lager:debug("no account id for ~s(~s) owned by ~s", [_AuthorizingId, _AuthorizingType, _OwnerId]);
 maybe_start_metaflows(AccountId, <<"device">>, DeviceId, OwnerId, CallId) ->
@@ -106,6 +109,7 @@ maybe_start_metaflows(_AccountId, _AuthorizingType, _AuthorizingId, _OwnerId, _C
     lager:debug("unhandled channel for account ~s: ~s(~s) owned by ~s"
                 ,[_AccountId, _AuthorizingId, _AuthorizingType, _OwnerId]).
 
+-spec maybe_start_device_metaflows(ne_binary(), api_binary(), api_binary()) -> 'ok'.
 maybe_start_device_metaflows(_AccountId, 'undefined', _CallId) -> 'ok';
 maybe_start_device_metaflows(AccountId, DeviceId, CallId) ->
     {'ok', Endpoint} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
@@ -113,6 +117,7 @@ maybe_start_device_metaflows(AccountId, DeviceId, CallId) ->
                                                ),
     maybe_start_metaflows(AccountId, CallId, wh_json:get_value(<<"metaflows">>, Endpoint)).
 
+-spec maybe_start_user_metaflows(ne_binary(), api_binary(), api_binary()) -> 'ok'.
 maybe_start_user_metaflows(_AccountId, 'undefined', _CallId) -> 'ok';
 maybe_start_user_metaflows(AccountId, UserId, CallId) ->
     {'ok', User} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
@@ -120,6 +125,7 @@ maybe_start_user_metaflows(AccountId, UserId, CallId) ->
                                            ),
     maybe_start_metaflows(AccountId, CallId, wh_json:get_value(<<"metaflows">>, User)).
 
+-spec maybe_start_metaflows(ne_binary(), api_binary(), api_object()) -> 'ok'.
 maybe_start_metaflows(_AccountId, _CallId, 'undefined') -> 'ok';
 maybe_start_metaflows(_AccountId, _CallId, Metaflows) ->
     lager:debug("starting ~p", [Metaflows]).
