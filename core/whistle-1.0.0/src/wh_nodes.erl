@@ -143,11 +143,11 @@ status() ->
     catch
         {'EXIT', {'badarg', _}} ->
             io:format("status unknown until node is fully initialized, try again in a moment~n", []),
-            'no_return'                
+            'no_return'
     end.
 
 -spec print_status(wh_nodes()) -> 'no_return'.
-print_status(Nodes) -> 
+print_status(Nodes) ->
     _ = [begin
              MemoryUsage = wh_network_utils:pretty_print_bytes(Node#node.used_memory),
              io:format("Node          : ~s~n", [Node#node.node]),
@@ -316,10 +316,11 @@ handle_cast(_Msg, State) ->
 handle_info('expire_nodes', #state{tab=Tab}=State) ->
     Now = wh_util:now_ms(now()),
     FindSpec = [{#node{node='$1', expires='$2', last_heartbeat='$3'
-                       ,_ = '_'}
+                       ,_ = '_'
+                      }
                  ,[{'andalso'
                     ,{'=/=', '$2', 'undefined'}
-                    ,{'>', {const, Now}, {'+', '$2', '$3'}}
+                    ,{'>', {'const', Now}, {'+', '$2', '$3'}}
                    }]
                  ,['$1']}
                ],
@@ -329,7 +330,8 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
 handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
-                                       ,tab=Tab}=State) ->
+                                       ,tab=Tab
+                                      }=State) ->
     _ = ets:insert(Tab, create_node('undefined', State)),
     Heartbeat = crypto:rand_uniform(5000, 15000),
     try create_node(Heartbeat, State) of
@@ -342,7 +344,8 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
 handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
-                                                     ,notify_expire=ExpireSet}=State) ->
+                                                     ,notify_expire=ExpireSet
+                                                    }=State) ->
     erlang:demonitor(Ref, ['flush']),
     {'noreply', State#state{notify_new=sets:del_element(Pid, NewSet)
                             ,notify_expire=sets:del_element(Pid, ExpireSet)
@@ -527,10 +530,3 @@ notify_new(Node, Pids) ->
          || Pid <- Pids
         ],
     'ok'.
-
--spec get_zone_name() -> atom().
-get_zone_name() ->
-    case wh_config:get(wh_config:get_node_section_name(), 'zone') of
-        [Zone] -> Zone;
-        _Else -> 'local'
-    end.

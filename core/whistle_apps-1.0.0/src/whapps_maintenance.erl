@@ -111,12 +111,15 @@ migrate() ->
 
     %% Migrate Faxes with private_media to fax
     _ = migrate_faxes(),
-    
+
     %% Ensure the phone_numbers doc in the account db is up-to-date
     _ = whistle_number_manager_maintenance:reconcile_numbers(),
 
     %% Load available providers into system_config
     _ = whistle_number_manager_maintenance:reconcile_providers(),
+
+    %% Migrate settings for whistle_media
+    _ = whistle_media_maintenance:migrate(),
 
     %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
     %% that need to be aggregated have been, and the account definition is aggregated

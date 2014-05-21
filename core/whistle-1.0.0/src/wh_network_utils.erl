@@ -55,12 +55,12 @@ is_ipv6(Address) when is_list(Address) ->
 to_cidr(IP) -> to_cidr(IP, <<"32">>).
 
 -spec to_cidr(ne_binary(), ne_binary()) -> ne_binary().
-to_cidr(IP, Prefix) when not is_binary(IP) -> 
+to_cidr(IP, Prefix) when not is_binary(IP) ->
     to_cidr(wh_util:to_binary(IP), Prefix);
-to_cidr(IP, Prefix) when not is_binary(Prefix) -> 
+to_cidr(IP, Prefix) when not is_binary(Prefix) ->
     to_cidr(IP, wh_util:to_binary(Prefix));
-to_cidr(IP, Prefix) ->    
-    case wh_network_utils:is_ipv4(IP) 
+to_cidr(IP, Prefix) ->
+    case ?MODULE:is_ipv4(IP)
         andalso  wh_util:to_integer(Prefix) =< 32
     of
         'true' ->
@@ -119,13 +119,14 @@ resolve(Address) ->
         _ -> maybe_is_ip(Address)
     end.
 
+-spec maybe_is_ip(ne_binary()) -> ne_binaries().
 maybe_is_ip(Address) ->
     case is_ipv4(Address) of
         'true' -> [Address];
         'false' -> maybe_resolve_srv_records(Address)
     end.
 
--spec maybe_resolve_srv_records(ne_binary()) -> wh_ip_list().
+-spec maybe_resolve_srv_records(ne_binary()) -> ne_binaries().
 maybe_resolve_srv_records(Address) ->
     Domain = <<"_sip._udp.", Address/binary>>,
     case inet_res:lookup(wh_util:to_list(Domain), 'in', 'srv') of
@@ -133,17 +134,18 @@ maybe_resolve_srv_records(Address) ->
         SRVs -> maybe_resolve_a_records([D || {_, _, _, D} <- SRVs])
     end.
 
--spec maybe_resolve_a_records(ne_binary()) -> wh_ip_list().
+-spec maybe_resolve_a_records(ne_binaries()) -> ne_binaries().
 maybe_resolve_a_records(Domains) ->
     lists:foldr(fun maybe_resolve_fold/2, [], Domains).
 
+-spec maybe_resolve_fold(ne_binary(), ne_binaries()) -> ne_binaries().
 maybe_resolve_fold(Domain, IPs) ->
     case is_ipv4(Domain) of
         'true' -> [Domain];
         'false' -> resolve_a_record(wh_util:to_list(Domain), IPs)
     end.
 
--spec resolve_a_record(ne_binary(), wh_ip_list()) -> wh_ip_list().
+-spec resolve_a_record(string(), ne_binaries()) -> ne_binaries().
 resolve_a_record(Domain, IPs) ->
     case inet:getaddrs(Domain, 'inet') of
         {'error', _R} ->
@@ -166,13 +168,11 @@ iptuple_to_binary({A,B,C,D}) ->
 pretty_print_bytes(Bytes) ->
     if
         Bytes div 1073741824 > 0 ->
-            io_lib:format("~.2fGB", [Bytes/1073741824]); 
+            io_lib:format("~.2fGB", [Bytes/1073741824]);
         Bytes div 1048576 > 0 ->
-            io_lib:format("~.2fMB", [Bytes/1048576]); 
+            io_lib:format("~.2fMB", [Bytes/1048576]);
         Bytes div 1024 > 0 ->
             io_lib:format("~.2fKB", [Bytes/1024]);
-        'true' -> 
+        'true' ->
             io_lib:format("~BB", [Bytes])
     end.
-
-    
