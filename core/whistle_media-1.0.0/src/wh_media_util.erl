@@ -10,6 +10,7 @@
 -export([base_url/1, base_url/2, base_url/3]).
 -export([convert_stream_type/1]).
 -export([media_path/1, media_path/2]).
+-export([max_recording_time_limit/0]).
 
 -include("whistle_media.hrl").
 
@@ -18,6 +19,9 @@
 -define(AUTH_USERNAME, whapps_config:get_string(?CONFIG_CAT, <<"proxy_username">>, wh_util:rand_hex_binary(8))).
 -define(AUTH_PASSWORD, whapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, wh_util:rand_hex_binary(8))).
 -define(USE_AUTH_STORE, whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, 'true')).
+
+max_recording_time_limit() ->
+    whapps_config:get_integer(?WHS_CONFIG_CAT, <<"max_recording_time_limit">>, 3600).
 
 base_url(Host) ->
     Port = wh_couch_connections:get_port(),

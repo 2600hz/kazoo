@@ -70,7 +70,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(MAX_RECORDING_LIMIT, whapps_config:get(?WHS_CONFIG_CAT, <<"max_recording_time_limit">>, 600)).
+-define(MAX_RECORDING_LIMIT, wh_media_util:max_recording_time_limit()).
 
 -spec start_link(whapps_call:call(), wh_json:object()) -> startlink_ret().
 start_link(Call, Data) ->
