@@ -20,8 +20,9 @@
 -define(AUTH_PASSWORD, whapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, wh_util:rand_hex_binary(8))).
 -define(USE_AUTH_STORE, whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, 'true')).
 
+-spec max_recording_time_limit() -> ?SECONDS_IN_HOUR.
 max_recording_time_limit() ->
-    whapps_config:get_integer(?WHS_CONFIG_CAT, <<"max_recording_time_limit">>, 3600).
+    whapps_config:get_integer(?WHS_CONFIG_CAT, <<"max_recording_time_limit">>, ?SECONDS_IN_HOUR).
 
 base_url(Host) ->
     Port = wh_couch_connections:get_port(),
