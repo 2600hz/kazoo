@@ -12,8 +12,11 @@
 -include("./whapps_call_command.hrl").
 
 -export([presence/2, presence/3]).
--export([channel_status/1, channel_status/2]).
--export([b_channel_status/1]).
+-export([channel_status/1, channel_status/2
+         ,channel_status_command/1, channel_status_command/2
+         ,b_channel_status/1
+        ]).
+
 -export([response/2, response/3, response/4]).
 
 -export([relay_event/2, relay_event/3
@@ -233,10 +236,21 @@ presence(State, PresenceId, Call) ->
                             'ok' | {'error', 'no_channel_id'}.
 channel_status('undefined', _) -> {'error', 'no_channel_id'};
 channel_status(CallId, SrvQueue) when is_binary(CallId), is_binary(SrvQueue) ->
-    Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(SrvQueue, ?APP_NAME, ?APP_VERSION)
-              ],
+    Command = channel_status_command(CallId)
+        ++ wh_api:default_headers(SrvQueue, ?APP_NAME, ?APP_VERSION),
     wapi_call:publish_channel_status_req(CallId, Command).
+
+-spec channel_status_command(ne_binary() | whapps_call:call()) -> wh_proplist().
+-spec channel_status_command(ne_binary() | whapps_call:call(), api_boolean()) -> wh_proplist().
+channel_status_command(CallId) ->
+    channel_status_command(CallId, 'undefined').
+channel_status_command(<<_/binary>> = CallId, ActiveOnly) ->
+    props:filter_undefined(
+      [{<<"Call-ID">>, CallId}
+       ,{<<"Active-Only">>, ActiveOnly}
+      ]);
+channel_status_command(Call, ActiveOnly) ->
+    channel_status_command(whapps_call:call_id(Call), ActiveOnly).
 
 channel_status(Call) ->
     'true' = whapps_call:is_call(Call),
