@@ -293,7 +293,7 @@ maybe_endpoints_format_from(Endpoints, CIDNum, JObj) ->
 maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
     case wh_json:is_true(<<"Format-From-URI">>, CCVs) of
-        'true' -> endpoint_format_from(Endpoint, CIDNum, DefaultRealm);
+        'true' -> endpoint_format_from(Endpoint, CIDNum, DefaultRealm, CCVs);
         'false' ->
             wh_json:set_value(<<"Custom-Channel-Vars">>
                               ,wh_json:delete_keys([<<"Format-From-URI">>
@@ -302,18 +302,11 @@ maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
                               ,Endpoint)
     end.
 
--spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) -> wh_json:object().
-endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, wh_json:new()),
-    Realm = wh_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm),
-    case is_binary(Realm) of
-        'false' ->
-            wh_json:set_value(<<"Custom-Channel-Vars">>
-                              ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                   ], CCVs)
-                              ,Endpoint);
-        'true' ->
+-spec endpoint_format_from(wh_json:object(), ne_binary(), api_binary(), wh_json:object()) ->
+                                  wh_json:object().
+endpoint_format_from(Endpoint, CIDNum, DefaultRealm, CCVs) ->
+    case wh_json:get_value(<<"From-URI-Realm">>, CCVs, DefaultRealm) of
+        <<_/binary>> = Realm ->
             FromURI = <<"sip:", CIDNum/binary, "@", Realm/binary>>,
             lager:debug("setting resource ~s from-uri to ~s"
                         ,[wh_json:get_value(<<"Resource-ID">>, CCVs)
@@ -321,9 +314,15 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
                          ]),
             UpdatedCCVs = wh_json:set_value(<<"From-URI">>, FromURI, CCVs),
             wh_json:set_value(<<"Custom-Channel-Vars">>
-                              ,wh_json:delete_keys([<<"Format-From-URI">>
-                                                    ,<<"From-URI-Realm">>
-                                                   ], UpdatedCCVs)
+                                  ,wh_json:delete_keys([<<"Format-From-URI">>
+                                                        ,<<"From-URI-Realm">>
+                                                       ], UpdatedCCVs)
+                              ,Endpoint);
+        _ ->
+            wh_json:set_value(<<"Custom-Channel-Vars">>
+                                  ,wh_json:delete_keys([<<"Format-From-URI">>
+                                                        ,<<"From-URI-Realm">>
+                                                       ], CCVs)
                               ,Endpoint)
     end.
 
@@ -519,5 +518,5 @@ get_diversions(Inception, Diversions) ->
 
 -spec find_diversion_count(wh_json:objects()) -> non_neg_integer().
 find_diversion_count([]) -> 0;
-find_diversion_count(Diversions) -> 
+find_diversion_count(Diversions) ->
     lists:max([kzsip_diversion:counter(Diversion) || Diversion <- Diversions]).
