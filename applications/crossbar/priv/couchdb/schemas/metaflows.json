@@ -67,7 +67,7 @@
         ,"listen_on":{
             "description":"Which leg(s) of the call to listen for DTMF"
             ,"type":"string"
-            ,"enum":["a", "ab", "b", "both"]
+            ,"enum":["both", "self", "peer"]
         }
     }
 }

@@ -174,7 +174,7 @@
 
 %% Query Channels Req
 -define(QUERY_CHANNELS_REQ_HEADERS, []).
--define(OPTIONAL_QUERY_CHANNELS_REQ_HEADERS, [<<"Fields">>]).
+-define(OPTIONAL_QUERY_CHANNELS_REQ_HEADERS, [<<"Fields">>, <<"Call-ID">>]).
 -define(QUERY_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                     ,{<<"Event-Name">>, <<"query_channels_req">>}
                                    ]).

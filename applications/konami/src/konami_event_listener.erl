@@ -39,7 +39,9 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ['DTMF', 'CHANNEL_DESTROY']}
+-define(TRACKED_CALL_EVENTS, ['DTMF', 'CHANNEL_BRIDGE', 'CHANNEL_DESTROY']).
+
+-define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ?TRACKED_CALL_EVENTS}
                                         ,{'callid', CallId}
                                        ]}).
 -define(DYN_BINDINGS(CallId, Events), {'call', [{'restrict_to', Events}
@@ -75,7 +77,7 @@ start_link() ->
 -spec add_call_binding(api_binary() | whapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
 add_call_binding('undefined') -> 'ok';
 add_call_binding(CallId) when is_binary(CallId) ->
-    Events = ['DTMF', 'CHANNEL_DESTROY'],
+    Events = ?TRACKED_CALL_EVENTS,
     lager:debug("add fsm binding for call ~s: ~p", [CallId, Events]),
     gproc:reg(?KONAMI_REG({'fsm', CallId})),
     gen_listener:cast(?MODULE, {'add_bindings', CallId, Events}),

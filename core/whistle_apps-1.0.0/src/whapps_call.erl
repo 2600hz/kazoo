@@ -50,6 +50,8 @@
 -export([set_authorizing_id/2, authorizing_id/1]).
 -export([set_authorizing_type/2, authorizing_type/1]).
 -export([set_owner_id/2, owner_id/1]).
+-export([set_fetch_id/2, fetch_id/1]).
+-export([set_bridge_id/2, bridge_id/1]).
 
 -export([set_custom_channel_var/3
          ,set_custom_channel_vars/2
@@ -113,6 +115,8 @@
                       ,authorizing_id :: api_binary()              %% The ID of the record that authorized this call
                       ,authorizing_type :: api_binary()            %% The pvt_type of the record that authorized this call
                       ,owner_id :: api_binary()                    %% The ID of the owner of this calling device, if any
+                      ,fetch_id :: api_binary()                    %% The Fetch ID of the Call
+                      ,bridge_id :: api_binary()                    %% The Bridge ID of the Call
                       ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
                       ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
                       ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
@@ -130,6 +134,8 @@
                        ,{<<"Caller-ID-Number">>, #whapps_call.caller_id_number}
                        ,{<<"Account-ID">>, #whapps_call.account_id}
                        ,{<<"Owner-ID">>, #whapps_call.owner_id}
+                       ,{<<"Fetch-ID">>, #whapps_call.fetch_id}
+                       ,{<<"Bridge-ID">>, #whapps_call.bridge_id}
                        ,{<<"Authorizing-ID">>, #whapps_call.authorizing_id}
                        ,{<<"Authorizing-Type">>, #whapps_call.authorizing_type}
                       ]).
@@ -199,6 +205,8 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
                      ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
                      ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, authorizing_type(Call))
                      ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, owner_id(Call))
+                     ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, CCVs, fetch_id(Call))
+                     ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, bridge_id(Call))
                      ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
                      ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
                      ,ccvs = CCVs
@@ -217,6 +225,8 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                       ,authorizing_id=OldAuthzId
                                       ,authorizing_type=OldAuthzType
                                       ,owner_id=OldOwnerId
+                                      ,fetch_id=OldFetchId
+                                      ,bridge_id=OldBridgeId
                                      }=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
     put('callid', CallId),
@@ -235,6 +245,8 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                      ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
                      ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, OldAuthzType)
                      ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, OldOwnerId)
+                     ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, CCVs, OldFetchId)
+                     ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
                     }.
 
 -spec from_json(wh_json:object()) -> call().
@@ -278,6 +290,8 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
       ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, JObj, authorizing_id(Call))
       ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, JObj, authorizing_type(Call))
       ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
+      ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, JObj, fetch_id(Call))
+      ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, JObj, bridge_id(Call))
       ,app_name = wh_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
       ,app_version = wh_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
       ,ccvs = CCVs
@@ -335,6 +349,8 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Authorizing-ID">>, authorizing_id(Call)}
      ,{<<"Authorizing-Type">>, authorizing_type(Call)}
      ,{<<"Owner-ID">>, owner_id(Call)}
+     ,{<<"Fetch-ID">>, fetch_id(Call)}
+     ,{<<"Bridge-ID">>, bridge_id(Call)}
      ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
      ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
@@ -606,6 +622,20 @@ set_owner_id(OwnerId, #whapps_call{}=Call) when is_binary(OwnerId) ->
 -spec owner_id(call()) -> api_binary().
 owner_id(#whapps_call{owner_id=OwnerId}) -> OwnerId.
 
+-spec set_fetch_id(ne_binary(), call()) -> call().
+set_fetch_id(FetchId, #whapps_call{}=Call) when is_binary(FetchId) ->
+    set_custom_channel_var(<<"Fetch-Id">>, FetchId, Call#whapps_call{fetch_id=FetchId}).
+
+-spec fetch_id(call()) -> api_binary().
+fetch_id(#whapps_call{fetch_id=FetchId}) -> FetchId.
+
+-spec set_bridge_id(ne_binary(), call()) -> call().
+set_bridge_id(BridgeId, #whapps_call{}=Call) when is_binary(BridgeId) ->
+    set_custom_channel_var(<<"Bridge-Id">>, BridgeId, Call#whapps_call{bridge_id=BridgeId}).
+
+-spec bridge_id(call()) -> api_binary().
+bridge_id(#whapps_call{bridge_id=BridgeId}) -> BridgeId.
+
 -spec set_custom_channel_var(term(), term(), call()) -> call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), 'undefined', Call),
@@ -773,6 +803,8 @@ retrieve(CallId) ->
                    ,fun(C) -> whapps_call:set_authorizing_id(<<"987654321">>, C) end
                    ,fun(C) -> whapps_call:set_authorizing_type(<<"test">>, C) end
                    ,fun(C) -> whapps_call:set_owner_id(<<"abcdefghi">>, C) end
+                   ,fun(C) -> whapps_call:set_fetch_id(<<"1234567890ABCDEFG">>, C) end
+                   ,fun(C) -> whapps_call:set_bridge_id(<<"1234567890ABCDEF">>, C) end
                    ,fun(C) -> whapps_call:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
                    ,fun(C) -> whapps_call:set_custom_channel_var(<<"key2">>, 2600, C) end
                    ,fun(C) -> whapps_call:set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
