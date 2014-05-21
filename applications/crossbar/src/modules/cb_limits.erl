@@ -165,7 +165,7 @@ maybe_handle_load_failure(Context) ->
     maybe_handle_load_failure(Context, cb_context:resp_error_code(Context)).
 
 maybe_handle_load_failure(Context, 404) ->
-    Data = cb_context:resp_data(Context),
+    Data = cb_context:req_data(Context),
     NewLimits = wh_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}
                                    ,{<<"_id">>, ?PVT_TYPE}
                                   ]),
