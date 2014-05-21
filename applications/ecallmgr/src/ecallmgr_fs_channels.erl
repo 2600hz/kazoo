@@ -243,7 +243,9 @@ send_account_query_resp(JObj, Cs) ->
 handle_query_channels(JObj, _Props) ->
     'true' = wapi_call:query_channels_req_v(JObj),
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
-    Resp = [{<<"Channels">>, query_channels(Fields)}
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+
+    Resp = [{<<"Channels">>, query_channels(Fields, CallId)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
@@ -529,9 +531,13 @@ build_matchspec_ors(Usernames) ->
 build_matchspec_ors_fold(Username, Acc) ->
     {'or', {'=:=', '$1', wh_util:to_lower_binary(Username)}, Acc}.
 
--spec query_channels(ne_binaries()) -> wh_json:object().
-query_channels(Fields) ->
+-spec query_channels(ne_binaries(), api_binary()) -> wh_json:object().
+query_channels(Fields, 'undefined') ->
     query_channels(ets:match_object(?CHANNELS_TBL, #channel{_='_'}, 1)
+                   ,Fields
+                   ,wh_json:new());
+query_channels(Fields, CallId) ->
+    query_channels(ets:match_object(?CHANNELS_TBL, #channel{uuid=CallId, _='_'}, 1)
                    ,Fields
                    ,wh_json:new()).
 

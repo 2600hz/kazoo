@@ -13,6 +13,7 @@
 %% API
 -export([start_fsm/2
          ,event/4
+         ,transfer_to/2
         ]).
 
 %% gen_fsm callbacks
@@ -61,8 +62,11 @@ start_fsm(Call, JObj) ->
     wh_hooks:register(whapps_call:account_id(Call), <<"CHANNEL_ANSWER">>),
 
     ListenOn = listen_on(Call, JObj),
-    _ = maybe_start_b_leg_listener(Call, ListenOn),
+    _ = maybe_start_leg_listeners(Call, ListenOn),
 
+    konami_tracker:track(whapps_call:call_id(Call), whapps_call:other_leg_call_id(Call), ListenOn),
+
+    lager:debug("starting code FSM, listening on ~s(~s)", [ListenOn, whapps_call:bridge_id(Call)]),
     gen_fsm:enter_loop(?MODULE, [], 'unarmed'
                        ,#state{numbers=numbers(Call, JObj)
                                ,patterns=patterns(Call, JObj)
@@ -70,7 +74,9 @@ start_fsm(Call, JObj) ->
                                ,digit_timeout=digit_timeout(Call, JObj)
                                ,listen_on=ListenOn
 
-                               ,call=whapps_call:clear_helpers(Call)
+                               ,call=whapps_call:clear_helpers(
+                                       whapps_call:kvs_store(?MODULE, self(), Call)
+                                      )
                                ,call_id=whapps_call:call_id_direct(Call)
                                ,other_leg_endpoint_id=wh_json:get_value(<<"Endpoint-ID">>, JObj)
                               }).
@@ -82,7 +88,13 @@ event(FSM, CallId, <<"DTMF">>, JObj) ->
                              ,wh_json:get_value(<<"DTMF-Digit">>, JObj)
                             });
 event(FSM, CallId, Event, JObj) ->
-    gen_fsm:send_event(FSM, {'event', CallId, Event, JObj}).
+    gen_fsm:send_all_state_event(FSM, {'event', CallId, Event, JObj}).
+
+-spec transfer_to(whapps_call:call(), 'a' | 'b') -> 'ok'.
+transfer_to(Call, Leg) ->
+    gen_fsm:send_all_state_event(whapps_call:kvs_fetch(?MODULE, Call)
+                                 ,{'transfer_to', Call, Leg}
+                                ).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -160,12 +172,14 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
             lager:debug("no handler for '~s', unarming", [Collected]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'number', N} ->
-            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [N, Call]),
-            lager:debug("number exe in ~p: ~p", [_Pid, N]),
+            Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], whapps_call:call_id(Call)}], N),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+            lager:debug("number exe in ~p: ~p", [_Pid, Metaflow]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'pattern', P} ->
-            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [P, Call]),
-            lager:debug("pattern exe in ~p: ~p", [_Pid, P]),
+            Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], whapps_call:call_id(Call)}], P),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+            lager:debug("pattern exe in ~p: ~p", [_Pid, Metaflow]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
     end;
 armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
@@ -182,12 +196,14 @@ armed({'timeout', Ref, 'digit_timeout'}, #state{numbers=Ns
             lager:debug("no handler for '~s', unarming", [Collected]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'number', N} ->
-            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [N, Call]),
-            lager:debug("number exe in ~p: ~p", [_Pid, N]),
+            Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], whapps_call:other_leg_call_id(Call)}], N),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+            lager:debug("number exe in ~p: ~p", [_Pid, Metaflow]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'};
         {'pattern', P} ->
-            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [P, Call]),
-            lager:debug("pattern exe in ~p: ~p", [_Pid, P]),
+            Metaflow = wh_json:set_values([{[<<"data">>, <<"dtmf_leg">>], whapps_call:other_leg_call_id(Call)}], P),
+            _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+            lager:debug("pattern exe in ~p: ~p", [_Pid, Metaflow]),
             {'next_state', 'unarmed', disarm_state(State), 'hibernate'}
     end;
 
@@ -221,6 +237,91 @@ armed(_Event, _From, State) ->
     lager:debug("unhandled armed/3: ~p", [_Event]),
     {'reply', {'error', 'not_implemented'}, 'armed', State}.
 
+handle_event({'transfer_to', NewCall, 'a'}, StateName, #state{listen_on=ListenOn
+                                                              ,call=Call
+                                                             }=State) ->
+    lager:debug("updating call to ~s in ~s", [whapps_call:call_id_direct(NewCall), StateName]),
+    whapps_call:put_callid(NewCall),
+    _ = maybe_start_leg_listeners(NewCall, ListenOn),
+    _ = stop_leg_listeners(Call),
+    {'next_state', StateName, State#state{call=NewCall
+                                          ,call_id=whapps_call:call_id_direct(NewCall)
+                                         }};
+handle_event({'transfer_to', NewCall, 'b'}, StateName, #state{listen_on=ListenOn
+                                                              ,call=Call
+                                                             }=State) ->
+    OldOtherLeg = whapps_call:other_leg_call_id(Call),
+    lager:debug("updating call to ~s (was ~s) in ~s"
+                ,[whapps_call:other_leg_call_id(NewCall), OldOtherLeg, StateName]
+               ),
+
+    _ = maybe_start_leg_listeners(NewCall, ListenOn),
+    _ = stop_leg_listeners(OldOtherLeg),
+
+    {'next_state', StateName, State#state{call=NewCall
+                                          ,other_leg=whapps_call:other_leg_call_id(NewCall)
+                                         }};
+
+handle_event({'event', CallId, <<"CHANNEL_BRIDGE">>, JObj}, StateName, #state{call_id=CallId
+                                                                              ,other_leg='undefined'
+                                                                              ,call=Call
+                                                                             }=State) ->
+    OtherLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+    konami_tracker:update_other_leg(OtherLeg),
+    lager:debug("channel has been bridged to ~s", [OtherLeg]),
+    {'next_state', StateName, State#state{other_leg=OtherLeg
+                                          ,call=whapps_call:set_other_leg_call_id(OtherLeg, Call)
+                                         }};
+handle_event({'event', CallId, <<"CHANNEL_BRIDGE">>, JObj}, StateName, #state{call_id=CallId
+                                                                              ,other_leg=OtherLeg
+                                                                              ,call=Call
+                                                                             }=State) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj) of
+        OtherLeg ->
+            konami_tracker:update_other_leg(OtherLeg),
+            lager:debug("channel is bridged to ~s", [OtherLeg]),
+            {'next_state', StateName, State};
+        NewOtherLeg ->
+            lager:debug("channel is now bridged to ~s (was ~s)", [NewOtherLeg, OtherLeg]),
+            konami_event_listener:add_call_binding(NewOtherLeg),
+            konami_event_listener:rm_call_binding(OtherLeg),
+            konami_tracker:update_other_leg(NewOtherLeg),
+            {'next_state', StateName, State#state{other_leg=NewOtherLeg
+                                                  ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
+                                                 }}
+    end;
+
+handle_event({'event', OtherLeg, <<"CHANNEL_BRIDGE">>, JObj}, StateName, #state{other_leg='undefined'
+                                                                                ,call=Call
+                                                                                ,call_id=CallId
+                                                                               }=State) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj) of
+        CallId ->
+            lager:debug("b leg ~s bridged to us", [OtherLeg]),
+            {'next_state', StateName, State#state{other_leg=OtherLeg
+                                                  ,call=whapps_call:set_other_leg_call_id(OtherLeg, Call)
+                                                 }};
+        _Id -> {'next_state', StateName, State}
+    end;
+handle_event({'event', OtherLeg, <<"CHANNEL_BRIDGE">>, _JObj}, StateName, #state{other_leg=OtherLeg}=State) ->
+    lager:debug("b leg ~s bridged to us", [OtherLeg]),
+    {'next_state', StateName, State};
+
+handle_event({'event', NewOtherLeg, <<"CHANNEL_BRIDGE">>, JObj}, StateName, #state{call_id=CallId
+                                                                                ,other_leg=OldOtherLeg
+                                                                                ,call=Call
+                                                                               }=State) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj) of
+        CallId ->
+            lager:debug("we have a new b-leg ~s (was ~s)", [NewOtherLeg, OldOtherLeg]),
+            konami_event_listener:add_call_binding(NewOtherLeg),
+            konami_event_listener:rm_call_binding(OldOtherLeg),
+            konami_tracker:update_other_leg(NewOtherLeg),
+            {'next_state', StateName, State#state{other_leg=NewOtherLeg
+                                                  ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
+                                                 }};
+        _Id -> {'next_state', StateName, State}
+    end;
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
@@ -233,32 +334,50 @@ handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, #state{
                                                                                 ,other_leg=OtherLeg
                                                                                 ,call=Call
                                                                                }=State) ->
-    case wh_json:get_value(<<"Call-ID">>, Evt) of
-        CallId ->
-            case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
-                'undefined' ->
-                    lager:debug("channel is answered (~s)", [OtherLeg]),
-                    {'next_state', StateName, State};
-                OtherLeg ->
-                    lager:debug("channel is answered (~s)", [OtherLeg]),
-                    {'next_state', StateName, State};
-                NewOtherLeg ->
-                    lager:debug("channel is now bridged to ~s (was ~s)", [NewOtherLeg, OtherLeg]),
-                    konami_event_listener:add_call_binding(NewOtherLeg),
-                    {'next_state', StateName, State#state{other_leg=NewOtherLeg
-                                                          ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
-                                                         }}
-            end;
-        OtherLeg ->
-            lager:debug("b leg ~s is answered", [OtherLeg]),
+    lager:debug("answer: ~s(~s) other ~s", [wh_json:get_value(<<"Call-ID">>, Evt)
+                                            ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], Evt)
+                                            ,wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)
+                                           ]),
+
+    case {wh_json:get_value(<<"Call-ID">>, Evt)
+          ,wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)
+         }
+    of
+        {CallId, 'undefined'} ->
+            lager:debug("channel is answered (~s)", [OtherLeg]),
             {'next_state', StateName, State};
-        NewOtherLeg ->
+        {CallId, OtherLeg} ->
+            konami_tracker:update_other_leg(OtherLeg),
+            lager:debug("channel is answered (~s)", [OtherLeg]),
+            {'next_state', StateName, State};
+        {CallId, NewOtherLeg} ->
+            lager:debug("channel is now bridged to ~s (was ~s)", [NewOtherLeg, OtherLeg]),
+            konami_event_listener:add_call_binding(NewOtherLeg),
+            konami_tracker:update_other_leg(NewOtherLeg),
+            {'next_state', StateName, State#state{other_leg=NewOtherLeg
+                                                  ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
+                                                 }};
+
+        {OtherLeg, CallId} ->
+            lager:debug("b leg ~s is answered", [OtherLeg]),
+            konami_tracker:update_other_leg(OtherLeg),
+            {'next_state', StateName, State};
+        {OtherLeg, YetAnotherLeg} ->
+            lager:debug("yet another leg ~s for other leg ~s", [YetAnotherLeg, OtherLeg]),
+            {'next_state', StateName, State};
+        {NewOtherLeg, CallId} ->
             konami_event_listener:add_call_binding(NewOtherLeg),
             konami_event_listener:rm_call_binding(OtherLeg),
             lager:debug("new b leg ~s is answered (was ~s)", [NewOtherLeg, OtherLeg]),
+
+            konami_tracker:update_other_leg(NewOtherLeg),
+
             {'next_state', StateName, State#state{other_leg=NewOtherLeg
                                                   ,call=whapps_call:set_other_leg_call_id(NewOtherLeg, Call)
-                                                 }}
+                                                 }};
+        {NewOtherLeg, 'undefined'} ->
+            lager:debug("recv new other leg ~s while bridge = ~s", [NewOtherLeg, whapps_call:bridge_id(Call)]),
+            {'next_state', StateName, State}
     end;
 handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, #state{call_id=CallId
                                                                                  ,other_leg=OtherLeg
@@ -278,6 +397,7 @@ handle_info(_Info, StateName, State) ->
 terminate(_Reason, _StateName, #state{call_id=CallId
                                       ,other_leg=OtherLeg
                                      }) ->
+    konami_tracker:untrack(),
     konami_event_listener:rm_call_binding(CallId),
     konami_event_listener:rm_call_binding(OtherLeg),
     lager:debug("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
@@ -323,22 +443,23 @@ digit_timeout(Call, JObj) ->
         Timeout -> Timeout
     end.
 
+-spec is_a_leg(whapps_call:call(), api_object() | ne_binary()) -> boolean().
+is_a_leg(_Call, 'undefined') -> 'true';
+is_a_leg(Call, <<_/binary>> = EndpointId) ->
+    EndpointId =:= whapps_call:authorizing_id(Call);
+is_a_leg(Call, JObj) ->
+    is_a_leg(Call, wh_json:get_value(<<"Endpoint-ID">>, JObj)).
+
+-spec listen_on(whapps_call:call(), wh_json:object()) -> 'a' | 'b' | 'ab'.
 listen_on(Call, JObj) ->
     EndpointId = wh_json:get_value(<<"Endpoint-ID">>, JObj),
-    IsALegEndpoint = (EndpointId =:= 'undefined') orelse
-        (EndpointId =:= whapps_call:authorizing_id(Call)),
+    IsALegEndpoint = is_a_leg(Call, EndpointId),
 
-    lager:debug("ep: '~s' is a leg: ~s lo: ~s", [EndpointId, IsALegEndpoint, wh_json:get_value(<<"Listen-On">>, JObj)]),
+    lager:debug("endpoint ~s is~s a-leg"
+                ,[EndpointId, case IsALegEndpoint of 'true' -> <<>>; 'false' -> <<" not">> end]
+               ),
 
     case wh_json:get_value(<<"Listen-On">>, JObj) of
-        'undefined' when IsALegEndpoint ->
-            Default = konami_config:listen_on(whapps_call:account_id(Call)),
-            lager:debug("lo default: ~p", [Default]),
-            Default;
-        'undefined' -> 'b';
-        <<"a">> -> 'a';
-        <<"b">> -> 'b';
-        <<"ab">> -> 'ab';
         <<"both">> -> 'ab';
         <<"self">> when IsALegEndpoint -> 'a';
         <<"self">> -> 'b';
@@ -407,40 +528,54 @@ maybe_cancel_timer(Ref) when is_reference(Ref) ->
 maybe_cancel_timer(_) ->
     'ok'.
 
--spec maybe_start_b_leg_listener(whapps_call:call(), 'a' | 'b' | 'ab') -> 'ok'.
-maybe_start_b_leg_listener(_Call, 'a') ->
-    'ok';
-maybe_start_b_leg_listener(Call, _) ->
+-spec maybe_start_leg_listeners(whapps_call:call(), 'a' | 'b' | 'ab') -> 'ok'.
+maybe_start_leg_listeners(Call, 'a') ->
+    lager:debug("starting call bindings for a leg ~s", [whapps_call:call_id(Call)]),
+    konami_event_listener:add_call_binding(Call);
+maybe_start_leg_listeners(Call, 'b') ->
+    lager:debug("starting call bindings for b leg ~s", [whapps_call:other_leg_call_id(Call)]),
+    start_b_leg_listener(Call);
+maybe_start_leg_listeners(Call, 'ab') ->
+    lager:debug("starting call bindings for both legs ~s and ~s", [whapps_call:call_id(Call)
+                                                                   ,whapps_call:other_leg_call_id(Call)
+                                                                  ]),
+    konami_event_listener:add_call_binding(Call),
+    start_b_leg_listener(Call).
+
+-spec stop_leg_listeners(whapps_call:call() | api_binary()) -> 'ok'.
+stop_leg_listeners('undefined') -> 'ok';
+stop_leg_listeners(<<_/binary>> = CallId) ->
+    konami_event_listener:rm_call_binding(CallId);
+stop_leg_listeners(Call) ->
+    stop_leg_listeners(whapps_call:call_id(Call)).
+
+-spec start_b_leg_listener(whapps_call:call()) -> 'ok'.
+start_b_leg_listener(Call) ->
     API = [{<<"Application-Name">>, <<"noop">>}
            ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
            ,{<<"Insert-At">>, <<"now">>}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending noop for b leg events"),
-    whapps_call_command:send_command(API, Call).
+    whapps_call_command:send_command(API, Call),
+    konami_event_listener:add_call_binding(whapps_call:other_leg_call_id(Call)).
 
 -spec should_stop_fsm(ne_binary(), api_binary(), 'a' | 'ab' | 'b', ne_binary()) -> boolean().
-should_stop_fsm(CallId, _OtherLeg, 'a', CallId) ->
+should_stop_fsm(EventCallId, _OtherLeg, 'a', EventCallId) ->
     lager:debug("recv a-leg channel_destroy, going down"),
-    konami_event_listener:rm_call_binding(CallId),
+    konami_event_listener:rm_call_binding(EventCallId),
     'true';
-should_stop_fsm(CallId, _OtherLeg, 'ab', CallId) ->
+should_stop_fsm(EventCallId, OtherLeg, 'ab', EventCallId) ->
     lager:debug("recv a-leg channel_destroy, going down"),
-    konami_event_listener:rm_call_binding(CallId),
-    'true';
-should_stop_fsm(CallId, _OtherLeg, _ListenOn, CallId) ->
-    lager:debug("recv a-leg channel_destroy, ignoring"),
-    'false';
-should_stop_fsm(_CallId, 'undefined', _ListenOn, _DownCallId) ->
-    lager:debug("no b-leg, ignoring destroy for ~s", [_DownCallId]),
-    'false';
-should_stop_fsm(_CallId, OtherLeg, 'b', OtherLeg) ->
-    lager:debug("recv b-leg channel_destroy, going down"),
+    konami_event_listener:rm_call_binding(EventCallId),
     konami_event_listener:rm_call_binding(OtherLeg),
     'true';
-should_stop_fsm(_CallId, OtherLeg, _ListenOn, OtherLeg) ->
-    lager:debug("recv b-leg channel_destroy, ignoring"),
-    'false';
-should_stop_fsm(_CallId, _OtherLeg, _ListenOn, _CLeg) ->
-    lager:debug("recv c-leg ~s channel_destroy, ignoring", [_CLeg]),
+should_stop_fsm(_CallId, EventLeg, 'b', EventLeg) ->
+    lager:debug("recv b-leg ~s channel_destroy, going down", [EventLeg]),
+    konami_event_listener:rm_call_binding(EventLeg),
+    'true';
+should_stop_fsm(_CallId, _OtherLeg, _ListenOn, _EventLeg) ->
+    lager:debug("recv event-leg ~s channel_destroy while listening on ~s for ~s->~s, ignoring"
+                ,[_EventLeg, _ListenOn, _CallId, _OtherLeg]
+               ),
     'false'.
