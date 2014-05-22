@@ -38,12 +38,11 @@
 %% don't import the get_keys/1 that fetches keys from the process dictionary
 -compile({'no_auto_import', [get_keys/1]}).
 
--type wh_proplist_keys() :: [wh_proplist_key(),...] | [].
 -type wh_proplist_values() :: [wh_proplist_value(),...] | [].
 
 -spec set_values(wh_proplist(), wh_proplist()) -> wh_proplist().
 set_values([], Props) -> Props;
-set_values([{K, V}|KVs], Props) -> 
+set_values([{K, V}|KVs], Props) ->
     set_values(KVs, set_value(K, V, Props)).
 
 -spec set_value(wh_proplist_key(), wh_proplist_value(), wh_proplist()) ->
@@ -181,7 +180,7 @@ delete(K, Props) ->
         'false' -> lists:delete(K, Props)
     end.
 
--spec delete_keys(ne_binaries(), wh_proplist()) -> wh_proplist().
+-spec delete_keys(wh_proplist_keys(), wh_proplist()) -> wh_proplist().
 delete_keys([], Props) -> Props;
 delete_keys([_|_]=Ks, Props) -> lists:foldl(fun ?MODULE:delete/2, Props, Ks).
 
@@ -318,4 +317,3 @@ to_log(Props, Header) ->
   lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,props:get_value(A,Props)]) end,Keys),
   lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
   'ok'.
-
