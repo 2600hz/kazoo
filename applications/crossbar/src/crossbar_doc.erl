@@ -550,8 +550,8 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                     ,cb_context:resp_envelope(Context)
                                    )).
 
-handle_couch_mgr_pagination_success([], Context, StartKey, PageSize) ->
-    handle_couch_mgr_success([], update_pagination_envelope_params(Context, StartKey, PageSize));
+handle_couch_mgr_pagination_success([], Context, StartKey, _PageSize) ->
+    handle_couch_mgr_success([], update_pagination_envelope_params(Context, StartKey, 0));
 handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize) ->
     try lists:split(PageSize, JObjs) of
         {Results, []} ->
@@ -564,7 +564,7 @@ handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize) ->
     catch
         _E:_R ->
             lager:debug("recv less than ~p results: ~s: ~p", [PageSize, _E, _R]),
-            handle_couch_mgr_success(JObjs, update_pagination_envelope_params(Context, StartKey, PageSize))
+            handle_couch_mgr_success(JObjs, update_pagination_envelope_params(Context, StartKey, length(JObjs)))
     end.
 
 -spec handle_couch_mgr_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
