@@ -14,6 +14,7 @@
          ,load_merge/2, load_merge/3
          ,merge/3
          ,load_view/3, load_view/4
+         ,paginate_view/3, paginate_view/4, paginate_view/5
          ,load_attachment/3, load_docs/2
          ,save/1, save/2
          ,delete/1, delete/2
@@ -23,6 +24,7 @@
          ,rev_to_etag/1
          ,current_doc_vsn/0
          ,update_pvt_parameters/2
+         ,pagination_page_size/0
         ]).
 
 -export([handle_json_success/2]).
@@ -36,6 +38,15 @@
                    ,fun add_pvt_created/2
                    ,fun add_pvt_modified/2
                   ]).
+
+-define(PAGINATION_PAGE_SIZE, whapps_config:get_integer(?CONFIG_CAT
+                                                        ,<<"pagination_page_size">>
+                                                        ,10
+                                                       )).
+
+-spec pagination_page_size() -> pos_integer().
+pagination_page_size() ->
+    ?PAGINATION_PAGE_SIZE.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -198,6 +209,48 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
                        ],
             handle_couch_mgr_success(Filtered, Context1);
         Else -> Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function attempts to load the context with the results of a view
+%% run against the accounts database.
+%%
+%% Failure here returns 500 or 503
+%% @end
+%%--------------------------------------------------------------------
+-spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context()) ->
+                           cb_context:context().
+-spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), api_binary()) ->
+                           cb_context:context().
+-spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), api_binary(), pos_integer()) ->
+                           cb_context:context().
+paginate_view(View, Options, Context) ->
+    paginate_view(View, Options, Context
+                  ,cb_context:req_value(Context, <<"start_key">>)
+                  ,cb_context:req_value(Context, <<"page_size">>, pagination_page_size())
+                 ).
+paginate_view(View, Options, Context, StartKey) ->
+    paginate_view(View, Options, Context, StartKey
+                  ,cb_context:req_value(Context, <<"page_size">>, pagination_page_size())
+                 ).
+paginate_view(View, Options, Context, StartKey, PageSize) ->
+    Db = cb_context:account_db(Context),
+
+    ViewOptions =
+        props:filter_undefined(
+          [{'startkey', StartKey}
+           ,{'limit', wh_util:to_integer(PageSize)+1}
+           | props:delete_keys(['startkey', 'limit'], Options)
+          ]),
+
+    case couch_mgr:get_results(Db, View, ViewOptions) of
+        {'error', Error} ->
+            handle_couch_mgr_errors(Error, View, Context);
+        {'ok', JObjs} ->
+            lager:debug("paginating view ~s from ~s, starting at ~s", [View, Db, StartKey]),
+            handle_couch_mgr_pagination_success(JObjs, Context, StartKey, PageSize)
     end.
 
 %%--------------------------------------------------------------------
@@ -483,6 +536,36 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+update_pagination_envelope_params(Context, StartKey, PageSize) ->
+    update_pagination_envelope_params(Context, StartKey, PageSize, 'undefined').
+update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
+    cb_context:set_resp_envelope(Context
+                                 ,wh_json:set_values(
+                                    props:filter_undefined(
+                                      [{<<"start_key">>, StartKey}
+                                       ,{<<"page_size">>, PageSize}
+                                       ,{<<"next_start_key">>, NextStartKey}
+                                      ])
+                                    ,cb_context:resp_envelope(Context)
+                                   )).
+
+handle_couch_mgr_pagination_success([], Context, StartKey, PageSize) ->
+    handle_couch_mgr_success([], update_pagination_envelope_params(Context, StartKey, PageSize));
+handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize) ->
+    try lists:split(PageSize, JObjs) of
+        {Results, []} ->
+            lager:debug("no next results"),
+            handle_couch_mgr_success(Results, update_pagination_envelope_params(Context, StartKey, PageSize));
+        {Results, [NextJObj]} ->
+            lager:debug("next result: ~p", [NextJObj]),
+            NextStartKey = wh_json:get_value(<<"key">>, NextJObj),
+            handle_couch_mgr_success(Results, update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey))
+    catch
+        _E:_R ->
+            lager:debug("recv less than ~p results: ~s: ~p", [PageSize, _E, _R]),
+            handle_couch_mgr_success(JObjs, update_pagination_envelope_params(Context, StartKey, PageSize))
+    end.
+
 -spec handle_couch_mgr_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_couch_mgr_success([], Context) ->
     lists:foldl(fun fold_over_setters/2
