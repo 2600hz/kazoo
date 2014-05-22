@@ -165,11 +165,27 @@ fetch_cdrs(View, ViewOptions, Context) ->
     end.
 
 -spec fetch_cdrs(ne_binaries(), ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
-fetch_cdrs([], _, _, Context) -> Context;
-fetch_cdrs([Db|Dbs], View, ViewOptions, Context) ->
+fetch_cdrs(Dbs, View, ViewOptions, Context) ->
+    ReqPageSize = crossbar_doc:pagination_page_size(Context),
+    CurrentPageSize = wh_json:get_integer_value(<<"page_size">>, cb_context:resp_envelope(Context), 0),
+
+    lager:debug("reqpagesize: ~p current: ~p", [ReqPageSize, CurrentPageSize]),
+
+    fetch_cdrs(Dbs, View, ViewOptions, Context, ReqPageSize - CurrentPageSize).
+fetch_cdrs([], _, _, Context, _PageSize) ->
+    lager:debug("dbs exhausted"),
+    Context;
+fetch_cdrs(_Dbs, _View, _ViewOptions, Context, PageSize) when PageSize =< 0 ->
+    lager:debug("page size exhausted: ~p", [PageSize]),
+    Context;
+fetch_cdrs([Db|Dbs], View, ViewOptions, Context, PageSize) ->
+    lager:debug("startkey: ~p", [crossbar_doc:start_key(ViewOptions, Context)]),
+    lager:debug("page size ~p", [PageSize]),
     C = crossbar_doc:paginate_view(View
                                    ,ViewOptions
                                    ,cb_context:set_account_db(Context, Db)
+                                   ,crossbar_doc:start_key(ViewOptions, Context)
+                                   ,PageSize
                                    ,fun(JObj, JObjs) -> normalize_view_results(JObj, JObjs) end
                                   ),
     case cb_context:resp_status(C) of
@@ -179,10 +195,45 @@ fetch_cdrs([Db|Dbs], View, ViewOptions, Context) ->
             fetch_cdrs(Dbs
                        ,View
                        ,ViewOptions
-                       ,cb_context:set_resp_data(C, JObjs)
+                       ,cb_context:set_resp_envelope(
+                          cb_context:set_resp_data(C, JObjs)
+                          ,merge_resp_envelope(Context, C)
+                         )
                       );
         Else -> Else
     end.
+
+-spec merge_resp_envelope(cb_context:context(), cb_context:context()) -> wh_json:object().
+merge_resp_envelope(PriorContext, NewContext) ->
+    maybe_fix_start_keys(
+      wh_json:foldl(fun merge_resp_envelopes/3
+                    ,cb_context:resp_envelope(NewContext)
+                    ,cb_context:resp_envelope(PriorContext)
+                   )).
+
+maybe_fix_start_keys(JObj) ->
+    lists:foldl(fun(Key, J) ->
+                        case wh_json:get_value(Key, J) of
+                            [_, Value] -> wh_json:set_value(Key, Value, J);
+                            _Value -> J
+                        end
+                end, JObj, [<<"start_key">>, <<"next_start_key">>]).
+
+-spec merge_resp_envelopes(ne_binary(), term(), wh_json:object()) -> wh_json:object().
+merge_resp_envelopes(<<"start_key">> = Key, [_, PriorValue], NewEnvelope) ->
+    lager:debug("setting ~s to ~p, ignoring owner", [Key, PriorValue]),
+    wh_json:set_value(Key, PriorValue, NewEnvelope);
+merge_resp_envelopes(<<"start_key">> = Key, PriorValue, NewEnvelope) ->
+    lager:debug("setting ~s to ~p", [Key, PriorValue]),
+    wh_json:set_value(Key, PriorValue, NewEnvelope);
+merge_resp_envelopes(<<"page_size">> = Key, PriorValue, NewEnvelope) ->
+    NewValue = wh_json:get_integer_value(Key, NewEnvelope, 0),
+    Sum = NewValue + PriorValue,
+    lager:debug("updating ~s to ~p (~p + ~p)", [Key, Sum, NewValue, PriorValue]),
+    wh_json:set_value(Key, Sum, NewEnvelope);
+merge_resp_envelopes(_Key, _Value, NewEnvelope) ->
+    lager:debug("skipping ~s: ~p", [_Key, _Value]),
+    NewEnvelope.
 
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, JObjs) ->
@@ -215,11 +266,9 @@ view_key_created_from(Props) ->
 create_view_options(OwnerId, Context) ->
     TStamp =  wh_util:current_tstamp(),
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
-    CreatedFrom = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange)),
+    CreatedFrom = created_from(Context, TStamp, MaxRange),
     CreatedTo = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)),
     Diff = CreatedTo - CreatedFrom,
-
-    lager:debug("now: ~p max: ~p from: ~p to: ~p diff: ~p", [TStamp, MaxRange, CreatedFrom, CreatedTo, Diff]),
 
     case Diff of
         N when N < 0 ->
@@ -248,6 +297,15 @@ create_view_options(OwnerId, Context) ->
                     ,{'endkey', [OwnerId, CreatedTo]}
                    ]}
     end.
+
+created_from(Context, TStamp, MaxRange) ->
+    created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
+created_from(Context, TStamp, MaxRange, 'undefined') ->
+    lager:debug("building created_from from req value"),
+    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
+created_from(_Context, _TStamp, _MaxRange, StartKey) ->
+    lager:debug("using startkey ~p as created_from", [StartKey]),
+    wh_util:to_integer(StartKey).
 
 -spec master_account_id() -> ne_binary().
 master_account_id() ->
