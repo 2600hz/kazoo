@@ -47,11 +47,14 @@ req_params(Call) ->
       [{<<"Call-ID">>, whapps_call:call_id(Call)}
        ,{<<"Account-ID">>, whapps_call:account_id(Call)}
        ,{<<"From">>, whapps_call:from_user(Call)}
+       ,{<<"FromRealm">>, whapps_call:from_realm(Call)}
        ,{<<"To">>, whapps_call:to_user(Call)}
+       ,{<<"ToRealm">>, whapps_call:to_realm(Call)}
        ,{<<"Call-Status">>, kzt_util:get_call_status(Call)}
        ,{<<"ApiVersion">>, <<"2013-05-01">>}
        ,{<<"Direction">>, <<"inbound">>}
        ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+       ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
        ,{<<"User-ID">>, Owners}
        ,{<<"Recording-Url">>, kzt_util:get_recording_url(Call)}
        ,{<<"Recording-Duration">>, kzt_util:get_recording_duration(Call)}
