@@ -24,7 +24,8 @@
          ,rev_to_etag/1
          ,current_doc_vsn/0
          ,update_pvt_parameters/2
-         ,pagination_page_size/0
+         ,start_key/1, start_key/2
+         ,pagination_page_size/0, pagination_page_size/1
         ]).
 
 -export([handle_json_success/2]).
@@ -45,8 +46,15 @@
                                                        )).
 
 -spec pagination_page_size() -> pos_integer().
+-spec pagination_page_size(cb_context:context()) -> pos_integer().
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
+
+pagination_page_size(Context) ->
+    case cb_context:req_value(Context, <<"page_size">>) of
+        'undefined' -> pagination_page_size();
+        V -> wh_util:to_integer(V)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -220,28 +228,28 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
 %%--------------------------------------------------------------------
 -spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context()) ->
                            cb_context:context().
--spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), api_binary() | filter_fun()) ->
+-spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term() | filter_fun()) ->
                            cb_context:context().
--spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), api_binary(), pos_integer()) ->
+-spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer()) ->
                            cb_context:context().
--spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), api_binary(), pos_integer(), filter_fun() | 'undefined') ->
+-spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer(), filter_fun() | 'undefined') ->
                            cb_context:context().
 paginate_view(View, Options, Context) ->
     paginate_view(View, Options, Context
-                  ,cb_context:req_value(Context, <<"start_key">>, props:get_value('startkey', Options))
-                  ,cb_context:req_value(Context, <<"page_size">>, pagination_page_size())
+                  ,start_key(Options, Context)
+                  ,pagination_page_size(Context)
                   ,'undefined'
                  ).
 
 paginate_view(View, Options, Context, FilterFun) when is_function(FilterFun, 2) ->
     paginate_view(View, Options, Context
-                  ,cb_context:req_value(Context, <<"start_key">>, props:get_value('startkey', Options))
-                  ,cb_context:req_value(Context, <<"page_size">>, pagination_page_size())
+                  ,start_key(Options, Context)
+                  ,pagination_page_size(Context)
                   ,FilterFun
                  );
-paginate_view(View, Options, Context, <<_/binary>> = StartKey) ->
+paginate_view(View, Options, Context, StartKey) ->
     paginate_view(View, Options, Context, StartKey
-                  ,cb_context:req_value(Context, <<"page_size">>, pagination_page_size())
+                  ,pagination_page_size(Context)
                  ).
 
 paginate_view(View, Options, Context, StartKey, PageSize) ->
@@ -276,6 +284,17 @@ paginate_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                                 ,PageSize
                                                 ,FilterFun
                                                )
+    end.
+
+-spec start_key(cb_context:context()) -> wh_json:json_term() | 'undefined'.
+-spec start_key(wh_proplist(), cb_context:context()) -> wh_json:json_term() | 'undefined'.
+start_key(Context) ->
+    cb_context:req_value(Context, <<"start_key">>).
+
+start_key(Options, Context) ->
+    case props:get_value('startkey', Options) of
+        'undefined' -> cb_context:req_value(Context, <<"start_key">>);
+        StartKey -> StartKey
     end.
 
 %%--------------------------------------------------------------------
