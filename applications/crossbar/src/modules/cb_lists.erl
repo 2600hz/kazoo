@@ -1,7 +1,7 @@
 %%%----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
-%%% Users module
+%%% Match list module
 %%%
 %%% Handle client requests for match list documents
 %%%
@@ -209,21 +209,25 @@ get_entry(Context, EntryId, OnSuccess) ->
 get_entry(Context, EntryId) ->
     OnSuccess =
         fun(C, EntryData) ->
-                C1 = cb_context:store(C, 'entry_id', EntryId),
-                C2 = cb_context:store(C1, 'entry_jobj', EntryData),
-                handle_entry_success(C2)
+             NewContext = cb_context:setters(C, [
+                 {fun cb_context:store/3, 'entry_id', EntryId}
+                 ,{fun cb_context:store/3, 'entry_jobj', EntryData}
+             ]),
+             handle_entry_success(NewContext)
         end,
     get_entry(Context, EntryId, OnSuccess).
 
 -spec add_entry(cb_context:context(), any()) -> cb_context:context().
 add_entry(Context, EntryData) ->
     Doc = cb_context:doc(Context),
-    Uuid = couch_mgr:get_uuid(),
-    Doc1 = wh_json:set_value([<<"entries">>, Uuid], EntryData, Doc),
-    Context1 = cb_context:set_doc(Context, Doc1),
-    Context2 = cb_context:store(Context1, 'entry_id', Uuid),
-    Context3 = cb_context:store(Context2, 'entry_jobj', EntryData),
-    crossbar_doc:save(Context3).
+    UUID = couch_mgr:get_uuid(),
+    Doc1 = wh_json:set_value([<<"entries">>, UUID], EntryData, Doc),
+    NewContext = cb_context:setters(Context, [
+        {fun cb_context:set_doc/2, Doc1}
+        ,{fun cb_context:store/3, 'entry_id', UUID}
+        ,{fun cb_context:store/3, 'entry_jobj', EntryData}
+    ]),
+    crossbar_doc:save(NewContext).
 
 -spec update_entry(cb_context:context(), path_token(), any()) -> cb_context:context().
 update_entry(Context, EntryId, EntryData) ->
@@ -231,10 +235,12 @@ update_entry(Context, EntryId, EntryData) ->
         fun(C, _OldEntryData) ->
                 Doc = cb_context:doc(C),
                 Doc1 = wh_json:set_value([<<"entries">>, EntryId], EntryData, Doc),
-                C1 = cb_context:set_doc(C, Doc1),
-                C2 = cb_context:store(C1, 'entry_id', EntryId),
-                C3 = cb_context:store(C2, 'entry_jobj', EntryData),
-                crossbar_doc:save(C3)
+                NewContext = cb_context:setters(C, [
+                    {fun cb_context:set_doc/2, Doc1}
+                    ,{fun cb_context:store/3, 'entry_id', EntryId}
+                    ,{fun cb_context:store/3, 'entry_jobj', EntryData}
+                ]),
+                crossbar_doc:save(NewContext)
         end,
     get_entry(Context, EntryId, OnSuccess).
 
@@ -244,10 +250,12 @@ delete_entry(Context, EntryId) ->
         fun(C, EntryData) ->
                 Doc = cb_context:doc(C),
                 Doc1 = wh_json:delete_key([<<"entries">>, EntryId], Doc),
-                C1 = cb_context:set_doc(C, Doc1),
-                C2 = cb_context:store(C1, 'entry_id', EntryId),
-                C3 = cb_context:store(C2, 'entry_jobj', EntryData),
-                crossbar_doc:save(C3)
+                NewContext = cb_context:setters(C, [
+                    {fun cb_context:set_doc/2, Doc1}
+                    ,{fun cb_context:store/3, 'entry_id', EntryId}
+                    ,{fun cb_context:store/3, 'entry_jobj', EntryData}
+                ]),
+                crossbar_doc:save(NewContext)
         end,
     get_entry(Context, EntryId, OnSuccess).
 
