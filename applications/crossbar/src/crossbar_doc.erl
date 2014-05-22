@@ -201,14 +201,15 @@ load_view(View, Options, Context) ->
 -spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), filter_fun()) ->
                        cb_context:context().
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
-    case load_view(View, Options, Context) of
-        #cb_context{resp_status='success'} = Context1 ->
+    Context1 = load_view(View, Options, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
             Filtered = [JObj
                         || JObj <- lists:foldl(Filter, [], cb_context:doc(Context1)),
                            (not wh_util:is_empty(JObj))
                        ],
             handle_couch_mgr_success(Filtered, Context1);
-        Else -> Else
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
