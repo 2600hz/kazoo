@@ -505,9 +505,9 @@ leak_billing_mode(Context) ->
 %%--------------------------------------------------------------------
 -spec load_children(ne_binary(), cb_context:context()) -> cb_context:context().
 load_children(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [{'startkey', [AccountId]}
-                                                ,{'endkey', [AccountId, wh_json:new()]}
-                                               ], Context, fun normalize_view_results/2).
+    crossbar_doc:paginate_view(?AGG_VIEW_CHILDREN, [{'startkey', [AccountId]}
+                                                    ,{'endkey', [AccountId, wh_json:new()]}
+                                                   ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -517,9 +517,9 @@ load_children(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_descendants(ne_binary(), cb_context:context()) -> cb_context:context().
 load_descendants(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [{'startkey', [AccountId]}
-                                                   ,{'endkey', [AccountId, wh_json:new()]}
-                                                  ], Context, fun normalize_view_results/2).
+    crossbar_doc:paginate_view(?AGG_VIEW_DESCENDANTS, [{'startkey', [AccountId]}
+                                                       ,{'endkey', [AccountId, wh_json:new()]}
+                                                      ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -529,9 +529,9 @@ load_descendants(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_siblings(ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings(AccountId, Context) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT, [{'startkey', AccountId}
-                                                         ,{'endkey', AccountId}
-                                                        ], Context),
+    Context1 = crossbar_doc:paginate_view(?AGG_VIEW_PARENT, [{'startkey', AccountId}
+                                                             ,{'endkey', AccountId}
+                                                            ], Context),
     case cb_context:resp_status(Context1) of
         'success' ->
             load_siblings(AccountId, Context1, cb_context:doc(Context1));

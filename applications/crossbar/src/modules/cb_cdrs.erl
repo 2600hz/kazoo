@@ -95,9 +95,9 @@ content_types_provided(#cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
     load_cdr_summary(Context).
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, CDRId) ->
+validate(Context, CDRId) ->
     load_cdr(CDRId, Context).
 
 %%--------------------------------------------------------------------
@@ -156,7 +156,8 @@ load_view(View, ViewOptions, Context) ->
 -spec fetch_cdrs(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
 fetch_cdrs(View, ViewOptions, Context) ->
     case {cdr_db(view_key_created_from(ViewOptions), Context)
-          ,cdr_db(view_key_created_to(ViewOptions), Context)}
+          ,cdr_db(view_key_created_to(ViewOptions), Context)
+         }
     of
         {Db, Db} -> fetch_cdrs([Db], View, ViewOptions, Context);
         {PastDb, PresentDb} ->
@@ -166,11 +167,11 @@ fetch_cdrs(View, ViewOptions, Context) ->
 -spec fetch_cdrs(ne_binaries(), ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
 fetch_cdrs([], _, _, Context) -> Context;
 fetch_cdrs([Db|Dbs], View, ViewOptions, Context) ->
-    C = crossbar_doc:load_view(View
-                               ,ViewOptions
-                               ,cb_context:set_account_db(Context, Db)
-                               ,fun(JObj, JObjs) -> normalize_view_results(JObj, JObjs) end
-                              ),
+    C = crossbar_doc:paginate_view(View
+                                   ,ViewOptions
+                                   ,cb_context:set_account_db(Context, Db)
+                                   ,fun(JObj, JObjs) -> normalize_view_results(JObj, JObjs) end
+                                  ),
     case cb_context:resp_status(C) of
         'success' ->
             JObjs = cb_context:doc(Context)
@@ -178,7 +179,8 @@ fetch_cdrs([Db|Dbs], View, ViewOptions, Context) ->
             fetch_cdrs(Dbs
                        ,View
                        ,ViewOptions
-                       ,cb_context:set_resp_data(C, JObjs));
+                       ,cb_context:set_resp_data(C, JObjs)
+                      );
         Else -> Else
     end.
 
@@ -212,30 +214,36 @@ view_key_created_from(Props) ->
                                  cb_context:context().
 create_view_options(OwnerId, Context) ->
     TStamp =  wh_util:current_tstamp(),
-    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
     CreatedFrom = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange)),
     CreatedTo = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)),
     Diff = CreatedTo - CreatedFrom,
-    if
-        Diff < 0 ->
+
+    lager:debug("now: ~p max: ~p from: ~p to: ~p diff: ~p", [TStamp, MaxRange, CreatedFrom, CreatedTo, Diff]),
+
+    case Diff of
+        N when N < 0 ->
             Message = <<"created_from is prior to created_to">>,
             cb_context:add_validation_error(<<"created_from">>
                                             ,<<"date_range">>
                                             ,Message
-                                            ,Context);
-        Diff > MaxRange ->
+                                            ,Context
+                                           );
+        N when N > MaxRange ->
             Message = <<"created_to is more than "
                         ,(wh_util:to_binary(MaxRange))/binary
-                        ," seconds from created_from">>,
+                        ," seconds from created_from"
+                      >>,
             cb_context:add_validation_error(<<"created_from">>
                                             ,<<"date_range">>
                                             ,Message
-                                            ,Context);
-        OwnerId =:= 'undefined' ->
+                                            ,Context
+                                           );
+        _N when OwnerId =:= 'undefined' ->
             {'ok', [{'startkey', CreatedFrom}
                     ,{'endkey', CreatedTo}
                    ]};
-        'true' ->
+        _N ->
             {'ok', [{'startkey', [OwnerId, CreatedFrom]}
                     ,{'endkey', [OwnerId, CreatedTo]}
                    ]}
@@ -249,11 +257,15 @@ master_account_id() ->
 -spec cdr_db(pos_integer(), cb_context:context()) -> ne_binary().
 cdr_db(Timestamp, Context) ->
     Db = cdr_db_name(Timestamp, Context),
+
     case couch_mgr:db_exists(Db) of
         'true' ->
+            lager:debug("using cdr db ~s for ~p", [Db, Timestamp]),
             maybe_add_design_doc(Db),
             Db;
-        'false' -> cb_context:account_db(Context)
+        'false' ->
+            lager:debug("using account db ~s for ~p", [cb_context:account_db(Context), Timestamp]),
+            cb_context:account_db(Context)
     end.
 
 -spec maybe_add_design_doc(ne_binary()) -> 'ok' | {'error', 'not_found'}.
