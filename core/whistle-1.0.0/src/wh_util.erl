@@ -36,6 +36,7 @@
          ,is_true/1, is_false/1
          ,is_empty/1, is_not_empty/1
          ,is_proplist/1
+         ,identity/1
         ]).
 -export([to_lower_binary/1, to_upper_binary/1
          ,to_lower_string/1, to_upper_string/1
@@ -703,6 +704,9 @@ is_not_empty(Term) -> (not is_empty(Term)).
 is_proplist(Term) when is_list(Term) ->
     lists:all(fun({_,_}) -> 'true'; (A) -> is_atom(A) end, Term);
 is_proplist(_) -> 'false'.
+
+-spec identity(X) -> X.
+identity(X) -> X.
 
 -spec to_lower_binary(term()) -> api_binary().
 to_lower_binary('undefined') -> 'undefined';
