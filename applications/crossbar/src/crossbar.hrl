@@ -115,6 +115,7 @@
           ,resp_error_code :: pos_integer()
           ,resp_data :: resp_data()
           ,resp_headers = [] :: wh_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
+          ,resp_envelope = wh_json:new() :: wh_json:object()
           ,start = os:timestamp() :: wh_now()
           ,req_id = ?LOG_SYSTEM_ID :: ne_binary()
           ,storage = [] :: wh_proplist()

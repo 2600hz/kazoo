@@ -46,6 +46,7 @@
          ,resp_expires/1, set_resp_expires/2
          ,api_version/1, set_api_version/2
          ,resp_etag/1, set_resp_etag/2
+         ,resp_envelope/1, set_resp_envelope/2
          ,allow_methods/1, set_allow_methods/2
          ,allowed_methods/1, set_allowed_methods/2
          ,method/1, set_method/2
@@ -124,6 +125,7 @@ resp_expires(#cb_context{resp_expires=RespExpires}) -> RespExpires.
 resp_headers(#cb_context{resp_headers=RespHeaders}) -> RespHeaders.
 api_version(#cb_context{api_version=ApiVersion}) -> ApiVersion.
 resp_etag(#cb_context{resp_etag=ETag}) -> ETag.
+resp_envelope(#cb_context{resp_envelope=E}) -> E.
 
 allow_methods(#cb_context{allow_methods=AMs}) -> AMs.
 allowed_methods(#cb_context{allowed_methods=AMs}) -> AMs.
@@ -173,6 +175,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_resp_expires(context(), wh_datetime()) -> context().
 -spec set_api_version(context(), ne_binary()) -> context().
 -spec set_resp_etag(context(), api_binary()) -> context().
+-spec set_resp_envelope(context(), wh_json:object()) -> context().
 -spec set_resp_headers(context(), wh_proplist()) -> context().
 -spec add_resp_headers(context(), wh_proplist()) -> context().
 -spec set_resp_header(context(), ne_binary(), ne_binary()) -> context().
@@ -207,6 +210,7 @@ set_resp_status(#cb_context{}=Context, RespStatus) -> Context#cb_context{resp_st
 set_resp_expires(#cb_context{}=Context, RespExpires) -> Context#cb_context{resp_expires=RespExpires}.
 set_api_version(#cb_context{}=Context, ApiVersion) -> Context#cb_context{api_version=ApiVersion}.
 set_resp_etag(#cb_context{}=Context, ETag) -> Context#cb_context{resp_etag=ETag}.
+set_resp_envelope(#cb_context{}=Context, E) -> Context#cb_context{resp_envelope=E}.
 
 set_allow_methods(#cb_context{}=Context, AMs) -> Context#cb_context{allow_methods=AMs}.
 set_allowed_methods(#cb_context{}=Context, AMs) -> Context#cb_context{allowed_methods=AMs}.
