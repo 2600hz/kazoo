@@ -71,6 +71,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -define(MAX_RECORDING_LIMIT, wh_media_util:max_recording_time_limit()).
+-define(CHECK_CHANNEL_STATUS_TIMEOUT, 5000).
 
 -spec start_link(whapps_call:call(), wh_json:object()) -> startlink_ret().
 start_link(Call, Data) ->
@@ -106,7 +107,9 @@ handle_call_event(JObj, Props) ->
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             gen_listener:cast(props:get_value('server', Props), 'stop_call');
         {<<"call_event">>, <<"channel_status_resp">>} ->
-            gen_listener:cast(props:get_value('server', Props), {'channel_status', wh_json:get_value(<<"Status">>, JObj)});
+            gen_listener:cast(props:get_value('server', Props)
+                              ,{'channel_status', wh_json:get_value(<<"Status">>, JObj)}
+                             );
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             case {wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Response">>, JObj)} of
                 {<<"store">>, <<"failure">>} ->
@@ -214,7 +217,7 @@ handle_cast({'channel_status',<<"active">>}, #state{channel_status_ref='undefine
 handle_cast({'channel_status', <<"terminated">>}, #state{channel_status_ref='undefined'
                                                          ,store_attempted='false'
                                                         }=State) ->
-    lager:debug("channel terminated, we're done here"),
+    lager:debug("channel status appears terminated, we're done here"),
     {'stop', 'normal', State};
 handle_cast({'channel_status', <<"terminated">>}, #state{channel_status_ref='undefined'
                                                          ,store_attempted='true'
@@ -223,7 +226,7 @@ handle_cast({'channel_status', <<"terminated">>}, #state{channel_status_ref='und
     {'noreply', State};
 handle_cast({'channel_status', _S}, #state{channel_status_ref='undefined'}=State) ->
     Ref = start_check_call_timer(),
-    lager:debug("unknown channel status respoonse: ~s, starting timer back up: ~p", [_S, Ref]),
+    lager:debug("unknown channel status response: ~s, starting timer back up: ~p", [_S, Ref]),
     {'noreply', State#state{channel_status_ref=Ref}};
 handle_cast({'channel_status', _S}, State) ->
     {'noreply', State};
@@ -283,7 +286,11 @@ handle_info({'timeout', TLRef, 'stop_recording'}, #state{media_name=MediaName
 handle_info({'check_call', Ref}, #state{call=Call
                                         ,channel_status_ref=Ref
                                        }=State) ->
-    whapps_call_command:channel_status(Call),
+    lager:debug("querying for channel status from ~p", [Ref]),
+    StatusAPI = whapps_call_command:channel_status_command(Call, 'true')
+        ++ wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION),
+
+    wapi_call:publish_channel_status_req(whapps_call:call_id(Call), StatusAPI),
     {'noreply', State#state{channel_status_ref='undefined'}};
 handle_info(_Info, #state{channel_status_ref=_Ref}=State) ->
     lager:debug("unhandled message(~p): ~p", [_Ref, _Info]),
@@ -331,7 +338,8 @@ code_change(_OldVsn, State, _Extra) ->
 -spec start_check_call_timer() -> reference().
 start_check_call_timer() ->
     CheckRef = erlang:make_ref(),
-    {'ok', _} = timer:send_after(5000, self(), {'check_call', CheckRef}),
+    {'ok', _} = timer:send_after(?CHECK_CHANNEL_STATUS_TIMEOUT, self(), {'check_call', CheckRef}),
+    lager:debug("sending check_call for ~p in 5s", [CheckRef]),
     CheckRef.
 
 -spec start_time_limit_timer(pos_integer()) -> reference().
@@ -354,6 +362,7 @@ get_timelimit(TL) ->
         'false' -> Max
     end.
 
+-spec get_format(api_binary()) -> ne_binary().
 get_format('undefined') -> whapps_config:get(?WHS_CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
 get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"wav">> = WAV) -> WAV;
