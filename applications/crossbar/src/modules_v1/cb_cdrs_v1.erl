@@ -14,8 +14,7 @@
 %%%-------------------------------------------------------------------
 -module(cb_cdrs_v1).
 
--export([init/0
-         ,allowed_methods/0, allowed_methods/1
+-export([allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
          ,content_types_provided/1
          ,validate/1, validate/2
@@ -27,15 +26,6 @@
 
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
-
-%%%===================================================================
-%%% API
-%%%===================================================================
-init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.cdrs">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.cdrs">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.cdrs">>, ?MODULE, 'validate').
 
 %%%===================================================================
 %%% Internal functions
