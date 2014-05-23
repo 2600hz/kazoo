@@ -12,7 +12,7 @@
 %%%   Karl Anderson
 %%%   Ben Wann
 %%%-------------------------------------------------------------------
--module(cb_cdrs).
+-module(cb_cdrs_v1).
 
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
@@ -32,10 +32,10 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.cdrs">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.content_types_provided.cdrs">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.cdrs">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.cdrs">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.cdrs">>, ?MODULE, 'validate').
 
 %%%===================================================================
 %%% Internal functions
@@ -114,8 +114,8 @@ load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [_]} | _]}=Context)
         {'ok', ViewOptions} ->
             load_view(?CB_LIST
                       ,ViewOptions
-                      ,remove_qs_keys(Context)
-                      );
+                      ,cb_context:set_query_string(Context, wh_json:new())
+                     );
         Else -> Else
     end;
 load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Context) ->
@@ -124,21 +124,13 @@ load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Contex
         {'ok', ViewOptions} ->
             load_view(?CB_LIST_BY_USER
                       ,ViewOptions
-                      ,remove_qs_keys(Context)
+                      ,cb_context:set_query_string(Context, wh_json:new())
                      );
         Else -> Else
     end;
 load_cdr_summary(Context) ->
     lager:debug("invalid URL chain for cdr summary request"),
     cb_context:add_system_error('faulty_request', Context).
-
--spec remove_qs_keys(cb_context:context()) -> cb_context:context().
-remove_qs_keys(Context) ->
-    cb_context:set_query_string(Context, wh_json:delete_keys([<<"created_from">>
-                                                              ,<<"created_to">>
-                                                             ]
-                                                             ,cb_context:query_string(Context)
-                                                            )).
 
 -spec load_view(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
 load_view(View, ViewOptions, Context) ->
@@ -159,81 +151,34 @@ fetch_cdrs(View, ViewOptions, Context) ->
           ,cdr_db(view_key_created_to(ViewOptions), Context)
          }
     of
-        {Db, Db} -> fetch_cdrs([Db], View, ViewOptions, Context);
+        {Db, Db} ->
+            fetch_cdrs(View, ViewOptions, Context, [Db]);
         {PastDb, PresentDb} ->
-            fetch_cdrs([PastDb, PresentDb], View, ViewOptions, Context)
+            fetch_cdrs(View, ViewOptions, Context, [PastDb, PresentDb])
     end.
 
--spec fetch_cdrs(ne_binaries(), ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
-fetch_cdrs(Dbs, View, ViewOptions, Context) ->
-    ReqPageSize = crossbar_doc:pagination_page_size(Context),
-    CurrentPageSize = wh_json:get_integer_value(<<"page_size">>, cb_context:resp_envelope(Context), 0),
-
-    lager:debug("reqpagesize: ~p current: ~p", [ReqPageSize, CurrentPageSize]),
-
-    fetch_cdrs(Dbs, View, ViewOptions, Context, ReqPageSize - CurrentPageSize).
-fetch_cdrs([], _, _, Context, _PageSize) ->
+-spec fetch_cdrs(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries()) ->
+                        cb_context:context().
+fetch_cdrs(_View, _ViewOptions, Context, []) ->
     lager:debug("dbs exhausted"),
     Context;
-fetch_cdrs(_Dbs, _View, _ViewOptions, Context, PageSize) when PageSize =< 0 ->
-    lager:debug("page size exhausted: ~p", [PageSize]),
-    Context;
-fetch_cdrs([Db|Dbs], View, ViewOptions, Context, PageSize) ->
-    lager:debug("startkey: ~p", [crossbar_doc:start_key(ViewOptions, Context)]),
-    lager:debug("page size ~p", [PageSize]),
-    C = crossbar_doc:paginate_view(View
-                                   ,ViewOptions
-                                   ,cb_context:set_account_db(Context, Db)
-                                   ,crossbar_doc:start_key(ViewOptions, Context)
-                                   ,PageSize
-                                   ,fun(JObj, JObjs) -> normalize_view_results(JObj, JObjs) end
-                                  ),
+fetch_cdrs(View, ViewOptions, Context, [Db|Dbs]) ->
+    C = crossbar_doc:load_view(View
+                               ,ViewOptions
+                               ,cb_context:set_account_db(Context, Db)
+                               ,fun(JObj, JObjs) -> normalize_view_results(JObj, JObjs) end
+                              ),
     case cb_context:resp_status(C) of
         'success' ->
             JObjs = cb_context:doc(Context)
                 ++ cb_context:doc(C),
-            fetch_cdrs(Dbs
-                       ,View
+            fetch_cdrs(View
                        ,ViewOptions
-                       ,cb_context:set_resp_envelope(
-                          cb_context:set_resp_data(C, JObjs)
-                          ,merge_resp_envelope(Context, C)
-                         )
+                       ,cb_context:set_resp_data(C, JObjs)
+                       ,Dbs
                       );
         Else -> Else
     end.
-
--spec merge_resp_envelope(cb_context:context(), cb_context:context()) -> wh_json:object().
-merge_resp_envelope(PriorContext, NewContext) ->
-    maybe_fix_start_keys(
-      wh_json:foldl(fun merge_resp_envelopes/3
-                    ,cb_context:resp_envelope(NewContext)
-                    ,cb_context:resp_envelope(PriorContext)
-                   )).
-
-maybe_fix_start_keys(JObj) ->
-    lists:foldl(fun(Key, J) ->
-                        case wh_json:get_value(Key, J) of
-                            [_, Value] -> wh_json:set_value(Key, Value, J);
-                            _Value -> J
-                        end
-                end, JObj, [<<"start_key">>, <<"next_start_key">>]).
-
--spec merge_resp_envelopes(ne_binary(), term(), wh_json:object()) -> wh_json:object().
-merge_resp_envelopes(<<"start_key">> = Key, [_, PriorValue], NewEnvelope) ->
-    lager:debug("setting ~s to ~p, ignoring owner", [Key, PriorValue]),
-    wh_json:set_value(Key, PriorValue, NewEnvelope);
-merge_resp_envelopes(<<"start_key">> = Key, PriorValue, NewEnvelope) ->
-    lager:debug("setting ~s to ~p", [Key, PriorValue]),
-    wh_json:set_value(Key, PriorValue, NewEnvelope);
-merge_resp_envelopes(<<"page_size">> = Key, PriorValue, NewEnvelope) ->
-    NewValue = wh_json:get_integer_value(Key, NewEnvelope, 0),
-    Sum = NewValue + PriorValue,
-    lager:debug("updating ~s to ~p (~p + ~p)", [Key, Sum, NewValue, PriorValue]),
-    wh_json:set_value(Key, Sum, NewEnvelope);
-merge_resp_envelopes(_Key, _Value, NewEnvelope) ->
-    lager:debug("skipping ~s: ~p", [_Key, _Value]),
-    NewEnvelope.
 
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, JObjs) ->
@@ -298,14 +243,10 @@ create_view_options(OwnerId, Context) ->
                    ]}
     end.
 
+-spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
 created_from(Context, TStamp, MaxRange) ->
-    created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
-created_from(Context, TStamp, MaxRange, 'undefined') ->
     lager:debug("building created_from from req value"),
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
-created_from(_Context, _TStamp, _MaxRange, StartKey) ->
-    lager:debug("using startkey ~p as created_from", [StartKey]),
-    wh_util:to_integer(StartKey).
+    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange)).
 
 -spec master_account_id() -> ne_binary().
 master_account_id() ->
