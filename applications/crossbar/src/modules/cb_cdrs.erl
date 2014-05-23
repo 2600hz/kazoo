@@ -35,10 +35,5 @@ init() ->
                   ,{<<"v2_resource.validate.cdrs">>, 'validate'}
                  ],
 
-    bind('cb_cdrs_v1', V1Bindings),
-    bind('cb_cdrs_v2', V2Bindings).
-
--spec bind(atom(), wh_proplist()) -> 'ok'.
-bind(Module, Bindings) ->
-    [crossbar_bindings:bind(Binding, Module, Function) || {Binding, Function} <- Bindings],
-    'ok'.
+    cb_modules_util:bind('cb_cdrs_v1', V1Bindings),
+    cb_modules_util:bind('cb_cdrs_v2', V2Bindings).

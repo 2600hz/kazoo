@@ -12,8 +12,7 @@
 %%%-------------------------------------------------------------------
 -module(cb_accounts_v2).
 
--export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+-export([allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
          ,put/1, put/2
@@ -39,21 +38,6 @@
 
 -define(PVT_TYPE, <<"account">>).
 -define(CHANNELS, <<"channels">>).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec init() -> 'ok'.
-init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.accounts">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.accounts">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.accounts">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.accounts">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.accounts">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.accounts">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
