@@ -27,7 +27,6 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
-
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CallerIdNumber = whapps_call:caller_id_number(Call),
@@ -91,33 +90,30 @@ is_callflow_child(Name, Call) ->
 %% Check if caller id matches list entry pattern.
 %% @end
 %%--------------------------------------------------------------------
-
--spec match_one_of(wh_json:objects(), ne_binary()) -> {'match', wh_json:object()} | 'nomatch'.
-match_one_of([], _CallerIdNumber) ->
-    'nomatch';
+-spec match_one_of(wh_json:objects(), ne_binary()) ->
+                          {'match', wh_json:object()} |
+                          'nomatch'.
+match_one_of([], _CallerIdNumber) -> 'nomatch';
 match_one_of([Entry|Rest], CallerIdNumber) ->
     Pattern = wh_json:get_value(<<"pattern">>, Entry),
     case re:run(CallerIdNumber, Pattern) of
-        {'match', _} ->
-            {'match', Entry};
-        'nomatch' ->
-            match_one_of(Rest, CallerIdNumber)
+        {'match', _} -> {'match', Entry};
+        'nomatch' -> match_one_of(Rest, CallerIdNumber)
     end.
 
--spec get_list_entries(wh_json:object(), whapps_call:call()) -> [wh_json:object()].
+-spec get_list_entries(wh_json:object(), whapps_call:call()) -> wh_json:objects().
 get_list_entries(Data, Call) ->
     ListId = wh_json:get_ne_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, ListId) of
-        {ok, ListJObj} ->
+        {'ok', ListJObj} ->
             lager:info("match list loaded: ~s", [ListId]),
-            lists:map(
-                fun ({K, V}) ->
-                    wh_json:set_value(<<"id">>, K, V)
-                end,
-                wh_json:to_proplist(ListJObj)
-            );
-        {error, Reason} ->
+            lists:map(fun get_list_entries_map/1, wh_json:to_proplist(ListJObj));
+        {'error', Reason} ->
             lager:info("failed to load match list box ~s, ~p", [ListId, Reason]),
             []
     end.
+
+-spec get_list_entries_map({ne_binary(), wh_json:object()}) -> wh_json:object().
+get_list_entries_map({K, V}) ->
+    wh_json:set_value(<<"id">>, K, V).
