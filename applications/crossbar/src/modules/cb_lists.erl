@@ -1,5 +1,5 @@
 %%%----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Match list module
 %%%
@@ -28,21 +28,17 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec init() -> any().
 init() ->
-    Bindings =
-        [
-         {<<"*.allowed_methods.lists">>, 'allowed_methods'}
-         ,{<<"*.resource_exists.lists">>, 'resource_exists'}
-         ,{<<"*.validate.lists">>, 'validate'}
-         ,{<<"*.execute.put.lists">>, 'put'}
-         ,{<<"*.execute.post.lists">>, 'post'}
-         ,{<<"*.execute.delete.lists">>, 'delete'}
-        ],
-    lists:foreach(
-      fun({Binding, F}) ->
-              crossbar_bindings:bind(Binding, ?MODULE, F)
-      end,
-      Bindings).
+    [crossbar_bindings:bind(Binding, ?MODULE, F)
+     || {Binding, F} <- [{<<"*.allowed_methods.lists">>, 'allowed_methods'}
+                         ,{<<"*.resource_exists.lists">>, 'resource_exists'}
+                         ,{<<"*.validate.lists">>, 'validate'}
+                         ,{<<"*.execute.put.lists">>, 'put'}
+                         ,{<<"*.execute.post.lists">>, 'post'}
+                         ,{<<"*.execute.delete.lists">>, 'delete'}
+                        ]
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -123,50 +119,48 @@ validate_list_entry(Context, ListId, EntryId, ?HTTP_DELETE) ->
     OnSuccess = fun(C) -> delete_entry(C, EntryId) end,
     load_list(Context, ListId, OnSuccess).
 
--spec check_list_schema(atom() | path_token(), cb_context:context()) -> cb_context:context().
+-spec check_list_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_list_schema(ListId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(ListId, C) end,
-    Req = cb_context:req_data(Context),
-    NewReq = wh_json:filter(fun({Key, Val}) ->
-        Key =:= <<"listname">> orelse Key =:= <<"entries">>
-    end, Req),
+    NewReq = wh_json:filter(fun filter_list_req_data/1
+                            ,cb_context:req_data(Context)
+                           ),
     NewContext = cb_context:set_req_data(Context, NewReq),
     cb_context:validate_request_data(<<"lists">>, NewContext, OnSuccess).
 
--spec on_successful_validation(atom() | path_token(), cb_context:context()) -> cb_context:context().
+-spec filter_list_req_data({ne_binary(), _}) -> boolean().
+filter_list_req_data({<<"name">>, _Val}) -> 'true';
+filter_list_req_data({<<"entries">>, _Val}) -> 'true';
+filter_list_req_data(_) -> 'false'.
+
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Props = [
-             {<<"pvt_type">>, <<"list">>}
-            ],
-    Doc = cb_context:doc(Context),
-    NewDoc = wh_json:set_values(Props, Doc),
-    cb_context:set_doc(Context, NewDoc);
+    Props = [{<<"pvt_type">>, <<"list">>}],
+    cb_context:set_doc(Context
+                       ,wh_json:set_values(Props, cb_context:doc(Context))
+                      );
 on_successful_validation(ListId, Context) ->
     crossbar_doc:load_merge(ListId, Context).
 
--spec check_list_entry_schema(path_token(), path_token(), cb_context:context()) -> cb_context:context().
+-spec check_list_entry_schema(path_token(), api_binary(), cb_context:context()) -> cb_context:context().
 check_list_entry_schema(ListId, EntryId, Context) ->
-    OnSuccess =
-        fun(C) ->
-                EntryJObj = cb_context:doc(C),
-                Pattern = wh_json:get_value(<<"pattern">>, EntryJObj),
-                case re:compile(Pattern) of
-                    {ok, _CompiledRe} ->
-                        on_entry_successful_validation(ListId, EntryId, C);
-                    {error, {Reason0, Pos}} ->
-                        Reason = io_lib:format("Error: ~s in position ~p", [Reason0, Pos]),
-                        BinReason = iolist_to_binary(Reason),
-                        cb_context:add_validation_error(
-                          <<"pattern">>, <<"type">>, BinReason, C)
-                end
-        end,
+    OnSuccess = fun(C) -> entry_schema_success(C, ListId, EntryId) end,
     cb_context:validate_request_data(<<"list_entries">>, Context, OnSuccess).
 
--spec on_entry_successful_validation(
-    path_token(),
-    path_token() | atom(),
-    cb_context:context()
-) -> cb_context:context().
+-spec entry_schema_success(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+entry_schema_success(Context, ListId, EntryId) ->
+    Pattern = wh_json:get_value(<<"pattern">>, cb_context:doc(Context)),
+    case re:compile(Pattern) of
+        {'ok', _CompiledRe} ->
+            on_entry_successful_validation(ListId, EntryId, Context);
+        {'error', {Reason0, Pos}} ->
+            Reason = io_lib:format("Error: ~s in position ~p", [Reason0, Pos]),
+            BinReason = iolist_to_binary(Reason),
+            cb_context:add_validation_error(<<"pattern">>, <<"type">>, BinReason, Context)
+    end.
+
+-spec on_entry_successful_validation(path_token(), path_token() | 'undefined', cb_context:context()) ->
+                                            cb_context:context().
 on_entry_successful_validation(ListId, 'undefined', Context) ->
     EntryData = cb_context:doc(Context),
     OnSuccess = fun(C) -> add_entry(C, EntryData) end,
@@ -176,11 +170,8 @@ on_entry_successful_validation(ListId, EntryId, Context) ->
     OnSuccess = fun(C) -> update_entry(C, EntryId, EntryData) end,
     load_list(Context, ListId, OnSuccess).
 
--spec load_list(
-    cb_context:context(),
-    path_token(),
-    fun((cb_context:context()) -> cb_context:context())
-) -> cb_context:context().
+-spec load_list(cb_context:context(), path_token(), fun((cb_context:context()) -> cb_context:context())) ->
+                       cb_context:context().
 load_list(Context, ListId, OnSuccess) ->
     Context1 = crossbar_doc:load(ListId, Context),
     case cb_context:resp_status(Context1) of
@@ -190,15 +181,12 @@ load_list(Context, ListId, OnSuccess) ->
             Context1
     end.
 
--spec get_entry(
-    cb_context:context(),
-    ne_binary(),
-    fun((cb_context:context(),ne_binary()) -> cb_context:context())
-) -> cb_context:context().
+-spec get_entry(cb_context:context(), ne_binary(), fun((cb_context:context(),ne_binary()) -> cb_context:context())) ->
+                       cb_context:context().
 get_entry(Context, EntryId, OnSuccess) ->
     Doc = cb_context:doc(Context),
     case wh_json:get_value([<<"entries">>, EntryId], Doc) of
-        undefined ->
+        'undefined' ->
             lager:debug("operation on entry ~s failed: not_found", [EntryId, cb_context:account_db(Context)]),
             cb_context:add_system_error('bad_identifier', [{'details', EntryId}],  Context);
         EntryData ->
@@ -209,38 +197,37 @@ get_entry(Context, EntryId, OnSuccess) ->
 get_entry(Context, EntryId) ->
     OnSuccess =
         fun(C, EntryData) ->
-             NewContext = cb_context:setters(C, [
-                 {fun cb_context:store/3, 'entry_id', EntryId}
-                 ,{fun cb_context:store/3, 'entry_jobj', EntryData}
-             ]),
-             handle_entry_success(NewContext)
+                NewContext = cb_context:setters(C, [{fun cb_context:store/3, 'entry_id', EntryId}
+                                                    ,{fun cb_context:store/3, 'entry_jobj', EntryData}
+                                                   ]),
+                handle_entry_success(NewContext)
         end,
     get_entry(Context, EntryId, OnSuccess).
 
 -spec add_entry(cb_context:context(), any()) -> cb_context:context().
 add_entry(Context, EntryData) ->
-    Doc = cb_context:doc(Context),
     UUID = couch_mgr:get_uuid(),
-    Doc1 = wh_json:set_value([<<"entries">>, UUID], EntryData, Doc),
-    NewContext = cb_context:setters(Context, [
-        {fun cb_context:set_doc/2, Doc1}
-        ,{fun cb_context:store/3, 'entry_id', UUID}
-        ,{fun cb_context:store/3, 'entry_jobj', EntryData}
-    ]),
-    crossbar_doc:save(NewContext).
+    Doc = wh_json:set_value([<<"entries">>, UUID], EntryData, cb_context:doc(Context)),
+    crossbar_doc:save(
+      cb_context:setters(Context
+                         ,[{fun cb_context:set_doc/2, Doc}
+                           ,{fun cb_context:store/3, 'entry_id', UUID}
+                           ,{fun cb_context:store/3, 'entry_jobj', EntryData}
+                          ]
+                        )).
 
 -spec update_entry(cb_context:context(), path_token(), any()) -> cb_context:context().
 update_entry(Context, EntryId, EntryData) ->
     OnSuccess =
         fun(C, _OldEntryData) ->
-                Doc = cb_context:doc(C),
-                Doc1 = wh_json:set_value([<<"entries">>, EntryId], EntryData, Doc),
-                NewContext = cb_context:setters(C, [
-                    {fun cb_context:set_doc/2, Doc1}
-                    ,{fun cb_context:store/3, 'entry_id', EntryId}
-                    ,{fun cb_context:store/3, 'entry_jobj', EntryData}
-                ]),
-                crossbar_doc:save(NewContext)
+                Doc = wh_json:set_value([<<"entries">>, EntryId], EntryData, cb_context:doc(C)),
+                crossbar_doc:save(
+                  cb_context:setters(C
+                                     ,[{fun cb_context:set_doc/2, Doc}
+                                       ,{fun cb_context:store/3, 'entry_id', EntryId}
+                                       ,{fun cb_context:store/3, 'entry_jobj', EntryData}
+                                      ]
+                                    ))
         end,
     get_entry(Context, EntryId, OnSuccess).
 
@@ -248,14 +235,14 @@ update_entry(Context, EntryId, EntryData) ->
 delete_entry(Context, EntryId) ->
     OnSuccess =
         fun(C, EntryData) ->
-                Doc = cb_context:doc(C),
-                Doc1 = wh_json:delete_key([<<"entries">>, EntryId], Doc),
-                NewContext = cb_context:setters(C, [
-                    {fun cb_context:set_doc/2, Doc1}
-                    ,{fun cb_context:store/3, 'entry_id', EntryId}
-                    ,{fun cb_context:store/3, 'entry_jobj', EntryData}
-                ]),
-                crossbar_doc:save(NewContext)
+                Doc = wh_json:delete_key([<<"entries">>, EntryId], cb_context:doc(C)),
+                crossbar_doc:save(
+                  cb_context:setters(C
+                                     ,[{fun cb_context:set_doc/2, Doc}
+                                       ,{fun cb_context:store/3, 'entry_id', EntryId}
+                                       ,{fun cb_context:store/3, 'entry_jobj', EntryData}
+                                      ]
+                                    ))
         end,
     get_entry(Context, EntryId, OnSuccess).
 
@@ -301,10 +288,8 @@ handle_entry_success(Context) ->
     EntryJObj2 = wh_json:set_value(<<"id">>, EntryId, EntryJObj),
     ListJObj = cb_context:doc(Context),
     cb_context:setters(
-        Context,
-        [
-            {fun cb_context:set_resp_status/2, 'success'},
-            {fun cb_context:set_resp_data/2, wh_json:public_fields(EntryJObj2)},
-            {fun cb_context:set_resp_etag/2, crossbar_doc:rev_to_etag(ListJObj)}
-        ]
-    ).
+      Context
+      ,[{fun cb_context:set_resp_status/2, 'success'}
+        ,{fun cb_context:set_resp_data/2, wh_json:public_fields(EntryJObj2)}
+        ,{fun cb_context:set_resp_etag/2, crossbar_doc:rev_to_etag(ListJObj)}
+       ]).
