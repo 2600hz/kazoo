@@ -1,0 +1,42 @@
+{
+   "_id":"list_entries",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Schema for a match list entries",
+   "properties":{
+      "pattern":{
+          "name":"Pattern",
+          "description":"Match pattern",
+          "required": true,
+          "type": "string"
+      },
+      "firstname":{
+         "name":"First name",
+         "description":"A friendly firstname",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "lastname":{
+         "name":"Last name",
+         "description":"A friendly lastname",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "displayname":{
+         "name":"Displayname",
+         "description":"Display name",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "type":{
+         "name":"type",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      }
+   },
+   "additionalProperties": false
+}
