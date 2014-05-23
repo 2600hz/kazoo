@@ -10,7 +10,7 @@
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_accounts).
+-module(cb_accounts_v2).
 
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
@@ -48,12 +48,12 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.accounts">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.accounts">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.accounts">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.accounts">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.accounts">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.accounts">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.accounts">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v2_resource.validate.accounts">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.accounts">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.accounts">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.accounts">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
