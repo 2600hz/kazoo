@@ -533,7 +533,9 @@ hex_char_to_binary(B) when B < 58 ->
 hex_char_to_binary(B) ->
     to_lower_char(B) - ($a - 10).
 
--spec rand_hex_binary(pos_integer()) -> ne_binary().
+-spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
+rand_hex_binary(Size) when not is_integer(Size) ->
+    rand_hex_binary( wh_util:to_integer(Size));
 rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
     to_hex_binary(crypto:rand_bytes(Size)).
 
