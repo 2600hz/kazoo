@@ -154,7 +154,7 @@ flush() -> kazoo_bindings:flush().
 flush(Binding) -> kazoo_bindings:flush(Binding).
 
 -spec flush_mod(atom()) -> 'ok'.
-flush_mod(CBMod) -> kazoo_binding:flush(CBMod).
+flush_mod(CBMod) -> kazoo_bindings:flush_mod(CBMod).
 
 -spec modules_loaded() -> atoms().
 modules_loaded() -> kazoo_bindings:modules_loaded().
