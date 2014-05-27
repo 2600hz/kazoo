@@ -269,14 +269,14 @@ handle_info('stop_recording', #state{media_name=MediaName
                                     }=State) ->
     lager:debug("recv stop_recording event"),
     maybe_stop_timer(TLRef),
-    whapps_call_command:record_call(MediaName, <<"stop">>, Call),
+    whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"stop">>, Call),
     {'noreply', State};
 handle_info({'timeout', TLRef, 'stop_recording'}, #state{media_name=MediaName
                                                          ,call=Call
                                                          ,time_limit_ref=TLRef
                                                         }=State) ->
     lager:debug("recv stop_recording timer, forcing recording to stop"),
-    whapps_call_command:record_call(MediaName, <<"stop">>, Call),
+    whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"stop">>, Call),
     {'noreply', State};
 handle_info({'check_call', Ref}, #state{call=Call
                                         ,channel_status_ref=Ref
@@ -497,4 +497,4 @@ append_path(Url, MediaName) ->
 -spec start_recording(whapps_call:call(), ne_binary(), pos_integer()) -> 'ok'.
 start_recording(Call, MediaName, TimeLimit) ->
   lager:debug("starting recording of ~s", [MediaName]),
-  whapps_call_command:record_call(MediaName, <<"start">>, TimeLimit, Call).
+  whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"start">>, TimeLimit, Call).
