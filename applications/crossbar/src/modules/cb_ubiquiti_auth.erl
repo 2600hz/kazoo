@@ -22,6 +22,7 @@
 -define(USERNAME_LIST, <<"users/list_by_username">>).
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
 -define(UBIQUITI_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"ubiquiti_auth_tokens">>, 35)).
+-define(UBIQUITI_RESELLER_ID, whapps_config:get_value(?CONFIG_CAT, <<"ubiquiti_sso_reseller_id">>)).
 
 %%%===================================================================
 %%% API
@@ -126,30 +127,28 @@ create_token(Context) ->
         'true' ->
             crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
         'false' ->
-            AccountId = wh_json:get_value(<<"account_id">>, JObj, <<>>),
-            OwnerId = wh_json:get_value(<<"owner_id">>, JObj, <<>>),
-            Token = [{<<"account_id">>, AccountId}
-                     ,{<<"owner_id">>, OwnerId}
-                     ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+            Token = [{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                      ,{<<"method">>, wh_util:to_binary(?MODULE)}
                      ,{<<"ubiquiti_sso">>, wh_json:object()}
+                     ,{<<"reseller_id">>, ?UBIQUITI_RESELLER_ID}
+                     ,{<<"is_reseller">>, 'false'}
                     ],
             case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
                 {'ok', Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),
                     crossbar_util:response(crossbar_util:response_auth(JObj, AccountId, OwnerId)
-                                           ,cb_context:setters(Context, [{fun cb_context:set_auth_token/2, AuthToken}
-                                                                         ,{fun cb_context:set_auth_doc/2, Doc}
-                                                                        ])
+                                           ,cb_context:setters(Context
+                                                               ,[{fun cb_context:set_auth_token/2, AuthToken}
+                                                                 ,{fun cb_context:set_auth_doc/2, Doc}
+                                                                ])
                                           );
                 {'error', R} ->
                     lager:debug("could not create new local auth token, ~p", [R]),
                     cb_context:add_system_error('invalid_credentials', Context)
             end
     end.
-
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
