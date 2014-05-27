@@ -16,8 +16,6 @@
 %%%-------------------------------------------------------------------
 -module(wh_media_recording).
 
--behaviour(gen_listener).
-
 -export([start_link/2
          ,start_recording/2
          ,handle_call_event/2
@@ -69,7 +67,6 @@
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
-
 -define(MAX_RECORDING_LIMIT, wh_media_util:max_recording_time_limit()).
 -define(CHECK_CHANNEL_STATUS_TIMEOUT, 5000).
 
@@ -137,14 +134,12 @@ init([Call, Data]) ->
     TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
     RecordOnAnswer = wh_json:is_true(<<"record_on_answer">>, Data, 'false'),
 
-    lager:info("starting event listener for record_call for ~ps", [TimeLimit]),
     {'ok', #state{url=get_url(Data)
                   ,format=Format
                   ,media_name=get_media_name(whapps_call:call_id(Call), Format)
                   ,call=Call
                   ,time_limit=TimeLimit
                   ,record_on_answer=RecordOnAnswer
-                  ,is_recording='false'
                  }}.
 
 %%--------------------------------------------------------------------
@@ -354,9 +349,9 @@ maybe_stop_timer(_) -> 'ok'.
 
 -spec get_timelimit('undefined' | integer()) -> pos_integer().
 get_timelimit('undefined') ->
-    ?MAX_RECORDING_LIMIT;
+    whapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600);
 get_timelimit(TL) ->
-    case (Max = ?MAX_RECORDING_LIMIT) > TL of
+    case (Max = whapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600)) > TL of
         'true' -> TL;
         'false' when Max > 0 -> Max;
         'false' -> Max
@@ -416,11 +411,11 @@ store_url(Call, JObj) ->
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
     URL.
 
--type store_url() :: 'false' | {'true', 'local' | ne_binary() | 'third_party'}.
+-type store_url() :: 'false' | {'true', 'local' | ne_binary()}.
 
 -spec should_store_recording(api_binary()) -> store_url().
 should_store_recording('undefined') ->
-    case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"store_recordings">>, 'false') of
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
         'true' -> {'true', 'local'};
         'false' -> 'false'
     end;
@@ -440,7 +435,7 @@ save_recording(Call, MediaName, Format, {'true', 'local'}) ->
     lager:info("store local url: ~s", [StoreUrl]),
     store_recording(MediaName, StoreUrl, Call);
 save_recording(Call, MediaName, Format, {'true', 'third_party'}) ->
-    case whapps_config:get_ne_binary(?WHS_CONFIG_CAT, <<"third_party_bigcouch_host">>, <<>>) of
+    case whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>, <<>>) of
         'undefined' -> lager:debug("no URL for call recording provided, third_party_bigcouch_host undefined");
         BCHost -> store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost)
     end;
@@ -448,9 +443,9 @@ save_recording(Call, MediaName, _Format, {'true', Url}) ->
     lager:info("store remote url: ~s", [Url]),
     store_recording(MediaName, Url, Call).
 
--spec store_recording_to_third_party_bigcouch(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec store_recording_to_third_party_bigcouch(whapps_call:call(), ne_binary(), ne_binary(), store_url()) -> 'ok'.
 store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost) ->
-    BCPort = whapps_config:get(?WHS_CONFIG_CAT, <<"third_party_bigcouch_port">>, <<"5984">>),
+    BCPort = whapps_config:get(?CONFIG_CAT, <<"third_party_bigcouch_port">>, <<"5984">>),
     lager:info("storing to third-party bigcouch ~s:~p", [BCHost, BCPort]),
     AcctMODb = wh_util:format_account_id(kazoo_modb:get_modb(whapps_call:account_db(Call)),'encoded'),
     CallId = whapps_call:call_id(Call),

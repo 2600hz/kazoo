@@ -1073,24 +1073,33 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
 
--spec record_call(ne_binary(), whapps_call:call()) -> 'ok'.
--spec record_call(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
--spec record_call(ne_binary(), ne_binary(),  api_binary() | pos_integer(), whapps_call:call()) -> 'ok'.
--spec record_call(ne_binary(), ne_binary(),  api_binary() | pos_integer(), list(), whapps_call:call()) -> 'ok'.
-record_call(MediaName, Call) ->
-    record_call(MediaName, <<"start">>, Call).
-record_call(MediaName, Action, Call) ->
-    record_call(MediaName, Action, 600, Call).
-record_call(MediaName, Action, TimeLimit, Call) ->
-    record_call(MediaName, Action, TimeLimit, ?ANY_DIGIT, Call).
-record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
-    Command = [{<<"Application-Name">>, <<"record_call">>}
-               ,{<<"Media-Name">>, MediaName}
-               ,{<<"Record-Action">>, Action}
-               ,{<<"Time-Limit">>, wh_util:to_binary(TimeLimit)}
-               ,{<<"Terminators">>, Terminators}
-               ,{<<"Insert-At">>, <<"now">>}
-              ],
+-spec record_call(wh_proplist(), whapps_call:call()) -> 'ok'.
+-spec record_call(wh_proplist(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec record_call(wh_proplist(), ne_binary(),  api_binary() | pos_integer(), whapps_call:call()) -> 'ok'.
+-spec record_call(wh_proplist(), ne_binary(),  api_binary() | pos_integer(), list(), whapps_call:call()) -> 'ok'.
+record_call(Media, Call) ->
+    record_call(Media, <<"start">>, Call).
+record_call(Media, Action, Call) ->
+    record_call(Media, Action, 600, Call).
+record_call(Media, Action, TimeLimit, Call) ->
+    record_call(Media, Action, TimeLimit, ?ANY_DIGIT, Call).
+record_call(Media, Action, TimeLimit, Terminators, Call) ->
+    MediaName = props:get_value(<<"Media-Name">>, Media),
+    Method = props:get_value(<<"Media-Transfer-Method">>, Media),
+    Destination = props:get_value(<<"Media-Transfer-Destination">>, Media),
+    Headers = props:get_value(<<"Additional-Headers">>, Media),
+    Limit = props:get_value(<<"Time-Limit">>, Media, wh_util:to_binary(TimeLimit)),
+
+    Command = props:filter_undefined([{<<"Application-Name">>, <<"record_call">>}
+                                      ,{<<"Media-Name">>, MediaName}
+                                      ,{<<"Record-Action">>, Action}
+                                      ,{<<"Time-Limit">>, Limit}
+                                      ,{<<"Terminators">>, Terminators}
+                                      ,{<<"Insert-At">>, <<"now">>}
+                                      ,{<<"Media-Transfer-Method">>, Method}
+                                      ,{<<"Media-Transfer-Destination">>, Destination}
+                                      ,{<<"Additional-Headers">>, Headers}
+                                     ]),
     send_command(Command, Call).
 
 -spec b_record_call(ne_binary(), whapps_call:call()) ->

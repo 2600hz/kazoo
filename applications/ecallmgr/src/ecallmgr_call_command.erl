@@ -133,16 +133,16 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
             %% some carriers kill the channel during long recordings since there is no
             %% reverse RTP stream
             Routines = [fun(V) ->
-                                case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
-                                    'false' -> V;
-                                    'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
-                                end
+                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
+                                'false' -> V;
+                                'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
+                            end
                         end
                         ,fun(V) ->
-                                 case get_terminators(JObj) of
-                                     'undefined' -> V;
-                                     Terminators -> [Terminators|V]
-                                 end
+                             case get_terminators(JObj) of
+                                 'undefined' -> V;
+                                 Terminators -> [Terminators|V]
+                             end
                          end
                        ],
             Vars = lists:foldl(fun(F, V) -> F(V) end, [], Routines),
@@ -163,16 +163,16 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
         'false' -> {'error', <<"record_call failed to execute as JObj did not validate">>};
         'true' ->
             Routines = [fun(V) ->
-                                case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
-                                    'false' -> V;
-                                    'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
-                                end
+                            case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, 'false')) of
+                                'false' -> V;
+                                'true' -> [{<<"record_waste_resources">>, <<"true">>}|V]
+                            end
                         end
                         ,fun(V) ->
-                                 case get_terminators(JObj) of
-                                     'undefined' -> V;
-                                     Terminators -> [Terminators|V]
-                                 end
+                            case get_terminators(JObj) of
+                                'undefined' -> V;
+                                Terminators -> [Terminators|V]
+                            end
                          end
                         ,fun(V) -> [{<<"RECORD_APPEND">>, <<"true">>}
                                     ,{<<"enable_file_write_buffering">>, <<"false">>}
@@ -187,11 +187,27 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
             RecordingName = ecallmgr_util:recording_filename(MediaName),
             case wh_json:get_value(<<"Record-Action">>, JObj) of
                 <<"start">> ->
+                    FollowTransfer = wh_json:get_binary_boolean(<<"Follow-Transfer">>, JObj, <<"true">>),
+                    _ = ecallmgr_util:set(Node, UUID, [{<<"recording_follow_transfer">>, FollowTransfer}
+                                                       ,{<<"recording_follow_attxfer">>, FollowTransfer}
+                                                      ]),
+                    _ = ecallmgr_util:export(
+                            Node
+                            ,UUID
+                            ,[{<<"Insert-At">>, wh_json:get_value(<<"Insert-At">>, JObj)}
+                              ,{<<"Time-Limit">>, wh_json:get_value(<<"Time-Limit">>, JObj)}
+                              ,{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
+                              ,{<<"Media-Transfer-Method">>, wh_json:get_value(<<"Media-Transfer-Method">>, JObj)}
+                              ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)}
+                              ,{<<"Additional-Headers">>, wh_json:get_value(<<"Additional-Headers">>, JObj)}
+                             ]
+                        ),
                     %% UUID start path/to/media limit
-                    RecArg = binary_to_list(list_to_binary([UUID, <<" start ">>
-                                                            ,RecordingName, <<" ">>
-                                                            ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
-                                                           ])),
+                    RecArg = binary_to_list(
+                                list_to_binary([UUID, <<" start ">>
+                                                ,RecordingName, <<" ">>
+                                                ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
+                                               ])),
                     {<<"record_call">>, RecArg};
                 <<"stop">> ->
                     %% UUID stop path/to/media
@@ -864,9 +880,7 @@ wait_for_conference(ConfName) ->
 stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-
     ecallmgr_util:set(Node, UUID, [{<<"Recording-URL">>, Url}]),
-
     Args = list_to_binary([Url, <<" ">>, File]),
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
     Result = case send_fs_store(Node, Args, Method) of
