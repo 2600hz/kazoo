@@ -614,18 +614,12 @@ is_authentic(Req0, Context0, _ReqVerb) ->
 get_auth_token(Req0, Context) ->
     case cowboy_req:header(<<"x-auth-token">>, Req0) of
         {'undefined', Req1} ->
-            case wh_json:get_value(<<"auth_token">>, cb_context:req_json(Context)) of
+            case cb_context:req_value(Context, <<"auth_token">>) of
                 'undefined' ->
-                    case wh_json:get_value(<<"auth_token">>, cb_context:query_string(Context)) of
-                        'undefined' ->
-                            lager:debug("no auth token found"),
-                            {Req1, Context};
-                        Token ->
-                            lager:debug("using auth token from query string"),
-                            {Req1, cb_context:set_auth_token(Context, Token)}
-                    end;
+                    lager:debug("no auth token found"),
+                    {Req1, Context};
                 Token ->
-                    lager:debug("using auth token from req json"),
+                    lager:debug("using auth token found"),
                     {Req1, cb_context:set_auth_token(Context, Token)}
             end;
         {Token, Req1} ->
