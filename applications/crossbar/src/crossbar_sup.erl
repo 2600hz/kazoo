@@ -82,4 +82,5 @@ init([]) ->
     {'ok', {{'one_for_one', 10, 10}, [?CACHE(?CROSSBAR_CACHE)
                                       ,?SUPER('crossbar_module_sup')
                                       ,?WORKER('crossbar_cleanup')
+                                      ,?WORKER('crossbar_freeswitch')
                                      ]}}.
