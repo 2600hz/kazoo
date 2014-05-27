@@ -54,7 +54,7 @@ send_auth_resp(#auth_user{password=Password
     Resp = props:filter_undefined(
              [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
               ,{<<"Auth-Password">>, Password}
-              ,{<<"Auth-Method">>, Method}
+              ,{<<"Auth-Method">>, get_auth_method(Method)}
               ,{<<"Auth-Nonce">>, Nonce}
               ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
               ,{<<"Register-Overwrite-Notify">>, RegisterOverwrite}
@@ -93,9 +93,9 @@ create_ccvs(#auth_user{}=AuthUser) ->
     wh_json:from_list(props:filter_undefined(Props)).
 
 -spec create_custom_sip_headers(api_binary(), auth_user()) -> api_object().
-create_custom_sip_headers(?GSM_AUTH_METHOD, #auth_user{a3a8_kc=KC
+create_custom_sip_headers(?GSM_ANY_METHOD, #auth_user{a3a8_kc=KC
                                            ,a3a8_sres=SRES
-                                           ,primary_number=Number
+                                           ,msisdn=Number
                                            ,account_realm=AccountRealm
                                            ,realm=Realm
                                            ,username=Username
@@ -274,15 +274,15 @@ is_owner_enabled(AccountDb, OwnerId) ->
 -spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 
           {'ok', auth_user()} | {'error', any()}.
 jobj_to_auth_user(JObj, Username, Realm, Req) ->
-    AuthValue = wh_json:get_value(<<"value">>, JObj),
+    AuthValue = wh_json:get_value([<<"doc">>,<<"sip">>], JObj),
     AuthDoc = wh_json:get_value(<<"doc">>, JObj),
-    Method = wh_json:get_lower_binary(<<"method">>, AuthValue, <<"password">>),
+    Method = get_auth_method(AuthDoc),
     AuthUser = #auth_user{realm = Realm
                ,username = Username
                ,account_id = get_account_id(AuthDoc)
                ,account_db = get_account_db(AuthDoc)
-               ,password = wh_json:get_value(<<"password">>, AuthValue)
-               ,authorizing_type = wh_json:get_value(<<"authorizing_type">>, AuthValue, <<"anonymous">>)
+               ,password = wh_json:get_value(<<"password">>, AuthValue, wh_util:rand_hex_binary(6))
+               ,authorizing_type = wh_json:get_value(<<"pvt_type">>, AuthDoc, <<"anonymous">>)
                ,authorizing_id = wh_json:get_value(<<"id">>, JObj)
                ,method = Method
                ,owner_id = wh_json:get_value(<<"owner_id">>, AuthDoc)
@@ -301,27 +301,43 @@ add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
                                  ,account_realm=wh_json:get_lower_binary(<<"realm">>, Account)}
     end.
 
+-spec get_auth_method(wh_json:object() | ne_binary()) -> ne_binary().
+get_auth_method(?GSM_ANY_METHOD=M) when is_binary(M)-> <<"gsm">>;
+get_auth_method(M) when is_binary(M) -> M;
+get_auth_method(JObj) ->
+    wh_json:get_first_defined([ [<<"gsm">>,<<"method">>]
+                                ,[<<"sip">>,<<"method">>]
+                              ], JObj, <<"password">>).
+
 
 -spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
           {'ok', auth_user()} | {'error', any()}.
-maybe_auth_method(AuthUser, JObj, Req, ?GSM_AUTH_METHOD)->
-    SipDoc = wh_json:get_value(<<"sip">>, JObj),
+
+maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
+    GsmDoc = wh_json:get_value(<<"gsm">>, JObj),
     Nonce = remove_dashes(              
-              wh_json:get_value(<<"nonce">>, SipDoc, 
+              wh_json:get_value(<<"nonce">>, GsmDoc, 
                                 wh_json:get_value(<<"Auth-Nonce">>, Req,
                                                   wh_util:rand_hex_binary(16)))), 
-    GsmKey = wh_json:get_value(<<"gsm_key">>, SipDoc),
-    GsmNumber = wh_json:get_first_defined([[<<"sip">>,<<"gsm_primary_number">>]
-                                           ,[<<"mobile">>,<<"mdn">>]
-                                          ], JObj),
-    gsm_auth(AuthUser#auth_user{primary_number=GsmNumber}, Nonce, GsmKey);
+    GsmKey = wh_json:get_value(<<"key">>, GsmDoc),
+    GsmSRes = wh_json:get_value(<<"sres">>, GsmDoc, wh_util:rand_hex_binary(6)),
+    GsmNumber = wh_json:get_value(<<"msisdn">>, GsmDoc),
+    gsm_auth(AuthUser#auth_user{msisdn=GsmNumber
+                                ,a3a8_key=GsmKey
+                                ,a3a8_sres=GsmSRes
+                                ,nonce=Nonce});
+
 maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)-> {'ok', AuthUser}.
 
--spec gsm_auth(auth_user(), ne_binary(), api_binary()) -> {'ok', auth_user()}.
-gsm_auth(#auth_user{password=Password}=AuthUser, Nonce, 'undefined') ->
-    {'ok', AuthUser#auth_user{a3a8_sres=Password
-                             ,nonce=Nonce}};
-gsm_auth(AuthUser, NonceHex, GsmKey) ->
+
+-spec gsm_auth(auth_user()) -> {'ok', auth_user()}.
+gsm_auth(#auth_user{method=?GSM_CACHED_METHOD
+                    ,a3a8_sres=SRES}=AuthUser) ->
+    {'ok', AuthUser#auth_user{password=SRES}};
+gsm_auth(#auth_user{method=?GSM_A3A8_METHOD
+                    ,a3a8_key=GsmKey
+                    ,nonce=NonceHex
+                   }=AuthUser) ->
     Key = wh_util:from_hex_binary(GsmKey),
     Nonce = wh_util:from_hex_binary(NonceHex),
     SRes = registrar_crypto:a3a8(Nonce, Key),
@@ -329,8 +345,9 @@ gsm_auth(AuthUser, NonceHex, GsmKey) ->
     <<SRES:8/binary, KC/binary>> = SResHex,
     {'ok', AuthUser#auth_user{a3a8_sres=SRES
                              ,a3a8_kc=KC
-                             ,password=SRES
-                             ,nonce=NonceHex}}.
+                             ,password=SRES}};
+gsm_auth(AuthUser) -> {'ok', AuthUser}.
+
 
 
 %%-----------------------------------------------------------------------------
