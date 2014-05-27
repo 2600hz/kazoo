@@ -33,6 +33,7 @@ exec(Call, Cmds, CT) ->
         [{Translator, Cmds1}|_] -> Translator:exec(Call, Cmds1)
     end.
 
+-spec just_the_type(ne_binary()) -> ne_binary().
 just_the_type(ContentType) ->
     case binary:split(ContentType, <<";">>) of
         [ContentType] -> wh_util:strip_binary(ContentType);
