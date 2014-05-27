@@ -34,6 +34,8 @@
 -export([maybe_sanitize_fs_value/2]).
 -export([lookup_media/4]).
 
+-export([custom_sip_headers/1 , is_custom_sip_header/1, normalize_custom_sip_header_name/1]).
+
 -include("ecallmgr.hrl").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
@@ -923,3 +925,21 @@ request_media_url(MediaName, CallId, JObj, Type) ->
         {'ok', MediaResp} ->
             {'ok', wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
     end.
+
+-spec custom_sip_headers(wh_proplist()) -> wh_json:object().
+custom_sip_headers(Props) ->
+    lists:map(fun normalize_custom_sip_header_name/1
+             ,props:filter(fun is_custom_sip_header/1, Props)
+             ).
+
+-spec normalize_custom_sip_header_name(term()) -> term().
+normalize_custom_sip_header_name({<<"variable_sip_h_", K/binary>>, V}) -> {K, V};
+normalize_custom_sip_header_name({<<"sip_h_", K/binary>>, V}) -> {K, V};
+normalize_custom_sip_header_name(A) -> A.
+  
+-spec is_custom_sip_header(term()) -> boolean().
+is_custom_sip_header({<<"P-", _/binary>>, _}) -> 'true';
+is_custom_sip_header({<<"X-", _/binary>>, _}) -> 'true';
+is_custom_sip_header({<<"sip_h_", _/binary>>, _}) -> 'true';
+is_custom_sip_header({<<"variable_sip_h_", _/binary>>, _}) -> 'true';
+is_custom_sip_header(Header) -> 'false'.

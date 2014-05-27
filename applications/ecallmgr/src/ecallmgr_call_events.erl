@@ -577,6 +577,7 @@ generic_call_event_props(Props) ->
      ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Replaced-By">>, props:get_value(<<"att_xfer_replaced_by">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+     ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
