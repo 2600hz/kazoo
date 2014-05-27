@@ -329,21 +329,25 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
         {<<"RECORD_STOP">>, _} ->
             spawn(
                 fun() ->
-                    MediaName = props:get_value(<<"variable_ecallmgr_Media-Name">>, Props),
-                    Destination = props:get_value(<<"variable_ecallmgr_Media-Transfer-Destination">>, Props),
-                    JObj = wh_json:from_list([
-                        {<<"Application-Name">>, <<"store">>}
-                        ,{<<"Insert-At">>, props:get_value(<<"variable_ecallmgr_Insert-At">>, Props)}
-                        ,{<<"Media-Name">>, MediaName}
-                        ,{<<"Media-Transfer-Destination">>, <<Destination/binary, MediaName/binary>>}
-                        ,{<<"Media-Transfer-Method">>, props:get_value(<<"variable_ecallmgr_Media-Transfer-Method">>, Props)}
-                        ,{<<"Call-ID">>, CallId}
-                        ,{<<"Event-Category">>, <<"call">>}
-                        ,{<<"Event-Name">>, <<"command">>}
-                        ,{<<"Msg-ID">>, CallId}
-                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ]),
-                    ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined')
+                    case props:get_value(<<"variable_playback_terminator_used">>, Props) of
+                        'undefined' ->
+                            MediaName = props:get_value(<<"variable_ecallmgr_Media-Name">>, Props),
+                            Destination = props:get_value(<<"variable_ecallmgr_Media-Transfer-Destination">>, Props),
+                            JObj = wh_json:from_list([
+                                {<<"Application-Name">>, <<"store">>}
+                                ,{<<"Insert-At">>, props:get_value(<<"variable_ecallmgr_Insert-At">>, Props)}
+                                ,{<<"Media-Name">>, MediaName}
+                                ,{<<"Media-Transfer-Destination">>, <<Destination/binary, MediaName/binary>>}
+                                ,{<<"Media-Transfer-Method">>, props:get_value(<<"variable_ecallmgr_Media-Transfer-Method">>, Props)}
+                                ,{<<"Call-ID">>, CallId}
+                                ,{<<"Event-Category">>, <<"call">>}
+                                ,{<<"Event-Name">>, <<"command">>}
+                                ,{<<"Msg-ID">>, CallId}
+                                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                            ]),
+                            ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined');
+                        _ -> 'ok'
+                    end
                 end
             ),
             {'noreply', State};
