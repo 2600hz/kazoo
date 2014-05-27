@@ -150,7 +150,6 @@ exec_element(Call, _Xml) ->
     lager:debug("unhandled XML object: ~p", [_Xml]),
     {'ok', Call}.
 
-
 -spec req_params(whapps_call:call()) -> wh_proplist().
 req_params(Call) ->
     props:filter_undefined(
@@ -371,7 +370,7 @@ gather_finished(Call, Props) ->
             Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
                        ,{fun kzt_util:set_voice_uri/2, NewUri}
                       ],
-            {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}
+            {'request', whapps_call:exec(Setters, Call)}
     end.
 
 record_call(Call, Attrs) ->
