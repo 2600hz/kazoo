@@ -104,7 +104,9 @@ validate(Context, Id) ->
     read(Id, cb_context:set_account_db(Context, ?WH_SCHEMA_DB)).
 
 validate(Context, Id, ?VALIDATION_PATH_TOKEN) ->
-    OnSuccess = fun wh_util:identity/1,
+    OnSuccess = fun(C) ->
+                        cb_context:set_resp_data(C, cb_context:doc(C))
+                end,
     cb_context:validate_request_data(Id, Context, OnSuccess).
 
 %%%===================================================================
