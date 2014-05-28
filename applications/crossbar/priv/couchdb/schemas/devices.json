@@ -157,6 +157,7 @@
                             "name":"Audio Codecs",
                             "description":"A list of audio codecs to use",
                             "type":"array",
+                            ,"uniqueItems":true
                             "enum":[
                                 "G729",
                                 "GSM",
