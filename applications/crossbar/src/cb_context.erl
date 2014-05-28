@@ -517,6 +517,18 @@ failed_error({'data_invalid'
                          ,Context
                         );
 failed_error({'data_invalid'
+              ,FailedSchemaJObj
+              ,'no_match'
+              ,_FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    Pattern = wh_json:get_value(<<"pattern">>, FailedSchemaJObj),
+    add_validation_error(FailedKeyPath
+                         ,<<"pattern">>
+                         ,<<"Failed to match pattern '", Pattern/binary, "'">>
+                         ,Context
+                        );
+failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,FailMsg
               ,_FailedValue
