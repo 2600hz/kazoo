@@ -642,7 +642,8 @@ create_registration(JObj) ->
                      ,from_user=wh_json:get_value(<<"From-User">>, JObj, <<"nouser">>)
                      ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
                      ,user_agent=wh_json:get_value(<<"User-Agent">>, JObj)
-                     ,expires=wh_json:get_integer_value(<<"Expires">>, JObj, 60)
+                     ,expires=ecallmgr_util:maybe_add_expires_deviation(
+                                wh_json:get_integer_value(<<"Expires">>, JObj, 60))
                      ,contact=fix_contact(OriginalContact)
                      ,original_contact=OriginalContact
                      ,last_registration=wh_util:current_tstamp()

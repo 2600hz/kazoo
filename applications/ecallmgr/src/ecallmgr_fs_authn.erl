@@ -185,6 +185,7 @@ handle_directory_lookup(Id, Props, Node) ->
 
 -spec lookup_user(atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
+    props:to_log(Props, <<"LOOKUP USER">>),
     Domain = props:get_value(<<"domain">>, Props),
     Realm = get_auth_realm(Props),
     Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
@@ -259,6 +260,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
            ,{<<"Method">>, Method}
            ,{<<"Auth-User">>, Username}
            ,{<<"Auth-Realm">>, Realm}
+           ,{<<"Expires">>, props:get_value(<<"expires">>, Props)}
            ,{<<"Auth-Nonce">>, props:get_value(<<"sip_auth_nonce">>, Props)}
            ,{<<"Auth-Response">>, props:get_value(<<"sip_auth_response">>, Props)}
            ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}

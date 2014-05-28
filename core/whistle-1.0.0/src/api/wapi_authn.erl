@@ -36,7 +36,7 @@
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>
                                      ,<<"Orig-IP">>, <<"Call-ID">>
                                      ,<<"Auth-Nonce">>, <<"Auth-Response">>
-                                     ,<<"User-Agent">>
+                                     ,<<"User-Agent">>, <<"Expires">>
                                      ,<<"Custom-SIP-Headers">>
                                     ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
@@ -54,7 +54,7 @@
 -define(AUTHN_RESP_HEADERS, [<<"Auth-Method">>, <<"Auth-Password">>]).
 -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                       ,<<"Auth-Username">>, <<"Auth-Nonce">>
-                                      ,<<"Access-Group">>, <<"Tenant-ID">>
+                                      ,<<"Access-Group">>, <<"Tenant-ID">>, <<"Expires">>
                                       ,<<"Suppress-Unregister-Notifications">>
                                       ,<<"Register-Overwrite-Notify">>
                                      ]).

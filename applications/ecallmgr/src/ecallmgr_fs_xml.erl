@@ -67,8 +67,12 @@ authn_resp_xml(JObj) ->
         {'ok', []}=OK -> OK;
         {'ok', Elements} ->
             Number = wh_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
+            Expires = ecallmgr_util:maybe_add_expires_deviation(
+                        wh_json:get_value(<<"Expires">>,JObj)),
             Username = wh_json:get_value(<<"Auth-Username">>, JObj, UserId),
-            UserEl = user_el([{'number-alias', Number} | user_el_default_props(Username) ]
+            UserEl = user_el([{'number-alias', Number}
+                              ,{'cacheable', Expires}
+                             | user_el_default_props(Username) ]
                              ,Elements),
             DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
@@ -596,7 +600,7 @@ user_el(Id, Children) when not is_list(Id) ->
     user_el(user_el_default_props(Id), Children);
 user_el(Props, Children) ->
     #xmlElement{name='user'
-                ,attributes=[xml_attrib(K, V) || {K , V} <- props:filter_undefined(Props)]
+                ,attributes=[xml_attrib(K, V) || {K , V} <- props:unique(props:filter_undefined(Props))]
                 ,content=Children
                }.
 
