@@ -9,19 +9,23 @@
       </condition>
     </extension>
 
-    <extension name="Local_Extension">
+    <extension name="Local_Extension" continue="true">
       <condition field="${has_number}" expression="true">
-            <action application="set" data="call_timeout=60"/>
-            <action application="set" data="hangup_after_bridge=true"/>           
-           <action application="bridge" data="user/${user_data(${number_full}@${domain_name} attr id)}@${domain_name}"/>
-            <action application="playback" data="sounds/user_unavailable.wav" />
+           <action inline="true" application="set" data="imsi=${user_data(${number_full}@${domain_name} attr id)}"/>
       </condition>
     </extension>
 
-    <extension name="Not_Local_Extension">
-        <action application="playback" data="sounds/user_unavailable.wav" />
+    <extension name="Local_Extension">
+      <condition field="${imsi}" expression="^$">
+            <action application="log" data="user not located" />
+            <action application="playback" data="en/us/callie/misc/phone_not_auth.wav" />        
+            <anti-action application="set" data="call_timeout=60"/>
+            <anti-action application="set" data="hangup_after_bridge=true"/>           
+           <anti-action application="bridge" data="user/${user_data(${number_full}@${domain_name} attr id)}@${domain_name}"/>
+      </condition>
     </extension>
 
 
   </context>
 </include>
+
