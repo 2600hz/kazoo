@@ -35,7 +35,7 @@
 -export([lookup_media/4]).
 
 -export([custom_sip_headers/1 , is_custom_sip_header/1, normalize_custom_sip_header_name/1]).
--export([maybe_add_expires_deviation/1]).
+-export([maybe_add_expires_deviation/1, maybe_add_expires_deviation_ms/1]).
 
 -include("ecallmgr.hrl").
 
@@ -951,3 +951,8 @@ is_custom_sip_header(Header) -> 'false'.
 maybe_add_expires_deviation('undefined') -> 'undefined';
 maybe_add_expires_deviation(Expires) ->
     Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
+
+-spec maybe_add_expires_deviation_ms(api_integer()) -> api_integer().
+maybe_add_expires_deviation_ms('undefined') -> 'undefined';
+maybe_add_expires_deviation_ms(Expires) ->
+    maybe_add_expires_deviation(Expires) * 1000.
