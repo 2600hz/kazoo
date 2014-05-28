@@ -363,12 +363,10 @@ play_greeting(#mailbox{unavailable_media_id='undefined'
                                      ,{'say', Mailbox}
                                      ,{'prompt', <<"vm-not_available">>}
                                     ], Call);
-play_greeting(#mailbox{unavailable_media_id = <<"local_stream://", _/binary>> = Id}, Call) ->
-    lager:info("mailbox has a greeting file on the softswitch: ~s", Id),
-    whapps_call_command:play(Id, Call);
-play_greeting(#mailbox{unavailable_media_id=Id}, Call) ->
-    lager:info("streaming mailbox greeting"),
-    whapps_call_command:play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
+play_greeting(#mailbox{unavailable_media_id=MediaId}, Call) ->
+    Corrected = wh_media_util:media_path(MediaId, Call),
+    lager:info("mailbox has a greeting: '~s', corrected to '~s'", [MediaId, Corrected]),
+    whapps_call_command:play(Corrected, Call).
 
 %%--------------------------------------------------------------------
 %% @private
