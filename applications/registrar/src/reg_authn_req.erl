@@ -17,7 +17,6 @@ init() -> 'ok'.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    lager:debug("REGISTRAR ~p",[JObj]),
     'true' = wapi_authn:req_v(JObj),
     _ = wh_util:put_callid(JObj),
     Username = get_auth_user(JObj),
@@ -39,7 +38,7 @@ get_auth_user(JObj) ->
             To = wh_json:get_value(<<"To">>, JObj,<<"nouser@nodomain">>),
             [ToUser, _ToDomain] = binary:split(To, <<"@">>),
             wh_util:to_lower_binary(ToUser);
-        Username -> Username    
+        Username -> Username
     end.
 
 -spec send_auth_resp(auth_user(), wh_json:object()) -> 'ok'.
@@ -210,9 +209,9 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec check_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 
+-spec check_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) ->
                              {'ok', auth_user()} |
-                             {'error', _}.                             
+                             {'error', _}.
 check_auth_user(JObj, Username, Realm, Req) ->
     case is_account_enabled(JObj)
         andalso maybe_auth_type_enabled(JObj)
@@ -274,7 +273,7 @@ is_owner_enabled(AccountDb, OwnerId) ->
             'true'
     end.
 
--spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 
+-spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) ->
           {'ok', auth_user()} | {'error', any()}.
 jobj_to_auth_user(JObj, Username, Realm, Req) ->
     AuthValue = wh_json:get_value([<<"doc">>,<<"sip">>], JObj),
@@ -316,14 +315,13 @@ get_auth_method(JObj) ->
 
 
 -spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
-          {'ok', auth_user()} | {'error', any()}.
-
+                               {'ok', auth_user()} | {'error', any()}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     GsmDoc = wh_json:get_value(<<"gsm">>, JObj),
-    Nonce = remove_dashes(              
-              wh_json:get_value(<<"nonce">>, GsmDoc, 
+    Nonce = remove_dashes(
+              wh_json:get_value(<<"nonce">>, GsmDoc,
                                 wh_json:get_value(<<"Auth-Nonce">>, Req,
-                                                  wh_util:rand_hex_binary(16)))), 
+                                                  wh_util:rand_hex_binary(16)))),
     GsmKey = wh_json:get_value(<<"key">>, GsmDoc),
     GsmSRes = wh_json:get_value(<<"sres">>, GsmDoc, wh_util:rand_hex_binary(6)),
     GsmNumber = wh_json:get_value(<<"msisdn">>, GsmDoc),
@@ -331,13 +329,13 @@ maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     gsm_auth(
       maybe_update_gsm(
         ReqMethod,
-        AuthUser#auth_user{msisdn=GsmNumber, a3a8_key=GsmKey
-                          ,a3a8_sres=GsmSRes, nonce=Nonce}
-                      )
-            );
-
+        AuthUser#auth_user{msisdn=GsmNumber
+                           ,a3a8_key=GsmKey
+                           ,a3a8_sres=GsmSRes
+                           ,nonce=Nonce}
+       )
+     );
 maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)-> {'ok', AuthUser}.
-
 
 -define(GSM_PRE_REGISTER_ROUTINES, [fun maybe_msisdn/1]).
 -define(GSM_REGISTER_ROUTINES, [fun maybe_msisdn/1]).
@@ -349,13 +347,20 @@ maybe_update_gsm(<<"REGISTER">>, AuthUser) ->
     lists:foldl(fun(F,A) -> F(A) end, AuthUser, ?GSM_REGISTER_ROUTINES);
 maybe_update_gsm(_, AuthUser) -> AuthUser.
 
-maybe_msisdn(#auth_user{msisdn='undefined', owner_id='undefined', authorizing_id=Id}=AuthUser) ->
+-spec maybe_msisdn(auth_user()) -> auth_user().
+maybe_msisdn(#auth_user{msisdn='undefined'
+                        ,owner_id='undefined'
+                        ,authorizing_id=Id}=AuthUser) ->
     maybe_msisdn_from_callflows(AuthUser, <<"device">>, Id);
-maybe_msisdn(#auth_user{msisdn='undefined',owner_id=OwnerId}=AuthUser) ->
+maybe_msisdn(#auth_user{msisdn='undefined'
+                        ,owner_id=OwnerId}=AuthUser) ->
     maybe_msisdn_from_callflows(AuthUser, <<"user">>, OwnerId);
 maybe_msisdn(AuthUser) -> AuthUser.
-    
-maybe_msisdn_from_callflows(#auth_user{doc=JObj, account_db=AccountDB}=AuthUser, Type, Id) ->
+
+-spec maybe_msisdn_from_callflows(auth_user(), ne_binary(), ne_binary()) -> auth_user().
+maybe_msisdn_from_callflows(#auth_user{doc=JObj
+                                       ,account_db=AccountDB}=AuthUser
+                            ,Type, Id) ->
     ViewOptions = [{'startkey', [Type, Id]}
                    ,{'endkey', [Type, Id, <<"9999999">>]}
                   ],
@@ -367,14 +372,11 @@ maybe_msisdn_from_callflows(#auth_user{doc=JObj, account_db=AccountDB}=AuthUser,
             lager:debug("msisdn not found for ~s@~s in ~s", [Type, Id, AccountDB]),
             AuthUser;
         {'ok', [User|_]} ->
-            lager:debug("USER ~p",[User]),
             MSISDN = wh_json:get_value([<<"value">>,<<"msisdn">>], User),
-            lager:debug("found msisdn ~s for ~s@~s in account db: ~s", [MSISDN, Type, Id, AccountDB]),
+            lager:debug("found msisdn ~s for ~s@~s in account db: ~s"
+                        ,[MSISDN, Type, Id, AccountDB]),
             AuthUser#auth_user{msisdn=MSISDN}
     end.
-    
-    
-
 
 -spec gsm_auth(auth_user()) -> {'ok', auth_user()}.
 gsm_auth(#auth_user{method=?GSM_CACHED_METHOD
@@ -393,8 +395,6 @@ gsm_auth(#auth_user{method=?GSM_A3A8_METHOD
                              ,a3a8_kc=KC
                              ,password=SRES}};
 gsm_auth(AuthUser) -> {'ok', AuthUser}.
-
-
 
 %%-----------------------------------------------------------------------------
 %% @private
