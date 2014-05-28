@@ -383,17 +383,24 @@ check_type(Value, Type, State) ->
   end.
 
 is_type_valid(Value, ?STRING)   -> is_binary(Value);
-is_type_valid(Value, ?NUMBER)   -> is_number(Value);
-is_type_valid(Value, ?INTEGER)  -> is_integer(Value);
-is_type_valid(Value, ?BOOLEAN)  -> is_boolean(Value);
+is_type_valid(Value, ?NUMBER)   -> try_converting(Value, fun wh_util:to_number/1, fun erlang:is_number/1);
+is_type_valid(Value, ?INTEGER)  -> try_converting(Value, fun wh_util:to_integer/1, fun erlang:is_integer/1);
+is_type_valid(Value, ?BOOLEAN)  -> wh_util:is_boolean(Value);
 is_type_valid(Value, ?OBJECT)   -> is_json_object(Value);
 is_type_valid(Value, ?ARRAY)    -> is_array(Value);
 is_type_valid(Value, ?NULL)     -> is_null(Value);
-is_type_valid(_Value, ?ANY)     -> true;
+is_type_valid(_Value, ?ANY)     -> 'true';
 is_type_valid(Value, UnionType) ->
   case is_array(UnionType) of
     true  -> check_union_type(Value, UnionType);
     false -> true
+  end.
+
+try_converting(Value, CastFun, ValidatorFun) ->
+  try CastFun(Value) of
+      Casted -> ValidatorFun(Casted)
+  catch
+    _E:_R -> 'false'
   end.
 
 %% @private
