@@ -26,6 +26,8 @@
                     ,a3a8_kc
                     ,a3a8_sres
                     ,msisdn
+                    ,doc
+                    ,request
                    }).
 -type auth_user() :: #auth_user{}.
 
