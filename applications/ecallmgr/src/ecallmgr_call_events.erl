@@ -329,7 +329,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
         {<<"RECORD_STOP">>, _} ->
             spawn(
                 fun() ->
-                    case props:get_value(<<"variable_playback_terminator_used">>, Props) of
+                    case props:get_value(<<"variable_current_application_data">>, Props) of
                         'undefined' ->
                             MediaName = props:get_value(<<"variable_ecallmgr_Media-Name">>, Props),
                             Destination = props:get_value(<<"variable_ecallmgr_Media-Transfer-Destination">>, Props),
@@ -346,7 +346,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
                                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                             ]),
                             ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined');
-                        _ -> 'ok'
+                        _ -> process_channel_event(Props)
                     end
                 end
             ),
