@@ -80,12 +80,19 @@
 -define(not_allowed,                 'not_allowed').
 -define(not_unique,                  'not_unique').
 -define(not_in_range,                'not_in_range').
+-define(not_minimum,                 'not_minimum').
+-define(not_maximum,                 'not_maximum').
+-define(not_in_enum,                 'not_in_enum').
 -define(not_divisible,               'not_divisible').
 -define(wrong_type,                  'wrong_type').
 -define(wrong_type_items,            'wrong_type_items').
 -define(wrong_type_dependency,       'wrong_type_dependency').
 -define(wrong_size,                  'wrong_size').
+-define(wrong_min_items,             'wrong_min_items').
+-define(wrong_max_items,             'wrong_max_items').
 -define(wrong_length,                'wrong_length').
+-define(wrong_min_length,            'wrong_min_length').
+-define(wrong_max_length,            'wrong_max_length').
 -define(wrong_format,                'wrong_format').
 
 %%
@@ -749,7 +756,7 @@ check_minimum(Value, Minimum, ExclusiveMinimum, State) ->
   case Result of
     true  -> State;
     false ->
-      handle_data_invalid(?not_in_range, Value, State)
+      handle_data_invalid(?not_minimum, Value, State)
   end.
 
 %%% @doc 5.10.  maximum
@@ -772,7 +779,7 @@ check_maximum(Value, Maximum, ExclusiveMaximum, State) ->
   case Result of
     true  -> State;
     false ->
-      handle_data_invalid(?not_in_range, Value, State)
+      handle_data_invalid(?not_maximum, Value, State)
   end.
 
 %% @doc 5.13.  minItems
@@ -783,7 +790,7 @@ check_maximum(Value, Maximum, ExclusiveMaximum, State) ->
 check_min_items(Value, MinItems, State) when length(Value) >= MinItems ->
   State;
 check_min_items(Value, _MinItems, State) ->
-  handle_data_invalid(?wrong_size, Value, State).
+  handle_data_invalid(?wrong_min_items, Value, State).
 
 %% @doc 5.14.  maxItems
 %%
@@ -793,7 +800,7 @@ check_min_items(Value, _MinItems, State) ->
 check_max_items(Value, MaxItems, State) when length(Value) =< MaxItems ->
   State;
 check_max_items(Value, _MaxItems, State) ->
-  handle_data_invalid(?wrong_size, Value, State).
+  handle_data_invalid(?wrong_max_items, Value, State).
 
 %% @doc 5.15.  uniqueItems
 %%
@@ -862,7 +869,7 @@ check_min_length(Value, MinLength, State) ->
   case length(unicode:characters_to_list(Value)) >= MinLength of
     true  -> State;
     false ->
-      handle_data_invalid(?wrong_length, Value, State)
+      handle_data_invalid(?wrong_min_length, Value, State)
   end.
 
 %% @doc 5.18.  maxLength
@@ -874,7 +881,7 @@ check_max_length(Value, MaxLength, State) ->
   case length(unicode:characters_to_list(Value)) =< MaxLength of
     true  -> State;
     false ->
-      handle_data_invalid(?wrong_length, Value, State)
+      handle_data_invalid(?wrong_max_length, Value, State)
   end.
 
 %% @doc 5.19.  enum
@@ -896,7 +903,7 @@ check_enum(Value, Enum, State) ->
   case IsValid of
     true  -> State;
     false ->
-      handle_data_invalid(?not_in_range, Value, State)
+      handle_data_invalid(?not_in_enum, Value, State)
   end.
 
 %% TODO:
