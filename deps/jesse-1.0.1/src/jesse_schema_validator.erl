@@ -823,6 +823,8 @@ check_max_items(Value, _MaxItems, State) ->
 %%       object.</li>
 %% </ul>
 %% @private
+check_unique_items([], 'true', State) ->
+  State;
 check_unique_items(Value, true, State) ->
   try
     lists:foldl( fun(_Item, []) ->
@@ -1067,11 +1069,11 @@ compare_properties(Value1, Value2) ->
 %%=============================================================================
 %% @private
 new_state(JsonSchema, Options) ->
-  ErrorHandler  = proplists:get_value( error_handler
+  ErrorHandler  = props:get_value( error_handler
                                      , Options
                                      , fun default_error_handler/3
                                      ),
-  AllowedErrors = proplists:get_value( allowed_errors
+  AllowedErrors = props:get_value( allowed_errors
                                      , Options
                                      , 0
                                      ),
@@ -1161,7 +1163,7 @@ empty_if_not_found(?not_found) -> [];
 empty_if_not_found(Value)      -> Value.
 
 %%=============================================================================
-%% @doc This check is needed since objects in `jsx' are lists (proplists)
+%% @doc This check is needed since objects in `jsx' are lists (props)
 %% @private
 is_array(Value) when is_list(Value) -> not is_json_object(Value);
 is_array(_)                         -> false.
