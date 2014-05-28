@@ -370,13 +370,20 @@ response(#cb_context{resp_error_code=Code
 %% Add a validation error to the list of request errors
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request_data(ne_binary() | api_object(), context()) -> context().
+-type after_fun() :: fun((context()) -> context()).
+
+-spec validate_request_data(ne_binary() | api_object(), context()) ->
+                                   context().
+-spec validate_request_data(ne_binary() | api_object(), context(), after_fun()) ->
+                                   context().
+-spec validate_request_data(ne_binary() | api_object(), context(), after_fun(), after_fun()) ->
+                                   context().
 validate_request_data('undefined', Context) ->
     passed(Context);
 validate_request_data(<<_/binary>> = Schema, Context) ->
     case find_schema(Schema) of
         'undefined' ->
-            passed(Context);
+            passed(set_doc(Context, req_data(Context)));
         SchemaJObj ->
             validate_request_data(SchemaJObj, Context)
     end;
@@ -390,6 +397,19 @@ validate_request_data(SchemaJObj, Context) ->
                                                                         ]),
             failed(Context, Errors)
     end.
+
+validate_request_data(Schema, Context, OnSuccess) ->
+    validate_request_data(Schema, Context, OnSuccess, 'undefined').
+
+validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
+    case validate_request_data(Schema, Context) of
+        #cb_context{resp_status='success'}=C1 when is_function(OnSuccess) ->
+            OnSuccess(C1);
+        #cb_context{}=C2 when is_function(OnFailure) ->
+            OnFailure(C2);
+        Else -> Else
+    end.
+
 
 -type validator_error() :: {'data_invalid'
                             ,wh_json:object()
@@ -564,43 +584,6 @@ find_schema(<<_/binary>> = Schema) ->
         {'error', _E} ->
             lager:debug("failed to find schema ~s: ~p", [Schema, _E]),
             'undefined'
-    end.
-
-    %% case wh_json_validator:is_valid(wh_json:public_fields(Data), Schema) of
-    %%     {'fail', Errors} ->
-    %%         lager:debug("request data did not validate against ~s: ~p", [Schema, Errors]),
-    %%         lists:foldl(fun({Property, Error}, C) ->
-    %%                             [Code, Message] = binary:split(Error, <<":">>),
-    %%                             add_validation_error(Property, Code, Message, C)
-    %%                     end, Context#cb_context{resp_status='error'}, Errors);
-    %%     {'pass', JObj} ->
-    %%         Status = case RespStatus =:= 'error' of
-    %%                      'true' -> 'error';
-    %%                      'false' -> 'success'
-    %%                  end,
-    %%         %% Allow onboarding to set the document ID
-    %%         case wh_json:get_ne_value(<<"_id">>, Data) of
-    %%             'undefined' ->
-    %%                 Context#cb_context{resp_status=Status
-    %%                                    ,doc=JObj
-    %%                                   };
-    %%             Id ->
-    %%                 Context#cb_context{resp_status=Status
-    %%                                    ,doc=wh_json:set_value(<<"_id">>, Id, JObj)
-    %%                                   }
-    %%         end
-    %% end.
-
-validate_request_data(Schema, Context, OnSuccess) ->
-    validate_request_data(Schema, Context, OnSuccess, 'undefined').
-
-validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
-    case validate_request_data(Schema, Context) of
-        #cb_context{resp_status='success'}=C1 when is_function(OnSuccess) ->
-            OnSuccess(C1);
-        #cb_context{}=C2 when is_function(OnFailure) ->
-            OnFailure(C2);
-        Else -> Else
     end.
 
 %%--------------------------------------------------------------------
