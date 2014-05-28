@@ -213,7 +213,7 @@
                "DIDs":{
                   "type":"object",
                   "patternProperties":{
-                     "^\\+1(\\d{10})$":{
+                     "^\\+?\\d*$":{
                         "type":"object",
                         "properties":{
                            "failover":{

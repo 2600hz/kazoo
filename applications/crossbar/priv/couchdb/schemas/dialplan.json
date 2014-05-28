@@ -1,0 +1,26 @@
+{
+    "_id":"dialplan"
+    ,"$schema":"http://json-schema.org/draft-03/schema#"
+    ,"id":"http://json-schema.org/draft-03/schema#"
+    ,"description":"Dialplan schema for devices, users, and accounts"
+    ,"type":"object"
+    ,"patternProperties":{
+        ".*":{
+            "type":"object"
+            ,"properties":{
+                "description":{
+                    "type":"string"
+                    ,"description":"Friendly name for this regex dialplan"
+                }
+                ,"prefix":{
+                    "type":"string"
+                    ,"description":"Prefix the prepend to the capture group after applying the regex"
+                }
+                ,"suffix":{
+                    "type":"string"
+                    ,"description":"Suffix the append to the capture group after applying the regex"
+                }
+            }
+        }
+    }
+}
