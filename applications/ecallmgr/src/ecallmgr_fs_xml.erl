@@ -67,7 +67,7 @@ authn_resp_xml(JObj) ->
         {'ok', []}=OK -> OK;
         {'ok', Elements} ->
             Number = wh_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
-            Expires = ecallmgr_util:maybe_add_expires_deviation(
+            Expires = ecallmgr_util:maybe_add_expires_deviation_ms(
                         wh_json:get_value(<<"Expires">>,JObj)),
             Username = wh_json:get_value(<<"Auth-Username">>, JObj, UserId),
             UserEl = user_el([{'number-alias', Number}
