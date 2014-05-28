@@ -34,7 +34,7 @@ oauth_provider_from_jobj(ProviderId, JObj) ->
                     ,auth_url= wh_json:get_value(<<"oauth_url">>, JObj)
                     ,tokeninfo_url= wh_json:get_value(<<"tokeninfo_url">>, JObj) 
                     ,profile_url= wh_json:get_value(<<"profile_url">>, JObj) 
-                    ,servers= wh_json:get_value(<<"servers">>, JObj) 
+                    ,servers= wh_json:get_value(<<"servers">>, JObj)
                     ,scopes= wh_json:get_value(<<"scopes">>, JObj)
                    }.
 
@@ -42,8 +42,11 @@ get_oauth_app(AppId) ->
     case couch_mgr:open_doc(?OAUTH_DB, AppId) of
         {'ok', JObj} ->
             ProviderId = wh_json:get_value(<<"pvt_oauth_provider">>, JObj),
-            {'ok', Provider} = get_oauth_provider(ProviderId),
-            {'ok', oauth_app_from_jobj(AppId, Provider, JObj)};
+            case get_oauth_provider(ProviderId) of
+                {'ok', Provider} ->
+                    {'ok', oauth_app_from_jobj(AppId, Provider, JObj)};
+                E -> E
+            end;
         {'error', _} ->
             {'error', <<"OAUTH - App ", AppId/binary, " not found">>}
     end.

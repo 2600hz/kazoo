@@ -236,7 +236,7 @@ crawl_numbers_db(NumberDb) when not is_binary(NumberDb) ->
 crawl_numbers_db(NumberDb) ->
     lager:debug("getting all number docs from ~s",[NumberDb]),
     Db = wh_util:to_binary(http_uri:encode(wh_util:to_list(NumberDb))),
-    case couch_mgr:all_docs(Db) of
+    try couch_mgr:all_docs(Db) of
         {'error', _R} ->
             lager:debug("error [~p] getting number docs from ~s",[_R, NumberDb]);
         {'ok', []} ->
@@ -250,7 +250,12 @@ crawl_numbers_db(NumberDb) ->
                                    _Else -> 'true'
                                end
                       ],
-            _ = maybe_export_numbers(Db, Numbers)
+            _ = maybe_export_numbers(Db, Numbers);
+        Other ->
+            lager:debug("really ? ~p",[Other])            
+    catch
+         _T:_E ->
+             lager:debug("CATCH FROM ~p : ~p",[_T , _E])
     end.
 
 -spec maybe_export_numbers(ne_binary(), ne_binaries()) -> 'ok'.
@@ -398,6 +403,7 @@ query_registrar(Realm, Username) ->
            ,{<<"From">>, FullUser}
            ,{<<"Auth-User">>, Username}
            ,{<<"Auth-Realm">>, Realm}
+           ,{<<"Method">>, <<"REGISTER">>}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     

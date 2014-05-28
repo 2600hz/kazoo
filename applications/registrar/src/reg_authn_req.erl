@@ -17,6 +17,7 @@ init() -> 'ok'.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
+    lager:debug("REGISTRAR ~p",[JObj]),
     'true' = wapi_authn:req_v(JObj),
     _ = wh_util:put_callid(JObj),
     Username = get_auth_user(JObj),
@@ -89,6 +90,7 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
              ,{<<"Account-Realm">>, AuthUser#auth_user.account_realm}
              ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
+             ,{<<"Caller-ID">>, AuthUser#auth_user.msisdn}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
@@ -165,7 +167,7 @@ get_auth_user_in_agg(Username, Realm) ->
     ViewOptions = [{'key', [Realm, Username]}
                    ,'include_docs'
                   ],
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, 'false')
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, 'true')
         andalso couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions)
     of
         'false' ->
@@ -288,6 +290,8 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                ,owner_id = wh_json:get_value(<<"owner_id">>, AuthDoc)
                ,suppress_unregister_notifications = wh_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
                ,register_overwrite_notify = wh_json:is_true(<<"register_overwrite_notify">>, AuthDoc)
+               ,doc=AuthDoc
+               ,request=Req
               },
     maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
 
@@ -322,12 +326,53 @@ maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     GsmKey = wh_json:get_value(<<"key">>, GsmDoc),
     GsmSRes = wh_json:get_value(<<"sres">>, GsmDoc, wh_util:rand_hex_binary(6)),
     GsmNumber = wh_json:get_value(<<"msisdn">>, GsmDoc),
-    gsm_auth(AuthUser#auth_user{msisdn=GsmNumber
-                                ,a3a8_key=GsmKey
-                                ,a3a8_sres=GsmSRes
-                                ,nonce=Nonce});
+    ReqMethod = wh_json:get_value(<<"Method">>, Req),
+    gsm_auth(
+      maybe_update_gsm(
+        ReqMethod,
+        AuthUser#auth_user{msisdn=GsmNumber, a3a8_key=GsmKey
+                          ,a3a8_sres=GsmSRes, nonce=Nonce}
+                      )
+            );
 
 maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)-> {'ok', AuthUser}.
+
+
+-define(GSM_PRE_REGISTER_ROUTINES, [fun maybe_msisdn/1]).
+-define(GSM_REGISTER_ROUTINES, [fun maybe_msisdn/1]).
+
+-spec maybe_update_gsm(api_binary(), auth_user()) -> auth_user().
+maybe_update_gsm(<<"PRE-REGISTER">>, AuthUser) ->
+    lists:foldl(fun(F,A) -> F(A) end, AuthUser, ?GSM_PRE_REGISTER_ROUTINES);    
+maybe_update_gsm(<<"REGISTER">>, AuthUser) ->
+    lists:foldl(fun(F,A) -> F(A) end, AuthUser, ?GSM_REGISTER_ROUTINES);
+maybe_update_gsm(_, AuthUser) -> AuthUser.
+
+maybe_msisdn(#auth_user{msisdn='undefined', owner_id='undefined', authorizing_id=Id}=AuthUser) ->
+    maybe_msisdn_from_callflows(AuthUser, <<"device">>, Id);
+maybe_msisdn(#auth_user{msisdn='undefined',owner_id=OwnerId}=AuthUser) ->
+    maybe_msisdn_from_callflows(AuthUser, <<"user">>, OwnerId);
+maybe_msisdn(AuthUser) -> AuthUser.
+    
+maybe_msisdn_from_callflows(#auth_user{doc=JObj, account_db=AccountDB}=AuthUser, Type, Id) ->
+    ViewOptions = [{'startkey', [Type, Id]}
+                   ,{'endkey', [Type, Id, <<"9999999">>]}
+                  ],
+    case couch_mgr:get_results(AccountDB, <<"callflow/msisdn">>, ViewOptions) of
+        {'error', _R} ->
+            lager:warning("failed to look up msisdn  in ~s: ~p", [AccountDB, _R]),
+            AuthUser;
+        {'ok', []} ->
+            lager:debug("msisdn not found for ~s@~s in ~s", [Type, Id, AccountDB]),
+            AuthUser;
+        {'ok', [User|_]} ->
+            lager:debug("USER ~p",[User]),
+            MSISDN = wh_json:get_value([<<"value">>,<<"msisdn">>], User),
+            lager:debug("found msisdn ~s for ~s@~s in account db: ~s", [MSISDN, Type, Id, AccountDB]),
+            AuthUser#auth_user{msisdn=MSISDN}
+    end.
+    
+    
 
 
 -spec gsm_auth(auth_user()) -> {'ok', auth_user()}.
