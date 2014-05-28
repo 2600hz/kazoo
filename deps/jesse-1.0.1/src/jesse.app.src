@@ -1,0 +1,12 @@
+%%-*- mode: erlang -*-
+
+{ application, jesse
+, [ {description, "jesse"}
+  , {vsn, "1.0.1"}
+  , {modules, []}
+  , {registered, []}
+  , {applications, [ kernel
+                   , stdlib
+                   ]}
+  , {env, []}
+  ]}.

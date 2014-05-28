@@ -1,0 +1,12 @@
+.jesse.plt
+.eunit
+deps
+doc/*.css
+doc/*.html
+doc/*.png
+doc/edoc-info
+ebin
+logs
+priv
+*.beam
+*.plt
