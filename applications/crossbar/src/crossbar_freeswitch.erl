@@ -38,7 +38,17 @@
 -define(FS_DIALPLAN, 'freeswitch_dialplan').
 -define(FS_CHATPLAN, 'freeswitch_chatplan').
 -define(FS_DIRECTORY, 'freeswitch_directory').
+
+-define(FS_DIRECTORY_REALM, 'freeswitch_directory_realm').
+-define(FS_DIALPLAN_REALM, 'freeswitch_dialplan_realm').
+-define(FS_CHATPLAN_REALM, 'freeswitch_chatplan_realm').
+
+-define(DEFAULT_FS_TEMPLATES, [?FS_DIRECTORY]).
+-define(DEFAULT_FS_INCLUDE_DIRECTORY_FILES, [?FS_DIALPLAN, ?FS_CHATPLAN]).
+
 -define(FS_TEMPLATES, [?FS_DIRECTORY, ?FS_DIALPLAN, ?FS_CHATPLAN]).
+-define(FS_REALM_TEMPLATES, [?FS_DIRECTORY_REALM]).
+-define(FS_ALL_TEMPLATES, [?FS_DIRECTORY, ?FS_DIALPLAN, ?FS_CHATPLAN, ?FS_DIRECTORY_REALM]).
 
 -define(AUTHN_TIMEOUT, 5000).
 
@@ -203,15 +213,57 @@ zip_directory(WorkDir) ->
 
 -spec setup_directory() -> ne_binary().
 setup_directory() ->
-    Dir = wh_util:rand_hex_binary(8),
+    TopDir = wh_util:rand_hex_binary(8),
     WorkRootDir = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"work_dir">>, <<"/tmp/">>),
-    WorkDir = filename:join([WorkRootDir, Dir]), 
+    WorkDir = filename:join([WorkRootDir, TopDir]), 
     file:make_dir(WorkDir),
-    file:make_dir(filename:join([WorkDir, "dialplan"])),
-    file:make_dir(filename:join([WorkDir, "chatplan"])),
-    file:make_dir(filename:join([WorkDir, "directory"])),    
+
+    Files = [{"directory", ?FS_DIRECTORY}
+             ,{"chatplan", ?FS_CHATPLAN}
+             ,{"dialplan", ?FS_DIALPLAN}
+            ],
+    Filter = whapps_config:get(?MOD_CONFIG_CAT, <<"files_to_include">>, ?DEFAULT_FS_INCLUDE_DIRECTORY_FILES),
+    _ = [file:make_dir(filename:join([WorkDir, Dir])) || {Dir, _} <- Files ],
+    _ = [file:write_file(
+           filename:join([WorkDir, D, xml_file_name(T)])
+                        ,xml_file_from_config(T) )
+        || {D, T} <- Files, lists:member(wh_util:to_binary(T), Filter)  ],
     put(<<"WorkDir">>,WorkDir),
+    put(<<"Realms">>,[]),
     WorkDir.
+
+-spec process_realms() -> any().
+process_realms() ->
+    Realms = get(<<"Realms">>),
+    Templates = [{"directory", ?FS_DIRECTORY_REALM}
+                ,{"chatplan", ?FS_CHATPLAN_REALM}
+                ,{"dialplan", ?FS_DIALPLAN_REALM}
+                ],
+    Filter = whapps_config:get(?MOD_CONFIG_CAT, <<"realm_templates_to_process">>, ?FS_REALM_TEMPLATES),    
+    [ process_realms(Realms, D, T) 
+            || {D, T} <- Templates, lists:member(wh_util:to_binary(T), Filter)].
+
+    
+
+-spec process_realms(list(), ne_binary(), atom()) -> any().
+process_realms([], _, _) -> 'ok';
+process_realms([Realm | Realms], Dir, Module) ->
+    process_realm(Realm, Dir, Module),
+    process_realms(Realms, Dir, Module).
+
+-spec process_realm(ne_binary(), ne_binary(), atom()) -> any().
+process_realm(Realm, Dir, Module) ->
+    Props = [{<<"realm">>, Realm}],
+    WorkDir = get(<<"WorkDir">>),
+    OutDir = filename:join([WorkDir, Dir]),
+    file:make_dir(OutDir),
+    XMLFile = filename:join([OutDir, <<Realm/binary,".xml">>]),
+    case render(Module, Props) of
+        {'ok', Result} ->
+            file:write_file(XMLFile, Result);
+        {'error', E} ->
+            lager:debug("error rendering template ~s for realm ~s", [Module, Realm])
+    end.
 
 
 -spec build_freeswitch(pid()) -> any().
@@ -221,6 +273,7 @@ build_freeswitch(Pid) ->
     AllDBs = wnm_util:get_all_number_dbs(),
     lager:debug("ALL DBS ~p",[AllDBs]),
     _ = [crawl_numbers_db(Db) || Db <- AllDBs, is_number_db(Db)],
+    process_realms(),
     File = zip_directory(WorkDir),
     del_dir(wh_util:to_list(WorkDir)),
     gen_server:cast(Pid, {'completed', File}).
@@ -379,9 +432,16 @@ render_templates(Number, AccountId, Username, Realm, Props) ->
                 ,{"chatplan", ?FS_CHATPLAN}
                 ,{"dialplan", ?FS_DIALPLAN}
                 ],
-    [ render_template(Number, AccountId, Username, Realm, Props, D, T) || {D, T} <- Templates].
+    Filter = whapps_config:get(?MOD_CONFIG_CAT, <<"templates_to_process">>, ?DEFAULT_FS_TEMPLATES),
+    [ render_template(Number, AccountId, Username, Realm, Props, D, T) 
+            || {D, T} <- Templates, lists:member(wh_util:to_binary(T), Filter)].
+
     
-render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
+
+render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->   
+    lager:debug("~s : Rendering template ~s for ~s@~s in account ~s",
+                [Number, Module, Username, Realm, AccountId] ),
+    maybe_accumulate_realm(lists:member(Realm, get(<<"Realms">>)), Realm),
     WorkDir = get(<<"WorkDir">>),
     OutDir = filename:join([WorkDir, Dir, Realm]),
     file:make_dir(OutDir),
@@ -393,7 +453,11 @@ render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
             lager:debug("~s : error rendering template ~s for account ~s", [Number, Module, AccountId])
     end.
 
-    
+-spec maybe_accumulate_realm(boolean(), ne_binary()) -> any().
+maybe_accumulate_realm('true', Realm) -> 'ok';
+maybe_accumulate_realm('false', Realm) ->
+    put(<<"Realms">>, [Realm | get(<<"Realms">>)]).
+
 
 -spec query_registrar(ne_binary(), ne_binary()) -> {'ok', wh_json:object()}
                                                  | {'error', _}.
@@ -422,11 +486,11 @@ template_file(Module) ->
 -spec template_file_name(atom()) -> string().
 template_file_name(?FS_DIALPLAN) -> "dialplan_template.xml";
 template_file_name(?FS_CHATPLAN) -> "chatplan_template.xml";
-template_file_name(?FS_DIRECTORY) -> "directory_template.xml".
-
+template_file_name(?FS_DIRECTORY) -> "directory_template.xml";
+template_file_name(?FS_DIRECTORY_REALM) -> "directory_realm_template.xml".
 
 compile_templates() ->
-    [ compile_template(wh_util:to_atom(T,'true'))    || T <- ?FS_TEMPLATES].
+    [ compile_template(wh_util:to_atom(T,'true'))    || T <- ?FS_ALL_TEMPLATES].
     
 -spec compile_template(atom()) -> any().
 compile_template(Module) ->
@@ -449,6 +513,32 @@ render(Module, Props) ->
     end.
     
 
+-spec xml_file(atom()) -> string().
+xml_file(Module) ->
+    filename:join([code:lib_dir('crossbar', 'priv')
+                   ,"freeswitch"
+                  ,xml_file_name(Module)
+                  ]).
+
+-spec xml_file_name(atom()) -> string().
+xml_file_name(?FS_DIALPLAN) -> "dialplan.xml";
+xml_file_name(?FS_CHATPLAN) -> "chatplan.xml";
+xml_file_name(?FS_DIRECTORY) -> "directory.xml".
+
+-spec xml_file_from_config(atom()) -> any().
+-spec xml_file_from_config(atom(), ne_binary()) -> any().
+xml_file_from_config(Module) ->
+    KeyName = <<(wh_util:to_binary(Module))/binary,"_top_dir_file_content">>,
+    xml_file_from_config(Module, KeyName).
+xml_file_from_config(Module, KeyName) ->    
+    xml_file_from_config(Module, whapps_config:get_binary(?MOD_CONFIG_CAT, KeyName), KeyName).
+                
+-spec xml_file_from_config(atom(), api_binary(), ne_binary()) -> ne_binary().
+xml_file_from_config(Module, 'undefined', KeyName) ->
+    {'ok', Contents} = file:read_file(xml_file(Module)),
+    whapps_config:set(?MOD_CONFIG_CAT, KeyName, Contents),
+    Contents;
+xml_file_from_config(_, Contents, _) -> Contents.
 
     
 
