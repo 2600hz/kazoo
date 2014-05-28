@@ -57,6 +57,7 @@ send_auth_resp(#auth_user{password=Password
               ,{<<"Auth-Password">>, Password}
               ,{<<"Auth-Method">>, get_auth_method(Method)}
               ,{<<"Auth-Nonce">>, Nonce}
+              ,{<<"Expires">>, wh_json:get_value(<<"Expires">>,JObj)}
               ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
               ,{<<"Register-Overwrite-Notify">>, RegisterOverwrite}
               ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
@@ -343,7 +344,7 @@ maybe_auth_method(AuthUser, _JObj, _Req, ?ANY_AUTH_METHOD)-> {'ok', AuthUser}.
 
 -spec maybe_update_gsm(api_binary(), auth_user()) -> auth_user().
 maybe_update_gsm(<<"PRE-REGISTER">>, AuthUser) ->
-    lists:foldl(fun(F,A) -> F(A) end, AuthUser, ?GSM_PRE_REGISTER_ROUTINES);    
+    lists:foldl(fun(F,A) -> F(A) end, AuthUser, ?GSM_PRE_REGISTER_ROUTINES);
 maybe_update_gsm(<<"REGISTER">>, AuthUser) ->
     lists:foldl(fun(F,A) -> F(A) end, AuthUser, ?GSM_REGISTER_ROUTINES);
 maybe_update_gsm(_, AuthUser) -> AuthUser.

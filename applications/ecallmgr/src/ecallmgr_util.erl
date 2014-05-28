@@ -35,6 +35,7 @@
 -export([lookup_media/4]).
 
 -export([custom_sip_headers/1 , is_custom_sip_header/1, normalize_custom_sip_header_name/1]).
+-export([maybe_add_expires_deviation/1]).
 
 -include("ecallmgr.hrl").
 
@@ -208,6 +209,8 @@ get_sip_request(Props) ->
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                      ,<<"variable_sip_auth_realm">>
                                      ,<<"variable_sip_to_host">>
+                                     ,<<"sip_auth_realm">>
+                                     ,<<"sip_to_host">>
                                     ], Props, ?DEFAULT_REALM),
     <<User/binary, "@", Realm/binary>>.
 
@@ -943,3 +946,8 @@ is_custom_sip_header({<<"X-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"sip_h_", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"variable_sip_h_", _/binary>>, _}) -> 'true';
 is_custom_sip_header(Header) -> 'false'.
+
+-spec maybe_add_expires_deviation(api_integer()) -> api_integer().
+maybe_add_expires_deviation('undefined') -> 'undefined';
+maybe_add_expires_deviation(Expires) ->
+    Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
