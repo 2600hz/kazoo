@@ -154,24 +154,27 @@
                     "type":"object",
                     "properties":{
                         "codecs":{
-                            "name":"Audio Codecs",
-                            "description":"A list of audio codecs to use",
-                            "type":"array",
+                            "name":"Audio Codecs"
+                            ,"description":"A list of audio codecs to use"
+                            ,"type":"array"
                             ,"uniqueItems":true
-                            "enum":[
-                                "G729",
-                                "GSM",
-                                "PCMU",
-                                "PCMA",
-                                "G722_16",
-                                "G722_32",
-                                "CELT_48",
-                                "CELT_64",
-                                "Speex",
-                                "GSM",
-                                "OPUS"
-                            ],
-                            "default":[
+                            ,"items":{
+                                "type":"string"
+                                ,"enum":[
+                                    "G729",
+                                    "GSM",
+                                    "PCMU",
+                                    "PCMA",
+                                    "G722_16",
+                                    "G722_32",
+                                    "CELT_48",
+                                    "CELT_64",
+                                    "Speex",
+                                    "GSM",
+                                    "OPUS"
+                                ]
+                            }
+                            ,"default":[
                                 "PCMU"
                             ]
                         }
@@ -182,16 +185,19 @@
                     "type":"object",
                     "properties":{
                         "codecs":{
-                            "name":"Video Codecs",
-                            "description":"A list of video codecs to use",
-                            "type":"array",
-                            "enum":[
-                                "H261",
-                                "H263",
-                                "H264"
-                            ],
-                            "default":[
-
+                            "name":"Video Codecs"
+                            ,"description":"A list of video codecs to use"
+                            ,"type":"array"
+                            ,"uniqueItems":true
+                            ,"items":{
+                                "type":"string"
+                                ,"enum":[
+                                    "H261"
+                                    ,"H263"
+                                    ,"H264"
+                                ]
+                            }
+                            ,"default":[
                             ]
                         }
                     }
@@ -215,7 +221,6 @@
                 }
             },
             "default":{
-
             }
         },
         "music_on_hold":{
@@ -230,7 +235,6 @@
                 }
             },
             "default":{
-
             }
         },
         "call_forward":{
@@ -281,7 +285,6 @@
                 }
             },
             "default":{
-
             }
         },
         "skype":{
@@ -377,7 +380,7 @@
             "default":{
             }
         }
-        "dialplan":{
+        ,"dialplan":{
             "$ref":"dialplan"
         }
     }
