@@ -177,7 +177,6 @@ handle_directory_lookup(Id, Props, Node) ->
         {<<"REQUEST_PARAMS">>, <<"reverse-auth-lookup">>} ->
             lookup_user(Node, Id, <<"reverse-lookup">>, Props);
         _Other ->
-            props:to_log(Props, <<"OTHER">>),
             {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
             _ = freeswitch:fetch_reply(Node, Id, 'directory', Resp),
             lager:debug("ignoring authn request from ~s for ~p", [Node, _Other])
@@ -198,7 +197,7 @@ lookup_user(Node, Id, Method,  Props) ->
 get_auth_realm(Props) ->
     case props:get_first_defined([<<"sip_auth_realm">>
                                   ,<<"domain">>
-                                 ], Props) 
+                                 ], Props)
     of
         'undefined' -> get_auth_uri_realm(Props);
         Realm ->
@@ -278,7 +277,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
         {'error', _}=E -> E;
         {'ok', JObj} -> maybe_defered_error(Realm, Username, JObj)
     end.
-  
+
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
 %%   timeout (at the moment) but when we seek auth for INVITEs we need
 %%   to wait for conferences, ect.  Since Kamailio does not honor
