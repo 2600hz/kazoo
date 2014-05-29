@@ -34,6 +34,7 @@
 -define(PROPERTIES,           <<"properties">>).
 -define(PATTERNPROPERTIES,    <<"patternProperties">>).
 -define(ADDITIONALPROPERTIES, <<"additionalProperties">>).
+-define(MINPROPERTIES,        <<"minProperties">>).
 -define(ITEMS,                <<"items">>).
 -define(ADDITIONALITEMS,      <<"additionalItems">>).
 -define(REQUIRED,             <<"required">>).
@@ -90,6 +91,7 @@
 -define(wrong_size,                  'wrong_size').
 -define(wrong_min_items,             'wrong_min_items').
 -define(wrong_max_items,             'wrong_max_items').
+-define(wrong_min_properties,        'wrong_min_properties').
 -define(wrong_length,                'wrong_length').
 -define(wrong_min_length,            'wrong_min_length').
 -define(wrong_max_length,            'wrong_max_length').
@@ -208,6 +210,17 @@ check_value( Value
                false -> State
        end,
   check_value(Value, Attrs, NewState);
+
+check_value( Value
+             , [{?MINPROPERTIES, MinProperties} | Attrs]
+             , State
+             ) ->
+  NewState = case is_json_object(Value) of
+               'true'  -> check_min_properties(Value, MinProperties, State);
+               'false' -> State
+             end,
+  check_value(Value, Attrs, NewState);
+
 check_value(Value, [{?ITEMS, Items} | Attrs], State) ->
   NewState = case is_array(Value) of
                true  -> check_items(Value, Items, State);
@@ -798,6 +811,13 @@ check_min_items(Value, MinItems, State) when length(Value) >= MinItems ->
   State;
 check_min_items(Value, _MinItems, State) ->
   handle_data_invalid(?wrong_min_items, Value, State).
+
+%% @doc 5.4.2 minProperties
+check_min_properties(Value, MinProperties, State) ->
+  case length(wh_json:get_keys(Value)) >= MinProperties of
+    'true' -> State;
+    'false' -> handle_data_invalid(?wrong_min_properties, Value, State)
+  end.
 
 %% @doc 5.14.  maxItems
 %%
