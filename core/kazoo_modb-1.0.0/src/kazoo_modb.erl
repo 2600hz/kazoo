@@ -24,10 +24,10 @@
 %%--------------------------------------------------------------------
 
 -spec get_results(ne_binary(), ne_binary(), wh_proplist()) ->
-                         {'ok', wh_json:object()} |
+                         {'ok', wh_json:objects()} |
                          {'error', atom()}.
 -spec get_results(ne_binary(), ne_binary(), wh_proplist(), integer()) ->
-                         {'ok', wh_json:object()} |
+                         {'ok', wh_json:objects()} |
                          {'error', atom()}.
 get_results(Account, View, ViewOptions) ->
     get_results(Account, View, ViewOptions, 3).
@@ -44,8 +44,7 @@ get_results(Account, View, ViewOptions, Retry) ->
     end.
 
 -spec get_results_not_found(ne_binary(), ne_binary(), wh_proplist(), integer()) ->
-                                   {'ok', wh_json:object()} |
-                                   {'error', atom()}.
+                                   {'ok', wh_json:objects()}.
 get_results_not_found(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
@@ -54,11 +53,16 @@ get_results_not_found(Account, View, ViewOptions, Retry) ->
             refresh_views(AccountMODb),
             get_results(Account, View, ViewOptions, Retry-1);
         'false' ->
-            case maybe_create(AccountMODb) of
-                'true' ->
-                    get_results(Account, View, ViewOptions, Retry-1);
-                'false' -> {'error', 'modb_too_old'}
-            end
+            get_results_missing_db(Account, View, ViewOptions, Retry)
+    end.
+
+-spec get_results_missing_db(ne_binary(), ne_binary(), wh_proplist(), integer()) ->
+                                    {'ok', wh_json:objects()}.
+get_results_missing_db(Account, View, ViewOptions, Retry) ->
+    AccountMODb = get_modb(Account, ViewOptions),
+    case maybe_create(AccountMODb) of
+        'true' -> get_results(Account, View, ViewOptions, Retry-1);
+        'false' -> {'ok', []}
     end.
 
 %%--------------------------------------------------------------------
