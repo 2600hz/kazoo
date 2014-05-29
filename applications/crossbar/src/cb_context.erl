@@ -424,7 +424,6 @@ validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
 failed(Context, Errors) ->
     lists:foldl(fun failed_error/2, set_resp_status(Context, 'error'), Errors).
 
-
 failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_length'
@@ -514,6 +513,17 @@ failed_error({'data_invalid'
                         );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
+              ,'wrong_min_properties'
+              ,_FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    add_validation_error(FailedKeyPath
+                         ,<<"minProperties">>
+                         ,<<"Not enough keys in the object">>
+                         ,Context
+                        );
+failed_error({'data_invalid'
+              ,_FailedSchemaJObj
               ,{'not_unique', _Item}
               ,_FailedValue
               ,FailedKeyPath
@@ -537,6 +547,17 @@ failed_error({'data_invalid'
                          ,Context
                         );
 failed_error({'data_invalid'
+              ,_FailedSchemaJObj
+              ,'no_extra_items_allowed'
+              ,_FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    add_validation_error(FailedKeyPath
+                         ,<<"additionalItems">>
+                         ,<<"Strict checking of data is enabled; only include schema-defined items">>
+                         ,Context
+                        );
+failed_error({'data_invalid'
               ,FailedSchemaJObj
               ,'no_match'
               ,_FailedValue
@@ -550,6 +571,66 @@ failed_error({'data_invalid'
                         );
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
+              ,'missing_required_property'
+              ,_FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    add_validation_error(FailedKeyPath
+                         ,<<"required">>
+                         ,<<"Field is required but missing">>
+                         ,Context
+                        );
+failed_error({'data_invalid'
+              ,_FailedSchemaJObj
+              ,'missing_dependency'
+              ,_FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    add_validation_error(FailedKeyPath
+                         ,<<"dependencies">>
+                         ,<<"Dependencies were not validated">>
+                         ,Context
+                        );
+failed_error({'data_invalid'
+              ,FailedSchemaJObj
+              ,'not_divisible'
+              ,_FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    DivBy = wh_json:get_binary_value(<<"divisibleBy">>, FailedSchemaJObj),
+    add_validation_error(FailedKeyPath
+                         ,<<"divisibleBy">>
+                         ,<<"Value not divisible by ", DivBy/binary>>
+                         ,Context
+                        );
+failed_error({'data_invalid'
+              ,FailedSchemaJObj
+              ,'not_allowed'
+              ,_FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    Disallow = get_disallow(FailedSchemaJObj),
+    add_validation_error(FailedKeyPath
+                         ,<<"disallow">>
+                         ,<<"Value is disallwed by ", Disallow/binary>>
+                         ,Context
+                        );
+failed_error({'data_invalid'
+              ,FailedSchemaJObj
+              ,'wrong_type'
+              ,_FailedValue
+              ,FailedKeyPath
+             }, Context) ->
+    Types = get_types(FailedSchemaJObj),
+    add_validation_error(FailedKeyPath
+                         ,<<"type">>
+                         ,<<"Value did not match type(s): ", Types/binary>>
+                         ,Context
+                        );
+
+
+failed_error({'data_invalid'
+              ,_FailedSchemaJObj
               ,FailMsg
               ,_FailedValue
               ,FailedKeyPath
@@ -559,6 +640,21 @@ failed_error({'data_invalid'
     lager:debug("failed value: ~p", [_FailedValue]),
     lager:debug("failed keypath: ~p", [FailedKeyPath]),
     add_validation_error(FailedKeyPath, wh_util:to_binary(FailMsg), <<"failed to validate">>, Context).
+
+-spec get_disallow(wh_json:object()) -> ne_binary().
+get_disallow(JObj) ->
+    case wh_json:get_value(<<"disallow">>, JObj) of
+        <<_/binary>> = Disallow -> Disallow;
+        Disallows when is_list(Disallows) -> wh_util:join_binary(Disallows)
+    end.
+
+-spec get_types(wh_json:object()) -> ne_binary().
+get_types(JObj) ->
+    case wh_json:get_value(<<"types">>, JObj) of
+        <<_/binary>> = Type -> Type;
+        Types when is_list(Types) -> wh_util:join_binary(Types);
+        _TypeSchema -> <<"type schema">>
+    end.
 
 -spec passed(context()) -> context().
 -spec passed(context(), crossbar_status()) -> context().
