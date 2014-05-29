@@ -1,7 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Accept third-party dialplan
+%%% "data":{
+%%%   "voice_url":"http://your.pivot.server/path/to/pivot/dialplan"
+%%%   ,"cdr_url":"http://your.pivot.server/path/to/cdr/receiver"
+%%%   ,"req_format":"kazoo" // or "twiml"
+%%%   ,"method":"get" // or "post"
+%%%   ,"debug":false // or true
+%%% }
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -21,7 +28,6 @@
 %%
 %% Expected data payload:
 %%   http_method: "get" | "post"
-%%   req_timeout: integer(), defaults to 5 seconds
 %%   voice_url: string(), url to get/post to
 %%   req_format: string(), data format and payload expected for initial
 %%     request (defaults to twiml for the moment),
