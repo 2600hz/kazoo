@@ -949,10 +949,14 @@ is_custom_sip_header(Header) -> 'false'.
 
 -spec maybe_add_expires_deviation(api_integer()) -> api_integer().
 maybe_add_expires_deviation('undefined') -> 'undefined';
+maybe_add_expires_deviation(Expires) when not is_integer(Expires) ->
+    maybe_add_expires_deviation(wh_util:to_integer(Expires));
 maybe_add_expires_deviation(Expires) ->
     Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
 
 -spec maybe_add_expires_deviation_ms(api_integer()) -> api_integer().
 maybe_add_expires_deviation_ms('undefined') -> 'undefined';
+maybe_add_expires_deviation_ms(Expires) when not is_integer(Expires) ->
+    maybe_add_expires_deviation_ms(wh_util:to_integer(Expires));
 maybe_add_expires_deviation_ms(Expires) ->
     maybe_add_expires_deviation(Expires) * 1000.
