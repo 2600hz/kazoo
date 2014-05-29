@@ -17,6 +17,7 @@
 -export([sync_channels/1
          ,sync_interface/1
          ,sync_capabilities/1
+         ,sync_registrations/1
         ]).
 -export([sip_url/1]).
 -export([sip_external_ip/1]).
@@ -180,6 +181,10 @@ sync_interface(Srv) ->
 sync_capabilities(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_capabilities').
 
+-spec sync_registrations(fs_node()) -> 'ok'.
+sync_registrations(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_registrations').
+
 -spec hostname(pid()) -> api_binary().
 hostname(Srv) ->
     case fs_node(Srv) of
@@ -302,6 +307,9 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
                ],
     _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
+handle_cast('sync_registrations', #state{node=Node}=State) ->
+    _ = spawn(fun() -> maybe_replay_registrations(Node) end),
+    {'noreply', State};
 handle_cast(_Req, State) ->
     {'noreply', State}.
 
@@ -381,6 +389,7 @@ run_start_cmds(Node) ->
                            Errs -> print_api_responses(Errs)
                        end,
                        sync_interface(Parent),
+                       sync_registrations(Parent),
                        sync_capabilities(Parent)
                end).
 
@@ -543,4 +552,28 @@ maybe_add_capability(Node, Capability) ->
             end;
         {'error', _E} ->
             lager:debug("failed to probe node ~s: ~p", [Node, _E])
+    end.
+
+maybe_replay_registrations(Node) ->
+    A = get_registrations(Node),
+    lager:debug("THAT EASY? ~p", [A]),
+    replay_registration(Node, A).
+
+replay_registration(Node, []) -> 'ok';
+replay_registration(Node, [Reg | Regs]) ->
+    lager:debug("Registration Line ~p",[Reg]),
+    replay_registration(Node, Regs).
+
+-spec get_registrations(atom()) -> wh_proplist().
+get_registrations(Node) ->
+    case freeswitch:api(Node, 'show', "registrations") of
+        {'ok', Response} ->
+            R = binary:replace(Response, <<" ">>, <<>>, ['global']),
+            [KV || Line <- binary:split(R, <<"\n">>, ['global']),
+                   (KV = case binary:split(Line, <<",">> ) of
+                             [K, V] -> {K, V};
+                             _ -> 'false'
+                         end) =/= 'false'
+            ];
+        _Else -> []
     end.
