@@ -358,6 +358,8 @@ get_account_doc(JObj) ->
 -spec category_to_file(ne_binary()) -> iolist() | 'undefined'.
 category_to_file(<<"notify.voicemail_to_email">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_vm.config"];
+category_to_file(<<"notify.voicemail_full">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_vm_full.config"];
 category_to_file(<<"notify.fax_to_email">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_fax.config"];
 category_to_file(<<"notify.fax_inbound_to_email">>) ->

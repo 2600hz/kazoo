@@ -13,6 +13,7 @@
 -export([declare_exchanges/0]).
 
 -export([voicemail/1, voicemail_v/1
+         ,voicemail_full/1, voicemail_full_v/1
          ,fax_inbound/1, fax_inbound_v/1
          ,fax_inbound_error/1, fax_inbound_error_v/1
          ,fax_outbound/1, fax_outbound_v/1
@@ -39,6 +40,7 @@
         ]).
 
 -export([publish_voicemail/1, publish_voicemail/2
+         ,publish_voicemail_full/1, publish_voicemail_full/2
          ,publish_fax_inbound/1, publish_fax_inbound/2
          ,publish_fax_outbound/1, publish_fax_outbound/2
          ,publish_fax_inbound_error/1, publish_fax_inbound_error/2
@@ -65,6 +67,7 @@
 -include_lib("whistle/include/wh_api.hrl").
 
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
+-define(NOTIFY_VOICEMAIL_FULL, <<"notifications.voicemail.full">>).
 -define(NOTIFY_FAX_INBOUND, <<"notifications.fax.inbound">>).
 -define(NOTIFY_FAX_OUTBOUND, <<"notifications.fax.outbound">>).
 -define(NOTIFY_FAX_INBOUND_ERROR, <<"notifications.fax.inbound_error">>).
@@ -105,6 +108,17 @@
                            ,{<<"Event-Name">>, <<"new_voicemail">>}
                           ]).
 -define(VOICEMAIL_TYPES, []).
+
+%% Notify Voicemail full
+-define(VOICEMAIL_FULL_HEADERS, [<<"Account-DB">>
+                                 ,<<"Voicemail-Box">> ,<<"Voicemail-Number">>
+                                 ,<<"Max-Message-Count">> ,<<"Message-Count">>
+                                ]).
+-define(OPTIONAL_VOICEMAIL_FULL_HEADERS, [<<"Account-ID">>]).
+-define(VOICEMAIL_FULL_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                ,{<<"Event-Name">>, <<"voicemail_full">>}
+                               ]).
+-define(VOICEMAIL_FULL_TYPES, []).
 
 %% Notify New Fax
 -define(FAX_INBOUND_HEADERS, [<<"From-User">>, <<"From-Realm">>
@@ -359,6 +373,23 @@ voicemail(JObj) -> voicemail(wh_json:to_proplist(JObj)).
 voicemail_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_VALUES, ?VOICEMAIL_TYPES);
 voicemail_v(JObj) -> voicemail_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+voicemail_full(Prop) when is_list(Prop) ->
+    case voicemail_full_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?VOICEMAIL_FULL_HEADERS, ?OPTIONAL_VOICEMAIL_FULL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for voicemail_full"}
+    end;
+voicemail_full(JObj) -> voicemail_full(wh_json:to_proplist(JObj)).
+
+-spec voicemail_full_v(api_terms()) -> boolean().
+voicemail_full_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?VOICEMAIL_FULL_HEADERS, ?VOICEMAIL_FULL_VALUES, ?VOICEMAIL_FULL_TYPES);
+voicemail_full_v(JObj) -> voicemail_full_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -732,6 +763,9 @@ bind_to_q(Q, 'undefined') ->
 bind_to_q(Q, ['new_voicemail'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     bind_to_q(Q, T);
+bind_to_q(Q, ['voicemail_full'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_FULL),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['inbound_fax'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_INBOUND),
     bind_to_q(Q, T);
@@ -818,6 +852,9 @@ unbind_q_from(Q, 'undefined') ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, <<"notifications.*.*">>);
 unbind_q_from(Q, ['new_voicemail'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['voicemail_full'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_FULL),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['inbound_fax'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_INBOUND),
@@ -911,6 +948,13 @@ publish_voicemail(JObj) -> publish_voicemail(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_voicemail(Voicemail, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Voicemail, ?VOICEMAIL_VALUES, fun ?MODULE:voicemail/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_NEW, Payload, ContentType).
+
+-spec publish_voicemail_full(api_terms()) -> 'ok'.
+-spec publish_voicemail_full(api_terms(), ne_binary()) -> 'ok'.
+publish_voicemail_full(JObj) -> publish_voicemail_full(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_voicemail_full(Voicemail, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Voicemail, ?VOICEMAIL_FULL_VALUES, fun ?MODULE:voicemail_full/1),
+    amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_FULL, Payload, ContentType).
 
 -spec publish_fax_inbound(api_terms()) -> 'ok'.
 -spec publish_fax_inbound(api_terms(), ne_binary()) -> 'ok'.

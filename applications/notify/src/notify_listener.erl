@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+  %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Handle updating devices and emails about voicemails
@@ -27,6 +27,7 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
+                     ,{notify_vm_full, [{<<"notification">>, <<"voicemail_full">>}]}
                      ,{notify_fax_inbound, [{<<"notification">>, <<"inbound_fax">>}]}
                      ,{notify_fax_outbound, [{<<"notification">>, <<"outbound_fax">>}]}
                      ,{notify_fax_inbound_error, [{<<"notification">>, <<"inbound_fax_error">>}]}
@@ -43,6 +44,7 @@
                     ]).
 
 -define(RESTRICT_TO, [new_voicemail
+                      ,voicemail_full
                       ,inbound_fax
                       ,inbound_fax_error
                       ,outbound_fax
