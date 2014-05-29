@@ -36,20 +36,19 @@
 
 -type http_method() :: 'get' | 'post'.
 
--record(state, {
-          voice_uri :: api_binary()
-         ,cdr_uri :: api_binary()
-         ,request_format = <<"twiml">> :: api_binary()
-         ,method = 'get' :: http_method()
-         ,call :: whapps_call:call()
-         ,request_id :: ibrowse_req_id()
-         ,request_params :: wh_json:object()
-         ,response_body :: binary()
-         ,response_content_type :: binary()
-         ,response_pid :: pid() %% pid of the processing of the response
-         ,response_event_handlers = [] :: pids()
-         ,response_ref :: reference() %% monitor ref for the pid
-         }).
+-record(state, {voice_uri :: api_binary()
+                ,cdr_uri :: api_binary()
+                ,request_format = <<"twiml">> :: api_binary()
+                ,method = 'get' :: http_method()
+                ,call :: whapps_call:call()
+                ,request_id :: ibrowse_req_id()
+                ,request_params :: wh_json:object()
+                ,response_body :: binary()
+                ,response_content_type :: binary()
+                ,response_pid :: pid() %% pid of the processing of the response
+                ,response_event_handlers = [] :: pids()
+                ,response_ref :: reference() %% monitor ref for the pid
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
