@@ -822,6 +822,7 @@ create_mobile_endpoint(Endpoint, Properties, Call) ->
             Prop = [{<<"Invite-Format">>, <<"route">>}
                     ,{<<"Ignore-Early-Media">>, <<"true">>}
                     ,{<<"Route">>, Route}
+                    ,{<<"Ignore-Early-Media">>, <<"true">>}
                     ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
                     ,{<<"Endpoint-Delay">>, get_delay(Properties)}
                     ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
