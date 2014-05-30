@@ -192,8 +192,8 @@ blocking_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh() -> 'started'.
--spec refresh(ne_binary() | nonempty_string()) -> 'ok'.
--spec refresh(ne_binary(), wh_json:objects()) -> 'ok'.
+-spec refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
+-spec refresh(ne_binary(), wh_json:objects()) -> 'ok' | 'remove'.
 
 refresh() ->
     _ = spawn(fun do_refresh/0),
@@ -316,6 +316,7 @@ refresh(Account, Views) ->
             refresh_account_db(AccountDb, AccountId, Views, JObj)
     end.
 
+-spec refresh_account_db(ne_binary(), ne_binary(), ne_binaries(), wh_json:object()) -> 'ok'.
 refresh_account_db(AccountDb, AccountId, Views, JObj) ->
     _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
     AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
@@ -329,39 +330,46 @@ refresh_account_db(AccountDb, AccountId, Views, JObj) ->
     io:format("    updating views in ~s~n", [AccountDb]),
     whapps_util:update_views(AccountDb, Views, 'true').
 
+-spec refresh_account_mods(ne_binary()) -> 'ok'.
 refresh_account_mods(AccountDb) ->
     Views = get_all_account_mod_views(),
-    MODs = whapps_util:get_account_mods(AccountDb),
-    [refresh_account_mod(AccountMOD, Views)
-     || AccountMOD <- MODs
-    ].
+    _ = [refresh_account_mod(AccountMOD, Views)
+         || AccountMOD <- whapps_util:get_account_mods(AccountDb)
+        ],
+    'ok'.
 
+-spec refresh_account_mod(ne_binary(), ne_binaries()) -> 'ok'.
 refresh_account_mod(AccountMOD, Views) ->
     io:format("    updating views in mod ~s~n", [AccountMOD]),
     whapps_util:update_views(AccountMOD, Views).
 
+-spec refresh_account_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 refresh_account_devices(AccountDb, AccountRealm, Devices) ->
     [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
      || Device <- Devices,
         wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
             orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =/= 'undefined'
-    ].
+    ],
+    'ok'.
 
+-spec remove_aggregate_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
     [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
      || Device <- Devices,
         wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
             andalso wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =:= 'undefined'
-    ].
+    ],
+    'ok'.
 
+-spec refresh_from_accounts_db(ne_binary(), ne_binary()) -> 'ok'.
 refresh_from_accounts_db(AccountDb, AccountId) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', Def} ->
             io:format("    account ~s is missing its local account definition, but it was recovered from the accounts db~n", [AccountId]),
-            couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def));
+            couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def)),
+            'ok';
         {'error', 'not_found'} ->
             io:format("    account ~s is missing its local account definition, and not in the accounts db~n", [AccountId])
-            %%couch_mgr:db_delete(AccountDb)
     end.
 
 %%--------------------------------------------------------------------
