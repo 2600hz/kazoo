@@ -21,7 +21,7 @@
         ,"method":{
             "description":"What HTTP verb to send the request(s) with"
             ,"type":"string"
-            ,"enum":["get", "post"]
+            ,"enum":["get", "post", "GET", "POST"]
             ,"default":"get"
         }
         ,"debug":{
