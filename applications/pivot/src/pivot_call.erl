@@ -564,7 +564,7 @@ store_debug(Call, Doc) ->
     AccountModDb = wh_util:format_account_mod_id(whapps_call:account_id(Call)),
     JObj = wh_doc:update_pvt_parameters(
              wh_json:from_list(
-               [{<<"call_id">>, whapps_call:call_id()}
+               [{<<"call_id">>, whapps_call:call_id(Call)}
                 | Doc
                ])
              ,AccountModDb
