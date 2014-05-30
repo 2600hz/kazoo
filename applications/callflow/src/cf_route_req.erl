@@ -10,6 +10,8 @@
 
 -include("callflow.hrl").
 
+-define(RESOURCE_TYPES_HANDLED,[<<"audio">>,<<"video">>]).
+
 -export([handle_req/2]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -18,6 +20,7 @@ handle_req(JObj, Props) ->
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call))
         andalso callflow_should_respond(Call)
+        andalso callflow_resource_allowed(Call)
     of
         'true' ->
             lager:info("received a request asking if callflows can route this call"),
@@ -116,6 +119,16 @@ callflow_should_respond(Call) ->
         _Else -> 'false'
     end.
 
+-spec callflow_resource_allowed(whapps_call:call()) -> boolean().
+callflow_resource_allowed(Call) ->
+    is_resource_allowed(whapps_call:resource_type(Call)).
+
+-spec is_resource_allowed(api_binary()) -> boolean().
+is_resource_allowed('undefined') -> 'true';
+is_resource_allowed(ResourceType) ->
+    lists:member(ResourceType, ?RESOURCE_TYPES_HANDLED).
+
+    
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
