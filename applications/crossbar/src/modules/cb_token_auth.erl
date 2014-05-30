@@ -131,16 +131,104 @@ check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->
     lager:debug("checking auth token: ~s", [AuthToken]),
     case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
-        {'ok', JObj} ->
-            lager:debug("token auth is valid, authenticating"),
-            {'true', cb_context:set_auth_doc(
-                       cb_context:set_auth_account_id(Context
-                                                      ,wh_json:get_ne_value(<<"account_id">>, JObj)
-                                                     )
-                       ,wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj)
-                      )
-            };
+        {'ok', JObj} -> check_restrictions(Context, JObj);
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             'false'
     end.
+
+-spec check_restrictions(cb_context:context(), json:object()) -> boolean() |
+                                                                 {'true', cb_context:context()}.
+check_restrictions(Context, JObj) ->
+    case wh_json:get_value(<<"restrictions">>, JObj, []) of
+        [] ->
+            lager:debug("no restrictions, check as object", []),
+            check_as(Context, JObj);
+        Rs ->
+            {_, PathTokens} = lists:split(2, cb_context:path_tokens(Context)),
+            Restrictions = get_restrictions(Context, Rs),
+            case crossbar_bindings:matches(Restrictions, PathTokens) of
+                'false' ->
+                    lager:debug("failed to find any matches in restrictions"),
+                    'false';
+                'true' ->
+                    lager:debug("found matche in restrictions, check as object now"),
+                    check_as(Context, JObj)
+            end
+    end.
+
+-spec get_restrictions(cb_context:context(), json:object()) -> ne_binaries().
+get_restrictions(Context, Restrictions) ->
+    Verb = wh_util:to_lower_binary(cb_context:req_verb(Context)),
+    DefaultRestrictions = wh_json:get_value(<<"*">>, Restrictions, []),
+    VerbRestrictions = wh_json:get_value(Verb, Restrictions, []),
+    lists:foldl(
+        fun(R, Acc) ->
+            case lists:member(R, Acc) of
+                'true' -> Acc;
+                'false' -> [R|Acc]
+            end
+        end
+        ,[]
+        ,VerbRestrictions ++ DefaultRestrictions
+    ).
+
+-spec check_as(cb_context:context(), json:object()) -> boolean() |
+                                                       {'true', cb_context:context()}.
+check_as(Context, JObj) ->
+    case wh_json:get_value(<<"api_key">>, JObj, 'undefined') of
+        'undefined' -> {'true', set_auth_doc(Context, JObj)};
+        ApiKey -> check_as_payload(Context, JObj, ApiKey)
+    end.
+
+-spec check_as_payload(cb_context:context(), json:object(), ne_binary()) -> boolean() |
+                                                                            {'true', cb_context:context()}.
+check_as_payload(Context, JObj, ApiKey) ->
+    case {wh_json:get_value([<<"as">>, <<"account_id">>], JObj, 'undefined')
+          ,wh_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')}
+    of
+        {'undefined', _} -> {'true', set_auth_doc(Context, JObj)};
+        {_, 'undefined'} -> {'true', set_auth_doc(Context, JObj)};
+        {AccountId, OwnerId} -> check_descendants(Context, JObj, ApiKey, AccountId, OwnerId)
+    end.
+
+-spec check_descendants(cb_context:context(), json:object()
+                        ,ne_binary() ,ne_binary() ,ne_binary()) -> boolean() |
+                                                                   {'true', cb_context:context()}.
+check_descendants(Context, JObj, ApiKey, AccountId, OwnerId) ->
+    case get_descendants(ApiKey) of
+        {'error', _} -> 'false';
+        {'ok', Descendants} ->
+            case lists:member(AccountId, Descendants) of
+                'false' -> 'false';
+                'true' ->
+                    JObj1 = wh_json:set_values([{<<"account_id">>, AccountId}
+                                                 ,{<<"owner_id">>, OwnerId}]
+                                               ,JObj),
+                    {'true', set_auth_doc(Context, JObj1)}
+            end
+    end.
+
+-spec get_descendants(ne_binary()) -> {'error', any()} | {'ok', wh_json:objects()}.
+get_descendants(AccountId) ->
+    case couch_mgr:get_results(<<"accounts">>
+                               ,<<"accounts/listing_by_descendants">>
+                              ,[{'startkey', [AccountId]}
+                                ,{'endkey', [AccountId, wh_json:new()]}])
+    of
+        {'error', _}=Error -> Error;
+        {'ok', JObjs} ->
+            Descendants = [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs],
+            {'ok', Descendants}
+    end.
+
+-spec set_auth_doc(cb_context:context(), wh_json:object()) -> cb_context:context().
+set_auth_doc(Context, JObj) ->
+    cb_context:set_auth_doc(
+        cb_context:set_auth_account_id(
+            Context
+            ,wh_json:get_ne_value(<<"account_id">>, JObj)
+        )
+        ,wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj)
+    ).
+

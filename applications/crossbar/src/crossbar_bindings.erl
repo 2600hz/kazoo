@@ -34,6 +34,7 @@
          ,all/1
          ,succeeded/1
          ,failed/1
+         ,matches/2
         ]).
 
 -include("crossbar.hrl").
@@ -91,13 +92,24 @@ any(Res) when is_list(Res) ->
 all(Res) when is_list(Res) ->
     kazoo_bindings:all(Res, fun check_bool/1).
 
+-spec succeeded(map_results()) -> map_results().
+succeeded(Res) when is_list(Res) ->
+    kazoo_bindings:succeeded(Res, fun filter_out_failed/1).
+
 -spec failed(map_results()) -> map_results().
 failed(Res) when is_list(Res) ->
     kazoo_bindings:failed(Res, fun filter_out_succeeded/1).
 
--spec succeeded(map_results()) -> map_results().
-succeeded(Res) when is_list(Res) ->
-    kazoo_bindings:succeeded(Res, fun filter_out_failed/1).
+-spec matches(ne_binaries(), ne_binaries()) -> boolean().
+matches([], _) -> 'false';
+matches([R|Restrictions], Tokens) ->
+    Restriction = [cowboy_http:urldecode(T) || T <- binary:split(R, <<"/">>, ['global', 'trim'])],
+    case kazoo_bindings:matches(Restriction, Tokens) of
+        'true' -> 'true';
+        'false' -> matches(Restrictions, Tokens)
+    end.
+
+
 
 %%-------------------------------------------------------------------------
 %% @doc
