@@ -1,0 +1,13 @@
+{application, doodle,
+ [
+  {description, "doodle - sms store and forward"},
+  {vsn, "0.0.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { doodle_app, []}},
+  {env, []}
+ ]}.
