@@ -43,6 +43,7 @@ handle(Data, Call) ->
               ,{<<"CDR-URI">>, wh_json:get_value(<<"cdr_url">>, Data)}
               ,{<<"Request-Format">>, wh_json:get_value(<<"req_format">>, Data)}
               ,{<<"HTTP-Method">>, kzt_util:http_method(wh_json:get_value(<<"method">>, Data, 'get'))}
+              ,{<<"Debug">>, wh_json:is_true(<<"debug">>, Data, 'false')}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_pivot:publish_req(Prop),
