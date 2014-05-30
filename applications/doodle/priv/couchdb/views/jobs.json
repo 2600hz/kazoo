@@ -1,0 +1,12 @@
+{
+   "_id": "_design/sms",
+   "language": "javascript",
+   "views": {
+       "pending": {
+           "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_job_status != 'pending') return; emit(doc.pvt_created, null); }"
+       },
+       "processing_by_node": {
+           "map": "function(doc) { if (doc.pvt_type != 'sms'  || doc.pvt_job_status != 'processing' || doc.pvt_deleted) return; emit(doc.pvt_job_node, null); }"
+       }
+   }
+}
