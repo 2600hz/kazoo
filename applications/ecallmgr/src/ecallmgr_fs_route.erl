@@ -286,6 +286,7 @@ route_req(CallId, FetchId, Props, Node) ->
      ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(route_req_ccvs(FetchId, Props))}
+     ,{<<"Resource-Type">>, <<"audio">>}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
