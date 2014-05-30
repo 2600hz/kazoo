@@ -300,6 +300,8 @@
                            ,'spandsp::rxfaxnegociateresult'
                            ,?CHANNEL_MOVE_RELEASED_EVENT
                            ,?CHANNEL_MOVE_COMPLETE_EVENT
+                           ,'KZ::DELIVERY_REPORT'
+                           ,'KZ::MESSAGE'
                           ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>

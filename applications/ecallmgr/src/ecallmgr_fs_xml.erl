@@ -291,6 +291,27 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
     ErrExtEl = extension_el([condition_el(Exten)]),
     ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
+
+route_resp_xml(<<"sms">>, Routes, JObj) ->
+    lager:debug("creating a chatplan XML response"),
+    StopActionEl = action_el(<<"stop">>, <<"stored">>),
+    StopExtEl = extension_el(<<"chat plan">>, <<"false">>, [condition_el([StopActionEl])]),
+    Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
+    ContextEl = context_el(Context, [StopExtEl]),
+    SectionEl = section_el(<<"chatplan">>, <<"Chat Response">>, ContextEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
+
+route_resp_xml(<<"sms_error">>, _Routes, JObj) ->
+    ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
+    ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
+    Exten = [route_resp_log_winning_node()
+             ,route_resp_set_winning_node()
+             ,action_el(<<"respond">>, [ErrCode, ErrMsg])
+            ],
+    ErrExtEl = extension_el([condition_el(Exten)]),
+    ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
+    SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 route_resp_bridge_id() ->

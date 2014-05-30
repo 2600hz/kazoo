@@ -38,6 +38,7 @@
 -define(CHILDREN, [<<"_node">>, <<"_authn">>, <<"_route">>, <<"_channel">>
                    ,<<"_config">>, <<"_resource">>, <<"_notify">>
                    ,<<"_conference">>, <<"_event_stream_sup">>
+                   ,<<"_msg">>
                   ]).
 
 %% ===================================================================
@@ -85,6 +86,9 @@ conference_srv(Supervisor) ->
 
 event_stream_sup(Supervisor) ->
     srv(supervisor:which_children(Supervisor), "pus_maerts_tneve_").
+
+msg_srv(Supervisor) ->
+    srv(supervisor:which_children(Supervisor), "gsm_").
 
 %% ===================================================================
 %% Supervisor callbacks
