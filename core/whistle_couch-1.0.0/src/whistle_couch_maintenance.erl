@@ -26,6 +26,9 @@
          ,test_admin_connection/0
         ]).
 
+
+-export([change_api_url/2]).
+
 flush() ->
     wh_cache:flush_local(?WH_COUCH_CACHE).
 
@@ -61,3 +64,39 @@ test_connection() ->
 
 test_admin_connection() ->
     wh_couch_connections:test_admin_conn().
+
+%%
+%% Change app's urls in bulk
+%%
+%% Usage: sup whistle_couch_maintenance change_api_url userportal https://newurl.tld:8443/v1
+%%
+change_api_url(AppName, ApiUrl) ->
+    {'ok', DbsList} = couch_mgr:db_info(),
+    lists:foreach(fun(DbName) -> maybe_change_url(AppName, ApiUrl, wh_util:format_account_id(DbName,'encoded')) end, DbsList).
+
+maybe_change_url(AppName, ApiUrl, <<"account", _:41/binary>> = DbName) ->
+    case couch_mgr:get_results(DbName, <<"users/crossbar_listing">>) of
+    {'ok', JObj} ->
+        lists:foreach(fun(UserObj) ->
+                         check_user_urls(AppName, ApiUrl, DbName, wh_json:get_value(<<"id">>,UserObj))
+                      end,
+                       JObj);
+    {'error', E} ->
+            io:format("An error occurred: ~p\n", [E])
+        end,
+    timer:sleep(100);
+maybe_change_url(_AppName, _ApiUrl, _DbName) ->
+    ok.
+  %  io:format("Skipping ~p\n", [DbName]).
+
+check_user_urls(AppName, ApiUrl, DbName, UserId) ->
+    {'ok', UserDoc} = couch_mgr:open_doc(DbName, UserId),
+    AccountName = whapps_util:get_account_name(DbName),
+    CurrApiUrl = wh_json:get_value([<<"apps">>, AppName,<<"api_url">>],UserDoc),
+    case CurrApiUrl =/= 'undefined' andalso CurrApiUrl =/= ApiUrl of
+        true ->
+               {'ok', _} = couch_mgr:save_doc(DbName, wh_json:set_value([<<"apps">>, AppName,<<"api_url">>], ApiUrl, UserDoc)),
+               io:format("Url to be changed ~p, Account: ~p, User: ~p\n", [CurrApiUrl, AccountName, UserId]);
+        _ -> ok
+    end.
+
