@@ -94,7 +94,7 @@ validate(Context) -> summary(Context).
 validate(Context, ?DEBUG_PATH_TOKEN) -> debug_summary(Context);
 validate(Context, Id) -> read(Id, Context).
 
-validate(Context, ?DEBUG_PATH_TOKEN, Id) -> debug_read(Id, Context).
+validate(Context, ?DEBUG_PATH_TOKEN, CallId) -> debug_read(CallId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -107,9 +107,18 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
 -spec debug_read(ne_binary(), cb_context:context()) -> cb_context:context().
-debug_read(Id, Context) ->
+debug_read(CallId, Context) ->
     AccountModb = wh_util:format_account_mod_id(cb_context:account_id(Context)),
-    crossbar_doc:load(Id, cb_context:set_account_db(Context, AccountModb)).
+    crossbar_doc:load_view(?CB_DEBUG_LIST
+                           ,[{'endkey', [CallId]}
+                             ,{'startkey', [CallId, wh_json:new()]}
+                             ,'descending'
+                             ,'include_docs'
+                             ,{'reduce', 'false'}
+                            ]
+                           ,cb_context:set_account_db(Context, AccountModb)
+                           ,fun normalize_debug_read/2
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -130,9 +139,9 @@ summary(Context) ->
 debug_summary(Context) ->
     AccountModb = wh_util:format_account_mod_id(cb_context:account_id(Context)),
     crossbar_doc:load_view(?CB_DEBUG_LIST
-                           ,[]
+                           ,[{'group_level', 1}]
                            ,cb_context:set_account_db(Context, AccountModb)
-                           ,fun normalize_view_results/2
+                           ,fun normalize_debug_results/2
                           ).
 
 %%--------------------------------------------------------------------
@@ -144,3 +153,17 @@ debug_summary(Context) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_debug_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+normalize_debug_results(JObj, Acc) ->
+    [wh_json:get_value([<<"key">>, 1], JObj)|Acc].
+
+-spec normalize_debug_read(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+normalize_debug_read(JObj, Acc) ->
+    [wh_json:get_value(<<"doc">>, JObj) | Acc].
