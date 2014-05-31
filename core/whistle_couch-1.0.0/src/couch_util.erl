@@ -377,7 +377,7 @@ save_docs(#server{}=Conn, DbName, Docs, Options) ->
     do_save_docs(Db, Docs, Options).
 
 -spec lookup_doc_rev(server(), ne_binary(), ne_binary()) ->
-                            {'ok', binary()} |
+                            {'ok', ne_binary()} |
                             couchbeam_error().
 lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     case do_fetch_rev(get_db(Conn, DbName), DocId) of
@@ -408,19 +408,22 @@ del_doc(#server{}=Conn, DbName, Doc) ->
     do_delete_doc(Conn, Db, Doc).
 
 -spec del_docs(server(), ne_binary(), wh_json:objects()) ->
-                      {'ok', wh_json:objects()}.
+                      {'ok', wh_json:objects()} |
+                      couchbeam_error().
 del_docs(#server{}=Conn, DbName, Doc) ->
     Db = get_db(Conn, DbName),
     do_delete_docs(Conn, Db, Doc).
 
 %% Internal Doc functions
--spec do_delete_doc(server(), ne_binary(), wh_json:object() | ne_binary()) ->
-                           {'ok', wh_json:objects()}.
+-spec do_delete_doc(server(), couchbeam_db(), wh_json:object() | ne_binary()) ->
+                           {'ok', wh_json:objects()} |
+                           couchbeam_error().
 do_delete_doc(Conn, #db{}=Db, Doc) ->
     do_delete_docs(Conn, Db, [Doc]).
 
--spec do_delete_docs(server(), ne_binary(), wh_json:object() | ne_binary()) ->
-                            {'ok', wh_json:objects()}.
+-spec do_delete_docs(server(), couchbeam_db(), wh_json:objects() | ne_binaries()) ->
+                            {'ok', wh_json:objects()} |
+                            couchbeam_error().
 do_delete_docs(Conn, #db{}=Db, Docs) ->
     do_save_docs(Db, [prepare_doc_for_del(Conn, Db, Doc) || Doc <- Docs], []).
 
@@ -429,9 +432,10 @@ do_delete_docs(Conn, #db{}=Db, Docs) ->
 %% See https://wiki.apache.org/couchdb/FUQ, point 4 for Documents
 %% and http://grokbase.com/t/couchdb/user/11cpvasem0/database-size-seems-off-even-after-compaction-runs
 
--spec prepare_doc_for_del(server(), ne_binary(), wh_json:object() | ne_binary()) -> wh_json:object().
-prepare_doc_for_del(Conn, #db{name=DbName}=Db, DocId) when is_binary(DocId) ->
-    case lookup_doc_rev(Conn, DbName, DocId) of
+-spec prepare_doc_for_del(server(), couchbeam_db(), wh_json:object() | ne_binary()) ->
+                                 wh_json:object().
+prepare_doc_for_del(Conn, #db{name=DbName}=Db, <<_/binary>> = DocId) ->
+    case lookup_doc_rev(Conn, wh_util:to_binary(DbName), DocId) of
         {'error', _E} ->
             lager:error("doc ~p : ~p", [DocId, _E]),
             prepare_doc_for_del(Conn, Db, wh_json:new());
@@ -444,7 +448,7 @@ prepare_doc_for_del(Conn, #db{name=DbName}, Doc) ->
     Id = doc_id(Doc),
     DocRev = case doc_rev(Doc) of
                  'undefined' ->
-                     {'ok', Rev} = lookup_doc_rev(Conn, DbName, Id),
+                     {'ok', Rev} = lookup_doc_rev(Conn, wh_util:to_binary(DbName), Id),
                      Rev;
                  Rev -> Rev
              end,
@@ -471,8 +475,8 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
         {'error', _}=E -> E
     end.
 
--spec do_fetch_rev(couchbeam_db(), api_binary()) ->
-                          api_binary() |
+-spec do_fetch_rev(couchbeam_db(), ne_binary()) ->
+                          ne_binary() |
                           couchbeam_error().
 do_fetch_rev(#db{}=Db, DocId) -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId)).
 
@@ -686,7 +690,7 @@ maybe_publish_docs(#db{name=DbName}=Db, Docs, JObjs) ->
         'true' ->
             spawn(fun() ->
                           [wh_cache:erase_local(?WH_COUCH_CACHE
-                                                ,{?MODULE, DbName, doc_id(Doc)})
+                                                ,{?MODULE, wh_util:to_binary(DbName), doc_id(Doc)})
                            || Doc <- Docs
                           ],
                           [publish_doc(Db, Doc, JObj)
@@ -699,7 +703,7 @@ maybe_publish_docs(#db{name=DbName}=Db, Docs, JObjs) ->
 
 -spec maybe_publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
 maybe_publish_doc(#db{name=DbName}=Db, Doc, JObj) ->
-    wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, DbName, doc_id(Doc)}),
+    wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, wh_util:to_binary(DbName), doc_id(Doc)}),
     case couch_mgr:change_notice()
         andalso should_publish_doc(Doc)
     of
@@ -719,19 +723,18 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
     case wh_json:is_true(<<"pvt_deleted">>, Doc)
         orelse wh_json:is_true(<<"_deleted">>, Doc)
     of
-        'true' -> publish('deleted', DbName, Doc);
+        'true' -> publish('deleted', wh_util:to_binary(DbName), Doc);
         'false' ->
             case wh_json:get_value(<<"_rev">>, JObj) of
                 <<"1-", _/binary>> ->
-                    publish('created', DbName, JObj);
+                    publish('created', wh_util:to_binary(DbName), JObj);
                 _Else ->
-                    publish('edited', DbName, JObj)
+                    publish('edited', wh_util:to_binary(DbName), JObj)
             end
     end.
 
--spec publish(wapi_conf:action(), string(), wh_json:object()) -> 'ok'.
-publish(Action, DbName, Doc) ->
-    Db = wh_util:to_binary(DbName),
+-spec publish(wapi_conf:action(), ne_binary(), wh_json:object()) -> 'ok'.
+publish(Action, Db, Doc) ->
     Type = doc_type(Doc),
     Id = doc_id(Doc),
     Props =
@@ -751,7 +754,7 @@ publish(Action, DbName, Doc) ->
     Fun = fun(P) -> wapi_conf:publish_doc_update(Action, Db, Type, Id, P) end,
     whapps_util:amqp_pool_send(Props, Fun).
 
--spec doc_rev(wh_json:object()) -> ne_binary().
+-spec doc_rev(wh_json:object()) -> api_binary().
 doc_rev(Doc) ->
     wh_json:get_first_defined([<<"_rev">>, <<"rev">>], Doc).
 
