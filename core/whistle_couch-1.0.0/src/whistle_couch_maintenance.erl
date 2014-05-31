@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -26,8 +26,7 @@
          ,test_admin_connection/0
         ]).
 
-
--export([change_api_url/2]).
+-export([change_api_url/2, change_api_url/3]).
 
 flush() ->
     wh_cache:flush_local(?WH_COUCH_CACHE).
@@ -70,33 +69,46 @@ test_admin_connection() ->
 %%
 %% Usage: sup whistle_couch_maintenance change_api_url userportal https://newurl.tld:8443/v1
 %%
+-spec change_api_url(ne_binary(), ne_binary()) -> 'ignore'.
+-spec change_api_url(ne_binary(), ne_binary(), ne_binary()) -> 'ignore'.
 change_api_url(AppName, ApiUrl) ->
-    {'ok', DbsList} = couch_mgr:db_info(),
-    lists:foreach(fun(DbName) -> maybe_change_url(AppName, ApiUrl, wh_util:format_account_id(DbName,'encoded')) end, DbsList).
+    {'ok', Accounts} = whapps_util:get_all_accounts(),
+    _ = [begin
+             change_api_url(AppName, ApiUrl, Account),
+             timer:sleep(100)
+         end
+         || Account <- Accounts
+        ],
+    'ignore'.
 
-maybe_change_url(AppName, ApiUrl, <<"account", _:41/binary>> = DbName) ->
-    case couch_mgr:get_results(DbName, <<"users/crossbar_listing">>) of
-    {'ok', JObj} ->
-        lists:foreach(fun(UserObj) ->
-                         check_user_urls(AppName, ApiUrl, DbName, wh_json:get_value(<<"id">>,UserObj))
-                      end,
-                       JObj);
-    {'error', E} ->
-            io:format("An error occurred: ~p\n", [E])
+change_api_url(AppName, ApiUrl, Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+
+    _ = case couch_mgr:get_results(AccountDb, <<"users/crossbar_listing">>, ['include_docs']) of
+            {'ok', JObjs} ->
+                io:format("checking users in account ~s~n", [Account]),
+                _ = [maybe_update_user_urls(AppName, ApiUrl, AccountDb, wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs],
+                io:format("  users in account ~s successfully updated~n", [Account]);
+            {'error', _E} ->
+                io:format("an error occurred fetching users for ~s: ~p\n", [Account, _E])
         end,
-    timer:sleep(100);
-maybe_change_url(_AppName, _ApiUrl, _DbName) ->
-    ok.
-  %  io:format("Skipping ~p\n", [DbName]).
+    'ignore'.
 
-check_user_urls(AppName, ApiUrl, DbName, UserId) ->
-    {'ok', UserDoc} = couch_mgr:open_doc(DbName, UserId),
-    AccountName = whapps_util:get_account_name(DbName),
-    CurrApiUrl = wh_json:get_value([<<"apps">>, AppName,<<"api_url">>],UserDoc),
-    case CurrApiUrl =/= 'undefined' andalso CurrApiUrl =/= ApiUrl of
-        true ->
-               {'ok', _} = couch_mgr:save_doc(DbName, wh_json:set_value([<<"apps">>, AppName,<<"api_url">>], ApiUrl, UserDoc)),
-               io:format("Url to be changed ~p, Account: ~p, User: ~p\n", [CurrApiUrl, AccountName, UserId]);
-        _ -> ok
+-spec maybe_update_user_urls(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_update_user_urls(AppName, ApiUrl, AccountDb, UserJObj) ->
+    case wh_json:get_value([<<"apps">>, AppName, <<"api_url">>], UserJObj) of
+        'undefined' -> 'ok';
+        ApiUrl -> 'ok';
+        OldApiUrl ->
+            io:format("  user ~s in account ~s has old api url ~s, updating...~n"
+                      ,[wh_json:get_value(<<"_id">>, UserJObj)
+                        ,whapps_util:get_account_name(AccountDb)
+                        ,OldApiUrl
+                       ]
+                     ),
+            {'ok', _} =
+                couch_mgr:ensure_saved(AccountDb
+                                       ,wh_json:set_value([<<"apps">>, AppName, <<"api_url">>], ApiUrl, UserJObj)
+                                      ),
+            'ok'
     end.
-
