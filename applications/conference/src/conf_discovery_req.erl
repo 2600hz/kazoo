@@ -112,10 +112,6 @@ prepare_whapps_conference(Conference, Call, Srv) ->
                 ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
                ],
     C = whapps_conference:update(Routines, Conference),
-    _ = case whapps_conference:play_entry_prompt(C) of
-            'false' -> 'ok';
-            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
-        end,
     search_for_conference(C, Call, Srv).
 
 -spec search_for_conference(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
@@ -167,6 +163,21 @@ wait_for_creation(Conference, After) ->
 
 -spec handle_search_resp(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 handle_search_resp(JObj, Conference, Call, Srv) ->
+    MaxParticipants =  whapps_conference:max_participants(Conference),
+    Participants = length(wh_json:get_value(<<"Participants">>, JObj, [])),
+    case (MaxParticipants =/= 0) andalso (Participants >= MaxParticipants) of
+        'false' -> add_participant_to_conference(JObj, Conference, Call, Srv);
+        'true' ->
+            _ = whapps_call_command:b_prompt(<<"conf-max_participants">>, Call),
+            whapps_call_command:hangup(Call)
+    end.
+
+-spec add_participant_to_conference(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+add_participant_to_conference(JObj, Conference, Call, Srv) ->
+    _ = case whapps_conference:play_entry_prompt(Conference) of
+            'false' -> 'ok';
+            'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
+        end,
     lager:debug("participant switch nodename ~p", [whapps_call:switch_hostname(Call)]),
     SwitchHostname = whapps_call:switch_hostname(Call),
     case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
