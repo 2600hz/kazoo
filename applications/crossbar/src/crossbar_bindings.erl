@@ -180,7 +180,8 @@ maybe_init_mod(ModBin) ->
 
 maybe_init_mod_versions([], _) -> 'ok';
 maybe_init_mod_versions([Version|Versions], ModBin) ->
-    Module = <<ModBin/binary, "_", Version/binary>>,
+    Module = <<(wh_util:to_binary(ModBin))/binary
+               , "_", (wh_util:to_binary(Version))/binary>>,
     try (wh_util:to_atom(Module, 'true')):init() of
         _ -> maybe_init_mod_versions(Versions, ModBin)
     catch
