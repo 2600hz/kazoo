@@ -341,20 +341,26 @@ execute_status(<<"queued">>, JobId, JObj) ->
     {'ok', Endpoint } = cf_endpoint:get(MT, AccountDb),
     CIDInternal = wh_json:get_value([<<"caller_id">>,<<"internal">>,<<"number">>], Endpoint, FromUser), 
     CIDExternal = wh_json:get_value([<<"caller_id">>,<<"external">>,<<"number">>], Endpoint, FromUser), 
+
+    FlowId = wh_json:get_value(<<"flow_id">>, JObj),
+    Flow   = wh_json:get_value(<<"flow">>, JObj),
     
-    case lookup_callflow(ToUser, AccountDb) of
-        {'ok', Flow} ->
+    case wh_json:is_true(<<"is_offnet">>, JObj) of
+        'false' ->
             lager:info("trying to delivery sms into originating account"),
             deliver_in_callflow(AccountId, ToUser, Flow, JobId, JObj, CIDInternal);
-        {'error', E } ->
+        'true' ->
             lager:info("no callflow"),
-            deliver_outbound(wnm_util:to_e164(ToUser), IsReconciable, JobId, JObj, CIDExternal)
+            deliver_offnet(wnm_util:to_e164(ToUser), JobId, JObj, CIDExternal)
     end;
 execute_status(<<"ready">>, JobId, JObj) ->
     lager:info("execute ready doc ~p",[JObj]),
     URIS = wh_json:get_value(<<"target">>, JObj, []),
     Type = wh_json:get_value(<<"target_type">>, JObj, <<"on-net">>),
-    deliver(Type, URIS, JobId, JObj). 
+    deliver(Type, URIS, JobId, JObj); 
+execute_status(<<"test">>, JobId, JObj) ->
+    Module = wh_json:get_value(<<"module">>, JObj),
+    exec_mod(Module, JObj).
 
 deliver(<<"off-net">>, URIS, JobId, JObj) ->
     C = whapps_config:get_binary(?CONFIG_CAT, <<"offnet_contact">>, <<"<sip:someapp@127.0.0.1:5060>">>),    
@@ -461,15 +467,35 @@ do_deliver_sms([ Contact | Contacts], Props, JobId, JObj) ->
                        ,fun wapi_sms:publish_message/1).
     
 
-deliver_in_callflow(AccountId, Number, FlowDoc, JobId, JObj, CID) ->
-    Flow = wh_json:get_value(<<"flow">>, FlowDoc),
+
+
+
+execute_callflow(AccountId, Number, Flow, JobId, JObj, CID) ->
     Data = wh_json:get_value(<<"data">>, Flow),
     DataId = wh_json:get_value([<<"data">>,<<"id">>], Flow),
     Module = wh_json:get_value(<<"module">>, Flow),
     Children = wh_json:get_value(<<"children">>, Flow, []),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     Realm = wh_util:get_account_realm(AccountId),
-    case lookup_devices(AccountDb, Realm, Module, DataId, Children) of
+    case lookup_devices(AccountDb, Realm, Module, DataId) of
+        [] ->
+            lager:info("URIS are empty"),
+            {'failed', <<"URIS are empty">>, JObj};
+        URIS ->
+            lager:info("URIS ready ~p",[URIS]),
+            set_ready(URIS, JobId, JObj, CID)
+    end.
+
+
+
+deliver_in_callflow(AccountId, Number, Flow, JobId, JObj, CID) ->
+    Data = wh_json:get_value(<<"data">>, Flow),
+    DataId = wh_json:get_value([<<"data">>,<<"id">>], Flow),
+    Module = wh_json:get_value(<<"module">>, Flow),
+    Children = wh_json:get_value(<<"children">>, Flow, []),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Realm = wh_util:get_account_realm(AccountId),
+    case lookup_devices(AccountDb, Realm, Module, DataId) of
         [] ->
             lager:info("URIS are empty"),
             {'failed', <<"URIS are empty">>, JObj};
@@ -494,15 +520,15 @@ set_ready(URIS, JobId, JObj, CID) ->
 
 
 
-lookup_devices(AccountDb, AcctRealm, <<"device">>, Id, _Children) ->
+lookup_devices(AccountDb, AcctRealm, <<"device">>, Id) ->
     {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, Id),    
     get_uris_for_device(AcctRealm, Doc);
-lookup_devices(AccountDb, AcctRealm, <<"user">>, Id, _Children) ->
+lookup_devices(AccountDb, AcctRealm, <<"user">>, Id) ->
     lager:info("lookup user devices ~s",[Id]),
     Options = [{'key', [Id, <<"device">>]}, 'include_docs'],
     lager:info("options ~p",[Options]),
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, Options) of
-        {'ok', []} -> lager:info("zerro"),[];
+        {'ok', []} -> [];
         {'ok', [JObj]} ->
             lager:info("one"),
             Device = wh_json:get_value(<<"doc">>, JObj),
@@ -512,12 +538,13 @@ lookup_devices(AccountDb, AcctRealm, <<"user">>, Id, _Children) ->
             get_uris_for_devices(AcctRealm, Docs);
         _E ->  lager:info("erro ~p",[_E]),[]
     end;
-lookup_devices( _, _, _ , _, _) -> [].
+lookup_devices( _, _, _ , _) -> [].
     
-get_uris_for_device(AcctRealm, Doc) ->
+                                             
+get_uris_for_device(AcctRealm, [Doc | Docs]) ->
     lager:info("uris for device ~p",[Doc]),
     DeviceRealm = wh_json:get_value([<<"sip">>,<<"realm">>], Doc, []),
-    Realms = [ AcctRealm | [DeviceRealm] ],
+    Realms = [ AcctRealm | DeviceRealm ],
     Username = wh_json:get_value([<<"sip">>,<<"username">>], Doc),
     URIS = [ <<Username/binary,"@",Realm/binary>>  || Realm <- Realms],
     lager:info("uris for device ~p , ~p, ~p",[Realms,Username, URIS]),
@@ -525,8 +552,7 @@ get_uris_for_device(AcctRealm, Doc) ->
 
 
     
-get_uris_for_devices(_AcctRealm,[]) ->
-    [];
+get_uris_for_devices(_AcctRealm,[]) -> [];
 get_uris_for_devices(AcctRealm, [JObj | JObjs]) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
     [ get_uris_for_device(AcctRealm, Doc) 
@@ -535,29 +561,6 @@ get_uris_for_devices(AcctRealm, [JObj | JObjs]) ->
     
 
 
-deliver_outbound(_Number, 'false', _JobId, _JObj, _CID) ->
-    lager:info("number ~s not reconciable, dropping",[_Number]),
-    {'failed', <<"number not reconciable and not found in callflow">>, _JObj};
-deliver_outbound(Number, 'true', JobId, JObj, CID) ->
-    lager:info("trying to find number ~s inside kazoo",[Number]),       
-    case get_number(Number) of
-        {'ok', Num } ->
-            lager:info("found number ~s inside kazoo ~p",[Number, Num]),
-            Keys = wh_json:get_keys(Num),
-            AccountId = wh_json:get_value(<<"pvt_assigned_to">>, Num),
-            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-            case lookup_callflow(Number, AccountDb) of
-                {'ok', Flow} ->
-                    lager:info("trying to delivery sms into account ~s",[AccountId]),
-                    deliver_in_callflow(AccountId, Number, Flow, JobId, JObj, CID);
-                {'error', E } ->
-                    lager:info("no callflow"),
-                    deliver_offnet(Number, JobId, JObj, CID)
-            end;
-        {'error', _E } ->
-            lager:info("number ~s not found inside kazoo, going offline",[Number]),
-            deliver_offnet(Number, JobId, JObj, CID)
-    end.
                     
 deliver_offnet(Number, JobId, JObj, CID) ->
     Realm = whapps_config:get_binary(<<"offnet_realm">>, ?CONFIG_CAT, <<"nowhere.com">>),    
@@ -565,20 +568,6 @@ deliver_offnet(Number, JobId, JObj, CID) ->
     NewJObj = wh_json:set_value(<<"target_type">>, <<"off-net">>, JObj),
     set_ready(URIS, JobId, NewJObj, CID).
 
-lookup_callflow(Number, Db) ->
-    lager:info("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
-    Options = [{'key', Number}, 'include_docs'],
-    case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
-        {'error', _}=E -> E;
-        {'ok', []} -> {'error', 'not_found'};
-        {'ok', [JObj]} ->
-            Flow = wh_json:get_value(<<"doc">>, JObj),
-            {'ok', Flow};
-        {'ok', [JObj | _Rest]} ->
-            lager:info("lookup resulted in more than one result, using the first"),
-            Flow = wh_json:get_value(<<"doc">>, JObj),
-            {'ok', Flow}
-    end.
 
 get_number(Number) ->
     try wnm_number:get(Number) of
@@ -589,12 +578,6 @@ get_number(Number) ->
     end.    
     
 
-
-
-
-
-
-
 -spec reset(state()) -> state().
 reset(State) ->
     put('callid', ?LOG_SYSTEM_ID),
@@ -602,3 +585,12 @@ reset(State) ->
                 ,job='undefined'
                 ,pool='undefined'
                }.
+
+
+exec_mod("user", JObj) ->
+    JObj;
+exec_mod("device", JObj) ->
+    JObj;
+exec_mod("offnet", JObj) ->
+    JObj;
+exec_mod(Module, JObj) -> JObj.
