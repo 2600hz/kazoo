@@ -28,7 +28,8 @@ handle_req(JObj, _Props) ->
     _ = whapps_util:put_callid(JObj),
     case wh_json:get_value(<<"Resource-Type">>, JObj) of
         <<"audio">> -> handle_audio_req(JObj);
-        <<"originate">> -> handle_originate_req(JObj)
+        <<"originate">> -> handle_originate_req(JObj);
+        <<"sms">> -> handle_sms_req(JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -73,6 +74,24 @@ handle_originate_req(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_sms_req(wh_json:object()) -> any().
+handle_sms_req(JObj) ->
+    Number = stepswitch_util:get_outbound_destination(JObj),
+    lager:debug("received outbound sms resource request for ~s", [Number]),
+    case stepswitch_util:lookup_number(Number) of
+        {'ok', AccountId, Props} ->
+            maybe_force_outbound_sms([{'account_id', AccountId}
+                                  | Props
+                                 ], JObj);
+        _ -> maybe_sms(Number, JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound(Props, JObj) ->
     case props:get_is_true('force_outbound', Props) orelse
@@ -82,6 +101,23 @@ maybe_force_outbound(Props, JObj) ->
         'true' ->
             Number = props:get_value('number', Props),
             maybe_bridge(Number, JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_force_outbound_sms(wh_proplist(), wh_json:object()) -> any().
+maybe_force_outbound_sms(Props, JObj) ->
+    case props:get_is_true('force_outbound', Props) orelse
+        wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+    of
+        'false' -> local_sms(Props, JObj);
+        'true' ->
+            Number = props:get_value('number', Props),
+            maybe_sms(Number, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -103,8 +139,43 @@ maybe_bridge(Number, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_sms(ne_binary(), wh_json:object()) -> any().
+maybe_sms(Number, JObj) ->
+    case stepswitch_resources:endpoints(Number, JObj) of
+        [] -> publish_no_resources(JObj);
+        Endpoints -> stepswitch_request_sup:sms(Endpoints, JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec local_extension(wh_proplist(), wh_json:object()) -> any().
 local_extension(Props, JObj) -> stepswitch_request_sup:local_extension(Props, JObj).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec local_sms(wh_proplist(), wh_json:object()) -> any().
+local_sms(Props, JObj) ->
+    lager:debug("NUMBER PROPS ~p",[Props]),
+    AccountId = props:get_value('account_id', Props),
+    AccountRealm = wh_util:get_account_realm(AccountId),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    Number = props:get_value('number', Props),
+    NewObj = wh_json:set_values(
+               [{<<"Bounce-Back">>, <<"true">>}
+                 ,{<<"Custom-Channel-Vars">>, 
+                   wh_json:set_value(<<"Bounce-Realm">>, AccountRealm, CCVs)}
+               ], JObj),
+    maybe_sms(Number, NewObj).
+%    Endpoints = [ wh_json:set_value(<<"Invite-Format">>, <<"route">>, wh_json:new())],
+%    stepswitch_request_sup:sms(Endpoints, NewObj).
 
 %%--------------------------------------------------------------------
 %% @private
