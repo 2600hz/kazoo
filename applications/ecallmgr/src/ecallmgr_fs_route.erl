@@ -199,8 +199,10 @@ init_message_props(Props) ->
 -spec add_message_missing_props(wh_proplist()) -> wh_proplist().
 add_message_missing_props(Props) ->
     lists:foldl(fun(A,B) -> [A | B] end, Props,
-                [{<<"Call-Direction">>, <<"inbound">>}
-                 ,{<<"Resource-Type">>,<<"SMS">>}
+                [{<<"Call-Direction">>, <<"outbound">>}
+                 ,{<<"Resource-Type">>,<<"sms">>}
+                 ,{<<"Caller-Caller-ID-Number">>, props:get_value(<<"from_user">>, Props)}
+                 ,{<<"Caller-Destination-Number">>, props:get_value(<<"to_user">>, Props)}
                 ]).
 
 -spec expand_message_vars(wh_proplist()) -> wh_proplist().
@@ -278,6 +280,7 @@ reply_forbidden(Section, Node, FetchId) ->
     {'ok', XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
                                                   ,{<<"Route-Error-Code">>, <<"403">>}
                                                   ,{<<"Route-Error-Message">>, <<"Incoming call barred">>}
+                                                  ,{<<"Fetch-Section">>, wh_util:to_binary(Section)}
                                                  ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3000) of
@@ -301,7 +304,7 @@ reply_affirmative(Section, Node, FetchId, CallId, JObj) ->
 maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
     case wh_json:get_value(<<"Method">>, JObj) of
         <<"error">> -> 'ok';
-        <<"sms">> -> 'ok';
+        <<"sms">> -> start_message_handling(Node, FetchId, CallId, JObj);
         _Else -> start_call_handling(Node, FetchId, CallId, JObj)
     end.
 
@@ -312,6 +315,20 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
     _ = ecallmgr_call_sup:start_event_process(Node, CallId),
     _ = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
     ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)).
+
+-spec start_message_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+start_message_handling(Node, FetchId, CallId, JObj) ->
+    ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    Win = [{<<"Msg-ID">>, CallId}
+           ,{<<"Call-ID">>, CallId}
+           ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
+           ,{<<"Custom-Channel-Vars">>, CCVs}
+           | wh_api:default_headers(ServerQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
+          ],
+    lager:debug("sending route_win to ~s", [ServerQ]),
+    wapi_route:publish_win(ServerQ, Win).
+
 
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
 route_req(CallId, FetchId, Props, Node) ->
