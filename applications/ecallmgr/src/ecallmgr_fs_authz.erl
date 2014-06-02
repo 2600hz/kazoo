@@ -34,20 +34,22 @@ authorize(Props, CallId, Node) ->
     end.
 
 -spec kill_channel(wh_proplist(), atom()) -> 'ok'.
--spec kill_channel(ne_binary(), ne_binary(), atom()) -> 'ok'.
+-spec kill_channel(ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
 
 kill_channel(Props, Node) ->
     Direction = props:get_value(<<"Call-Direction">>, Props),
+    ResourceType = props:get_value(<<"Resource-Type">>, Props, <<"audio">>),
     CallId = props:get_value(<<"Unique-ID">>, Props),
     lager:debug("killing unauthorized channel", []),
-    kill_channel(Direction, CallId, Node).
+    kill_channel(Direction, ResourceType, CallId, Node).
 
-kill_channel(<<"inbound">>, CallId, Node) ->
+kill_channel(_, <<"sms">>, CallId, Node) -> 'ok';
+kill_channel(<<"inbound">>, _, CallId, Node) ->
     %% Give any pending route requests a chance to cleanly terminate this call,
     %% if it has not been processed yet.  Then chop its head off....
     _ = freeswitch:api(Node, 'uuid_kill', wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
     'ok';
-kill_channel(<<"outbound">>, CallId, Node) ->
+kill_channel(<<"outbound">>, _, CallId, Node) ->
     _ = freeswitch:api(Node, 'uuid_kill', wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     'ok'.
 
