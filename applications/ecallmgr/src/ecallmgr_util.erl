@@ -211,6 +211,7 @@ get_sip_request(Props) ->
                                      ,<<"variable_sip_to_host">>
                                      ,<<"sip_auth_realm">>
                                      ,<<"sip_to_host">>
+                                     ,<<"variable_sip_req_host">>
                                     ], Props, ?DEFAULT_REALM),
     <<User/binary, "@", Realm/binary>>.
 
