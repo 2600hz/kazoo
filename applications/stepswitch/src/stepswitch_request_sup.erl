@@ -14,6 +14,7 @@
 -export([local_extension/2]).
 -export([originate/2]).
 -export([init/1]).
+-export([sms/2]).
 
 -include("stepswitch.hrl").
 
@@ -58,6 +59,16 @@ originate(Endpoints, JObj) ->
     supervisor:start_child(?MODULE
                            ,?WORKER_NAME_ARGS_TYPE(Name
                                                    ,'stepswitch_originate'
+                                                   ,[Endpoints, JObj]
+                                                   ,'temporary')).
+
+-spec sms(wh_json:objects(), wh_json:object()) -> sup_startchild_ret().
+sms(Endpoints, JObj) ->
+    Name = <<(wh_json:get_value(<<"Call-ID">>, JObj))/binary
+             ,"-", (wh_util:rand_hex_binary(3))/binary>>,
+    supervisor:start_child(?MODULE
+                           ,?WORKER_NAME_ARGS_TYPE(Name
+                                                   ,'stepswitch_sms'
                                                    ,[Endpoints, JObj]
                                                    ,'temporary')).
 
