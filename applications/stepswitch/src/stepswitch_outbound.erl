@@ -163,7 +163,6 @@ local_extension(Props, JObj) -> stepswitch_request_sup:local_extension(Props, JO
 %%--------------------------------------------------------------------
 -spec local_sms(wh_proplist(), wh_json:object()) -> any().
 local_sms(Props, JObj) ->
-    lager:debug("NUMBER PROPS ~p",[Props]),
     AccountId = props:get_value('account_id', Props),
     AccountRealm = wh_util:get_account_realm(AccountId),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
@@ -174,8 +173,6 @@ local_sms(Props, JObj) ->
                    wh_json:set_value(<<"Bounce-Realm">>, AccountRealm, CCVs)}
                ], JObj),
     maybe_sms(Number, NewObj).
-%    Endpoints = [ wh_json:set_value(<<"Invite-Format">>, <<"route">>, wh_json:new())],
-%    stepswitch_request_sup:sms(Endpoints, NewObj).
 
 %%--------------------------------------------------------------------
 %% @private
