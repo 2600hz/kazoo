@@ -358,9 +358,6 @@ bridge_caller_id(JObj) ->
 -spec bridge_from_uri(api_binary(), wh_json:object()) ->
                              api_binary().
 bridge_from_uri(CIDNum, JObj) ->
-    lager:debug("cidnum ~p",[CIDNum]),
-    lager:debug("cidnum ~p",[JObj]),
-    lager:debug("cidnum ~p",[wh_json:is_true(<<"Format-From-URI">>, JObj)]),
     Realm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                        ,<<"Account-Realm">>
                                       ], JObj),
