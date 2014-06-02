@@ -279,6 +279,10 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
 route_resp_xml(<<"error">>, _Routes, JObj) ->
+    Section = wh_json:get_value(<<"Fetch-Section">>, JObj, <<"dialplan">>),
+    route_resp_xml(<<Section/binary, "_error">>,_Routes, JObj);
+
+route_resp_xml(<<"dialplan_error">>, _Routes, JObj) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
@@ -291,6 +295,21 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
     ErrExtEl = extension_el([condition_el(Exten)]),
     ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
+
+route_resp_xml(<<"chatplan_error">>, _Routes, JObj) ->
+    ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
+    ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
+    Exten = [route_resp_log_winning_node()
+             ,route_resp_set_winning_node()
+             ,route_resp_bridge_id()
+             ,route_resp_ringback(JObj)
+             ,route_resp_transfer_ringback(JObj)
+             ,action_el(<<"respond">>, [ErrCode, ErrMsg])
+            ],
+    ErrExtEl = extension_el([condition_el(Exten)]),
+    ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
+    SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
 route_resp_xml(<<"sms">>, Routes, JObj) ->
