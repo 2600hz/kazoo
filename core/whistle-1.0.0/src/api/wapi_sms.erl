@@ -25,7 +25,7 @@
 
 %% Message
 -define(MESSAGE_REQ_EVENT_NAME, <<"route">>).
--define(MESSAGE_HEADERS, [<<"To">>, <<"From">>, <<"Call-ID">>, <<"Message-ID">>, <<"Body">>]).
+-define(MESSAGE_HEADERS, [<<"Endpoints">>, <<"Call-ID">>, <<"Message-ID">>, <<"Body">>]).
 -define(OPTIONAL_MESSAGE_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
                                   ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                   ,<<"From-Network-Addr">>
@@ -33,21 +33,63 @@
                                   ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                   ,<<"Contact">>, <<"User-Agent">>
                                   ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
-                                  ,<<"Request">>, <<"Account-ID">>
+                                  ,<<"Request">>, <<"Account-ID">>, <<"From">>
                                     ]).
--define(MESSAGE_TYPES, [{<<"To">>, fun is_binary/1}
-                          ,{<<"From">>, fun is_binary/1}
-                          ,{<<"Request">>, fun is_binary/1}
-                          ,{<<"Message-ID">>, fun is_binary/1}
-                          ,{<<"Event-Queue">>, fun is_binary/1}
-                          ,{<<"Caller-ID-Name">>, fun is_binary/1}
-                          ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                          ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                          ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
-                         ]).
+-define(MESSAGE_TYPES, [{<<"Endpoints">>, fun wh_json:is_list/1}                       
+                        ,{<<"From">>, fun is_binary/1}
+                        ,{<<"Request">>, fun is_binary/1}
+                        ,{<<"Message-ID">>, fun is_binary/1}
+                        ,{<<"Event-Queue">>, fun is_binary/1}
+                        ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                        ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                        ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                        ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+                       ]).
 -define(MESSAGE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                         ,{<<"Event-Name">>, ?MESSAGE_REQ_EVENT_NAME}
                         ]).
+
+
+-define(SMS_REQ_HEADERS, [<<"Call-ID">>, <<"Endpoints">>, <<"Application-Name">>]).
+-define(OPTIONAL_SMS_REQ_HEADERS
+        ,[<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
+          ,<<"Application-Data">>, <<"Message-ID">>, <<"Body">>
+          ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
+          ,<<"Outbound-Callee-ID-Name">>, <<"Outbound-Callee-ID-Number">>
+          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+          ,<<"From-User">>, <<"From-Realm">>, <<"From-URI">>
+          ,<<"To-User">>, <<"To-Realm">>, <<"To-URI">>
+          ,<<"Dial-Endpoint-Method">>
+          ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+          ,<<"SIP-Transport">>, <<"SIP-Headers">>
+          | wapi_dialplan:optional_bridge_req_headers()          
+         ]).
+-define(SMS_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                            ,{<<"Event-Name">>, ?MESSAGE_REQ_EVENT_NAME}
+                            ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
+                            ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
+                            ,{<<"Application-Name">>, [<<"send">>]}
+                           ]).
+-define(SMS_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
+                           ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+                           ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
+                          ]).
+-define(SMS_ROUTING_KEY(CallId), <<"message.route.", (amqp_util:encode(CallId))/binary>>).
+
+%% SMS Endpoints
+-define(SMS_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
+-define(OPTIONAL_SMS_REQ_ENDPOINT_HEADERS, wapi_dialplan:optional_bridge_req_endpoint_headers()).
+-define(SMS_REQ_ENDPOINT_VALUES, [{<<"Endpoint-Type">>, 
+                                   [<<"sip">>, <<"xmpp">>, <<"smpp">>, <<"http">>]} 
+                                 ]).
+-define(SMS_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                                 ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                                 ,{<<"Endpoint-Options">>, fun wh_json:is_json_object/1}
+                                ]).
+
 
 %% Delivery
 -define(DELIVERY_REQ_EVENT_NAME, <<"delivery">>).
@@ -75,21 +117,45 @@
 -define(DELIVERY_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                         ,{<<"Event-Name">>, ?DELIVERY_REQ_EVENT_NAME}
                         ]).
+-define(DELIVERY_ROUTING_KEY(CallId), <<"message.delivery.", (amqp_util:encode(CallId))/binary>>).
 
 
--spec message(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+
+
+-spec message(api_terms()) -> api_formatter_return().
 message(Prop) when is_list(Prop) ->
-    case message_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?MESSAGE_HEADERS, ?OPTIONAL_MESSAGE_HEADERS);
-        'false' -> {'error', "Proplist failed validation for route_message"}
+    EPs = [begin
+               {'ok', EPProps} = message_endpoint_headers(EP),
+               wh_json:from_list(EPProps)
+           end
+           || EP <- props:get_value(<<"Endpoints">>, Prop, []),
+              message_endpoint_v(EP)],
+    Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
+    case message_v(Prop1) of
+        'true' -> wh_api:build_message(Prop1, ?SMS_REQ_HEADERS, ?OPTIONAL_SMS_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for message"}
     end;
-message(JObj) -> message(wh_json:to_proplist(JObj)).
+message(JObj) ->
+    message(wh_json:to_proplist(JObj)).
 
 -spec message_v(api_terms()) -> boolean().
 message_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?MESSAGE_HEADERS, ?MESSAGE_REQ_VALUES, ?MESSAGE_TYPES);
-message_v(JObj) -> message_v(wh_json:to_proplist(JObj)).
+    wh_api:validate(Prop, ?SMS_REQ_HEADERS, ?SMS_REQ_VALUES, ?SMS_REQ_TYPES);
+message_v(JObj) ->
+    message_v(wh_json:to_proplist(JObj)).
 
+-spec message_endpoint_headers(api_terms()) -> {'ok', wh_proplist()} |
+                                               {'error', string()}.
+message_endpoint_headers(Prop) when is_list(Prop) ->
+    wh_api:build_message_specific_headers(Prop, ?SMS_REQ_ENDPOINT_HEADERS, ?OPTIONAL_SMS_REQ_ENDPOINT_HEADERS);
+message_endpoint_headers(JObj) ->
+    message_endpoint_headers(wh_json:to_proplist(JObj)).
+
+-spec message_endpoint_v(api_terms()) -> boolean().
+message_endpoint_v(Prop) when is_list(Prop) ->
+    wh_api:validate_message(Prop, ?SMS_REQ_ENDPOINT_HEADERS, ?SMS_REQ_ENDPOINT_VALUES, ?SMS_REQ_ENDPOINT_TYPES);
+message_endpoint_v(JObj) ->
+    message_endpoint_v(wh_json:to_proplist(JObj)).
 
 -spec delivery(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 delivery(Prop) when is_list(Prop) ->
@@ -111,22 +177,16 @@ delivery_v(JObj) -> delivery_v(wh_json:to_proplist(JObj)).
 %%--------------------------------------------------------------------
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    AccountId = props:get_value('account_id', Props, <<"*">>),
-    MessageId = props:get_value('message_id', Props, <<"*">>),
-    amqp_util:bind_q_to_exchange(Queue, message_routing_key(AccountId, MessageId), ?SMS_EXCHANGE).
+    CallId = props:get_value('call_id', Props, <<"*">>),
+    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE).
 
    
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    AccountId = props:get_value('account_id', Props, <<"*">>),
-    MessageId = props:get_value('message_id', Props, <<"*">>),
-    amqp_util:unbind_q_from_exchange(Queue, message_routing_key(AccountId, MessageId), ?SMS_EXCHANGE).
-
-message_routing_key('undefined', 'undefined') -> message_routing_key(<<"*">>, <<"*">>);
-message_routing_key('undefined', MessageId) -> message_routing_key(<<"*">>, MessageId);
-message_routing_key(AccountId, 'undefined') -> message_routing_key(AccountId, <<"*">>);
-message_routing_key(AccountId, MessageId) ->
-    list_to_binary(["message.", amqp_util:encode(AccountId), ".", amqp_util:encode(MessageId) ]).
+    CallId = props:get_value('call_id', Props, <<"*">>),
+    amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -143,9 +203,8 @@ publish_message(JObj) ->
     publish_message(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_message(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?MESSAGE_REQ_VALUES, fun message/1),
-    MessageId = props:get_first_defined([<<"Message-ID">>,<<"Call-ID">>], Req ,<<"*">>),
-    AccountId = props:get_value(<<"Account-ID">>, Req, <<"*">>),
-    amqp_util:basic_publish(?SMS_EXCHANGE, message_routing_key(AccountId, MessageId), Payload, ContentType).
+    CallId = props:get_value(<<"Call-ID">>, Req),
+    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_ROUTING_KEY(CallId), Payload, ContentType).
 
 -spec publish_delivery(api_terms()) -> 'ok'.
 -spec publish_delivery(api_terms(), binary()) -> 'ok'.
@@ -153,9 +212,8 @@ publish_delivery(JObj) ->
     publish_delivery(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_delivery(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?DELIVERY_REQ_VALUES, fun delivery/1),
-    MessageId = props:get_first_defined([<<"Message-ID">>,<<"Call-ID">>], Req ,<<"*">>),
-    AccountId = props:get_value(<<"Account-ID">>, Req, <<"*">>),
-    amqp_util:basic_publish(?SMS_EXCHANGE, message_routing_key(AccountId, MessageId), Payload, ContentType).
+    CallId = props:get_value(<<"Call-ID">>, Req),
+    amqp_util:basic_publish(?SMS_EXCHANGE, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
 
 
 

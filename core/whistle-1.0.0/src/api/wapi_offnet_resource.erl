@@ -39,13 +39,14 @@
           ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>, <<"Enable-T38-Gateway">>
           ,<<"Format-From-URI">>, <<"From-URI-Realm">>, <<"Bypass-E164">>
           ,<<"Hunt-Account-ID">>, <<"Diversions">>, <<"Inception">>
+          ,<<"Message-ID">>, <<"Body">>
          ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
         ,[{<<"Event-Category">>, <<"resource">>}
           ,{<<"Event-Name">>, <<"offnet_req">>}
-          ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"originate">>]}
+          ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"originate">>, <<"sms">>]}
           ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>
-                                     ,<<"fax">>, <<"eavesdrop">>
+                                     ,<<"fax">>, <<"eavesdrop">>, <<"sms">>
                                     ]}
           ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
           %% Eavesdrop
