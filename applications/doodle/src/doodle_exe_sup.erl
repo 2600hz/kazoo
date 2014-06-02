@@ -1,37 +1,24 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2011-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(doodle_sup).
+-module(doodle_exe_sup).
 
 -behaviour(supervisor).
 
--export([start_link/0]).
--export([init/1]).
-
 -include("doodle.hrl").
 
-%% Helper macro for declaring children of supervisor
+%% API
+-export([start_link/0]).
+-export([new/1]).
+-export([workers/0]).
 
--define(POOL(N),  {N, {'poolboy', 'start_link', [[{'name', {'local', N}}
-                                                  ,{'worker_module', 'doodle_worker'}
-                                                  ,{'size', whapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 5)}
-                                                  ,{'max_overflow', 0}
-                                                 ]]}
-                   ,'permanent', 5000, 'worker', ['poolboy']}).
-
--define(CHILDREN, [?CACHE('doodle_cache')
-%                   ,?POOL('doodle_worker_pool')
-%                   ,?WORKER('doodle_jobs')
-                   ,?WORKER('doodle_listener')
-                   ,?WORKER('doodle_shared_listener')
-                   ,?SUPER('doodle_event_handler_sup')
-                   ,?SUPER('doodle_exe_sup')
-                  ]).
-
+%% Supervisor callbacks
+-export([init/1]).
 
 %% ===================================================================
 %% API functions
@@ -44,8 +31,14 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() ->
-    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+
+-spec new(whapps_call:call()) -> sup_startchild_ret().
+new(Call) -> supervisor:start_child(?MODULE, [Call]).
+
+-spec workers() -> pids().
+workers() ->
+    [ Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -62,10 +55,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = 'one_for_one',
-    MaxRestarts = 5,
-    MaxSecondsBetweenRestarts = 10,
+    RestartStrategy = 'simple_one_for_one',
+    MaxRestarts = 0,
+    MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, [?WORKER_TYPE('doodle_exe', 'temporary')]}}.

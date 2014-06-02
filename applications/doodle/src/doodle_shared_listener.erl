@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(doodle_listener).
+-module(doodle_shared_listener).
 
 -behaviour(gen_listener).
 
@@ -23,15 +23,16 @@
 
 -record(state, {}).
 
--define(BINDINGS, [{'route', []}
+-define(BINDINGS, [{'sms', []}
+                   ,{'notifications',[{'restrict_to', ['register']}]}
                    ,{'self', []}
                   ]).
--define(RESPONDERS, [{'doodle_route_req', [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{'doodle_route_win', [{<<"dialplan">>, <<"route_win">>}]}
+-define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
+                     ,{'doodle_notify_handler',[{<<"notification">>, <<"register">>}]}
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"doodle_shared_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
