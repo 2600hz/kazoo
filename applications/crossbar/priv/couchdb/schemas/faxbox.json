@@ -109,7 +109,7 @@
             "description": "The number of times to retry",
             "type": "integer",
             "default": 1
-        },
+        },        
         "attempts": {
             "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
             "type": "integer",
@@ -144,6 +144,22 @@
             "description": "The name of this faxbox",
             "type": "string",
             "default": "Office Fax"
+        },
+        "custom_smtp_email_address": {
+            "description": "custom smtp address",
+            "type": "string",
+            "default": "noone@nowhere.com"
+        },
+        "custom_smtp_email_address": {
+            "description": "custom smtp address",
+            "type": "string",
+            "default": "noone@nowhere.com"
+        },
+        "smtp_permission_list": {
+            "description": "smtp permission list. accepts regular expressions",
+            "type": "array",
+            "default": []
         }
-    }
+       
+   }
 }
