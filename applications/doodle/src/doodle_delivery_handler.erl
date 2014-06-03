@@ -33,7 +33,7 @@ maybe_update_doc(JObj) ->
 -spec update_doc(wh_json:object(), ne_binary()) -> any().
 update_doc(JObj, Value) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    CCVs = wh_json:get_value(<<"Custom-CVhannel-Vars">>, JObj),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, CCVs),
     case kazoo_modb:open_doc(AccountId, CallId) of
         {'ok', Doc} ->
