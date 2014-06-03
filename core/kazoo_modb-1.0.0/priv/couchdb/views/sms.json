@@ -12,7 +12,10 @@
             "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted) return; emit(doc.device_id, {'id': doc._id}); }"
         },
         "deliver_to_device": {
-            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_status != 'pending') return; emit(doc.device_id, {'id': doc._id}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.authorization_type != 'device' || doc.pvt_status != 'pending') return; emit(doc.authorization_id, {'id': doc._id}); }"
+        },
+        "deliver_to_owner": {
+            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_status != 'pending') return; emit(doc.owner_id, {'id': doc._id}); }"
         }
    }
 }

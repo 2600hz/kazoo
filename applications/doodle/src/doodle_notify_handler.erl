@@ -39,7 +39,7 @@ check_sms_by_device(AccountId, DeviceId) ->
 
 check_sms_by_owner(AccountId, OwnerId) ->
     ViewOptions = [{'key', [OwnerId]}],
-    case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_ownerid">>, ViewOptions) of
+    case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_owner">>, ViewOptions) of
         {'ok', []} ->
             lager:debug("no sms for owner_id ~s/~s",[AccountId, OwnerId]);
         {'ok', JObjs} ->
