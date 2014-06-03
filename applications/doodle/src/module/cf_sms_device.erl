@@ -55,9 +55,5 @@ bridge_to_endpoints(Data, Call) ->
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
         {'ok', Endpoints} ->
-            lager:debug("Ebdpoint ~p",[Endpoints]),
-            doodle_util:send_sms(Call, Endpoints)
-
-            %TODO whapps_call_command:b_message(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
-            
+            whapps_sms_command:b_send_sms(Endpoints, Call)
     end.

@@ -26,14 +26,8 @@
 handle(Data, Call) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
     Endpoints = get_endpoints(UserId, Data, Call),
-    whapps_util:amqp_pool_collect(doodle_util:create_sms(Call, Endpoints)
-                                      ,fun wapi_sms:publish_message/1
-                                      ,fun is_resp/1
-                                     ,30000),
-%%     whapps_util:amqp_pool_request(Payload
-%%                                   ,fun wapi_sms:publish_message/1
-%%                                   ,fun wapi_sms:delivery_v/1
-%%                                   ,30000).
+    
+    R = whapps_sms_command:b_send_sms(Endpoints, Call),
 
     
     doodle_exe:continue(Call).
