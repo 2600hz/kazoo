@@ -20,36 +20,12 @@
          ,publish_delivery/1, publish_delivery/2
         ]).
 
+
+-define(SMS_KEY(CallId), list_to_binary(["sms.message.", amqp_util:encode(CallId)])).
 -define(SMS_EXCHANGE, <<"sms">>).
 -define(EVENT_CATEGORY, <<"message">>).
 
-%% Message
--define(MESSAGE_REQ_EVENT_NAME, <<"route">>).
--define(MESSAGE_HEADERS, [<<"Endpoints">>, <<"Call-ID">>, <<"Message-ID">>, <<"Body">>]).
--define(OPTIONAL_MESSAGE_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
-                                  ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-                                  ,<<"From-Network-Addr">>
-                                  ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                  ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                  ,<<"Contact">>, <<"User-Agent">>
-                                  ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
-                                  ,<<"Request">>, <<"Account-ID">>, <<"From">>
-                                    ]).
--define(MESSAGE_TYPES, [{<<"Endpoints">>, fun wh_json:is_list/1}                       
-                        ,{<<"From">>, fun is_binary/1}
-                        ,{<<"Request">>, fun is_binary/1}
-                        ,{<<"Message-ID">>, fun is_binary/1}
-                        ,{<<"Event-Queue">>, fun is_binary/1}
-                        ,{<<"Caller-ID-Name">>, fun is_binary/1}
-                        ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                        ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                        ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
-                       ]).
--define(MESSAGE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                        ,{<<"Event-Name">>, ?MESSAGE_REQ_EVENT_NAME}
-                        ]).
-
-
+-define(SMS_REQ_EVENT_NAME, <<"route">>).
 -define(SMS_REQ_HEADERS, [<<"Call-ID">>, <<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_SMS_REQ_HEADERS
         ,[<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
@@ -66,7 +42,7 @@
           | wapi_dialplan:optional_bridge_req_headers()          
          ]).
 -define(SMS_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                            ,{<<"Event-Name">>, ?MESSAGE_REQ_EVENT_NAME}
+                            ,{<<"Event-Name">>, ?SMS_REQ_EVENT_NAME}
                             ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
                             ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
                             ,{<<"Application-Name">>, [<<"send">>]}
@@ -103,6 +79,7 @@
                                   ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
                                   ,<<"To">>, <<"From">>, <<"Request">>
                                   ,<<"Body">>, <<"Account-ID">>
+                                  ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>                
                                     ]).
 -define(DELIVERY_TYPES, [{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
@@ -160,7 +137,7 @@ message_endpoint_v(JObj) ->
 -spec delivery(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 delivery(Prop) when is_list(Prop) ->
     case delivery_v(Prop) of
-        'true' -> wh_api:build_delivery(Prop, ?DELIVERY_HEADERS, ?OPTIONAL_DELIVERY_HEADERS);
+        'true' -> wh_api:build_message(Prop, ?DELIVERY_HEADERS, ?OPTIONAL_DELIVERY_HEADERS);
         'false' -> {'error', "Proplist failed validation for route_delivery"}
     end;
 delivery(JObj) -> delivery(wh_json:to_proplist(JObj)).
@@ -178,15 +155,13 @@ delivery_v(JObj) -> delivery_v(wh_json:to_proplist(JObj)).
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallId = props:get_value('call_id', Props, <<"*">>),
-    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
-    amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE).
+    amqp_util:bind_q_to_exchange(Queue, ?SMS_KEY(CallId), ?SMS_EXCHANGE).
 
    
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     CallId = props:get_value('call_id', Props, <<"*">>),
-    amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
-    amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE).
+    amqp_util:unbind_q_from_exchange(Queue, ?SMS_KEY(CallId), ?SMS_EXCHANGE).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -202,9 +177,9 @@ declare_exchanges() ->
 publish_message(JObj) ->
     publish_message(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_message(Req, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?MESSAGE_REQ_VALUES, fun message/1),
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SMS_REQ_VALUES, fun message/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_ROUTING_KEY(CallId), Payload, ContentType).
+    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_KEY(CallId), Payload, ContentType).
 
 -spec publish_delivery(api_terms()) -> 'ok'.
 -spec publish_delivery(api_terms(), binary()) -> 'ok'.
@@ -213,7 +188,7 @@ publish_delivery(JObj) ->
 publish_delivery(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?DELIVERY_REQ_VALUES, fun delivery/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
+    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_KEY(CallId), Payload, ContentType).
 
 
 
