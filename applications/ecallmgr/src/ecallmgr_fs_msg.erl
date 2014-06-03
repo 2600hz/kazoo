@@ -322,7 +322,6 @@ format_bounce_endpoint(Endpoint, Props, JObj) ->
 
 -spec process_fs_event(atom(), wh_proplist()) -> any().
 process_fs_event(Node, Props) ->
-    props:to_log(Props, <<"FS_MSG">>),
     process_fs_event(
       props:get_value(<<"Event-Name">>, Props),
       props:get_value(<<"Event-Subclass">>, Props),
