@@ -22,18 +22,17 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Payload = build_offnet_request(Data, Call),
-    lager:debug("Payload ~p",[Payload]),
-    %X = wapi_offnet_resource:publish_req(Payload),
-    %lager:debug("X = ~p",[X]),
-    Res = whapps_util:amqp_pool_request(Payload
-                                       ,fun wapi_offnet_resource:publish_req/1
-                                       ,fun wapi_offnet_resource:resp_v/1),
-%                                       ,{'stepswitch', 'true'}),
-
-    lager:debug("res ~p",[Res]),
-    doodle_exe:stop(Call).
-
+    case whapps_util:amqp_pool_request(
+           build_offnet_request(Data, Call),
+           fun wapi_offnet_resource:publish_req/1,
+           fun wapi_offnet_resource:resp_v/1, 30000) of
+        {'ok', Res } ->
+            lager:debug("Result ~p",[Res]),
+            doodle_exe:continue(Call);
+        {'error', _E} ->
+            lager:debug("error executing offnet action : ~p",[_E]),
+            doodle_exe:sleep(Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

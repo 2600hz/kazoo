@@ -26,17 +26,18 @@
 handle(Data, Call) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
     Endpoints = get_endpoints(UserId, Data, Call),
-    lager:debug("endpoints ~p",[Endpoints]),
-    X = doodle_util:send_sms(Call, Endpoints),
-    lager:debug("X = ~p",[X]),
+    whapps_util:amqp_pool_collect(doodle_util:create_sms(Call, Endpoints)
+                                      ,fun wapi_sms:publish_message/1
+                                      ,fun is_resp/1
+                                     ,30000),
+%%     whapps_util:amqp_pool_request(Payload
+%%                                   ,fun wapi_sms:publish_message/1
+%%                                   ,fun wapi_sms:delivery_v/1
+%%                                   ,30000).
+
+    
     doodle_exe:continue(Call).
 
--spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
-maybe_handle_bridge_failure(Reason, Call) ->
-    case cf_util:handle_bridge_failure(Reason, Call) of
-        'not_found' -> cf_exe:continue(Call);
-        'ok' -> 'ok'
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -45,6 +46,12 @@ maybe_handle_bridge_failure(Reason, Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
+-spec is_resp(wh_json:objects()) -> {'ok', iolist()} |
+                                    {'error', string()}.
+is_resp([JObj|_Y]) ->
+    wapi_sms:delivery_v(JObj).
+
+
 -spec get_endpoints(api_binary(), wh_json:object(), whapps_call:call()) ->
                            wh_json:objects().
 get_endpoints('undefined', _, _) -> [];
@@ -56,3 +63,4 @@ get_endpoints(UserId, Data, Call) ->
                             {'error', _E} -> Acc
                         end
                 end, [], cf_attributes:owned_by(UserId, <<"device">>, Call)).
+
