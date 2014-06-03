@@ -223,9 +223,9 @@ send_message(JObj, Props, Endpoints) ->
               ,{"type", "text/plain"}
               ,{"body", Body}
               ,{"Call-ID", wh_util:to_list(CallId)}
-              ,{"Unique-ID", wh_util:to_list(CallId)}
+              %,{"Unique-ID", wh_util:to_list(CallId)}
               ,{"Message-ID", wh_util:to_list(MessageId)}
-              ,{"Msg-ID", wh_util:to_list(MsgId)}
+%              ,{"Msg-ID", wh_util:to_list(MsgId)}
               ,{"sip_h_X-Kazoo-Bounce", wh_util:to_list(wh_util:rand_hex_binary(12))}
              ]),
     
@@ -237,8 +237,8 @@ send_message(JObj, Props, Endpoints) ->
         {'error', E} ->
             send_error(JObj, E);
         {'ok', EndpointProps} ->
+            lager:debug("sending sms message ~s to freeswitch",[CallId]),            
             EvtProps = lists:append(H2, EndpointProps),
-            lager:debug("SENDING ~p",[EvtProps]),
             Resp = freeswitch:sendevent_custom(Node, 'SMS::SEND_MESSAGE', EvtProps)
     end.
 
@@ -331,8 +331,9 @@ process_fs_event(Node, Props) ->
 -spec process_fs_event(ne_binary(), ne_binary(), atom(), wh_proplist()) -> any().
 process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
     ServerID =  props:get_value(<<"Server-ID">>, Props),
+    CallId = props:get_value(<<"Call-ID">>, Props),
     BaseProps = props:filter_empty(props:filter_undefined( 
-        [{<<"Call-ID">>, props:get_value(<<"Call-ID">>, Props)}
+        [{<<"Call-ID">>, CallId}
          ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
          ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
          ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
@@ -343,6 +344,7 @@ process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
          ,{<<"Status">>, props:get_value(<<"Status">>, Props)}                
              | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
         ])),
+    lager:debug("Recieved delivery event for message ~s",[CallId]),
     EventProps = get_event_uris(Props, BaseProps),
     wapi_sms:publish_delivery( EventProps );
 

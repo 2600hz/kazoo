@@ -73,6 +73,7 @@
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}]}
+                ,{'sms', []}
                 ,{'self', []}
                ],
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
