@@ -53,7 +53,7 @@ should_restrict_call(Call) ->
 maybe_service_unavailable(JObj, Call) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
     Services = wh_json:get_value(<<"pvt_services">>, JObj, ?DEFAULT_DEVICE_SERVICES),
-    case lists:member(<<"sms">>, Services) of
+    case lists:member(<<"audio">>, Services) of
         'true' ->
             maybe_account_service_unavailable(JObj, Call);
         'false' ->
