@@ -19,6 +19,8 @@
          ,code_change/3
         ]).
 
+-export([handle_message_delivery/2]).
+
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
@@ -31,7 +33,9 @@
                 ,timeout :: reference()
                }).
 
--define(RESPONDERS, []).
+-define(RESPONDERS, [
+                     {{?MODULE, 'handle_message_delivery'}, [{<<"message">>, <<"delivery">>}]}
+                    ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -39,6 +43,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -50,9 +55,7 @@
 -spec start_link(wh_json:objects(), wh_json:object()) -> startlink_ret().
 start_link(Endpoints, JObj) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    Bindings = [{'call', [{'callid', CallId}
-                          ,{'restrict_to', [<<"MESSAGE_REPORT">>]}
-                         ]}
+    Bindings = [{'sms', [{'call_id', CallId}]}
                 ,{'self', []}
                ],
     gen_listener:start_link(?MODULE, [{'bindings', Bindings}
@@ -87,7 +90,7 @@ init([Endpoints, JObj]) ->
                           ,request_handler=self()
                           ,control_queue=ControlQ
                           ,response_queue=wh_json:get_ne_value(<<"Server-ID">>, JObj)
-                          ,timeout=erlang:send_after(30000, self(), 'bridge_timeout')
+                          ,timeout=erlang:send_after(60000, self(), 'sms_timeout')
                          }}
     end.
 
@@ -123,25 +126,24 @@ handle_cast({'wh_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-
-
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=ControlQ}=State) ->
-    'ok' = wapi_sms:publish_message(build_bridge(State)),
-    
-    lager:debug("sent bridge command to ~s", [ControlQ]),
+    'ok' = wapi_sms:publish_message(build_sms(State)),
+    lager:debug("sent sms command"),
     {'noreply', State};
-handle_cast({'bridge_result', _Props}, #state{response_queue='undefined'}=State) ->
+handle_cast({'sms_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
-handle_cast({'bridge_result', Props}, #state{response_queue=ResponseQ}=State) ->
+handle_cast({'sms_result', Props}, #state{response_queue=ResponseQ}=State) ->
     wapi_offnet_resource:publish_resp(ResponseQ, Props),
     {'stop', 'normal', State};
-handle_cast({'bridged', CallId}, #state{timeout='undefined'}=State) ->
-    lager:debug("channel bridged to ~s", [CallId]),
+handle_cast({'sms_success', JObj}, #state{resource_req=Request}=State) ->
+    gen_listener:cast(self(), {'sms_result', sms_success(JObj, Request)}),
     {'noreply', State};
-handle_cast({'bridged', CallId}, #state{timeout=TimerRef}=State) ->
-    lager:debug("channel bridged to ~s, canceling timeout", [CallId]),
-    _ = erlang:cancel_timer(TimerRef),
-    {'noreply', State#state{timeout='undefined'}};
+handle_cast({'sms_failure', JObj}, #state{resource_req=Request}=State) ->
+    gen_listener:cast(self(), {'sms_result', sms_failure(JObj, Request)}),
+    {'noreply', State};
+handle_cast({'sms_error', JObj}, #state{resource_req=Request}=State) ->
+    gen_listener:cast(self(), {'sms_result', sms_error(JObj, Request)}),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p~n", [_Msg]),
     {'noreply', State}.
@@ -156,12 +158,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info('bridge_timeout', #state{timeout='undefined'}=State) ->
+handle_info('sms_timeout', #state{timeout='undefined'}=State) ->
     {'noreply', State};
-handle_info('bridge_timeout', #state{response_queue=ResponseQ
+handle_info('sms_timeout', #state{response_queue=ResponseQ
                                      ,resource_req=JObj
                                     }=State) ->
-    wapi_offnet_resource:publish_resp(ResponseQ, bridge_timeout(JObj)),
+    wapi_offnet_resource:publish_resp(ResponseQ, sms_timeout(JObj)),
     {'stop', 'normal', State#state{timeout='undefined'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled info: ~p", [_Info]),
@@ -175,39 +177,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{request_handler=RequestHandler
-                          ,resource_req=Request
-                         }) ->
-    case whapps_util:get_event_type(JObj) of
-        {<<"error">>, _} ->
-            <<"bridge">> = wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
-            lager:debug("channel execution error while waiting for bridge: ~s"
-                        ,[wh_util:to_binary(wh_json:encode(JObj))]),
-            gen_listener:cast(RequestHandler, {'bridge_result', bridge_error(JObj, Request)});
-        {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            lager:debug("channel was destroy while waiting for bridge", []),
-            Result = case wh_json:get_value(<<"Disposition">>, JObj)
-                         =:= <<"SUCCESS">>
-                     of
-                         'true' -> bridge_success(JObj, Request);
-                         'false' -> bridge_failure(JObj, Request)
-                     end,
-            gen_listener:cast(RequestHandler, {'bridge_result', Result});
-        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
-            <<"bridge">> = wh_json:get_value(<<"Application-Name">>, JObj),
-            lager:debug("channel execute complete for bridge", []),
-            Result = case wh_json:get_value(<<"Disposition">>, JObj)
-                         =:= <<"SUCCESS">>
-                     of
-                         'true' -> bridge_success(JObj, Request);
-                         'false' -> bridge_failure(JObj, Request)
-                     end,
-            gen_listener:cast(RequestHandler, {'bridge_result', Result});
-        {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
-            CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-            gen_listener:cast(RequestHandler, {'bridged', CallId});
-        _ -> 'ok'
-    end,
+handle_event(JObj, State) ->
+    %lager:debug("unhandled event in sms : ~p",[JObj]),
     {'reply', []}.
 
 %%--------------------------------------------------------------------
@@ -238,7 +209,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-build_bridge(#state{endpoints=Endpoints
+
+-spec handle_message_delivery(wh_json:object(), wh_proplist()) -> no_return().
+handle_message_delivery(JObj, Props) ->
+    _ = wh_util:put_callid(JObj),
+    Server = props:get_value('server',Props),
+    'true' = wapi_sms:delivery_v(JObj),
+    case wh_json:is_true(<<"Delivery-Failure">>, JObj) of
+        'true'  -> gen_listener:cast(Server, {'sms_failure', JObj});
+        'false' -> gen_listener:cast(Server, {'sms_success', JObj})
+    end.
+
+
+build_sms(#state{endpoints=Endpoints
                     ,resource_req=JObj
                     ,queue=Q
                    }) ->
@@ -447,8 +430,8 @@ contains_emergency_endpoints([Endpoint|Endpoints]) ->
         'false' -> contains_emergency_endpoints(Endpoints)
     end.
 
--spec bridge_timeout(wh_json:object()) -> wh_proplist().
-bridge_timeout(Request) ->
+-spec sms_timeout(wh_json:object()) -> wh_proplist().
+sms_timeout(Request) ->
     lager:debug("attempt to connect to resources timed out"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
@@ -459,8 +442,8 @@ bridge_timeout(Request) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_error(wh_json:object(), wh_json:object()) -> wh_proplist().
-bridge_error(JObj, Request) ->
+-spec sms_error(wh_json:object(), wh_json:object()) -> wh_proplist().
+sms_error(JObj, Request) ->
     lager:debug("error during outbound request: ~s", [wh_util:to_binary(wh_json:encode(JObj))]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
@@ -471,8 +454,8 @@ bridge_error(JObj, Request) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_success(wh_json:object(), wh_json:object()) -> wh_proplist().
-bridge_success(JObj, Request) ->
+-spec sms_success(wh_json:object(), wh_json:object()) -> wh_proplist().
+sms_success(JObj, Request) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
@@ -482,8 +465,8 @@ bridge_success(JObj, Request) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec bridge_failure(wh_json:object(), wh_json:object()) -> wh_proplist().
-bridge_failure(JObj, Request) ->
+-spec sms_failure(wh_json:object(), wh_json:object()) -> wh_proplist().
+sms_failure(JObj, Request) ->
     lager:debug("resources for outbound request failed: ~s", [wh_json:get_value(<<"Disposition">>, JObj)]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Request)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, <<>>)}
