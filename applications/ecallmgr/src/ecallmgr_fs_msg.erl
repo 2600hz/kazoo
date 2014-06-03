@@ -10,6 +10,7 @@
 
 -behaviour(gen_listener).
 
+
 -export([start_link/1, start_link/2]).
 
 -export([init/1
@@ -22,6 +23,7 @@
         ]).
 
 -export([handle_message_route/2]).
+-export([process_fs_event/2]).
 
 -record(state, {
           node :: atom()
@@ -41,7 +43,8 @@
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
--include_lib("ecallmgr.hrl").
+-include("ecallmgr.hrl").
+-include_lib("nksip/include/nksip.hrl").
 
 %%%===================================================================
 %%% API
@@ -131,9 +134,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'event', [_X | Props]}, #state{node=Node}=State) ->
-    lager:info("fs event ~p",[_X]),
-    props:to_log(Props, <<"FS_MSG">>),
+handle_info({'event', Props}, #state{node=Node}=State) ->
+    spawn(?MODULE, 'process_fs_event', [Node, Props]),
     {'noreply', State, 'hibernate'};
 handle_info({'EXIT', _, _}, State) ->
     {'noreply', State};
@@ -181,77 +183,193 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-    
 
-get_target(To, Username) ->
-    [ToUser, ToRealm] = binary:split(To , <<"@">>),
-    lager:info("To Parts ~p / ~p",[ToUser, ToRealm]),
-    Target = <<Username/binary, "@", ToRealm/binary>>.
-
-get_caller_id(CID, From) ->
-    [FromUser, FromRealm] = binary:split(From , <<"@">>),
-    lager:info("From Parts ~p / ~p",[FromUser, FromRealm]),
-    CallerID = <<CID/binary, "@", FromRealm/binary>>.
     
 
 -spec handle_message_route(wh_json:object(), wh_proplist()) -> no_return().
 handle_message_route(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
-    lager:info("process_message received SIP/SIMPLE Msg : ~p", [JObj]),
+    Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
+    case wapi_sms:message_v(JObj) of
+        'false' -> send_error(JObj, <<"sms failed to execute as JObj did not validate">>);
+        'true' when Endpoints =:= [] -> send_error(JObj, <<"sms request had no endpoints">>);
+        'true' -> send_message(JObj, Props, Endpoints)
+    end.
+
+-spec send_message(wh_json:object(), wh_proplist(), wh_json:objects()) -> no_return().
+send_message(JObj, Props, Endpoints) ->
     Node = props:get_value('node', Props),
     From = wh_json:get_value(<<"From">>, JObj),
-    CIDNumber = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
-    To = wh_json:get_value(<<"To">>, JObj),
     Body = wh_json:get_value(<<"Body">>, JObj),
     MessageId = wh_json:get_value(<<"Message-ID">>, JObj),
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    
-    Contact = wh_json:get_value(<<"Contact">>, JObj),
-    IP = wh_json:get_value(<<"Contact-IP">>, JObj),
-    Port = wh_json:get_value(<<"Contact-Port">>, JObj),
-    
-%    case ecallmgr_registrar:lookup_original_contact(Realm, Username) of
-%        {'error', 'not_found'} ->
-%            lager:warning("failed to find contact for ~s@~s, dropping MWI update", [Username, Realm]);
-%        {'ok', Contact} ->
-%            Node = props:get_value('node', Props),
-%            send_mwi_update(JObj, Node, Username, Realm, Contact)
-%    end.
+    CIDNumber = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    [Endpoint] = Endpoints,
+    FromURI = get_uri(wh_json:get_value(<<"From-URI">>,CCVs)),
+    [#uri{user=FromUser
+          ,domain=FromDomain
+         }=FromContact] = nksip_parse:uris(FromURI),
 
-    
-    Username = wh_json:get_value(<<"Contact-Username">>, JObj),
-    [ContactUser, ContactRealm] = binary:split(Contact , <<"@">>),
- %   lager:info("Contact Parts ~p / ~p",[ContactUser, ContactRealm]),
-    [FromUser, FromRealm] = binary:split(From , <<"@">>),
- %   lager:info("From Parts ~p / ~p",[FromUser, FromRealm]),
-    [ToUser, ToRealm] = binary:split(To , <<"@">>),
- %   lager:info("To Parts ~p / ~p",[ToUser, ToRealm]),
-    Target = get_target(To, Username),
-    CallerID = get_caller_id(CIDNumber, From),
-    CallerIDFull = <<"<sip:", CallerID/binary, ">">>,
-    
-    [User, Realm] = binary:split(To, <<"@">>),
-            Header2 = [
-               {"sip_profile", ?DEFAULT_FS_PROFILE}
+    Header = props:filter_undefined([{"sip_profile", ?DEFAULT_FS_PROFILE}
               ,{"proto", "sip"}
               ,{"blocking", "true"}
               ,{"dest_proto", "sip"}
-              ,{"to", wh_util:to_list(Target)}
-              ,{"to_sip_ip", wh_util:to_list(IP)}
-              ,{"to_sip_port", wh_util:to_list(Port)}
-              ,{"from", wh_util:to_list(CallerID)}
-              ,{"from_full", wh_util:to_list(CallerIDFull)}
+              ,{"from", wh_util:to_list(CIDNumber)}
+              ,{"from_full", wh_util:to_list(FromURI)}
               ,{"content-length", wh_util:to_list(size(Body))}
               ,{"type", "text/plain"}
               ,{"body", Body}
               ,{"Call-ID", wh_util:to_list(CallId)}
               ,{"Unique-ID", wh_util:to_list(CallId)}
               ,{"Message-ID", wh_util:to_list(MessageId)}
-            ],
-%    lager:info("SENDING ~p",[Header2]),
-%            Resp = freeswitch:sendevent(Node, 'SEND_MESSAGE', Header),
-            Resp = freeswitch:sendevent_custom(Node, 'SMS::SEND_MESSAGE', Header2),    
-            lager:info("sent SIP/SIMPLE Msg to '~s' via ~s: ~p", [To, Node, Resp]).
-
-
+              ,{"Msg-ID", wh_util:to_list(MsgId)}
+              ,{"sip_h_X-Kazoo-Bounce", wh_util:to_list(wh_util:rand_hex_binary(12))}
+             ]),
+    
+    H2 = lists:foldl(fun({K,V}, Acc) ->
+                        [{ wh_util:to_list(?GET_CCV(K)) , wh_util:to_list(V)} | Acc]
+                end, Header, wh_json:to_proplist(CCVs)),
    
+    case format_endpoint(Endpoint, Props, JObj) of
+        {'error', E} ->
+            send_error(JObj, E);
+        {'ok', EndpointProps} ->
+            EvtProps = lists:append(H2, EndpointProps),
+            lager:debug("SENDING ~p",[EvtProps]),
+            Resp = freeswitch:sendevent_custom(Node, 'SMS::SEND_MESSAGE', EvtProps)
+    end.
+
+
+-spec get_uri(ne_binary()) -> ne_binary().
+get_uri(<<"<sip", _/binary>>=Uri) -> Uri;
+get_uri(<<"sip", _/binary>>=Uri) -> Uri;
+get_uri(Uri) -> <<"<sip:", Uri/binary, ">">>.
+
+-spec send_error(wh_json:object(), any()) -> any().
+send_error(JObj, Err) ->
+    Payload = 
+        [{<<"Description">>, wh_util:to_binary(Err)}
+         ,{<<"Success">>, <<"false">>}
+         ,{<<"Error">>, <<"false">>}
+               ],
+    lager:debug("SEND ERROR ~p",[JObj]).
+
+-spec format_endpoint(wh_json:object(), wh_proplist(), wh_json:object()) -> {'ok', wh_proplist()} | {'error', ne_binary()}.
+-spec format_endpoint(ne_binary(), wh_json:object(), wh_proplist(), wh_json:object()) -> {'ok', wh_proplist()} | {'error', ne_binary()}.
+
+format_endpoint(Endpoint, Props, JObj) ->
+    format_endpoint(
+      wh_json:get_value(<<"Invite-Format">>, Endpoint), Endpoint, Props, JObj).
+
+format_endpoint(<<"route">>, Endpoint, Props, JObj) ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    case wh_json:is_true(<<"Bounce-Back">>, CCVs, 'false') of
+        'true' -> format_bounce_endpoint(Endpoint, Props, JObj);
+        'false' -> format_route_endpoint(Endpoint, Props, JObj)
+    end;
+
+format_endpoint(<<"username">>, Endpoint, Props, JObj) ->
+    Realm = wh_json:get_value(<<"To-Realm">>, Endpoint),
+    Username = wh_json:get_value(<<"To-Username">>, Endpoint),
+    ToURI = wh_json:get_value(<<"Presence-ID">>, Endpoint),
+    case ecallmgr_registrar:lookup_original_contact(Realm, Username) of
+        {'ok', Contact} ->            
+            [#uri{user=ToUser
+                  ,domain=ToIP
+                  ,port=ToPort
+                 }=ToContact] = nksip_parse:uris(Contact),
+            {'ok', props:filter_empty(
+              [{"to", wh_util:to_list(ToURI)}
+               ,{"to_sip_ip", wh_util:to_list(ToIP)}
+               ,{"to_sip_port", wh_util:to_list(ToPort)}
+              ])};
+        {'error', Err}=E -> E
+    end.
+
+-spec format_route_endpoint(wh_json:object(), wh_proplist(), wh_json:object()) -> {'ok', wh_proplist()} | {'error', ne_binary()}.
+format_route_endpoint(Endpoint, Props, JObj) ->
+    ToURI = wh_json:get_value(<<"Route">>, Endpoint),
+    [#uri{user=ToUser
+          ,domain=ToIP
+          ,port=ToPort
+         }=ToContact] = nksip_parse:uris(ToURI),
+    {'ok', props:filter_empty(
+      [{"to", wh_util:to_list(ToURI)}
+       ,{"to_sip_ip", wh_util:to_list(ToIP)}
+       ,{"to_sip_port", wh_util:to_list(ToPort)}
+      ])}.
+
+-spec format_bounce_endpoint(wh_json:object(), wh_proplist(), wh_json:object()) -> {'ok', wh_proplist()} | {'error', ne_binary()}.
+format_bounce_endpoint(Endpoint, Props, JObj) ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    ToDID = wh_json:get_value(<<"To-DID">>, Endpoint),
+    ToRealm = wh_json:get_value(<<"Bounce-Realm">>, CCVs),
+    To = <<ToDID/binary, "@", ToRealm/binary>>,
+    Node = props:get_value('node', Props),
+    ToURI = ecallmgr_fs_node:sip_url(Node),   
+    [#uri{user=ToUser
+          ,domain=ToIP
+          ,port=ToPort
+         }=ToContact] = nksip_parse:uris(ToURI),
+    {'ok', props:filter_empty(
+      [{"to", wh_util:to_list(To)}
+       ,{"to_sip_ip", wh_util:to_list(ToIP)}
+       ,{"to_sip_port", wh_util:to_list(ToPort)}
+      ])}.
+
+-spec process_fs_event(atom(), wh_proplist()) -> any().
+process_fs_event(Node, Props) ->
+    props:to_log(Props, <<"FS_MSG">>),
+    process_fs_event(
+      props:get_value(<<"Event-Name">>, Props),
+      props:get_value(<<"Event-Subclass">>, Props),
+      Node,
+      lists:usort(Props)).
+
+-spec process_fs_event(ne_binary(), ne_binary(), atom(), wh_proplist()) -> any().
+process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
+    ServerID =  props:get_value(<<"Server-ID">>, Props),
+    BaseProps = props:filter_empty(props:filter_undefined( 
+        [{<<"Call-ID">>, props:get_value(<<"Call-ID">>, Props)}
+         ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
+         ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+         ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+         ,{<<"Delivery-Result-Code">>, props:get_value(<<"Delivery-Result-Code">>, Props)}
+         ,{<<"Delivery-Failure">>, props:get_value(<<"Delivery-Failure">>, Props)}
+         ,{<<"Custom-Channel-Vars">>, wh_json:from_list( get_ccvs(Props)) }
+         ,{<<"Msg-ID">>, props:get_value(<<"Msg-ID">>, Props)}
+         ,{<<"Status">>, props:get_value(<<"Status">>, Props)}                
+             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+        ])),
+    EventProps = get_event_uris(Props, BaseProps),
+    wapi_sms:publish_delivery( EventProps );
+
+process_fs_event(_EventName, _SubClass, _Node, _Props) ->
+    lager:debug("Event ~s/~s not processed on node ~s",[_EventName, _SubClass, _Node]).
+
+get_event_uris(Props, EventProps) ->
+    Uris = [{<<"From">>, <<"from_full">>}
+            ,{<<"To">>, <<"to">>}],
+    lists:foldl(fun(T, Acc) ->
+                        lists:append(Acc, get_event_uris_props(T, Props))
+                end, EventProps, Uris).
+
+-spec get_event_uris_props(tuple() | ne_binary(), wh_proplist() | ne_binary()) -> wh_proplist().
+get_event_uris_props({K, F}, Props) ->
+    get_event_uris_props( get_uri( props:get_value(F, Props) ), K);
+get_event_uris_props(Uri, Base) ->
+    [#uri{user=User, domain=Realm}=URI] = nksip_parse:uris(Uri),
+    [{Base, <<User/binary, "@", Realm/binary>>}
+     ,{<<Base/binary, "-User">>, User }
+     ,{<<Base/binary, "-Realm">>, Realm }].
+
+-spec is_ccv(tuple()) -> boolean().
+is_ccv({?GET_CCV(K), V}) -> 'true';
+is_ccv(_) -> 'false'.
+
+-spec get_ccvs(wh_proplist()) -> wh_proplist().
+get_ccvs(Props) ->
+    [ {K, V} || {?GET_CCV(K), V} <- lists:filter(fun is_ccv/1, Props)].
