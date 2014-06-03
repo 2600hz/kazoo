@@ -10,6 +10,8 @@
 
 -include("callflow.hrl").
 
+-define(DEFAULT_DEVICE_SERVICES, [<<"audio">>,<<"video">>,<<"sms">>]).
+
 -export([handle_req/2
          ,maybe_restrict_call/2
         ]).
@@ -44,7 +46,33 @@ maybe_restrict_call(JObj, Call) ->
 should_restrict_call(Call) ->
     case cf_endpoint:get(Call) of
         {'error', _R} -> 'false';
-        {'ok', JObj} -> maybe_closed_group_restriction(JObj, Call)
+        {'ok', JObj} -> maybe_service_unavailable(JObj, Call)
+    end.
+
+-spec maybe_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
+maybe_service_unavailable(JObj, Call) ->
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    Services = wh_json:get_value(<<"pvt_services">>, JObj, ?DEFAULT_DEVICE_SERVICES),
+    case lists:member(<<"sms">>, Services) of
+        'true' ->
+            maybe_account_service_unavailable(JObj, Call);
+        'false' ->
+            lager:debug("device ~s does not have audio service enabled", [Id]),
+            'true'
+    end.
+
+-spec maybe_account_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
+maybe_account_service_unavailable(JObj, Call) ->
+    AccountId = whapps_call:account_id(Call),
+    AccountDb = whapps_call:account_db(Call),
+    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    Services = wh_json:get_value(<<"pvt_services">>, JObj, ?DEFAULT_DEVICE_SERVICES),
+    case lists:member(<<"sms">>, Services) of
+        'true' ->
+            maybe_closed_group_restriction(JObj, Call);
+        'false' ->
+            lager:debug("account ~s does not have audio service enabled", [AccountId]),
+            'true'
     end.
 
 -spec maybe_closed_group_restriction(wh_json:object(), whapps_call:call()) -> boolean().
