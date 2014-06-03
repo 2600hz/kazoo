@@ -9,11 +9,10 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([send_sms/2]).
+-export([create_sms/2, save_sms/2]).
 
--spec send_sms(whapps_call:call(), wh_proplist()) -> any().
-send_sms(Call, Endpoints) ->
-    lager:debug("Endpoint ~p",[Endpoints]),
+-spec create_sms(whapps_call:call(), wh_proplist()) -> any().
+create_sms(Call, Endpoints) ->
     AccountId = whapps_call:account_id(Call),
     AccountRealm =  whapps_call:to_realm(Call),
     CCVUpdates = props:filter_undefined(
@@ -26,10 +25,9 @@ send_sms(Call, Endpoints) ->
                     ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                    ]),
     
-    Payload = [             
+    [             
                {<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
-               ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
-               ,{<<"Call-ID">>, wh_util:rand_hex_binary(16)}
+               ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
                ,{<<"From">>, whapps_call:from(Call)}
                ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
@@ -39,19 +37,47 @@ send_sms(Call, Endpoints) ->
                ,{<<"Application-Name">>, <<"send">>}
                ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, wh_json:new())}
                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],    
+              ].    
+
+-spec save_sms(wh_json:object(), whapps_call:call()) -> 'ok'.
+save_sms(JObj, Call) ->
+    AccountId = whapps_call:account_id(Call),
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    OwnerId = wh_json:get_value(<<"Owner-ID">>, CCVs),
+    AuthType = wh_json:get_value(<<"Authorizing-Type">>, CCVs),
+    AuthId = wh_json:get_value(<<"Authorizing-ID">>, CCVs),
+    Body = wh_json:get_value(<<"Body">>, JObj),
+    To = wh_json:get_value(<<"To">>, JObj),
+    From = wh_json:get_value(<<"From">>, JObj),
+    Request = wh_json:get_value(<<"Request">>, JObj),
+    [ToUser, ToRealm] = binary:split(To, <<"@">>),
+    [FromUser, FromRealm] = binary:split(From, <<"@">>),
+    [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
+    MessageId = wh_json:get_value(<<"Message-ID">>, JObj),    
     
-    lager:info("Payload ~p",[Payload]),
-    whapps_util:amqp_pool_request(Payload
-                                  ,fun wapi_sms:publish_message/1
-                                  ,fun wapi_sms:delivery_v/1).
-
-
-
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
-    
-
-
+    Doc = props:filter_undefined([
+           {<<"pvt_type">>, <<"sms">> }
+          ,{<<"account_id">>, AccountId }
+          ,{<<"owner_id">>, OwnerId }
+          ,{<<"authorization_type">>, AuthType }
+          ,{<<"authorization_id">>, AuthId }
+          ,{<<"to">>, To }
+          ,{<<"to_user">>, ToUser }
+          ,{<<"to_realm">>, ToRealm }
+          ,{<<"from">>, From }
+          ,{<<"from_user">>, FromUser }
+          ,{<<"from_realm">>, FromRealm }
+          ,{<<"request">>, Request }
+          ,{<<"request_user">>, RequestUser }
+          ,{<<"request_realm">>, RequestRealm }
+          ,{<<"body">>, Body }
+          ,{<<"message_id">>, MessageId}
+          ,{<<"pvt_created">>, wh_util:current_tstamp()}
+          ,{<<"status">>, <<"running">>}
+          ,{<<"call_id">>, whapps_call:call_id(Call)}
+          ,{<<"pvt_call">>, whapps_call:to_json(Call)}                                 
+          ,{<<"pvt_json">>, JObj}                                 
+          ,{<<"_id">>, whapps_call:call_id(Call)}
+           ]),    
+    {'ok', JObjSaved} = kazoo_modb:save_doc(AccountId, Doc).
 
