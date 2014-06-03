@@ -508,7 +508,6 @@ do_save_docs(#db{}=Db, Docs, Options) ->
 
 -spec maybe_set_docid(wh_json:object()) -> wh_json:object().
 maybe_set_docid(Doc) ->
-    lager:debug("DOC ~p",[Doc]),
     case doc_id(Doc) of
         'undefined' -> wh_json:set_value(<<"_id">>, couch_mgr:get_uuid(), Doc);
         _ -> Doc
