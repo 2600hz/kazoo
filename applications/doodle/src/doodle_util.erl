@@ -47,16 +47,17 @@ save_sms(JObj, Call) ->
     AuthType = wh_json:get_value(<<"Authorizing-Type">>, CCVs),
     AuthId = wh_json:get_value(<<"Authorizing-ID">>, CCVs),
     Body = wh_json:get_value(<<"Body">>, JObj),
-    To = wh_json:get_value(<<"To">>, JObj),
-    From = wh_json:get_value(<<"From">>, JObj),
-    Request = wh_json:get_value(<<"Request">>, JObj),
+    To = whapps_call:to(Call),
+    From = whapps_call:from(Call),
+    Request = whapps_call:request(Call),
     [ToUser, ToRealm] = binary:split(To, <<"@">>),
     [FromUser, FromRealm] = binary:split(From, <<"@">>),
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     MessageId = wh_json:get_value(<<"Message-ID">>, JObj),    
     
     Doc = props:filter_undefined([
-           {<<"pvt_type">>, <<"sms">> }
+           {<<"_id">>, whapps_call:call_id(Call)}
+          ,{<<"pvt_type">>, <<"sms">> }
           ,{<<"account_id">>, AccountId }
           ,{<<"owner_id">>, OwnerId }
           ,{<<"authorization_type">>, AuthType }
@@ -73,11 +74,10 @@ save_sms(JObj, Call) ->
           ,{<<"body">>, Body }
           ,{<<"message_id">>, MessageId}
           ,{<<"pvt_created">>, wh_util:current_tstamp()}
-          ,{<<"status">>, <<"running">>}
+          ,{<<"status">>, <<"pending">>}
           ,{<<"call_id">>, whapps_call:call_id(Call)}
           ,{<<"pvt_call">>, whapps_call:to_json(Call)}                                 
           ,{<<"pvt_json">>, JObj}                                 
-          ,{<<"_id">>, whapps_call:call_id(Call)}
-           ]),    
-    {'ok', JObjSaved} = kazoo_modb:save_doc(AccountId, Doc).
+           ]),
+    {'ok', JObjSaved} = kazoo_modb:save_doc(AccountId, wh_json:from_list(Doc), []).
 

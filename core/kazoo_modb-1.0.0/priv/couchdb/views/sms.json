@@ -4,6 +4,15 @@
    "views": {
        "crossbar_listing": {
            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'owner': doc.owner_id, 'direction' : doc.direction }); }"
-       }
+       },
+        "listing_by_owner": {
+            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted) return; emit(doc.owner_id, {'id': doc._id }); }"
+        },
+        "listing_by_device": {
+            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted) return; emit(doc.device_id, {'id': doc._id}); }"
+        },
+        "deliver_to_device": {
+            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_status != 'pending') return; emit(doc.device_id, {'id': doc._id}); }"
+        }
    }
 }
