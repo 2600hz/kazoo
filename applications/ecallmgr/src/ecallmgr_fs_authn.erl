@@ -184,7 +184,6 @@ handle_directory_lookup(Id, Props, Node) ->
 
 -spec lookup_user(atom(), ne_binary(), ne_binary(), wh_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
-    props:to_log(Props, <<"LOOKUP USER">>),
     Domain = props:get_value(<<"domain">>, Props),
     Realm = get_auth_realm(Props),
     Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
