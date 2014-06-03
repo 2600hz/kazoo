@@ -27,11 +27,10 @@ handle(Data, Call) ->
            fun wapi_offnet_resource:publish_req/1,
            fun wapi_offnet_resource:resp_v/1, 30000) of
         {'ok', Res } ->
-            lager:debug("Result ~p",[Res]),
             doodle_exe:continue(Call);
         {'error', _E} ->
             lager:debug("error executing offnet action : ~p",[_E]),
-            doodle_exe:sleep(Call)
+            doodle_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------
