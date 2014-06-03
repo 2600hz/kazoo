@@ -10,6 +10,8 @@
 
 -include("doodle.hrl").
 
+-define(DEFAULT_DEVICE_SERVICES, ["audio","video","sms"]).
+
 -export([handle_req/2
          ,maybe_restrict_call/2
         ]).
@@ -21,7 +23,8 @@ handle_req(JObj, _Options) ->
     lager:info("doodle has received a route win, taking control of the call"),
     case whapps_call:retrieve(CallId) of
         {'ok', Call} ->
-            maybe_restrict_call(JObj, whapps_call:from_route_win(JObj, Call));
+            Call1 = doodle_util:save_sms(JObj, whapps_call:from_route_win(JObj, Call)),
+            maybe_restrict_call(JObj, Call1);
         {'error', R} ->
             lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.
@@ -31,9 +34,6 @@ maybe_restrict_call(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
             lager:debug("endpoint is restricted from making this call, terminate", []),
-            _ = whapps_call_command:answer(Call),
-            _ = whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
-            _ = whapps_call_command:queued_hangup(Call),
             'ok';
         'false' ->
             lager:info("setting initial information about the call"),
@@ -44,9 +44,35 @@ maybe_restrict_call(JObj, Call) ->
 should_restrict_call(Call) ->
     case cf_endpoint:get(Call) of
         {'error', _R} -> 'false';
-        {'ok', JObj} -> maybe_closed_group_restriction(JObj, Call)
+        {'ok', JObj} -> maybe_service_unavailable(JObj, Call)
     end.
 
+-spec maybe_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
+maybe_service_unavailable(JObj, Call) ->
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    Services = wh_json:get_value(<<"pvt_services">>, JObj, ?DEFAULT_DEVICE_SERVICES),
+    case lists:member(<<"sms">>, Services) of
+        'true' ->
+            maybe_account_service_unavailable(JObj, Call);
+        'false' ->
+            lager:debug("device ~s does not have sms service enabled", [Id]),
+            'true'
+    end.
+
+-spec maybe_account_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
+maybe_account_service_unavailable(JObj, Call) ->
+    AccountId = whapps_call:account_id(Call),
+    AccountDb = whapps_call:account_db(Call),
+    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    Services = wh_json:get_value(<<"pvt_services">>, JObj, ?DEFAULT_DEVICE_SERVICES),
+    case lists:member(<<"sms">>, Services) of
+        'true' ->
+            maybe_closed_group_restriction(JObj, Call);
+        'false' ->
+            lager:debug("account ~s does not have sms service enabled", [AccountId]),
+            'true'
+    end.
+  
 -spec maybe_closed_group_restriction(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_closed_group_restriction(JObj, Call) ->
     case wh_json:get_value([<<"call_restriction">>, <<"closed_groups">>, <<"action">>], JObj) of
