@@ -10,7 +10,12 @@
 
 -include("doodle.hrl").
 
--define(DEFAULT_DEVICE_SERVICES, [<<"audio">>,<<"video">>,<<"sms">>]).
+-define(DEFAULT_SERVICES, [{<<"audio">>, [{<<"enabled">>, <<"true">>}]}
+                           ,{<<"video">>,[{<<"enabled">>, <<"true">>}]}
+                           ,{<<"sms">>  ,[{<<"enabled">>, <<"true">>}]}
+                          ]).
+
+-define(DEFAULT_SERVICES_AS_JSON, wh_json:from_list(?DEFAULT_SERVICES)).
 
 -export([handle_req/2
          ,maybe_restrict_call/2
@@ -50,9 +55,11 @@ should_restrict_call(Call) ->
 
 -spec maybe_service_unavailable(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_service_unavailable(JObj, Call) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    Services = wh_json:get_value(<<"pvt_services">>, JObj, ?DEFAULT_DEVICE_SERVICES),
-    case lists:member(<<"sms">>, Services) of
+    Id = wh_json:get_value(<<"_id">>, JObj),    
+    Services = wh_json:merge_recursive(
+                 wh_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES_AS_JSON),
+                 wh_json:get_value(<<"pvt_services">>, JObj, wh_json:new())),
+    case wh_json:is_true([<<"sms">>,<<"enabled">>], Services, 'true') of
         'true' ->
             maybe_account_service_unavailable(JObj, Call);
         'false' ->
@@ -64,9 +71,11 @@ maybe_service_unavailable(JObj, Call) ->
 maybe_account_service_unavailable(JObj, Call) ->
     AccountId = whapps_call:account_id(Call),
     AccountDb = whapps_call:account_db(Call),
-    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    Services = wh_json:get_value(<<"pvt_services">>, JObj, ?DEFAULT_DEVICE_SERVICES),
-    case lists:member(<<"sms">>, Services) of
+    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),    
+    Services = wh_json:merge_recursive(
+                 wh_json:get_value(<<"services">>, Doc, ?DEFAULT_SERVICES_AS_JSON),
+                 wh_json:get_value(<<"pvt_services">>, Doc, wh_json:new())),
+    case wh_json:is_true([<<"sms">>,<<"enabled">>], Services, 'true') of
         'true' ->
             maybe_closed_group_restriction(JObj, Call);
         'false' ->
