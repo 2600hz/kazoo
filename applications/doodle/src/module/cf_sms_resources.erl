@@ -22,15 +22,22 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    case whapps_util:amqp_pool_request(
-           build_offnet_request(Data, Call),
-           fun wapi_offnet_resource:publish_req/1,
-           fun wapi_offnet_resource:resp_v/1, 30000) of
-        {'ok', Res } ->
-            doodle_exe:continue(Call);
-        {'error', _E} ->
-            lager:debug("error executing offnet action : ~p",[_E]),
-            doodle_exe:continue(Call)
+    'ok' = wapi_offnet_resource:publish_req(build_offnet_request(Data, Call)),
+    case wait_for_stepswitch(Call) of
+        {<<"SUCCESS">>, _} ->
+            lager:info("completed successful offnet request"),
+            cf_exe:stop(Call);
+        {Cause, Code} -> handle_bridge_failure(Cause, Code, Call)
+    end.
+
+-spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+handle_bridge_failure(Cause, Code, Call) ->
+    lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
+    case cf_util:handle_bridge_failure(Cause, Code, Call) of
+        'ok' -> lager:debug("found bridge failure child");
+        'not_found' ->
+            cf_util:send_default_response(Cause, Call),
+            cf_exe:stop(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -44,21 +51,21 @@ build_offnet_request(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
     props:filter_undefined([{<<"Resource-Type">>, <<"sms">>}
-                            ,{<<"Application-Name">>, <<"sms">>}
+                            ,{<<"Application-Name">>, <<"bridge">>}
                             ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
                             ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
                             ,{<<"Outbound-Caller-ID-Name">>, CIDName}
                             ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
                             ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-                            ,{<<"Call-ID">>, doodle_exe:callid(Call)}
-                            ,{<<"Control-Queue">>, doodle_exe:control_queue(Call)}
+                            ,{<<"Call-ID">>, cf_exe:callid(Call)}
+                            ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
                             ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
                             ,{<<"Account-ID">>, whapps_call:account_id(Call)}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
                             ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
                             ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
                             ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
-                            ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data, 'true')}
+                            ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data)}
                             ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
                             ,{<<"Flags">>, get_flags(Data, Call)}
                             ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Data)}
@@ -69,9 +76,7 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
                             ,{<<"Diversions">>, get_diversions(Call)}
                             ,{<<"Inception">>, get_inception(Call)}
-                            ,{<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
-                            ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
-                            | wh_api:default_headers(doodle_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+                            | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().
@@ -109,7 +114,7 @@ get_caller_id(Data, Call) ->
 
 -spec get_hunt_account_id(wh_json:object(), whapps_call:call()) -> api_binary().
 get_hunt_account_id(Data, Call) ->
-    case wh_json:is_true(<<"use_local_resources">>, Data, 'false') of
+    case wh_json:is_true(<<"use_local_resources">>, Data, 'true') of
         'false' -> 'undefined';
         'true' ->
             AccountId = whapps_call:account_id(Call),
@@ -136,7 +141,6 @@ get_to_did(_Data, Call, Number) ->
             end;
         {'error', _ } -> Number
     end.
-
 
 -spec get_sip_headers(wh_json:object(), whapps_call:call()) -> api_object().
 get_sip_headers(Data, Call) ->
@@ -173,18 +177,8 @@ get_flags(Data, Call) ->
                 ,fun get_flow_dynamic_flags/3
                 ,fun get_endpoint_dynamic_flags/3
                 ,fun get_account_dynamic_flags/3
-                ,fun get_account_dynamic_flags/3
-                ,fun get_resource_flags/3
                ],
     lists:foldl(fun(F, A) -> F(Data, Call, A) end, [], Routines).
-
--spec get_resource_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
-get_resource_flags(JObj, Call, Flags) ->
-    get_resource_type_flags(whapps_call:resource_type(Call), JObj, Call, Flags).    
-
--spec get_resource_type_flags(ne_binary(), wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
-get_resource_type_flags(<<"sms">>, JObj, Call, Flags) -> [<<"sms">> | Flags];
-get_resource_type_flags(_Other, JObj, Call, Flags) -> Flags.
 
 -spec get_endpoint_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
 get_endpoint_flags(_, Call, Flags) ->
