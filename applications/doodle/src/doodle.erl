@@ -59,7 +59,6 @@ start_deps() ->
                                                 ,'whistle_amqp'
                                                 ,'whistle_couch'
                                                ]],
-    doodle_maintenance:refresh(),
     'ok'.
 
 %%--------------------------------------------------------------------
