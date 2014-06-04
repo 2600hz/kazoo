@@ -16,9 +16,18 @@
     ,terminate/2
     ,code_change/3
 ]).
+-export([add_request/4
+         ,available_device/2]).
 
 -include("camper.hrl").
 
+-spec add_request(ne_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
+add_request(AcctDb, AuthorizingId, Exten, Targets) ->
+    gen_server:cast(?MODULE, {'add_request', AcctDb, AuthorizingId, Exten, Targets}).
+
+-spec available_device(ne_binary(), ne_binary()) -> 'ok'.
+available_device(AcctId, SIPName) ->
+    gen_server:cast(?MODULE, {'available_device', AcctId, SIPName}).
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
