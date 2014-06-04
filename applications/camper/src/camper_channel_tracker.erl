@@ -21,6 +21,25 @@
 
 -include("camper.hrl").
 
+-record('state', {'requests' :: dict()
+                  ,'requestor_queues' :: dict()
+                  ,'sipnames' :: dict()
+                  ,'acctdb' :: ne_binary()
+                 }
+       ).
+
+-spec get_requests(#'state'{}) -> dict().
+get_requests(#'state'{'requests' = Val}) ->
+    Val.
+
+-spec get_requestor_queues(#'state'{}) -> dict().
+get_requestor_queues(#'state'{'requestor_queues' = Val}) ->
+    Val.
+
+-spec get_sipnames(#'state'{}) -> dict().
+get_sipnames(#'state'{'sipnames' = Val}) ->
+    Val.
+
 -spec add_request(ne_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
 add_request(AcctDb, AuthorizingId, Exten, Targets) ->
     gen_server:cast(?MODULE, {'add_request', AcctDb, AuthorizingId, Exten, Targets}).
@@ -85,9 +104,57 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'add_request',AcctDb, Dev, Exten, Targets}, GlobalState) ->
+    AcctId = wh_util:format_account_id(AcctDb, 'raw'),
+    NewGlobal = with_state(AcctId
+                          ,GlobalState
+                          ,fun(Local) ->
+                               #'state'{'requests' = dict:merge(fun(_, _, V2) -> V2 end
+                                                               ,get_requests(Local)
+                                                               ,make_requests(Targets, Dev, Exten)
+                                                               )
+                                        ,'sipnames' = dict:store(Exten, Targets, get_sipnames(Local))
+                                        ,'requestor_queues' = maybe_update_queues(Targets, Dev, get_requestor_queues(Local))
+                                        ,'acctdb' = AcctDb
+                                       }
+                           end
+                          ),
+    {'noreply', NewGlobal};
 handle_cast(_Msg, State) ->
     lager:info("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
+
+-spec with_state(ne_binary(), dict(ne_binary(), #'state'{}), fun((#'state'{}) -> #'state'{})) -> #'state'{}.
+with_state(AcctId, Global, F) ->
+    Local = case dict:find(AcctId, Global) of
+                {'ok', S} -> S;
+                _ -> #'state'{'requests' = dict:new()
+                              ,'requestor_queues' = dict:new()
+                              ,'sipnames' = dict:new()
+                             }
+            end,
+    dict:store(AcctId, F(Local), Global).
+
+-spec make_requests(ne_binary(), ne_binary(), ne_binary()) -> dict().
+make_requests(SIPNames, Requestor, Exten) ->
+    R = lists:map(fun (SIPName) -> {SIPName, Requestor} end, SIPNames),
+    lists:foldl(fun (Req, Acc) -> dict:store(Req, Exten, Acc) end, dict:new(), R).
+
+-spec maybe_update_queues(ne_binaries(), ne_binary(), dict()) -> dict().
+maybe_update_queues(SIPNames, Requestor, Queues) ->
+    lists:foldl(fun (SIPName, Acc) ->
+                    Q = case dict:find(SIPName, Acc) of
+                            {'ok', Queue} -> Queue;
+                            _ -> queue:new()
+                        end,
+                    case queue:member(Requestor, Q) of
+                        'true' -> Acc;
+                        'false' -> dict:store(SIPName,queue:in(Requestor, Q),Acc)
+                    end
+                end
+                ,Queues
+                ,SIPNames
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
