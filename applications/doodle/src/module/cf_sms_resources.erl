@@ -51,7 +51,7 @@ build_offnet_request(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
     props:filter_undefined([{<<"Resource-Type">>, <<"sms">>}
-                            ,{<<"Application-Name">>, <<"bridge">>}
+                            ,{<<"Application-Name">>, <<"sms">>}
                             ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
                             ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
                             ,{<<"Outbound-Caller-ID-Name">>, CIDName}
@@ -76,6 +76,8 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
                             ,{<<"Diversions">>, get_diversions(Call)}
                             ,{<<"Inception">>, get_inception(Call)}
+                            ,{<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
+                            ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
                             | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
 
