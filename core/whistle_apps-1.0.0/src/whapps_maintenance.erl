@@ -332,6 +332,7 @@ refresh_account_db(AccountDb, AccountId, Views, JObj) ->
 
 -spec refresh_account_mods(ne_binary()) -> 'ok'.
 refresh_account_mods(AccountDb) ->
+<<<<<<< HEAD
     Views = get_all_account_mod_views(),
     _ = [refresh_account_mod(AccountMOD, Views)
          || AccountMOD <- whapps_util:get_account_mods(AccountDb)
@@ -340,8 +341,14 @@ refresh_account_mods(AccountDb) ->
 
 -spec refresh_account_mod(ne_binary(), ne_binaries()) -> 'ok'.
 refresh_account_mod(AccountMOD, Views) ->
+=======
+    MODs = whapps_util:get_account_mods(AccountDb),
+    [refresh_account_mod(AccountMOD) || AccountMOD <- MODs].
+
+refresh_account_mod(AccountMOD) ->
+>>>>>>> refresh modb views in maintenance
     io:format("    updating views in mod ~s~n", [AccountMOD]),
-    whapps_util:update_views(AccountMOD, Views).
+    kazoo_modb:refresh_views(AccountMOD).
 
 -spec refresh_account_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
 refresh_account_devices(AccountDb, AccountRealm, Devices) ->
