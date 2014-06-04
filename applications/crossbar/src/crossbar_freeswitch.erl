@@ -304,7 +304,7 @@ crawl_numbers_db(NumberDb) ->
                         ,[_E, Db, _R])
     end.
 
--spec get_numbers(wh_json:objects()) -> [ne_binary(),...] | [].
+-spec get_numbers(wh_json:objects()) -> [ne_binaries()] | [].
 get_numbers(JObjs) ->
     [Number
      || JObj <- JObjs
