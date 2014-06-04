@@ -601,7 +601,7 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
     catch
         'error':'undef' ->
 %            cf_module_not_found(Call)
-            cf_module_skip(Call)
+            cf_module_skip(ModuleBin, Call)
     end.
 
 -spec cf_module_not_found(whapps_call:call()) ->
@@ -611,10 +611,10 @@ cf_module_not_found(Call) ->
     ?MODULE:continue(self()),
     {'undefined', whapps_call:kvs_fetch('cf_last_action', Call)}.
 
--spec cf_module_skip(whapps_call:call()) ->
+-spec cf_module_skip(ne_binary(), whapps_call:call()) ->
                                  {'undefined', atom()}.
-cf_module_skip(CFModule) ->
-    lager:error("unknown callflow action, skipping to next action"),
+cf_module_skip(CFModule, Call) ->
+    lager:error("unknown callflow action '~s', skipping to next action",[CFModule]),
     ?MODULE:continue(self()),
     {'undefined', CFModule}.
 
