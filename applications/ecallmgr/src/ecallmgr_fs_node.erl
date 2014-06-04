@@ -617,6 +617,12 @@ get_registrations(Node) ->
             R = binary:replace(Response, <<" ">>, <<>>, ['global']),
             Lines = [binary:split(Line, <<",">>, ['global'] ) 
                     || Line <- binary:split(R, <<"\n">>, ['global'])],
+            get_registration_details(Lines);
+        _Else -> []
+    end.
+
+-spec get_registration_details(list()) -> wh_proplist().
+get_registration_details(Lines) when length(Lines) > 3 ->
             Header = lists:nth(1, Lines),
             [ begin 
                    {Res,Total} = lists:mapfoldl(
@@ -626,5 +632,4 @@ get_registrations(Node) ->
                    Res
                end
              || Row <- lists:sublist(Lines, 2, length(Lines)-4)];
-        _Else -> []
-    end.
+get_registration_details(List) -> [].
