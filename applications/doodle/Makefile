@@ -20,10 +20,11 @@ DIRS =  . \
 all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+K_MODULES = $(shell ls src/module/*.erl | sed 's/src\/module\///;s/\.erl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(K_MODULES)\]}/' \
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
@@ -33,7 +34,7 @@ ebin/$(PROJECT).app: src/*.erl
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
-		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES),$(K_MODULES)\]}/' \
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
@@ -49,7 +50,7 @@ clean:
 test: clean compile-test eunit
 
 eunit: compile-test
-	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+	erl -noshell -pa test -eval "eunit:test([$(MODULES),$(K_MODULES)], [verbose])" -s init stop
 
 dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
