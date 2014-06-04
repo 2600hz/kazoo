@@ -21,6 +21,8 @@
 
 -include("camper.hrl").
 
+-define(RINGING_TIMEOUT, 30).
+
 -record('state', {'requests' :: dict()
                   ,'requestor_queues' :: dict()
                   ,'sipnames' :: dict()
@@ -40,6 +42,18 @@ get_requestor_queues(#'state'{'requestor_queues' = Val}) ->
 get_sipnames(#'state'{'sipnames' = Val}) ->
     Val.
 
+-spec get_acctdb(#'state'{}) -> dict().
+get_acctdb(#'state'{'acctdb' = Val}) ->
+    Val.
+
+-spec set_requests(#'state'{}, dict()) -> #'state'{}.
+set_requests(S, Val) ->
+    S#'state'{'requests' = Val}.
+
+-spec set_requestor_queues(#'state'{}, dict()) -> #'state'{}.
+set_requestor_queues(S, Val) ->
+    S#'state'{'requestor_queues' = Val}.
+
 -spec add_request(ne_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
 add_request(AcctDb, AuthorizingId, Exten, Targets) ->
     gen_server:cast(?MODULE, {'add_request', AcctDb, AuthorizingId, Exten, Targets}).
@@ -47,6 +61,8 @@ add_request(AcctDb, AuthorizingId, Exten, Targets) ->
 -spec available_device(ne_binary(), ne_binary()) -> 'ok'.
 available_device(AcctId, SIPName) ->
     gen_server:cast(?MODULE, {'available_device', AcctId, SIPName}).
+
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
@@ -74,7 +90,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:info("started campering..."),
+    lager:debug("started campering..."),
     {'ok', dict:new()}.
 
 %%--------------------------------------------------------------------
@@ -120,8 +136,22 @@ handle_cast({'add_request',AcctDb, Dev, Exten, Targets}, GlobalState) ->
                            end
                           ),
     {'noreply', NewGlobal};
+handle_cast({'available_device', AcctId, SIPName}, GlobalState) ->
+    NewGlobal = with_state(AcctId
+                          ,GlobalState
+                          ,fun(Local) ->
+                               case dict:find(SIPName, get_requestor_queues(Local)) of
+                                   {'ok', Q} ->
+                                       maybe_handle_request(SIPName, Q, Local);
+                                   _ ->
+                                       lager:debug("Request not found"),
+                                       Local
+                               end
+                           end
+                         ),
+    {'noreply', NewGlobal};
 handle_cast(_Msg, State) ->
-    lager:info("unhandled cast: ~p", [_Msg]),
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 -spec with_state(ne_binary(), dict(ne_binary(), #'state'{}), fun((#'state'{}) -> #'state'{})) -> #'state'{}.
@@ -134,6 +164,108 @@ with_state(AcctId, Global, F) ->
                              }
             end,
     dict:store(AcctId, F(Local), Global).
+
+-spec maybe_handle_request(ne_binary(), queue(), #'state'{}) -> #'state'{}.
+maybe_handle_request(SIPName, Q, Local) ->
+    case queue:out(Q) of
+        {{'value', Requestor}, NewQ} ->
+            NewQueue = dict:store(SIPName, NewQ, get_requestor_queues(Local)),
+            lager:debug("Request found, trying to handle"),
+            handle_request(SIPName, Requestor, set_requestor_queues(Local, NewQueue));
+        _ ->
+            lager:debug("Request not found"),
+            Local
+    end.
+
+-spec handle_request(ne_binary(), ne_binary(), #'state'{}) -> #'state'{}.
+handle_request(SIPName, Requestor, Local) ->
+    Reqs = get_requests(Local),
+    case dict:find({SIPName, Requestor}, Reqs) of
+        {'ok', Exten} ->
+            lager:debug("Originating call"),
+            originate_call(Requestor, Exten, get_acctdb(Local)),
+            lager:debug("Clearing request"),
+            clear_request(Requestor, Exten, Local);
+        _ ->
+            lager:debug("Extension for request not found"),
+            Local
+    end.
+
+-spec originate_call({ne_binary(), ne_binary()}, ne_binary(), ne_binary()) -> term().
+originate_call({Id, Type}, Exten, AcctDb) ->
+    Routines = [fun(C) -> whapps_call:set_account_db(AcctDb, C) end
+                ,fun(C) -> whapps_call:set_account_id(wh_util:format_account_id(AcctDb, 'raw'), C) end
+                ,fun(C) -> whapps_call:set_authorizing_id(Id, C) end
+                ,fun(C) -> whapps_call:set_authorizing_type(Type, C) end
+               ],
+    Call = lists:foldl(fun(F, C) -> F(C) end, whapps_call:new(), Routines),
+    case get_endpoints(Call, Id, Type) of
+        [] ->
+            lager:debug("Can't find endpoints");
+        Endpoints ->
+            originate_quickcall(Endpoints, Exten, Call)
+    end.
+
+-spec originate_quickcall(wh_json:object(), ne_binary(), ne_binary()) -> term().
+originate_quickcall(Endpoints, Exten, Call) ->
+    CCVs = [{<<"Account-ID">>, whapps_call:account_id(Call)}
+            ,{<<"Retain-CID">>, <<"true">>}
+            ,{<<"Inherit-Codec">>, <<"false">>}
+            ,{<<"Authorizing-Type">>, whapps_call:authorizing_type(Call)}
+            ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+           ],
+    MsgId = wh_util:rand_hex_binary(16),
+
+    Request = [{<<"Application-Name">>, <<"transfer">>}
+               ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Exten}])}
+               ,{<<"Msg-ID">>, MsgId}
+               ,{<<"Endpoints">>, Endpoints}
+               ,{<<"Timeout">>, ?RINGING_TIMEOUT}
+               ,{<<"Outbound-Caller-ID-Name">>, <<"Campered call">>}
+               ,{<<"Outbound-Caller-ID-Number">>, Exten}
+%               ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context)}
+%               ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context)}
+               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               ,{<<"Continue-On-Fail">>, 'false'}
+               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+               ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+               | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_resource:publish_originate_req(props:filter_undefined(Request)),
+    lager:debug("Originate request published").
+
+get_endpoints(Call, EndpointId, <<"device">>) ->
+    Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
+                                    ,{<<"suppress_clid">>, 'true'}
+                                   ]),
+    case cf_endpoint:build(EndpointId, Properties, Call) of
+        {'error', _} -> [];
+        {'ok', []} -> [];
+        {'ok', Endpoints} -> Endpoints
+    end;
+get_endpoints(Call, UserId, <<"user">>) ->
+    Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
+                                    ,{<<"suppress_clid">>, 'true'}
+                                   ]),
+    lists:foldr(fun(EndpointId, Acc) ->
+        case cf_endpoint:build(EndpointId, Properties, Call) of
+            {'ok', Endpoint} -> Endpoint ++ Acc;
+            {'error', _E} -> Acc
+        end
+    end, [], cf_attributes:owned_by(UserId, <<"device">>, Call));
+get_endpoints(_, _, _) ->
+    [].
+
+clear_request(Requestor, Exten, Local) ->
+    {'ok', SIPNames} = dict:find(Exten, get_sipnames(Local)),
+    lists:foldl(fun (SIPName, Acc) ->
+                    Qs = get_requestor_queues(Acc),
+                    {'ok', Q} = dict:find(SIPName, Qs),
+                    Queue = queue:filter(fun(X) -> X =/= Requestor end, Q),
+                    Qs1 = dict:store(SIPName, Queue, Qs),
+                    Reqs = dict:erase({SIPName, Requestor}, get_requests(Acc)),
+                    set_requests(set_requestor_queues(Acc, Qs1), Reqs)
+                end, Local, SIPNames).
 
 -spec make_requests(ne_binary(), ne_binary(), ne_binary()) -> dict().
 make_requests(SIPNames, Requestor, Exten) ->
@@ -167,7 +299,7 @@ maybe_update_queues(SIPNames, Requestor, Queues) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:info("unhandled msg: ~p", [_Info]),
+    lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -182,7 +314,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:info("camper ~p termination", [_Reason]),
+    lager:debug("camper ~p termination", [_Reason]),
     'ok'.
 
 %%--------------------------------------------------------------------
