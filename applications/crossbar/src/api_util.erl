@@ -441,20 +441,45 @@ get_json_body(ReqBody, Req) -> decode_json_body(ReqBody, Req).
 decode_json_body(ReqBody, Req) ->
     lager:debug("request has a json payload: ~s", [ReqBody]),
     try wh_json:decode(ReqBody) of
-        JObj ->
-            case is_valid_request_envelope(JObj) of
-                'true' ->
-                    lager:debug("request envelope is valid"),
-                    {JObj, Req};
-                'false' ->
-                    lager:debug("invalid request envelope"),
-                    {{'malformed', <<"Invalid JSON request envelope">>}, Req}
-            end
+        JObj -> validate_decoded_json_body(normalize_envelope_keys(JObj), Req)
     catch
         'throw':{'invalid_json',{{'error',{ErrLine, ErrMsg}}, _JSON}} ->
             lager:debug("failed to decode json near ~p: ~s", [ErrLine, ErrMsg]),
             {{'malformed', <<(wh_util:to_binary(ErrMsg))/binary, " (around ", (wh_util:to_binary(ErrLine))/binary>>}, Req}
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% validates decoded json body
+%%   
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_decoded_json_body(wh_json:object(), cowboy_req:req()) -> get_json_return().
+validate_decoded_json_body(JObj, Req) ->
+    case is_valid_request_envelope(JObj) of
+        'true' ->
+            lager:debug("request envelope is valid"),
+            {JObj, Req};
+        'false' ->
+            lager:debug("invalid request envelope"),
+            {{'malformed', <<"Invalid JSON request envelope">>}, Req}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% normalizes envelope keys
+%%   sets envelope keys to lowercase
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_envelope_keys(wh_json:object()) -> wh_json:object().
+normalize_envelope_keys(JObj) ->
+    wh_json:foldl(fun normalize_envelope_keys_foldl/3, wh_json:new(), JObj).
+
+-spec normalize_envelope_keys_foldl(wh_json:key(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
+normalize_envelope_keys_foldl(_K, 'undefined', JObj) -> JObj;
+normalize_envelope_keys_foldl(K, V, JObj) -> wh_json:set_value(wh_json:normalize_key(K), V, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
