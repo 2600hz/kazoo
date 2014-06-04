@@ -24,8 +24,6 @@
                    ,'permanent', 5000, 'worker', ['poolboy']}).
 
 -define(CHILDREN, [?CACHE('doodle_cache')
-%                   ,?POOL('doodle_worker_pool')
-%                   ,?WORKER('doodle_jobs')
                    ,?WORKER('doodle_listener')
                    ,?WORKER('doodle_shared_listener')
                    ,?SUPER('doodle_event_handler_sup')
