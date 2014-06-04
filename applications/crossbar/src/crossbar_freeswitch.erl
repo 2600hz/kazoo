@@ -133,8 +133,7 @@ handle_call(_Request, _From, State) ->
 handle_cast('periodic_build', #state{is_running='true'}=State) ->
     {'noreply', State};
 handle_cast('periodic_build', #state{is_running='false'}=State) ->
-    Pid = spawn(?MODULE, 'build_freeswitch', [self()]),
-    Monitor = erlang:monitor('process', Pid),
+    {Pid, Monitor} = spawn_monitor(?MODULE, 'build_freeswitch', [self()]),
     lager:debug("started new freeswitch offline configuration builder ~p"
                 ,[Pid]),
     {'noreply', State#state{is_running='true', monitor=Monitor}};
