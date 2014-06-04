@@ -36,32 +36,32 @@
 handle(_Data, Call) ->
     lager:info("Camping feature started"),
     Number = whapps_call:kvs_fetch('cf_capture_group', Call),
-    Endpoints = get_endpoints_for_extension(Number, Call),
-    case get_available(Endpoints) of
-        [] ->
-            lager:info("Start camping..."),
-            % TODO send request to camper app
-            cf_exe:stop(Call);
-        [Endpoint | _] ->
-            lager:info("Got free device! Call now!!"),
-            Data = wh_json:set_value(<<"id">>, Endpoint, wh_json:new()),
-            cf_device:handle(Data, Call)
-    end,
+    Targets = get_sip_usernames_for_extension(Number, Call),
+    camper_channel_tracker:add_request(whapps_call:account_db(Call)
+                                       ,{whapps_call:authorizing_id(Call)
+                                         ,whapps_call:authorizing_type(Call)
+                                        }
+                                       ,Number
+                                       ,Targets
+                                      ),
     cf_exe:stop(Call).
 
--spec get_endpoints_for_extension(ne_binary(), whapps_call:call()) -> wh_json:object().
-get_endpoints_for_extension(Number, Call) ->
-    {'ok', Callflow} = cf_util:lookup_callflow(Number, whapps_call:account_id(Call)),
+-spec get_sip_usernames_for_extension(ne_binary(), whapps_call:call()) -> wh_json:object().
+get_sip_usernames_for_extension(Number, Call) ->
+    {'ok', Callflow, _} = cf_util:lookup_callflow(Number, whapps_call:account_id(Call)),
     TargetId = wh_json:get_ne_value([<<"flow">>, <<"data">>, <<"id">>], Callflow),
     TargetType = wh_json:get_ne_value([<<"flow">>, <<"module">>], Callflow),
-    case TargetType of
-        <<"user">> -> cf_attributes:owned_by(TargetId, <<"device">>, Call);
-        <<"device">> -> TargetId;
-        _Else ->
-            lager:debug("Can't found camping target's type. May be wrong extension number?"),
-            []
-    end.
-
--spec get_available([ne_binary()]) -> [ne_binary()].
-get_available(_Endpoints) ->
-    [].
+    Targets = case TargetType of
+                  <<"user">> -> cf_attributes:owned_by(TargetId, <<"device">>, Call);
+                  <<"device">> -> [TargetId];
+                  _Else ->
+                      lager:debug("Can't found camping target's type. May be wrong extension number?"),
+                      []
+              end,
+    lists:map(
+        fun(DevId) ->
+            {'ok', JObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), DevId),
+            wh_json:get_value([<<"sip">>, <<"username">>], JObj)
+        end
+        ,Targets
+    ).
