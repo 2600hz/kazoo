@@ -28,7 +28,7 @@ compile: ebin/$(PROJECT).app
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-ebin/$(PROJECT).app: src/*.erl
+ebin/$(PROJECT).app: src/*.erl src/module/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
