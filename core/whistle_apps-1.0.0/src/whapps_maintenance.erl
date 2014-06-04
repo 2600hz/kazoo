@@ -327,15 +327,12 @@ refresh_account_db(AccountDb, AccountId, Views, JObj) ->
     whapps_util:update_views(AccountDb, Views, 'true').
 
 refresh_account_mods(AccountDb) ->
-    Views = get_all_account_mod_views(),
     MODs = whapps_util:get_account_mods(AccountDb),
-    [refresh_account_mod(AccountMOD, Views)
-     || AccountMOD <- MODs
-    ].
+    [refresh_account_mod(AccountMOD) || AccountMOD <- MODs].
 
-refresh_account_mod(AccountMOD, Views) ->
+refresh_account_mod(AccountMOD) ->
     io:format("    updating views in mod ~s~n", [AccountMOD]),
-    whapps_util:update_views(AccountMOD, Views).
+    kazoo_modb:refresh_views(AccountMOD).
 
 refresh_account_devices(AccountDb, AccountRealm, Devices) ->
     [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
@@ -827,8 +824,6 @@ get_all_account_views() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-get_all_account_mod_views() ->
-    [whapps_util:get_view_json('crossbar', <<"account/cdrs.json">>)].
 
 -spec call_id_status(ne_binary()) -> 'ok'.
 -spec call_id_status(ne_binary(), boolean() | ne_binary()) -> 'ok'.
