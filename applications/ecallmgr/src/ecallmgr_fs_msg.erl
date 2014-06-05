@@ -189,10 +189,11 @@ code_change(_OldVsn, State, _Extra) ->
 -spec handle_message_route(wh_json:object(), wh_proplist()) -> no_return().
 handle_message_route(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
+    Node = props:get_value('node', Props),
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case wapi_sms:message_v(JObj) of
-        'false' -> send_error(JObj, <<"sms failed to execute as JObj did not validate">>);
-        'true' when Endpoints =:= [] -> send_error(JObj, <<"sms request had no endpoints">>);
+        'false' -> send_error(Node, JObj, <<"sms failed to execute as JObj did not validate">>);
+        'true' when Endpoints =:= [] -> send_error(Node, JObj, <<"sms request had no endpoints">>);
         'true' -> send_message(JObj, Props, Endpoints)
     end.
 
@@ -223,9 +224,9 @@ send_message(JObj, Props, Endpoints) ->
               ,{"type", "text/plain"}
               ,{"body", Body}
               ,{"Call-ID", wh_util:to_list(CallId)}
-              %,{"Unique-ID", wh_util:to_list(CallId)}
+              ,{"Unique-ID", wh_util:to_list(CallId)}
               ,{"Message-ID", wh_util:to_list(MessageId)}
-%              ,{"Msg-ID", wh_util:to_list(MsgId)}
+              ,{"Msg-ID", wh_util:to_list(MsgId)}
               ,{"sip_h_X-Kazoo-Bounce", wh_util:to_list(wh_util:rand_hex_binary(12))}
              ]),
     
@@ -235,7 +236,7 @@ send_message(JObj, Props, Endpoints) ->
    
     case format_endpoint(Endpoint, Props, JObj) of
         {'error', E} ->
-            send_error(JObj, E);
+            send_error(Node, JObj, E);
         {'ok', EndpointProps} ->
             lager:debug("sending sms message ~s to freeswitch",[CallId]),            
             EvtProps = lists:append(H2, EndpointProps),
@@ -248,14 +249,22 @@ get_uri(<<"<sip", _/binary>>=Uri) -> Uri;
 get_uri(<<"sip", _/binary>>=Uri) -> Uri;
 get_uri(Uri) -> <<"<sip:", Uri/binary, ">">>.
 
--spec send_error(wh_json:object(), any()) -> any().
-send_error(JObj, Err) ->
+-spec send_error(atom(), wh_json:object(), any()) -> any().
+send_error(Node, JObj, Err) ->
     Payload = 
-        [{<<"Description">>, wh_util:to_binary(Err)}
-         ,{<<"Success">>, <<"false">>}
-         ,{<<"Error">>, <<"false">>}
-               ],
-    lager:debug("SEND ERROR ~p",[JObj]).
+        [{<<"Error-Description">>, wh_util:to_binary(Err)}
+         ,{<<"Status">>, <<"Error">>}
+         ,{<<"Delivery-Result-Code">>, <<"503">>}
+         ,{<<"Delivery-Result-Text">>, wh_util:to_binary(Err)}
+         ,{<<"Delivery-Failure">>, 'true'}
+         ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+         ,{<<"Message-ID">>, wh_json:get_value(<<"Message-ID">>, JObj)}
+         ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+         ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+         ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
+             | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+        ],
+    wapi_sms:publish_delivery( Payload ).
 
 -spec format_endpoint(wh_json:object(), wh_proplist(), wh_json:object()) -> {'ok', wh_proplist()} | {'error', ne_binary()}.
 -spec format_endpoint(ne_binary(), wh_json:object(), wh_proplist(), wh_json:object()) -> {'ok', wh_proplist()} | {'error', ne_binary()}.
