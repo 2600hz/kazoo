@@ -415,13 +415,13 @@ add_number_conflict(Number, JObj, Context) ->
     case wh_json:get_ne_value([<<"doc">>, <<"featurecode">>, <<"name">>], JObj) of
         'undefined' ->
             cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"uniqueItems">>
+                                            ,<<"unique">>
                                             ,<<"Number ", Number/binary, " exists in callflow ", Id/binary>>
                                             ,Context
                                            );
         _Else ->
             cb_context:add_validation_error(<<"numbers">>
-                                            ,<<"uniqueItems">>
+                                            ,<<"unique">>
                                             ,<<"Number ", Number/binary, " conflicts with featurecode callflow ", Id/binary>>
                                             ,Context
                                            )
