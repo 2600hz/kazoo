@@ -6,16 +6,16 @@
            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'owner': doc.owner_id, 'direction' : doc.direction }); }"
        },
         "listing_by_owner": {
-            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted) return; emit(doc.owner_id, {'id': doc._id }); }"
+            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'user' ) return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id, 'status' : doc.pvt_status, 'created' : doc.created }); }"
         },
         "listing_by_device": {
-            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted) return; emit(doc.device_id, {'id': doc._id}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'device' ) return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id, 'status' : doc.pvt_status, 'created' : doc.created }); }"
         },
         "deliver_to_device": {
-            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.authorization_type != 'device' || doc.pvt_status != 'pending') return; emit(doc.authorization_id, {'id': doc._id}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'device' || doc.pvt_status != 'pending') return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id}); }"
         },
         "deliver_to_owner": {
-            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_status != 'pending') return; emit(doc.owner_id, {'id': doc._id}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'user' || doc.pvt_status != 'pending') return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id}); }"
         }
    }
 }
