@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -22,20 +22,16 @@
 -include("pivot.hrl").
 
 -record(state, {}).
+-type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'route', []}
                    ,{'self', []}
                    ,{'pivot', []}
                   ]).
--define(RESPONDERS, [
-                     %% Received because of our route binding
-                     {{'pivot_handlers', 'handle_route_req'}, [{<<"dialplan">>, <<"route_req">>}]}
-
-                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
-                     %% which is usually populated with the listener's queue name
-                     ,{{'pivot_handlers', 'handle_route_win'}, [{<<"dialplan">>, <<"route_win">>}]}
-                     ,{{'pivot_handlers', 'handle_pivot_req'}, [{<<"dialplan">>, <<"pivot_req">>}]}
+-define(RESPONDERS, [{{'pivot_handlers', 'handle_pivot_req'}
+                      ,[{<<"dialplan">>, <<"pivot_req">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<"pivot_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -52,9 +48,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {'bindings', ?BINDINGS}
+    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
@@ -76,6 +72,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     {'ok', #state{}}.
 
@@ -93,6 +90,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) ->
+                         {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -106,7 +105,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> {'noreply', state()} |
+                                     {'noreply', state(), 'hibernate'}.
+handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
+    {'noreply', State, 'hibernate'};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -119,7 +125,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info(_Info, State) ->
+    lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -130,6 +138,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(wh_json:object(), state()) -> {'reply', []}.
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -144,6 +153,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
@@ -155,6 +165,7 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
