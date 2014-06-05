@@ -36,6 +36,7 @@ init() ->
 authorize(Context) ->
     authorize_nouns(cb_context:req_nouns(Context)).
 
+-spec authorize_nouns(req_nouns()) -> boolean().
 authorize_nouns([{<<"schemas">>,_}]) ->
     lager:debug("authorizing request to fetch schema(s)"),
     'true';
