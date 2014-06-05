@@ -34,5 +34,32 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
-handle(_Data, Call) ->
+handle(Data, Call) ->
+    case maybe_approved_caller(Data, Call) of
+        'true' -> 'ok';
+        'false' -> no_permission_to_eavesdrop(Call)
+    end,
     cf_exe:stop(Call).
+
+-spec maybe_approved_caller(wh_json:object(), whapps_call:call()) -> boolean().
+maybe_approved_caller(Data, Call) ->
+    case wh_json:get_value(<<"approved_device_id">>, Data) of
+        'undefined' ->
+            case wh_json:get_value(<<"approved_user_id">>, Data) of
+                'undefined' ->
+                    case wh_json:get_value(<<"approved_group_id">>, Data) of
+                        'undefined' -> 'false';
+                        GroupId -> cf_util:caller_belongs_to_group(GroupId, Call)
+                    end;
+                UserId -> cf_util:caller_belongs_to_user(UserId, Call)
+            end;
+        DeviceId ->
+            % Compare approved device_id with calling one
+            DeviceId == whapps_call:authorizing_id(Call)
+    end.
+
+-spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
+%% TODO: please convert to system_media file (say is not consistent on deployments)
+no_permission_to_eavesdrop(Call) ->
+    whapps_call_command:answer(Call),
+    whapps_call_command:b_say(<<"you have no permission to eavesdrop this call">>, Call).
