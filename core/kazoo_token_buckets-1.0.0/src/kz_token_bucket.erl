@@ -20,6 +20,7 @@
 
 %% API
 -export([start_link/2, start_link/3, start_link/4
+         ,stop/1
          ,consume/2
          ,consume_until/2
          ,credit/2
@@ -79,6 +80,10 @@ start_link(Max, FillRate, FillBlock, FillTime) when is_integer(FillRate), FillRa
                                                     ->
     gen_server:start_link(?MODULE, [Max, FillRate, FillBlock, FillTime], []).
 
+-spec stop(pid()) -> 'ok'.
+stop(Srv) ->
+    gen_server:cast(Srv, 'stop').
+
 -spec consume(pid(), pos_integer()) -> boolean().
 consume(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
     gen_server:call(Srv, {'consume', Tokens}).
@@ -123,7 +128,9 @@ init([Max, FillRate, FillBlock, FillTime]) ->
                   ,fill_ref=start_fill_timer(FillRate, FillBlock, FillTime)
                   ,fill_as_block=FillBlock
                   ,tokens=Max
-                 }}.
+                 }
+     ,?INACTIVITY_TIMEOUT_MS
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -143,25 +150,25 @@ handle_call({'consume', Req}, _From, #state{tokens=Current}=State) ->
     case Current - Req of
         N when N >= 0 ->
             lager:debug("consumed ~p, ~p left", [Req, N]),
-            {'reply', 'true', State#state{tokens=N}};
+            {'reply', 'true', State#state{tokens=N}, ?INACTIVITY_TIMEOUT_MS};
         _ ->
             lager:debug("not enough tokens (~p) to consume ~p", [Current, Req]),
-            {'reply', 'false', State}
+            {'reply', 'false', State, ?INACTIVITY_TIMEOUT_MS}
     end;
 handle_call({'consume_until', Req}, _From, #state{tokens=Current}=State) ->
     case Current - Req of
         N when N >= 0 ->
             lager:debug("consumed ~p, ~p left", [Req, N]),
-            {'reply', 'true', State#state{tokens=N}};
+            {'reply', 'true', State#state{tokens=N}, ?INACTIVITY_TIMEOUT_MS};
         _N ->
             lager:debug("not enough tokens (~p) to consume ~p, zeroing out tokens", [Current, Req]),
-            {'reply', 'false', State#state{tokens=0}}
+            {'reply', 'false', State#state{tokens=0}, ?INACTIVITY_TIMEOUT_MS}
     end;
 handle_call({'tokens'}, _From, #state{tokens=Current}=State) ->
-    {'reply', Current, State};
+    {'reply', Current, State, ?INACTIVITY_TIMEOUT_MS};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call: ~p", [_Request]),
-    {'reply', 'ok', State}.
+    {'reply', 'ok', State, ?INACTIVITY_TIMEOUT_MS}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -179,18 +186,21 @@ handle_cast({'credit', Req}, #state{tokens=Current
     case Current + Req of
         N when N > Max ->
             lager:debug("credit of ~p tokens overfills, setting to ~p", [Req, Max]),
-            {'noreply', State#state{tokens=Max}};
+            {'noreply', State#state{tokens=Max}, ?INACTIVITY_TIMEOUT_MS};
         N ->
             lager:debug("crediting ~p tokens, now at ~p", [Req, N]),
-            {'noreply', State#state{tokens=N}}
+            {'noreply', State#state{tokens=N}, ?INACTIVITY_TIMEOUT_MS}
     end;
 handle_cast({'name', Name}, State) ->
     wh_util:put_callid(Name),
     lager:debug("updated name to ~s", [Name]),
-    {'noreply', State};
+    {'noreply', State, ?INACTIVITY_TIMEOUT_MS};
+handle_cast('stop', State) ->
+    lager:debug("asked to stop"),
+    {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
-    {'noreply', State}.
+    {'noreply', State, ?INACTIVITY_TIMEOUT_MS}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -202,6 +212,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info('timeout', State) ->
+    lager:debug("inactivity timeout reached, going down"),
+    {'stop', 'normal', State};
 handle_info({'timeout', Ref, ?TOKEN_FILL_TIME}, #state{max_tokens=Max
                                                        ,tokens=Current
                                                        ,fill_rate=FillRate
@@ -209,12 +222,15 @@ handle_info({'timeout', Ref, ?TOKEN_FILL_TIME}, #state{max_tokens=Max
                                                        ,fill_ref=Ref
                                                        ,fill_as_block=FillBlock
                                                      }=State) ->
-    {'noreply', State#state{tokens=add_tokens(Max, Current, FillRate, FillBlock, FillTime)
-                            ,fill_ref=start_fill_timer(FillRate, FillBlock, FillTime)
-                           }};
+    {'noreply'
+     ,State#state{tokens=add_tokens(Max, Current, FillRate, FillBlock, FillTime)
+                  ,fill_ref=start_fill_timer(FillRate, FillBlock, FillTime)
+                 }
+     ,?INACTIVITY_TIMEOUT_MS
+    };
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {'noreply', State}.
+    {'noreply', State, ?INACTIVITY_TIMEOUT_MS}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -265,6 +281,7 @@ start_fill_timer(_FillRate, 'true', FillTime) ->
 start_fill_timer(FillRate, 'false', FillTime) ->
     start_fill_timer(fill_timeout(FillRate, fill_time_in_ms(FillTime))).
 
+-spec fill_timeout(pos_integer(), pos_integer()) -> pos_integer().
 fill_timeout(FillRate, FillTime) ->
     case FillTime div FillRate of
         N when N < 1 -> 1;
@@ -285,6 +302,7 @@ add_tokens(Max, Count, FillRate, 'false', FillTime) ->
 
     constrain(Max, Count, FillShard).
 
+-spec constrain(pos_integer(), pos_integer(), pos_integer()) -> pos_integer().
 constrain(Max, Count, Inc) ->
     case Count+Inc of
         N when N > Max -> Max;
