@@ -396,8 +396,8 @@ handle_info('initialize', #state{call=Call}) ->
     log_call_information(Call),
     Flow = whapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [fun(C) -> whapps_call:kvs_store('consumer_pid', self(), C) end
-                ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
-                ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
+                ,fun(C) -> whapps_call:call_id_helper(fun doodle_exe:callid/2, C) end
+                ,fun(C) -> whapps_call:control_queue_helper(fun doodle_exe:control_queue/2, C) end
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     {'noreply', #state{call=CallWithHelpers
@@ -650,7 +650,7 @@ spawn_cf_module(CFModule, Data, Call) ->
 %% unlike the whapps_call_command this send command does not call the
 %% functions of this module to form the headers, nor does it set
 %% the reply queue.  Used when this module is terminating to send
-%% a hangup command without relying on the (now terminated) cf_exe.
+%% a hangup command without relying on the (now terminated) doodle_exe.
 %% @end
 %%--------------------------------------------------------------------
 -spec send_amqp_message(api_terms(), wh_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.

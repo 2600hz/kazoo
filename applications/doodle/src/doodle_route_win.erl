@@ -235,8 +235,8 @@ update_ccvs(Call) ->
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
-%% executes the found call flow by starting a new cf_exe process under the
-%% cf_exe_sup tree.
+%% executes the found call flow by starting a new doodle_exe process under the
+%% doodle_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------
 -spec execute_callflow(whapps_call:call()) -> {'ok', pid()}.
