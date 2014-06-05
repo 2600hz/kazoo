@@ -12,5 +12,8 @@
 
 -define(CAMPER_CACHE, 'camper_cache').
 
+-define(TIMEOUT, <<"timeout">>).
+-define(DEFAULT_TIMEOUT, 15*60). % seconds
+
 -define(CAMPER_HRL, 'true').
 -endif.
