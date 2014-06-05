@@ -521,8 +521,10 @@ get_channel_params(JObj) ->
           end,
 
     Custom = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-    lists:foldl(fun({K,V}, CV) ->
-                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
+    lists:foldl(fun({<<"variable_", K/binary>>,V}, CV) ->
+                        [{K, V} | CV];
+                   ({K,V}, CV) ->
+                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]                
                 end, CV1, Custom).
 
 -spec get_custom_sip_headers(wh_json:object()) -> wh_json:json_proplist().
