@@ -75,7 +75,7 @@ http_method(<<_/binary>> = Method) ->
     end;
 http_method(Method) -> http_method(wh_util:to_binary(Method)).
 
--spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | binary()) -> ne_binary().
+-spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | binary() | 'undefined') -> ne_binary().
 resolve_uri(Raw, 'undefined') ->
     wh_util:to_binary(Raw);
 resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) ->
