@@ -57,18 +57,25 @@
 
 -include("kzt.hrl").
 
+-define(DEFAULT_HTTP_METHOD, 'post').
+
 -spec http_method(api_binary() | list()) -> 'get' | 'post'.
-http_method(L) when is_list(L) -> http_method(props:get_value('method', L));
-http_method(Method) ->
-    case wh_util:to_atom(Method) of
+http_method(L) when is_list(L) ->
+    http_method(wh_util:to_binary(props:get_value('method', L)));
+http_method('undefined') -> ?DEFAULT_HTTP_METHOD;
+http_method(<<_/binary>> = Method) ->
+    MethodBin = wh_util:to_lower_binary(Method),
+
+    try wh_util:to_atom(MethodBin) of
         'get' -> 'get';
         'post' -> 'post';
-        'GET' -> 'get';
-        'POST' -> 'post';
-        'undefined' -> 'post'
-    end.
+        'undefined' -> ?DEFAULT_HTTP_METHOD
+    catch
+        _E:_R -> ?DEFAULT_HTTP_METHOD
+    end;
+http_method(Method) -> http_method(wh_util:to_binary(Method)).
 
--spec resolve_uri(nonempty_string() | ne_binary(), nonempty_string() | binary() | 'undefined') -> ne_binary().
+-spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | binary() | 'undefined') -> ne_binary().
 resolve_uri(Raw, 'undefined') ->
     wh_util:to_binary(Raw);
 resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) ->
