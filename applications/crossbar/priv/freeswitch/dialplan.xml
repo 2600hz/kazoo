@@ -8,17 +8,10 @@
       </condition>
     </extension>
 
-
     <extension name="common"  continue="true">
       <condition field="${number_full}" expression="^(\+.*)$">
          <action inline="true" application="set" data="sofia_contact=${sofia_contact(${number_full}@${domain_name})}"/>
          <action application="log" data="sofia contact = ${sofia_contact}" />
-      </condition>
-    </extension>
-
-    <extension name="common"  continue="true">
-      <condition>
-         <action application="log" data="c aller id = ${ecallmgr_Caller-ID}"/>
       </condition>
     </extension>
 
@@ -31,7 +24,6 @@
            <anti-action application="playback" data="en/us/callie/misc/phone_not_auth.wav" />
       </condition>
     </extension>
-
 
   </context>
 </include>
