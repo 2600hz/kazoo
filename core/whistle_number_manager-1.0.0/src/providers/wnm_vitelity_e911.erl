@@ -161,7 +161,7 @@ e911_options(#number{number=Number, assigned_to=AccountId}, AddressJObj) ->
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
 
--spec get_unit(ne_binary()) -> {ne_binary() | 'undefined', ne_binary() | 'undefined'}.
+-spec get_unit(ne_binary()) -> { api_binary(),  api_binary()}.
 get_unit(ExtendedAddress) ->
     case binary:split(ExtendedAddress, <<" ">>) of
         [UnitType, UnitNumber|_] -> {UnitType, UnitNumber};
