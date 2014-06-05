@@ -29,15 +29,9 @@
                    ,{'self', []}
                    ,{'pivot', []}
                   ]).
--define(RESPONDERS, [{{'pivot_handlers', 'handle_route_req'}
-                      ,[{<<"dialplan">>, <<"route_req">>}]
+-define(RESPONDERS, [{{'pivot_handlers', 'handle_pivot_req'}
+                      ,[{<<"dialplan">>, <<"pivot_req">>}]
                      }
-                     ,{{'pivot_handlers', 'handle_route_win'}
-                       ,[{<<"dialplan">>, <<"route_win">>}]
-                      }
-                     ,{{'pivot_handlers', 'handle_pivot_req'}
-                       ,[{<<"dialplan">>, <<"pivot_req">>}]
-                      }
                     ]).
 -define(QUEUE_NAME, <<"pivot_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
