@@ -1,10 +1,12 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 -include_lib("xmerl/include/xmerl.hrl").
 
+-define(MILLISECONDS_IN_SECOND, 1000).
 -define(MILLISECONDS_IN_MINUTE, 60000).
 -define(MILLISECONDS_IN_HOUR, 3600000).
 -define(MILLISECONDS_IN_DAY, 86400000).
 
+-define(SECONDS_IN_MINUTE, 60).
 -define(SECONDS_IN_HOUR, 3600).
 -define(SECONDS_IN_DAY, 86400).
 -define(SECONDS_IN_WEEK, 604800).
