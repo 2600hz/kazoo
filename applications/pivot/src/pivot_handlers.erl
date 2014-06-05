@@ -8,10 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(pivot_handlers).
 
--export([handle_route_req/2
-         ,handle_route_win/2
-         ,handle_pivot_req/2
-        ]).
+-export([handle_pivot_req/2]).
 
 -include("pivot.hrl").
 
