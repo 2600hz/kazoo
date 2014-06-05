@@ -143,19 +143,33 @@ update_e911(Number, Address) ->
 -spec e911_options(ne_binary(), wh_json:object()) -> list().
 e911_options(#number{number=Number, assigned_to=AccountId}, AddressJObj) ->
     State = wnm_vitelity_util:get_short_state(wh_json:get_value(<<"region">>, AddressJObj)),
-    [{'qs', [{'did',  wnm_util:to_npan(Number)}
-             ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
-             ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
-             ,{'city', wh_json:get_value(<<"locality">>, AddressJObj)}
-             ,{'state', State}
-             ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
-             ,{'xml', <<"yes">>}
-             ,{'cmd', <<"e911send">>}
-             | wnm_vitelity_util:default_options()
-            ]}
+    {UnitType, UnitNumber} = get_unit(wh_json:get_value(<<"extended_address">>, AddressJObj)),
+    [{'qs', props:filter_undefined(
+                [{'did',  wnm_util:to_npan(Number)}
+                 ,{'name', wh_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
+                 ,{'address', wh_json:get_value(<<"street_address">>, AddressJObj)}
+                 ,{'unittype', UnitType}
+                 ,{'unitnumber', UnitNumber}
+                 ,{'city', wh_json:get_value(<<"locality">>, AddressJObj)}
+                 ,{'state', State}
+                 ,{'zip', wh_json:get_value(<<"postal_code">>, AddressJObj)}
+                 ,{'xml', <<"yes">>}
+                 ,{'cmd', <<"e911send">>}
+                 | wnm_vitelity_util:default_options()
+                ])
+     }
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
--spec get_account_name(ne_binary()) -> ne_binary() | 'undefined'.
+
+-spec get_unit(ne_binary()) -> {api_binary(),  api_binary()}.
+get_unit(ExtendedAddress) ->
+    case binary:split(ExtendedAddress, <<" ">>) of
+        [UnitType, UnitNumber|_] -> {UnitType, UnitNumber};
+        [UnitType] -> {UnitType, 'undefined'};
+        _ -> {'undefined', 'undefined'}
+    end.
+
+-spec get_account_name(ne_binary()) -> api_binary().
 get_account_name(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
@@ -164,8 +178,6 @@ get_account_name(AccountId) ->
             'undefined';
         {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj, 'undefined')
     end.
-
-
 
 -spec is_valid_location(wh_json:object()) ->
                                {'ok', wh_json:object()} |
