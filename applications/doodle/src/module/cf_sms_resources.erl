@@ -26,7 +26,7 @@ handle(Data, Call) ->
     case wait_for_stepswitch(Call) of
         {<<"SUCCESS">>, _} ->
             lager:info("completed successful offnet request"),
-            cf_exe:stop(Call);
+            doodle_exe:stop(Call);
         {Cause, Code} -> handle_bridge_failure(Cause, Code, Call)
     end.
 
@@ -37,7 +37,7 @@ handle_bridge_failure(Cause, Code, Call) ->
         'ok' -> lager:debug("found bridge failure child");
         'not_found' ->
             cf_util:send_default_response(Cause, Call),
-            cf_exe:stop(Call)
+            doodle_exe:stop(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -57,8 +57,8 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Outbound-Caller-ID-Name">>, CIDName}
                             ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
                             ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-                            ,{<<"Call-ID">>, cf_exe:callid(Call)}
-                            ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
+                            ,{<<"Call-ID">>, doodle_exe:callid(Call)}
+                            ,{<<"Control-Queue">>, doodle_exe:control_queue(Call)}
                             ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
                             ,{<<"Account-ID">>, whapps_call:account_id(Call)}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
@@ -78,7 +78,7 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Inception">>, get_inception(Call)}
                             ,{<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
                             ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
-                            | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+                            | wh_api:default_headers(doodle_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
                            ]).
 
 -spec get_bypass_e164(wh_json:object()) -> boolean().

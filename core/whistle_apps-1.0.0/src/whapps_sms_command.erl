@@ -36,11 +36,9 @@ default_application_timeout() ->
     ?DEFAULT_APPLICATION_TIMEOUT.
 
 
--type whapps_api_sms_return() :: {'error', 'timeout' |
-                                     wh_json:object()
-                                    } |
-                                    {'fail', wh_json:object()} |
-                                    {'ok', wh_json:object()}.
+-type whapps_api_sms_return() :: {'error', 'timeout' | wh_json:object() } 
+                                   | {'fail', wh_json:object()} 
+                                   | {'ok', wh_json:object()}.
 
 %%--------------------------------------------------------------------
 %% @public
