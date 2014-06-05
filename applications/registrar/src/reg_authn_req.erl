@@ -90,9 +90,16 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
              ,{<<"Account-Realm">>, AuthUser#auth_user.account_realm}
              ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
-             ,{<<"Caller-ID">>, AuthUser#auth_user.msisdn}
+            | create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
             ],
     wh_json:from_list(props:filter_undefined(Props)).
+
+-spec create_specific_ccvs(auth_user(), ne_binary()) -> wh_proplist().
+create_specific_ccvs(#auth_user{}=AuthUser, ?GSM_ANY_METHOD) ->
+    [{<<"Caller-ID">>, AuthUser#auth_user.msisdn}
+     ,{<<"variable_effective_caller_id_number">>, AuthUser#auth_user.msisdn}
+    ];
+create_specific_ccvs(_, _) -> [].
 
 -spec create_custom_sip_headers(api_binary(), auth_user()) -> api_object().
 create_custom_sip_headers(?GSM_ANY_METHOD, #auth_user{a3a8_kc=KC
