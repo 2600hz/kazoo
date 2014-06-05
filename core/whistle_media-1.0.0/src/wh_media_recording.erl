@@ -436,7 +436,7 @@ save_recording(Call, MediaName, Format, {'true', 'local'}) ->
     store_recording(MediaName, StoreUrl, Call);
 save_recording(Call, MediaName, Format, {'true', 'third_party'}) ->
     case whapps_config:get_ne_binary(?CONFIG_CAT, <<"third_party_bigcouch_host">>, <<>>) of
-        'undefined' -> lager:debug("no URL for call recording provided, third_party_bigcouch_host undefined");
+        <<>> -> lager:debug("no URL for call recording provided, third_party_bigcouch_host undefined");
         BCHost -> store_recording_to_third_party_bigcouch(Call, MediaName, Format, BCHost)
     end;
 save_recording(Call, MediaName, _Format, {'true', Url}) ->
