@@ -145,7 +145,7 @@ check_restrictions(Context, JObj) ->
             lager:debug("no restrictions, check as object", []),
             check_as(Context, JObj);
         Rs ->
-            {_, PathTokens} = lists:split(2, cb_context:path_tokens(Context)),
+            [_, _|PathTokens] = cb_context:path_tokens(Context),
             Restrictions = get_restrictions(Context, Rs),
             case crossbar_bindings:matches(Restrictions, PathTokens) of
                 'false' ->
@@ -176,34 +176,34 @@ get_restrictions(Context, Restrictions) ->
 -spec check_as(cb_context:context(), json:object()) -> boolean() |
                                                        {'true', cb_context:context()}.
 check_as(Context, JObj) ->
-    case wh_json:get_value(<<"api_key">>, JObj, 'undefined') of
+    case wh_json:get_value(<<"account_id">>, JObj, 'undefined') of
         'undefined' -> {'true', set_auth_doc(Context, JObj)};
-        ApiKey -> check_as_payload(Context, JObj, ApiKey)
+        AccountId -> check_as_payload(Context, JObj, AccountId)
     end.
 
 -spec check_as_payload(cb_context:context(), json:object(), ne_binary()) -> boolean() |
                                                                             {'true', cb_context:context()}.
-check_as_payload(Context, JObj, ApiKey) ->
+check_as_payload(Context, JObj, AccountId) ->
     case {wh_json:get_value([<<"as">>, <<"account_id">>], JObj, 'undefined')
           ,wh_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')}
     of
         {'undefined', _} -> {'true', set_auth_doc(Context, JObj)};
         {_, 'undefined'} -> {'true', set_auth_doc(Context, JObj)};
-        {AccountId, OwnerId} -> check_descendants(Context, JObj, ApiKey, AccountId, OwnerId)
+        {AsAccountId, AsOwnerId} -> check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId)
     end.
 
 -spec check_descendants(cb_context:context(), json:object()
                         ,ne_binary() ,ne_binary() ,ne_binary()) -> boolean() |
                                                                    {'true', cb_context:context()}.
-check_descendants(Context, JObj, ApiKey, AccountId, OwnerId) ->
-    case get_descendants(ApiKey) of
+check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
+    case get_descendants(AccountId) of
         {'error', _} -> 'false';
         {'ok', Descendants} ->
-            case lists:member(AccountId, Descendants) of
+            case lists:member(AsAccountId, Descendants) of
                 'false' -> 'false';
                 'true' ->
-                    JObj1 = wh_json:set_values([{<<"account_id">>, AccountId}
-                                                 ,{<<"owner_id">>, OwnerId}]
+                    JObj1 = wh_json:set_values([{<<"account_id">>, AsAccountId}
+                                                 ,{<<"owner_id">>, AsOwnerId}]
                                                ,JObj),
                     {'true', set_auth_doc(Context, JObj1)}
             end
