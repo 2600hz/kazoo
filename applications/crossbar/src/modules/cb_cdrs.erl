@@ -114,7 +114,8 @@ load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [_]} | _]}=Context)
         {'ok', ViewOptions} ->
             load_view(?CB_LIST
                       ,ViewOptions
-                      ,cb_context:set_query_string(Context, wh_json:new()));
+                      ,remove_qs_keys(Context)
+                      );
         Else -> Else
     end;
 load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Context) ->
@@ -123,13 +124,21 @@ load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Contex
         {'ok', ViewOptions} ->
             load_view(?CB_LIST_BY_USER
                       ,ViewOptions
-                      ,cb_context:set_query_string(Context, wh_json:new())
+                      ,remove_qs_keys(Context)
                      );
         Else -> Else
     end;
 load_cdr_summary(Context) ->
     lager:debug("invalid URL chain for cdr summary request"),
     cb_context:add_system_error('faulty_request', Context).
+
+-spec remove_qs_keys(cb_context:context()) -> cb_context:context().
+remove_qs_keys(Context) ->
+    cb_context:set_query_string(Context, wh_json:delete_keys([<<"created_from">>
+                                                              ,<<"created_to">>
+                                                             ]
+                                                             ,cb_context:query_string(Context)
+                                                            )).
 
 -spec load_view(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
 load_view(View, ViewOptions, Context) ->

@@ -622,8 +622,11 @@ from_form(Req0, Context0) ->
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
                      {iolist() | ne_binary() | 'halt', cowboy_req:req(), cb_context:context()}.
 to_json(Req, Context) ->
+    lager:debug("run: to_json"),
     case is_csv_request(Context) of
-        'true' -> to_csv(Req, Context);
+        'true' ->
+            lager:debug("overriding JSON, sending as CSV"),
+            to_csv(Req, Context);
         'false' ->
             Event = api_util:create_event_name(Context, <<"to_json">>),
             _ = crossbar_bindings:map(Event, {Req, Context}),
@@ -633,6 +636,7 @@ to_json(Req, Context) ->
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
                        {binary(), cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context) ->
+    lager:debug("run: to_binary"),
     RespData = cb_context:resp_data(Context),
     Event = api_util:create_event_name(Context, <<"to_binary">>),
     _ = crossbar_bindings:map(Event, {Req, Context}),
@@ -641,6 +645,8 @@ to_binary(Req, Context) ->
 -spec to_csv(cowboy_req:req(), cb_context:context()) ->
                     {iolist(), cowboy_req:req(), cb_context:context()}.
 to_csv(Req, Context) ->
+    lager:debug("run: to_csv"),
+
     RespBody = maybe_flatten_jobj(Context),
     RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
                     ,{<<"Content-Length">>, iolist_size(RespBody)}
@@ -656,6 +662,7 @@ to_csv(Req, Context) ->
 is_csv_request(Context) ->
     cb_context:req_value(Context, <<"accept">>) =:= <<"csv">>.
 
+-spec maybe_flatten_jobj(cb_context:context()) -> wh_json:object().
 maybe_flatten_jobj(Context) ->
     case props:get_all_values(<<"identifier">>
                               ,wh_json:to_proplist(cb_context:query_string(Context))
@@ -683,6 +690,7 @@ check_integrity(JObjs) ->
     Headers = get_headers(JObjs),
     check_integrity(JObjs, Headers, []).
 
+-spec check_integrity(wh_json:objects(), ne_binaries(), wh_json:objects()) -> wh_json:objects().
 check_integrity([], _, Acc) ->
     lists:reverse(Acc);
 check_integrity([JObj|JObjs], Headers, Acc) ->
@@ -690,7 +698,7 @@ check_integrity([JObj|JObjs], Headers, Acc) ->
               fun(Header, J) ->
                       case wh_json:get_value(Header, J) of
                           'undefined' ->
-                              wh_json:set_value(Header, <<"">>, J);
+                              wh_json:set_value(Header, <<>>, J);
                           _ -> J
                       end
               end, JObj, Headers),

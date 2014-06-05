@@ -48,8 +48,8 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods() | [].
--spec allowed_methods(path_token()) -> http_methods() | [].
+-spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_) ->
@@ -173,7 +173,9 @@ fetch_monthly_recurring(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_transactions(cb_context:context(), wh_proplist()) -> {'ok', wh_json:objects()} | {'error', ne_binary()}.
+-spec fetch_transactions(cb_context:context(), wh_proplist()) ->
+                                {'ok', wh_json:objects()} |
+                                {'error', ne_binary()}.
 fetch_transactions(Context, Options) ->
     From = props:get_value('from', Options),
     To = props:get_value('to', Options),
@@ -193,7 +195,9 @@ fetch_transactions(Context, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_braintree_transactions(cb_context:context(), wh_proplist()) -> {'ok', wh_json:objects()} | {'error', ne_binary()}.
+-spec fetch_braintree_transactions(cb_context:context(), wh_proplist()) ->
+                                          {'ok', wh_json:objects()} |
+                                          {'error', ne_binary()}.
 fetch_braintree_transactions(Context, Options) ->
     From = props:get_value('from', Options),
     To = props:get_value('to', Options),
@@ -210,12 +214,12 @@ fetch_braintree_transactions(Context, Options) ->
             {'error', <<"unknown braintree error">>};
         BTransactions ->
             JObjs = lists:foldl(fun(BTr, Acc) ->
-                        IsProrated = braintree_transaction_is_prorated(BTr),
-                        case IsProrated =:= Prorated of
-                            'true' -> [filter_braintree_transaction(BTr)|Acc];
-                            'false' -> Acc
-                        end
-                    end, [], BTransactions),
+                                        IsProrated = braintree_transaction_is_prorated(BTr),
+                                        case IsProrated =:= Prorated of
+                                            'true' -> [filter_braintree_transaction(BTr)|Acc];
+                                            'false' -> Acc
+                                        end
+                                end, [], BTransactions),
             {'ok', JObjs}
     end.
 

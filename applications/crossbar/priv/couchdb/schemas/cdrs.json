@@ -1,0 +1,133 @@
+{
+    "_id":"cdrs"
+    ,"id":"http://json-schema.org/draft-03/schema#"
+    ,"description":"Call detail records"
+    ,"properties":{
+        "call_id":{
+            "type":"string"
+            ,"description":"Unique identifier of the call leg"
+            ,"required":true
+        }
+        ,"call_direction":{
+            "type":"string"
+            ,"enum":["inbound","outbound"]
+            ,"description":"Direction of the call, relative to the media switch"
+        }
+        ,"duration_seconds":{
+            "type":"integer"
+            ,"description":"The duration of the call leg, in seconds"
+        }
+        ,"hangup_cause":{
+            "type":"string"
+            ,"description":"The reason for the call leg's termination"
+        }
+        ,"timestamp":{
+            "type":"integer"
+            ,"description":"UTC timestamp, in gregorian seconds, of when the CDR was generated"
+        }
+        ,"billing_seconds":{
+            "type":"integer"
+            ,"description":"The number of seconds the call leg can be billed for (typically from when the call leg is answered"
+        }
+        ,"callee_id_name":{
+            "type":"string"
+            ,"description":"The name of the callee"
+        }
+        ,"callee_id_number":{
+            "type":"string"
+            ,"description":"The number of the callee"
+        }
+        ,"caller_id_name":{
+            "type":"string"
+            ,"description":"The name of the caller"
+        }
+        ,"caller_id_number":{
+            "type":"string"
+            ,"description":"The number of the caller"
+        }
+        ,"channel_authorized":{
+            "type":"boolean"
+            ,"description":"Was the channel authorized to continue to call processing"
+        }
+        ,"disposition":{
+            "type":"string"
+            ,"description":"Inforamtion about how the call leg ended"
+        }
+        ,"from":{
+            "type":"string"
+            ,"description":"Built, depending on direction, to represent the From user"
+        }
+        ,"from_uri":{
+            "type":"string"
+            ,"description":"The From SIP URI"
+        }
+        ,"hangup_cpde":{
+            "type":"integer"
+            ,"description":"The SIP hangup code, if available"
+        }
+        ,"inception":{
+            "type":"string"
+            ,"description":"From where the call started"
+        }
+        ,"local_sdp":{
+            "type":"string"
+            ,"description":"SDP information for the media server"
+        }
+        ,"media_server":{
+            "type":"string"
+            ,"description":"The hostname of the media server that handled the call"
+        }
+        ,"other_leg_call_id":{
+            "type":"string"
+            ,"description":"If this leg was bridged, the call-id of the opposite leg"
+        }
+        ,"other_leg_caller_id_name":{
+            "type":"string"
+            ,"description":"Caller ID name of the bridged leg"
+        }
+        ,"other_leg_caller_id_number":{
+            "type":"string"
+            ,"description":"Caller ID number of the bridged leg"
+        }
+        ,"other_leg_destination_number":{
+            "type":"string"
+            ,"description":"Dialed number of the other leg"
+        }
+        ,"other_leg_direction":{
+            "type":"string"
+            ,"description":"direction of the other leg, relative to the media server"
+        }
+        ,"presence_id":{
+            "type":"string"
+            ,"description":"ID used in NOTIFY SIP messages"
+        }
+        ,"remote_sdp":{
+            "type":"string"
+            ,"description":"SDP information for the remote endpoint"
+        }
+        ,"request":{
+            "type":"string"
+            ,"description":"SIP Request URI"
+        }
+        ,"ringing_seconds":{
+            "type":"integer"
+            ,"description":"How many seconds the leg was ringing (pre-answer)"
+        }
+        ,"to":{
+            "type":"string"
+            ,"description":"Built, depending on direction, to represent the To user"
+        }
+        ,"to_uri":{
+            "type":"string"
+            ,"description":"SIP To header"
+        }
+        ,"user_agent":{
+            "type":"string"
+            ,"description":"User agent header from SIP packet"
+        }
+        ,"custom_channel_vars":{
+            "type":"object"
+            ,"description":"Kazoo-specific key/value pairs set on the channel"
+        }
+    }
+}
