@@ -50,9 +50,7 @@ get_action(_) -> <<"start">>.
 
 -spec set_recording_url(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 set_recording_url(Data, Call) ->
-    Format = wh_json:get_value(<<"format">>, Data, <<>>),
     CallId = whapps_call:call_id(Call),
-    Url = wh_json:get_value(<<"url">>, Data, <<>>),
-    Media = <<Url/binary, "call_recording_", CallId/binary, ".", Format/binary>>,
+    Media = wh_media_util(CallId, Data)
     whapps_call:set_custom_channel_var(<<"Recording-Url">>, Media, Call).
 
