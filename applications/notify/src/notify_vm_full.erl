@@ -86,6 +86,7 @@ create_template_props(JObj) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, JObj)),
     [{<<"send_from">>, get_send_from(Admin)}
      ,{<<"voicemail">>, [{<<"name">>, get_vm_name(JObj)}]}
+     ,{<<"custom">>, notify_util:json_to_template_props(JObj)}
     ].
 
 

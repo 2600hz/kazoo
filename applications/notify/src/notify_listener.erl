@@ -26,45 +26,45 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
-                     ,{notify_vm_full, [{<<"notification">>, <<"voicemail_full">>}]}
-                     ,{notify_fax_inbound, [{<<"notification">>, <<"inbound_fax">>}]}
-                     ,{notify_fax_outbound, [{<<"notification">>, <<"outbound_fax">>}]}
-                     ,{notify_fax_inbound_error, [{<<"notification">>, <<"inbound_fax_error">>}]}
-                     ,{notify_fax_outbound_error, [{<<"notification">>, <<"outbound_fax_error">>}]}
-                     ,{notify_deregister, [{<<"notification">>, <<"deregister">>}]}
-                     ,{notify_pwd_recovery, [{<<"notification">>, <<"password_recovery">>}]}
-                     ,{notify_new_account, [{<<"notification">>, <<"new_account">>}]}
-                     ,{notify_cnam_request, [{<<"notification">>, <<"cnam_request">>}]}
-                     ,{notify_port_request, [{<<"notification">>, <<"port_request">>}]}
-                     ,{notify_ported, [{<<"notification">>, <<"ported">>}]}
-                     ,{notify_low_balance, [{<<"notification">>, <<"low_balance">>}]}
-                     ,{notify_transaction, [{<<"notification">>, <<"transaction">>}]}
-                     ,{notify_system_alert, [{<<"notification">>, <<"system_alert">>}]}
+-define(RESPONDERS, [{'notify_vm', [{<<"notification">>, <<"new_voicemail">>}]}
+                     ,{'notify_vm_full', [{<<"notification">>, <<"voicemail_full">>}]}
+                     ,{'notify_fax_inbound', [{<<"notification">>, <<"inbound_fax">>}]}
+                     ,{'notify_fax_outbound', [{<<"notification">>, <<"outbound_fax">>}]}
+                     ,{'notify_fax_inbound_error', [{<<"notification">>, <<"inbound_fax_error">>}]}
+                     ,{'notify_fax_outbound_error', [{<<"notification">>, <<"outbound_fax_error">>}]}
+                     ,{'notify_deregister', [{<<"notification">>, <<"deregister">>}]}
+                     ,{'notify_pwd_recovery', [{<<"notification">>, <<"password_recovery">>}]}
+                     ,{'notify_new_account', [{<<"notification">>, <<"new_account">>}]}
+                     ,{'notify_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
+                     ,{'notify_port_request', [{<<"notification">>, <<"port_request">>}]}
+                     ,{'notify_ported', [{<<"notification">>, <<"ported">>}]}
+                     ,{'notify_low_balance', [{<<"notification">>, <<"low_balance">>}]}
+                     ,{'notify_transaction', [{<<"notification">>, <<"transaction">>}]}
+                     ,{'notify_system_alert', [{<<"notification">>, <<"system_alert">>}]}
                     ]).
 
--define(RESTRICT_TO, [new_voicemail
-                      ,voicemail_full
-                      ,inbound_fax
-                      ,inbound_fax_error
-                      ,outbound_fax
-                      ,outbound_fax_error
-                      ,deregister
-                      ,pwd_recovery
-                      ,new_account
-                      ,cnam_requests
-                      ,port_request
-                      ,low_balance
-                      ,transaction
-                      ,system_alerts
+-define(RESTRICT_TO, ['new_voicemail'
+                      ,'voicemail_full'
+                      ,'inbound_fax'
+                      ,'inbound_fax_error'
+                      ,'outbound_fax'
+                      ,'outbound_fax_error'
+                      ,'deregister'
+                      ,'pwd_recovery'
+                      ,'new_account'
+                      ,'cnam_requests'
+                      ,'port_request'
+                      ,'low_balance'
+                      ,'transaction'
+                      ,'system_alerts'
                      ]).
 
--define(BINDINGS, [{notifications, [{restrict_to, ?RESTRICT_TO}]}
-                   ,{self, []}
+-define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
+                   ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"notify_listener">>).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -record(state, {}).
 
@@ -80,11 +80,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
+    gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
+                                      ,{'bindings', ?BINDINGS}
+                                      ,{'queue_name', ?QUEUE_NAME}
+                                      ,{'queue_options', ?QUEUE_OPTIONS}
+                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
 %%%===================================================================
@@ -103,9 +103,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?LOG_SYSTEM_ID),
     lager:debug("starting new notify server"),
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -122,7 +122,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    {'reply', 'ok', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,7 +135,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -149,7 +149,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -160,7 +160,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -185,4 +185,4 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+    {'ok', State}.
