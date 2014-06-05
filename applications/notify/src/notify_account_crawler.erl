@@ -183,6 +183,7 @@ process_account(AccountId, AccountDb, JObj) ->
     lager:debug("notify crawler processing account ~s", [AccountId]),
     _ = maybe_test_for_initial_occurrences(AccountId, AccountDb, JObj),
     _ = maybe_test_for_low_balance(AccountId, AccountDb, JObj),
+    _ = doodle_maintenance:start_check_sms_by_account(AccountId, JObj),
     'ok'.
 
 -spec maybe_test_for_initial_occurrences(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -372,3 +373,4 @@ notify_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
 low_balance_threshold(_AccountDb) ->
     ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
     whapps_config:get_float(ConfigCat, <<"threshold">>, 5.00).
+

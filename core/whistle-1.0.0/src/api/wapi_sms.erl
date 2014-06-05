@@ -21,7 +21,6 @@
         ]).
 
 
--define(SMS_KEY(CallId), list_to_binary(["sms.message.", amqp_util:encode(CallId)])).
 -define(SMS_EXCHANGE, <<"sms">>).
 -define(EVENT_CATEGORY, <<"message">>).
 
@@ -97,6 +96,16 @@
 -define(DELIVERY_ROUTING_KEY(CallId), <<"message.delivery.", (amqp_util:encode(CallId))/binary>>).
 
 
+%% SMS Resume
+-define(RESUME_REQ_EVENT_NAME, <<"resume">>).
+-define(RESUME_REQ_HEADERS, [<<"SMS-ID">>]).
+-define(OPTIONAL_RESUME_REQ_HEADERS, []).
+-define(RESUME_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                            ,{<<"Event-Name">>, ?RESUME_REQ_EVENT_NAME}
+                           ]).
+-define(RESUME_REQ_TYPES, []).
+-define(RESUME_ROUTING_KEY(CallId), <<"message.resume.", (amqp_util:encode(CallId))/binary>>).
+
 
 
 -spec message(api_terms()) -> api_formatter_return().
@@ -148,20 +157,65 @@ delivery_v(Prop) when is_list(Prop) ->
 delivery_v(JObj) -> delivery_v(wh_json:to_proplist(JObj)).
 
 
+-spec resume(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+resume(Prop) when is_list(Prop) ->
+    case resume_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?RESUME_REQ_HEADERS, ?OPTIONAL_RESUME_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for route_delivery"}
+    end;
+resume(JObj) -> resume(wh_json:to_proplist(JObj)).
+
+-spec resume_v(api_terms()) -> boolean().
+resume_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?RESUME_REQ_HEADERS, ?RESUME_REQ_VALUES, ?RESUME_REQ_TYPES);
+resume_v(JObj) -> resume_v(wh_json:to_proplist(JObj)).
+
 %%--------------------------------------------------------------------
 %% @doc Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
+
+
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallId = props:get_value('call_id', Props, <<"*">>),
-    amqp_util:bind_q_to_exchange(Queue, ?SMS_KEY(CallId), ?SMS_EXCHANGE).
+    bind_q(Queue, CallId, props:get_value('restrict_to', Props)).
 
-   
+bind_q(Queue, CallId, 'undefined') ->
+    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:bind_q_to_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), ?SMS_EXCHANGE);
+bind_q(Queue, CallId, ['routing'|Restrict]) ->
+    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    bind_q(Queue, CallId, Restrict);
+bind_q(Queue, CallId, ['delivery'|Restrict]) ->
+    amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    bind_q(Queue, CallId, Restrict);
+bind_q(Queue, CallId, ['resume'|Restrict]) ->
+    amqp_util:bind_q_to_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    bind_q(Queue, CallId, Restrict);
+bind_q(_, _, []) -> 'ok'.
+
+
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     CallId = props:get_value('call_id', Props, <<"*">>),
-    amqp_util:unbind_q_from_exchange(Queue, ?SMS_KEY(CallId), ?SMS_EXCHANGE).
+    unbind_q(Queue, CallId, props:get_value('restrict_to', Props)).
+
+unbind_q(Queue, CallId, 'undefined') ->
+    amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:unbind_q_from_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), ?SMS_EXCHANGE);
+unbind_q(Queue, CallId, ['routing'|Restrict]) ->
+    amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    unbind_q(Queue, CallId, Restrict);
+unbind_q(Queue, CallId, ['delivery'|Restrict]) ->
+    amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    unbind_q(Queue, CallId, Restrict);
+unbind_q(Queue, CallId, ['resume'|Restrict]) ->
+    amqp_util:unbind_q_from_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    unbind_q(Queue, CallId, Restrict);
+unbind_q(_, _, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -179,7 +233,7 @@ publish_message(JObj) ->
 publish_message(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SMS_REQ_VALUES, fun message/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_KEY(CallId), Payload, ContentType).
+    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_ROUTING_KEY(CallId), Payload, ContentType).
 
 -spec publish_delivery(api_terms()) -> 'ok'.
 -spec publish_delivery(api_terms(), binary()) -> 'ok'.
@@ -188,8 +242,22 @@ publish_delivery(JObj) ->
 publish_delivery(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?DELIVERY_REQ_VALUES, fun delivery/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_KEY(CallId), Payload, ContentType).
+    amqp_util:basic_publish(?SMS_EXCHANGE, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
 
+
+-spec publish_resume(api_terms() | ne_binary()) -> 'ok'.
+-spec publish_resume(api_terms(), binary()) -> 'ok'.
+publish_resume(SMS) when is_binary(SMS) ->
+    Payload = [{<<"SMS-ID">>, SMS}
+                | wh_api:default_headers(<<"API">>, <<"0.9.7">>)
+              ],
+    publish_resume(Payload, ?DEFAULT_CONTENT_TYPE);
+publish_resume(JObj) ->
+    publish_resume(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_resume(Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?RESUME_REQ_VALUES, fun resume/1),
+    CallId = props:get_value(<<"Call-ID">>, Req),
+    amqp_util:basic_publish(?SMS_EXCHANGE, ?RESUME_ROUTING_KEY(CallId), Payload, ContentType).
 
 
 

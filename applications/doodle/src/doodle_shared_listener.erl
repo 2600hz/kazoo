@@ -23,12 +23,12 @@
 
 -record(state, {}).
 
--define(BINDINGS, [{'sms', []}
-                   ,{'notifications',[{'restrict_to', ['register']}]}
+-define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume']}]}
+                   ,{'registration',[{'restrict_to', ['reg_success']}]}
                    ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
-                     ,{'doodle_notify_handler',[{<<"notification">>, <<"register">>}]}
+                     ,{'doodle_notify_handler',[{<<"directory">>, <<"reg_success">>}]}
                     ]).
 -define(QUEUE_NAME, <<"doodle_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).

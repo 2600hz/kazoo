@@ -23,7 +23,15 @@
                                                  ]]}
                    ,'permanent', 5000, 'worker', ['poolboy']}).
 
--define(CHILDREN, [?CACHE('doodle_cache')
+
+-define(ORIGIN_BINDINGS, [
+                          [{'db', ?WH_SIP_DB }, {'type', <<"device">>}]
+                         ]).
+-define(CACHE_PROPS, [
+                      {'origin_bindings', ?ORIGIN_BINDINGS}
+                     ]).
+
+-define(CHILDREN, [?CACHE_ARGS(?DOODLE_CACHE, ?CACHE_PROPS)
                    ,?WORKER('doodle_listener')
                    ,?WORKER('doodle_shared_listener')
                    ,?SUPER('doodle_event_handler_sup')
