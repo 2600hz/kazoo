@@ -122,12 +122,13 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'add_request',AcctDb, Dev, Exten, Targets}, GlobalState) ->
     AcctId = wh_util:format_account_id(AcctDb, 'raw'),
+    Timeout = whapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT),
     NewGlobal = with_state(AcctId
                           ,GlobalState
                           ,fun(Local) ->
                                #'state'{'requests' = dict:merge(fun(_, _, V2) -> V2 end
                                                                ,get_requests(Local)
-                                                               ,make_requests(Targets, Dev, Exten)
+                                                               ,make_requests(Targets, Dev, Exten, Timeout)
                                                                )
                                         ,'sipnames' = dict:store(Exten, Targets, get_sipnames(Local))
                                         ,'requestor_queues' = maybe_update_queues(Targets, Dev, get_requestor_queues(Local))
@@ -181,9 +182,15 @@ maybe_handle_request(SIPName, Q, Local) ->
 handle_request(SIPName, Requestor, Local) ->
     Reqs = get_requests(Local),
     case dict:find({SIPName, Requestor}, Reqs) of
-        {'ok', Exten} ->
-            lager:debug("Originating call"),
-            originate_call(Requestor, Exten, get_acctdb(Local)),
+        {'ok', {Exten, Timeout}} ->
+            {_, Now, _} = os:timestamp(),
+            case Now > Timeout of
+                'true' ->
+                    lager:debug("Request(~s->~s) expired", [Requestor, Exten]);
+                'false' ->
+                    lager:debug("Originating call(~s->~s)", [Requestor, Exten]),
+                    originate_call(Requestor, Exten, get_acctdb(Local))
+            end,
             lager:debug("Clearing request"),
             clear_request(Requestor, Exten, Local);
         _ ->
@@ -267,10 +274,11 @@ clear_request(Requestor, Exten, Local) ->
                     set_requests(set_requestor_queues(Acc, Qs1), Reqs)
                 end, Local, SIPNames).
 
--spec make_requests(ne_binary(), ne_binary(), ne_binary()) -> dict().
-make_requests(SIPNames, Requestor, Exten) ->
+-spec make_requests(ne_binary(), ne_binary(), ne_binary(), integer()) -> dict().
+make_requests(SIPNames, Requestor, Exten, Timeout) ->
     R = lists:map(fun (SIPName) -> {SIPName, Requestor} end, SIPNames),
-    lists:foldl(fun (Req, Acc) -> dict:store(Req, Exten, Acc) end, dict:new(), R).
+    {_, Seconds, _} = os:timestamp(),
+    lists:foldl(fun (Req, Acc) -> dict:store(Req, {Exten, Seconds + Timeout}, Acc) end, dict:new(), R).
 
 -spec maybe_update_queues(ne_binaries(), ne_binary(), dict()) -> dict().
 maybe_update_queues(SIPNames, Requestor, Queues) ->
