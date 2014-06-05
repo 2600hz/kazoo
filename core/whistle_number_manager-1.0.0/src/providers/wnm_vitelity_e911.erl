@@ -161,7 +161,7 @@ e911_options(#number{number=Number, assigned_to=AccountId}, AddressJObj) ->
      ,{'uri', wnm_vitelity_util:api_uri()}
     ].
 
--spec get_unit(ne_binary()) -> { api_binary(),  api_binary()}.
+-spec get_unit(ne_binary()) -> {api_binary(),  api_binary()}.
 get_unit(ExtendedAddress) ->
     case binary:split(ExtendedAddress, <<" ">>) of
         [UnitType, UnitNumber|_] -> {UnitType, UnitNumber};
@@ -169,7 +169,7 @@ get_unit(ExtendedAddress) ->
         _ -> {'undefined', 'undefined'}
     end.
 
--spec get_account_name(ne_binary()) -> ne_binary() | 'undefined'.
+-spec get_account_name(ne_binary()) -> api_binary().
 get_account_name(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
@@ -178,8 +178,6 @@ get_account_name(AccountId) ->
             'undefined';
         {'ok', JObj} -> wh_json:get_value(<<"name">>, JObj, 'undefined')
     end.
-
-
 
 -spec is_valid_location(wh_json:object()) ->
                                {'ok', wh_json:object()} |
