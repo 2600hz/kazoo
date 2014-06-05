@@ -64,6 +64,7 @@
 -export([microseconds_to_seconds/1
          ,milliseconds_to_seconds/1
          ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
+         ,elapsed_s/2, elapsed_ms/2, elapsed_us/2
          ,now_s/1, now_ms/1, now_us/1
         ]).
 
@@ -867,19 +868,38 @@ milliseconds_to_seconds(Milliseconds) -> to_integer(Milliseconds) div 1000.
 -spec elapsed_s(wh_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms(wh_now() | pos_integer()) -> pos_integer().
 -spec elapsed_us(wh_now() | pos_integer()) -> pos_integer().
-elapsed_s({_,_,_}=Start) -> timer:now_diff(os:timestamp(), Start) div 1000000;
-elapsed_s(Start) when is_integer(Start) -> current_tstamp() - Start.
+elapsed_s({_,_,_}=Start) -> elapsed_s(Start, os:timestamp());
+elapsed_s(Start) when is_integer(Start) -> elapsed_s(Start, current_tstamp()).
 
-elapsed_ms({_,_,_}=Start) -> timer:now_diff(os:timestamp(), Start) div 1000;
-elapsed_ms(Start) when is_integer(Start) -> current_tstamp() - Start * 1000.
+elapsed_ms({_,_,_}=Start) -> elapsed_ms(Start, os:timestamp());
+elapsed_ms(Start) when is_integer(Start) -> elapsed_ms(Start, current_tstamp()).
 
-elapsed_us({_,_,_}=Start) -> timer:now_diff(os:timestamp(), Start);
-elapsed_us(Start) when is_integer(Start) -> current_tstamp() - Start * 1000000.
+elapsed_us({_,_,_}=Start) -> elapsed_us(Start, os:timestamp());
+elapsed_us(Start) when is_integer(Start) -> elapsed_us(Start, current_tstamp()).
+
+-spec elapsed_s(wh_now() | pos_integer(), wh_now() | pos_integer()) -> pos_integer().
+-spec elapsed_ms(wh_now() | pos_integer(), wh_now() | pos_integer()) -> pos_integer().
+-spec elapsed_us(wh_now() | pos_integer(), wh_now() | pos_integer()) -> pos_integer().
+elapsed_s({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start) div 1000000;
+elapsed_s({_,_,_}=Start, Now) -> elapsed_s(now_s(Start), Now);
+elapsed_s(Start, {_,_,_}=Now) -> elapsed_s(Start, now_s(Now));
+elapsed_s(Start, Now) when is_integer(Start), is_integer(Now) -> Now - Start.
+
+elapsed_ms({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start) div 1000;
+elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_s(Start), Now);
+elapsed_ms(Start, {_,_,_}=Now) -> elapsed_ms(Start, now_s(Now));
+elapsed_ms(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000.
+
+elapsed_us({_,_,_}=Start, {_,_,_}=Now) -> timer:now_diff(Now, Start);
+elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_s(Start), Now);
+elapsed_us(Start, {_,_,_}=Now) -> elapsed_us(Start, now_s(Now));
+elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) * 1000000.
 
 -spec now_s(wh_now()) -> integer().
 -spec now_ms(wh_now()) -> integer().
 -spec now_us(wh_now()) -> integer().
-now_us({MegaSecs,Secs,MicroSecs}) -> (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
+now_us({MegaSecs,Secs,MicroSecs}) ->
+    unix_seconds_to_gregorian_seconds((MegaSecs*1000000 + Secs)*1000000 + MicroSecs).
 now_ms({_,_,_}=Now) -> now_us(Now) div 1000.
 now_s({_,_,_}=Now) -> now_us(Now) div 1000000.
 
@@ -927,9 +947,9 @@ prop_to_from_hex_test() ->
 
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
-     {timeout, 15000,
+     {'timeout', 15000,
       [
-       ?_assertEqual([], proper:module(?MODULE, [{max_shrinks, 0}]))
+       ?_assertEqual([], proper:module(?MODULE, [{'max_shrinks', 0}]))
       ]}}.
 
 pad_binary_test() ->
@@ -947,6 +967,24 @@ microsecs_to_secs_test() ->
     Microsecs = 1310157838405890,
     Secs = 1310157838,
     ?assertEqual(Secs, microseconds_to_seconds(Microsecs)).
+
+elapsed_test() ->
+    Start = {1401,998570,817606},
+    Now = {1401,998594,798064},
+
+    ?assertEqual(elapsed_us(Start, Now), 23980458),
+    ?assertEqual(elapsed_ms(Start, Now), 23980),
+    ?assertEqual(elapsed_s(Start, Now), 23),
+
+    StartDateTime = {{2014,6,5},{20,7,7}},
+    StartTimestamp = calendar:datetime_to_gregorian_seconds(StartDateTime),
+
+    NowDateTime = {{2014,6,5},{20,7,9}},
+    NowTimestamp = calendar:datetime_to_gregorian_seconds(NowDateTime),
+
+    ?assertEqual(elapsed_s(StartTimestamp, NowTimestamp), 2),
+    ?assertEqual(elapsed_ms(StartTimestamp, NowTimestamp), 2000),
+    ?assertEqual(elapsed_us(StartTimestamp, NowTimestamp), 2000000).
 
 no_whistle_version_test() ->
     ?assertEqual(<<"not available">>, whistle_version(<<"/path/to/nonexistent/file">>)).
