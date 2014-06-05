@@ -23,7 +23,7 @@ handle(_Data, Call) ->
     case whapps_call:owner_id(Call) of
         'undefined' ->
             lager:warning('call has no owner_id', []),
-            whapps_call_command:b_prompt(<<"call does not have an owner.">>, Call),
+            whapps_call_command:b_prompt(<<"cf-move-no_owner">>, Call),
             cf_exe:stop(Call);
         OwnerId ->
             Channels = get_channels(OwnerId, Call),
