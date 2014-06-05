@@ -214,6 +214,8 @@
                                ,{<<"tts_voice">>, <<"tts_voice">>}
                                ,{<<"playback_terminators">>, <<"playback_terminators">>}
                                ,{<<"record_waste_resources">>, <<"record_waste_resources">>}
+                               ,{<<"recording_follow_transfer">>, <<"recording_follow_transfer">>}
+                               ,{<<"recording_follow_attxfer">>, <<"recording_follow_attxfer">>}
                                ,{<<"enable_file_write_buffering">>, <<"enable_file_write_buffering">>}
                                ,{<<"RECORD_APPEND">>, <<"RECORD_APPEND">>}
                                ,{<<"fax_enable_t38_request">>, <<"fax_enable_t38_request">>}

@@ -254,7 +254,8 @@ validate_callflow_element_schema(Context, Module, Data) ->
 
 validate_callflow_element(Context, <<"record_call">>, Data) ->
     Max = wh_media_util:max_recording_time_limit(),
-    try wh_json:get_integer_value(<<"time_limit">>, Data) > Max of
+    try wh_json:get_value(<<"action">>, Data) =:= <<"start">> andalso
+        wh_json:get_integer_value(<<"time_limit">>, Data) > Max of
         'true' ->
             lager:debug("the requested time limit is too damn high"),
             cb_context:add_validation_error(<<"time_limit">>

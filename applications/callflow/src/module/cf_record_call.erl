@@ -32,13 +32,25 @@ handle(Data, Call) ->
     cf_exe:continue(Call).
 
 handle(Data, Call, <<"start">>) ->
-    'ok' = cf_exe:add_event_listener(Call, {'wh_media_recording', [Data]}),
-    lager:debug("started wh_media_recording to handle recording");
+    case wh_json:is_true(<<"record_on_answer">>, Data, 'false') of
+        'true' ->
+            'ok' = cf_exe:add_event_listener(Call, {'wh_media_recording', [Data]}),
+            lager:debug("started wh_media_recording to handle recording");
+        'false' ->
+            Format = wh_media_recording:get_format(wh_json:get_value(<<"format">>, Data)),
+            MediaName = wh_media_recording:get_media_name(whapps_call:call_id(Call), Format),
+            Props = [{<<"Media-Name">>, MediaName}
+                     ,{<<"Media-Transfer-Method">>, wh_json:get_value(<<"method">>, Data, <<"put">>)}
+                     ,{<<"Media-Transfer-Destination">>, wh_json:get_value(<<"url">>, Data)}
+                     ,{<<"Additional-Headers">>, wh_json:get_value(<<"additional_headers">>, Data)}
+                     ,{<<"Time-Limit">>, wh_json:get_value(<<"time_limit">>, Data)}
+                    ],
+            _ = whapps_call_command:record_call(Props, <<"start">>, Call)
+    end;
 handle(Data, Call, <<"stop">> = Action) ->
     Format = wh_media_recording:get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = wh_media_recording:get_media_name(whapps_call:call_id(Call), Format),
-
-    _ = whapps_call_command:record_call(MediaName, Action, Call),
+    _ = whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], Action, Call),
     lager:debug("send command to stop recording").
 
 -spec get_action(api_binary()) -> ne_binary().

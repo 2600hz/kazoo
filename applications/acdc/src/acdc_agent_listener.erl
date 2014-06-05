@@ -1099,7 +1099,7 @@ maybe_stop_recording(Call, 'true', Url) ->
     Format = recording_format(),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
 
-    _ = whapps_call_command:record_call(MediaName, <<"stop">>, Call),
+    _ = whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"stop">>, Call),
     lager:debug("recording of ~s stopped", [MediaName]),
 
     save_recording(Call, MediaName, Format, Url).
@@ -1113,11 +1113,13 @@ maybe_start_recording(Call, 'true', Url) ->
     case should_save_recording(Url) of
         'true' ->
             StoreUrl = wapi_dialplan:offsite_store_url(Url, MediaName),
-            whapps_call_command:set('undefined', wh_json:from_list([{<<"Recording-URL">>, StoreUrl}]), Call);
-        'false' -> 'ok'
-    end,
-
-    whapps_call_command:record_call(MediaName, <<"start">>, Call).
+            Props = [{<<"Media-Name">>, MediaName}
+                     ,{<<"Media-Transfer-Destination">>, StoreUrl}
+                    ],
+            whapps_call_command:record_call(Props, <<"start">>, Call);
+        'false' ->
+            whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"start">>, Call)
+    end.
 
 recording_format() ->
     whapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).

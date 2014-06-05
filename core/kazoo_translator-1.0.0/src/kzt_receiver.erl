@@ -558,7 +558,7 @@ maybe_start_recording(#dial_req{record_call='true'
 
     lager:info("starting recording '~s'", [RecordingName]),
     {'ok', MediaJObj} = recording_meta(Call, RecordingName),
-    whapps_call_command:record_call(RecordingName, <<"start">>
+    whapps_call_command:record_call([{<<"Media-Name">>, RecordingName}], <<"start">>
                                     ,CallTimeLimit, Call
                                    ),
     MediaJObj.

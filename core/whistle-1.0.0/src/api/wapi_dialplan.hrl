@@ -444,7 +444,10 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 -define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>
                                   ,<<"Record-Action">>
                                  ]).
--define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>]).
+-define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>, <<"Follow-Transfer">>
+                                           ,<<"Media-Transfer-Method">> ,<<"Media-Transfer-Destination">>
+                                           ,<<"Additional-Headers">>
+                                          ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"record_call">>}
