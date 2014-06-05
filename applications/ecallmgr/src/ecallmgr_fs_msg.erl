@@ -244,7 +244,8 @@ send_message(JObj, Props, Endpoints) ->
     end.
 
 
--spec get_uri(ne_binary()) -> ne_binary().
+-spec get_uri(api_binary()) -> api_binary().
+get_uri('undefined') -> 'undefined';
 get_uri(<<"<sip", _/binary>>=Uri) -> Uri;
 get_uri(<<"sip", _/binary>>=Uri) -> Uri;
 get_uri(Uri) -> <<"<sip:", Uri/binary, ">">>.
@@ -370,6 +371,7 @@ get_event_uris(Props, EventProps) ->
 -spec get_event_uris_props(tuple() | ne_binary(), wh_proplist() | ne_binary()) -> wh_proplist().
 get_event_uris_props({K, F}, Props) ->
     get_event_uris_props( get_uri( props:get_value(F, Props) ), K);
+get_event_uris_props('undefined', _) -> [];
 get_event_uris_props(Uri, Base) ->
     [#uri{user=User, domain=Realm}=URI] = nksip_parse:uris(Uri),
     [{Base, <<User/binary, "@", Realm/binary>>}

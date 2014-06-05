@@ -72,4 +72,5 @@ declare_exchanges() ->
     _ = wapi_notifications:declare_exchanges(),
     _ = wapi_route:declare_exchanges(),
     _ = wapi_sms:declare_exchanges(),
+    _ = wapi_registration:declare_exchanges(),
     wapi_self:declare_exchanges().
