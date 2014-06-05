@@ -41,11 +41,14 @@
 -define(MAX_TOKENS, whapps_config:get_integer(<<"token_buckets">>, <<"max_bucket_tokens">>, 100)).
 -define(FILL_RATE, whapps_config:get_integer(<<"token_buckets">>, <<"tokens_fill_rate">>, 10)).
 
--record(state, {table_id :: ets:tid()}).
+-record(state, {table_id :: ets:tid()
+                ,inactivity_timer_ref :: reference()
+               }).
 
 -record(bucket, {key :: api_binary() | '_'
                  ,srv :: pid() | '$1' | '_'
                  ,ref :: reference() | '$2' | '_'
+                 ,accessed = os:timestamp() :: wh_now() | '_'
                 }).
 -type bucket() :: #bucket{}.
 
@@ -120,15 +123,27 @@ consume_tokens(Key, Count, StartIfMissing, BucketFun) ->
     end.
 
 -spec get_bucket(ne_binary()) -> api_pid().
+-spec get_bucket(ne_binary(), 'record'|'server') -> api_pid() | bucket().
 get_bucket(Key) ->
-    case ets:lookup(?MODULE, Key) of
+    get_bucket(Key, 'server').
+
+get_bucket(Key, 'record') ->
+    case ets:lookup(table_id(), Key) of
         [] -> 'undefined';
-        [#bucket{srv=Srv}] -> Srv
+        [Bucket] -> Bucket
+    end;
+get_bucket(Key, 'server') ->
+    case ets:lookup(table_id(), Key) of
+        [] -> 'undefined';
+        [#bucket{srv=Srv}] ->
+            gen_server:cast(?MODULE, {'bucket_accessed', Key}),
+            Srv
     end.
+
 
 -spec exists(api_binary()) -> boolean().
 exists(Key) ->
-    case ets:lookup(?MODULE, Key) of
+    case ets:lookup(table_id(), Key) of
         [] -> 'false';
         [#bucket{}] -> 'true';
         _O ->
@@ -161,16 +176,18 @@ start_bucket(Name, MaxTokens, FillRate, FillTime) ->
 
 -spec tokens() -> 'ok'.
 tokens() ->
-    io:format("~60.60s | ~20.20s | ~10.10s |~n", [<<"Key">>, <<"Pid">>, <<"Tokens">>]),
+    io:format("~60.60s | ~20.20s | ~10.10s | ~20.20s |~n", [<<"Key">>, <<"Pid">>, <<"Tokens">>, <<"Last Accessed">>]),
     tokens_traverse(ets:first(table_id())).
 tokens_traverse('$end_of_table') ->
     io:format("~s~n", [<<"No more token servers">>]);
 tokens_traverse(Key) ->
-    [#bucket{key=K, srv=P}] = ets:lookup(?MODULE, Key),
-    io:format("~60.60s | ~20.20s | ~10.10s |~n"
-              ,[K, pid_to_list(P), integer_to_list(kz_token_bucket:tokens(P))]
+    [#bucket{key=K, srv=P, accessed=Accessed}] = ets:lookup(table_id(), Key),
+    io:format("~60.60s | ~20.20s | ~10.10s | ~20.20s |~n"
+              ,[K, pid_to_list(P), integer_to_list(kz_token_bucket:tokens(P))
+                ,integer_to_list(wh_util:elapsed_s(Accessed))
+               ]
              ),
-    tokens_traverse(ets:next(?MODULE, Key)).
+    tokens_traverse(ets:next(table_id(), Key)).
 
 %%%===================================================================
 %%% ETS
@@ -202,7 +219,7 @@ gift_data() -> 'ok'.
 %%--------------------------------------------------------------------
 init([]) ->
     wh_util:put_callid(?MODULE),
-    {'ok', #state{}}.
+    {'ok', #state{inactivity_timer_ref=start_inactivity_timer()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -255,6 +272,9 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Req, #state{table_id='undefined'}=State) ->
     lager:debug("ignoring req: ~p", [_Req]),
     {'noreply', State};
+handle_cast({'bucket_accessed', Key}, State) ->
+    ets:update_element(table_id(), Key, {#bucket.accessed, os:timestamp()}),
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -283,10 +303,13 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{table_id=Tbl}=State) 
              }
             ],
     case ets:select_delete(Tbl, Match) of
-        N when N > 0 -> lager:debug("bucket ~p down: ~p", [_Reason]);
+        N when N > 0 -> lager:debug("bucket ~p down: ~p", [Pid, _Reason]);
         0 -> lager:debug("unknown procress ~p(~p) down: ~p", [Pid, Ref, _Reason])
     end,
     {'noreply', State};
+handle_info(?INACTIVITY_MSG, #state{inactivity_timer_ref=_OldRef}=State) ->
+    _Pid = spawn(fun check_for_inactive_buckets/0),
+    {'noreply', State#state{inactivity_timer_ref=start_inactivity_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -325,3 +348,29 @@ new_bucket(Pid, Name) ->
             ,srv=Pid
             ,ref=erlang:monitor('process', Pid)
            }.
+
+-spec start_inactivity_timer() -> reference().
+start_inactivity_timer() ->
+    erlang:send_after(?MILLISECONDS_IN_MINUTE, self(), ?INACTIVITY_MSG).
+
+check_for_inactive_buckets() ->
+    wh_util:put_callid(?MODULE),
+    Now = os:timestamp(),
+    InactivityTimeout = ?INACTIVITY_TIMEOUT_MS,
+    check_for_inactive_buckets(Now, InactivityTimeout, ets:first(table_id())).
+
+check_for_inactive_buckets(_Now, _InactivityTimeout, '$end_of_table') -> 'ok';
+check_for_inactive_buckets(Now, InactivityTimeout, Key) ->
+    case get_bucket(Key, 'record') of
+        'undefined' -> 'ok';
+        #bucket{accessed=Accessed
+                ,srv=Srv
+               } ->
+            case wh_util:elapsed_ms(Accessed, Now) > InactivityTimeout of
+                'false' -> 'ok';
+                'true' ->
+                    lager:debug("bucket ~s(~p) hasn't been accessed recently, stopping", [Key, Srv]),
+                    kz_token_bucket:stop(Srv)
+            end
+    end,
+    check_for_inactive_buckets(Now, InactivityTimeout, ets:next(table_id(), Key)).
