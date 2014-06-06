@@ -36,7 +36,7 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
     case maybe_approved_caller(Data, Call) of
-        'true' -> 'ok';
+        'true' -> maybe_correct_target(Data, Call);
         'false' -> no_permission_to_eavesdrop(Call)
     end,
     cf_exe:stop(Call).
@@ -63,3 +63,27 @@ maybe_approved_caller(Data, Call) ->
 no_permission_to_eavesdrop(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_say(<<"you have no permission to eavesdrop this call">>, Call).
+
+-spec get_target_for_extension(ne_binary(), whapps_call:call()) -> {'ok', ne_binary(), ne_binary()} | 'error'.
+get_target_for_extension(Exten, Call) ->
+    case cf_util:lookup_callflow(Exten, whapps_call:account_id(Call)) of
+        {'ok', Callflow, _} ->
+            TargetId = wh_json:get_ne_value([<<"flow">>, <<"data">>, <<"id">>], Callflow),
+            TargetType = wh_json:get_ne_value([<<"flow">>, <<"module">>], Callflow),
+            {'ok', TargetId, TargetType};
+        _ ->
+            'error'
+    end.
+
+-spec maybe_correct_target(wh_json:object(), wh_json:object()) -> boolean().
+maybe_correct_target(Data, Call) ->
+    case wh_json:get_value(<<"group_id">>, Data) of
+        'undefined' ->
+            'true';
+        _GroupId ->
+            Exten = whapps_call:kvs_fetch('cf_capture_group', Call),
+            case get_target_for_extension(Exten, Call) of
+                {'ok', _TargetId, _TargetType} -> 'false';
+                'false' -> 'false'
+            end
+    end.
