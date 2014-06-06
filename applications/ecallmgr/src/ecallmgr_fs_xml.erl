@@ -67,8 +67,12 @@ authn_resp_xml(JObj) ->
         {'ok', []}=OK -> OK;
         {'ok', Elements} ->
             Number = wh_json:get_value([<<"Custom-SIP-Headers">>,<<"P-Kazoo-Primary-Number">>],JObj),
+            Expires = ecallmgr_util:maybe_add_expires_deviation_ms(
+                        wh_json:get_value(<<"Expires">>,JObj)),
             Username = wh_json:get_value(<<"Auth-Username">>, JObj, UserId),
-            UserEl = user_el([{'number-alias', Number} | user_el_default_props(Username) ]
+            UserEl = user_el([{'number-alias', Number}
+                              ,{'cacheable', Expires}
+                             | user_el_default_props(Username) ]
                              ,Elements),
             DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
@@ -275,6 +279,10 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
 route_resp_xml(<<"error">>, _Routes, JObj) ->
+    Section = wh_json:get_value(<<"Fetch-Section">>, JObj, <<"dialplan">>),
+    route_resp_xml(<<Section/binary, "_error">>,_Routes, JObj);
+
+route_resp_xml(<<"dialplan_error">>, _Routes, JObj) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
     Exten = [route_resp_log_winning_node()
@@ -287,6 +295,36 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
     ErrExtEl = extension_el([condition_el(Exten)]),
     ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
+
+route_resp_xml(<<"chatplan_error">>, _Routes, JObj) ->
+    ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
+    ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
+    Exten = [action_el(<<"reply">>, [ErrCode, ErrMsg])],
+    ErrExtEl = extension_el([condition_el(Exten)]),
+    ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
+    SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
+
+route_resp_xml(<<"sms">>, Routes, JObj) ->
+    lager:debug("creating a chatplan XML response"),
+    StopActionEl = action_el(<<"stop">>, <<"stored">>),
+    StopExtEl = extension_el(<<"chat plan">>, <<"false">>, [condition_el([StopActionEl])]),
+    Context = wh_json:get_value(<<"Context">>, JObj, ?DEFAULT_FREESWITCH_CONTEXT),
+    ContextEl = context_el(Context, [StopExtEl]),
+    SectionEl = section_el(<<"chatplan">>, <<"Chat Response">>, ContextEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')};
+
+route_resp_xml(<<"sms_error">>, _Routes, JObj) ->
+    ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
+    ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<>>)],
+    Exten = [route_resp_log_winning_node()
+             ,route_resp_set_winning_node()
+             ,action_el(<<"respond">>, [ErrCode, ErrMsg])
+            ],
+    ErrExtEl = extension_el([condition_el(Exten)]),
+    ContextEl = context_el(?DEFAULT_FREESWITCH_CONTEXT, [ErrExtEl]),
+    SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
 route_resp_bridge_id() ->
@@ -483,8 +521,10 @@ get_channel_params(JObj) ->
           end,
 
     Custom = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-    lists:foldl(fun({K,V}, CV) ->
-                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
+    lists:foldl(fun({<<"variable_", K/binary>>,V}, CV) ->
+                        [{K, V} | CV];
+                   ({K,V}, CV) ->
+                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]                
                 end, CV1, Custom).
 
 -spec get_custom_sip_headers(wh_json:object()) -> wh_json:json_proplist().
@@ -596,7 +636,7 @@ user_el(Id, Children) when not is_list(Id) ->
     user_el(user_el_default_props(Id), Children);
 user_el(Props, Children) ->
     #xmlElement{name='user'
-                ,attributes=[xml_attrib(K, V) || {K , V} <- props:filter_undefined(Props)]
+                ,attributes=[xml_attrib(K, V) || {K , V} <- props:unique(props:filter_undefined(Props))]
                 ,content=Children
                }.
 

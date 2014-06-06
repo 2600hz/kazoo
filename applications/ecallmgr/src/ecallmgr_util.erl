@@ -34,6 +34,9 @@
 -export([maybe_sanitize_fs_value/2]).
 -export([lookup_media/4]).
 
+-export([custom_sip_headers/1 , is_custom_sip_header/1, normalize_custom_sip_header_name/1]).
+-export([maybe_add_expires_deviation/1, maybe_add_expires_deviation_ms/1]).
+
 -include("ecallmgr.hrl").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
@@ -206,6 +209,9 @@ get_sip_request(Props) ->
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                      ,<<"variable_sip_auth_realm">>
                                      ,<<"variable_sip_to_host">>
+                                     ,<<"sip_auth_realm">>
+                                     ,<<"sip_to_host">>
+                                     ,<<"variable_sip_req_host">>
                                     ], Props, ?DEFAULT_REALM),
     <<User/binary, "@", Realm/binary>>.
 
@@ -923,3 +929,35 @@ request_media_url(MediaName, CallId, JObj, Type) ->
         {'ok', MediaResp} ->
             {'ok', wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
     end.
+
+-spec custom_sip_headers(wh_proplist()) -> wh_json:object().
+custom_sip_headers(Props) ->
+    lists:map(fun normalize_custom_sip_header_name/1
+             ,props:filter(fun is_custom_sip_header/1, Props)
+             ).
+
+-spec normalize_custom_sip_header_name(term()) -> term().
+normalize_custom_sip_header_name({<<"variable_sip_h_", K/binary>>, V}) -> {K, V};
+normalize_custom_sip_header_name({<<"sip_h_", K/binary>>, V}) -> {K, V};
+normalize_custom_sip_header_name(A) -> A.
+  
+-spec is_custom_sip_header(term()) -> boolean().
+is_custom_sip_header({<<"P-", _/binary>>, _}) -> 'true';
+is_custom_sip_header({<<"X-", _/binary>>, _}) -> 'true';
+is_custom_sip_header({<<"sip_h_", _/binary>>, _}) -> 'true';
+is_custom_sip_header({<<"variable_sip_h_", _/binary>>, _}) -> 'true';
+is_custom_sip_header(Header) -> 'false'.
+
+-spec maybe_add_expires_deviation(api_integer()) -> api_integer().
+maybe_add_expires_deviation('undefined') -> 'undefined';
+maybe_add_expires_deviation(Expires) when not is_integer(Expires) ->
+    maybe_add_expires_deviation(wh_util:to_integer(Expires));
+maybe_add_expires_deviation(Expires) ->
+    Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
+
+-spec maybe_add_expires_deviation_ms(api_integer()) -> api_integer().
+maybe_add_expires_deviation_ms('undefined') -> 'undefined';
+maybe_add_expires_deviation_ms(Expires) when not is_integer(Expires) ->
+    maybe_add_expires_deviation_ms(wh_util:to_integer(Expires));
+maybe_add_expires_deviation_ms(Expires) ->
+    maybe_add_expires_deviation(Expires) * 1000.

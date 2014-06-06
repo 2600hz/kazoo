@@ -49,6 +49,7 @@
 
 -export([set_authorizing_id/2, authorizing_id/1]).
 -export([set_authorizing_type/2, authorizing_type/1]).
+-export([set_resource_type/2, resource_type/1]).
 -export([set_owner_id/2, owner_id/1]).
 -export([set_fetch_id/2, fetch_id/1]).
 -export([set_bridge_id/2, bridge_id/1]).
@@ -123,6 +124,7 @@
                       ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that where provided with the route request
                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       ,other_leg_callid :: api_binary()
+                      ,resource_type :: api_binary()                      %% from route_req
                       }).
 
 -type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()).
@@ -210,6 +212,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
                      ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
                      ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
                      ,ccvs = CCVs
+                     ,resource_type = wh_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
                     }.
 
 -spec from_route_win(wh_json:object()) -> call().
@@ -297,6 +300,7 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
       ,ccvs = CCVs
       ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Call#whapps_call.kvs, KVS)
       ,other_leg_callid = wh_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
+      ,resource_type = wh_json:get_ne_value(<<"Resource-Type">>, JObj, resource_type(Call))
      }.
 
 %%--------------------------------------------------------------------
@@ -354,6 +358,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
      ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
+     ,{<<"Resource-Type">>, resource_type(Call)}
     ].
 
 -spec is_call(term()) -> boolean().
@@ -576,6 +581,16 @@ set_inception(Inception, #whapps_call{}=Call) ->
 -spec inception(call()) -> api_binary().
 inception(#whapps_call{inception=Inception}) ->
     Inception.
+
+-spec set_resource_type(ne_binary(), call()) -> call().
+set_resource_type('undefined', #whapps_call{}=Call) ->
+    Call#whapps_call{resource_type='undefined'};
+set_resource_type(ResourceType, #whapps_call{}=Call) ->
+    set_custom_channel_var(<<"Resource-Type">>, ResourceType, Call#whapps_call{resource_type=ResourceType}).
+
+-spec resource_type(call()) -> api_binary().
+resource_type(#whapps_call{resource_type=ResourceType}) ->
+    ResourceType.
 
 -spec set_account_db(ne_binary(), call()) -> call().
 set_account_db(AccountDb, #whapps_call{}=Call) when is_binary(AccountDb) ->

@@ -25,11 +25,12 @@
 %% AMQP fields for Rating Request
 -define(RATE_REQ_HEADERS, [<<"To-DID">>, <<"Call-ID">>]).
 -define(OPTIONAL_RATE_REQ_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"From-DID">>
-                                    ,<<"Options">>, <<"Direction">>
+                                    ,<<"Options">>, <<"Direction">>, <<"Resource-Type">>
                                    ]).
 -define(RATE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                           ,{<<"Event-Name">>, <<"req">>}
                           ,{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
+                          ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"sms">>]}
                          ]).
 -define(RATE_REQ_TYPES, [
                          {<<"Options">>, fun is_list/1}

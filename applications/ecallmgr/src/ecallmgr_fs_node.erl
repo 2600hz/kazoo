@@ -17,6 +17,7 @@
 -export([sync_channels/1
          ,sync_interface/1
          ,sync_capabilities/1
+         ,sync_registrations/1
         ]).
 -export([sip_url/1]).
 -export([sip_external_ip/1]).
@@ -113,6 +114,10 @@
                                                    ,{<<"is_loaded">>, 'false'}
                                                    ,{<<"capability">>, <<"skinny">>}
                                                   ])
+                               ,wh_json:from_list([{<<"module">>, <<"mod_sms">>}
+                                                   ,{<<"is_loaded">>, 'false'}
+                                                   ,{<<"capability">>, <<"sms">>}
+                                                  ])
                               ]).
 
 -record(state, {node :: atom()
@@ -142,6 +147,22 @@
 -define(MILLI_TO_MICRO(Mil), wh_util:to_integer(Mil)*1000).
 
 -define(FS_TIMEOUT, 5000).
+
+-define(REPLAY_REG_MAP,
+        [{<<"Realm">>, <<"realm">>}
+         ,{<<"Username">>, <<"reg_user">>}
+         ,{<<"Network-IP">>, <<"network_ip">>}
+         ,{<<"Network-Port">>, <<"network_port">>}
+         ,{<<"FreeSWITCH-Hostname">>, <<"hostname">>}
+         ,{<<"To-Host">>, <<"realm">>}
+         ,{<<"To-User">>, <<"reg_user">>}
+         ,{<<"From-Host">>, <<"realm">>}
+         ,{<<"From-User">>, <<"reg_user">>}
+         ,{<<"Call-ID">>, <<"token">>}
+         ,{<<"Profile-Name">>, {fun replay_profile/1, <<"url">> } }
+         ,{<<"Contact">>, {fun replay_contact/1, <<"url">> } }
+         ,{<<"Expires">>, {fun replay_expires/1, <<"expires">>}}
+        ]).
 
 -type fs_node() :: atom() | ne_binary() | pid().
 
@@ -179,6 +200,10 @@ sync_interface(Srv) ->
 -spec sync_capabilities(fs_node()) -> 'ok'.
 sync_capabilities(Srv) ->
     gen_server:cast(find_srv(Srv), 'sync_capabilities').
+
+-spec sync_registrations(fs_node()) -> 'ok'.
+sync_registrations(Srv) ->
+    gen_server:cast(find_srv(Srv), 'sync_registrations').
 
 -spec hostname(pid()) -> api_binary().
 hostname(Srv) ->
@@ -302,6 +327,9 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
                ],
     _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
+handle_cast('sync_registrations', #state{node=Node}=State) ->
+    _ = spawn(fun() -> maybe_replay_registrations(Node) end),
+    {'noreply', State};
 handle_cast(_Req, State) ->
     {'noreply', State}.
 
@@ -381,6 +409,7 @@ run_start_cmds(Node) ->
                            Errs -> print_api_responses(Errs)
                        end,
                        sync_interface(Parent),
+                       sync_registrations(Parent),
                        sync_capabilities(Parent)
                end).
 
@@ -544,3 +573,63 @@ maybe_add_capability(Node, Capability) ->
         {'error', _E} ->
             lager:debug("failed to probe node ~s: ~p", [Node, _E])
     end.
+
+maybe_replay_registrations(Node) ->
+    replay_registration(Node, get_registrations(Node)).
+
+replay_registration(Node, []) -> 'ok';
+replay_registration(Node, [Reg | Regs]) ->
+    Payload = [
+               {<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
+               ,{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+              | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
+                                  {K, F(props:get_value(V, Reg))};
+                             ({K,V}) ->
+                                  {K, props:get_value(V, Reg)}
+                          end, ?REPLAY_REG_MAP)  
+              ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)] ,
+    lager:debug("Replaying registration ~p",[Payload]),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,Payload
+                        ,fun wapi_registration:publish_success/1
+                       ),
+    replay_registration(Node, Regs).
+
+-spec replay_profile(ne_binary()) -> ne_binary().
+replay_profile(V) ->
+    lists:nth(2, binary:split(V, <<"/">>, ['global'] ) ).
+
+-spec replay_expires(ne_binary()) -> ne_binary().
+replay_expires(V) ->
+    wh_util:unix_seconds_to_gregorian_seconds(
+      wh_util:to_integer(V)) - 
+        wh_util:current_tstamp() +
+        ecallmgr_config:get_integer(<<"expires_deviation_time">>, 0).
+
+-spec replay_contact(ne_binary()) -> ne_binary().
+replay_contact(V) ->
+    <<"<", (lists:nth(3, binary:split(V, <<"/">>, ['global'] ) ))/binary, ">">>.
+
+-spec get_registrations(atom()) -> wh_proplist().
+get_registrations(Node) ->
+    case freeswitch:api(Node, 'show', "registrations") of
+        {'ok', Response} ->
+            R = binary:replace(Response, <<" ">>, <<>>, ['global']),
+            Lines = [binary:split(Line, <<",">>, ['global'] ) 
+                    || Line <- binary:split(R, <<"\n">>, ['global'])],
+            get_registration_details(Lines);
+        _Else -> []
+    end.
+
+-spec get_registration_details(list()) -> wh_proplist().
+get_registration_details(Lines) when length(Lines) > 3 ->
+            Header = lists:nth(1, Lines),
+            [ begin 
+                   {Res,Total} = lists:mapfoldl(
+                                   fun(E, Acc) ->
+                                           {{lists:nth(Acc, Header),E}, Acc+1}
+                                   end, 1, Row),
+                   Res
+               end
+             || Row <- lists:sublist(Lines, 2, length(Lines)-4)];
+get_registration_details(List) -> [].

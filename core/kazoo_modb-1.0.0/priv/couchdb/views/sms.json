@@ -1,0 +1,24 @@
+{
+   "_id": "_design/sms",
+   "language": "javascript",
+   "views": {
+       "crossbar_listing": {
+           "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'owner': doc.owner_id, 'direction' : doc.direction }); }"
+       },
+       "listing_by_owner": {
+           "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'user' ) return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id, 'status' : doc.pvt_status, 'created' : doc.created }); }"
+       },
+       "listing_by_device": {
+           "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'device' ) return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id, 'status' : doc.pvt_status, 'created' : doc.created }); }"
+       },
+       "deliver_to_device": {
+           "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'device' || doc.pvt_status != 'pending') return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id}); }"
+       },
+       "deliver_to_owner": {
+           "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_call['Key-Value-Store'].cf_flow.module != 'user' || doc.pvt_status != 'pending') return; emit(doc.pvt_call['Key-Value-Store'].cf_flow.data.id, {'id': doc._id}); }"
+       },
+       "deliver_to_offnet": {
+           "map": "function(doc) { if (doc.pvt_type != 'sms' || doc.pvt_deleted || doc.pvt_status != 'pending' || (doc.pvt_call['Key-Value-Store'].cf_flow.module != 'offnet' && doc.pvt_call['Key-Value-Store'].cf_flow.module != 'resources')) return; emit([doc.pvt_created, doc._id], {'id': doc._id}); }"
+       }
+   }
+}

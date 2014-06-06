@@ -38,15 +38,17 @@
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
                                      ,<<"Max-Call-Length">>, <<"Media">>
                                      ,<<"Transcode">>, <<"Codecs">>
-                                     ,<<"Custom-Channel-Vars">>
+                                     ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                      ,<<"Resource-Type">>, <<"Cost-Parameters">>
-                                     ,<<"From-Network-Addr">>
+                                     ,<<"From-Network-Addr">>, <<"User-Agent">>
                                      ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
                                      ,<<"Ringback-Media">>, <<"Transfer-Media">>
+                                     ,<<"SIP-Request-Host">>, <<"Message-ID">>
+                                     ,<<"Body">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
-                           ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>
+                           ,{<<"Resource-Type">>, [<<"mms">>, <<"sms">>
                                                    ,<<"audio">>, <<"video">>
                                                    ,<<"chat">>
                                                   ]}
@@ -69,6 +71,7 @@
                                                                          end, wh_json:to_proplist(JObj))
                                                    end}
                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                          ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                          ]).
 
 %% Route Responses
@@ -103,7 +106,7 @@
                                      ]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"route_resp">>}
-                            ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
+                            ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>, <<"sms">>]}
                             ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>]}
                            ]).
 -define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
@@ -189,6 +192,7 @@ is_actionable_resp(Prop) when is_list(Prop) ->
     case props:get_value(<<"Method">>, Prop) of
         <<"bridge">> -> 'true';
         <<"park">> -> 'true';
+        <<"sms">> -> 'true';
         <<"error">> ->
             wh_util:is_true(props:get_value(<<"Defer-Response">>, Prop));
         _ -> 'false'
