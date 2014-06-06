@@ -28,7 +28,9 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 -spec handle(wh_json:object(), whapps_call:call(), ne_binary()) -> 'ok'.
 handle(Data, Call) ->
-    handle(Data, Call, get_action(wh_json:get_value(<<"action">>, Data))),
+    handle(Data
+           ,set_recording_url(Data, Call)
+           ,get_action(wh_json:get_value(<<"action">>, Data))),
     cf_exe:continue(Call).
 
 handle(Data, Call, <<"start">>) ->
@@ -57,3 +59,10 @@ handle(Data, Call, <<"stop">> = Action) ->
 get_action('undefined') -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.
+
+-spec set_recording_url(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+set_recording_url(Data, Call) ->
+    CallId = whapps_call:call_id(Call),
+    Media = wh_media_util:recording_url(CallId, Data)
+    whapps_call:set_custom_channel_var(<<"Recording-Url">>, Media, Call).
+
