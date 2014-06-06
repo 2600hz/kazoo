@@ -117,7 +117,8 @@ validate(Context, <<"recovery">>) ->
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     _ = cb_context:put_reqid(Context),
-    create_token(Context).
+    crossbar_util:create_auth_token(Context, ?MODULE).
+
 put(Context, <<"recovery">>) ->
     _ = cb_context:put_reqid(Context),
     reset_users_password(Context).
@@ -300,42 +301,6 @@ maybe_load_username(Account, Context) ->
                                             ,<<"The provided username was not found">>
                                             ,Context
                                            )
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
-%% @end
-%%--------------------------------------------------------------------
--spec create_token(cb_context:context()) -> cb_context:context().
-create_token(Context) ->
-    JObj = cb_context:doc(Context),
-    case wh_json:is_empty(JObj) of
-        'true' ->
-            crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
-        'false' ->
-            AccountId = wh_json:get_value(<<"account_id">>, JObj, <<>>),
-            OwnerId = wh_json:get_value(<<"owner_id">>, JObj, <<>>),
-            Token = [{<<"account_id">>, AccountId}
-                     ,{<<"owner_id">>, OwnerId}
-                     ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                     ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                     ,{<<"method">>, wh_util:to_binary(?MODULE)}
-                    ],
-            case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
-                {'ok', Doc} ->
-                    AuthToken = wh_json:get_value(<<"_id">>, Doc),
-                    lager:debug("created new local auth token ~s", [AuthToken]),
-                    crossbar_util:response(crossbar_util:response_auth(JObj, AccountId, OwnerId)
-                                           ,cb_context:setters(Context, [{fun cb_context:set_auth_token/2, AuthToken}
-                                                                         ,{fun cb_context:set_auth_doc/2, Doc}
-                                                                        ])
-                                          );
-                {'error', R} ->
-                    lager:debug("could not create new local auth token, ~p", [R]),
-                    cb_context:add_system_error('invalid_credentials', Context)
-            end
     end.
 
 %%--------------------------------------------------------------------

@@ -35,6 +35,8 @@
 -export([apply_response_map/2]).
 -export([maybe_remove_attachments/1]).
 
+-export([create_auth_token/2]).
+
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
@@ -556,6 +558,47 @@ maybe_remove_attachments(Context, JObj, _Attachments) ->
     crossbar_doc:save(cb_context:set_doc(Context
                                          ,wh_json:delete_key(<<"_attachments">>, JObj)
                                         )).
+
+-spec create_auth_token(cb_context:context(), atom()) -> cb_context:context().
+create_auth_token(Context, Method) ->
+    JObj = cb_context:doc(Context),
+    case wh_json:is_empty(JObj) of
+        'true' ->
+            crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
+        'false' ->
+            Data = cb_context:req_data(Context),
+            Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+            AccountId = wh_json:get_value(<<"account_id">>, JObj),
+            OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
+            Token = props:filter_undefined(
+                        [{<<"account_id">>, AccountId}
+                         ,{<<"owner_id">>, OwnerId}
+                         ,{<<"created">>, Timestamp}
+                         ,{<<"as">>, wh_json:get_value(<<"as">>, Data)}
+                         ,{<<"api_key">>, wh_json:get_value(<<"api_key">>, Data)}
+                         ,{<<"restrictions">>, wh_json:get_value(<<"restrictions">>, Data)}
+                         ,{<<"modified">>, Timestamp}
+                         ,{<<"method">>, wh_util:to_binary(Method)}]
+                    ),
+            JObjToken = wh_doc:update_pvt_parameters(wh_json:from_list(Token)
+                                                     ,wh_util:format_account_id(AccountId, 'encoded')
+                                                     ,Token),
+            case couch_mgr:save_doc(?TOKEN_DB, JObjToken) of
+                {'ok', Doc} ->
+                    AuthToken = wh_json:get_value(<<"_id">>, Doc),
+                    lager:debug("created new local auth token ~s", [AuthToken]),
+                    crossbar_util:response(crossbar_util:response_auth(JObj, AccountId, OwnerId)
+                                           ,cb_context:setters(
+                                                Context
+                                                ,[{fun cb_context:set_auth_token/2, AuthToken}
+                                                  ,{fun cb_context:set_auth_doc/2, Doc}
+                                                 ])
+                                          );
+                {'error', R} ->
+                    lager:debug("could not create new local auth token, ~p", [R]),
+                    cb_context:add_system_error('invalid_credentials', Context)
+            end
+    end.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
