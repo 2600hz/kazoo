@@ -13,8 +13,7 @@
          ,load_from_file/2
          ,load_merge/2, load_merge/3
          ,merge/3
-         ,load_view/3, load_view/4
-         ,paginate_view/3, paginate_view/4, paginate_view/5, paginate_view/6
+         ,load_view/3, load_view/4, load_view/5, load_view/6
          ,load_attachment/3, load_docs/2
          ,save/1, save/2
          ,delete/1, delete/2
@@ -47,10 +46,15 @@
 
 -spec pagination_page_size() -> pos_integer().
 -spec pagination_page_size(cb_context:context()) -> pos_integer().
+-spec pagination_page_size(cb_context:context(), ne_binary()) -> pos_integer().
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
 pagination_page_size(Context) ->
+    pagination_page_size(Context, cb_context:api_version(Context)).
+
+pagination_page_size(_Context, <<"v1">>) -> 'undefined';
+pagination_page_size(Context, _Version) ->
     case cb_context:req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();
         V -> wh_util:to_integer(V)
@@ -166,104 +170,43 @@ merge(DataJObj, JObj, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context()) ->
-                       cb_context:context().
+                           cb_context:context().
+-spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term() | filter_fun()) ->
+                           cb_context:context().
+-spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer()) ->
+                           cb_context:context().
+-spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer(), filter_fun() | 'undefined') ->
+                           cb_context:context().
 load_view(View, Options, Context) ->
-    Db = cb_context:account_db(Context),
-    QS = cb_context:query_string(Context),
-
-    HasFilter = has_filter(QS),
-
-    ViewOptions =
-        case HasFilter of
-            'false' -> Options;
-            'true' -> ['include_docs'
-                       | props:delete('include_docs', Options)
-                      ]
-        end,
-
-    case couch_mgr:get_results(Db, View, ViewOptions) of
-        {'error', Error} -> handle_couch_mgr_errors(Error, View, Context);
-        {'ok', JObjs} when HasFilter ->
-            lager:debug("loaded view ~s from ~s, running query filter", [View, Db]),
-            Filtered = [JObj
-                        || JObj <- JObjs,
-                           filter_doc(wh_json:get_value(<<"doc">>, JObj), QS)
-                       ],
-            handle_couch_mgr_success(Filtered, Context);
-        {'ok', JObjs} ->
-            lager:debug("loaded view ~s from ~s", [View, Db]),
-            handle_couch_mgr_success(JObjs, Context)
-    end.
-
-%%--------------------------------------------------------------------
-% @public
-%% @doc
-%% This function attempts to load the context with the results of a view
-%% run against the accounts database.  The results are then filtered by
-%% the supplied function
-%%
-%% Failure here returns 500 or 503
-%% @end
-%%--------------------------------------------------------------------
--type filter_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
--spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), filter_fun()) ->
-                       cb_context:context().
-load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
-    Context1 = load_view(View, Options, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            Filtered = apply_filter(Filter, cb_context:doc(Context1)),
-            handle_couch_mgr_success(Filtered, Context1);
-        _Status -> Context1
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function attempts to load the context with the results of a view
-%% run against the accounts database.
-%%
-%% Failure here returns 500 or 503
-%% @end
-%%--------------------------------------------------------------------
--spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context()) ->
-                           cb_context:context().
--spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term() | filter_fun()) ->
-                           cb_context:context().
--spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer()) ->
-                           cb_context:context().
--spec paginate_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer(), filter_fun() | 'undefined') ->
-                           cb_context:context().
-paginate_view(View, Options, Context) ->
-    paginate_view(View, Options, Context
+    load_view(View, Options, Context
                   ,start_key(Options, Context)
                   ,pagination_page_size(Context)
                   ,'undefined'
                  ).
 
-paginate_view(View, Options, Context, FilterFun) when is_function(FilterFun, 2) ->
-    paginate_view(View, Options, Context
+load_view(View, Options, Context, FilterFun) when is_function(FilterFun, 2) ->
+    load_view(View, Options, Context
                   ,start_key(Options, Context)
                   ,pagination_page_size(Context)
                   ,FilterFun
                  );
-paginate_view(View, Options, Context, StartKey) ->
-    paginate_view(View, Options, Context, StartKey
+load_view(View, Options, Context, StartKey) ->
+    load_view(View, Options, Context, StartKey
                   ,pagination_page_size(Context)
                  ).
 
-paginate_view(View, Options, Context, StartKey, PageSize) ->
-    paginate_view(View, Options, Context, StartKey, PageSize, 'undefined').
+load_view(View, Options, Context, StartKey, PageSize) ->
+    load_view(View, Options, Context, StartKey, PageSize, 'undefined').
 
-paginate_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
+load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
     Db = cb_context:account_db(Context),
 
-    HasFilter = is_function(FilterFun, 2),
+    HasFilter = is_function(FilterFun, 2) orelse has_filter(Context),
 
     DefaultOptions =
         props:filter_undefined(
           [{'startkey', StartKey}
-           ,{'limit', wh_util:to_integer(PageSize)+1}
+           ,{'limit', limit_by_page_size(PageSize)}
            | props:delete_keys(['startkey', 'limit'], Options)
           ]),
 
@@ -283,8 +226,14 @@ paginate_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                                 ,StartKey
                                                 ,PageSize
                                                 ,FilterFun
+                                                ,cb_context:api_version(Context)
                                                )
     end.
+
+-spec limit_by_page_size(api_binary() | pos_integer()) -> pos_integer().
+limit_by_page_size('undefined') -> 'undefined';
+limit_by_page_size(N) when is_integer(N) -> N+1;
+limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
 
 -spec start_key(cb_context:context()) -> wh_json:json_term() | 'undefined'.
 -spec start_key(wh_proplist(), cb_context:context()) -> wh_json:json_term() | 'undefined'.
@@ -593,38 +542,51 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                     ,cb_context:resp_envelope(Context)
                                    )).
 
-handle_couch_mgr_pagination_success([], Context, StartKey, _PageSize, _FilterFun) ->
+handle_couch_mgr_pagination_success(JObjs, Context, 'undefined', _PageSize, FilterFun, <<"v1">>) ->
+    handle_couch_mgr_success(apply_filter(FilterFun, JObjs, Context), Context);
+handle_couch_mgr_pagination_success(JObjs, Context, _StartKey, 'undefined', FilterFun, <<"v1">>) ->
+    handle_couch_mgr_success(apply_filter(FilterFun, JObjs, Context), Context);
+handle_couch_mgr_pagination_success([], Context, StartKey, _PageSize, _FilterFun, _Version) ->
     handle_couch_mgr_success([], update_pagination_envelope_params(Context, StartKey, 0));
-handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize, FilterFun) ->
+
+handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize, FilterFun, _Version) ->
     try lists:split(PageSize, JObjs) of
         {Results, []} ->
             lager:debug("no next results"),
-            handle_couch_mgr_success(apply_filter(FilterFun, Results)
+            handle_couch_mgr_success(apply_filter(FilterFun, Results, Context)
                                      ,update_pagination_envelope_params(Context, StartKey, PageSize)
                                     );
 
         {Results, [NextJObj]} ->
             NextStartKey = wh_json:get_value(<<"key">>, NextJObj),
             lager:debug("next start key: ~p", [NextStartKey]),
-            handle_couch_mgr_success(apply_filter(FilterFun, Results)
+            handle_couch_mgr_success(apply_filter(FilterFun, Results, Context)
                                      ,update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey)
                                     )
     catch
         'error':'badarg' ->
             lager:debug("recv less than ~p results", [PageSize]),
-            Filtered = apply_filter(FilterFun, JObjs),
+            Filtered = apply_filter(FilterFun, JObjs, Context),
             handle_couch_mgr_success(Filtered
                                      ,update_pagination_envelope_params(Context, StartKey, length(Filtered))
                                     )
     end.
 
--spec apply_filter('undefined' | filter_fun(), wh_json:objects()) -> wh_json:objects().
-apply_filter('undefined', JObjs) -> JObjs;
-apply_filter(FilterFun, JObjs) ->
+-type filter_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
+
+-spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
+apply_filter(FilterFun, JObjs, _Context) when is_function(FilterFun, 2) ->
     [JObj
      || JObj <- lists:foldl(FilterFun, [], JObjs),
         (not wh_util:is_empty(JObj))
+    ];
+apply_filter(_, JObjs, Context) ->
+    lager:debug("no filter fun, checking if should filter doc"),
+    [JObj
+     || JObj <- JObjs,
+        filter_doc(wh_json:get_value(<<"doc">>, JObj), Context)
     ].
+
 
 -spec handle_couch_mgr_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_couch_mgr_success([], Context) ->
@@ -799,9 +761,9 @@ extract_included_docs(JObjs) ->
 %% request has a filter defined
 %% @end
 %%--------------------------------------------------------------------
--spec has_filter(wh_json:object()) -> boolean().
-has_filter(QS) ->
-    lists:any(fun is_filter_key/1, wh_json:to_proplist(QS)).
+-spec has_filter(cb_context:context()) -> boolean().
+has_filter(Context) ->
+    lists:any(fun is_filter_key/1, wh_json:to_proplist(cb_context:query_string(Context))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -827,9 +789,12 @@ is_filter_key(_) -> 'false'.
 %% Returns 'true' if all of the requested props are found, 'false' if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec filter_doc(wh_json:object(), wh_json:object()) -> boolean().
-filter_doc(Doc, Query) ->
-    lists:all(fun({K, V}) -> filter_prop(Doc, K, V) end, wh_json:to_proplist(Query)).
+-spec filter_doc(wh_json:object(), cb_context:context()) -> boolean().
+filter_doc('undefined', _Context) -> 'true';
+filter_doc(Doc, Context) ->
+    wh_json:all(fun({K, V}) -> filter_prop(Doc, K, V) end
+                ,cb_context:query_string(Context)
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
