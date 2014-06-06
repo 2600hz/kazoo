@@ -11,15 +11,15 @@
 
 -include_lib("whistle/include/wh_api.hrl").
 
--export([ 
-          message/1, message_v/1
-         ,delivery/1, delivery_v/1
-         ,bind_q/2, unbind_q/2
-         ,declare_exchanges/0
-         ,publish_message/1, publish_message/2
-         ,publish_delivery/1, publish_delivery/2
+-export([ message/1, message_v/1
+          ,delivery/1, delivery_v/1
+          ,resume/1, resume_v/1
+          ,bind_q/2, unbind_q/2
+          ,declare_exchanges/0
+          ,publish_message/1, publish_message/2
+          ,publish_delivery/1, publish_delivery/2
+          ,publish_resume/1, publish_resume/2
         ]).
-
 
 -define(SMS_EXCHANGE, <<"sms">>).
 -define(EVENT_CATEGORY, <<"message">>).
@@ -38,63 +38,61 @@
           ,<<"Dial-Endpoint-Method">>
           ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
           ,<<"SIP-Transport">>, <<"SIP-Headers">>
-          | wapi_dialplan:optional_bridge_req_headers()          
+          | wapi_dialplan:optional_bridge_req_headers()
          ]).
 -define(SMS_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                            ,{<<"Event-Name">>, ?SMS_REQ_EVENT_NAME}
-                            ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
-                            ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
-                            ,{<<"Application-Name">>, [<<"send">>]}
-                           ]).
+                         ,{<<"Event-Name">>, ?SMS_REQ_EVENT_NAME}
+                         ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
+                         ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
+                         ,{<<"Application-Name">>, [<<"send">>]}
+                        ]).
 -define(SMS_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
-                           ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
-                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
-                           ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
-                          ]).
+                        ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                        ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                        ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+                        ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
+                       ]).
 -define(SMS_ROUTING_KEY(CallId), <<"message.route.", (amqp_util:encode(CallId))/binary>>).
 
 %% SMS Endpoints
 -define(SMS_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_SMS_REQ_ENDPOINT_HEADERS, wapi_dialplan:optional_bridge_req_endpoint_headers()).
--define(SMS_REQ_ENDPOINT_VALUES, [{<<"Endpoint-Type">>, 
-                                   [<<"sip">>, <<"xmpp">>, <<"smpp">>, <<"http">>]} 
+-define(SMS_REQ_ENDPOINT_VALUES, [{<<"Endpoint-Type">>
+                                   ,[<<"sip">>, <<"xmpp">>, <<"smpp">>, <<"http">>]}
                                  ]).
 -define(SMS_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
                                  ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                  ,{<<"Endpoint-Options">>, fun wh_json:is_json_object/1}
                                 ]).
 
-
 %% Delivery
 -define(DELIVERY_REQ_EVENT_NAME, <<"delivery">>).
 -define(DELIVERY_HEADERS, [<<"Call-ID">>, <<"Message-ID">>]).
 -define(OPTIONAL_DELIVERY_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
-                                  ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-                                  ,<<"From-Network-Addr">>
-                                  ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                  ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                  ,<<"Contact">>, <<"User-Agent">>
-                                  ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
-                                  ,<<"To">>, <<"From">>, <<"Request">>
-                                  ,<<"Body">>, <<"Account-ID">>
-                                  ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>                
+                                    ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+                                    ,<<"From-Network-Addr">>
+                                    ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                    ,<<"Contact">>, <<"User-Agent">>
+                                    ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
+                                    ,<<"To">>, <<"From">>, <<"Request">>
+                                    ,<<"Body">>, <<"Account-ID">>
+                                    ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
                                     ]).
 -define(DELIVERY_TYPES, [{<<"To">>, fun is_binary/1}
-                          ,{<<"From">>, fun is_binary/1}
-                          ,{<<"Request">>, fun is_binary/1}
-                          ,{<<"Message-ID">>, fun is_binary/1}
-                          ,{<<"Event-Queue">>, fun is_binary/1}
-                          ,{<<"Caller-ID-Name">>, fun is_binary/1}
-                          ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                          ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                          ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
-                         ]).
--define(DELIVERY_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                        ,{<<"Event-Name">>, ?DELIVERY_REQ_EVENT_NAME}
+                         ,{<<"From">>, fun is_binary/1}
+                         ,{<<"Request">>, fun is_binary/1}
+                         ,{<<"Message-ID">>, fun is_binary/1}
+                         ,{<<"Event-Queue">>, fun is_binary/1}
+                         ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                         ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                         ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                         ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
                         ]).
+-define(DELIVERY_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                              ,{<<"Event-Name">>, ?DELIVERY_REQ_EVENT_NAME}
+                             ]).
 -define(DELIVERY_ROUTING_KEY(CallId), <<"message.delivery.", (amqp_util:encode(CallId))/binary>>).
-
 
 %% SMS Resume
 -define(RESUME_REQ_EVENT_NAME, <<"resume">>).
@@ -105,8 +103,6 @@
                            ]).
 -define(RESUME_REQ_TYPES, []).
 -define(RESUME_ROUTING_KEY(CallId), <<"message.resume.", (amqp_util:encode(CallId))/binary>>).
-
-
 
 -spec message(api_terms()) -> api_formatter_return().
 message(Prop) when is_list(Prop) ->
@@ -244,12 +240,11 @@ publish_delivery(Req, ContentType) ->
     CallId = props:get_value(<<"Call-ID">>, Req),
     amqp_util:basic_publish(?SMS_EXCHANGE, ?DELIVERY_ROUTING_KEY(CallId), Payload, ContentType).
 
-
 -spec publish_resume(api_terms() | ne_binary()) -> 'ok'.
 -spec publish_resume(api_terms(), binary()) -> 'ok'.
 publish_resume(SMS) when is_binary(SMS) ->
     Payload = [{<<"SMS-ID">>, SMS}
-                | wh_api:default_headers(<<"API">>, <<"0.9.7">>)
+               | wh_api:default_headers(<<"API">>, <<"0.9.7">>)
               ],
     publish_resume(Payload, ?DEFAULT_CONTENT_TYPE);
 publish_resume(JObj) ->
@@ -258,6 +253,3 @@ publish_resume(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?RESUME_REQ_VALUES, fun resume/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
     amqp_util:basic_publish(?SMS_EXCHANGE, ?RESUME_ROUTING_KEY(CallId), Payload, ContentType).
-
-
-
