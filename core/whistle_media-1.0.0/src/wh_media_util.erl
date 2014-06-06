@@ -25,7 +25,6 @@
 -spec recording_url(ne_binary(), wh_json:object()) -> ne_binary().
 recording_url(CallId, Data) ->
     Format = wh_json:get_value(<<"format">>, Data, <<".mp3">>),
-    CallId = whapps_call:call_id(Call),
     Url = wh_json:get_value(<<"url">>, Data, <<>>),
     <<Url/binary, "call_recording_", CallId/binary, ".", Format/binary>>.
 
