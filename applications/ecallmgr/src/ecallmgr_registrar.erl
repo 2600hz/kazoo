@@ -13,6 +13,7 @@
 -export([start_link/0]).
 -export([lookup_contact/2
          ,lookup_original_contact/2
+         ,lookup_registration/2
         ]).
 -export([reg_success/2
          ,reg_query/2
@@ -155,24 +156,42 @@ reg_flush(JObj, _Props) ->
                             {'ok', ne_binary()} |
                             {'error', 'not_found'}.
 lookup_contact(Realm, Username) ->
-    case ets:lookup(?MODULE, registration_id(Username, Realm)) of
-        [#registration{contact=Contact}] ->
+    case get_registration(Realm, Username) of
+        #registration{contact=Contact} ->
             lager:info("found user ~s@~s contact ~s"
                        ,[Username, Realm, Contact]),
             {'ok', Contact};
-        _Else -> fetch_contact(Username, Realm)
+        'undefined' -> fetch_contact(Username, Realm)
     end.
 
 -spec lookup_original_contact(ne_binary(), ne_binary()) ->
                                      {'ok', ne_binary()} |
                                      {'error', 'not_found'}.
 lookup_original_contact(Realm, Username) ->
-    case ets:lookup(?MODULE, registration_id(Username, Realm)) of
-        [#registration{original_contact=Contact}] ->
+    case get_registration(Realm, Username) of
+        #registration{original_contact=Contact} ->
             lager:info("found user ~s@~s original contact ~s"
                        ,[Username, Realm, Contact]),
             {'ok', Contact};
-        _Else -> fetch_original_contact(Username, Realm)
+        'undefined' -> fetch_original_contact(Username, Realm)
+    end.
+
+-spec lookup_registration(ne_binary(), ne_binary()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', 'not_found'}.
+lookup_registration(Realm, Username) ->
+    case get_registration(Realm, Username) of
+        #registration{}=Registration ->
+            {'ok', wh_json:from_list(to_props(Registration))};
+        'undefined' -> fetch_registration(Username, Realm)
+    end.
+
+-spec get_registration(ne_binary(), ne_binary()) -> 'undefined' | registration().
+get_registration(Realm, Username) ->
+    case ets:lookup(?MODULE, registration_id(Username, Realm)) of
+        [#registration{}=Registration] ->
+            Registration;
+        _ -> 'undefined'
     end.
 
 -spec summary() -> 'ok'.
@@ -430,19 +449,44 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec fetch_contact(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_found'}.
+-spec fetch_registration(ne_binary(), ne_binary()) ->
+                                {'ok', ne_binary()} |
+                                {'error', 'not_found'}.
+fetch_registration(Username, Realm) ->
+    Reg = [{<<"Username">>, Username}
+           ,{<<"Realm">>, Realm}
+           ,{<<"Fields">>, []} % will fetch all fields
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case query_for_registration(Reg) of
+        {'ok', JObjs} ->
+            case [JObj
+                  || JObj <- JObjs,
+                     wapi_registration:query_resp_v(JObj)
+                 ]
+            of
+                [Registration|_] ->
+                    lager:info("fetched user ~s@~s registration", [Username, Realm]),
+                    {'ok', Registration};
+                _Else ->
+                    lager:info("registration query for user ~s@~s returned an empty result", [Username, Realm]),
+                    {'error', 'not_found'}
+            end;
+        _Else ->
+            lager:info("registration query for user ~s@~s failed: ~p", [Username, Realm, _Else]),
+            {'error', 'not_found'}
+    end.
+
+-spec fetch_contact(ne_binary(), ne_binary()) ->
+                           {'ok', ne_binary()} |
+                           {'error', 'not_found'}.
 fetch_contact(Username, Realm) ->
     Reg = [{<<"Username">>, Username}
            ,{<<"Realm">>, Realm}
            ,{<<"Fields">>, [<<"Contact">>]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case wh_amqp_worker:call_collect(?ECALLMGR_AMQP_POOL
-                                     ,Reg
-                                     ,fun wapi_registration:publish_query_req/1
-                                     ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
-                                     ,2000)
-    of
+    case query_for_registration(Reg) of
         {'ok', JObjs} ->
             case [Contact
                   || JObj <- JObjs
@@ -462,6 +506,17 @@ fetch_contact(Username, Realm) ->
             lager:info("contact query for user ~s@~s failed: ~p", [Username, Realm, _Else]),
             {'error', 'not_found'}
     end.
+
+-spec query_for_registration(api_terms()) ->
+                                    {'ok', wh_json:objects()} |
+                                    {'error', any()}.
+query_for_registration(Reg) ->
+    wh_amqp_worker:call_collect(?ECALLMGR_AMQP_POOL
+                                     ,Reg
+                                     ,fun wapi_registration:publish_query_req/1
+                                     ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
+                                     ,2000
+                                    ).
 
 -spec fetch_original_contact(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_found'}.
 fetch_original_contact(Username, Realm) ->
@@ -955,6 +1010,3 @@ print_property(<<"Expires">> =Key, Value, #registration{expires=Expires
     io:format("~-19s: ~b/~s~n", [Key, Remaining, wh_util:to_binary(Value)]);
 print_property(Key, Value, _) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]).
-
-
-
