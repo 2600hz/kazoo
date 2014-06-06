@@ -76,6 +76,7 @@ start() ->
 stop() ->
     cowboy:stop_listener('api_resource'),
     cowboy:stop_listener('api_resource_ssl'),
+    crossbar_bindings:flush(),
     exit(whereis('crossbar_sup'), 'shutdown'),
     'ok'.
 
