@@ -35,11 +35,16 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
-    case maybe_approved_caller(Data, Call) of
-        'true' -> maybe_correct_target(Data, Call);
-        'false' -> no_permission_to_eavesdrop(Call)
-    end,
-    cf_exe:stop(Call).
+    Exten = whapps_call:kvs_fetch('cf_capture_group', Call),
+    Target = get_target_for_extension(Exten, Call),
+    AllOk = maybe_approved_caller(Data, Call) andalso maybe_correct_target(Target, Data, Call),
+    case AllOk of
+        'true' ->
+            branch_to_eavesdrop(Target, Call);
+        'false' ->
+            no_permission_to_eavesdrop(Call),
+            cf_exe:stop(Call)
+    end.
 
 -spec maybe_approved_caller(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_approved_caller(Data, Call) ->
@@ -58,6 +63,20 @@ maybe_approved_caller(Data, Call) ->
             DeviceId == whapps_call:authorizing_id(Call)
     end.
 
+-type target() :: {'ok', ne_binary(), ne_binary()} | 'error'.
+
+-spec branch_to_eavesdrop(target(), whapps_call:call()) -> 'ok'.
+branch_to_eavesdrop({_, TargetId, <<"device">>}, Call) ->
+    Data = wh_json:from_list([{<<"device_id">>, TargetId}]),
+    cf_eavesdrop:handle(Data, Call);
+branch_to_eavesdrop({_, TargetId, <<"user">>}, Call) ->
+    Data = wh_json:from_list([{<<"user_id">>, TargetId}]),
+    cf_eavesdrop:handle(Data, Call);
+branch_to_eavesdrop(_, Call) ->
+    lager:info("Can't branch to eavesdrop"),
+    cf_exe:stop(Call).
+
+
 -spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
 %% TODO: please convert to system_media file (say is not consistent on deployments)
 no_permission_to_eavesdrop(Call) ->
@@ -75,15 +94,14 @@ get_target_for_extension(Exten, Call) ->
             'error'
     end.
 
--spec maybe_correct_target(wh_json:object(), wh_json:object()) -> boolean().
-maybe_correct_target(Data, Call) ->
+-spec maybe_correct_target(target(), wh_json:object(), wh_json:object()) -> boolean().
+maybe_correct_target(Target, Data, Call) ->
     case wh_json:get_value(<<"group_id">>, Data) of
         'undefined' ->
             'true';
-        _GroupId ->
-            Exten = whapps_call:kvs_fetch('cf_capture_group', Call),
-            case get_target_for_extension(Exten, Call) of
-                {'ok', _TargetId, _TargetType} -> 'false';
-                'false' -> 'false'
+        GroupId ->
+            case Target of
+                {'ok', TargetId, _} -> cf_util:maybe_belongs_to_group(TargetId, GroupId, Call);
+                'error' -> 'false'
             end
     end.
