@@ -139,13 +139,15 @@
 -define(QUERY_AUTH_ID_RESP_TYPES, []).
 
 %% Query User Channels Req
--define(QUERY_USER_CHANNELS_REQ_HEADERS, [<<"Realm">>]).
--define(OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS, [<<"Usernames">>, <<"Username">>]).
+-define(QUERY_USER_CHANNELS_REQ_HEADERS, []).
+-define(OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS, [<<"Usernames">>, <<"Username">>
+                                                   ,<<"Realm">>, <<"Authorizing-IDs">>]).
 -define(QUERY_USER_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                          ,{<<"Event-Name">>, <<"query_user_channels_req">>}
                                         ]).
 -define(QUERY_USER_CHANNELS_REQ_TYPES, [{<<"Usernames">>, fun erlang:is_list/1}
                                         ,{<<"Username">>, fun erlang:is_binary/1}
+                                        ,{<<"Authorizing-IDs">>, fun erlang:is_list/1}
                                        ]).
 
 %% Query User Channels Resp
@@ -544,6 +546,9 @@ publish_query_user_channels_req(JObj) ->
                                     ,?DEFAULT_CONTENT_TYPE
                                    ).
 
+publish_query_user_channels_req(Req, 'undefined', 'undefined', ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?QUERY_USER_CHANNELS_REQ_VALUES, fun ?MODULE:query_user_channels_req/1),
+    amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY('status_req', <<>>), Payload, ContentType);
 publish_query_user_channels_req(Req, 'undefined', Realm, ContentType) ->
     Username = first_username(Req),
     publish_query_user_channels_req(Req, Username, Realm, ContentType);
