@@ -374,7 +374,7 @@ response(#cb_context{resp_error_code=Code
 %% Add a validation error to the list of request errors
 %% @end
 %%--------------------------------------------------------------------
--type after_fun() :: fun((context()) -> context()).
+-type after_fun() :: fun((context()) -> context()) | 'undefined'.
 
 -spec validate_request_data(ne_binary() | api_object(), context()) ->
                                    context().
