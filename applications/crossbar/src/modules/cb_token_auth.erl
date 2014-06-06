@@ -60,6 +60,7 @@ finish_request(Context, AuthDoc) ->
     couch_mgr:enable_change_notice(),
     'ok'.
 
+-spec maybe_save_auth_doc(wh_json:object(), wh_json:object()) -> any().
 maybe_save_auth_doc(AuthDoc, OldAuthDoc) ->
     AuthModified = wh_json:get_integer_value(<<"pvt_modified">>, AuthDoc, 0),
     OldAuthModified = wh_json:get_integer_value(<<"pvt_modified">>, OldAuthDoc, 0),
@@ -145,19 +146,22 @@ check_restrictions(Context, JObj) ->
             lager:debug("no restrictions, check as object", []),
             check_as(Context, JObj);
         Rs ->
-            [_, _|PathTokens] = cb_context:path_tokens(Context),
-            Restrictions = get_restrictions(Context, Rs),
-            case crossbar_bindings:matches(Restrictions, PathTokens) of
-                'false' ->
-                    lager:debug("failed to find any matches in restrictions"),
-                    'false';
-                'true' ->
-                    lager:debug("found matche in restrictions, check as object now"),
-                    check_as(Context, JObj)
-            end
+            check_restrictions(Context, JObj, Rs)
     end.
 
--spec get_restrictions(cb_context:context(), json:object()) -> ne_binaries().
+check_restrictions(Context, JObj, Rs) ->
+    [_, _|PathTokens] = cb_context:path_tokens(Context),
+    Restrictions = get_restrictions(Context, Rs),
+    case crossbar_bindings:matches(Restrictions, PathTokens) of
+        'false' ->
+            lager:debug("failed to find any matches in restrictions"),
+            'false';
+        'true' ->
+            lager:debug("found matche in restrictions, check as object now"),
+            check_as(Context, JObj)
+    end.
+
+-spec get_restrictions(cb_context:context(), wh_json:object()) -> ne_binaries().
 get_restrictions(Context, Restrictions) ->
     Verb = wh_util:to_lower_binary(cb_context:req_verb(Context)),
     DefaultRestrictions = wh_json:get_value(<<"*">>, Restrictions, []),
@@ -173,16 +177,16 @@ get_restrictions(Context, Restrictions) ->
         ,VerbRestrictions ++ DefaultRestrictions
     ).
 
--spec check_as(cb_context:context(), json:object()) -> boolean() |
-                                                       {'true', cb_context:context()}.
+-spec check_as(cb_context:context(), wh_json:object()) -> boolean() |
+                                                          {'true', cb_context:context()}.
 check_as(Context, JObj) ->
     case wh_json:get_value(<<"account_id">>, JObj, 'undefined') of
         'undefined' -> {'true', set_auth_doc(Context, JObj)};
         AccountId -> check_as_payload(Context, JObj, AccountId)
     end.
 
--spec check_as_payload(cb_context:context(), json:object(), ne_binary()) -> boolean() |
-                                                                            {'true', cb_context:context()}.
+-spec check_as_payload(cb_context:context(), wh_json:object(), ne_binary()) -> boolean() |
+                                                                               {'true', cb_context:context()}.
 check_as_payload(Context, JObj, AccountId) ->
     case {wh_json:get_value([<<"as">>, <<"account_id">>], JObj, 'undefined')
           ,wh_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')}
@@ -192,7 +196,7 @@ check_as_payload(Context, JObj, AccountId) ->
         {AsAccountId, AsOwnerId} -> check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId)
     end.
 
--spec check_descendants(cb_context:context(), json:object()
+-spec check_descendants(cb_context:context(), wh_json:object()
                         ,ne_binary() ,ne_binary() ,ne_binary()) -> boolean() |
                                                                    {'true', cb_context:context()}.
 check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
@@ -231,4 +235,3 @@ set_auth_doc(Context, JObj) ->
         )
         ,wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj)
     ).
-
