@@ -41,7 +41,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(wh_json:object(), proplist()) -> 'ok'.
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_full_v(JObj),
     whapps_util:put_callid(JObj),
@@ -60,7 +60,6 @@ handle_req(JObj, _Props) ->
 
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"vm_full">>, <<"email_subject_template">>], Account),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-
 
     case get_vm_owner_email(JObj) of
         'undefined' ->
@@ -81,14 +80,18 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object()) -> proplist().
+-spec create_template_props(wh_json:object()) -> wh_proplist().
 create_template_props(JObj) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, JObj)),
     [{<<"send_from">>, get_send_from(Admin)}
-     ,{<<"voicemail">>, [{<<"name">>, get_vm_name(JObj)}]}
+     ,{<<"voicemail">>, [{<<"name">>, get_vm_name(JObj)}
+                         ,{<<"box">>, wh_json:get_value(<<"Voicemail-Box">>, JObj)}
+                         ,{<<"number">>, wh_json:get_value(<<"Voicemail-Number">>, JObj)}
+                         ,{<<"max_message_count">>, wh_json:get_value(<<"Max-Message-Count">>, JObj)}
+                         ,{<<"message_count">>, wh_json:get_value(<<"Message-Count">>, JObj)}
+                        ]}
      ,{<<"custom">>, notify_util:json_to_template_props(JObj)}
     ].
-
 
 -spec get_vm_owner_email(wh_json:object()) -> ne_binary() | 'error'.
 get_vm_owner_email(JObj) ->
@@ -144,8 +147,8 @@ get_send_from(Admin) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> 'ok'.
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     'ok';
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
