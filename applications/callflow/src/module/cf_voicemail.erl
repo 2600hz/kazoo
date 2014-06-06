@@ -291,10 +291,23 @@ compose_voicemail(#mailbox{exists='false'}, _, Call) ->
     lager:info("attempted to compose voicemail for missing mailbox"),
     _ = whapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
     'ok';
-compose_voicemail(#mailbox{max_message_count=Count
+compose_voicemail(#mailbox{max_message_count=MaxCount
                            ,message_count=Count
-                          }, _, Call) when Count > 0 ->
-    lager:debug("voicemail box is full, cannot hold more messages"),
+                           ,mailbox_id=VMBId
+                           ,mailbox_number=VMBN
+                          }, _, Call) when Count >= MaxCount ->
+    lager:debug("voicemail box is full, cannot hold more messages, sending notification"),
+    Props = [{<<"Account-DB">>, whapps_call:account_db(Call)}
+            ,{<<"Voicemail-Box">>, VMBId}
+            ,{<<"Voicemail-Number">>, VMBN}
+            ,{<<"Max-Message-Count">>, MaxCount}
+            ,{<<"Message-Count">>, Count}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    _ = whapps_util:amqp_pool_request(Props
+                                      ,fun wapi_notifications:publish_voicemail_full/1
+                                      ,fun wapi_notifications:voicemail_full_v/1
+                                     ),
     _ = whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
     'ok';
 compose_voicemail(#mailbox{keys=#keys{login=Login
