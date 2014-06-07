@@ -972,7 +972,7 @@ accumulate_resp([JObj], {0, D}) ->
             ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
             Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
             wh_json:set_values([{<<"activation_charges">>, ActivationCharges}
-                        ,{<<"activation_charges_description">>, [Description|D]}
+                                ,{<<"activation_charges_description">>, [Description|D]}
                        ], JObj)
     end;
 accumulate_resp([JObj], {AC, D}) ->
