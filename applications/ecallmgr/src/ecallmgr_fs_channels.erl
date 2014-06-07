@@ -206,13 +206,25 @@ handle_query_user_channels(JObj, _Props) ->
     UserChannels2 = lists:keymerge(1, UserChannels0, UserChannels1),
     handle_query_users_channels(JObj, UserChannels2).
 
-
 -spec handle_query_users_channels(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_query_users_channels(JObj, Cs) ->
     Channels = [Channel || {_, Channel} <- Cs],
     send_user_query_resp(JObj, Channels).
 
 -spec send_user_query_resp(wh_json:object(), wh_json:objects()) -> 'ok'.
+send_user_query_resp(JObj, []) ->
+    case wh_json:is_true(<<"Active-Only">>, JObj, 'true') of
+        'true' -> lager:debug("no channels, not sending response");
+        'false' ->
+            lager:debug("no channels, sending empty response"),
+            Resp = [{<<"Channels">>, []}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+            ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+            lager:debug("sending back channel data to ~s", [ServerId]),
+            wapi_call:publish_query_user_channels_resp(ServerId, Resp)
+    end;
 send_user_query_resp(JObj, Cs) ->
     Resp = [{<<"Channels">>, Cs}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}

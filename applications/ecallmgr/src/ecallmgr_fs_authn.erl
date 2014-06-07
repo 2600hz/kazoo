@@ -197,7 +197,7 @@ lookup_user(Node, Id, Method,  Props) ->
 get_auth_realm(Props) ->
     case props:get_first_defined([<<"sip_auth_realm">>
                                   ,<<"domain">>
-                                 ], Props) 
+                                 ], Props)
     of
         'undefined' -> get_auth_uri_realm(Props);
         Realm ->
@@ -287,8 +287,8 @@ get_custom_sip_headers(Props) ->
 is_custom_sip_header(<<"P-", _/binary>>) -> 'true';
 is_custom_sip_header(<<"X-", _/binary>>) -> 'true';
 is_custom_sip_header(<<"sip_h_", _/binary>>) -> 'true';
-is_custom_sip_header(Header) -> 'false'.
-    
+is_custom_sip_header(_Header) -> 'false'.
+
 
 %% NOTE: Kamailio needs registrar errors since it is blocking with no
 %%   timeout (at the moment) but when we seek auth for INVITEs we need
@@ -310,4 +310,3 @@ maybe_defered_error(Realm, Username, JObj) ->
             wh_cache:store_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username), JObj, CacheProps),
             {'ok', JObj}
     end.
-
