@@ -141,13 +141,16 @@
 %% Query User Channels Req
 -define(QUERY_USER_CHANNELS_REQ_HEADERS, []).
 -define(OPTIONAL_QUERY_USER_CHANNELS_REQ_HEADERS, [<<"Usernames">>, <<"Username">>
-                                                   ,<<"Realm">>, <<"Authorizing-IDs">>]).
+                                                   ,<<"Realm">>, <<"Authorizing-IDs">>
+                                                   ,<<"Active-Only">>
+                                                  ]).
 -define(QUERY_USER_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                          ,{<<"Event-Name">>, <<"query_user_channels_req">>}
                                         ]).
 -define(QUERY_USER_CHANNELS_REQ_TYPES, [{<<"Usernames">>, fun erlang:is_list/1}
                                         ,{<<"Username">>, fun erlang:is_binary/1}
                                         ,{<<"Authorizing-IDs">>, fun erlang:is_list/1}
+                                        ,{<<"Active-Only">>, fun wh_util:is_boolean/1}
                                        ]).
 
 %% Query User Channels Resp
