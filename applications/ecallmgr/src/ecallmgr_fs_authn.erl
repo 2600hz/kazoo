@@ -267,8 +267,7 @@ query_registrar(Realm, Username, Node, Id, Method, Props) ->
            ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Props, Id)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,props:filter_undefined(Req)
+    ReqResp = wh_amqp_worker:call(props:filter_undefined(Req)
                                   ,fun wapi_authn:publish_req/1
                                   ,fun wapi_authn:resp_v/1
                                  ),

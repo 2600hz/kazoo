@@ -300,10 +300,7 @@ handle_reg_success(Node, Props) ->
     lager:debug("sending successful registration for ~s@~s"
                 ,[props:get_value(<<"Username">>, Req), props:get_value(<<"Realm">>, Req)]
                ),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,Req
-                        ,fun wapi_registration:publish_success/1
-                       ).
+    wh_amqp_worker:cast(Req, fun wapi_registration:publish_success/1).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -511,25 +508,26 @@ fetch_contact(Username, Realm) ->
                                     {'ok', wh_json:objects()} |
                                     {'error', any()}.
 query_for_registration(Reg) ->
-    wh_amqp_worker:call_collect(?ECALLMGR_AMQP_POOL
-                                     ,Reg
-                                     ,fun wapi_registration:publish_query_req/1
-                                     ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
-                                     ,2000
-                                    ).
+    wh_amqp_worker:call_collect(Reg
+                                ,fun wapi_registration:publish_query_req/1
+                                ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
+                                ,2000
+                               ).
 
--spec fetch_original_contact(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_found'}.
+-spec fetch_original_contact(ne_binary(), ne_binary()) ->
+                                    {'ok', ne_binary()} |
+                                    {'error', 'not_found'}.
 fetch_original_contact(Username, Realm) ->
     Reg = [{<<"Username">>, Username}
            ,{<<"Realm">>, Realm}
            ,{<<"Fields">>, [<<"Original-Contact">>]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case wh_amqp_worker:call_collect(?ECALLMGR_AMQP_POOL
-                                     ,Reg
+    case wh_amqp_worker:call_collect(Reg
                                      ,fun wapi_registration:publish_query_req/1
                                      ,{'ecallmgr', fun wapi_registration:query_resp_v/1, 'true'}
-                                     ,2000)
+                                     ,2000
+                                    )
     of
         {'ok', JObjs} ->
             case [Contact
@@ -810,8 +808,7 @@ query_authn(#registration{username=Username
            ,{<<"Call-ID">>, CallId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,props:filter_undefined(Req)
+    ReqResp = wh_amqp_worker:call(props:filter_undefined(Req)
                                   ,fun wapi_authn:publish_req/1
                                   ,fun wapi_authn:resp_v/1
                                  ),
@@ -931,11 +928,11 @@ oldest_registrar(Username, Realm) ->
            ,{<<"Fields">>, [<<"Expires">>]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case wh_amqp_worker:call_collect(?ECALLMGR_AMQP_POOL
-                                     ,Reg
+    case wh_amqp_worker:call_collect(Reg
                                      ,fun wapi_registration:publish_query_req/1
                                      ,'ecallmgr'
-                                     ,2000)
+                                     ,2000
+                                    )
     of
         {'ok', JObjs} ->
             case

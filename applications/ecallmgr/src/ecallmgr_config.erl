@@ -56,8 +56,7 @@ flush(Key, Node) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("flushing ~s from sysconf", [Key]),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,props:filter_undefined(Req)
+    wh_amqp_worker:cast(props:filter_undefined(Req)
                         ,fun wapi_sysconf:publish_flush_req/1
                        ).
 
@@ -177,8 +176,7 @@ fetch(Key, Default, Node) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("looking up ~s from sysconf", [Key]),
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,props:filter_undefined(Req)
+    ReqResp = wh_amqp_worker:call(props:filter_undefined(Req)
                                   ,fun wapi_sysconf:publish_get_req/1
                                   ,fun wapi_sysconf:get_resp_v/1
                                  ),
@@ -230,10 +228,9 @@ set(Key, Value, Node, Opt) ->
     Req = [{<<"Node">>, Node}
            | lists:keydelete(<<"Node">>, 1, Props)
           ],
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,props:filter_undefined(Req)
+    ReqResp = wh_amqp_worker:call(props:filter_undefined(Req)
                                   ,fun wapi_sysconf:publish_set_req/1
-                                  ,fun wh_amqp_worker:any_resp/1
+                                  ,fun wh_util:always_true/1
                                  ),
     case ReqResp of
         {'ok', _} -> maybe_cache_resp(Key, Node, Value);

@@ -37,6 +37,7 @@
          ,is_empty/1, is_not_empty/1
          ,is_proplist/1
          ,identity/1
+         ,always_true/1, always_false/1
         ]).
 -export([to_lower_binary/1, to_upper_binary/1
          ,to_lower_string/1, to_upper_string/1
@@ -660,11 +661,17 @@ is_true("true") -> 'true';
 is_true('true') -> 'true';
 is_true(_) -> 'false'.
 
+-spec always_true(any()) -> 'true'.
+always_true(_) -> 'true'.
+
 -spec is_false(binary() | string() | atom()) -> boolean().
 is_false(<<"false">>) -> 'true';
 is_false("false") -> 'true';
 is_false('false') -> 'true';
 is_false(_) -> 'false'.
+
+-spec always_false(any()) -> 'false'.
+always_false(_) -> 'false'.
 
 -spec is_boolean(binary() | string() | atom()) -> boolean().
 is_boolean(<<"true">>) -> 'true';

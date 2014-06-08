@@ -586,11 +586,10 @@ replay_registration(Node, [Reg | Regs]) ->
                                   {K, F(props:get_value(V, Reg))};
                              ({K,V}) ->
                                   {K, props:get_value(V, Reg)}
-                          end, ?REPLAY_REG_MAP)  
+                          end, ?REPLAY_REG_MAP)
               ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)] ,
     lager:debug("Replaying registration ~p",[Payload]),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,Payload
+    wh_amqp_worker:cast(Payload
                         ,fun wapi_registration:publish_success/1
                        ),
     replay_registration(Node, Regs).
@@ -602,7 +601,7 @@ replay_profile(V) ->
 -spec replay_expires(ne_binary()) -> ne_binary().
 replay_expires(V) ->
     wh_util:unix_seconds_to_gregorian_seconds(
-      wh_util:to_integer(V)) - 
+      wh_util:to_integer(V)) -
         wh_util:current_tstamp() +
         ecallmgr_config:get_integer(<<"expires_deviation_time">>, 0).
 
@@ -615,7 +614,7 @@ get_registrations(Node) ->
     case freeswitch:api(Node, 'show', "registrations") of
         {'ok', Response} ->
             R = binary:replace(Response, <<" ">>, <<>>, ['global']),
-            Lines = [binary:split(Line, <<",">>, ['global'] ) 
+            Lines = [binary:split(Line, <<",">>, ['global'] )
                     || Line <- binary:split(R, <<"\n">>, ['global'])],
             get_registration_details(Lines);
         _Else -> []
@@ -624,7 +623,7 @@ get_registrations(Node) ->
 -spec get_registration_details(list()) -> wh_proplist().
 get_registration_details(Lines) when length(Lines) > 3 ->
             Header = lists:nth(1, Lines),
-            [ begin 
+            [ begin
                    {Res,Total} = lists:mapfoldl(
                                    fun(E, Acc) ->
                                            {{lists:nth(Acc, Header),E}, Acc+1}

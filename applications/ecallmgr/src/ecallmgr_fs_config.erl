@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Send config commands to FS
 %%% @end
@@ -200,7 +200,7 @@ handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
         [{<<"Profile">>, Profile}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    XmlResp = case wh_amqp_worker:call(?ECALLMGR_AMQP_POOL, Cmd
+    XmlResp = case wh_amqp_worker:call(Cmd
                                        ,fun wapi_conference:publish_config_req/1
                                        ,fun wapi_conference:config_resp_v/1
                                       )
@@ -387,4 +387,3 @@ maybe_fix_profile_tts(Name, Profile) ->
 fix_flite_tts(Profile) ->
     Voice = wh_json:get_value(<<"tts-voice">>, Profile),
     wh_json:set_value(<<"tts-voice">>, ecallmgr_fs_flite:voice(Voice), Profile).
-

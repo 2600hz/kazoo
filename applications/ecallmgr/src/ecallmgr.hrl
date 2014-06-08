@@ -4,8 +4,6 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_api.hrl").
 
--define(ECALLMGR_AMQP_POOL, 'ecallmgr_amqp_pool').
-
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
 -define(ECALLMGR_CALL_CACHE, 'ecallmgr_call_cache').

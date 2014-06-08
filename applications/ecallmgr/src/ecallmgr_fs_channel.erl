@@ -404,8 +404,7 @@ fetch_channel(UUID, FetchId, Node) ->
                ,{<<"Active-Only">>, <<"true">>}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    case wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                             ,Command
+    case wh_amqp_worker:call(Command
                              ,fun(C) -> wapi_call:publish_channel_status_req(UUID, C) end
                              ,fun wapi_call:channel_status_resp_v/1
                             )
