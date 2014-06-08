@@ -22,15 +22,13 @@
 %% API
 -export([start_link/1
 
-         ,call/4, call/5
-         ,call_collect/3, call_collect/4, call_collect/5
+         ,call/3, call/4
+         ,call_collect/2, call_collect/3, call_collect/4
 
-         ,call_custom/5, call_custom/6
-         %%,call_collect_custom/4, call_collect_custom/5, call_collect_custom/6
+         ,call_custom/4, call_custom/5
 
-         ,cast/3
+         ,cast/2
 
-         ,any_resp/1
          ,default_timeout/0
          ,collect_until_timeout/0
          ,collect_from_whapp/1
@@ -53,7 +51,9 @@
 
 -define(FUDGE, 2600).
 -define(BINDINGS, [{'self', []}]).
--define(RESPONDERS, [{{?MODULE, 'handle_resp'}, [{<<"*">>, <<"*">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_resp'}
+                      ,[{<<"*">>, <<"*">>}]}
+                    ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -115,23 +115,23 @@ default_timeout() -> 2000.
                           {'returned', wh_json:object(), wh_json:object()} |
                           {'timeout', wh_json:objects()} |
                           {'error', _}.
-
--spec call(server_ref(), api_terms(), publish_fun(), validate_fun()) ->
+-spec call(api_terms(), publish_fun(), validate_fun()) ->
                   request_return().
--spec call(server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout()) ->
+-spec call(api_terms(), publish_fun(), validate_fun(), wh_timeout()) ->
                   request_return().
-call(Srv, Req, PubFun, VFun) ->
-    call(Srv, Req, PubFun, VFun, default_timeout()).
+call(Req, PubFun, VFun) ->
+    call(Req, PubFun, VFun, default_timeout()).
 
-call(Srv, Req, PubFun, VFun, Timeout) ->
+call(Req, PubFun, VFun, Timeout) ->
+    Pool = wh_amqp_sup:pool_name(),
     Prop = maybe_convert_to_proplist(Req),
-    try poolboy:checkout(Srv, 'false', default_timeout()) of
+    try poolboy:checkout(Pool, 'false', default_timeout()) of
         W when is_pid(W) ->
             Reply = gen_listener:call(W
                                       ,{'request', Prop, PubFun, VFun, Timeout}
                                       ,fudge_timeout(Timeout)
                                      ),
-            poolboy:checkin(Srv, W),
+            poolboy:checkin(Pool, W),
             Reply;
         'full' ->
             lager:critical("failed to checkout worker: full"),
@@ -142,21 +142,24 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
             {'error', 'poolboy_fault'}
     end.
 
--spec call_custom(server_ref(), api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
+-spec call_custom(api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
                          request_return().
--spec call_custom(server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout(), gen_listener:binding()) ->
+-spec call_custom(api_terms(), publish_fun(), validate_fun(), wh_timeout(), gen_listener:binding()) ->
                          request_return().
-call_custom(Srv, Req, PubFun, VFun, Bind) ->
-    call_custom(Srv, Req, PubFun, VFun, default_timeout(), Bind).
-call_custom(Srv, Req, PubFun, VFun, Timeout, Bind) ->
+call_custom(Req, PubFun, VFun, Bind) ->
+    call_custom(Req, PubFun, VFun, default_timeout(), Bind).
+call_custom(Req, PubFun, VFun, Timeout, Bind) ->
+    Pool = wh_amqp_sup:pool_name(),
     Prop = maybe_convert_to_proplist(Req),
-    try poolboy:checkout(Srv, 'false', default_timeout()) of
+    try poolboy:checkout(Pool, 'false', default_timeout()) of
         W when is_pid(W) ->
             gen_listener:add_binding(W, Bind),
-            Reply = gen_listener:call(W, {'request', Prop, PubFun, VFun, Timeout}
-                                      ,fudge_timeout(Timeout)),
+            Reply = gen_listener:call(W
+                                      ,{'request', Prop, PubFun, VFun, Timeout}
+                                      ,fudge_timeout(Timeout)
+                                     ),
             gen_listener:rm_binding(W, Bind),
-            poolboy:checkin(Srv, W),
+            poolboy:checkin(Pool, W),
             Reply;
         'full' ->
             lager:critical("failed to checkout worker: full"),
@@ -167,46 +170,55 @@ call_custom(Srv, Req, PubFun, VFun, Timeout, Bind) ->
             {'error', 'poolboy_fault'}
     end.
 
--spec call_collect(server_ref(), api_terms(), publish_fun()) ->
+-spec call_collect(api_terms(), publish_fun()) ->
                           request_return().
--spec call_collect(server_ref(), api_terms(), publish_fun(), timeout_or_until()) ->
+-spec call_collect(api_terms(), publish_fun(), timeout_or_until()) ->
                           request_return().
--spec call_collect(server_ref(), api_terms(), publish_fun(), collect_until(), wh_timeout()) ->
+-spec call_collect(api_terms(), publish_fun(), collect_until(), wh_timeout()) ->
                           request_return().
-call_collect(Srv, Req, PubFun) ->
-    call_collect(Srv, Req, PubFun, default_timeout()).
+call_collect(Req, PubFun) ->
+    call_collect(Req, PubFun, default_timeout()).
 
-call_collect(Srv, Req, PubFun, UntilFun) when is_function(UntilFun) ->
-    call_collect(Srv, Req, PubFun, UntilFun, default_timeout());
-call_collect(Srv, Req, PubFun, Whapp) when is_atom(Whapp); is_binary(Whapp) ->
-    call_collect(Srv, Req, PubFun, Whapp, default_timeout());
-call_collect(Srv, Req, PubFun, {_, _}=Until) ->
-    call_collect(Srv, Req, PubFun, Until, default_timeout());
-call_collect(Srv, Req, PubFun, {_, _, _}=Until) ->
-    call_collect(Srv, Req, PubFun, Until, default_timeout());
-call_collect(Srv, Req, PubFun, Timeout) ->
-    call_collect(Srv, Req, PubFun, collect_until_timeout(), Timeout).
+call_collect(Req, PubFun, UntilFun) when is_function(UntilFun) ->
+    call_collect(Req, PubFun, UntilFun, default_timeout());
+call_collect(Req, PubFun, Whapp) when is_atom(Whapp); is_binary(Whapp) ->
+    call_collect(Req, PubFun, Whapp, default_timeout());
+call_collect(Req, PubFun, {_, _}=Until) ->
+    call_collect(Req, PubFun, Until, default_timeout());
+call_collect(Req, PubFun, {_, _, _}=Until) ->
+    call_collect(Req, PubFun, Until, default_timeout());
+call_collect(Req, PubFun, Timeout) ->
+    call_collect(Req, PubFun, collect_until_timeout(), Timeout).
 
-call_collect(Srv, Req, PubFun, {Whapp, IncludeFederated}, Timeout)
-  when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_boolean(IncludeFederated) ->
-    call_collect(Srv, Req, PubFun, collect_from_whapp(Whapp, IncludeFederated), Timeout);
-call_collect(Srv, Req, PubFun, {Whapp, VFun}, Timeout)
-  when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_function(VFun) ->
-    call_collect(Srv, Req, PubFun, collect_from_whapp_or_validate(Whapp, VFun), Timeout);
-call_collect(Srv, Req, PubFun, {Whapp, VFun, IncludeFederated}, Timeout)
-  when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_function(VFun) andalso is_boolean(IncludeFederated) ->
-    call_collect(Srv, Req, PubFun, collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated), Timeout);
-call_collect(Srv, Req, PubFun, Whapp, Timeout)
+call_collect(Req, PubFun, {Whapp, IncludeFederated}, Timeout)
+  when (is_atom(Whapp) orelse is_binary(Whapp))
+       andalso is_boolean(IncludeFederated) ->
+    CollectFromWhapp = collect_from_whapp(Whapp, IncludeFederated),
+    call_collect(Req, PubFun, CollectFromWhapp, Timeout);
+call_collect(Req, PubFun, {Whapp, VFun}, Timeout)
+  when (is_atom(Whapp) orelse is_binary(Whapp))
+       andalso is_function(VFun) ->
+    CollectFromWhapp = collect_from_whapp_or_validate(Whapp, VFun),
+    call_collect(Req, PubFun, CollectFromWhapp, Timeout);
+call_collect(Req, PubFun, {Whapp, VFun, IncludeFederated}, Timeout)
+  when (is_atom(Whapp) orelse is_binary(Whapp))
+       andalso is_function(VFun)
+       andalso is_boolean(IncludeFederated) ->
+    CollectFromWhapp = collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated),
+    call_collect(Req, PubFun, CollectFromWhapp, Timeout);
+call_collect(Req, PubFun, Whapp, Timeout)
   when is_atom(Whapp) orelse is_binary(Whapp) ->
-    call_collect(Srv, Req, PubFun, collect_from_whapp(Whapp), Timeout);
-call_collect(Srv, Req, PubFun, UntilFun, Timeout)
+    call_collect(Req, PubFun, collect_from_whapp(Whapp), Timeout);
+call_collect(Req, PubFun, UntilFun, Timeout)
   when is_integer(Timeout), Timeout >= 0 ->
+    Pool = wh_amqp_sup:pool_name(),
     Prop = maybe_convert_to_proplist(Req),
-    try poolboy:checkout(Srv, 'false', default_timeout()) of
+    try poolboy:checkout(Pool, 'false', default_timeout()) of
         W when is_pid(W) ->
             Reply = gen_listener:call(W, {'call_collect', Prop, PubFun, UntilFun, Timeout}
-                                      ,fudge_timeout(Timeout)),
-            poolboy:checkin(Srv, W),
+                                      ,fudge_timeout(Timeout)
+                                     ),
+            poolboy:checkin(Pool, W),
             Reply;
         'full' ->
             lager:critical("failed to checkout worker: full"),
@@ -217,12 +229,13 @@ call_collect(Srv, Req, PubFun, UntilFun, Timeout)
             {'error', 'poolboy_fault'}
     end.
 
--spec cast(server_ref(), api_terms(), publish_fun()) -> 'ok' | {'error', _}.
-cast(Srv, Req, PubFun) ->
+-spec cast(api_terms(), publish_fun()) -> 'ok' | {'error', _}.
+cast(Req, PubFun) ->
+    Pool = wh_amqp_sup:pool_name(),
     Prop = maybe_convert_to_proplist(Req),
-    try poolboy:checkout(Srv, 'false', default_timeout()) of
+    try poolboy:checkout(Pool, 'false', default_timeout()) of
         W when is_pid(W) ->
-            poolboy:checkin(Srv, W),
+            poolboy:checkin(Pool, W),
             gen_listener:cast(W, {'publish', Prop, PubFun});
         'full' ->
             lager:critical("failed to checkout worker: full"),
@@ -233,11 +246,8 @@ cast(Srv, Req, PubFun) ->
             {'error', 'poolboy_fault'}
     end.
 
--spec any_resp(any()) -> 'true'.
-any_resp(_) -> 'true'.
-
 -spec collect_until_timeout() -> collect_until_fun().
-collect_until_timeout() -> fun(_) -> 'false' end.
+collect_until_timeout() -> fun wh_util:always_false/1.
 
 -spec collect_from_whapp(text()) -> collect_until_fun().
 collect_from_whapp(Whapp) ->
