@@ -81,7 +81,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, [?SUPER('acdc_queue_worker_sup', 'transient')]}}.
+    {'ok', {SupFlags, [?SUPER_TYPE('acdc_queue_worker_sup', 'transient')]}}.
 
 %%%===================================================================
 %%% Internal functions

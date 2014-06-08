@@ -119,8 +119,11 @@
 -define(WORKER_ARGS_TYPE(I, Args, Type), {I, {I, 'start_link', Args}, Type, 5000, 'worker', [I]}).
 -define(WORKER_NAME_ARGS(I, N, Args), {N, {I, 'start_link', Args}, 'permanent', 5000, 'worker', [I]}).
 -define(WORKER_NAME_ARGS_TYPE(N, I, Args, Type), {N, {I, 'start_link', Args}, Type, 5000, 'worker', [I]}).
+
 -define(SUPER(I), {I, {I, 'start_link', []}, 'permanent', 'infinity', 'supervisor', [I]}).
--define(SUPER(I, Type), {I, {I, 'start_link', []}, Type, 'infinity', 'supervisor', [I]}).
+-define(SUPER_TYPE(I, Type), {I, {I, 'start_link', []}, Type, 'infinity', 'supervisor', [I]}).
+-define(SUPER_ARGS(I, Args), {I, {I, 'start_link', Args}, 'permanent', 'infinity', 'supervisor', [I]}).
+
 -define(CACHE(N), {N, {'wh_cache', 'start_link', [N]}, 'permanent', 5000, 'worker', ['wh_cache']}).
 -define(CACHE_ARGS(N, Arg), {N, {'wh_cache', 'start_link', [N, Arg]}, 'permanent', 5000, 'worker', ['wh_cache']}).
 
