@@ -66,7 +66,7 @@
 
 -type collect_until() :: collect_until_fun() |
                          whapp() |
-                         {whapp(), validate_fun()} |
+                         {whapp(), validate_fun() | boolean()} |
                          {whapp(), validate_fun(), boolean()}.
 -type timeout_or_until() :: wh_timeout() | collect_until().
 

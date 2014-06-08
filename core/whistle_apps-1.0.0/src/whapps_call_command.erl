@@ -263,8 +263,7 @@ b_channel_status(ChannelId) when is_binary(ChannelId) ->
     Command = [{<<"Call-ID">>, ChannelId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    Resp = wh_amqp_worker:call_collect('whapps_amqp_pool'
-                                       ,Command
+    Resp = wh_amqp_worker:call_collect(Command
                                        ,fun(C) -> wapi_call:publish_channel_status_req(ChannelId, C) end
                                        ,{'ecallmgr', 'true'}
                                       ),

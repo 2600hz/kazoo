@@ -7,8 +7,6 @@
 
 -define(WHAPPS_CONFIG_CACHE, 'whapps_config_cache').
 
--define(WHAPPS_AMQP_POOL, 'whapps_amqp_pool').
-
 -define(DEFAULT_WHAPPS, ['registrar'
                          ,'reorder'
                          ,'stepswitch'

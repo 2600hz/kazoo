@@ -508,7 +508,7 @@ rm_aggregate_device(Db, Device) ->
 -spec amqp_pool_send(api_terms(), wh_amqp_worker:publish_fun()) ->
                             'ok' | {'error', any()}.
 amqp_pool_send(Api, PubFun) when is_function(PubFun, 1) ->
-    wh_amqp_worker:cast(?WHAPPS_AMQP_POOL, Api, PubFun).
+    wh_amqp_worker:cast(Api, PubFun).
 
 -spec amqp_pool_request(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
                                {'ok', wh_json:object()} |
@@ -525,7 +525,7 @@ amqp_pool_request(Api, PubFun, ValidateFun, Timeout)
        is_function(ValidateFun, 1),
        ((is_integer(Timeout) andalso Timeout >= 0)
         orelse Timeout =:= 'infinity') ->
-    wh_amqp_worker:call(?WHAPPS_AMQP_POOL, Api, PubFun, ValidateFun, Timeout).
+    wh_amqp_worker:call(Api, PubFun, ValidateFun, Timeout).
 
 -spec amqp_pool_request_custom(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), gen_listener:binding()) ->
                                {'ok', wh_json:object()} |
@@ -542,7 +542,7 @@ amqp_pool_request_custom(Api, PubFun, ValidateFun, Timeout, Bind)
        is_function(ValidateFun, 1),
        ((is_integer(Timeout) andalso Timeout >= 0)
         orelse Timeout =:= 'infinity') ->
-    wh_amqp_worker:call_custom(?WHAPPS_AMQP_POOL, Api, PubFun, ValidateFun, Timeout, Bind).
+    wh_amqp_worker:call_custom(Api, PubFun, ValidateFun, Timeout, Bind).
 
 -spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun()) ->
                                {'ok', wh_json:objects()} |
@@ -556,14 +556,14 @@ amqp_pool_collect(Api, PubFun) ->
                                {'timeout', wh_json:objects()} |
                                {'error', any()}.
 amqp_pool_collect(Api, PubFun, TimeoutOrUntil) ->
-    wh_amqp_worker:call_collect(?WHAPPS_AMQP_POOL, Api, PubFun, TimeoutOrUntil).
+    wh_amqp_worker:call_collect(Api, PubFun, TimeoutOrUntil).
 
 -spec amqp_pool_collect(api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:collect_until(), wh_timeout()) ->
                                {'ok', wh_json:objects()} |
                                {'timeout', wh_json:objects()} |
                                {'error', any()}.
 amqp_pool_collect(Api, PubFun, Until, Timeout) ->
-    wh_amqp_worker:call_collect(?WHAPPS_AMQP_POOL, Api, PubFun, Until, Timeout).
+    wh_amqp_worker:call_collect(Api, PubFun, Until, Timeout).
 
 %%--------------------------------------------------------------------
 %% @public
