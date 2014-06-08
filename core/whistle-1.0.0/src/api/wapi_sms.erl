@@ -57,13 +57,8 @@
 %% SMS Endpoints
 -define(SMS_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_SMS_REQ_ENDPOINT_HEADERS, wapi_dialplan:optional_bridge_req_endpoint_headers()).
-<<<<<<< HEAD
 -define(SMS_REQ_ENDPOINT_VALUES, [{<<"Endpoint-Type">>
                                    ,[<<"sip">>, <<"xmpp">>, <<"smpp">>, <<"http">>]}
-=======
--define(SMS_REQ_ENDPOINT_VALUES, [{<<"Endpoint-Type">>,
-                                   [<<"sip">>, <<"xmpp">>, <<"smpp">>, <<"http">>]}
->>>>>>> unify_amqp_pools: specs and stuff
                                  ]).
 -define(SMS_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
                                  ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
@@ -83,11 +78,7 @@
                                     ,<<"To">>, <<"From">>, <<"Request">>
                                     ,<<"Body">>, <<"Account-ID">>
                                     ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
-<<<<<<< HEAD
-                                    ]).
-=======
                                    ]).
->>>>>>> unify_amqp_pools: specs and stuff
 -define(DELIVERY_TYPES, [{<<"To">>, fun is_binary/1}
                          ,{<<"From">>, fun is_binary/1}
                          ,{<<"Request">>, fun is_binary/1}
