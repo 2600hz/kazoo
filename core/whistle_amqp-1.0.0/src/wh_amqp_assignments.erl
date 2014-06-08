@@ -61,7 +61,9 @@ find(Consumer) when is_pid(Consumer) ->
 -spec get_channel() -> wh_amqp_assignment().
 get_channel() -> get_channel(wh_amqp_channel:consumer_pid()).
 
--spec get_channel(non_neg_integer()) -> wh_amqp_assignment() | {'error', 'timeout'};
+-spec get_channel(non_neg_integer()) ->
+                         wh_amqp_assignment() |
+                         {'error', 'timeout'};
                  ('infinity') -> wh_amqp_assignment();
                  (pid()) -> wh_amqp_assignment().
 get_channel(Consumer) when is_pid(Consumer) ->
@@ -69,7 +71,9 @@ get_channel(Consumer) when is_pid(Consumer) ->
 get_channel(Timeout) when is_integer(Timeout); Timeout =:= 'infinity' ->
     get_channel(wh_amqp_channel:consumer_pid(), Timeout).
 
--spec get_channel(pid(), non_neg_integer()) -> wh_amqp_assignment() | {'error', 'timeout'};
+-spec get_channel(pid(), non_neg_integer()) ->
+                         wh_amqp_assignment() |
+                         {'error', 'timeout'};
                  (pid(), 'infinity') -> wh_amqp_assignment().
 get_channel(Consumer, Timeout) when is_pid(Consumer) ->
     case find(Consumer) of

@@ -808,7 +808,8 @@ ceiling(X) ->
 
 %% returns current seconds
 -spec current_tstamp() -> non_neg_integer().
-current_tstamp() -> calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
+current_tstamp() ->
+    calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
 -spec whistle_version() -> ne_binary().
