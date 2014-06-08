@@ -20,29 +20,10 @@
 -include("whapps_call_command.hrl").
 -include("whistle_apps.hrl").
 
--define(POOL_SIZE, 100).
--define(OVERFLOW_POOL_SIZE, 100).
-
 -define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
                           ,[{'db', ?WH_CONFIG_DB}]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
-
-
--define(POOL(N), {N, {'poolboy', 'start_link', [[{'worker_module', 'wh_amqp_worker'}
-                                                 ,{'name', {'local', N}}
-                                                 ,{'size', ?POOL_SIZE}
-                                                 ,{'max_overflow', ?OVERFLOW_POOL_SIZE}
-                                                 ,{'neg_resp_threshold', 1}
-                                                ]
-                                               ]}
-                  ,'permanent', 5000, 'worker', ['poolboy']
-                 }).
-
--define(WHAPPS(Whapps), {'whapps_sup'
-                         ,{'whapps_sup', 'start_link', [Whapps]}
-                         ,'permanent', 5000, 'supervisor', ['whapps_sup']
-                        }).
 
 -define(CHILDREN, [?WORKER('wh_nodes')
                    ,?WORKER('wh_hooks_listener')
@@ -50,7 +31,6 @@
                    ,?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
                    ,?WORKER('whistle_apps_init')
                    ,?CACHE_ARGS(?WHAPPS_CALL_CACHE, ?CACHE_PROPS)
-                   ,?POOL(?WHAPPS_AMQP_POOL)
                    ,?WORKER('whapps_controller')
                    ,?SUPER('whistle_services_sup')
                   ]).
@@ -73,7 +53,7 @@ start_link() ->
                                     {'ok','undefined' | pid()} |
                                     {'ok','undefined' | pid(), term()}.
 initialize_whapps(Whapps) ->
-    supervisor:start_child(?MODULE, ?WHAPPS(Whapps)).
+    supervisor:start_child(?MODULE, ?SUPER_ARGS('whapps_sup', Whapps)).
 
 start_child(Spec) ->
     supervisor:start_child(?MODULE, Spec).
