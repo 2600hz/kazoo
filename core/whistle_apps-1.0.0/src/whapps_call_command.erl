@@ -1090,26 +1090,27 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
     Headers = props:get_value(<<"Additional-Headers">>, Media),
     Limit = props:get_value(<<"Time-Limit">>, Media, wh_util:to_binary(TimeLimit)),
 
-    Command = props:filter_undefined([{<<"Application-Name">>, <<"record_call">>}
-                                      ,{<<"Media-Name">>, MediaName}
-                                      ,{<<"Record-Action">>, Action}
-                                      ,{<<"Time-Limit">>, Limit}
-                                      ,{<<"Terminators">>, Terminators}
-                                      ,{<<"Insert-At">>, <<"now">>}
-                                      ,{<<"Media-Transfer-Method">>, Method}
-                                      ,{<<"Media-Transfer-Destination">>, Destination}
-                                      ,{<<"Additional-Headers">>, Headers}
-                                     ]),
+    Command = props:filter_undefined(
+                [{<<"Application-Name">>, <<"record_call">>}
+                 ,{<<"Media-Name">>, MediaName}
+                 ,{<<"Record-Action">>, Action}
+                 ,{<<"Time-Limit">>, Limit}
+                 ,{<<"Terminators">>, Terminators}
+                 ,{<<"Insert-At">>, <<"now">>}
+                 ,{<<"Media-Transfer-Method">>, Method}
+                 ,{<<"Media-Transfer-Destination">>, Destination}
+                 ,{<<"Additional-Headers">>, Headers}
+                ]),
     send_command(Command, Call).
 
--spec b_record_call(ne_binary(), whapps_call:call()) ->
-                                 wait_for_headless_application_return().
--spec b_record_call(ne_binary(), ne_binary(), whapps_call:call()) ->
-                                 wait_for_headless_application_return().
--spec b_record_call(ne_binary(), ne_binary(), api_binary() | pos_integer(), whapps_call:call()) ->
-                                 wait_for_headless_application_return().
--spec b_record_call(ne_binary(), ne_binary(), api_binary() | pos_integer(), list(), whapps_call:call()) ->
-                                 wait_for_headless_application_return().
+-spec b_record_call(wh_proplist(), whapps_call:call()) ->
+                           wait_for_headless_application_return().
+-spec b_record_call(wh_proplist(), ne_binary(), whapps_call:call()) ->
+                           wait_for_headless_application_return().
+-spec b_record_call(wh_proplist(), ne_binary(), api_binary() | pos_integer(), whapps_call:call()) ->
+                           wait_for_headless_application_return().
+-spec b_record_call(wh_proplist(), ne_binary(), api_binary() | pos_integer(), list(), whapps_call:call()) ->
+                           wait_for_headless_application_return().
 b_record_call(MediaName, Call) ->
     record_call(MediaName, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').
