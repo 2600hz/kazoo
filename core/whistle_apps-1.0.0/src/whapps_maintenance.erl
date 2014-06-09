@@ -828,18 +828,6 @@ get_all_account_views() ->
      ++ whapps_util:get_views_json('callflow', "views")
     ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-get_all_account_mod_views() ->
-    [whapps_util:get_view_json('crossbar', <<"account/cdrs.json">>)
-     ,whapps_util:get_view_json('crossbar', <<"account/pivot.json">>)
-     ,whapps_util:get_view_json('crossbar', <<"account/transactions.json">>)
-    ].
-
 -spec call_id_status(ne_binary()) -> 'ok'.
 -spec call_id_status(ne_binary(), boolean() | ne_binary()) -> 'ok'.
 call_id_status(CallId) ->
