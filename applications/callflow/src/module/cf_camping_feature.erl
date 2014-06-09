@@ -24,6 +24,9 @@
 
 -export([handle/2]).
 
+-record(call_target, {id, type, no_match_flag, number}).
+-type call_target() :: #call_target{}.
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -36,19 +39,26 @@
 handle(_Data, Call) ->
     lager:info("Camping feature started"),
     Number = whapps_call:kvs_fetch('cf_capture_group', Call),
-    {'ok', Callflow, _} = cf_util:lookup_callflow(Number, whapps_call:account_id(Call)),
+    {'ok', Callflow, IsNoMatch} = cf_util:lookup_callflow(Number, whapps_call:account_id(Call)),
     TargetId = wh_json:get_ne_value([<<"flow">>, <<"data">>, <<"id">>], Callflow),
     TargetType = wh_json:get_ne_value([<<"flow">>, <<"module">>], Callflow),
     Usernames = case TargetType of
                    <<"device">> -> cf_util:sip_users_from_device_ids([TargetId], Call);
                    <<"user">> ->
                        EPs = cf_util:find_user_endpoints([TargetId], [], Call),
-                       cf_util:sip_users_from_device_ids(EPs, Call)
+                       cf_util:sip_users_from_device_ids(EPs, Call);
+                   <<"offnet">> ->
+                       []
                end,
     Channels = cf_util:find_channels(Usernames, Call),
+    Target = #call_target{id = TargetId
+                          ,type = TargetType
+                          ,no_match_flag = IsNoMatch
+                          ,number = Number
+                         },
     case Channels of
-        [] -> no_channels(TargetId, TargetType, Call);
-        _ -> has_channels(TargetId, TargetType, Number, Call)
+        [] -> no_channels(Target, Call);
+        _ -> has_channels(Target, Call)
     end.
 
 -spec get_sip_usernames_for_target(ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
@@ -68,19 +78,35 @@ get_sip_usernames_for_target(TargetId, TargetType, Call) ->
         ,Targets
     ).
 
--spec no_channels(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
-no_channels(TargetId, <<"device">>, Call) ->
+-spec no_channels(call_target(), whapps_call:call()) -> 'ok'.
+no_channels(#call_target{id = TargetId
+                         ,type = <<"device">>
+                         ,no_match_flag = 'false'
+                        }
+            ,Call) ->
     Data = wh_json:from_list([{<<"id">>, TargetId}]),
     cf_device:handle(Data, Call);
-no_channels(TargetId, <<"user">>, Call) ->
+no_channels(#call_target{id = TargetId
+                        ,type = <<"user">>
+                        ,no_match_flag = 'false'
+                        }
+            ,Call) ->
     Data = wh_json:from_list([{<<"id">>, TargetId}]),
     cf_user:handle(Data, Call);
-no_channels(_, Type, Call) ->
-    lager:info("Unknown target's type: ~s", [Type]),
+no_channels(#call_target{type = <<"offnet">>
+                        ,no_match_flag = 'true'
+                        }
+            ,_Call) ->
+    cf_exe:stop(_Call).
+no_channels(Target, Call) ->
+    lager:info("Unknown target: ~s", [Target]),
     cf_exe:stop(Call).
 
--spec has_channels(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
-has_channels(TargetId, TargetType, Number, Call) ->
+-spec has_channels(call_target(), whapps_call:call()) -> 'ok'.
+has_channels(#call_target{id = TargetId
+                          ,type = TargetType
+                          ,number = Number
+                         }, Call) ->
     Targets = get_sip_usernames_for_target(TargetId, TargetType, Call),
     camper_channel_tracker:add_request(whapps_call:account_db(Call)
         ,{whapps_call:authorizing_id(Call)
