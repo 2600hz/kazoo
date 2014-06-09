@@ -373,10 +373,7 @@ incoming_summary(Context) ->
                    ,'include_docs'
                   ]};
             _Else ->
-                {?CB_LIST_ALL
-                 ,[{'key', cb_context:account_id(Context)}
-                   ,'include_docs'
-                  ]}
+                {?CB_LIST_ALL, ['include_docs']}
         end,
     crossbar_doc:load_view(View
                            ,ViewOptions
@@ -426,13 +423,14 @@ outgoing_summary(Context) ->
     {View, ViewOptions} =
         case wh_json:get_value(<<"pvt_type">>, JObj) of
             <<"faxbox">> ->
-                {?CB_LIST_BY_ACCOUNT
+                {?CB_LIST_BY_FAXBOX
                  ,[{'key', wh_json:get_value(<<"_id">>, JObj)}
                    ,'include_docs'
                   ]};
             _Else ->
-                {?CB_LIST_BY_FAXBOX
-                 ,[{'key', cb_context:account_id(Context)}
+                {?CB_LIST_BY_ACCOUNT
+                 ,[{'startkey', cb_context:account_id(Context)} 
+                   ,{'endkey', [cb_context:account_id(Context), wh_json:new()]} 
                    ,'include_docs'
                   ]}
         end,
