@@ -41,7 +41,7 @@
 
 -define(PAGINATION_PAGE_SIZE, whapps_config:get_integer(?CONFIG_CAT
                                                         ,<<"pagination_page_size">>
-                                                        ,10
+                                                        ,50
                                                        )).
 
 -spec pagination_page_size() -> pos_integer().
