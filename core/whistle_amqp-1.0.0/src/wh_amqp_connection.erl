@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Handle a host's connection/channels
 %%% @end
@@ -401,7 +401,7 @@ open_channel(#wh_amqp_connection{connection=Pid}) ->
     try amqp_connection:open_channel(Pid) of
         {'ok', Channel}=Ok ->
             %% This is not strickly necessary, but since we
-            %% loose the entire CONNECTION if a single message
+            %% lose the entire CONNECTION if a single message
             %% cant be delivered, better safe then sorry...
             amqp_selective_consumer:register_default_consumer(Channel, self()),
             Ok;
