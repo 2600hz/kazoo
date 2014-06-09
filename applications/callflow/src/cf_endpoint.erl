@@ -820,6 +820,7 @@ create_mobile_endpoint(Endpoint, Properties, Call) ->
             Error;
         Route ->
             Prop = [{<<"Invite-Format">>, <<"route">>}
+                    ,{<<"Ignore-Early-Media">>, <<"true">>}
                     ,{<<"Route">>, Route}
                     ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
                     ,{<<"Endpoint-Delay">>, get_delay(Properties)}
