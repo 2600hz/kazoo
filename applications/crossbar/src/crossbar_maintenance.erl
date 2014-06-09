@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -8,7 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_maintenance).
 
--export([migrate/0]).
+-export([migrate/0
+         ,migrate_accounts_data/0
+         ,migrate_account_data/1
+        ]).
 -export([flush/0]).
 -export([start_module/1]).
 -export([stop_module/1]).
@@ -78,6 +81,19 @@ migrate() ->
         'ok' -> whapps_controller:start_app('crossbar');
         _Else -> 'ok'
     end,
+
+    _ = migrate_accounts_data(),
+
+    'no_return'.
+
+-spec migrate_accounts_data() -> 'no_return'.
+migrate_accounts_data() ->
+    [migrate_account_data(Account) || Account <- whapps_util:get_all_accounts()],
+    'no_return'.
+
+-spec migrate_account_data(ne_binary()) -> 'no_return'.
+migrate_account_data(Account) ->
+    cb_clicktocall:maybe_migrate_history(Account),
     'no_return'.
 
 %%--------------------------------------------------------------------
