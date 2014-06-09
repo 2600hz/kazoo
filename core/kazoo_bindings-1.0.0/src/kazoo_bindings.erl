@@ -472,8 +472,14 @@ flush_mod(ClientMod, #kz_binding{binding=Binding
     case queue:len(Filtered) =:= queue:len(Responders) of
         'true' -> 'false'; %% nothing to update
         'false' ->
-            lager:debug("removing mod ~s from ~s", [ClientMod, Binding]),
-            ets:update_element(table_id(), Binding, {3, Filtered})
+            case queue:len(Filtered) of
+                0 ->
+                    lager:debug("no more responders, removing ~s", [Binding]),
+                    ets:delete(table_id(), Binding);
+                _Len ->
+                    lager:debug("removing mod ~s from ~s", [ClientMod, Binding]),
+                    ets:update_element(table_id(), Binding, {#kz_binding.binding_responders, Filtered})
+            end
     end.
 
 -type filter_updates() :: [{ne_binary(), {pos_integer(), queue()}}] | [].
@@ -638,11 +644,12 @@ log_undefined(M, F, Length, ST) ->
 
 log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
     lager:debug("unable to find function clause for ~s:~s/~b", [M, F, Length]);
-log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_]) ->
+log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_ST]) ->
     lager:debug("unable to find function clause for ~s:~s(~p) in ~s:~p"
                 ,[RealM, RealF, RealArgs, props:get_value('file', Where), props:get_value('line', Where)]
                ),
-    lager:debug("as part of ~s:~s/~p", [M, F, Length]);
+    lager:debug("as part of ~s:~s/~p", [M, F, Length]),
+    [lager:debug("st: ~p", [ST]) || ST <- _ST];
 log_function_clause(M, F, Lenth, ST) ->
     lager:debug("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
     wh_util:log_stacktrace(ST).

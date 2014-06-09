@@ -29,17 +29,13 @@
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
 %%%===================================================================
-%%% API
+%%% Internal functions
 %%%===================================================================
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.cdrs">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.cdrs">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, 'validate').
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private
@@ -95,9 +91,9 @@ content_types_provided(#cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
     load_cdr_summary(Context).
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, CDRId) ->
+validate(Context, CDRId) ->
     load_cdr(CDRId, Context).
 
 %%--------------------------------------------------------------------
@@ -156,31 +152,127 @@ load_view(View, ViewOptions, Context) ->
 -spec fetch_cdrs(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
 fetch_cdrs(View, ViewOptions, Context) ->
     case {cdr_db(view_key_created_from(ViewOptions), Context)
-          ,cdr_db(view_key_created_to(ViewOptions), Context)}
+          ,cdr_db(view_key_created_to(ViewOptions), Context)
+         }
     of
-        {Db, Db} -> fetch_cdrs([Db], View, ViewOptions, Context);
+        {Db, Db} ->
+            fetch_cdrs(View, ViewOptions, Context, [Db]);
         {PastDb, PresentDb} ->
-            fetch_cdrs([PastDb, PresentDb], View, ViewOptions, Context)
+            fetch_cdrs(View, ViewOptions, Context, [PastDb, PresentDb])
     end.
 
--spec fetch_cdrs(ne_binaries(), ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
-fetch_cdrs([], _, _, Context) -> Context;
-fetch_cdrs([Db|Dbs], View, ViewOptions, Context) ->
+-spec fetch_cdrs(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries()) ->
+                        cb_context:context().
+fetch_cdrs(View, ViewOptions, Context, Dbs) ->
+    fetch_cdrs(View, ViewOptions, Context, Dbs, cb_context:api_version(Context)).
+
+fetch_cdrs(View, ViewOptions, Context, Dbs, <<"v1">>) ->
+    fetch_cdrs_v1(View, ViewOptions, Context, Dbs);
+fetch_cdrs(View, ViewOptions, Context, Dbs, _Version) ->
+    fetch_paginated_cdrs(View, ViewOptions, Context, Dbs).
+
+-spec fetch_cdrs_v1(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries()) ->
+                           cb_context:context().
+fetch_cdrs_v1(_View, _ViewOptions, Context, []) ->
+    lager:debug("dbs exhausted"),
+    Context;
+fetch_cdrs_v1(View, ViewOptions, Context, [Db|Dbs]) ->
     C = crossbar_doc:load_view(View
                                ,ViewOptions
                                ,cb_context:set_account_db(Context, Db)
-                               ,fun(JObj, JObjs) -> normalize_view_results(JObj, JObjs) end
+                               ,fun normalize_view_results/2
                               ),
     case cb_context:resp_status(C) of
         'success' ->
             JObjs = cb_context:doc(Context)
                 ++ cb_context:doc(C),
-            fetch_cdrs(Dbs
-                       ,View
+            fetch_cdrs(View
                        ,ViewOptions
-                       ,cb_context:set_resp_data(C, JObjs));
+                       ,cb_context:set_resp_data(C, JObjs)
+                       ,Dbs
+                      );
         Else -> Else
     end.
+
+
+-spec fetch_paginated_cdrs(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries()) ->
+                                  cb_context:context().
+fetch_paginated_cdrs(View, ViewOptions, Context, Dbs) ->
+    ReqPageSize = crossbar_doc:pagination_page_size(Context),
+    CurrentPageSize = wh_json:get_integer_value(<<"page_size">>, cb_context:resp_envelope(Context), 0),
+
+    fetch_paginated_cdrs(View, ViewOptions, Context, Dbs, ReqPageSize - CurrentPageSize).
+
+-spec fetch_paginated_cdrs(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries(), integer()) ->
+                        cb_context:context().
+fetch_paginated_cdrs(_View, _ViewOptions, Context, [], _PageSize) ->
+    lager:debug("dbs exhausted"),
+    Context;
+fetch_paginated_cdrs(_View, _ViewOptions, Context, _Dbs, PageSize) when PageSize =< 0 ->
+    lager:debug("page size exhausted"),
+    Context;
+fetch_paginated_cdrs(View, ViewOptions, Context, [Db|Dbs], PageSize) ->
+    C = crossbar_doc:load_view(View
+                               ,ViewOptions
+                               ,cb_context:set_account_db(Context, Db)
+                               ,crossbar_doc:start_key(ViewOptions, Context)
+                               ,PageSize
+                               ,fun normalize_view_results/2
+                              ),
+    case cb_context:resp_status(C) of
+        'success' ->
+            JObjs = cb_context:doc(Context)
+                ++ cb_context:doc(C),
+            fetch_cdrs(View
+                       ,ViewOptions
+                       ,cb_context:set_resp_envelope(
+                          cb_context:set_resp_data(C, JObjs)
+                          ,merge_resp_envelope(Context, C)
+                         )
+                       ,Dbs
+                      );
+        Else -> Else
+    end.
+
+-spec merge_resp_envelope(cb_context:context(), cb_context:context()) -> wh_json:object().
+merge_resp_envelope(PriorContext, NewContext) ->
+    maybe_fix_start_keys(
+      wh_json:foldl(fun merge_resp_envelopes/3
+                    ,cb_context:resp_envelope(NewContext)
+                    ,cb_context:resp_envelope(PriorContext)
+                   )).
+
+-spec maybe_fix_start_keys(wh_json:object()) -> wh_json:object().
+maybe_fix_start_keys(JObj) ->
+    lists:foldl(fun maybe_fix_start_keys_fold/2
+                ,JObj
+                ,[<<"start_key">>, <<"next_start_key">>]
+               ).
+
+-spec maybe_fix_start_keys_fold(ne_binary(), wh_json:object()) -> wh_json:object().
+maybe_fix_start_keys_fold(Key, J) ->
+    case wh_json:get_value(Key, J) of
+        %% [OwnerId, Timestamp]
+        [_, Value] -> wh_json:set_value(Key, Value, J);
+        %% Timestamp
+        _Value -> J
+    end.
+
+-spec merge_resp_envelopes(ne_binary(), term(), wh_json:object()) -> wh_json:object().
+merge_resp_envelopes(<<"start_key">> = Key, [_, PriorValue], NewEnvelope) ->
+    lager:debug("setting ~s to ~p, ignoring owner", [Key, PriorValue]),
+    wh_json:set_value(Key, PriorValue, NewEnvelope);
+merge_resp_envelopes(<<"start_key">> = Key, PriorValue, NewEnvelope) ->
+    lager:debug("setting ~s to ~p", [Key, PriorValue]),
+    wh_json:set_value(Key, PriorValue, NewEnvelope);
+merge_resp_envelopes(<<"page_size">> = Key, PriorValue, NewEnvelope) ->
+    NewValue = wh_json:get_integer_value(Key, NewEnvelope, 0),
+    Sum = NewValue + PriorValue,
+    lager:debug("updating ~s to ~p (~p + ~p)", [Key, Sum, NewValue, PriorValue]),
+    wh_json:set_value(Key, Sum, NewEnvelope);
+merge_resp_envelopes(_Key, _Value, NewEnvelope) ->
+    lager:debug("skipping ~s: ~p", [_Key, _Value]),
+    NewEnvelope.
 
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, JObjs) ->
@@ -212,34 +304,50 @@ view_key_created_from(Props) ->
                                  cb_context:context().
 create_view_options(OwnerId, Context) ->
     TStamp =  wh_util:current_tstamp(),
-    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
-    CreatedFrom = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange)),
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
+    CreatedFrom = created_from(Context, TStamp, MaxRange),
     CreatedTo = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)),
     Diff = CreatedTo - CreatedFrom,
-    if
-        Diff < 0 ->
+
+    case Diff of
+        N when N < 0 ->
             Message = <<"created_from is prior to created_to">>,
             cb_context:add_validation_error(<<"created_from">>
                                             ,<<"date_range">>
                                             ,Message
-                                            ,Context);
-        Diff > MaxRange ->
+                                            ,Context
+                                           );
+        N when N > MaxRange ->
             Message = <<"created_to is more than "
                         ,(wh_util:to_binary(MaxRange))/binary
-                        ," seconds from created_from">>,
+                        ," seconds from created_from"
+                      >>,
             cb_context:add_validation_error(<<"created_from">>
                                             ,<<"date_range">>
                                             ,Message
-                                            ,Context);
-        OwnerId =:= 'undefined' ->
+                                            ,Context
+                                           );
+        _N when OwnerId =:= 'undefined' ->
             {'ok', [{'startkey', CreatedFrom}
                     ,{'endkey', CreatedTo}
                    ]};
-        'true' ->
+        _N ->
             {'ok', [{'startkey', [OwnerId, CreatedFrom]}
                     ,{'endkey', [OwnerId, CreatedTo]}
                    ]}
     end.
+
+-spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
+created_from(Context, TStamp, MaxRange) ->
+    created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
+
+-spec created_from(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> pos_integer().
+created_from(Context, TStamp, MaxRange, 'undefined') ->
+    lager:debug("building created_from from req value"),
+    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
+created_from(_Context, _TStamp, _MaxRange, StartKey) ->
+    lager:debug("using startkey ~p as created_from", [StartKey]),
+    wh_util:to_integer(StartKey).
 
 -spec master_account_id() -> ne_binary().
 master_account_id() ->
@@ -249,11 +357,15 @@ master_account_id() ->
 -spec cdr_db(pos_integer(), cb_context:context()) -> ne_binary().
 cdr_db(Timestamp, Context) ->
     Db = cdr_db_name(Timestamp, Context),
+
     case couch_mgr:db_exists(Db) of
         'true' ->
+            lager:debug("using cdr db ~s for ~p", [Db, Timestamp]),
             maybe_add_design_doc(Db),
             Db;
-        'false' -> cb_context:account_db(Context)
+        'false' ->
+            lager:debug("using account db ~s for ~p", [cb_context:account_db(Context), Timestamp]),
+            cb_context:account_db(Context)
     end.
 
 -spec maybe_add_design_doc(ne_binary()) -> 'ok' | {'error', 'not_found'}.
@@ -269,7 +381,6 @@ maybe_add_design_doc(AccountMODb) ->
 
 -spec cdr_db_name(pos_integer(), cb_context:context()) -> ne_binary().
 -spec cdr_db_name(wh_year(), wh_month(), cb_context:context()) -> ne_binary().
-
 cdr_db_name(Timestamp, Context) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     ReqNouns = cb_context:req_nouns(Context),

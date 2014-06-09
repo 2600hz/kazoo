@@ -69,6 +69,7 @@
 
 -type wh_proplist_value() :: any().
 -type wh_proplist_key() :: binary() | atom() | number() | string().
+-type wh_proplist_keys() :: [wh_proplist_key(),...] | [].
 -type wh_proplist_kv(K, V) :: [{K, V} | atom(),...] | [].
 -type wh_proplist_k(K) :: wh_proplist_kv(K, wh_proplist_value()).
 -type wh_proplist() :: wh_proplist_kv(wh_proplist_key(), wh_proplist_value()).

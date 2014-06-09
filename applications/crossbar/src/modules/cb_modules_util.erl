@@ -16,9 +16,15 @@
          ,attachment_name/2
          ,bucket_name/1
          ,reconcile_services/1
+         ,bind/2
         ]).
 
 -include("../crossbar.hrl").
+
+-spec bind(atom(), wh_proplist()) -> 'ok'.
+bind(Module, Bindings) ->
+    [crossbar_bindings:bind(Binding, Module, Function) || {Binding, Function} <- Bindings],
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public

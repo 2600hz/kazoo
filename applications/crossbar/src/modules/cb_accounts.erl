@@ -40,20 +40,17 @@
 -define(PVT_TYPE, <<"account">>).
 -define(CHANNELS, <<"channels">>).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.accounts">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.accounts">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.accounts">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.accounts">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.accounts">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete').
+    Bindings = [{<<"*.allowed_methods.accounts">>, 'allowed_methods'}
+                ,{<<"*.resource_exists.accounts">>, 'resource_exists'}
+                ,{<<"*.validate.accounts">>, 'validate'}
+                ,{<<"*.execute.put.accounts">>, 'put'}
+                ,{<<"*.execute.post.accounts">>, 'post'}
+                ,{<<"*.execute.delete.accounts">>, 'delete'}
+               ],
+
+    cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -228,7 +225,8 @@ get_channels(AccountId, Context) ->
           ],
     case whapps_util:amqp_pool_collect(Req
                                        ,fun wapi_call:publish_query_account_channels_req/1
-                                       ,{'ecallmgr', 'true'})
+                                       ,{'ecallmgr', 'true'}
+                                      )
     of
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
@@ -305,7 +303,8 @@ cleanup_leaky_keys(AccountId, Context) ->
                  ],
     validate_realm_is_unique(AccountId
                              ,cb_context:set_req_data(Context
-                                                      ,wh_json:delete_keys(RemoveKeys, cb_context:req_data(Context)
+                                                      ,wh_json:delete_keys(RemoveKeys
+                                                                           ,cb_context:req_data(Context)
                                                                           )
                                                      )
                             ).
@@ -319,7 +318,8 @@ validate_realm_is_unique(AccountId, Context) ->
             C = cb_context:add_validation_error([<<"realm">>]
                                                 ,<<"unique">>
                                                 ,<<"Account realm already in use">>
-                                                ,Context),
+                                                ,Context
+                                               ),
             validate_account_name_is_unique(AccountId, C)
     end.
 
@@ -332,7 +332,8 @@ validate_account_name_is_unique(AccountId, Context) ->
             C = cb_context:add_validation_error([<<"name">>]
                                                 ,<<"unique">>
                                                 ,<<"Account name already in use">>
-                                                ,Context),
+                                                ,Context
+                                               ),
             validate_account_schema(AccountId, C)
     end.
 
@@ -382,7 +383,7 @@ maybe_import_enabled(Context, 'success') ->
 %% Load an account document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec validate_delete_request(api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_delete_request(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_delete_request(AccountId, Context) ->
     ViewOptions = [{'startkey', [AccountId]}
                    ,{'endkey', [AccountId, wh_json:new()]}
@@ -454,21 +455,22 @@ leak_pvt_created(Context) ->
                                ,wh_json:set_value(<<"created">>, Created, RespJObj))
      ).
 
--spec leak_pvt_enabled(#cb_context{}) -> #cb_context{}.
+-spec leak_pvt_enabled(cb_context:context()) -> cb_context:context().
 leak_pvt_enabled(Context) ->
-    JObj = cb_context:doc(Context),
     RespJObj = cb_context:resp_data(Context),
 
-    case wh_json:get_value(<<"pvt_enabled">>, JObj) of
+    case wh_json:get_value(<<"pvt_enabled">>, cb_context:doc(Context)) of
         'true' ->
             leak_billing_mode(
               cb_context:set_resp_data(Context
-                                       ,wh_json:set_value(<<"enabled">>, 'true', RespJObj))
+                                       ,wh_json:set_value(<<"enabled">>, 'true', RespJObj)
+                                      )
              );
         'false' ->
             leak_billing_mode(
               cb_context:set_resp_data(Context
-                                       ,wh_json:set_value(<<"enabled">>, 'false', RespJObj))
+                                       ,wh_json:set_value(<<"enabled">>, 'false', RespJObj)
+                                      )
              );
         _ ->
             leak_billing_mode(Context)
@@ -478,11 +480,10 @@ leak_pvt_enabled(Context) ->
 leak_billing_mode(Context) ->
     {'ok', MasterAccount} = whapps_util:get_master_account_id(),
 
-    AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
     RespJObj = cb_context:resp_data(Context),
 
-    case wh_services:find_reseller_id(AccountId) of
+    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
         AuthAccountId ->
             cb_context:set_resp_data(Context
                                      ,wh_json:set_value(<<"billing_mode">>, <<"limits_only">>, RespJObj)
@@ -505,9 +506,39 @@ leak_billing_mode(Context) ->
 %%--------------------------------------------------------------------
 -spec load_children(ne_binary(), cb_context:context()) -> cb_context:context().
 load_children(AccountId, Context) ->
+    load_children(AccountId, Context, cb_context:api_version(Context)).
+
+-spec load_children(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
+load_children(AccountId, Context, <<"v1">>) ->
+    load_children_v1(AccountId, Context);
+load_children(AccountId, Context, _Version) ->
+    load_paginated_children(AccountId, Context).
+
+-spec load_children_v1(ne_binary(), cb_context:context()) -> cb_context:context().
+load_children_v1(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [{'startkey', [AccountId]}
                                                 ,{'endkey', [AccountId, wh_json:new()]}
                                                ], Context, fun normalize_view_results/2).
+
+-spec load_paginated_children(ne_binary(), cb_context:context()) -> cb_context:context().
+load_paginated_children(AccountId, Context) ->
+    StartKey = crossbar_doc:start_key(Context),
+    fix_envelope(
+      crossbar_doc:load_view(?AGG_VIEW_CHILDREN
+                             ,[{'startkey', start_key(AccountId, StartKey)}
+                               ,{'endkey', [AccountId, wh_json:new()]}
+                              ]
+                             ,Context
+                             ,fun normalize_view_results/2
+                            )).
+
+-spec start_key(ne_binary(), api_binary()) -> ne_binaries().
+start_key(AccountId, 'undefined') ->
+    [AccountId];
+start_key(AccountId, AccountId) ->
+    [AccountId];
+start_key(AccountId, StartKey) ->
+    [AccountId, StartKey].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -517,9 +548,30 @@ load_children(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_descendants(ne_binary(), cb_context:context()) -> cb_context:context().
 load_descendants(AccountId, Context) ->
+    load_descendants(AccountId, Context, cb_context:api_version(Context)).
+
+load_descendants(AccountId, Context, <<"v1">>) ->
+    load_descendants_v1(AccountId, Context);
+load_descendants(AccountId, Context, _Version) ->
+    load_paginated_descendants(AccountId, Context).
+
+-spec load_descendants_v1(ne_binary(), cb_context:context()) -> cb_context:context().
+load_descendants_v1(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [{'startkey', [AccountId]}
                                                    ,{'endkey', [AccountId, wh_json:new()]}
                                                   ], Context, fun normalize_view_results/2).
+
+-spec load_paginated_descendants(ne_binary(), cb_context:context()) -> cb_context:context().
+load_paginated_descendants(AccountId, Context) ->
+    StartKey = crossbar_doc:start_key(Context),
+    fix_envelope(
+      crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
+                                 ,[{'startkey', start_key(AccountId, StartKey)}
+                                   ,{'endkey', [AccountId, wh_json:new()]}
+                                  ]
+                                 ,Context
+                                 ,fun normalize_view_results/2
+                                )).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -529,21 +581,66 @@ load_descendants(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_siblings(ne_binary(), cb_context:context()) -> cb_context:context().
 load_siblings(AccountId, Context) ->
+    load_siblings(AccountId, Context, cb_context:api_version(Context)).
+
+-spec load_siblings(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
+load_siblings(AccountId, Context, <<"v1">>) ->
+    load_siblings_v1(AccountId, Context);
+load_siblings(AccountId, Context, _Version) ->
+    load_paginated_siblings(AccountId, Context).
+
+-spec load_siblings_v1(ne_binary(), cb_context:context()) -> cb_context:context().
+load_siblings_v1(AccountId, Context) ->
     Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT, [{'startkey', AccountId}
                                                          ,{'endkey', AccountId}
                                                         ], Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            load_siblings(AccountId, Context1, cb_context:doc(Context1));
+            load_siblings_results(AccountId, Context1, cb_context:doc(Context1));
+        _Status ->
+            cb_context:add_system_error('bad_identifier', [{'details', AccountId}], Context)
+    end.
+
+-spec load_paginated_siblings(ne_binary(), cb_context:context()) -> cb_context:context().
+load_paginated_siblings(AccountId, Context) ->
+    Context1 =
+        fix_envelope(
+          crossbar_doc:load_view(?AGG_VIEW_PARENT
+                                     ,[{'startkey', AccountId}
+                                       ,{'endkey', AccountId}
+                                      ]
+                                     ,Context
+                                    )),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            load_siblings_results(AccountId, Context1, cb_context:doc(Context1));
         _Status ->
             cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context)
     end.
 
-load_siblings(_AccountId, Context, [JObj|_]) ->
+-spec load_siblings_results(ne_binary(), cb_context:context(), wh_json:objects()) -> cb_context:context().
+load_siblings_results(_AccountId, Context, [JObj|_]) ->
     Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
     load_children(Parent, Context);
-load_siblings(AccountId, Context, _) ->
+load_siblings_results(AccountId, Context, _) ->
     cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context).
+
+-spec fix_envelope(cb_context:context()) -> cb_context:context().
+fix_envelope(Context) ->
+    Envelope = cb_context:resp_envelope(Context),
+    case wh_json:get_value(<<"start_key">>, Envelope) of
+        [_AccountId, StartKey] ->
+            cb_context:set_resp_envelope(
+              Context
+              ,wh_json:set_value(<<"start_key">>, StartKey, Envelope)
+             );
+        [StartKey|_T] ->
+            cb_context:set_resp_envelope(
+              Context
+              ,wh_json:set_value(<<"start_key">>, StartKey, Envelope)
+             );
+        _StartKey -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -819,7 +916,7 @@ is_unique_realm(AccountId, Realm) ->
 %% This function will determine if the account name is unique
 %% @end
 %%--------------------------------------------------------------------
--spec is_unique_account_name(ne_binary(), ne_binary()) -> boolean().
+-spec is_unique_account_name(api_binary(), ne_binary()) -> boolean().
 is_unique_account_name(AccountId, Name) ->
     ViewOptions = [{'key', Name}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
@@ -882,16 +979,19 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec delete_remove_services(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_services(Context) ->
     case wh_services:delete(cb_context:account_id(Context)) of
         {'ok', _} -> delete_free_numbers(Context);
         _ -> crossbar_util:response('error', <<"unable to cancel services">>, 500, Context)
     end.
 
+-spec delete_free_numbers(cb_context:context()) -> cb_context:context() | boolean().
 delete_free_numbers(Context) ->
     _ = wh_number_manager:free_numbers(cb_context:account_id(Context)),
     delete_remove_sip_aggregates(Context).
 
+-spec delete_remove_sip_aggregates(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_sip_aggregates(Context) ->
     ViewOptions = ['include_docs'
                    ,{'key', cb_context:account_id(Context)}
@@ -905,6 +1005,7 @@ delete_remove_sip_aggregates(Context) ->
         end,
     delete_remove_db(Context).
 
+-spec delete_remove_db(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_db(Context) ->
     Removed = case couch_mgr:open_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
                   {'ok', _} ->
@@ -947,6 +1048,7 @@ delete_mod_dbs(AccountId, Year, Month) ->
 prev_year_month(Year, 1) -> {Year-1, 12};
 prev_year_month(Year, Month) -> {Year, Month-1}.
 
+-spec delete_remove_from_accounts(cb_context:context()) -> cb_context:context().
 delete_remove_from_accounts(Context) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->

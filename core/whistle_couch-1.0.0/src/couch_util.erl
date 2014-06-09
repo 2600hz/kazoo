@@ -294,21 +294,9 @@ format_error(E) ->
                                     couchbeam_error().
 do_fetch_results_count(Db, DesignDoc, Options) ->
     ?RETRY_504(
-       case couchbeam_view:fetch(Db, DesignDoc
-                                 ,[{'reduce', 'true'}
-                                   | props:delete('reduce', Options)
-                                  ]
-                                )
-       of
-           {'ok', [JObj]} ->
-               {'ok', wh_json:get_integer_value(<<"value">>, JObj)};
-           {'ok', JObj} ->
-               case wh_json:get_integer_value(<<"total_rows">>, JObj) of
-                   'undefined' -> {'ok', length(wh_json:get_value(<<"rows">>, JObj, []))};
-                   N -> {'ok', N}
-               end;
-           {'error', _, E} -> {'error', E};
-           Other -> Other
+       case couchbeam_view:count(Db, DesignDoc, Options) of
+           {'error', E} -> {'error', format_error(E)};
+           N -> {'ok', N}
        end
       ).
 

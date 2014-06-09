@@ -67,16 +67,12 @@ maybe_save_auth_doc(AuthDoc, OldAuthDoc) ->
 
     Timeout = ?LOOP_TIMEOUT div 2,
 
-    try AuthModified > (OldAuthModified + Timeout) of
-        'true' ->
-            lager:debug("auth doc is past time to be saved, saving"),
+    case AuthModified - (OldAuthModified + Timeout) of
+        N when N >= 0 ->
+            lager:debug("auth doc is past time (~p after) to be saved, saving", [N]),
             couch_mgr:ensure_saved(?TOKEN_DB, AuthDoc);
-        'false' ->
-            lager:debug("auth doc is too new, not saving")
-    catch
-        _E:_R ->
-            lager:debug("comparison failed, saving: ~s: ~p", [_E, _R]),
-            couch_mgr:ensure_saved(?TOKEN_DB, AuthDoc)
+        _N ->
+            lager:debug("auth doc is too new (~p to go), not saving", [(_N*-1)])
     end.
 
 -spec clean_expired() -> 'ok'.

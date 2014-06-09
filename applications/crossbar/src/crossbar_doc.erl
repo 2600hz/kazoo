@@ -13,7 +13,7 @@
          ,load_from_file/2
          ,load_merge/2, load_merge/3
          ,merge/3
-         ,load_view/3, load_view/4
+         ,load_view/3, load_view/4, load_view/5, load_view/6
          ,load_attachment/3, load_docs/2
          ,save/1, save/2
          ,delete/1, delete/2
@@ -23,6 +23,8 @@
          ,rev_to_etag/1
          ,current_doc_vsn/0
          ,update_pvt_parameters/2
+         ,start_key/1, start_key/2
+         ,pagination_page_size/0, pagination_page_size/1
         ]).
 
 -export([handle_json_success/2]).
@@ -36,6 +38,27 @@
                    ,fun add_pvt_created/2
                    ,fun add_pvt_modified/2
                   ]).
+
+-define(PAGINATION_PAGE_SIZE, whapps_config:get_integer(?CONFIG_CAT
+                                                        ,<<"pagination_page_size">>
+                                                        ,50
+                                                       )).
+
+-spec pagination_page_size() -> pos_integer().
+-spec pagination_page_size(cb_context:context()) -> pos_integer().
+-spec pagination_page_size(cb_context:context(), ne_binary()) -> pos_integer().
+pagination_page_size() ->
+    ?PAGINATION_PAGE_SIZE.
+
+pagination_page_size(Context) ->
+    pagination_page_size(Context, cb_context:api_version(Context)).
+
+pagination_page_size(_Context, <<"v1">>) -> 'undefined';
+pagination_page_size(Context, _Version) ->
+    case cb_context:req_value(Context, <<"page_size">>) of
+        'undefined' -> pagination_page_size();
+        V -> wh_util:to_integer(V)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -147,57 +170,80 @@ merge(DataJObj, JObj, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context()) ->
-                       cb_context:context().
+                           cb_context:context().
+-spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term() | filter_fun()) ->
+                           cb_context:context().
+-spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer()) ->
+                           cb_context:context().
+-spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer(), filter_fun() | 'undefined') ->
+                           cb_context:context().
 load_view(View, Options, Context) ->
-    Db = cb_context:account_db(Context),
-    QS = cb_context:query_string(Context),
+    load_view(View, Options, Context
+                  ,start_key(Options, Context)
+                  ,pagination_page_size(Context)
+                  ,'undefined'
+                 ).
 
-    HasFilter = has_filter(QS),
+load_view(View, Options, Context, FilterFun) when is_function(FilterFun, 2) ->
+    load_view(View, Options, Context
+                  ,start_key(Options, Context)
+                  ,pagination_page_size(Context)
+                  ,FilterFun
+                 );
+load_view(View, Options, Context, StartKey) ->
+    load_view(View, Options, Context, StartKey
+                  ,pagination_page_size(Context)
+                 ).
+
+load_view(View, Options, Context, StartKey, PageSize) ->
+    load_view(View, Options, Context, StartKey, PageSize, 'undefined').
+
+load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
+    Db = cb_context:account_db(Context),
+
+    HasFilter = is_function(FilterFun, 2) orelse has_filter(Context),
+
+    DefaultOptions =
+        props:filter_undefined(
+          [{'startkey', StartKey}
+           ,{'limit', limit_by_page_size(PageSize)}
+           | props:delete_keys(['startkey', 'limit'], Options)
+          ]),
 
     ViewOptions =
         case HasFilter of
-            'false' -> Options;
-            'true' -> ['include_docs'
-                       | props:delete('include_docs', Options)
-                      ]
+            'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
+            'false' -> DefaultOptions
         end,
 
     case couch_mgr:get_results(Db, View, ViewOptions) of
-        {'error', Error} -> handle_couch_mgr_errors(Error, View, Context);
-        {'ok', JObjs} when HasFilter ->
-            lager:debug("loaded view ~s from ~s, running query filter", [View, Db]),
-            Filtered = [JObj
-                        || JObj <- JObjs,
-                           filter_doc(wh_json:get_value(<<"doc">>, JObj), QS)
-                       ],
-            handle_couch_mgr_success(Filtered, Context);
+        {'error', Error} ->
+            handle_couch_mgr_errors(Error, View, Context);
         {'ok', JObjs} ->
-            lager:debug("loaded view ~s from ~s", [View, Db]),
-            handle_couch_mgr_success(JObjs, Context)
+            lager:debug("paginating view ~s from ~s, starting at ~p", [View, Db, StartKey]),
+            handle_couch_mgr_pagination_success(JObjs
+                                                ,Context
+                                                ,StartKey
+                                                ,PageSize
+                                                ,FilterFun
+                                                ,cb_context:api_version(Context)
+                                               )
     end.
 
-%%--------------------------------------------------------------------
-% @public
-%% @doc
-%% This function attempts to load the context with the results of a view
-%% run against the accounts database.  The results are then filtered by
-%% the supplied function
-%%
-%% Failure here returns 500 or 503
-%% @end
-%%--------------------------------------------------------------------
--type filter_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
--spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), filter_fun()) ->
-                       cb_context:context().
-load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
-    case load_view(View, Options, Context) of
-        #cb_context{resp_status='success'} = Context1 ->
-            Filtered = [JObj
-                        || JObj <- lists:foldl(Filter, [], cb_context:doc(Context1)),
-                           (not wh_util:is_empty(JObj))
-                       ],
-            handle_couch_mgr_success(Filtered, Context1);
-        Else -> Else
+-spec limit_by_page_size(api_binary() | pos_integer()) -> pos_integer().
+limit_by_page_size('undefined') -> 'undefined';
+limit_by_page_size(N) when is_integer(N) -> N+1;
+limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
+
+-spec start_key(cb_context:context()) -> wh_json:json_term() | 'undefined'.
+-spec start_key(wh_proplist(), cb_context:context()) -> wh_json:json_term() | 'undefined'.
+start_key(Context) ->
+    cb_context:req_value(Context, <<"start_key">>).
+
+start_key(Options, Context) ->
+    case props:get_value('startkey', Options) of
+        'undefined' -> cb_context:req_value(Context, <<"start_key">>);
+        StartKey -> StartKey
     end.
 
 %%--------------------------------------------------------------------
@@ -483,6 +529,67 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec update_pagination_envelope_params(cb_context:context(), pos_integer(), pos_integer()) -> cb_context:context().
+update_pagination_envelope_params(Context, StartKey, PageSize) ->
+    update_pagination_envelope_params(Context, StartKey, PageSize, 'undefined').
+
+-spec update_pagination_envelope_params(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> cb_context:context().
+update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
+    cb_context:set_resp_envelope(Context
+                                 ,wh_json:set_values(
+                                    props:filter_undefined(
+                                      [{<<"start_key">>, StartKey}
+                                       ,{<<"page_size">>, PageSize}
+                                       ,{<<"next_start_key">>, NextStartKey}
+                                      ])
+                                    ,cb_context:resp_envelope(Context)
+                                   )).
+-spec handle_couch_mgr_pagination_success(wh_json:objects(), cb_context:context(), pos_integer(), pos_integer(), function(), ne_binary()) -> cb_context:context().
+handle_couch_mgr_pagination_success(JObjs, Context, 'undefined', _PageSize, FilterFun, <<"v1">>) ->
+    handle_couch_mgr_success(apply_filter(FilterFun, JObjs, Context), Context);
+handle_couch_mgr_pagination_success(JObjs, Context, _StartKey, 'undefined', FilterFun, <<"v1">>) ->
+    handle_couch_mgr_success(apply_filter(FilterFun, JObjs, Context), Context);
+handle_couch_mgr_pagination_success([], Context, StartKey, _PageSize, _FilterFun, _Version) ->
+    handle_couch_mgr_success([], update_pagination_envelope_params(Context, StartKey, 0));
+handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize, FilterFun, _Version) ->
+    try lists:split(PageSize, JObjs) of
+        {Results, []} ->
+            lager:debug("no next results"),
+            handle_couch_mgr_success(apply_filter(FilterFun, Results, Context)
+                                     ,update_pagination_envelope_params(Context, StartKey, PageSize)
+                                    );
+
+        {Results, [NextJObj]} ->
+            NextStartKey = wh_json:get_value(<<"key">>, NextJObj),
+            lager:debug("next start key: ~p", [NextStartKey]),
+            handle_couch_mgr_success(apply_filter(FilterFun, Results, Context)
+                                     ,update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey)
+                                    )
+    catch
+        'error':'badarg' ->
+            lager:debug("recv less than ~p results", [PageSize]),
+            Filtered = apply_filter(FilterFun, JObjs, Context),
+            handle_couch_mgr_success(Filtered
+                                     ,update_pagination_envelope_params(Context, StartKey, length(Filtered))
+                                    )
+    end.
+
+-type filter_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
+
+-spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
+apply_filter(FilterFun, JObjs, _Context) when is_function(FilterFun, 2) ->
+    [JObj
+     || JObj <- lists:foldl(FilterFun, [], JObjs),
+        (not wh_util:is_empty(JObj))
+    ];
+apply_filter(_, JObjs, Context) ->
+    lager:debug("no filter fun, checking if should filter doc"),
+    [JObj
+     || JObj <- JObjs,
+        filter_doc(wh_json:get_value(<<"doc">>, JObj), Context)
+    ].
+
+
 -spec handle_couch_mgr_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_couch_mgr_success([], Context) ->
     lists:foldl(fun fold_over_setters/2
@@ -503,6 +610,7 @@ handle_couch_mgr_success(JObj, Context) ->
         'false' -> handle_thing_success(JObj, Context)
     end.
 
+-spec handle_thing_success(any(), cb_context:context()) -> cb_context:context().
 handle_thing_success(Thing, Context) ->
     lists:foldl(fun fold_over_setters/2
                 ,Context
@@ -512,6 +620,7 @@ handle_thing_success(Thing, Context) ->
                   ,{fun cb_context:set_resp_etag/2, 'undefined'}
                  ]).
 
+-spec handle_json_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
     RespData = [wh_json:public_fields(JObj)
                 || JObj <- JObjs,
@@ -606,12 +715,14 @@ update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
 update_pvt_parameters(JObj0, Context) ->
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, Context) end, JObj0, ?PVT_FUNS).
 
+-spec add_pvt_vsn(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_vsn(JObj, _) ->
     case wh_json:get_value(<<"pvt_vsn">>, JObj) of
         'undefined' -> wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj);
         _ -> JObj
     end.
 
+-spec add_pvt_account_db(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_account_db(JObj, Context) ->
     case wh_json:get_value(<<"pvt_account_db">>, JObj) of
         'undefined' ->
@@ -619,6 +730,7 @@ add_pvt_account_db(JObj, Context) ->
         _Else -> JObj
     end.
 
+-spec add_pvt_account_id(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_account_id(JObj, Context) ->
     case wh_json:get_value(<<"pvt_account_id">>, JObj) of
         'undefined' ->
@@ -626,6 +738,7 @@ add_pvt_account_id(JObj, Context) ->
         _Else -> JObj
     end.
 
+-spec add_pvt_created(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_created(JObj, _) ->
     case wh_json:get_value(<<"_rev">>, JObj) of
         'undefined' ->
@@ -635,6 +748,7 @@ add_pvt_created(JObj, _) ->
             JObj
     end.
 
+-spec add_pvt_modified(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
@@ -656,9 +770,9 @@ extract_included_docs(JObjs) ->
 %% request has a filter defined
 %% @end
 %%--------------------------------------------------------------------
--spec has_filter(wh_json:object()) -> boolean().
-has_filter(QS) ->
-    lists:any(fun is_filter_key/1, wh_json:to_proplist(QS)).
+-spec has_filter(cb_context:context()) -> boolean().
+has_filter(Context) ->
+    lists:any(fun is_filter_key/1, wh_json:to_proplist(cb_context:query_string(Context))).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -684,9 +798,12 @@ is_filter_key(_) -> 'false'.
 %% Returns 'true' if all of the requested props are found, 'false' if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec filter_doc(wh_json:object(), wh_json:object()) -> boolean().
-filter_doc(Doc, Query) ->
-    lists:all(fun({K, V}) -> filter_prop(Doc, K, V) end, wh_json:to_proplist(Query)).
+-spec filter_doc(wh_json:object(), cb_context:context()) -> boolean().
+filter_doc('undefined', _Context) -> 'true';
+filter_doc(Doc, Context) ->
+    wh_json:all(fun({K, V}) -> filter_prop(Doc, K, V) end
+                ,cb_context:query_string(Context)
+               ).
 
 %%--------------------------------------------------------------------
 %% @private

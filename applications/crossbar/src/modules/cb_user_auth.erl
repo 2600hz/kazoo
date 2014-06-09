@@ -239,6 +239,7 @@ load_md5_results(Context, [JObj|_]) ->
     lager:debug("found more that one user with MD5 creds, using ~s", [wh_json:get_value(<<"id">>, JObj)]),
     cb_context:set_doc(Context, wh_json:get_value(<<"value">>, JObj));
 load_md5_results(Context, []) ->
+    lager:debug("failed to find a user with MD5 creds"),
     cb_context:add_system_error('invalid_credentials', Context);
 load_md5_results(Context, JObj) ->
     lager:debug("found MD5 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
