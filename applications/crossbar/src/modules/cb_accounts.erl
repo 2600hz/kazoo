@@ -508,6 +508,7 @@ leak_billing_mode(Context) ->
 load_children(AccountId, Context) ->
     load_children(AccountId, Context, cb_context:api_version(Context)).
 
+-spec load_children(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
 load_children(AccountId, Context, <<"v1">>) ->
     load_children_v1(AccountId, Context);
 load_children(AccountId, Context, _Version) ->
@@ -582,6 +583,7 @@ load_paginated_descendants(AccountId, Context) ->
 load_siblings(AccountId, Context) ->
     load_siblings(AccountId, Context, cb_context:api_version(Context)).
 
+-spec load_siblings(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
 load_siblings(AccountId, Context, <<"v1">>) ->
     load_siblings_v1(AccountId, Context);
 load_siblings(AccountId, Context, _Version) ->
@@ -977,16 +979,19 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec delete_remove_services(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_services(Context) ->
     case wh_services:delete(cb_context:account_id(Context)) of
         {'ok', _} -> delete_free_numbers(Context);
         _ -> crossbar_util:response('error', <<"unable to cancel services">>, 500, Context)
     end.
 
+-spec delete_free_numbers(cb_context:context()) -> cb_context:context() | boolean().
 delete_free_numbers(Context) ->
     _ = wh_number_manager:free_numbers(cb_context:account_id(Context)),
     delete_remove_sip_aggregates(Context).
 
+-spec delete_remove_sip_aggregates(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_sip_aggregates(Context) ->
     ViewOptions = ['include_docs'
                    ,{'key', cb_context:account_id(Context)}
@@ -1000,6 +1005,7 @@ delete_remove_sip_aggregates(Context) ->
         end,
     delete_remove_db(Context).
 
+-spec delete_remove_db(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_db(Context) ->
     Removed = case couch_mgr:open_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
                   {'ok', _} ->
@@ -1042,6 +1048,7 @@ delete_mod_dbs(AccountId, Year, Month) ->
 prev_year_month(Year, 1) -> {Year-1, 12};
 prev_year_month(Year, Month) -> {Year, Month-1}.
 
+-spec delete_remove_from_accounts(cb_context:context()) -> cb_context:context().
 delete_remove_from_accounts(Context) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->

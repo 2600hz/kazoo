@@ -529,8 +529,11 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec update_pagination_envelope_params(cb_context:context(), pos_integer(), pos_integer()) -> cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
     update_pagination_envelope_params(Context, StartKey, PageSize, 'undefined').
+
+-spec update_pagination_envelope_params(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
     cb_context:set_resp_envelope(Context
                                  ,wh_json:set_values(
@@ -541,14 +544,13 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                       ])
                                     ,cb_context:resp_envelope(Context)
                                    )).
-
+-spec handle_couch_mgr_pagination_success(wh_json:objects(), cb_context:context(), pos_integer(), pos_integer(), function(), ne_binary()) -> cb_context:context().
 handle_couch_mgr_pagination_success(JObjs, Context, 'undefined', _PageSize, FilterFun, <<"v1">>) ->
     handle_couch_mgr_success(apply_filter(FilterFun, JObjs, Context), Context);
 handle_couch_mgr_pagination_success(JObjs, Context, _StartKey, 'undefined', FilterFun, <<"v1">>) ->
     handle_couch_mgr_success(apply_filter(FilterFun, JObjs, Context), Context);
 handle_couch_mgr_pagination_success([], Context, StartKey, _PageSize, _FilterFun, _Version) ->
     handle_couch_mgr_success([], update_pagination_envelope_params(Context, StartKey, 0));
-
 handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize, FilterFun, _Version) ->
     try lists:split(PageSize, JObjs) of
         {Results, []} ->
@@ -608,6 +610,7 @@ handle_couch_mgr_success(JObj, Context) ->
         'false' -> handle_thing_success(JObj, Context)
     end.
 
+-spec handle_thing_success(any(), cb_context:context()) -> cb_context:context().
 handle_thing_success(Thing, Context) ->
     lists:foldl(fun fold_over_setters/2
                 ,Context
@@ -617,6 +620,7 @@ handle_thing_success(Thing, Context) ->
                   ,{fun cb_context:set_resp_etag/2, 'undefined'}
                  ]).
 
+-spec handle_json_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
     RespData = [wh_json:public_fields(JObj)
                 || JObj <- JObjs,
@@ -711,12 +715,14 @@ update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
 update_pvt_parameters(JObj0, Context) ->
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, Context) end, JObj0, ?PVT_FUNS).
 
+-spec add_pvt_vsn(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_vsn(JObj, _) ->
     case wh_json:get_value(<<"pvt_vsn">>, JObj) of
         'undefined' -> wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj);
         _ -> JObj
     end.
 
+-spec add_pvt_account_db(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_account_db(JObj, Context) ->
     case wh_json:get_value(<<"pvt_account_db">>, JObj) of
         'undefined' ->
@@ -724,6 +730,7 @@ add_pvt_account_db(JObj, Context) ->
         _Else -> JObj
     end.
 
+-spec add_pvt_account_id(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_account_id(JObj, Context) ->
     case wh_json:get_value(<<"pvt_account_id">>, JObj) of
         'undefined' ->
@@ -731,6 +738,7 @@ add_pvt_account_id(JObj, Context) ->
         _Else -> JObj
     end.
 
+-spec add_pvt_created(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_created(JObj, _) ->
     case wh_json:get_value(<<"_rev">>, JObj) of
         'undefined' ->
@@ -740,6 +748,7 @@ add_pvt_created(JObj, _) ->
             JObj
     end.
 
+-spec add_pvt_modified(wh_json:object(), cb_context:context()) -> wh_json:object().
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).

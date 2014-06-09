@@ -337,8 +337,11 @@ create_view_options(OwnerId, Context) ->
                    ]}
     end.
 
+-spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
 created_from(Context, TStamp, MaxRange) ->
     created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
+
+-spec created_from(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> pos_integer().
 created_from(Context, TStamp, MaxRange, 'undefined') ->
     lager:debug("building created_from from req value"),
     wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
