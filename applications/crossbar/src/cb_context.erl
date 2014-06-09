@@ -28,6 +28,7 @@
 
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
+         ,account_modb/1, account_modb/2, account_modb/3
          ,account_doc/1
          ,auth_token/1, set_auth_token/2
          ,auth_doc/1, set_auth_doc/2
@@ -98,10 +99,25 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
     wh_json:find(Key, [ReqData, QS], Default).
 
 %% Accessors
+-spec account_id(context()) -> ne_binary().
+-spec account_db(context()) -> ne_binary().
+-spec account_modb(context()) -> ne_binary().
+-spec account_modb(context(), wh_now() | wh_timeout()) -> ne_binary().
+-spec account_modb(context(), wh_year(), wh_month()) -> ne_binary().
 -spec account_doc(context()) -> wh_json:object().
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
+
+account_modb(Context) ->
+    wh_util:format_account_mod_id(account_id(Context)).
+account_modb(Context, {_,_,_}=Timestamp) ->
+    wh_util:format_account_mod_id(account_id(Context), Timestamp);
+account_modb(Context, Timestamp) when is_integer(Timestamp), Timestamp > 0 ->
+    wh_util:format_account_mod_id(account_id(Context), Timestamp).
+account_modb(Context, Year, Month) ->
+    wh_util:format_account_mod_id(account_id(Context), Year, Month).
+
 account_doc(#cb_context{}=Context) ->
     AccountId = account_id(Context),
     {'ok', Doc} =
