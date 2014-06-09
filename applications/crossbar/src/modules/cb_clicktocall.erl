@@ -294,6 +294,7 @@ originate_call(C2CId, Context) ->
             _Pid = spawn(fun() ->
                                  put('callid', ReqId),
                                  Status = originate_call(Contact, JObj, AccountId),
+                                 lager:debug("got status ~p", [Status]),
 
                                  HistoryItem = wh_doc:update_pvt_parameters(
                                                  wh_json:from_list(
@@ -326,9 +327,13 @@ originate_call(Contact, JObj, AccountId) ->
             ,{<<"Authorizing-Type">>, <<"device">>}
            ],
 
+    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId),
+
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>,  <<"loopback/", Exten/binary, "/context_2">>}
                 ,{<<"To-DID">>, Exten}
+                ,{<<"To-Realm">>, wh_json:get_value(<<"realm">>, AccountDoc)}
+                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                ],
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
@@ -369,7 +374,10 @@ originate_call(Contact, JObj, AccountId) ->
             case lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES) of
                 'true' ->
                     {'success', wh_json:get_value(<<"Call-ID">>, Resp)};
+                'false' when AppResponse =:= 'undefined' ->
+                    {'success', wh_json:get_value(<<"Call-ID">>, Resp)};
                 'false' ->
+                    lager:debug("app response ~s not successful: ~p", [AppResponse, Resp]),
                     {'error', AppResponse}
             end;
         {'returned', _JObj, Return} ->
