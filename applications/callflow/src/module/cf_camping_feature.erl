@@ -108,7 +108,7 @@ has_channels(#call_target{id = TargetId
                           ,number = Number
                          }, Call) ->
     Targets = get_sip_usernames_for_target(TargetId, TargetType, Call),
-    camper_channel_tracker:add_request(whapps_call:account_db(Call)
+    camper_onnet_handler:add_request(whapps_call:account_db(Call)
         ,{whapps_call:authorizing_id(Call)
             ,whapps_call:authorizing_type(Call)
         }

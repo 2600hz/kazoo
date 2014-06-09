@@ -71,7 +71,7 @@ handle_req(JObj, _Props) ->
     AcctId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     SIPName = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),
     lager:info("available device: ~s(~s)", [SIPName, AcctId]),
-    camper_channel_tracker:available_device(AcctId, SIPName).
+    camper_onnet_handler:available_device(AcctId, SIPName).
 
 %%%===================================================================
 %%% gen_server callbacks
