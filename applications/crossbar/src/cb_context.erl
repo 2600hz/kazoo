@@ -29,6 +29,7 @@
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
          ,account_modb/1, account_modb/2, account_modb/3
+         ,account_realm/1
          ,account_doc/1
          ,auth_token/1, set_auth_token/2
          ,auth_doc/1, set_auth_doc/2
@@ -104,6 +105,7 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 -spec account_modb(context()) -> ne_binary().
 -spec account_modb(context(), wh_now() | wh_timeout()) -> ne_binary().
 -spec account_modb(context(), wh_year(), wh_month()) -> ne_binary().
+-spec account_realm(context()) -> ne_binary().
 -spec account_doc(context()) -> wh_json:object().
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
@@ -118,11 +120,14 @@ account_modb(Context, Timestamp) when is_integer(Timestamp), Timestamp > 0 ->
 account_modb(Context, Year, Month) ->
     wh_util:format_account_mod_id(account_id(Context), Year, Month).
 
-account_doc(#cb_context{}=Context) ->
-    AccountId = account_id(Context),
+account_realm(Context) ->
+    wh_json:get_value(<<"pvt_realm">>, account_doc(Context)).
+
+account_doc(Context) ->
     {'ok', Doc} =
-        couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), AccountId),
+        couch_mgr:open_cache_doc(account_db(Context), account_id(Context)),
     Doc.
+
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
