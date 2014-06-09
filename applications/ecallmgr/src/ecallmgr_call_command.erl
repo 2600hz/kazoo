@@ -887,7 +887,6 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
                      wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
                                             ,[Type, File, UUID, Node]
                                             ,[{<<"Details">>, Err}]
-                                            ,?ECALLMGR_AMQP_POOL
                                            ),
                      <<"failure">>;
                  {'error', E} ->
@@ -895,7 +894,6 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
                      wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
                                             ,[Type, File, UUID, Node]
                                             ,[{<<"Details">>, E}]
-                                            ,?ECALLMGR_AMQP_POOL
                                            ),
                      <<"failure">>
              end,
