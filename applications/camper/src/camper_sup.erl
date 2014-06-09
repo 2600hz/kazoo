@@ -24,7 +24,7 @@
 
 -define(CHILDREN, [?CACHE_ARGS(?CAMPER_CACHE, ?CACHE_PROPS)
                    ,?WORKER('camper_listener')
-                   ,?WORKER('camper_channel_tracker')
+                   ,?WORKER('camper_onnet_handler')
                    ]).
 
 %%%===================================================================

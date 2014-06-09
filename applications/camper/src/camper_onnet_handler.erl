@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(camper_channel_tracker).
+-module(camper_onnet_handler).
 
 -export([start_link/0]).
 -export([init/1
