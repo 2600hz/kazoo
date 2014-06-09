@@ -102,7 +102,7 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info('initialize_pinger', #state{node=Node, options=Props}=State) ->
-    wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
+    wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()], [], ?ECALLMGR_AMQP_POOL),
     _ = case props:get_value('cookie', Props) of
             'undefined' -> 'ok';
             Cookie when is_atom(Cookie) ->
@@ -123,7 +123,7 @@ handle_info('check_node_status', #state{node=Node, timeout=Timeout}=State) ->
         'pong' ->
             %% give the node a moment to init
             timer:sleep(1000),
-            wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
+            wh_notify:system_alert("node ~s connected to ~s", [Node, node()], [], ?ECALLMGR_AMQP_POOL),
             'ok' = ecallmgr_fs_nodes:nodeup(Node),
             {'stop', 'normal', State};
         _Else ->

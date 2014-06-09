@@ -43,7 +43,7 @@ kill_channel(Props, Node) ->
     lager:debug("killing unauthorized channel", []),
     kill_channel(Direction, ResourceType, CallId, Node).
 
-kill_channel(_, <<"sms">>, CallId, Node) -> 'ok';
+kill_channel(_, <<"sms">>, _CallId, _Node) -> 'ok';
 kill_channel(<<"inbound">>, _, CallId, Node) ->
     %% Give any pending route requests a chance to cleanly terminate this call,
     %% if it has not been processed yet.  Then chop its head off....

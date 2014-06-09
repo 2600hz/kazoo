@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -17,7 +17,7 @@
 -export([first_call/1]).
 -export([first_registration/1]).
 -export([transaction/2, transaction/3]).
--export([system_alert/2, system_alert/3]).
+-export([system_alert/2, system_alert/3, system_alert/4]).
 
 -include("../include/wh_types.hrl").
 
@@ -132,18 +132,28 @@ transaction(Account, Transaction, ServicePlan) ->
 
 -spec system_alert(atom() | string() | binary(), [term()]) -> 'ok'.
 -spec system_alert(atom() | string() | binary(), [term()], wh_proplist()) -> 'ok'.
+-spec system_alert(atom() | string() | binary(), [term()], wh_proplist(), atom()) -> 'ok'.
 
 system_alert(Format, Args) ->
-    system_alert(Format, Args, []).
+    system_alert(Format, Args, [], 'undefined').
 
 system_alert(Format, Args, Props) ->
+    system_alert(Format, Args, Props, 'undefined').
+
+system_alert(Format, Args, Props, PoolName) ->
     Msg = io_lib:format(Format, Args),
     Notify= [{<<"Message">>, wh_util:to_binary(Msg)}
              ,{<<"Subject">>, <<"KAZOO: ", (wh_util:to_binary(Msg))/binary>>}
              ,{<<"Details">>, wh_json:from_list(Props)}
              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
-    wapi_notifications:publish_system_alert(Notify).
+    publish_notify(PoolName, Notify).
+
+-spec publish_notify(atom(), wh_proplist()) -> 'ok'.
+publish_notify('undefined', Notify) ->
+    wapi_notifications:publish_system_alert(Notify);
+publish_notify(PoolName, Notify) ->
+    wh_amqp_worker:cast(PoolName, Notify, fun wapi_notifications:publish_system_alert/1).
 
 -spec generic_alert(atom() | string() | binary(), atom() | string() | binary()) -> 'ok'.
 generic_alert(Subject, Msg) ->
