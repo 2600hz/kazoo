@@ -111,15 +111,18 @@ start_link(Args) ->
 -spec default_timeout() -> 2000.
 default_timeout() -> 2000.
 
+-type request_return() :: {'ok', wh_json:object() | wh_json:objects()} |
+                          {'returned', wh_json:object(), wh_json:object()} |
+                          {'timeout', wh_json:objects()} |
+                          {'error', _}.
+
 -spec call(server_ref(), api_terms(), publish_fun(), validate_fun()) ->
-                  {'ok', wh_json:object()} |
-                  {'error', _}.
+                  request_return().
+-spec call(server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout()) ->
+                  request_return().
 call(Srv, Req, PubFun, VFun) ->
     call(Srv, Req, PubFun, VFun, default_timeout()).
 
--spec call(server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout()) ->
-                  {'ok', wh_json:object()} |
-                  {'error', _}.
 call(Srv, Req, PubFun, VFun, Timeout) ->
     Prop = maybe_convert_to_proplist(Req),
     try poolboy:checkout(Srv, 'false', default_timeout()) of
@@ -140,11 +143,9 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
     end.
 
 -spec call_custom(server_ref(), api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
-                         {'ok', wh_json:object()} |
-                         {'error', _}.
+                         request_return().
 -spec call_custom(server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout(), gen_listener:binding()) ->
-                         {'ok', wh_json:object()} |
-                         {'error', _}.
+                         request_return().
 call_custom(Srv, Req, PubFun, VFun, Bind) ->
     call_custom(Srv, Req, PubFun, VFun, default_timeout(), Bind).
 call_custom(Srv, Req, PubFun, VFun, Timeout, Bind) ->
@@ -167,16 +168,14 @@ call_custom(Srv, Req, PubFun, VFun, Timeout, Bind) ->
     end.
 
 -spec call_collect(server_ref(), api_terms(), publish_fun()) ->
-                          {'ok', wh_json:objects()} |
-                          {'timeout', wh_json:objects()} |
-                          {'error', _}.
+                          request_return().
+-spec call_collect(server_ref(), api_terms(), publish_fun(), timeout_or_until()) ->
+                          request_return().
+-spec call_collect(server_ref(), api_terms(), publish_fun(), collect_until(), wh_timeout()) ->
+                          request_return().
 call_collect(Srv, Req, PubFun) ->
     call_collect(Srv, Req, PubFun, default_timeout()).
 
--spec call_collect(server_ref(), api_terms(), publish_fun(), timeout_or_until()) ->
-                          {'ok', wh_json:objects()} |
-                          {'timeout', wh_json:objects()} |
-                          {'error', _}.
 call_collect(Srv, Req, PubFun, UntilFun) when is_function(UntilFun) ->
     call_collect(Srv, Req, PubFun, UntilFun, default_timeout());
 call_collect(Srv, Req, PubFun, Whapp) when is_atom(Whapp); is_binary(Whapp) ->
@@ -188,10 +187,6 @@ call_collect(Srv, Req, PubFun, {_, _, _}=Until) ->
 call_collect(Srv, Req, PubFun, Timeout) ->
     call_collect(Srv, Req, PubFun, collect_until_timeout(), Timeout).
 
--spec call_collect(server_ref(), api_terms(), publish_fun(), collect_until(), wh_timeout()) ->
-                          {'ok', wh_json:objects()} |
-                          {'timeout', wh_json:objects()} |
-                          {'error', _}.
 call_collect(Srv, Req, PubFun, {Whapp, IncludeFederated}, Timeout)
   when (is_atom(Whapp) orelse is_binary(Whapp)) andalso is_boolean(IncludeFederated) ->
     call_collect(Srv, Req, PubFun, collect_from_whapp(Whapp, IncludeFederated), Timeout);
@@ -417,6 +412,22 @@ handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
 handle_cast({'set_negative_threshold', NegThreshold}, State) ->
     lager:debug("set negative threshold to ~p", [NegThreshold]),
     {'noreply', State#state{neg_resp_threshold = NegThreshold}, 'hibernate'};
+handle_cast({'gen_listener', {'return', JObj, BasicReturn}}
+            ,#state{current_msg_id = MsgId
+                    ,client_from = From
+                   }=State) ->
+    _ = wh_util:put_callid(JObj),
+    case wh_json:get_value(<<"Msg-ID">>, JObj) of
+        MsgId ->
+            lager:debug("published message was returned from the broker"),
+            gen_server:reply(From, {'returned', JObj, BasicReturn}),
+            {'noreply', reset(State), 'hibernate'};
+        _MsgId ->
+            lager:debug("ignoring published message was returned from the broker"),
+            lager:debug("payload: ~p", [JObj]),
+            lager:debug("return: ~p", [BasicReturn]),
+            {'noreply', State, 'hibernate'}
+    end;
 handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                            ,client_from = From
                                            ,client_vfun = VFun

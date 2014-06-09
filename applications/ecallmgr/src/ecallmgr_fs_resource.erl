@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -90,7 +90,7 @@ handle_originate_req(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
     put('callid', Node),
-    lager:info("starting new fs resource listener for ~s", [Node]),    
+    lager:info("starting new fs resource listener for ~s", [Node]),
     {'ok', #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------

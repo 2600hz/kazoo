@@ -383,7 +383,7 @@ assign_consumer(#wh_amqp_assignment{}=ChannelAssignment, Consumer, Type) ->
             %% When an existing consumer requests a channel, and a
             %% prechannel is available, move the channel to the consumer.
             %% This occurs when the consumer attempts an operation after
-            %% loosing a valid channel but before a prechannel assignment.
+            %% losing a valid channel but before a prechannel assignment.
             move_channel_to_consumer(ChannelAssignment, ConsumerAssignment)
     end.
 
@@ -415,6 +415,10 @@ move_channel_to_consumer(#wh_amqp_assignment{timestamp=Timestamp
     ets:delete(?TAB, Timestamp),
     lager:debug("assigned existing consumer ~p an available channel ~p on ~s"
                 ,[Consumer, Channel, Broker]),
+
+    amqp_channel:register_return_handler(Channel, Consumer),
+    lager:debug("registered return handler for channel ~p to ~p", [Channel, Consumer]),
+
     _ = maybe_reconnect(Assignment),
     send_notifications(Assignment).
 
@@ -425,7 +429,7 @@ move_channel_to_consumer(#wh_amqp_assignment{timestamp=Timestamp
 %% @end
 %%--------------------------------------------------------------------
 -spec add_consumer_to_channel(wh_amqp_assignment(), pid(), wh_amqp_type()) -> wh_amqp_assignment().
-add_consumer_to_channel(#wh_amqp_assignment{channel=_Channel
+add_consumer_to_channel(#wh_amqp_assignment{channel=Channel
                                             ,broker=_Broker
                                            }=ChannelAssignment
                         ,Consumer, Type) ->
@@ -441,7 +445,11 @@ add_consumer_to_channel(#wh_amqp_assignment{channel=_Channel
                                                    ,watchers=sets:new()
                                                   }),
     lager:debug("assigned existing channel ~p on ~s to new consumer ~p"
-                ,[_Channel, _Broker, Consumer]),
+                ,[Channel, _Broker, Consumer]),
+
+    amqp_channel:register_return_handler(Channel, Consumer),
+    lager:debug("registered return handler for channel ~p to ~p", [Channel, Consumer]),
+
     send_notifications(Assignment).
 
 %%--------------------------------------------------------------------
@@ -529,6 +537,7 @@ assign_channel(#wh_amqp_assignment{channel=CurrentChannel
   when is_pid(CurrentChannel) ->
     lager:debug("reassigning consumer ~p, closing current channel ~p on ~s"
                 ,[Consumer, CurrentChannel, CurrentBroker]),
+
     Commands = wh_amqp_history:get(Consumer),
     _ = (catch wh_amqp_channel:close(CurrentChannel, Commands)),
     assign_channel(Assignment#wh_amqp_assignment{channel='undefined'
@@ -539,6 +548,7 @@ assign_channel(#wh_amqp_assignment{timestamp=Timestamp
                                   }=ConsumerAssignment
                ,Broker, Connection, Channel) ->
     Ref = erlang:monitor('process', Channel),
+
     Assigment
         = ConsumerAssignment#wh_amqp_assignment{channel=Channel
                                                 ,channel_ref=Ref
