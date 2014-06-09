@@ -106,8 +106,8 @@ handle_cast(_Msg, State) ->
 handle_info('timeout', #state{jobs=[]}=State) ->
     Upto = wh_util:current_tstamp(),
     ViewOptions = [{'limit', 100}
-                   ,{'startkey', [wh_json:new()]}
-                   ,{'endkey', [Upto]}
+%                   ,{'startkey', [wh_json:new()]}
+                   ,{'endkey', Upto}
                    ],
     case couch_mgr:get_results(?WH_FAXES, <<"faxes/jobs">>, ViewOptions) of
         {'ok', []} -> {'noreply', State, ?POLLING_INTERVAL};

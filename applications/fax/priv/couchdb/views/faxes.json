@@ -13,7 +13,7 @@
        },
        "jobs": {
            "map": "function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_deleted || doc.pvt_job_status != 'pending') return; key = doc.pvt_modified + (doc.retry_after != null ? doc.retry_after : 0); 
-           emit(key, {'id' : doc_id, 'retry_after' : doc.retry_after }); }"
+           emit(key, {'id' : doc._id, 'retry_after' : doc.retry_after }); }"
        },
        "processing_by_node": {
            "map": "function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_job_status != 'processing' || doc.pvt_deleted) return; emit(doc.pvt_job_node, {'modified' : doc.pvt_modified} ); }"

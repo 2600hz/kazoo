@@ -19,6 +19,7 @@
 
 -include("fax_cloud.hrl").
 
+-define(JSON(L), wh_json:from_list(L)).
 
 
 %%%===================================================================
@@ -138,12 +139,11 @@ update_job_status(PrinterId, JobId, <<"DONE">>=Status) ->
     StateObj = wh_json:set_value(<<"state">>, wh_json:set_value(<<"type">>, Status, wh_json:new()), wh_json:new()),
     update_job_status(PrinterId, JobId, StateObj);    
 update_job_status(PrinterId, JobId, <<"ABORTED">>=Status) ->
-    StateObj = fax_cloud_printer_util:recursive_from_list(
+    StateObj = wh_json:from_list(
                  [{<<"state">>, 
-                   [{<<"type">>, Status}
-                   ,{<<"device_action_cause">>,
-                     [{<<"error_code">>,<<"OTHER">>}]
-                    }]}
+                   ?JSON([{<<"type">>, Status}
+                          ,{<<"device_action_cause">>,
+                            ?JSON([{<<"error_code">>,<<"OTHER">>}])}])}
                  ]),
     update_job_status(PrinterId, JobId, StateObj);    
 update_job_status(PrinterId, JobId, Status) ->
