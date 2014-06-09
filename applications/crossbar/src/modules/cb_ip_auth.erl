@@ -137,7 +137,7 @@ validate(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 put(Context) ->
-    create_token(Context).
+    crossbar_util:create_auth_token(Context, ?MODULE).
 
 %%%===================================================================
 %%% Internal functions
@@ -170,44 +170,6 @@ on_successful_load(Context, 'success', [Doc]) ->
     cb_context:set_doc(Context, Doc);
 on_successful_load(Context, _Status, _Doc) ->
     Context.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
-%% @end
-%%--------------------------------------------------------------------
--spec create_token(cb_context:context()) -> cb_context:context().
-create_token(Context) ->
-    JObj = cb_context:doc(Context),
-    case wh_json:is_empty(JObj) of
-        'true' ->
-            lager:debug("refusing to create auth token for an empty doc"),
-            cb_context:add_system_error('invalid_credentials', Context);
-        'false' ->
-            create_token(Context, JObj)
-    end.
-
-create_token(Context, JObj) ->
-    AccountId = wh_json:get_value([<<"value">>, <<"account_id">>], JObj),
-    Token = [{<<"account_id">>, AccountId}
-             ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-             ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-             ,{<<"method">>, wh_util:to_binary(?MODULE)}
-            ],
-    case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
-        {'ok', Doc} ->
-            AuthToken = wh_json:get_value(<<"_id">>, Doc),
-            lager:debug("created new local auth token ~s", [AuthToken]),
-            crossbar_util:response(crossbar_util:response_auth(JObj)
-                                   ,cb_context:setters(Context
-                                                       ,[{fun cb_context:set_auth_token/2, AuthToken}
-                                                         ,{fun cb_context:set_auth_doc/2, Doc}
-                                                        ]));
-        {'error', R} ->
-            lager:debug("could not create new local auth token, ~p", [R]),
-            cb_context:add_system_error('datastore_fault', Context)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

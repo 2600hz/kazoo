@@ -191,27 +191,40 @@ handle_query_auth_id(JObj, _Props) ->
 -spec handle_query_user_channels(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_query_user_channels(JObj, _Props) ->
     'true' = wapi_call:query_user_channels_req_v(JObj),
-    Realm = wh_json:get_value(<<"Realm">>, JObj),
-    case wh_json:get_value(<<"Username">>, JObj) of
-        'undefined' -> handle_query_users_channels(JObj, Realm);
-        Username -> handle_query_user_channels(JObj, Username, Realm)
-    end.
+    UserChannels0 = case wh_json:get_value(<<"Realm">>, JObj) of
+                        'undefined' -> [];
+                        Realm ->
+                            Usernames = wh_json:get_first_defined([<<"Username">>
+                                                                   ,<<"Usernames">>
+                                                                  ], JObj),
+                            find_by_user_realm(Usernames, Realm)
+                    end,
+    UserChannels1 = case wh_json:get_value(<<"Authorizing-IDs">>, JObj) of
+                        'undefined' -> [];
+                        AuthIds -> find_by_authorizing_id(AuthIds)
+                    end,
+    UserChannels2 = lists:keymerge(1, UserChannels0, UserChannels1),
+    handle_query_users_channels(JObj, UserChannels2).
 
--spec handle_query_users_channels(wh_json:object(), ne_binary()) -> 'ok'.
-handle_query_users_channels(JObj, Realm) ->
-    case find_users_channels(wh_json:get_value(<<"Usernames">>, JObj), Realm) of
-        {'error', 'not_found'} -> send_user_query_resp(JObj, []);
-        {'ok', Cs} -> send_user_query_resp(JObj, Cs)
-    end.
-
--spec handle_query_user_channels(wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
-handle_query_user_channels(JObj, Username, Realm) ->
-    case find_by_user_realm(Username, Realm) of
-        {'error', 'not_found'} -> send_user_query_resp(JObj, []);
-        {'ok', Cs} -> send_user_query_resp(JObj, Cs)
-    end.
+-spec handle_query_users_channels(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_query_users_channels(JObj, Cs) ->
+    Channels = [Channel || {_, Channel} <- Cs],
+    send_user_query_resp(JObj, Channels).
 
 -spec send_user_query_resp(wh_json:object(), wh_json:objects()) -> 'ok'.
+send_user_query_resp(JObj, []) ->
+    case wh_json:is_true(<<"Active-Only">>, JObj, 'true') of
+        'true' -> lager:debug("no channels, not sending response");
+        'false' ->
+            lager:debug("no channels, sending empty response"),
+            Resp = [{<<"Channels">>, []}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+            ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+            lager:debug("sending back channel data to ~s", [ServerId]),
+            wapi_call:publish_query_user_channels_resp(ServerId, Resp)
+    end;
 send_user_query_resp(JObj, Cs) ->
     Resp = [{<<"Channels">>, Cs}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -474,25 +487,36 @@ find_by_auth_id(AuthorizingId) ->
                            ]}
     end.
 
--spec find_by_user_realm(ne_binary(), ne_binary()) ->
-                                {'ok', wh_json:objects()} |
-                                {'error', 'not_found'}.
-find_by_user_realm(Username, Realm) ->
-    Pattern = #channel{username=wh_util:to_lower_binary(Username)
-                      ,realm=wh_util:to_lower_binary(Realm)
-                      ,_='_'},
+-spec find_by_authorizing_id(ne_binaries()) -> [] | wh_proplist().
+-spec find_by_authorizing_id(ne_binaries(), wh_proplist()) -> [] | wh_proplist().
+find_by_authorizing_id(AuthIds) ->
+    find_by_authorizing_id(AuthIds, []).
+
+find_by_authorizing_id([], Acc) -> Acc;
+find_by_authorizing_id([AuthId|AuthIds], Acc) ->
+    Pattern = #channel{authorizing_id=AuthId
+                       ,_='_'},
     case ets:match_object(?CHANNELS_TBL, Pattern) of
-        [] -> {'error', 'not_found'};
+        [] -> find_by_authorizing_id(AuthIds, Acc);
         Channels ->
-            {'ok', [ecallmgr_fs_channel:to_json(Channel)
-                    || Channel <- Channels
-                   ]}
+            Cs = [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
+                  || Channel <- Channels
+                 ],
+            find_by_authorizing_id(AuthIds, lists:keymerge(1, Acc, Cs))
     end.
 
--spec find_users_channels(ne_binaries(), ne_binary()) ->
-                                 {'ok', wh_json:objects()} |
-                                 {'error', 'not_found'}.
-find_users_channels(Usernames, Realm) ->
+-spec find_by_user_realm(api_binary() | ne_binaries(), ne_binary()) -> [] | wh_proplist().
+find_by_user_realm('undefined', Realm) ->
+    Pattern = #channel{realm=wh_util:to_lower_binary(Realm)
+                      ,_='_'},
+    case ets:match_object(?CHANNELS_TBL, Pattern) of
+        [] -> [];
+        Channels ->
+            [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
+              || Channel <- Channels
+            ]
+    end;
+find_by_user_realm(Usernames, Realm) when is_list(Usernames) ->
     ETSUsernames = build_matchspec_ors(Usernames),
     MatchSpec = [{#channel{username='$1'
                            ,realm=wh_util:to_lower_binary(Realm)
@@ -501,11 +525,22 @@ find_users_channels(Usernames, Realm) ->
                   ,['$_']
                  }],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
-        [] -> {'error', 'not_found'};
+        [] -> [];
         Channels ->
-            {'ok', [ecallmgr_fs_channel:to_json(Channel)
-                    || Channel <- Channels
-                   ]}
+            [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
+                || Channel <- Channels
+            ]
+    end;
+find_by_user_realm(Username, Realm) ->
+    Pattern = #channel{username=wh_util:to_lower_binary(Username)
+                      ,realm=wh_util:to_lower_binary(Realm)
+                      ,_='_'},
+    case ets:match_object(?CHANNELS_TBL, Pattern) of
+        [] -> [];
+        Channels ->
+            [{Channel#channel.uuid, ecallmgr_fs_channel:to_json(Channel)}
+                || Channel <- Channels
+            ]
     end.
 
 -spec find_account_channels(ne_binary()) ->

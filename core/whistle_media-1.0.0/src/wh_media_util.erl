@@ -7,6 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(wh_media_util).
 
+
+-export([recording_url/2]).
 -export([base_url/1, base_url/2, base_url/3]).
 -export([convert_stream_type/1]).
 -export([media_path/1, media_path/2]).
@@ -19,6 +21,12 @@
 -define(AUTH_USERNAME, whapps_config:get_string(?CONFIG_CAT, <<"proxy_username">>, wh_util:rand_hex_binary(8))).
 -define(AUTH_PASSWORD, whapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, wh_util:rand_hex_binary(8))).
 -define(USE_AUTH_STORE, whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, 'true')).
+
+-spec recording_url(ne_binary(), wh_json:object()) -> ne_binary().
+recording_url(CallId, Data) ->
+    Format = wh_json:get_value(<<"format">>, Data, <<".mp3">>),
+    Url = wh_json:get_value(<<"url">>, Data, <<>>),
+    <<Url/binary, "call_recording_", CallId/binary, ".", Format/binary>>.
 
 -spec max_recording_time_limit() -> ?SECONDS_IN_HOUR.
 max_recording_time_limit() ->

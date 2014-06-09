@@ -26,6 +26,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
     Routines = [fun normalize/3
                 ,fun update_pvt_parameters/3
                 ,fun set_doc_id/3
+                ,fun set_recording_url/3
                 ,fun save_cdr/3
                ],
     lists:foldl(fun(F, J) ->
@@ -55,6 +56,13 @@ set_doc_id(_, Timestamp, JObj) ->
     CallId = wh_json:get_value(<<"call_id">>, JObj),
     DocId = cdr_util:get_cdr_doc_id(Timestamp, CallId),
     wh_json:set_value(<<"_id">>, DocId, JObj).
+
+-spec set_recording_url(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+set_recording_url(_, _, JObj) ->
+    case wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj) of
+        'undefined' -> JObj;
+        Url -> wh_json:set_value(<<"recording_url">>, Url, JObj)
+    end.
 
 -spec save_cdr(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
 save_cdr(_, _, JObj) ->

@@ -45,13 +45,11 @@ handle(_Data, Call) ->
                     cf_exe:stop(Call)
             end
     end.
+
 -spec get_channels(ne_binary(), whapps_call:call()) -> wh_json:objects().
 get_channels(OwnerId, Call) ->
     DeviceIds = cf_attributes:owned_by(OwnerId, <<"device">>, Call),
-    Realm = whapps_call:custom_channel_var(<<"Realm">>, 'undefined', Call),
-    Usernames = get_sip_usernames(Call, DeviceIds),
-    Req = [{<<"Realm">>, Realm}
-           ,{<<"Usernames">>, Usernames}
+    Req = [{<<"Authorizing-IDs">>, DeviceIds}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case whapps_util:amqp_pool_collect(Req
@@ -62,26 +60,6 @@ get_channels(OwnerId, Call) ->
             lager:error("could not reach ecallmgr channels: ~p", [_E]),
             [];
         {_, Resp} -> clean_channels(Resp)
-    end.
-
--spec get_sip_usernames(whapps_call:call(), ne_binaries()) -> ne_binaries().
--spec get_sip_usernames(whapps_call:call(), ne_binaries(), ne_binaries()) -> ne_binaries().
-get_sip_usernames(Call, DeviceIds) ->
-    get_sip_usernames(Call, DeviceIds, []).
-
-get_sip_usernames(_, [], Acc) -> Acc;
-get_sip_usernames(Call, [DeviceId|DeviceIds], Acc) ->
-    AccountId = whapps_call:account_id(Call),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, DeviceId) of
-        {'error', _E} ->
-            lager:error("could not load ~p in ~p : ~p", [AccountId, AccountDb, _E]),
-            get_sip_usernames(Call, DeviceIds, Acc);
-        {'ok', JObj} ->
-            case wh_json:get_value([<<"sip">>, <<"username">>], JObj) of
-                'undefined' -> get_sip_usernames(Call, DeviceIds, Acc);
-                Username -> get_sip_usernames(Call, DeviceIds, [Username|Acc])
-            end
     end.
 
 -spec clean_channels(wh_json:objects()) -> dict().

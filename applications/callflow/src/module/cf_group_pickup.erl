@@ -41,7 +41,7 @@ handle(Data, Call) ->
             'true' ->
                 case find_sip_endpoints(Data, Call) of
                     [] -> no_users_in_group(Call);
-                    Usernames -> connect_to_ringing_channel(Usernames, Call)
+                    DeviceIds -> connect_to_ringing_channel(DeviceIds, Call)
                 end;
             'false' -> no_permission_to_intercept(Call)
         end,
@@ -66,15 +66,15 @@ maybe_allowed_to_intercept(Data, Call) ->
 
 -spec maybe_belongs_to_user(ne_binary(), whapps_call:call()) -> boolean().
 maybe_belongs_to_user(UserId, Call) ->
-    is_in_list(whapps_call:authorizing_id(Call), find_user_endpoints([UserId],[],Call)).
+    lists:member(whapps_call:authorizing_id(Call), find_user_endpoints([UserId],[],Call)).
 
 -spec maybe_belongs_to_group(ne_binary(), whapps_call:call()) -> boolean().
 maybe_belongs_to_group(GroupId, Call) ->
-    is_in_list(whapps_call:authorizing_id(Call), find_group_endpoints(GroupId, Call)).
+    lists:member(whapps_call:authorizing_id(Call), find_group_endpoints(GroupId, Call)).
 
 -spec connect_to_ringing_channel(ne_binaries(), whapps_call:call()) -> 'ok'.
-connect_to_ringing_channel(Usernames, Call) ->
-    case find_channels(Usernames, Call) of
+connect_to_ringing_channel(DeviceIds, Call) ->
+    case find_channels(DeviceIds) of
         [] -> no_channels_ringing(Call);
         Channels -> connect_to_a_channel(Channels, Call)
     end,
@@ -185,12 +185,11 @@ pickup_event(Call, _Type, _Evt) ->
     lager:debug("unhandled evt ~p", [_Type]),
     wait_for_pickup(Call).
 
--spec find_channels(ne_binaries(), whapps_call:call()) -> wh_json:objects().
-find_channels(Usernames, Call) ->
-    Realm = wh_util:get_account_realm(whapps_call:account_id(Call)),
-    lager:debug("finding channels for realm ~s, usernames ~p", [Realm, Usernames]),
-    Req = [{<<"Realm">>, Realm}
-           ,{<<"Usernames">>, Usernames}
+-spec find_channels(ne_binaries()) -> wh_json:objects().
+find_channels(DeviceIds) ->
+    lager:debug("finding channels for devices ids ~p", [DeviceIds]),
+    Req = [{<<"Authorizing-IDs">>, DeviceIds}
+           ,{<<"Active-Only">>, 'true'}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case whapps_util:amqp_pool_request(Req
@@ -212,18 +211,14 @@ find_sip_endpoints(Data, Call) ->
             case wh_json:get_value(<<"user_id">>, Data) of
                 'undefined' ->
                     find_sip_users(wh_json:get_value(<<"group_id">>, Data), Call);
-                UserId ->
-                    sip_users_from_endpoints(
-                      find_user_endpoints([UserId], [], Call), Call
-                     )
+                UserId -> find_user_endpoints([UserId], [], Call)
             end;
-        DeviceId ->
-             sip_users_from_endpoints([DeviceId], Call)
+        DeviceId -> [DeviceId]
     end.
 
--spec find_sip_users(ne_binary(), whapps_call:call()) -> ne_binaries().
-find_sip_users(GroupId, Call) ->
-    sip_users_from_endpoints(find_group_endpoints(GroupId, Call), Call).
+-spec find_sip_users(api_binary(), whapps_call:call()) -> ne_binaries().
+find_sip_users(GroupId, Call) when is_binary(GroupId) ->
+    find_group_endpoints(GroupId, Call).
 
 -spec find_group_endpoints(ne_binary(), whapps_call:call()) -> ne_binaries().
 find_group_endpoints(GroupId, Call) ->
@@ -237,23 +232,6 @@ find_group_endpoints(GroupId, Call) ->
         [GroupEndpoints] ->
             Ids = wh_json:get_keys(GroupEndpoints),
             find_endpoints(Ids, GroupEndpoints, Call)
-    end.
-
--spec sip_users_from_endpoints(ne_binaries(), whapps_call:call()) -> ne_binaries().
-sip_users_from_endpoints(EndpointIds, Call) ->
-    lists:foldl(fun(EndpointId, Acc) ->
-                        case sip_user_of_endpoint(EndpointId, Call) of
-                            'undefined' -> Acc;
-                            Username -> [Username|Acc]
-                        end
-                end, [], EndpointIds).
-
--spec sip_user_of_endpoint(ne_binary(), whapps_call:call()) -> api_binary().
-sip_user_of_endpoint(EndpointId, Call) ->
-    case cf_endpoint:get(EndpointId, Call) of
-        {'error', _} -> 'undefined';
-        {'ok', Endpoint} ->
-            wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
     end.
 
 -spec find_endpoints(ne_binaries(), wh_json:object(), whapps_call:call()) ->
@@ -287,12 +265,3 @@ no_channels_ringing(Call) ->
 no_permission_to_intercept(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_say(<<"you have no permission to intercept this call">>, Call).
-
--spec is_in_list(api_binary(), ne_binaries()) -> boolean().
-%% NOTE: this could be replaced by list:member
-is_in_list(_, []) -> 'false';
-is_in_list(Suspect, [H|T]) ->
-    case Suspect == H of
-        'true' -> 'true';
-        _ -> is_in_list(Suspect, T)
-    end.
