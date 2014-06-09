@@ -61,6 +61,11 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
+-define(DEFAULT_RETRY_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"default_retry_period">>, 300)).
+-define(DEFAULT_RETRY_COUNT, whapps_config:get_integer(?CONFIG_CAT, <<"default_retry_count">>, 3)).
+-define(DEFAULT_COMPARE_FIELD, whapps_config:get_binary(?CONFIG_CAT, <<"default_compare_field">>, <<"result_cause">>)).
+
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -499,6 +504,7 @@ release_job(Result, JObj, Resp) ->
     Success = props:is_true(<<"success">>, Result, 'false'),
     Updaters = [ fun(J) -> wh_json:set_value(<<"tx_result">>, wh_json:from_list(Result), J) end
                 ,fun(J) -> wh_json:delete_key(<<"pvt_queue">>, J) end
+                ,fun(J) -> apply_reschedule_logic(J) end
                 ,fun(J) ->
                          Attempts = wh_json:get_integer_value(<<"attempts">>, J, 0),
                          Retries = wh_json:get_integer_value(<<"retries">>, J, 1),
@@ -523,6 +529,57 @@ release_job(Result, JObj, Resp) ->
     couch_mgr:ensure_saved(?WH_FAXES, Update),
     maybe_notify(Result, JObj, Resp, wh_json:get_value(<<"pvt_job_status">>, Update)),
     case Success of 'true' -> 'ok'; 'false' -> 'failure' end.
+
+-spec apply_reschedule_logic(wh_json:object()) -> wh_json:object().
+apply_reschedule_logic(JObj) ->
+    Map = whapps_config:get(?CONFIG_CAT, <<"reschedule">>, wh_json:new()),
+    case apply_reschedule_rules(wh_json:get_values(Map), set_default_update_fields(JObj)) of
+        {'no_rules', JObj2} ->
+            lager:debug("no rules applied in fax reschedule logic"),
+            JObj2;
+        {'ok', JObj2} ->
+            lager:debug("rule '~s' applied in fax reschedule logic", 
+                        [wh_json:get_value(<<"reschedule_rule">>, JObj2)]),
+            JObj2
+    end.
+
+-spec apply_reschedule_rules({wh_json:json_terms(), wh_json:json_strings()}, wh_json:object()) -> 
+          {'ok', wh_json:object()} | {'no_rules', wh_json:object()}.
+apply_reschedule_rules({[], _}, JObj) -> {'no_rules', JObj};
+apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
+    Attempts = wh_json:get_integer_value(<<"attempts">>, JObj, 0),
+    Result = wh_json:get_value(<<"tx_result">>, JObj, wh_json:new()),
+    Field = wh_json:get_value(<<"compare-field">>, Rule, ?DEFAULT_COMPARE_FIELD),
+    ValueList = wh_json:get_value(<<"compare-values">>, Rule, []),
+    ResultValue = wh_json:get_value(Field, Result),
+    Attempt = get_attempt_value(wh_json:get_value(<<"attempt">>, Rule)),
+    RetryAfter = wh_json:get_integer_value(<<"retry-after">>, Rule, ?DEFAULT_RETRY_PERIOD),
+    Retries = wh_json:get_integer_value(<<"retries">>, Rule, ?DEFAULT_RETRY_COUNT),
+    NewRetries = wh_json:get_integer_value(<<"new-retry-count">>, Rule, Retries),
+    case (Attempt =:= Attempts orelse Attempt =:= -1)
+         andalso lists:member(ResultValue, ValueList)
+    of
+        'true' ->
+            NewJObj = wh_json:set_values([{<<"retry_after">>, RetryAfter}
+                                          ,{<<"retries">>, NewRetries}
+                                          ,{<<"reschedule_rule">>, Key}
+                               ], JObj),
+            {'ok', NewJObj};
+        'false' ->
+            apply_reschedule_rules({Rules, Keys}, JObj)
+    end.
+
+
+-spec get_attempt_value(api_binary() | integer() ) -> wh_json:object().
+get_attempt_value(X) when is_integer(X) -> X;
+get_attempt_value('undefined') -> -1;
+get_attempt_value(<<"any">>) -> -1;
+get_attempt_value(X) -> wh_util:to_integer(X).
+
+-spec set_default_update_fields(wh_json:object()) -> wh_json:object().
+set_default_update_fields(JObj) ->
+    wh_json:set_values([{<<"pvt_modified">>, wh_util:current_tstamp()}
+                       ,{<<"retry_after">>, ?DEFAULT_RETRY_PERIOD}], JObj).
 
 
 -spec maybe_notify(wh_proplist(), wh_json:object(), wh_json:object(), ne_binary()) -> any().
