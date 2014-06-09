@@ -61,8 +61,10 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(DEFAULT_RETRY_PERIOD, 60).
--define(DEFAULT_RETRY_COUNT, 5).
+-define(DEFAULT_RETRY_PERIOD, whapps_config:get_integer(?CONFIG_CAT, <<"default_retry_period">>, 60)).
+-define(DEFAULT_RETRY_COUNT, whapps_config:get_integer(?CONFIG_CAT, <<"default_retry_count">>, 5)).
+-define(DEFAULT_COMPARE_FIELD, whapps_config:get_binary(?CONFIG_CAT, <<"default_compare_field">>, <<"result_cause">>)).
+
 
 %%%===================================================================
 %%% API
@@ -170,7 +172,8 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
         _Else ->
             lager:debug("received failed attempt to tx fax, releasing job: ~s", [_Else]),
             release_failed_job('tx_resp', JObj, Job),
-            {'noreply', State}
+            gen_server:cast(Pid, {'job_complete', self()}),
+            {'noreply', reset(State)}
     end;
 handle_cast({'tx_resp', JobId2, _}, #state{job_id=JobId}=State) ->
     lager:debug("received txresp for ~s but this JobId is ~s",[JobId2, JobId]),
@@ -181,7 +184,8 @@ handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
                                             }=State) ->
     lager:debug("received channel destroy for ~s",[JobId]),
     release_failed_job('channel_destroy', JObj, Job),
-    {'noreply', State};
+    gen_server:cast(Pid, {'job_complete', self()}),
+    {'noreply', reset(State)};
 handle_cast({'channel_destroy', JobId2, JObj}, #state{job_id=JobId}=State) ->
     lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
@@ -219,7 +223,8 @@ handle_cast({'fax_status', <<"result">>, JobId, JObj}
             send_status(JobId, <<"Error sending fax">>, AccountId, Data),
             release_failed_job('fax_result', JObj, Job)
     end,
-    {'noreply', State};
+    gen_server:cast(Pid, {'job_complete', self()}),
+    {'noreply', reset(State)};
 handle_cast({'fax_status', Event, JobId, _}, State) ->
     lager:debug("fax status ~s - ~s event not handled",[JobId, Event]),
     {'noreply', State};
@@ -265,7 +270,8 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
                 Error:_R ->
                     lager:debug("~s while processing job ~s: ~p", [Error, JobId, _R]),
                     release_failed_job('exception', Error, JObj),
-                    {'noreply', State}
+                    gen_server:cast(Pid, {'job_complete', self()}),
+                    {'noreply', reset(State)}
             end;
         {'error', _Reason} ->
             lager:debug("failed to acquire job ~s: ~p", [JobId, _Reason]),
@@ -298,13 +304,6 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info('job_timeout', #state{job=JObj}=State) ->
     release_failed_job('job_timeout', 'undefined', JObj),
-    {'noreply', reset(State)};
-handle_info({'release_to_pool', Update, Status}, #state{job_id=JobId
-                           ,job=Job
-                          ,pool=Pid
-                          }=State) ->
-    couch_mgr:ensure_saved(?WH_FAXES, Update),    
-    gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', reset(State)};
 handle_info(_Info, State) ->
     lager:debug("fax worker unhandled message: ~p", [_Info]),
@@ -476,6 +475,9 @@ release_failed_job('job_timeout', _Error, JObj) ->
              ],
     release_job(Result, JObj).
 
+
+
+
 -spec release_successful_job(wh_json:object(), wh_json:object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
     <<"sip:", Code/binary>> = wh_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:200">>),
@@ -524,43 +526,62 @@ release_job(Result, JObj, Resp) ->
                  end
                ],
     Update = lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters),
+    couch_mgr:ensure_saved(?WH_FAXES, Update),
     maybe_notify(Result, JObj, Resp, wh_json:get_value(<<"pvt_job_status">>, Update)),
-    Time = wh_json:get_integer_value(<<"retry-after">>, Update, ?DEFAULT_RETRY_PERIOD) * 1000,
-    Status = case Success of 'true' -> 'ok'; 'false' -> 'failure' end,
-    erlang:send_after(Time, self(), {'release_to_pool', Update, Status}),
-    Status.
+    case Success of 'true' -> 'ok'; 'false' -> 'failure' end.
 
 -spec apply_reschedule_logic(wh_json:object()) -> wh_json:object().
 apply_reschedule_logic(JObj) ->
     Map = whapps_config:get(?CONFIG_CAT, <<"reschedule">>, wh_json:new()),
+    case apply_reschedule_rules(Map, set_default_update_fields(JObj)) of
+        {'no_rules', JObj2} ->
+            lager:debug("no rules applied in fax reschedule logic"),
+            JObj2;
+        {'ok', JObj2} ->
+            lager:debug("rule '~s' applied in fax reschedule logic", [wh_json:get_value(<<"reschedule_rule">>, JObj2)]),
+            JObj2
+    end.
+
+-spec apply_reschedule_rules(wh_json:objects(), wh_json:object()) -> 
+          {'ok', wh_json:object()} | {'no_rules', wh_json:object()}.
+apply_reschedule_rules([], JObj) -> {'no_rules', JObj};
+apply_reschedule_rules([Rule | Rules], JObj) ->
     Attempts = wh_json:get_integer_value(<<"attempts">>, JObj, 0),
     Result = wh_json:get_value(<<"tx_result">>, JObj, wh_json:new()),
-    wh_json:foldl(
-      fun(Rule, J) ->
-              Field = wh_json:get_value(<<"compare-field">>, Rule),
-              Value = wh_json:get_value(<<"compare-value">>, Rule),
-              ResultValue = wh_json:get_value(Field, Result),
-              Attempt = get_attempt_value(wh_json:get_value(<<"attempt">>, Rule)),
-              RetryAfter = wh_json:get_integer_value(<<"retry-after">>, J, ?DEFAULT_RETRY_PERIOD),
-              Retries = wh_json:get_integer_value(<<"retries">>, J, ?DEFAULT_RETRY_COUNT),
-              NewRetries = wh_json:get_integer_value(<<"new-retry-count">>, J, Retries),
-              case (Attempt =:= Attempts 
-                        orelse Attempt =:= -1) 
-                       andalso Value =:= ResultValue of
-                  'true' ->
-                      wh_json:set_values([{<<"retry-after">>, RetryAfter}
+    RuleDescription = wh_json:get_value(<<"description">>, Rule, <<"no rule description">>),
+    Field = wh_json:get_value(<<"compare-field">>, Rule, ?DEFAULT_COMPARE_FIELD),
+    ValueList = wh_json:get_value(<<"compare-value-list">>, Rule, []),
+    ResultValue = wh_json:get_value(Field, Result),
+    Attempt = get_attempt_value(wh_json:get_value(<<"attempt">>, Rule)),
+    RetryAfter = wh_json:get_integer_value(<<"retry-after">>, Rule, ?DEFAULT_RETRY_PERIOD),
+    Retries = wh_json:get_integer_value(<<"retries">>, Rule, ?DEFAULT_RETRY_COUNT),
+    NewRetries = wh_json:get_integer_value(<<"new-retry-count">>, Rule, Retries),
+    case (Attempt =:= Attempts
+         orelse Attempt =:= -1)
+         andalso lists:member(ResultValue, ValueList)
+    of
+        'true' ->
+            NewJObj = wh_json:set_values([{<<"retry_after">>, RetryAfter}
                                           ,{<<"retries">>, NewRetries} 
-                                         ], J);
-                  'false' ->
-                      J
-              end
-      end, JObj, Map).
-    
+                                          ,{<<"reschedule_rule">>, RuleDescription} 
+                               ], JObj),
+            {'ok', NewJObj};
+        'false' ->
+            apply_reschedule_rules(Rules, JObj)
+    end.
+
+
 -spec get_attempt_value(api_binary() | integer() ) -> wh_json:object().
 get_attempt_value(X) when is_integer(X) -> X;
 get_attempt_value('undefined') -> -1;
 get_attempt_value(<<"any">>) -> -1;
 get_attempt_value(X) -> wh_util:to_integer(X).
+
+-spec set_default_update_fields(wh_json:object()) -> wh_json:object().
+set_default_update_fields(JObj) ->
+    wh_json:set_values([{<<"pvt_modified">>, wh_util:current_tstamp()}
+                       ,{<<"retry-after">>, ?DEFAULT_RETRY_PERIOD}], JObj).
+
 
 -spec maybe_notify(wh_proplist(), wh_json:object(), wh_json:object(), ne_binary()) -> any().
 maybe_notify(Result, JObj, Resp, <<"completed">>) ->
