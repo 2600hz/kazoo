@@ -83,6 +83,8 @@
                                 "enum":[
                                     "password"
                                     ,"Password"
+                                    ,"IP"
+                                    ,"ip"
                                 ],
                                 "description":"What type of auth mechanism to use"
                                 ,"default":"password"
