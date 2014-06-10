@@ -853,17 +853,44 @@ change_pin(#mailbox{mailbox_id=Id
         AccountDb = whapps_call:account_db(Call),
 
         {'ok', JObj} = couch_mgr:open_doc(AccountDb, Id),
-        {'ok', _} = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pin">>, Pin, JObj)),
-        {'ok', _} = whapps_call_command:b_prompt(<<"vm-pin_set">>, Call),
-        lager:info("updated mailbox pin number"),
-        Box
+
+        case validate_box_schema(wh_json:set_value(<<"pin">>, Pin, JObj)) of
+            {'ok', PublicJObj} ->
+                PrivJObj = wh_json:private_fields(JObj),
+
+                JObj1 = wh_json:merge_jobjs(PrivJObj, PublicJObj),
+
+                {'ok', _} = couch_mgr:save_doc(AccountDb, JObj1),
+                {'ok', _} = whapps_call_command:b_prompt(<<"vm-pin_set">>, Call),
+                lager:info("updated mailbox pin number"),
+                Box;
+            {'error', _Reason} ->
+                lager:debug("box failed validation: ~p", [_Reason]),
+                invalid_pin(Box, Call)
+        end
     catch
         _:_ ->
             lager:info("new pin was invalid, trying again"),
-            case whapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
-                {'ok', _} -> change_pin(Box, Call);
-                _ -> 'ok'
-            end
+            invalid_pin(Box, Call)
+    end.
+
+-spec invalid_pin(mailbox(), whapps_call:call()) -> 'ok' | mailbox().
+invalid_pin(Box, Call) ->
+    case whapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
+        {'ok', _} -> change_pin(Box, Call);
+        _ -> 'ok'
+    end.
+
+-spec validate_box_schema(wh_json:object()) ->
+                                 {'ok', wh_json:object()} |
+                                 {'error', _}.
+validate_box_schema(JObj) ->
+    case wh_json_validator:is_valid(wh_json:public_fields(JObj), <<"vmboxes">>) of
+        {'fail', [{_Property, Error}|_]} ->
+            lager:debug("vm box failed schema: ~s: ~p", [_Property, Error]),
+            {'error', Error};
+        {'pass', JObj1} ->
+            {'ok', JObj1}
     end.
 
 -spec get_new_pin(pos_integer(), whapps_call:call()) ->
@@ -1506,8 +1533,9 @@ update_folder(Folder, MediaId, #mailbox{mailbox_id=Id}=Mailbox, Call) ->
         update_doc(<<"pvt_deleted">>, 'true', MediaId, AccountDb),
     case couch_mgr:open_doc(AccountDb, Id) of
         {'ok', JObj} ->
-            Messages = [ update_folder1(Message, Folder, MediaId, wh_json:get_value(<<"media_id">>, Message))
-                         || Message <- wh_json:get_value(<<"messages">>, JObj, []) ],
+            Messages = [update_folder1(Message, Folder, MediaId, wh_json:get_value(<<"media_id">>, Message))
+                        || Message <- wh_json:get_value(<<"messages">>, JObj, [])
+                       ],
             case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"messages">>, Messages, JObj)) of
                 {'error', 'conflict'} ->
                     update_folder(Folder, MediaId, Mailbox, Call);
@@ -1522,6 +1550,7 @@ update_folder(Folder, MediaId, #mailbox{mailbox_id=Id}=Mailbox, Call) ->
             E
     end.
 
+-spec update_folder1(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
 update_folder1(Message, Folder, MediaId, MediaId) ->
     wh_json:set_value(<<"folder">>, Folder, Message);
 update_folder1(Message, _, _, _) ->
