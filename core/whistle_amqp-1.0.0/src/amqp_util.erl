@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%% Utilities to facilitate AMQP interaction
 %%% @end
@@ -117,6 +117,9 @@
 -define(P_GET(K, Prop, D), props:get_value(K, Prop, D)).
 
 -type amqp_payload() :: iolist() | ne_binary().
+
+-type amqp_property() :: {ne_binary(), atom(), any()}.
+-type amqp_properties() :: [amqp_property(),...] | [].
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -310,7 +313,6 @@ conference_publish(Payload, 'command', ConfId, Options, ContentType) ->
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
-
 -spec basic_publish(ne_binary(), binary(), amqp_payload()) -> 'ok'.
 -spec basic_publish(ne_binary(), binary(), amqp_payload(), ne_binary()) -> 'ok'.
 -spec basic_publish(ne_binary(), binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
@@ -320,10 +322,12 @@ basic_publish(Exchange, RoutingKey, Payload) ->
 basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
     basic_publish(Exchange, RoutingKey, Payload, ContentType, []).
 
-basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop) when is_list(Payload) ->
+basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop)
+  when is_list(Payload) ->
     basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
 basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
   when is_binary(Exchange),
+       is_binary(RoutingKey),
        is_binary(ContentType),
        is_list(Props) ->
     BP = #'basic.publish'{
@@ -577,28 +581,28 @@ new_queue(Queue, Options) when is_binary(Queue) ->
 new_queue_name() ->
     list_to_binary(io_lib:format("~s-~p-~s", [node(), self(), wh_util:rand_hex_binary(4)])).
 
--spec queue_arguments(wh_proplist()) -> [{ne_binary(), atom(), any()}, ...].
+-spec queue_arguments(wh_proplist()) -> amqp_properties().
 queue_arguments(Arguments) ->
     Routines = [fun max_length/2
                 ,fun message_ttl/2
                ],
     lists:foldl(fun(F, Acc) -> F(Arguments, Acc) end, Arguments, Routines).
 
--spec max_length(wh_proplist(), [{ne_binary(), atom(), any()}, ...]) -> [{ne_binary(), atom(), any()}, ...].
+-spec max_length(wh_proplist(), amqp_properties()) -> amqp_properties().
 max_length(Args, Acc) ->
     case props:get_value(<<"x-max-length">>, Args) of
         'undefined' -> [{<<"x-max-length">>, 'short', 100}|Acc];
         Value ->
-            Acc1 = props:delete_key(<<"x-max-length">>, Acc),
+            Acc1 = props:delete(<<"x-max-length">>, Acc),
             [{<<"x-max-length">>, 'short', Value}|Acc1]
     end.
 
--spec message_ttl(wh_proplist(), [{ne_binary(), atom(), any()}, ...]) -> [{ne_binary(), atom(), any()}, ...].
+-spec message_ttl(wh_proplist(), amqp_properties()) -> amqp_properties().
 message_ttl(Args, Acc) ->
     case props:get_value(<<"x-message-ttl">>, Args) of
         'undefined' -> [{<<"x-message-ttl">>, 'signedint', 60000}|Acc];
         Value ->
-            Acc1 = props:delete_key(<<"x-message-ttl">>, Acc),
+            Acc1 = props:delete(<<"x-message-ttl">>, Acc),
             [{<<"x-message-ttl">>, 'signedint', Value}|Acc1]
     end.
 
@@ -922,7 +926,8 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
 %% Encode a key so characters like dot won't interfere with routing separator
 %% @end
 %%------------------------------------------------------------------------------
--spec encode(ne_binary()) -> ne_binary().
+-spec encode(binary()) -> binary().
+encode(<<>>) -> <<>>;
 encode(<<"*">>) -> <<"*">>;
 encode(<<"#">>) -> <<"#">>;
 encode(Bin) -> << <<(encode_char(B))/binary>> || <<B>> <= Bin >>.

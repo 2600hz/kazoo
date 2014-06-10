@@ -414,7 +414,7 @@ send_conference_event(Action, Props, CustomProps) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     Publisher = fun(P) -> wapi_conference:publish_conference_event(ConferenceName, P) end,
-    _ = wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Event, Publisher),
+    _ = wh_amqp_worker:cast(Event, Publisher),
     %% TODO: After KAZOO-27 is accepted the relay should not be necessary
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
@@ -448,7 +448,7 @@ send_participant_event(Action, CallId, Props, CustomProps) ->
     %% TODO: After KAZOO-27 is accepted the relay should not be necessary and we can
     %%    use publish_participant_event
     %% Publisher = fun(P) -> wapi_conference:publish_participant_event(ConferenceName, P) end,
-    %% _ = wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Event, Publisher),
+    %% _ = wh_amqp_worker:cast(Event, Publisher),
     relay_event(Event ++ CustomProps ++ props:delete_keys([<<"Event-Name">>, <<"Event-Subclass">>], Props)).
 
 -spec exec(atom(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -789,10 +789,7 @@ publish_new_participant_event(Props, Node) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     Publisher = fun(P) -> wapi_conference:publish_participants_event(ConferenceName, P) end,
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,Event
-                        ,Publisher
-                       ).
+    wh_amqp_worker:cast(Event, Publisher).
 
 %% TODO: this can be removed once the KAZOO-27 is accepted
 -spec publish_participant_destroy_event(wh_proplist(), atom()) -> 'ok'.
@@ -809,8 +806,4 @@ publish_participant_destroy_event(Props, Node) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     Publisher = fun(P) -> wapi_conference:publish_participants_event(ConferenceName, P) end,
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,Event
-                        ,Publisher
-                       ).
-
+    wh_amqp_worker:cast(Event, Publisher).

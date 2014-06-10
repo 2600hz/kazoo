@@ -85,6 +85,7 @@
 
 -export([federated_event/3]).
 -export([handle_event/4
+         ,handle_return/4
          ,client_handle_event/6
         ]).
 -export([distribute_event/3]).
@@ -120,6 +121,8 @@
 
 -type state() :: #state{}.
 
+-type basic_deliver() :: #'basic.deliver'{}.
+
 -type handle_event_return() :: {'reply', wh_proplist()} | 'ignore'.
 
 -type binding_module() :: atom() | ne_binary().
@@ -153,23 +156,26 @@
     {'stop', term()} |
     'ignore'.
 
--callback handle_call(term(), {pid(), term()}, module_state()) ->
-    {'reply', term(), module_state()} |
-    {'reply', term(), module_state(), timeout() | 'hibernate'} |
-    {'noreply', module_state()} |
-    {'noreply', module_state(), timeout() | 'hibernate'} |
-    {'stop', term(), term(), module_state()} |
-    {'stop', term(), module_state()}.
+-type handle_call_return() :: {'reply', term(), module_state()} |
+                              {'reply', term(), module_state(), timeout() | 'hibernate'} |
+                              {'noreply', module_state()} |
+                              {'noreply', module_state(), timeout() | 'hibernate'} |
+                              {'stop', term(), term(), module_state()} |
+                              {'stop', term(), module_state()}.
 
--callback handle_cast(term(), module_state()) ->
-    {'noreply', module_state()} |
-    {'noreply', module_state(), timeout() | 'hibernate'} |
-    {'stop', term(), module_state()}.
+-callback handle_call(term(), {pid(), term()}, module_state()) -> handle_call_return().
 
--callback handle_info(timeout() | term(), module_state()) ->
-    {'noreply', module_state()} |
-    {'noreply', module_state(), timeout() | 'hibernate'} |
-    {'stop', term(), module_state()}.
+-type handle_cast_return() :: {'noreply', module_state()} |
+                              {'noreply', module_state(), timeout() | 'hibernate'} |
+                              {'stop', term(), module_state()}.
+
+-callback handle_cast(term(), module_state()) -> handle_cast_return().
+
+-type handle_info_return() :: {'noreply', module_state()} |
+                              {'noreply', module_state(), timeout() | 'hibernate'} |
+                              {'stop', term(), module_state()}.
+
+-callback handle_info(timeout() | term(), module_state()) -> handle_info_return().
 
 -callback handle_event(wh_json:object(), module_state()) ->
     handle_event_return().
@@ -196,10 +202,10 @@ is_consuming(Srv) -> gen_server:call(Srv, 'is_consuming').
 -spec responders(server_ref()) -> listener_utils:responders().
 responders(Srv) -> gen_server:call(Srv, 'responders').
 
--spec ack(server_ref(), #'basic.deliver'{}) -> 'ok'.
+-spec ack(server_ref(), basic_deliver()) -> 'ok'.
 ack(Srv, Delivery) -> gen_server:cast(Srv, {'ack', Delivery}).
 
--spec nack(server_ref(), #'basic.deliver'{}) -> 'ok'.
+-spec nack(server_ref(), basic_deliver()) -> 'ok'.
 nack(Srv, Delivery) -> gen_server:cast(Srv, {'nack', Delivery}).
 
 %% API functions that mirror gen_server:call,cast,reply
@@ -291,7 +297,7 @@ rm_binding(Srv, {Binding, Props}) ->
 rm_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {'rm_binding', Binding, Props}).
 
--spec federated_event(server_ref(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
+-spec federated_event(server_ref(), wh_json:object(), basic_deliver()) -> 'ok'.
 federated_event(Srv, JObj, BasicDeliver) ->
     gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver}).
 
@@ -339,7 +345,7 @@ init([Module, Params, InitArgs]) ->
         'ignore' -> 'ignore'
     end.
 
-init(Module, Params, ModState, TimeoutRef) ->
+init(Module, Params, ModuleState, TimeoutRef) ->
     Responders = props:get_value('responders', Params, []),
     _ = [add_responder(self(), Mod, Events)
          || {Mod, Events} <- Responders
@@ -348,7 +354,7 @@ init(Module, Params, ModState, TimeoutRef) ->
     case maybe_start_federators(Params) of
         {'ok', Federators} ->
             {'ok', #state{module=Module
-                          ,module_state=ModState
+                          ,module_state=ModuleState
                           ,module_timeout_ref=TimeoutRef
                           ,params=Params
                           ,federators=Federators
@@ -356,7 +362,7 @@ init(Module, Params, ModState, TimeoutRef) ->
                          }};
         'ok' ->
             {'ok', #state{module=Module
-                          ,module_state=ModState
+                          ,module_state=ModuleState
                           ,module_timeout_ref=TimeoutRef
                           ,params=Params
                           ,federators=[]
@@ -378,11 +384,7 @@ init(Module, Params, ModState, TimeoutRef) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--type gen_l_handle_call_ret() :: {'reply', term(), state(), gen_server_timeout()} |
-                                 {'noreply', state(), gen_server_timeout()} |
-                                 {'stop', term(), state()} | {'stop', term(), term(), state()}.
-
--spec handle_call(term(), {pid(), reference()}, state()) -> gen_l_handle_call_ret().
+-spec handle_call(term(), {pid(), reference()}, state()) -> handle_call_return().
 handle_call({'add_queue', QueueName, QueueProps, Bindings}, _From, State) ->
     {Q, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
     {'reply', {'ok', Q}, S};
@@ -394,37 +396,8 @@ handle_call('responders', _From, #state{responders=Rs}=State) ->
     {'reply', Rs, State};
 handle_call('is_consuming', _From, #state{is_consuming=IsC}=State) ->
     {'reply', IsC, State};
-handle_call(Request, From, #state{module=Module
-                                  ,module_state=ModState
-                                  ,module_timeout_ref=OldRef
-                                 }=State) ->
-    _ = stop_timer(OldRef),
-    case catch Module:handle_call(Request, From, ModState) of
-        {'reply', Reply, ModState1} ->
-            {'reply', Reply, State#state{module_state=ModState1
-                                         ,module_timeout_ref='undefined'
-                                        }
-             ,'hibernate'};
-        {'reply', Reply, ModState1, Timeout} ->
-            {'reply', Reply, State#state{module_state=ModState1
-                                         ,module_timeout_ref=start_timer(Timeout)
-                                        }
-             ,'hibernate'};
-        {'noreply', ModState1} ->
-            {'noreply', State#state{module_state=ModState1}, 'hibernate'};
-        {'noreply', ModState1, Timeout} ->
-            {'noreply', State#state{module_state=ModState1
-                                    ,module_timeout_ref=start_timer(Timeout)
-                                   }
-             ,'hibernate'};
-        {'stop', Reason, ModState1} ->
-            {'stop', Reason, State#state{module_state=ModState1}};
-        {'stop', Reason, Reply, ModState1} ->
-            {'stop', Reason, Reply, State#state{module_state=ModState1}};
-        {'EXIT', Why} ->
-            lager:alert("exception: ~p", [Why]),
-            {'stop', Why, State}
-    end.
+handle_call(Request, From, State) ->
+    handle_module_call(Request, From, State).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -436,7 +409,7 @@ handle_call(Request, From, #state{module=Module
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(term(), state()) -> handle_cast_ret().
+-spec handle_cast(term(), state()) -> handle_cast_return().
 handle_cast({'ack', Delivery}, State) ->
     amqp_util:basic_ack(Delivery),
     {'noreply', State};
@@ -538,29 +511,8 @@ handle_cast({'$execute', Function}=Msg
          || Federator <- Federators
         ],
     {'noreply', State};
-handle_cast(Message, #state{module=Module
-                            ,module_state=ModState
-                            ,module_timeout_ref=OldRef
-                           }=State) ->
-    _ = stop_timer(OldRef),
-    case catch Module:handle_cast(Message, ModState) of
-        {'noreply', ModState1} ->
-            {'noreply', State#state{module_state=ModState1}, 'hibernate'};
-        {'noreply', ModState1, Timeout} ->
-            Ref = start_timer(Timeout),
-            {'noreply', State#state{module_state=ModState1
-                                    ,module_timeout_ref=Ref
-                                   }
-             ,'hibernate'
-            };
-        {'stop', Reason, ModState1} ->
-            {'stop', Reason, State#state{module_state=ModState1}};
-        {'EXIT', {Reason, _ST}} ->
-            lager:debug("exception: ~p: ~p", [Reason, _ST]),
-            ST = erlang:get_stacktrace(),
-            wh_util:log_stacktrace(ST),
-            {'stop', Reason, State}
-    end.
+handle_cast(Message, State) ->
+    handle_module_cast(Message, State).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -574,9 +526,14 @@ handle_cast(Message, #state{module=Module
 %%--------------------------------------------------------------------
 -spec handle_info(term(), state()) -> handle_info_ret().
 handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
-                                              ,payload=Payload}}, State) ->
+                                              ,payload=Payload
+                                             }}, State) ->
     spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]),
     {'noreply', State, 'hibernate'};
+handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
+                                             ,payload=Payload
+                                            }}, State) ->
+    handle_return(Payload, CT, BR, State);
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
@@ -607,7 +564,7 @@ handle_info(Message, State) ->
 %% @spec handle_event(JObj, State) -> {'reply', Options} | ignore
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  'ok'.
+-spec handle_event(ne_binary(), ne_binary(), basic_deliver(), state()) ->  'ok'.
 handle_event(Payload, <<"application/json">>, BasicDeliver, State) ->
     JObj = wh_json:decode(Payload),
     _ = wh_util:put_callid(JObj),
@@ -620,15 +577,51 @@ handle_event(Payload, <<"application/erlang">>, BasicDeliver, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Handles the AMQP messages prior to the spawning a handler.
+%% Allows listeners to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {'reply', Options} | ignore
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_return(ne_binary(), ne_binary(), #'basic.return'{}, state()) ->  handle_cast_return().
+handle_return(Payload, <<"application/json">>, BR, State) ->
+    JObj = wh_json:decode(Payload),
+    _ = wh_util:put_callid(JObj),
+    handle_return(JObj, BR, State);
+handle_return(Payload, <<"application/erlang">>, BR, State) ->
+    JObj = binary_to_term(Payload),
+    _ = wh_util:put_callid(JObj),
+    handle_return(JObj, BR, State).
+
+-spec handle_return(wh_json:object(), #'basic.return'{}, state()) -> handle_cast_return().
+handle_return(JObj, BR, State) ->
+    Msg = {'gen_listener', {'return', JObj, basic_return_to_jobj(BR)}},
+    handle_module_cast(Msg, State).
+
+-spec basic_return_to_jobj(#'basic.return'{}) -> wh_json:object().
+basic_return_to_jobj(#'basic.return'{reply_code=Code
+                                     ,reply_text=Msg
+                                     ,exchange=Exchange
+                                     ,routing_key=RoutingKey
+                                    }) ->
+    wh_json:from_list([{<<"code">>, Code}
+                       ,{<<"message">>, wh_util:to_binary(Msg)}
+                       ,{<<"exchange">>, wh_util:to_binary(Exchange)}
+                       ,{<<"routing_key">>, wh_util:to_binary(RoutingKey)}
+                      ]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %%
 %%
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
 terminate(Reason, #state{module=Module
-                         ,module_state=ModState
+                         ,module_state=ModuleState
                         }) ->
-    _ = (catch Module:terminate(Reason, ModState)),
+    _ = (catch Module:terminate(Reason, ModuleState)),
     _ = (catch wh_amqp_channel:release()),
     lager:debug("~s terminated cleanly, going down", [Module]).
 
@@ -702,45 +695,47 @@ federated_queue_name(Params) ->
             <<QueueName/binary, "-", (wh_util:to_binary(Zone))/binary>>
     end.
 
+-spec handle_callback_info(term(), state()) -> handle_info_return().
 handle_callback_info(Message, #state{module=Module
-                                     ,module_state=ModState
+                                     ,module_state=ModuleState
                                      ,module_timeout_ref=OldRef
                                     }=State) ->
     _ = stop_timer(OldRef),
-    case catch Module:handle_info(Message, ModState) of
-        {'noreply', ModState1} ->
-            {'noreply', State#state{module_state=ModState1}, 'hibernate'};
-        {'noreply', ModState1, Timeout} ->
+    try Module:handle_info(Message, ModuleState) of
+        {'noreply', ModuleState1} ->
+            {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
+        {'noreply', ModuleState1, Timeout} ->
             Ref = start_timer(Timeout),
-            {'noreply', State#state{module_state=ModState1
+            {'noreply', State#state{module_state=ModuleState1
                                     ,module_timeout_ref=Ref
                                    }
              ,'hibernate'
             };
-        {'stop', Reason, ModState1} ->
-            {'stop', Reason, State#state{module_state=ModState1}};
-        {'EXIT', Why} ->
-            lager:alert("exception: ~p", [Why]),
-            {'stop', Why, State}
+        {'stop', Reason, ModuleState1} ->
+            {'stop', Reason, State#state{module_state=ModuleState1}}
+    catch
+        _E:R ->
+            lager:debug("handle_info exception: ~s: ~p", [_E, R]),
+            {'stop', R, State}
     end.
 
 format_status(_Opt, [_PDict, #state{module=Module
-                                    ,module_state=ModState
+                                    ,module_state=ModuleState
                                    }=State]) ->
-    [{'data', [{"Module State", ModState}
+    [{'data', [{"Module State", ModuleState}
                ,{"Module", Module}
               ]}
      ,{'data', [{"Listener State", State}]}
     ].
 
--spec distribute_event(wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+-spec distribute_event(wh_json:object(), basic_deliver(), state()) -> 'ok'.
 distribute_event(JObj, BasicDeliver, State) ->
     case callback_handle_event(JObj, BasicDeliver, State) of
         'ignore' -> 'ok';
         Props -> distribute_event(Props, JObj, BasicDeliver, State)
     end.
 
--spec distribute_event(wh_proplist(), wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+-spec distribute_event(wh_proplist(), wh_json:object(), basic_deliver(), state()) -> 'ok'.
 distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                    ,consumer_key=ConsumerKey
                                                   }) ->
@@ -756,7 +751,7 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
         ],
     'ok'.
 
--spec client_handle_event(wh_json:object(), ne_binary(), atom(), atom(), wh_proplist(), #'basic.deliver'{}) -> any().
+-spec client_handle_event(wh_json:object(), wh_amqp_channel:consumer_pid(), atom(), atom(), wh_proplist(), basic_deliver()) -> any().
 client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
     _ = wh_util:put_callid(JObj),
     _ = wh_amqp_channel:consumer_pid(ConsumerKey),
@@ -765,33 +760,34 @@ client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
         'false' -> Module:Fun(JObj, Props)
     end.
 
--spec callback_handle_event(wh_json:object(), #'basic.deliver'{}, state()) -> 'ignore' | wh_proplist().
+-spec callback_handle_event(wh_json:object(), basic_deliver(), state()) ->
+                                   'ignore' |
+                                   wh_proplist().
 callback_handle_event(JObj
                       ,BasicDeliver
                       ,#state{module=Module
-                              ,module_state=ModState
+                              ,module_state=ModuleState
                               ,queue=Queue
                               ,other_queues=OtherQueues
                               ,self=Self
                              }) ->
-    OtherQueueNames = props:get_keys(OtherQueues),
     case
         case erlang:function_exported(Module, 'handle_event', 3) of
-            'true' -> catch Module:handle_event(JObj, BasicDeliver, ModState);
-            'false' -> catch Module:handle_event(JObj, ModState)
+            'true' -> catch Module:handle_event(JObj, BasicDeliver, ModuleState);
+            'false' -> catch Module:handle_event(JObj, ModuleState)
         end
     of
         'ignore' -> 'ignore';
         {'reply', Props} when is_list(Props) ->
             [{'server', Self}
              ,{'queue', Queue}
-             ,{'other_queues', OtherQueueNames}
+             ,{'other_queues', props:get_keys(OtherQueues)}
              | Props
             ];
         {'EXIT', _Why} ->
             [{'server', Self}
              ,{'queue', Queue}
-             ,{'other_queues', OtherQueueNames}
+             ,{'other_queues', props:get_keys(OtherQueues)}
             ]
     end.
 
@@ -803,7 +799,9 @@ maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> 'true';
 maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> 'true';
 maybe_event_matches_key(_A, _B) -> 'false'.
 
--spec start_amqp(wh_proplist()) -> {'ok', binary()} | {'error', _}.
+-spec start_amqp(wh_proplist()) ->
+                        {'ok', binary()} |
+                        {'error', _}.
 start_amqp(Props) ->
     QueueProps = props:get_value('queue_options', Props, []),
     QueueName = props:get_value('queue_name', Props, <<>>),
@@ -818,7 +816,7 @@ start_amqp(Props) ->
 
 -spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
 set_qos('undefined') -> 'ok';
-set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
+set_qos(N) when is_integer(N), N >= 0 -> amqp_util:basic_qos(N).
 
 -spec start_consumer(ne_binary(), wh_proplist()) -> 'ok'.
 start_consumer(Q, 'undefined') -> amqp_util:basic_consume(Q, []);
@@ -876,4 +874,62 @@ add_other_queue(QueueName, QueueProps, Bindings, #state{other_queues=OtherQueues
             {Q, State#state{other_queues=[{Q, {Bindings ++ OldBindings, QueueProps}}
                                           | props:delete(QueueName, OtherQueues)
                                          ]}}
+    end.
+
+-spec handle_module_call(term(), pid_ref(), state()) -> handle_call_return().
+handle_module_call(Request, From, #state{module=Module
+                                         ,module_state=ModuleState
+                                         ,module_timeout_ref=OldRef
+                                        }=State) ->
+    _ = stop_timer(OldRef),
+    try Module:handle_call(Request, From, ModuleState) of
+        {'reply', Reply, ModuleState1} ->
+            {'reply', Reply, State#state{module_state=ModuleState1
+                                         ,module_timeout_ref='undefined'
+                                        }
+             ,'hibernate'};
+        {'reply', Reply, ModuleState1, Timeout} ->
+            {'reply', Reply, State#state{module_state=ModuleState1
+                                         ,module_timeout_ref=start_timer(Timeout)
+                                        }
+             ,'hibernate'};
+        {'noreply', ModuleState1} ->
+            {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
+        {'noreply', ModuleState1, Timeout} ->
+            {'noreply', State#state{module_state=ModuleState1
+                                    ,module_timeout_ref=start_timer(Timeout)
+                                   }
+             ,'hibernate'};
+        {'stop', Reason, ModuleState1} ->
+            {'stop', Reason, State#state{module_state=ModuleState1}};
+        {'stop', Reason, Reply, ModuleState1} ->
+            {'stop', Reason, Reply, State#state{module_state=ModuleState1}}
+    catch
+        _E:R ->
+            lager:debug("handle_call exception: ~s: ~p", [_E, R]),
+            {'stop', R, State}
+    end.
+
+-spec handle_module_cast(term(), state()) -> handle_cast_return().
+handle_module_cast(Msg, #state{module=Module
+                               ,module_state=ModuleState
+                               ,module_timeout_ref=OldRef
+                              }=State) ->
+    stop_timer(OldRef),
+    try Module:handle_cast(Msg, ModuleState) of
+        {'noreply', ModuleState1} ->
+            {'noreply', State#state{module_state=ModuleState1}, 'hibernate'};
+        {'noreply', ModuleState1, Timeout} ->
+            Ref = start_timer(Timeout),
+            {'noreply', State#state{module_state=ModuleState1
+                                    ,module_timeout_ref=Ref
+                                   }
+             ,'hibernate'
+            };
+        {'stop', Reason, ModuleState1} ->
+            {'stop', Reason, State#state{module_state=ModuleState1}}
+    catch
+        _E:R ->
+            lager:debug("handle_cast exception: ~s: ~p", [_E, R]),
+            {'stop', R, State}
     end.

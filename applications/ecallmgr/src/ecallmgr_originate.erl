@@ -436,7 +436,11 @@ get_originate_action(<<"transfer">>, JObj) ->
     case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
         'undefined' -> <<"error">>;
         Route ->
-            list_to_binary(["'m:^:", get_unset_vars(JObj), "transfer:", wnm_util:to_e164(Route), " XML context_2' inline"])
+            Context = ?DEFAULT_FREESWITCH_CONTEXT,
+            list_to_binary(["'m:^:", get_unset_vars(JObj)
+                            ,"transfer:", wnm_util:to_e164(Route)
+                            ," XML ", Context, "' inline"
+                           ])
     end;
 get_originate_action(<<"bridge">>, JObj) ->
     lager:debug("got originate with action bridge"),
@@ -788,10 +792,9 @@ update_endpoint(Endpoint, #state{node=Node
 update_endpoint(Endpoint, {_, ID}=State) ->
     fix_hold_media(wh_json:set_value(<<"origination_uuid">>, ID, Endpoint), State).
 
-fix_hold_media(Endpoint, State) ->
+fix_hold_media(Endpoint, _State) ->
     put('hold_media', wh_json:get_value(<<"Hold-Media">>, Endpoint)),
     wh_json:delete_key(<<"Hold-Media">>, Endpoint).
-
 
 -spec should_update_uuid(api_binary(), wh_proplist()) -> boolean().
 should_update_uuid(OldUUID, Props) ->

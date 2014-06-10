@@ -126,11 +126,11 @@ is_consuming_resource(Props, CallId, Node) ->
             end
     end.
 
--spec request_channel_authorization(wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec request_channel_authorization(wh_proplist(), ne_binary(), atom()) ->
+                                           boolean().
 request_channel_authorization(Props, CallId, Node) ->
     lager:debug("channel authorization request started"),
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,authz_req(Props)
+    ReqResp = wh_amqp_worker:call(authz_req(Props)
                                   ,fun wapi_authz:publish_authz_req/1
                                   ,fun wapi_authz:authz_resp_v/1
                                   ,5000),
@@ -222,8 +222,7 @@ rate_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put('callid', CallId),
     lager:debug("sending rate request"),
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,rating_req(CallId, Props)
+    ReqResp = wh_amqp_worker:call(rating_req(CallId, Props)
                                   ,fun wapi_rate:publish_req/1
                                   ,fun wapi_rate:resp_v/1
                                   ,10000

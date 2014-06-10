@@ -353,7 +353,7 @@ publish_originate_req(JObj) ->
     publish_originate_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_req(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?ORIGINATE_REQ_VALUES, fun ?MODULE:originate_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RESOURCE_REQ).
+    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RESOURCE_REQ, [{'mandatory', 'true'}]).
 
 -spec publish_originate_resp(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_originate_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

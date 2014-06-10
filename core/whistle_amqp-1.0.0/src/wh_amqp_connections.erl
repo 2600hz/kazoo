@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -54,20 +54,31 @@
 %%--------------------------------------------------------------------
 start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
--spec new(wh_amqp_connection() | text()) -> wh_amqp_connection() | {'error', _}.
+-spec new(wh_amqp_connection() | text()) ->
+                 wh_amqp_connection() |
+                 {'error', _}.
 new(Broker) -> new(Broker, 'local').
 
--spec new(wh_amqp_connection() | text(), text()) -> wh_amqp_connection() | {'error', _}.
-new(Broker, Zone) ->
+-spec new(wh_amqp_connection() | text(), text()) ->
+                 wh_amqp_connection() |
+                 {'error', _}.
+new(<<_/binary>> = Broker, Zone) ->
     case broker_connections(Broker) =:= 0 of
         'false' -> {'error', 'exists'};
         'true' -> wh_amqp_connections:add(Broker, Zone)
-    end.
+    end;
+new(Broker, Zone) ->
+    new(wh_util:to_binary(Broker), Zone).
 
--spec add(wh_amqp_connection() | text()) -> wh_amqp_connection() | {'error', _}.
+-spec add(wh_amqp_connection() | text()) ->
+                 wh_amqp_connection() |
+                 {'error', _}.
+-spec add(wh_amqp_connection() | text(), text()) ->
+                 wh_amqp_connection() |
+                 {'error', _}.
+
 add(Broker) -> add(Broker, 'local').
 
--spec add(wh_amqp_connection() | text(), text()) -> wh_amqp_connection() | {'error', _}.
 add(#wh_amqp_connection{broker=Broker}=Connection, Zone) ->
     case wh_amqp_connection_sup:add(Connection) of
         {'ok', Pid} ->
@@ -75,7 +86,8 @@ add(#wh_amqp_connection{broker=Broker}=Connection, Zone) ->
             Connection;
         {'error', Reason} ->
             lager:warning("unable to start amqp connection to '~s': ~p"
-                          ,[Broker, Reason]),
+                          ,[Broker, Reason]
+                         ),
             {'error', Reason}
     end;
 add(Broker, Zone) when not is_binary(Broker) ->
@@ -94,12 +106,14 @@ add(Broker, Zone) ->
             add(#wh_amqp_connection{broker=Broker
                                     ,params=Params#amqp_params_network{connection_timeout=500}
                                    }
-                ,Zone);
+                ,Zone
+               );
         {'ok', Params} ->
             add(#wh_amqp_connection{broker=Broker
                                     ,params=Params
                                    }
-                ,Zone)
+                ,Zone
+               )
     end.
 
 -spec remove(pids() | pid() | text()) -> 'ok'.
@@ -125,7 +139,6 @@ available(Connection) when is_pid(Connection) ->
 -spec unavailable(pid()) -> 'ok'.
 unavailable(Connection) when is_pid(Connection) ->
     gen_server:cast(?MODULE, {'connection_unavailable', Connection}).
-
 
 -spec broker_connections(ne_binary()) -> non_neg_integer().
 broker_connections(Broker) ->

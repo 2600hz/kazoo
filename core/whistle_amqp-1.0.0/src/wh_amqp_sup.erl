@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -9,11 +9,25 @@
 
 -behaviour(supervisor).
 
--export([start_link/0]).
--export([stop_bootstrap/0]).
+-export([start_link/0
+         ,stop_bootstrap/0
+         ,pool_name/0
+        ]).
+
 -export([init/1]).
 
 -include("amqp_util.hrl").
+
+-define(POOL_NAME, 'wh_amqp_pool').
+-define(POOL_SIZE, 100).
+-define(POOL_OVERFLOW, 0).
+
+-define(POOL_ARGS, [[{'worker_module', 'wh_amqp_worker'}
+                     ,{'name', {'local', ?POOL_NAME}}
+                     ,{'size', ?POOL_SIZE}
+                     ,{'max_overflow', ?POOL_OVERFLOW}
+                     ,{'neg_resp_threshold', 1}
+                    ]]).
 
 -define(SERVER, ?MODULE).
 -define(CHILDREN, [?WORKER('wh_amqp_connections')
@@ -21,6 +35,7 @@
                    ,?WORKER('wh_amqp_assignments')
                    ,?WORKER('wh_amqp_history')
                    ,?WORKER('wh_amqp_bootstrap')
+                   ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
                   ]).
 
 %% ===================================================================
@@ -33,13 +48,17 @@
 %% Starts the supervisor
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
+-spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec stop_bootstrap/0 :: () -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+-spec stop_bootstrap() -> 'ok' |
+                          {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 stop_bootstrap() ->
     _ = supervisor:terminate_child(?SERVER, 'wh_amqp_bootstrap').
+
+-spec pool_name() -> ?POOL_NAME.
+pool_name() -> ?POOL_NAME.
 
 %% ===================================================================
 %% Supervisor callbacks

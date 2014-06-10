@@ -11,14 +11,14 @@
 
 -include_lib("whistle/include/wh_api.hrl").
 
--export([ message/1, message_v/1
-          ,delivery/1, delivery_v/1
-          ,resume/1, resume_v/1
-          ,bind_q/2, unbind_q/2
-          ,declare_exchanges/0
-          ,publish_message/1, publish_message/2
-          ,publish_delivery/1, publish_delivery/2
-          ,publish_resume/1, publish_resume/2
+-export([message/1, message_v/1
+         ,delivery/1, delivery_v/1
+         ,resume/1, resume_v/1
+         ,bind_q/2, unbind_q/2
+         ,declare_exchanges/0
+         ,publish_message/1, publish_message/2
+         ,publish_delivery/1, publish_delivery/2
+         ,publish_resume/1, publish_resume/2
         ]).
 
 -define(SMS_EXCHANGE, <<"sms">>).
@@ -78,7 +78,7 @@
                                     ,<<"To">>, <<"From">>, <<"Request">>
                                     ,<<"Body">>, <<"Account-ID">>
                                     ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
-                                    ]).
+                                   ]).
 -define(DELIVERY_TYPES, [{<<"To">>, fun is_binary/1}
                          ,{<<"From">>, fun is_binary/1}
                          ,{<<"Request">>, fun is_binary/1}
@@ -111,8 +111,9 @@ message(Prop) when is_list(Prop) ->
                wh_json:from_list(EPProps)
            end
            || EP <- props:get_value(<<"Endpoints">>, Prop, []),
-              message_endpoint_v(EP)],
-    Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
+              message_endpoint_v(EP)
+          ],
+    Prop1 = [{<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
     case message_v(Prop1) of
         'true' -> wh_api:build_message(Prop1, ?SMS_REQ_HEADERS, ?OPTIONAL_SMS_REQ_HEADERS);
         'false' -> {'error', "Proplist failed validation for message"}
@@ -139,7 +140,8 @@ message_endpoint_v(Prop) when is_list(Prop) ->
 message_endpoint_v(JObj) ->
     message_endpoint_v(wh_json:to_proplist(JObj)).
 
--spec delivery(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec delivery(api_terms()) -> {'ok', iolist()} |
+                               {'error', string()}.
 delivery(Prop) when is_list(Prop) ->
     case delivery_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?DELIVERY_HEADERS, ?OPTIONAL_DELIVERY_HEADERS);
@@ -153,7 +155,8 @@ delivery_v(Prop) when is_list(Prop) ->
 delivery_v(JObj) -> delivery_v(wh_json:to_proplist(JObj)).
 
 
--spec resume(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec resume(api_terms()) -> {'ok', iolist()} |
+                             {'error', string()}.
 resume(Prop) when is_list(Prop) ->
     case resume_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?RESUME_REQ_HEADERS, ?OPTIONAL_RESUME_REQ_HEADERS);
@@ -170,8 +173,6 @@ resume_v(JObj) -> resume_v(wh_json:to_proplist(JObj)).
 %% @doc Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
-
-
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallId = props:get_value('call_id', Props, <<"*">>),
@@ -191,7 +192,6 @@ bind_q(Queue, CallId, ['resume'|Restrict]) ->
     amqp_util:bind_q_to_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
     bind_q(Queue, CallId, Restrict);
 bind_q(_, _, []) -> 'ok'.
-
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->

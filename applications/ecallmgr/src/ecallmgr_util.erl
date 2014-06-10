@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2014, 2600Hz
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in whistle_util.erl
@@ -919,8 +919,7 @@ request_media_url(MediaName, CallId, JObj, Type) ->
                    | wh_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
                   ])
                 ,JObj),
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,Request
+    ReqResp = wh_amqp_worker:call(Request
                                   ,fun wapi_media:publish_req/1
                                   ,fun wapi_media:resp_v/1
                                  ),
@@ -933,20 +932,20 @@ request_media_url(MediaName, CallId, JObj, Type) ->
 -spec custom_sip_headers(wh_proplist()) -> wh_json:object().
 custom_sip_headers(Props) ->
     lists:map(fun normalize_custom_sip_header_name/1
-             ,props:filter(fun is_custom_sip_header/1, Props)
+              ,props:filter(fun is_custom_sip_header/1, Props)
              ).
 
 -spec normalize_custom_sip_header_name(term()) -> term().
 normalize_custom_sip_header_name({<<"variable_sip_h_", K/binary>>, V}) -> {K, V};
 normalize_custom_sip_header_name({<<"sip_h_", K/binary>>, V}) -> {K, V};
 normalize_custom_sip_header_name(A) -> A.
-  
+
 -spec is_custom_sip_header(term()) -> boolean().
 is_custom_sip_header({<<"P-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"X-", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"sip_h_", _/binary>>, _}) -> 'true';
 is_custom_sip_header({<<"variable_sip_h_", _/binary>>, _}) -> 'true';
-is_custom_sip_header(Header) -> 'false'.
+is_custom_sip_header(_Header) -> 'false'.
 
 -spec maybe_add_expires_deviation(api_integer()) -> api_integer().
 maybe_add_expires_deviation('undefined') -> 'undefined';
