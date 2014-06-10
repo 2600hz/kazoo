@@ -15,6 +15,8 @@
 
 -include("stepswitch.hrl").
 
+-define(CONFIG_CAT, <<"number_manager">>).
+
 -record(gateway, {
            server :: api_binary()
           ,realm :: api_binary()
@@ -537,9 +539,39 @@ resources_from_jobjs([], Resources) -> Resources;
 resources_from_jobjs([JObj|JObjs], Resources) ->
     case wh_json:is_true(<<"enabled">>, JObj, 'true') of
         'false' -> resources_from_jobjs(JObjs, Resources);
-        'true' ->
-            resources_from_jobjs(JObjs, [resource_from_jobj(JObj) | Resources])
+        'true' -> resources_from_jobjs(JObjs, create_ressource(JObj, Resources))
     end.
+
+-spec create_ressource(wh_json:object(), resources()) -> resources().
+create_ressource(JObj, Resources) ->
+    case wh_json:get_value(<<"classifiers">>, JObj) of
+        'undefined' -> [resource_from_jobj(JObj) | Resources];
+        RessourceClassifiers ->
+            ConfigClassifiers = wh_json:to_proplist(whapps_config:get_value(?CONFIG_CAT, <<"classifiers">>)),
+            create_ressource(wh_json:to_proplist(RessourceClassifiers), ConfigClassifiers, JObj, Resources)
+    end.
+
+-spec create_ressource(wh_proplist(), wh_proplist(), wh_json:object(), resources()) -> resources().
+create_ressource([], _, _, Resources) -> Resources;
+create_ressource([{Classifier, ClassifierJobj}|Cs], ConfigClassifiers, JObj, Resources) ->
+    case wh_json:is_true(<<"enabled">>, ClassifierJobj, 'true') of
+        'false' -> create_ressource(Cs, ConfigClassifiers, JObj, Resources);
+        'true' ->
+            case props:get_value(Classifier, ConfigClassifiers) of
+                'undefined' -> create_ressource(Cs, ConfigClassifiers, JObj, Resources);
+                ConfigClassifier ->
+                    Id = wh_json:get_value(<<"_id">>, JObj),
+                    Name = wh_json:get_value(<<"name">>, JObj),
+                    Props = [{<<"rules">>, [wh_json:get_value(<<"regex">>, ConfigClassifier)]}
+                             ,{<<"weight_cost">>, wh_json:get_value(<<"weight_cost">>, ClassifierJobj)}
+                             ,{<<"_id">>, <<Id/binary, "-", Classifier/binary>>}
+                             ,{<<"name">>, <<Name/binary, " - ", Classifier/binary>>}
+                            ],
+                    create_ressource(Cs, ConfigClassifiers, JObj
+                                     ,[resource_from_jobj(wh_json:set_values(Props, JObj)) | Resources])
+            end
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
