@@ -241,8 +241,7 @@ handle_cast({'subscribe', #omnip_subscription{user=_U
                         ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O);
         {'error', 'not_found'} ->
-            lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),
-            'ok'
+            lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1])
     end,
     ets:insert(table_id(), S),
     {'noreply', State};
@@ -522,11 +521,11 @@ subscribe_to_record(JObj) ->
                         ,stalker=wh_json:get_first_defined([<<"Queue">>
                                                             ,<<"Server-ID">>
                                                            ], JObj)
-                        ,event=wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT) 
-                        ,from_tag=wh_json:get_value(<<"From-Tag">>, JObj) 
-                        ,to_tag=wh_json:get_value(<<"To-Tag">>, JObj) 
-                        ,contact=wh_json:get_value(<<"Contact">>, JObj) 
-                        ,call_id=wh_json:get_value(<<"Call-ID">>, JObj) 
+                        ,event=wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT)
+                        ,from_tag=wh_json:get_value(<<"From-Tag">>, JObj)
+                        ,to_tag=wh_json:get_value(<<"To-Tag">>, JObj)
+                        ,contact=wh_json:get_value(<<"Contact">>, JObj)
+                        ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
                        }.
 
 -spec subscriptions_to_json(subscriptions()) -> wh_json:objects().
