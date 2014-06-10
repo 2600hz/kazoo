@@ -17,7 +17,7 @@
 -export([first_call/1]).
 -export([first_registration/1]).
 -export([transaction/2, transaction/3]).
--export([system_alert/2, system_alert/3, system_alert/4]).
+-export([system_alert/2, system_alert/3]).
 
 -include("../include/wh_types.hrl").
 
@@ -44,7 +44,7 @@ cnam_request(PhoneNumber, Account) ->
               ,{<<"Phone-Number">>, PhoneNumber}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    wapi_notifications:publish_cnam_request(Notify).
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_cnam_request/1).
 
 -spec port_request(wh_json:object()) -> 'ok'.
 -spec port_request(wh_json:object(), wh_json:object()) -> 'ok'.
@@ -66,7 +66,7 @@ port_request(PhoneNumber, Account) ->
               ,{<<"Phone-Number">>, PhoneNumber}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    wapi_notifications:publish_cnam_request(Notify).
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_cnam_request/1).
 
 -spec deregister(wh_json:object()) -> 'ok'.
 -spec deregister(wh_json:object(), wh_json:object()) -> 'ok'.
@@ -96,7 +96,7 @@ deregister(LastReg, Endpoint, Account) ->
               ,{<<"Last-Registration">>, LastReg}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    wapi_notifications:publish_deregister(Notify).
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_deregister/1).
 
 low_balance(_Account, _Credit) ->
     'ok'.
@@ -123,37 +123,28 @@ transaction(Account, Transaction) ->
     transaction(Account, Transaction, 'undefined').
 
 transaction(Account, Transaction, ServicePlan) ->
-    Notify = [{<<"Account-ID">>, wh_util:format_account_id(Account, 'raw')}
-              ,{<<"Transaction">>, Transaction}
-              ,{<<"Service-Plan">>, ServicePlan}
-              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
-             ],
-    wapi_notifications:publish_transaction(props:filter_undefined(Notify)).
+    Notify = props:filter_undefined(
+               [{<<"Account-ID">>, wh_util:format_account_id(Account, 'raw')}
+                ,{<<"Transaction">>, Transaction}
+                ,{<<"Service-Plan">>, ServicePlan}
+                | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+               ]),
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_transaction/1).
 
 -spec system_alert(atom() | string() | binary(), [term()]) -> 'ok'.
 -spec system_alert(atom() | string() | binary(), [term()], wh_proplist()) -> 'ok'.
--spec system_alert(atom() | string() | binary(), [term()], wh_proplist(), atom()) -> 'ok'.
 
 system_alert(Format, Args) ->
-    system_alert(Format, Args, [], 'undefined').
+    system_alert(Format, Args, []).
 
 system_alert(Format, Args, Props) ->
-    system_alert(Format, Args, Props, 'undefined').
-
-system_alert(Format, Args, Props, PoolName) ->
     Msg = io_lib:format(Format, Args),
     Notify= [{<<"Message">>, wh_util:to_binary(Msg)}
              ,{<<"Subject">>, <<"KAZOO: ", (wh_util:to_binary(Msg))/binary>>}
              ,{<<"Details">>, wh_json:from_list(Props)}
              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
-    publish_notify(PoolName, Notify).
-
--spec publish_notify(atom(), wh_proplist()) -> 'ok'.
-publish_notify('undefined', Notify) ->
-    wapi_notifications:publish_system_alert(Notify);
-publish_notify(PoolName, Notify) ->
-    wh_amqp_worker:cast(PoolName, Notify, fun wapi_notifications:publish_system_alert/1).
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).
 
 -spec generic_alert(atom() | string() | binary(), atom() | string() | binary()) -> 'ok'.
 generic_alert(Subject, Msg) ->
@@ -161,4 +152,4 @@ generic_alert(Subject, Msg) ->
              ,{<<"Subject">>, <<"KAZOO: ", (wh_util:to_binary(Subject))/binary>>}
              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
-    wapi_notifications:publish_system_alert(Notify).
+    wh_amqp_worker:cast(Notify, fun wapi_notifications:publish_system_alert/1).

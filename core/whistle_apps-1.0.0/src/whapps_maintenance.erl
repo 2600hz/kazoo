@@ -193,7 +193,7 @@ blocking_refresh() ->
 %%--------------------------------------------------------------------
 -spec refresh() -> 'started'.
 -spec refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
--spec refresh(ne_binary(), wh_json:objects()) -> 'ok' | 'remove'.
+-spec refresh(ne_binary(), wh_proplist()) -> 'ok' | 'remove'.
 
 refresh() ->
     _ = spawn(fun do_refresh/0),
@@ -316,7 +316,7 @@ refresh(Account, Views) ->
             refresh_account_db(AccountDb, AccountId, Views, JObj)
     end.
 
--spec refresh_account_db(ne_binary(), ne_binary(), ne_binaries(), wh_json:object()) -> 'ok'.
+-spec refresh_account_db(ne_binary(), ne_binary(), wh_proplist(), wh_json:object()) -> 'ok'.
 refresh_account_db(AccountDb, AccountId, Views, JObj) ->
     _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
     AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
@@ -333,8 +333,10 @@ refresh_account_db(AccountDb, AccountId, Views, JObj) ->
 -spec refresh_account_mods(ne_binary()) -> 'ok'.
 refresh_account_mods(AccountDb) ->
     MODs = whapps_util:get_account_mods(AccountDb),
-    [refresh_account_mod(AccountMOD) || AccountMOD <- MODs].
+    [refresh_account_mod(AccountMOD) || AccountMOD <- MODs],
+    'ok'.
 
+-spec refresh_account_mod(ne_binary()) -> 'ok'.
 refresh_account_mod(AccountMOD) ->
     io:format("    updating views in mod ~s~n", [AccountMOD]),
     kazoo_modb:refresh_views(AccountMOD).
@@ -820,6 +822,7 @@ is_audio_content(_) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec get_all_account_views() -> wh_proplist().
 get_all_account_views() ->
     [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
      ,whapps_util:get_view_json('whistle_apps', ?RESELLER_VIEW_FILE)

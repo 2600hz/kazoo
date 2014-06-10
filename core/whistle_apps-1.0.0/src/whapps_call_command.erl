@@ -263,8 +263,7 @@ b_channel_status(ChannelId) when is_binary(ChannelId) ->
     Command = [{<<"Call-ID">>, ChannelId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    Resp = wh_amqp_worker:call_collect('whapps_amqp_pool'
-                                       ,Command
+    Resp = wh_amqp_worker:call_collect(Command
                                        ,fun(C) -> wapi_call:publish_channel_status_req(ChannelId, C) end
                                        ,{'ecallmgr', 'true'}
                                       ),
@@ -1090,26 +1089,27 @@ record_call(Media, Action, TimeLimit, Terminators, Call) ->
     Headers = props:get_value(<<"Additional-Headers">>, Media),
     Limit = props:get_value(<<"Time-Limit">>, Media, wh_util:to_binary(TimeLimit)),
 
-    Command = props:filter_undefined([{<<"Application-Name">>, <<"record_call">>}
-                                      ,{<<"Media-Name">>, MediaName}
-                                      ,{<<"Record-Action">>, Action}
-                                      ,{<<"Time-Limit">>, Limit}
-                                      ,{<<"Terminators">>, Terminators}
-                                      ,{<<"Insert-At">>, <<"now">>}
-                                      ,{<<"Media-Transfer-Method">>, Method}
-                                      ,{<<"Media-Transfer-Destination">>, Destination}
-                                      ,{<<"Additional-Headers">>, Headers}
-                                     ]),
+    Command = props:filter_undefined(
+                [{<<"Application-Name">>, <<"record_call">>}
+                 ,{<<"Media-Name">>, MediaName}
+                 ,{<<"Record-Action">>, Action}
+                 ,{<<"Time-Limit">>, Limit}
+                 ,{<<"Terminators">>, Terminators}
+                 ,{<<"Insert-At">>, <<"now">>}
+                 ,{<<"Media-Transfer-Method">>, Method}
+                 ,{<<"Media-Transfer-Destination">>, Destination}
+                 ,{<<"Additional-Headers">>, Headers}
+                ]),
     send_command(Command, Call).
 
--spec b_record_call(ne_binary(), whapps_call:call()) ->
-                                 wait_for_headless_application_return().
--spec b_record_call(ne_binary(), ne_binary(), whapps_call:call()) ->
-                                 wait_for_headless_application_return().
--spec b_record_call(ne_binary(), ne_binary(), api_binary() | pos_integer(), whapps_call:call()) ->
-                                 wait_for_headless_application_return().
--spec b_record_call(ne_binary(), ne_binary(), api_binary() | pos_integer(), list(), whapps_call:call()) ->
-                                 wait_for_headless_application_return().
+-spec b_record_call(wh_proplist(), whapps_call:call()) ->
+                           wait_for_headless_application_return().
+-spec b_record_call(wh_proplist(), ne_binary(), whapps_call:call()) ->
+                           wait_for_headless_application_return().
+-spec b_record_call(wh_proplist(), ne_binary(), api_binary() | pos_integer(), whapps_call:call()) ->
+                           wait_for_headless_application_return().
+-spec b_record_call(wh_proplist(), ne_binary(), api_binary() | pos_integer(), list(), whapps_call:call()) ->
+                           wait_for_headless_application_return().
 b_record_call(MediaName, Call) ->
     record_call(MediaName, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, 'infinity').

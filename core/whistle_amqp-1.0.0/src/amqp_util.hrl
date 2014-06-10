@@ -1,15 +1,11 @@
+-ifndef(AMQP_UTIL_HRL).
+
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("rabbitmq_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
-%% When federating, what is the name of the upstream set, which contains the
-%% list of servers this broker is connecting to
--define(RABBITMQ_UPSTREAM_SET, <<"2600hz_upstream">>).
-
-%%% See http://www.rabbitmq.com/releases/rabbitmq-erlang-client/v2.7.0/doc/
-
--define(AMQP_DEBUG, false).
+-define(AMQP_DEBUG, 'false').
 
 %% see http://www.rabbitmq.com/uri-spec.html
 -define(DEFAULT_AMQP_URI, "amqp://guest:guest@localhost:5672").
@@ -95,12 +91,13 @@
 -define(EXCHANGE_NODES, <<"nodes">>).
 -define(TYPE_NODES, <<"fanout">>).
 
-
--type wh_amqp_command() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{} |
-                           #'queue.delete'{} | #'basic.consume'{} | #'basic.cancel'{} |
-                           #'basic.ack'{} | #'basic.nack'{} | #'basic.qos'{} |
-                           #'exchange.declare'{}.
-
+-type wh_amqp_command() :: #'queue.declare'{} | #'queue.delete'{} |
+                           #'queue.bind'{} | #'queue.unbind'{} |
+                           #'basic.consume'{} | #'basic.cancel'{} |
+                           #'basic.ack'{} | #'basic.nack'{} |
+                           #'basic.qos'{} |
+                           #'exchange.declare'{} |
+                           '_' | 'undefined'.
 -type wh_amqp_commands() :: [wh_amqp_command(),...] | [].
 
 -type wh_amqp_exchange() :: #'exchange.declare'{}.
@@ -122,7 +119,7 @@
 
 -type wh_amqp_type() :: 'sticky' | 'float'.
 
--record(wh_amqp_assignment, {timestamp = now() :: wh_now() | '_'
+-record(wh_amqp_assignment, {timestamp = os:timestamp() :: wh_now() | '_'
                              ,consumer :: api_pid() | '$2' | '_'
                              ,consumer_ref :: api_reference() | '_'
                              ,type = 'float' :: wh_amqp_type() | '_'
@@ -130,7 +127,7 @@
                              ,channel_ref :: api_reference() | '_'
                              ,connection :: api_pid() | '$1' | '_'
                              ,broker :: api_binary() | '$1' | '_'
-                             ,assigned :: wh_now() | '_'
+                             ,assigned :: wh_timeout() | 'undefined' | '_'
                              ,reconnect = 'false' :: boolean() | '_'
                              ,watchers = sets:new() :: set() | pids() | '_'
                             }).
@@ -140,7 +137,7 @@
 
 -type wh_exchanges() :: [#'exchange.declare'{},...] | [].
 
--record(wh_amqp_connection, {broker :: string() | api_binary() | '_'
+-record(wh_amqp_connection, {broker :: api_binary() | '_'
                              ,params :: #'amqp_params_direct'{} | #'amqp_params_network'{} | '_'
                              ,manager :: pid() | '_'
                              ,connection :: pid() | '_'
@@ -151,16 +148,22 @@
                              ,available = 'false' :: boolean()
                              ,exchanges_initalized = 'false' :: boolean() | '_'
                              ,prechannels_initalized = 'false' :: boolean() | '_'
-                             ,started = now() :: wh_now() | '_'
+                             ,started = os:timestamp() :: wh_now() | '_'
                             }).
 -type wh_amqp_connection() :: #wh_amqp_connection{}.
 
 -record(wh_amqp_connections, {connection :: api_pid() | '$1' | '_'
                               ,connection_ref :: api_reference() | '_'
-                              ,broker :: ne_binary() | '$1' | '_'
+                              ,broker :: api_binary() | '$1' | '$2' | '_'
                               ,available='false' :: boolean() | '_'
-                              ,timestamp=now() :: wh_now() | '_'
-                              ,zone='local' :: atom() | '_'
+                              ,timestamp=os:timestamp() :: wh_now() | '_'
+                              ,zone='local' :: atom() | '$1' | '_'
                               ,manager=self() :: pid() | '_'
                              }).
 -type wh_amqp_connections() :: #wh_amqp_connections{}.
+
+-type basic_publish() :: #'basic.publish'{}.
+-type amqp_msg() :: #'amqp_msg'{}.
+
+-define(AMQP_UTIL_HRL, 'true').
+-endif.

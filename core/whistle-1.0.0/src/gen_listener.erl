@@ -121,6 +121,8 @@
 
 -type state() :: #state{}.
 
+-type basic_deliver() :: #'basic.deliver'{}.
+
 -type handle_event_return() :: {'reply', wh_proplist()} | 'ignore'.
 
 -type binding_module() :: atom() | ne_binary().
@@ -200,10 +202,10 @@ is_consuming(Srv) -> gen_server:call(Srv, 'is_consuming').
 -spec responders(server_ref()) -> listener_utils:responders().
 responders(Srv) -> gen_server:call(Srv, 'responders').
 
--spec ack(server_ref(), #'basic.deliver'{}) -> 'ok'.
+-spec ack(server_ref(), basic_deliver()) -> 'ok'.
 ack(Srv, Delivery) -> gen_server:cast(Srv, {'ack', Delivery}).
 
--spec nack(server_ref(), #'basic.deliver'{}) -> 'ok'.
+-spec nack(server_ref(), basic_deliver()) -> 'ok'.
 nack(Srv, Delivery) -> gen_server:cast(Srv, {'nack', Delivery}).
 
 %% API functions that mirror gen_server:call,cast,reply
@@ -295,7 +297,7 @@ rm_binding(Srv, {Binding, Props}) ->
 rm_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {'rm_binding', Binding, Props}).
 
--spec federated_event(server_ref(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
+-spec federated_event(server_ref(), wh_json:object(), basic_deliver()) -> 'ok'.
 federated_event(Srv, JObj, BasicDeliver) ->
     gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver}).
 
@@ -562,7 +564,7 @@ handle_info(Message, State) ->
 %% @spec handle_event(JObj, State) -> {'reply', Options} | ignore
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  'ok'.
+-spec handle_event(ne_binary(), ne_binary(), basic_deliver(), state()) ->  'ok'.
 handle_event(Payload, <<"application/json">>, BasicDeliver, State) ->
     JObj = wh_json:decode(Payload),
     _ = wh_util:put_callid(JObj),
@@ -726,14 +728,14 @@ format_status(_Opt, [_PDict, #state{module=Module
      ,{'data', [{"Listener State", State}]}
     ].
 
--spec distribute_event(wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+-spec distribute_event(wh_json:object(), basic_deliver(), state()) -> 'ok'.
 distribute_event(JObj, BasicDeliver, State) ->
     case callback_handle_event(JObj, BasicDeliver, State) of
         'ignore' -> 'ok';
         Props -> distribute_event(Props, JObj, BasicDeliver, State)
     end.
 
--spec distribute_event(wh_proplist(), wh_json:object(), #'basic.deliver'{}, #state{}) -> 'ok'.
+-spec distribute_event(wh_proplist(), wh_json:object(), basic_deliver(), state()) -> 'ok'.
 distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
                                                    ,consumer_key=ConsumerKey
                                                   }) ->
@@ -749,7 +751,7 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
         ],
     'ok'.
 
--spec client_handle_event(wh_json:object(), ne_binary(), atom(), atom(), wh_proplist(), #'basic.deliver'{}) -> any().
+-spec client_handle_event(wh_json:object(), wh_amqp_channel:consumer_pid(), atom(), atom(), wh_proplist(), basic_deliver()) -> any().
 client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
     _ = wh_util:put_callid(JObj),
     _ = wh_amqp_channel:consumer_pid(ConsumerKey),
@@ -758,7 +760,9 @@ client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
         'false' -> Module:Fun(JObj, Props)
     end.
 
--spec callback_handle_event(wh_json:object(), #'basic.deliver'{}, state()) -> 'ignore' | wh_proplist().
+-spec callback_handle_event(wh_json:object(), basic_deliver(), state()) ->
+                                   'ignore' |
+                                   wh_proplist().
 callback_handle_event(JObj
                       ,BasicDeliver
                       ,#state{module=Module
@@ -767,7 +771,6 @@ callback_handle_event(JObj
                               ,other_queues=OtherQueues
                               ,self=Self
                              }) ->
-    OtherQueueNames = props:get_keys(OtherQueues),
     case
         case erlang:function_exported(Module, 'handle_event', 3) of
             'true' -> catch Module:handle_event(JObj, BasicDeliver, ModuleState);
@@ -778,13 +781,13 @@ callback_handle_event(JObj
         {'reply', Props} when is_list(Props) ->
             [{'server', Self}
              ,{'queue', Queue}
-             ,{'other_queues', OtherQueueNames}
+             ,{'other_queues', props:get_keys(OtherQueues)}
              | Props
             ];
         {'EXIT', _Why} ->
             [{'server', Self}
              ,{'queue', Queue}
-             ,{'other_queues', OtherQueueNames}
+             ,{'other_queues', props:get_keys(OtherQueues)}
             ]
     end.
 
@@ -796,7 +799,9 @@ maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> 'true';
 maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> 'true';
 maybe_event_matches_key(_A, _B) -> 'false'.
 
--spec start_amqp(wh_proplist()) -> {'ok', binary()} | {'error', _}.
+-spec start_amqp(wh_proplist()) ->
+                        {'ok', binary()} |
+                        {'error', _}.
 start_amqp(Props) ->
     QueueProps = props:get_value('queue_options', Props, []),
     QueueName = props:get_value('queue_name', Props, <<>>),
@@ -811,7 +816,7 @@ start_amqp(Props) ->
 
 -spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
 set_qos('undefined') -> 'ok';
-set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
+set_qos(N) when is_integer(N), N >= 0 -> amqp_util:basic_qos(N).
 
 -spec start_consumer(ne_binary(), wh_proplist()) -> 'ok'.
 start_consumer(Q, 'undefined') -> amqp_util:basic_consume(Q, []);

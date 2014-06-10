@@ -602,11 +602,10 @@ prepare_app(Node, UUID, JObj) ->
                                   {'return', ne_binary()} |
                                   {'error', ne_binary()}.
 prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
-    case wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                             ,[{<<"Call-ID">>, TargetCallId}
-                               ,{<<"Active-Only">>, 'true'}
-                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                              ]
+    case wh_amqp_worker:call([{<<"Call-ID">>, TargetCallId}
+                              ,{<<"Active-Only">>, 'true'}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ]
                              ,fun(C) -> wapi_call:publish_channel_status_req(TargetCallId, C) end
                              ,fun wapi_call:channel_status_resp_v/1
                             )
@@ -685,12 +684,10 @@ prepare_app_usurpers(Node, UUID) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
 
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,ControlUsurp
+    wh_amqp_worker:cast(ControlUsurp
                         ,fun(C) -> wapi_call:publish_usurp_control(UUID, C) end
                        ),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,PublishUsurp
+    wh_amqp_worker:cast(PublishUsurp
                         ,fun(C) -> wapi_call:publish_usurp_publisher(UUID, C) end
                        ).
 
@@ -715,8 +712,7 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
                     ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,ControlUsurp
+    wh_amqp_worker:cast(ControlUsurp
                         ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
                        ),
     lager:debug("published ~p for ~s", [ControlUsurp, Target]),
@@ -745,8 +741,7 @@ get_eavesdrop_app(Node, UUID, JObj, Target) ->
                     ,{<<"Fetch-ID">>, wh_util:rand_hex_binary(4)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,ControlUsurp
+    wh_amqp_worker:cast(ControlUsurp
                         ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
                        ),
     lager:debug("published ~p for ~s~n", [ControlUsurp, Target]),
@@ -892,7 +887,6 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
                      wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
                                             ,[Type, File, UUID, Node]
                                             ,[{<<"Details">>, Err}]
-                                            ,?ECALLMGR_AMQP_POOL
                                            ),
                      <<"failure">>;
                  {'error', E} ->
@@ -900,7 +894,6 @@ stream_over_http(Node, UUID, File, Method, Type, JObj) ->
                      wh_notify:system_alert("Failed to store ~s: media file ~s for call ~s on ~s "
                                             ,[Type, File, UUID, Node]
                                             ,[{<<"Details">>, E}]
-                                            ,?ECALLMGR_AMQP_POOL
                                            ),
                      <<"failure">>
              end,

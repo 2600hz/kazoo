@@ -14,7 +14,10 @@
 -export([send_sms/2, send_sms/3, send_sms/4]).
 -export([b_send_sms/2, b_send_sms/3, b_send_sms/4]).
 
-
+-export([default_collect_timeout/0
+         ,default_message_timeout/0
+         ,default_application_timeout/0
+        ]).
 
 -define(CONFIG_CAT, <<"sms_command">>).
 
@@ -35,9 +38,8 @@ default_message_timeout() ->
 default_application_timeout() ->
     ?DEFAULT_APPLICATION_TIMEOUT.
 
-
--type whapps_api_sms_return() :: {'error', 'timeout' | wh_json:object() } 
-                                   | {'fail', wh_json:object()} 
+-type whapps_api_sms_return() :: {'error', 'timeout' | wh_json:object() }
+                                   | {'fail', wh_json:object()}
                                    | {'ok', wh_json:object()}.
 
 %%--------------------------------------------------------------------
@@ -55,15 +57,15 @@ default_application_timeout() ->
 
 send_sms(Endpoints, Call) -> send_sms(Endpoints, ?DEFAULT_MESSAGE_TIMEOUT, Call).
 send_sms(Endpoints, Timeout, Call) -> send_sms(Endpoints, Timeout, 'undefined', Call).
-send_sms(Endpoints, Timeout, SIPHeaders, Call) ->
-    CallId = whapps_call:call_id(Call),
+send_sms(Endpoints, _Timeout, _SIPHeaders, Call) ->
+    _CallId = whapps_call:call_id(Call),
     API = create_sms(Call, Endpoints),
     whapps_util:amqp_pool_send(API, fun wapi_sms:publish_message/1),
     'ok'.
 
 b_send_sms(Endpoints, Call) -> b_send_sms(Endpoints, ?DEFAULT_MESSAGE_TIMEOUT, Call).
 b_send_sms(Endpoints, Timeout, Call) -> b_send_sms(Endpoints, Timeout, 'undefined', Call).
-b_send_sms(Endpoints, Timeout, SIPHeaders, Call) ->
+b_send_sms(Endpoints, Timeout, _SIPHeaders, Call) ->
     CallId = whapps_call:call_id(Call),
     API = create_sms(Call, Endpoints),
     whapps_util:amqp_pool_send(API, fun wapi_sms:publish_message/1),
@@ -73,12 +75,12 @@ b_send_sms(Endpoints, Timeout, SIPHeaders, Call) ->
         {'error', _R}=E ->
             lager:info("recieved error while sending msg ~s: ~-800p", [CallId, _R]),
             E;
-        {_, JObjs} = Ret ->
+        {_, _JObjs} = Ret ->
              lager:debug("received sms delivery result for msg ~s", [CallId]),
-             Ret    
+             Ret
     end.
 
--spec create_sms(whapps_call:call(), wh_proplist()) -> any().
+-spec create_sms(whapps_call:call(), wh_proplist()) -> wh_proplist().
 create_sms(Call, Endpoints) ->
     AccountId = whapps_call:account_id(Call),
     AccountRealm =  whapps_call:to_realm(Call),
@@ -91,9 +93,7 @@ create_sms(Call, Endpoints) ->
                     ,{<<"From-URI">>, whapps_call:from(Call)}
                     ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                    ]),
-    
-    [             
-     {<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
+    [{<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
      ,{<<"Call-ID">>, whapps_call:call_id(Call)}
      ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
      ,{<<"From">>, whapps_call:from(Call)}
@@ -103,24 +103,24 @@ create_sms(Call, Endpoints) ->
      ,{<<"Endpoints">>, Endpoints}
      ,{<<"Application-Name">>, <<"send">>}
      ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, wh_json:new())}
-         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ].    
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
 
-
--spec get_correlated_msg_type(wh_json:object()) -> {api_binary(), api_binary(), api_binary()}.
--spec get_correlated_msg_type(ne_binary(), wh_json:object()) -> {api_binary(), api_binary(), api_binary()}.
+-spec get_correlated_msg_type(wh_json:object()) ->
+                                     {api_binary(), api_binary(), api_binary()}.
+-spec get_correlated_msg_type(ne_binary(), wh_json:object()) ->
+                                     {api_binary(), api_binary(), api_binary()}.
 get_correlated_msg_type(JObj) ->
     get_correlated_msg_type(<<"Call-ID">>, JObj).
 get_correlated_msg_type(Key, JObj) ->
     {C, N} = wh_util:get_event_type(JObj),
     {C, N, wh_json:get_value(Key, JObj)}.
 
-
 -spec wait_for_correlated_message(whapps_call:call(), ne_binary(), ne_binary(), wh_timeout()) ->
-                              whapps_api_std_return().
+                                         whapps_api_std_return().
 wait_for_correlated_message(Call, Event, Type, Timeout) ->
     Start = os:timestamp(),
-    CallId = whapps_call:call_id(Call), 
+    CallId = whapps_call:call_id(Call),
     case whapps_call_command:receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj} ->
@@ -130,12 +130,8 @@ wait_for_correlated_message(Call, Event, Type, Timeout) ->
                     {'error', JObj};
                 {Type, Event, CallId } ->
                     {'ok', JObj};
-                {_Type, _Event, _CallId } ->
-                    lager:debug("Received message (~s , ~s, ~s)",[_Type, _Event, _CallId]),
-                    wait_for_correlated_message(Call, Event, Type, whapps_util:decr_timeout(Timeout, Start));                    
-                _ ->
+                {_Type, _Event, _CallId} ->
+                    lager:debug("received message (~s , ~s, ~s)",[_Type, _Event, _CallId]),
                     wait_for_correlated_message(Call, Event, Type, whapps_util:decr_timeout(Timeout, Start))
             end
     end.
-
-

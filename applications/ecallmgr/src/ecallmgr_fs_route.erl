@@ -235,8 +235,7 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
                                                  ,CallId
                                                  ,Node
                                                 ]),
-    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,route_req(CallId, FetchId, Props, Node)
+    ReqResp = wh_amqp_worker:call(route_req(CallId, FetchId, Props, Node)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1
                                   ,2500

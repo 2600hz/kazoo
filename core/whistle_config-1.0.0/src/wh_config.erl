@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, VoIP, INC
+%%% @copyright (C) 2013-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -43,7 +43,9 @@
                                      ,{'file', 'error'}
                                     ]}
                           ]).
--type section() :: 'bigcouch' | 'amqp'.
+-type section() :: 'bigcouch' | 'amqp' |
+                   'whistle_apps' | 'ecallmgr' |
+                   'zone' | 'log'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -53,8 +55,7 @@
 %%--------------------------------------------------------------------
 -spec get(section()) -> wh_proplist().
 get(Section) ->
-    ?MODULE:get(Section, ?DEFAULT_DEFAULTS).
-
+    find_values(Section, ?DEFAULT_DEFAULTS).
 
 -spec get(section(), atom()) -> wh_proplist().
 get(Section, Key) ->
@@ -111,11 +112,11 @@ get_integer(Section, Key, Default) ->
 %% Return values of the config file
 %% @end
 %%--------------------------------------------------------------------
--spec get_string(section(), string()) -> [string(),...] | ?DEFAULT_DEFAULTS.
+-spec get_string(section(), atom()) -> [string(),...] | ?DEFAULT_DEFAULTS.
 get_string(Section, Key) ->
     get_string(Section, Key, ?DEFAULT_DEFAULTS).
 
--spec get_string(section(), string(), Default) -> [string(),...] | Default.
+-spec get_string(section(), atom(), Default) -> [string(),...] | Default.
 get_string(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
         Default -> Default;
@@ -123,11 +124,11 @@ get_string(Section, Key, Default) ->
         Value -> [wh_util:to_lower_string(Value)]
     end.
 
--spec get_raw_string(section(), string()) -> [string(),...] | ?DEFAULT_DEFAULTS.
+-spec get_raw_string(section(), atom()) -> [string(),...] | ?DEFAULT_DEFAULTS.
 get_raw_string(Section, Key) ->
     get_raw_string(Section, Key, ?DEFAULT_DEFAULTS).
 
--spec get_raw_string(section(), string(), Default) -> [string(),...] | Default.
+-spec get_raw_string(section(), atom(), Default) -> [string(),...] | Default.
 get_raw_string(Section, Key, Default) ->
     case ?MODULE:get(Section, Key, Default) of
         Default -> Default;

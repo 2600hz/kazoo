@@ -510,13 +510,12 @@ publish_presence_event(EventName, Props, Node) ->
            ,{<<"Dialog-State">>, props:get_value(<<"dialog_state">>, Props)}
            | wh_api:default_headers(<<>>, <<"notification">>, wh_util:to_lower_binary(EventName), ?APP_NAME, ?APP_VERSION)
           ],
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,Req
+    wh_amqp_worker:cast(Req
                         ,fun wapi_notifications:publish_presence_probe/1
                        ).
 
 -spec relay_presence(atom(), ne_binary(), wh_proplist(), atom(), api_binary()) -> [fs_sendevent_ret(),...].
-relay_presence(EventName, PresenceId, Props, Node, undefined) ->
+relay_presence(EventName, PresenceId, Props, Node, 'undefined') ->
     Match = #sip_subscription{to=PresenceId
                               ,node='$1'
                               ,_ = '_'
@@ -564,8 +563,7 @@ handle_message_query(Data, Node) ->
                      ,{<<"Message-Account">>, props:get_value(<<"Message-Account">>, Data)}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
-            _ = wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                                    ,Query
+            _ = wh_amqp_worker:cast(Query
                                     ,fun wapi_notifications:publish_mwi_query/1
                                    ),
             'ok';
