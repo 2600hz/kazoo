@@ -26,7 +26,7 @@
 -define(MAILBOX_DEFAULT_SIZE
         ,whapps_config:get_integer(?CF_CONFIG_CAT
                                    ,[<<"voicemail">>, <<"max_message_count">>]
-                                   ,0
+                                   ,100
                                   )).
 -define(MAILBOX_DEFAULT_MSG_MAX_LENGTH
         ,whapps_config:get_integer(?CF_CONFIG_CAT
