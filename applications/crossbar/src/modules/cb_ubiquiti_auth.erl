@@ -24,6 +24,9 @@
 -define(UBIQUITI_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"ubiquiti_auth_tokens">>, 35)).
 -define(UBIQUITI_RESELLER_ID, whapps_config:get_value(?CONFIG_CAT, <<"ubiquiti_sso_reseller_id">>)).
 
+-define(U_CONFIG_CAT, <<"ubiquiti">>).
+-define(SSO_URL, whapps_config:get(?U_CONFIG_CAT, <<"sso_url">>, <<"https://sso-stage.ubnt.com/api/sso/v1/">>)).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
