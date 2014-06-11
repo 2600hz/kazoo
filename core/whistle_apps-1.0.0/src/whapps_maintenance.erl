@@ -111,7 +111,7 @@ migrate() ->
 
     %% Migrate Faxes with private_media to fax
     _ = migrate_faxes(),
-    
+
     %% Ensure the phone_numbers doc in the account db is up-to-date
     _ = whistle_number_manager_maintenance:reconcile_numbers(),
 
@@ -137,7 +137,6 @@ migrate() ->
     %% Remove depreciated whapps from the startup list and add new defaults
     io:format("updating default kazoo modules~n", []),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
-                     ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
                      ,fun(L) -> [<<"reorder">> | lists:delete(<<"reorder">>, L)] end
                      ,fun(L) -> [<<"omnipresence">> | lists:delete(<<"omnipresence">>, L)] end
                     ],
