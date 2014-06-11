@@ -3,9 +3,9 @@ Section: APIs
 Title: SUP
 */
 
-The SUP API is meant to mirror command-line interactions with the SUP tool.
+The SUP API is meant to mirror command-line interactions with the SUP tool. It will only run on the local API server.
 
-You must be super_duper_admin to access the SUP endpoint.
+You must be super\_duper\_admin to access the SUP endpoint.
 
 ## Activation
 
@@ -19,11 +19,11 @@ If you want this endpoint to load by default, modify the crossbar doc in the sys
 
 Remember that SUP commands follow the format of:
 
-`sup module_maintenace function [arg1, arg2,...]`
+    sup module_maintenace function [arg1, arg2,...]
 
 The Crossbar URL is similarly constructed:
 
-`/v1/sup/module/[function[/arg1/arg2/...]]`
+    /v1/sup/module/[function[/arg1/arg2/...]]
 
 The important differences are:
 
@@ -37,6 +37,9 @@ The important differences are:
     <tr><th>Command line</th><th>Crossbar</th></tr>
   </thead>
   <tbody>
-    <tr><td>`sup whistle_maintenance syslog_level debug`</td><td>`curl /v1/sup/whistle/syslog_level/debug`</td></tr>
+    <tr>
+      <td>`sup whistle_maintenance syslog_level debug`</td>
+      <td>`curl /v1/sup/whistle/syslog_level/debug`</td>
+    </tr>
   </tbody>
 </table>
