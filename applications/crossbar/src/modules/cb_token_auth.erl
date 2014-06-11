@@ -14,6 +14,12 @@
 -module(cb_token_auth).
 
 -export([init/0
+
+         ,allowed_methods/0
+         ,resource_exists/0
+         ,validate/1
+         ,delete/1
+
          ,authenticate/1
          ,finish_request/1
          ,clean_expired/0
@@ -34,7 +40,47 @@ init() ->
     crossbar_bindings:bind(crossbar_cleanup:binding_hour(), ?MODULE, 'clean_expired'),
 
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.token_auth">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.token_auth">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.token_auth">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.token_auth">>, ?MODULE, 'delete'),
+
     crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
+
+-spec allowed_methods() -> http_methods().
+allowed_methods() -> [?HTTP_DELETE].
+
+-spec resource_exists() -> 'true'.
+resource_exists() -> 'true'.
+
+-spec validate(cb_context:context()) -> cb_context:context().
+validate(Context) ->
+    case cb_context:auth_doc(Context) of
+        'undefined' -> Context;
+        AuthDoc ->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_resp_status/2, 'success'}
+                                 ,{fun cb_context:set_doc/2, AuthDoc}
+                                ])
+    end.
+
+-spec delete(cb_context:context()) -> cb_context:context().
+delete(Context) ->
+    AuthToken = cb_context:auth_token(Context),
+    case couch_mgr:del_doc(?TOKEN_DB, AuthToken) of
+        {'ok', _} ->
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_resp_status/2, 'success'}
+                                 ,{fun cb_context:set_resp_data/2, 'undefined'}
+                                 ,{fun cb_context:set_doc/2, 'undefined'}
+                                 ,{fun cb_context:set_auth_doc/2, 'undefined'}
+                                 ,{fun cb_context:set_auth_token/2, 'undefined'}
+                                 ,{fun cb_context:set_auth_account_id/2, 'undefined'}
+                                ]);
+        {'error', _E} ->
+            lager:debug("failed to delete auth token ~s: ~p", [AuthToken, _E]),
+            Context
+    end.
 
 -spec finish_request(cb_context:context()) -> 'ok'.
 -spec finish_request(cb_context:context(), api_object()) -> 'ok'.
