@@ -140,7 +140,6 @@ migrate() ->
     %% Remove depreciated whapps from the startup list and add new defaults
     io:format("updating default kazoo modules~n", []),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
-                     ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
                      ,fun(L) -> [<<"reorder">> | lists:delete(<<"reorder">>, L)] end
                      ,fun(L) -> [<<"omnipresence">> | lists:delete(<<"omnipresence">>, L)] end
                     ],
