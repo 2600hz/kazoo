@@ -37,7 +37,8 @@
 handle(Data, Call) ->
     Exten = whapps_call:kvs_fetch('cf_capture_group', Call),
     Target = get_target_for_extension(Exten, Call),
-    AllOk = maybe_approved_caller(Data, Call) andalso maybe_correct_target(Target, Data, Call),
+    Table = fields_to_check(),
+    AllOk = cf_util:check_value_of_fields(Table, 'false', Data, Call) andalso maybe_correct_target(Target, Data, Call),
     case AllOk of
         'true' ->
             branch_to_eavesdrop(Target, Call);
@@ -46,22 +47,12 @@ handle(Data, Call) ->
             cf_exe:stop(Call)
     end.
 
--spec maybe_approved_caller(wh_json:object(), whapps_call:call()) -> boolean().
-maybe_approved_caller(Data, Call) ->
-    case wh_json:get_value(<<"approved_device_id">>, Data) of
-        'undefined' ->
-            case wh_json:get_value(<<"approved_user_id">>, Data) of
-                'undefined' ->
-                    case wh_json:get_value(<<"approved_group_id">>, Data) of
-                        'undefined' -> 'false';
-                        GroupId -> cf_util:caller_belongs_to_group(GroupId, Call)
-                    end;
-                UserId -> cf_util:caller_belongs_to_user(UserId, Call)
-            end;
-        DeviceId ->
-            % Compare approved device_id with calling one
-            DeviceId == whapps_call:authorizing_id(Call)
-    end.
+-spec fields_to_check() -> wh_proplist().
+fields_to_check() ->
+    [{<<"approved_device_id">>, fun(Id, Call) -> Id == whapps_call:authorizing_id(Call) end}
+     ,{<<"approved_user_id">>, fun cf_util:caller_belongs_to_user/2}
+     ,{<<"approved_group_id">>, fun cf_util:caller_belongs_to_group/2}
+    ].
 
 -type target() :: {'ok', ne_binary(), ne_binary()} | 'error'.
 

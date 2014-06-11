@@ -50,6 +50,7 @@
          ,find_channels/2
          ,find_user_endpoints/3
          ,find_group_endpoints/2
+         ,check_value_of_fields/4
         ]).
 
 %%--------------------------------------------------------------------
@@ -861,6 +862,13 @@ find_channels(Usernames, Call) ->
         {'error', _E} ->
             lager:debug("failed to get channels: ~p", [_E]),
             []
+    end.
+
+-spec check_value_of_fields(wh_proplist(), boolean(), wh_json:object(), whapps_call:call()) -> boolean().
+check_value_of_fields(Perms, Def, Data, Call) ->
+    case lists:dropwhile(fun({K, F}) -> wh_json:get_value(K, Data) =:= 'undefined' end, Perms) of
+        [] -> Def;
+        [{K, F}|_] -> F(wh_json:get_value(K, Data), Call)
     end.
 
 
