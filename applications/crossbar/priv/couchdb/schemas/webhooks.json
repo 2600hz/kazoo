@@ -10,7 +10,7 @@
       }
        ,"uri":{
            "description":"The 3rd party URI to call out to on event",
-           "required":"true",
+           "required":true,
            "type":"string",
            "format":"uri"
       }
@@ -25,7 +25,7 @@
        }
       ,"hook":{
           "description":"The trigger event for a request being made to 'callback_uri'.",
-          "required":"true",
+          "required":true,
           "type":"string",
           "enum":[
               "channel_create"
