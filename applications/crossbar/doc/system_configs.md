@@ -7,7 +7,7 @@ Language: en-US
 
 Manipulate documents in the system\_config database via Crossbar. You must be super\_duper\_admin to access this resource.
 
-## Sample curl Requests
+## Sample cURL Requests
 
 ### List all known configs
 
