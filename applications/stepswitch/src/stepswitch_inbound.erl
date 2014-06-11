@@ -302,7 +302,9 @@ maybe_transition_port_in(NumberProps, JObj) ->
                 case wh_port_request:get(wh_number_properties:number(NumberProps)) of
                     {'ok', PortReq} ->
                         _ = wh_port_request:transition_to_complete(PortReq);
-                    _ -> 'ok'
+                    _ ->
+                        Number = stepswitch_util:get_inbound_destination(JObj),
+                        wh_number_manager:ported(Number)
                 end
         end,
     JObj.
