@@ -1,6 +1,7 @@
 /*
 Section: APIs
 Title: Metaflows
+Language: en-US
 */
 
 Metaflows allow functionality to be executed on an in-progress call, triggered by DTMFs from the caller/callee. For instance, a callee could setup a metaflow on their user doc such that when they receive a call, they can press "*9" to initiate a recording of the call.
@@ -18,6 +19,9 @@ Inside the "metaflows" object should be a familiar couple of keys, plus a couple
 * binding_key: DTMF to trigger a metaflow; defaults to '*'
 * digit_timeout_ms: how long to wait for another DTMF before processing the collected DTMFs
 * listen_on: restrict which leg of the call to listen on for DTMF
+    * "self": listen for DTMF on the leg of the device/user with the metaflow
+    * "peer": listen on the opposite leg of the device/user
+    * "both": listen to both legs of the call for DTMF
 
 #### Numbers
 
@@ -29,17 +33,16 @@ The value of each key is the metaflow object to run on a match. It mirrors the c
 * data: An object with module-specific data for execution
 * children: An object of children metaflow actions (optional)
 
-    "numbers":{
-        "234":{
-            "module":"play"
-            ,"data":{"id":"media_id"}
+        "numbers":{
+            "234":{
+                "module":"play"
+                ,"data":{"id":"media_id"}
+            }
+            ,"82824646":{
+                "module":"tts"
+                ,"data":{"text":"hello world"}
+            }
         }
-        ,"82824646":{
-            "module":"tts"
-            ,"data":{"text":"hello world"}
-        }
-    }
-
 
 #### Patterns
 
@@ -77,11 +80,9 @@ How long to wait, in milliseconds, for the next DTMF. Once this timeout expires,
 
 #### Listen On
 
-In most calls, there are two legs: the Caller (A leg) and the Callee (B leg). By default Kazoo only concerns itself with the A-leg's event stream (including DTMF). However, with metaflows, you can restrict DTMF collection to one side of the call, or both event streams.
+Most of the time, a metaflow will only be concerned with receiving the DTMF from the call leg of the user/device configured with a metaflow. This is the "self" option (and the default if left unspecified). A metaflow can alternatively listen only to the other leg of the call using "peer", or to both sides of the call using "both".
 
-The value of _listen\_on_ can be one of "a", "ab", "b", or "both" ("ab" and "both" being equivalent).
-
-    "listen_on":"a"
+    "listen_on":"self"
 
 ### Putting it together
 
@@ -106,7 +107,7 @@ Remember, this "metaflows" object can be put on any account, callflow, user, or 
       }
       ,"binding_key":"*"
       ,"digit_timeout_ms":800
-      ,"listen_on":"b"
+      ,"listen_on":"self"
     }
 
 ## Crossbar
@@ -121,37 +122,36 @@ There are two URIs used to manipulate metaflows
 
 ### Account Metaflow URI
 
-`/v1/accounts/{account_id}/metaflows`
+`/v1/accounts/{ACCOUNT_ID}/metaflows`
 
 This URI is used to manipulate the metaflows available to anyone in the account.
 
 #### _GET_ - Fetch account metaflows:
 
-    curl -v -X GET -H "X-Auth-Token: {auth_token}" http://server:8000/v1/accounts/{account_id}/metaflows
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/metaflows
 
 #### _POST_ - Update account metaflows:
 
-    curl -v -X POST -H "X-Auth-Token: {auth_token}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{account_id}/metaflows -d '{"data":{"numbers":{"2":{"module":"tts","data":{"text":"2 pressed"}}},"binding_digit":"*","patterns": {"^1(\\d+)$": {"module": "callflow"}}}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/metaflows -d '{"data":{"numbers":{"2":{"module":"tts","data":{"text":"2 pressed"}}},"binding_digit":"*","patterns": {"^1(\\d+)$": {"module": "callflow"}}}}'
 
 #### _DELETE_ - Remove account metaflows:
 
-    curl -v -X DELETE -H "X-Auth-Token: {auth_token}" http://server:8000/v1/accounts/{account_id}/metaflows
+    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/metaflows
 
 ### Callflow/User/Device/etc Metaflow URI
 
-`/v1/accounts/{account_id}/{things}/{thing_id}/metaflows`
+`/v1/accounts/{ACCOUNT_ID}/{THINGS}/{THING_ID}/metaflows`
 
-Here, {things} would be "callflows", "users", "devices", etc, and {thing_id} would be a callflow, user, device, or whatever id. Let's look at adding metaflows to a device.
+Here, `{THINGS}` would be "callflows", "users", "devices", etc, and `{THING_ID}` would be a callflow, user, device, or whatever id. Let's look at adding metaflows to a device.
 
 #### _GET_ - Fetch device metaflows:
 
-    curl -v -X GET -H "X-Auth-Token: {auth_token}" http://server:8000/v1/accounts/{account_id}/devices/{device_id}/metaflows
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/metaflows
 
 #### _POST_ - Update device metaflows:
 
-    curl -v -X POST -H "X-Auth-Token: {auth_token}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{account_id}/devices/{device_id}/metaflows -d '{"data":{"numbers":{"2":{"module":"tts","data":{"text":"2 pressed"}}},"binding_digit":"*"}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/metaflows -d '{"data":{"numbers":{"2":{"module":"tts","data":{"text":"2 pressed"}}},"binding_digit":"*"}}'
 
 #### _DELETE_ - Remove device metaflows:
 
-    curl -v -X GET -H "X-Auth-Token: {auth_token}" http://server:8000/v1/accounts/{account_id}/devices/{device_id}/metaflows
-
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/metaflows
