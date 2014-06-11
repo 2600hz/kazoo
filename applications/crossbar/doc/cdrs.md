@@ -111,23 +111,25 @@ These properties may exist on a CDR for a fax request (inbound or outbound):
 Using Crossbar to modify metaflows is very simple. There are only three GETs
 
 * GET /v1/accounts/{account\_id}/cdrs - Gets the current CDRs for the account
-* GET /v1/accounts/{account\_id}/users/{user\_id}/cdrs - Gets the current CDRs for the user
 * GET /v1/accounts/{account\_id}/cdrs/{cdr\_id} - Gets details of the CDR
+* GET /v1/accounts/{account\_id}/users/{user\_id}/cdrs - Gets the current CDRs for the user
 
 ### Sample Requests
 
 #### _GET_ - Fetch account CDRs:
 
-    curl -v -X GET -H "X-Auth-Token: {auth_token}" http://server:8000/v1/accounts/{account_id}/cdrs
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs
 
 #### _GET_ - Fetch user CDRs:
 
-    curl -v -X GET -H "X-Auth-Token: {auth_token}" http://server:8000/v1/accounts/{account_id}/users/{user_id}/cdrs
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/users/{USER_ID}/cdrs
 
 ####  _GET_ - Fetch a CDR:
 
-    curl -v -X GET -H "X-Auth-Token: {auth_token}" http://server:8000/v1/accounts/{account_id}/cdrs/{cdr_id}
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}
 
 #### _GET_ - Fetch a time-range of CDRs
 
-    curl -v -X GET -H "X-Auth-Token: {auth_token}" http://server:8000/v1/accounts/{account_id}/cdrs?created_from={from_timestamp}&created_to={to_timestamp}
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
+
+&tip All timestamps will be in Gregorian seconds (not Unix epoch).
