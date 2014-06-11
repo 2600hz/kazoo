@@ -1,6 +1,7 @@
 /*
 Section: APIs
 Title: User Authentication
+Language: en-US
 */
 
 # Generating an auth token from credentials
