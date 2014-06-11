@@ -39,40 +39,42 @@ init() ->
 -spec finish_request(cb_context:context()) -> 'ok'.
 -spec finish_request(cb_context:context(), api_object()) -> 'ok'.
 finish_request(Context) ->
-    finish_request(Context, cb_context:auth_doc(Context)).
+    finish_request(Context, cb_context:auth_token(Context)).
 
 finish_request(_Context, 'undefined') -> 'ok';
-finish_request(Context, AuthDoc) ->
+finish_request(Context, AuthToken) ->
     cb_context:put_reqid(Context),
     couch_mgr:suppress_change_notice(),
-    lager:debug("maybe updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
-                                                   ,wh_json:get_value(<<"_rev">>, AuthDoc)
-                                                  ]),
+    lager:debug("maybe saving auth token ~s to DB", [AuthToken]),
 
-    case couch_mgr:open_cache_doc(?TOKEN_DB, cb_context:auth_token(Context)) of
+    case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
         {'ok', OldAuthDoc} ->
             lager:debug("found old doc, checking to see if we should save"),
-            maybe_save_auth_doc(AuthDoc, OldAuthDoc);
+            maybe_save_auth_doc(OldAuthDoc);
         {'error', _E} ->
-            lager:debug("failed to open auth doc, trying to save our version: ~p", [_E]),
-            couch_mgr:ensure_saved(?TOKEN_DB, AuthDoc)
+            lager:debug("failed to open auth doc, trying to save our version: ~p: ~p", [_E, cb_context:auth_doc(Context)]),
+            couch_mgr:ensure_saved(?TOKEN_DB, cb_context:auth_doc(Context))
     end,
     couch_mgr:enable_change_notice(),
     'ok'.
 
--spec maybe_save_auth_doc(wh_json:object(), wh_json:object()) -> any().
-maybe_save_auth_doc(AuthDoc, OldAuthDoc) ->
-    AuthModified = wh_json:get_integer_value(<<"pvt_modified">>, AuthDoc, 0),
-    OldAuthModified = wh_json:get_integer_value(<<"pvt_modified">>, OldAuthDoc, 0),
+-spec maybe_save_auth_doc(wh_json:object()) -> any().
+maybe_save_auth_doc(OldAuthDoc) ->
+    OldAuthModified = wh_json:get_integer_value(<<"pvt_modified">>, OldAuthDoc),
+    Now = wh_util:current_tstamp(),
 
-    Timeout = ?LOOP_TIMEOUT div 2,
+    Timeout = erlang:round(?LOOP_TIMEOUT * 0.75),
 
-    case AuthModified - (OldAuthModified + Timeout) of
-        N when N >= 0 ->
-            lager:debug("auth doc is past time (~p after) to be saved, saving", [N]),
-            couch_mgr:ensure_saved(?TOKEN_DB, AuthDoc);
-        _N ->
-            lager:debug("auth doc is too new (~p to go), not saving", [(_N*-1)])
+    TimeLeft = Now - (OldAuthModified + Timeout),
+
+    case TimeLeft > 0 of
+        'true' ->
+            lager:debug("auth doc is past time (~ps after) to be saved, saving", [TimeLeft]),
+            couch_mgr:ensure_saved(?TOKEN_DB
+                                   ,wh_json:set_value(<<"pvt_modified">>, Now, OldAuthDoc)
+                                  );
+        'false' ->
+            lager:debug("auth doc is too new (~ps to go), not saving", [TimeLeft*-1])
     end.
 
 -spec clean_expired() -> 'ok'.
@@ -87,21 +89,12 @@ clean_expired() ->
         {'ok', []} -> lager:debug("no expired tokens found");
         {'ok', L} ->
             lager:debug("removing ~b expired tokens", [length(L)]),
-            _ = couch_mgr:del_docs(?TOKEN_DB, prepare_tokens_for_deletion(L)),
+            _ = couch_mgr:del_docs(?TOKEN_DB, L),
             couch_compactor_fsm:compact_db(?TOKEN_DB),
             'ok';
         {'error', _E} ->
             lager:debug("failed to lookup expired tokens: ~p", [_E])
     end.
-
--spec prepare_token_for_deletion(wh_json:objects() | wh_json:object()) ->
-                                        wh_json:objects() | wh_json:object().
-prepare_tokens_for_deletion(L) ->
-    [prepare_token_for_deletion(T) || T <- L].
-prepare_token_for_deletion(Token) ->
-    wh_json:from_list([{<<"_id">>, wh_json:get_value(<<"id">>, Token)}
-                       ,{<<"_rev">>, wh_json:get_value(<<"value">>, Token)}
-                      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,17 +127,21 @@ check_auth_token(Context, AuthToken, _MagicPathed) ->
             'false'
     end.
 
--spec check_restrictions(cb_context:context(), json:object()) -> boolean() |
-                                                                 {'true', cb_context:context()}.
+-spec check_restrictions(cb_context:context(), wh_json:object()) ->
+                                boolean() |
+                                {'true', cb_context:context()}.
 check_restrictions(Context, JObj) ->
-    case wh_json:get_value(<<"restrictions">>, JObj, []) of
-        [] ->
-            lager:debug("no restrictions, check as object", []),
+    case wh_json:get_value(<<"restrictions">>, JObj) of
+        'undefined' ->
+            lager:debug("no restrictions, check as object"),
             check_as(Context, JObj);
         Rs ->
             check_restrictions(Context, JObj, Rs)
     end.
 
+-spec check_restrictions(cb_context:context(), wh_json:object(), wh_json:object()) ->
+                                boolean() |
+                                {'true', cb_context:context()}.
 check_restrictions(Context, JObj, Rs) ->
     [_, _|PathTokens] = cb_context:path_tokens(Context),
     Restrictions = get_restrictions(Context, Rs),
@@ -157,35 +154,31 @@ check_restrictions(Context, JObj, Rs) ->
             check_as(Context, JObj)
     end.
 
--spec get_restrictions(cb_context:context(), wh_json:object()) -> ne_binaries().
+-spec get_restrictions(cb_context:context(), wh_json:object()) ->
+                              ne_binaries().
 get_restrictions(Context, Restrictions) ->
     Verb = wh_util:to_lower_binary(cb_context:req_verb(Context)),
     DefaultRestrictions = wh_json:get_value(<<"*">>, Restrictions, []),
     VerbRestrictions = wh_json:get_value(Verb, Restrictions, []),
-    lists:foldl(
-        fun(R, Acc) ->
-            case lists:member(R, Acc) of
-                'true' -> Acc;
-                'false' -> [R|Acc]
-            end
-        end
-        ,[]
-        ,VerbRestrictions ++ DefaultRestrictions
-    ).
 
--spec check_as(cb_context:context(), wh_json:object()) -> boolean() |
-                                                          {'true', cb_context:context()}.
+    lists:usort(VerbRestrictions ++ DefaultRestrictions).
+
+-spec check_as(cb_context:context(), wh_json:object()) ->
+                      boolean() |
+                      {'true', cb_context:context()}.
 check_as(Context, JObj) ->
     case wh_json:get_value(<<"account_id">>, JObj, 'undefined') of
         'undefined' -> {'true', set_auth_doc(Context, JObj)};
         AccountId -> check_as_payload(Context, JObj, AccountId)
     end.
 
--spec check_as_payload(cb_context:context(), wh_json:object(), ne_binary()) -> boolean() |
-                                                                               {'true', cb_context:context()}.
+-spec check_as_payload(cb_context:context(), wh_json:object(), ne_binary()) ->
+                              boolean() |
+                              {'true', cb_context:context()}.
 check_as_payload(Context, JObj, AccountId) ->
     case {wh_json:get_value([<<"as">>, <<"account_id">>], JObj, 'undefined')
-          ,wh_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')}
+          ,wh_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')
+         }
     of
         {'undefined', _} -> {'true', set_auth_doc(Context, JObj)};
         {_, 'undefined'} -> {'true', set_auth_doc(Context, JObj)};
@@ -193,8 +186,9 @@ check_as_payload(Context, JObj, AccountId) ->
     end.
 
 -spec check_descendants(cb_context:context(), wh_json:object()
-                        ,ne_binary() ,ne_binary() ,ne_binary()) -> boolean() |
-                                                                   {'true', cb_context:context()}.
+                        ,ne_binary() ,ne_binary() ,ne_binary()) ->
+                               boolean() |
+                               {'true', cb_context:context()}.
 check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
     case get_descendants(AccountId) of
         {'error', _} -> 'false';
@@ -203,31 +197,32 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
                 'false' -> 'false';
                 'true' ->
                     JObj1 = wh_json:set_values([{<<"account_id">>, AsAccountId}
-                                                 ,{<<"owner_id">>, AsOwnerId}]
-                                               ,JObj),
+                                                 ,{<<"owner_id">>, AsOwnerId}
+                                               ], JObj),
                     {'true', set_auth_doc(Context, JObj1)}
             end
     end.
 
--spec get_descendants(ne_binary()) -> {'error', any()} | {'ok', wh_json:objects()}.
+-spec get_descendants(ne_binary()) ->
+                             {'ok', wh_json:objects()} |
+                             {'error', any()}.
 get_descendants(AccountId) ->
     case couch_mgr:get_results(<<"accounts">>
                                ,<<"accounts/listing_by_descendants">>
                               ,[{'startkey', [AccountId]}
-                                ,{'endkey', [AccountId, wh_json:new()]}])
+                                ,{'endkey', [AccountId, wh_json:new()]}
+                               ])
     of
         {'error', _}=Error -> Error;
         {'ok', JObjs} ->
-            Descendants = [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs],
-            {'ok', Descendants}
+            {'ok', [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs]}
     end.
 
 -spec set_auth_doc(cb_context:context(), wh_json:object()) -> cb_context:context().
 set_auth_doc(Context, JObj) ->
-    cb_context:set_auth_doc(
-        cb_context:set_auth_account_id(
-            Context
-            ,wh_json:get_ne_value(<<"account_id">>, JObj)
-        )
-        ,wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj)
-    ).
+    Setters = [{fun cb_context:set_auth_doc/2, JObj}
+               ,{fun cb_context:set_auth_account_id/2
+                 ,wh_json:get_ne_value(<<"account_id">>, JObj)
+                }
+              ],
+    cb_context:setters(Context, Setters).
