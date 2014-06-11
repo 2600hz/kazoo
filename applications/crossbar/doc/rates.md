@@ -15,13 +15,13 @@ This API is accessible only to users with the `super_duper_admin` property set.
 
 ### Summary of available rates
 
-`curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates`
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates
 
 ### Create a rate
 
 See the system_schemas/rates doc for all the available options
 
-`curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates -d '{"data":{"prefix":"1", "iso_country_code":"US", "description":"US default rate", "rate_name":"US-1", "rate_cost":0.01}}'`
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates -d '{"data":{"prefix":"1", "iso_country_code":"US", "description":"US default rate", "rate_name":"US-1", "rate_cost":0.01}}'
 
 ### Upload a ratedeck
 
@@ -38,16 +38,16 @@ A US-1 row might look like:
 
 To upload a CSV file:
 
-`curl -v -X POST -H "Content-Type: text/csv" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates --data-binary @/path/to/rates.csv`
+    curl -v -X POST -H "Content-Type: text/csv" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates --data-binary @/path/to/rates.csv
 
 ### Get a specific rate's information
 
-`curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates/{RATE_ID}`
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
 
 ### Update a rate's definition
 
-`curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates/{RATE_ID} -d '{"data":{"prefix":"1", "iso_country_code":"US", "description":"US default rate", "rate_name":"US-1", "rate_cost":0.03}}'`
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates/{RATE_ID} -d '{"data":{"prefix":"1", "iso_country_code":"US", "description":"US default rate", "rate_name":"US-1", "rate_cost":0.03}}'
 
 ### Delete a rate
 
-`curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates/{RATE_ID}`
+    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/rates/{RATE_ID}
