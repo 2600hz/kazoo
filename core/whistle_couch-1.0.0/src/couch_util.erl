@@ -511,6 +511,9 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
             case ?RETRY_504(couchbeam:save_docs(Db, PreparedDocs, Options)) of
                 {'ok', JObjs} ->
                     _ = maybe_publish_docs(Db, PreparedDocs, JObjs),
+                    _ = [flush_cache_doc('undefined', Db, wh_json:get_value(<<"_id">>, JObj), [])
+                         || JObj <- JObjs
+                        ],
                     {'ok', JObjs ++ Acc};
                 {'error', _}=E -> E
             end;
@@ -519,6 +522,9 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
             case ?RETRY_504(couchbeam:save_docs(Db, PreparedDocs, Options)) of
                 {'ok', JObjs} ->
                     _ = maybe_publish_docs(Db, PreparedDocs, JObjs),
+                    _ = [flush_cache_doc('undefined', Db, wh_json:get_value(<<"_id">>, JObj), [])
+                         || JObj <- JObjs
+                        ],
                     do_save_docs(Db, Cont, Options, JObjs ++ Acc);
                 {'error', _}=E -> E
             end
