@@ -529,11 +529,13 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_pagination_envelope_params(cb_context:context(), pos_integer(), pos_integer()) -> cb_context:context().
+-spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer()) ->
+                                               cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
     update_pagination_envelope_params(Context, StartKey, PageSize, 'undefined').
 
--spec update_pagination_envelope_params(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> cb_context:context().
+-spec update_pagination_envelope_params(cb_context:context(), term(),non_neg_integer(), api_binary()) ->
+                                               cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
     cb_context:set_resp_envelope(Context
                                  ,wh_json:set_values(
@@ -576,23 +578,34 @@ handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize, Fi
 
 -type filter_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
 
--spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
-apply_filter(FilterFun, JObjs, Context) when is_function(FilterFun, 2) ->
-    lager:debug("applying supplied filter fun"),
+-spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context()) ->
+                          wh_json:objects().
+-spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context(), boolean()) ->
+                          wh_json:objects().
+apply_filter(FilterFun, JObjs, Context) ->
+    apply_filter(FilterFun, JObjs, Context, has_filter(Context)).
 
-    props:filter_empty(
-      lists:foldl(FilterFun
-                  ,[]
-                  ,[JObj
-                    || JObj <- JObjs,
-                       filter_doc(wh_json:get_value(<<"doc">>, JObj), Context)
-                   ]));
-apply_filter(_, JObjs, Context) ->
-    lager:debug("no filter fun, checking if should filter doc"),
+apply_filter(FilterFun, JObjs, Context, HasQSFilter) ->
+    lager:debug("applying filter fun ~p and maybe qs filter: ~p", [FilterFun, HasQSFilter]),
+
+    maybe_apply_custom_filter(FilterFun
+                              ,[JObj
+                                || JObj <- JObjs,
+                                   filtered_doc_by_qs(JObj, HasQSFilter, Context)
+                               ]).
+
+-spec maybe_apply_custom_filter('undefined' | filter_fun(), wh_json:objects()) -> wh_json:objects().
+maybe_apply_custom_filter('undefined', JObjs) -> JObjs;
+maybe_apply_custom_filter(FilterFun, JObjs) ->
     [JObj
-     || JObj <- JObjs,
-        filter_doc(wh_json:get_value(<<"doc">>, JObj), Context)
+     || JObj <- lists:foldl(FilterFun, [], JObjs),
+        (not wh_util:is_empty(JObj))
     ].
+
+-spec filtered_doc_by_qs(wh_json:object(), boolean(), cb_context:context()) -> boolean().
+filtered_doc_by_qs(_JObj, 'false', _Context) -> 'true';
+filtered_doc_by_qs(JObj, 'true', Context) ->
+    filter_doc(wh_json:get_value(<<"doc">>, JObj), Context).
 
 -spec handle_couch_mgr_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_couch_mgr_success([], Context) ->
@@ -805,7 +818,13 @@ is_filter_key(_) -> 'false'.
 -spec filter_doc(api_object(), cb_context:context()) -> boolean().
 filter_doc('undefined', _Context) -> 'true';
 filter_doc(Doc, Context) ->
-    wh_json:all(fun({K, V}) -> filter_prop(Doc, K, V) end
+    wh_json:all(fun({K, V}) ->
+                        try filter_prop(Doc, K, V) of
+                            Bool -> Bool
+                        catch
+                            _E:_R -> 'false'
+                        end
+                end
                 ,cb_context:query_string(Context)
                ).
 
