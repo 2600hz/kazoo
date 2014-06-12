@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -578,11 +578,13 @@ create_auth_token(Context, Method) ->
                          ,{<<"api_key">>, wh_json:get_value(<<"api_key">>, Data)}
                          ,{<<"restrictions">>, wh_json:get_value(<<"restrictions">>, Data)}
                          ,{<<"modified">>, Timestamp}
-                         ,{<<"method">>, wh_util:to_binary(Method)}]
-                    ),
+                         ,{<<"method">>, wh_util:to_binary(Method)}
+                        ]),
             JObjToken = wh_doc:update_pvt_parameters(wh_json:from_list(Token)
                                                      ,wh_util:format_account_id(AccountId, 'encoded')
-                                                     ,Token),
+                                                     ,[{'now', Timestamp}
+                                                       ,{'account_id', AccountId}
+                                                      ]),
             case couch_mgr:save_doc(?TOKEN_DB, JObjToken) of
                 {'ok', Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
