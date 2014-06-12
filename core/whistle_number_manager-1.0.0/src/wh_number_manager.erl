@@ -11,6 +11,7 @@
 -module(wh_number_manager).
 
 -export([find/1, find/2, find/3]).
+-export([check/1, check/2]).
 -export([lookup_account_by_number/1]).
 -export([ported/1]).
 -export([create_number/3, create_number/4, create_number/5]).
@@ -63,6 +64,46 @@ find(Number, Quantity, Opts) ->
                | Opts
               ],
     prepare_find_results(Results, [], NewOpts).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Query the various providers for available numbers.
+%% force leading +
+%% @end
+%%--------------------------------------------------------------------
+-spec check(ne_binaries()) -> ne_binaries().
+-spec check(ne_binaries(), wh_proplist()) -> ne_binaries().
+check(Numbers) ->
+    check(Numbers, []).
+
+check(Numbers, Opts) ->
+    FormatedNumbers = [wnm_util:normalize_number(Number) || Number <- Numbers],
+    lager:info("attempting to check ~p ", [FormatedNumbers]),
+    Results = [{Module, catch(Module:check_numbers(FormatedNumbers, Opts))}
+               || Module <- wnm_util:list_carrier_modules()
+              ],
+    prepare_check_result(Results).
+
+-spec prepare_check_result(wh_json:objects()) -> wh_json:object().
+-spec prepare_check_result(wh_json:objects(), wh_json:object()) -> wh_json:object().
+prepare_check_result(Results) ->
+    prepare_check_result(Results, wh_json:new()).
+
+prepare_check_result([], JObj) -> JObj;
+prepare_check_result([{'wnm_other', {'ok', ModuleResults}}|Results], JObj) ->
+    JObj1 = lists:foldl(
+                fun({Num, Status}, Acc) ->
+                    Number = wnm_util:normalize_number(Num),
+                    wh_json:set_value(Number, Status, Acc)
+                end
+                ,JObj
+                ,wh_json:to_proplist(ModuleResults)
+            ),
+    prepare_check_result(Results, JObj1);
+prepare_check_result([_|Results], JObj) ->
+    prepare_check_result(Results, JObj).
+
 
 %%--------------------------------------------------------------------
 %% @public

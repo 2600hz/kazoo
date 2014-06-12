@@ -55,6 +55,7 @@
 -define(PAYED_URL, <<"phonebook_url_premium">>).
 -define(PREFIX, <<"prefix">>).
 -define(LOCALITY, <<"locality">>).
+-define(CHECK, <<"check">>).
 
 -define(MAX_TOKENS, whapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
 
@@ -155,6 +156,8 @@ allowed_methods(?PREFIX) ->
     [?HTTP_GET];
 allowed_methods(?LOCALITY) ->
     [?HTTP_POST];
+allowed_methods(?CHECK) ->
+    [?HTTP_POST];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -190,6 +193,7 @@ resource_exists() -> 'true'.
 
 resource_exists(?PREFIX) -> 'true';
 resource_exists(?LOCALITY) -> 'true';
+resource_exists(?CHECK) -> 'true';
 resource_exists(_) -> 'true'.
 
 resource_exists(_, ?ACTIVATE) -> 'true';
@@ -267,6 +271,8 @@ validate(#cb_context{req_verb = ?HTTP_GET}=Context, ?CLASSIFIERS) ->
                             );
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?LOCALITY) ->
     find_locality(Context);
+validate(#cb_context{req_verb = ?HTTP_POST}=Context, ?CHECK) ->
+    check_number(Context);
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Number) ->
     read(Number, Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, _Number) ->
@@ -552,6 +558,40 @@ find_locality(#cb_context{req_data=Data}=Context) ->
                       ,Localities
                      )
             end;
+        _E ->
+            cb_context:add_validation_error(<<"numbers">>
+                                            ,<<"type">>
+                                            ,<<"numbers must be a list">>
+                                            ,Context
+                                           )
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec check_number(cb_context:context()) -> cb_context:context().
+check_number(#cb_context{req_data=Data}=Context) ->
+    case wh_json:get_value(<<"numbers">>, Data) of
+        'undefined' ->
+            cb_context:add_validation_error(<<"numbers">>
+                                            ,<<"required">>
+                                            ,<<"list of numbers missing">>
+                                            ,Context
+                                           );
+        [] ->
+           cb_context:add_validation_error(<<"numbers">>
+                                            ,<<"minimum">>
+                                            ,<<"minimum 1 number required">>
+                                            ,Context
+                                          );
+        Numbers when is_list(Numbers) ->
+            cb_context:set_resp_data(
+                cb_context:set_resp_status(Context, 'success')
+                ,wh_number_manager:check(Numbers)
+            );
         _E ->
             cb_context:add_validation_error(<<"numbers">>
                                             ,<<"type">>
