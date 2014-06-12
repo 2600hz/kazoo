@@ -111,15 +111,27 @@ fire_hook(JObj, Hook, URI, 'post', Retries) ->
 
 -spec fire_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries(), ibrowse_ret()) -> 'ok'.
 fire_hook(_JObj, Hook, _URI, _Method, _Retries, {'ok', "200", _, _RespBody}) ->
-    lager:debug("sent hook event successfully"),
+    lager:debug("sent hook call event successfully"),
     successful_hook(Hook);
-fire_hook(JObj, Hook, URI, Method, Retries, {'ok', RespCode, _, RespBody}) ->
-    lager:debug("non-200 response code: ~s", [RespCode]),
+fire_hook(_JObj, Hook, _URI, _Method, Retries, {'ok', RespCode, _, RespBody}) ->
     _ = failed_hook(Hook, Retries, RespCode, RespBody),
-    fire_hook(JObj, Hook, URI, Method, Retries-1);
+    lager:debug("non-200 response code: ~s", [RespCode]);
+fire_hook(JObj, Hook, URI, Method, Retries, {'error', 'req_timedout'}) ->
+    lager:debug("request timed out to ~s, retrying", [URI]),
+    _ = failed_hook(Hook, Retries, <<"request_timed_out">>),
+    retry_hook(JObj, Hook, URI, Method, Retries);
+fire_hook(_JObj, Hook, URI, _Method, Retries, {'error', 'retry_later'}) ->
+    lager:debug("failed with 'retry_later' to ~s", [URI]),
+    _ = failed_hook(Hook, Retries, <<"retry_later">>),
+    'ok';
 fire_hook(JObj, Hook, URI, Method, Retries, {'error', E}) ->
     lager:debug("failed to fire hook: ~p", [E]),
     _ = failed_hook(Hook, Retries, E),
+    retry_hook(JObj, Hook, URI, Method, Retries).
+
+-spec retry_hook(wh_json:object(), webhook(), string(), http_verb(), hook_retries()) -> 'ok'.
+retry_hook(JObj, Hook, URI, Method, Retries) ->
+    timer:sleep(2000),
     fire_hook(JObj, Hook, URI, Method, Retries-1).
 
 -spec successful_hook(webhook()) -> 'ok'.
