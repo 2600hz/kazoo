@@ -17,7 +17,7 @@
 
 -include("../crossbar.hrl").
 
--define(USERNAME_LIST, <<"users/list_by_username">>).
+-define(USER_LIST, <<"users/crossbar_listing">>).
 -define(IS_PVT, 'false').
 
 %%%===================================================================
@@ -57,10 +57,10 @@ validate(Context, _, _) -> ?MODULE:validate(Context).
 validate(Context, _, _, _) -> ?MODULE:validate(Context).
 
 
--spec update_modified(cb_context:context(), http_method()) -> cb_context:context().
+-spec update_modified(cb_context:context()) -> cb_context:context().
 update_modified(Context) ->
     Doc1 = wh_json:set_value(<<"modified_by">>, get_modifying_username(cb_context:auth_doc(Context)), cb_context:doc(Context)),
-    Doc2 = wh_json:set_value(<<"modified_time">>, universal_time(), Doc1),
+    Doc2 = wh_json:set_value(<<"modified_time">>, calendar:universal_time(), Doc1),
     cb_context:set_doc(Doc2).
 
 %%--------------------------------------------------------------------
@@ -69,14 +69,14 @@ update_modified(Context) ->
 %% Get the username of the user who is authenticating this request.
 %% @end
 %%--------------------------------------------------------------------
--spec get_modifying_username(api_object()).
+-spec get_modifying_username(api_object()) -> ne_binary().
 get_modifying_username(Doc) ->
     OwnerId = wh_json:get_value(<<"owner_id">>, Doc),
     AccountDb = wh_util:format_account_id(wh_json:get_value(<<"account_id">>), 'encoded'),
-    ViewOptions = [{'key', Username}
+    ViewOptions = [{'key', OwnerId}
                    ,'include_docs'
                   ],
-    case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, ViewOptions) of
-        {'ok', [Username]} ->
-            Username
+    case couch_mgr:get_results(AccountDb, ?USER_LIST, ViewOptions) of
+        {'ok', [User]} ->
+            wh_json:get_value(<<"username">>, User)
     end.
