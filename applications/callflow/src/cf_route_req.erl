@@ -29,7 +29,7 @@ handle_req(JObj, Props) ->
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
-                    maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
+                    maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch);
                 {'ok', _, 'true'} ->
                     lager:info("only available callflow is a nomatch for a unauthorized call", []);
                 {'error', R} ->
@@ -39,13 +39,48 @@ handle_req(JObj, Props) ->
             'ok'
     end.
 
+-spec maybe_exec_preflow(wh_json:object(), wh_proplist()
+                         ,whapps_call:call(), wh_json:object(), boolean()) -> whapps_call:call().
+maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch) ->
+    AccountId = whapps_call:account_id(Call),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _E} ->
+            lager:warning("coudl not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
+            maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
+        {'ok', Doc} ->
+            case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
+                'undefined' ->
+                    lager:debug("ignore preflow, not set"),
+                    maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
+                PreflowId ->
+                    NewFlow = exec_preflow(AccountId, PreflowId, Flow),
+                    maybe_reply_to_req(JObj, Props, Call, NewFlow, NoMatch)
+            end
+    end.
+
+-spec exec_preflow(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
+exec_preflow(AccountId, PreflowId, Flow) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, PreflowId) of
+        {'error', _E} ->
+            lager:warning("could not open ~s in ~s : ~p", [PreflowId, AccountDb, _E]),
+            Flow;
+        {'ok', Doc} ->
+            Children = wh_json:from_list([{<<"_">>, wh_json:get_value(<<"flow">>, Flow)}]),
+            Preflow = wh_json:set_value(<<"children">>
+                                        ,Children
+                                        ,wh_json:get_value(<<"flow">>, Doc)),
+            wh_json:set_value(<<"flow">>, Preflow, Flow)
+    end.
+
+-spec maybe_reply_to_req(wh_json:object(), wh_proplist()
+                         ,whapps_call:call(), wh_json:object(), boolean()) -> whapps_call:call().
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
                                                        ,whapps_call:account_id(Call)
                                                       ]),
-
     {Name, Cost} = bucket_info(Call, Flow),
-
     case kz_buckets:consume_tokens(Name, Cost) of
         'false' ->
             lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
