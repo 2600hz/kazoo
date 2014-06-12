@@ -11,7 +11,7 @@
 -export([handle_req/2]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, Props) ->
+handle_req(JObj, _Props) ->
     'true' = wapi_notifications:webhook_v(JObj),
     Hook = webhooks_util:from_json(wh_json:get_value(<<"Hook">>, JObj)),
     Data = wh_json:get_value(<<"Data">>, JObj),
