@@ -577,18 +577,22 @@ handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize, Fi
 -type filter_fun() :: fun((wh_json:object(), wh_json:objects()) -> wh_json:objects()).
 
 -spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context()) -> wh_json:objects().
-apply_filter(FilterFun, JObjs, _Context) when is_function(FilterFun, 2) ->
-    [JObj
-     || JObj <- lists:foldl(FilterFun, [], JObjs),
-        (not wh_util:is_empty(JObj))
-    ];
+apply_filter(FilterFun, JObjs, Context) when is_function(FilterFun, 2) ->
+    lager:debug("applying supplied filter fun"),
+
+    props:filter_empty(
+      lists:foldl(FilterFun
+                  ,[]
+                  ,[JObj
+                    || JObj <- JObjs,
+                       filter_doc(wh_json:get_value(<<"doc">>, JObj), Context)
+                   ]));
 apply_filter(_, JObjs, Context) ->
     lager:debug("no filter fun, checking if should filter doc"),
     [JObj
      || JObj <- JObjs,
         filter_doc(wh_json:get_value(<<"doc">>, JObj), Context)
     ].
-
 
 -spec handle_couch_mgr_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_couch_mgr_success([], Context) ->
@@ -798,7 +802,7 @@ is_filter_key(_) -> 'false'.
 %% Returns 'true' if all of the requested props are found, 'false' if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec filter_doc(wh_json:object(), cb_context:context()) -> boolean().
+-spec filter_doc(api_object(), cb_context:context()) -> boolean().
 filter_doc('undefined', _Context) -> 'true';
 filter_doc(Doc, Context) ->
     wh_json:all(fun({K, V}) -> filter_prop(Doc, K, V) end
