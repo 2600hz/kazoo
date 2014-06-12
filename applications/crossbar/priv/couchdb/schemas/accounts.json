@@ -17,6 +17,9 @@
          "description":"The realm of the account, ie: 'account1.2600hz.com'",
          "required":"true",
          "type":"string"
+         "minLength":1,
+         "maxLength":256,
+         "pattern":"^([.\\w_-]+)$"
       },
       "timezone":{
          "name":"Timezone",
