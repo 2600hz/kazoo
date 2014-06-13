@@ -304,8 +304,8 @@ remove_spaces(AccountId, Context) ->
     JObjNew = lists:foldl(fun(Key, Acc) ->
                         case wh_json:get_value(Key, Acc) of
                             'undefined' -> Acc;
-                            _Else ->
-                                NoSpaces = binary:replace(_Else, <<" ">>, <<>>, ['global']),
+                            Value ->
+                                NoSpaces = binary:replace(Value, <<" ">>, <<>>, ['global']),
                                 wh_json:set_value(Key, NoSpaces, Acc)
                         end
                 end, JObj, ?REMOVE_SPACES),
