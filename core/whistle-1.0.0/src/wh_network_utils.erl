@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%% Various utilities - a veritable cornicopia
 %%% @end
@@ -22,10 +22,20 @@
 -export([iptuple_to_binary/1]).
 -export([pretty_print_bytes/1]).
 
+-export([lookup_timeout/0]).
+
 -include_lib("kernel/include/inet.hrl").
 
 -include("../include/wh_types.hrl").
 -include("../include/wh_log.hrl").
+
+-define(LOOKUP_TIMEOUT, 500).
+-define(LOOKUP_OPTIONS, [{'timeout', ?LOOKUP_TIMEOUT}
+                         ,{'nameservers', []} % {IP, Port}
+                        ]).
+
+-spec lookup_timeout() -> ?LOOKUP_TIMEOUT.
+lookup_timeout() -> ?LOOKUP_TIMEOUT.
 
 -spec get_hostname() -> string().
 get_hostname() ->
@@ -129,7 +139,7 @@ maybe_is_ip(Address) ->
 -spec maybe_resolve_srv_records(ne_binary()) -> ne_binaries().
 maybe_resolve_srv_records(Address) ->
     Domain = <<"_sip._udp.", Address/binary>>,
-    case inet_res:lookup(wh_util:to_list(Domain), 'in', 'srv') of
+    case inet_res:lookup(wh_util:to_list(Domain), 'in', 'srv', ?LOOKUP_OPTIONS, ?LOOKUP_TIMEOUT) of
         [] -> maybe_resolve_a_records([Address]);
         SRVs -> maybe_resolve_a_records([D || {_, _, _, D} <- SRVs])
     end.
@@ -147,22 +157,25 @@ maybe_resolve_fold(Domain, IPs) ->
 
 -spec resolve_a_record(string(), ne_binaries()) -> ne_binaries().
 resolve_a_record(Domain, IPs) ->
-    case inet:getaddrs(Domain, 'inet') of
+    case inet:getaddrs(Domain, 'inet', ?LOOKUP_TIMEOUT) of
         {'error', _R} ->
             lager:info("unable to resolve ~s: ~p", [Domain, _R]),
             IPs;
         {'ok', Addresses} ->
-            lists:foldr(fun(IPTuple, I) ->
-                                [iptuple_to_binary(IPTuple)|I]
-                        end, IPs, Addresses)
+            lists:foldr(fun resolve_a_record_fold/2, IPs, Addresses)
     end.
+
+-spec resolve_a_record_fold(inet:ip4_address(), ne_binaries()) -> ne_binaries().
+resolve_a_record_fold(IPTuple, I) ->
+    [iptuple_to_binary(IPTuple) | I].
 
 -spec iptuple_to_binary(inet:ip4_address()) -> ne_binary().
 iptuple_to_binary({A,B,C,D}) ->
     <<(wh_util:to_binary(A))/binary, "."
       ,(wh_util:to_binary(B))/binary, "."
       ,(wh_util:to_binary(C))/binary, "."
-      ,(wh_util:to_binary(D))/binary>>.
+      ,(wh_util:to_binary(D))/binary
+    >>.
 
 -spec pretty_print_bytes(non_neg_integer()) -> iolist().
 pretty_print_bytes(Bytes) ->
