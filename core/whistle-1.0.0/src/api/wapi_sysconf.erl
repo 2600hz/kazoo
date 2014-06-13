@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Expose system configuration data.
 %%% System configuration data is stored as key/values in a namespace
@@ -69,11 +69,13 @@
 %% READ
 %% @end
 %%--------------------------------------------------------------------
--spec get_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec get_req(api_terms()) ->
+                     {'ok', iolist()} |
+                     {'error', string()}.
 get_req(Prop) when is_list(Prop) ->
     case get_req_v(Prop) of
-        true -> wh_api:build_message(Prop, ?SYSCONF_GET_REQ_HEADERS, ?OPTIONAL_SYSCONF_GET_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for sysconf read"}
+        'true' -> wh_api:build_message(Prop, ?SYSCONF_GET_REQ_HEADERS, ?OPTIONAL_SYSCONF_GET_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sysconf get_req"}
     end;
 get_req(JObj) ->
     get_req(wh_json:to_proplist(JObj)).
@@ -84,11 +86,13 @@ get_req_v(Prop) when is_list(Prop) ->
 get_req_v(JObj) ->
     get_req_v(wh_json:to_proplist(JObj)).
 
--spec get_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec get_resp(api_terms()) ->
+                      {'ok', iolist()} |
+                      {'error', string()}.
 get_resp(Prop) when is_list(Prop) ->
     case get_resp_v(Prop) of
-        true -> wh_api:build_message(Prop, ?SYSCONF_GET_RESP_HEADERS, ?OPTIONAL_SYSCONF_GET_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for sysconf read"}
+        'true' -> wh_api:build_message(Prop, ?SYSCONF_GET_RESP_HEADERS, ?OPTIONAL_SYSCONF_GET_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for sysconf get_resp"}
     end;
 get_resp(JObj) ->
     get_resp(wh_json:to_proplist(JObj)).
@@ -104,7 +108,9 @@ get_resp_v(JObj) ->
 %% WRITE
 %% @end
 %%--------------------------------------------------------------------
--spec set_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec set_req(api_terms()) ->
+                     {'ok', iolist()} |
+                     {'error', string()}.
 set_req(Prop) when is_list(Prop) ->
     case set_req_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?SYSCONF_SET_REQ_HEADERS, ?OPTIONAL_SYSCONF_SET_REQ_HEADERS);
@@ -119,7 +125,9 @@ set_req_v(Prop) when is_list(Prop) ->
 set_req_v(JObj) ->
     set_req_v(wh_json:to_proplist(JObj)).
 
--spec set_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec set_resp(api_terms()) ->
+                      {'ok', iolist()} |
+                      {'error', string()}.
 set_resp(Prop) when is_list(Prop) ->
     case set_resp_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?SYSCONF_SET_RESP_HEADERS, ?OPTIONAL_SYSCONF_SET_RESP_HEADERS);
@@ -139,7 +147,9 @@ set_resp_v(JObj) ->
 %% Flush a given key
 %% @end
 %%--------------------------------------------------------------------
--spec flush_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec flush_req(api_terms()) ->
+                       {'ok', iolist()} |
+                       {'error', string()}.
 flush_req(Prop) when is_list(Prop) ->
     case flush_req_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?SYSCONF_FLUSH_REQ_HEADERS, ?OPTIONAL_SYSCONF_FLUSH_REQ_HEADERS);
@@ -246,7 +256,6 @@ publish_flush_req(JObj) ->
 publish_flush_req(Api, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Api, ?SYSCONF_FLUSH_REQ_VALUES, fun ?MODULE:flush_req/1),
     amqp_util:sysconf_publish(routing_key_flush(), Payload, ContentType).
-
 
 routing_key_get() ->
     ?KEY_SYSCONF_GET_REQ.
