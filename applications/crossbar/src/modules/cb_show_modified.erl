@@ -12,13 +12,12 @@
 -module(cb_show_modified).
 
 -export([init/0
-         ,validate/1%, validate/2, validate/3
+         ,validate/1, validate/2
         ]).
 
 -include("../crossbar.hrl").
 
 -define(USER_LIST, <<"users/crossbar_listing">>).
--define(IS_PVT, 'false').
 
 %%%===================================================================
 %%% API
@@ -44,8 +43,6 @@ init() ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     update_modified(Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context) ->
@@ -53,15 +50,13 @@ validate(#cb_context{req_verb = ?HTTP_POST}=Context) ->
 validate(#cb_context{req_verb = ?HTTP_DELETE}=Context) ->
     update_modified(Context).
 validate(Context, _) -> ?MODULE:validate(Context).
-validate(Context, _, _) -> ?MODULE:validate(Context).
-validate(Context, _, _, _) -> ?MODULE:validate(Context).
 
 
 -spec update_modified(cb_context:context()) -> cb_context:context().
 update_modified(Context) ->
-    Doc1 = wh_json:set_value(<<"modified_by">>, get_modifying_username(cb_context:auth_doc(Context)), cb_context:doc(Context)),
-    Doc2 = wh_json:set_value(<<"modified_time">>, calendar:universal_time(), Doc1),
-    cb_context:set_doc(Doc2).
+    Doc1 = wh_json:set_value(<<"modified_by">>, get_modifying_username(cb_context:auth_doc(Context)), cb_context:req_data(Context)),
+    Doc2 = wh_json:set_value(<<"modified_time">>, get_modified_time(), Doc1),
+    cb_context:set_req_data(Context, Doc2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -71,12 +66,20 @@ update_modified(Context) ->
 %%--------------------------------------------------------------------
 -spec get_modifying_username(api_object()) -> ne_binary().
 get_modifying_username(Doc) ->
-    OwnerId = wh_json:get_value(<<"owner_id">>, Doc),
-    AccountDb = wh_util:format_account_id(wh_json:get_value(<<"account_id">>), 'encoded'),
-    ViewOptions = [{'key', OwnerId}
-                   ,'include_docs'
-                  ],
-    case couch_mgr:get_results(AccountDb, ?USER_LIST, ViewOptions) of
-        {'ok', [User]} ->
-            wh_json:get_value(<<"username">>, User)
+    OwnerId = wh_json:get_binary_value(<<"owner_id">>, Doc),
+    AccountDb = wh_util:format_account_id(wh_json:get_binary_value(<<"account_id">>, Doc), 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'ok', User} ->
+            wh_json:get_binary_value(<<"username">>, User)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get the UTC time when this document was modified (ISO 8601 format).
+%% @end
+%%--------------------------------------------------------------------
+-spec get_modified_time() -> ne_binary().
+get_modified_time() ->
+    {{Y,M,D},{H,M,S}} = calendar:universal_time(),
+    wh_util:to_binary([Y,"-",M,"-",D,"T",H,":",M,":",S]).
