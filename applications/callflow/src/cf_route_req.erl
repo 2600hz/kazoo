@@ -17,7 +17,7 @@
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
-    Call = whapps_call:from_route_req(JObj),
+    Call = maybe_device_redirected(whapps_call:from_route_req(JObj)),
     case is_binary(whapps_call:account_id(Call))
         andalso callflow_should_respond(Call)
         andalso callflow_resource_allowed(Call)
@@ -128,7 +128,7 @@ is_resource_allowed('undefined') -> 'true';
 is_resource_allowed(ResourceType) ->
     lists:member(ResourceType, ?RESOURCE_TYPES_HANDLED).
 
-    
+
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
@@ -208,3 +208,22 @@ cache_call(Flow, NoMatch, ControllerQ, Call) ->
                 ,fun(C) -> whapps_call:set_application_version(?APP_VERSION, C) end
                ],
     whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), ?APP_NAME).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% process
+%% @end
+%%-----------------------------------------------------------------------------
+-spec maybe_device_redirected(whapps_call:call()) -> whapps_call:call().
+maybe_device_redirected(Call) ->
+    case whapps_call:custom_channel_var(<<"Redirected-By">>, Call) of
+        'undefined' -> Call;
+        Device ->
+            case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Device) of
+                {'ok', EndpointId } ->
+                    whapps_call:set_authorization(<<"device">>, EndpointId, Call);
+                _ -> Call
+            end
+    end.
