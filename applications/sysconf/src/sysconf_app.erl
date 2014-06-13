@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -12,7 +12,9 @@
 -include("sysconf.hrl").
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2
+         ,stop/1
+        ]).
 
 %% ===================================================================
 %% Application callbacks
@@ -23,9 +25,7 @@
 %% Implement the application start behaviour
 %% @end
 %%--------------------------------------------------------------------
--spec start(term(), term()) ->
-                   {'ok', pid()} |
-                   {'error', term()}.
+-spec start(term(), term()) -> startlink_ret().
 start(_StartType, _StartArgs) -> sysconf:start_link().
 
 %%--------------------------------------------------------------------
