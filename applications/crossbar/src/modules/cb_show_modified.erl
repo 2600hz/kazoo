@@ -81,5 +81,5 @@ get_modifying_username(Doc) ->
 %%--------------------------------------------------------------------
 -spec get_modified_time() -> ne_binary().
 get_modified_time() ->
-    {{Y,M,D},{H,M,S}} = calendar:universal_time(),
-    wh_util:to_binary([Y,"-",M,"-",D,"T",H,":",M,":",S]).
+    {{Y,M,D},{H,Min,S}} = calendar:universal_time(),
+    wh_util:to_binary([Y,"-",M,"-",D,"T",H,":",Min,":",S]).
