@@ -71,6 +71,7 @@
                   ,context :: api_binary() | '_'
                   ,dialplan :: api_binary() | '_'
                   ,precedence = 5 :: pos_integer() | '$2' | '_'
+                  ,handling_locally = 'false' :: boolean() %% is this ecallmgr handling the call control?
                  }).
 
 -type channel() :: #channel{}.

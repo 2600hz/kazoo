@@ -230,6 +230,7 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
             reply_affirmative(Section, Node, FetchId, CallId, JObj)
     end.
 
+-spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 search_for_route(Section, Node, FetchId, CallId, Props) ->
     _ = spawn('ecallmgr_fs_authz', 'authorize', [props:set_value(<<"Call-Setup">>, <<"true">>, Props)
                                                  ,CallId
@@ -246,21 +247,24 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
             J = wh_json:set_value(<<"Context">>, hunt_context(Props), JObj),
-            maybe_wait_for_authz(Section, J, Node, FetchId, CallId)
+            maybe_wait_for_authz(Section, Node, FetchId, CallId, J)
     end.
 
+-spec hunt_context(wh_proplist()) -> api_binary().
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
-maybe_wait_for_authz(Section, JObj, Node, FetchId, CallId) ->
+-spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
     case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false'))
         andalso wh_json:get_value(<<"Method">>, JObj) =/= <<"error">>
     of
-        'true' -> wait_for_authz(Section, JObj, Node, FetchId, CallId);
+        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj);
         'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj)
     end.
 
-wait_for_authz(Section, JObj, Node, FetchId, CallId) ->
+-spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
     case wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
         {'ok', {'true', AuthzCCVs}} ->
             _ = wh_cache:erase_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)),
@@ -296,6 +300,7 @@ reply_affirmative(Section, Node, FetchId, CallId, JObj) ->
         {'error', _Reason} -> lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);
         'ok' ->
             lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]),
+            ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
             maybe_start_call_handling(Node, FetchId, CallId, JObj)
     end.
 
@@ -316,7 +321,7 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
     ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)).
 
 -spec start_message_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-start_message_handling(Node, FetchId, CallId, JObj) ->
+start_message_handling(_Node, _FetchId, CallId, JObj) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     Win = [{<<"Msg-ID">>, CallId}
@@ -327,7 +332,6 @@ start_message_handling(Node, FetchId, CallId, JObj) ->
           ],
     lager:debug("sending route_win to ~s", [ServerQ]),
     wapi_route:publish_win(ServerQ, Win).
-
 
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
 route_req(CallId, FetchId, Props, Node) ->

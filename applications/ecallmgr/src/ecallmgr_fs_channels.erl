@@ -584,7 +584,8 @@ query_channels({[#channel{uuid=CallId}=Channel], Continuation}
     JObj = ecallmgr_fs_channel:to_api_json(Channel),
     query_channels(ets:match_object(Continuation)
                    ,<<"all">>
-                   ,wh_json:set_value(CallId, JObj, Channels));
+                   ,wh_json:set_value(CallId, JObj, Channels)
+                  );
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}
                ,Fields, Channels) ->
     Props = ecallmgr_fs_channel:to_api_props(Channel),
@@ -596,13 +597,18 @@ query_channels({[#channel{uuid=CallId}=Channel], Continuation}
               )),
     query_channels(ets:match_object(Continuation)
                    ,Fields
-                   ,wh_json:set_value(CallId, JObj, Channels)).
+                   ,wh_json:set_value(CallId, JObj, Channels)
+                  ).
+
+-define(SUMMARY_HEADER, "| ~-50s | ~-40s | ~-9s | ~-15s | ~-32s |~n").
 
 print_summary('$end_of_table') ->
     io:format("No channels found!~n", []);
 print_summary(Match) ->
     io:format("+----------------------------------------------------+------------------------------------------+-----------+-----------------+----------------------------------+~n"),
-    io:format("| UUID                                               | Node                                     | Direction | Destination     | Account-ID                       |~n"),
+    io:format(?SUMMARY_HEADER
+              ,[ <<"UUID">>, <<"Node">>, <<"Direction">>, <<"Destination">>, <<"Account-ID">>]
+             ),
     io:format("+====================================================+==========================================+===========+=================+==================================+~n"),
     print_summary(Match, 0).
 
@@ -617,8 +623,9 @@ print_summary({[#channel{uuid=UUID
                         }]
                ,Continuation}
               ,Count) ->
-    io:format("| ~-50s | ~-40s | ~-9s | ~-15s | ~-32s |~n"
-              ,[UUID, Node, Direction, Destination, AccountId]),
+    io:format(?SUMMARY_HEADER
+              ,[UUID, Node, Direction, Destination, AccountId]
+             ),
     print_summary(ets:select(Continuation), Count + 1).
 
 print_details('$end_of_table') ->
