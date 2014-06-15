@@ -17,8 +17,6 @@
 
 -include("../crossbar.hrl").
 
--define(USER_LIST, <<"users/crossbar_listing">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -38,7 +36,7 @@ init() ->
 %% @public
 %% @doc
 %% Set the username of the user modifying this document,
-%% and the current timestamp in UTC.
+%% and the current UTC time.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
@@ -76,7 +74,7 @@ get_modifying_username(Doc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Get the UTC time when this document was modified (ISO 8601 format).
+%% Get the UTC time when this document was modified (RFC1123 format).
 %% @end
 %%--------------------------------------------------------------------
 -spec get_modified_time() -> ne_binary().
