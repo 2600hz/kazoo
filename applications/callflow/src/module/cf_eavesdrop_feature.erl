@@ -37,11 +37,15 @@
 handle(Data, Call) ->
     Exten = whapps_call:kvs_fetch('cf_capture_group', Call),
     Target = get_target_for_extension(Exten, Call),
+    EavesdropData = build_data(Target, Call),
     Table = fields_to_check(),
     AllOk = cf_util:check_value_of_fields(Table, 'false', Data, Call) andalso maybe_correct_target(Target, Data, Call),
     case AllOk of
         'true' ->
-            branch_to_eavesdrop(Target, Call);
+            Flow = wh_json:from_list([{<<"data">>, EavesdropData}
+                                      ,{<<"module">>, <<"eavesdrop">>}
+                                      ,{<<"children">>, wh_json:new()}]),
+            cf_exe:branch(Flow, Call);
         'false' ->
             no_permission_to_eavesdrop(Call),
             cf_exe:stop(Call)
@@ -56,16 +60,22 @@ fields_to_check() ->
 
 -type target() :: {'ok', ne_binary(), ne_binary()} | 'error'.
 
--spec branch_to_eavesdrop(target(), whapps_call:call()) -> 'ok'.
-branch_to_eavesdrop({_, TargetId, <<"device">>}, Call) ->
-    Data = wh_json:from_list([{<<"device_id">>, TargetId}]),
-    cf_eavesdrop:handle(Data, Call);
-branch_to_eavesdrop({_, TargetId, <<"user">>}, Call) ->
-    Data = wh_json:from_list([{<<"user_id">>, TargetId}]),
-    cf_eavesdrop:handle(Data, Call);
-branch_to_eavesdrop(_, Call) ->
-    lager:info("Can't branch to eavesdrop"),
-    cf_exe:stop(Call).
+-spec build_data(target(), whapps_call:call()) -> wh_json:object().
+build_data({'ok', TargetId, TargetType}, Call) ->
+    Target = case TargetType of
+                 <<"device">> -> [{<<"device_id">>, TargetId}];
+                 <<"user">> -> [{<<"user_id">>, TargetId}];
+                 _ ->
+                     lager:info("Unknown target's type(~s)", [TargetType]),
+                     []
+             end,
+    Permission = case whapps_call:authorizing_type(Call) of
+                     <<"device">> -> [{<<"approved_device_id">>, whapps_call:authorizing_id(Call)}];
+                     <<"user">> -> [{<<"approved_user_id">>, whapps_call:authorizing_id(Call)}]
+                 end,
+    wh_json:from_list(Target ++ Permission);
+build_data(_, _) ->
+    wh_json:new().
 
 
 -spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
