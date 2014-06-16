@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz INC
+%%% @copyright (C) 2010-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% When connecting to a FreeSWITCH node, we create three processes: one to
@@ -69,7 +69,7 @@
 
 -record(state, {nodes = dict:new() :: dict() %fs_nodes()
                 ,self = self() :: pid()
-                ,preconfigured_lookup :: pid()
+                ,init_pidref :: pid_ref() | 'undefined'
                }).
 -type state() :: #state{}.
 
@@ -286,11 +286,11 @@ init([]) ->
     put('callid', ?LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs handler"),
-    _ = spawn_link(fun() -> start_preconfigured_servers() end),
     _ = ets:new('sip_subscriptions', ['set', 'public', 'named_table', {'keypos', #sip_subscription.key}]),
     _ = ets:new(?CAPABILITY_TBL, ['bag', 'protected', 'named_table', {'keypos', #capability.node}]),
     _ = erlang:send_after(?EXPIRE_CHECK, self(), 'expire_sip_subscriptions'),
-    {'ok', #state{}}.
+    InitPidRef = spawn_monitor(fun start_preconfigured_servers/0),
+    {'ok', #state{init_pidref=InitPidRef}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -416,6 +416,9 @@ handle_info('expire_sip_subscriptions', Cache) ->
 handle_info({'nodedown', NodeName}, State) ->
     spawn(fun() -> maybe_handle_nodedown(NodeName, State) end),
     call_control_fs_nodedown(NodeName),
+    {'noreply', State};
+handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{init_pidref={Pid, Ref}}=State) ->
+    lager:debug("initialization complete: ~p", [_Reason]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -669,6 +672,7 @@ reset_node_stats(#node{}) ->
 start_node_stats(#node{}) ->
     'ok'.
 
+-spec start_preconfigured_servers() -> 'ok'.
 start_preconfigured_servers() ->
     put('callid', ?LOG_SYSTEM_ID),
     case ecallmgr_config:get(<<"fs_nodes">>) of
@@ -679,7 +683,8 @@ start_preconfigured_servers() ->
             start_preconfigured_servers();
         Nodes when is_list(Nodes) ->
             lager:info("successfully retrieved FreeSWITCH nodes to connect with, doing so..."),
-            [spawn(fun() -> start_node_from_config(N) end) || N <- Nodes];
+            _ = [spawn(fun() -> start_node_from_config(N) end) || N <- Nodes],
+            'ok';
         'undefined' ->
             lager:debug("failed to receive a response for node configs"),
             timer:sleep(5000),
