@@ -402,7 +402,8 @@ handle_cast({'sync_channels', Node, Channels}, State) ->
                  {'error', _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R]);
                  {'ok', C} ->
                      ets:insert(?CHANNELS_TBL, C),
-                     handle_channel_reconnected(C)
+                     PublishReconect = ecallmgr_config:get_boolean(<<"publish_channel_reconnect">>, 'false'),
+                     handle_channel_reconnected(C, PublishReconect)
              end
          end
          || UUID <- sets:to_list(Add)
@@ -666,13 +667,14 @@ print_details({[#channel{}=Channel]
         ],
     print_details(ets:select(Continuation), Count + 1).
 
--spec handle_channel_reconnected(channel()) -> 'ok'.
+-spec handle_channel_reconnected(channel(), boolean()) -> 'ok'.
 handle_channel_reconnected(#channel{handling_locally='true'
                                     ,uuid=_UUID
-                                   }=Channel) ->
+                                   }=Channel
+                           ,'true') ->
     lager:debug("channel ~s connected, publishing update", [_UUID]),
     publish_channel_connection_event(Channel, [{<<"Event-Name">>, <<"CHANNEL_CONNECTED">>}]);
-handle_channel_reconnected(#channel{handling_locally='false'}) ->
+handle_channel_reconnected(_Channel, _ShouldPublish) ->
     'ok'.
 
 -spec handle_channels_disconnected(channels()) -> 'ok'.
