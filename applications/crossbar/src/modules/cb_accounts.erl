@@ -439,10 +439,21 @@ leak_pvt_superduper_admin(Context) ->
     RespJObj = cb_context:resp_data(Context),
 
     SuperAdmin = wh_json:is_true(<<"pvt_superduper_admin">>, JObj, 'false'),
-    leak_pvt_created(
+    leak_pvt_api_key(
       cb_context:set_resp_data(Context
                                ,wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj))
      ).
+
+-spec leak_pvt_api_key(cb_context:context()) -> cb_context:context().
+leak_pvt_api_key(Context) ->
+    JObj = cb_context:doc(Context),
+    RespJObj = cb_context:resp_data(Context),
+
+    ApiKey = wh_json:get_value(<<"pvt_api_key">>, JObj),
+    leak_pvt_created(
+        cb_context:set_resp_data(Context
+            ,wh_json:set_value(<<"api_key">>, ApiKey, RespJObj))
+    ).
 
 -spec leak_pvt_created(cb_context:context()) -> cb_context:context().
 leak_pvt_created(Context) ->
