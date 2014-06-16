@@ -117,13 +117,25 @@ maybe_add_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
 
 -spec eavesdrop_call(ne_binary(), whapps_call:call()) -> 'ok'.
 eavesdrop_call(UUID, Call) ->
-    _ = whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
-    case wait_for_eavesdrop(Call) of
-        {'error', _E} -> 'ok';
-        'ok' ->
-            lager:debug("caller is eavesdropping, waiting for hangup"),
-            whapps_call_command:wait_for_hangup(),
-            lager:debug("hangup recv")
+    whapps_call_command:answer(Call),
+    whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
+    lager:info("caller ~s is being eavesdropper", [whapps_call:caller_id_name(Call)]),
+    wait_for_eavesdrop_complete(),
+    whapps_call_command:hangup(Call).
+
+
+-spec wait_for_eavesdrop_complete() -> {'ok', wh_json:object()}.
+wait_for_eavesdrop_complete() ->
+    receive
+        {'amqp_msg', JObj} ->
+            case whapps_util:get_event_type(JObj) of
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
+                {<<"error">>, <<"dialplan">>} -> {'ok', JObj};
+                {<<"call_event">>,<<"CHANNEL_EXECUTE_COMPLETE">>} -> wait_for_eavesdrop_complete();
+                _ -> wait_for_eavesdrop_complete()
+            end;
+        _Else ->
+            wait_for_eavesdrop_complete()
     end.
 
 -spec eavesdrop_cmd(ne_binary()) -> wh_proplist().
@@ -133,33 +145,6 @@ eavesdrop_cmd(TargetCallId) ->
      ,{<<"Enable-DTMF">>, 'true'}
     ].
 
--spec wait_for_eavesdrop(whapps_call:call()) ->
-                                'ok' |
-                                {'error', 'failed'} |
-                                {'error', 'timeout'}.
-wait_for_eavesdrop(Call) ->
-    case whapps_call_command:receive_event(10000) of
-        {'ok', Evt} ->
-            eavesdrop_event(Call, wh_util:get_event_type(Evt), Evt);
-        {'error', 'timeout'}=E ->
-            lager:debug("timed out"),
-            E
-    end.
-
--spec eavesdrop_event(whapps_call:call(), {ne_binary(), ne_binary()}, wh_json:object()) ->
-                             {'error', 'failed' | 'timeout'} |
-                             'ok'.
-eavesdrop_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
-    lager:debug("error in dialplan: ~s", [wh_json:get_value(<<"Error-Message">>, Evt)]),
-    {'error', 'failed'};
-eavesdrop_event(_Call, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}, _Evt) ->
-    lager:debug("channel bridged to ~s", [wh_json:get_value(<<"Other-Leg-Call-ID">>, _Evt)]);
-eavesdrop_event(_Call, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, _Evt) ->
-    lager:debug("channel died while waiting for eavesdrop"),
-    {'error', 'failed'};
-eavesdrop_event(Call, _Type, _Evt) ->
-    lager:debug("unhandled evt ~p", [_Type]),
-    wait_for_eavesdrop(Call).
 
 -spec find_sip_endpoints(wh_json:object(), whapps_call:call()) ->
                                 ne_binaries().
