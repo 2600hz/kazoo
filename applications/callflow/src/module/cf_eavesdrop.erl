@@ -76,10 +76,10 @@ eavesdrop_a_channel(Channels, Call) ->
         {[], []} ->
             lager:debug("no channels available to eavesdrop"),
             no_channels(Call);
-        {[], [RemoteUUID|_Remote]} ->
+        {[], [RemoteUUID | _Remote]} ->
             lager:debug("no calls on my media server, trying ~s", [RemoteUUID]),
             eavesdrop_call(RemoteUUID, Call);
-        {[LocalUUID|_Cs], _} ->
+        {[LocalUUID | _Cs], _} ->
             lager:debug("found a call (~s) on my media server", [LocalUUID]),
             eavesdrop_call(LocalUUID, Call)
     end.
@@ -102,23 +102,17 @@ sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
 -spec maybe_add_leg(wh_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}, wh_json:object()) ->
                                       {ne_binaries(), ne_binaries()}.
 maybe_add_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
+    UUID = wh_json:get_value(<<"uuid">>, Channel),
     case wh_json:get_value(<<"node">>, Channel) of
         MyMediaServer ->
-            case wh_json:get_value(<<"uuid">>, Channel) of
+            case UUID of
                 MyUUID ->
                     sort_channels(Channels, MyUUID, MyMediaServer, Acc);
-                _UUID ->
-                    sort_channels(Channels, MyUUID, MyMediaServer, {maybe_add_other_leg(Channel, Local), Remote})
+                _ ->
+                    sort_channels(Channels, MyUUID, MyMediaServer, {[UUID | Local], Remote})
             end;
         _OtherMediaServer ->
-            sort_channels(Channels, MyUUID, MyMediaServer, {Local, maybe_add_other_leg(Channel, Remote)})
-    end.
-
--spec maybe_add_other_leg(wh_json:object(), ne_binaries()) -> ne_binaries().
-maybe_add_other_leg(Channel, Legs) ->
-    case wh_json:get_value(<<"other_leg">>, Channel) of
-        'undefined' -> Legs;
-        Leg -> [Leg | Legs]
+            sort_channels(Channels, MyUUID, MyMediaServer, {Local, [UUID | Remote]})
     end.
 
 -spec eavesdrop_call(ne_binary(), whapps_call:call()) -> 'ok'.
