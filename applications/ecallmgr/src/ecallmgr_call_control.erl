@@ -514,13 +514,12 @@ handle_channel_destroyed(_,  #state{sanity_check_tref=SCTRef
                                     ,current_app=CurrentApp
                                     ,current_cmd=CurrentCmd
                                     ,callid=CallId
-                                    ,node=Node}=State) ->
+                                   }=State) ->
     lager:debug("our channel has been destroyed, executing any post-hangup commands"),
     %% if our sanity check timer is running stop it, it will always return false
     %% now that the channel is gone
     catch (erlang:cancel_timer(SCTRef)),
-    %% since this is not attached to a call the node status doesnt matter anymore
-    erlang:monitor_node(Node, 'false'),
+
     %% if the current application can not be run without a channel and we have received the
     %% channel_destory (the last event we will ever receive from freeswitch for this call)
     %% then create an error and force advance. This will happen with dialplan actions that
