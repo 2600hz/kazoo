@@ -99,7 +99,8 @@
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}]).
+                           ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+                          ]).
 
 %% Channel Status Request
 -define(CHANNEL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
@@ -165,18 +166,18 @@
 -define(QUERY_ACCOUNT_CHANNELS_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_QUERY_ACCOUNT_CHANNELS_REQ_HEADERS, []).
 -define(QUERY_ACCOUNT_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                         ,{<<"Event-Name">>, <<"query_account_channels_req">>}
-                                        ]).
+                                            ,{<<"Event-Name">>, <<"query_account_channels_req">>}
+                                           ]).
 -define(QUERY_ACCOUNT_CHANNELS_REQ_TYPES, [{<<"Usernames">>, fun erlang:is_list/1}
-                                        ,{<<"Username">>, fun erlang:is_binary/1}
-                                       ]).
+                                           ,{<<"Username">>, fun erlang:is_binary/1}
+                                          ]).
 
 %% Query Account Channels Resp
 -define(QUERY_ACCOUNT_CHANNELS_RESP_HEADERS, []).
 -define(OPTIONAL_QUERY_ACCOUNT_CHANNELS_RESP_HEADERS, [<<"Channels">>]).
 -define(QUERY_ACCOUNT_CHANNELS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                          ,{<<"Event-Name">>, <<"query_account_channels_resp">>}
-                                         ]).
+                                             ,{<<"Event-Name">>, <<"query_account_channels_resp">>}
+                                            ]).
 -define(QUERY_ACCOUNT_CHANNELS_RESP_TYPES, []).
 
 %% Query Channels Req
