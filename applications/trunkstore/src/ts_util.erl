@@ -147,7 +147,7 @@ lookup_user_flags(Name, Realm, AccountId) ->
                     E;
                 {'ok', []} ->
                     lager:info("cache miss for ~s@~s, no results", [Name, Realm]),
-                    {'error', 'no_user_flags'};
+					{'ok', wh_json:new()};
                 {'ok', [User|_]} ->
                     lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
                     ValJObj = wh_json:get_value(<<"value">>, User),
