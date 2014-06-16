@@ -399,8 +399,10 @@ handle_cast({'sync_channels', Node, Channels}, State) ->
     _ = [begin
              lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
              case ecallmgr_fs_channel:renew(Node, UUID) of
-                 {'ok', C} -> ets:insert(?CHANNELS_TBL, C);
-                 {'error', _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R])
+                 {'error', _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R]);
+                 {'ok', C} ->
+                     ets:insert(?CHANNELS_TBL, C),
+                     handle_channel_reconnected(C)
              end
          end
          || UUID <- sets:to_list(Add)
@@ -664,39 +666,66 @@ print_details({[#channel{}=Channel]
         ],
     print_details(ets:select(Continuation), Count + 1).
 
+-spec handle_channel_reconnected(channel()) -> 'ok'.
+handle_channel_reconnected(#channel{handling_locally='true'
+                                    ,uuid=_UUID
+                                   }=Channel) ->
+    lager:debug("channel ~s connected, publishing update", [_UUID]),
+    publish_channel_connection_event(Channel, [{<<"Event-Name">>, <<"CHANNEL_CONNECTED">>}]);
+handle_channel_reconnected(#channel{handling_locally='false'}) ->
+    'ok'.
+
 -spec handle_channels_disconnected(channels()) -> 'ok'.
 handle_channels_disconnected(LocalChannels) ->
     _ = [catch handle_channel_disconnected(LocalChannel) || LocalChannel <- LocalChannels],
     'ok'.
 
 -spec handle_channel_disconnected(channel()) -> 'ok'.
-handle_channel_disconnected(#channel{uuid=UUID
-                                     ,direction=Direction
-                                     ,node=Node
-                                    }=Channel) ->
-    wh_util:put_callid(UUID),
+handle_channel_disconnected(Channel) ->
+    publish_channel_connection_event(Channel, [{<<"Event-Name">>, <<"CHANNEL_DISCONNECTED">>}]).
+
+-spec publish_channel_connection_event(channel(), wh_proplist()) -> 'ok'.
+publish_channel_connection_event(#channel{uuid=UUID
+                                          ,direction=Direction
+                                          ,node=Node
+                                          ,destination=Destination
+                                          ,username=Username
+                                          ,realm=Realm
+                                          ,presence_id=PresenceId
+                                          ,answered=IsAnswered
+                                         }=Channel
+                                 ,ChannelSpecific) ->
     Event = [{<<"Timestamp">>, wh_util:current_tstamp()}
              ,{<<"Call-ID">>, UUID}
              ,{<<"Call-Direction">>, Direction}
              ,{<<"Media-Server">>, Node}
-             ,{<<"Custom-Channel-Vars">>, disconnected_ccvs(Channel)}
-             ,{<<"Event-Name">>, <<"CHANNEL_DISCONNECTED">>}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ,{<<"Custom-Channel-Vars">>, connection_ccvs(Channel)}
+             ,{<<"To">>, <<Destination/binary, "@", Realm/binary>>}
+             ,{<<"From">>, <<Username/binary, "@", Realm/binary>>}
+             ,{<<"Presence-ID">>, PresenceId}
+             ,{<<"Channel-Call-State">>, channel_call_state(IsAnswered)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ++ ChannelSpecific
             ],
     wh_amqp_worker:cast(Event, fun wapi_call:publish_event/1),
-    lager:debug("published channel_disconnected for ~s", [UUID]).
+    lager:debug("published channel connection event for ~s", [UUID]).
 
--spec disconnected_ccvs(channel()) -> wh_json:object().
-disconnected_ccvs(#channel{account_id=AccountId
-                           ,destination=Destination
-                           ,realm=Realm
-                           ,authorizing_id=AuthorizingId
-                           ,authorizing_type=AuthorizingType
-                           ,resource_id=ResourceId
-                           ,fetch_id=FetchId
-                           ,bridge_id=BridgeId
-                           ,owner_id=OwnerId
-                          }) ->
+-spec channel_call_state(boolean()) -> api_binary().
+channel_call_state('true') ->
+    <<"ANSWERED">>;
+channel_call_state('false') ->
+    'undefined'.
+
+-spec connection_ccvs(channel()) -> wh_json:object().
+connection_ccvs(#channel{account_id=AccountId
+                         ,destination=Destination
+                         ,realm=Realm
+                         ,authorizing_id=AuthorizingId
+                         ,authorizing_type=AuthorizingType
+                         ,resource_id=ResourceId
+                         ,fetch_id=FetchId
+                         ,bridge_id=BridgeId
+                         ,owner_id=OwnerId
+                        }) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Account-ID">>, AccountId}
