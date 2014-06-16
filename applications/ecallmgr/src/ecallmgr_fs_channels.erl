@@ -408,11 +408,31 @@ handle_cast({'sync_channels', Node, Channels}, State) ->
     {'noreply', State, 'hibernate'};
 handle_cast({'flush_node', Node}, State) ->
     lager:debug("flushing all channels in cache associated to node ~s", [Node]),
+
+    LocalChannelsMS = [{#channel{node = '$1'
+                                 ,handling_locally='true'
+                                 ,_ = '_'
+                                }
+                        ,[{'=:=', '$1', {'const', Node}}]
+                        ,['$_']}
+                      ],
+    case ets:select(?CHANNELS_TBL, LocalChannelsMS) of
+        [] ->
+            lager:debug("no locally handled channels");
+        LocalChannels ->
+            _P = spawn(fun() -> handle_channels_disconnected(LocalChannels) end),
+            lager:debug("sending channel disconnecteds for local channels: ~p", [LocalChannels])
+    end,
+
     MatchSpec = [{#channel{node = '$1', _ = '_'}
                   ,[{'=:=', '$1', {'const', Node}}]
                   ,['true']}
                 ],
     ets:select_delete(?CHANNELS_TBL, MatchSpec),
+    {'noreply', State};
+handle_cast({'gen_listener',{'created_queue', _QueueName}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
@@ -643,3 +663,48 @@ print_details({[#channel{}=Channel]
          || {K, V} <- ecallmgr_fs_channel:to_props(Channel)
         ],
     print_details(ets:select(Continuation), Count + 1).
+
+-spec handle_channels_disconnected(channels()) -> 'ok'.
+handle_channels_disconnected(LocalChannels) ->
+    _ = [catch handle_channel_disconnected(LocalChannel) || LocalChannel <- LocalChannels],
+    'ok'.
+
+-spec handle_channel_disconnected(channel()) -> 'ok'.
+handle_channel_disconnected(#channel{uuid=UUID
+                                     ,direction=Direction
+                                     ,node=Node
+                                    }=Channel) ->
+    wh_util:put_callid(UUID),
+    Event = [{<<"Timestamp">>, wh_util:current_tstamp()}
+             ,{<<"Call-ID">>, UUID}
+             ,{<<"Call-Direction">>, Direction}
+             ,{<<"Media-Server">>, Node}
+             ,{<<"Custom-Channel-Vars">>, disconnected_ccvs(Channel)}
+             ,{<<"Event-Name">>, <<"CHANNEL_DISCONNECTED">>}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wh_amqp_worker:cast(Event, fun wapi_call:publish_event/1),
+    lager:debug("published channel_disconnected for ~s", [UUID]).
+
+-spec disconnected_ccvs(channel()) -> wh_json:object().
+disconnected_ccvs(#channel{account_id=AccountId
+                           ,destination=Destination
+                           ,realm=Realm
+                           ,authorizing_id=AuthorizingId
+                           ,authorizing_type=AuthorizingType
+                           ,resource_id=ResourceId
+                           ,fetch_id=FetchId
+                           ,bridge_id=BridgeId
+                           ,owner_id=OwnerId
+                          }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Account-ID">>, AccountId}
+         ,{<<"Inception">>, <<Destination/binary, "@", Realm/binary>>}
+         ,{<<"Authorizing-ID">>, AuthorizingId}
+         ,{<<"Authorizing-Type">>, AuthorizingType}
+         ,{<<"Resource-ID">>, ResourceId}
+         ,{<<"Fetch-ID">>, FetchId}
+         ,{<<"Bridge-ID">>, BridgeId}
+         ,{<<"Owner-ID">>, OwnerId}
+        ])).
