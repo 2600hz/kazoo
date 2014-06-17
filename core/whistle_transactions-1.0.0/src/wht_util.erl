@@ -17,6 +17,7 @@
 -export([current_balance/1
          ,previous_balance/3
         ]).
+-export([get_balance_from_account/2]).
 -export([call_cost/1]).
 -export([per_minute_cost/1]).
 -export([calculate_cost/5]).
@@ -156,6 +157,12 @@ maybe_rollup(Account, ViewOptions, Balance) ->
             rollup(AccountMODb, Balance)
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec get_balance_from_account(ne_binary(), wh_proplist()) -> integer().
 get_balance_from_account(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
