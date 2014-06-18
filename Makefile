@@ -1,6 +1,5 @@
 ROOT = .
 DIALYZER = dialyzer
-REBAR = $(ROOT)/utils/rebar/rebar
 
 MAKEDIRS = deps/Makefile \
 	   core/Makefile \
