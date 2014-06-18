@@ -21,23 +21,40 @@
 
 -define(USERNAME_LIST, <<"users/list_by_username">>).
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
--define(UBIQUITI_AUTH_TOKENS, whapps_config:get_integer(?CONFIG_CAT, <<"ubiquiti_auth_tokens">>, 35)).
--define(UBIQUITI_RESELLER_ID, whapps_config:get_value(?CONFIG_CAT, <<"ubiquiti_sso_reseller_id">>)).
 
--define(U_CONFIG_CAT, <<"ubiquiti">>).
--define(SSO_URL, whapps_config:get(?U_CONFIG_CAT, <<"sso_url">>, <<"https://sso-stage.ubnt.com/api/sso/v1/">>)).
+-define(U_CONFIG_CAT, <<"crossbar.ubiquiti">>).
+
+-define(UBIQUITI_AUTH_TOKENS, whapps_config:get_integer(?U_CONFIG_CAT, <<"tokens_per_request">>, 35)).
+-define(UBIQUITI_RESELLER_ID, whapps_config:get_value(?U_CONFIG_CAT, <<"sso_reseller_id">>)).
+
+-define(SSO_STAGING_URI, <<"https://sso-stage.ubnt.com/api/sso/v1/">>).
+-define(SSO_PROD_URI, <<"https://sso.ubnt.com/api/sso/v1/">>).
+
+-define(SSO_STAGING_ENV, <<"staging">>).
+-define(SSO_PROD_ENV, <<"production">>).
+-define(SSO_URL_KEY, <<"sso_url">>).
+
+-define(SSO_ENV, whapps_config:get(?U_CONFIG_CAT, <<"sso_environment">>, ?SSO_STAGING_ENV)).
+-define(SSO_URL, whapps_config:get(?U_CONFIG_CAT, [?SSO_ENV, ?SSO_URL_KEY])).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
+    _ProdURI = whapps_config:get(?U_CONFIG_CAT, [?SSO_PROD_ENV, ?SSO_URL_KEY], ?SSO_PROD_URI),
+    _StagURI = whapps_config:get(?U_CONFIG_CAT, [?SSO_STAGING_ENV, ?SSO_URL_KEY], ?SSO_STAGING_URI),
+
+    lager:debug("SSO Environment: ~s", [?SSO_ENV]),
+    lager:debug("SSO URI: ~s", [?SSO_URL]),
+    lager:debug("SSO Reseller Account ID: ~s", [?UBIQUITI_RESELLER_ID]),
+
     couch_mgr:db_create(?TOKEN_DB),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.user_auth">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.user_auth">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.user_auth">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.user_auth">>, ?MODULE, 'put').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.ubiquiti_auth">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.ubiquiti_auth">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.ubiquiti_auth">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.ubiquiti_auth">>, ?MODULE, 'put').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -71,7 +88,7 @@ resource_exists() -> 'true'.
 authorize(Context) ->
     authorize_nouns(cb_context:req_nouns(Context)).
 
-authorize_nouns([{<<"user_auth">>, _}]) -> 'true';
+authorize_nouns([{<<"ubiquiti_auth">>, _}]) -> 'true';
 authorize_nouns(_) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -83,8 +100,8 @@ authorize_nouns(_) -> 'false'.
 authenticate(Context) ->
     authenticate_nouns(cb_context:req_nouns(Context)).
 
-authenticate_nouns([{<<"user_auth">>, _}]) -> 'true';
-authenticate_nouns([{<<"user_auth">>, [<<"recovery">>]}]) -> 'true';
+authenticate_nouns([{<<"ubiquiti_auth">>, _}]) -> 'true';
+authenticate_nouns([{<<"ubiquiti_auth">>, [<<"recovery">>]}]) -> 'true';
 authenticate_nouns(_Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -107,51 +124,42 @@ validate(Context) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    _ = cb_context:put_reqid(Context),
-    create_token(Context).
+    crossbar_util:create_auth_token(Context, wh_util:to_binary(?MODULE)).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
+-spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
 maybe_authenticate_user(Context) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
-%% @end
-%%--------------------------------------------------------------------
--spec create_token(cb_context:context()) -> cb_context:context().
-create_token(Context) ->
-    JObj = cb_context:doc(Context),
-    case wh_json:is_empty(JObj) of
-        'true' ->
+    case ibrowse:send_req(wh_util:to_list(?SSO_URL)
+                          ,[{"Content-Type","application/json"}]
+                          ,'post'
+                          ,wh_json:encode(cb_context:req_data(Context))
+                         )
+    of
+        {'ok', "200", RespHeaders, RespBody} ->
+            lager:debug("successfully authenticated to ~s", [?SSO_URL]),
+            cb_context:setters(Context, [{fun cb_context:set_doc/2, auth_response(Context, RespHeaders, RespBody)}
+                                         ,{fun cb_context:set_resp_status/2, 'success'}
+                                        ]);
+        {'ok', _RespCode, _RespHeaders, _RespBody} ->
+            lager:debug("recv non-200(~s) code: ~s", [_RespCode, _RespBody]),
             crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
-        'false' ->
-            Token = [{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                     ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                     ,{<<"method">>, wh_util:to_binary(?MODULE)}
-                     ,{<<"ubiquiti_sso">>, wh_json:object()}
-                     ,{<<"reseller_id">>, ?UBIQUITI_RESELLER_ID}
-                     ,{<<"is_reseller">>, 'false'}
-                    ],
-            case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
-                {'ok', Doc} ->
-                    AuthToken = wh_json:get_value(<<"_id">>, Doc),
-                    lager:debug("created new local auth token ~s", [AuthToken]),
-                    crossbar_util:response(crossbar_util:response_auth(JObj, AccountId, OwnerId)
-                                           ,cb_context:setters(Context
-                                                               ,[{fun cb_context:set_auth_token/2, AuthToken}
-                                                                 ,{fun cb_context:set_auth_doc/2, Doc}
-                                                                ])
-                                          );
-                {'error', R} ->
-                    lager:debug("could not create new local auth token, ~p", [R]),
-                    cb_context:add_system_error('invalid_credentials', Context)
-            end
+        {'error', _Error} ->
+            lager:debug("failed to query ~s: ~p", [?SSO_URL, _Error]),
+            crossbar_util:response('error', <<"failed to query Ubiquiti SSO service">>, 500, Context)
     end.
+
+-spec auth_response(cb_context:context(), wh_proplist(), binary()) -> wh_json:object().
+auth_response(_Context, _RespHeaders, RespBody) ->
+    wh_json:from_list(
+      [{<<"sso">>, wh_json:decode(RespBody)}
+       ,{<<"reseller_id">>, ?UBIQUITI_RESELLER_ID}
+       ,{<<"is_reseller">>, 'false'}
+       ,{<<"language">>, <<"en-US">>}
+      ]
+     ).
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
