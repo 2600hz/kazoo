@@ -352,49 +352,38 @@ enable_account(AccountId) ->
 %% Helper to set data for all auth type
 %% @end
 %%--------------------------------------------------------------------
--spec response_auth(wh_json:object()) -> wh_json:object().
--spec response_auth(wh_json:object(), ne_binary()) -> wh_json:object().
--spec response_auth(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec response_auth(wh_json:object()) ->
+                           wh_json:object().
+-spec response_auth(wh_json:object(), api_binary()) ->
+                           wh_json:object().
+-spec response_auth(wh_json:object(), api_binary(), api_binary()) ->
+                           wh_json:object().
 response_auth(JObj) ->
-    AccountId = wh_json:get_value(<<"account_id">>, JObj, 'undefined'),
-    OwnerId = wh_json:get_value(<<"owner_id">>, JObj, 'undefined'),
-    ConfId = wh_json:get_value(<<"conference_id">>, JObj, 'undefined'),
-    IsModerator = wh_json:get_value(<<"is_moderator">>, JObj, 'undefined'),
-    Apps = wh_json:get_value(<<"apps">>, JObj, 'undefined'),
-    Lang = wh_json:get_value(<<"language">>, JObj, 'undefined'),
-    AccountName = wh_json:get_value(<<"account_name">>, JObj, 'undefined'),
-    IsReseller = wh_services:is_reseller(AccountId),
-    ResellerId = wh_services:find_reseller_id(AccountId),
-    wh_json:from_list(
-        props:filter_undefined(
-            [{<<"account_id">>, AccountId}
-             ,{<<"owner_id">>, OwnerId}
-             ,{<<"is_reseller">>, IsReseller}
-             ,{<<"reseller_id">>, ResellerId}
-             ,{<<"conference_id">>, ConfId}
-             ,{<<"is_moderator">>, IsModerator}
-             ,{<<"apps">>, Apps}
-             ,{<<"language">>, Lang}
-             ,{<<"account_name">>, AccountName}
-            ]
-        )
-    ).
+    response_auth(JObj
+                  ,wh_json:get_first_defined([<<"account_id">>, <<"pvt_account_id">>], JObj)
+                  ,wh_json:get_first_defined([<<"owner_id">>, <<"user_id">>], JObj)
+                 ).
 
 response_auth(JObj, AccountId) ->
      UserId  = wh_json:get_value(<<"owner_id">>, JObj),
      response_auth(JObj, AccountId, UserId).
 
 response_auth(JObj, AccountId, UserId) ->
-    JObj1 = populate_resp(JObj, AccountId, UserId),
-    crossbar_util:response_auth(JObj1).
+    populate_resp(JObj, AccountId, UserId).
 
--spec populate_resp(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec populate_resp(wh_json:object(), api_binary(), api_binary()) -> wh_json:object().
+populate_resp(JObj, 'undefined', _UserId) -> JObj;
 populate_resp(JObj, AccountId, UserId) ->
-    Routines = [fun(J) -> wh_json:set_value(<<"apps">>, load_apps(AccountId, UserId), J) end
-                ,fun(J) -> wh_json:set_value(<<"language">>, get_language(AccountId, UserId), J) end
-                ,fun(J) -> wh_json:set_value(<<"account_name">>, whapps_util:get_account_name(AccountId), J) end
-               ],
-    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+    wh_json:set_values(
+      props:filter_undefined(
+        [{<<"apps">>, load_apps(AccountId, UserId)}
+         ,{<<"language">>, get_language(AccountId, UserId)}
+         ,{<<"account_name">>, whapps_util:get_account_name(AccountId)}
+         ,{<<"is_reseller">>, wh_services:is_reseller(AccountId)}
+         ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
+        ])
+      ,JObj
+     ).
 
 -spec load_apps(ne_binary(), ne_binary()) -> api_object().
 load_apps(AccountId, UserId) ->
@@ -431,10 +420,10 @@ filter_apps([JObj|JObjs], Lang, Acc) ->
 
 -spec get_language(ne_binary(), ne_binary()) -> ne_binary().
 get_language(AccountId, UserId) ->
-    case crossbar_util:get_user_lang(AccountId, UserId) of
+    case ?MODULE:get_user_lang(AccountId, UserId) of
         {'ok', Lang} -> Lang;
         'error' ->
-            case crossbar_util:get_account_lang(AccountId) of
+            case ?MODULE:get_account_lang(AccountId) of
                 {'ok', Lang} -> Lang;
                 'error' -> ?DEFAULT_LANGUAGE
             end
@@ -535,25 +524,26 @@ apply_response_map(Context, Map) ->
                  end, RespJObj, Map),
     cb_context:set_resp_data(Context, RespData).
 
--spec get_path(cowboy_req:req(), ne_binary()) -> ne_binary().
-get_path(Req, Relative) ->
-    {RawPath, _} = cowboy_req:path(Req),
-
-    get_path1(RawPath, Relative).
-
-get_path1(RawPath, Relative) ->
+-spec get_path(cowboy_req:req() | ne_binary(), ne_binary()) -> ne_binary().
+get_path(<<_/binary>> = RawPath, Relative) ->
     PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, ['global'])),
     UrlTokens = binary:split(Relative, <<"/">>),
 
     wh_util:join_binary(
       lists:reverse(
-        lists:foldl(fun(<<"..">>, []) -> [];
-                       (<<"..">>, [_ | PathTokens]) -> PathTokens;
-                       (<<".">>, PathTokens) -> PathTokens;
-                       (<<>>, PathTokens) -> PathTokens;
-                       (Segment, PathTokens) -> [Segment | PathTokens]
-                    end, PathTokensRev, UrlTokens)
-       ), <<"/">>).
+        lists:foldl(fun get_path_fold/2, PathTokensRev, UrlTokens)
+       ), <<"/">>);
+get_path(Req, Relative) ->
+    {RawPath, _} = cowboy_req:path(Req),
+    get_path(RawPath, Relative).
+
+get_path_fold(Segment, [<<>> | PathTokens]) ->
+    get_path_fold(Segment, PathTokens);
+get_path_fold(<<"..">>, []) -> [];
+get_path_fold(<<"..">>, [_ | PathTokens]) -> PathTokens;
+get_path_fold(<<".">>, PathTokens) -> PathTokens;
+get_path_fold(<<>>, PathTokens) -> PathTokens;
+get_path_fold(Segment, PathTokens) -> [Segment | PathTokens].
 
 -spec maybe_remove_attachments(cb_context:context()) -> cb_context:context().
 maybe_remove_attachments(Context) ->
@@ -574,12 +564,19 @@ create_auth_token(Context, Method) ->
     JObj = cb_context:doc(Context),
     case wh_json:is_empty(JObj) of
         'true' ->
-            crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
+            lager:debug("empty doc, no auth token created"),
+            ?MODULE:response('error', <<"invalid credentials">>, 401, Context);
         'false' ->
+            lager:debug("doc: ~p", [JObj]),
+
             Data = cb_context:req_data(Context),
+
+            lager:debug("data: ~p", [Data]),
+
             Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
             AccountId = wh_json:get_value(<<"account_id">>, JObj),
             OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
+
             Token = props:filter_undefined(
                       [{<<"account_id">>, AccountId}
                        ,{<<"owner_id">>, OwnerId}
@@ -589,24 +586,26 @@ create_auth_token(Context, Method) ->
                        ,{<<"restrictions">>, wh_json:get_value(<<"restrictions">>, Data)}
                        ,{<<"modified">>, Timestamp}
                        ,{<<"method">>, wh_util:to_binary(Method)}
-                      ]
-                     ),
+                      ]),
+
+            lager:debug("token: ~p", [Token]),
+
             JObjToken = wh_doc:update_pvt_parameters(wh_json:from_list(Token)
                                                      ,wh_util:format_account_id(AccountId, 'encoded')
-                                                     ,[{'now', Timestamp}
-                                                       ,{'account_id', AccountId}
-                                                      ]),
+                                                     ,Token
+                                                    ),
+
             case couch_mgr:save_doc(?TOKEN_DB, JObjToken) of
                 {'ok', Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),
-                    crossbar_util:response(crossbar_util:response_auth(JObj, AccountId, OwnerId)
-                                           ,cb_context:setters(
-                                                Context
-                                                ,[{fun cb_context:set_auth_token/2, AuthToken}
-                                                  ,{fun cb_context:set_auth_doc/2, Doc}
-                                                 ])
-                                          );
+                    ?MODULE:response(?MODULE:response_auth(JObj, AccountId, OwnerId)
+                                     ,cb_context:setters(
+                                        Context
+                                        ,[{fun cb_context:set_auth_token/2, AuthToken}
+                                          ,{fun cb_context:set_auth_doc/2, Doc}
+                                         ])
+                                    );
                 {'error', R} ->
                     lager:debug("could not create new local auth token, ~p", [R]),
                     cb_context:add_system_error('invalid_credentials', Context)
