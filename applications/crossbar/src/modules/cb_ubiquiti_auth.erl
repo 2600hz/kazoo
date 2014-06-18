@@ -34,6 +34,8 @@
 -define(SSO_PROD_ENV, <<"production">>).
 -define(SSO_URL_KEY, <<"sso_url">>).
 
+-define(SSO_PROVIDER, <<"ubiquiti">>).
+
 -define(SSO_ENV, whapps_config:get(?U_CONFIG_CAT, <<"sso_environment">>, ?SSO_STAGING_ENV)).
 -define(SSO_URL, whapps_config:get(?U_CONFIG_CAT, [?SSO_ENV, ?SSO_URL_KEY])).
 
@@ -46,7 +48,11 @@ init() ->
 
     lager:debug("SSO Environment: ~s", [?SSO_ENV]),
     lager:debug("SSO URI: ~s", [?SSO_URL]),
-    lager:debug("SSO Reseller Account ID: ~s", [?UBIQUITI_RESELLER_ID]),
+
+    case ?UBIQUITI_RESELLER_ID of
+        'undefined' -> lager:error("no reseller account id for Ubiquiti has been defined");
+        _ResellerId -> lager:debug("SSO Reseller Account ID: ~s", [_ResellerId])
+    end,
 
     couch_mgr:db_create(?TOKEN_DB),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -163,7 +169,7 @@ login_req(Context) ->
 -spec auth_response(cb_context:context(), wh_proplist(), binary()) -> wh_json:object().
 auth_response(_Context, _RespHeaders, RespBody) ->
     wh_json:from_list(
-      [{<<"sso">>, wh_json:decode(RespBody)}
+      [{<<"sso">>, wh_json:set_value(<<"provider">>, ?SSO_PROVIDER, wh_json:decode(RespBody))}
        ,{<<"reseller_id">>, ?UBIQUITI_RESELLER_ID}
        ,{<<"is_reseller">>, 'false'}
       ]).
