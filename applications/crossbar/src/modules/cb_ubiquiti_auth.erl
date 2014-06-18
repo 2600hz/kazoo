@@ -168,11 +168,33 @@ login_req(Context) ->
 
 -spec auth_response(cb_context:context(), wh_proplist(), binary()) -> wh_json:object().
 auth_response(_Context, _RespHeaders, RespBody) ->
-    wh_json:from_list(
-      [{<<"sso">>, wh_json:set_value(<<"provider">>, ?SSO_PROVIDER, wh_json:decode(RespBody))}
-       ,{<<"reseller_id">>, ?UBIQUITI_RESELLER_ID}
-       ,{<<"is_reseller">>, 'false'}
-      ]).
+    RespJObj = wh_json:decode(RespBody),
+    UUID = wh_json:get_value(<<"uuid">>, RespJObj),
+
+    maybe_add_account_information(UUID
+                                  ,wh_json:from_list(
+                                     [{<<"sso">>, wh_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}
+                                      ,{<<"reseller_id">>, ?UBIQUITI_RESELLER_ID}
+                                      ,{<<"is_reseller">>, 'false'}
+                                     ])
+                                 ).
+
+-spec maybe_add_account_information(api_binary(), wh_json:object()) -> wh_json:object().
+maybe_add_account_information('undefined', AuthResponse) ->
+    AuthResponse;
+maybe_add_account_information(UUID, AuthResponse) ->
+    Options = [{'key', [?SSO_PROVIDER, UUID]}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_sso">>, Options) of
+        {'ok', []} -> AuthResponse;
+        {'ok', [AccountJObj]} ->
+            wh_json:set_values(<<"account_id">>
+                               ,wh_json:get_value(<<"account_id">>, AccountJObj)
+                               ,AuthResponse
+                              );
+        {'error', _E} ->
+            lager:debug("failed to query accounts for uuid ~s: ~p", [UUID, _E]),
+            AuthResponse
+    end.
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
