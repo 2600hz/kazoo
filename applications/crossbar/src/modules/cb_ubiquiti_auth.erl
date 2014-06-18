@@ -19,9 +19,6 @@
 
 -include("../crossbar.hrl").
 
--define(USERNAME_LIST, <<"users/list_by_username">>).
--define(DEFAULT_LANGUAGE, <<"en-US">>).
-
 -define(U_CONFIG_CAT, <<"crossbar.ubiquiti">>).
 
 -define(UBIQUITI_AUTH_TOKENS, whapps_config:get_integer(?U_CONFIG_CAT, <<"tokens_per_request">>, 35)).
