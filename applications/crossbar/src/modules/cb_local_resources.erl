@@ -224,7 +224,7 @@ validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId
 
 check_resource_schema(ResourceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(ResourceId, C) end,
-    cb_context:validate_request_data(<<"local_resources">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', #cb_context{doc=JObj}=Context) ->

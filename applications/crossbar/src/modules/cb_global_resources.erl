@@ -134,8 +134,8 @@ validate_req(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
 %%--------------------------------------------------------------------
 -spec create(#cb_context{}) -> #cb_context{}.
 create(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
-    cb_context:validate_request_data(<<"global_resources">>, Context, OnSuccess).
+    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
+    cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -157,7 +157,7 @@ read(Id, Context) ->
 -spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Id, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"global_resources">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -173,7 +173,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.

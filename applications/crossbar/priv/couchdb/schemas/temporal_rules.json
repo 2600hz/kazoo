@@ -1,96 +1,108 @@
 {
-    "_id":"temporal_rules",
-    "$schema":"http://json-schema.org/draft-03/schema#",
-    "id":"http://json-schema.org/draft-03/schema#",
-    "description":"Schema for a temporal rules",
-    "properties":{
-        "name":{
-            "name":"Name",
-            "description":"A friendly name for the temporal rule",
-            "required":true,
-            "type":"string",
-            "minLength":1,
-            "maxLength":128
-        },
-        "time_window_start":{
-            "name":"Time Window Start",
-            "description":"Seconds from the start of a day to stop considering this rule valid",
-            "type":"integer",
-            "minimum":0,
-            "maximum":86400
-        },
-        "interval":{
-            "name":"Interval",
-            "description":"The recurrence interval for this rule",
-            "type":"integer",
-            "minimum":1,
-            "default":1
-        },
-        "cycle":{
-            "name":"Cycle",
-            "description":"The recurrence cycle for this rule",
-            "type":"string",
-            "enum":[
-                "date",
-                "daily",
-                "weekly",
-                "monthly",
-                "yearly"
-            ],
-            "required":true
-        },
-        "days":{
-            "name":"Days",
-            "description":"The recurrence days for this rule",
-            "type":"array",
-            "minimum":1,
-            "maximum":31
-        },
-        "wdays":{
-            "name":"Week Days",
-            "description":"The recurrence weekdays for this rule",
-            "type":"array"
-            ,"items":{
-                "type":"string"
-                ,"enum":[
-                    "monday",
-                    "tuesday",
-                    "wednesday",
-                    "wensday",
-                    "thursday",
-                    "friday",
-                    "saturday",
-                    "sunday"
-                ]
-            }
-        },
-        "ordinal":{
-            "name":"Ordinal",
-            "description":"The recurrence ordinal for this rule",
-            "type":"string",
-            "enum":[
-                "every",
-                "first",
-                "second",
-                "third",
-                "fourth",
-                "fifth",
-                "last"
-            ]
-        },
-        "month":{
-            "name":"Month",
-            "description":"The recurrence month for this rule",
-            "type":"integer",
-            "minimum":1,
-            "maximum":12
-        },
-        "start_date":{
-            "name":"Start Date",
-            "description":"The date that any recurrence should be calculated as starting on",
-            "type":"integer",
-            "empty":false,
-            "default":62586115200
-        }
+  "_id": "temporal_rules",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Temporal Rule",
+  "description": "Schema for a temporal rules",
+  "properties": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "name": "Name",
+      "description": "A friendly name for the temporal rule",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "time_window_start": {
+      "type": "integer",
+      "required": false,
+      "name": "Time Window Start",
+      "description": "Seconds from the start of a day to stop considering this rule valid",
+      "minimum": 0,
+      "maximum": 86400
+    },
+    "interval": {
+      "type": "integer",
+      "required": false,
+      "name": "Interval",
+      "description": "The recurrence interval for this rule",
+      "minimum": 1,
+      "default": 1
+    },
+    "cycle": {
+      "type": "string",
+      "required": true,
+      "name": "Cycle",
+      "description": "The recurrence cycle for this rule",
+      "enum": [
+        "date",
+        "daily",
+        "weekly",
+        "monthly",
+        "yearly"
+      ]
+    },
+    "days": {
+      "type": "array",
+      "required": false,
+      "name": "Days",
+      "description": "The recurrence days for this rule",
+      "items": {
+        "type": "integer",
+        "required": false,
+        "minimum": 1,
+        "maximum": 31
+      }
+    },
+    "wdays": {
+      "type": "array",
+      "required": false,
+      "name": "Week Days",
+      "description": "The recurrence weekdays for this rule",
+      "items": {
+        "type": "string",
+        "enum": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "wensday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday"
+        ]
+      }
+    },
+    "ordinal": {
+      "type": "string",
+      "required": false,
+      "name": "Ordinal",
+      "description": "The recurrence ordinal for this rule",
+      "enum": [
+        "every",
+        "first",
+        "second",
+        "third",
+        "fourth",
+        "fifth",
+        "last"
+      ]
+    },
+    "month": {
+      "type": "integer",
+      "required": false,
+      "name": "Month",
+      "description": "The recurrence month for this rule",
+      "minimum": 1,
+      "maximum": 12
+    },
+    "start_date": {
+      "type": "integer",
+      "required": false,
+      "name": "Start Date",
+      "description": "The date that any recurrence should be calculated as starting on",
+      "default": 62586115200
     }
+  }
 }

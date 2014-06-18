@@ -1,33 +1,52 @@
 {
-    "_id":"callflows.pivot"
-    ,"id":"http://json-schema.org/draft-03/schema#"
-    ,"description":"Validator for the Pivot callflow element"
-    ,"properties":{
-        "voice_url":{
-            "description":"What URL to request the initial Pivot callflow"
-            ,"type":"string"
-            ,"required":true
-        }
-        ,"cdr_url":{
-            "description":"Optional URL to send the CDR to at the end of the call"
-            ,"type":"string"
-        }
-        ,"req_format":{
-            "description":"What format of Pivot will the your server respond with"
-            ,"type":"string"
-            ,"enum":["kazoo","twiml"]
-            ,"default":"kazoo"
-        }
-        ,"method":{
-            "description":"What HTTP verb to send the request(s) with"
-            ,"type":"string"
-            ,"enum":["get", "post", "GET", "POST"]
-            ,"default":"get"
-        }
-        ,"debug":{
-            "description":"Store debug logs related to processing this Pivot call"
-            ,"type":"boolean"
-            ,"default":false
-        }
+  "_id": "callflows.pivot",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "description": "Validator for the Pivot callflow element",
+  "properties": {
+    "voice_url": {
+      "type": "string",
+      "required": true,
+      "name": "Script URL",
+      "description": "What URL to request the initial Pivot callflow"
+    },
+    "cdr_url": {
+      "type": "string",
+      "required": false,
+      "name": "CDR URL",
+      "description": "Optional URL to send the CDR to at the end of the call"
+    },
+    "req_format": {
+      "type": "string",
+      "required": false,
+      "name": "Payload Type",
+      "description": "What format of Pivot will the your server respond with",
+      "enum": [
+        "kazoo",
+        "twiml"
+      ],
+      "default": "kazoo"
+    },
+    "method": {
+      "type": "string",
+      "required": false,
+      "name": "Method",
+      "description": "What HTTP verb to send the request(s) with",
+      "enum": [
+        "get",
+        "post",
+        "GET",
+        "POST"
+      ],
+      "default": "get"
+    },
+    "debug": {
+      "type": "boolean",
+      "required": false,
+      "name": "Debug?",
+      "description": "Store debug logs related to processing this Pivot call",
+      "default": false
     }
+  }
 }

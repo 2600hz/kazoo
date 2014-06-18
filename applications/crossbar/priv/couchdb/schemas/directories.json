@@ -1,44 +1,51 @@
 {
-   "_id":"directories",
-   "id":"http://json-schema.org/draft-03/schema#",
-   "description":"Allow a caller to search for a user/device by name instead of extension/DID",
-   "properties":{
-      "name":{
-         "name":"Name",
-         "type":"string",
-         "minLength":1,
-         "required":true,
-         "description":"The name of the directory"
-      },
-      "sort_by":{
-         "name":"Sort By",
-         "type":"string",
-         "enum":[
-            "first_name",
-            "last_name"
-         ],
-         "default":"last_name",
-         "description":"What field to sort on in matching documents when a caller enters characters"
-      },
-      "min_dtmf":{
-         "name":"Min DTMF",
-         "type":"integer",
-         "default":3,
-         "minimum":1,
-         "description":"How many DTMF characters to collect from a caller before processing the directory"
-      },
-      "max_dtmf":{
-         "name":"Max DTMF",
-         "type":"integer",
-         "description":"Cap the number of DTMF characters collected from a caller, 0 for unlimited",
-         "minimum":0,
-         "default":0
-      },
-      "confirm_match":{
-         "name":"Confirm Match",
-         "type":"boolean",
-         "default":false,
-         "description":"When one match is found, require caller to confirm the match before connecting"
-      }
-   }
+  "_id": "directories",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Directory",
+  "description": "Allow a caller to search for a user/device by name instead of extension/DID",
+  "properties": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "name": "Name",
+      "description": "The name of the directory",
+      "minLength": 1
+    },
+    "sort_by": {
+      "type": "string",
+      "required": false,
+      "name": "Sort By",
+      "description": "What field to sort on in matching documents when a caller enters characters",
+      "enum": [
+        "first_name",
+        "last_name"
+      ],
+      "default": "last_name"
+    },
+    "min_dtmf": {
+      "type": "integer",
+      "required": false,
+      "name": "Minimum digits",
+      "description": "How many DTMF characters to collect from a caller before processing the directory",
+      "minimum": 1,
+      "default": 3
+    },
+    "max_dtmf": {
+      "type": "integer",
+      "required": false,
+      "name": "Maximum digits",
+      "description": "Cap the number of DTMF characters collected from a caller, 0 for unlimited",
+      "minimum": 0,
+      "default": 0
+    },
+    "confirm_match": {
+      "type": "boolean",
+      "required": false,
+      "name": "Confirm?",
+      "description": "When one match is found, require caller to confirm the match before connecting",
+      "default": true
+    }
+  }
 }

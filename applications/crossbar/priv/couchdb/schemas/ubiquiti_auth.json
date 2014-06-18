@@ -1,24 +1,26 @@
 {
-    "_id":"ubiquit_auth"
-    ,"$schema":"http://json-schema.org/draft-03/schema#"
-    ,"id":"http://json-schema.org/draft-03/schema#"
-    ,"description":"Provides an auth-token via Ubiquiti's SSO"
-    ,"properties":{
-        "username":{
-            "name":"Username"
-            ,"description":"Ubiquiti SSO Username"
-            ,"required":true
-            ,"type":"string"
-            ,"minLength":1
-            ,"maxLength":64
-        }
-        ,"password":{
-            "name":"Password"
-            ,"description":"Ubiquiti SSO Password"
-            ,"required":true
-            ,"type":"string"
-            ,"minLength":1
-            ,"maxLength":64
-        }
-   }
+  "_id": "ubiquit_auth",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Unbiquit Auth",
+  "description": "Provides an auth-token via Ubiquiti's SSO",
+  "properties": {
+    "username": {
+      "type": "string",
+      "required": true,
+      "name": "Username",
+      "description": "Ubiquiti SSO Username",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "password": {
+      "type": "string",
+      "required": true,
+      "name": "Password",
+      "description": "Ubiquiti SSO Password",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  }
 }

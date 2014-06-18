@@ -1,264 +1,262 @@
 {
-   "_id":"trunkstore",
-   "id":"http://json-schema.org/draft-03/schema#",
-   "description":"Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
-   "properties":{
-      "name":{
-         "type":"string",
-         "required":true,
-         "description":"Human-friendly name of the trunkstore account"
-      },
-      "type":{
-         "type":"string",
-         "required":true,
-         "enum":[
-            "sys_info"
-         ],
-         "description":"The type of the document (pvt_type in Crossbar docs)"
-      },
-      "account":{
-         "type":"object",
-         "required":true,
-         "properties":{
-            "credits":{
-               "type":"object",
-               "required":true,
-               "properties":{
-                  "prepay":{
-                     "type":"number",
-                     "required":true
-                  }
-               }
-            },
-            "auth_realm":{
-               "type":"string",
-               "minLength":1,
-               "required":true,
-               "description":"The realm any device in the account will use to authenticate with"
-            },
-            "trunks":{
-               "type":"integer",
-               "required":true,
-               "minimum":0,
-               "description":"The number of two-way trunks this account has purchased"
-            },
-            "caller_id":{
-               "type":"object",
-               "properties":{
-                  "cid_name":{
-                     "type":"string",
-                     "minLength":1,
-                     "maxLength":15,
-                     "required":true
-                  },
-                  "cid_number":{
-                     "type":"string",
-                     "minLength":1,
-                     "maxLength":15,
-                     "required":true
-                  }
-               }
-            },
-            "emergency_caller_id":{
-               "type":"object",
-               "properties":{
-                  "cid_name":{
-                     "type":"string",
-                     "minLength":1,
-                     "maxLength":15,
-                     "required":true
-                  },
-                  "cid_number":{
-                     "type":"string",
-                     "minLength":1,
-                     "maxLength":15,
-                     "required":true
-                  }
-               }
+  "_id": "trunkstore",
+  "id": "http://json-schema.org/draft-03/schema#",
+  "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
+  "properties": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "description": "Human-friendly name of the trunkstore account"
+    },
+    "type": {
+      "type": "string",
+      "required": true,
+      "enum": [
+        "sys_info"
+      ],
+      "description": "The type of the document (pvt_type in Crossbar docs)"
+    },
+    "account": {
+      "type": "object",
+      "required": true,
+      "properties": {
+        "credits": {
+          "type": "object",
+          "required": true,
+          "properties": {
+            "prepay": {
+              "type": "number",
+              "required": true
             }
-         },
-         "description":"Information that applies to the account as a whole"
-      },
-      "servers":{
-         "type":"array",
-         "default":[
-
-         ],
-         "desciption":"What servers will be allowed to make/receive calls via this account",
-         "items":{
-            "type":"object",
-            "properties":{
-               "name":{
-                  "type":"string",
-                  "description":"Human-friendly name of the server",
-                  "minLength":1
-               },
-               "auth":{
-                  "type":"object",
-                  "required":true,
-                  "properties":{
-                     "auth_method":{
-                        "type":"string",
-                        "required":true,
-                        "enum":[
-                           "password"
-                        ],
-                        "description":"What type of auth mechanism to use"
-                     },
-                     "auth_user":{
-                        "type":"string",
-                        "minLength":1,
-                        "required":true,
-                        "description":"Username for authentication"
-                     },
-                     "auth_password":{
-                        "type":"string",
-                        "minLength":1,
-                        "required":true,
-                        "description":"Password of the user@auth_realm"
-                     }
-                  }
-               },
-               "options":{
-                  "caller_id":{
-                     "type":"object",
-                     "properties":{
-                        "cid_name":{
-                           "type":"string",
-                           "minLength":1,
-                           "maxLength":15,
-                           "required":true
-                        },
-                        "cid_number":{
-                           "type":"string",
-                           "minLength":1,
-                           "maxLength":15,
-                           "required":true
-                        }
-                     }
-                  },
-                  "inbound_format":{
-                     "type":"string",
-                     "default":"npan",
-                     "enum":[
-                        "e164",
-                        "npan",
-                        "1npan",
-                        "username"
-                     ],
-                     "description":"Determines how the INVITE is sent to the server"
-                  },
-                  "failover":{
-                     "type":"object",
-                     "description":"Route inbound call to another destination if this server fails to handle the call",
-                     "properties":{
-                        "e164":{
-                           "type":"string",
-                           "description":"An E.164 formatted DID to dial for failover"
-                        },
-                        "sip":{
-                           "type":"string",
-                           "description":"A SIP URI (sip:user@host) to call for failover"
-                        }
-                     }
-                  },
-                  "enabled":{
-                     "type":"boolean",
-                     "default":true,
-                     "description":"Is the server ready for sending and receiving calls"
-                  },
-                  "progress_timeout":{
-                     "type":"integer",
-                     "minimum":1,
-                     "description":"The time, in seconds, to wait for the server to progress in the call, before trying an optionally defined failover route or terminating the call"
-                  },
-                  "media_handling":{
-                     "type":"string",
-                     "enum":[
-                        "process",
-                        "bypass"
-                     ],
-                     "default":"bypass",
-                     "description":"Determine whether the switch should be in the media path or not"
-                  },
-                  "force_outbound":{
-                     "type":"boolean",
-                     "default":false,
-                     "description":"If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls)"
-                  },
-                  "delay":{
-                     "type":"integer",
-                     "default":0,
-                     "description":"The time, in seconds, to wait before attempting to call the server"
-                  },
-                  "sip_headers":{
-                     "type":"array",
-                     "items":{
-                        "type":"object"
-                     },
-                     "description":"List of arbitrary SIP headers to add to the INVITE"
-                  },
-                  "ignore_early_media":{
-                     "type":"boolean"
-                  },
-                  "timeout":{
-                     "type":"integer",
-                     "description":"The time, in seconds, to wait for an answer from the server"
-                  }
-               },
-               "DIDs":{
-                  "type":"object",
-                  "patternProperties":{
-                     "^\\+1(\\d{10})$":{
-                        "type":"object",
-                        "properties":{
-                           "failover":{
-                              "type":"object",
-                              "description":"Route inbound call to another destination if this server fails to handle the call",
-                              "properties":{
-                                 "e164":{
-                                    "type":"string",
-                                    "description":"An E.164 formatted DID to dial for failover"
-                                 },
-                                 "sip":{
-                                    "type":"string",
-                                    "description":"A SIP URI (sip:user@host) to call for failover"
-                                 }
-                              }
-                           },
-                           "caller_id":{
-                              "type":"object",
-                              "properties":{
-                                 "cid_name":{
-                                    "type":"string",
-                                    "minLength":1,
-                                    "maxLength":15,
-                                    "required":true
-                                 },
-                                 "cid_number":{
-                                    "type":"string",
-                                    "minLength":1,
-                                    "maxLength":15,
-                                    "required":true
-                                 }
-                              }
-                           },
-                           "force_outbound":{
-                              "type":"boolean",
-                              "default":false
-                           },
-                           "options":{
-                              "type":"array",
-                              "items":{
-                                 "type":"string"
-                              }
-                           }
-                        }
-                     }
-                  }
-               }
+          }
+        },
+        "auth_realm": {
+          "type": "string",
+          "minLength": 1,
+          "required": true,
+          "description": "The realm any device in the account will use to authenticate with"
+        },
+        "trunks": {
+          "type": "integer",
+          "required": true,
+          "minimum": 0,
+          "description": "The number of two-way trunks this account has purchased"
+        },
+        "caller_id": {
+          "type": "object",
+          "properties": {
+            "cid_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 15,
+              "required": true
+            },
+            "cid_number": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 15,
+              "required": true
             }
-         }
+          }
+        },
+        "emergency_caller_id": {
+          "type": "object",
+          "properties": {
+            "cid_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 15,
+              "required": true
+            },
+            "cid_number": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 15,
+              "required": true
+            }
+          }
+        }
+      },
+      "description": "Information that applies to the account as a whole"
+    },
+    "servers": {
+      "type": "array",
+      "default": [],
+      "desciption": "What servers will be allowed to make/receive calls via this account",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-friendly name of the server",
+            "minLength": 1
+          },
+          "auth": {
+            "type": "object",
+            "required": true,
+            "properties": {
+              "auth_method": {
+                "type": "string",
+                "required": true,
+                "enum": [
+                  "password"
+                ],
+                "description": "What type of auth mechanism to use"
+              },
+              "auth_user": {
+                "type": "string",
+                "minLength": 1,
+                "required": true,
+                "description": "Username for authentication"
+              },
+              "auth_password": {
+                "type": "string",
+                "minLength": 1,
+                "required": true,
+                "description": "Password of the user@auth_realm"
+              }
+            }
+          },
+          "options": {
+            "caller_id": {
+              "type": "object",
+              "properties": {
+                "cid_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 15,
+                  "required": true
+                },
+                "cid_number": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 15,
+                  "required": true
+                }
+              }
+            },
+            "inbound_format": {
+              "type": "string",
+              "default": "npan",
+              "enum": [
+                "e164",
+                "npan",
+                "1npan",
+                "username"
+              ],
+              "description": "Determines how the INVITE is sent to the server"
+            },
+            "failover": {
+              "type": "object",
+              "description": "Route inbound call to another destination if this server fails to handle the call",
+              "properties": {
+                "e164": {
+                  "type": "string",
+                  "description": "An E.164 formatted DID to dial for failover"
+                },
+                "sip": {
+                  "type": "string",
+                  "description": "A SIP URI (sip:user@host) to call for failover"
+                }
+              }
+            },
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Is the server ready for sending and receiving calls"
+            },
+            "progress_timeout": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The time, in seconds, to wait for the server to progress in the call, before trying an optionally defined failover route or terminating the call"
+            },
+            "media_handling": {
+              "type": "string",
+              "enum": [
+                "process",
+                "bypass"
+              ],
+              "default": "bypass",
+              "description": "Determine whether the switch should be in the media path or not"
+            },
+            "force_outbound": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls)"
+            },
+            "delay": {
+              "type": "integer",
+              "default": 0,
+              "description": "The time, in seconds, to wait before attempting to call the server"
+            },
+            "sip_headers": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "List of arbitrary SIP headers to add to the INVITE"
+            },
+            "ignore_early_media": {
+              "type": "boolean"
+            },
+            "timeout": {
+              "type": "integer",
+              "description": "The time, in seconds, to wait for an answer from the server"
+            }
+          },
+          "DIDs": {
+            "type": "object",
+            "patternProperties": {
+              "^\\+1(\\d{10})$": {
+                "type": "object",
+                "properties": {
+                  "failover": {
+                    "type": "object",
+                    "description": "Route inbound call to another destination if this server fails to handle the call",
+                    "properties": {
+                      "e164": {
+                        "type": "string",
+                        "description": "An E.164 formatted DID to dial for failover"
+                      },
+                      "sip": {
+                        "type": "string",
+                        "description": "A SIP URI (sip:user@host) to call for failover"
+                      }
+                    }
+                  },
+                  "caller_id": {
+                    "type": "object",
+                    "properties": {
+                      "cid_name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 15,
+                        "required": true
+                      },
+                      "cid_number": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 15,
+                        "required": true
+                      }
+                    }
+                  },
+                  "force_outbound": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
-   }
+    }
+  }
 }
