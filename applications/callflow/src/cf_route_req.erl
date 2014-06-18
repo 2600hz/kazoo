@@ -207,4 +207,4 @@ cache_call(Flow, NoMatch, ControllerQ, Call) ->
                 ,fun(C) -> whapps_call:set_application_name(?APP_NAME, C) end
                 ,fun(C) -> whapps_call:set_application_version(?APP_VERSION, C) end
                ],
-    whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)).
+    whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), ?APP_NAME).

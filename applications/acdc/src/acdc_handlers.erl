@@ -51,14 +51,14 @@ send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
             | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
            ],
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, ReqJObj), Resp),
-    _ = whapps_call:cache(Call),
+    _ = whapps_call:cache(Call, ?APP_NAME),
     lager:debug("sent route response to park the call for ~s(~s)", [Id, AccountId]).
 
 handle_route_win(JObj, _Props) ->
     'true' = wapi_route:win_v(JObj),
     _ = wh_util:put_callid(JObj),
 
-    case whapps_call:retrieve(wh_json:get_value(<<"Call-ID">>, JObj)) of
+    case whapps_call:retrieve(wh_json:get_value(<<"Call-ID">>, JObj), ?APP_NAME) of
         {'ok', Call} ->
             lager:debug("won the call, updating the agent"),
             Call1 = whapps_call:from_route_win(JObj, Call),

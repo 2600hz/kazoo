@@ -39,7 +39,7 @@ handle_req(JObj, Props) ->
             ControllerQ = props:get_value('queue', Props),
             send_route_response(ControllerQ, JObj),
             UpdatedCall = whapps_call:kvs_store(<<"milliwatt_action">>, Action, Call),
-            whapps_call:cache(UpdatedCall)
+            whapps_call:cache(UpdatedCall, ?APP_NAME)
     end.
 
 -spec send_route_response(ne_binary(), wh_json:json()) -> 'ok'.

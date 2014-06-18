@@ -26,7 +26,7 @@ handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put('callid', CallId),
     lager:info("callflow has received a route win, taking control of the call"),
-    case whapps_call:retrieve(CallId) of
+    case whapps_call:retrieve(CallId, ?APP_NAME) of
         {'ok', Call} ->
             maybe_restrict_call(JObj, whapps_call:from_route_win(JObj, Call));
         {'error', R} ->
