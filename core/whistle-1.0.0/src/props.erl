@@ -38,8 +38,6 @@
 %% don't import the get_keys/1 that fetches keys from the process dictionary
 -compile({'no_auto_import', [get_keys/1]}).
 
--type wh_proplist_values() :: [wh_proplist_value(),...] | [].
-
 -spec set_values(wh_proplist(), wh_proplist()) -> wh_proplist().
 set_values([], Props) -> Props;
 set_values([{K, V}|KVs], Props) ->
@@ -210,11 +208,14 @@ unique([Key|T], Uniques) ->
           ,[Key|Uniques]
           ).
 
+-spec get_values_and_keys(wh_proplist()) -> {wh_proplist_values(), wh_proplist_keys()}.
 get_values_and_keys(Props) ->
     lists:foldr(fun(Key, {Vs, Ks}) ->
                         {[get_value(Key, Props)|Vs], [Key|Ks]}
                 end, {[], []}, get_keys(Props)).
 
+-spec to_querystring(wh_proplist()) -> iolist().
+-spec to_querystring(wh_proplist(), binary() | ne_binaries()) -> iolist().
 to_querystring(Props) ->
     to_querystring(Props, <<>>).
 
