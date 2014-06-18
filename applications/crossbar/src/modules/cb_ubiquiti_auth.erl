@@ -25,7 +25,7 @@
 -define(U_CONFIG_CAT, <<"crossbar.ubiquiti">>).
 
 -define(UBIQUITI_AUTH_TOKENS, whapps_config:get_integer(?U_CONFIG_CAT, <<"tokens_per_request">>, 35)).
--define(UBIQUITI_RESELLER_ID, whapps_config:get_value(?U_CONFIG_CAT, <<"sso_reseller_id">>)).
+-define(UBIQUITI_RESELLER_ID, whapps_config:get(?U_CONFIG_CAT, <<"sso_reseller_id">>)).
 
 -define(SSO_STAGING_URI, <<"https://sso-stage.ubnt.com/api/sso/v1/">>).
 -define(SSO_PROD_URI, <<"https://sso.ubnt.com/api/sso/v1/">>).
@@ -131,24 +131,34 @@ put(Context) ->
 %%%===================================================================
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
 maybe_authenticate_user(Context) ->
-    case ibrowse:send_req(wh_util:to_list(?SSO_URL)
+    LoginURL = crossbar_util:get_path(?SSO_URL, <<"login">>),
+
+    case ibrowse:send_req(wh_util:to_list(LoginURL)
                           ,[{"Content-Type","application/json"}]
                           ,'post'
-                          ,wh_json:encode(cb_context:req_data(Context))
+                          ,wh_json:encode(login_req(Context))
                          )
     of
         {'ok', "200", RespHeaders, RespBody} ->
-            lager:debug("successfully authenticated to ~s", [?SSO_URL]),
+            lager:debug("successfully authenticated to '~s'", [LoginURL]),
             cb_context:setters(Context, [{fun cb_context:set_doc/2, auth_response(Context, RespHeaders, RespBody)}
                                          ,{fun cb_context:set_resp_status/2, 'success'}
                                         ]);
         {'ok', _RespCode, _RespHeaders, _RespBody} ->
-            lager:debug("recv non-200(~s) code: ~s", [_RespCode, _RespBody]),
+            lager:debug("recv non-200(~s) code from '~s': ~s", [_RespCode, LoginURL, _RespBody]),
             crossbar_util:response('error', <<"invalid credentials">>, 401, Context);
         {'error', _Error} ->
-            lager:debug("failed to query ~s: ~p", [?SSO_URL, _Error]),
+            lager:debug("failed to query '~s': ~p", [LoginURL, _Error]),
             crossbar_util:response('error', <<"failed to query Ubiquiti SSO service">>, 500, Context)
     end.
+
+-spec login_req(cb_context:context()) -> wh_json:object().
+login_req(Context) ->
+    Data = cb_context:req_data(Context),
+    wh_json:set_value(<<"user">>
+                      ,wh_json:get_value(<<"username">>, Data)
+                      ,wh_json:delete_key(<<"username">>, Data)
+                     ).
 
 -spec auth_response(cb_context:context(), wh_proplist(), binary()) -> wh_json:object().
 auth_response(_Context, _RespHeaders, RespBody) ->
@@ -156,7 +166,6 @@ auth_response(_Context, _RespHeaders, RespBody) ->
       [{<<"sso">>, wh_json:decode(RespBody)}
        ,{<<"reseller_id">>, ?UBIQUITI_RESELLER_ID}
        ,{<<"is_reseller">>, 'false'}
-       ,{<<"language">>, <<"en-US">>}
       ]).
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
