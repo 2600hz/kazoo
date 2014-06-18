@@ -1,33 +1,38 @@
 {
-   "_id":"user_auth_recovery",
-   "$schema":"http://json-schema.org/draft-03/schema#",
-   "id":"http://json-schema.org/draft-03/schema#",
-   "description":"Provides an auth-token via user credentials",
-   "properties":{
-      "username":{
-         "description":"The users username",
-         "required":"true",
-         "type":"string",
-         "minLength":1,
-         "maxLength":254
-      },
-      "account_realm":{
-         "description":"The account realm of the user",
-         "type":"string",
-         "minLength":1,
-         "maxLength":64
-      },
-      "account_name":{
-         "description":"The account name of the user",
-         "type":"string",
-         "minLength":1,
-         "maxLength":64
-      },
-      "phone_number":{
-         "description":"A phone number assigned to the users account",
-         "type":"string",
-         "minLength":1,
-         "maxLength":64
-      }
-   }
+  "_id": "user_auth_recovery",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Password Recovery",
+  "description": "Provides an auth-token via user credentials",
+  "properties": {
+    "username": {
+      "type": "string",
+      "required": "true",
+      "description": "The users username",
+      "minLength": 1,
+      "maxLength": 254
+    },
+    "account_realm": {
+      "type": "string",
+      "required": false,
+      "description": "The account realm of the user",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "account_name": {
+      "type": "string",
+      "required": false,
+      "description": "The account name of the user",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "phone_number": {
+      "type": "string",
+      "required": false,
+      "description": "A phone number assigned to the users account",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  }
 }

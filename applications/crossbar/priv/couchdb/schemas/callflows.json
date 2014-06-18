@@ -1,62 +1,93 @@
 {
-    "_id":"callflows",
-    "id":"http://json-schema.org/draft-03/schema#",
-    "description":"Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
-    "properties":{
-        "numbers":{
-            "description":"A list of static numbers that the callflow should execute for",
-            "type":"array",
-            "items":{
-                "type":"string"
-            }
+  "_id": "callflows",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Callflow",
+  "description": "Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
+  "properties": {
+    "numbers": {
+      "type": "array",
+      "required": false,
+      "name": "Numbers",
+      "description": "A list of static numbers that the callflow should execute for",
+      "items": {
+        "type": "string",
+        "required": false,
+        "minLength": 1,
+        "maxLength": 25
+      },
+      "default": []
+    },
+    "patterns": {
+      "type": "array",
+      "required": false,
+      "name": "Patterns",
+      "description": "A list of regular expressions that the callflow should execute for, with optional capture groups",
+      "items": {
+        "type": "string",
+        "required": false,
+        "minLength": 1,
+        "maxLength": 30
+      },
+      "default": []
+    },
+    "featurecode": {
+      "type": "object",
+      "required": false,
+      "name": "Feature Code Parameters",
+      "description": "When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature",
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": false,
+          "minLength": 1,
+          "maxLength": 128
         },
-        "patterns":{
-            "description":"A list of regular expressions that the callflow should execute for, with optional capture groups",
-            "type":"array",
-            "items":{
-                "type":"string"
-            }
-        },
-        "featurecode":{
-            "description":"When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature",
-            "type":"object",
-            "properties":{
-                "name":{
-                    "type":"string"
-                },
-                "number":{
-                    "type":"string"
-                }
-            }
-        },
-        "flow":{
-            "description":"A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
-            "type":"object",
-            "required":true,
-            "properties":{
-                "module":{
-                    "type":"string",
-                    "required":true,
-                    "maxLength":15
-                },
-                "data":{
-                    "type":"object",
-                    "required":true,
-                    "default":{
-
-                    }
-                },
-                "children":{
-                    "type":"#/flow",
-                    "default":{
-
-                    }
-                }
-            }
+        "number": {
+          "type": "string",
+          "required": false,
+          "minLength": 1,
+          "maxLength": 30
         }
-        ,"metaflow":{
-            "description":"Actions applied to a call outside of the normal callflow, initiated by the caller(s)"
-            ,"type":["object", "boolean"]
+      }
+    },
+    "flow": {
+      "type": "object",
+      "required": true,
+      "name": "Callflow",
+      "description": "A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
+      "properties": {
+        "module": {
+          "type": "string",
+          "required": true,
+          "name": "Module Name",
+          "description": "The name of the callflow module to excute at this node",
+          "minLength": 1,
+          "maxLength": 15
+        },
+        "data": {
+          "type": "object",
+          "required": true,
+          "name": "Module Data",
+          "description": "The data/arguments of the callflow module",
+          "default": {}
+        },
+        "children": {
+          "type": "object",
+          "required": false,
+          "name": "Children Callflows",
+          "description": "Children callflows",
+          "default": {}
         }
+      }
+    },
+    "metaflow": {
+      "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
+      "type": [
+        "object",
+        "boolean"
+      ]
     }
+  }
 }

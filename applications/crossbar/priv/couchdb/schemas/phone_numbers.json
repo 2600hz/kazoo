@@ -1,180 +1,216 @@
 {
-   "_id":"phone_numbers",
-   "$schema":"http://json-schema.org/draft-03/schema#",
-   "id":"http://json-schema.org/draft-03/schema#",
-   "description":"Schema for a phone_number",
-   "properties":{
-      "porting":{
-         "description":"Porting (in) information for the phone number",
-         "type":"object",
-         "properties":{
-            "service_provider":{
-               "name":"Service Provider",
-               "description":"The name of the losing carrier",
-               "type":"string"
-            },
-            "billing_name":{
-               "name":"Billing Name",
-               "description":"The name or company name the losing carrier has on file",
-               "type":"string"
-            },
-            "billing_account_id":{
-               "name":"Billing Account ID",
-               "description":"The account id the losing carrier has on file",
-               "type":"string"
-            },
-            "billing_street_address":{
-               "name":"Billing Street Address",
-               "description":"The street address the losing carrier has on file",
-               "type":"string"
-            },
-            "billing_extended_address":{
-               "name":"Billing Extended Address",
-               "description":"The suit/floor/apt. address the losing carrier has on file",
-               "type":"string"
-            },
-            "billing_locality":{
-               "name":"Billing Locality",
-               "description":"The locality (city) the losing carrier has on file",
-               "type":"string"
-            },
-            "billing_region":{
-               "name":"Billing Region",
-               "description":"The region (state) the losing carrier has on file",
-               "type":"string"
-            },
-            "billing_postal_code":{
-               "name":"Billing Postal Code",
-               "description":"The zip/postal code the losing carrier has on file",
-               "type":"string"
-            },
-            "billing_telephone_number":{
-               "name":"Billing Telephone Number",
-               "description":"The BTN of the account the number belongs to",
-               "type":"string"
-            },
-            "requested_port_date":{
-               "name":"Request Port Date",
-               "description":"The requested port date",
-               "type":"string"
-            },
-            "customer_contact":{
-               "name":"Customer Contact",
-               "description":"The phone number that can be used to contact the owner of the number",
-               "type":"string"
-            },
-            "comments":{
-               "name":"Comments",
-               "description":"An array of comments",
-               "type":"array"
-            },
-            "port_id":{
-               "name":"Port ID",
-               "description":"The id of the port request",
-               "type":"string"
-            }
-         }
-      },
-      "dash_e911":{
-         "description":"E911 information for the phone number",
-         "type":"object",
-         "properties":{
-            "dash_e911":{
-               "caller_name":{
-                  "name":"Caller Name (e911)",
-                  "description":"The name that will show to emergency services",
-                  "type":"string"
-               },
-               "street_address":{
-                  "name":"Street Address(e911)",
-                  "description":"The street address where the number is in service",
-                  "type":"string"
-               },
-               "extended_address":{
-                  "name":"Extended Address(e911)",
-                  "description":"The suit/floor/apt. address where the number is in service",
-                  "type":"string"
-               },
-               "locality":{
-                  "name":"Locality (e911)",
-                  "description":"The locality (city) where the number is in service",
-                  "type":"string"
-               },
-               "region":{
-                  "name":"Region (e911)",
-                  "description":"The region (state) where the number is in service",
-                  "type":"string"
-               },
-               "postal_code":{
-                  "name":"Postal Code (e911)",
-                  "description":"The zip/postal code where the number is in service",
-                  "type":"string"
-               },
-               "plus_four":{
-                  "name":"Plus Four (e911)",
-                  "description":"The extended zip/postal code where the number is in service",
-                  "type":"string"
-               },
-               "activated_time":{
-                  "name":"Activated Time (e911)",
-                  "description":"The time stamp e911 was provisioned",
-                  "type":"string"
-               },
-               "latitude":{
-                  "name":"Latitude (e911)",
-                  "description":"The e911 provisioning system calculated service address latitude",
-                  "type":"string"
-               },
-               "longitude":{
-                  "name":"Longitude (e911)",
-                  "description":"The e911 provisioning system calculated service address longitude",
-                  "type":"string"
-               },
-               "location_id":{
-                  "name":"Location ID(e911)",
-                  "description":"The e911 provisioning system internal id for this service address",
-                  "type":"string"
-               },
-               "status":{
-                  "description":"The e911 provisioning system status for this service address",
-                  "type":"string",
-                  "name":"Status (e911)",
-                  "enum":[
-                     "INVALID",
-                     "GEOCODED",
-                     "PROVISIONED",
-                     "REMOVED",
-                     "ERROR"
-                  ]
-               },
-               "legacy_data":{
-                  "description":"Legacy E911 information",
-                  "type":"object",
-                  "properties":{
-                     "house_number":{
-                        "name":"House Number",
-                        "description":"The name that will show to emergency services",
-                        "type":"string"
-                     },
-                     "predirectional":{
-                        "name":"Predirectional",
-                        "description":"The name that will show to emergency services",
-                        "type":"string"
-                     },
-                     "streetname":{
-                        "name":"Street Name",
-                        "description":"The name that will show to emergency services",
-                        "type":"string"
-                     },
-                     "suite":{
-                        "name":"Suite",
-                        "description":"The name that will show to emergency services",
-                        "type":"string"
-                     }
-                  }
-               }
-            }
-         }
+  "_id": "phone_numbers",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Phone Number",
+  "description": "Schema for a phone_number",
+  "properties": {
+    "porting": {
+      "type": "object",
+      "required": false,
+      "description": "Porting (in) information for the phone number",
+      "properties": {
+        "port_id": {
+          "type": "string",
+          "required": false,
+          "name": "Port ID",
+          "description": "The id of the port request"
+        },
+        "service_provider": {
+          "type": "string",
+          "required": false,
+          "name": "Service Provider",
+          "description": "The name of the losing carrier"
+        },
+        "billing_name": {
+          "type": "string",
+          "required": false,
+          "name": "Billing Name",
+          "description": "The name or company name the losing carrier has on file"
+        },
+        "billing_account_id": {
+          "type": "string",
+          "required": false,
+          "name": "Billing Account ID",
+          "description": "The account id the losing carrier has on file"
+        },
+        "billing_street_address": {
+          "type": "string",
+          "required": false,
+          "name": "Billing Street Address",
+          "description": "The street address the losing carrier has on file"
+        },
+        "billing_extended_address": {
+          "type": "string",
+          "required": false,
+          "name": "Billing Extended Address",
+          "description": "The suit/floor/apt. address the losing carrier has on file"
+        },
+        "billing_locality": {
+          "type": "string",
+          "required": false,
+          "name": "Billing Locality",
+          "description": "The locality (city) the losing carrier has on file"
+        },
+        "billing_region": {
+          "type": "string",
+          "required": false,
+          "name": "Billing Region",
+          "description": "The region (state) the losing carrier has on file"
+        },
+        "billing_postal_code": {
+          "type": "string",
+          "required": false,
+          "name": "Billing Postal Code",
+          "description": "The zip/postal code the losing carrier has on file"
+        },
+        "billing_telephone_number": {
+          "type": "string",
+          "required": false,
+          "name": "Billing Telephone Number",
+          "description": "The BTN of the account the number belongs to"
+        },
+        "requested_port_date": {
+          "type": "string",
+          "required": false,
+          "name": "Request Port Date",
+          "description": "The requested port date"
+        },
+        "customer_contact": {
+          "type": "string",
+          "required": false,
+          "name": "Customer Contact",
+          "description": "The phone number that can be used to contact the owner of the number"
+        },
+        "comments": {
+          "type": "array",
+          "required": false,
+          "name": "Comments",
+          "description": "An array of comments",
+          "items": {
+            "type": "string",
+            "required": false
+          }
+        }
       }
-   }
+    },
+    "dash_e911": {
+      "type": "object",
+      "required": false,
+      "description": "E911 information for the phone number",
+      "properties": {
+        "caller_name": {
+          "type": "string",
+          "required": false,
+          "name": "Caller Name (e911)",
+          "description": "The name that will show to emergency services"
+        },
+        "street_address": {
+          "type": "string",
+          "required": false,
+          "name": "Street Address(e911)",
+          "description": "The street address where the number is in service"
+        },
+        "extended_address": {
+          "type": "string",
+          "required": false,
+          "name": "Extended Address(e911)",
+          "description": "The suit/floor/apt. address where the number is in service"
+        },
+        "locality": {
+          "type": "string",
+          "required": false,
+          "name": "Locality (e911)",
+          "description": "The locality (city) where the number is in service"
+        },
+        "region": {
+          "type": "string",
+          "required": false,
+          "name": "Region (e911)",
+          "description": "The region (state) where the number is in service"
+        },
+        "postal_code": {
+          "type": "string",
+          "required": false,
+          "name": "Postal Code (e911)",
+          "description": "The zip/postal code where the number is in service"
+        },
+        "plus_four": {
+          "type": "string",
+          "required": false,
+          "name": "Plus Four (e911)",
+          "description": "The extended zip/postal code where the number is in service"
+        },
+        "activated_time": {
+          "type": "string",
+          "required": false,
+          "name": "Activated Time (e911)",
+          "description": "The time stamp e911 was provisioned"
+        },
+        "latitude": {
+          "type": "string",
+          "required": false,
+          "name": "Latitude (e911)",
+          "description": "The e911 provisioning system calculated service address latitude"
+        },
+        "longitude": {
+          "type": "string",
+          "required": false,
+          "name": "Longitude (e911)",
+          "description": "The e911 provisioning system calculated service address longitude"
+        },
+        "location_id": {
+          "type": "string",
+          "required": false,
+          "name": "Location ID(e911)",
+          "description": "The e911 provisioning system internal id for this service address"
+        },
+        "status": {
+          "type": "string",
+          "required": false,
+          "name": "Status (e911)",
+          "description": "The e911 provisioning system status for this service address",
+          "enum": [
+            "INVALID",
+            "GEOCODED",
+            "PROVISIONED",
+            "REMOVED",
+            "ERROR"
+          ]
+        },
+        "legacy_data": {
+          "type": "object",
+          "required": false,
+          "description": "Legacy E911 information",
+          "properties": {
+            "house_number": {
+              "type": "string",
+              "required": false,
+              "name": "House Number",
+              "description": "The name that will show to emergency services"
+            },
+            "predirectional": {
+              "type": "string",
+              "required": false,
+              "name": "Predirectional",
+              "description": "The name that will show to emergency services"
+            },
+            "streetname": {
+              "type": "string",
+              "required": false,
+              "name": "Street Name",
+              "description": "The name that will show to emergency services"
+            },
+            "suite": {
+              "type": "string",
+              "required": false,
+              "name": "Suite",
+              "description": "The name that will show to emergency services"
+            }
+          }
+        }
+      }
+    }
+  }
 }

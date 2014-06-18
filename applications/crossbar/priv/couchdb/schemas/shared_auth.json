@@ -1,16 +1,19 @@
 {
-   "_id":"shared_auth",
-   "$schema":"http://json-schema.org/draft-03/schema#",
-   "id":"http://json-schema.org/draft-03/schema#",
-   "description":"Provides a local auth-token via a shared auth-token",
-   "properties":{
-      "shared_auth":{
-         "description":"The shared token",
-         "required":"true",
-         "type":"string",
-         "minLength":64,
-         "maxLength":64
-      }
-   },
-   "additionalProperties":false
+  "_id": "shared_auth",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "name": "Shared Auth",
+  "description": "Provides a local auth-token via a shared auth-token",
+  "additionalProperties": false,
+  "properties": {
+    "shared_auth": {
+      "required": "true",
+      "type": "string",
+      "name": "Token",
+      "description": "The shared token",
+      "minLength": 64,
+      "maxLength": 64
+    }
+  }
 }

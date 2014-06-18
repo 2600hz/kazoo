@@ -1,36 +1,45 @@
 {
-   "_id":"acls",
-   "id":"http://json-schema.org/draft-03/schema#",
-   "description":"Schemas for FreeSWITCH's ACLs",
-   "properties":{
-      "cidr":{
-         "description":"IP address and mask of the ACL",
-         "required":true,
-         "type":"string"
-      },
-      "network-list-name":{
-         "description":"",
-         "required":"",
-         "type":"string",
-         "enum":[
-            "authoritative",
-            "trusted"
-         ]
-      },
-      "type":{
-         "description":"Allow of deny this CIDR",
-         "type":"string",
-         "required":true,
-         "enum":[
-            "allow",
-            "deny"
-         ]
-      },
-      "description":{
-         "description":"Will be added as a comment",
-         "type":"string",
-         "required":false,
-         "maxLen":30
-      }
-   }
+  "_id": "acls",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "required": true,
+  "name": "ACL Entry",
+  "description": "Access Control List entries",
+  "additionalProperties": false,
+  "properties": {
+    "cidr": {
+      "type": "string",
+      "required": true,
+      "name": "CIDR",
+      "description": "Classless Inter-Domain Routing IP notation for use on the ACL"
+    },
+    "network-list-name": {
+      "type": "string",
+      "required": true,
+      "name": "ACL List",
+      "description": "The trusted list should represent anything that can issue calls without authorization.  The authoritative list should indicate inter-network routing equipment (SBC, ect).",
+      "enum": [
+        "authoritative",
+        "trusted"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "required": true,
+      "name": "Type",
+      "description": "Allow or deny this CIDR",
+      "enum": [
+        "allow",
+        "deny"
+      ],
+      "default": "allow"
+    },
+    "description": {
+      "type": "string",
+      "required": false,
+      "name": "Name",
+      "description": "Will be added as a comment for quick identification later",
+      "maxLen": 30
+    }
+  }
 }
