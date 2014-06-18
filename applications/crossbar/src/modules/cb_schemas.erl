@@ -105,10 +105,11 @@ validate(Context, Id) ->
     read(Id, cb_context:set_account_db(Context, ?WH_SCHEMA_DB)).
 
 validate(Context, Id, ?VALIDATION_PATH_TOKEN) ->
-    OnSuccess = fun(C) ->
-                        cb_context:set_resp_data(C, cb_context:doc(C))
-                end,
-    cb_context:validate_request_data(Id, Context, OnSuccess).
+    cb_context:validate_request_data(Id, Context, fun on_success/1).
+
+-spec on_success(cb_context:context()) -> cb_context:context().
+on_success(Context) ->
+    cb_context:set_resp_data(Context, cb_context:doc(Context)).
 
 %%%===================================================================
 %%% Internal functions
