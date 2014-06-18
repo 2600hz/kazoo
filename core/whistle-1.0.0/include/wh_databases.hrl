@@ -33,6 +33,7 @@
                         ,?WH_OFFNET_DB
                         ,?WH_ANONYMOUS_CDR_DB
                         ,?KZ_PORT_REQUESTS_DB
+                        ,?WH_DEDICATED_IP_DB
                         ,?KZ_ACDC_DB
                        ]).
 

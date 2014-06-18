@@ -255,6 +255,8 @@ refresh(?WH_ANONYMOUS_CDR_DB) ->
     couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
     _ = couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
     'ok';
+refresh(?WH_DEDICATED_IP_DB) ->
+    kz_ip_utils:refresh_database();
 refresh(?WH_ACCOUNTS_DB) ->
     couch_mgr:db_create(?WH_ACCOUNTS_DB),
     Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
