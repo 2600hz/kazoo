@@ -246,17 +246,21 @@ match(Address, Element) ->
                                       {'ok', #state{}} |
                                       {'error', string(), #state{}}.
 check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From}=State) ->
-    lager:debug("checking if ~s can send to ~p. doc is ~p",[From,wh_json:get_value(<<"name">>,FaxBoxDoc),FaxBoxDoc]),
-    case whapps_config:get_ne_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
+    lager:debug("checking if ~s can send to ~p.",[From,wh_json:get_value(<<"name">>,FaxBoxDoc)]),    
+    case wh_json:get_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
         [] ->
-            case wh_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
+            case whapps_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
                 'true' -> add_fax_document(FaxNumber, FaxBoxDoc, State);
-                'false' -> lager:debug("faxbox permissions is empty and policy doesn't allow it")
+                'false' -> 
+                    lager:debug("faxbox permissions is empty and policy doesn't allow it"),
+                    {'error', "not allowed", State}
             end;
         Permissions ->
             case lists:any(fun(A) -> match(From, A) end, Permissions) of
                 'true' -> add_fax_document(FaxNumber, FaxBoxDoc, State);
-                'false' -> lager:debug("address ~is not allowed on fabox ~s",[From, wh_json:get_value(<<"_id">>,FaxBoxDoc)])
+                'false' -> 
+                    lager:debug("address ~is not allowed on faxbox ~s",[From, wh_json:get_value(<<"_id">>,FaxBoxDoc)]),
+                    {'error', "not allowed", State}                    
             end
     end.
 

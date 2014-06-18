@@ -33,8 +33,7 @@
                           ,'outbound_fax_error'
                          ]).
 
--define(FAXBOX_RESTRICT, [{'action', <<"created">>}
-                          ,{'db', <<"faxes">>}
+-define(FAXBOX_RESTRICT, [{'db', <<"faxes">>}
                           ,{'doc_type', <<"faxbox">>}
                          ]).
 
@@ -49,6 +48,9 @@
                       }
                      ,{{'fax_cloud', 'handle_faxbox_created'}
                        ,[{<<"configuration">>, <<"doc_created">>}]
+                      }
+                     ,{{'fax_cloud', 'handle_faxbox_deleted'}
+                       ,[{<<"configuration">>, <<"doc_deleted">>}]
                       }
                      ,{{?MODULE, 'new_request'}
                        ,[{<<"dialplan">>, <<"fax_req">>}]
