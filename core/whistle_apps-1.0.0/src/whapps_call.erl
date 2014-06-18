@@ -86,7 +86,7 @@
          ,kvs_update_counter/3
         ]).
 
--export([flush/0, cache/1, cache/2, retrieve/1]).
+-export([flush/0, cache/1, cache/2, cache/3, retrieve/1, retrieve/2]).
 
 -export([default_helper_function/2]).
 
@@ -784,20 +784,31 @@ flush() ->
     wh_cache:flush_local(?WHAPPS_CALL_CACHE).
 
 -spec cache(call()) -> 'ok'.
--spec cache(call(), pos_integer()) -> 'ok'.
+-spec cache(call(), ne_binary()) -> 'ok'.
+-spec cache(call(), ne_binary(), pos_integer()) -> 'ok'.
 
 cache(#whapps_call{}=Call) ->
-    cache(Call, 300).
+    cache(Call, 'undefined', 300).
 
-cache(#whapps_call{call_id=CallId}=Call, Expires) ->
+cache(Call, AppName) ->
+    cache(Call, AppName, 300).
+
+cache(#whapps_call{call_id=CallId}=Call, AppName, Expires) ->
     CacheProps = [{expires, Expires}],
-    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}, Call, CacheProps).
+    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, call, AppName, CallId}, Call, CacheProps).
 
 -spec retrieve(ne_binary()) ->
                       {'ok', call()} |
                       {'error', 'not_found'}.
+-spec retrieve(ne_binary(), ne_binary()) ->
+                      {'ok', call()} |
+                      {'error', 'not_found'}.
+
 retrieve(CallId) ->
-    wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}).
+    retrieve(CallId, 'undefined').
+
+retrieve(CallId, AppName) ->
+    wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, call, AppName, CallId}).
 
 %% EUNIT TESTING
 -ifdef(TEST).
