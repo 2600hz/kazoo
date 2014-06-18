@@ -129,7 +129,6 @@ put(Context) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
 maybe_authenticate_user(Context) ->
     case ibrowse:send_req(wh_util:to_list(?SSO_URL)
@@ -158,8 +157,7 @@ auth_response(_Context, _RespHeaders, RespBody) ->
        ,{<<"reseller_id">>, ?UBIQUITI_RESELLER_ID}
        ,{<<"is_reseller">>, 'false'}
        ,{<<"language">>, <<"en-US">>}
-      ]
-     ).
+      ]).
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
