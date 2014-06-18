@@ -567,28 +567,19 @@ create_auth_token(Context, Method) ->
             lager:debug("empty doc, no auth token created"),
             ?MODULE:response('error', <<"invalid credentials">>, 401, Context);
         'false' ->
-            lager:debug("doc: ~p", [JObj]),
-
             Data = cb_context:req_data(Context),
 
-            lager:debug("data: ~p", [Data]),
-
-            Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
             AccountId = wh_json:get_value(<<"account_id">>, JObj),
             OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
 
             Token = props:filter_undefined(
                       [{<<"account_id">>, AccountId}
                        ,{<<"owner_id">>, OwnerId}
-                       ,{<<"created">>, Timestamp}
                        ,{<<"as">>, wh_json:get_value(<<"as">>, Data)}
                        ,{<<"api_key">>, wh_json:get_value(<<"api_key">>, Data)}
                        ,{<<"restrictions">>, wh_json:get_value(<<"restrictions">>, Data)}
-                       ,{<<"modified">>, Timestamp}
                        ,{<<"method">>, wh_util:to_binary(Method)}
                       ]),
-
-            lager:debug("token: ~p", [Token]),
 
             JObjToken = wh_doc:update_pvt_parameters(wh_json:from_list(Token)
                                                      ,wh_util:format_account_id(AccountId, 'encoded')
