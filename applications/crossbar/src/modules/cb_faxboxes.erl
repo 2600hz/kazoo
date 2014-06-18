@@ -27,8 +27,10 @@
 -define(GPC_URL_REGISTER, <<?GPC_URL,"register">>).
 -define(GPC_PROXY, <<"kazoo-cloud-fax-printer-proxy">>).
 -define(GPC_PROXY_HEADER,{"X-CloudPrint-Proxy","kazoo-cloud-fax-printer-proxy"}).
-%-define(MULTIPART_BOUNDARY,<<"------a450glvjfEoqerAc1p431paQlfDac152cadADfd">>).
 -define(DEFAULT_FAX_SMTP_DOMAIN, <<"fax.kazoo.io">>).
+
+-define(LEAKED_FIELDS, [<<"pvt_smtp_email_address">>, <<"pvt_cloud_state">>
+                        ,<<"pvt_cloud_printer_id">>, <<"pvt_cloud_connector_claim_url">>]).
 
 %%%===================================================================
 %%% API
@@ -97,7 +99,7 @@ validate(Context) ->
     validate_faxboxes(Context, cb_context:req_verb(Context)).
 
 validate_faxboxes(Context, ?HTTP_PUT) ->
-    validate_email_address(create_faxbox(Context));
+    validate_email_address(create_faxbox(remove_private_fields(Context)));
 validate_faxboxes(Context, ?HTTP_GET) ->
     faxbox_listing(Context).
 
@@ -107,7 +109,7 @@ validate(Context, Id) ->
 validate_faxbox(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_faxbox(Context, Id, ?HTTP_POST) ->
-    validate_email_address(update_faxbox(Id, Context));
+    validate_email_address(update_faxbox(Id, remove_private_fields(Context)));
 validate_faxbox(Context, Id, ?HTTP_DELETE) ->
     delete_faxbox(Id, Context).
 
@@ -143,7 +145,7 @@ put(Context) ->
             cb_context:set_account_db(Ctx2, ?WH_FAXES),
             wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
            )),
-    Ctx2.
+    cb_context:set_resp_data(Ctx2, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -161,7 +163,7 @@ post(Context, _Id) ->
             cb_context:set_account_db(Ctx2, ?WH_FAXES),
             wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
            )),
-    Ctx2.
+    cb_context:set_resp_data(Ctx2, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -170,10 +172,12 @@ post(Context, _Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _Id) ->
-    Context1 = crossbar_doc:delete(Context),
-    couch_mgr:del_doc(?WH_FAXES, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
-    Context1.
+delete(Context, Id) ->
+    Ctx2 = crossbar_doc:delete(Context),
+    _ = crossbar_doc:delete(
+          read(Id, 
+               cb_context:set_account_db(Context, ?WH_FAXES))),
+    Ctx2.
 
 -spec create_faxbox(cb_context:context()) -> cb_context:context().
 create_faxbox(Context) ->
@@ -181,9 +185,9 @@ create_faxbox(Context) ->
     cb_context:validate_request_data(<<"faxbox">>, Context, OnSuccess).
 
 -spec delete_faxbox(ne_binary(), cb_context:context()) -> cb_context:context().
-delete_faxbox(_Id, Context) ->
+delete_faxbox(Id, Context) ->
     % should not allow the deletion of default faxbox
-    OnSuccess = fun(C) -> on_faxbox_successful_validation('undefined', C) end,
+    OnSuccess = fun(C) -> on_faxbox_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"faxbox">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -194,7 +198,29 @@ delete_faxbox(_Id, Context) ->
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    Ctx1 = crossbar_doc:load(Id, Context),
+    cb_context:set_resp_data(Ctx1, wh_doc:public_fields(leak_private_fields(cb_context:doc(Ctx1)))).
+
+-spec leak_private_fields(wh_json:object()) -> wh_json:object().
+leak_private_fields(JObj) ->
+    lists:foldl(fun(<<"pvt_", K1/binary>> = K, Acc) ->
+                        case wh_json:get_value(K, Acc) of
+                            'undefined' -> Acc;
+                            Value -> wh_json:set_value(K1, Value , Acc)
+                        end
+                end, JObj, ?LEAKED_FIELDS).
+
+-spec remove_private_fields(cb_context:context()) -> cb_context:context().
+remove_private_fields(Context) ->
+    JObj = cb_context:req_data(Context),
+    JObj1 = lists:foldl(fun(<<"pvt_", K1/binary>> = K, Acc) ->                                
+                                case wh_json:get_value(K1, Acc) of
+                                    'undefined' -> Acc;
+                                    Value -> wh_json:delete_key(K1, Acc)
+                                end
+                        end, JObj, ?LEAKED_FIELDS),
+    cb_context:set_req_data(Context, JObj1).
+    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -253,7 +279,7 @@ faxbox_listing(Context) ->
 
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj) | Acc].
+    [leak_private_fields(wh_json:get_value(<<"doc">>, JObj)) | Acc].
 
 -spec is_faxbox_email_global_unique(ne_binary(), ne_binary()) -> boolean().
 is_faxbox_email_global_unique(Email, FaxBoxId) ->
@@ -322,7 +348,7 @@ get_cloud_registered_properties(JObj) ->
      ,{<<"pvt_cloud_registration_token">>, wh_json:get_value(<<"registration_token">>, JObj)}
      ,{<<"pvt_cloud_token_duration">>, wh_json:get_integer_value(<<"token_duration">>, JObj)}
      ,{<<"pvt_cloud_polling_url">>, wh_json:get_value(<<"polling_url">>, JObj)}
-     ,{<<"cloud_connector_claim_url">>, wh_json:get_value(<<"complete_invite_url">>, JObj)}
+     ,{<<"pvt_cloud_connector_claim_url">>, wh_json:get_value(<<"complete_invite_url">>, JObj)}
      ,{<<"pvt_cloud_state">>, <<"registered">>}
      ,{<<"pvt_cloud_oauth_scope">>, wh_json:get_value(<<"oauth_scope">>, JObj)}
     ].

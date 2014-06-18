@@ -12,6 +12,7 @@
 -export([handle_job_notify/2
         ,handle_push/2
         ,handle_faxbox_created/2
+        ,handle_faxbox_deleted/2
         ,maybe_process_job/2
         ,check_registration/3
         ]).
@@ -308,20 +309,13 @@ handle_faxbox_created(JObj, _Props) ->
     spawn(?MODULE, check_registration, [AppId, State, Doc]).
 
 -spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
-check_registration('undefined', _, _JObj) ->
-    'ok';
-check_registration(_, 'undefined', _JObj) ->
-    'ok';
+check_registration('undefined', _, _JObj) -> 'ok';
+check_registration(_, 'undefined', _JObj) -> 'ok';
+check_registration(_, <<"expired">>, _JObj) -> 'ok';
 check_registration(AppId, <<"registered">>, JObj) ->
     PoolingUrlPart = wh_json:get_value(<<"pvt_cloud_polling_url">>, JObj),
     PoolingUrl = wh_util:to_list(<<PoolingUrlPart/binary, AppId/binary>>),
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
-    TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
-    CloudCreatedTime = wh_json:get_integer_value(<<"pvt_cloud_created_time">>, JObj),
-    CreatedTime = wh_json:get_integer_value(<<"pvt_created">>, JObj),
-    FaxBoxId = wh_json:get_value(<<"_id">>, JObj),
-    InviteUrl = wh_json:get_value(<<"cloud_connector_claim_url">>, JObj),
-   
     case ibrowse:send_req(PoolingUrl, [?GPC_PROXY_HEADER], 'get') of
         {'ok', "200", _RespHeaders, RespXML} ->
             JObjPool = wh_json:decode(RespXML),
@@ -365,7 +359,7 @@ process_registration_result('false', AppId, JObj, Result) ->
     PrinterId = wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj),
     TokenDuration = wh_json:get_integer_value(<<"pvt_cloud_token_duration">>, JObj),
     CreatedTime = wh_json:get_integer_value(<<"pvt_created">>, JObj),
-    InviteUrl = wh_json:get_value(<<"cloud_connector_claim_url">>, JObj),
+    InviteUrl = wh_json:get_value(<<"pvt_cloud_connector_claim_url">>, JObj),
     Elapsed = wh_util:elapsed_s(CreatedTime), 
     case Elapsed > TokenDuration of
         'true' -> 
@@ -389,3 +383,18 @@ update_printer(JObj) ->
     couch_mgr:ensure_saved(AccountDb, JObj),
     couch_mgr:ensure_saved(?WH_FAXES, JObj).
     
+-spec handle_faxbox_deleted(wh_json:object(), wh_proplist()) -> any().
+handle_faxbox_deleted(JObj, _Props) ->
+    lager:debug("faxbox_deleted ~p",[JObj]),
+    'true' = wapi_conf:doc_update_v(JObj),
+    lager:debug("faxbox_deleted ~p",[JObj]),
+    ID = wh_json:get_value(<<"ID">>, JObj),
+    Payload = props:filter_undefined(
+                [{<<"Event-Name">>, <<"stop">>}
+                ,{<<"Application-Name">>, <<"fax">>}
+                ,{<<"Application-Event">>, <<"deleted">>}
+                ,{<<"Application-Data">>, ID}
+                ,{<<"JID">>, ID}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    wapi_xmpp:publish_event(Payload).

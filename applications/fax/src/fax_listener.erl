@@ -13,6 +13,7 @@
 %% API
 -export([start_link/0
         ,handle_printer_start/2
+        ,handle_printer_stop/2
         ,start_all_printers/0
         ]).
 
@@ -34,7 +35,11 @@
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_printer_start'}
                       ,[{<<"xmpp_event">>, <<"start">>}]
-                     }]).
+                     }
+                     ,{{?MODULE, 'handle_printer_stop'}
+                       ,[{<<"xmpp_event">>, <<"stop">>}]
+                      }
+                    ]).
 
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -65,6 +70,12 @@ handle_printer_start(JObj, _Props) ->
     'true' = wapi_xmpp:event_v(JObj),
     PrinterId = wh_json:get_value(<<"Application-Data">>, JObj),
     fax_xmpp_sup:start_printer(PrinterId).
+
+-spec handle_printer_stop(wh_json:object(), wh_proplist()) -> sup_startchild_ret().
+handle_printer_stop(JObj, _Props) ->
+    'true' = wapi_xmpp:event_v(JObj),
+    PrinterId = wh_json:get_value(<<"Application-Data">>, JObj),
+    fax_xmpp_sup:stop_printer(PrinterId).
 
 %%%===================================================================
 %%% gen_server callbacks
