@@ -7,7 +7,7 @@
         "username":{
             "name":"Username"
             ,"description":"Ubiquiti SSO Username"
-            ,"required":"true"
+            ,"required":true
             ,"type":"string"
             ,"minLength":1
             ,"maxLength":64
@@ -15,11 +15,10 @@
         ,"password":{
             "name":"Password"
             ,"description":"Ubiquiti SSO Password"
-            ,"required":"true"
+            ,"required":true
             ,"type":"string"
             ,"minLength":1
             ,"maxLength":64
         }
-   },
-   "additionalProperties":false
+   }
 }
