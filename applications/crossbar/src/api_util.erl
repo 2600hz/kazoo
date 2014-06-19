@@ -305,9 +305,11 @@ extract_file(Context, ContentType, Req0) ->
         {'ok', FileContents, Req1} ->
             %% http://tools.ietf.org/html/rfc2045#page-17
             case cowboy_req:header(<<"content-transfer-encoding">>, Req1) of
-                {<<"base64">>, Req2} -> decode_base64(Context, ContentType, Req2);
+                {<<"base64">>, Req2} ->
+                    lager:debug("base64 encoded request coming in"),
+                    decode_base64(Context, ContentType, Req2);
                 {_Else, Req2} ->
-                    lager:debug("encoding: ~p", [_Else]),
+                    lager:debug("unexpected transfer encoding: '~s'", [_Else]),
                     {ContentLength, Req3} = cowboy_req:header(<<"content-length">>, Req2),
                     Headers = wh_json:from_list([{<<"content_type">>, ContentType}
                                                  ,{<<"content_length">>, ContentLength}
@@ -338,6 +340,8 @@ default_filename() ->
                            {cb_context:context(), cowboy_req:req()} |
                            halt_return().
 decode_base64(Context, CT, Req0) ->
+    decode_base64(Context, CT, Req0, []).
+decode_base64(Context, CT, Req0, Body) ->
     case cowboy_req:body(Req0) of
         {'error', 'badlength'} ->
             lager:debug("the request body was most likely too big"),
@@ -353,22 +357,28 @@ decode_base64(Context, CT, Req0) ->
                             cb_context:set_resp_data(Context, E)
                             ,'fatal'
                            ));
+        {'more', BinData, Req1} ->
+            lager:debug("recv ~p bytes with more to come", [byte_size(BinData)]),
+            decode_base64(Context, CT, Req1, [BinData | Body]);
         {'ok', Base64Data, Req1} ->
-            {EncodedType, FileContents} = decode_base64(Base64Data),
+            Data = iolist_to_binary(lists:reverse([Base64Data | Body])),
+
+            {EncodedType, FileContents} = decode_base64(Data),
             ContentType = case EncodedType of
                               'undefined' -> CT;
                               <<"application/base64">> -> <<"application/octet-stream">>;
                               Else -> Else
                           end,
             Headers = wh_json:from_list([{<<"content_type">>, ContentType}
-                                         ,{<<"content_length">>, wh_util:to_binary(size(FileContents))}
+                                         ,{<<"content_length">>, byte_size(FileContents)}
                                         ]),
             FileJObj = wh_json:from_list([{<<"headers">>, Headers}
                                           ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
             FileName = <<"uploaded_file_"
-                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary>>,
+                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
+                       >>,
             {cb_context:set_req_files(Context, [{FileName, FileJObj}]), Req1}
     end.
 
@@ -376,54 +386,45 @@ decode_base64(Context, CT, Req0) ->
 decode_base64(Base64) ->
     case binary:split(Base64, <<",">>) of
         %% http://tools.ietf.org/html/rfc4648
-        [Bin] -> {'undefined', corrected_base64_decode(Bin)};
+        [Bin] ->
+            lager:debug("not split on ','"),
+            {'undefined', corrected_base64_decode(Bin)};
         %% http://tools.ietf.org/rfc/rfc2397.txt
         [<<"data:", CT/binary>>, Bin] ->
             {ContentType, _Opts} = mochiweb_util:parse_header(wh_util:to_list(CT)),
-            {wh_util:to_binary(ContentType), corrected_base64_decode(Bin)}
+
+            {wh_util:to_binary(ContentType), corrected_base64_decode(Bin)};
+        [_SplitLeft, _SplitRight] ->
+            lager:debug("split unexpectedly: ~p/~p", [byte_size(_SplitLeft), byte_size(_SplitRight)]),
+            lager:debug("l: ~s", [binary:part(_SplitLeft, byte_size(_SplitLeft), -20)]),
+            lager:debug("r: ~s", [binary:part(_SplitRight, byte_size(_SplitRight), -10)]),
+            {'undefined', corrected_base64_decode(Base64)}
     end.
 
 -spec corrected_base64_decode(ne_binary()) -> ne_binary().
 corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 3 ->
-    base64:mime_decode(<<Base64/bytes, "=">>);
+    base64:mime_decode(<<Base64/binary, "=">>);
 corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 2 ->
-    base64:mime_decode(<<Base64/bytes, "==">>);
+    base64:mime_decode(<<Base64/binary, "==">>);
 corrected_base64_decode(Base64) ->
     base64:mime_decode(Base64).
 
--spec get_request_body(cowboy_req:req()) -> {binary(), cowboy_req:req()}.
-get_request_body(Req0) ->
+-spec get_request_body(cowboy_req:req()) ->
+                              {binary(), cowboy_req:req()}.
+-spec get_request_body(cowboy_req:req(), iolist()) ->
+                              {binary(), cowboy_req:req()}.
+get_request_body(Req) ->
+    get_request_body(Req, []).
+get_request_body(Req0, Body) ->
     case cowboy_req:body(Req0) of
-        {'error', 'chunked'} ->
-            lager:debug("handling chunked request"),
-            handle_chunked(Req0);
         {'error', _E} ->
             lager:debug("request body had no payload: ~p", [_E]),
             {<<>>, Req0};
-        {'ok', <<>>, Req1} ->
-            lager:debug("request body was empty"),
-            {<<>>, Req1};
-        {'ok', ReqBody, Req1} ->
-            {ReqBody, Req1}
-    end.
-
--spec handle_chunked(cowboy_req:req()) -> {binary(), cowboy_req:req()}.
-handle_chunked(Req) ->
-    handle_chunked(Req, <<>>).
-
--spec handle_chunked(cowboy_req:req(), binary()) -> {binary(), cowboy_req:req()}.
-handle_chunked(Req, Body) ->
-    case cowboy_req:stream_body(Req) of
-        {'done', Req2} ->
-            {Body, Req2};
-        {'ok', Data, Req2} ->
-            handle_chunked(Req2, <<Body/binary, Data/binary>>);
-        {'error', 'timeout'} ->
-            lager:debug("timed out recv chunked request body, using none"),
-            {Body, Req};
-        {'error', _E} ->
-            lager:debug("error while fetching chunk: ~p", [_E]),
-            {Body, Req}
+        {'more', Data, Req1} ->
+            lager:debug("recv chunk ~p bytes", [byte_size(Data)]),
+            get_request_body(Req1, [Body, Data]);
+        {'ok', Data, Req1} ->
+            {iolist_to_binary([Body, Data]), Req1}
     end.
 
 -type get_json_return() :: {wh_json:object(), cowboy_req:req()} |
