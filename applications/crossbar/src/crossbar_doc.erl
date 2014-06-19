@@ -81,13 +81,21 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load(api_binary() | api_binaries(), cb_context:context()) -> cb_context:context().
--spec load(api_binary() | api_binaries(), cb_context:context(), wh_proplist()) -> cb_context:context().
+-spec load(api_binary() | api_binaries(), cb_context:context()) ->
+                  cb_context:context().
+-spec load(api_binary() | api_binaries(), cb_context:context(), wh_proplist()) ->
+                  cb_context:context().
+-spec load(api_binary() | api_binaries(), cb_context:context(), wh_proplist(), crossbar_status()) ->
+                  cb_context:context().
 
-load(DocId, #cb_context{}=Context) -> load(DocId, Context, []).
+load(DocId, Context) ->
+    load(DocId, Context, []).
 
-load(_, #cb_context{resp_status='error'}=Context, _) -> Context;
-load(DocId, #cb_context{}=Context, Opts) when is_binary(DocId) ->
+load(DocId, Context, Options) ->
+    load(DocId, Context, Options, cb_context:resp_status(Context)).
+
+load(_DocId, Context, _Options, 'error') -> Context;
+load(DocId, Context, Opts, _RespStatus) when is_binary(DocId) ->
     case couch_mgr:open_cache_doc(cb_context:account_db(Context), DocId, Opts) of
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
@@ -100,8 +108,9 @@ load(DocId, #cb_context{}=Context, Opts) when is_binary(DocId) ->
                 'false' -> cb_context:store(handle_couch_mgr_success(JObj, Context), 'db_doc', JObj)
             end
     end;
-load([], Context, _) -> cb_context:add_system_error('bad_identifier',  Context);
-load([_|_]=IDs, Context, Opts) ->
+load([], Context, _Options, _RespStatus) ->
+    cb_context:add_system_error('bad_identifier',  Context);
+load([_|_]=IDs, Context, Opts, _RespStatus) ->
     Opts1 = [{'keys', IDs}, 'include_docs' | Opts],
     case couch_mgr:all_docs(cb_context:account_db(Context), Opts1) of
         {'error', Error} -> handle_couch_mgr_errors(Error, IDs, Context);
@@ -121,7 +130,8 @@ load([_|_]=IDs, Context, Opts) ->
 -spec load_from_file(ne_binary(), ne_binary()) ->
                             {'ok', wh_json:object()} |
                             {'error', atom()}.
-load_from_file(Db, File) -> couch_mgr:load_doc_from_file(Db, 'crossbar', File).
+load_from_file(Db, File) ->
+    couch_mgr:load_doc_from_file(Db, 'crossbar', File).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -137,11 +147,16 @@ load_from_file(Db, File) -> couch_mgr:load_doc_from_file(Db, 'crossbar', File).
                         cb_context:context().
 -spec load_merge(ne_binary(), wh_json:object(), cb_context:context()) ->
                         cb_context:context().
+-spec load_merge(ne_binary(), wh_json:object(), cb_context:context(), api_object()) ->
+                        cb_context:context().
 
-load_merge(DocId, #cb_context{}=Context) ->
+load_merge(DocId, Context) ->
     load_merge(DocId, cb_context:doc(Context), Context).
 
-load_merge(DocId, DataJObj, #cb_context{load_merge_bypass='undefined'}=Context) ->
+load_merge(DocId, DataJObj, Context) ->
+    load_merge(DocId, DataJObj, Context, cb_context:load_merge_bypass(Context)).
+
+load_merge(DocId, DataJObj, Context, 'undefined') ->
     Context1 = load(DocId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -151,8 +166,8 @@ load_merge(DocId, DataJObj, #cb_context{load_merge_bypass='undefined'}=Context) 
             merge(DataJObj, cb_context:doc(Context1), Context1);
         _Status -> Context1
     end;
-load_merge(_, _, #cb_context{load_merge_bypass=JObj}=Context) ->
-    handle_couch_mgr_success(JObj, Context).
+load_merge(_DocId, _DataJObj, Context, BypassJObj) ->
+    handle_couch_mgr_success(BypassJObj, Context).
 
 -spec merge(wh_json:object(), wh_json:object(), cb_context:context()) ->
                    cb_context:context().
@@ -201,12 +216,13 @@ load_view(View, Options, Context, StartKey, PageSize) ->
 load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
     Db = cb_context:account_db(Context),
 
-    HasFilter = is_function(FilterFun, 2) orelse has_filter(Context),
+    HasFilter = is_function(FilterFun, 2) orelse has_qs_filter(Context),
+    Limit = limit_by_page_size(Context, PageSize),
 
     DefaultOptions =
         props:filter_undefined(
           [{'startkey', StartKey}
-           ,{'limit', limit_by_page_size(PageSize)}
+           ,{'limit', Limit}
            | props:delete_keys(['startkey', 'limit'], Options)
           ]),
 
@@ -224,16 +240,32 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
             handle_couch_mgr_pagination_success(JObjs
                                                 ,Context
                                                 ,StartKey
-                                                ,PageSize
+                                                ,if is_integer(Limit) -> PageSize; 'true' -> Limit end
                                                 ,FilterFun
                                                 ,cb_context:api_version(Context)
                                                )
     end.
 
--spec limit_by_page_size(api_binary() | pos_integer()) -> pos_integer().
+-spec limit_by_page_size(api_binary() | pos_integer()) ->
+                                'undefined' | pos_integer().
+-spec limit_by_page_size(cb_context:context(), api_binary() | pos_integer()) ->
+                                'undefined' | pos_integer().
 limit_by_page_size('undefined') -> 'undefined';
 limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
+
+limit_by_page_size(Context, PageSize) ->
+    case wh_util:is_true(
+           cb_context:req_value(Context, <<"paginate">>, 'true')
+          )
+    of
+        'true' ->
+            lager:debug("pagination enabled, finding pagesize from ~p", [PageSize]),
+            limit_by_page_size(PageSize);
+        'false' ->
+            lager:debug("pagination disabled by request"),
+            'undefined'
+    end.
 
 -spec start_key(cb_context:context()) -> wh_json:json_term() | 'undefined'.
 -spec start_key(wh_proplist(), cb_context:context()) -> wh_json:json_term() | 'undefined'.
@@ -257,7 +289,7 @@ start_key(Options, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_docs(cb_context:context(), filter_fun()) -> cb_context:context().
-load_docs(#cb_context{}=Context, Filter) when is_function(Filter, 2) ->
+load_docs(Context, Filter) when is_function(Filter, 2) ->
     case couch_mgr:all_docs(cb_context:account_db(Context)) of
         {'error', Error} -> handle_couch_mgr_errors(Error, <<"all_docs">>, Context);
         {'ok', JObjs} ->
@@ -534,7 +566,7 @@ rev_to_etag(JObj) ->
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
     update_pagination_envelope_params(Context, StartKey, PageSize, 'undefined').
 
--spec update_pagination_envelope_params(cb_context:context(), term(),non_neg_integer(), api_binary()) ->
+-spec update_pagination_envelope_params(cb_context:context(), term(), pos_integer() | 'undefined', api_binary()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
     cb_context:set_resp_envelope(Context
@@ -553,6 +585,11 @@ handle_couch_mgr_pagination_success(JObjs, Context, _StartKey, 'undefined', Filt
     handle_couch_mgr_success(apply_filter(FilterFun, JObjs, Context), Context);
 handle_couch_mgr_pagination_success([], Context, StartKey, _PageSize, _FilterFun, _Version) ->
     handle_couch_mgr_success([], update_pagination_envelope_params(Context, StartKey, 0));
+
+handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, 'undefined', FilterFun, _Version) ->
+    handle_couch_mgr_success(apply_filter(FilterFun, JObjs, Context)
+                             ,update_pagination_envelope_params(Context, StartKey, length(JObjs))
+                            );
 handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize, FilterFun, _Version) ->
     try lists:split(PageSize, JObjs) of
         {Results, []} ->
@@ -583,7 +620,7 @@ handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize, Fi
 -spec apply_filter('undefined' | filter_fun(), wh_json:objects(), cb_context:context(), boolean()) ->
                           wh_json:objects().
 apply_filter(FilterFun, JObjs, Context) ->
-    apply_filter(FilterFun, JObjs, Context, has_filter(Context)).
+    apply_filter(FilterFun, JObjs, Context, has_qs_filter(Context)).
 
 apply_filter(FilterFun, JObjs, Context, HasQSFilter) ->
     lager:debug("applying filter fun ~p and maybe qs filter: ~p", [FilterFun, HasQSFilter]),
@@ -787,8 +824,8 @@ extract_included_docs(JObjs) ->
 %% request has a filter defined
 %% @end
 %%--------------------------------------------------------------------
--spec has_filter(cb_context:context()) -> boolean().
-has_filter(Context) ->
+-spec has_qs_filter(cb_context:context()) -> boolean().
+has_qs_filter(Context) ->
     lists:any(fun is_filter_key/1, wh_json:to_proplist(cb_context:query_string(Context))).
 
 %%--------------------------------------------------------------------
