@@ -255,16 +255,31 @@ limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
 
 limit_by_page_size(Context, PageSize) ->
-    case wh_util:is_true(
-           cb_context:req_value(Context, <<"paginate">>, 'true')
-          )
-    of
+    case cb_context:req_value(Context, <<"paginate">>) of
+        'undefined' ->
+            lager:debug("pagination enabled by default, checking filters"),
+            maybe_disable_page_size(Context, PageSize);
+        ShouldEnable ->
+            case wh_util:is_true(ShouldEnable) of
+                'true' ->
+                    lager:debug("pagination explicitly enabled, getting page size from ~p", [PageSize]),
+                    limit_by_page_size(PageSize);
+                'false' ->
+                    lager:debug("pagination disabled by request"),
+                    'undefined'
+            end
+    end.
+
+-spec maybe_disable_page_size(cb_context:context(), pos_integer() | api_binary()) ->
+                                     'undefined' | pos_integer().
+maybe_disable_page_size(Context, PageSize) ->
+    case has_qs_filter(Context) of
         'true' ->
-            lager:debug("pagination enabled, finding pagesize from ~p", [PageSize]),
-            limit_by_page_size(PageSize);
+            lager:debug("request has a query string fitler, disabling pagination"),
+            'undefined';
         'false' ->
-            lager:debug("pagination disabled by request"),
-            'undefined'
+            lager:debug("no query string filter, getting page size from ~p", [PageSize]),
+            limit_by_page_size(PageSize)
     end.
 
 -spec start_key(cb_context:context()) -> wh_json:json_term() | 'undefined'.
@@ -309,27 +324,24 @@ load_docs(Context, Filter) when is_function(Filter, 2) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment(ne_binary() | wh_json:object(), ne_binary(), cb_context:context()) -> cb_context:context().
-load_attachment(DocId, AName, #cb_context{}=Context) when is_binary(DocId) ->
+-spec load_attachment(ne_binary() | wh_json:object(), ne_binary(), cb_context:context()) ->
+                             cb_context:context().
+load_attachment(DocId, AName, Context) when is_binary(DocId) ->
     case couch_mgr:fetch_attachment(cb_context:account_db(Context), DocId, AName) of
         {'error', Error} -> handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', AttachBin} ->
             lager:debug("loaded attachment ~s from doc ~s from db ~s"
                         ,[AName, DocId, cb_context:account_db(Context)]
                        ),
-            #cb_context{resp_status='success'} = Context1 = load(DocId, Context),
-            lists:foldl(fun fold_over_setters/2
-                        ,Context1
-                        ,[{fun cb_context:set_resp_data/2, AttachBin}
-                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
-                         ])
+            Context1 = load(DocId, Context),
+            'success' = cb_context:resp_status(Context1),
+            cb_context:setters(Context1
+                               ,[{fun cb_context:set_resp_data/2, AttachBin}
+                                 ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
+                                ])
     end;
-load_attachment(Doc, AName, #cb_context{}=Context) ->
+load_attachment(Doc, AName, Context) ->
     load_attachment(find_doc_id(Doc), AName, Context).
-
--spec fold_over_setters({cb_context:setter_fun(), term()}, cb_context:context()) ->
-                               cb_context:context().
-fold_over_setters({F, D}, C) -> F(C, D).
 
 -spec find_doc_id(wh_json:object()) -> api_binary().
 find_doc_id(JObj) ->
@@ -375,7 +387,7 @@ save(Context, [_|_]=JObjs, Options) ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
             provisioner_util:maybe_send_contact_list(Context1)
     end;
-save(#cb_context{}=Context, JObj, Options) ->
+save(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
@@ -403,11 +415,13 @@ save(#cb_context{}=Context, JObj, Options) ->
 -spec ensure_saved(cb_context:context(), wh_json:object() | wh_json:objects(), wh_proplist()) ->
                           cb_context:context().
 
-ensure_saved(#cb_context{}=Context) -> ensure_saved(Context, []).
-ensure_saved(#cb_context{}=Context, Options) ->
+ensure_saved(Context) ->
+    ensure_saved(Context, []).
+
+ensure_saved(Context, Options) ->
     ensure_saved(Context, cb_context:doc(Context), Options).
 
-ensure_saved(#cb_context{}=Context, JObj, Options) ->
+ensure_saved(Context, JObj, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:ensure_saved(cb_context:account_db(Context), JObj0, Options) of
         {'error', Error} ->
@@ -440,7 +454,7 @@ save_attachment(DocId, AName, Contents, Context) ->
 %%--------------------------------------------------------------------
 -spec save_attachment(ne_binary(), ne_binary(), ne_binary(), cb_context:context(), wh_proplist()) ->
                              cb_context:context().
-save_attachment(DocId, AName, Contents, #cb_context{}=Context, Options) ->
+save_attachment(DocId, AName, Contents, Context, Options) ->
     Opts1 = case props:get_value('rev', Options) of
                 'undefined' ->
                     {'ok', Rev} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
@@ -460,13 +474,12 @@ save_attachment(DocId, AName, Contents, #cb_context{}=Context, Options) ->
                         ,[AName, DocId, cb_context:account_db(Context)]
                        ),
             {'ok', Rev1} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
-            lists:foldl(fun fold_over_setters/2
-                        ,Context
-                        ,[{fun cb_context:set_doc/2, wh_json:new()}
-                          ,{fun cb_context:set_resp_status/2, 'success'}
-                          ,{fun cb_context:set_resp_data/2, wh_json:new()}
-                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
-                         ])
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_doc/2, wh_json:new()}
+                                 ,{fun cb_context:set_resp_status/2, 'success'}
+                                 ,{fun cb_context:set_resp_data/2, wh_json:new()}
+                                 ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
+                                ])
     end.
 
 %%--------------------------------------------------------------------
@@ -483,7 +496,7 @@ save_attachment(DocId, AName, Contents, #cb_context{}=Context, Options) ->
 -spec delete(cb_context:context()) -> cb_context:context().
 -spec delete(cb_context:context(), 'permanent') -> cb_context:context().
 
-delete(#cb_context{}=Context) ->
+delete(Context) ->
     JObj0 = cb_context:doc(Context),
     JObj1 = wh_json:set_value(<<"pvt_deleted">>, 'true', update_pvt_parameters(JObj0, Context)),
     case couch_mgr:save_doc(cb_context:account_db(Context), JObj1) of
@@ -499,7 +512,7 @@ delete(#cb_context{}=Context) ->
             provisioner_util:maybe_send_contact_list(Context1)
     end.
 
-delete(#cb_context{}=Context, 'permanent') ->
+delete(Context, 'permanent') ->
     JObj0 = cb_context:doc(Context),
     case couch_mgr:del_doc(cb_context:account_db(Context), JObj0) of
         {'error', 'not_found'} -> handle_couch_mgr_success(JObj0, Context);
@@ -525,7 +538,7 @@ delete(#cb_context{}=Context, 'permanent') ->
 %%--------------------------------------------------------------------
 -spec delete_attachment(ne_binary(), ne_binary(), cb_context:context()) ->
                                cb_context:context().
-delete_attachment(DocId, AName, #cb_context{}=Context) ->
+delete_attachment(DocId, AName, Context) ->
     case couch_mgr:delete_attachment(cb_context:account_db(Context), DocId, AName) of
         {'error', 'not_found'} -> handle_couch_mgr_success(wh_json:new(), Context);
         {'error', Error} ->
@@ -545,7 +558,8 @@ delete_attachment(DocId, AName, #cb_context{}=Context) ->
 %% document into a usable ETag for the response
 %% @end
 %%--------------------------------------------------------------------
--spec rev_to_etag(wh_json:object() | wh_json:objects() | ne_binary()) -> 'undefined' | 'automatic' | string().
+-spec rev_to_etag(wh_json:object() | wh_json:objects() | ne_binary()) ->
+                         'undefined' | 'automatic' | string().
 rev_to_etag([_|_])-> 'automatic';
 rev_to_etag([]) -> 'undefined';
 rev_to_etag(Rev) when is_binary(Rev) -> wh_util:to_list(Rev);
@@ -561,7 +575,7 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer()) ->
+-spec update_pagination_envelope_params(cb_context:context(), term(), pos_integer() | 'undefined') ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize) ->
     update_pagination_envelope_params(Context, StartKey, PageSize, 'undefined').
@@ -587,8 +601,9 @@ handle_couch_mgr_pagination_success([], Context, StartKey, _PageSize, _FilterFun
     handle_couch_mgr_success([], update_pagination_envelope_params(Context, StartKey, 0));
 
 handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, 'undefined', FilterFun, _Version) ->
-    handle_couch_mgr_success(apply_filter(FilterFun, JObjs, Context)
-                             ,update_pagination_envelope_params(Context, StartKey, length(JObjs))
+    Filtered = apply_filter(FilterFun, JObjs, Context),
+    handle_couch_mgr_success(Filtered
+                             ,update_pagination_envelope_params(Context, StartKey, length(Filtered))
                             );
 handle_couch_mgr_pagination_success([_|_]=JObjs, Context, StartKey, PageSize, FilterFun, _Version) ->
     try lists:split(PageSize, JObjs) of
@@ -646,8 +661,7 @@ filtered_doc_by_qs(JObj, 'true', Context) ->
 
 -spec handle_couch_mgr_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_couch_mgr_success([], Context) ->
-    lists:foldl(fun fold_over_setters/2
-                ,Context
+    cb_context:setters(Context
                 ,[{fun cb_context:set_doc/2, []}
                   ,{fun cb_context:set_resp_status/2, 'success'}
                   ,{fun cb_context:set_resp_data/2, []}
@@ -666,13 +680,12 @@ handle_couch_mgr_success(JObj, Context) ->
 
 -spec handle_thing_success(any(), cb_context:context()) -> cb_context:context().
 handle_thing_success(Thing, Context) ->
-    lists:foldl(fun fold_over_setters/2
-                ,Context
-                ,[{fun cb_context:set_doc/2, Thing}
-                  ,{fun cb_context:set_resp_status/2, 'success'}
-                  ,{fun cb_context:set_resp_data/2, Thing}
-                  ,{fun cb_context:set_resp_etag/2, 'undefined'}
-                 ]).
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_doc/2, Thing}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_resp_data/2, Thing}
+                         ,{fun cb_context:set_resp_etag/2, 'undefined'}
+                        ]).
 
 -spec handle_json_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
@@ -683,46 +696,42 @@ handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
     RespHeaders = [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)}
                    || JObj <- JObjs
                   ] ++ cb_context:resp_headers(Context),
-    lists:foldl(fun fold_over_setters/2
-                ,Context
-                ,[{fun cb_context:set_doc/2, JObjs}
-                  ,{fun cb_context:set_resp_status/2, 'success'}
-                  ,{fun cb_context:set_resp_data/2, RespData}
-                  ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
-                  ,{fun cb_context:set_resp_headers/2, RespHeaders}
-                 ]);
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_doc/2, JObjs}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_resp_data/2, RespData}
+                         ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
+                         ,{fun cb_context:set_resp_headers/2, RespHeaders}
+                        ]);
 handle_json_success([_|_]=JObjs, Context) ->
     RespData = [wh_json:public_fields(JObj)
                 || JObj <- JObjs,
                    wh_json:is_false(<<"pvt_deleted">>, JObj, 'true')
                ],
-    lists:foldl(fun fold_over_setters/2
-                ,Context
-                ,[{fun cb_context:set_doc/2, JObjs}
-                  ,{fun cb_context:set_resp_status/2, 'success'}
-                  ,{fun cb_context:set_resp_data/2, RespData}
-                  ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
-                 ]);
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_doc/2, JObjs}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_resp_data/2, RespData}
+                         ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
+                        ]);
 handle_json_success(JObj, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
     RespHeaders = [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)}
                    | cb_context:resp_headers(Context)
                   ],
-    lists:foldl(fun fold_over_setters/2
-                ,Context
-                ,[{fun cb_context:set_doc/2, JObj}
-                  ,{fun cb_context:set_resp_status/2, 'success'}
-                  ,{fun cb_context:set_resp_data/2, wh_json:public_fields(JObj)}
-                  ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
-                  ,{fun cb_context:set_resp_headers/2, RespHeaders}
-                 ]);
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_doc/2, JObj}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_resp_data/2, wh_json:public_fields(JObj)}
+                         ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
+                         ,{fun cb_context:set_resp_headers/2, RespHeaders}
+                        ]);
 handle_json_success(JObj, Context) ->
-    lists:foldl(fun fold_over_setters/2
-                ,Context
-                ,[{fun cb_context:set_doc/2, JObj}
-                  ,{fun cb_context:set_resp_status/2, 'success'}
-                  ,{fun cb_context:set_resp_data/2, wh_json:public_fields(JObj)}
-                  ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
-                 ]).
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_doc/2, JObj}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                         ,{fun cb_context:set_resp_data/2, wh_json:public_fields(JObj)}
+                         ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
+                        ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -732,19 +741,19 @@ handle_json_success(JObj, Context) ->
 %%--------------------------------------------------------------------
 -spec handle_couch_mgr_errors(couch_util:couchbeam_errors(), api_binary() | api_binaries(), cb_context:context()) ->
                                            cb_context:context().
-handle_couch_mgr_errors('invalid_db_name', _, #cb_context{}=Context) ->
+handle_couch_mgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_missing', [{'details', cb_context:account_db(Context)}], Context);
-handle_couch_mgr_errors('db_not_reachable', _DocId, #cb_context{}=Context) ->
+handle_couch_mgr_errors('db_not_reachable', _DocId, Context) ->
     lager:debug("operation on doc ~s from ~s failed: db_not_reachable", [_DocId, cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_unreachable', Context);
-handle_couch_mgr_errors('not_found', DocId, #cb_context{}=Context) ->
+handle_couch_mgr_errors('not_found', DocId, Context) ->
     lager:debug("operation on doc ~s from ~s failed: not_found", [DocId, cb_context:account_db(Context)]),
     cb_context:add_system_error('bad_identifier', [{'details', DocId}],  Context);
-handle_couch_mgr_errors('conflict', DocId, #cb_context{}=Context) ->
+handle_couch_mgr_errors('conflict', DocId, Context) ->
     lager:debug("failed to update doc ~s in ~s: conflicts", [DocId, cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_conflict', Context);
-handle_couch_mgr_errors('invalid_view_name', View, #cb_context{}=Context) ->
+handle_couch_mgr_errors('invalid_view_name', View, Context) ->
     lager:debug("loading view ~s from ~s failed: invalid view", [View, cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_missing_view', [{'details', wh_util:to_binary(View)}], Context);
 handle_couch_mgr_errors(Else, _, Context) ->
