@@ -635,12 +635,16 @@ authorizing_type(#whapps_call{authorizing_type=AuthorizingType}) ->
     AuthorizingType.
 
 -spec set_authorization(ne_binary(), ne_binary(), call()) -> call().
-set_authorization(AuthorizingType, AuthorizingId, #whapps_call{}=Call) when is_binary(AuthorizingType)
-                                                                                andalso is_binary(AuthorizingId) ->
+set_authorization(AuthorizingType, AuthorizingId, #whapps_call{}=Call)
+  when is_binary(AuthorizingType)
+       andalso is_binary(AuthorizingId) ->
     set_custom_channel_vars([{<<"Authorizing-Type">>, AuthorizingType}
-                             ,{<<"Authorizing-ID">>, AuthorizingId}]
-                            , Call#whapps_call{authorizing_type=AuthorizingType
-                                               ,authorizing_id=AuthorizingId}).
+                             ,{<<"Authorizing-ID">>, AuthorizingId}
+                            ]
+                            ,Call#whapps_call{authorizing_type=AuthorizingType
+                                              ,authorizing_id=AuthorizingId
+                                             }
+                           ).
 
 -spec set_owner_id(ne_binary(), call()) -> call().
 set_owner_id(OwnerId, #whapps_call{}=Call) when is_binary(OwnerId) ->

@@ -289,7 +289,9 @@ get_owner_ids_by_sip_username(AccountDb, Username) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec endpoint_id_by_sip_username(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+-spec endpoint_id_by_sip_username(ne_binary(), ne_binary()) ->
+                                         {'ok', ne_binary()} |
+                                         {'error', 'not_found'}.
 endpoint_id_by_sip_username(AccountDb, Username) ->
     case wh_cache:peek_local(?CALLFLOW_CACHE, ?SIP_ENDPOINT_ID_KEY(AccountDb, Username)) of
         {'ok', _}=Ok -> Ok;
@@ -297,7 +299,9 @@ endpoint_id_by_sip_username(AccountDb, Username) ->
            get_endpoint_id_by_sip_username(AccountDb, Username)
     end.
 
--spec get_endpoint_id_by_sip_username(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', _}.
+-spec get_endpoint_id_by_sip_username(ne_binary(), ne_binary()) ->
+                                             {'ok', ne_binary()} |
+                                             {'error', 'not_found'}.
 get_endpoint_id_by_sip_username(AccountDb, Username) ->
     ViewOptions = [{'key', Username}],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_username">>, ViewOptions) of
@@ -309,9 +313,9 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
         {'ok', []} ->
             lager:debug("sip username ~s not in account db ~s", [Username, AccountDb]),
             {'error', 'not_found'};
-        {'error', _R}=E ->
+        {'error', _R} ->
             lager:warning("unable to lookup sip username ~s for owner ids: ~p", [Username, _R]),
-            E
+            {'error', 'not_found'}
     end.
 
 %%-----------------------------------------------------------------------------

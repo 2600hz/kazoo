@@ -224,6 +224,6 @@ maybe_device_redirected(Call) ->
             case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Device) of
                 {'ok', EndpointId } ->
                     whapps_call:set_authorization(<<"device">>, EndpointId, Call);
-                _ -> Call
+                {'error', 'not_found'} -> Call
             end
     end.

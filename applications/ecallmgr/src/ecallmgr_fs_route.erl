@@ -22,8 +22,8 @@
 
 -define(SERVER, ?MODULE).
 
--include("ecallmgr.hrl").
 -include_lib("nksip/include/nksip.hrl").
+-include("ecallmgr.hrl").
 
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: wh_proplist()
@@ -317,7 +317,7 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
     ecallmgr_util:set(Node, CallId, wh_json:to_proplist(CCVs)).
 
 -spec start_message_handling(atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-start_message_handling(Node, FetchId, CallId, JObj) ->
+start_message_handling(_Node, _FetchId, CallId, JObj) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     Win = [{<<"Msg-ID">>, CallId}
@@ -363,6 +363,7 @@ route_req(CallId, FetchId, Props, Node) ->
 -spec route_req_ccvs(ne_binary(), wh_proplist()) -> wh_proplist().
 route_req_ccvs(FetchId, Props) ->
     {RedirectedBy, RedirectedReason} = get_redirected(Props),
+
     props:filter_undefined(
       [{<<"Fetch-ID">>, FetchId}
        ,{<<"Redirected-By">>, RedirectedBy}
@@ -371,18 +372,16 @@ route_req_ccvs(FetchId, Props) ->
       ]
      ).
 
--spec get_redirected(wh_proplist()) -> {api_binary(), api_binary()}.
+-spec get_redirected(wh_proplist()) ->
+                            {api_binary(), api_binary()}.
 get_redirected(Props) ->
     case props:get_value(<<"variable_last_bridge_hangup_cause">>, Props) of
         <<"REDIRECTION_TO_NEW_DESTINATION">> ->
             case props:get_value(<<"variable_sip_redirected_by">>, Props) of
                 'undefined' -> {'undefined' , 'undefined'};
                 Contact ->
-                    [#uri{user=User,ext_opts=Opts}=Uri] = nksip_parse:uris(Contact),                    
+                    [#uri{user=User,ext_opts=Opts}] = nksip_parse:uris(Contact),
                     {User , props:get_value(<<"reason">>,Opts)}
             end;
         _ -> {'undefined' , 'undefined'}
     end.
-        
-    
-
