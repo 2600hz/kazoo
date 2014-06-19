@@ -74,9 +74,9 @@ resource_exists(_) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
-content_types_provided(#cb_context{}=Context) ->
-    CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
-            ,{'to_csv', [{<<"application">>, <<"octet-stream">>}]}
+content_types_provided(Context) ->
+    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
+            ,{'to_csv', ?CSV_CONTENT_TYPES}
            ],
     cb_context:add_content_types_provided(Context, CTPs).
 
@@ -92,7 +92,7 @@ content_types_provided(#cb_context{}=Context) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
-    load_cdr_summary(Context).
+    load_cdr_summary(Context, cb_context:req_nouns(Context)).
 validate(Context, CDRId) ->
     load_cdr(CDRId, Context).
 
@@ -103,18 +103,18 @@ validate(Context, CDRId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr_summary(cb_context:context()) -> cb_context:context().
-load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [_]} | _]}=Context) ->
+-spec load_cdr_summary(cb_context:context(), req_nouns()) -> cb_context:context().
+load_cdr_summary(Context, [_, {?WH_ACCOUNTS_DB, [_]} | _]) ->
     lager:debug("loading cdrs for account ~s", [cb_context:account_id(Context)]),
     case create_view_options('undefined', Context) of
         {'ok', ViewOptions} ->
             load_view(?CB_LIST
                       ,ViewOptions
                       ,remove_qs_keys(Context)
-                      );
+                     );
         Else -> Else
     end;
-load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Context) ->
+load_cdr_summary(Context, [_, {<<"users">>, [UserId] } | _]) ->
     lager:debug("loading cdrs for user ~s", [UserId]),
     case create_view_options(UserId, Context) of
         {'ok', ViewOptions} ->
@@ -124,7 +124,7 @@ load_cdr_summary(#cb_context{req_nouns=[_, {<<"users">>, [UserId] } | _]}=Contex
                      );
         Else -> Else
     end;
-load_cdr_summary(Context) ->
+load_cdr_summary(Context, _Nouns) ->
     lager:debug("invalid URL chain for cdr summary request"),
     cb_context:add_system_error('faulty_request', Context).
 
@@ -140,10 +140,12 @@ remove_qs_keys(Context) ->
 load_view(View, ViewOptions, Context) ->
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"always_show_cost">>, 'false')
         orelse (whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"show_resellers_cost">>, 'true')
-                andalso wh_services:is_reseller(cb_context:auth_account_id(Context)))
+                andalso wh_services:is_reseller(cb_context:auth_account_id(Context))
+               )
         orelse (whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"show_toplevel_clients_cost">>, 'true')
                 andalso (wh_services:find_reseller_id(cb_context:account_id(Context))
-                         =:= master_account_id()))
+                         =:= master_account_id())
+               )
     of
         'true' -> fetch_cdrs(View, ['include_docs'|ViewOptions], cb_context:set_doc(Context, []));
         'false' -> fetch_cdrs(View, ViewOptions, cb_context:set_doc(Context, []))
@@ -193,7 +195,6 @@ fetch_cdrs_v1(View, ViewOptions, Context, [Db|Dbs]) ->
                       );
         Else -> Else
     end.
-
 
 -spec fetch_paginated_cdrs(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries()) ->
                                   cb_context:context().
