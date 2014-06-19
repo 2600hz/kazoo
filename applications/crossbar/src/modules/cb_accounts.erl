@@ -17,7 +17,7 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
          ,put/1, put/2
-         ,post/2
+         ,post/2, post/3
          ,delete/2
         ]).
 
@@ -43,9 +43,13 @@
 -define(DESCENDANTS, <<"descendants">>).
 -define(SIBLINGS, <<"siblings">>).
 -define(ANCESTORS, <<"ancestors">>).
+<<<<<<< HEAD
 -define(API_KEY, <<"api_key">>).
 
+=======
+>>>>>>> KAZOO-2602: Add ability to move account
 -define(REMOVE_SPACES, [<<"realm">>]).
+-define(MOVE, <<"move">>).
 
 -spec init() -> 'ok'.
 init() ->
@@ -56,7 +60,6 @@ init() ->
                 ,{<<"*.execute.post.accounts">>, 'post'}
                 ,{<<"*.execute.delete.accounts">>, 'delete'}
                ],
-
     cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
@@ -87,6 +90,8 @@ allowed_methods(AccountId) ->
             [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST]
     end.
 
+allowed_methods(_, ?MOVE) ->
+    [?HTTP_POST];
 allowed_methods(_, Path) ->
     Paths =  [?ANCESTORS
               ,?CHILDREN
@@ -113,6 +118,7 @@ allowed_methods(_, Path) ->
 -spec resource_exists(path_token(), ne_binary()) -> boolean().
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_, ?MOVE) -> 'true';
 resource_exists(_, Path) ->
     Paths =  [?ANCESTORS
               ,?CHILDREN
@@ -176,6 +182,7 @@ validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
     load_descendants(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
     load_siblings(AccountId, prepare_context('undefined', Context));
+<<<<<<< HEAD
 validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
     Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
     case cb_context:resp_status(Context1) of
@@ -187,6 +194,24 @@ validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
         _Else -> Context1
     end.
 
+=======
+validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
+    Data = cb_context:req_data(Context),
+    case wh_json:get_binary_value(<<"to">>, Data) of
+        'undefined' ->
+            cb_context:add_validation_error(<<"to">>
+                                            ,<<"required">>
+                                            ,<<"Field 'to' is required">>
+                                            ,Context);
+        ToAccount ->
+            case validate_move(whapps_config:get(?ACCOUNTS_CONFIG_CAT, <<"allow_move">>, <<"superduper_admin">>)
+                               ,Context, AccountId, ToAccount)
+            of
+                'true' -> cb_context:set_resp_status(Context, 'success');
+                'false' -> cb_context:add_system_error('forbidden', [], Context)
+            end
+    end.
+>>>>>>> KAZOO-2602: Add ability to move account
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -194,9 +219,9 @@ validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
     Context1 = crossbar_doc:save(Context),
-
     case cb_context:resp_status(Context1) of
         'success' ->
             _ = provisioner_util:maybe_update_account(Context1),
@@ -207,6 +232,12 @@ post(Context, AccountId) ->
                                            ,leak_pvt_fields(Context1)
                                           );
         _Status -> Context1
+    end.
+
+post(Context, AccountId, ?MOVE) ->
+    case cb_context:resp_status(Context) of
+        'success' -> move_account(Context, AccountId);
+        _Status -> Context
     end.
 
 %%--------------------------------------------------------------------
@@ -254,6 +285,104 @@ delete(Context, Account) ->
             cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
         'true' ->
             delete_remove_services(prepare_context(Context, AccountId, AccountDb))
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_move(ne_binary(), cb_context:context(), ne_binary(), ne_binary()) -> boolean().
+validate_move(<<"superduper_admin">>, Context, _, _) ->
+    lager:debug("using superduper_admin flag to allow move account"),
+    AuthDoc = cb_context:auth_doc(Context),
+    AuthId = wh_json:get_value(<<"account_id">>, AuthDoc),
+    wh_util:is_system_admin(AuthId);
+validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
+    lager:debug("using tree to allow move account"),
+    AuthDoc = cb_context:auth_doc(Context),
+    AuthId = wh_json:get_value(<<"account_id">>, AuthDoc),
+    MoveTree = get_tree(MoveAccount),
+    ToTree = get_tree(ToAccount),
+    L = lists:foldl(
+            fun(Id, Acc) ->
+                case lists:member(Id, ToTree) of
+                    'false' -> Acc;
+                    'true' -> [Id|Acc]
+                end
+            end
+            ,[]
+            ,MoveTree
+        ),
+    lists:member(AuthId, L);
+validate_move(_Type, _, _, _) ->
+    lager:error("unknow move type ~p", [_Type]),
+    'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_tree(ne_binary()) -> ne_binaries().
+get_tree(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> wh_json:get_value(<<"pvt_tree">>, JObj, []);
+        {'error', _E} ->
+            lager:error("could not load ~s in ~s", [AccountId, AccountDb]),
+            []
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec move_account(cb_context:context(), ne_binary()) -> cb_context:context().
+move_account(Context, AccountId) ->
+    Data = cb_context:req_data(Context),
+    ToAccount = wh_json:get_binary_value(<<"to">>, Data),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', _E} -> cb_context:add_system_error('datastore_fault', Context);
+        {'ok', JObj} ->
+            ToTree = lists:append(get_tree(ToAccount), [ToAccount]),
+            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
+                                        ,{<<"pvt_previous_tree">>, PreviousTree}
+                                       ], JObj),
+            case couch_mgr:save_doc(AccountDb, JObj1) of
+                {'error', _E} ->
+                    cb_context:add_system_error('datastore_fault', Context);
+                {'ok', _} ->
+                     _ = replicate_account_definition(JObj1),
+                     move_service(Context, AccountId, ToTree)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec move_service(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
+move_service(Context, AccountId, NewTree) ->
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {'error', _E} -> cb_context:add_system_error('datastore_fault', Context);
+        {'ok', JObj} ->
+            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            JObj1 = wh_json:set_values([{<<"pvt_tree">>, NewTree}
+                                        ,{<<"pvt_dirty">>, 'true'}
+                                        ,{<<"pvt_previous_tree">>, PreviousTree}
+                                       ], JObj),
+            case couch_mgr:save_doc(?WH_SERVICES_DB, JObj1) of
+                {'error', _E} ->
+                    cb_context:add_system_error('datastore_fault', Context);
+                {'ok', _} ->
+                    load_account(AccountId, prepare_context(AccountId, Context))
+            end
     end.
 
 %%--------------------------------------------------------------------
