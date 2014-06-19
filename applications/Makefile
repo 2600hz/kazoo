@@ -1,5 +1,4 @@
 ROOT = ../
-REBAR = $(ROOT)/utils/rebar/rebar
 
 MAKEDIRS = */Makefile
 
@@ -9,11 +8,9 @@ all: compile
 
 compile: ACTION = all
 compile: $(MAKEDIRS)
-	$(REBAR) compile
 
 clean: ACTION = clean
 clean: $(MAKEDIRS)
-	$(REBAR) clean
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
