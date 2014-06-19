@@ -28,7 +28,7 @@
 %%% { "numbers":{
 %%%   "+12225559999":{
 %%%   },
-%%%   "port_state": ["waiting", "ready", "progress", "completion", "rejection"]
+%%%   "port_state": ["unconfirmed", "submitted", "scheduled", "completed", "rejected"]
 %%% }
 %%%
 %%% @end
