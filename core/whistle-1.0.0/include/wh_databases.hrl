@@ -10,7 +10,7 @@
 -define(WH_FAXES, <<"faxes">>).
 -define(WH_SERVICES_DB, <<"services">>).
 -define(WH_OFFNET_DB, <<"offnet">>).
-
+-define(WH_DEDICATED_IP_DB, <<"dedicated_ips">>).
 -define(WH_ANONYMOUS_CDR_DB, <<"anonymous_cdrs">>).
 
 -define(WH_ACCOUNT_CONFIGS, <<"configs_">>).
@@ -33,6 +33,7 @@
                         ,?WH_OFFNET_DB
                         ,?WH_ANONYMOUS_CDR_DB
                         ,?KZ_PORT_REQUESTS_DB
+                        ,?WH_DEDICATED_IP_DB
                         ,?KZ_ACDC_DB
                        ]).
 
