@@ -339,7 +339,7 @@ reset_users_password(Context) ->
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
             'ok' = wapi_notifications:publish_pwd_recovery(Notify),
-            crossbar_util:response(<<"Password reset, email send to:", Email/binary>>, Context);
+            crossbar_util:response(<<"Password reset, email sent to: ", Email/binary>>, Context);
         _Status -> Context1
     end.
 
