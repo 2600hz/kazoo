@@ -109,10 +109,7 @@ When receiving JSON responses, clients will receive the response in an envelope.
 
 ### Pagination
 
-Select V2 APIs support pagination, the ability to return a subset of the results, with a key to the next set of results. Currently, only the following APIs have pagination enabled:
-
-* Accounts
-* CDRs
+All listing APIs in v2 will be paginated by default (v1 will operate as before).
 
 Let's take a look at the CDRs API to see how to interpret pagination.
 
@@ -165,3 +162,7 @@ Observe now that `start_key` is the requested `start_key` and `next_start_key` p
 &tip If `next_start_key` is missing from the response envelope, the response represents the last page of results.
 
 You can also choose to receive pages in bigger or smaller increments by specifying `page_size` on the request. Do take care, as the `next_start_key` will probably vary if you use the same `start_key` but differing `page_size` values.
+
+#### Disabling Pagination
+
+If you want to disable pagination for a request, simply include `pagination=false` on the query string.
