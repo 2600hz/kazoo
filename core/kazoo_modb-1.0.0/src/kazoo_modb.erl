@@ -81,6 +81,10 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
 -spec open_doc(ne_binary(), ne_binary(), integer(), integer()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
+open_doc(Account, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) 
+  when is_integer(Year) andalso is_integer(Month) ->
+    AccountMODb = get_modb(Account, Year, Month),
+    couch_open(AccountMODb, DocId);
 open_doc(Account, DocId) ->
     AccountMODb = get_modb(Account),
     couch_open(AccountMODb, DocId).
