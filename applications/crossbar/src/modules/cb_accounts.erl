@@ -40,6 +40,8 @@
 -define(PVT_TYPE, <<"account">>).
 -define(CHANNELS, <<"channels">>).
 
+-define(REMOVE_SPACES, [<<"realm">>]).
+
 -spec init() -> 'ok'.
 init() ->
     Bindings = [{<<"*.allowed_methods.accounts">>, 'allowed_methods'}
@@ -291,9 +293,23 @@ ensure_account_has_realm(AccountId, Context) ->
             RealmSuffix = whapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
             Strength = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
             J = wh_json:set_value(<<"realm">>, list_to_binary([wh_util:rand_hex_binary(Strength), ".", RealmSuffix]), JObj),
-            cleanup_leaky_keys(AccountId, cb_context:set_req_data(Context, J));
-        _Else -> cleanup_leaky_keys(AccountId, Context)
+            remove_spaces(AccountId, cb_context:set_req_data(Context, J));
+        _Else ->
+            remove_spaces(AccountId, Context)
     end.
+
+-spec remove_spaces(api_binary(), cb_context:context()) -> cb_context:context().
+remove_spaces(AccountId, Context) ->
+    JObj = cb_context:req_data(Context),
+    JObjNew = lists:foldl(fun(Key, Acc) ->
+                        case wh_json:get_value(Key, Acc) of
+                            'undefined' -> Acc;
+                            Value ->
+                                NoSpaces = binary:replace(Value, <<" ">>, <<>>, ['global']),
+                                wh_json:set_value(Key, NoSpaces, Acc)
+                        end
+                end, JObj, ?REMOVE_SPACES),
+    cleanup_leaky_keys(AccountId, cb_context:set_req_data(Context, JObjNew)).
 
 -spec cleanup_leaky_keys(api_binary(), cb_context:context()) -> cb_context:context().
 cleanup_leaky_keys(AccountId, Context) ->
