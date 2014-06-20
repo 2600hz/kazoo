@@ -141,7 +141,9 @@ find_numbers(NotifyJObj) ->
 find_port_info(NotifyJObj) ->
     case wh_json:get_ne_value(<<"Port-Request-ID">>, NotifyJObj) of
         'undefined' -> NotifyJObj;
-        PortRequestId -> find_port_doc(PortRequestId)
+        PortRequestId ->
+            Doc = find_port_doc(PortRequestId),
+            wh_json:set_value(<<"port_id">>, PortRequestId, Doc)
     end.
 
 -spec find_port_doc(ne_binary()) -> wh_json:object().
