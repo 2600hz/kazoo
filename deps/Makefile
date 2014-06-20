@@ -1,10 +1,11 @@
 ROOT = ..
 
 MAKEDIRS = rabbitmq_server-*/Makefile \
-       lager-*/Makefile \
-       ibrowse-*/Makefile \
-       cowlib-*/Makefile \
-       */Makefile
+	lager-*/Makefile \
+	ibrowse-*/Makefile \
+	cowlib-*/Makefile \
+	wsock-*/Makefile \
+	*/Makefile
 
 .PHONY: all compile clean $(MAKEDIRS)
 
