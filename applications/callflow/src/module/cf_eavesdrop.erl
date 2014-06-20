@@ -126,16 +126,14 @@ eavesdrop_call(UUID, Call) ->
 
 -spec wait_for_eavesdrop_complete() -> {'ok', wh_json:object()}.
 wait_for_eavesdrop_complete() ->
-    receive
-        {'amqp_msg', JObj} ->
+    case whapps_call_command:receive_event('infinity') of
+        {'ok', JObj} ->
             case whapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
                 {<<"error">>, <<"dialplan">>} -> {'ok', JObj};
-                {<<"call_event">>,<<"CHANNEL_EXECUTE_COMPLETE">>} -> wait_for_eavesdrop_complete();
                 _ -> wait_for_eavesdrop_complete()
             end;
-        _Else ->
-            wait_for_eavesdrop_complete()
+        _ -> wait_for_eavesdrop_complete()
     end.
 
 -spec eavesdrop_cmd(ne_binary()) -> wh_proplist().
