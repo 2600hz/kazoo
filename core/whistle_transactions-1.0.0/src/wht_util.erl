@@ -106,7 +106,7 @@ base_call_cost(RateCost, RateMin, RateSurcharge) when is_integer(RateCost),
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec current_balance/1 :: (ne_binary()) -> integer().
+-spec current_balance(ne_binary()) -> integer().
 current_balance(Account) -> get_balance(Account, []).
 
 -spec previous_balance(ne_binary(), ne_binary(), ne_binary()) -> integer().
@@ -323,16 +323,11 @@ collapse_call_transactions(Transactions) ->
 %%--------------------------------------------------------------------
 -spec modb(ne_binary()) -> 'ok'.
 modb(AccountMODb) ->
-    Routines = [fun(MoDb) -> find_previous_modb(MoDb) end
+    Routines = [fun(MoDb) -> kazoo_modb_util:prev_year_month(MoDb) end
                 ,fun({Year, Month}) -> previous_balance(AccountMODb, Year, Month) end
                 ,fun(Balance) -> rollup(AccountMODb, Balance) end
                ],
     lists:foldl(fun(F, A) -> F(A) end, AccountMODb, Routines).
-
--spec find_previous_modb(ne_binary()) -> {wh_year(), wh_month()}.
-find_previous_modb(AccountModb) ->
-    {_AccountId, Year, Month} = kazoo_modb_util:split_account_mod(AccountModb),
-    kazoo_modb_util:prev_year_month(Year, Month).
 
 -spec rollup(wh_transaction:transaction()) -> 'ok'.
 -spec rollup(ne_binary(), integer()) -> wh_transaction:transaction().
