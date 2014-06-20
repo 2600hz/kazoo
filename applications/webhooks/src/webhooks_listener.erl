@@ -52,6 +52,7 @@
                    ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
                                                ,'CHANNEL_ANSWER'
                                                ,'CHANNEL_DESTROY'
+                                               ,'CHANNEL_DISCONNECTED'
                                               ]}
                               ,'federate'
                              ]}
@@ -182,7 +183,7 @@ find_hook(JObj) ->
 
 -spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_event(JObj, _) ->
-    HookEvent = wh_json:get_value(<<"Event-Name">>, JObj),
+    HookEvent = hook_event_name(wh_json:get_value(<<"Event-Name">>, JObj)),
     case wh_hooks_util:lookup_account_id(JObj) of
         {'error', _R} ->
             lager:debug("failed to determine account id for ~s", [HookEvent]);
@@ -201,6 +202,10 @@ maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
         [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
         Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
     end.
+
+-spec hook_event_name(ne_binary()) -> ne_binary().
+hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
+hook_event_name(Event) -> Event.
 
 -spec format_event(wh_json:object(), api_binary(), ne_binary()) ->
                           wh_json:object().
