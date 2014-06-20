@@ -132,6 +132,7 @@ validate(Context, <<"reconciliation">>) ->
 validate(Context, PlanId) ->
     validate_service_plan(Context, PlanId, cb_context:req_verb(Context)).
 
+-spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_service_plan(Context, PlanId, ?HTTP_GET) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = wh_services:find_reseller_id(AccountId),
