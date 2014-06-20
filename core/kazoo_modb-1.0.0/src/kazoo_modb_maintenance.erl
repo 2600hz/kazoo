@@ -54,7 +54,7 @@ delete_older_modbs(Year, Month, AccountModbs) ->
 
 -spec should_delete(ne_binary(), pos_integer()) -> boolean().
 should_delete(AccountModb, Months) ->
-    {_AccountId, ModYear, ModMonth} = wh_util:split_account_mod(AccountModb),
+    {_AccountId, ModYear, ModMonth} = kazoo_modb_util:split_account_mod(AccountModb),
     ((ModYear * 12) + ModMonth) =< Months.
 
 -spec delete_modb(ne_binary()) -> 'ok'.

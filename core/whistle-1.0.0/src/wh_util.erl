@@ -12,7 +12,6 @@
 -export([log_stacktrace/0, log_stacktrace/1
          ,format_account_id/1, format_account_id/2, format_account_id/3
          ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
-         ,split_account_mod/1
          ,normalize_account_name/1
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -238,12 +237,6 @@ pad_month(Month) when Month < 10 ->
     <<"0", (to_binary(Month))/binary>>;
 pad_month(Month) ->
     to_binary(Month).
-
--spec split_account_mod(ne_binary()) -> {ne_binary(), wh_year(), wh_month()}.
-split_account_mod(<<Account:42/binary, "-", Year:4/binary, Month:2/binary>>) ->
-    {format_account_id(Account, 'raw'), to_integer(Year), to_integer(Month)};
-split_account_mod(<<Account:48/binary, "-",  Year:4/binary, Month:2/binary>>) ->
-    {format_account_id(Account, 'raw'), to_integer(Year), to_integer(Month)}.
 
 -spec normalize_account_name(api_binary()) -> api_binary().
 normalize_account_name('undefined') -> 'undefined';

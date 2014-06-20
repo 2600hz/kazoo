@@ -258,7 +258,7 @@ maybe_archive_modb(AccountMODb) ->
 
 -spec should_archive(ne_binary(), wh_year(), wh_month()) -> boolean().
 should_archive(AccountMODb, Year, Month) ->
-    case wh_util:split_account_mod(AccountMODb) of
+    case kazoo_modb_util:split_account_mod(AccountMODb) of
         {_AccountId, Year, Month} -> 'false';
         {_AccountId, ModbYear, ModbMonth} ->
             Months = (Year * 12) + Month,

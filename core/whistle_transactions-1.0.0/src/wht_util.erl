@@ -331,7 +331,7 @@ modb(AccountMODb) ->
 
 -spec find_previous_modb(ne_binary()) -> {wh_year(), wh_month()}.
 find_previous_modb(AccountModb) ->
-    {_AccountId, Year, Month} = wh_util:split_account_mod(AccountModb),
+    {_AccountId, Year, Month} = kazoo_modb_util:split_account_mod(AccountModb),
     kazoo_modb_util:prev_year_month(Year, Month).
 
 -spec rollup(wh_transaction:transaction()) -> 'ok'.
