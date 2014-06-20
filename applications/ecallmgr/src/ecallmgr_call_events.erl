@@ -377,6 +377,8 @@ handle_info({'nodedown', _}, #state{node=Node
     erlang:monitor_node(Node, 'false'),
     TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {'check_node_status'}),
     {'noreply', State#state{node_down_tref=TRef, is_node_up='false'}, 'hibernate'};
+handle_info({'nodedown', _}, #state{is_node_up='false'}=State) ->
+    {'noreply', State};
 handle_info({'check_node_status'}, #state{is_node_up='false'
                                           ,failed_node_checks=FNC
                                          }=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->

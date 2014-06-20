@@ -399,8 +399,11 @@ handle_cast({'sync_channels', Node, Channels}, State) ->
     _ = [begin
              lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
              case ecallmgr_fs_channel:renew(Node, UUID) of
-                 {'ok', C} -> ets:insert(?CHANNELS_TBL, C);
-                 {'error', _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R])
+                 {'error', _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R]);
+                 {'ok', C} ->
+                     ets:insert(?CHANNELS_TBL, C),
+                     PublishReconect = ecallmgr_config:get_boolean(<<"publish_channel_reconnect">>, 'false'),
+                     handle_channel_reconnected(C, PublishReconect)
              end
          end
          || UUID <- sets:to_list(Add)
@@ -408,11 +411,31 @@ handle_cast({'sync_channels', Node, Channels}, State) ->
     {'noreply', State, 'hibernate'};
 handle_cast({'flush_node', Node}, State) ->
     lager:debug("flushing all channels in cache associated to node ~s", [Node]),
+
+    LocalChannelsMS = [{#channel{node = '$1'
+                                 ,handling_locally='true'
+                                 ,_ = '_'
+                                }
+                        ,[{'=:=', '$1', {'const', Node}}]
+                        ,['$_']}
+                      ],
+    case ets:select(?CHANNELS_TBL, LocalChannelsMS) of
+        [] ->
+            lager:debug("no locally handled channels");
+        LocalChannels ->
+            _P = spawn(fun() -> handle_channels_disconnected(LocalChannels) end),
+            lager:debug("sending channel disconnecteds for local channels: ~p", [LocalChannels])
+    end,
+
     MatchSpec = [{#channel{node = '$1', _ = '_'}
                   ,[{'=:=', '$1', {'const', Node}}]
                   ,['true']}
                 ],
     ets:select_delete(?CHANNELS_TBL, MatchSpec),
+    {'noreply', State};
+handle_cast({'gen_listener',{'created_queue', _QueueName}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
@@ -584,7 +607,8 @@ query_channels({[#channel{uuid=CallId}=Channel], Continuation}
     JObj = ecallmgr_fs_channel:to_api_json(Channel),
     query_channels(ets:match_object(Continuation)
                    ,<<"all">>
-                   ,wh_json:set_value(CallId, JObj, Channels));
+                   ,wh_json:set_value(CallId, JObj, Channels)
+                  );
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}
                ,Fields, Channels) ->
     Props = ecallmgr_fs_channel:to_api_props(Channel),
@@ -596,13 +620,18 @@ query_channels({[#channel{uuid=CallId}=Channel], Continuation}
               )),
     query_channels(ets:match_object(Continuation)
                    ,Fields
-                   ,wh_json:set_value(CallId, JObj, Channels)).
+                   ,wh_json:set_value(CallId, JObj, Channels)
+                  ).
+
+-define(SUMMARY_HEADER, "| ~-50s | ~-40s | ~-9s | ~-15s | ~-32s |~n").
 
 print_summary('$end_of_table') ->
     io:format("No channels found!~n", []);
 print_summary(Match) ->
     io:format("+----------------------------------------------------+------------------------------------------+-----------+-----------------+----------------------------------+~n"),
-    io:format("| UUID                                               | Node                                     | Direction | Destination     | Account-ID                       |~n"),
+    io:format(?SUMMARY_HEADER
+              ,[ <<"UUID">>, <<"Node">>, <<"Direction">>, <<"Destination">>, <<"Account-ID">>]
+             ),
     io:format("+====================================================+==========================================+===========+=================+==================================+~n"),
     print_summary(Match, 0).
 
@@ -617,8 +646,9 @@ print_summary({[#channel{uuid=UUID
                         }]
                ,Continuation}
               ,Count) ->
-    io:format("| ~-50s | ~-40s | ~-9s | ~-15s | ~-32s |~n"
-              ,[UUID, Node, Direction, Destination, AccountId]),
+    io:format(?SUMMARY_HEADER
+              ,[UUID, Node, Direction, Destination, AccountId]
+             ),
     print_summary(ets:select(Continuation), Count + 1).
 
 print_details('$end_of_table') ->
@@ -636,3 +666,73 @@ print_details({[#channel{}=Channel]
          || {K, V} <- ecallmgr_fs_channel:to_props(Channel)
         ],
     print_details(ets:select(Continuation), Count + 1).
+
+-spec handle_channel_reconnected(channel(), boolean()) -> 'ok'.
+handle_channel_reconnected(#channel{handling_locally='true'
+                                    ,uuid=_UUID
+                                   }=Channel
+                           ,'true') ->
+    lager:debug("channel ~s connected, publishing update", [_UUID]),
+    publish_channel_connection_event(Channel, [{<<"Event-Name">>, <<"CHANNEL_CONNECTED">>}]);
+handle_channel_reconnected(_Channel, _ShouldPublish) ->
+    'ok'.
+
+-spec handle_channels_disconnected(channels()) -> 'ok'.
+handle_channels_disconnected(LocalChannels) ->
+    _ = [catch handle_channel_disconnected(LocalChannel) || LocalChannel <- LocalChannels],
+    'ok'.
+
+-spec handle_channel_disconnected(channel()) -> 'ok'.
+handle_channel_disconnected(Channel) ->
+    publish_channel_connection_event(Channel, [{<<"Event-Name">>, <<"CHANNEL_DISCONNECTED">>}]).
+
+-spec publish_channel_connection_event(channel(), wh_proplist()) -> 'ok'.
+publish_channel_connection_event(#channel{uuid=UUID
+                                          ,direction=Direction
+                                          ,node=Node
+                                          ,destination=Destination
+                                          ,username=Username
+                                          ,realm=Realm
+                                          ,presence_id=PresenceId
+                                          ,answered=IsAnswered
+                                         }=Channel
+                                 ,ChannelSpecific) ->
+    Event = [{<<"Timestamp">>, wh_util:current_tstamp()}
+             ,{<<"Call-ID">>, UUID}
+             ,{<<"Call-Direction">>, Direction}
+             ,{<<"Media-Server">>, Node}
+             ,{<<"Custom-Channel-Vars">>, connection_ccvs(Channel)}
+             ,{<<"To">>, <<Destination/binary, "@", Realm/binary>>}
+             ,{<<"From">>, <<Username/binary, "@", Realm/binary>>}
+             ,{<<"Presence-ID">>, PresenceId}
+             ,{<<"Channel-Call-State">>, channel_call_state(IsAnswered)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ++ ChannelSpecific
+            ],
+    wh_amqp_worker:cast(Event, fun wapi_call:publish_event/1),
+    lager:debug("published channel connection event for ~s", [UUID]).
+
+-spec channel_call_state(boolean()) -> api_binary().
+channel_call_state('true') ->
+    <<"ANSWERED">>;
+channel_call_state('false') ->
+    'undefined'.
+
+-spec connection_ccvs(channel()) -> wh_json:object().
+connection_ccvs(#channel{account_id=AccountId
+                         ,authorizing_id=AuthorizingId
+                         ,authorizing_type=AuthorizingType
+                         ,resource_id=ResourceId
+                         ,fetch_id=FetchId
+                         ,bridge_id=BridgeId
+                         ,owner_id=OwnerId
+                        }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Account-ID">>, AccountId}
+         ,{<<"Authorizing-ID">>, AuthorizingId}
+         ,{<<"Authorizing-Type">>, AuthorizingType}
+         ,{<<"Resource-ID">>, ResourceId}
+         ,{<<"Fetch-ID">>, FetchId}
+         ,{<<"Bridge-ID">>, BridgeId}
+         ,{<<"Owner-ID">>, OwnerId}
+        ])).

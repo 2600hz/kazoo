@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Maintenance functions for all
 %%% @end
@@ -12,8 +12,10 @@
 
 -export([current_subscriptions/0, current_subscriptions/1, current_subscriptions/2
          ,subscribe/2
-        , send_mwi_update/3
+         ,send_mwi_update/3
         ]).
+
+-define(SUBSCRIPTION_FORMAT_STR, " ~50.s | ~30.s | ~10.s | ~20.s |~n").
 
 current_subscriptions() ->
     print_subscriptions(
@@ -24,20 +26,22 @@ current_subscriptions() ->
 current_subscriptions(Realm) ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(
-        omnip_subscriptions:search_for_subscriptions(wh_util:to_binary(Realm))
+        omnip_subscriptions:search_for_subscriptions('_', wh_util:to_binary(Realm))
      )).
 
 current_subscriptions(Realm, User) ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(
         omnip_subscriptions:search_for_subscriptions(
-          wh_util:to_binary(Realm), wh_util:to_binary(User)
+          '_', wh_util:to_binary(Realm), wh_util:to_binary(User)
          ))).
 
 print_subscriptions([]) -> io:format("No subscriptions have been found~n");
 print_subscriptions(Ss) ->
     Now = wh_util:current_tstamp(),
-    io:format(" ~50.s | ~30s | ~10.s  |~n", [<<"Username@Realm">>, <<"From">>, <<"Expires">>]),
+    io:format(?SUBSCRIPTION_FORMAT_STR
+              ,[<<"Username@Realm">>, <<"From">>, <<"Expires">>, <<"Event">>]
+             ),
     [print_subscription(S, Now) || S <- Ss],
     'ok'.
 
@@ -45,7 +49,7 @@ print_subscription(JObj, Now) ->
     ExpiresIn = wh_json:get_integer_value(<<"expires">>, JObj) -
         (Now - wh_json:get_integer_value(<<"timestamp">>, JObj)),
 
-    io:format(" ~50.s | ~30s | ~10.ss | ~20s |~n"
+    io:format(?SUBSCRIPTION_FORMAT_STR
               ,[[wh_json:get_value(<<"username">>, JObj), "@", wh_json:get_value(<<"realm">>, JObj)]
                 ,wh_json:get_value(<<"from">>, JObj)
                 ,wh_util:to_binary(ExpiresIn)
@@ -92,4 +96,3 @@ send_mwi_update(User, New, Saved ) ->
               ],
     whapps_util:amqp_pool_send(Command, fun wapi_notifications:publish_mwi_update/1),
     'ok'.
-

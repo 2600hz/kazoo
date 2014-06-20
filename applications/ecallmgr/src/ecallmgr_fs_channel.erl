@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%% Track the FreeSWITCH channel information, and provide accessors
 %%% @end
@@ -205,6 +205,7 @@ to_props(Channel) ->
        ,{<<"context">>, Channel#channel.context}
        ,{<<"dialplan">>, Channel#channel.dialplan}
        ,{<<"other_leg">>, Channel#channel.other_leg}
+       ,{<<"handling_locally">>, Channel#channel.handling_locally}
       ]).
 
 -spec to_api_json(channel()) -> wh_json:object().
@@ -460,7 +461,7 @@ process_specific_event(<<"CHANNEL_UNBRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
     ecallmgr_fs_channels:update(UUID, #channel.other_leg, 'undefined'),
     ecallmgr_fs_channels:update(OtherLeg, #channel.other_leg, 'undefined');
-process_specific_event(_, _, _, _) ->
+process_specific_event(_EventName, _UUID, _Props, _Node) ->
     'ok'.
 
 -spec maybe_publish_channel_state(wh_proplist(), atom()) -> 'ok'.
@@ -513,7 +514,12 @@ props_to_record(Props, Node) ->
              ,context=props:get_value(<<"Caller-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT)
              ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
              ,other_leg=get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props)
+             ,handling_locally=handling_locally(Props)
             }.
+
+-spec handling_locally(wh_proplist()) -> boolean().
+handling_locally(Props) ->
+    props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) =:= wh_util:to_binary(node()).
 
 -spec get_username(wh_proplist()) -> api_binary().
 get_username(Props) ->

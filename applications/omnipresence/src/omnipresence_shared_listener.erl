@@ -34,6 +34,9 @@
                    ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
                                                ,'CHANNEL_ANSWER'
                                                ,'CHANNEL_DESTROY'
+
+                                               ,'CHANNEL_CONNECTED'
+                                               ,'CHANNEL_DISCONNECTED'
                                               ]}
                               ,'federate'
                              ]}
