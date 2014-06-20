@@ -719,8 +719,6 @@ channel_call_state('false') ->
 
 -spec connection_ccvs(channel()) -> wh_json:object().
 connection_ccvs(#channel{account_id=AccountId
-                         ,destination=Destination
-                         ,realm=Realm
                          ,authorizing_id=AuthorizingId
                          ,authorizing_type=AuthorizingType
                          ,resource_id=ResourceId
@@ -731,7 +729,6 @@ connection_ccvs(#channel{account_id=AccountId
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Account-ID">>, AccountId}
-         ,{<<"Inception">>, <<Destination/binary, "@", Realm/binary>>}
          ,{<<"Authorizing-ID">>, AuthorizingId}
          ,{<<"Authorizing-Type">>, AuthorizingType}
          ,{<<"Resource-ID">>, ResourceId}
