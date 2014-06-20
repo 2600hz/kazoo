@@ -157,7 +157,7 @@ put(Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
     Ctx = maybe_register_cloud_printer(Context),
-    Ctx2 = crossbar_doc:save(Ctx),    
+    Ctx2 = crossbar_doc:save(Ctx),
     _ = crossbar_doc:ensure_saved(
           cb_context:set_doc(
             cb_context:set_account_db(Ctx2, ?WH_FAXES),
@@ -175,7 +175,7 @@ post(Context, _Id) ->
 delete(Context, Id) ->
     Ctx2 = crossbar_doc:delete(Context),
     _ = crossbar_doc:delete(
-          read(Id, 
+          read(Id,
                cb_context:set_account_db(Context, ?WH_FAXES))),
     Ctx2.
 
@@ -213,14 +213,13 @@ leak_private_fields(JObj) ->
 -spec remove_private_fields(cb_context:context()) -> cb_context:context().
 remove_private_fields(Context) ->
     JObj = cb_context:req_data(Context),
-    JObj1 = lists:foldl(fun(<<"pvt_", K1/binary>> = K, Acc) ->                                
+    JObj1 = lists:foldl(fun(<<"pvt_", K1/binary>>, Acc) ->
                                 case wh_json:get_value(K1, Acc) of
                                     'undefined' -> Acc;
-                                    Value -> wh_json:delete_key(K1, Acc)
+                                    _Value -> wh_json:delete_key(K1, Acc)
                                 end
                         end, JObj, ?LEAKED_FIELDS),
     cb_context:set_req_data(Context, JObj1).
-    
 
 %%--------------------------------------------------------------------
 %% @private
