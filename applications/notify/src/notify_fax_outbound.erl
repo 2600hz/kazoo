@@ -41,7 +41,7 @@ handle_req(JObj, _Props) ->
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, JobId]),
     {ok, FaxDoc} = couch_mgr:open_doc(?WH_FAXES, JobId),
 
-    Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),   
+    Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 
     {ok, AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
@@ -60,7 +60,7 @@ handle_req(JObj, _Props) ->
     {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
     {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-    
+
     try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props)) of
         _ -> lager:debug("built and sent")
     catch
@@ -228,7 +228,7 @@ convert_to_pdf(AttachmentBin, Props, <<"application/pdf">>) ->
     {<<"application/pdf">>, get_file_name(Props, "pdf"), AttachmentBin};
 convert_to_pdf(AttachmentBin, Props, ContentType) ->
     TiffFile = tmp_file_name(<<"tiff">>),
-    PDFFile = tmp_file_name(<<"pdf">>),    
+    PDFFile = tmp_file_name(<<"pdf">>),
     _ = file:write_file(TiffFile, AttachmentBin),
     Cmd = io_lib:format("tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"", [PDFFile, TiffFile]),
     _ = os:cmd(Cmd),
