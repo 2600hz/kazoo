@@ -216,9 +216,9 @@ terminate(Reason, State) ->
     {'ok', Reason, State}.
 
 %%% Internal Functions %%%
-            
-    
-    
+
+
+
 -spec check_faxbox(binary(), #state{}) ->
                           {'ok', #state{}} |
                           {'error', string(), #state{}}.
@@ -246,7 +246,7 @@ match(Address, Element) ->
                                       {'ok', #state{}} |
                                       {'error', string(), #state{}}.
 check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From}=State) ->
-    lager:debug("checking if ~s can send to ~p. doc is ~p",[From,wh_json:get_value(<<"name">>,FaxBoxDoc),FaxBoxDoc]),    
+    lager:debug("checking if ~s can send to ~p. doc is ~p",[From,wh_json:get_value(<<"name">>,FaxBoxDoc),FaxBoxDoc]),
     case whapps_config:get_ne_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
         [] ->
             case wh_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
@@ -276,7 +276,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
                                      ,<<"send_to">>]
                                     ,lists:usort([From | FaxBoxEmailNotify]), FaxBoxDoc),
     Notify = wh_json:get_value([<<"notifications">>,<<"outbound">>],FaxBoxNotify),
-    
+
     Props = props:filter_undefined(
               [{<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
                ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_header">>, FaxBoxDoc)}
@@ -290,18 +290,17 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
                ,{<<"faxbox_id">>, FaxBoxId}
                ,{<<"folder">>, <<"outbox">>}
               ]),
-    { _ , JObj} = wh_json_validator:is_valid(wh_json:from_list(Props), <<"faxes">>),
+
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
                               ,{<<"pvt_job_status">>, <<"attaching files">>}
-                              ,{<<"pvt_created">>, wh_util:current_tstamp()}      
+                              ,{<<"pvt_created">>, wh_util:current_tstamp()}
                               ,{<<"attempts">>, 0}
                               ,{<<"pvt_account_id">>, AccountId}
                               ,{<<"pvt_account_db">>, AccountDb}
-                             ], JObj),
+                             ]
+                             ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
+                            ),
     {'ok', State#state{docs=[Doc | Docs]}}.
-
-
-
 
 %% ====================================================================
 %% Internal functions
@@ -352,5 +351,3 @@ process_part(<<"image/tiff">>=CT, _Headers, _Parameters, Body, State) ->
 process_part(_ContentType, _Headers, _Parameters, _Body, State) ->
     lager:debug("ignoring Part ~s",[_ContentType]),
     {'ok', State}.
-
-

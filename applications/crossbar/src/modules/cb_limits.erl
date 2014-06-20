@@ -63,9 +63,13 @@ resource_exists() -> 'true'.
 %% Ensure we will be able to bill for devices
 %% @end
 %%--------------------------------------------------------------------
+-spec billing(cb_context:context()) ->
+                     cb_context:context().
 billing(Context) ->
     process_billing(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
+-spec process_billing(cb_context:context(), req_nouns(), http_method()) ->
+                             cb_context:context().
 process_billing(Context, [{<<"limits">>, _}|_], ?HTTP_GET) ->
     Context;
 process_billing(Context, [{<<"limits">>, _}|_], _Verb) ->
@@ -160,7 +164,10 @@ on_successful_validation(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_handle_load_failure(cb_context:context()) -> cb_context:context().
+-spec maybe_handle_load_failure(cb_context:context()) ->
+                                       cb_context:context().
+-spec maybe_handle_load_failure(cb_context:context(), pos_integer()) ->
+                                       cb_context:context().
 maybe_handle_load_failure(Context) ->
     maybe_handle_load_failure(Context, cb_context:resp_error_code(Context)).
 
@@ -169,9 +176,10 @@ maybe_handle_load_failure(Context, 404) ->
     NewLimits = wh_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}
                                    ,{<<"_id">>, ?PVT_TYPE}
                                   ]),
-    J = wh_json:merge_jobjs(NewLimits, wh_json:public_fields(Data)),
-    %% In this case we are using the validator to populate defaults
-    {'pass', JObj} = wh_json_validator:is_valid(J, <<"limits">>),
+    JObj = wh_json_schema:add_defaults(wh_json:merge_jobjs(NewLimits, wh_json:public_fields(Data))
+                                       ,<<"limits">>
+                                      ),
+
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, wh_json:public_fields(JObj)}

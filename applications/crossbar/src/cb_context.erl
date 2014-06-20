@@ -713,7 +713,7 @@ passed(#cb_context{req_data=Data}=Context, Status) ->
 
 -spec find_schema(ne_binary()) -> api_object().
 find_schema(<<_/binary>> = Schema) ->
-    case couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema) of
+    case wh_json_schema:load(Schema) of
         {'ok', SchemaJObj} -> SchemaJObj;
         {'error', _E} ->
             lager:debug("failed to find schema ~s: ~p", [Schema, _E]),

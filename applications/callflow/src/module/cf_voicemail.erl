@@ -885,12 +885,14 @@ invalid_pin(Box, Call) ->
                                  {'ok', wh_json:object()} |
                                  {'error', _}.
 validate_box_schema(JObj) ->
-    case wh_json_validator:is_valid(wh_json:public_fields(JObj), <<"vmboxes">>) of
-        {'fail', [{_Property, Error}|_]} ->
-            lager:debug("vm box failed schema: ~s: ~p", [_Property, Error]),
-            {'error', Error};
-        {'pass', JObj1} ->
-            {'ok', JObj1}
+    case jesse:validate_with_schema(wh_json_schema:load(<<"vmboxes">>)
+                                    ,wh_json:public_fields(JObj)
+                                   )
+    of
+        {'ok', _}=OK -> OK;
+        {'error', _Errors} ->
+            lager:debug("failed to validate vmbox schema: ~p", [_Errors]),
+            {'error', 'invalid_pin'}
     end.
 
 -spec get_new_pin(pos_integer(), whapps_call:call()) ->

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -19,30 +19,32 @@
 fax_properties(JObj) ->
     [{wh_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(JObj)].
 
-
--spec collect_channel_props(wh_json:object()) -> wh_proplist().
+-spec collect_channel_props(wh_json:object()) ->
+                                   wh_proplist().
+-spec collect_channel_props(wh_json:object(), wh_proplist()) ->
+                                   wh_proplist().
+-spec collect_channel_props(wh_json:object(), wh_proplist(), wh_proplist()) ->
+                                   wh_proplist().
 collect_channel_props(JObj) ->
     collect_channel_props(JObj, ?FAX_CHANNEL_DESTROY_PROPS).
 
--spec collect_channel_props(wh_json:object(), wh_proplist()) -> wh_proplist().
 collect_channel_props(JObj, List) ->
     collect_channel_props(JObj, List, []).
 
--spec collect_channel_props(wh_json:object(), wh_proplist(), list()) -> wh_proplist().
-collect_channel_props(JObj, List, Acumulator) ->
+collect_channel_props(JObj, List, Acc) ->
     lists:foldl(fun({Key, Keys}, Acc0) ->
                         collect_channel_props(wh_json:get_value(Key, JObj), Keys, Acc0);
-                   (Key, Acc) ->
-                        [collect_channel_prop(Key, JObj)  | Acc]
-                end, Acumulator, List).
-                        
--spec collect_channel_prop(ne_binary(), wh_json:object()) -> tuple().
+                   (Key, Acc0) ->
+                        [collect_channel_prop(Key, JObj) | Acc0]
+                end, Acc, List).
+
+-spec collect_channel_prop(ne_binary(), wh_json:object()) ->
+                                  {wh_json:key(), wh_json:json_term()}.
 collect_channel_prop(<<"Hangup-Code">> = Key, JObj) ->
     <<"sip:", Code/binary>> = wh_json:get_value(Key, JObj),
     {Key, Code};
 collect_channel_prop(Key, JObj) ->
     {Key, wh_json:get_value(Key, JObj)}.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -58,7 +60,7 @@ content_type_to_extension(<<"image/tiff">>) -> <<"tiff">>;
 content_type_to_extension(CT) when is_binary(CT) ->
     lager:debug("content-type ~s not handled, returning 'tmp'",[CT]),
     <<"tmp">>.
-    
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -67,7 +69,7 @@ content_type_to_extension(CT) when is_binary(CT) ->
 %% it has an extension (for the associated content type)
 %% @end
 %%--------------------------------------------------------------------
--spec attachment_name(ne_binary(), ne_binary()) -> ne_binary().
+-spec attachment_name(binary(), ne_binary()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun maybe_generate_random_filename/1
                   ,fun(A) -> maybe_attach_extension(A, CT) end
@@ -88,8 +90,7 @@ maybe_attach_extension(A, CT) ->
         'true' -> <<A/binary, ".", (content_type_to_extension(CT))/binary>>
     end.
 
-
--spec save_fax_docs(api_objects(), binary(), ne_binary())-> any().            
+-spec save_fax_docs(api_objects(), binary(), ne_binary())-> 'ok'.
 save_fax_docs([],_FileContents, _CT) -> 'ok';
 save_fax_docs([Doc|Docs], FileContents, CT) ->
     case couch_mgr:save_doc(?WH_FAXES, Doc) of
@@ -97,35 +98,33 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
             save_fax_attachment(JObj, FileContents, CT);
         _Else -> 'ok'
     end,
-    save_fax_docs(Docs,FileContents,CT).
+    save_fax_docs(Docs, FileContents, CT).
 
-
--spec save_fax_attachment(api_object(), binary(), ne_binary())-> any().            
+-spec save_fax_attachment(api_object(), binary(), ne_binary())-> 'ok'.
 save_fax_attachment(JObj, FileContents, CT) ->
     DocId = wh_json:get_value(<<"_id">>, JObj),
     Rev = wh_json:get_value(<<"_rev">>, JObj),
     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
-           ,{'rev', Rev}
+            ,{'rev', Rev}
            ],
-    Name = attachment_name(<<>>, CT),    
+    Name = attachment_name(<<>>, CT),
     case couch_mgr:put_attachment(?WH_FAXES, DocId, Name, FileContents, Opts) of
-        {'ok', DocObj} ->
+        {'ok', _DocObj} ->
             save_fax_doc_completed(DocId);
-        {'error', E} -> 
+        {'error', E} ->
             lager:debug("Error ~p saving fax attachment on fax id ~s rev ~s",[E, DocId, Rev])
     end.
 
--spec save_fax_doc_completed(ne_binary())-> any().            
+-spec save_fax_doc_completed(ne_binary())-> 'ok'.
 save_fax_doc_completed(DocId)->
     case couch_mgr:open_doc(?WH_FAXES, DocId) of
         {'error', E} ->
             lager:debug("error ~p reading fax ~s while setting to pending",[E, DocId]);
         {'ok', JObj} ->
-            case couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}],JObj)) of
+            case couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of
                 {'ok', _} ->
                     lager:debug("fax jobid ~s set to pending", [DocId]);
                 {'error', E} ->
                     lager:debug("error ~p setting fax jobid ~s to pending",[E, DocId])
             end
-    end.    
-
+    end.
