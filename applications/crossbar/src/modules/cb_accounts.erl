@@ -39,6 +39,10 @@
 
 -define(PVT_TYPE, <<"account">>).
 -define(CHANNELS, <<"channels">>).
+-define(CHILDREN, <<"children">>).
+-define(DESCENDANTS, <<"descendants">>).
+-define(SIBLINGS, <<"siblings">>).
+-define(ANCESTORS, <<"ancestors">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
 
@@ -68,10 +72,22 @@ init() ->
 -spec allowed_methods(path_token(), ne_binary()) -> http_methods().
 allowed_methods() ->
     [?HTTP_PUT].
-allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+
+allowed_methods(AccountId) ->
+    case whapps_util:get_master_account_id() of
+        {'ok', AccountId} ->
+            lager:debug("accessing master account, disallowing DELETE"),
+            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST];
+        {'ok', _MasterId} ->
+            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
+        {'error', _E} ->
+            lager:debug("failed to get master account id: ~p", [_E]),
+            lager:info("disallowing DELETE while we can't determine the master account id"),
+            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST]
+    end.
+
 allowed_methods(_, Path) ->
-    case lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>, ?CHANNELS]) of
+    case lists:member(Path, [?ANCESTORS, ?CHILDREN, ?DESCENDANTS,?SIBLINGS, ?CHANNELS]) of
         'true' -> [?HTTP_GET];
         'false' -> []
     end.
@@ -90,7 +106,7 @@ allowed_methods(_, Path) ->
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, Path) ->
-    lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>, ?CHANNELS]).
+    lists:member(Path, [?ANCESTORS, ?CHILDREN, ?DESCENDANTS,?SIBLINGS, ?CHANNELS]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -139,11 +155,11 @@ validate(Context, AccountId, PathToken) ->
                                    cb_context:context().
 validate_account_path(Context, AccountId, ?CHANNELS, ?HTTP_GET) ->
     get_channels(AccountId, Context);
-validate_account_path(Context, AccountId, <<"children">>, ?HTTP_GET) ->
+validate_account_path(Context, AccountId, ?CHILDREN, ?HTTP_GET) ->
     load_children(AccountId, prepare_context('undefined', Context));
-validate_account_path(Context, AccountId, <<"descendants">>, ?HTTP_GET) ->
+validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
     load_descendants(AccountId, prepare_context('undefined', Context));
-validate_account_path(Context, AccountId, <<"siblings">>, ?HTTP_GET) ->
+validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
     load_siblings(AccountId, prepare_context('undefined', Context)).
 
 %%--------------------------------------------------------------------
