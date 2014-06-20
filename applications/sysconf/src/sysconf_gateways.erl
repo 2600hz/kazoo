@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -11,15 +11,18 @@
 
 -include("sysconf.hrl").
 
+-spec build(ne_binary()) -> wh_json:object().
 build(_Node) ->
     get_gateways().
 
+-spec get_gateways() -> wh_json:object().
 get_gateways() ->
     Routines = [fun get_local_gateways/1
                 ,fun get_offnet_gateways/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines).
 
+-spec get_local_gateways(wh_json:object()) -> wh_json:object().
 get_local_gateways(Gateways) ->
     ViewOptions = [],
     case couch_mgr:get_results(?WH_SIP_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
@@ -27,13 +30,10 @@ get_local_gateways(Gateways) ->
             lager:debug("unable to fetch resource registrations: ~p", [_R]),
             Gateways;
         {'ok', JObjs} ->
-            lists:foldl(fun(JObj, J) ->
-                                Gateway = wh_json:get_value(<<"value">>, JObj),
-                                Id = wh_json:get_value(<<"id">>, Gateway),
-                                wh_json:set_value(Id, format_gateway(Gateway), J)
-                        end, Gateways, JObjs)
+            lists:foldl(fun gateway_fold/2, Gateways, JObjs)
     end.
 
+-spec get_offnet_gateways(wh_json:object()) -> wh_json:object().
 get_offnet_gateways(Gateways) ->
     ViewOptions = [],
     case couch_mgr:get_results(?WH_OFFNET_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
@@ -41,13 +41,16 @@ get_offnet_gateways(Gateways) ->
             lager:debug("unable to fetch resource registrations: ~p", [_R]),
             Gateways;
         {'ok', JObjs} ->
-            lists:foldl(fun(JObj, J) ->
-                                Gateway = wh_json:get_value(<<"value">>, JObj),
-                                Id = wh_json:get_value(<<"id">>, Gateway),
-                                wh_json:set_value(Id, format_gateway(Gateway), J)
-                        end, Gateways, JObjs)
+            lists:foldl(fun gateway_fold/2, Gateways, JObjs)
     end.
 
+-spec gateway_fold(wh_json:object(), wh_json:object()) -> wh_json:object().
+gateway_fold(JObj, Acc) ->
+    Gateway = wh_json:get_value(<<"value">>, JObj),
+    Id = wh_json:get_value(<<"id">>, Gateway),
+    wh_json:set_value(Id, format_gateway(Gateway), Acc).
+
+-spec format_gateway(wh_json:object()) -> wh_json:object().
 format_gateway(JObj) ->
     DefaultProxy = 'undefined',
     Variables = [{<<"Account-ID">>, wh_json:get_value(<<"account_id">>, JObj)}
@@ -69,4 +72,3 @@ format_gateway(JObj) ->
                ,{<<"Variables">>, wh_json:from_list(props:filter_undefined(Variables))}
               ],
     wh_json:from_list(props:filter_undefined(Gateway)).
-                                                                                               

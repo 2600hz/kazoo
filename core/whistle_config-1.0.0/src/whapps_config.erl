@@ -304,7 +304,7 @@ set_default(Category, Key, Value) ->
     update_category(Category, Key, Value, <<"default">>, []).
 
 -spec set_node(config_category(), config_key(), term(), ne_binary() | atom()) ->
-                 {'ok', wh_json:object()}.
+                      {'ok', wh_json:object()}.
 set_node(Category, _, _, 'undefined') -> get_category(Category);
 set_node(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).

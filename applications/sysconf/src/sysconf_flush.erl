@@ -11,15 +11,17 @@
 
 -include("sysconf.hrl").
 
-init() ->
-    ok.
+-spec init() -> 'ok'.
+init() -> 'ok'.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     'true' = wapi_sysconf:flush_req_v(ApiJObj),
+    wh_util:put_callid(ApiJObj),
 
     Category = wh_json:get_value(<<"Category">>, ApiJObj),
     Node = wh_json:get_value(<<"Node">>, ApiJObj),
+
     case wh_json:get_value(<<"Key">>, ApiJObj) of
         'undefined' ->
             lager:debug("flushing ~s entirely", [Category]),
