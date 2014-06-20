@@ -892,7 +892,7 @@ validate_box_schema(JObj) ->
         {'ok', _}=OK -> OK;
         {'error', _Errors} ->
             lager:debug("failed to validate vmbox schema: ~p", [_Errors]),
-            {'error', 'invalid_pid'}
+            {'error', 'invalid_pin'}
     end.
 
 -spec get_new_pin(pos_integer(), whapps_call:call()) ->
