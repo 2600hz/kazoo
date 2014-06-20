@@ -14,50 +14,56 @@
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, notify_fax_outbound_error_text_tmpl).
--define(DEFAULT_HTML_TMPL, notify_fax_outbound_error_html_tmpl).
--define(DEFAULT_SUBJ_TMPL, notify_fax_outbound_error_subj_tmpl).
+-define(DEFAULT_TEXT_TMPL, 'notify_fax_outbound_error_text_tmpl').
+-define(DEFAULT_HTML_TMPL, 'notify_fax_outbound_error_html_tmpl').
+-define(DEFAULT_SUBJ_TMPL, 'notify_fax_outbound_error_subj_tmpl').
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_outbound_error_to_email">>).
 
 -spec init() -> 'ok'.
 init() ->
     %% ensure the fax template can compile, otherwise crash the processes
-    {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
-    {ok, _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
-    {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
-    true = wapi_notifications:fax_outbound_error_v(JObj),
+    'true' = wapi_notifications:fax_outbound_error_v(JObj),
     _ = whapps_util:put_callid(JObj),
-
     lager:debug("new outbound fax error left, sending to email if enabled"),
-
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    case is_notice_enabled(AcctObj) of
+        'true' -> send(JObj, AcctObj);
+        'false' -> 'ok'
+    end.
 
-    Emails = wh_json:get_value([<<"Fax-Notifications">>,<<"email">>,<<"send_to">>], JObj, []),   
-
-    {ok, AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+-spec send(wh_json:object(), wh_json:object()) -> any().
+send(JObj, AcctObj) ->
     Docs = [JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
-
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>,
-                                           <<"outbound_fax_error_to_email">>,
-                                           <<"email_text_template">>], AcctObj),
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>,
-                                            <<"outbound_fax_error_to_email">>,
-                                            <<"email_html_template">>], AcctObj),
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>,
-                                               <<"outbound_fax_error_to_email">>,
-                                               <<"email_subject_template">>], AcctObj),
-
-    {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
-    {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
-    {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-    
+    CustomTxtTemplate = wh_json:get_value([<<"notifications">>
+                                           ,<<"outbound_fax_error_to_email">>
+                                           ,<<"email_text_template">>
+                                          ], AcctObj),
+    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>
+                                            ,<<"outbound_fax_error_to_email">>
+                                            ,<<"email_html_template">>
+                                           ], AcctObj),
+    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>
+                                               ,<<"outbound_fax_error_to_email">>
+                                               ,<<"email_subject_template">>
+                                              ], AcctObj),
+    {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
+    {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
+    {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
+    Emails = wh_json:get_value([<<"Fax-Notifications">>
+                                ,<<"email">>
+                                ,<<"send_to">>
+                               ], JObj, []),
     try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props)) of
         _ -> lager:debug("built and sent")
     catch
@@ -66,6 +72,21 @@ handle_req(JObj, _Props) ->
             ST = erlang:get_stacktrace(),
             wh_util:log_stacktrace(ST)
     end.
+
+-spec is_notice_enabled(wh_json:object()) -> boolean().
+is_notice_enabled(JObj) ->
+    case  wh_json:get_value([<<"notifications">>,
+                             <<"outbound_fax_error_to_email">>,
+                             <<"enabled">>
+                            ], JObj)
+    of
+        'undefined' -> is_notice_enabled_default();
+        Value -> wh_util:is_true(Value)
+    end.
+
+-spec is_notice_enabled_default() -> boolean().
+is_notice_enabled_default() ->
+    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enabled">>, 'false').
 
 %%--------------------------------------------------------------------
 %% @private
