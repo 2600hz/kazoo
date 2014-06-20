@@ -678,14 +678,6 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Billing-Seconds">>, props:get_value(<<"variable_billsec">>, Props)}
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
-%%      ,{<<"Fax-Success">>, get_fax_success(Props)}
-%%      ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
-%%      ,{<<"Fax-Result-Code">>, props:get_value(<<"variable_fax_result_code">>, Props)}
-%%      ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
-%%      ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
-%%      ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
-%%      ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
-%%      ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
      ,{<<"Fax-Info">>, wh_json:from_list(fax_specific(Props))}
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
