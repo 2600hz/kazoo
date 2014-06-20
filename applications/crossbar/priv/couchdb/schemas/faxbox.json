@@ -150,11 +150,6 @@
             "type": "string",
             "default": "noone@nowhere.com"
         },
-        "custom_smtp_email_address": {
-            "description": "custom smtp address",
-            "type": "string",
-            "default": "noone@nowhere.com"
-        },
         "smtp_permission_list": {
             "description": "smtp permission list. accepts regular expressions",
             "type": "array",
