@@ -86,7 +86,7 @@ is_notice_enabled(JObj) ->
 
 -spec is_notice_enabled_default() -> boolean().
 is_notice_enabled_default() ->
-    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enabled">>, 'false').
+    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'true').
 
 %%--------------------------------------------------------------------
 %% @private
