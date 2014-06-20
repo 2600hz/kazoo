@@ -1,18 +1,54 @@
-# See LICENSE for licensing information.
-
 PROJECT = ranch
+ROOT = ../..
+DIALYZER = dialyzer
 
-# Dependencies.
+EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
+PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-TEST_DEPS = ct_helper
-dep_ct_helper = https://github.com/extend/ct_helper.git master
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/deps $(PA)
+     # +bin_opt_info
 
-# Options.
+DIRS =  .
 
-COMPILE_FIRST = ranch_transport
-CT_SUITES = acceptor sendfile shutdown
-PLT_APPS = crypto public_key ssl
+.PHONY: all compile clean
 
-# Standard targets.
+all: compile
 
-include erlang.mk
+MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+
+compile: ebin/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> ebin/$(PROJECT).app
+	-@$(MAKE) ebin/$(PROJECT).app
+
+COMPILE_FIRST = src/ranch_transport.erl
+
+ebin/$(PROJECT).app: src/*.erl
+	@mkdir -p ebin/
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(COMPILE_FIRST) $?
+
+compile-test: test/$(PROJECT).app
+	@cat src/$(PROJECT).app.src \
+		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
+		> test/$(PROJECT).app
+	-@$(MAKE) test/$(PROJECT).app
+
+test/$(PROJECT).app: src/*.erl
+	@mkdir -p test/
+	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+
+clean:
+	rm -f ebin/*
+	rm -f test/*.beam test/$(PROJECT).app
+	rm -f erl_crash.dump
+
+test: clean compile-test eunit
+
+eunit: compile-test
+	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
+
+dialyze:
+	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
+		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
+		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
