@@ -27,7 +27,12 @@
 
 -include("../crossbar.hrl").
 
--define(LOOP_TIMEOUT, whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
+-define(LOOP_TIMEOUT
+        ,whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)
+       ).
+-define(PERCENT_OF_TIMEOUT
+        ,whapps_config:get_integer(?APP_NAME, <<"expiry_percentage">>, 75)
+       ).
 
 %%%===================================================================
 %%% API
@@ -85,33 +90,21 @@ delete(Context) ->
 -spec finish_request(cb_context:context()) -> 'ok'.
 -spec finish_request(cb_context:context(), api_object()) -> 'ok'.
 finish_request(Context) ->
-    finish_request(Context, cb_context:auth_token(Context)).
+    finish_request(Context, cb_context:auth_doc(Context)).
 
 finish_request(_Context, 'undefined') -> 'ok';
-finish_request(Context, AuthToken) ->
+finish_request(Context, AuthDoc) ->
     cb_context:put_reqid(Context),
-    couch_mgr:suppress_change_notice(),
-    lager:debug("maybe saving auth token ~s to DB", [AuthToken]),
-
-    case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
-        {'ok', OldAuthDoc} ->
-            lager:debug("found old doc, checking to see if we should save"),
-            maybe_save_auth_doc(OldAuthDoc);
-        {'error', _E} ->
-            lager:debug("failed to open auth doc, trying to save our version: ~p: ~p", [_E, cb_context:auth_doc(Context)]),
-            couch_mgr:ensure_saved(?TOKEN_DB, cb_context:auth_doc(Context))
-    end,
-    couch_mgr:enable_change_notice(),
-    'ok'.
+    maybe_save_auth_doc(AuthDoc).
 
 -spec maybe_save_auth_doc(wh_json:object()) -> any().
 maybe_save_auth_doc(OldAuthDoc) ->
     OldAuthModified = wh_json:get_integer_value(<<"pvt_modified">>, OldAuthDoc),
     Now = wh_util:current_tstamp(),
 
-    Timeout = erlang:round(?LOOP_TIMEOUT * 0.75),
+    ToSaveTimeout = (?LOOP_TIMEOUT * ?PERCENT_OF_TIMEOUT) div 100,
 
-    TimeLeft = Now - (OldAuthModified + Timeout),
+    TimeLeft = Now - (OldAuthModified + ToSaveTimeout),
 
     case TimeLeft > 0 of
         'true' ->
