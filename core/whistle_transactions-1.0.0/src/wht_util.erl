@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, VoIP, INC
+%%% @copyright (C) 2013-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -138,10 +138,12 @@ get_balance_from_previous(Account, ViewOptions, Retry) when Retry >= 0 ->
     {DefaultYear, DefaultMonth, _} = erlang:date(),
     Y = props:get_integer_value('year', ViewOptions, DefaultYear),
     M = props:get_integer_value('month', ViewOptions, DefaultMonth),
-    {Year, Month} = prev_year_month(Y, M),
+    {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
+
     VOptions = [{'year', wh_util:to_binary(Year)}
                 ,{'month', wh_util:pad_month(Month)}
-                ,{'retry', Retry-1}],
+                ,{'retry', Retry-1}
+               ],
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
     get_balance(Account, VOptions);
 get_balance_from_previous(Account, ViewOptions, _) ->
@@ -310,7 +312,8 @@ reason_code(Reason) ->
 collapse_call_transactions(Transactions) ->
     collapse_call_transactions(Transactions
                                ,dict:new()
-                               ,[]).
+                               ,[]
+                              ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -326,15 +329,10 @@ modb(AccountMODb) ->
                ],
     lists:foldl(fun(F, A) -> F(A) end, AccountMODb, Routines).
 
--spec find_previous_modb(ne_binary()) -> ne_binary().
-find_previous_modb(<<_:32/binary, "-", Year:4/binary, Month:2/binary>>) ->
-    prev_year_month(wh_util:to_integer(Year)
-                    ,wh_util:to_integer(Month)).
-
-
--spec prev_year_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
-prev_year_month(Year, 1) -> {Year-1, 12};
-prev_year_month(Year, Month) -> {Year, Month-1}.
+-spec find_previous_modb(ne_binary()) -> {wh_year(), wh_month()}.
+find_previous_modb(AccountModb) ->
+    {_AccountId, Year, Month} = wh_util:split_account_mod(AccountModb),
+    kazoo_modb_util:prev_year_month(Year, Month).
 
 -spec rollup(wh_transaction:transaction()) -> 'ok'.
 -spec rollup(ne_binary(), integer()) -> wh_transaction:transaction().

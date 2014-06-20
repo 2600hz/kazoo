@@ -223,7 +223,8 @@ get_all_accounts_and_mods(Encoding) ->
 
 -spec get_all_account_mods() -> ne_binaries().
 -spec get_all_account_mods('unencoded' | 'encoded' | 'raw') -> ne_binaries().
-get_all_account_mods() -> get_all_account_mods(?REPLICATE_ENCODING).
+get_all_account_mods() ->
+    get_all_account_mods(?REPLICATE_ENCODING).
 
 get_all_account_mods(Encoding) ->
     {'ok', Databases} = couch_mgr:db_info(),
