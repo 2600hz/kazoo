@@ -156,24 +156,32 @@ reg_flush(JObj, _Props) ->
                             {'ok', ne_binary()} |
                             {'error', 'not_found'}.
 lookup_contact(Realm, Username) ->
-    case get_registration(Realm, Username) of
-        #registration{contact=Contact} ->
-            lager:info("found user ~s@~s contact ~s"
-                       ,[Username, Realm, Contact]),
-            {'ok', Contact};
-        'undefined' -> fetch_contact(Username, Realm)
+    case wh_util:is_empty(Realm) orelse wh_util:is_empty(Username) of
+        'true' -> {'error', 'not_found'};
+        'false' ->
+            case get_registration(Realm, Username) of
+                #registration{contact=Contact} ->
+                    lager:info("found user ~s@~s contact ~s"
+                               ,[Username, Realm, Contact]),
+                    {'ok', Contact};
+                'undefined' -> fetch_contact(Username, Realm)
+            end
     end.
 
 -spec lookup_original_contact(ne_binary(), ne_binary()) ->
                                      {'ok', ne_binary()} |
                                      {'error', 'not_found'}.
 lookup_original_contact(Realm, Username) ->
-    case get_registration(Realm, Username) of
-        #registration{original_contact=Contact} ->
-            lager:info("found user ~s@~s original contact ~s"
-                       ,[Username, Realm, Contact]),
-            {'ok', Contact};
-        'undefined' -> fetch_original_contact(Username, Realm)
+    case wh_util:is_empty(Realm) orelse wh_util:is_empty(Username) of
+        'true' -> {'error', 'not_found'};
+        'false' ->
+            case get_registration(Realm, Username) of
+                #registration{original_contact=Contact} ->
+                    lager:info("found user ~s@~s original contact ~s"
+                               ,[Username, Realm, Contact]),
+                    {'ok', Contact};
+                'undefined' -> fetch_original_contact(Username, Realm)
+            end
     end.
 
 -spec lookup_registration(ne_binary(), ne_binary()) ->
