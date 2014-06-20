@@ -23,7 +23,9 @@
 
 -spec bind(atom(), wh_proplist()) -> 'ok'.
 bind(Module, Bindings) ->
-    [crossbar_bindings:bind(Binding, Module, Function) || {Binding, Function} <- Bindings],
+    [crossbar_bindings:bind(Binding, Module, Function)
+     || {Binding, Function} <- Bindings
+    ],
     'ok'.
 
 %%--------------------------------------------------------------------
@@ -60,11 +62,14 @@ update_mwi(OwnerId, AccountDb) ->
 
 -spec get_devices_owned_by(ne_binary(), ne_binary()) -> wh_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
-    case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{'key', [OwnerID, <<"device">>]}
-                                                               ,'include_docs'
-                                                              ]) of
+    case couch_mgr:get_results(DB
+                               ,<<"cf_attributes/owned">>
+                               ,[{'key', [OwnerID, <<"device">>]}
+                                 ,'include_docs'
+                                ])
+    of
         {'ok', JObjs} ->
-            lager:debug("Found ~b devices owned by ~s", [length(JObjs), OwnerID]),
+            lager:debug("found ~b devices owned by ~s", [length(JObjs), OwnerID]),
             [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:debug("unable to fetch devices: ~p", [_R]),
@@ -195,14 +200,14 @@ originate_quickcall(Endpoints, Call, Context) ->
                ,{<<"Continue-On-Fail">>, 'false'}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-               | wh_api:default_headers(<<>>, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
     crossbar_util:response_202(<<"processing request">>, cb_context:set_resp_data(Context, Request)).
 
 -spec maybe_auto_answer(wh_json:objects()) -> wh_json:objects().
 maybe_auto_answer([Endpoint]) ->
-    [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], <<"true">>, Endpoint)];
+    [wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true', Endpoint)];
 maybe_auto_answer(Endpoints) ->
     Endpoints.
 
