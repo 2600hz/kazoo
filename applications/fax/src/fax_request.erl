@@ -33,7 +33,8 @@
          ,action = 'receive' :: 'receive' | 'transmit'
          ,owner_id :: api_binary()
          ,faxbox_id :: api_binary()
-         ,fax_id :: api_binary()
+         ,storage :: fax_storage()
+         ,fax_option :: api_binary()
          ,fax_result :: api_object()
          ,fax_notify = 'undefined' :: api_binaries()
          }).
@@ -109,6 +110,7 @@ init([Call, JObj]) ->
                  ,action = get_action(JObj)
                  ,owner_id = wh_json:get_value(<<"Owner-ID">>, JObj)
                  ,faxbox_id = wh_json:get_value(<<"FaxBox-ID">>, JObj)
+                 ,fax_option = wh_json:get_value(<<"Fax-T38-Option">>, JObj)
              }}.
 
 %%--------------------------------------------------------------------
@@ -245,16 +247,34 @@ get_action(JObj) ->
     end.
 
 -spec start_receive_fax(state()) -> {'noreply', state()}.
-start_receive_fax(#state{call=Call}=State) ->
+start_receive_fax(#state{call=Call
+                         ,fax_option=ReceiveFlag
+                        }=State) ->
     whapps_call:put_callid(Call),
-    NewState = maybe_update_fax_settings(State),    
+    Storage = get_fax_storage(Call),
+    whapps_call_command:set('undefined', [{<<"Fax-DocId">>, Storage#fax_storage.id}], Call),
+    NewState = maybe_update_fax_settings(State),
+    
     ResourceFlag = whapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call),
-    CallflowJObj = whapps_call:kvs_fetch('cf_flow', Call),
-    ReceiveFlag = wh_json:get_value([<<"data">>, <<"media">>, <<"fax_option">>], CallflowJObj),    
+    
     whapps_call_command:answer(Call),
     whapps_call_command:receive_fax(ResourceFlag, ReceiveFlag, Call),
-    {'noreply', NewState}.
+    {'noreply', NewState#state{storage=Storage}}.
 
+
+-spec get_fax_storage(whapps_call:call()) -> fax_storage().
+get_fax_storage(Call) ->
+    AccountId = whapps_call:account_id(Call),
+    {Year, Month, _} = erlang:date(),
+    FaxDb = kazoo_modb:get_modb(AccountId, Year, Month),
+    FaxId = <<(wh_util:to_binary(Year))/binary
+              ,(wh_util:pad_month(Month))/binary
+              ,"-"
+              ,(wh_util:rand_hex_binary(16))/binary
+            >>,
+    FaxAttachmentId = wh_util:rand_hex_binary(16),
+    #fax_storage{id=FaxId, db=FaxDb, attachment_id=FaxAttachmentId}.
+    
 
 -spec maybe_update_fax_settings(state()) -> state().
 maybe_update_fax_settings(#state{call=Call
@@ -351,10 +371,10 @@ end_receive_fax(JObj, #state{call=Call}=State) ->
 
 -spec maybe_store_fax(wh_json:object(), state() ) -> state().
 maybe_store_fax(JObj, State) ->
-    case store_fax(JObj, State) of
+    case store_fax(JObj, #state{storage=#fax_storage{id=FaxId}}=State) of
         {'ok', FaxId} ->
             lager:debug("fax stored successfully into ~s", [FaxId]),
-            {'noreply', State#state{fax_id=FaxId, fax_result=JObj} };
+            {'noreply', State#state{fax_result=JObj} };
         {'error', Error} ->
             lager:debug("store fax other resp: ~p", [Error]),
             notify_failure(JObj, Error, State),
@@ -364,12 +384,15 @@ maybe_store_fax(JObj, State) ->
 
 -spec store_fax(wh_json:object(), state() ) -> 
           {'ok', ne_binary()} | {'error', any()}.
-store_fax(JObj, #state{call=Call}=State) ->
+store_fax(JObj, #state{call=Call
+                       ,storage=#fax_storage{id=FaxDocId
+                                             ,db=FaxDb}
+                      }=State) ->
     case create_fax_doc(JObj, State) of
         {'ok', Doc} ->
             FaxDocId = wh_json:get_value(<<"_id">>, Doc),
             FaxFile = tmp_file(),
-            FaxUrl = attachment_url(Call, FaxFile, FaxDocId),
+            FaxUrl = attachment_url(Call, FaxFile, FaxDocId, FaxDb),
             lager:debug("storing fax ~s to ~s", [FaxFile, FaxUrl]),
             whapps_call_command:store_fax(FaxUrl, Call),
             {'ok', FaxDocId};
@@ -377,8 +400,11 @@ store_fax(JObj, #state{call=Call}=State) ->
     end.
 
 -spec check_for_upload(wh_json:object(), state()) -> 'ok'.
-check_for_upload(JObj, #state{call=Call, fax_id=FaxDocId}=State) ->
-    case couch_mgr:open_doc(whapps_call:account_db(Call), FaxDocId) of
+check_for_upload(JObj, #state{call=Call
+                              ,storage=#fax_storage{id=FaxDocId
+                                                    ,db=FaxDb}
+                             }=State) ->
+    case couch_mgr:open_doc(FaxDb, FaxDocId) of
         {'ok', FaxDoc} ->
             check_upload_for_attachment(JObj, FaxDoc, State);
         {'error', Error} ->
@@ -414,17 +440,15 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                            ,faxbox_id = FaxBoxId
                            ,fax_notify = Notify
                            ,call=Call
+                           ,storage=#fax_storage{id=FaxDocId
+                                                 ,db=FaxDb}
                            }) ->
-    AccountDb = whapps_call:account_db(Call),
-
     {{Y,M,D}, {H,I,S}} = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
-
     Name = list_to_binary(["fax message received at "
                            ,wh_util:to_binary(Y), "-", wh_util:to_binary(M), "-", wh_util:to_binary(D)
                            ," " , wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)
                            ," UTC"
                           ]),
-
     Props = props:filter_undefined( 
              [{<<"name">>, Name}
              ,{<<"to_number">>, whapps_call:request_user(Call)}
@@ -436,6 +460,8 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
              ,{<<"faxbox_id">>, FaxBoxId}
              ,{<<"media_type">>, <<"tiff">>}
              ,{<<"call_id">>, whapps_call:call_id(Call)}
+             ,{<<"other_leg_call_id">>, whapps_call:other_leg_call_id(Call)}
+             ,{<<"_id">>, FaxDocId}
              ,{<<"rx_results">>, 
                wh_json:from_list(
                  fax_util:fax_properties(
@@ -445,16 +471,14 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
             ]),
 
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props)
-                                       ,AccountDb
+                                       ,FaxDb
                                        ,[{'type', <<"fax">>}]
                                       ),
+    couch_mgr:save_doc(FaxDb, Doc).
 
-    couch_mgr:save_doc(AccountDb, Doc).
 
-
--spec attachment_url(whapps_call:call(), ne_binary(), ne_binary()) -> ne_binary().
-attachment_url(Call, File, FaxDocId) ->
-    AccountDb = whapps_call:account_db(Call),
+-spec attachment_url(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+attachment_url(Call, File, FaxDocId, AccountDb) ->
     _ = case couch_mgr:open_doc(AccountDb, FaxDocId) of
             {'ok', JObj} ->
                 case wh_json:get_keys(<<"_attachments">>, JObj) of
@@ -506,10 +530,12 @@ notify_failure(JObj, State) ->
 notify_failure(JObj, Reason, #state{call=Call
                                    ,owner_id=OwnerId
                                    ,faxbox_id=FaxBoxId
-                                   ,fax_id=FaxId
-                                   ,fax_notify=Notify}=State) ->
+                                   ,fax_notify=Notify
+                                   ,storage=#fax_storage{id=FaxId
+                                                         ,db=FaxDb}
+                                   }=State) ->
     Message = props:filter_undefined(
-                 notify_fields(Call, JObj) ++ 
+                 notify_fields(Call, JObj) ++
                      [{<<"Fax-ID">>, FaxId}
                      ,{<<"Fax-Error">>, Reason}
                      ,{<<"Owner-ID">>, OwnerId}
@@ -522,8 +548,10 @@ notify_failure(JObj, Reason, #state{call=Call
 notify_success(JObj, #state{call=Call
                            ,owner_id=OwnerId
                            ,faxbox_id=FaxBoxId
-                           ,fax_id=FaxId
-                           ,fax_notify=Notify}=State) ->
+                           ,fax_notify=Notify
+                           ,storage=#fax_storage{id=FaxId
+                                                 ,db=FaxDb}
+                           }=State) ->
     Message = props:filter_undefined(
                 notify_fields(Call, JObj) ++ 
                     [{<<"Fax-ID">>, FaxId}
