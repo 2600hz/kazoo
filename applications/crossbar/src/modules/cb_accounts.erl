@@ -310,8 +310,6 @@ remove_spaces(AccountId, Context) ->
                         end
                 end, JObj, ?REMOVE_SPACES),
     cleanup_leaky_keys(AccountId, cb_context:set_req_data(Context, JObjNew)).
-    
-    
 
 -spec cleanup_leaky_keys(api_binary(), cb_context:context()) -> cb_context:context().
 cleanup_leaky_keys(AccountId, Context) ->
