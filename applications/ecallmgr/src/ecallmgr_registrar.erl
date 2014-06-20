@@ -156,7 +156,7 @@ reg_flush(JObj, _Props) ->
                             {'ok', ne_binary()} |
                             {'error', 'not_found'}.
 lookup_contact(Realm, Username) ->
-    case wh_util:is_empty(Realm) orelse wh_util:is_empty(username) of
+    case wh_util:is_empty(Realm) orelse wh_util:is_empty(Username) of
         'true' -> {'error', 'not_found'};
         'false' ->
             case get_registration(Realm, Username) of
@@ -172,7 +172,7 @@ lookup_contact(Realm, Username) ->
                                      {'ok', ne_binary()} |
                                      {'error', 'not_found'}.
 lookup_original_contact(Realm, Username) ->
-    case wh_util:is_empty(Realm) orelse wh_util:is_empty(username) of
+    case wh_util:is_empty(Realm) orelse wh_util:is_empty(Username) of
         'true' -> {'error', 'not_found'};
         'false' ->
             case get_registration(Realm, Username) of
