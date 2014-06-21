@@ -234,6 +234,7 @@ get_classifier_regex(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_reconcilable(ne_binary()) -> boolean().
+is_reconcilable(<<"id">>) -> 'false';
 is_reconcilable(Number) ->
     Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, ?DEFAULT_RECONCILE_REGEX),
     Num = wnm_util:normalize_number(Number),

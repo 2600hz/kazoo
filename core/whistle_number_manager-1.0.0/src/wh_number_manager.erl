@@ -562,7 +562,10 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                          {'ok', wh_json:public_fields(JObj)}
                  end
                ],
-    lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number, PublicFields), Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end
+                ,catch wnm_number:get(Number, PublicFields)
+                ,Routines
+               ).
 
 %%--------------------------------------------------------------------
 %% @public
