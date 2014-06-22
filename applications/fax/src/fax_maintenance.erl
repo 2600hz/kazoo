@@ -99,8 +99,12 @@ maybe_migrate_fax_to_modb(AccountDb, JObj) ->
         {'ok', Doc} ->
             case wh_json:get_value(<<"_attachments">>, Doc) of
                 'undefined' ->
-                    io:format("deleting no attachments fax doc ~s from ~s~n",[DocId, AccountDb]);
-                    %couch_mgr:del_doc(AccountDb, Doc);
+                     case whapps_config:get_is_true(<<"fax">>, <<"delete_empty_faxes">>, 'false') of
+                         'true' ->
+                             io:format("deleting no attachments fax doc ~s from ~s~n",[DocId, AccountDb]),
+                             couch_mgr:del_doc(AccountDb, Doc);
+                         'false' -> 'ok'
+                     end;
                 _Attachments ->
                     migrate_fax_to_modb(AccountDb, DocId, Doc)
             end;
