@@ -45,35 +45,40 @@ migrate_faxes(Account) ->
     migrate_faxes_to_modb(Account).
 
 -spec migrate_private_media(ne_binary()) -> 'ok'.
--spec migrate_private_media(ne_binary(), wh_json:object()) -> 'ok'.
+-spec migrate_private_media(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_migrate_private_media(ne_binary(), wh_json:object()) -> 'ok'.
 
 migrate_private_media(Account) ->
     AccountDb = case couch_mgr:db_exists(Account) of
                     'true' -> Account;
                     'false' -> wh_util:format_account_id(Account, 'encoded')
                 end,
-    ViewOptions = [{'key', [<<"tiff">>, wh_json:new()]}],
-    case couch_mgr:get_results(AccountDb, <<"media/listing_private_media">>, ViewOptions) of
-        {'ok', []} -> io:format("no private media files in db for fax migration ~s~n", [AccountDb]);
+    ViewOptions = [{'key', <<"private_media">>}],
+    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {'ok', []} -> 'ok';
         {'ok', JObjs3}->
-            _ = [migrate_private_media(AccountDb, JObj) || JObj <- JObjs3],
+            _ = [maybe_migrate_private_media(AccountDb, JObj) || JObj <- JObjs3],
             'ok';
         {'error', _}=E3 ->
             io:format("unable to fetch private media files in db ~s: ~p~n", [AccountDb, E3])
     end.
 
-migrate_private_media(AccountDb, JObj) ->
+maybe_migrate_private_media(AccountDb, JObj) ->
     DocId = wh_json:get_value(<<"id">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(AccountDb, DocId),
-    _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, Doc)),
-    'ok'.
+    migrate_private_media(AccountDb, Doc, wh_json:get_value(<<"media_type">>, Doc)).
+    
 
+migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
+    _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, Doc)),
+    'ok';
+migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
+  
 -spec migrate_faxes_to_modb(ne_binary()) -> 'ok'.
 -spec maybe_migrate_fax_to_modb(ne_binary(), wh_json:object()) -> 'ok'.
 -spec migrate_fax_to_modb(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 
 migrate_faxes_to_modb(Account) ->
-    io:format("migrating faxes for account ~s~n",[Account]),
     AccountDb = case couch_mgr:db_exists(Account) of
                     'true' -> Account;
                     'false' -> wh_util:format_account_id(Account, 'encoded')
