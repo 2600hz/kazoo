@@ -252,21 +252,23 @@ start_receive_fax(#state{call=Call
                         }=State) ->
     whapps_call:put_callid(Call),
     Storage = get_fax_storage(Call),
-    whapps_call_command:set('undefined', [{<<"Fax-DocId">>, Storage#fax_storage.id}], Call),
-    NewState = maybe_update_fax_settings(State),
-    
-    ResourceFlag = whapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call),
-    
+    Props = [{<<"Fax-DocId">>, Storage#fax_storage.id}
+             ,{<<"Fax-Db">>, Storage#fax_storage.db}
+            ],
+    NewCall = whapps_call:kvs_store_proplist(Props, Call),
+    NewState = maybe_update_fax_settings(State#state{storage=Storage, call=NewCall}),    
+    ResourceFlag = whapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call),    
     whapps_call_command:answer(Call),
     whapps_call_command:receive_fax(ResourceFlag, ReceiveFlag, Call),
-    {'noreply', NewState#state{storage=Storage}}.
+    {'noreply', NewState}.
 
 
 -spec get_fax_storage(whapps_call:call()) -> fax_storage().
 get_fax_storage(Call) ->
     AccountId = whapps_call:account_id(Call),
     {Year, Month, _} = erlang:date(),
-    FaxDb = kazoo_modb:get_modb(AccountId, Year, Month),
+    AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
+    FaxDb = wh_util:format_account_id(AccountMODb, 'encoded'),
     FaxId = <<(wh_util:to_binary(Year))/binary
               ,(wh_util:pad_month(Month))/binary
               ,"-"
@@ -322,10 +324,13 @@ maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
                     FaxSettings = wh_json:get_value(<<"fax_settings">>, JObj),
                     update_fax_settings(Call, FaxSettings);
                 'false' ->
-                    lager:debug("no settings for local fax")
+                    lager:debug("no settings for local fax"),
+                    update_fax_settings(Call, wh_json:new())
             end;
         {'error', _} ->
-            lager:debug("no settings for local fax - missing account")
+            lager:debug("no settings for local fax - missing account"),
+            update_fax_settings(Call, wh_json:new())
+
     end,
     State.
 
@@ -357,6 +362,7 @@ build_fax_settings(Call, JObj) ->
        ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
        ,{<<"Callee-ID-Name">>, wh_util:to_binary(
            wh_json:get_first_defined([<<"caller_name">>,<<"name">>], JObj))}
+       ,{<<"Fax-DocId">>, whapps_call:kvs_fetch(<<"Fax-DocId">>, Call) }
       ]).
 
     
@@ -449,6 +455,13 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                            ," " , wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)
                            ," UTC"
                           ]),
+    <<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxDocId,
+    CdrId = <<(wh_util:to_binary(Year))/binary
+              ,(wh_util:pad_month(Month))/binary
+              ,"-"
+              ,(whapps_call:call_id(Call))/binary
+            >>,
+    
     Props = props:filter_undefined( 
              [{<<"name">>, Name}
              ,{<<"to_number">>, whapps_call:request_user(Call)}
@@ -460,7 +473,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
              ,{<<"faxbox_id">>, FaxBoxId}
              ,{<<"media_type">>, <<"tiff">>}
              ,{<<"call_id">>, whapps_call:call_id(Call)}
-             ,{<<"other_leg_call_id">>, whapps_call:other_leg_call_id(Call)}
+             ,{<<"cdr_doc_id">>, CdrId}
              ,{<<"_id">>, FaxDocId}
              ,{<<"rx_results">>, 
                wh_json:from_list(
@@ -474,7 +487,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                                        ,FaxDb
                                        ,[{'type', <<"fax">>}]
                                       ),
-    couch_mgr:save_doc(FaxDb, Doc).
+    kazoo_modb:save_doc(whapps_call:account_id(Call), Doc).
 
 
 -spec attachment_url(whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
