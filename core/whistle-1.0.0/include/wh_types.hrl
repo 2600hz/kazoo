@@ -183,5 +183,12 @@
 -type xml_thing() :: xml_el() | xml_text().
 -type xml_things() :: xml_els() | xml_texts().
 
+-record(wh_copy_doc, {source_dbname  :: ne_binary()
+                      ,source_doc_id  :: ne_binary()
+                      ,dest_dbname = 'undefined' :: api_binary()
+                      ,dest_doc_id = 'undefined' :: api_binary()
+                     }).
+-type copy_doc() :: #wh_copy_doc{}.
+
 -define(WHISTLE_TYPES_INCLUDED, 'true').
 -endif.

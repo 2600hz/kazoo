@@ -51,6 +51,7 @@
          ,admin_all_docs/1
          ,all_docs/2
          ,all_design_docs/2, admin_all_docs/2
+         ,copy_doc/2, move_doc/2
         ]).
 
 %% attachments
@@ -923,3 +924,15 @@ maybe_convert_dbname(DbName) ->
         'true' -> {'error', 'invalid_db_name'};
         'false' -> {'ok', wh_util:to_binary(DbName)}
     end.
+
+-spec copy_doc(copy_doc(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+copy_doc(CopySpec, Options) ->
+    couch_util:copy_doc(wh_couch_connections:get_server(), CopySpec, Options).
+
+-spec move_doc(copy_doc(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+move_doc(CopySpec, Options) ->
+    couch_util:move_doc(wh_couch_connections:get_server(), CopySpec, Options).
