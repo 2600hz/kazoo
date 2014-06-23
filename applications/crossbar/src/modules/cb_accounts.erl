@@ -302,8 +302,8 @@ validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
     lager:debug("using tree to allow move account"),
     AuthDoc = cb_context:auth_doc(Context),
     AuthId = wh_json:get_value(<<"account_id">>, AuthDoc),
-    MoveTree = get_tree(MoveAccount),
-    ToTree = get_tree(ToAccount),
+    MoveTree = crossbar_util:get_tree(MoveAccount),
+    ToTree = crossbar_util:get_tree(ToAccount),
     L = lists:foldl(
             fun(Id, Acc) ->
                 case lists:member(Id, ToTree) of
@@ -324,66 +324,16 @@ validate_move(_Type, _, _, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_tree(ne_binary()) -> ne_binaries().
-get_tree(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', JObj} -> wh_json:get_value(<<"pvt_tree">>, JObj, []);
-        {'error', _E} ->
-            lager:error("could not load ~s in ~s", [AccountId, AccountDb]),
-            []
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec move_account(cb_context:context(), ne_binary()) -> cb_context:context().
 move_account(Context, AccountId) ->
     Data = cb_context:req_data(Context),
     ToAccount = wh_json:get_binary_value(<<"to">>, Data),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case crossbar_util:move_account(AccountId, ToAccount) of
         {'error', _E} -> cb_context:add_system_error('datastore_fault', Context);
-        {'ok', JObj} ->
-            ToTree = lists:append(get_tree(ToAccount), [ToAccount]),
-            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
-            JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
-                                        ,{<<"pvt_previous_tree">>, PreviousTree}
-                                       ], JObj),
-            case couch_mgr:save_doc(AccountDb, JObj1) of
-                {'error', _E} ->
-                    cb_context:add_system_error('datastore_fault', Context);
-                {'ok', _} ->
-                     _ = replicate_account_definition(JObj1),
-                     move_service(Context, AccountId, ToTree)
-            end
+        {'ok', _} ->
+            load_account(AccountId, prepare_context(AccountId, Context))
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec move_service(cb_context:context(), ne_binary(), ne_binaries()) -> cb_context:context().
-move_service(Context, AccountId, NewTree) ->
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {'error', _E} -> cb_context:add_system_error('datastore_fault', Context);
-        {'ok', JObj} ->
-            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
-            JObj1 = wh_json:set_values([{<<"pvt_tree">>, NewTree}
-                                        ,{<<"pvt_dirty">>, 'true'}
-                                        ,{<<"pvt_previous_tree">>, PreviousTree}
-                                       ], JObj),
-            case couch_mgr:save_doc(?WH_SERVICES_DB, JObj1) of
-                {'error', _E} ->
-                    cb_context:add_system_error('datastore_fault', Context);
-                {'ok', _} ->
-                    load_account(AccountId, prepare_context(AccountId, Context))
-            end
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
