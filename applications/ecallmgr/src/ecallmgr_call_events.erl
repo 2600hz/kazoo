@@ -678,7 +678,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Billing-Seconds">>, props:get_value(<<"variable_billsec">>, Props)}
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
-     ,{<<"Fax-Info">>, wh_json:from_list(fax_specific(Props))}
+     ,{<<"Fax-Info">>, maybe_fax_specific(Props)}     
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -736,6 +736,13 @@ conference_specific(Props) ->
                     ];
                 _ -> Default
             end
+    end.
+
+-spec maybe_fax_specific(wh_proplist()) -> wh_proplist().
+maybe_fax_specific(Props) ->
+    case fax_specific(Props) of
+        [] -> 'undefined';
+        FaxProps -> wh_json:from_list(FaxProps)
     end.
 
 -spec fax_specific(wh_proplist()) -> wh_proplist().
