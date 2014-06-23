@@ -221,4 +221,4 @@ sendevent_custom(Node, SubClassName, Headers) ->
     gen_server:cast({'mod_kazoo', Node}, {'sendevent', 'CUSTOM',  SubClassName, Headers}).
 
 sendmsg(Node, UUID, Headers) ->
-    gen_server:cast({'mod_kazoo', Node}, {'sendmsg', UUID, Headers}).
+    gen_server:call({'mod_kazoo', Node}, {'sendmsg', UUID, Headers}).
