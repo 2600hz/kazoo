@@ -37,12 +37,14 @@
 -export([maybe_remove_attachments/1]).
 
 -export([create_auth_token/2]).
+-export([generate_year_month_sequence/3]).
 
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
 
 -type fails() :: 'error' | 'fatal'.
+-type year_month_tuple() :: {pos_integer(),pos_integer()}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -607,6 +609,13 @@ create_auth_token(Context, Method) ->
                     cb_context:add_system_error('invalid_credentials', Context)
             end
     end.
+
+-spec generate_year_month_sequence(year_month_tuple(), year_month_tuple(), binaries()) -> binaries().
+generate_year_month_sequence({Year, Month}, {Year, Month}, Range) -> Range ++ [{Year, Month}];
+generate_year_month_sequence({FromYear, 13}, {ToYear, ToMonth}, Range) ->
+    generate_year_month_sequence({FromYear+1, 1}, {ToYear, ToMonth}, Range);
+generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, Range) ->
+    generate_year_month_sequence({FromYear, FromMonth+1}, {ToYear, ToMonth}, Range ++ [{FromYear, FromMonth}]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
