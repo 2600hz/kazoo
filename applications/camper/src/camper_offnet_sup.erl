@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
@@ -6,12 +7,14 @@
 %%% @contributors
 %%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(camper_sup).
+-module(camper_offnet_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/0
+         ,new/2
+        ]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -20,13 +23,9 @@
 
 -define(CACHE_PROPS, ['new_node_flush'
                       ,'channel_reconnect_flush'
-                     ]).
+]).
 
--define(CHILDREN, [?CACHE_ARGS(?CAMPER_CACHE, ?CACHE_PROPS)
-                   ,?WORKER('camper_listener')
-                   ,?WORKER('camper_onnet_handler')
-                   ,?SUPER('camper_offnet_sup')
-                   ]).
+-define(CHILDREN, [?WORKER_TYPE('camper_offnet_handler', 'temporary')]).
 
 %%%===================================================================
 %%% API functions
@@ -43,6 +42,9 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
+-spec new(ne_binary(), whapps_call:call()) -> sup_startchild_ret().
+new(Exten, Call) -> supervisor:start_child(?MODULE, [[Exten, Call]]).
+
 %%%===================================================================
 %%% Supervisor callbacks
 %%%===================================================================
@@ -58,7 +60,9 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = 'one_for_one',
+    lager:info("Offnet supervisor started"),
+    process_flag('trap_exit', 'true'),
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
