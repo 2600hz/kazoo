@@ -122,7 +122,7 @@ handle_dtmf(Call, FinishKey, Timeout, N, OnFirstFun, Collected, DTMF) ->
 collect_decr_timeout(Call, Timeout, Start) ->
     case kzt_util:get_gather_pidref(Call) of
         {_Pid, _Ref} when is_pid(_Pid) andalso is_reference(_Ref) -> Timeout;
-        _ -> whapps_util:decr_timeout(Timeout, Start)
+        _ -> wh_util:decr_timeout(Timeout, Start)
     end.
 
 -spec collect_timeout(whapps_call:call(), wh_timeout()) -> wh_timeout().
@@ -623,12 +623,12 @@ update_offnet_timers(#dial_req{call_timeout='undefined'
                                ,call_time_limit=CallTimeLimit
                                ,start=Start
                                 }=OffnetReq) ->
-    OffnetReq#dial_req{call_time_limit=whapps_util:decr_timeout(CallTimeLimit, Start)
+    OffnetReq#dial_req{call_time_limit=wh_util:decr_timeout(CallTimeLimit, Start)
                        ,start=erlang:now()
                       };
 update_offnet_timers(#dial_req{call_timeout=CallTimeout
                                ,start=Start
                               }=OffnetReq) ->
-    OffnetReq#dial_req{call_timeout=whapps_util:decr_timeout(CallTimeout, Start)
+    OffnetReq#dial_req{call_timeout=wh_util:decr_timeout(CallTimeout, Start)
                        ,start=erlang:now()
                       }.

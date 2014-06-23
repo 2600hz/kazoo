@@ -1706,7 +1706,7 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                     %% if we were given the NoopId of the noop and this is not it, then keep waiting
                     do_collect_digits(Collect);
                 {'decrement'} ->
-                    do_collect_digits(Collect#wcc_collect_digits{after_timeout=whapps_util:decr_timeout(After, Start)});
+                    do_collect_digits(Collect#wcc_collect_digits{after_timeout=wh_util:decr_timeout(After, Start)});
                 {'ok', Digit} ->
                     %% DTMF received, collect and start interdigit timeout
                     Digits =:= <<>> andalso flush(Call),
@@ -1817,7 +1817,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
                 {Type, Event, Application} ->
                     {'ok', JObj};
                 _ ->
-                    wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_message(Call, Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -1861,7 +1861,7 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
                 {Type, Event, Application} ->
                     {'ok', JObj};
                 _ ->
-                    wait_for_application(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_application(Call, Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -1905,10 +1905,10 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                     {'ok', JObj};
                 _T ->
                     lager:debug("ignore ~p", [_T]),
-                    wait_for_headless_application(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_headless_application(Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end;
         _ ->
-            wait_for_headless_application(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+            wait_for_headless_application(Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'error', 'timeout'}
     end.
@@ -1936,13 +1936,13 @@ wait_for_dtmf(Timeout) ->
                 {<<"call_event">>, <<"DTMF">>} ->
                     {'ok', wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
-                    wait_for_dtmf(whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_dtmf(wh_util:decr_timeout(Timeout, Start))
             end;
         _E ->
             lager:debug("unexpected ~p", [_E]),
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_dtmf(whapps_util:decr_timeout(Timeout, Start))
+            wait_for_dtmf(wh_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'ok', <<>>}
     end.
@@ -1999,11 +1999,11 @@ wait_for_bridge(Timeout, Fun, Call) ->
                     lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
                     {Result, JObj};
                 _ ->
-                    wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
+                    wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
             end;
         %% dont let the mailbox grow unbounded if
         %%   this process hangs around...
-        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
+        _ -> wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
     after
         Timeout -> {'error', 'timeout'}
     end.
@@ -2143,7 +2143,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} -> {'ok', JObj};
                 {<<"call_event">>, <<"DTMF">>, _} -> {'dtmf', wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
-                    wait_for_application_or_dtmf(Application, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_application_or_dtmf(Application, wh_util:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -2172,7 +2172,7 @@ wait_for_fax(Timeout) ->
                     %% NOTE:
                     lager:debug("channel hungup but no end of fax, maybe its coming next..."),
                     wait_for_fax(5000);
-                _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))
+                _ -> wait_for_fax(wh_util:decr_timeout(Timeout, Start))
             end
     end.
 

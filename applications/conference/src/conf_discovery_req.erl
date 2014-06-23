@@ -168,7 +168,7 @@ wait_for_creation(Conference, After) ->
         {'ok', _}=Ok -> Ok;
         {'error', _} ->
             timer:sleep(1000),
-            wait_for_creation(Conference, whapps_util:decr_timeout(After, Start))
+            wait_for_creation(Conference, wh_util:decr_timeout(After, Start))
     end.
 
 -spec handle_search_resp(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
