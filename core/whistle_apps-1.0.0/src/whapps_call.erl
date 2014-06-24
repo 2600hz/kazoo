@@ -54,6 +54,7 @@
 -export([set_owner_id/2, owner_id/1]).
 -export([set_fetch_id/2, fetch_id/1]).
 -export([set_bridge_id/2, bridge_id/1]).
+-export([set_language/2, language/1]).
 
 -export([set_custom_channel_var/3
          ,set_custom_channel_vars/2
@@ -122,6 +123,7 @@
                       ,owner_id :: api_binary()                    %% The ID of the owner of this calling device, if any
                       ,fetch_id :: api_binary()                    %% The Fetch ID of the Call
                       ,bridge_id :: api_binary()                    %% The Bridge ID of the Call
+                      ,language :: api_binary()                     %% Language of the call to use
                       ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
                       ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
                       ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
@@ -234,6 +236,7 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                       ,owner_id=OldOwnerId
                                       ,fetch_id=OldFetchId
                                       ,bridge_id=OldBridgeId
+                                      ,language=OldLanguage
                                      }=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
     put('callid', CallId),
@@ -254,6 +257,7 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                      ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, OldOwnerId)
                      ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, CCVs, OldFetchId)
                      ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
+                     ,language = whapps_util:default_language(AccountId, OldLanguage)
                     }.
 
 -spec from_json(wh_json:object()) -> call().
@@ -299,6 +303,7 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
       ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
       ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, JObj, fetch_id(Call))
       ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, JObj, bridge_id(Call))
+      ,language = language(Call)
       ,app_name = wh_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
       ,app_version = wh_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
       ,ccvs = CCVs
@@ -363,6 +368,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
      ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
      ,{<<"Resource-Type">>, resource_type(Call)}
+     ,{<<"Language">>, language(Call)}
     ].
 
 -spec is_call(term()) -> boolean().
@@ -666,6 +672,15 @@ set_bridge_id(BridgeId, #whapps_call{}=Call) when is_binary(BridgeId) ->
 
 -spec bridge_id(call()) -> api_binary().
 bridge_id(#whapps_call{bridge_id=BridgeId}) -> BridgeId.
+
+-spec set_language(ne_binary(), call()) -> call().
+set_language(Language, #whapps_call{}=Call) when is_binary(Language) ->
+    Call#whapps_call{language=Language}.
+
+-spec language(call()) -> api_binary().
+language(#whapps_call{language='undefined', account_id=AccountId}) ->
+    whapps_util:default_language(AccountId);
+language(#whapps_call{language=Language}) -> Language.
 
 -spec set_custom_channel_var(term(), term(), call()) -> call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->

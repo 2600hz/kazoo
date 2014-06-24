@@ -38,7 +38,9 @@
 -export([add_aggregate_device/2]).
 -export([rm_aggregate_device/2]).
 -export([get_destination/3]).
--export([get_prompt/2, get_prompt/3]).
+-export([get_prompt/2, get_prompt/3
+         ,default_language/0, default_language/1, default_language/2
+        ]).
 -export([amqp_pool_send/2]).
 -export([amqp_pool_request/3, amqp_pool_request/4
          ,amqp_pool_request_custom/4, amqp_pool_request_custom/5
@@ -612,7 +614,10 @@ get_destination(JObj, Cat, Key) ->
 -spec get_prompt(ne_binary(), ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
 
 get_prompt(Name, Call) ->
-    get_prompt(Name, <<"en">>, Call).
+    get_prompt(Name
+               ,default_language(whapps_call:account_id(Call))
+               ,Call
+              ).
 
 get_prompt(Name, Lang, 'undefined') ->
     whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>);
@@ -620,6 +625,18 @@ get_prompt(Name, Lang, Call) ->
     DefaultPrompt = whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>),
     JObj = whapps_account_config:get(whapps_call:account_id(Call), ?PROMPTS_CONFIG_CAT),
     wh_json:get_value([Lang, Name], JObj, DefaultPrompt).
+
+-spec default_language() -> ne_binary().
+-spec default_language(ne_binary()) -> ne_binary().
+-spec default_language(ne_binary(), ne_binary()) -> ne_binary().
+default_language() ->
+    whapps_config:get(?PROMPTS_CONFIG_CAT, <<"default_language">>, <<"en-us">>).
+
+default_language(<<_/binary>> = AccountId) ->
+    whapps_account_config:get(AccountId, ?PROMPTS_CONFIG_CAT, <<"default_language">>, default_language()).
+
+default_language(<<_/binary>> = AccountId, Default) ->
+    whapps_account_config:get(AccountId, ?PROMPTS_CONFIG_CAT, <<"default_language">>, wh_util:to_lower_binary(Default)).
 
 -spec try_split(ne_binary(), wh_json:object()) ->
                        {ne_binary(), ne_binary()} |
