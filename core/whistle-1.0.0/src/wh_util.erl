@@ -20,6 +20,7 @@
         ]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1]).
+-export ([is_account_expired/1]).
 
 -export([try_load_module/1]).
 -export([shuffle_list/1]).
@@ -330,6 +331,22 @@ is_account_enabled(Account) ->
                 andalso wh_json:is_true(<<"enabled">>, JObj, 'true')
 
     end.
+
+-spec is_account_expired(api_binary()) -> boolean().
+is_account_expired('undefined') -> 'false';
+is_account_expired(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', Doc} ->
+            Now = wh_util:current_tstamp(),
+            Trial = wh_json:get_integer_value(<<"pvt_trial">>, Doc, Now+1),
+            Trial < Now;
+        {'error', R} ->
+            lager:debug("failed to check if expired token auth, ~p", [R]),
+            'false'
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
