@@ -89,10 +89,11 @@ resource_exists(?AUTHORIZE) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{auth_doc=Doc}=Context, ?AUTHORIZE) ->
     RequestNouns = cb_context:req_nouns(Context),
-    AccountId = case props:get_value(<<"accounts">>, RequestNouns) of
+    RequestedAccountId = case props:get_value(<<"accounts">>, RequestNouns) of
                     'undefined' -> wh_json:get_value(<<"account_id">>, Doc, <<>>);
                     [Else] -> Else
                 end,
-    OwnerId = wh_json:get_value(<<"owner_id">>, Doc, <<>>),
-    crossbar_util:response(crossbar_util:response_auth(Doc, AccountId, OwnerId), Context).
+    AccountId = wh_json:get_value(<<"account_id">>, Doc),
+    JObj = wh_json:set_value(<<"account_id">>, RequestedAccountId, Doc),
+    crossbar_util:response(crossbar_util:response_auth(JObj, AccountId), Context).
 
