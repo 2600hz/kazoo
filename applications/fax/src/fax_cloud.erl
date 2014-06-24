@@ -72,7 +72,8 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
             Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
             case ibrowse:send_req(wh_util:to_list(URL), Headers, 'get') of
                 {'ok', "200", _RespHeaders, RespBody} ->
-                    JObjs = wh_json:get_value(<<"jobs">>, wh_json:decode(RespBody), []),
+                    JObj = wh_json:decode(RespBody),
+                    JObjs = wh_json:get_value(<<"jobs">>, JObj, []),
                     _P = spawn(?MODULE, 'maybe_process_job', [JObjs, Authorization]),
                     lager:debug("maybe processing job in ~p", [_P]);
                 {'ok', "403", _RespHeaders, _RespBody} ->
@@ -93,14 +94,14 @@ maybe_process_job([], _Authorization) -> 'ok';
 maybe_process_job([JObj | JObjs], Authorization) ->
     JobId = wh_json:get_value(<<"id">>, JObj),
     TicketObj = fetch_ticket(JobId, Authorization),
-    TicketItem = wh_json:get_value([<<"print">>,<<"vendor_ticket_item">>], TicketObj, wh_json:new()),
+    TicketItem = wh_json:get_value([<<"print">>,<<"vendor_ticket_item">>], TicketObj, []),
     NumberObj = lists:foldl(fun(A,B) -> maybe_fax_number(A,B) end, wh_json:new(),TicketItem),
     PrinterId = wh_json:get_value(<<"printerid">>, JObj),
     FileURL = wh_json:get_value(<<"fileUrl">>, JObj),
     case wh_json:get_value(<<"Fax-Number">>, NumberObj) of
         'undefined' ->
             lager:debug("no fax number in job ticket"),
-            update_job_status(PrinterId, JobId, <<"ABORT">>);
+            update_job_status(PrinterId, JobId, <<"ABORTED">>);
         FaxNumber ->
             maybe_save_fax_document(JObj, JobId, PrinterId, FaxNumber, FileURL )
     end,
@@ -163,15 +164,21 @@ send_update_job_status(JobId, Status, Authorization) ->
                ,{"Content-Type","application/x-www-form-urlencoded"}
               ],
 
-    Fields = [{"jobid", wh_util:to_list(JobId)}
-              ,{"semantic_state_diff", wh_util:to_list(wh_json:encode(Status))}
+    Fields = [{"jobid", JobId}
+              ,{"semantic_state_diff", wh_json:encode(Status)}
              ],
 
     Body = props:to_querystring(Fields),
 
     case ibrowse:send_req(wh_util:to_list(?JOBCTL_URL), Headers, 'post', Body) of
         {'ok', "200", _RespHeaders, RespBody} ->
-            lager:debug("recv ~s", [wh_json:decode(RespBody)]);
+            JObj = wh_json:decode(RespBody),
+            case wh_json:is_true(<<"success">>, JObj) of
+                'true' ->
+                    lager:debug("cloud jobid ~s updated successfully", [JobId]);
+                'false' ->
+                    lager:error("error updating cloud jobid ~s : ~p", [JobId, JObj])
+            end;
         _Response ->
             lager:debug("unexpected response  sending update_job_status: ~p", [_Response])
     end.
@@ -265,7 +272,6 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                ,{<<"cloud_job">>, Job}
               ]),
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
-                              ,{<<"_id">>, JobId}
                               ,{<<"pvt_job_status">>, <<"queued">>}
                               ,{<<"pvt_created">>, wh_util:current_tstamp()}
                               ,{<<"attempts">>, 0}
