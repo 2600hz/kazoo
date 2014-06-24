@@ -89,22 +89,13 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{queue = 'undefined'} 
     {'noreply', S#state{queue = Q, n_try = 0}};
 handle_cast({'srv', Srv}, S) ->
     lager:info("Got pid: ~p", [Srv]),
-%    gen_listener:queue_name_async(Srv),
-%    gen_listener:cast(Srv, 'originate_offnet'),
-%    {'noreply', S#state{queue = gen_listener:queue_name(Srv), n_try = 0}};
     {'noreply', S};
-%handle_cast({'queue_name', Q}, S) ->
-%    lager:info("Got queue: ~s", [Q]),
-%    gen_listener:cast(self(), 'originate_offnet'),
-%    {'noreply', S#state{queue = Q, n_try = 0}};
 handle_cast('originate_offnet', State) ->
     Exten = State#state.exten,
     Call = State#state.stored_call,
     Q = State#state.queue,
     lager:info("making originate request"),
     originate(Exten, Call, Q),
-%    {_, Res} = timer:apply_after(timer:seconds(5), ?MODULE, originate, [Exten, Call]),
-%    lager:info("Timer return: ~p", [Res]),
     {'noreply', State#state{n_try = 1 + State#state.n_try}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -117,15 +108,6 @@ add_offnet(Exten, Call) ->
 
 originate(Exten, Call, Q) ->
     wapi_offnet_resource:publish_req(build_offnet_request(Exten, Call, Q)).
-%    case wait_for_stepswitch() of
-%        {<<"SUCCESS">>, _} ->
-%            lager:info("completed successful offnet request");
-%        {Cause, Code} ->
-%            Self = self(),
-%            lager:info("offnet request failed~nCall: ~p~n, Exten: ~s~n, Cause: ~s~n, Code: ~s~n", [Call, Exten, Cause, Code]),
-%            timer:apply_after(timer:minutes(2), 'gen_server', 'cast', [Self, {'originate_offnet', NTry + 1}]);
-%        Err -> lager:info("Unkonwn result: ~p", [Err])
-%    end.
 
 -spec build_offnet_request(wh_json:object(), whapps_call:call(), ne_binary()) -> wh_proplist().
 build_offnet_request(Exten, Call, Q) ->
@@ -135,22 +117,13 @@ build_offnet_request(Exten, Call, Q) ->
     MsgId = wh_util:rand_hex_binary(6),
     PresenceId = cf_attributes:presence_id(Call),
     AcctId = whapps_call:account_id(Call),
-%    ToDid = whapps_call:request_user(Call),
     CallId = wh_util:rand_hex_binary(8),
     props:filter_undefined([{<<"Resource-Type">>, <<"originate">>}
         ,{<<"Application-Name">>, <<"park">>}
-%        ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Exten}])}
         ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
         ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
         ,{<<"Outbound-Caller-ID-Name">>, CIDName}
         ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
-%        ,{<<"Endpoints">>, [wh_json:from_list([{<<"Invite-Format">>, <<"route">>}
-%                                               ,{<<"Route">>, Exten}
-%                                               ,{<<"To-DID">>, Exten}
-%                                               ,{<<"To-User">>, Exten}
-%                                               ,{<<"To-Realm">>, whapps_call:from_realm(Call)}
-%                                              ])
-%                           ]}
         ,{<<"Msg-ID">>, MsgId}
         ,{<<"Presence-ID">>, PresenceId}
         ,{<<"Account-ID">>, AcctId}
