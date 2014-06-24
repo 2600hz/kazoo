@@ -25,6 +25,7 @@
 -export([response_db_missing/1]).
 -export([response_db_fatal/1]).
 -export([response_auth/1
+         ,response_auth/2
          ,response_auth/3
         ]).
 -export([get_account_realm/1, get_account_realm/2]).
@@ -348,6 +349,7 @@ enable_account(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec response_auth(wh_json:object()) -> wh_json:object().
+-spec response_auth(wh_json:object(), ne_binary()) -> wh_json:object().
 -spec response_auth(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
 response_auth(JObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj, 'undefined'),
@@ -373,6 +375,10 @@ response_auth(JObj) ->
             ]
         )
     ).
+
+response_auth(JObj, AccountId) ->
+     UserId  = wh_json:get_value(<<"owner_id">>, JObj),
+     response_auth(JObj, AccountId, UserId).
 
 response_auth(JObj, AccountId, UserId) ->
     JObj1 = populate_resp(JObj, AccountId, UserId),
