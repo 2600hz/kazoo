@@ -225,32 +225,50 @@ get_service_props(Request, Account, ConfigCat) ->
                                        ,whapps_config:get(ConfigCat, <<"default_from">>, UnconfiguredFrom)),
     DefaultCharset = wh_json:get_ne_value(<<"template_charset">>, Request
                                        ,whapps_config:get(ConfigCat, <<"default_template_charset">>, <<>>)),
-    Tree = wh_json:get_value(<<"pvt_tree">>, Account, []),
-    [_, Module] = binary:split(ConfigCat, <<".">>),
-    case Tree =/= [] andalso couch_mgr:open_doc(?WH_ACCOUNTS_DB, lists:last(Tree)) of
+    JObj = find_notification_settings(
+             binary:split(ConfigCat, <<".">>)
+             ,wh_json:get_value(<<"pvt_tree">>, Account, [])
+            ),
+    [{<<"url">>, wh_json:get_value(<<"service_url">>, JObj, DefaultUrl)}
+     ,{<<"name">>, wh_json:get_value(<<"service_name">>, JObj, DefaultName)}
+     ,{<<"provider">>, wh_json:get_value(<<"service_provider">>, JObj, DefaultProvider)}
+     ,{<<"support_number">>, wh_json:get_value(<<"support_number">>, JObj, DefaultNumber)}
+     ,{<<"support_email">>, wh_json:get_value(<<"support_email">>, JObj, DefaultEmail)}
+     ,{<<"send_from">>, wh_json:get_value(<<"send_from">>, JObj, DefaultFrom)}
+     ,{<<"template_charset">>, wh_json:get_value(<<"template_charset">>, JObj, DefaultCharset)}
+     ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
+    ].
+
+-spec find_notification_settings(ne_binaries() | ne_binary(), ne_binaries()) -> wh_json:object().
+find_notification_settings(_, []) ->
+    lager:debug("unable to get service props, pvt_tree for the account was empty", []),
+    wh_json:new();
+find_notification_settings([_, Module], Tree) ->
+    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, lists:last(Tree)) of
+        {'error', _} -> wh_json:new();
         {'ok', JObj} ->
-            lager:debug("looking for notifications '~s' service info in: ~s", [Module, wh_json:get_value(<<"_id">>, JObj)]),
-            [{<<"url">>, wh_json:get_value([<<"notifications">>, Module, <<"service_url">>], JObj, DefaultUrl)}
-             ,{<<"name">>, wh_json:get_value([<<"notifications">>, Module, <<"service_name">>], JObj, DefaultName)}
-             ,{<<"provider">>, wh_json:get_value([<<"notifications">>, Module, <<"service_provider">>], JObj, DefaultProvider)}
-             ,{<<"support_number">>, wh_json:get_value([<<"notifications">>, Module, <<"support_number">>], JObj, DefaultNumber)}
-             ,{<<"support_email">>, wh_json:get_value([<<"notifications">>, Module, <<"support_email">>], JObj, DefaultEmail)}
-             ,{<<"send_from">>, wh_json:get_value([<<"notifications">>, Module, <<"send_from">>], JObj, DefaultFrom)}
-             ,{<<"template_charset">>, wh_json:get_value([<<"notifications">>, Module, <<"template_charset">>], JObj, DefaultCharset)}
-             ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
-            ];
-        _E ->
-            lager:debug("failed to find parent for notifications '~s' service info: ~p", [Module, _E]),
-            [{<<"url">>, DefaultUrl}
-             ,{<<"name">>, DefaultName}
-             ,{<<"provider">>, DefaultProvider}
-             ,{<<"support_number">>, DefaultNumber}
-             ,{<<"support_email">>, DefaultEmail}
-             ,{<<"send_from">>, DefaultFrom}
-             ,{<<"template_charset">>, DefaultCharset}
-             ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
-            ]
-    end.
+            lager:debug("looking for notifications '~s' service info in: ~s"
+                        ,[Module, wh_json:get_value(<<"_id">>, JObj)]),
+            case wh_json:get_ne_value([<<"notifications">>, Module], JObj) of
+                'undefined' -> maybe_find_deprecated_settings(Module, JObj);
+                Settings -> Settings
+            end
+    end;
+find_notification_settings(_ConfigCat, _) ->
+    lager:debug("unable to get service props, unexpected configuration category: ~p"
+                ,[_ConfigCat]),
+    wh_json:new().
+
+-spec maybe_find_deprecated_settings(ne_binary(), wh_json:object()) -> wh_json:object().
+maybe_find_deprecated_settings(<<"fax_inbound_to_email">>, JObj) ->
+    wh_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, wh_json:new());
+maybe_find_deprecated_settings(<<"fax_outbound_to_email">>, JObj) ->
+    wh_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, wh_json:new());
+maybe_find_deprecated_settings(<<"fax_outbound_error_to_email">>, JObj) ->
+    wh_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, wh_json:new());
+maybe_find_deprecated_settings(<<"fax_inbound_error_to_email">>, JObj) ->
+    wh_json:get_ne_value([<<"notifications">>, <<"fax_to_email">>], JObj, wh_json:new());
+maybe_find_deprecated_settings(_, _) -> wh_json:new().
 
 %%--------------------------------------------------------------------
 %% @public
