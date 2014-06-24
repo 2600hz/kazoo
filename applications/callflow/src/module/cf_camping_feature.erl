@@ -100,7 +100,7 @@ no_channels(#call_target{type = <<"offnet">>
             ,Call) ->
     NewCall = whapps_call:kvs_store('call_id', whapps_call:call_id(Call), Call),
     NewCall1 = whapps_call:kvs_store('control_queue', whapps_call:control_queue(Call), NewCall),
-    camper_offnet_handler:add_offnet(Number, NewCall1),
+    camper_offnet_handler:add_request(Number, NewCall1),
     cf_exe:stop(Call);
 no_channels(Target, Call) ->
     lager:info("Unknown target: ~s", [Target]),
