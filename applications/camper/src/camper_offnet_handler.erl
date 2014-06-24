@@ -17,9 +17,10 @@
     ,handle_info/2
     ,terminate/2
     ,code_change/3
+    ,handle_resource_response/2
 ]).
 
--export([add_offnet/2, handle_originate_ready/2]).
+-export([add_request/2]).
 
 -include("camper.hrl").
 
