@@ -108,7 +108,8 @@ get_list_entries(Data, Call) ->
     case couch_mgr:open_cache_doc(AccountDb, ListId) of
         {'ok', ListJObj} ->
             lager:info("match list loaded: ~s", [ListId]),
-            lists:map(fun get_list_entries_map/1, wh_json:to_proplist(ListJObj));
+            JObj = wh_json:get_ne_value(<<"entries">>, ListJObj),
+            lists:map(fun get_list_entries_map/1, wh_json:to_proplist(JObj));
         {'error', Reason} ->
             lager:info("failed to load match list box ~s, ~p", [ListId, Reason]),
             []
