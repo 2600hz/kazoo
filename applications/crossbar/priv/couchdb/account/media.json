@@ -3,7 +3,7 @@
     ,"language":"javascript"
     ,"views": {
         "crossbar_listing":{
-            "map":"function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type, 'language':doc.language || 'en'}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type, 'language':doc.language}); }"
         }
         ,"listing_private_media": {
             "map": "function(doc) { if (doc.pvt_type != 'private_media' || doc.pvt_deleted) return; emit([doc.media_type, doc._id], {'name': doc.name, 'media_type': doc.media_type}); }"
@@ -12,7 +12,7 @@
             "map":"function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; emit(doc.name, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type}); }"
         }
         ,"listing_by_language":{
-            "map":"function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; emit([doc.language || 'en', doc.name], null); }"
+            "map":"function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; emit([doc.language, doc.name], null); }"
         }
     }
     ,"filters": {
