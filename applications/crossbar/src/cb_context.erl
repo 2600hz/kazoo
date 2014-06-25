@@ -424,7 +424,9 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
 validate_request_data(SchemaJObj, Context) ->
     case jesse:validate_with_schema(SchemaJObj, wh_json:public_fields(req_data(Context))) of
         {'ok', JObj} ->
-            passed(set_doc(Context, JObj));
+            passed(
+              set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
+             );
         {'error', Errors} ->
             lager:debug("request data did not validate against ~s: ~p", [wh_json:get_value(<<"_id">>, SchemaJObj)
                                                                          ,Errors
