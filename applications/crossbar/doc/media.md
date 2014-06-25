@@ -6,7 +6,7 @@ Language: en-US
 
 Uploading media for custom music on hold, IVR prompts, or TTS (if a proper TTS engine is enabled).
 
-## Sample cURL Requests
+## Sample cURL Requests for account media
 
 ### Get a listing of media files
 
@@ -31,3 +31,23 @@ Uploading media for custom music on hold, IVR prompts, or TTS (if a proper TTS e
 ### Get the raw media file
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Accept: audio/mp3" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw -o {MEDIA_ID}.mp3
+
+## System Media
+
+Kazoo provides some default system media files for common things like voicemail prompts. These are accessible via the media Crossbar endpoint as well, if your user has superduper admin privileges. To manipulate those resources, simply omit the `/accounts/{ACCOUNT_ID}` from the URI.
+
+For example, to get a listing of all system media files:
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/media
+
+You can then get the "id" of the media file and manipulate it in a similar fashion as regular account media (including TTS if you have a TTS engine like iSpeech configured).
+
+## Languages
+
+Part of the schema of media files is a language attribute. It defaults to a `system_config/media` value for the `default_language` key (and is "en-us" by default). Properly defined media files can be searched for based on language using the basic filters provided by Crossbar:
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/media?filter_language=en
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/media?filter_language=en-US
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/media?filter_language=fr-FR
+
+The comparison is case-insensitive, but `en` and `en-US` are treated separately. If a media metadata object is missing a language attribute (on an older installation when system media was imported with no language field, say), use `key_missing=language` in the request.
