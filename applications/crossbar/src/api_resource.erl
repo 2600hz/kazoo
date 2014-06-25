@@ -427,20 +427,19 @@ content_types_accepted(CT, Req, Context) ->
                                 {ne_binaries(), cowboy_req:req(), cb_context:context()}.
 languages_provided(Req0, Context0) ->
     lager:debug("run: languages_provided"),
-    {Req1, Context1} =
-        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+    Context1 =
+        lists:foldr(fun({Mod, Params}, ContextAcc) ->
                             Event = api_util:create_event_name(Context0, <<"languages_provided.", Mod/binary>>),
-                            Payload = {ReqAcc, ContextAcc, Params},
-                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                            {ReqAcc1, ContextAcc1}
-                    end, {Req0, Context0}, cb_context:req_nouns(Context0)),
+                            Payload = [ContextAcc | Params],
+                            crossbar_bindings:fold(Event, Payload)
+                    end, Context0, cb_context:req_nouns(Context0)),
 
-    case cowboy_req:parse_header(<<"accept-language">>, Req1) of
-        {'ok', 'undefined', Req2} ->
-            {cb_context:languages_provided(Context1), Req2, Context1};
-        {'ok', [{A,_}|_]=_Accepted, Req2} ->
+    case cowboy_req:parse_header(<<"accept-language">>, Req0) of
+        {'ok', 'undefined', Req1} ->
+            {cb_context:languages_provided(Context1), Req1, Context1};
+        {'ok', [{A,_}|_]=_Accepted, Req1} ->
             lager:debug("adding first accept-lang header language: ~s", [A]),
-            {cb_context:languages_provided(Context1) ++ [A], Req2, Context1}
+            {cb_context:languages_provided(Context1) ++ [A], Req1, Context1}
     end.
 
 charsets_provided(_Req, _Context) ->
