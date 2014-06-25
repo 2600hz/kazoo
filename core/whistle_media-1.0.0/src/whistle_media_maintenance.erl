@@ -26,7 +26,7 @@ migrate() ->
 
 -spec refresh() -> 'ok'.
 refresh() ->
-    couch_mgr:revise_docs_from_folder(?WH_MEDIA_DB, 'whistle_media', "views"),
+    couch_mgr:revise_doc_from_file(?WH_MEDIA_DB, 'crossbar', "account/media.json"),
     'ok'.
 
 migrate_system_config(ConfigId) ->
