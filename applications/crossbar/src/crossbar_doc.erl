@@ -268,10 +268,17 @@ load_view(#load_view_params{view=View
            | props:delete_keys(['startkey', 'limit'], Options)
           ]),
 
-    ViewOptions =
+    IncludeOptions =
         case HasFilter of
             'true' -> ['include_docs' | props:delete('include_docs', DefaultOptions)];
             'false' -> DefaultOptions
+        end,
+
+    ViewOptions =
+        case props:get_first_defined(['reduce', 'group', 'group_level'], IncludeOptions) of
+            'undefined' -> IncludeOptions;
+            'false' -> IncludeOptions;
+            _V -> props:delete('include_docs', IncludeOptions)
         end,
 
     case couch_mgr:get_results(Db, View, ViewOptions) of
@@ -868,8 +875,8 @@ handle_couch_mgr_errors('conflict', DocId, Context) ->
 handle_couch_mgr_errors('invalid_view_name', View, Context) ->
     lager:debug("loading view ~s from ~s failed: invalid view", [View, cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_missing_view', [{'details', wh_util:to_binary(View)}], Context);
-handle_couch_mgr_errors(Else, _, Context) ->
-    lager:debug("operation failed: ~p", [Else]),
+handle_couch_mgr_errors(Else, _View, Context) ->
+    lager:debug("operation failed: ~p on ~p", [Else, _View]),
     try wh_util:to_binary(Else) of
         Reason -> cb_context:add_system_error('datastore_fault', [{'details', Reason}], Context)
     catch
