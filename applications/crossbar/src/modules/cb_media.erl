@@ -99,6 +99,7 @@ allowed_methods(_MediaID, ?BIN_DATA) ->
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(?LANGUAGES, _Language) -> 'true';
 resource_exists(_, ?BIN_DATA) -> 'true'.
 
 -spec authorize(cb_context:context()) -> boolean().
@@ -196,6 +197,8 @@ validate(Context, ?LANGUAGES) ->
 validate(Context, MediaId) ->
     validate_media_doc(Context, MediaId, cb_context:req_verb(Context)).
 
+validate(Context, ?LANGUAGES, Language) ->
+    load_media_docs_by_langauge(Context, Language);
 validate(Context, MediaId, ?BIN_DATA) ->
     validate_media_binary(Context, MediaId, cb_context:req_verb(Context), cb_context:req_files(Context)).
 
@@ -434,16 +437,46 @@ load_available_languages(Context, _AccountId) ->
                            ,fun normalize_count_results/2
                           ).
 
-normalize_count_results(JObj, Acc) ->
-    lager:debug("count: ~p", [JObj]),
+normalize_count_results(JObj, []) ->
+    normalize_count_results(JObj, [wh_json:new()]);
+normalize_count_results(JObj, [Acc]) ->
     case wh_json:get_value(<<"key">>, JObj) of
         ['null'] ->
-            [wh_json:from_list([{<<"missing">>, wh_json:get_integer_value(<<"value">>, JObj)}]) | Acc];
+            [wh_json:set_value(<<"missing">>, wh_json:get_integer_value(<<"value">>, JObj), Acc)];
         [Lang] ->
-            [wh_json:from_list([{Lang, wh_json:get_integer_value(<<"value">>, JObj)}]) | Acc];
-        Lang ->
-            [wh_json:from_list([{Lang, wh_json:get_integer_value(<<"value">>, JObj)}]) | Acc]
+            [wh_json:set_value(Lang, wh_json:get_integer_value(<<"value">>, JObj), Acc)]
     end.
+
+load_media_docs_by_langauge(Context, <<"missing">>) ->
+    lager:debug("loading media files missing a language"),
+    load_media_docs_by_langauge(Context, 'null', cb_context:account_id(Context));
+load_media_docs_by_langauge(Context, Language) ->
+    lager:debug("loading media files in language ~p", [Language]),
+    load_media_docs_by_langauge(Context, Language, cb_context:account_id(Context)).
+
+load_media_docs_by_langauge(Context, Language, 'undefined') ->
+    crossbar_doc:load_view(<<"media/listing_by_language">>
+                           ,[{'startkey', [Language]}
+                             ,{'endkey', [Language, wh_json:new()]}
+                             ,{'reduce', 'false'}
+                             ,{'include_docs', 'false'}
+                            ]
+                           ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
+                           ,fun normalize_language_results/2
+                          );
+load_media_docs_by_langauge(Context, Language, _AccountId) ->
+    crossbar_doc:load_view(<<"media/listing_by_language">>
+                           ,[{'startkey', [Language]}
+                             ,{'endkey', [Language, wh_json:new()]}
+                             ,{'reduce', 'false'}
+                             ,{'include_docs', 'false'}
+                            ]
+                           ,Context
+                           ,fun normalize_language_results/2
+                          ).
+
+normalize_language_results(JObj, Acc) ->
+    [wh_json:get_value(<<"id">>, JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
