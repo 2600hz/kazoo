@@ -98,7 +98,8 @@
 %% Conference Discovery Request
 -define(DISCOVERY_REQ_HEADERS, [<<"Call">>]).
 -define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>
-                                         ,<<"Conference-Doc">> % ad-hoc conferencing
+                                         ,<<"Conference-Doc">>, <<"Play-Welcome">>
+                                         ,<<"Play-Welcome-Media">>
                                         ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}

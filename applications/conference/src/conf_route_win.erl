@@ -21,7 +21,7 @@ handle_req(JObj, _Options) ->
         {'ok', {Conference, Call}} ->
             start_participant(Conference, whapps_call:from_route_win(JObj, Call))
     end.
-            
+
 start_participant(Conference, Call) ->
     case conf_participant_sup:start_participant(Call) of
         {'ok', Participant} ->

@@ -21,13 +21,23 @@ handle_req(JObj, _Options) ->
             conf_participant:set_discovery_event(JObj, Srv),
             conf_participant:consume_call_events(Srv),
             whapps_call_command:answer(Call),
-            welcome_to_conference(Call, Srv, JObj);
+            maybe_welcome_to_conference(Call, Srv, JObj);
         _Else -> discovery_failed(Call, 'undefined')
+    end.
+
+-spec maybe_welcome_to_conference(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
+maybe_welcome_to_conference(Call, Srv, DiscoveryJObj) ->
+    case wh_json:get_atom_value(<<"Play-Welcome">>, DiscoveryJObj, 'true') of
+        'false' -> 'ok';
+        'true' -> welcome_to_conference(Call, Srv, DiscoveryJObj)
     end.
 
 -spec welcome_to_conference(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
 welcome_to_conference(Call, Srv, DiscoveryJObj) ->
-    whapps_call_command:prompt(<<"conf-welcome">>, Call),
+    case wh_json:get_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
+        'undefined' -> whapps_call_command:prompt(<<"conf-welcome">>, Call);
+        Media -> whapps_call_command:play(Media, Call)
+    end,
     maybe_collect_conference_id(Call, Srv, DiscoveryJObj).
 
 -spec maybe_collect_conference_id(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
