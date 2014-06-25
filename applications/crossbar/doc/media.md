@@ -79,3 +79,7 @@ To get the IDs of the media docs missing a language:
     ...
     "data":["media_id_1", "media_id_2",...]
     ...
+
+## Callflows
+
+Once you've assigned languages, you can use the [`language` callflow action](../../callflow/doc/language.md) to set the language for that call.
