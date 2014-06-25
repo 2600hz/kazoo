@@ -114,18 +114,22 @@ media_path(Path, Call) ->
 -spec get_prompt(ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
 -spec get_prompt(ne_binary(), ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
 
+get_prompt(Name, 'undefined') ->
+    get_prompt(Name, default_prompt_language(), 'undefined');
 get_prompt(Name, Call) ->
     get_prompt(Name
                ,prompt_language(whapps_call:account_id(Call))
                ,Call
               ).
 
+-define(PROMPT_KEY(Lang, Name), [<<"prompts">>, wh_util:to_lower_binary(Lang), Name]).
+
 get_prompt(Name, Lang, 'undefined') ->
-    whapps_config:get(?WHS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>);
+    whapps_config:get(?WHS_CONFIG_CAT, ?PROMPT_KEY(Lang, Name), <<"/system_media/", Name/binary>>);
 get_prompt(Name, Lang, Call) ->
-    DefaultPrompt = whapps_config:get(?WHS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>),
+    DefaultPrompt = whapps_config:get(?WHS_CONFIG_CAT,  ?PROMPT_KEY(Lang, Name), <<"/system_media/", Name/binary>>),
     JObj = whapps_account_config:get(whapps_call:account_id(Call), ?WHS_CONFIG_CAT),
-    wh_json:get_value([Lang, Name], JObj, DefaultPrompt).
+    wh_json:get_value(?PROMPT_KEY(Lang, Name), JObj, DefaultPrompt).
 
 -spec default_prompt_language() -> ne_binary().
 -spec default_prompt_language(api_binary()) -> ne_binary().
