@@ -14,9 +14,11 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,authorize/1
          ,validate/1, validate/2, validate/3
          ,content_types_provided/3
          ,content_types_accepted/3
+         ,languages_provided/1, languages_provided/2, languages_provided/3
          ,get/3
          ,put/1
          ,post/2, post/3
@@ -49,7 +51,9 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_provided.media">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.media">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.media">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.media">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.languages_provided.media">>, ?MODULE, 'languages_provided'),
     _ = crossbar_bindings:bind(<<"*.validate.media">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.get.media">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.media">>, ?MODULE, 'put'),
@@ -90,6 +94,20 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, ?BIN_DATA) -> 'true'.
 
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
+
+-spec authorize_media(cb_context:context(), req_nouns(), api_binary()) -> boolean().
+authorize_media(Context, [{<<"media">>, _}|_], 'undefined') ->
+    lager:debug("req is for media with no account id: ~p", [cb_modules_util:is_superduper_admin(Context)]),
+    cb_modules_util:is_superduper_admin(Context);
+authorize_media(Context, [{<<"media">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
+    lager:debug("simple_authz of /accounts/~s/media/*", [AccountId]),
+    cb_simple_authz:authorize(Context);
+authorize_media(_Context, _Nouns, _AccountId) ->
+    'false'.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -105,7 +123,7 @@ content_types_provided(Context, MediaId, ?BIN_DATA) ->
     content_types_provided(Context, MediaId, ?BIN_DATA, cb_context:req_verb(Context)).
 
 content_types_provided(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
-    Context1 = load_media_meta(MediaId, Context),
+    Context1 = load_media_meta(Context, MediaId),
     case cb_context:resp_status(Context1) of
         'success' ->
             JObj = cb_context:doc(Context1),
@@ -131,6 +149,25 @@ content_types_accepted_for_upload(Context, ?HTTP_POST) ->
     CTA = [{'from_binary', ?MEDIA_MIME_TYPES}],
     cb_context:set_content_types_accepted(Context, CTA);
 content_types_accepted_for_upload(Context, _Verb) ->
+    Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If you provide alternative languages, return a list of languages and optional
+%% quality value:
+%% [<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]
+%% @end
+%%--------------------------------------------------------------------
+-spec languages_provided(cb_context:context()) -> cb_context:context().
+languages_provided(Context) ->
+    lager:debug("langs/0", [Context]),
+    Context.
+languages_provided(Context, _Id) ->
+    lager:debug("langs/1 ~s", [_Id]),
+    Context.
+languages_provided(Context, _Id, _Path) ->
+    lager:debug("langs/2 ~s/~s", [_Id, _Path]),
     Context.
 
 %%--------------------------------------------------------------------
@@ -160,20 +197,20 @@ validate_media_docs(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
 validate_media_doc(Context, MediaId, ?HTTP_GET) ->
-    load_media_meta(MediaId, Context);
+    load_media_meta(Context, MediaId);
 validate_media_doc(Context, MediaId, ?HTTP_POST) ->
     validate_request(MediaId, Context);
 validate_media_doc(Context, MediaId, ?HTTP_DELETE) ->
-    load_media_meta(MediaId, Context).
+    load_media_meta(Context, MediaId).
 
 validate_media_binary(Context, MediaId, ?HTTP_GET, _Files) ->
     lager:debug("fetch media contents"),
-    load_media_binary(MediaId, Context);
+    load_media_binary(Context, MediaId);
 validate_media_binary(Context, _MediaId, ?HTTP_POST, []) ->
     Message = <<"please provide an media file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
 validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
-    Context1 = load_media_meta(MediaId, Context),
+    Context1 = load_media_meta(Context, MediaId),
     case cb_context:resp_status(Context1) of
         'success' ->
             CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
@@ -357,6 +394,16 @@ delete(Context, MediaID, ?BIN_DATA) ->
 %%--------------------------------------------------------------------
 -spec load_media_summary(cb_context:context()) -> cb_context:context().
 load_media_summary(Context) ->
+    load_media_summary(Context, cb_context:account_id(Context)).
+
+load_media_summary(Context, 'undefined') ->
+    lager:debug("loading system_config media"),
+    crossbar_doc:load_view(<<"system_media/crossbar_listing">>
+                           ,[]
+                           ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
+                           ,fun normalize_view_results/2
+                          );
+load_media_summary(Context, _AccountId) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -366,7 +413,12 @@ load_media_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_media_meta(ne_binary(), cb_context:context()) -> cb_context:context().
-load_media_meta(MediaId, Context) ->
+load_media_meta(Context, MediaId) ->
+    load_media_meta(Context, MediaId, cb_context:account_id(Context)).
+
+load_media_meta(Context, MediaId, 'undefined') ->
+    crossbar_doc:load(MediaId, cb_context:set_account_db(Context, ?WH_MEDIA_DB));
+load_media_meta(Context, MediaId, _AccountId) ->
     crossbar_doc:load(MediaId, Context).
 
 %%--------------------------------------------------------------------
@@ -408,9 +460,9 @@ normalize_view_results(JObj, Acc) ->
 %% Load the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_media_binary(path_token(), cb_context:context()) -> cb_context:context().
-load_media_binary(MediaId, Context) ->
-    Context1 = load_media_meta(MediaId, Context),
+-spec load_media_binary(cb_context:context(), path_token()) -> cb_context:context().
+load_media_binary(Context, MediaId) ->
+    Context1 = load_media_meta(Context, MediaId),
     case cb_context:resp_status(Context1) of
         'success' ->
             MediaMeta = wh_json:get_value([<<"_attachments">>], cb_context:doc(Context1), []),
