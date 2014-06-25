@@ -29,6 +29,7 @@
 
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
+-define(LANGUAGES, <<"languages">>).
 
 -define(MEDIA_MIME_TYPES, [{<<"audio">>, <<"x-wav">>}
                            ,{<<"audio">>, <<"wav">>}
@@ -74,8 +75,14 @@ init() ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+allowed_methods(?LANGUAGES) ->
+    [?HTTP_GET];
 allowed_methods(_MediaID) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
+allowed_methods(?LANGUAGES, _Language) ->
+    [?HTTP_GET];
 allowed_methods(_MediaID, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_POST].
 
@@ -184,6 +191,8 @@ languages_provided(Context, _Id, _Path) ->
 validate(Context) ->
     validate_media_docs(Context, cb_context:req_verb(Context)).
 
+validate(Context, ?LANGUAGES) ->
+    load_available_languages(Context);
 validate(Context, MediaId) ->
     validate_media_doc(Context, MediaId, cb_context:req_verb(Context)).
 
@@ -397,13 +406,44 @@ load_media_summary(Context) ->
 
 load_media_summary(Context, 'undefined') ->
     lager:debug("loading system_config media"),
-    crossbar_doc:load_view(<<"system_media/crossbar_listing">>
+    crossbar_doc:load_view(?CB_LIST
                            ,[]
                            ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
                            ,fun normalize_view_results/2
                           );
 load_media_summary(Context, _AccountId) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST
+                           ,[]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
+
+load_available_languages(Context) ->
+    load_available_languages(Context, cb_context:account_id(Context)).
+
+load_available_languages(Context, 'undefined') ->
+    crossbar_doc:load_view(<<"media/listing_by_language">>
+                           ,[{'group_level', 1}]
+                           ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
+                           ,fun normalize_count_results/2
+                          );
+load_available_languages(Context, _AccountId) ->
+    crossbar_doc:load_view(<<"media/listing_by_language">>
+                           ,[{'group_level', 1}]
+                           ,Context
+                           ,fun normalize_count_results/2
+                          ).
+
+normalize_count_results(JObj, Acc) ->
+    lager:debug("count: ~p", [JObj]),
+    case wh_json:get_value(<<"key">>, JObj) of
+        ['null'] ->
+            [wh_json:from_list([{<<"missing">>, wh_json:get_integer_value(<<"value">>, JObj)}]) | Acc];
+        [Lang] ->
+            [wh_json:from_list([{Lang, wh_json:get_integer_value(<<"value">>, JObj)}]) | Acc];
+        Lang ->
+            [wh_json:from_list([{Lang, wh_json:get_integer_value(<<"value">>, JObj)}]) | Acc]
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
