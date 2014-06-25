@@ -193,6 +193,7 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
                                      ,fun(_, V) -> wh_util:is_not_empty(V) end
                                     ),
+
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
 
 -spec caller_id_owner_attr(wh_json:object()) -> wh_json:object().

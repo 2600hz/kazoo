@@ -14,9 +14,9 @@ Any document can be amended with a "metaflows" top-level key; however, at the mo
 
 Inside the "metaflows" object should be a familiar couple of keys, plus a couple metaflows-specific options:
 
-* numbers: An object with keys that correspond to collected DTMF sequence after the binding_key is pressed
+* numbers: An object with keys that correspond to collected DTMF sequence after the binding_digit is pressed
 * patterns: An object with keys of regexes to match against the collected DTMF sequence
-* binding_key: DTMF to trigger a metaflow; defaults to '*'
+* binding_digit: DTMF to trigger a metaflow; defaults to '*'
 * digit_timeout_ms: how long to wait for another DTMF before processing the collected DTMFs
 * listen_on: restrict which leg of the call to listen on for DTMF
     * "self": listen for DTMF on the leg of the device/user with the metaflow
@@ -25,7 +25,7 @@ Inside the "metaflows" object should be a familiar couple of keys, plus a couple
 
 #### Numbers
 
-The keys in the _numbers_ object represent the DTMF sequence to match, minus the binding_key. If the caller presses '*234', the numbers object will be searched for a key of '234'.
+The keys in the _numbers_ object represent the DTMF sequence to match, minus the binding_digit. If the caller presses '*234', the numbers object will be searched for a key of '234'.
 
 The value of each key is the metaflow object to run on a match. It mirrors the callflow's action format:
 
@@ -46,7 +46,7 @@ The value of each key is the metaflow object to run on a match. It mirrors the c
 
 #### Patterns
 
-The keys in the _patterns_ object represent regular expressions to be matched against the collected DTMF sequence (minus the binding\_key as well). The collected DTMFs and the captures (if any) will be included in the _data_ payload.
+The keys in the _patterns_ object represent regular expressions to be matched against the collected DTMF sequence (minus the binding\_digit as well). The collected DTMFs and the captures (if any) will be included in the _data_ payload.
 
 First, an example _patterns_ object:
 
@@ -66,11 +66,11 @@ This regex will match 1 and any four digits (let's say 2001). The _data_ object 
 
 The callflow metaflow module, in this case, would look at the "captured" list and take the first element. Using that, it would look up a callflow and, if found, ask a callflow app to execute that extension's callflow against the call (why, I'm not sure yet, but it is there).
 
-#### Binding Key
+#### Binding Digit
 
 What DTMF triggers a metaflow collection? Typically this would be '*' or '#', but could ostensibly be any DTMF.
 
-    "binding_key":"*"
+    "binding_digit":"*"
 
 #### Digit Timeout
 
@@ -105,7 +105,7 @@ Remember, this "metaflows" object can be put on any account, callflow, user, or 
           ,"data":{}
         }
       }
-      ,"binding_key":"*"
+      ,"binding_digit":"*"
       ,"digit_timeout_ms":800
       ,"listen_on":"self"
     }
