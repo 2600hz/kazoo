@@ -47,7 +47,7 @@
                              ,{'type', <<"webhook">>}
                              ,{'id', <<"*">>}
                              ,'federate'
-                             ]}
+                            ]}
                    %% channel events that toggle presence lights
                    ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
                                                ,'CHANNEL_ANSWER'
