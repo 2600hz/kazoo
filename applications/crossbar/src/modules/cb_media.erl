@@ -101,11 +101,15 @@ authorize(Context) ->
 -spec authorize_media(cb_context:context(), req_nouns(), api_binary()) -> boolean().
 authorize_media(Context, [{<<"media">>, _}|_], 'undefined') ->
     lager:debug("req is for media with no account id: ~p", [cb_modules_util:is_superduper_admin(Context)]),
-    cb_modules_util:is_superduper_admin(Context);
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> 'true';
+        'false' -> {'halt', cb_context:add_system_error('forbidden', Context)}
+    end;
 authorize_media(Context, [{<<"media">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
     lager:debug("simple_authz of /accounts/~s/media/*", [AccountId]),
     cb_simple_authz:authorize(Context);
 authorize_media(_Context, _Nouns, _AccountId) ->
+    lager:debug("authz media: ~p ~p", [_Nouns, _AccountId]),
     'false'.
 
 %%--------------------------------------------------------------------
@@ -161,13 +165,10 @@ content_types_accepted_for_upload(Context, _Verb) ->
 %%--------------------------------------------------------------------
 -spec languages_provided(cb_context:context()) -> cb_context:context().
 languages_provided(Context) ->
-    lager:debug("langs/0", [Context]),
     Context.
 languages_provided(Context, _Id) ->
-    lager:debug("langs/1 ~s", [_Id]),
     Context.
 languages_provided(Context, _Id, _Path) ->
-    lager:debug("langs/2 ~s/~s", [_Id, _Path]),
     Context.
 
 %%--------------------------------------------------------------------
