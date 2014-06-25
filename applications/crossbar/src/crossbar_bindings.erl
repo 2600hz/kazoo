@@ -94,7 +94,11 @@ all(Res) when is_list(Res) ->
 
 -spec succeeded(map_results()) -> map_results().
 succeeded(Res) when is_list(Res) ->
-    kazoo_bindings:succeeded(Res, fun filter_out_failed/1).
+    Successes = kazoo_bindings:succeeded(Res, fun filter_out_failed/1),
+    case lists:keyfind('halt', 1, Successes) of
+        'false' -> Successes;
+        {'value', HaltTuple} -> [HaltTuple]
+    end.
 
 -spec failed(map_results()) -> map_results().
 failed(Res) when is_list(Res) ->
