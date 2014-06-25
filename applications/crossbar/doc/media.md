@@ -51,3 +51,31 @@ Part of the schema of media files is a language attribute. It defaults to a `sys
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/media?filter_language=fr-FR
 
 The comparison is case-insensitive, but `en` and `en-US` are treated separately. If a media metadata object is missing a language attribute (on an older installation when system media was imported with no language field, say), use `key_missing=language` in the request.
+
+### List languages available
+
+This request will return a list of languages found, as well as the counts of how many media files have that language defined:
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/media/languages
+    ...
+    "data": [{ "en": 3
+               ,"missing": 1
+             }
+            ],
+    ...
+
+Here, the "missing" key indicates how many media files have no associated language
+
+### List media files with specific language
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/media/languages/en
+    ...
+    "data":["media_id_1", "media_id_2",...]
+    ...
+
+To get the IDs of the media docs missing a language:
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/media/languages/missing
+    ...
+    "data":["media_id_1", "media_id_2",...]
+    ...
