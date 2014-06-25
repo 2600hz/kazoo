@@ -5,5 +5,8 @@
         "listing_by_language":{
             "map":"function(doc) { emit([doc.language || \"en\", doc._id], null); }"
         }
+        ,"crossbar_listing":{
+            "map":"function(doc) { emit(doc._id, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type, 'language':doc.language || 'en'}); }"
+        }
     }
 }
