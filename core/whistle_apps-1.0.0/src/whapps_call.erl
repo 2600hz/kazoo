@@ -99,9 +99,9 @@
 -define(DEFAULT_CALLER_ID_NUMBER, <<"0000000000">>).
 
 -record(whapps_call, {call_id :: api_binary()                       %% The UUID of the call
-                      ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,call_id_helper = fun default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                       ,control_q :: api_binary()                   %% The control queue provided on route win
-                      ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,control_q_helper = fun default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                       ,controller_q :: api_binary()                %%
                       ,caller_id_name = ?DEFAULT_CALLER_ID_NAME :: ne_binary()      %% The caller name
                       ,caller_id_number = ?DEFAULT_CALLER_ID_NUMBER :: ne_binary() %% The caller number
@@ -129,17 +129,17 @@
                       ,language :: api_binary()                     %% Language of the call to use
                       ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
                       ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
-                      ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
+                      ,custom_publish_fun :: whapps_custom_publish() | 'undefined'     %% A custom command used to publish whapps_call_command
                       ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that where provided with the route request
                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       ,other_leg_callid :: api_binary()
                       ,resource_type :: api_binary()                      %% from route_req
                       }).
 
--type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()) | 'undefined'.
-
 -type call() :: #whapps_call{}.
 -export_type([call/0]).
+
+-type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()) | 'undefined'.
 
 -define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #whapps_call.caller_id_name}
                        ,{<<"Caller-ID-Number">>, #whapps_call.caller_id_number}
@@ -581,7 +581,7 @@ switch_hostname(#whapps_call{switch_hostname=Srv}) ->
 set_switch_nodename(Srv, #whapps_call{}=Call) ->
     Call#whapps_call{switch_nodename=Srv}.
 
--spec switch_nodename(call()) -> ne_binary().
+-spec switch_nodename(call()) -> binary().
 switch_nodename(#whapps_call{switch_nodename=Srv}) ->
     Srv.
 
