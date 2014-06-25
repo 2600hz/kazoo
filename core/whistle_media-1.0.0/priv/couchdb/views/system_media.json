@@ -1,0 +1,9 @@
+{
+    "_id":"_design/system_media"
+    ,"language":"javascript"
+    ,"views": {
+        "listing_by_language":{
+            "map":"function(doc) { emit([doc.language || \"en\", doc._id], null); }"
+        }
+    }
+}
