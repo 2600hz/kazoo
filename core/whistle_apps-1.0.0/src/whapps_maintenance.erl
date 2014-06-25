@@ -244,6 +244,7 @@ refresh(?WH_CONFIG_DB) ->
     'ok';
 refresh(?WH_MEDIA_DB) ->
     couch_mgr:db_create(?WH_MEDIA_DB),
+    whistle_media_maintenance:refresh(),
     'ok';
 refresh(?WH_RATES_DB) ->
     couch_mgr:db_create(?WH_RATES_DB),

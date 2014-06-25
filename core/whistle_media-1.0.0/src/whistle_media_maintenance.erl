@@ -9,10 +9,12 @@
 
 -export([remove_empty_media_docs/1
          ,migrate/0
+         ,refresh/0
         ]).
 
 -include("whistle_media.hrl").
 
+-spec migrate() -> 'no_return'.
 migrate() ->
     io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?WHS_CONFIG_CAT]),
 
@@ -21,6 +23,11 @@ migrate() ->
     io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?WHS_CONFIG_CAT]),
     migrate_system_config(<<"media_mgr">>),
     'no_return'.
+
+-spec refresh() -> 'ok'.
+refresh() ->
+    couch_mgr:revise_docs_from_folder(?WH_MEDIA_DB, 'whistle_media', "views"),
+    'ok'.
 
 migrate_system_config(ConfigId) ->
     {'ok', ConfigJObj} = couch_mgr:open_doc(?WH_CONFIG_DB, ConfigId),
