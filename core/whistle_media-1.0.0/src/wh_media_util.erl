@@ -13,6 +13,10 @@
 -export([convert_stream_type/1]).
 -export([media_path/1, media_path/2]).
 -export([max_recording_time_limit/0]).
+-export([get_prompt/2, get_prompt/3
+         ,default_prompt_language/0, default_prompt_language/1
+         ,prompt_language/1, prompt_language/2
+        ]).
 
 -include("whistle_media.hrl").
 
@@ -100,3 +104,48 @@ media_path(Path, AccountId) when is_binary(AccountId) ->
     end;
 media_path(Path, Call) ->
     media_path(Path, whapps_call:account_id(Call)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_prompt(ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
+-spec get_prompt(ne_binary(), ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
+
+get_prompt(Name, Call) ->
+    get_prompt(Name
+               ,prompt_language(whapps_call:account_id(Call))
+               ,Call
+              ).
+
+get_prompt(Name, Lang, 'undefined') ->
+    whapps_config:get(?WHS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>);
+get_prompt(Name, Lang, Call) ->
+    DefaultPrompt = whapps_config:get(?WHS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>),
+    JObj = whapps_account_config:get(whapps_call:account_id(Call), ?WHS_CONFIG_CAT),
+    wh_json:get_value([Lang, Name], JObj, DefaultPrompt).
+
+-spec default_prompt_language() -> ne_binary().
+-spec default_prompt_language(api_binary()) -> ne_binary().
+default_prompt_language() ->
+    default_prompt_language(<<"en-us">>).
+default_prompt_language(Default) ->
+    wh_util:to_lower_binary(
+      whapps_config:get(?WHS_CONFIG_CAT, <<"default_language">>, Default)
+     ).
+
+-spec prompt_language(api_binary(), ne_binary()) -> ne_binary().
+prompt_language('undefined') -> default_prompt_language();
+prompt_language(<<_/binary>> = AccountId) ->
+    wh_util:to_lower_binary(
+      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, <<"default_language">>, default_prompt_language())
+     ).
+
+prompt_language('undefined', Default) ->
+    default_prompt_language(Default);
+prompt_language(<<_/binary>> = AccountId, Default) ->
+    wh_util:to_lower_binary(
+      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, <<"default_language">>, wh_util:to_lower_binary(Default))
+     ).

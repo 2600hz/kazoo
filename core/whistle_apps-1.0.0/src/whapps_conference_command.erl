@@ -53,9 +53,9 @@ search(Conference) ->
     end.
 
 -spec conference_search_filter(wh_json:objects(), ne_binary()) -> {'ok', wh_json:object()} | {'error', 'not_found'}.
-conference_search_filter([], ConferenceId) -> 
+conference_search_filter([], ConferenceId) ->
     lager:info("recieved invalid conference search response for ~s", [ConferenceId]),
-    {'error', 'not_found'};    
+    {'error', 'not_found'};
 conference_search_filter([JObj|JObjs], ConferenceId) ->
     case wapi_conference:search_resp_v(JObj) of
         'true' ->
@@ -64,7 +64,7 @@ conference_search_filter([JObj|JObjs], ConferenceId) ->
         'false' ->
             conference_search_filter(JObjs, ConferenceId)
     end.
-        
+
 -spec deaf_participant(non_neg_integer(), whapps_conference:conference()) -> 'ok'.
 deaf_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"deaf_participant">>}
@@ -114,7 +114,7 @@ mute_participant(ParticipantId, Conference) ->
 prompt(Media, Conference) ->
     prompt(Media, 'undefined', Conference).
 prompt(Media, ParticipantId, Conference) ->
-    play(whapps_util:get_prompt(Media, 'undefined'), ParticipantId, Conference).
+    play(wh_media_util:get_prompt(Media, 'undefined'), ParticipantId, Conference).
 
 -spec play(ne_binary(), whapps_conference:conference()) -> 'ok'.
 -spec play(ne_binary(), non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.
