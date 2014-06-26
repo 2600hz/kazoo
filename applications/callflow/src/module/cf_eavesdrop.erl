@@ -45,22 +45,17 @@ handle(Data, Call) ->
         end,
     cf_exe:stop(Call).
 
+-spec fields_to_check() -> wh_proplist().
+fields_to_check() ->
+    [{<<"approved_device_id">>, fun(Id, Call) -> Id == whapps_call:authorizing_id(Call) end}
+     ,{<<"approved_user_id">>, fun cf_util:caller_belongs_to_user/2}
+     ,{<<"approved_group_id">>, fun cf_util:caller_belongs_to_group/2}
+    ].
+
+
 -spec maybe_allowed_to_eavesdrop(wh_json:object(), whapps_call:call()) -> boolean().
 maybe_allowed_to_eavesdrop(Data, Call) ->
-    case wh_json:get_value(<<"approved_device_id">>, Data) of
-        'undefined' ->
-            case wh_json:get_value(<<"approved_user_id">>, Data) of
-                'undefined' ->
-                    case wh_json:get_value(<<"approved_group_id">>, Data) of
-                        'undefined' -> 'true';
-                        GroupId -> cf_util:caller_belongs_to_group(GroupId, Call)
-                    end;
-                UserId -> cf_util:caller_belongs_to_user(UserId, Call)
-            end;
-        DeviceId ->
-            %% Compare approved device_id with calling one
-            DeviceId == whapps_call:authorizing_id(Call)
-    end.
+    cf_util:check_value_of_fields(fields_to_check(), 'false', Data, Call).
 
 -spec eavesdrop_channel(ne_binaries(), whapps_call:call()) -> 'ok'.
 eavesdrop_channel(Usernames, Call) ->
@@ -81,10 +76,10 @@ eavesdrop_a_channel(Channels, Call) ->
         {[], []} ->
             lager:debug("no channels available to eavesdrop"),
             no_channels(Call);
-        {[], [RemoteUUID|_Remote]} ->
+        {[], [RemoteUUID | _Remote]} ->
             lager:debug("no calls on my media server, trying ~s", [RemoteUUID]),
             eavesdrop_call(RemoteUUID, Call);
-        {[LocalUUID|_Cs], _} ->
+        {[LocalUUID | _Cs], _} ->
             lager:debug("found a call (~s) on my media server", [LocalUUID]),
             eavesdrop_call(LocalUUID, Call)
     end.
@@ -107,34 +102,38 @@ sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
 -spec maybe_add_leg(wh_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}, wh_json:object()) ->
                                       {ne_binaries(), ne_binaries()}.
 maybe_add_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
+    UUID = wh_json:get_value(<<"uuid">>, Channel),
     case wh_json:get_value(<<"node">>, Channel) of
         MyMediaServer ->
-            case wh_json:get_value(<<"uuid">>, Channel) of
+            case UUID of
                 MyUUID ->
                     sort_channels(Channels, MyUUID, MyMediaServer, Acc);
-                _UUID ->
-                    sort_channels(Channels, MyUUID, MyMediaServer, {maybe_add_other_leg(Channel, Local), Remote})
+                _ ->
+                    sort_channels(Channels, MyUUID, MyMediaServer, {[UUID | Local], Remote})
             end;
         _OtherMediaServer ->
-            sort_channels(Channels, MyUUID, MyMediaServer, {Local, maybe_add_other_leg(Channel, Remote)})
-    end.
-
--spec maybe_add_other_leg(wh_json:object(), ne_binaries()) -> ne_binaries().
-maybe_add_other_leg(Channel, Legs) ->
-    case wh_json:get_value(<<"other_leg">>, Channel) of
-        'undefined' -> Legs;
-        Leg -> [Leg | Legs]
+            sort_channels(Channels, MyUUID, MyMediaServer, {Local, [UUID | Remote]})
     end.
 
 -spec eavesdrop_call(ne_binary(), whapps_call:call()) -> 'ok'.
 eavesdrop_call(UUID, Call) ->
-    _ = whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
-    case wait_for_eavesdrop(Call) of
-        {'error', _E} -> 'ok';
-        'ok' ->
-            lager:debug("caller is eavesdropping, waiting for hangup"),
-            whapps_call_command:wait_for_hangup(),
-            lager:debug("hangup recv")
+    whapps_call_command:answer(Call),
+    whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
+    lager:info("caller ~s is being eavesdropper", [whapps_call:caller_id_name(Call)]),
+    wait_for_eavesdrop_complete(),
+    whapps_call_command:hangup(Call).
+
+
+-spec wait_for_eavesdrop_complete() -> {'ok', wh_json:object()}.
+wait_for_eavesdrop_complete() ->
+    case whapps_call_command:receive_event('infinity') of
+        {'ok', JObj} ->
+            case whapps_util:get_event_type(JObj) of
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
+                {<<"error">>, <<"dialplan">>} -> {'ok', JObj};
+                _ -> wait_for_eavesdrop_complete()
+            end;
+        _ -> wait_for_eavesdrop_complete()
     end.
 
 -spec eavesdrop_cmd(ne_binary()) -> wh_proplist().
@@ -144,33 +143,6 @@ eavesdrop_cmd(TargetCallId) ->
      ,{<<"Enable-DTMF">>, 'true'}
     ].
 
--spec wait_for_eavesdrop(whapps_call:call()) ->
-                                'ok' |
-                                {'error', 'failed'} |
-                                {'error', 'timeout'}.
-wait_for_eavesdrop(Call) ->
-    case whapps_call_command:receive_event(10000) of
-        {'ok', Evt} ->
-            eavesdrop_event(Call, wh_util:get_event_type(Evt), Evt);
-        {'error', 'timeout'}=E ->
-            lager:debug("timed out"),
-            E
-    end.
-
--spec eavesdrop_event(whapps_call:call(), {ne_binary(), ne_binary()}, wh_json:object()) ->
-                             {'error', 'failed' | 'timeout'} |
-                             'ok'.
-eavesdrop_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
-    lager:debug("error in dialplan: ~s", [wh_json:get_value(<<"Error-Message">>, Evt)]),
-    {'error', 'failed'};
-eavesdrop_event(_Call, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}, _Evt) ->
-    lager:debug("channel bridged to ~s", [wh_json:get_value(<<"Other-Leg-Call-ID">>, _Evt)]);
-eavesdrop_event(_Call, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, _Evt) ->
-    lager:debug("channel died while waiting for eavesdrop"),
-    {'error', 'failed'};
-eavesdrop_event(Call, _Type, _Evt) ->
-    lager:debug("unhandled evt ~p", [_Type]),
-    wait_for_eavesdrop(Call).
 
 -spec find_sip_endpoints(wh_json:object(), whapps_call:call()) ->
                                 ne_binaries().

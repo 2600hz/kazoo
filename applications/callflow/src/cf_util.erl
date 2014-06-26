@@ -44,11 +44,13 @@
 -export([maybe_start_metaflows/2]).
 
 -export([caller_belongs_to_group/2
+         ,maybe_belongs_to_group/3
          ,caller_belongs_to_user/2
          ,find_endpoints/3
          ,find_channels/2
          ,find_user_endpoints/3
          ,find_group_endpoints/2
+         ,check_value_of_fields/4
         ]).
 
 %%--------------------------------------------------------------------
@@ -807,7 +809,11 @@ maybe_start_metaflow(Call, Endpoint) ->
 
 -spec caller_belongs_to_group(ne_binary(), whapps_call:call()) -> boolean().
 caller_belongs_to_group(GroupId, Call) ->
-    lists:member(whapps_call:authorizing_id(Call), find_group_endpoints(GroupId, Call)).
+    maybe_belongs_to_group(whapps_call:authorizing_id(Call), GroupId, Call).
+
+-spec maybe_belongs_to_group(ne_binary(), ne_binary(), whapps_call:call()) -> boolean().
+maybe_belongs_to_group(TargetId, GroupId, Call) ->
+    lists:member(TargetId, find_group_endpoints(GroupId, Call)).
 
 -spec caller_belongs_to_user(ne_binary(), whapps_call:call()) -> boolean().
 caller_belongs_to_user(UserId, Call) ->
@@ -860,6 +866,13 @@ find_channels(Usernames, Call) ->
         {'error', _E} ->
             lager:debug("failed to get channels: ~p", [_E]),
             []
+    end.
+
+-spec check_value_of_fields(wh_proplist(), boolean(), wh_json:object(), whapps_call:call()) -> boolean().
+check_value_of_fields(Perms, Def, Data, Call) ->
+    case lists:dropwhile(fun({K, F}) -> wh_json:get_value(K, Data) =:= 'undefined' end, Perms) of
+        [] -> Def;
+        [{K, F}|_] -> F(wh_json:get_value(K, Data), Call)
     end.
 
 
