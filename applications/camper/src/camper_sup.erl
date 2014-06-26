@@ -22,8 +22,7 @@
                       ,'channel_reconnect_flush'
                      ]).
 
--define(CHILDREN, [?CACHE_ARGS(?CAMPER_CACHE, ?CACHE_PROPS)
-                   ,?WORKER('camper_listener')
+-define(CHILDREN, [?WORKER('camper_listener')
                    ,?WORKER('camper_onnet_handler')
                    ,?SUPER('camper_offnet_sup')
                    ]).

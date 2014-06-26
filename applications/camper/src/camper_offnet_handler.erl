@@ -2,7 +2,7 @@
 %%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%%
-%%%  Read `tryes`, 'try_interval' and 'stop_after' from app config
+%%%  Read `tries`, 'try_interval' and 'stop_after' from app's config
 %%%  document.
 %%%
 %%%  Ring to offnet number, parks it and bridge with reqester.
@@ -29,9 +29,9 @@
 
 -include("camper.hrl").
 
--record(state, {exten, stored_call, queue, n_try, max_tryes, try_after, stop_timer, parked_call, offnet_ctl_q}).
+-record(state, {exten, stored_call, queue, n_try, max_tries, try_after, stop_timer, parked_call, offnet_ctl_q}).
 
--define(MK_CALL_BINDING(CALLID), {'callid', CALLID}, {'restrict_to', [<<"*">>]}).
+-define(MK_CALL_BINDING(CALLID), [{'callid', CALLID}, {'restrict_to', [<<"*">>]}]).
 
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_resource_response'}
@@ -60,7 +60,7 @@ start_link(Args) ->
 
 init([Exten, Call]) ->
     lager:info("Statred offnet handler(~p) for request ~s->~s", [self(), whapps_call:from_user(Call), Exten]),
-    MaxTryes = whapps_config:get(?CAMPER_CONFIG_CAT, <<"tryes">>, 10),
+    MaxTries = whapps_config:get(?CAMPER_CONFIG_CAT, <<"tries">>, 10),
     TryInterval = whapps_config:get(?CAMPER_CONFIG_CAT, <<"try_interval">>, timer:minutes(3)),
     StopAfter = whapps_config:get(?CAMPER_CONFIG_CAT, <<"stop_after">>, timer:minutes(31)),
     StopTimer = timer:apply_after(StopAfter, 'gen_listener', 'cast', [self(), 'stop_campering']),
@@ -68,7 +68,7 @@ init([Exten, Call]) ->
                   ,stored_call = Call
                   ,queue = 'undefined'
                   ,n_try = 0
-                  ,max_tryes = MaxTryes
+                  ,max_tries = MaxTries
                   ,stop_timer = StopTimer
                   ,try_after = TryInterval
                  }}.
@@ -107,10 +107,10 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{queue = 'undefined'} 
 handle_cast('count', State) ->
     lager:info("count"),
     NTry = State#state.n_try,
-    MaxTryes = State#state.max_tryes,
-    case NTry < MaxTryes of
+    MaxTries = State#state.max_tries,
+    case NTry < MaxTries of
         'true' ->
-            lager:info("making originate request(~p/~p)", [NTry + 1, MaxTryes]),
+            lager:info("making originate request(~p/~p)", [NTry + 1, MaxTries]),
             gen_listener:cast(self(), 'originate_park'),
             {'noreply', State#state{n_try = 1 + State#state.n_try}};
         'false' ->
@@ -278,7 +278,7 @@ handle_originate_ready(JObj, Props) ->
                     | wh_api:default_headers(gen_listener:queue_name(Srv), <<"dialplan">>, <<"originate_execute">>, ?APP_NAME, ?APP_VERSION)
             ],
             gen_listener:cast(Srv, {'offnet_ctl_queue', CtrlQ}),
-            gen_listener:add_binding(Srv, {'call', [?MK_CALL_BINDING(CallId)]}),
+            gen_listener:add_binding(Srv, {'call', ?MK_CALL_BINDING(CallId)}),
             wapi_dialplan:publish_originate_execute(Q, Prop);
         _ -> lager:info("unkown event: ~p", [JObj])
     end,

@@ -10,10 +10,8 @@
 
 -define(CAMPER_CONFIG_CAT, <<"camper">>).
 
--define(CAMPER_CACHE, 'camper_cache').
-
 -define(TIMEOUT, <<"timeout">>).
--define(DEFAULT_TIMEOUT, 15*60). % seconds
+-define(DEFAULT_TIMEOUT, 15*?SECONDS_IN_MINUTE).
 
 -define(CAMPER_HRL, 'true').
 -endif.

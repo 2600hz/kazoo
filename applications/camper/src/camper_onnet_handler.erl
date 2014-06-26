@@ -26,7 +26,7 @@
 -record('state', {'requests' :: dict()
                   ,'requestor_queues' :: dict()
                   ,'sipnames' :: dict()
-                  ,'acctdb' :: ne_binary()
+                  ,'account_db' :: ne_binary()
                  }
        ).
 
@@ -42,8 +42,8 @@ get_requestor_queues(#'state'{'requestor_queues' = Val}) ->
 get_sipnames(#'state'{'sipnames' = Val}) ->
     Val.
 
--spec get_acctdb(#'state'{}) -> dict().
-get_acctdb(#'state'{'acctdb' = Val}) ->
+-spec get_account_db(#'state'{}) -> dict().
+get_account_db(#'state'{'account_db' = Val}) ->
     Val.
 
 -spec set_requests(#'state'{}, dict()) -> #'state'{}.
@@ -55,12 +55,12 @@ set_requestor_queues(S, Val) ->
     S#'state'{'requestor_queues' = Val}.
 
 -spec add_request(ne_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
-add_request(AcctDb, AuthorizingId, Exten, Targets) ->
-    gen_server:cast(?MODULE, {'add_request', AcctDb, AuthorizingId, Exten, Targets}).
+add_request(AccountDb, AuthorizingId, Exten, Targets) ->
+    gen_server:cast(?MODULE, {'add_request', AccountDb, AuthorizingId, Exten, Targets}).
 
 -spec available_device(ne_binary(), ne_binary()) -> 'ok'.
-available_device(AcctId, SIPName) ->
-    gen_server:cast(?MODULE, {'available_device', AcctId, SIPName}).
+available_device(AccountId, SIPName) ->
+    gen_server:cast(?MODULE, {'available_device', AccountId, SIPName}).
 
 
 %%--------------------------------------------------------------------
@@ -120,10 +120,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'add_request',AcctDb, Dev, Exten, Targets}, GlobalState) ->
-    AcctId = wh_util:format_account_id(AcctDb, 'raw'),
+handle_cast({'add_request',AccountDb, Dev, Exten, Targets}, GlobalState) ->
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     Timeout = whapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT),
-    NewGlobal = with_state(AcctId
+    NewGlobal = with_state(AccountId
                           ,GlobalState
                           ,fun(Local) ->
                                #'state'{'requests' = dict:merge(fun(_, _, V2) -> V2 end
@@ -132,13 +132,13 @@ handle_cast({'add_request',AcctDb, Dev, Exten, Targets}, GlobalState) ->
                                                                )
                                         ,'sipnames' = dict:store(Exten, Targets, get_sipnames(Local))
                                         ,'requestor_queues' = maybe_update_queues(Targets, Dev, get_requestor_queues(Local))
-                                        ,'acctdb' = AcctDb
+                                        ,'account_db' = AccountDb
                                        }
                            end
                           ),
     {'noreply', NewGlobal};
-handle_cast({'available_device', AcctId, SIPName}, GlobalState) ->
-    NewGlobal = with_state(AcctId
+handle_cast({'available_device', AccountId, SIPName}, GlobalState) ->
+    NewGlobal = with_state(AccountId
                           ,GlobalState
                           ,fun(Local) ->
                                case dict:find(SIPName, get_requestor_queues(Local)) of
@@ -156,15 +156,15 @@ handle_cast(_Msg, State) ->
     {'noreply', State}.
 
 -spec with_state(ne_binary(), dict(ne_binary(), #'state'{}), fun((#'state'{}) -> #'state'{})) -> #'state'{}.
-with_state(AcctId, Global, F) ->
-    Local = case dict:find(AcctId, Global) of
+with_state(AccountId, Global, F) ->
+    Local = case dict:find(AccountId, Global) of
                 {'ok', S} -> S;
                 _ -> #'state'{'requests' = dict:new()
                               ,'requestor_queues' = dict:new()
                               ,'sipnames' = dict:new()
                              }
             end,
-    dict:store(AcctId, F(Local), Global).
+    dict:store(AccountId, F(Local), Global).
 
 -spec maybe_handle_request(ne_binary(), queue(), #'state'{}) -> #'state'{}.
 maybe_handle_request(SIPName, Q, Local) ->
@@ -189,7 +189,7 @@ handle_request(SIPName, Requestor, Local) ->
                     lager:debug("Request(~s->~s) expired", [Requestor, Exten]);
                 'false' ->
                     lager:debug("Originating call(~s->~s)", [Requestor, Exten]),
-                    originate_call(Requestor, Exten, get_acctdb(Local))
+                    originate_call(Requestor, Exten, get_account_db(Local))
             end,
             lager:debug("Clearing request"),
             clear_request(Requestor, Exten, Local);
@@ -199,9 +199,9 @@ handle_request(SIPName, Requestor, Local) ->
     end.
 
 -spec originate_call({ne_binary(), ne_binary()}, ne_binary(), ne_binary()) -> term().
-originate_call({Id, Type}, Exten, AcctDb) ->
-    Routines = [fun(C) -> whapps_call:set_account_db(AcctDb, C) end
-                ,fun(C) -> whapps_call:set_account_id(wh_util:format_account_id(AcctDb, 'raw'), C) end
+originate_call({Id, Type}, Exten, AccountDb) ->
+    Routines = [fun(C) -> whapps_call:set_account_db(AccountDb, C) end
+                ,fun(C) -> whapps_call:set_account_id(wh_util:format_account_id(AccountDb, 'raw'), C) end
                 ,fun(C) -> whapps_call:set_authorizing_id(Id, C) end
                 ,fun(C) -> whapps_call:set_authorizing_type(Type, C) end
                ],
