@@ -18,7 +18,7 @@ Uploading media for custom music on hold, IVR prompts, or TTS (if a proper TTS e
 
 ### Add the media binary file to the media meta data
 
-    curl -v -X POST -H "Context-Type: audio/mp3" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw --data-binary=@/path/to/file.mp3
+    curl -v -X POST -H "Content-Type: audio/mp3" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw --data-binary @/path/to/file.mp3
 
 ### Create a new TTS media document (requires iSpeech to be enabled)
 
