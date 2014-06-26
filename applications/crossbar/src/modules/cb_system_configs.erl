@@ -103,9 +103,12 @@ resource_exists(_Id, _Node) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context()) ->
+                      cb_context:context().
+-spec validate(cb_context:context(), path_token()) ->
+                      cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) ->
+                      cb_context:context().
 validate(Context) ->
     validate_system_configs(update_db(Context), cb_context:req_verb(Context)).
 validate(Context, Id) ->
@@ -115,13 +118,15 @@ validate(Context, Id) ->
 validate(Context, Id, Node) ->
     validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
 
--spec validate_system_configs(cb_context:context(), http_method()) -> cb_context:context().
+-spec validate_system_configs(cb_context:context(), http_method()) ->
+                                     cb_context:context().
 validate_system_configs(Context, ?HTTP_GET) ->
     summary(Context);
 validate_system_configs(Context, ?HTTP_PUT) ->
     create(Context).
 
--spec validate_system_config(cb_context:context(), path_token(), http_method(), ne_binary()) -> cb_context:context().
+-spec validate_system_config(cb_context:context(), path_token(), http_method(), ne_binary()) ->
+                                    cb_context:context().
 validate_system_config(Context, Id, ?HTTP_GET, Node) ->
     read(Id, Context, Node);
 validate_system_config(Context, Id, ?HTTP_POST, Node) ->
@@ -160,6 +165,8 @@ post(Context, _Id, Node) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) ->
+                    cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token()) ->
                     cb_context:context().
 delete(Context, _Id) ->
     Context1 = crossbar_doc:delete(Context),
@@ -266,7 +273,11 @@ update(_Id, _Node, Context, _Status) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(<<"system_configs/crossbar_listing">>, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(<<"system_configs/crossbar_listing">>
+                           ,[]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
