@@ -124,12 +124,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj) ->
             >>,
     io:format("moving doc ~s/~s to ~s/~s~n",[AccountDb, DocId, AccountMODb, FaxId]),
     kazoo_modb:create(AccountMODb),
-    CopySpec = #wh_copy_doc{source_dbname=AccountDb
-                            ,source_doc_id=DocId
-                            ,dest_dbname=FaxMODb
-                            ,dest_doc_id=FaxId
-                           },
-    case couch_mgr:move_doc(CopySpec, []) of
+    case couch_mgr:move_doc(AccountDb, DocId, FaxMODb, FaxId, []) of
         {'ok', _JObj} -> io:format("document ~s moved to ~s~n",[DocId, FaxId]);
         {'error', Error} -> io:format("error ~p moving document ~s to ~s~n",[Error, DocId, FaxId])
     end.

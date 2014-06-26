@@ -252,8 +252,8 @@ start_receive_fax(#state{call=Call
                         }=State) ->
     whapps_call:put_callid(Call),
     Storage = get_fax_storage(Call),
-    Props = [{<<"Fax-DocId">>, Storage#fax_storage.id}
-             ,{<<"Fax-Db">>, Storage#fax_storage.db}
+    Props = [{<<"Fax-Doc-ID">>, Storage#fax_storage.id}
+             ,{<<"Fax-Doc-DB">>, Storage#fax_storage.db}
             ],
     NewCall = whapps_call:kvs_store_proplist(Props, Call),
     NewState = maybe_update_fax_settings(State#state{storage=Storage, call=NewCall}),    
@@ -362,7 +362,8 @@ build_fax_settings(Call, JObj) ->
        ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
        ,{<<"Callee-ID-Name">>, wh_util:to_binary(
            wh_json:get_first_defined([<<"caller_name">>,<<"name">>], JObj))}
-       ,{<<"Fax-DocId">>, whapps_call:kvs_fetch(<<"Fax-DocId">>, Call) }
+       ,{<<"Fax-Doc-ID">>, whapps_call:kvs_fetch(<<"Fax-Doc-ID">>, Call) }
+       ,{<<"Fax-Doc-DB">>, whapps_call:kvs_fetch(<<"Fax-Doc-DB">>, Call) }
       ]).
 
     

@@ -771,8 +771,8 @@ fax_specific(Props) ->
        ,{<<"Fax-Timezone">>, props:get_value(<<"variable_fax_timezone">>, Props)}
        ,{<<"Fax-Identity-Number">>, props:get_value(<<"variable_fax_ident">>, Props)}
        ,{<<"Fax-Identity-Name">>, props:get_value(<<"variable_fax_header">>, Props)}
-       ,{<<"Fax-DocId">>, props:get_value(<<"variable_fax_doc_id">>, Props)}
-       ,{<<"Fax-DocDb">>, props:get_value(<<"variable_fax_doc_database">>, Props)}      
+       ,{<<"Fax-Doc-ID">>, props:get_value(<<"variable_fax_doc_id">>, Props)}
+       ,{<<"Fax-Doc-DB">>, props:get_value(<<"variable_fax_doc_database">>, Props)}      
        ]).
 
 -spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().

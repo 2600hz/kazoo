@@ -240,9 +240,8 @@ create(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(<<Year:4/binary, Month:2/binary, "-", _/binary>> = Id, Context)
-  when is_integer(Year) andalso is_integer(Month) ->
-    crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month));
+read(<<Year:4/binary, Month:2/binary, "-", _/binary>> = Id, Context) ->
+    crossbar_doc:load(Id, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -393,9 +392,8 @@ get_incoming_view_and_filter(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_fax_binary(path_token(), cb_context:context()) -> cb_context:context().
-load_fax_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId, Context)
-  when is_integer(Year) andalso is_integer(Month) ->
-    do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, Year, Month));
+load_fax_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId, Context) ->
+    do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
 load_fax_binary(FaxId, Context) ->
     do_load_fax_binary(FaxId, Context).
 
