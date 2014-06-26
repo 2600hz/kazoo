@@ -868,13 +868,18 @@ find_channels(Usernames, Call) ->
             []
     end.
 
--spec check_value_of_fields(wh_proplist(), boolean(), wh_json:object(), whapps_call:call()) -> boolean().
+-spec check_value_of_fields(wh_proplist(), boolean(), wh_json:object(), whapps_call:call()) ->
+                                   boolean().
 check_value_of_fields(Perms, Def, Data, Call) ->
-    case lists:dropwhile(fun({K, F}) -> wh_json:get_value(K, Data) =:= 'undefined' end, Perms) of
+    case lists:dropwhile(fun({K, _F}) ->
+                                 wh_json:get_value(K, Data) =:= 'undefined'
+                         end
+                         ,Perms
+                        )
+    of
         [] -> Def;
         [{K, F}|_] -> F(wh_json:get_value(K, Data), Call)
     end.
-
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

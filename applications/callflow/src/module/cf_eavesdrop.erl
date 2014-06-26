@@ -52,8 +52,8 @@ fields_to_check() ->
      ,{<<"approved_group_id">>, fun cf_util:caller_belongs_to_group/2}
     ].
 
-
--spec maybe_allowed_to_eavesdrop(wh_json:object(), whapps_call:call()) -> boolean().
+-spec maybe_allowed_to_eavesdrop(wh_json:object(), whapps_call:call()) ->
+                                        boolean().
 maybe_allowed_to_eavesdrop(Data, Call) ->
     cf_util:check_value_of_fields(fields_to_check(), 'false', Data, Call).
 
@@ -62,8 +62,7 @@ eavesdrop_channel(Usernames, Call) ->
     case cf_util:find_channels(Usernames, Call) of
         [] -> no_channels(Call);
         Channels -> eavesdrop_a_channel(Channels, Call)
-    end,
-    'ok'.
+    end.
 
 -spec eavesdrop_a_channel(wh_json:objects(), whapps_call:call()) -> 'ok'.
 eavesdrop_a_channel(Channels, Call) ->
@@ -90,6 +89,7 @@ eavesdrop_a_channel(Channels, Call) ->
                            {ne_binaries(), ne_binaries()}.
 sort_channels(Channels, MyUUID, MyMediaServer) ->
     sort_channels(Channels, MyUUID, MyMediaServer, {[], []}).
+
 sort_channels([], _MyUUID, _MyMediaServer, Acc) -> Acc;
 sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
     lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [wh_json:get_value(<<"uuid">>, Channel)
@@ -97,10 +97,10 @@ sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
                                                         ,wh_json:get_value(<<"node">>, Channel)
                                                         ,wh_json:get_value(<<"other_leg">>, Channel)
                                                        ]),
-            maybe_add_leg(Channels, MyUUID, MyMediaServer, Acc, Channel).
+    maybe_add_leg(Channels, MyUUID, MyMediaServer, Acc, Channel).
 
 -spec maybe_add_leg(wh_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}, wh_json:object()) ->
-                                      {ne_binaries(), ne_binaries()}.
+                           {ne_binaries(), ne_binaries()}.
 maybe_add_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
     UUID = wh_json:get_value(<<"uuid">>, Channel),
     case wh_json:get_value(<<"node">>, Channel) of
@@ -123,7 +123,6 @@ eavesdrop_call(UUID, Call) ->
     wait_for_eavesdrop_complete(),
     whapps_call_command:hangup(Call).
 
-
 -spec wait_for_eavesdrop_complete() -> {'ok', wh_json:object()}.
 wait_for_eavesdrop_complete() ->
     case whapps_call_command:receive_event('infinity') of
@@ -143,7 +142,6 @@ eavesdrop_cmd(TargetCallId) ->
      ,{<<"Enable-DTMF">>, 'true'}
     ].
 
-
 -spec find_sip_endpoints(wh_json:object(), whapps_call:call()) ->
                                 ne_binaries().
 find_sip_endpoints(Data, Call) ->
@@ -159,7 +157,8 @@ find_sip_endpoints(Data, Call) ->
             sip_users_from_endpoints([DeviceId], Call)
     end.
 
--spec sip_users_from_endpoints(ne_binaries(), whapps_call:call()) -> ne_binaries().
+-spec sip_users_from_endpoints(ne_binaries(), whapps_call:call()) ->
+                                      ne_binaries().
 sip_users_from_endpoints(EndpointIds, Call) ->
     lists:foldl(fun(EndpointId, Acc) ->
                         case sip_user_of_endpoint(EndpointId, Call) of

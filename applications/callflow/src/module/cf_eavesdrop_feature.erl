@@ -19,7 +19,6 @@
 %%% @contributors
 %%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
-
 -module(cf_eavesdrop_feature).
 
 -include("../callflow.hrl").
@@ -37,14 +36,16 @@
 handle(Data, Call) ->
     Exten = whapps_call:kvs_fetch('cf_capture_group', Call),
     Target = get_target_for_extension(Exten, Call),
-    EavesdropData = build_data(Target, Call),
     Table = fields_to_check(),
-    AllOk = cf_util:check_value_of_fields(Table, 'false', Data, Call) andalso maybe_correct_target(Target, Data, Call),
-    case AllOk of
+
+    case  cf_util:check_value_of_fields(Table, 'false', Data, Call)
+        andalso maybe_correct_target(Target, Data, Call)
+    of
         'true' ->
-            Flow = wh_json:from_list([{<<"data">>, EavesdropData}
+            Flow = wh_json:from_list([{<<"data">>, build_data(Target, Call)}
                                       ,{<<"module">>, <<"eavesdrop">>}
-                                      ,{<<"children">>, wh_json:new()}]),
+                                      ,{<<"children">>, wh_json:new()}
+                                     ]),
             cf_exe:branch(Flow, Call);
         'false' ->
             no_permission_to_eavesdrop(Call),
@@ -62,21 +63,28 @@ fields_to_check() ->
 
 -spec build_data(target(), whapps_call:call()) -> wh_json:object().
 build_data({'ok', TargetId, TargetType}, Call) ->
-    Target = case TargetType of
-                 <<"device">> -> [{<<"device_id">>, TargetId}];
-                 <<"user">> -> [{<<"user_id">>, TargetId}];
-                 _ ->
-                     lager:info("Unknown target's type(~s)", [TargetType]),
-                     []
-             end,
-    Permission = case whapps_call:authorizing_type(Call) of
-                     <<"device">> -> [{<<"approved_device_id">>, whapps_call:authorizing_id(Call)}];
-                     <<"user">> -> [{<<"approved_user_id">>, whapps_call:authorizing_id(Call)}]
-                 end,
-    wh_json:from_list(Target ++ Permission);
-build_data(_, _) ->
+    Target =
+        case TargetType of
+            <<"device">> -> [{<<"device_id">>, TargetId}];
+            <<"user">> -> [{<<"user_id">>, TargetId}];
+            _ ->
+                lager:info("Unknown target's type(~s)", [TargetType]),
+                []
+        end,
+    Permission =
+        case whapps_call:authorizing_type(Call) of
+            <<"device">> ->
+                [{<<"approved_device_id">>, whapps_call:authorizing_id(Call)}
+                 | Target
+                ];
+            <<"user">> ->
+                [{<<"approved_user_id">>, whapps_call:authorizing_id(Call)}
+                 | Target
+                ]
+        end,
+    wh_json:from_list(Permission);
+build_data('error', _Call) ->
     wh_json:new().
-
 
 -spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
 %% TODO: please convert to system_media file (say is not consistent on deployments)
@@ -84,7 +92,8 @@ no_permission_to_eavesdrop(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_say(<<"you have no permission to eavesdrop this call">>, Call).
 
--spec get_target_for_extension(ne_binary(), whapps_call:call()) -> {'ok', ne_binary(), ne_binary()} | 'error'.
+-spec get_target_for_extension(ne_binary(), whapps_call:call()) ->
+                                      target().
 get_target_for_extension(Exten, Call) ->
     case cf_util:lookup_callflow(Exten, whapps_call:account_id(Call)) of
         {'ok', Callflow, _} ->
@@ -95,7 +104,8 @@ get_target_for_extension(Exten, Call) ->
             'error'
     end.
 
--spec maybe_correct_target(target(), wh_json:object(), wh_json:object()) -> boolean().
+-spec maybe_correct_target(target(), wh_json:object(), whapps_call:call()) ->
+                                  boolean().
 maybe_correct_target(Target, Data, Call) ->
     case wh_json:get_value(<<"group_id">>, Data) of
         'undefined' ->
