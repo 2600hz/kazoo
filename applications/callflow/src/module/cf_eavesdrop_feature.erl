@@ -82,7 +82,7 @@ build_data(_, _) ->
 %% TODO: please convert to system_media file (say is not consistent on deployments)
 no_permission_to_eavesdrop(Call) ->
     whapps_call_command:answer(Call),
-    whapps_call_command:b_say(<<"you have no permission to eavesdrop this call">>, Call).
+    whapps_call_command:b_play(<<"system_media/eavesdrop-no_channels">>, Call).
 
 -spec get_target_for_extension(ne_binary(), whapps_call:call()) -> {'ok', ne_binary(), ne_binary()} | 'error'.
 get_target_for_extension(Exten, Call) ->
