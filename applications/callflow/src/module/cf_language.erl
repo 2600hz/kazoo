@@ -24,6 +24,6 @@
 handle(Data, Call) ->
     Lang = wh_json:get_value(<<"language">>, Data),
     lager:info("setting call's language to '~s'", [Lang]),
-    Call1 = whapps_call:set_language(Call, Lang),
+    Call1 = whapps_call:set_language(Lang, Call),
     cf_exe:set_call(Call1),
     cf_exe:continue(Call1).
