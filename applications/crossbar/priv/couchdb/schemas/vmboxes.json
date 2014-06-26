@@ -161,7 +161,7 @@
                "timestamp":{
                   "name":" Timestamp (messages)",
                   "description":"The UTC timestamp, in gregorian seconds, that the voicemail was left on",
-                  "type":"string"
+                  "type":"integer"
                },
                "from":{
                   "name":"From (messages)",
