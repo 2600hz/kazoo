@@ -27,7 +27,7 @@ handle_req(JObj, _Options) ->
 
 -spec maybe_welcome_to_conference(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
 maybe_welcome_to_conference(Call, Srv, DiscoveryJObj) ->
-    case wh_json:get_atom_value(<<"Play-Welcome">>, DiscoveryJObj, 'true') of
+    case wh_json:is_true(<<"Play-Welcome">>, DiscoveryJObj, 'true') of
         'false' -> 'ok';
         'true' -> welcome_to_conference(Call, Srv, DiscoveryJObj)
     end.

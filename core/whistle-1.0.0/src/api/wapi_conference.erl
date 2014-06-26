@@ -104,7 +104,9 @@
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}
                               ]).
--define(DISCOVERY_REQ_TYPES, [{<<"Moderator">>, fun wh_util:is_boolean/1}]).
+-define(DISCOVERY_REQ_TYPES, [{<<"Moderator">>, fun wh_util:is_boolean/1}
+                              ,{<<"Play-Welcome">>, fun wh_util:is_boolean/1}
+                             ]).
 
 %% Conference Discovery Request
 -define(DISCOVERY_RESP_HEADERS, [<<"Participant-ID">>]).
