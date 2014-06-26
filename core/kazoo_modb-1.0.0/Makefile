@@ -36,7 +36,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS) -o test/ -pa test/ $?
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*
@@ -49,7 +49,7 @@ eunit: compile-test
 	erl -noshell $(PA) \
 	-pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
 
-dialyze: 
+dialyze:
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
                 $(PA) --plt $(ROOT)/.platform_dialyzer.plt \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs

@@ -1069,16 +1069,12 @@ delete_mod_dbs(AccountId, Year, Month) ->
     case couch_mgr:db_delete(Db) of
         'true' ->
             lager:debug("removed account mod: ~s", [Db]),
-            {PrevYear, PrevMonth} = prev_year_month(Year, Month),
+            {PrevYear, PrevMonth} = kazoo_modb_util:prev_year_month(Year, Month),
             delete_mod_dbs(AccountId, PrevYear, PrevMonth);
         'false' ->
             lager:debug("failed to delete account mod: ~s", [Db]),
             'true'
     end.
-
--spec prev_year_month(wh_year(), wh_month()) -> {wh_year(), wh_month()}.
-prev_year_month(Year, 1) -> {Year-1, 12};
-prev_year_month(Year, Month) -> {Year, Month-1}.
 
 -spec delete_remove_from_accounts(cb_context:context()) -> cb_context:context().
 delete_remove_from_accounts(Context) ->
@@ -1099,18 +1095,5 @@ delete_remove_from_accounts(Context) ->
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
-
-prev_year_month_test() ->
-    {Year3, Month3} = {1776, 3},
-    {Year2, Month2} = prev_year_month(Year3, Month3),
-    {Year1, Month1} = prev_year_month(Year2, Month2),
-    {Year12, Month12} = prev_year_month(Year1, Month1),
-    {Year11, Month11} = prev_year_month(Year12, Month12),
-
-    ?assertEqual({1776, 3}, {Year3, Month3}),
-    ?assertEqual({1776, 2}, {Year2, Month2}),
-    ?assertEqual({1776, 1}, {Year1, Month1}),
-    ?assertEqual({1775, 12}, {Year12, Month12}),
-    ?assertEqual({1775, 11}, {Year11, Month11}).
 
 -endif.

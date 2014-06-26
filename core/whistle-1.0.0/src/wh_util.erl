@@ -232,7 +232,7 @@ format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
--spec pad_month(pos_integer()) -> ne_binary().
+-spec pad_month(wh_month()) -> ne_binary().
 pad_month(Month) when Month < 10 ->
     <<"0", (to_binary(Month))/binary>>;
 pad_month(Month) ->
@@ -241,9 +241,10 @@ pad_month(Month) ->
 -spec normalize_account_name(api_binary()) -> api_binary().
 normalize_account_name('undefined') -> 'undefined';
 normalize_account_name(AccountName) ->
-    << <<Char>> || <<Char>> <= wh_util:to_lower_binary(AccountName),
-                   (Char >= $a andalso Char =< $z)
-                       orelse (Char >= $0 andalso Char =< $9)
+    << <<Char>>
+       || <<Char>> <= wh_util:to_lower_binary(AccountName),
+          (Char >= $a andalso Char =< $z)
+              orelse (Char >= $0 andalso Char =< $9)
     >>.
 
 %%--------------------------------------------------------------------

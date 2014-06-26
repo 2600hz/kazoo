@@ -16,6 +16,7 @@
 -export([get_modb/1, get_modb/2, get_modb/3]).
 -export([maybe_archive_modb/1]).
 -export([refresh_views/1]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -26,14 +27,14 @@
 -spec get_results(ne_binary(), ne_binary(), wh_proplist()) ->
                          {'ok', wh_json:objects()} |
                          {'error', atom()}.
--spec get_results(ne_binary(), ne_binary(), wh_proplist(), integer()) ->
+-spec get_results(ne_binary(), ne_binary(), wh_proplist(), non_neg_integer()) ->
                          {'ok', wh_json:objects()} |
                          {'error', atom()}.
 get_results(Account, View, ViewOptions) ->
     get_results(Account, View, ViewOptions, 3).
 
-get_results(_Account, _View, _ViewOptions, 0) ->
-    {'error', 'retry_exceeded'};
+get_results(_Account, _View, _ViewOptions, Retry) when Retry =< 0 ->
+    {'error', 'retries_exceeded'};
 get_results(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
@@ -257,22 +258,13 @@ maybe_archive_modb(AccountMODb) ->
 
 -spec should_archive(ne_binary(), wh_year(), wh_month()) -> boolean().
 should_archive(AccountMODb, Year, Month) ->
-    case modb_year_month(AccountMODb) of
-        {Year, Month} -> 'false';
-        {ModbYear, ModbMonth} ->
+    case kazoo_modb_util:split_account_mod(AccountMODb) of
+        {_AccountId, Year, Month} -> 'false';
+        {_AccountId, ModbYear, ModbMonth} ->
             Months = (Year * 12) + Month,
             ModbMonths = (ModbYear * 12) + ModbMonth,
             (Months - ModbMonths) > whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6)
     end.
-
--spec modb_year_month(ne_binary()) -> {pos_integer(), pos_integer()}.
-modb_year_month(AccountMODb) ->
-    Size = byte_size(AccountMODb),
-    YearPos = {Size - 6, 4},
-    MonthPos = {Size -2, 2},
-    {wh_util:to_integer(binary:part(AccountMODb, YearPos))
-     ,wh_util:to_integer(binary:part(AccountMODb, MonthPos))
-    }.
 
 -spec archive_modb(ne_binary()) -> 'ok'.
 archive_modb(AccountMODb) ->
@@ -334,4 +326,3 @@ archive_modb_docs(File, Docs) ->
 -spec archive_modb_doc(file:io_device(), wh_json:object()) -> 'ok'.
 archive_modb_doc(File, Doc) ->
     'ok' = file:write(File, [wh_json:encode(Doc), $\n]).
-
