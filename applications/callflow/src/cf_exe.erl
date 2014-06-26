@@ -589,6 +589,7 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
             spawn_cf_module(CFModule, Data, Call)
     catch
         'error':'undef' ->
+            lager:debug("failed to find callflow module ~s", [CFModule]),
             cf_module_not_found(Call)
     end.
 
