@@ -760,7 +760,6 @@ create_auth_token(Context, Method) ->
                        ,{<<"restrictions">>, wh_json:get_value(<<"restrictions">>, Data)}
                        ,{<<"method">>, wh_util:to_binary(Method)}
                       ]),
-
             JObjToken = wh_doc:update_pvt_parameters(wh_json:from_list(Token)
                                                      ,wh_util:format_account_id(AccountId, 'encoded')
                                                      ,Token
