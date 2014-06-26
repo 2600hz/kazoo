@@ -254,6 +254,7 @@ handle_cast({'subscribe', #omnip_subscription{user=_U
                         ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O);
         {'error', 'not_found'} ->
+            maybe_update_mwi(S),
             lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1])
     end,
     ets:insert(table_id(), S),
@@ -313,6 +314,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec maybe_update_mwi(subscription()) -> 'ok'.
+maybe_update_mwi(#omnip_subscription{event = <<"message-summary">>
+                                     ,username=Username
+                                     ,realm=Realm
+                                     ,call_id=CallId}) ->
+    lager:debug("publishing message query for ~s@~s", [Username, Realm]),
+    Query = [{<<"Username">>, Username}
+             ,{<<"Realm">>, Realm}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Subscription-Call-ID">>, CallId}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wh_amqp_worker:cast('whapps_amqp_pool'
+                        ,Query
+                        ,fun wapi_notifications:publish_mwi_query/1
+                       );
+maybe_update_mwi(_) -> 'ok'.
+
 -spec start_expire_ref() -> reference().
 start_expire_ref() ->
     erlang:start_timer(?EXPIRE_SUBSCRIPTIONS, self(), ?EXPIRE_MESSAGE).
