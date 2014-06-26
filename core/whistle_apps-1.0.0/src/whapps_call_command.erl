@@ -848,11 +848,15 @@ park(Call) ->
 -spec b_prompt(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_prompt(ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 
-prompt(Prompt, Call) -> prompt(Prompt, <<"en">>, Call).
-prompt(Prompt, Lang, Call) -> play(wh_media_util:get_prompt(Prompt, Lang, Call), Call).
+prompt(Prompt, Call) ->
+    play(wh_media_util:get_prompt(Prompt, Call), Call).
+prompt(Prompt, Lang, Call) ->
+    play(wh_media_util:get_prompt(Prompt, Lang, Call), Call).
 
-b_prompt(Prompt, Call) -> b_prompt(Prompt, <<"en">>, Call).
-b_prompt(Prompt, Lang, Call) -> b_play(wh_media_util:get_prompt(Prompt, Lang, Call), Call).
+b_prompt(Prompt, Call) ->
+    b_play(wh_media_util:get_prompt(Prompt, Call), Call).
+b_prompt(Prompt, Lang, Call) ->
+    b_play(wh_media_util:get_prompt(Prompt, Lang, Call), Call).
 
 %%--------------------------------------------------------------------
 %% @public
