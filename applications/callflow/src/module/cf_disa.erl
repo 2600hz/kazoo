@@ -111,11 +111,29 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
                       ],
             {'ok', C} = cf_exe:get_call(Call),
             cf_exe:set_call(whapps_call:exec(Updates, C)),
-            cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call);
+            maybe_restrict_call(Data, Call, Number, Flow);
         _ ->
             lager:info("failed to find a callflow to satisfy ~s", [Number]),
             _ = whapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
             allow_dial(Data, Call, Retries - 1, Interdigit)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_restrict_call(wh_json:object(), whapps_call:call(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_restrict_call(Data, Call, Number, Flow) ->
+    case should_restrict_call(Data, Call, Number) of
+        'true' ->
+            lager:info("disa is restricted from making this call, terminate", []),
+            _ = whapps_call_command:answer(Call),
+            _ = whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
+            _ = whapps_call_command:queued_hangup(Call),
+            'ok';
+        'false' ->
+            cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call)
     end.
 
 -spec maybe_update_caller_id(wh_json:object(), whapps_call:call()) -> 'ok'.
@@ -233,3 +251,32 @@ maybe_get_account_external_number(Number, Name, Account, Call) ->
 -spec is_valid_caller_id(api_binary(), whapps_call:call()) -> boolean().
 is_valid_caller_id('undefined', _) -> 'false';
 is_valid_caller_id(_, _) -> 'true'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec should_restrict_call(wh_json:object(), whapps_call:call(), ne_binary()) -> boolean().
+should_restrict_call(Data, Call, Number) ->
+    case wh_json:is_true(<<"enforce_call_restriction">>, Data, 'false') of
+        'false' -> 'false';
+        'true' -> should_restrict_call_by_account(Call, Number)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec should_restrict_call_by_account(whapps_call:call(), ne_binary()) -> boolean().
+should_restrict_call_by_account(Call, Number) ->
+    AccountId = whapps_call:account_id(Call),
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _} -> 'false';
+        {'ok', JObj} ->
+            Classification = wnm_util:classify_number(Number),
+            lager:info("classified number as ~p", [Classification]),
+            wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
+    end.
