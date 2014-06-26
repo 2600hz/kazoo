@@ -78,12 +78,12 @@ allowed_methods() ->
 
 allowed_methods(?LANGUAGES) ->
     [?HTTP_GET];
-allowed_methods(_MediaID) ->
+allowed_methods(_MediaId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(?LANGUAGES, _Language) ->
     [?HTTP_GET];
-allowed_methods(_MediaID, ?BIN_DATA) ->
+allowed_methods(_MediaId, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
@@ -246,7 +246,7 @@ validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-get(Context, _MediaID, ?BIN_DATA) ->
+get(Context, _MediaId, ?BIN_DATA) ->
     cb_context:add_resp_headers(Context
                                 ,[{<<"Content-Type">>
                                    ,wh_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>)
@@ -258,6 +258,11 @@ get(Context, _MediaID, ?BIN_DATA) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
+    put_media(Context, cb_context:account_id(Context)).
+
+put_media(Context, 'undefined') ->
+    put_media(cb_context:set_account_db(Context, ?WH_MEDIA_DB), <<"ignore">>);
+put_media(Context, _AccountId) ->
     JObj = cb_context:doc(Context),
     TTS = is_tts(JObj),
 
@@ -283,6 +288,11 @@ put(Context) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
 post(Context, MediaId) ->
+    post_media_doc(Context, MediaId, cb_context:account_id(Context)).
+
+post_media_doc(Context, MediaId, 'undefined') ->
+    post_media_doc(cb_context:set_account_db(Context, ?WH_MEDIA_DB), MediaId, <<"ignore">>);
+post_media_doc(Context, MediaId, _AccountId) ->
     JObj = cb_context:doc(Context),
     Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
     Voice = wh_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
@@ -303,8 +313,13 @@ post(Context, MediaId) ->
                ],
     lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
-post(Context, MediaID, ?BIN_DATA) ->
-    update_media_binary(MediaID, Context).
+post(Context, MediaId, ?BIN_DATA) ->
+    post_media_binary(Context, MediaId, cb_context:account_id(Context)).
+
+post_media_binary(Context, MediaId, 'undefined') ->
+    post_media_binary(cb_context:set_account_db(Context, ?WH_MEDIA_DB), MediaId, <<"ignore">>);
+post_media_binary(Context, MediaId, _AccountId) ->
+    update_media_binary(Context, MediaId).
 
 -spec maybe_save_tts(cb_context:context(), ne_binary(), ne_binary(), crossbar_status()) ->
                             cb_context:context().
@@ -344,11 +359,12 @@ maybe_update_tts(Context, Text, Voice, 'success') ->
                          ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
                          ,".wav"
                        >>,
-            _ = update_media_binary(MediaId
-                                    ,cb_context:set_resp_status(
+            _ = update_media_binary(cb_context:set_resp_status(
                                        cb_context:set_req_files(Context, [{FileName, FileJObj}])
                                        ,'error'
-                                      )),
+                                     )
+                                    ,MediaId
+                                   ),
             crossbar_doc:load(MediaId, Context)
     catch
         _E:_R ->
@@ -377,13 +393,14 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
                          ,".wav"
                        >>,
 
-            _ = update_media_binary(MediaId
-                                    ,cb_context:set_resp_status(
+            _ = update_media_binary(cb_context:set_resp_status(
                                        cb_context:set_req_files(Context
                                                                 ,[{FileName, FileJObj}]
                                                                )
-                                       ,'error'
-                                      )),
+                                      ,'error'
+                                     )
+                                    ,MediaId
+                                   ),
             crossbar_doc:load_merge(MediaId, wh_json:public_fields(JObj), Context)
     end;
 maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
@@ -392,10 +409,10 @@ maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
-delete(Context, _MediaID) ->
+delete(Context, _MediaId) ->
     crossbar_doc:delete(Context).
-delete(Context, MediaID, ?BIN_DATA) ->
-    delete_media_binary(MediaID, Context).
+delete(Context, MediaId, ?BIN_DATA) ->
+    delete_media_binary(MediaId, Context, cb_context:account_id(Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -560,7 +577,7 @@ load_media_binary(Context, MediaId) ->
 %%--------------------------------------------------------------------
 -spec update_media_binary(path_token(), cb_context:context()) ->
                                  cb_context:context().
-update_media_binary(MediaId, Context) ->
+update_media_binary(Context, MediaId) ->
     [{Filename, FileObj}] = cb_context:req_files(Context),
 
     Contents = wh_json:get_value(<<"contents">>, FileObj),
@@ -580,16 +597,18 @@ update_media_binary(MediaId, Context) ->
 %% Delete the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete_media_binary(path_token(), cb_context:context()) -> cb_context:context().
-delete_media_binary(MediaID, Context) ->
-    Context1 = crossbar_doc:load(MediaID, Context),
+-spec delete_media_binary(path_token(), cb_context:context(), api_binary()) -> cb_context:context().
+delete_media_binary(MediaId, Context, 'undefined') ->
+    delete_media_binary(MediaId, cb_context:set_account_db(Context, ?WH_MEDIA_DB), <<"ignore">>);
+delete_media_binary(MediaId, Context, _AccountId) ->
+    Context1 = crossbar_doc:load(MediaId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
             case wh_json:get_value([<<"_attachments">>, 1], cb_context:doc(Context1)) of
-                'undefined' -> crossbar_util:response_bad_identifier(MediaID, Context);
+                'undefined' -> crossbar_util:response_bad_identifier(MediaId, Context);
                 AttachMeta ->
                     [AttachmentID] = wh_json:get_keys(AttachMeta),
-                    crossbar_doc:delete_attachment(MediaID, AttachmentID, Context)
+                    crossbar_doc:delete_attachment(MediaId, AttachmentID, Context)
             end;
         _Status -> Context1
     end.
