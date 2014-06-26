@@ -79,7 +79,6 @@ build_data(_, _) ->
 
 
 -spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
-%% TODO: please convert to system_media file (say is not consistent on deployments)
 no_permission_to_eavesdrop(Call) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_play(<<"system_media/eavesdrop-no_channels">>, Call).
