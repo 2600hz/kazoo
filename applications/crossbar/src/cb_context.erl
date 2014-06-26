@@ -28,7 +28,8 @@
 
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
-         ,account_modb/1, account_modb/2, account_modb/3, set_account_modb/3, set_account_modb/4
+         ,account_modb/1, account_modb/2, account_modb/3
+         ,set_account_modb/3, set_account_modb/4
          ,account_realm/1
          ,account_doc/1
          ,auth_token/1, set_auth_token/2

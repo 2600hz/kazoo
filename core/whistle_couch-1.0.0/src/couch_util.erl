@@ -787,7 +787,7 @@ copy_doc(#server{}=Conn, CopySpec, Options) ->
             Props = [{<<"_id">>, DestDocId}],
             DestinationDoc = wh_json:set_values(Props,wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
             case save_doc(Conn, DestDbName, DestinationDoc, Options) of
-                {'ok', JObj} ->
+                {'ok', _JObj} ->
                     Attachments = wh_json:get_value(<<"_attachments">>, SourceDoc, wh_json:new()),
                     copy_attachments(Conn, CopySpec, wh_json:get_values(Attachments));
                 Error -> Error
@@ -796,8 +796,8 @@ copy_doc(#server{}=Conn, CopySpec, Options) ->
     end.
 
 -spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:json_strings()}) ->
-                                   {'ok', ne_binary()}
-                                 | {'error', any()}.
+                              {'ok', ne_binary()} |
+                              {'error', any()}.
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->
     #wh_copy_doc{dest_dbname = DestDbName
                  ,dest_doc_id = DestDocId
@@ -814,7 +814,7 @@ copy_attachments(#server{}=Conn, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
             ContentType = wh_json:get_value([<<"content_type">>], JObj),
             Opts = [{'headers', [{'content_type', wh_util:to_list(ContentType)}]}],
             case put_attachment(Conn, DestDbName, DestDocId, Key, Contents, Opts) of
-                {'ok', AttachmentDoc} ->
+                {'ok', _AttachmentDoc} ->
                     copy_attachments(Conn, CopySpec, {JObjs, Keys});
                 Error -> Error
             end;

@@ -375,7 +375,7 @@ incoming_summary(Context) ->
         Ctx -> Ctx
     end.
 
--spec get_incoming_view_and_filter(wh_json:object()) -> 
+-spec get_incoming_view_and_filter(wh_json:object()) ->
           {ne_binary(), api_binaries(), api_binaries()}.
 get_incoming_view_and_filter(JObj) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
@@ -441,8 +441,8 @@ outgoing_summary(Context) ->
                   ]};
             _Else ->
                 {?CB_LIST_BY_ACCOUNT
-                 ,[{'startkey', cb_context:account_id(Context)} 
-                   ,{'endkey', [cb_context:account_id(Context), wh_json:new()]} 
+                 ,[{'startkey', cb_context:account_id(Context)}
+                   ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
                    ,'include_docs'
                   ]}
         end,
@@ -468,19 +468,19 @@ normalize_incoming_view_results(JObj, Acc) ->
     [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
 
 -spec get_incoming_view_options(cb_context:context()) ->
-                                 {'ok', wh_proplist()} |
-                                 cb_context:context().
+                                       {'ok', wh_proplist()} |
+                                       cb_context:context().
 -spec get_incoming_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
-                                 {'ok', wh_proplist()} |
-                                 cb_context:context().
+                                       {'ok', wh_proplist()} |
+                                       cb_context:context().
 
 get_incoming_view_options(Context) ->
     get_incoming_view_options(Context, 'undefined', 'undefined').
 
 get_incoming_view_options(Context, 'undefined', SuffixKey) ->
-    get_incoming_view_options(Context, [], SuffixKey);    
+    get_incoming_view_options(Context, [], SuffixKey);
 get_incoming_view_options(Context, PrefixKey, 'undefined') ->
-    get_incoming_view_options(Context, PrefixKey, []);    
+    get_incoming_view_options(Context, PrefixKey, []);
 get_incoming_view_options(Context, PrefixKey, SuffixKey) ->
     TStamp =  wh_util:current_tstamp(),
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
@@ -537,4 +537,3 @@ get_modbs(Context, From, To) ->
     {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
     Range = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, []),
     [{'databases', [ wh_util:format_account_mod_id(AccountId, Year, Month) || {Year, Month} <- Range]}].
-

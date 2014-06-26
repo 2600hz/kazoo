@@ -67,13 +67,13 @@ maybe_migrate_private_media(AccountDb, JObj) ->
     DocId = wh_json:get_value(<<"id">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(AccountDb, DocId),
     migrate_private_media(AccountDb, Doc, wh_json:get_value(<<"media_type">>, Doc)).
-    
+
 
 migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
     _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, Doc)),
     'ok';
 migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
-  
+
 -spec migrate_faxes_to_modb(ne_binary()) -> 'ok'.
 -spec maybe_migrate_fax_to_modb(ne_binary(), wh_json:object()) -> 'ok'.
 -spec migrate_fax_to_modb(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -124,14 +124,12 @@ migrate_fax_to_modb(AccountDb, DocId, JObj) ->
             >>,
     io:format("moving doc ~s/~s to ~s/~s~n",[AccountDb, DocId, AccountMODb, FaxId]),
     kazoo_modb:create(AccountMODb),
-    CopySpec = #wh_copy_doc{
-                            source_dbname=AccountDb
+    CopySpec = #wh_copy_doc{source_dbname=AccountDb
                             ,source_doc_id=DocId
                             ,dest_dbname=FaxMODb
                             ,dest_doc_id=FaxId
-                            },
+                           },
     case couch_mgr:move_doc(CopySpec, []) of
         {'ok', _JObj} -> io:format("document ~s moved to ~s~n",[DocId, FaxId]);
         {'error', Error} -> io:format("error ~p moving document ~s to ~s~n",[Error, DocId, FaxId])
-    end,
-    'ok'.
+    end.
