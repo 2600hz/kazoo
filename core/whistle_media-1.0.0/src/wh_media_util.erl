@@ -112,24 +112,33 @@ media_path(Path, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_prompt(ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
--spec get_prompt(ne_binary(), ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
+-spec get_prompt(ne_binary(), api_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
 
 get_prompt(Name, 'undefined') ->
     get_prompt(Name, default_prompt_language(), 'undefined');
 get_prompt(Name, Call) ->
     get_prompt(Name
-               ,prompt_language(whapps_call:account_id(Call))
+               ,whapps_call:language(Call)
                ,Call
               ).
 
 -define(PROMPT_KEY(Lang, Name), [<<"prompts">>, wh_util:to_lower_binary(Lang), Name]).
 
 get_prompt(Name, Lang, 'undefined') ->
-    whapps_config:get(?WHS_CONFIG_CAT, ?PROMPT_KEY(Lang, Name), <<"/system_media/", Name/binary>>);
+    lager:debug("getting system prompt for '~s': lang '~s'", [Name, Lang]),
+    Prompt = whapps_config:get(?WHS_CONFIG_CAT, ?PROMPT_KEY(Lang, Name), <<"/system_media/", Name/binary>>),
+    lager:debug("systemp prompt selected: ~s", [Prompt]),
+    Prompt;
+get_prompt(Name, 'undefined', Call) ->
+    lager:debug("no language, getting default"),
+    get_prompt(Name, prompt_language(whapps_call:account_id(Call)), Call);
 get_prompt(Name, Lang, Call) ->
+    lager:debug("getting account prompt for '~s': lang: '~s'", [Name, Lang]),
     DefaultPrompt = whapps_config:get(?WHS_CONFIG_CAT,  ?PROMPT_KEY(Lang, Name), <<"/system_media/", Name/binary>>),
     JObj = whapps_account_config:get(whapps_call:account_id(Call), ?WHS_CONFIG_CAT),
-    wh_json:get_value(?PROMPT_KEY(Lang, Name), JObj, DefaultPrompt).
+    Prompt = wh_json:get_value(?PROMPT_KEY(Lang, Name), JObj, DefaultPrompt),
+    lager:debug("prompt selected: '~s'", [Prompt]),
+    Prompt.
 
 -spec default_prompt_language() -> ne_binary().
 -spec default_prompt_language(api_binary()) -> ne_binary().
