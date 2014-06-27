@@ -9,6 +9,10 @@
 -module(couch_util).
 
 -export([db_classification/1]).
+-export([archive/1
+         ,archive/2
+        ]).
+
 -export([get_new_connection/4
          ,get_db/2
          ,server_url/1
@@ -141,6 +145,76 @@ db_classification(?KZ_OAUTH_DB) -> 'system';
 db_classification(_Database) ->
     lager:debug("unknown type for database ~s", [_Database]),
     'undefined'.
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec archive(ne_binary()) -> 'ok'.
+archive(Db) ->
+    Folder = whapps_config:get(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
+    archive(Db, filename:join([<<Folder/binary, "/", Db/binary, ".json">>])).
+
+-spec archive(ne_binary(), ne_binary()) -> 'ok'.
+archive(Db, Filename) ->
+    {'ok', DbInfo} = couch_mgr:db_info(Db),
+    {'ok', File} = file:open(Filename, ['write']),
+    'ok' = file:write(File, <<"[">>),
+    io:format("archiving to ~s~n", [Filename]),
+    MaxDocs = whapps_config:get_integer(?CONFIG_CAT, <<"max_concurrent_docs_to_archive">>, 500),
+    archive(Db, File, MaxDocs, wh_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
+    'ok' = file:write(File, <<"]">>),
+    file:close(File).
+
+%% MaxDocs = The biggest set of docs to pull from Couch
+%% N = The number of docs in the DB that haven't been archived
+%% Pos = Which doc will the next query start from (the offset)
+-spec archive(ne_binary(), file:io_device(), pos_integer(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+archive(Db, _File,  _MaxDocs, 0, _Pos) ->
+    io:format("    archive ~s complete~n", [Db]);
+archive(Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
+    ViewOptions = [{'limit', N}
+                   ,{'skip', Pos}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:all_docs(Db, ViewOptions) of
+        {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
+        {'ok', Docs} ->
+            'ok' = archive_docs(File, Docs),
+            io:format("    archived ~p docs~n", [N]);
+        {'error', _E} ->
+            io:format("    error ~p asking for ~p docs from pos ~p~n"
+                        ,[_E, N, Pos]),
+            timer:sleep(500),
+            archive(Db, File, MaxDocs, N, Pos)
+    end;
+archive(Db, File, MaxDocs, N, Pos) ->
+    ViewOptions = [{'limit', MaxDocs}
+                   ,{'skip', Pos}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:all_docs(Db, ViewOptions) of
+        {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
+        {'ok', Docs} ->
+            'ok' = archive_docs(File, Docs),
+            io:format("    archived ~p docs~n", [MaxDocs]),
+            archive(Db, File, MaxDocs, N - MaxDocs, Pos + MaxDocs);
+        {'error', _E} ->
+            io:format("    error ~p asking for ~p docs from pos ~p~n"
+                        ,[_E, N, Pos]),
+            timer:sleep(500),
+            archive(Db, File, MaxDocs, N, Pos)
+    end.
+
+-spec archive_docs(file:io_device(), wh_json:objects()) -> 'ok'.
+archive_docs(_, []) -> 'ok';
+archive_docs(File, [Doc]) ->
+    'ok' = file:write(File, [wh_json:encode(Doc), $\n]);
+archive_docs(File, [Doc|Docs]) ->
+    'ok' = file:write(File, [wh_json:encode(Doc), $,, $\n]),
+    archive_docs(File, Docs).
 
 %%------------------------------------------------------------------------------
 %% @public

@@ -7,12 +7,17 @@
 -module(kazoo_modb_maintenance).
 
 -export([delete_modbs/1
-         ,archive_modbs/0, archive_modbs/1
+         ,archive_modbs/0
+         ,archive_modbs/1
         ]).
 -export([verify_rollups/0
          ,verify_rollups/1
         ]).
 -export([fix_rollup/1]).
+-export([rollup_accounts/0
+         ,rollup_account/1
+         ,rollup_account/2
+        ]).
 
 -include("kazoo_modb.hrl").
 
@@ -20,7 +25,6 @@
 -spec delete_modbs(ne_binary() | wh_year(), ne_binary() | wh_month()) -> 'ok' | 'no_return'.
 delete_modbs(Period) ->
     Regex = <<"(2[0-9]{3})(0[1-9]|1[0-2])">>,
-
     case re:run(Period, Regex, [{'capture', 'all', 'binary'}]) of
         {'match', [_Full, Year, Month]} ->
             delete_modbs(Year, Month);
@@ -58,8 +62,8 @@ should_delete(AccountModb, Months) ->
     ((ModYear * 12) + ModMonth) =< Months.
 
 -spec delete_modb(ne_binary()) -> 'ok'.
-delete_modb(AccountModb) ->
-    io:format("  deleting '~s'~n", [AccountModb]),
+delete_modb(<<_:42/binary, "-", _:4/binary, _:2/binary>> = AccountModb) ->
+    kazoo_modb:archive_modbs(AccountModb),
     _Deleted = couch_mgr:db_delete(AccountModb),
     io:format("    deleted: ~p~n", [_Deleted]),
     timer:sleep(5000).
@@ -75,10 +79,9 @@ archive_modbs(AccountId) ->
 do_archive_modbs(MODbs, AccountId) ->
     wh_util:put_callid(?MODULE),
     _ = [kazoo_modb:maybe_archive_modb(MODb) || MODb <- MODbs],
-
     Keep = whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6),
     From = case AccountId =:= 'undefined' of 'true' -> <<"all">>; 'false' -> AccountId end,
-    io:format("archived and removed ~s MODbs more than ~b months old~n", [From, Keep]),
+    io:format("archived ~s MODbs more than ~b months old~n", [From, Keep]),
     'no_return'.
 
 -spec verify_rollups() -> 'ok'.
@@ -89,7 +92,7 @@ verify_rollups() ->
     Total = erlang:length(Accounts),
     lists:foldr(
         fun(AccountDb, Current) ->
-            io:format("\e[46mverify rollup accounts (~p/~p) '~s'\e[0m~n"
+            io:format("verify rollup accounts (~p/~p) '~s'~n"
                       ,[Current, Total, AccountDb]),
             verify_rollups(AccountDb),
             Current+1
@@ -104,28 +107,25 @@ verify_rollups(Account) ->
 
 verify_rollups(Account, Year, Month) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    {PYear, PMonth} = kazoo_modb_util:prev_year_month(Year, Month),
-    Balance = wht_util:previous_balance(Account
-                                        ,wh_util:to_binary(PYear)
-                                        ,wh_util:pad_month(PMonth)),
-    io:format("account ~s trying... @ ~p-~p ~n"
-                              ,[AccountId, Year, Month]),
     case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, Year, Month) of
         {'ok', JObj} ->
+            Balance = wht_util:previous_balance(Account
+                                                ,wh_util:to_binary(Year)
+                                                ,wh_util:pad_month(Month)),
             RollupBalance = rollup_balance(JObj),
             case Balance =:= RollupBalance of
                 'true' ->
-                    io:format("account ~s \e[35m@ ~p-~p OK!\e[0m balance/rollup ~p/~p~n"
-                              ,[AccountId, Year, Month, Balance, RollupBalance]),
+                    io:format("    account ~s rollup for ~p-~p confirmed~n", [AccountId, Year, Month]),
+                    {PYear, PMonth} = kazoo_modb_util:prev_year_month(Year, Month),
                     verify_rollups(Account, PYear, PMonth);
                 'false' ->
-                    io:format("\e[41maccount ~s has a discrepancy! rollup/balance ~p/~p \e[0m ~n"
+                    io:format("    account ~s has a discrepancy! rollup/balance ~p/~p~n"
                               ,[AccountId, RollupBalance, Balance])
             end;
         {'error', 'not_found'} ->
-            io:format("\e[33maccount ~s : no modb @ ~p-~p \e[0m ~n", [AccountId, Year, Month]);
+            io:format("    account ~s : no modb @ ~p-~p~n", [AccountId, Year, Month]);
         Else ->
-            io:format("\e[41maccount ~s: error getting monthly rollup ~p \e[0m ~n", [AccountId, Else])
+            io:format("    account ~s: error getting monthly rollup ~p~n", [AccountId, Else])
     end.
 
 -spec fix_rollup(ne_binary()) -> 'ok'.
@@ -141,6 +141,30 @@ fix_rollup(Account) ->
     lager:debug("rolling up ~p credits to ~s", [Balance, AccountMODb]),
     wht_util:rollup(AccountMODb, Balance).
 
+-spec rollup_accounts() -> any().
+rollup_accounts() ->
+    Accounts = whapps_util:get_all_accounts(),
+    Total = length(Accounts),
+    lists:foldr(fun(AccountDb, Current) ->
+                        io:format("rollup accounts (~p/~p) '~s'~n"
+                                  ,[Current, Total, AccountDb]),
+                        _ = rollup_account(AccountDb),
+                        Current + 1
+                end, 1, Accounts).
+
+-spec rollup_account(ne_binary()) -> 'ok'.
+rollup_account(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    Balance = wht_util:get_balance_from_account(AccountId, []),
+    rollup_account(AccountId, Balance).
+
+-spec rollup_account(ne_binary(), ne_binary()) -> 'ok'.
+rollup_account(AccountId, Balance) ->
+    AccountMODb = kazoo_modb:get_modb(AccountId),
+    lager:debug("rolling up ~p credits to ~s"
+                ,[Balance, AccountMODb]),
+    wht_util:rollup(AccountMODb, Balance).
+
 -spec rollup_balance(wh_json:object()) -> integer().
 rollup_balance(JObj) ->
     Balance = wh_json:get_integer_value(<<"pvt_amount">>, JObj, 0),
@@ -148,3 +172,4 @@ rollup_balance(JObj) ->
         <<"credit">> -> Balance;
         <<"debit">> -> Balance * -1
     end.
+

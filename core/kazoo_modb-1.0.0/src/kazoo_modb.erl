@@ -14,7 +14,9 @@
 -export([open_doc/2, open_doc/3, open_doc/4]).
 -export([save_doc/2, save_doc/3, save_doc/4]).
 -export([get_modb/1, get_modb/2, get_modb/3]).
--export([maybe_archive_modb/1]).
+-export([maybe_archive_modb/1
+         ,archive_modb/1
+        ]).
 -export([refresh_views/1]).
 -export([create/1]).
 -export([maybe_delete/2]).
@@ -263,14 +265,19 @@ create_routines(AccountMODb) ->
         ,Routines
     ).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_archive_modb(ne_binary()) -> 'ok'.
 maybe_archive_modb(AccountMODb) ->
     {Year, Month, _} = erlang:date(),
-
     case should_archive(AccountMODb, Year, Month) of
         'true' ->
             lager:info("account modb ~s needs archiving", [AccountMODb]),
-            'ok' = couch_mgr:db_archive(AccountMODb),
+            'ok' = couch_util:archive(AccountMODb),
             lager:info("account modb ~s archived, removing the db", [AccountMODb]),
             Rm = couch_mgr:db_delete(AccountMODb),
             lager:info("account modb ~s deleted: ~p", [AccountMODb, Rm]);
@@ -287,7 +294,6 @@ should_archive(AccountMODb, Year, Month) ->
             ModbMonths = (ModbYear * 12) + ModbMonth,
             (Months - ModbMonths) > whapps_config:get_integer(?CONFIG_CAT, <<"active_modbs">>, 6)
     end.
-
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -310,3 +316,7 @@ delete_if_orphaned(AccountMODb, 'true') ->
     Succeeded = couch_mgr:db_delete(AccountMODb),
     lager:debug("cleanse orphaned modb ~p... ~p", [AccountMODb,Succeeded]),
     Succeeded.
+
+  -spec archive_modb(ne_binary()) -> 'ok'.
+archive_modb(AccountMODb) ->
+    'ok' = couch_util:archive(AccountMODb).
