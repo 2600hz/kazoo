@@ -87,10 +87,9 @@ build_data('error', _Call) ->
     wh_json:new().
 
 -spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
-%% TODO: please convert to system_media file (say is not consistent on deployments)
 no_permission_to_eavesdrop(Call) ->
     whapps_call_command:answer(Call),
-    whapps_call_command:b_say(<<"you have no permission to eavesdrop this call">>, Call).
+    whapps_call_command:b_prompt(<<"system_media/eavesdrop-no_channels">>, Call).
 
 -spec get_target_for_extension(ne_binary(), whapps_call:call()) ->
                                       target().
