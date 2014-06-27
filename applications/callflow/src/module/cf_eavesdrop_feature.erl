@@ -48,7 +48,7 @@ handle(Data, Call) ->
                                      ]),
             cf_exe:branch(Flow, Call);
         'false' ->
-            no_permission_to_eavesdrop(Call),
+            cf_eavesdrop:no_permission_to_eavesdrop(Call),
             cf_exe:stop(Call)
     end.
 
@@ -85,11 +85,6 @@ build_data({'ok', TargetId, TargetType}, Call) ->
     wh_json:from_list(Permission);
 build_data('error', _Call) ->
     wh_json:new().
-
--spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
-no_permission_to_eavesdrop(Call) ->
-    whapps_call_command:answer(Call),
-    whapps_call_command:b_prompt(<<"system_media/eavesdrop-no_channels">>, Call).
 
 -spec get_target_for_extension(ne_binary(), whapps_call:call()) ->
                                       target().
