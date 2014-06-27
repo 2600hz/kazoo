@@ -236,7 +236,6 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
 load_view(#load_view_params{dbs=[]
                             ,context=Context
                            }) ->
-    lager:debug("dbs exhausted"),
     case cb_context:resp_status(Context) of
         'success' -> handle_couch_mgr_success(cb_context:doc(Context), Context);
         _Status -> Context
@@ -701,7 +700,6 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                                    ) ->
     try lists:split(PageSize, JObjs) of
         {Results, []} ->
-            lager:debug("no next results"),
             Filtered = apply_filter(FilterFun, Results, Context),
 
             load_view(LVPs#load_view_params{
@@ -710,6 +708,7 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                               update_pagination_envelope_params(Context, StartKey, PageSize)
                               ,Filtered ++ cb_context:doc(Context)
                              )
+                        ,page_size=0
                        });
         {Results, [NextJObj]} ->
             NextStartKey = wh_json:get_value(<<"key">>, NextJObj),
@@ -722,6 +721,7 @@ handle_couch_mgr_pagination_success([_|_]=JObjs
                               update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey)
                               ,Filtered ++ cb_context:doc(Context)
                              )
+                        ,page_size=0
                        })
     catch
         'error':'badarg' ->
