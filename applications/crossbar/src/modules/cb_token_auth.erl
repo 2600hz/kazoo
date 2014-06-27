@@ -14,12 +14,10 @@
 -module(cb_token_auth).
 
 -export([init/0
-
          ,allowed_methods/0
          ,resource_exists/0
          ,validate/1
          ,delete/1
-
          ,authenticate/1
          ,finish_request/1
          ,clean_expired/0
@@ -160,10 +158,40 @@ check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->
     lager:debug("checking auth token: ~s", [AuthToken]),
     case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
-        {'ok', JObj} -> check_restrictions(Context, JObj);
+        {'ok', JObj} -> is_expired(Context, JObj);
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             'false'
+    end.
+
+-spec is_expired(cb_context:context(), wh_json:object()) -> boolean() | {'halt', cb_context:context()}.
+is_expired(Context, JObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, JObj),
+    case wh_util:is_account_expired(AccountId) of
+        'false' -> check_restrictions(Context, JObj);
+        'true' ->
+            _ = spawn(fun() -> maybe_disable_account(AccountId) end),
+            Props = [{'details', <<"account expired">>}],
+            {'halt', cb_context:add_system_error('forbidden', Props, Context)}
+    end.
+
+-spec maybe_disable_account(ne_binary()) -> 'ok'.
+maybe_disable_account(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'ok', JObj} ->
+            case wh_json:get_value(<<"pvt_enabled">>, JObj, 'false') of
+                'false' -> 'ok';
+                _ -> disable_account(AccountId)
+            end;
+        {'error', _R} -> disable_account(AccountId)
+    end.
+
+-spec disable_account(ne_binary()) -> 'ok'.
+disable_account(AccountId) ->
+    case crossbar_maintenance:disable_account(AccountId) of
+        'ok' -> lager:info("account ~s disabled because expired", [AccountId]);
+        'failed' -> lager:error("falied to disable account ~s", [AccountId])
     end.
 
 -spec check_restrictions(cb_context:context(), wh_json:object()) ->
