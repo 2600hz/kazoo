@@ -101,7 +101,7 @@ couch_open(AccountMODb, DocId) ->
     case couch_mgr:open_doc(EncodedMODb, DocId) of
         {'ok', _}=Ok -> Ok;
         {'error', _E}=Error ->
-            lager:error("fail to opend doc ~p in ~p reason: ~p", [DocId, EncodedMODb, _E]),
+            lager:error("fail to open doc ~p in ~p reason: ~p", [DocId, EncodedMODb, _E]),
             Error
     end.
 
