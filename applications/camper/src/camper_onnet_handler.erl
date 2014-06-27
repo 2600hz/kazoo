@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(camper_onnet_handler).
 
+-behaviour(gen_server).
+
 -export([start_link/0]).
 -export([init/1
     ,handle_call/3

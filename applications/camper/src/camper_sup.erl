@@ -25,6 +25,7 @@
 -define(CHILDREN, [?WORKER('camper_listener')
                    ,?WORKER('camper_onnet_handler')
                    ,?SUPER('camper_offnet_sup')
+                   ,?WORKER('camper_onnet_listener')
                    ]).
 
 %%%===================================================================
