@@ -576,7 +576,10 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                          {'ok', wh_json:public_fields(JObj)}
                  end
                ],
-    lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number, PublicFields), Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end
+                ,catch wnm_number:get(Number, PublicFields)
+                ,Routines
+               ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -631,12 +634,12 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                              ,services=Services
                              ,activations=ActivationCharges
                             }) ->
-                            {'dry_run', [{'services', Services}
-                                         ,{'activation_charges', ActivationCharges}
-                                        ]};
+                         {'dry_run', [{'services', Services}
+                                      ,{'activation_charges', ActivationCharges}
+                                     ]};
                     (#number{number_doc=JObj}) ->
-                        lager:debug("assign number to account successfully completed"),
-                        {'ok', wh_json:public_fields(JObj)}
+                         lager:debug("assign number to account successfully completed"),
+                         {'ok', wh_json:public_fields(JObj)}
                  end
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).

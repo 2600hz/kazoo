@@ -1196,7 +1196,8 @@ activate_phone_number(0, #number{number=Number}=N) ->
     lager:debug("no activation charge for ~s", [Number]),
     N;
 activate_phone_number(Units, #number{phone_number_activation_charges=Charges
-                                     ,billing_id=BillingId}=N) ->
+                                     ,billing_id=BillingId
+                                    }=N) ->
     Charge = Charges + Units,
     case wh_services:check_bookkeeper(BillingId, Charge) of
         'false' ->
@@ -1206,7 +1207,7 @@ activate_phone_number(Units, #number{phone_number_activation_charges=Charges
         'true' ->
             N#number{activations=append_phone_number_debit(Units, N)
                      ,phone_number_activation_charges=Charge
-            }
+                    }
     end.
 
 %%--------------------------------------------------------------------
@@ -1235,7 +1236,8 @@ append_feature_debit(Feature, Units, #number{billing_id=Ledger
                 ,fun(T) -> wh_transaction:set_number(Number, T) end
                 ,fun(T) ->
                          wh_transaction:set_description(<<"number feature activation for "
-                                                          ,(wh_util:to_binary(Feature))/binary>>
+                                                          ,(wh_util:to_binary(Feature))/binary
+                                                        >>
                                                         ,T)
                  end
                ],

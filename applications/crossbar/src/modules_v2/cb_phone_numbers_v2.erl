@@ -366,8 +366,8 @@ put(#cb_context{req_json=ReqJObj}=Context, Number) ->
 put(#cb_context{req_json=ReqJObj}=Context, ?COLLECTION, ?ACTIVATE) ->
     Results = collection_process(Context, ?ACTIVATE),
     Fun = fun() ->
-            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION, ?ACTIVATE)
+                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, 'true', ReqJObj),
+                  ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), ?COLLECTION, ?ACTIVATE)
           end,
     set_response(Results, <<>>, Context, Fun);
 put(#cb_context{req_json=ReqJObj}=Context, Number, ?PORT) ->
@@ -378,8 +378,8 @@ put(#cb_context{req_json=ReqJObj}=Context, Number, ?PORT) ->
                                        ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
                                       ),
     Fun = fun() ->
-            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?PORT)
+                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+                  ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?PORT)
           end,
     set_response(Result, Number, Context, Fun);
 put(#cb_context{req_json=ReqJObj}=Context, Number, ?ACTIVATE) ->
@@ -390,8 +390,8 @@ put(#cb_context{req_json=ReqJObj}=Context, Number, ?ACTIVATE) ->
                                                         ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
                                                        ),
     Fun = fun() ->
-            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?ACTIVATE)
+                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+                  ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?ACTIVATE)
           end,
     set_response(Result, Number, Context, Fun);
 put(#cb_context{req_json=ReqJObj}=Context, Number, ?RESERVE) ->
@@ -402,8 +402,8 @@ put(#cb_context{req_json=ReqJObj}=Context, Number, ?RESERVE) ->
                                               ,(not wh_json:is_true(<<"accept_charges">>, ReqJObj))
                                              ),
     Fun = fun() ->
-            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
-            ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?RESERVE)
+                  NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, ReqJObj),
+                  ?MODULE:put(cb_context:set_req_json(Context, NewReqJObj), Number, ?RESERVE)
           end,
     set_response(Result, Number, Context, Fun);
 put(Context, Number, ?PORT_DOCS) ->
@@ -972,7 +972,7 @@ accumulate_resp([JObj], {0, D}) ->
             ActivationCharges = wh_json:get_value(<<"activation_charges">>, JObj, 0),
             Description = wh_json:get_value(<<"activation_charges_description">>, JObj, 0),
             wh_json:set_values([{<<"activation_charges">>, ActivationCharges}
-                        ,{<<"activation_charges_description">>, [Description|D]}
+                                ,{<<"activation_charges_description">>, [Description|D]}
                        ], JObj)
     end;
 accumulate_resp([JObj], {AC, D}) ->
@@ -1020,19 +1020,19 @@ collection_process(#cb_context{req_json=ReqJObj}=Context, ?ACTIVATE) ->
 
 collection_process(Context, Numbers, Action) ->
     lists:foldl(
-        fun(Number, Acc) ->
-            case collection_action(Context, Number, Action) of
-                {'ok', JObj} ->
-                    wh_json:set_value([<<"success">>, Number], JObj, Acc);
-                {'dry_run', Data} ->
-                    wh_json:set_value([<<"charges">>, Number], Data, Acc);
-                {State, _} ->
-                    JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
-                    wh_json:set_value([<<"error">>, Number], JObj, Acc)
-            end
-        end
-        ,wh_json:new()
-        ,Numbers
+      fun(Number, Acc) ->
+              case collection_action(Context, Number, Action) of
+                  {'ok', JObj} ->
+                      wh_json:set_value([<<"success">>, Number], JObj, Acc);
+                  {'dry_run', Data} ->
+                      wh_json:set_value([<<"charges">>, Number], Data, Acc);
+                  {State, _} ->
+                      JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
+                      wh_json:set_value([<<"error">>, Number], JObj, Acc)
+              end
+      end
+      ,wh_json:new()
+      ,Numbers
      ).
 
 %%--------------------------------------------------------------------
