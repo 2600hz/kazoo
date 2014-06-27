@@ -179,12 +179,7 @@ get_modb(Account, Props) when is_list(Props) ->
              end
      end;
 get_modb(Account, Timestamp) ->
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    <<AccountId/binary
-      ,"-"
-      ,(wh_util:to_binary(Year))/binary
-      ,(wh_util:pad_month(Month))/binary>>.
+    wh_util:format_account_mod_id(Account, Timestamp).
 
 get_modb(Account, Year, Month) ->
     wh_util:format_account_modb(Account, Year, Month).
