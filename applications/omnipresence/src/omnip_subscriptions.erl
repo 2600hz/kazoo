@@ -326,8 +326,7 @@ maybe_update_mwi(#omnip_subscription{event = <<"message-summary">>
              ,{<<"Subscription-Call-ID">>, CallId}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    wh_amqp_worker:cast('whapps_amqp_pool'
-                        ,Query
+    wh_amqp_worker:cast(Query
                         ,fun wapi_notifications:publish_mwi_query/1
                        );
 maybe_update_mwi(_) -> 'ok'.
