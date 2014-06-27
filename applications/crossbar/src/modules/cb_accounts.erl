@@ -43,6 +43,7 @@
 -define(DESCENDANTS, <<"descendants">>).
 -define(SIBLINGS, <<"siblings">>).
 -define(ANCESTORS, <<"ancestors">>).
+-define(API_KEY, <<"api_key">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
 
@@ -87,7 +88,14 @@ allowed_methods(AccountId) ->
     end.
 
 allowed_methods(_, Path) ->
-    case lists:member(Path, [?ANCESTORS, ?CHILDREN, ?DESCENDANTS,?SIBLINGS, ?CHANNELS]) of
+    Paths =  [?ANCESTORS
+              ,?CHILDREN
+              ,?DESCENDANTS
+              ,?SIBLINGS
+              ,?CHANNELS
+              ,?API_KEY
+             ],
+    case lists:member(Path, Paths) of
         'true' -> [?HTTP_GET];
         'false' -> []
     end.
@@ -106,7 +114,14 @@ allowed_methods(_, Path) ->
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, Path) ->
-    lists:member(Path, [?ANCESTORS, ?CHILDREN, ?DESCENDANTS,?SIBLINGS, ?CHANNELS]).
+    Paths =  [?ANCESTORS
+              ,?CHILDREN
+              ,?DESCENDANTS
+              ,?SIBLINGS
+              ,?CHANNELS
+              ,?API_KEY
+             ],
+    lists:member(Path, Paths).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,7 +175,17 @@ validate_account_path(Context, AccountId, ?CHILDREN, ?HTTP_GET) ->
 validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
     load_descendants(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
-    load_siblings(AccountId, prepare_context('undefined', Context)).
+    load_siblings(AccountId, prepare_context('undefined', Context));
+validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
+    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
+            ApiKey = wh_json:get_value(<<"pvt_api_key">>, JObj),
+            RespJObj = wh_json:from_list([{<<"api_key">>, ApiKey}]),
+            cb_context:set_resp_data(Context1, RespJObj);
+        _Else -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -471,10 +496,27 @@ leak_pvt_superduper_admin(Context) ->
     RespJObj = cb_context:resp_data(Context),
 
     SuperAdmin = wh_json:is_true(<<"pvt_superduper_admin">>, JObj, 'false'),
-    leak_pvt_created(
+    leak_pvt_api_key(
       cb_context:set_resp_data(Context
                                ,wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj))
      ).
+
+-spec leak_pvt_api_key(cb_context:context()) -> cb_context:context().
+leak_pvt_api_key(Context) ->
+    QueryString = cb_context:query_string(Context),
+    case wh_json:is_true(<<"include_api_key">>, QueryString, 'false')
+        orelse whapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"expose_api_key">>, 'false')
+    of
+        'false' -> leak_pvt_created(Context);
+        'true' ->
+            JObj = cb_context:doc(Context),
+            RespJObj = cb_context:resp_data(Context),
+            ApiKey = wh_json:get_value(<<"pvt_api_key">>, JObj),
+            leak_pvt_created(
+              cb_context:set_resp_data(Context
+                                       ,wh_json:set_value(<<"api_key">>, ApiKey, RespJObj))
+             )
+    end.
 
 -spec leak_pvt_created(cb_context:context()) -> cb_context:context().
 leak_pvt_created(Context) ->
