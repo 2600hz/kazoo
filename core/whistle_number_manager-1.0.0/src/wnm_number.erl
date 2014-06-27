@@ -1202,7 +1202,7 @@ activate_phone_number(Units, #number{phone_number_activation_charges=Charges
     case wh_services:check_bookkeeper(BillingId, Charge) of
         'false' ->
             Reason = io_lib:format("not enough credit to activate number for $~p", [wht_util:units_to_dollars(Units)]),
-            lager:debug("unable to charge: ~s", [Reason]),
+            lager:debug("~s", [Reason]),
             error_service_restriction(Reason, N);
         'true' ->
             N#number{activations=append_phone_number_debit(Units, N)
