@@ -34,6 +34,7 @@
 -define(AGG_VIEW_PARENT, <<"accounts/listing_by_parent">>).
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
+
 -define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
 -define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
 
@@ -42,7 +43,6 @@
 -define(CHILDREN, <<"children">>).
 -define(DESCENDANTS, <<"descendants">>).
 -define(SIBLINGS, <<"siblings">>).
--define(ANCESTORS, <<"ancestors">>).
 -define(API_KEY, <<"api_key">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
@@ -88,8 +88,7 @@ allowed_methods(AccountId) ->
     end.
 
 allowed_methods(_, Path) ->
-    Paths =  [?ANCESTORS
-              ,?CHILDREN
+    Paths =  [?CHILDREN
               ,?DESCENDANTS
               ,?SIBLINGS
               ,?CHANNELS
@@ -114,8 +113,7 @@ allowed_methods(_, Path) ->
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, Path) ->
-    Paths =  [?ANCESTORS
-              ,?CHILDREN
+    Paths =  [?CHILDREN
               ,?DESCENDANTS
               ,?SIBLINGS
               ,?CHANNELS
@@ -590,9 +588,13 @@ load_children(AccountId, Context, _Version) ->
 
 -spec load_children_v1(ne_binary(), cb_context:context()) -> cb_context:context().
 load_children_v1(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [{'startkey', [AccountId]}
-                                                ,{'endkey', [AccountId, wh_json:new()]}
-                                               ], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?AGG_VIEW_CHILDREN
+                           ,[{'startkey', [AccountId]}
+                             ,{'endkey', [AccountId, wh_json:new()]}
+                            ]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 -spec load_paginated_children(ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_children(AccountId, Context) ->
@@ -638,14 +640,15 @@ load_descendants_v1(AccountId, Context) ->
 -spec load_paginated_descendants(ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_descendants(AccountId, Context) ->
     StartKey = crossbar_doc:start_key(Context),
+    lager:debug("account ~s startkey ~s", [AccountId, StartKey]),
     fix_envelope(
       crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                                 ,[{'startkey', start_key(AccountId, StartKey)}
-                                   ,{'endkey', [AccountId, wh_json:new()]}
-                                  ]
-                                 ,Context
-                                 ,fun normalize_view_results/2
-                                )).
+                             ,[{'startkey', start_key(AccountId, StartKey)}
+                               ,{'endkey', [AccountId, wh_json:new()]}
+                              ]
+                             ,Context
+                             ,fun normalize_view_results/2
+                            )).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -680,11 +683,11 @@ load_paginated_siblings(AccountId, Context) ->
     Context1 =
         fix_envelope(
           crossbar_doc:load_view(?AGG_VIEW_PARENT
-                                     ,[{'startkey', AccountId}
-                                       ,{'endkey', AccountId}
-                                      ]
-                                     ,Context
-                                    )),
+                                 ,[{'startkey', AccountId}
+                                   ,{'endkey', AccountId}
+                                  ]
+                                 ,Context
+                                )),
     case cb_context:resp_status(Context1) of
         'success' ->
             load_siblings_results(AccountId, Context1, cb_context:doc(Context1));
@@ -701,20 +704,26 @@ load_siblings_results(AccountId, Context, _) ->
 
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
-    Envelope = cb_context:resp_envelope(Context),
-    case wh_json:get_value(<<"start_key">>, Envelope) of
-        [_AccountId, StartKey] ->
-            cb_context:set_resp_envelope(
-              Context
-              ,wh_json:set_value(<<"start_key">>, StartKey, Envelope)
-             );
-        [StartKey|_T] ->
-            cb_context:set_resp_envelope(
-              Context
-              ,wh_json:set_value(<<"start_key">>, StartKey, Envelope)
-             );
-        _StartKey -> Context
-    end.
+    cb_context:set_resp_envelope(
+      Context
+      ,lists:foldl(fun(Key, Env) ->
+                           lager:debug("maybe fixing ~s: ~p", [Key, wh_json:get_value(Key, Env)]),
+                           case fix_start_key(wh_json:get_value(Key, Env)) of
+                               'undefined' -> wh_json:delete_key(Key, Env);
+                               V -> wh_json:set_value(Key, V, Env)
+                           end
+                   end
+                   ,cb_context:resp_envelope(Context)
+                   ,[<<"start_key">>, <<"next_start_key">>]
+                  )).
+
+-spec fix_start_key(api_binary() | list()) -> api_binary().
+fix_start_key('undefined') -> 'undefined';
+fix_start_key(<<_/binary>> = StartKey) -> StartKey;
+fix_start_key([StartKey]) -> StartKey;
+fix_start_key([_AccountId, [_|_]=Keys]) -> lists:last(Keys);
+fix_start_key([_AccountId, StartKey]) -> StartKey;
+fix_start_key([StartKey|_T]) -> StartKey.
 
 %%--------------------------------------------------------------------
 %% @private
