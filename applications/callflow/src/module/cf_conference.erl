@@ -25,6 +25,8 @@ handle(Data, Call) ->
     Command = [{<<"Call">>, whapps_call:to_json(Call)}
                ,{<<"Conference-ID">>, wh_json:get_value(<<"id">>, Data)}
                ,{<<"Moderator">>, wh_json:get_binary_boolean(<<"moderator">>, Data)}
+               ,{<<"Play-Welcome">>, wh_json:is_true([<<"welcome_prompt">>, <<"play">>], Data, 'true')}
+               ,{<<"Play-Welcome-Media">>, wh_json:get_ne_value([<<"welcome_prompt">>, <<"media_id">>], Data)}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     wapi_conference:publish_discovery_req(Command),
