@@ -24,7 +24,9 @@
 
 -include("../callflow.hrl").
 
--export([handle/2]).
+-export([handle/2
+         ,no_permission_to_eavesdrop/1
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -178,15 +180,14 @@ sip_user_of_endpoint(EndpointId, Call) ->
 -spec no_users(whapps_call:call()) -> any().
 no_users(Call) ->
     whapps_call_command:answer(Call),
-    whapps_call_command:b_play(<<"system_media/pickup-no_users">>, Call).
+    whapps_call_command:b_prompt(<<"pickup-no_users">>, Call).
 
 -spec no_channels(whapps_call:call()) -> any().
 no_channels(Call) ->
     whapps_call_command:answer(Call),
-    whapps_call_command:b_play(<<"system_media/pickup-no_channels">>, Call).
+    whapps_call_command:b_prompt(<<"pickup-no_channels">>, Call).
 
 -spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
-%% TODO: please convert to system_media file (say is not consistent on deployments)
 no_permission_to_eavesdrop(Call) ->
     whapps_call_command:answer(Call),
-    whapps_call_command:b_say(<<"you have no permission to eavesdrop this call">>, Call).
+    whapps_call_command:b_prompt(<<"eavesdrop-no_channels">>, Call).
