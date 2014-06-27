@@ -81,7 +81,7 @@ build_data(_, _) ->
 -spec no_permission_to_eavesdrop(whapps_call:call()) -> any().
 no_permission_to_eavesdrop(Call) ->
     whapps_call_command:answer(Call),
-    whapps_call_command:b_play(<<"system_media/eavesdrop-no_channels">>, Call).
+    whapps_call_command:b_prompt(<<"system_media/eavesdrop-no_channels">>, Call).
 
 -spec get_target_for_extension(ne_binary(), whapps_call:call()) -> {'ok', ne_binary(), ne_binary()} | 'error'.
 get_target_for_extension(Exten, Call) ->
