@@ -120,8 +120,7 @@ get_balance(Account, ViewOptions) ->
             get_balance_from_previous(Account, ViewOptions);
         {'ok', [ViewRes|_]} ->
             Balance = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
-            _ = maybe_rollup(Account, ViewOptions, Balance),
-            Balance;
+            maybe_rollup(Account, ViewOptions, Balance);
         {'error', _E} ->
             lager:warning("unable to get current balance for ~s: ~p", [Account, _E]),
             0
@@ -148,6 +147,16 @@ get_balance_from_previous(Account, ViewOptions, _) ->
     get_balance_from_account(Account, ViewOptions).
 
 -spec maybe_rollup(ne_binary(), wh_proplist(), integer()) -> integer().
+maybe_rollup(Account, ViewOptions, Balance) when Balance =< 0 ->
+    case kazoo_modb:open_doc(Account, <<"monthly_rollup">>) of
+        {'ok', _} -> Balance;
+        {'error', 'not_found'} ->
+            PrevBalance = get_balance_from_previous(Account, ViewOptions),
+            Balance + PrevBalance;
+        {'error', _E} ->
+            lager:error("could not open monthly_rollup for account ~s", [Account]),
+            Balance
+    end;
 maybe_rollup(Account, ViewOptions, Balance) ->
     case props:is_defined('retry', ViewOptions) of
         'false' -> 'ok';
