@@ -116,8 +116,7 @@ previous_balance(Account, Year, Month) ->
 get_balance(Account, ViewOptions) ->
     View = <<"transactions/credit_remaining">>,
     case kazoo_modb:get_results(Account, View, ViewOptions) of
-        {'ok', []} ->
-            get_balance_from_previous(Account, ViewOptions);
+        {'ok', []} -> get_balance_from_previous(Account, ViewOptions);
         {'ok', [ViewRes|_]} ->
             Balance = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
             maybe_rollup(Account, ViewOptions, Balance);
@@ -139,7 +138,8 @@ get_balance_from_previous(Account, ViewOptions, Retry) when Retry >= 0 ->
     {Year, Month} = prev_year_month(Y, M),
     VOptions = [{'year', wh_util:to_binary(Year)}
                 ,{'month', wh_util:pad_month(Month)}
-                ,{'retry', Retry-1}],
+                ,{'retry', Retry-1}
+               ],
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
     get_balance(Account, VOptions);
 get_balance_from_previous(Account, ViewOptions, _) ->
@@ -147,22 +147,78 @@ get_balance_from_previous(Account, ViewOptions, _) ->
     get_balance_from_account(Account, ViewOptions).
 
 -spec maybe_rollup(ne_binary(), wh_proplist(), integer()) -> integer().
-maybe_rollup(Account, ViewOptions, Balance) when Balance =< 0 ->
+maybe_rollup(Account, ViewOptions, Balance) ->
+    case props:get_integer_value('retry', ViewOptions) of
+        'undefined' when Balance =< 0 ->
+            %% NOTE: If the balance was found in the current modb
+            %%   but is negative make sure the rollup exists
+            verify_monthly_rollup_exists(Account, Balance);
+        'undefined' ->
+            %% NOTE: if the balance is positive the rollup likey
+            %%   occured without issue
+            Balance;
+        _Else ->
+            %% NOTE: if the balance required retries try to
+            %%   create the rollup for this month
+            maybe_rollup_previous_month(Account, Balance)
+    end.
+
+
+-spec verify_monthly_rollup_exists(ne_binary(), integer()) -> integer().
+verify_monthly_rollup_exists(Account, Balance) ->
     case kazoo_modb:open_doc(Account, <<"monthly_rollup">>) of
         {'ok', _} -> Balance;
         {'error', 'not_found'} ->
-            PrevBalance = get_balance_from_previous(Account, ViewOptions),
-            Balance + PrevBalance;
-        {'error', _E} ->
-            lager:error("could not open monthly_rollup for account ~s", [Account]),
-            Balance
-    end;
-maybe_rollup(Account, ViewOptions, Balance) ->
-    case props:is_defined('retry', ViewOptions) of
-        'false' -> 'ok';
-        'true' ->
-            AccountMODb = kazoo_modb:get_modb(Account),
-            rollup(AccountMODb, Balance)
+            %% NOTE: if the monthly_rollup is not in the current modb
+            %%   then try to rollup the value
+            maybe_rollup_previous_month(Account, Balance);
+        {'error', _R} -> Balance
+    end.
+
+-spec maybe_rollup_previous_month(ne_binary(), integer()) -> integer().
+maybe_rollup_previous_month(Account, Balance) ->
+    case get_rollup_from_previous(Account) of
+        {'error', _} -> Balance;
+        {'ok', PrevBalance} ->
+            _ = rollup(Account, PrevBalance),
+            PrevBalance
+    end.
+
+-spec get_rollup_from_previous(ne_binary()) ->
+                                      {'ok', integer()} | {'error', _}.
+get_rollup_from_previous(Account) ->
+    {Y, M, _} = erlang:date(),
+    {Year, Month} = prev_year_month(Y, M),
+    ViewOptions = [{'year', wh_util:to_binary(Year)}
+                ,{'month', wh_util:pad_month(Month)}
+               ],
+    case kazoo_modb:open_doc(Account, <<"monthly_rollup">>, ViewOptions) of
+        {'ok', _} ->
+            %% NOTE: the previous modb had a rollup, use its balance as
+            %%  the value for the current rollup.
+            get_rollup_balance(Account, ViewOptions);
+        {'error', 'not_found'} ->
+            %% NOTE: the previous modb did not have a rollup, this must be
+            %%   the first rollup of this series, move the balance from the
+            %%   account
+            {'ok', get_balance_from_account(Account, ViewOptions)};
+        {'error', _R}=E ->
+            lager:warning("unable to get previous monthly_rollup: ~p", [_R]),
+            E
+    end.
+
+-spec get_rollup_balance(ne_binary(), wh_proplist()) ->
+                                {'ok', integer()} | {'error', _}.
+get_rollup_balance(Account, ViewOptions) ->
+    View = <<"transactions/credit_remaining">>,
+    case kazoo_modb:get_results(Account, View, ViewOptions) of
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', [ViewRes|_]} ->
+            {'ok', wh_json:get_integer_value(<<"value">>, ViewRes, 0)};
+        {'error', _R}=E ->
+            lager:warning("unable to get rollup balance for ~s: ~p"
+                          ,[Account, _R]),
+            E
     end.
 
 -spec get_balance_from_account(ne_binary(), wh_proplist()) -> integer().
