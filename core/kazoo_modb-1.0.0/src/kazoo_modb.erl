@@ -182,7 +182,7 @@ get_modb(Account, Timestamp) ->
     wh_util:format_account_mod_id(Account, Timestamp).
 
 get_modb(Account, Year, Month) ->
-    wh_util:format_account_modb(Account, Year, Month).
+    wh_util:format_account_mod_id(Account, Year, Month).
 
 %%--------------------------------------------------------------------
 %% @private

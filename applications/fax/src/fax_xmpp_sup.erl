@@ -75,8 +75,8 @@ printers() ->
 -spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
-    MaxRestarts = 0,
-    MaxSecondsBetweenRestarts = 1,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     
