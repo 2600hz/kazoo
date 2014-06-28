@@ -198,7 +198,11 @@ maybe_create(<<_:32/binary, "-", Year:4/binary, Month:2/binary>>=AccountMODb) ->
             create(AccountMODb),
             'true';
         _ -> 'false'
-    end.
+    end;
+maybe_create(<<"account/", AccountId/binary>>) ->
+    maybe_create(binary:replace(AccountId, <<"/">>, <<>>, ['global']));
+maybe_create(<<"account%2F", AccountId/binary>>) ->
+    maybe_create(binary:replace(AccountId, <<"%2F">>, <<>>, ['global'])).
 
 -spec create(ne_binary()) -> 'ok'.
 create(AccountMODb) ->

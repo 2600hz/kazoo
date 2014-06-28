@@ -210,6 +210,10 @@ format_account_id(AccountId, 'encoded') when is_binary(AccountId) ->
     to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 format_account_id(AccountId, 'raw') -> AccountId.
 
+format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
+    format_account_id(AccountId, to_integer(Year), Month);
+format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
+    format_account_id(AccountId, Year, to_integer(Month));
 format_account_id(AccountId, Year, Month) when is_integer(Year), is_integer(Month) ->
     <<(format_account_id(AccountId, 'encoded'))/binary
       ,"-"
