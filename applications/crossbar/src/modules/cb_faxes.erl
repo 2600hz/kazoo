@@ -366,7 +366,7 @@ incoming_summary(Context) ->
     {View, PreFilter, PostFilter} = get_incoming_view_and_filter(JObj),
     case get_incoming_view_options(Context, PreFilter, PostFilter) of
         {'ok', ViewOptions} ->
-            crossbar_view:load_view(View
+            crossbar_doc:load_view(View
                            ,['include_docs' | ViewOptions]
                            ,Context
                            ,fun normalize_incoming_view_results/2
