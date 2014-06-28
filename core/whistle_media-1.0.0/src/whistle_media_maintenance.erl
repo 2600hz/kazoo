@@ -81,7 +81,7 @@ import_prompt(Path0, Lang0, Contents) ->
 
     ContentLength = byte_size(Contents),
 
-    ID = cow_qs:urlencode(<<Lang/binary, "/", PromptName/binary>>),
+    ID = wh_media_util:prompt_id(PromptName, Lang),
 
     io:format("  importing as '~s'~n", [ID]),
 
