@@ -645,8 +645,11 @@ log_undefined(M, F, Length, ST) ->
 log_function_clause(M, F, Length, [{M, F, _Args, _}|_]) ->
     lager:debug("unable to find function clause for ~s:~s/~b", [M, F, Length]);
 log_function_clause(M, F, Length, [{RealM, RealF, RealArgs, Where}|_ST]) ->
-    lager:debug("unable to find function clause for ~s:~s(~p) in ~s:~p"
-                ,[RealM, RealF, RealArgs, props:get_value('file', Where), props:get_value('line', Where)]
+    lager:debug("unable to find function clause for ~s:~s(~s) in ~s:~p"
+                ,[RealM, RealF
+                  ,wh_util:join_binary([wh_util:to_binary(io_lib:format("~p",[A])) || A <- RealArgs], <<", ">>)
+                  ,props:get_value('file', Where), props:get_value('line', Where)
+                 ]
                ),
     lager:debug("as part of ~s:~s/~p", [M, F, Length]),
     [lager:debug("st: ~p", [ST]) || ST <- _ST];

@@ -82,10 +82,6 @@
                                       ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
                                       ,<<"Length">>, <<"Silence-Terminated">> %% Record-related
                                       ,<<"Channel-Call-State">>, <<"User-Agent">>
-                                      ,<<"Fax-Success">>, <<"Fax-Result-Code">>
-                                      ,<<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
-                                      ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>
-                                      ,<<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
                                       ,<<"Switch-Hostname">>, <<"Group-ID">>
                                       ,<<"Control-Queue">>, <<"Channel-Moving">>
                                       ,<<"Conference-Name">>, <<"Conference-Config">>
@@ -95,11 +91,12 @@
                                       ,<<"Digits-Dialed">>, <<"Presence-ID">>, <<"Media-Server">>
                                       ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
                                       ,<<"Callee-ID-Number">>, <<"Callee-ID-Name">>
-                                      ,<<"Custom-SIP-Headers">>
+                                      ,<<"Custom-SIP-Headers">>, <<"Fax-Info">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                            ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+                           ,{<<"Fax-Info">>, fun wh_json:is_json_object/1}
                           ]).
 
 %% Channel Status Request

@@ -16,7 +16,7 @@
 -export([get_modb/1, get_modb/2, get_modb/3]).
 -export([maybe_archive_modb/1]).
 -export([refresh_views/1]).
-
+-export([create/1]).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -81,6 +81,9 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
 -spec open_doc(ne_binary(), ne_binary(), integer(), integer()) ->
                       {'ok', wh_json:object()} |
                       {'error', atom()}.
+open_doc(Account, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) ->
+    AccountMODb = get_modb(Account, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    couch_open(AccountMODb, DocId);
 open_doc(Account, DocId) ->
     AccountMODb = get_modb(Account),
     couch_open(AccountMODb, DocId).
@@ -176,20 +179,10 @@ get_modb(Account, Props) when is_list(Props) ->
              end
      end;
 get_modb(Account, Timestamp) ->
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    <<AccountId/binary
-      ,"-"
-      ,(wh_util:to_binary(Year))/binary
-      ,(wh_util:pad_month(Month))/binary>>.
+    wh_util:format_account_mod_id(Account, Timestamp).
 
 get_modb(Account, Year, Month) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    <<AccountId/binary
-      ,"-"
-      ,(wh_util:to_binary(Year))/binary
-      ,(wh_util:pad_month(Month))/binary
-    >>.
+    wh_util:format_account_mod_id(Account, Year, Month).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -205,10 +198,20 @@ maybe_create(<<_:32/binary, "-", Year:4/binary, Month:2/binary>>=AccountMODb) ->
             create(AccountMODb),
             'true';
         _ -> 'false'
-    end.
+    end;
+maybe_create(<<"account/", AccountId/binary>>) ->
+    maybe_create(binary:replace(AccountId, <<"/">>, <<>>, ['global']));
+maybe_create(<<"account%2F", AccountId/binary>>) ->
+    maybe_create(binary:replace(AccountId, <<"%2F">>, <<>>, ['global'])).
 
 -spec create(ne_binary()) -> 'ok'.
 create(AccountMODb) ->
+    EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
+    do_create(AccountMODb, couch_mgr:db_exists(EncodedMODb)).
+
+-spec do_create(ne_binary(), boolean()) -> 'ok'.
+do_create(_AccountMODb, 'true') -> 'ok';
+do_create(AccountMODb, 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
     EncodedMODb = wh_util:format_account_id(AccountMODb, 'encoded'),
     _ = couch_mgr:db_create(EncodedMODb),

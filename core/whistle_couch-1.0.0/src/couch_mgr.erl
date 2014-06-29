@@ -51,6 +51,8 @@
          ,admin_all_docs/1
          ,all_docs/2
          ,all_design_docs/2, admin_all_docs/2
+         ,copy_doc/3, copy_doc/4, copy_doc/5   
+         ,move_doc/3, move_doc/4, move_doc/5
         ]).
 
 %% attachments
@@ -923,3 +925,47 @@ maybe_convert_dbname(DbName) ->
         'true' -> {'error', 'invalid_db_name'};
         'false' -> {'ok', wh_util:to_binary(DbName)}
     end.
+
+-spec copy_doc(ne_binary(), ne_binary(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+-spec copy_doc(ne_binary(), ne_binary(), api_binary(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+-spec copy_doc(ne_binary(), ne_binary(), api_binary(), api_binary(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+copy_doc(FromDB, FromId, Options) ->
+    copy_doc(FromDB, FromId, 'undefined', Options).
+copy_doc(FromDB, FromId, ToDB, Options) ->
+    copy_doc(FromDB, FromId, ToDB, 'undefined', Options).
+copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
+    couch_util:copy_doc(wh_couch_connections:get_server()
+                       ,#wh_copy_doc{source_dbname=FromDB
+                                     ,source_doc_id=FromId
+                                     ,dest_dbname=ToDB
+                                     ,dest_doc_id=ToId
+                                     }
+                       ,Options).
+
+-spec move_doc(ne_binary(), ne_binary(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+-spec move_doc(ne_binary(), ne_binary(), api_binary(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+-spec move_doc(ne_binary(), ne_binary(), api_binary(), api_binary(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+move_doc(FromDB, FromId, Options) ->
+    move_doc(FromDB, FromId, 'undefined', Options).
+move_doc(FromDB, FromId, ToDB, Options) ->
+    move_doc(FromDB, FromId, ToDB, 'undefined', Options).
+move_doc(FromDB, FromId, ToDB, ToId, Options) ->
+    couch_util:move_doc(wh_couch_connections:get_server()
+                       ,#wh_copy_doc{source_dbname=FromDB
+                                     ,source_doc_id=FromId
+                                     ,dest_dbname=ToDB
+                                     ,dest_doc_id=ToId
+                                     }
+                       ,Options).

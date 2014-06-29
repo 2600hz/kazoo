@@ -667,9 +667,7 @@ specific_call_event_props(<<"CHANNEL_ANSWER">>, _, Props) ->
      ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
     ];
 specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
-    [{<<"Fax-Success">>, get_fax_success(Props)}
-     ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
-     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+    [{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
      ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
@@ -680,12 +678,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Billing-Seconds">>, props:get_value(<<"variable_billsec">>, Props)}
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
-     ,{<<"Fax-Result-Code">>, props:get_value(<<"variable_fax_result_code">>, Props)}
-     ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
-     ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
-     ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
-     ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
-     ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
+     ,{<<"Fax-Info">>, maybe_fax_specific(Props)}     
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -745,6 +738,13 @@ conference_specific(Props) ->
             end
     end.
 
+-spec maybe_fax_specific(wh_proplist()) -> wh_proplist().
+maybe_fax_specific(Props) ->
+    case fax_specific(Props) of
+        [] -> 'undefined';
+        FaxProps -> wh_json:from_list(FaxProps)
+    end.
+
 -spec fax_specific(wh_proplist()) -> wh_proplist().
 fax_specific(Props) ->
     props:filter_undefined(
@@ -771,6 +771,8 @@ fax_specific(Props) ->
        ,{<<"Fax-Timezone">>, props:get_value(<<"variable_fax_timezone">>, Props)}
        ,{<<"Fax-Identity-Number">>, props:get_value(<<"variable_fax_ident">>, Props)}
        ,{<<"Fax-Identity-Name">>, props:get_value(<<"variable_fax_header">>, Props)}
+       ,{<<"Fax-Doc-ID">>, props:get_value(<<"variable_fax_doc_id">>, Props)}
+       ,{<<"Fax-Doc-DB">>, props:get_value(<<"variable_fax_doc_database">>, Props)}      
        ]).
 
 -spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().

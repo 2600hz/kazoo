@@ -40,7 +40,7 @@ handle_req(JObj, _Props) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     FaxId = wh_json:get_value(<<"Fax-ID">>, JObj),
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, FaxId]),
-    {'ok', FaxDoc} = couch_mgr:open_doc(AccountDb, FaxId),
+    {'ok', FaxDoc} = kazoo_modb:open_doc(AccountId, FaxId),
 
     Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 
@@ -81,7 +81,7 @@ handle_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_template_props(wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
-create_template_props(Event, Docs, Account) ->
+create_template_props(Event, [FaxDoc | _Others]=Docs, Account) ->
     Now = wh_util:current_tstamp(),
 
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
@@ -113,7 +113,7 @@ create_template_props(Event, Docs, Account) ->
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                    | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
                   ]}
-     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
+     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, FaxDoc)}
     ].
 
 fax_values(Event) ->

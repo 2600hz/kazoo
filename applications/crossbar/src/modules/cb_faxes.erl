@@ -32,13 +32,14 @@
 -define(CB_LIST_BY_OWNERID, <<"faxes/list_by_ownerid">>).
 -define(CB_LIST_BY_ACCOUNT, <<"faxes/list_by_account">>).
 
-
 -define(FAX_FILE_TYPE, <<"tiff">>).
 
 -define(OUTGOING_FAX_DOC_MAP, [{<<"created">>, <<"pvt_created">>}
                                ,{<<"delivered">>, fun get_delivered_date/1}
                                ,{<<"status">>, fun get_execution_status/2}
                               ]).
+
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".fax">>).
 
 %%%===================================================================
 %%% API
@@ -239,6 +240,8 @@ create(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+read(<<Year:4/binary, Month:2/binary, "-", _/binary>> = Id, Context) ->
+    crossbar_doc:load(Id, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -360,26 +363,27 @@ maybe_reset_job(Context, _Status) -> Context.
 -spec incoming_summary(cb_context:context()) -> cb_context:context().
 incoming_summary(Context) ->
     JObj = cb_context:doc(Context),
-    {View, ViewOptions} =
-        case wh_json:get_value(<<"pvt_type">>, JObj) of
-            <<"faxbox">> ->
-                {?CB_LIST_BY_FAXBOX
-                 ,[{'key', wh_json:get_value(<<"_id">>, JObj)}
-                   ,'include_docs'
-                  ]};
-            <<"user">> ->
-                {?CB_LIST_BY_OWNERID
-                 ,[{'key', wh_json:get_value(<<"_id">>, JObj)}
-                   ,'include_docs'
-                  ]};
-            _Else ->
-                {?CB_LIST_ALL, ['include_docs']}
-        end,
-    crossbar_doc:load_view(View
-                           ,ViewOptions
+    {View, PreFilter, PostFilter} = get_incoming_view_and_filter(JObj),
+    case get_incoming_view_options(Context, PreFilter, PostFilter) of
+        {'ok', ViewOptions} ->
+            crossbar_doc:load_view(View
+                           ,['include_docs' | ViewOptions]
                            ,Context
                            ,fun normalize_incoming_view_results/2
-                          ).
+                          );
+        Ctx -> Ctx
+    end.
+
+-spec get_incoming_view_and_filter(wh_json:object()) ->
+          {ne_binary(), api_binaries(), api_binaries()}.
+get_incoming_view_and_filter(JObj) ->
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    case wh_json:get_value(<<"pvt_type">>, JObj) of
+        <<"faxbox">> -> {?CB_LIST_BY_FAXBOX, [Id], 'undefined'};
+        <<"user">> -> {?CB_LIST_BY_OWNERID, [Id], 'undefined'};
+        _Else -> {?CB_LIST_ALL, 'undefined', [wh_json:new()]}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -388,7 +392,13 @@ incoming_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_fax_binary(path_token(), cb_context:context()) -> cb_context:context().
+load_fax_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId, Context) ->
+    do_load_fax_binary(FaxId, cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)));
 load_fax_binary(FaxId, Context) ->
+    do_load_fax_binary(FaxId, Context).
+
+-spec do_load_fax_binary(path_token(), cb_context:context()) -> cb_context:context().
+do_load_fax_binary(FaxId, Context) ->
     Context1 = load_fax_meta(FaxId, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -402,10 +412,10 @@ load_fax_binary(FaxId, Context) ->
                                                   ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
                                                     ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], FaxMeta)}
                                                     ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], FaxMeta)}
-                                                    | cb_context:resp_headers(Context)
+                                                        | cb_context:resp_headers(Context)
                                                    ])
                       ,'undefined'
-                     )
+                                            )
             end;
         _Status -> Context1
     end.
@@ -429,8 +439,8 @@ outgoing_summary(Context) ->
                   ]};
             _Else ->
                 {?CB_LIST_BY_ACCOUNT
-                 ,[{'startkey', cb_context:account_id(Context)} 
-                   ,{'endkey', [cb_context:account_id(Context), wh_json:new()]} 
+                 ,[{'startkey', cb_context:account_id(Context)}
+                   ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
                    ,'include_docs'
                   ]}
         end,
@@ -454,3 +464,74 @@ normalize_view_results(JObj, Acc) ->
 -spec normalize_incoming_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_incoming_view_results(JObj, Acc) ->
     [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
+
+-spec get_incoming_view_options(cb_context:context()) ->
+                                       {'ok', wh_proplist()} |
+                                       cb_context:context().
+-spec get_incoming_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
+                                       {'ok', wh_proplist()} |
+                                       cb_context:context().
+
+get_incoming_view_options(Context) ->
+    get_incoming_view_options(Context, 'undefined', 'undefined').
+
+get_incoming_view_options(Context, 'undefined', SuffixKey) ->
+    get_incoming_view_options(Context, [], SuffixKey);
+get_incoming_view_options(Context, PrefixKey, 'undefined') ->
+    get_incoming_view_options(Context, PrefixKey, []);
+get_incoming_view_options(Context, PrefixKey, SuffixKey) ->
+    TStamp =  wh_util:current_tstamp(),
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
+    CreatedFrom = created_from(Context, TStamp, MaxRange),
+    CreatedTo = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)),
+    Diff = CreatedTo - CreatedFrom,
+
+    case Diff of
+        N when N < 0 ->
+            Message = <<"created_from is prior to created_to">>,
+            cb_context:add_validation_error(<<"created_from">>
+                                            ,<<"date_range">>
+                                            ,Message
+                                            ,Context
+                                           );
+        N when N > MaxRange ->
+            Message = <<"created_to is more than "
+                        ,(wh_util:to_binary(MaxRange))/binary
+                        ," seconds from created_from"
+                      >>,
+            cb_context:add_validation_error(<<"created_from">>
+                                            ,<<"date_range">>
+                                            ,Message
+                                            ,Context
+                                           );
+        _N when length(PrefixKey) =:= 0 andalso length(SuffixKey) =:= 0 ->
+            {'ok', [{'startkey', CreatedFrom}
+                    ,{'endkey', CreatedTo}
+                    | get_modbs(Context, CreatedFrom, CreatedTo)
+                   ]};
+        _N ->
+            {'ok', [{'startkey', [Key || Key <- PrefixKey ++ [CreatedFrom] ++ SuffixKey] }
+                    ,{'endkey', [Key || Key <- PrefixKey  ++ [CreatedTo]   ++ SuffixKey] }
+                    | get_modbs(Context, CreatedFrom, CreatedTo)
+                   ]}
+    end.
+
+-spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
+created_from(Context, TStamp, MaxRange) ->
+    created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
+
+-spec created_from(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> pos_integer().
+created_from(Context, TStamp, MaxRange, 'undefined') ->
+    lager:debug("building created_from from req value"),
+    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
+created_from(_Context, _TStamp, _MaxRange, StartKey) ->
+    lager:debug("using startkey ~p as created_from", [StartKey]),
+    wh_util:to_integer(StartKey).
+
+-spec get_modbs(cb_context:context(), pos_integer(), pos_integer()) -> ne_binaries().
+get_modbs(Context, From, To) ->
+    AccountId = cb_context:account_id(Context),
+    {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
+    {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
+    Range = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, []),
+    [{'databases', [ wh_util:format_account_mod_id(AccountId, Year, Month) || {Year, Month} <- Range]}].

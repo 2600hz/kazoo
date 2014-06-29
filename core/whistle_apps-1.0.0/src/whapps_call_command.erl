@@ -2325,6 +2325,11 @@ get_inbound_t38_settings('undefined','true') ->
      ,{<<"Enable-T38-Fax-Request">>, 'true'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
      ,{<<"Enable-T38-Gateway">>, <<"self">>}
+    ];
+get_inbound_t38_settings('undefined','false') ->
+    [{<<"Enable-T38-Fax">>, 'false'}
+     ,{<<"Enable-T38-Fax-Request">>, 'false'}
+     ,{<<"Enable-T38-Passthrough">>, 'false'}
     ].
 
 

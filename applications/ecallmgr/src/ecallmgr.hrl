@@ -238,6 +238,8 @@
                                ,{<<"intercept_unanswered_only">>, <<"intercept_unanswered_only">>}
                                ,{<<"conference_member_nospeak_relational">>, <<"conference_member_nospeak_relational">>}
                                ,{<<"conference_member_nospeak_check">>, <<"conference_member_nospeak_check">>}
+                               ,{<<"Fax-Doc-ID">>, <<"fax_doc_id">>}
+                               ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]

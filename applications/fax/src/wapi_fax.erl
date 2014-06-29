@@ -24,7 +24,7 @@
 -define(FAX_EXCHANGE, <<"fax">>).
 
 -define(FAX_REQ_HEADERS, [<<"Call">>, <<"Action">>]).
--define(OPTIONAL_FAX_REQ_HEADERS, [<<"Owner-ID">>, <<"FaxBox-ID">>]).
+-define(OPTIONAL_FAX_REQ_HEADERS, [<<"Owner-ID">>, <<"FaxBox-ID">>, <<"Fax-T38-Option">>]).
 -define(FAX_REQ_VALUES, [{<<"Event-Category">>,<<"dialplan">>}
                          ,{<<"Event-Name">>, <<"fax_req">>}
                          ,{<<"Action">>, [<<"receive">>, <<"transmit">>]}

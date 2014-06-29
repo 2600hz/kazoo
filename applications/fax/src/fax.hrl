@@ -22,5 +22,13 @@
                                                                  ]}
                                    ]).
 
+-record(fax_storage, {
+         id :: api_binary()
+         ,attachment_id :: api_binary()
+         ,db :: api_binary()
+         }).
+-type fax_storage() :: #fax_storage{}.
+
+
 -define(FAX_HRL, 'true').
 -endif.

@@ -29,6 +29,7 @@
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
          ,account_modb/1, account_modb/2, account_modb/3
+         ,set_account_modb/3, set_account_modb/4
          ,account_realm/1
          ,account_doc/1
          ,auth_token/1, set_auth_token/2
@@ -218,6 +219,10 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
+set_account_modb(#cb_context{}=Context, Year, Month) ->
+    Context#cb_context{db_name=kazoo_modb:get_modb(account_id(Context), Year, Month)}.
+set_account_modb(#cb_context{}=Context, AcctId, Year, Month) ->
+    Context#cb_context{db_name=kazoo_modb:get_modb(AcctId, Year, Month)}.
 set_auth_token(#cb_context{}=Context, AuthToken) -> Context#cb_context{auth_token=AuthToken}.
 set_auth_doc(#cb_context{}=Context, AuthDoc) -> Context#cb_context{auth_doc=AuthDoc}.
 set_auth_account_id(#cb_context{}=Context, AuthBy) -> Context#cb_context{auth_account_id=AuthBy}.

@@ -175,73 +175,23 @@ fetch_cdrs(View, ViewOptions, Context, Dbs, _Version) ->
 
 -spec fetch_cdrs_v1(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries()) ->
                            cb_context:context().
-fetch_cdrs_v1(_View, _ViewOptions, Context, []) ->
-    lager:debug("dbs exhausted"),
-    Context;
-fetch_cdrs_v1(View, ViewOptions, Context, [Db|Dbs]) ->
-    C = crossbar_doc:load_view(View
-                               ,ViewOptions
-                               ,cb_context:set_account_db(Context, Db)
-                               ,fun normalize_view_results/2
-                              ),
-    case cb_context:resp_status(C) of
-        'success' ->
-            JObjs = cb_context:doc(Context)
-                ++ cb_context:doc(C),
-            fetch_cdrs(View
-                       ,ViewOptions
-                       ,cb_context:set_resp_data(C, JObjs)
-                       ,Dbs
-                      );
-        Else -> Else
-    end.
+fetch_cdrs_v1(View, ViewOptions, Context, Dbs) ->
+    crossbar_doc:load_view(View
+                           ,[{'databases', Dbs} | ViewOptions]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 -spec fetch_paginated_cdrs(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries()) ->
                                   cb_context:context().
 fetch_paginated_cdrs(View, ViewOptions, Context, Dbs) ->
-    ReqPageSize = crossbar_doc:pagination_page_size(Context),
-    CurrentPageSize = wh_json:get_integer_value(<<"page_size">>, cb_context:resp_envelope(Context), 0),
-
-    fetch_paginated_cdrs(View, ViewOptions, Context, Dbs, ReqPageSize - CurrentPageSize).
-
--spec fetch_paginated_cdrs(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries(), integer()) ->
-                        cb_context:context().
-fetch_paginated_cdrs(_View, _ViewOptions, Context, [], _PageSize) ->
-    lager:debug("dbs exhausted"),
-    Context;
-fetch_paginated_cdrs(_View, _ViewOptions, Context, _Dbs, PageSize) when PageSize =< 0 ->
-    lager:debug("page size exhausted"),
-    Context;
-fetch_paginated_cdrs(View, ViewOptions, Context, [Db|Dbs], PageSize) ->
-    C = crossbar_doc:load_view(View
-                               ,ViewOptions
-                               ,cb_context:set_account_db(Context, Db)
-                               ,crossbar_doc:start_key(ViewOptions, Context)
-                               ,PageSize
-                               ,fun normalize_view_results/2
-                              ),
-    case cb_context:resp_status(C) of
-        'success' ->
-            JObjs = cb_context:doc(Context)
-                ++ cb_context:doc(C),
-            fetch_cdrs(View
-                       ,ViewOptions
-                       ,cb_context:set_resp_envelope(
-                          cb_context:set_resp_data(C, JObjs)
-                          ,merge_resp_envelope(Context, C)
-                         )
-                       ,Dbs
-                      );
-        Else -> Else
-    end.
-
--spec merge_resp_envelope(cb_context:context(), cb_context:context()) -> wh_json:object().
-merge_resp_envelope(PriorContext, NewContext) ->
-    maybe_fix_start_keys(
-      wh_json:foldl(fun merge_resp_envelopes/3
-                    ,cb_context:resp_envelope(NewContext)
-                    ,cb_context:resp_envelope(PriorContext)
-                   )).
+    Context1 = crossbar_doc:load_view(View
+                                      ,[{'databases', Dbs} | ViewOptions]
+                                      ,Context
+                                      ,fun normalize_view_results/2
+                                     ),
+    RespEnvelope = maybe_fix_start_keys(cb_context:resp_envelope(Context1)),
+    cb_context:set_resp_envelope(Context1, RespEnvelope).
 
 -spec maybe_fix_start_keys(wh_json:object()) -> wh_json:object().
 maybe_fix_start_keys(JObj) ->
@@ -259,24 +209,11 @@ maybe_fix_start_keys_fold(Key, J) ->
         _Value -> J
     end.
 
--spec merge_resp_envelopes(ne_binary(), term(), wh_json:object()) -> wh_json:object().
-merge_resp_envelopes(<<"start_key">> = Key, [_, PriorValue], NewEnvelope) ->
-    lager:debug("setting ~s to ~p, ignoring owner", [Key, PriorValue]),
-    wh_json:set_value(Key, PriorValue, NewEnvelope);
-merge_resp_envelopes(<<"start_key">> = Key, PriorValue, NewEnvelope) ->
-    lager:debug("setting ~s to ~p", [Key, PriorValue]),
-    wh_json:set_value(Key, PriorValue, NewEnvelope);
-merge_resp_envelopes(<<"page_size">> = Key, PriorValue, NewEnvelope) ->
-    NewValue = wh_json:get_integer_value(Key, NewEnvelope, 0),
-    Sum = NewValue + PriorValue,
-    lager:debug("updating ~s to ~p (~p + ~p)", [Key, Sum, NewValue, PriorValue]),
-    wh_json:set_value(Key, Sum, NewEnvelope);
-merge_resp_envelopes(_Key, _Value, NewEnvelope) ->
-    lager:debug("skipping ~s: ~p", [_Key, _Value]),
-    NewEnvelope.
-
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, JObjs) ->
+    lager:debug("normalize ~p(~s)", [wh_json:get_value(<<"key">>, JObj)
+                                     ,wh_json:get_value(<<"id">>, JObj)
+                                    ]),
     Value = wh_json:get_value(<<"value">>, JObj),
     case wh_json:get_value(<<"doc">>, JObj) of
         'undefined' -> [Value|JObjs];
@@ -288,14 +225,14 @@ normalize_view_results(JObj, JObjs) ->
 
 -spec view_key_created_to(wh_proplist()) -> pos_integer().
 view_key_created_to(Props) ->
-    case props:get_value('startkey', Props) of
+    case props:get_value('endkey', Props) of
         [_, CreatedTo] -> CreatedTo;
         CreatedTo -> CreatedTo
     end.
 
 -spec view_key_created_from(wh_proplist()) -> pos_integer().
 view_key_created_from(Props) ->
-    case props:get_value('endkey', Props) of
+    case props:get_value('startkey', Props) of
         [_, CreatedFrom] -> CreatedFrom;
         CreatedFrom -> CreatedFrom
     end.
@@ -347,7 +284,7 @@ created_from(Context, TStamp, MaxRange, 'undefined') ->
     lager:debug("building created_from from req value"),
     wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
 created_from(_Context, _TStamp, _MaxRange, StartKey) ->
-    lager:debug("using startkey ~p as created_from", [StartKey]),
+    lager:debug("found startkey ~p as created_from", [StartKey]),
     wh_util:to_integer(StartKey).
 
 -spec master_account_id() -> ne_binary().
@@ -384,14 +321,10 @@ maybe_add_design_doc(AccountMODb) ->
 -spec cdr_db_name(wh_year(), wh_month(), cb_context:context()) -> ne_binary().
 cdr_db_name(Timestamp, Context) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-    ReqNouns = cb_context:req_nouns(Context),
-    [AccountId] = props:get_value(<<"accounts">>, ReqNouns),
-    wh_util:format_account_id(AccountId, Year, Month).
+    cdr_db_name(Year, Month, Context).
 
 cdr_db_name(Year, Month, Context) ->
-    ReqNouns = cb_context:req_nouns(Context),
-    [AccountId] = props:get_value(<<"accounts">>, ReqNouns),
-    wh_util:format_account_id(AccountId, Year, Month).
+    wh_util:format_account_id(cb_context:account_id(Context), Year, Month).
 
 %%--------------------------------------------------------------------
 %% @private

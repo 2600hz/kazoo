@@ -606,7 +606,6 @@ message_ttl(Args, Acc) ->
             [{<<"x-message-ttl">>, 'signedint', Value}|Acc1]
     end.
 
-
 %%------------------------------------------------------------------------------
 %% @public
 %% @doc

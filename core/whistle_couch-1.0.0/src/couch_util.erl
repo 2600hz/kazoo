@@ -40,6 +40,8 @@
          ,del_doc/3
          ,del_docs/3
          ,ensure_saved/4
+         ,copy_doc/3
+         ,move_doc/3
         ]).
 
 %% View-related
@@ -760,3 +762,75 @@ doc_acct_id(Db, Doc) ->
         'undefined' -> wh_util:format_account_id(Db, 'raw');
         AccountId -> AccountId
     end.
+
+-define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>]).
+
+-spec copy_doc(server(), copy_doc(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+copy_doc(#server{}=Conn, #wh_copy_doc{source_dbname = SourceDb
+                                      ,dest_dbname='undefined'
+                                     }=CopySpec, Options) ->
+    copy_doc(Conn, CopySpec#wh_copy_doc{dest_dbname=SourceDb
+                                        ,dest_doc_id=wh_util:rand_hex_binary(16)
+                                       }, Options);
+copy_doc(#server{}=Conn, #wh_copy_doc{dest_doc_id='undefined'}=CopySpec, Options) ->
+    copy_doc(Conn, CopySpec#wh_copy_doc{dest_doc_id=wh_util:rand_hex_binary(16)}, Options);
+copy_doc(#server{}=Conn, CopySpec, Options) ->
+    #wh_copy_doc{source_dbname = SourceDbName
+                 ,source_doc_id = SourceDocId
+                 ,dest_dbname = DestDbName
+                 ,dest_doc_id = DestDocId
+                } = CopySpec,
+    case open_doc(Conn, SourceDbName, SourceDocId, Options) of
+        {'ok', SourceDoc} ->
+            Props = [{<<"_id">>, DestDocId}],
+            DestinationDoc = wh_json:set_values(Props,wh_json:delete_keys(?DELETE_KEYS, SourceDoc)),
+            case save_doc(Conn, DestDbName, DestinationDoc, Options) of
+                {'ok', _JObj} ->
+                    Attachments = wh_json:get_value(<<"_attachments">>, SourceDoc, wh_json:new()),
+                    copy_attachments(Conn, CopySpec, wh_json:get_values(Attachments));
+                Error -> Error
+            end;
+        Error -> Error
+    end.
+
+-spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:json_strings()}) ->
+                              {'ok', ne_binary()} |
+                              {'error', any()}.
+copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->
+    #wh_copy_doc{dest_dbname = DestDbName
+                 ,dest_doc_id = DestDocId
+                } = CopySpec,
+    open_doc(Conn, DestDbName, DestDocId, []);
+copy_attachments(#server{}=Conn, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
+    #wh_copy_doc{source_dbname = SourceDbName
+                 ,source_doc_id = SourceDocId
+                 ,dest_dbname = DestDbName
+                 ,dest_doc_id = DestDocId
+                } = CopySpec,
+    case fetch_attachment(Conn, SourceDbName, SourceDocId, Key) of
+        {'ok', Contents} ->
+            ContentType = wh_json:get_value([<<"content_type">>], JObj),
+            Opts = [{'headers', [{'content_type', wh_util:to_list(ContentType)}]}],
+            case put_attachment(Conn, DestDbName, DestDocId, Key, Contents, Opts) of
+                {'ok', _AttachmentDoc} ->
+                    copy_attachments(Conn, CopySpec, {JObjs, Keys});
+                Error -> Error
+            end;
+        Error -> Error
+    end.
+
+-spec move_doc(server(), copy_doc(), wh_proplist()) ->
+                      {'ok', wh_json:object()} |
+                      couchbeam_error().
+move_doc(Conn, CopySpec, Options) ->
+    #wh_copy_doc{source_dbname = SourceDbName
+                 ,source_doc_id = SourceDocId
+                } = CopySpec,
+    case copy_doc(Conn, CopySpec, Options) of
+         {'ok', JObj} ->
+             del_doc(Conn, SourceDbName, SourceDocId),
+             {'ok', JObj};
+         Error -> Error
+     end.

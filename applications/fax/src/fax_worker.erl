@@ -36,6 +36,7 @@
                 ,fax_status :: api_object()
                 ,pages  :: integer()
                 ,page   ::integer()
+                ,file :: api_binary()
                }).
 -type state() :: #state{}.
 
@@ -246,7 +247,7 @@ handle_cast({_, Pid, _}, #state{job_id=JobId}=State) when is_binary(JobId), is_p
     lager:debug("worker received request while still processing a job, rejecting", []),
     gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', State};
-handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
+handle_cast({'x_attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
     JobId = wh_json:get_value(<<"id">>, Job),
     put('callid', JobId),
     case attempt_to_acquire_job(JobId, Q) of
@@ -278,16 +279,72 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)}
     end;
+handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
+    JobId = wh_json:get_value(<<"id">>, Job),
+    put('callid', JobId),
+    case attempt_to_acquire_job(JobId, Q) of
+        {'ok', JObj} ->
+            lager:debug("acquired job ~s", [JobId]),
+            AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+            Status = <<"preparing">>,
+            gen_server:cast(self(), 'prepare_job'),
+            {'noreply', State#state{job_id=JobId
+                                    ,pool=Pid
+                                    ,job=JObj
+                                    ,account_id=AccountId
+                                    ,status=Status
+                                    ,fax_status=wh_json:new()
+                                   }};
+        {'error', _Reason} ->
+            lager:debug("failed to acquire job ~s: ~p", [JobId, _Reason]),
+            gen_server:cast(Pid, {'job_complete', self()}),
+            {'noreply', reset(State)}
+    end;
+handle_cast('prepare_job', #state{job_id=JobId
+                                  ,job=JObj
+                                  ,pool=Pid
+                                 }=State) ->
+    case fetch_document(JObj) of
+        {'ok', "200", RespHeaders, RespContent} ->
+            case prepare_contents(JobId, RespHeaders, RespContent) of
+                {'error', Cause} -> release_failed_job('bad_file', Cause, JObj),
+                                    gen_server:cast(Pid, {'job_complete', self()}),
+                                    {'noreply', reset(State)};
+                {'ok', OutputFile} ->
+                    gen_server:cast(self(), 'count_pages'),
+                    {'noreply', State#state{file=OutputFile}}
+            end;
+        {'ok', Status, _, _} ->
+            lager:debug("failed to fetch file for job: http response ~p", [Status]),
+            release_failed_job('fetch_failed', Status, JObj),
+            gen_server:cast(Pid, {'job_complete', self()}),
+            {'noreply', reset(State)};
+        {'error', Reason} ->
+            lager:debug("failed to fetch file for job: ~p", [Reason]),
+            release_failed_job('fetch_error', Reason, JObj),
+            gen_server:cast(Pid, {'job_complete', self()}),
+            {'noreply', reset(State)}
+    end;
+handle_cast('count_pages', #state{file=File
+                                  ,job=JObj
+                                 }=State) ->
+    {NumberOfPages, FileSize} = get_sizes(File),
+    Values = [{<<"pvt_pages">>, NumberOfPages}
+              ,{<<"pvt_size">>, FileSize}
+             ],
+    gen_server:cast(self(), 'send'),
+    {'noreply',State#state{job=wh_json:set_values(Values, JObj),pages=NumberOfPages}};
+handle_cast('send', #state{job_id=JobId
+                           ,job=JObj
+                           ,queue_name=Q
+                          }=State) ->
+    send_fax(JobId, JObj, Q),
+    {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
     lager:debug("worker discovered queue name ~s", [QueueName]),
     {'noreply', State#state{queue_name=QueueName}};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'set_sizes', NumberOfPages, FileSize}, #state{job=JObj}=State) ->
-    Values = [{<<"pvt_pages">>, NumberOfPages}
-              ,{<<"pvt_size">>, FileSize}
-             ],
-    {'noreply',State#state{job=wh_json:set_values(Values, JObj),pages=NumberOfPages}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -620,7 +677,6 @@ notify_fields(JObj, Resp) ->
       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
-
 -spec fax_fields(wh_json:object()) -> wh_proplist().
 fax_fields('undefined') ->
     [];
@@ -630,11 +686,6 @@ fax_fields(JObj) ->
 -spec elapsed_time(wh_json:object()) -> non_neg_integer().
 elapsed_time(JObj) ->
     wh_util:current_tstamp() - wh_json:get_integer_value(<<"pvt_created">>, JObj, wh_util:current_tstamp()).
-
-
-
-
-
 
 -spec execute_job(wh_json:object(), ne_binary()) -> 'ok' | 'failure'.
 execute_job(JObj, Q) ->
@@ -704,7 +755,6 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             R = file:write_file(OutputFile, RespContent),
             lager:debug("result of tmp file write: ~s", [R]),
-            set_sizes(OutputFile),
             {'ok', OutputFile};
         <<"application/pdf">> ->
             InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
@@ -717,7 +767,6 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             lager:debug("attempting to convert pdf: ~s", [Cmd]),
             case os:cmd(Cmd) of
                 "success" ->
-                    set_sizes(OutputFile),
                     {'ok', OutputFile};
                 _Else ->
                     lager:debug("could not covert file: ~s", [_Else]),
@@ -728,12 +777,12 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             {'error', list_to_binary(["file type '", Else, "' is unsupported"])}
     end.
 
--spec set_sizes(ne_binary()) -> 'ok'.
-set_sizes(OutputFile) ->
+-spec get_sizes(ne_binary()) -> 'ok'.
+get_sizes(OutputFile) ->
     CmdCount = <<"echo -n `tiffinfo ", OutputFile/binary , " | grep 'Page Number' | grep -c 'P'`">>,
     NumberOfPages = wh_util:to_integer( os:cmd(wh_util:to_list(CmdCount)) ),
     FileSize = filelib:file_size(OutputFile),
-    gen_listener:cast(self(), {'set_sizes', NumberOfPages, FileSize}).
+    {NumberOfPages, FileSize}.
 
 -spec normalize_content_type(string() | ne_binary()) -> ne_binary().
 normalize_content_type(<<"image/tif">>) -> <<"image/tiff">>;

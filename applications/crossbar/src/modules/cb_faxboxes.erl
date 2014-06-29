@@ -29,8 +29,19 @@
 -define(GPC_PROXY_HEADER,{"X-CloudPrint-Proxy","kazoo-cloud-fax-printer-proxy"}).
 -define(DEFAULT_FAX_SMTP_DOMAIN, <<"fax.kazoo.io">>).
 
--define(LEAKED_FIELDS, [<<"pvt_smtp_email_address">>, <<"pvt_cloud_state">>
-                        ,<<"pvt_cloud_printer_id">>, <<"pvt_cloud_connector_claim_url">>]).
+-define(LEAKED_FIELDS, [<<"pvt_smtp_email_address">>
+                        ,<<"pvt_cloud_state">>
+                        ,<<"pvt_cloud_printer_id">>
+                        ,<<"pvt_cloud_connector_claim_url">>
+                       ]).
+
+-type fax_field_name() :: ne_binary().
+-type fax_file_name() :: ne_binary().
+-type fax_file_content() :: binary() | iolist().
+-type fax_content_type() :: ne_binary().
+
+-type fax_file() :: {fax_field_name(), fax_file_name(), fax_file_content(), fax_content_type()}.
+-type fax_files() :: [fax_file(),...] | [].
 
 %%%===================================================================
 %%% API
@@ -140,12 +151,12 @@ validate_email_address(Context) ->
 put(Context) ->
     Ctx = maybe_register_cloud_printer(Context),
     Ctx2 = crossbar_doc:save(Ctx),
-    _ = crossbar_doc:save(
-          cb_context:set_doc(
-            cb_context:set_account_db(Ctx2, ?WH_FAXES),
-            wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
-           )),
-    cb_context:set_resp_data(Ctx2, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
+    Ctx3 = crossbar_doc:save(
+             cb_context:set_doc(
+               cb_context:set_account_db(Ctx2, ?WH_FAXES),
+               wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
+              )),
+    cb_context:set_resp_data(Ctx3, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -158,12 +169,12 @@ put(Context) ->
 post(Context, _Id) ->
     Ctx = maybe_register_cloud_printer(Context),
     Ctx2 = crossbar_doc:save(Ctx),
-    _ = crossbar_doc:ensure_saved(
-          cb_context:set_doc(
-            cb_context:set_account_db(Ctx2, ?WH_FAXES),
-            wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
-           )),
-    cb_context:set_resp_data(Ctx2, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
+    Ctx3 = crossbar_doc:ensure_saved(
+             cb_context:set_doc(
+               cb_context:set_account_db(Ctx2, ?WH_FAXES),
+               wh_json:delete_key(<<"_rev">>, cb_context:doc(Ctx2))
+              )),
+    cb_context:set_resp_data(Ctx3, wh_json:public_fields(leak_private_fields(cb_context:doc(Ctx2)))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -175,8 +186,8 @@ post(Context, _Id) ->
 delete(Context, Id) ->
     Ctx2 = crossbar_doc:delete(Context),
     _ = crossbar_doc:delete(
-          read(Id,
-               cb_context:set_account_db(Context, ?WH_FAXES))),
+          read(Id, cb_context:set_account_db(Context, ?WH_FAXES))
+         ),
     Ctx2.
 
 -spec create_faxbox(cb_context:context()) -> cb_context:context().
@@ -212,14 +223,18 @@ leak_private_fields(JObj) ->
 
 -spec remove_private_fields(cb_context:context()) -> cb_context:context().
 remove_private_fields(Context) ->
-    JObj = cb_context:req_data(Context),
-    JObj1 = lists:foldl(fun(<<"pvt_", K1/binary>>, Acc) ->
-                                case wh_json:get_value(K1, Acc) of
-                                    'undefined' -> Acc;
-                                    _Value -> wh_json:delete_key(K1, Acc)
-                                end
-                        end, JObj, ?LEAKED_FIELDS),
+    JObj1 = lists:foldl(fun remove_private_fields_fold/2
+                        ,cb_context:req_data(Context)
+                        ,?LEAKED_FIELDS
+                       ),
     cb_context:set_req_data(Context, JObj1).
+
+-spec remove_private_fields_fold(ne_binary(), wh_json:object()) -> wh_json:object().
+remove_private_fields_fold(<<"pvt_", K1/binary>>, Acc) ->
+    case wh_json:get_value(K1, Acc) of
+        'undefined' -> Acc;
+        _Value -> wh_json:delete_key(K1, Acc)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -352,7 +367,7 @@ get_cloud_registered_properties(JObj) ->
      ,{<<"pvt_cloud_oauth_scope">>, wh_json:get_value(<<"oauth_scope">>, JObj)}
     ].
 
--spec register_body(ne_binary(), ne_binary()) -> strings().
+-spec register_body(ne_binary(), ne_binary()) -> iolist().
 register_body(FaxboxId, Boundary) ->
     {'ok', Fields} = file:consult(
                        [filename:join(
@@ -375,31 +390,46 @@ register_body(FaxboxId, Boundary) ->
                               ,Files
                              ).
 
--spec format_multipart_formdata(ne_binary(), wh_proplist(), [tuple(),...]) -> strings().
+-spec format_multipart_formdata(ne_binary(), wh_proplist(), fax_files()) -> iolist().
 format_multipart_formdata(Boundary, Fields, Files) ->
-    FieldParts = [[<<"--", Boundary/binary>>
-                   ,<<"Content-Disposition: form-data; name=\"",FieldName/binary,"\"">>
-                   ,<<"">>
-                   ,FieldContent
-                  ]
-                  || {FieldName, FieldContent} <- Fields
-                 ],
-
-    FieldParts2 = lists:append(FieldParts),
-
-    FileParts = [[<<"--", Boundary/binary>>
-                  ,<<"Content-Disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>
-                  ,<<"Content-Type: ", FileContentType/binary>>
-                  ,<<"">>
-                  ,FileContent
-                 ]
-                 || {FieldName, FileName, FileContent, FileContentType} <- Files
-                ],
-
-    FileParts2 = lists:append(FileParts),
-
     EndingParts = [<<"--", Boundary/binary, "--">>, <<"">>],
+    FileParts = build_file_parts(Boundary, Files, EndingParts),
+    FieldParts = build_field_parts(Boundary, Fields, FileParts),
 
-    Parts = lists:append([FieldParts2, FileParts2, EndingParts]),
+    lists:foldr(fun join_formdata_fold/2
+                ,[]
+                ,FieldParts
+               ).
 
-    lists:foldr(fun(A,B) -> string:join([binary_to_list(A), B], "\r\n") end, [], Parts).
+-spec build_field_parts(ne_binary(), wh_proplist(), iolist()) -> iolist().
+build_field_parts(Boundary, Fields, Acc0) ->
+    lists:foldr(fun({FieldName, FieldContent}, Acc) ->
+                        [<<"--", Boundary/binary>>
+                         ,<<"Content-Disposition: form-data; name=\"",FieldName/binary,"\"">>
+                         ,<<>>
+                         ,FieldContent
+                         | Acc
+                        ]
+                end
+                ,Acc0
+                ,Fields
+               ).
+
+-spec build_file_parts(ne_binary(), fax_files(), iolist()) -> iolist().
+build_file_parts(Boundary, Files, Acc0) ->
+    lists:foldr(fun({FieldName, FileName, FileContent, FileContentType}, Acc) ->
+                        [<<"--", Boundary/binary>>
+                         ,<<"Content-Disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>
+                         ,<<"Content-Type: ", FileContentType/binary>>
+                         ,<<>>
+                         ,FileContent
+                         | Acc
+                        ]
+                end
+                ,Acc0
+                ,Files
+               ).
+
+-spec join_formdata_fold(ne_binary(), binary()) -> iolist().
+join_formdata_fold(Bin, Acc) ->
+    string:join([binary_to_list(Bin), Acc], "\r\n").
