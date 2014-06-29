@@ -421,38 +421,65 @@ delete(Context, MediaId, ?BIN_DATA) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_media_summary(cb_context:context()) -> cb_context:context().
+-spec load_media_summary(cb_context:context(), api_binary()) -> cb_context:context().
 load_media_summary(Context) ->
     load_media_summary(Context, cb_context:account_id(Context)).
 
 load_media_summary(Context, 'undefined') ->
     lager:debug("loading system_config media"),
-    crossbar_doc:load_view(?CB_LIST
-                           ,[]
-                           ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
-                           ,fun normalize_view_results/2
-                          );
+    fix_start_keys(
+      crossbar_doc:load_view(?CB_LIST
+                             ,[]
+                             ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
+                             ,fun normalize_view_results/2
+                            )
+     );
 load_media_summary(Context, _AccountId) ->
-    crossbar_doc:load_view(?CB_LIST
-                           ,[]
-                           ,Context
-                           ,fun normalize_view_results/2
-                          ).
+    fix_start_keys(
+      crossbar_doc:load_view(?CB_LIST
+                             ,[]
+                             ,Context
+                             ,fun normalize_view_results/2
+                            )
+     ).
+
+fix_start_keys(Context) ->
+    cb_context:set_resp_envelope(
+      Context
+      ,lists:foldl(fun fix_start_keys_fold/2
+                   ,cb_context:resp_envelope(Context)
+                   ,[<<"start_key">>, <<"next_start_key">>]
+                  )
+     ).
+fix_start_keys_fold(Key, JObj) ->
+    lager:debug("fix ~s: ~p", [Key, wh_json:get_value(Key, JObj)]),
+    case wh_json:get_value(Key, JObj) of
+        'undefined' -> JObj;
+        <<_/binary>> -> JObj;
+        [_Value] -> wh_json:delete_key(Key, JObj);
+        ['null', Id] -> wh_json:set_value(Key, Id, JObj);
+        [Lang, Id] -> wh_json:set_value(Key, wh_media_util:prompt_id(Id, Lang), JObj)
+    end.
 
 load_available_languages(Context) ->
     load_available_languages(Context, cb_context:account_id(Context)).
 
 load_available_languages(Context, 'undefined') ->
-    crossbar_doc:load_view(<<"media/listing_by_language">>
-                           ,[{'group_level', 1}]
-                           ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
-                           ,fun normalize_count_results/2
-                          );
+    fix_start_keys(
+      crossbar_doc:load_view(<<"media/listing_by_language">>
+                             ,[{'group_level', 1}]
+                             ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
+                             ,fun normalize_count_results/2
+                            )
+     );
 load_available_languages(Context, _AccountId) ->
-    crossbar_doc:load_view(<<"media/listing_by_language">>
-                           ,[{'group_level', 1}]
-                           ,Context
-                           ,fun normalize_count_results/2
-                          ).
+    fix_start_keys(
+      crossbar_doc:load_view(<<"media/listing_by_language">>
+                             ,[{'group_level', 1}]
+                             ,Context
+                             ,fun normalize_count_results/2
+                            )
+     ).
 
 normalize_count_results(JObj, []) ->
     normalize_count_results(JObj, [wh_json:new()]);
@@ -472,25 +499,29 @@ load_media_docs_by_langauge(Context, Language) ->
     load_media_docs_by_langauge(Context, Language, cb_context:account_id(Context)).
 
 load_media_docs_by_langauge(Context, Language, 'undefined') ->
-    crossbar_doc:load_view(<<"media/listing_by_language">>
-                           ,[{'startkey', [Language]}
-                             ,{'endkey', [Language, wh_json:new()]}
-                             ,{'reduce', 'false'}
-                             ,{'include_docs', 'false'}
-                            ]
-                           ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
-                           ,fun normalize_language_results/2
-                          );
+    fix_start_keys(
+      crossbar_doc:load_view(<<"media/listing_by_language">>
+                             ,[{'startkey', [Language]}
+                               ,{'endkey', [Language, wh_json:new()]}
+                               ,{'reduce', 'false'}
+                               ,{'include_docs', 'false'}
+                              ]
+                             ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
+                             ,fun normalize_language_results/2
+                            )
+     );
 load_media_docs_by_langauge(Context, Language, _AccountId) ->
-    crossbar_doc:load_view(<<"media/listing_by_language">>
-                           ,[{'startkey', [Language]}
-                             ,{'endkey', [Language, wh_json:new()]}
-                             ,{'reduce', 'false'}
-                             ,{'include_docs', 'false'}
-                            ]
-                           ,Context
-                           ,fun normalize_language_results/2
-                          ).
+    fix_start_keys(
+      crossbar_doc:load_view(<<"media/listing_by_language">>
+                             ,[{'startkey', [Language]}
+                               ,{'endkey', [Language, wh_json:new()]}
+                               ,{'reduce', 'false'}
+                               ,{'include_docs', 'false'}
+                              ]
+                             ,Context
+                             ,fun normalize_language_results/2
+                            )
+     ).
 
 normalize_language_results(JObj, Acc) ->
     [wh_json:get_value(<<"id">>, JObj) | Acc].
