@@ -25,7 +25,7 @@
 -export([allow_account_number_additions/1, disallow_account_number_additions/1]).
 -export([create_account/4]).
 -export([create_account/1]).
--export([move_account/2]]).
+-export([move_account/2]).
 
 -include_lib("crossbar.hrl").
 

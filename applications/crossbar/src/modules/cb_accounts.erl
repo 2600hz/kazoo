@@ -323,6 +323,7 @@ move_account(Context, AccountId) ->
     Data = cb_context:req_data(Context),
     ToAccount = wh_json:get_binary_value(<<"to">>, Data),
     case crossbar_util:move_account(AccountId, ToAccount) of
+        {'error', 'forbidden'} -> cb_context:add_system_error('forbidden', Context);
         {'error', _E} -> cb_context:add_system_error('datastore_fault', Context);
         {'ok', _} ->
             load_account(AccountId, prepare_context(AccountId, Context))

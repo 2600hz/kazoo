@@ -312,21 +312,39 @@ get_account_realm(Db, AccountId) ->
 -spec move_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error',any()}.
 move_account(AccountId, ToAccount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case validate_move(AccountId, ToAccount) of
         {'error', _E}=Error -> Error;
-        {'ok', JObj} ->
-            ToTree = lists:append(crossbar_util:get_tree(ToAccount), [ToAccount]),
+        {'ok', JObj, ToTree} ->
             PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
             JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
                                         ,{<<"pvt_previous_tree">>, PreviousTree}
+                                        ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                        ], JObj),
             case couch_mgr:save_doc(AccountDb, JObj1) of
                 {'error', _E}=Error -> Error;
                 {'ok', _} ->
                     {'ok', _} = replicate_account_definition(JObj1),
                     {'ok', _} = move_descendants(AccountId, ToTree),
+                    {'ok', _} = mark_dirty(AccountId),
                     move_service(AccountId, ToTree, 'true')
-                    %% TODO: mark reseller dirty...
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_move(ne_binary(), ne_binary()) -> {'error', _} | {'ok', wh_json:object(), ne_binaries()}.
+validate_move(AccountId, ToAccount) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', _E}=Error -> Error;
+        {'ok', JObj} ->
+            ToTree = lists:append(crossbar_util:get_tree(ToAccount), [ToAccount]),
+            case lists:member(AccountId, ToTree) of
+                'true' -> {'error', 'forbidden'};
+                'false' -> {'ok', JObj, ToTree}
             end
     end.
 
@@ -351,6 +369,7 @@ move_descendants([Descendant|Descendants], Tree) ->
             ToTree = Tree ++ Tail,
             JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
                                         ,{<<"pvt_previous_tree">>, PreviousTree}
+                                        ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                        ], JObj),
             case couch_mgr:save_doc(AccountDb, JObj1) of
                 {'error', _E}=Error -> Error;
@@ -366,7 +385,7 @@ move_descendants([Descendant|Descendants], Tree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_service(ne_binary(), ne_binaries() 'undefined' | 'true' | 'false') ->
+-spec move_service(ne_binary(), ne_binaries(), 'undefined' | 'true' | 'false') ->
                           {'ok', wh_json:object()} | {'error',any()}.
 move_service(AccountId, NewTree, Dirty) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
@@ -376,6 +395,7 @@ move_service(AccountId, NewTree, Dirty) ->
             Props = props:filter_undefined([{<<"pvt_tree">>, NewTree}
                                             ,{<<"pvt_dirty">>, Dirty}
                                             ,{<<"pvt_previous_tree">>, PreviousTree}
+                                            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                            ]),
             JObj1 = wh_json:set_values(Props, JObj),
             case couch_mgr:save_doc(?WH_SERVICES_DB, JObj1) of
@@ -413,6 +433,18 @@ get_descendants(AccountId) ->
             lager:debug("unable to disable descendants of ~s: ~p", [AccountId, R]),
             []
     end.
+
+-spec mark_dirty(ne_binary() | wh_json:object()) -> wh_std_return().
+mark_dirty(AccountId) when is_binary(AccountId) ->
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {'error', _}=E -> E;
+        {'ok', JObj} -> mark_dirty(JObj)
+    end;
+mark_dirty(JObj) ->
+    couch_mgr:save_doc(?WH_SERVICES_DB
+                       ,wh_json:set_values([{<<"pvt_dirty">>, 'true'}
+                                            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                           ], JObj)).
 
 %%--------------------------------------------------------------------
 %% @public
