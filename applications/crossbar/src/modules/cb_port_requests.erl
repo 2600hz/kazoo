@@ -28,7 +28,7 @@
 %%% { "numbers":{
 %%%   "+12225559999":{
 %%%   },
-%%%   "port_state": ["waiting", "ready", "progress", "completion", "rejection"]
+%%%   "port_state": ["unconfirmed", "submitted", "scheduled", "completed", "rejected"]
 %%% }
 %%%
 %%% @end
@@ -404,7 +404,15 @@ put(Context, Id, ?PORT_PROGRESS) ->
 put(Context, Id, ?PORT_COMPLETE) ->
     post(Context, Id);
 put(Context, Id, ?PORT_REJECT) ->
-    post(Context, Id).
+    try send_port_cancel_notification(Context, Id) of
+        _ ->
+            lager:debug("port cancel notification sent"),
+            post(Context, Id)
+    catch
+        _E:_R ->
+            lager:debug("failed to send the port cancel notification: ~s:~p", [_E, _R]),
+            cb_context:add_system_error(<<"failed to send port cancel email to system admins">>, Context)
+    end.
 
 -spec send_port_request_notification(cb_context:context(), ne_binary()) -> 'ok'.
 send_port_request_notification(Context, Id) ->
@@ -414,6 +422,15 @@ send_port_request_notification(Context, Id) ->
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_request/1).
+
+-spec send_port_cancel_notification(cb_context:context(), ne_binary()) -> 'ok'.
+send_port_cancel_notification(Context, Id) ->
+    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
+           ,{<<"Port-Request-ID">>, Id}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_cancel/1).
 
 %%--------------------------------------------------------------------
 %% @public

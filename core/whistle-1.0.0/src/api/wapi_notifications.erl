@@ -29,6 +29,7 @@
          ,pwd_recovery/1, pwd_recovery_v/1
          ,new_account/1, new_account_v/1
          ,port_request/1, port_request_v/1
+         ,port_cancel/1, port_cancel_v/1
          ,ported/1, ported_v/1
          ,cnam_request/1, cnam_request_v/1
          ,low_balance/1, low_balance_v/1
@@ -55,6 +56,7 @@
          ,publish_pwd_recovery/1, publish_pwd_recovery/2
          ,publish_new_account/1, publish_new_account/2
          ,publish_port_request/1, publish_port_request/2
+         ,publish_port_cancel/1, publish_port_cancel/2
          ,publish_ported/1, publish_ported/2
          ,publish_cnam_request/1, publish_cnam_request/2
          ,publish_low_balance/1, publish_low_balance/2
@@ -85,6 +87,7 @@
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
+-define(NOTIFY_PORT_CANCEL, <<"notifications.number.port_cancel">>).
 -define(NOTIFY_PORTED, <<"notifications.number.ported">>).
 -define(NOTIFY_CNAM_REQUEST, <<"notifications.number.cnam">>).
 -define(NOTIFY_LOW_BALANCE, <<"notifications.account.low_balance">>).
@@ -294,6 +297,17 @@
                               ,{<<"Event-Name">>, <<"port_request">>}
                              ]).
 -define(PORT_REQUEST_TYPES, []).
+
+% Notify Port Cancel
+-define(PORT_CANCEL_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_PORT_CANCEL_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
+                                        ,<<"Number-State">>, <<"Local-Number">>
+                                        ,<<"Number">>, <<"Port">>
+                                       ]).
+-define(PORT_CANCEL_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"port_cancel">>}
+                             ]).
+-define(PORT_CANCEL_TYPES, []).
 
 %% Notify Ported Request
 -define(PORTED_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Port">>]).
@@ -636,6 +650,23 @@ port_request_v(Prop) when is_list(Prop) ->
 port_request_v(JObj) -> port_request_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Port cancel notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+port_cancel(Prop) when is_list(Prop) ->
+    case port_cancel_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?PORT_CANCEL_HEADERS, ?OPTIONAL_PORT_CANCEL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for port_cancel"}
+    end;
+port_cancel(JObj) -> port_cancel(wh_json:to_proplist(JObj)).
+
+-spec port_cancel_v(api_terms()) -> boolean().
+port_cancel_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PORT_CANCEL_HEADERS, ?PORT_CANCEL_VALUES, ?PORT_CANCEL_TYPES);
+port_cancel_v(JObj) -> port_cancel_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Ported request notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -822,6 +853,9 @@ bind_to_q(Q, ['new_account'|T]) ->
 bind_to_q(Q, ['port_request'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REQUEST),
     bind_to_q(Q, T);
+bind_to_q(Q, ['port_cancel'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_CANCEL),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['ported'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORTED),
     bind_to_q(Q, T);
@@ -911,6 +945,9 @@ unbind_q_from(Q, ['new_account'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['port_request'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REQUEST),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['port_cancel'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_CANCEL),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['ported'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORTED),
@@ -1056,6 +1093,13 @@ publish_port_request(JObj) -> publish_port_request(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_port_request(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORT_REQUEST_VALUES, fun ?MODULE:port_request/1),
     amqp_util:notifications_publish(?NOTIFY_PORT_REQUEST, Payload, ContentType).
+
+-spec publish_port_cancel(api_terms()) -> 'ok'.
+-spec publish_port_cancel(api_terms(), ne_binary()) -> 'ok'.
+publish_port_cancel(JObj) -> publish_port_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_port_cancel(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?PORT_CANCEL_VALUES, fun ?MODULE:port_cancel/1),
+    amqp_util:notifications_publish(?NOTIFY_PORT_CANCEL, Payload, ContentType).
 
 -spec publish_ported(api_terms()) -> 'ok'.
 -spec publish_ported(api_terms(), ne_binary()) -> 'ok'.
