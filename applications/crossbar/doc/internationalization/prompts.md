@@ -58,3 +58,15 @@ If you are a superduper admin, you can also manipulate the system_media prompts 
 ### Languages supported
 
 While we encourage you to use proper RFC [langauge tags](http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.10) for identifying prompts, there is no system limitation. If the language to be used is "en-US", the system will first try to find "en-US" then fall back to "en" prompts. If the language is "fr-FR", the system will try "fr-fr" and then "fr". However, nothing stops you from doing dual-language prompts (where both languages are in one media file) and using "fr-fr_en-us". In this case, "fr-fr_en-us" will be tried, then "fr-fr", and finally "fr".
+
+### Existing Prompts
+
+If you've imported media from the `$KAZOO/system_media` folder, you should have a listing of all the prompts the system uses. Access this via Crossbar:
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server.com:8000/v2/media/prompts'
+
+You can use the keys as `prompt_id` attributes when creating alternative translations.
+
+To see what translations exist in the system for a given prompt, the listing can be obtained from Crossbar as well:
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server.com:8000/v2/media/prompts/vm-enter_pass'
