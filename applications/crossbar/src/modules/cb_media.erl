@@ -113,6 +113,20 @@ authorize(Context) ->
     authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
 
 -spec authorize_media(cb_context:context(), req_nouns(), api_binary()) -> boolean().
+authorize_media(_Context, [{<<"media">>, [?PROMPTS]}], 'undefined') ->
+    lager:debug("allowing system prompts request"),
+    'true';
+authorize_media(_Context, [{<<"media">>, [?LANGUAGES]}], 'undefined') ->
+    lager:debug("allowing system languages request"),
+    'true';
+
+authorize_media(_Context, [{<<"media">>, [?PROMPTS, _PromptId]}], 'undefined') ->
+    lager:debug("allowing system prompt request for ~s", [_PromptId]),
+    'true';
+authorize_media(_Context, [{<<"media">>, [?LANGUAGES, _Language]}], 'undefined') ->
+    lager:debug("allowing system language request for ~s", [_Language]),
+    'true';
+
 authorize_media(Context, [{<<"media">>, _}|_], 'undefined') ->
     case cb_modules_util:is_superduper_admin(Context) of
         'true' -> 'true';
@@ -603,6 +617,8 @@ load_available_prompts(Context, _AccountId) ->
                             )
      ).
 
+-spec load_media_docs_by_prompt(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec load_media_docs_by_prompt(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
 load_media_docs_by_prompt(Context, PromptId) ->
     lager:debug("loading media files in prompt ~p", [PromptId]),
     load_media_docs_by_prompt(Context, PromptId, cb_context:account_id(Context)).
