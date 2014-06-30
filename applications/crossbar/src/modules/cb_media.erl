@@ -196,12 +196,13 @@ validate(Context) ->
 validate(Context, ?LANGUAGES) ->
     load_available_languages(Context);
 validate(Context, MediaId) ->
-    validate_media_doc(Context, MediaId, cb_context:req_verb(Context)).
+    validate_media_doc(Context, cow_qs:urlencode(MediaId), cb_context:req_verb(Context)).
 
 validate(Context, ?LANGUAGES, Language) ->
     load_media_docs_by_langauge(Context, Language);
 validate(Context, MediaId, ?BIN_DATA) ->
-    validate_media_binary(Context, MediaId, cb_context:req_verb(Context), cb_context:req_files(Context)).
+    lager:debug("uploading binary data to '~s'", [MediaId]),
+    validate_media_binary(Context, cow_qs:urlencode(MediaId), cb_context:req_verb(Context), cb_context:req_files(Context)).
 
 validate_media_docs(Context, ?HTTP_GET) ->
     load_media_summary(Context);
@@ -216,13 +217,14 @@ validate_media_doc(Context, MediaId, ?HTTP_DELETE) ->
     load_media_meta(Context, MediaId).
 
 validate_media_binary(Context, MediaId, ?HTTP_GET, _Files) ->
-    lager:debug("fetch media contents"),
+    lager:debug("fetch media contents for '~s'", [MediaId]),
     load_media_binary(Context, MediaId);
 validate_media_binary(Context, _MediaId, ?HTTP_POST, []) ->
     Message = <<"please provide an media file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
 validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
     Context1 = load_media_meta(Context, MediaId),
+    lager:debug("loaded media meta for '~s'", [MediaId]),
     case cb_context:resp_status(Context1) of
         'success' ->
             CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
@@ -289,7 +291,7 @@ put_media(Context, _AccountId) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
 post(Context, MediaId) ->
-    post_media_doc(Context, MediaId, cb_context:account_id(Context)).
+    post_media_doc(Context, cow_qs:urlencode(MediaId), cb_context:account_id(Context)).
 
 post_media_doc(Context, MediaId, 'undefined') ->
     post_media_doc(cb_context:set_account_db(Context, ?WH_MEDIA_DB), MediaId, <<"ignore">>);
@@ -315,7 +317,7 @@ post_media_doc(Context, MediaId, _AccountId) ->
     lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
 post(Context, MediaId, ?BIN_DATA) ->
-    post_media_binary(Context, MediaId, cb_context:account_id(Context)).
+    post_media_binary(Context, cow_qs:urlencode(MediaId), cb_context:account_id(Context)).
 
 post_media_binary(Context, MediaId, 'undefined') ->
     post_media_binary(cb_context:set_account_db(Context, ?WH_MEDIA_DB), MediaId, <<"ignore">>);
@@ -413,7 +415,7 @@ maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
 delete(Context, _MediaId) ->
     crossbar_doc:delete(Context).
 delete(Context, MediaId, ?BIN_DATA) ->
-    delete_media_binary(MediaId, Context, cb_context:account_id(Context)).
+    delete_media_binary(cow_qs:urlencode(MediaId), Context, cb_context:account_id(Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -557,7 +559,6 @@ check_media_schema(MediaId, Context) ->
     cb_context:validate_request_data(<<"media">>, Context, OnSuccess).
 
 on_successful_validation('undefined', Context) ->
-
     Props = [{<<"pvt_type">>, <<"media">>}
              ,{<<"media_source">>, <<"upload">>}
              | maybe_add_prompt_fields(Context)
