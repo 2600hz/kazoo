@@ -30,8 +30,12 @@
             "name":"Language"
             ,"description":"The language of the media file or text"
             ,"type":"string"
-            ,"default":"en"
         },
+        "prompt_id":{
+            "name":"Prompt ID"
+            ,"description":"The prompt this media file represents"
+            ,"type":"string"
+        }
         "tts":{
             "description":"Text-to-speech options used to create audio files from text",
             "type":"object",
