@@ -281,7 +281,7 @@ load_view(#load_view_params{view=View
             _V -> props:delete('include_docs', IncludeOptions)
         end,
 
-    case couch_mgr:get_results(Db, View, ViewOptions) of
+    case couch_mgr:get_results(Db, View, props:filter_undefined(ViewOptions)) of
         {'error', Error} ->
             handle_couch_mgr_errors(Error, View, Context);
         {'ok', JObjs} ->

@@ -89,7 +89,8 @@ import_prompt(Path0, Lang0, Contents) ->
 
     MetaJObj = wh_json:from_list(
                  [{<<"_id">>, ID}
-                  ,{<<"name">>, PromptName}
+                  ,{<<"name">>, ID}
+                  ,{<<"prompt_id">>, PromptName}
                   ,{<<"description">>, <<"System prompt in ", Lang/binary, " for ", PromptName/binary>>}
                   ,{<<"content_length">>, ContentLength}
                   ,{<<"language">>, wh_util:to_lower_binary(Lang)}
@@ -99,6 +100,7 @@ import_prompt(Path0, Lang0, Contents) ->
                   ,{<<"pvt_type">>, <<"media">>}
                   ,{<<"pvt_created">>, Now}
                   ,{<<"pvt_modified">>, Now}
+                  ,{<<"pvt_account_db">>, ?WH_MEDIA_DB}
                  ]),
 
     case couch_mgr:ensure_saved(?WH_MEDIA_DB, MetaJObj) of

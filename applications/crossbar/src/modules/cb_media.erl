@@ -79,10 +79,14 @@ allowed_methods() ->
 
 allowed_methods(?LANGUAGES) ->
     [?HTTP_GET];
+allowed_methods(?PROMPTS) ->
+    [?HTTP_GET];
 allowed_methods(_MediaId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 allowed_methods(?LANGUAGES, _Language) ->
+    [?HTTP_GET];
+allowed_methods(?PROMPTS, _PromptId) ->
     [?HTTP_GET];
 allowed_methods(_MediaId, ?BIN_DATA) ->
     [?HTTP_GET, ?HTTP_POST].
@@ -101,6 +105,7 @@ allowed_methods(_MediaId, ?BIN_DATA) ->
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(?LANGUAGES, _Language) -> 'true';
+resource_exists(?PROMPTS, _PromptId) -> 'true';
 resource_exists(_, ?BIN_DATA) -> 'true'.
 
 -spec authorize(cb_context:context()) -> boolean().
@@ -116,7 +121,7 @@ authorize_media(Context, [{<<"media">>, _}|_], 'undefined') ->
 authorize_media(Context, [{<<"media">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
     cb_simple_authz:authorize(Context);
 authorize_media(_Context, _Nouns, _AccountId) ->
-    lager:debug("authz media: ~p ~p", [_Nouns, _AccountId]),
+    lager:debug("failing authz media: ~p ~p", [_Nouns, _AccountId]),
     'false'.
 
 %%--------------------------------------------------------------------
@@ -195,6 +200,8 @@ validate(Context) ->
 
 validate(Context, ?LANGUAGES) ->
     load_available_languages(Context);
+validate(Context, ?PROMPTS) ->
+    load_available_prompts(Context);
 validate(Context, MediaId) ->
     validate_media_doc(Context, cow_qs:urlencode(MediaId), cb_context:req_verb(Context)).
 
@@ -592,10 +599,11 @@ maybe_add_prompt_fields(Context) ->
         'undefined' -> [];
         PromptId ->
             Language = wh_util:to_lower_binary(wh_json:get_value(<<"language">>, JObj, wh_media_util:default_prompt_language())),
+            ID = wh_media_util:prompt_id(PromptId, Language),
             lager:debug("creating properties for prompt ~s (~s)", [PromptId, Language]),
-            [{<<"_id">>, wh_media_util:prompt_id(PromptId, Language)}
+            [{<<"_id">>, ID}
              ,{<<"language">>, Language}
-             ,{<<"name">>, PromptId}
+             ,{<<"name">>, wh_json:get_value(<<"name">>, JObj, ID)}
             ]
     end.
 
