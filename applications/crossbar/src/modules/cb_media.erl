@@ -432,7 +432,7 @@ load_media_summary(Context, 'undefined') ->
     lager:debug("loading system_config media"),
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST
-                             ,[]
+                             ,[{'startkey_fun', fun start_key/1}]
                              ,cb_context:set_account_db(Context, ?WH_MEDIA_DB)
                              ,fun normalize_view_results/2
                             )
@@ -440,11 +440,18 @@ load_media_summary(Context, 'undefined') ->
 load_media_summary(Context, _AccountId) ->
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST
-                             ,[]
+                             ,[{'startkey_fun', fun start_key/1}]
                              ,Context
                              ,fun normalize_view_results/2
                             )
      ).
+
+-spec start_key(cb_context:context()) -> wh_json:json_term() | 'undefined'.
+start_key(Context) ->
+    case crossbar_doc:start_key(Context) of
+        'undefined' -> 'undefined';
+        StartKey -> cow_qs:urlencode(StartKey)
+    end.
 
 fix_start_keys(Context) ->
     cb_context:set_resp_envelope(

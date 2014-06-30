@@ -341,7 +341,15 @@ start_key(Context) ->
     cb_context:req_value(Context, <<"start_key">>).
 
 start_key(Options, Context) ->
-    case props:get_value('startkey', Options) of
+    case props:get_value('startkey_fun', Options) of
+        'undefined' -> start_key_fun(Options, Context);
+        Fun when is_function(Fun, 2) -> Fun(Options, Context);
+        Fun when is_function(Fun, 1) -> Fun(Context)
+    end.
+
+-spec start_key_fun(wh_proplist(), cb_context:context()) -> wh_json:json_term() | 'undefined'.
+start_key_fun(Options, Context) ->
+    case props:get_value('start_key', Options) of
         'undefined' ->
             lager:debug("getting start_key from request: ~p", [ cb_context:req_value(Context, <<"start_key">>)]),
             cb_context:req_value(Context, <<"start_key">>);
