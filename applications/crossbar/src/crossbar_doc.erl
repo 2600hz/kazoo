@@ -518,6 +518,7 @@ save_attachment(DocId, AName, Contents, Context, Options) ->
             lager:debug("error putting attachment into ~s: ~p"
                         ,[cb_context:account_db(Context), Error]
                        ),
+            _ = maybe_delete_doc(Context, DocId),
             handle_couch_mgr_errors(Error, AName, Context);
         {'ok', _Res} ->
             lager:debug("saved attachment ~s to doc ~s to db ~s"
@@ -530,6 +531,19 @@ save_attachment(DocId, AName, Contents, Context, Options) ->
                                  ,{fun cb_context:set_resp_data/2, wh_json:new()}
                                  ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
                                 ])
+    end.
+
+-spec maybe_delete_doc(cb_context:context(), ne_binary()) -> {'ok', _} | {'error', _}.
+maybe_delete_doc(Context, DocId) ->
+    AccountDb = cb_context:account_db(Context),
+    case couch_mgr:open_doc(AccountDb, DocId) of
+        {'error', _}=Error -> Error;
+        {'ok', JObj} ->
+            Attachments = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
+            case wh_json:is_empty(Attachments) of
+                'false' -> {'ok', 'non_empty'};
+                'true' -> couch_mgr:del_doc(AccountDb, JObj)
+            end
     end.
 
 %%--------------------------------------------------------------------
