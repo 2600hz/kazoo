@@ -228,6 +228,14 @@ get_system_prompt(Name, <<Primary:2/binary, "-", _SubTag:2/binary>> = Lang) ->
         {'error', 'not_found'} -> get_system_prompt(Name, Primary);
         {'ok', _Prompt} -> prompt_path(PromptId)
     end;
+get_system_prompt(Name, <<Primary:5/binary, "_", _Secondary:5/binary>> = Lang) ->
+    PromptId = prompt_id(Name, Lang),
+    lager:debug("getting system prompt for '~s'", [PromptId]),
+
+    case lookup_prompt(?WH_MEDIA_DB, PromptId) of
+        {'error', 'not_found'} -> get_system_prompt(Name, Primary);
+        {'ok', _Prompt} -> prompt_path(PromptId)
+    end;
 get_system_prompt(Name, Lang) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting system prompt for '~s'", [PromptId]),
