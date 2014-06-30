@@ -158,16 +158,18 @@ change_syslog_log_level(L) ->
 %% @end
 %%--------------------------------------------------------------------
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
--spec format_account_id(ne_binaries() | api_binary() | wh_json:object()) -> ne_binary().
--spec format_account_id(ne_binaries() | api_binary() | wh_json:object(), account_format()) -> ne_binary().
--spec format_account_id(ne_binaries() | api_binary(), wh_year(), wh_month()) -> ne_binary().
+-spec format_account_id(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
+-spec format_account_id(ne_binaries() | api_binary() | wh_json:object(), account_format()) -> api_binary().
+-spec format_account_id(ne_binaries() | api_binary(), wh_year(), wh_month()) -> api_binary().
 
 format_account_id(Doc) -> format_account_id(Doc, 'unencoded').
 
+format_account_id('undefined', _Encoding) -> 'undefined';
 format_account_id(DbName, Timestamp) when is_integer(Timestamp) andalso Timestamp > 0 ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     format_account_id(DbName, Year, Month);
 format_account_id(<<"accounts">>, _) -> <<"accounts">>;
+
 %% unencode the account db name
 format_account_id(<<"account/", _/binary>> = DbName, 'unencoded') ->
     DbName;
@@ -210,6 +212,7 @@ format_account_id(AccountId, 'encoded') when is_binary(AccountId) ->
     to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 format_account_id(AccountId, 'raw') -> AccountId.
 
+format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
     format_account_id(AccountId, to_integer(Year), Month);
 format_account_id(AccountId, Year, Month) when not is_integer(Month) ->

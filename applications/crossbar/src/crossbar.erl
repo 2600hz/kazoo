@@ -115,6 +115,8 @@ stop_mod(CBMod) ->
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'public_key'
+                                                ,'ssl'
                                                 ,'inets'
                                                 ,'lager'
                                                 ,'whistle_amqp'
