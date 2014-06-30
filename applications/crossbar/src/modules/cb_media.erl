@@ -199,7 +199,7 @@ validate(Context, MediaId) ->
     validate_media_doc(Context, cow_qs:urlencode(MediaId), cb_context:req_verb(Context)).
 
 validate(Context, ?LANGUAGES, Language) ->
-    load_media_docs_by_langauge(Context, Language);
+    load_media_docs_by_langauge(Context, wh_util:to_lower_binary(Language));
 validate(Context, MediaId, ?BIN_DATA) ->
     lager:debug("uploading binary data to '~s'", [MediaId]),
     validate_media_binary(Context, cow_qs:urlencode(MediaId), cb_context:req_verb(Context), cb_context:req_files(Context)).
@@ -511,7 +511,7 @@ load_media_docs_by_langauge(Context, Language) ->
 load_media_docs_by_langauge(Context, Language, 'undefined') ->
     fix_start_keys(
       crossbar_doc:load_view(<<"media/listing_by_language">>
-                             ,[{'startkey', [Language]}
+                              ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
                                ,{'endkey', [Language, wh_json:new()]}
                                ,{'reduce', 'false'}
                                ,{'include_docs', 'false'}
@@ -523,7 +523,7 @@ load_media_docs_by_langauge(Context, Language, 'undefined') ->
 load_media_docs_by_langauge(Context, Language, _AccountId) ->
     fix_start_keys(
       crossbar_doc:load_view(<<"media/listing_by_language">>
-                             ,[{'startkey', [Language]}
+                             ,[{'startkey_fun', fun(Ctx) -> language_start_key(Ctx, Language) end}
                                ,{'endkey', [Language, wh_json:new()]}
                                ,{'reduce', 'false'}
                                ,{'include_docs', 'false'}
@@ -532,6 +532,17 @@ load_media_docs_by_langauge(Context, Language, _AccountId) ->
                              ,fun normalize_language_results/2
                             )
      ).
+
+language_start_key(Context, Language) ->
+    case crossbar_doc:start_key(Context) of
+        'undefined' -> [Language];
+        Key -> language_start_key(Context, Language, binary:split(Key, <<"/">>))
+    end.
+
+language_start_key(_Context, Language, [Language, Id]) ->
+    [Language, Id];
+language_start_key(_Context, Language, _Key) ->
+    [Language].
 
 normalize_language_results(JObj, Acc) ->
     [wh_json:get_value(<<"id">>, JObj) | Acc].
