@@ -37,6 +37,7 @@
          ,fax_option :: api_binary()
          ,fax_result :: api_object()
          ,fax_notify = 'undefined' :: api_binaries()
+         ,fax_store_count = 0 :: integer()
          }).
 -type state() :: #state{}.
 
@@ -171,9 +172,7 @@ handle_cast({'exec_completed', <<"store_fax">>, <<"success">>, JObj}, State) ->
     check_for_upload(JObj, State),
     {'stop', 'normal', State};
 handle_cast({'exec_completed', <<"store_fax">>, Error, JObj}, State) ->
-    lager:debug("fax store error ~s - ~p",[Error, JObj]),
-    check_for_upload(JObj, State),
-    {'stop', 'normal', State};
+    maybe_retry_storage(Error, JObj, State);
 handle_cast({'exec_completed', <<"receive_fax">>, Result, _JObj}, State) ->
     lager:debug("Fax Receive Result ~s",[Result]),
     {'noreply', State };
@@ -257,9 +256,10 @@ start_receive_fax(#state{call=Call
             ],
     NewCall = whapps_call:kvs_store_proplist(Props, Call),
     NewState = maybe_update_fax_settings(State#state{storage=Storage, call=NewCall}),    
-    ResourceFlag = whapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call),    
+    ResourceFlag = whapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call),
+    LocalFile = get_fs_filename(NewState),
     whapps_call_command:answer(Call),
-    whapps_call_command:receive_fax(ResourceFlag, ReceiveFlag, Call),
+    whapps_call_command:receive_fax(ResourceFlag, ReceiveFlag, LocalFile, Call),
     {'noreply', NewState}.
 
 
@@ -381,7 +381,7 @@ maybe_store_fax(JObj, State) ->
     case store_fax(JObj, #state{storage=#fax_storage{id=FaxId}}=State) of
         {'ok', FaxId} ->
             lager:debug("fax stored successfully into ~s", [FaxId]),
-            {'noreply', State#state{fax_result=JObj} };
+            {'noreply', store_attachment(State#state{fax_result=JObj})};
         {'error', Error} ->
             lager:debug("store fax other resp: ~p", [Error]),
             notify_failure(JObj, Error, State),
@@ -393,19 +393,45 @@ maybe_store_fax(JObj, State) ->
           {'ok', ne_binary()} | {'error', any()}.
 store_fax(JObj, #state{call=Call
                        ,storage=#fax_storage{id=FaxDocId
+                                             ,attachment_id=AttachmentId
                                              ,db=FaxDb}
                       }=State) ->
     case create_fax_doc(JObj, State) of
         {'ok', Doc} ->
             FaxDocId = wh_json:get_value(<<"_id">>, Doc),
-            FaxFile = tmp_file(),
-            FaxUrl = attachment_url(Call, FaxFile, FaxDocId, FaxDb),
-            lager:debug("storing fax ~s to ~s", [FaxFile, FaxUrl]),
-            whapps_call_command:store_fax(FaxUrl, Call),
             {'ok', FaxDocId};
         Error -> Error
     end.
 
+-spec get_fs_filename(state()) -> ne_binary().
+get_fs_filename(#state{storage=#fax_storage{attachment_id=AttachmentId}}) ->
+    LocalPath = whapps_config:get_binary(?CONFIG_CAT, <<"fax_file_path">>, <<"/tmp/">>),
+    Ext = whapps_config:get_binary(?CONFIG_CAT, <<"default_fax_extension">>, <<".tiff">>),
+    <<LocalPath/binary, AttachmentId/binary, Ext/binary>>.
+
+-spec store_attachment(state()) -> 'ok'.
+store_attachment(#state{call=Call
+                        ,fax_store_count=Count
+                        ,storage=#fax_storage{id=FaxDocId
+                                              ,attachment_id=AttachmentId
+                                              ,db=FaxDb}
+                       }=State) ->
+    FaxUrl = attachment_url(State),
+    FaxFile = get_fs_filename(State),
+    lager:debug("storing fax ~s to ~s", [FaxFile, FaxUrl]),
+    whapps_call_command:store_fax(FaxUrl, FaxFile, Call),
+    State#state{fax_store_count=Count+1}.
+    
+-spec maybe_retry_storage(binary(), wh_json:object(), state()) ->
+          {'noreply', state()} | {'stop', 'normal', state()}.
+maybe_retry_storage(Error, JObj, #state{fax_store_count=Count}=State) ->
+    lager:debug("fax store error ~s - ~p",[Error, JObj]),
+    case Count < whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5) of
+        'true' -> {'noreply', store_attachment(State)};
+        'false' -> notify_failure(JObj, Error, State),
+                   {'stop', 'normal', State}
+    end.
+    
 -spec check_for_upload(wh_json:object(), state()) -> 'ok'.
 check_for_upload(JObj, #state{call=Call
                               ,storage=#fax_storage{id=FaxDocId
@@ -505,7 +531,26 @@ attachment_url(Call, File, FaxDocId, AccountDb) ->
               {'ok', R} -> <<"?rev=", R/binary>>;
               _ -> <<>>
           end,
-    list_to_binary([wh_couch_connections:get_url(), AccountDb, "/", FaxDocId, "/", File, Rev]).
+    list_to_binary([wh_couch_connections:get_url(), AccountDb, "/", FaxDocId, "/", File, ".tiff", Rev]).
+
+-spec attachment_url(state() ) -> ne_binary(). 
+attachment_url(#state{storage=#fax_storage{id=FaxDocId
+                                           ,attachment_id=AttachmentId
+                                           ,db=AccountDb}
+                     }=State) ->
+    _ = case couch_mgr:open_doc(AccountDb, FaxDocId) of
+            {'ok', JObj} ->
+                case wh_json:get_keys(<<"_attachments">>, JObj) of
+                    [] -> 'ok';
+                    Existing -> [couch_mgr:delete_attachment(AccountDb, FaxDocId, Attach) || Attach <- Existing]
+                end;
+            {'error', _} -> 'ok'
+        end,
+    Rev = case couch_mgr:lookup_doc_rev(AccountDb, FaxDocId) of
+              {'ok', R} -> <<"?rev=", R/binary>>;
+              _ -> <<>>
+          end,
+    list_to_binary([wh_couch_connections:get_url(), AccountDb, "/", FaxDocId, "/", AttachmentId, ".tiff", Rev]).
 
 -spec tmp_file() -> ne_binary().
 tmp_file() ->
