@@ -156,35 +156,83 @@ get_prompt(Name, 'undefined', Call) ->
 get_prompt(Name, Lang, Call) ->
     get_account_prompt(Name, Lang, Call).
 
+%% tries account default, then system
 get_account_prompt(Name, 'undefined', Call) ->
     PromptId = prompt_id(Name),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), PromptId) of
+    case lookup_prompt(whapps_call:account_db(Call), PromptId) of
         {'error', 'not_found'} -> get_prompt(Name, prompt_language(whapps_call:account_id(Call)), 'undefined');
         {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
     end;
+%% Tries "en", "fr", etc, then fails to default account/system prompt
+get_account_prompt(Name, <<_Primary:2/binary>> = Lang, Call) ->
+    PromptId = prompt_id(Name, Lang),
+    lager:debug("getting account prompt for '~s'", [PromptId]),
+    case lookup_prompt(whapps_call:account_db(Call), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call);
+        {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
+    end;
+%% First tries "en-US" or "fr-CA", etc, then tries "en", "fr", etc.
+get_account_prompt(Name, <<Primary:2/binary, "-", _SubTag:2/binary>> = Lang, Call) ->
+    PromptId = prompt_id(Name, Lang),
+    lager:debug("getting account prompt for '~s'", [PromptId]),
+    case lookup_prompt(whapps_call:account_db(Call), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call);
+        {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
+    end;
+%% First tries "en-us_fr-fr", then "en-us"
+get_account_prompt(Name, <<Primary:5/binary, "_", _Secondary:5/binary>> = Lang, Call) ->
+    PromptId = prompt_id(Name, Lang),
+    lager:debug("getting account prompt for '~s'", [PromptId]),
+    case lookup_prompt(whapps_call:account_db(Call), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call);
+        {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
+    end;
+%% Matches anything else, then tries account default
 get_account_prompt(Name, Lang, Call) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
 
-    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), PromptId) of
+    case lookup_prompt(whapps_call:account_db(Call), PromptId) of
         {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call);
         {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
     end.
+
+-spec lookup_prompt(ne_binary(), ne_binary()) ->
+                           {'ok', wh_json:object()} |
+                           {'error', 'not_found'}.
+lookup_prompt(Db, Id) ->
+    couch_mgr:open_cache_doc(Db, Id).
 
 get_system_prompt(Name, 'undefined') ->
     PromptId = prompt_id(Name),
     lager:debug("getting system prompt for '~s'", [PromptId]),
 
-    case couch_mgr:open_cache_doc(?WH_MEDIA_DB, PromptId) of
+    case lookup_prompt(?WH_MEDIA_DB, PromptId) of
         {'error', 'not_found'} -> 'undefined';
         {'ok', _} -> prompt_path(PromptId)
+    end;
+get_system_prompt(Name, <<Lang:2/binary>>) ->
+    PromptId = prompt_id(Name, Lang),
+    lager:debug("getting system prompt for '~s'", [PromptId]),
+
+    case lookup_prompt(?WH_MEDIA_DB, PromptId) of
+        {'error', 'not_found'} -> get_system_prompt(Name, 'undefined');
+        {'ok', _Prompt} -> prompt_path(PromptId)
+    end;
+get_system_prompt(Name, <<Primary:2/binary, "-", _SubTag:2/binary>> = Lang) ->
+    PromptId = prompt_id(Name, Lang),
+    lager:debug("getting system prompt for '~s'", [PromptId]),
+
+    case lookup_prompt(?WH_MEDIA_DB, PromptId) of
+        {'error', 'not_found'} -> get_system_prompt(Name, Primary);
+        {'ok', _Prompt} -> prompt_path(PromptId)
     end;
 get_system_prompt(Name, Lang) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting system prompt for '~s'", [PromptId]),
 
-    case couch_mgr:open_cache_doc(?WH_MEDIA_DB, PromptId) of
+    case lookup_prompt(?WH_MEDIA_DB, PromptId) of
         {'error', 'not_found'} -> get_system_prompt(Name, 'undefined');
         {'ok', _Prompt} -> prompt_path(PromptId)
     end.
