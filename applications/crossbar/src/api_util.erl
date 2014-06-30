@@ -627,10 +627,8 @@ is_authentic(Req0, Context0, _ReqVerb) ->
             lager:debug("failed to authenticate"),
             ?MODULE:halt(Req0, cb_context:add_system_error('invalid_credentials', Context0));
         ['true'|_] ->
-            lager:debug("authn"),
             {'true', Req1, Context1};
         [{'true', Context2}|_] ->
-            lager:debug("authn with new context"),
             {'true', Req1, Context2};
         [{'halt', Context2}|_] ->
             lager:debug("authn halted"),
@@ -690,10 +688,8 @@ is_permitted_nouns(Req, Context0, _Nouns) ->
             lager:debug("no one authz'd the request"),
             ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context0));
         ['true'|_] ->
-            lager:debug("authz"),
             {'true', Req, Context0};
         [{'true', Context1}|_] ->
-            lager:debug("authz with new context"),
             {'true', Req, Context1};
         [{'halt', Context1}|_] ->
             lager:debug("authz halted"),
