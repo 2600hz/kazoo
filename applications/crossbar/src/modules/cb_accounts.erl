@@ -43,11 +43,8 @@
 -define(DESCENDANTS, <<"descendants">>).
 -define(SIBLINGS, <<"siblings">>).
 -define(ANCESTORS, <<"ancestors">>).
-<<<<<<< HEAD
 -define(API_KEY, <<"api_key">>).
 
-=======
->>>>>>> KAZOO-2602: Add ability to move account
 -define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
 
@@ -182,7 +179,6 @@ validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
     load_descendants(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?SIBLINGS, ?HTTP_GET) ->
     load_siblings(AccountId, prepare_context('undefined', Context));
-<<<<<<< HEAD
 validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
     Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
     case cb_context:resp_status(Context1) of
@@ -192,9 +188,7 @@ validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
             RespJObj = wh_json:from_list([{<<"api_key">>, ApiKey}]),
             cb_context:set_resp_data(Context1, RespJObj);
         _Else -> Context1
-    end.
-
-=======
+    end;
 validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
     Data = cb_context:req_data(Context),
     case wh_json:get_binary_value(<<"to">>, Data) of
@@ -211,7 +205,7 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
                 'false' -> cb_context:add_system_error('forbidden', [], Context)
             end
     end.
->>>>>>> KAZOO-2602: Add ability to move account
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

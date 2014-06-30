@@ -325,7 +325,8 @@ move_account(AccountId, ToAccount) ->
                 {'ok', _} ->
                     {'ok', _} = replicate_account_definition(JObj1),
                     {'ok', _} = move_descendants(AccountId, ToTree),
-                    move_service(AccountId, ToTree)
+                    move_service(AccountId, ToTree, 'true')
+                    %% TODO: mark reseller dirty...
             end
     end.
 
@@ -355,7 +356,7 @@ move_descendants([Descendant|Descendants], Tree) ->
                 {'error', _E}=Error -> Error;
                 {'ok', _} ->
                     {'ok', _} = replicate_account_definition(JObj1),
-                    {'ok', _} = move_service(AccountId, ToTree),
+                    {'ok', _} = move_service(AccountId, ToTree, 'undefined'),
                     move_descendants(Descendants, ToTree)
             end
     end.
@@ -365,16 +366,18 @@ move_descendants([Descendant|Descendants], Tree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_service(ne_binary(), ne_binaries()) -> {'ok', wh_json:object()} | {'error',any()}.
-move_service(AccountId, NewTree) ->
+-spec move_service(ne_binary(), ne_binaries() 'undefined' | 'true' | 'false') ->
+                          {'ok', wh_json:object()} | {'error',any()}.
+move_service(AccountId, NewTree, Dirty) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
             PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
-            JObj1 = wh_json:set_values([{<<"pvt_tree">>, NewTree}
-                                        ,{<<"pvt_dirty">>, 'true'}
-                                        ,{<<"pvt_previous_tree">>, PreviousTree}
-                                       ], JObj),
+            Props = props:filter_undefined([{<<"pvt_tree">>, NewTree}
+                                            ,{<<"pvt_dirty">>, Dirty}
+                                            ,{<<"pvt_previous_tree">>, PreviousTree}
+                                           ]),
+            JObj1 = wh_json:set_values(Props, JObj),
             case couch_mgr:save_doc(?WH_SERVICES_DB, JObj1) of
                 {'error', _E}=Error -> Error;
                 {'ok', _R}=Ok -> Ok
