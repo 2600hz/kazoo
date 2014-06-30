@@ -31,8 +31,8 @@
 -define(BINDINGS, [{'cf_delegate', [{'app_name', ?APP_NAME}
                                     ,{'route_key', <<"onnet">>}]}]).
 -define(QUEUE_NAME, <<"camper_onnet_requests">>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
