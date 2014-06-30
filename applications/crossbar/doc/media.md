@@ -56,6 +56,65 @@ You can then get the "id" of the media file and manipulate it in a similar fashi
     curl -v -X POST -H "Content-Type: audio/mp3" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media/{MEDIA_ID}/raw --data-binary @/path/to/file.mp3
     curl -v -X POST -H "Content-Type: audio/x-wav" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media/{MEDIA_ID}/raw --data-binary @/path/to/file.wav
 
+### List all prompt and their counts
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server.com:8000/v2/media/prompts'
+    {
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "agent-already_logged_in": 1,
+            "agent-enter_pin": 1,
+            "agent-invalid_choice": 1,
+            "agent-logged_in": 1,
+            "agent-logged_out": 1,
+            "agent-not_call_center_agent": 1,
+            "agent-pause": 1,
+            "agent-resume": 1,
+            "agent_enter_pin": 1,
+            "agent_logged_already_in": 1,
+            "agent_logged_in": 1,
+            "agent_logged_out": 1,
+            "cf-disabled": 1,
+            "cf-disabled_menu": 1,
+            "cf-enabled_menu": 1,
+            "cf-enter_number": 1,
+            "cf-move-no_channel": 1,
+            "cf-move-no_owner": 1,
+            "cf-move-too_many_channels": 1,
+            "cf-not_available": 1,
+            "cf-now_forwarded_to": 1,
+            "cf-unauthorized_call": 1,
+            "conf-alone": 1,
+            "conf-bad_conf": 1,
+            "conf-bad_pin": 1
+        }
+    ],
+    "next_start_key": "conf-deaf",
+    "page_size": 25,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+    }
+
+### List all translations of a given prompt
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server.com:8000/v2/media/prompts/vm-enter_pass'
+    {
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        "fr-fr%2Fvm-enter_pass",
+        "en-us%2Fvm-enter_pass"
+    ],
+    "page_size": 2,
+    "request_id": "{REQUEST_ID}",
+    "revision": "undefined",
+    "start_key": "vm-enter_pass",
+    "status": "success"
+    }
+
+You can use that list to fetch the specific media files associated with that prompt.
+
 ## Languages
 
 Part of the schema of media files is a language attribute. It defaults to a `system_config/media` value for the `default_language` key (and is "en-us" by default). Properly defined media files can be searched for based on language using the basic filters provided by Crossbar:
