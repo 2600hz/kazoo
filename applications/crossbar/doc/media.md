@@ -56,7 +56,9 @@ You can then get the "id" of the media file and manipulate it in a similar fashi
     curl -v -X POST -H "Content-Type: audio/mp3" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media/{MEDIA_ID}/raw --data-binary @/path/to/file.mp3
     curl -v -X POST -H "Content-Type: audio/x-wav" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media/{MEDIA_ID}/raw --data-binary @/path/to/file.wav
 
-### List all prompt and their counts
+Only one of the above; any subsequent POSTs will overwrite the existing binary data.
+
+### List all prompts and the number of translations existing
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server.com:8000/v2/media/prompts'
     {
