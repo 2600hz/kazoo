@@ -438,7 +438,7 @@ get_originate_action(<<"transfer">>, JObj) ->
         Route ->
             Context = ?DEFAULT_FREESWITCH_CONTEXT,
             list_to_binary(["'m:^:", get_unset_vars(JObj)
-                            ,"transfer:", Route
+                            ,"transfer:", wnm_util:to_e164(Route)
                             ," XML ", Context, "' inline"
                            ])
     end;
