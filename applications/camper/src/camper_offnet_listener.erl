@@ -66,7 +66,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec handle_offnet_req(wh_json:object(), wh_proplist()) -> any().
 handle_offnet_req(JObj, _Props) ->
-    lager:info("Got offnet request: ~p", [JObj]).
+    Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
+    Number = wh_json:get_value(<<"Number">>, Msg),
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call-Object">>, Msg)),
+    camper_offnet_handler:add_request(Number, Call).
 
 %%%===================================================================
 %%% gen_server callbacks

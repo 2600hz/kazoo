@@ -100,7 +100,13 @@ no_channels(#call_target{type = <<"offnet">>
             ,Call) ->
     NewCall = whapps_call:kvs_store('call_id', whapps_call:call_id(Call), Call),
     NewCall1 = whapps_call:kvs_store('control_queue', whapps_call:control_queue(Call), NewCall),
-    camper_offnet_handler:add_request(Number, NewCall1),
+    Msg = wh_json:from_list([{<<"Number">>, Number}
+                             ,{<<"Call-Object">>, whapps_call:to_json(NewCall1)}
+                            ]),
+    JObj = wh_json:from_list([{<<"Delegate-Message">>, Msg}
+                              | wh_api:default_headers(<<"callflow">>, <<"delegate">>, ?APP_NAME, ?APP_VERSION)
+                             ]),
+    wapi_cf_delegate:publish_delegate(<<"camper">>, <<"offnet">>, JObj),
     cf_exe:stop(Call);
 no_channels(Target, Call) ->
     lager:info("Unknown target: ~s", [Target]),
@@ -112,13 +118,14 @@ has_channels(#call_target{id = TargetId
                           ,number = Number
                          }, Call) ->
     Targets = get_sip_usernames_for_target(TargetId, TargetType, Call),
-    camper_onnet_handler:add_request(whapps_call:account_db(Call)
-        ,{whapps_call:authorizing_id(Call)
-            ,whapps_call:authorizing_type(Call)
-        }
-        ,Number
-        ,Targets
-    ),
-    whapps_call_command:answer(Call),
-    whapps_call_command:b_say(<<"request accepted">>, Call),
+    Msg = wh_json:from_list([{<<"Account-DB">>, whapps_call:account_db(Call)}
+                             ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+                             ,{<<"Authorizing-Type">>, whapps_call:authorizing_type(Call)}
+                             ,{<<"Number">>, Number}
+                             ,{<<"Targets">>, Targets}
+                            ]),
+    JObj = wh_json:from_list([{<<"Delegate-Message">>, Msg}
+                              | wh_api:default_headers(<<"callflow">>, <<"delegate">>, ?APP_NAME, ?APP_VERSION)
+                             ]),
+    wapi_cf_delegate:publish_delegate(<<"camper">>, <<"onnet">>, JObj),
     cf_exe:stop(Call).

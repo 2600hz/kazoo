@@ -77,4 +77,5 @@ declare_exchanges() ->
     wapi_call:declare_exchanges(),
     wapi_offnet_resource:declare_exchanges(),
     wapi_resource:declare_exchanges(),
+    wapi_cf_delegate:declare_exchanges(),
     wapi_dialplan:declare_exchanges().

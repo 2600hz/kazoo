@@ -56,9 +56,9 @@ set_requests(S, Val) ->
 set_requestor_queues(S, Val) ->
     S#'state'{'requestor_queues' = Val}.
 
--spec add_request(ne_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
-add_request(AccountDb, AuthorizingId, Exten, Targets) ->
-    gen_server:cast(?MODULE, {'add_request', AccountDb, AuthorizingId, Exten, Targets}).
+-spec add_request(ne_binary(), {ne_binary(), ne_binary()}, ne_binary(), ne_binaries()) -> 'ok'.
+add_request(AccountDb, Authorizing, Exten, Targets) ->
+    gen_server:cast(?MODULE, {'add_request', AccountDb, Authorizing, Exten, Targets}).
 
 -spec available_device(ne_binary(), ne_binary()) -> 'ok'.
 available_device(AccountId, SIPName) ->
