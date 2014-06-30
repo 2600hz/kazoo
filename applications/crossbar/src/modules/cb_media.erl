@@ -30,6 +30,7 @@
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
 -define(LANGUAGES, <<"languages">>).
+-define(PROMPTS, <<"prompts">>).
 
 -define(MEDIA_MIME_TYPES, [{<<"audio">>, <<"x-wav">>}
                            ,{<<"audio">>, <<"wav">>}
@@ -556,12 +557,28 @@ check_media_schema(MediaId, Context) ->
     cb_context:validate_request_data(<<"media">>, Context, OnSuccess).
 
 on_successful_validation('undefined', Context) ->
+
     Props = [{<<"pvt_type">>, <<"media">>}
              ,{<<"media_source">>, <<"upload">>}
+             | maybe_add_prompt_fields(Context)
             ],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(MediaId, Context) ->
     crossbar_doc:load_merge(MediaId, Context).
+
+-spec maybe_add_prompt_fields(cb_context:context()) -> wh_proplist().
+maybe_add_prompt_fields(Context) ->
+    JObj = cb_context:doc(Context),
+    case wh_json:get_value(<<"prompt_id">>, JObj) of
+        'undefined' -> [];
+        PromptId ->
+            Language = wh_util:to_lower_binary(wh_json:get_value(<<"language">>, JObj, wh_media_util:default_prompt_language())),
+            lager:debug("creating properties for prompt ~s (~s)", [PromptId, Language]),
+            [{<<"_id">>, wh_media_util:prompt_id(PromptId, Language)}
+             ,{<<"language">>, Language}
+             ,{<<"name">>, PromptId}
+            ]
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
