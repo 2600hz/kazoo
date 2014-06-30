@@ -17,7 +17,7 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
          ,put/1, put/2
-         ,post/2
+         ,post/2, post/3
          ,delete/2
         ]).
 
@@ -46,6 +46,7 @@
 -define(API_KEY, <<"api_key">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
+-define(MOVE, <<"move">>).
 
 -spec init() -> 'ok'.
 init() ->
@@ -56,7 +57,6 @@ init() ->
                 ,{<<"*.execute.post.accounts">>, 'post'}
                 ,{<<"*.execute.delete.accounts">>, 'delete'}
                ],
-
     cb_modules_util:bind(?MODULE, Bindings).
 
 %%--------------------------------------------------------------------
@@ -87,6 +87,8 @@ allowed_methods(AccountId) ->
             [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST]
     end.
 
+allowed_methods(_, ?MOVE) ->
+    [?HTTP_POST];
 allowed_methods(_, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
@@ -112,6 +114,7 @@ allowed_methods(_, Path) ->
 -spec resource_exists(path_token(), ne_binary()) -> boolean().
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_, ?MOVE) -> 'true';
 resource_exists(_, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
@@ -183,6 +186,22 @@ validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
             RespJObj = wh_json:from_list([{<<"api_key">>, ApiKey}]),
             cb_context:set_resp_data(Context1, RespJObj);
         _Else -> Context1
+    end;
+validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
+    Data = cb_context:req_data(Context),
+    case wh_json:get_binary_value(<<"to">>, Data) of
+        'undefined' ->
+            cb_context:add_validation_error(<<"to">>
+                                            ,<<"required">>
+                                            ,<<"Field 'to' is required">>
+                                            ,Context);
+        ToAccount ->
+            case validate_move(whapps_config:get(?ACCOUNTS_CONFIG_CAT, <<"allow_move">>, <<"superduper_admin">>)
+                               ,Context, AccountId, ToAccount)
+            of
+                'true' -> cb_context:set_resp_status(Context, 'success');
+                'false' -> cb_context:add_system_error('forbidden', [], Context)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -192,9 +211,9 @@ validate_account_path(Context, AccountId, ?API_KEY, ?HTTP_GET) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
     Context1 = crossbar_doc:save(Context),
-
     case cb_context:resp_status(Context1) of
         'success' ->
             _ = provisioner_util:maybe_update_account(Context1),
@@ -205,6 +224,12 @@ post(Context, AccountId) ->
                                            ,leak_pvt_fields(Context1)
                                           );
         _Status -> Context1
+    end.
+
+post(Context, AccountId, ?MOVE) ->
+    case cb_context:resp_status(Context) of
+        'success' -> move_account(Context, AccountId);
+        _Status -> Context
     end.
 
 %%--------------------------------------------------------------------
@@ -253,6 +278,55 @@ delete(Context, Account) ->
         'true' ->
             delete_remove_services(prepare_context(Context, AccountId, AccountDb))
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_move(ne_binary(), cb_context:context(), ne_binary(), ne_binary()) -> boolean().
+validate_move(<<"superduper_admin">>, Context, _, _) ->
+    lager:debug("using superduper_admin flag to allow move account"),
+    AuthDoc = cb_context:auth_doc(Context),
+    AuthId = wh_json:get_value(<<"account_id">>, AuthDoc),
+    wh_util:is_system_admin(AuthId);
+validate_move(<<"tree">>, Context, MoveAccount, ToAccount) ->
+    lager:debug("using tree to allow move account"),
+    AuthDoc = cb_context:auth_doc(Context),
+    AuthId = wh_json:get_value(<<"account_id">>, AuthDoc),
+    MoveTree = crossbar_util:get_tree(MoveAccount),
+    ToTree = crossbar_util:get_tree(ToAccount),
+    L = lists:foldl(
+            fun(Id, Acc) ->
+                case lists:member(Id, ToTree) of
+                    'false' -> Acc;
+                    'true' -> [Id|Acc]
+                end
+            end
+            ,[]
+            ,MoveTree
+        ),
+    lists:member(AuthId, L);
+validate_move(_Type, _, _, _) ->
+    lager:error("unknow move type ~p", [_Type]),
+    'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec move_account(cb_context:context(), ne_binary()) -> cb_context:context().
+move_account(Context, AccountId) ->
+    Data = cb_context:req_data(Context),
+    ToAccount = wh_json:get_binary_value(<<"to">>, Data),
+    case crossbar_util:move_account(AccountId, ToAccount) of
+        {'error', 'forbidden'} -> cb_context:add_system_error('forbidden', Context);
+        {'error', _E} -> cb_context:add_system_error('datastore_fault', Context);
+        {'ok', _} ->
+            load_account(AccountId, prepare_context(AccountId, Context))
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private

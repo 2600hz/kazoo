@@ -25,6 +25,7 @@
 -export([allow_account_number_additions/1, disallow_account_number_additions/1]).
 -export([create_account/4]).
 -export([create_account/1]).
+-export([move_account/2]).
 
 -include_lib("crossbar.hrl").
 
@@ -508,3 +509,29 @@ print_account_info(AccountDb, AccountId) ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb])
     end,
     {'ok', AccountId}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec move_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+move_account(Account, ToAccount) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    ToAccountId = wh_util:format_account_id(ToAccount, 'raw'),
+    maybe_move_account(AccountId, ToAccountId).
+
+-spec maybe_move_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+maybe_move_account(AccountId, AccountId) ->
+    io:format("can not move to the same account~n", []);
+maybe_move_account(AccountId, ToAccountId) ->
+    case crossbar_util:move_account(AccountId, ToAccountId) of
+        {'ok', _} -> io:format("move complete!~n", []);
+        {'error', Reason} ->
+            io:format("unable to complete move: ~p~n", [Reason])
+    end.
+
+
+
+

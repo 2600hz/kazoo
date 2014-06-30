@@ -29,6 +29,10 @@
          ,response_auth/3
         ]).
 -export([get_account_realm/1, get_account_realm/2]).
+-export([move_account/2]).
+-export([get_descendants/1]).
+-export([get_tree/1]).
+-export([replicate_account_definition/1]).
 -export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
 -export([get_path/2]).
 -export([get_user_lang/2, get_account_lang/1]).
@@ -302,6 +306,182 @@ get_account_realm(Db, AccountId) ->
         {'error', R} ->
             lager:debug("error while looking up account realm: ~p", [R]),
             'undefined'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec move_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error',any()}.
+move_account(AccountId, ToAccount) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case validate_move(AccountId, ToAccount) of
+        {'error', _E}=Error -> Error;
+        {'ok', JObj, ToTree} ->
+            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
+                                        ,{<<"pvt_previous_tree">>, PreviousTree}
+                                        ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                       ], JObj),
+            case couch_mgr:save_doc(AccountDb, JObj1) of
+                {'error', _E}=Error -> Error;
+                {'ok', _} ->
+                    {'ok', _} = replicate_account_definition(JObj1),
+                    {'ok', _} = move_descendants(AccountId, ToTree),
+                    {'ok', _} = mark_dirty(AccountId),
+                    move_service(AccountId, ToTree, 'true')
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_move(ne_binary(), ne_binary()) -> {'error', _} | {'ok', wh_json:object(), ne_binaries()}.
+validate_move(AccountId, ToAccount) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', _E}=Error -> Error;
+        {'ok', JObj} ->
+            ToTree = lists:append(crossbar_util:get_tree(ToAccount), [ToAccount]),
+            case lists:member(AccountId, ToTree) of
+                'true' -> {'error', 'forbidden'};
+                'false' -> {'ok', JObj, ToTree}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec move_descendants(ne_binary(), ne_binaries()) -> {'ok', wh_json:object()} | {'error',any()}.
+move_descendants(AccountId, Tree) when is_binary(AccountId) ->
+    Descendants = crossbar_util:get_descendants(AccountId),
+    move_descendants(Descendants, Tree);
+move_descendants([], _) -> {'ok', 'done'};
+move_descendants([Descendant|Descendants], Tree) ->
+    AccountId = wh_util:format_account_id(Descendant, 'raw'),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', _E}=Error -> Error;
+        {'ok', JObj} ->
+            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            {_, Tail} = lists:split(erlang:length(Tree), PreviousTree),
+            ToTree = Tree ++ Tail,
+            JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
+                                        ,{<<"pvt_previous_tree">>, PreviousTree}
+                                        ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                       ], JObj),
+            case couch_mgr:save_doc(AccountDb, JObj1) of
+                {'error', _E}=Error -> Error;
+                {'ok', _} ->
+                    {'ok', _} = replicate_account_definition(JObj1),
+                    {'ok', _} = move_service(AccountId, ToTree, 'undefined'),
+                    move_descendants(Descendants, ToTree)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec move_service(ne_binary(), ne_binaries(), 'undefined' | 'true' | 'false') ->
+                          {'ok', wh_json:object()} | {'error',any()}.
+move_service(AccountId, NewTree, Dirty) ->
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {'error', _E}=Error -> Error;
+        {'ok', JObj} ->
+            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            Props = props:filter_undefined([{<<"pvt_tree">>, NewTree}
+                                            ,{<<"pvt_dirty">>, Dirty}
+                                            ,{<<"pvt_previous_tree">>, PreviousTree}
+                                            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                           ]),
+            JObj1 = wh_json:set_values(Props, JObj),
+            case couch_mgr:save_doc(?WH_SERVICES_DB, JObj1) of
+                {'error', _E}=Error -> Error;
+                {'ok', _R}=Ok -> Ok
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Return all descendants of the account id
+%% @end
+%%--------------------------------------------------------------------
+-spec get_descendants(api_binary()) -> 'ok' | {'error', _}.
+get_descendants('undefined') -> [];
+get_descendants(AccountId) ->
+    ViewOptions = [{<<"startkey">>, [AccountId]}
+                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+                  ],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+        {'ok', JObjs} ->
+            lists:foldl(
+                fun(JObj, Acc) ->
+                    Id = wh_json:get_value(<<"id">>, JObj),
+                    case Id =:= AccountId of
+                        'true' -> Acc;
+                        'false' -> [Id|Acc]
+                    end
+                end
+                ,[]
+                ,JObjs
+            );
+        {'error', R} ->
+            lager:debug("unable to disable descendants of ~s: ~p", [AccountId, R]),
+            []
+    end.
+
+-spec mark_dirty(ne_binary() | wh_json:object()) -> wh_std_return().
+mark_dirty(AccountId) when is_binary(AccountId) ->
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {'error', _}=E -> E;
+        {'ok', JObj} -> mark_dirty(JObj)
+    end;
+mark_dirty(JObj) ->
+    couch_mgr:save_doc(?WH_SERVICES_DB
+                       ,wh_json:set_values([{<<"pvt_dirty">>, 'true'}
+                                            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                           ], JObj)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_tree(ne_binary()) -> ne_binaries().
+get_tree(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> wh_json:get_value(<<"pvt_tree">>, JObj, []);
+        {'error', _E} ->
+            lager:error("could not load ~s in ~s", [AccountId, AccountDb]),
+            []
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec replicate_account_definition(wh_json:object()) ->
+                                          {'ok', wh_json:object()} |
+                                          {'error', _}.
+replicate_account_definition(JObj) ->
+    AccountId = wh_json:get_value(<<"_id">>, JObj),
+    case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', Rev} ->
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj));
+        _Else ->
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj))
     end.
 
 %%--------------------------------------------------------------------
