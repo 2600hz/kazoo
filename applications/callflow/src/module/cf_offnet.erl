@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
@@ -123,25 +124,27 @@ get_hunt_account_id(Data, Call) ->
 
 -spec get_to_did(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_to_did(Data, Call) ->
-    case wh_json:is_true(<<"do_not_normalize">>, Data) of
+    case wh_json:is_true(<<"bypass_e164">>, Data) of
         'false' -> get_to_did(Data, Call, whapps_call:request_user(Call));
         'true' ->
             Request = whapps_call:request(Call),
             [RequestUser, _] = binary:split(Request, <<"@">>),
-            RequestUser
+            case wh_json:is_true(<<"do_not_normalize">>, Data) of
+                'false' -> get_to_did(Data, Call, RequestUser);
+                'true' -> RequestUser
+            end
     end.
 
 -spec get_to_did(wh_json:object(), whapps_call:call(), ne_binary()) -> ne_binary().
 get_to_did(_Data, Call, Number) ->
     case cf_endpoint:get(Call) of
+        {'error', _ } -> Number;
         {'ok', Endpoint} ->
             case wh_json:get_value(<<"dial_plan">>, Endpoint, []) of
                 [] -> Number;
                 DialPlan -> cf_util:apply_dialplan(Number, DialPlan)
-            end;
-        {'error', _ } -> Number
+            end
     end.
-
 
 -spec get_sip_headers(wh_json:object(), whapps_call:call()) -> api_object().
 get_sip_headers(Data, Call) ->

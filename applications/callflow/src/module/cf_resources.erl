@@ -123,12 +123,15 @@ get_hunt_account_id(Data, Call) ->
 
 -spec get_to_did(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_to_did(Data, Call) ->
-    case wh_json:is_true(<<"do_not_normalize">>, Data) of
+    case wh_json:is_true(<<"bypass_e164">>, Data) of
         'false' -> get_to_did(Data, Call, whapps_call:request_user(Call));
         'true' ->
             Request = whapps_call:request(Call),
             [RequestUser, _] = binary:split(Request, <<"@">>),
-            RequestUser
+            case wh_json:is_true(<<"do_not_normalize">>, Data) of
+                'false' -> get_to_did(Data, Call, RequestUser);
+                'true' -> RequestUser
+            end
     end.
 
 -spec get_to_did(wh_json:object(), whapps_call:call(), ne_binary()) -> ne_binary().
