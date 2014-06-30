@@ -14,11 +14,11 @@ Uploading media for custom music on hold, IVR prompts, or TTS (if a proper TTS e
 
 ### Create a new media meta object (required before uploading the actual media data)
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"streamable":true,"name":"File","description":"My Test Media File"}}'
+    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"streamable":true,"name":"File","description":"My Test Media File"}}'
 
 ### Create a new prompt meta object (required before uploading the actual prompt data)
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"streamable":true,"name":"File","description":"Enter Pin prompt","prompt_id":"vm-enter_pin"}}'
+    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"streamable":true,"name":"FR-vm-enter_pass","description":"FR - Enter Password prompt","prompt_id":"vm-enter_pass", "language":"fr"}}'
 
 ### Add the media binary file to the media meta data
 
@@ -26,7 +26,7 @@ Uploading media for custom music on hold, IVR prompts, or TTS (if a proper TTS e
 
 ### Create a new TTS media document (requires iSpeech to be enabled)
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d {"data":{"name":"TestTTS","media_source":"tts","tts":{"text":"Testing TTS","voice":"female/en-US"}}
+    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d {"data":{"name":"TestTTS","media_source":"tts","tts":{"text":"Testing TTS","voice":"female/en-US"}}
 
 ### Get a metadata about media file
 
@@ -48,11 +48,13 @@ You can then get the "id" of the media file and manipulate it in a similar fashi
 
 ### Create a new prompt meta object (required before uploading the actual prompt data)
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media -d '{"data":{"streamable":true,"name":"File","description":"Enter Pin prompt","prompt_id":"vm-enter_pin", "language":"en"}}'
+    curl -v -X PUT -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media -d '{"data":{"streamable":true,"name":"File","description":"Enter Pin prompt","prompt_id":"vm-enter_pass", "language":"fr-fr"}}'
+    {"data":{"streamable":true,"name":"vm-enter_pass","description":"FR - Enter Pin prompt","prompt_id":"vm-enter_pass","language":"fr-fr","tts":{"voice":"female/en-US"},"media_source":"upload","id":"fr-fr%2Fvm-enter_pass"},"revision":"{REVISION}","request_id":"{REQUEST_ID}","status":"success","auth_token":"{AUTH_TOKEN}"}
 
 ### Add the media binary file to the media meta data
 
     curl -v -X POST -H "Content-Type: audio/mp3" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media/{MEDIA_ID}/raw --data-binary @/path/to/file.mp3
+    curl -v -X POST -H "Content-Type: audio/x-wav" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media/{MEDIA_ID}/raw --data-binary @/path/to/file.wav
 
 ## Languages
 
