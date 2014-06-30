@@ -160,7 +160,6 @@ params_from_data(Other, _, _) ->
     {'error',<<"module ",Other/binary," not implemented">>}.
 
 -spec no_permission_to_intercept(whapps_call:call()) -> any().
-%% TODO: please convert to system_media file (say is not consistent on deployments)
 no_permission_to_intercept(Call) ->
     whapps_call_command:answer(Call),
-    whapps_call_command:b_say(<<"you have no permission to intercept this call">>, Call).
+    whapps_call_command:b_prompt(<<"intercept-no_channels">>, Call).
