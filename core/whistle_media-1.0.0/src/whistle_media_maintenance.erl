@@ -152,6 +152,7 @@ get_media_config_doc() ->
         {'error', 'not_found'} -> {'ok', wh_json:from_list([{<<"_id">>, ?WHS_CONFIG_CAT}])}
     end.
 
+-spec migrate_system_config_fold(ne_binary(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
 migrate_system_config_fold(<<"_id">>, _Id, MediaJObj) ->
     MediaJObj;
 migrate_system_config_fold(<<"_rev">>, _Rev, MediaJObj) ->
@@ -160,6 +161,7 @@ migrate_system_config_fold(Node, Settings, MediaJObj) ->
     io:format("migrating node '~s' settings~n", [Node]),
     migrate_node_config(Node, Settings, MediaJObj, ?CONFIG_KVS).
 
+-spec migrate_node_config(ne_binary(), wh_json:object(), wh_json:object(), wh_proplist()) -> wh_json:object().
 migrate_node_config(_Node, _Settings, MediaJObj, []) -> MediaJObj;
 migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
     case wh_json:get_value(K, Settings) of
@@ -171,6 +173,7 @@ migrate_node_config(Node, Settings, MediaJObj, [{K, V} | KVs]) ->
             migrate_node_config(Node, Settings, wh_json:set_value([Node, K], NodeV, MediaJObj), KVs)
     end.
 
+-spec maybe_update_media_config(ne_binary(), ne_binary(), api_binary(), wh_json:object()) -> wh_json:object().
 maybe_update_media_config(_Node, _K, 'undefined', MediaJObj) ->
     io:format("    no value to set for ~p~n", [_K]),
     MediaJObj;
@@ -186,11 +189,12 @@ maybe_update_media_config(Node, K, V, MediaJObj) ->
             MediaJObj
     end.
 
+-spec remove_empty_media_docs(ne_binary()) -> 'ok'.
 remove_empty_media_docs(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-
     remove_empty_media_docs(AccountId, AccountDb).
 
+-spec remove_empty_media_docs(ne_binary(), ne_binary()) -> 'ok'.
 remove_empty_media_docs(AccountId, AccountDb) ->
     case couch_mgr:get_results(AccountDb, <<"media/crossbar_listing">>, ['include_docs']) of
         {'ok', []} ->
@@ -205,6 +209,7 @@ remove_empty_media_docs(AccountId, AccountDb) ->
             io:format("error looking up media docs in account ~s: ~p~n", [AccountId, _E])
     end.
 
+-spec remove_empty_media_docs(ne_binary(), ne_binary(), file:io_device(), wh_json:objects()) -> 'ok'.
 remove_empty_media_docs(AccountId, _AccountDb, File, []) ->
     file:close(File),
     io:format("finished cleaning up empty media docs for account ~s~n", [AccountId]);
@@ -212,6 +217,7 @@ remove_empty_media_docs(AccountId, AccountDb, File, [Media|MediaDocs]) ->
     maybe_remove_media_doc(AccountDb, File, wh_json:get_value(<<"doc">>, Media)),
     remove_empty_media_docs(AccountId, AccountDb, File, MediaDocs).
 
+-spec maybe_remove_media_doc(ne_binary(), file:io_device(), wh_json:object()) -> 'ok'.
 maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
     case wh_json:get_value(<<"_attachments">>, MediaJObj) of
         'undefined' ->
@@ -232,6 +238,7 @@ maybe_remove_media_doc(AccountDb, File, MediaJObj) ->
             io:format("media doc ~s has attachments, leaving alone~n", [wh_json:get_value(<<"_id">>, MediaJObj)])
     end.
 
+-spec remove_media_doc(ne_binary(), wh_json:object()) -> 'ok'.
 remove_media_doc(AccountDb, MediaJObj) ->
     {'ok', _Doc} = couch_mgr:del_doc(AccountDb, MediaJObj),
     io:format("removed media doc ~s~n", [wh_json:get_value(<<"_id">>, MediaJObj)]).
