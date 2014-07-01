@@ -43,7 +43,6 @@
 
 -include("ecallmgr.hrl").
 
-
 -define(RESPONDERS, [{{?MODULE, 'reg_query'}
                       ,[{<<"directory">>, <<"reg_query">>}]
                      }
@@ -1010,7 +1009,6 @@ print_details({[#registration{}=Reg], Continuation}, Count) ->
          || {K, V} <- to_props(Reg)
         ],
     print_details(ets:select(Continuation), Count + 1).
-
 
 print_property(<<"Expires">> =Key, Value, #registration{expires=Expires
                                                         ,last_registration=LastRegistration

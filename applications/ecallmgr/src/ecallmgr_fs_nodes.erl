@@ -218,7 +218,6 @@ remove_capability(Node, Name) ->
                  }],
     ets:select_delete(?CAPABILITY_TBL, MatchSpec).
 
-
 -spec get_capability(atom(), ne_binary()) ->
                             capability() | api_object().
 -spec get_capability(atom(), ne_binary(), 'json' | 'record') ->
