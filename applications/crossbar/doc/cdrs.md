@@ -1,7 +1,7 @@
 /*
-Section: APIs
+Section: Crossbar
 Title: CDRs
-Weight: 50
+Language: en-US
 */
 
 CDRs (Call Detail Records) provide a summary view of a call leg.

@@ -1,7 +1,7 @@
 /*
-Section: APIs
+Section: Crossbar
 Title: Accounts
-Weight: 20
+Language: en-US
 */
 
 # Kazoo Accounts

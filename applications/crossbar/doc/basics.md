@@ -1,7 +1,7 @@
 /*
-Section: APIs
+Section: Crossbar
 Title: Basics
-Weight: 10
+Language: en-US
 */
 
 # Give it a REST

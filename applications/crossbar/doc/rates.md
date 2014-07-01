@@ -1,7 +1,6 @@
 /*
-Section: APIs
+Section: Crossbar
 Title: Rates
-Weight: 90
 Language: en-US
 */
 

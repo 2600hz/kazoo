@@ -1,7 +1,6 @@
 /*
-Section: APIs
+Section: Crossbar
 Title: Queues
-Weight: 90
 Language: en-US
 */
 

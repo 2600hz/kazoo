@@ -1,7 +1,7 @@
 /*
-Section: APIs
+Section: Crossbar
 Title: Devices
-Weight: 90
+Language: en-US
 */
 
 # Kazoo Devices

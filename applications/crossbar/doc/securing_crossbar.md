@@ -1,5 +1,5 @@
 /*
-Section: APIs
+Section: Crossbar
 Title: Securing Crossbar
 Language: en-US
 */

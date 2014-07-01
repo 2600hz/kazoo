@@ -1,5 +1,5 @@
 /*
-Section: APIs
+Section: Crossbar
 Title: Token Authentication
 Language: en-US
 */

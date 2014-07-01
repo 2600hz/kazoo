@@ -1,5 +1,5 @@
 /*
-Section: APIs
+Section: Crossbar
 Title: User Authentication
 Language: en-US
 */

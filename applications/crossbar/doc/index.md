@@ -1,28 +1,8 @@
 /*
-Section: APIs
-Main_Nav: Yes
-Title: APIs
+Section: Crossbar
+Title: Crossbar
+Language: en-US
 */
 
-****************************
-* Developer Concepts *
-****************************
-
-
-
-*************************
-* Configuration APIs *
-*************************
-
-
-*****************************
-* Real-Time Integrations *
-*****************************
-
-Events
-Webhooks
-Pivot
-Call Recording
-
-
-
+# Crossbar *HTTP REST API*
+Eat your soup.
