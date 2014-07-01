@@ -47,7 +47,9 @@
 
 -include("crossbar.hrl").
 
--define(DEFAULT_LANGUAGE, <<"en-US">>).
+-define(DEFAULT_LANGUAGE
+        ,whapps_config:get(?CONFIG_CAT, <<"default_language">>, <<"en-US">>)
+       ).
 
 -type fails() :: 'error' | 'fatal'.
 -type year_month_tuple() :: {pos_integer(),pos_integer()}.
