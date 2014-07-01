@@ -34,6 +34,7 @@
          ,add_capability/2
          ,get_capability/2, get_capabilities/1, get_capabilities/2
          ,remove_capabilities/1, remove_capability/2
+         ,flush/0, flush/2
         ]).
 
 -export([init/1
@@ -102,8 +103,25 @@ nodeup(Node) -> gen_server:cast(?MODULE, {'fs_nodeup', Node}).
 -spec remove(atom()) -> 'ok'.
 remove(Node) -> gen_server:cast(?MODULE, {'rm_fs_node', Node}).
 
--spec connected() -> [atom(),...] | [].
+-spec connected() -> atoms().
 connected() -> gen_server:call(?MODULE, 'connected_nodes').
+
+-spec flush() -> 'ok'.
+-spec flush(ne_binary(), ne_binary()) -> 'ok'.
+flush() ->
+    [freeswitch:api(Node, 'xml_flush_cache', <<>>)
+     || Node <- connected()
+    ],
+    'ok'.
+
+flush(User, Realm) ->
+    lager:debug("flushing user ~s@~s from all FreeSWITCH servers", [User, Realm]),
+    [freeswitch:api(Node, 'xml_flush_cache', list_to_binary([<<"id ">>, User
+                                                            ,<<" ">>, Realm
+                                                            ]))
+     || Node <- connected()
+    ],
+    'ok'.
 
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> gen_server:call(?MODULE, {'is_node_up', Node}).
