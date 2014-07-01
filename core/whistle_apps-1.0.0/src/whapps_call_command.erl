@@ -349,11 +349,11 @@ audio_macro([{'prompt', PromptName}|T], Call, Queue) ->
 audio_macro([{'prompt', PromptName, Lang}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(wh_media_util:get_prompt(PromptName, Lang, Call), ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{'say', Say}|T], Call, Queue) ->
-    audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call) | Queue]);
+    audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, whapps_call:language(Call), Call) | Queue]);
 audio_macro([{'say', Say, Type}|T], Call, Queue) ->
-    audio_macro(T, Call, [say_command(Say, Type, <<"pronounced">>, <<"en">>, Call) | Queue]);
+    audio_macro(T, Call, [say_command(Say, Type, <<"pronounced">>, whapps_call:language(Call), Call) | Queue]);
 audio_macro([{'say', Say, Type, Method}|T], Call, Queue) ->
-    audio_macro(T, Call, [say_command(Say, Type, Method, <<"en">>, Call) | Queue]);
+    audio_macro(T, Call, [say_command(Say, Type, Method, whapps_call:language(Call), Call) | Queue]);
 audio_macro([{'say', Say, Type, Method, Language}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, Type, Method, Language, Call) | Queue]);
 audio_macro([{'tones', Tones}|T], Call, Queue) ->
@@ -956,7 +956,7 @@ b_play(Media, Terminators, Leg, Call) ->
 -spec tts(api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), whapps_call:call()) -> ne_binary().
 
 tts(SayMe, Call) -> tts(SayMe, <<"female">>, Call).
-tts(SayMe, Voice, Call) -> tts(SayMe, Voice, <<"en-US">>, Call).
+tts(SayMe, Voice, Call) -> tts(SayMe, Voice, whapps_call:language(Call), Call).
 tts(SayMe, Voice, Lang, Call) -> tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 tts(SayMe, Voice, Lang, Terminators, Call) ->
     tts(SayMe, Voice, Lang, Terminators
@@ -986,7 +986,7 @@ tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
 tts_command(SayMe, Call) ->
     tts_command(SayMe, <<"female">>, Call).
 tts_command(SayMe, Voice, Call) ->
-    tts_command(SayMe, Voice, <<"en-US">>, Call).
+    tts_command(SayMe, Voice, whapps_call:langauge(Call), Call).
 tts_command(SayMe, Voice, Language, Call) ->
     tts_command(SayMe, Voice, Language, ?ANY_DIGIT, Call).
 tts_command(SayMe, Voice, Language, Terminators, Call) ->
@@ -1001,7 +1001,7 @@ tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
          ,{<<"Text">>, SayMe}
          ,{<<"Terminators">>, tts_terminators(Terminators)}
          ,{<<"Voice">>, tts_voice(Voice)}
-         ,{<<"Language">>, tts_language(Language)}
+         ,{<<"Language">>, tts_language(Language, Call)}
          ,{<<"Engine">>, tts_engine(Engine)}
          ,{<<"Call-ID">>, whapps_call:call_id(Call)}
         ])).
@@ -1012,8 +1012,8 @@ tts_terminators(Terminators) -> Terminators.
 tts_voice('undefined') -> <<"female">>;
 tts_voice(Voice) -> Voice.
 
-tts_language('undefined') -> <<"en-US">>;
-tts_language(Language) -> Language.
+tts_language('undefined', Call) -> whapps_call:language(Call);
+tts_language(Language, _Call) -> Language.
 
 tts_engine('undefined') -> <<"flite">>;
 tts_engine(Engine) -> Engine.
@@ -1185,11 +1185,11 @@ store_fax(URL, Call) ->
     store_fax(URL, 'undefined', Call).
 -spec store_fax(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 store_fax(URL, LocalFile, Call) ->
-    
+
     Command = props:filter_undefined([{<<"Application-Name">>, <<"store_fax">>}
                ,{<<"Media-Transfer-Method">>, <<"put">>}
                ,{<<"Media-Transfer-Destination">>, URL}
-               ,{<<"Fax-Local-Filename">>, LocalFile} 
+               ,{<<"Fax-Local-Filename">>, LocalFile}
                ,{<<"Insert-At">>, <<"now">>}
               ]),
     send_command(Command, Call).
@@ -1462,15 +1462,9 @@ say(Say, Call) ->
 say(Say, Type, Call) ->
     say(Say, Type, <<"pronounced">>, Call).
 say(Say, Type, Method, Call) ->
-    say(Say, Type, Method, <<"en">>, Call).
+    say(Say, Type, Method, whapps_call:language(Call), Call).
 say(Say, Type, Method, Language, Call) ->
-    Command = props:filter_undefined(
-                [{<<"Application-Name">>, <<"say">>}
-                 ,{<<"Say-Text">>, Say}
-                 ,{<<"Type">>, Type}
-                 ,{<<"Method">>, Method}
-                 ,{<<"Language">>, Language}
-                ]),
+    Command = say_command(Say, Type, Method, Language, Call),
     send_command(Command, Call).
 
 -spec say_command(ne_binary(), whapps_call:call()) -> wh_json:object().
@@ -1482,16 +1476,17 @@ say_command(Say, Call) ->
 say_command(Say, Type, Call) ->
     say_command(Say, Type, <<"pronounced">>, Call).
 say_command(Say, Type, Method, Call) ->
-    say_command(Say, Type, Method, <<"en">>, Call).
+    say_command(Say, Type, Method, whapps_call:language(Call), Call).
 say_command(Say, Type, Method, Language, Call) ->
     wh_json:from_list(
+      props:filter_undefined(
         [{<<"Application-Name">>, <<"say">>}
          ,{<<"Say-Text">>, Say}
          ,{<<"Type">>, say_type(Type)}
          ,{<<"Method">>, say_method(Method)}
-         ,{<<"Language">>, say_language(Language)}
+         ,{<<"Language">>, say_language(Language, Call)}
          ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-        ]).
+        ])).
 
 say_type('undefined') -> <<"name_spelled">>;
 say_type(T) -> T.
@@ -1499,15 +1494,15 @@ say_type(T) -> T.
 say_method('undefined') -> <<"pronounced">>;
 say_method(M) -> M.
 
-say_language('undefined') -> <<"en">>;
-say_language(L) -> L.
+say_language('undefined', Call) -> whapps_call:language(Call);
+say_language(L, _Call) -> L.
 
 b_say(Say, Call) ->
     b_say(Say, <<"name_spelled">>, Call).
 b_say(Say, Type, Call) ->
     b_say(Say, Type, <<"pronounced">>, Call).
 b_say(Say, Type, Method, Call) ->
-    b_say(Say, Type, Method, <<"en">>, Call).
+    b_say(Say, Type, Method, whapps_call:language(Call), Call).
 b_say(Say, Type, Method, Language, Call) ->
     say(Say, Type, Method, Language, Call),
     wait_for_message(Call, <<"say">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity').
@@ -2256,7 +2251,8 @@ send_command(JObj, Call) -> send_command(wh_json:to_proplist(JObj), Call).
 %% Get the t38 settings for an endpoint based on carrier and device
 %% @end
 %%--------------------------------------------------------------------
--spec get_outbound_t38_settings(boolean(), api_binary() | boolean()) -> wh_proplist().
+-spec get_outbound_t38_settings(boolean(), api_binary() | boolean()) ->
+                                       wh_proplist().
 get_outbound_t38_settings(CarrierFlag, <<"auto">>) ->
     get_outbound_t38_settings(CarrierFlag, 'true');
 get_outbound_t38_settings(CarrierFlag, 'undefined') ->
@@ -2308,8 +2304,8 @@ get_outbound_t38_settings('false') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
--spec get_inbound_t38_settings(boolean(), api_binary() | boolean()) -> wh_proplist().
+-spec get_inbound_t38_settings(boolean(), api_binary() | boolean()) ->
+                                      wh_proplist().
 get_inbound_t38_settings(CarrierFlag, <<"auto">>) ->
     get_inbound_t38_settings(CarrierFlag, 'true');
 get_inbound_t38_settings(CarrierFlag, 'undefined') ->
@@ -2367,7 +2363,6 @@ get_inbound_t38_settings(_Carrier, _CallerFlag) ->
      ,{<<"Enable-T38-Fax-Request">>, 'false'}
      ,{<<"Enable-T38-Passthrough">>, 'false'}
     ].
-
 
 -spec get_inbound_t38_settings(boolean()) -> wh_proplist().
 get_inbound_t38_settings('true') ->
