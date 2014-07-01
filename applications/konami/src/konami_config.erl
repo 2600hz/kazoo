@@ -10,14 +10,14 @@
 
 -export([numbers/0, numbers/1
          ,patterns/0, patterns/1
-         ,binding_key/0, binding_key/1
+         ,binding_digit/0, binding_digit/1
          ,timeout/0, timeout/1
          ,listen_on/0, listen_on/1
         ]).
 
 -include("konami.hrl").
 
--define(DEFAULT_BINDING_KEY, <<"*">>).
+-define(DEFAULT_BINDING_DIGIT, <<"*">>).
 -define(DEFAULT_DIGIT_TIMEOUT, 3000).
 
 -define(META_SAY_HI, wh_json:from_list([{<<"module">>, <<"say">>}
@@ -58,24 +58,24 @@ patterns(Account) ->
             get_attribute(KonamiDoc, <<"patterns">>, fun patterns/0)
     end.
 
--spec binding_key() -> <<_:8>>.
--spec binding_key(ne_binary()) -> <<_:8>>.
-binding_key() ->
-    BindingKey = whapps_config:get(<<"metaflows">>, <<"binding_key">>, ?DEFAULT_BINDING_KEY),
-    constrain_binding_key(BindingKey).
+-spec binding_digit() -> <<_:8>>.
+-spec binding_digit(ne_binary()) -> <<_:8>>.
+binding_digit() ->
+    BindingDigit = whapps_config:get(<<"metaflows">>, <<"binding_digit">>, ?DEFAULT_BINDING_DIGIT),
+    constrain_binding_digit(BindingDigit).
 
-binding_key(Account) ->
+binding_digit(Account) ->
     case konami_doc(Account) of
-        'undefined' -> binding_key();
+        'undefined' -> binding_digit();
         KonamiDoc ->
-            get_attribute(KonamiDoc, <<"binding_key">>, fun binding_key/0, fun constrain_binding_key/1)
+            get_attribute(KonamiDoc, <<"binding_digit">>, fun binding_digit/0, fun constrain_binding_digit/1)
     end.
 
--spec constrain_binding_key(ne_binary()) -> <<_:8>>.
-constrain_binding_key(BindingKey) ->
-    case lists:member(BindingKey, ?ANY_DIGIT) of
-        'true' -> BindingKey;
-        'false' -> ?DEFAULT_BINDING_KEY
+-spec constrain_binding_digit(ne_binary()) -> <<_:8>>.
+constrain_binding_digit(BindingDigit) ->
+    case lists:member(BindingDigit, ?ANY_DIGIT) of
+        'true' -> BindingDigit;
+        'false' -> ?DEFAULT_BINDING_DIGIT
     end.
 
 -spec timeout() -> non_neg_integer().

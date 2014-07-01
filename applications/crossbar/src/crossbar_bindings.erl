@@ -94,7 +94,11 @@ all(Res) when is_list(Res) ->
 
 -spec succeeded(map_results()) -> map_results().
 succeeded(Res) when is_list(Res) ->
-    kazoo_bindings:succeeded(Res, fun filter_out_failed/1).
+    Successes = kazoo_bindings:succeeded(Res, fun filter_out_failed/1),
+    case lists:keyfind('halt', 1, Successes) of
+        'false' -> Successes;
+        {'value', HaltTuple} -> [HaltTuple]
+    end.
 
 -spec failed(map_results()) -> map_results().
 failed(Res) when is_list(Res) ->
@@ -103,13 +107,11 @@ failed(Res) when is_list(Res) ->
 -spec matches(ne_binaries(), ne_binaries()) -> boolean().
 matches([], _) -> 'false';
 matches([R|Restrictions], Tokens) ->
-    Restriction = [cowboy_http:urldecode(T) || T <- binary:split(R, <<"/">>, ['global', 'trim'])],
+    Restriction = [cow_qs:urldecode(T) || T <- binary:split(R, <<"/">>, ['global', 'trim'])],
     case kazoo_bindings:matches(Restriction, Tokens) of
         'true' -> 'true';
         'false' -> matches(Restrictions, Tokens)
     end.
-
-
 
 %%-------------------------------------------------------------------------
 %% @doc
@@ -161,7 +163,8 @@ bind(Binding, Module, Fun) when is_binary(Binding) ->
 
 -spec flush() -> 'ok'.
 flush() ->
-    [kazoo_bindings:flush_mod(Mod) || Mod <- modules_loaded()].
+    [kazoo_bindings:flush_mod(Mod) || Mod <- modules_loaded()],
+    'ok'.
 
 -spec flush(ne_binary()) -> 'ok'.
 flush(Binding) -> kazoo_bindings:flush(Binding).

@@ -15,7 +15,7 @@
 -type req_files() :: [req_file(),...] | [].
 -type req_json() :: wh_json:object() | {'malformed', binary()}.
 
--type req_noun() :: {ne_binary(), wh_json:json_strings()}.
+-type req_noun() :: {ne_binary(), ne_binaries()}.
 -type req_nouns() :: [req_noun(),...] | [].
 
 %% {handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}

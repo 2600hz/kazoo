@@ -1,4 +1,4 @@
-%%%============================================================================
+%%============================================================================
 %%% @copyright (C) 2011-2014 2600Hz Inc
 %%% @doc
 %%%
@@ -54,6 +54,7 @@
 -export([set_owner_id/2, owner_id/1]).
 -export([set_fetch_id/2, fetch_id/1]).
 -export([set_bridge_id/2, bridge_id/1]).
+-export([set_language/2, language/1]).
 
 -export([set_custom_channel_var/3
          ,set_custom_channel_vars/2
@@ -94,15 +95,18 @@
 
 -export([default_helper_function/2]).
 
+-define(DEFAULT_CALLER_ID_NAME, <<"Unknown">>).
+-define(DEFAULT_CALLER_ID_NUMBER, <<"0000000000">>).
+
 -record(whapps_call, {call_id :: api_binary()                       %% The UUID of the call
-                      ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,call_id_helper = fun default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                       ,control_q :: api_binary()                   %% The control queue provided on route win
-                      ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
+                      ,control_q_helper = fun default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                       ,controller_q :: api_binary()                %%
-                      ,caller_id_name = <<"Unknown">> :: ne_binary()      %% The caller name
-                      ,caller_id_number = <<"0000000000">> :: ne_binary() %% The caller number
-                      ,callee_id_name = <<>> :: binary()                  %% The callee name
-                      ,callee_id_number = <<>> :: binary()                %% The callee number
+                      ,caller_id_name = ?DEFAULT_CALLER_ID_NAME :: ne_binary()      %% The caller name
+                      ,caller_id_number = ?DEFAULT_CALLER_ID_NUMBER :: ne_binary() %% The caller number
+                      ,callee_id_name :: api_binary()                     %% The callee name
+                      ,callee_id_number :: api_binary()                   %% The callee number
                       ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
                       ,switch_hostname :: ne_binary()                     %% The switch hostname (as reported by the switch)
                       ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
@@ -122,19 +126,20 @@
                       ,owner_id :: api_binary()                    %% The ID of the owner of this calling device, if any
                       ,fetch_id :: api_binary()                    %% The Fetch ID of the Call
                       ,bridge_id :: api_binary()                    %% The Bridge ID of the Call
+                      ,language :: api_binary()                     %% Language of the call to use
                       ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
                       ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
-                      ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
+                      ,custom_publish_fun :: whapps_custom_publish() | 'undefined'     %% A custom command used to publish whapps_call_command
                       ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that where provided with the route request
                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       ,other_leg_callid :: api_binary()
                       ,resource_type :: api_binary()                      %% from route_req
                       }).
 
--type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()).
-
 -type call() :: #whapps_call{}.
 -export_type([call/0]).
+
+-type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()) | 'undefined'.
 
 -define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #whapps_call.caller_id_name}
                        ,{<<"Caller-ID-Number">>, #whapps_call.caller_id_number}
@@ -147,7 +152,7 @@
                       ]).
 
 -spec default_helper_function(api_binary(), call()) -> api_binary().
-default_helper_function(Field, #whapps_call{}) -> Field.
+default_helper_function(Field, #whapps_call{} = _) -> Field.
 
 -spec clear_helpers(call()) -> call().
 clear_helpers(#whapps_call{}=Call) ->
@@ -167,7 +172,7 @@ put_callid(#whapps_call{call_id=CallId}) ->
 
 -spec from_route_req(wh_json:object()) -> call().
 from_route_req(RouteReq) ->
-    from_route_req(RouteReq, #whapps_call{}).
+    from_route_req(RouteReq, new()).
 
 -spec from_route_req(wh_json:object(), call()) -> call().
 from_route_req(RouteReq, #whapps_call{call_id=OldCallId
@@ -221,7 +226,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
 
 -spec from_route_win(wh_json:object()) -> call().
 from_route_win(RouteWin) ->
-    from_route_win(RouteWin, #whapps_call{}).
+    from_route_win(RouteWin, new()).
 
 -spec from_route_win(wh_json:object(), call()) -> call().
 from_route_win(RouteWin, #whapps_call{call_id=OldCallId
@@ -234,6 +239,7 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                       ,owner_id=OldOwnerId
                                       ,fetch_id=OldFetchId
                                       ,bridge_id=OldBridgeId
+                                      ,language=OldLanguage
                                      }=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
     put('callid', CallId),
@@ -254,11 +260,8 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                      ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, OldOwnerId)
                      ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, CCVs, OldFetchId)
                      ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
+                     ,language = wh_media_util:prompt_language(AccountId, OldLanguage)
                     }.
-
--spec from_json(wh_json:object()) -> call().
-from_json(JObj) ->
-    from_json(JObj, #whapps_call{}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -268,7 +271,11 @@ from_json(JObj) ->
 %% converting to/from json
 %% @end
 %%--------------------------------------------------------------------
+-spec from_json(wh_json:object()) -> call().
 -spec from_json(wh_json:object(), call()) -> call().
+from_json(JObj) ->
+    from_json(JObj, new()).
+
 from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
     CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
     KVS = orddict:from_list(wh_json:to_proplist(wh_json:get_value(<<"Key-Value-Store">>, JObj, wh_json:new()))),
@@ -299,6 +306,7 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
       ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
       ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, JObj, fetch_id(Call))
       ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, JObj, bridge_id(Call))
+      ,language = language(Call)
       ,app_name = wh_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
       ,app_version = wh_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
       ,ccvs = CCVs
@@ -363,6 +371,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
      ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
      ,{<<"Resource-Type">>, resource_type(Call)}
+     ,{<<"Language">>, language(Call)}
     ].
 
 -spec is_call(term()) -> boolean().
@@ -469,10 +478,10 @@ set_caller_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
     whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Name">>, CIDName}]), 'undefined', Call),
     Call#whapps_call{caller_id_name=CIDName}.
 
--spec caller_id_name(call()) -> binary().
+-spec caller_id_name(call()) -> ne_binary().
 caller_id_name(#whapps_call{caller_id_name=CIDName}) ->
     case wh_util:is_empty(CIDName) of
-        'true' -> <<>>;
+        'true' -> ?DEFAULT_CALLER_ID_NAME;
         'false' -> CIDName
     end.
 
@@ -481,10 +490,10 @@ set_caller_id_number(CIDNumber, #whapps_call{}=Call) ->
     whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), 'undefined', Call),
     Call#whapps_call{caller_id_number=CIDNumber}.
 
--spec caller_id_number(call()) -> binary().
+-spec caller_id_number(call()) -> ne_binary().
 caller_id_number(#whapps_call{caller_id_number=CIDNumber}) ->
     case  wh_util:is_empty(CIDNumber) of
-        'true' -> <<>>;
+        'true' -> ?DEFAULT_CALLER_ID_NUMBER;
         'false' -> CIDNumber
     end.
 
@@ -494,8 +503,8 @@ set_callee_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
     Call#whapps_call{callee_id_name=CIDName}.
 
 -spec callee_id_name(call()) -> binary().
-callee_id_name(#whapps_call{callee_id_name=CIDName}) ->
-    CIDName.
+callee_id_name(#whapps_call{callee_id_name='undefined'}) -> <<>>;
+callee_id_name(#whapps_call{callee_id_name=CIDName}) -> CIDName.
 
 -spec set_callee_id_number(ne_binary(), call()) -> call().
 set_callee_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) ->
@@ -503,8 +512,8 @@ set_callee_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) -
     Call#whapps_call{callee_id_number=CIDNumber}.
 
 -spec callee_id_number(call()) -> binary().
-callee_id_number(#whapps_call{callee_id_number=CIDNumber}) ->
-    CIDNumber.
+callee_id_number(#whapps_call{callee_id_number='undefined'}) -> <<>>;
+callee_id_number(#whapps_call{callee_id_number=CIDNumber}) -> CIDNumber.
 
 -spec set_request(ne_binary(), call()) -> call().
 set_request(Request, #whapps_call{}=Call) when is_binary(Request) ->
@@ -572,7 +581,7 @@ switch_hostname(#whapps_call{switch_hostname=Srv}) ->
 set_switch_nodename(Srv, #whapps_call{}=Call) ->
     Call#whapps_call{switch_nodename=Srv}.
 
--spec switch_nodename(call()) -> ne_binary().
+-spec switch_nodename(call()) -> binary().
 switch_nodename(#whapps_call{switch_nodename=Srv}) ->
     Srv.
 
@@ -666,6 +675,15 @@ set_bridge_id(BridgeId, #whapps_call{}=Call) when is_binary(BridgeId) ->
 
 -spec bridge_id(call()) -> api_binary().
 bridge_id(#whapps_call{bridge_id=BridgeId}) -> BridgeId.
+
+-spec set_language(ne_binary(), call()) -> call().
+set_language(Language, #whapps_call{}=Call) when is_binary(Language) ->
+    Call#whapps_call{language=Language}.
+
+-spec language(call()) -> api_binary().
+language(#whapps_call{language='undefined', account_id=AccountId}) ->
+    wh_media_util:prompt_language(AccountId);
+language(#whapps_call{language=Language}) -> Language.
 
 -spec set_custom_channel_var(term(), term(), call()) -> call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
@@ -800,8 +818,8 @@ flush() ->
     wh_cache:flush_local(?WHAPPS_CALL_CACHE).
 
 -spec cache(call()) -> 'ok'.
--spec cache(call(), ne_binary()) -> 'ok'.
--spec cache(call(), ne_binary(), pos_integer()) -> 'ok'.
+-spec cache(call(), api_binary()) -> 'ok'.
+-spec cache(call(), api_binary(), pos_integer()) -> 'ok'.
 
 cache(Call) ->
     cache(Call, 'undefined', 300).
@@ -816,7 +834,7 @@ cache(#whapps_call{call_id=CallId}=Call, AppName, Expires) ->
 -spec retrieve(ne_binary()) ->
                       {'ok', call()} |
                       {'error', 'not_found'}.
--spec retrieve(ne_binary(), ne_binary()) ->
+-spec retrieve(ne_binary(), api_binary()) ->
                       {'ok', call()} |
                       {'error', 'not_found'}.
 

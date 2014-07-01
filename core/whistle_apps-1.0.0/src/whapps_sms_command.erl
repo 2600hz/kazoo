@@ -132,6 +132,6 @@ wait_for_correlated_message(Call, Event, Type, Timeout) ->
                     {'ok', JObj};
                 {_Type, _Event, _CallId} ->
                     lager:debug("received message (~s , ~s, ~s)",[_Type, _Event, _CallId]),
-                    wait_for_correlated_message(Call, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_correlated_message(Call, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end
     end.

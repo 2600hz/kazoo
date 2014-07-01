@@ -284,6 +284,7 @@ do_fetch_results(Db, DesignDoc, Options) ->
       ).
 
 format_error({'failure', 404}) -> 'not_found';
+format_error({'failure', 400}) -> 'client_error';
 format_error({'http_error', {'status', 504}}) -> 'gateway_timeout';
 format_error({'conn_failed', {'error', 'timeout'}}) -> 'connection_timeout';
 format_error({'conn_failed', {'error', 'enetunreach'}}) -> 'network_unreachable';

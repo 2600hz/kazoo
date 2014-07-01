@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -21,67 +21,46 @@
 -type account() :: ne_binary() | whapps_call:call() | wh_json:object().
 
 %% get_global/{3,4} will search the account db first, then system_config for values
--spec get_global(account(), ne_binary(), ne_binary()) ->
+-spec get_global(account(), ne_binary(), wh_json:key()) ->
                         wh_json:json_term().
--spec get_global(account(), ne_binary(), ne_binary(), wh_json:json_term()) ->
+-spec get_global(account(), ne_binary(), wh_json:key(), wh_json:json_term()) ->
                         wh_json:json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, 'undefined').
 get_global(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
-    case wh_cache:peek_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Category)) of
-        {'ok', JObj} -> get_global_from_doc(AccountId, Category, Key, Default, JObj);
-        {'error', 'not_found'} -> get_global_from_db(AccountId, Category, Key, Default)
-    end.
-
-get_global_from_db(AccountId, Category, Key, Default) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, Category) of
-        {'ok', JObj} -> get_global_from_doc(AccountId, Category, Key, Default, JObj);
+    case couch_mgr:open_doc(AccountDb, config_doc_id(Category)) of
+        {'ok', JObj} -> get_global_from_doc(Category, Key, Default, JObj);
         {'error', _} -> whapps_config:get(Category, Key, Default)
     end.
 
-get_global_from_doc(AccountId, Category, Key, Default, JObj) ->
+-spec get_global_from_doc(ne_binary(), wh_json:key(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
+get_global_from_doc(Category, Key, Default, JObj) ->
     case wh_json:get_value(Key, JObj) of
         'undefined' -> whapps_config:get(Category, Key, Default);
-        V ->
-            wh_cache:store_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Category), JObj),
-            V
+        V -> V
     end.
 
 -spec get(account(), ne_binary()) -> wh_json:object().
 get(Account, Config) ->
     AccountId = account_id(Account),
-    case wh_cache:peek_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Config)) of
-        {'ok', JObj} -> JObj;
-        {'error', 'not_found'} -> get_from_db(AccountId, Config)
-    end.
-
-get_from_db(AccountId, Config) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     DocId = config_doc_id(Config),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'error', _} -> wh_json:set_value(<<"_id">>, DocId, wh_json:new());
-        {'ok', JObj} ->
-            wh_cache:store_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Config), JObj),
-            JObj
+        {'ok', JObj} -> JObj
     end.
 
 -spec flush(account()) -> 'ok'.
 -spec flush(account(), ne_binary()) -> 'ok'.
 flush(Account) ->
-    AccountId = account_id(Account),
-    _ = wh_cache:filter_local(?WHAPPS_CONFIG_CACHE
-                              ,fun({?MODULE, _Config, AcctId}=K, _V) when AcctId =:= AccountId ->
-                                       wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, K),
-                                       'true';
-                                  (_, _) -> 'false'
-                               end
-                             ),
-    'ok'.
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    couch_mgr:flush_cache_docs(AccountDb).
+
 flush(Account, Config) ->
-    AccountId = account_id(Account),
-    wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Config)).
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    couch_mgr:flush_cache_doc(AccountDb, config_doc_id(Config)).
 
 -spec get(account(), ne_binary(), wh_json:key()) ->
                  wh_json:json_term() | 'undefined'.
@@ -97,13 +76,16 @@ get(Account, Config, Key, Default) ->
 set(Account, Config, Key, Value) ->
     JObj = wh_json:set_value(Key, Value, ?MODULE:get(Account, Config)),
 
-    AccountId = account_id(Account),
+
     AccountDb = account_db(Account),
 
     {'ok', JObj1} = couch_mgr:ensure_saved(AccountDb
-                                           ,wh_doc:update_pvt_parameters(JObj, AccountDb, [{'type', <<"account_config">>}])
+                                           ,wh_doc:update_pvt_parameters(JObj
+                                                                         ,AccountDb
+                                                                         ,[{'type', <<"account_config">>}
+                                                                           ,{'account_id', account_id(Account)}
+                                                                          ])
                                           ),
-    wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Config)),
     JObj1.
 
 -spec set_global(account(), ne_binary(), wh_json:key(), wh_json:json_term()) ->

@@ -800,7 +800,7 @@ maybe_start_metaflow(Call, Endpoint) ->
                      ,{<<"Patterns">>, wh_json:get_value(<<"patterns">>, JObj)}
                      ,{<<"Binding-Digit">>, wh_json:get_value(<<"binding_digit">>, JObj)}
                      ,{<<"Digit-Timeout">>, wh_json:get_value(<<"digit_timeout">>, JObj)}
-                     ,{<<"Listen-On">>, wh_json:get_value(<<"listen_on">>, JObj, <<"b">>)}
+                     ,{<<"Listen-On">>, wh_json:get_value(<<"listen_on">>, JObj, <<"self">>)}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
             lager:debug("sending metaflow for endpoint: ~s: ~p", [wh_json:get_value(<<"Endpoint-ID">>, Endpoint), wh_json:get_value(<<"listen_on">>, JObj)]),

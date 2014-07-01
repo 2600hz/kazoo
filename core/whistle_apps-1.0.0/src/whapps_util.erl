@@ -38,15 +38,15 @@
 -export([add_aggregate_device/2]).
 -export([rm_aggregate_device/2]).
 -export([get_destination/3]).
--export([get_prompt/2, get_prompt/3]).
+
 -export([amqp_pool_send/2]).
 -export([amqp_pool_request/3, amqp_pool_request/4
          ,amqp_pool_request_custom/4, amqp_pool_request_custom/5
          ,amqp_pool_collect/2, amqp_pool_collect/3
          ,amqp_pool_collect/4
         ]).
+
 -export([write_tts_file/2]).
--export([decr_timeout/2]).
 -export([to_magic_hash/1
          ,from_magic_hash/1
         ]).
@@ -603,25 +603,6 @@ get_destination(JObj, Cat, Key) ->
             end
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_prompt(ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
--spec get_prompt(ne_binary(), ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
-
-get_prompt(Name, Call) ->
-    get_prompt(Name, <<"en">>, Call).
-
-get_prompt(Name, Lang, 'undefined') ->
-    whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>);
-get_prompt(Name, Lang, Call) ->
-    DefaultPrompt = whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>),
-    JObj = whapps_account_config:get(whapps_call:account_id(Call), ?PROMPTS_CONFIG_CAT),
-    wh_json:get_value([Lang, Name], JObj, DefaultPrompt).
-
 -spec try_split(ne_binary(), wh_json:object()) ->
                        {ne_binary(), ne_binary()} |
                        'undefined'.
@@ -642,10 +623,6 @@ write_tts_file(Path, Say) ->
     lager:debug("trying to save TTS media to ~s", [Path]),
     {'ok', _, Wav} = whapps_speech:create(Say),
     file:write_file(Path, Wav).
-
--spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
-decr_timeout(Timeout, Elapsed) ->
-    wh_util:decr_timeout(Timeout, Elapsed).
 
 -spec to_magic_hash(ne_binary()) -> ne_binary().
 to_magic_hash(Bin) ->

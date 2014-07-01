@@ -94,7 +94,9 @@ fire_hook(JObj, Hook, URI, 'get', Retries) ->
                                 ,[]
                                 ,'get'
                                 ,[]
-                                ,[{'connect_timeout', 1000}]
+                                ,[{'connect_timeout', 1000}
+                                  ,{'response_format', 'binary'}
+                                 ]
                                 ,1000
                                ));
 fire_hook(JObj, Hook, URI, 'post', Retries) ->
@@ -105,7 +107,9 @@ fire_hook(JObj, Hook, URI, 'post', Retries) ->
                                 ,[{"Content-Type", "application/x-www-form-urlencoded"}]
                                 ,'post'
                                 ,wh_json:to_querystring(JObj)
-                                ,[{'connect_timeout', 1000}]
+                                ,[{'connect_timeout', 1000}
+                                  ,{'response_format', 'binary'}
+                                 ]
                                 ,1000
                                )).
 
@@ -162,8 +166,8 @@ failed_hook(#webhook{hook_id=HookId
     Attempt = wh_json:from_list([{<<"hook_id">>, HookId}
                                  ,{<<"result">>, <<"failure">>}
                                  ,{<<"reason">>, <<"bad response code">>}
-                                 ,{<<"response_code">>, RespCode}
-                                 ,{<<"response_body">>, RespBody}
+                                 ,{<<"response_code">>, wh_util:to_binary(RespCode)}
+                                 ,{<<"response_body">>, wh_util:to_binary(RespBody)}
                                  ,{<<"retries left">>, Retries-1}
                                 ]),
     save_attempt(Attempt, AccountId).

@@ -1,0 +1,12 @@
+{
+    "_id":"callflows.language"
+    ,"id":"http://json-schema.org/draft-03/schema#"
+    ,"description":"Validator for the Language callflow element"
+    ,"properties":{
+        "language":{
+            "type":"string"
+            ,"description":"The language to default to for the rest of the call"
+            ,"pattern":"^[A-Za-z]{2}(-[A-Za-z]{2})?$"
+        }
+    }
+}

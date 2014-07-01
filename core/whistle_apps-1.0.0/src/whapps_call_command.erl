@@ -344,9 +344,9 @@ audio_macro([{'play', MediaName}|T], Call, Queue) ->
 audio_macro([{'play', MediaName, Terminators}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
 audio_macro([{'prompt', PromptName}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(whapps_util:get_prompt(PromptName, Call), ?ANY_DIGIT, Call) | Queue]);
+    audio_macro(T, Call, [play_command(wh_media_util:get_prompt(PromptName, Call), ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{'prompt', PromptName, Lang}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(whapps_util:get_prompt(PromptName, Lang, Call), ?ANY_DIGIT, Call) | Queue]);
+    audio_macro(T, Call, [play_command(wh_media_util:get_prompt(PromptName, Lang, Call), ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{'say', Say}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call) | Queue]);
 audio_macro([{'say', Say, Type}|T], Call, Queue) ->
@@ -848,11 +848,15 @@ park(Call) ->
 -spec b_prompt(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_prompt(ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 
-prompt(Prompt, Call) -> prompt(Prompt, <<"en">>, Call).
-prompt(Prompt, Lang, Call) -> play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
+prompt(Prompt, Call) ->
+    play(wh_media_util:get_prompt(Prompt, Call), Call).
+prompt(Prompt, Lang, Call) ->
+    play(wh_media_util:get_prompt(Prompt, Lang, Call), Call).
 
-b_prompt(Prompt, Call) -> b_prompt(Prompt, <<"en">>, Call).
-b_prompt(Prompt, Lang, Call) -> b_play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
+b_prompt(Prompt, Call) ->
+    b_play(wh_media_util:get_prompt(Prompt, Call), Call).
+b_prompt(Prompt, Lang, Call) ->
+    b_play(wh_media_util:get_prompt(Prompt, Lang, Call), Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1272,7 +1276,7 @@ prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidP
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, [<<"#">>], Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, whapps_util:get_prompt(Prompt, Call), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
+    play_and_collect_digits(MinDigits, MaxDigits, wh_media_util:get_prompt(Prompt, Call), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
 
 b_prompt_and_collect_digit(Prompt, Call) ->
     b_prompt_and_collect_digits(1, 1, Prompt, Call).
@@ -1293,7 +1297,16 @@ b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, 0, _Timeout, Invali
     _ = b_prompt(InvalidPrompt, Call),
     {'ok', <<>>};
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
-    b_play_and_collect_digits(MinDigits, MaxDigits, whapps_util:get_prompt(Prompt, Call), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
+    b_play_and_collect_digits(MinDigits
+                              ,MaxDigits
+                              ,wh_media_util:get_prompt(Prompt, Call)
+                              ,Tries
+                              ,Timeout
+                              ,InvalidPrompt
+                              ,Regex
+                              ,Terminators
+                              ,Call
+                             ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1706,7 +1719,7 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                     %% if we were given the NoopId of the noop and this is not it, then keep waiting
                     do_collect_digits(Collect);
                 {'decrement'} ->
-                    do_collect_digits(Collect#wcc_collect_digits{after_timeout=whapps_util:decr_timeout(After, Start)});
+                    do_collect_digits(Collect#wcc_collect_digits{after_timeout=wh_util:decr_timeout(After, Start)});
                 {'ok', Digit} ->
                     %% DTMF received, collect and start interdigit timeout
                     Digits =:= <<>> andalso flush(Call),
@@ -1817,7 +1830,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
                 {Type, Event, Application} ->
                     {'ok', JObj};
                 _ ->
-                    wait_for_message(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_message(Call, Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -1861,7 +1874,7 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
                 {Type, Event, Application} ->
                     {'ok', JObj};
                 _ ->
-                    wait_for_application(Call, Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_application(Call, Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -1905,10 +1918,10 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                     {'ok', JObj};
                 _T ->
                     lager:debug("ignore ~p", [_T]),
-                    wait_for_headless_application(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_headless_application(Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end;
         _ ->
-            wait_for_headless_application(Application, Event, Type, whapps_util:decr_timeout(Timeout, Start))
+            wait_for_headless_application(Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'error', 'timeout'}
     end.
@@ -1936,13 +1949,13 @@ wait_for_dtmf(Timeout) ->
                 {<<"call_event">>, <<"DTMF">>} ->
                     {'ok', wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
-                    wait_for_dtmf(whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_dtmf(wh_util:decr_timeout(Timeout, Start))
             end;
         _E ->
             lager:debug("unexpected ~p", [_E]),
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_dtmf(whapps_util:decr_timeout(Timeout, Start))
+            wait_for_dtmf(wh_util:decr_timeout(Timeout, Start))
     after
         Timeout -> {'ok', <<>>}
     end.
@@ -1999,11 +2012,11 @@ wait_for_bridge(Timeout, Fun, Call) ->
                     lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
                     {Result, JObj};
                 _ ->
-                    wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
+                    wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
             end;
         %% dont let the mailbox grow unbounded if
         %%   this process hangs around...
-        _ -> wait_for_bridge(whapps_util:decr_timeout(Timeout, Start), Fun, Call)
+        _ -> wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
     after
         Timeout -> {'error', 'timeout'}
     end.
@@ -2143,7 +2156,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} -> {'ok', JObj};
                 {<<"call_event">>, <<"DTMF">>, _} -> {'dtmf', wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
-                    wait_for_application_or_dtmf(Application, whapps_util:decr_timeout(Timeout, Start))
+                    wait_for_application_or_dtmf(Application, wh_util:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -2172,7 +2185,7 @@ wait_for_fax(Timeout) ->
                     %% NOTE:
                     lager:debug("channel hungup but no end of fax, maybe its coming next..."),
                     wait_for_fax(5000);
-                _ -> wait_for_fax(whapps_util:decr_timeout(Timeout, Start))
+                _ -> wait_for_fax(wh_util:decr_timeout(Timeout, Start))
             end
     end.
 

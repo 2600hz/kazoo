@@ -179,13 +179,13 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 -define(METAFLOW_HEADERS, [<<"Call">>]).
 -define(OPTIONAL_METAFLOW_HEADERS, [<<"Numbers">>, <<"Patterns">>
-                                    ,<<"Binding-Key">>, <<"Digit-Timeout">>
+                                    ,<<"Binding-Digit">>, <<"Digit-Timeout">>
                                     ,<<"Endpoint-ID">>, <<"Listen-On">>
                                    ]).
 -define(METAFLOW_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"metaflow">>}
-                          ,{<<"Binding-Key">>, ?ANY_DIGIT}
+                          ,{<<"Binding-Digit">>, ?ANY_DIGIT}
                           ,{<<"Listen-On">>, [<<"both">>, <<"self">>, <<"peer">>]}
                          ]).
 -define(METAFLOW_TYPES, [{<<"Numbers">>, fun wh_json:is_json_object/1}

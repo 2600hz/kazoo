@@ -156,7 +156,7 @@ authenticate(Context) ->
 check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;
 check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->
-    lager:debug("checking auth token: ~s", [AuthToken]),
+    lager:debug("checking auth token: '~s'", [AuthToken]),
     case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
         {'ok', JObj} -> is_expired(Context, JObj);
         {'error', R} ->

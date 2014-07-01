@@ -102,13 +102,13 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
     wh_json:find(Key, [ReqData, QS], Default).
 
 %% Accessors
--spec account_id(context()) -> ne_binary().
--spec account_db(context()) -> ne_binary().
--spec account_modb(context()) -> ne_binary().
--spec account_modb(context(), wh_now() | wh_timeout()) -> ne_binary().
--spec account_modb(context(), wh_year(), wh_month()) -> ne_binary().
--spec account_realm(context()) -> ne_binary().
--spec account_doc(context()) -> wh_json:object().
+-spec account_id(context()) -> api_binary().
+-spec account_db(context()) -> api_binary().
+-spec account_modb(context()) -> api_binary().
+-spec account_modb(context(), wh_now() | wh_timeout()) -> api_binary().
+-spec account_modb(context(), wh_year(), wh_month()) -> api_binary().
+-spec account_realm(context()) -> api_binary().
+-spec account_doc(context()) -> api_object().
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
@@ -125,6 +125,7 @@ account_modb(Context, Year, Month) ->
 account_realm(Context) ->
     wh_json:get_value(<<"pvt_realm">>, account_doc(Context)).
 
+account_doc(#cb_context{account_id='undefined'}) -> 'undefined';
 account_doc(Context) ->
     {'ok', Doc} =
         couch_mgr:open_cache_doc(account_db(Context), account_id(Context)),
@@ -424,7 +425,9 @@ validate_request_data(<<_/binary>> = Schema, Context) ->
 validate_request_data(SchemaJObj, Context) ->
     case jesse:validate_with_schema(SchemaJObj, wh_json:public_fields(req_data(Context))) of
         {'ok', JObj} ->
-            passed(set_doc(Context, JObj));
+            passed(
+              set_doc(Context, wh_json_schema:add_defaults(JObj, SchemaJObj))
+             );
         {'error', Errors} ->
             lager:debug("request data did not validate against ~s: ~p", [wh_json:get_value(<<"_id">>, SchemaJObj)
                                                                          ,Errors

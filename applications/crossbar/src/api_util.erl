@@ -453,7 +453,7 @@ decode_json_body(ReqBody, Req) ->
 %% @private
 %% @doc
 %% validates decoded json body
-%%   
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_decoded_json_body(wh_json:object(), cowboy_req:req()) -> get_json_return().
@@ -631,7 +631,7 @@ is_authentic(Req0, Context0, _ReqVerb) ->
         [{'true', Context2}|_] ->
             {'true', Req1, Context2};
         [{'halt', Context2}|_] ->
-            lager:debug("is_authentic: halt"),
+            lager:debug("authn halted"),
             ?MODULE:halt(Req1, Context2)
     end.
 
@@ -685,14 +685,14 @@ is_permitted_nouns(Req, Context0, _Nouns) ->
     Event = api_util:create_event_name(Context0, <<"authorize">>),
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
-            lager:debug("no on authz the request"),
+            lager:debug("no one authz'd the request"),
             ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context0));
         ['true'|_] ->
             {'true', Req, Context0};
         [{'true', Context1}|_] ->
             {'true', Req, Context1};
         [{'halt', Context1}|_] ->
-            lager:debug("is_permitted_nouns: halt"),
+            lager:debug("authz halted"),
             ?MODULE:halt(Req, Context1)
     end.
 

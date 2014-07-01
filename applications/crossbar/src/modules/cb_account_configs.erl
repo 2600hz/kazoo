@@ -9,16 +9,16 @@
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_system_configs).
+-module(cb_account_configs).
 
 -export([init/0
-         ,authorize/1, authorize/2, authorize/3
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,validate/1, validate/2, validate/3
+         ,authorize/1, authorize/2
+         ,allowed_methods/0, allowed_methods/1
+         ,resource_exists/0, resource_exists/1
+         ,validate/1, validate/2
          ,put/1
-         ,post/2, post/3
-         ,delete/2, delete/3
+         ,post/2
+         ,delete/2
         ]).
 
 -include("../crossbar.hrl").
@@ -36,15 +36,15 @@
 -spec init() -> 'ok'.
 init() ->
     _ = couch_mgr:db_create(?WH_CONFIG_DB),
-    _ = couch_mgr:revise_doc_from_file(?WH_CONFIG_DB, 'crossbar', <<"views/system_config.json">>),
+    _ = couch_mgr:revise_doc_from_file(?WH_CONFIG_DB, 'crossbar', <<"views/account_config.json">>),
 
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.system_configs">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.system_configs">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.system_configs">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.system_configs">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.system_configs">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.system_configs">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.account_configs">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.account_configs">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.account_configs">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.account_configs">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.account_configs">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.account_configs">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -55,10 +55,9 @@ init() ->
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 -spec authorize(cb_context:context(), path_token()) -> boolean().
--spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+
 authorize(Context) -> cb_modules_util:is_superduper_admin(Context).
 authorize(Context, _Id) -> cb_modules_util:is_superduper_admin(Context).
-authorize(Context, _Id, _Node) -> cb_modules_util:is_superduper_admin(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,9 +80,9 @@ allowed_methods(_Id, _Node) ->
 %% @public
 %% @doc
 %% Does the path point to a valid resource
-%% So /system_configs => []
-%%    /system_configs/foo => [<<"foo">>]
-%%    /system_configs/foo/bar => [<<"foo">>, <<"bar">>]
+%% So /account_configs => []
+%%    /account_configs/foo => [<<"foo">>]
+%%    /account_configs/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
@@ -98,8 +97,8 @@ resource_exists(_Id, _Node) -> 'true'.
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /system_configs mights load a list of system_config objects
-%% /system_configs/123 might load the system_config object 123
+%% /account_configs mights load a list of account_config objects
+%% /account_configs/123 might load the account_config object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
@@ -110,28 +109,28 @@ resource_exists(_Id, _Node) -> 'true'.
 -spec validate(cb_context:context(), path_token(), path_token()) ->
                       cb_context:context().
 validate(Context) ->
-    validate_system_configs(update_db(Context), cb_context:req_verb(Context)).
+    validate_account_configs(Context, cb_context:req_verb(Context)).
 validate(Context, Id) ->
-    validate_system_config(update_db(Context), Id, cb_context:req_verb(Context)
+    validate_account_config(Context, Id, cb_context:req_verb(Context)
                            ,cb_context:req_value(Context, <<"node">>, <<"default">>)
                           ).
 validate(Context, Id, Node) ->
-    validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
+    validate_account_config(Context, Id, cb_context:req_verb(Context), Node).
 
--spec validate_system_configs(cb_context:context(), http_method()) ->
+-spec validate_account_configs(cb_context:context(), http_method()) ->
                                      cb_context:context().
-validate_system_configs(Context, ?HTTP_GET) ->
+validate_account_configs(Context, ?HTTP_GET) ->
     summary(Context);
-validate_system_configs(Context, ?HTTP_PUT) ->
+validate_account_configs(Context, ?HTTP_PUT) ->
     create(Context).
 
--spec validate_system_config(cb_context:context(), path_token(), http_method(), ne_binary()) ->
+-spec validate_account_config(cb_context:context(), path_token(), http_method(), ne_binary()) ->
                                     cb_context:context().
-validate_system_config(Context, Id, ?HTTP_GET, Node) ->
+validate_account_config(Context, Id, ?HTTP_GET, Node) ->
     read(Id, Context, Node);
-validate_system_config(Context, Id, ?HTTP_POST, Node) ->
+validate_account_config(Context, Id, ?HTTP_POST, Node) ->
     update(Id, Context, Node);
-validate_system_config(Context, Id, ?HTTP_DELETE, _Node) ->
+validate_account_config(Context, Id, ?HTTP_DELETE, _Node) ->
     read_for_delete(Id, Context).
 
 %%--------------------------------------------------------------------
@@ -208,7 +207,7 @@ create(Context) ->
             lager:debug("no id on doc ~p", [Doc]),
             cb_context:add_validation_error(<<"id">>
                                             ,<<"required">>
-                                            ,<<"id is required to create a system_config resource">>
+                                            ,<<"id is required to create a account_config resource">>
                                             ,Context
                                            );
         Id ->
@@ -273,7 +272,7 @@ update(_Id, _Node, Context, _Status) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(<<"system_configs/crossbar_listing">>
+    crossbar_doc:load_view(<<"account_configs/crossbar_listing">>
                            ,[]
                            ,Context
                            ,fun normalize_view_results/2
@@ -288,10 +287,3 @@ summary(Context) ->
 -spec normalize_view_results(wh_json:object(), ne_binaries()) -> ne_binaries().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"key">>, JObj) | Acc].
-
--spec update_db(cb_context:context()) -> cb_context:context().
-update_db(Context) ->
-    cb_context:setters(Context
-                       ,[{fun cb_context:set_account_db/2, ?WH_CONFIG_DB}
-                         ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
-                        ]).

@@ -266,12 +266,13 @@ get_caller_id_number(Context) ->
 -spec is_superduper_admin(api_binary() | cb_context:context()) -> boolean().
 -spec is_superduper_admin(ne_binary(), ne_binary()) -> boolean().
 is_superduper_admin('undefined') -> 'false';
-is_superduper_admin(AccountId) when is_binary(AccountId) ->
+is_superduper_admin(<<_/binary>> = AccountId) ->
     is_superduper_admin(AccountId, wh_util:format_account_id(AccountId, 'encoded'));
 is_superduper_admin(Context) ->
-    is_superduper_admin(cb_context:account_id(Context), cb_context:account_db(Context)).
+    is_superduper_admin(cb_context:auth_account_id(Context)).
 
 is_superduper_admin(AccountId, AccountDb) ->
+    lager:debug("checking for superduper admin: ~s (~s)", [AccountId, AccountDb]),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
             case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of
@@ -282,8 +283,8 @@ is_superduper_admin(AccountId, AccountDb) ->
                     lager:debug("the requestor is not a superduper admin"),
                     'false'
             end;
-        {'error', _} ->
-            lager:debug("not authorizing, error during lookup"),
+        {'error', _E} ->
+            lager:debug("not authorizing, error during lookup: ~p", [_E]),
             'false'
     end.
 

@@ -61,7 +61,7 @@ start_media_file_cache(Db, Id, Attachment) ->
                              {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
                              {'error', 'not_found'}.
 find_attachment([Id]) ->
-    find_attachment([?MEDIA_DB, Id]);
+    find_attachment([?WH_MEDIA_DB, Id]);
 find_attachment([Db, Id]) ->
     find_attachment([Db, Id, 'first']);
 find_attachment([Db, Id, 'first']) ->
@@ -77,23 +77,26 @@ find_attachment(Id) when not is_list(Id) ->
 -spec maybe_find_attachment(ne_binary(), ne_binary()) ->
                                    {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
                                    {'error', 'not_found'}.
--spec maybe_find_attachment(wh_json:object(), ne_binary(), ne_binary()) ->
+-spec maybe_find_attachment(ne_binary(), ne_binary(), wh_json:object()) ->
                                    {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
                                    {'error', 'not_found'} |
                                    {'error', 'no_data'}.
 maybe_find_attachment(?MEDIA_DB = Db, Id) ->
-    {'ok', {Db, Id, <<Id/binary, ".wav">>}};
+    maybe_find_attachment_in_db(Db, Id);
 maybe_find_attachment(Db, Id) ->
     AccountDb = wh_util:format_account_id(Db, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, Id) of
+    maybe_find_attachment_in_db(AccountDb, Id).
+
+maybe_find_attachment_in_db(Db, Id) ->
+    case couch_mgr:open_doc(Db, Id) of
         {'error', _R} ->
             lager:debug("unable to open media doc ~s in ~s: ~p", [Id, Db, _R]),
             {'error', 'not_found'};
         {'ok', JObj} ->
-            maybe_find_attachment(JObj, AccountDb, Id)
+            maybe_find_attachment(Db, Id, JObj)
     end.
 
-maybe_find_attachment(JObj, Db, Id) ->
+maybe_find_attachment(Db, Id, JObj) ->
     lager:debug("trying to find first attachment on doc ~s in db ~s", [Id, Db]),
     case wh_json:get_value(<<"_attachments">>, JObj, []) of
         [] ->
