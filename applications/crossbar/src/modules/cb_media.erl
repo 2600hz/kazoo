@@ -227,11 +227,13 @@ validate(Context, MediaId, ?BIN_DATA) ->
     lager:debug("uploading binary data to '~s'", [MediaId]),
     validate_media_binary(Context, cow_qs:urlencode(MediaId), cb_context:req_verb(Context), cb_context:req_files(Context)).
 
+-spec validate_media_docs(cb_context:context(), http_method()) -> cb_context:context().
 validate_media_docs(Context, ?HTTP_GET) ->
     load_media_summary(Context);
 validate_media_docs(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
+-spec validate_media_doc(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
 validate_media_doc(Context, MediaId, ?HTTP_GET) ->
     load_media_meta(Context, MediaId);
 validate_media_doc(Context, MediaId, ?HTTP_POST) ->
@@ -239,6 +241,7 @@ validate_media_doc(Context, MediaId, ?HTTP_POST) ->
 validate_media_doc(Context, MediaId, ?HTTP_DELETE) ->
     load_media_meta(Context, MediaId).
 
+-spec validate_media_binary(cb_context:context(), ne_binary(), http_method(), wh_proplist()) -> cb_context:context().
 validate_media_binary(Context, MediaId, ?HTTP_GET, _Files) ->
     lager:debug("fetch media contents for '~s'", [MediaId]),
     load_media_binary(Context, MediaId);
@@ -286,6 +289,7 @@ get(Context, _MediaId, ?BIN_DATA) ->
 put(Context) ->
     put_media(Context, cb_context:account_id(Context)).
 
+-spec put_media(cb_context:context(), api_binary()) -> cb_context:context().
 put_media(Context, 'undefined') ->
     put_media(cb_context:set_account_db(Context, ?WH_MEDIA_DB), <<"ignore">>);
 put_media(Context, _AccountId) ->
@@ -312,10 +316,10 @@ put_media(Context, _AccountId) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-
 post(Context, MediaId) ->
     post_media_doc(Context, cow_qs:urlencode(MediaId), cb_context:account_id(Context)).
 
+-spec post_media_doc(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
 post_media_doc(Context, MediaId, 'undefined') ->
     post_media_doc(cb_context:set_account_db(Context, ?WH_MEDIA_DB), MediaId, <<"ignore">>);
 post_media_doc(Context, MediaId, _AccountId) ->
@@ -342,6 +346,7 @@ post_media_doc(Context, MediaId, _AccountId) ->
 post(Context, MediaId, ?BIN_DATA) ->
     post_media_binary(Context, cow_qs:urlencode(MediaId), cb_context:account_id(Context)).
 
+-spec post_media_binary(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
 post_media_binary(Context, MediaId, 'undefined') ->
     post_media_binary(cb_context:set_account_db(Context, ?WH_MEDIA_DB), MediaId, <<"ignore">>);
 post_media_binary(Context, MediaId, _AccountId) ->
@@ -434,7 +439,6 @@ maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-
 delete(Context, _MediaId) ->
     crossbar_doc:delete(Context).
 delete(Context, MediaId, ?BIN_DATA) ->
@@ -532,7 +536,7 @@ normalize_count_results(JObj, [Acc]) ->
 
 -spec load_media_docs_by_language(cb_context:context(), ne_binary()) ->
                                          cb_context:context().
--spec load_media_docs_by_language(cb_context:context(), ne_binary(), api_binary()) ->
+-spec load_media_docs_by_language(cb_context:context(), ne_binary() | 'null', api_binary()) ->
                                          cb_context:context().
 load_media_docs_by_language(Context, <<"missing">>) ->
     lager:debug("loading media files missing a language"),
@@ -696,7 +700,10 @@ fix_prompt_start_keys_fold(Key, JObj) ->
 %% Load a media document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_media_meta(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_media_meta(cb_context:context(), ne_binary()) ->
+                             cb_context:context().
+-spec load_media_meta(cb_context:context(), ne_binary(), api_binary()) ->
+                             cb_context:context().
 load_media_meta(Context, MediaId) ->
     load_media_meta(Context, MediaId, cb_context:account_id(Context)).
 
@@ -786,7 +793,7 @@ load_media_binary(Context, MediaId) ->
 %% Update the binary attachment of a media doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_media_binary(path_token(), cb_context:context()) ->
+-spec update_media_binary(cb_context:context(), path_token()) ->
                                  cb_context:context().
 update_media_binary(Context, MediaId) ->
     [{Filename, FileObj}] = cb_context:req_files(Context),

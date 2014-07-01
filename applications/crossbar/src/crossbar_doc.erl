@@ -48,7 +48,7 @@
                            ,view_options = [] :: wh_proplist()
                            ,context :: cb_context:context()
                            ,start_key :: wh_json:json_term()
-                           ,page_size :: pos_integer() | api_binary()
+                           ,page_size :: non_neg_integer() | api_binary()
                            ,filter_fun :: filter_fun()
                            ,dbs = [] :: ne_binaries()
                           }).
