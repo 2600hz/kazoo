@@ -205,11 +205,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec zip_directory(ne_binary()) -> ne_binary().
-zip_directory(WorkDir) ->
-    ZipName = lists:concat([wh_util:to_list(WorkDir),".zip"]),
-    Files = [ wh_util:to_list(F) || F <- filelib:wildcard("*", WorkDir)],
-    zip:zip(ZipName , Files, [{'cwd', WorkDir}]),
+-spec zip_directory(ne_binary()) -> string().
+zip_directory(WorkDir0) ->
+    WorkDir = wh_util:to_list(WorkDir0),
+    ZipName = lists:concat([WorkDir, ".zip"]),
+    Files = [wh_util:to_list(F) || F <- filelib:wildcard("*", WorkDir)],
+    {'ok', _} = zip:zip(ZipName , Files, [{'cwd', WorkDir}]),
     ZipName.
 
 -spec setup_directory() -> ne_binary().
@@ -245,7 +246,7 @@ process_realms() ->
      || {D, T} <- Templates, lists:member(wh_util:to_binary(T), Filter)
     ].
 
--spec process_realms(list(), ne_binary(), atom()) -> any().
+-spec process_realms(ne_binaries(), ne_binary(), atom()) -> any().
 process_realms([], _, _) -> 'ok';
 process_realms([Realm | Realms], Dir, Module) ->
     process_realm(Realm, Dir, Module),
@@ -596,4 +597,3 @@ del_all_files([Dir | T], EmptyDirs) ->
                               'ok' = file:delete(F)
                       end, Files),
     del_all_files(T ++ Dirs, [Dir | EmptyDirs]).
-

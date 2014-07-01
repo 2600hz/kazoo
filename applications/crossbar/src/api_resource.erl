@@ -661,7 +661,7 @@ to_csv(Req, Context) ->
 is_csv_request(Context) ->
     cb_context:req_value(Context, <<"accept">>) =:= <<"csv">>.
 
--spec maybe_flatten_jobj(cb_context:context()) -> wh_json:object().
+-spec maybe_flatten_jobj(cb_context:context()) -> iolist().
 maybe_flatten_jobj(Context) ->
     case props:get_all_values(<<"identifier">>
                               ,wh_json:to_proplist(cb_context:query_string(Context))
