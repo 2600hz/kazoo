@@ -77,7 +77,7 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
--define(KEEP_ALIVE, 5000). %% after hangup, keep alive for 5 seconds
+-define(KEEP_ALIVE, 120000). %% after hangup, keep alive for 2 minutes
 
 -type insert_at_options() :: 'now' | 'head' | 'tail' | 'flush'.
 

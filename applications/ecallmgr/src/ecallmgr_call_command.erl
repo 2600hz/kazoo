@@ -245,7 +245,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
     case wapi_dialplan:store_fax_v(JObj) of
         'false' -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
         'true' ->
-            File = ecallmgr_util:fax_filename(UUID),
+            File = wh_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID)),            
             lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->

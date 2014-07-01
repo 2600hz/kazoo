@@ -41,6 +41,7 @@
 -export([receive_fax/1
          ,receive_fax/2
          ,receive_fax/3
+         ,receive_fax/4
          ,b_receive_fax/1
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
@@ -66,7 +67,7 @@
          ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5
         ]).
 -export([store/3, store/4, store/5
-         ,store_fax/2
+         ,store_fax/2, store_fax/3
         ]).
 -export([tones/2]).
 -export([prompt_and_collect_digit/2]).
@@ -561,20 +562,27 @@ b_ring(Call) ->
 -spec receive_fax(boolean() | api_binary()
                  ,boolean() | api_binary()
                  ,whapps_call:call()) -> 'ok'.
+-spec receive_fax(boolean() | api_binary()
+                 ,boolean() | api_binary()
+                 ,api_binary()
+                 ,whapps_call:call()) -> 'ok'.
 -spec b_receive_fax(whapps_call:call()) -> wait_for_fax_ret().
 receive_fax(Call) ->
     receive_fax(get_default_t38_setting(), Call).
 
 receive_fax(DefaultFlag, Call) ->
-    T38Settings = props:filter_undefined(get_inbound_t38_settings(DefaultFlag)),
-    Commands = [{<<"Application-Name">>, <<"receive_fax">>}] ++ T38Settings,
-    send_command(Commands, Call).
+    receive_fax(DefaultFlag, 'undefined', 'undefined', Call).
 
 receive_fax('undefined', 'undefined', Call) ->
-    receive_fax(get_default_t38_setting(), Call);
+    receive_fax(get_default_t38_setting(), 'undefined', 'undefined', Call);
 receive_fax(ResourceFlag, ReceiveFlag, Call) ->
-    T38Settings = props:filter_undefined(get_inbound_t38_settings(ResourceFlag, ReceiveFlag)),
-    Commands = [{<<"Application-Name">>, <<"receive_fax">>}] ++ T38Settings,
+    receive_fax(ResourceFlag, ReceiveFlag, 'undefined', Call).
+
+receive_fax(ResourceFlag, ReceiveFlag, LocalFilename, Call) ->
+    Commands = props:filter_undefined([{<<"Application-Name">>, <<"receive_fax">>}
+                                       ,{<<"Fax-Local-Filename">>, LocalFilename}
+                                       | get_inbound_t38_settings(ResourceFlag, ReceiveFlag)
+                                      ]),
     send_command(Commands, Call).
 
 b_receive_fax(Call) ->
@@ -1174,11 +1182,16 @@ b_store(MediaName, Transfer, Method, Headers, Call) ->
 %%--------------------------------------------------------------------
 -spec store_fax(ne_binary(), whapps_call:call()) -> 'ok'.
 store_fax(URL, Call) ->
-    Command = [{<<"Application-Name">>, <<"store_fax">>}
+    store_fax(URL, 'undefined', Call).
+-spec store_fax(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+store_fax(URL, LocalFile, Call) ->
+    
+    Command = props:filter_undefined([{<<"Application-Name">>, <<"store_fax">>}
                ,{<<"Media-Transfer-Method">>, <<"put">>}
                ,{<<"Media-Transfer-Destination">>, URL}
+               ,{<<"Fax-Local-Filename">>, LocalFile} 
                ,{<<"Insert-At">>, <<"now">>}
-              ],
+              ]),
     send_command(Command, Call).
 
 -spec b_store_fax(ne_binary(), whapps_call:call()) -> b_store_return().
@@ -2343,6 +2356,16 @@ get_inbound_t38_settings('undefined','false') ->
     [{<<"Enable-T38-Fax">>, 'false'}
      ,{<<"Enable-T38-Fax-Request">>, 'false'}
      ,{<<"Enable-T38-Passthrough">>, 'false'}
+    ];
+get_inbound_t38_settings('undefined','undefined') ->
+    [{<<"Enable-T38-Fax">>, 'false'}
+     ,{<<"Enable-T38-Fax-Request">>, 'false'}
+     ,{<<"Enable-T38-Passthrough">>, 'false'}
+    ];
+get_inbound_t38_settings(_Carrier, _CallerFlag) ->
+    [{<<"Enable-T38-Fax">>, 'false'}
+     ,{<<"Enable-T38-Fax-Request">>, 'false'}
+     ,{<<"Enable-T38-Passthrough">>, 'false'}
     ].
 
 
@@ -2354,6 +2377,12 @@ get_inbound_t38_settings('true') ->
      ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ];
 get_inbound_t38_settings('false') ->
+    [{<<"Enable-T38-Fax">>, 'undefined'}
+     ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
+     ,{<<"Enable-T38-Passthrough">>, 'undefined'}
+     ,{<<"Enable-T38-Gateway">>, 'undefined'}
+    ];
+get_inbound_t38_settings('undefined') ->
     [{<<"Enable-T38-Fax">>, 'undefined'}
      ,{<<"Enable-T38-Fax-Request">>, 'undefined'}
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}

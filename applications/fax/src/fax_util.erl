@@ -90,18 +90,27 @@ maybe_attach_extension(A, CT) ->
         'true' -> <<A/binary, ".", (content_type_to_extension(CT))/binary>>
     end.
 
--spec save_fax_docs(api_objects(), binary(), ne_binary())-> 'ok'.
+-spec save_fax_docs(api_objects(), binary(), ne_binary())-> 'ok' | 'error'.
 save_fax_docs([],_FileContents, _CT) -> 'ok';
 save_fax_docs([Doc|Docs], FileContents, CT) ->
     case couch_mgr:save_doc(?WH_FAXES, Doc) of
         {'ok', JObj} ->
-            save_fax_attachment(JObj, FileContents, CT);
-        _Else -> 'ok'
-    end,
-    save_fax_docs(Docs, FileContents, CT).
+            save_fax_attachment(JObj, FileContents, CT),
+            save_fax_docs(Docs, FileContents, CT);
+        _Else -> 'error'
+    end.
 
--spec save_fax_attachment(api_object(), binary(), ne_binary())-> 'ok'.
+-spec save_fax_attachment(api_object(), binary(), ne_binary(), integer())-> {'ok', wh_json:object()} | {'error', any()}.
+-spec save_fax_attachment(api_object(), binary(), ne_binary())-> {'ok', wh_json:object()} | {'error', any()}.
 save_fax_attachment(JObj, FileContents, CT) ->
+    save_fax_attachment(JObj, FileContents, CT, whapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5)).
+    
+save_fax_attachment(JObj, FileContents, CT, 0) ->
+    DocId = wh_json:get_value(<<"_id">>, JObj),
+    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, Rev]),
+    {'error', <<"max retry saving attachment">>};
+save_fax_attachment(JObj, FileContents, CT, Count) ->
     DocId = wh_json:get_value(<<"_id">>, JObj),
     Rev = wh_json:get_value(<<"_rev">>, JObj),
     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}
@@ -112,19 +121,23 @@ save_fax_attachment(JObj, FileContents, CT) ->
         {'ok', _DocObj} ->
             save_fax_doc_completed(DocId);
         {'error', E} ->
-            lager:debug("Error ~p saving fax attachment on fax id ~s rev ~s",[E, DocId, Rev])
+            lager:debug("Error ~p saving fax attachment on fax id ~s rev ~s",[E, DocId, Rev]),
+            save_fax_attachment(JObj, FileContents, CT, Count-1)            
     end.
 
--spec save_fax_doc_completed(ne_binary())-> 'ok'.
+-spec save_fax_doc_completed(ne_binary())-> {'ok', wh_json:object()} | {'error', any()}.
 save_fax_doc_completed(DocId)->
     case couch_mgr:open_doc(?WH_FAXES, DocId) of
         {'error', E} ->
-            lager:debug("error ~p reading fax ~s while setting to pending",[E, DocId]);
+            lager:debug("error ~p reading fax ~s while setting to pending",[E, DocId]),
+            {'error', E};
         {'ok', JObj} ->
             case couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"pending">>}], JObj)) of
-                {'ok', _} ->
-                    lager:debug("fax jobid ~s set to pending", [DocId]);
+                {'ok', Doc} ->
+                    lager:debug("fax jobid ~s set to pending", [DocId]),
+                    {'ok', Doc};
                 {'error', E} ->
-                    lager:debug("error ~p setting fax jobid ~s to pending",[E, DocId])
+                    lager:debug("error ~p setting fax jobid ~s to pending",[E, DocId]),
+                    {'error', E}
             end
     end.
