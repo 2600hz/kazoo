@@ -51,6 +51,8 @@ To do so, use the standard `PUT /media` but include `prompt_id` in the data payl
 
     curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/media -d '{"data":{"streamable":true,"name":"File","description":"Enter Pin prompt","prompt_id":"vm-enter_pin", "language":"x-pig-latin"}}'
 
+*Note*: Remember that you can set the `language` key on the account definition to default to a different language than the system.
+
 #### System Prompts via Crossbar
 
 If you are a superduper admin, you can also manipulate the system_media prompts via Crossbar. Simply remove the `/accounts/{ACCOUNT_ID}` from the URL to operate against the system's prompts.
@@ -82,4 +84,4 @@ Add the `language` callflow action before a branch to set what language will be 
      }
     }
 
-If no language is specified, the account's language will be used; if that is missing, the system default language will be used.
+This will override the account and system langauges. If no language is specified, the account's language will be used; if that is missing, the system default language will be used.

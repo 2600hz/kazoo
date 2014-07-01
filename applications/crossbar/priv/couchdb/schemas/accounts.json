@@ -1,458 +1,463 @@
 {
-   "_id":"accounts",
-   "$schema":"http://json-schema.org/draft-03/schema#",
-   "id":"http://json-schema.org/draft-03/schema#",
-   "description":"Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
-   "properties":{
-      "name":{
-         "name":"Name",
-         "description":"A friendly name for the account",
-         "required":"true",
-         "type":"string",
-         "minLength":1,
-         "maxLength":128
-      },
-      "realm":{
-         "name":"Realm",
-         "description":"The realm of the account, ie: 'account1.2600hz.com'",
-         "required":"true",
-         "type":"string"
-         "minLength":1,
-         "maxLength":256,
-         "pattern":"^([.\\w_-]+)$"
-      },
-      "timezone":{
-         "name":"Timezone",
-         "description":"The default timezone",
-         "required":"true",
-         "type":"string",
-         "default":"America/Los_Angeles",
-         "minLength":5,
-         "maxLength":32
-      },
-      "caller_id":{
-         "description":"The default caller ID parameters",
-         "type":"object",
-         "properties":{
-            "internal":{
-               "description":"The default caller ID used when dialing internal extensions",
-               "type":"object",
-               "properties":{
-                  "name":{
-                     "name":"Internal Caller ID",
-                     "description":"The caller id name for the object type",
-                     "type":"string",
-                     "maxLength":30
-                  }
-               }
-            },
-            "external":{
-               "description":"The default caller ID used when dialing external numbers",
-               "type":"object",
-               "properties":{
-                  "name":{
-                     "name":"External Caller ID",
-                     "description":"The caller id name for the object type",
-                     "type":"string",
-                     "maxLength":15
-                  }
-               }
+    "_id":"accounts",
+    "$schema":"http://json-schema.org/draft-03/schema#",
+    "id":"http://json-schema.org/draft-03/schema#",
+    "description":"Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
+    "properties":{
+        "name":{
+            "name":"Name",
+            "description":"A friendly name for the account",
+            "required":"true",
+            "type":"string",
+            "minLength":1,
+            "maxLength":128
+        },
+        "realm":{
+            "name":"Realm",
+            "description":"The realm of the account, ie: 'account1.2600hz.com'",
+            "required":"true",
+            "type":"string"
+            "minLength":1,
+            "maxLength":256,
+            "pattern":"^([.\\w_-]+)$"
+        },
+        "timezone":{
+            "name":"Timezone",
+            "description":"The default timezone",
+            "required":"true",
+            "type":"string",
+            "default":"America/Los_Angeles",
+            "minLength":5,
+            "maxLength":32
+        },
+        "language":{
+            "name":"Language"
+            ,"description":"The default language of the account"
+            ,"type":"string"
+        },
+        "caller_id":{
+            "description":"The default caller ID parameters",
+            "type":"object",
+            "properties":{
+                "internal":{
+                    "description":"The default caller ID used when dialing internal extensions",
+                    "type":"object",
+                    "properties":{
+                        "name":{
+                            "name":"Internal Caller ID",
+                            "description":"The caller id name for the object type",
+                            "type":"string",
+                            "maxLength":30
+                        }
+                    }
+                },
+                "external":{
+                    "description":"The default caller ID used when dialing external numbers",
+                    "type":"object",
+                    "properties":{
+                        "name":{
+                            "name":"External Caller ID",
+                            "description":"The caller id name for the object type",
+                            "type":"string",
+                            "maxLength":15
+                        }
+                    }
+                },
+                "default":{
+                    "description":"The caller ID used when external, internal, or emergency is not defined",
+                    "type":"object",
+                    "properties":{
+                        "name":{
+                            "name":"Default Caller ID",
+                            "description":"The caller id name for the object type",
+                            "type":"string",
+                            "maxLength":15
+                        }
+                    }
+                },
+                "emergency":{
+                    "description":"The caller ID used when external, internal, or emergency is not defined",
+                    "type":"object",
+                    "properties":{
+                        "name":{
+                            "name":"Emergency Caller ID",
+                            "description":"The caller id name for the object type",
+                            "type":"string",
+                            "maxLength":15
+                        }
+                    }
+                }
             },
             "default":{
-               "description":"The caller ID used when external, internal, or emergency is not defined",
-               "type":"object",
-               "properties":{
-                  "name":{
-                     "name":"Default Caller ID",
-                     "description":"The caller id name for the object type",
-                     "type":"string",
-                     "maxLength":15
-                  }
-               }
-            },
-            "emergency":{
-               "description":"The caller ID used when external, internal, or emergency is not defined",
-               "type":"object",
-               "properties":{
-                  "name":{
-                     "name":"Emergency Caller ID",
-                     "description":"The caller id name for the object type",
-                     "type":"string",
-                     "maxLength":15
-                  }
-               }
+
             }
-         },
-         "default":{
+        },
+        "caller_id_options":{
+            "description":"The default caller ID option parameters",
+            "type":"object",
+            "properties":{
+                "reformat":{
+                    "name":"Caller ID reformat",
+                    "description":"A regular expression that if matched internal caller id numbers are replaced by",
+                    "type":"string",
+                    "maxLength":64
+                }
+            },
+            "default":{
 
-         }
-      },
-      "caller_id_options":{
-         "description":"The default caller ID option parameters",
-         "type":"object",
-         "properties":{
-            "reformat":{
-               "name":"Caller ID reformat",
-               "description":"A regular expression that if matched internal caller id numbers are replaced by",
-               "type":"string",
-               "maxLength":64
             }
-         },
-         "default":{
+        },
+        "notifications":{
+            "description":"The notifications parameters for this account",
+            "type":"object",
+            "properties":{
+                "voicemail_to_email":{
+                    "description":"The voicemail to email notification parameters for this account",
+                    "type":"object",
+                    "properties":{
+                        "email_text_template":{
+                            "name":"Email Text Template (notifications)",
+                            "description":"The email html body template.  Has access to an acccount, service, and voicemail object",
+                            "type":"string"
+                        },
+                        "email_html_template":{
+                            "name":"Email HTML Template (notifications)",
+                            "description":"The email text body template.  Has access to an acccount, service, and voicemail object",
+                            "type":"string"
+                        },
+                        "email_subject_template":{
+                            "name":"Email Subject Template (notifications)",
+                            "description":"The email subject template.  Has access to an acccount, service, and voicemail object",
+                            "type":"string"
+                        },
+                        "support_number":{
+                            "name":"Support Number (notifications)",
+                            "description":"The support number provided to the templates",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "support_email":{
+                            "name":"Support Email (notifications)",
+                            "description":"The support email provided to the templates",
+                            "type":"string",
+                            "maxLength":256
+                        },
+                        "service_url":{
+                            "name":"Service URL (notifications)",
+                            "description":"The support number provided to the templates",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "service_name":{
+                            "name":"Service Name (notifications)",
+                            "description":"The service name provided",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "service_provider":{
+                            "name":"Serice Provider (notifications)",
+                            "description":"The service provider name",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "send_from":{
+                            "name":"Send From (notifications)",
+                            "description":"The from address used when sending the email",
+                            "type":"string",
+                            "maxLength":256
+                        }
+                    }
+                },
+                "deregister":{
+                    "description":"The email notification parameters for device deregister alerts",
+                    "type":"object",
+                    "properties":{
+                        "email_text_template":{
+                            "name":"Email Text Template (deregister)",
+                            "description":"The email html body template.  Has access to an acccount, service, and last_registration object",
+                            "type":"string"
+                        },
+                        "email_html_template":{
+                            "name":"Email HTML Template (deregister)",
+                            "description":"The email text body template.  Has access to an acccount, service, and last_registration object",
+                            "type":"string"
+                        },
+                        "email_subject_template":{
+                            "name":"Email Subject Template (deregister)",
+                            "description":"The email subject template.  Has access to an acccount, service, and last_registration object",
+                            "type":"string"
+                        },
+                        "support_number":{
+                            "name":"Support Number (deregister)",
+                            "description":"The support number provided to the templates",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "support_email":{
+                            "name":"Support Email (deregister)",
+                            "description":"The support email provided to the templates",
+                            "type":"string",
+                            "maxLength":256
+                        },
+                        "service_url":{
+                            "name":"Service Provider (deregister)",
+                            "description":"The support number provided to the templates",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "service_name":{
+                            "name":"Service Name (deregister)",
+                            "description":"The service name provided",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "service_provider":{
+                            "description":"The service provider name",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "send_from":{
+                            "name":"Send From (deregister)",
+                            "description":"The from address used when sending the email",
+                            "type":"string",
+                            "maxLength":256
+                        }
+                    }
+                },
+                "password_recovery":{
+                    "description":"The email notification parameters for password recovery",
+                    "type":"object",
+                    "properties":{
+                        "email_text_template":{
+                            "name":"(Email Text Template (password recovery)",
+                            "description":"The email html body template.  Has access to an acccount, service, user, and request object",
+                            "type":"string"
+                        },
+                        "email_html_template":{
+                            "name":"Email HTML Template (password recovery)",
+                            "description":"The email text body template.  Has access to an acccount, service, user, and request object",
+                            "type":"string"
+                        },
+                        "email_subject_template":{
+                            "name":"Email Subject Template (password recovery)",
+                            "description":"The email subject template.  Has access to an acccount, service, user, and request object",
+                            "type":"string"
+                        },
+                        "support_number":{
+                            "name":"Support Number (password recovery)",
+                            "description":"The support number provided to the templates",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "support_email":{
+                            "name":"Support Email (password recovery)",
+                            "description":"The support email provided to the templates",
+                            "type":"string",
+                            "maxLength":256
+                        },
+                        "service_url":{
+                            "name":"Service URL (password recovery)",
+                            "description":"The support number provided to the templates",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "service_name":{
+                            "name":"Service Name (password recovery)",
+                            "description":"The service name provided",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "service_provider":{
+                            "name":"Service Provider (password recovery)",
+                            "description":"The service provider name",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "send_from":{
+                            "name":"Send From (password recovery)",
+                            "description":"The from address used when sending the email",
+                            "type":"string",
+                            "maxLength":256
+                        }
+                    }
+                },
+                "first_occurrence":{
+                    "description":"The first occurrence notification parameters",
+                    "type":"object",
+                    "properties":{
+                        "send_to":{
+                            "name":"Send To (first occurence)",
+                            "description":"The recipent(s) of the notifications",
+                            "type":"string",
+                            "maxLength":256
+                        },
+                        "sent_initial_registration":{
+                            "name":"Sent Initial Registration (first occurence)",
+                            "description":"Flag to determine if the initial registration has been detected",
+                            "type":"boolean",
+                            "default":false
+                        },
+                        "sent_initial_call":{
+                            "name":"Sent Initial Call(first occurence)",
+                            "description":"Flag to determine if the initial call has been detected",
+                            "type":"boolean",
+                            "default":false
+                        },
+                        "email_text_template":{
+                            "name":"Email Text Template(first occurence)",
+                            "description":"The email html body template.  Has access to an acccount, service, user, and request object",
+                            "type":"string"
+                        },
+                        "email_html_template":{
+                            "name":"Email HTML Template (first occurence)",
+                            "description":"The email text body template.  Has access to an acccount, service, user, and request object",
+                            "type":"string"
+                        },
+                        "email_subject_template":{
+                            "name":"Email Subject Template (first occurence)",
+                            "description":"The email subject template.  Has access to an acccount, service, user, and request object",
+                            "type":"string"
+                        },
+                        "support_number":{
+                            "name":"Support Number (first occurence)",
+                            "description":"The support number provided to the templates",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "support_email":{
+                            "name":"Support Email (first occurence)",
+                            "description":"The support email provided to the templates",
+                            "type":"string",
+                            "maxLength":256
+                        },
+                        "service_url":{
+                            "name":"Service URL (first occurence)",
+                            "description":"The support number provided to the templates",
+                            "type":"string",
+                            "maxLength":256
+                        },
+                        "service_name":{
+                            "name":"Service Name (first occurence)",
+                            "description":"The service name provided",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "service_provider":{
+                            "name":"Service Provider (first occurence)",
+                            "description":"The service provider name",
+                            "type":"string",
+                            "maxLength":128
+                        },
+                        "send_from":{
+                            "name":"Send From (first occurence)",
+                            "description":"The from address used when sending the email",
+                            "type":"string",
+                            "maxLength":256
+                        }
+                    }
+                }
+            },
+            "default":{
 
-         }
-      },
-      "notifications":{
-         "description":"The notifications parameters for this account",
-         "type":"object",
-         "properties":{
-            "voicemail_to_email":{
-               "description":"The voicemail to email notification parameters for this account",
-               "type":"object",
-               "properties":{
-                  "email_text_template":{
-                     "name":"Email Text Template (notifications)",
-                     "description":"The email html body template.  Has access to an acccount, service, and voicemail object",
-                     "type":"string"
-                  },
-                  "email_html_template":{
-                     "name":"Email HTML Template (notifications)",
-                     "description":"The email text body template.  Has access to an acccount, service, and voicemail object",
-                     "type":"string"
-                  },
-                  "email_subject_template":{
-                     "name":"Email Subject Template (notifications)",
-                     "description":"The email subject template.  Has access to an acccount, service, and voicemail object",
-                     "type":"string"
-                  },
-                  "support_number":{
-                     "name":"Support Number (notifications)",
-                     "description":"The support number provided to the templates",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "support_email":{
-                     "name":"Support Email (notifications)",
-                     "description":"The support email provided to the templates",
-                     "type":"string",
-                     "maxLength":256
-                  },
-                  "service_url":{
-                     "name":"Service URL (notifications)",
-                     "description":"The support number provided to the templates",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "service_name":{
-                     "name":"Service Name (notifications)",
-                     "description":"The service name provided",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "service_provider":{
-                     "name":"Serice Provider (notifications)",
-                     "description":"The service provider name",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "send_from":{
-                     "name":"Send From (notifications)",
-                     "description":"The from address used when sending the email",
-                     "type":"string",
-                     "maxLength":256
-                  }
-               }
-            },
-            "deregister":{
-               "description":"The email notification parameters for device deregister alerts",
-               "type":"object",
-               "properties":{
-                  "email_text_template":{
-                     "name":"Email Text Template (deregister)",
-                     "description":"The email html body template.  Has access to an acccount, service, and last_registration object",
-                     "type":"string"
-                  },
-                  "email_html_template":{
-                     "name":"Email HTML Template (deregister)",
-                     "description":"The email text body template.  Has access to an acccount, service, and last_registration object",
-                     "type":"string"
-                  },
-                  "email_subject_template":{
-                     "name":"Email Subject Template (deregister)",
-                     "description":"The email subject template.  Has access to an acccount, service, and last_registration object",
-                     "type":"string"
-                  },
-                  "support_number":{
-                     "name":"Support Number (deregister)",
-                     "description":"The support number provided to the templates",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "support_email":{
-                     "name":"Support Email (deregister)",
-                     "description":"The support email provided to the templates",
-                     "type":"string",
-                     "maxLength":256
-                  },
-                  "service_url":{
-                     "name":"Service Provider (deregister)",
-                     "description":"The support number provided to the templates",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "service_name":{
-                     "name":"Service Name (deregister)",
-                     "description":"The service name provided",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "service_provider":{
-                     "description":"The service provider name",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "send_from":{
-                     "name":"Send From (deregister)",
-                     "description":"The from address used when sending the email",
-                     "type":"string",
-                     "maxLength":256
-                  }
-               }
-            },
-            "password_recovery":{
-               "description":"The email notification parameters for password recovery",
-               "type":"object",
-               "properties":{
-                  "email_text_template":{
-                     "name":"(Email Text Template (password recovery)",
-                     "description":"The email html body template.  Has access to an acccount, service, user, and request object",
-                     "type":"string"
-                  },
-                  "email_html_template":{
-                     "name":"Email HTML Template (password recovery)",
-                     "description":"The email text body template.  Has access to an acccount, service, user, and request object",
-                     "type":"string"
-                  },
-                  "email_subject_template":{
-                     "name":"Email Subject Template (password recovery)",
-                     "description":"The email subject template.  Has access to an acccount, service, user, and request object",
-                     "type":"string"
-                  },
-                  "support_number":{
-                     "name":"Support Number (password recovery)",
-                     "description":"The support number provided to the templates",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "support_email":{
-                     "name":"Support Email (password recovery)",
-                     "description":"The support email provided to the templates",
-                     "type":"string",
-                     "maxLength":256
-                  },
-                  "service_url":{
-                     "name":"Service URL (password recovery)",
-                     "description":"The support number provided to the templates",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "service_name":{
-                     "name":"Service Name (password recovery)",
-                     "description":"The service name provided",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "service_provider":{
-                     "name":"Service Provider (password recovery)",
-                     "description":"The service provider name",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "send_from":{
-                     "name":"Send From (password recovery)",
-                     "description":"The from address used when sending the email",
-                     "type":"string",
-                     "maxLength":256
-                  }
-               }
-            },
-            "first_occurrence":{
-               "description":"The first occurrence notification parameters",
-               "type":"object",
-               "properties":{
-                  "send_to":{
-                     "name":"Send To (first occurence)",
-                     "description":"The recipent(s) of the notifications",
-                     "type":"string",
-                     "maxLength":256
-                  },
-                  "sent_initial_registration":{
-                     "name":"Sent Initial Registration (first occurence)",
-                     "description":"Flag to determine if the initial registration has been detected",
-                     "type":"boolean",
-                     "default":false
-                  },
-                  "sent_initial_call":{
-                     "name":"Sent Initial Call(first occurence)",
-                     "description":"Flag to determine if the initial call has been detected",
-                     "type":"boolean",
-                     "default":false
-                  },
-                  "email_text_template":{
-                     "name":"Email Text Template(first occurence)",
-                     "description":"The email html body template.  Has access to an acccount, service, user, and request object",
-                     "type":"string"
-                  },
-                  "email_html_template":{
-                     "name":"Email HTML Template (first occurence)",
-                     "description":"The email text body template.  Has access to an acccount, service, user, and request object",
-                     "type":"string"
-                  },
-                  "email_subject_template":{
-                     "name":"Email Subject Template (first occurence)",
-                     "description":"The email subject template.  Has access to an acccount, service, user, and request object",
-                     "type":"string"
-                  },
-                  "support_number":{
-                     "name":"Support Number (first occurence)",
-                     "description":"The support number provided to the templates",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "support_email":{
-                     "name":"Support Email (first occurence)",
-                     "description":"The support email provided to the templates",
-                     "type":"string",
-                     "maxLength":256
-                  },
-                  "service_url":{
-                     "name":"Service URL (first occurence)",
-                     "description":"The support number provided to the templates",
-                     "type":"string",
-                     "maxLength":256
-                  },
-                  "service_name":{
-                     "name":"Service Name (first occurence)",
-                     "description":"The service name provided",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "service_provider":{
-                     "name":"Service Provider (first occurence)",
-                     "description":"The service provider name",
-                     "type":"string",
-                     "maxLength":128
-                  },
-                  "send_from":{
-                     "name":"Send From (first occurence)",
-                     "description":"The from address used when sending the email",
-                     "type":"string",
-                     "maxLength":256
-                  }
-               }
             }
-         },
-         "default":{
-
-         }
-      },
-      "media":{
-         "description":"The default media parameters",
-         "type":"object",
-         "properties":{
-            "bypass_media":{
-               "name":"Bypass Media",
-               "description":"Default bypass media mode",
-               "type":"string",
-               "enum":[
-                  "true",
-                  "false",
-                  "auto"
-               ],
-               "default":"auto"
-            },
-            "audio":{
-               "description":"The default audio media parameters",
-               "type":"object",
-               "properties":{
-                  "codecs":{
-                     "name":"Audio Codecs",
-                     "description":"A list of default codecs to use",
-                     "type":"array",
-                     "enum":[
-                        "G729",
-                        "PCMU",
-                        "PCMA",
-                        "G722_16",
-                        "G722_32",
-                        "CELT_48",
-                        "CELT_64",
-                        "Speex",
-                        "GSM",
-                        "OPUS"
-                     ],
-                     "default":[
-                        "PCMU"
-                     ]
-                  }
-               }
-            },
-            "video":{
-               "description":"The default video media parameters",
-               "type":"object",
-               "properties":{
-                  "codecs":{
-                     "name":"Video Codecs",
-                     "description":"A list of default codecs to use",
-                     "type":"array",
-                     "enum":[
-                        "H261",
-                        "H263",
-                        "H264",
-                        "VP8"
-                     ],
-                     "default":[
-
-                     ]
-                  }
-               }
-            },
-            "fax":{
-               "description":"The default fax media parameters",
-               "type":"object",
-               "properties":{
-                  "option":{
-                     "name":"Fax Option",
-                     "description":"A list of default codecs to use",
-                     "type":"string",
-                     "enum":[
+        },
+        "media":{
+            "description":"The default media parameters",
+            "type":"object",
+            "properties":{
+                "bypass_media":{
+                    "name":"Bypass Media",
+                    "description":"Default bypass media mode",
+                    "type":"string",
+                    "enum":[
                         "true",
                         "false",
                         "auto"
-                     ],
-                     "default":"auto"
-                  }
-               }
-            }
-         },
-         "default":{
+                    ],
+                    "default":"auto"
+                },
+                "audio":{
+                    "description":"The default audio media parameters",
+                    "type":"object",
+                    "properties":{
+                        "codecs":{
+                            "name":"Audio Codecs",
+                            "description":"A list of default codecs to use",
+                            "type":"array",
+                            "enum":[
+                                "G729",
+                                "PCMU",
+                                "PCMA",
+                                "G722_16",
+                                "G722_32",
+                                "CELT_48",
+                                "CELT_64",
+                                "Speex",
+                                "GSM",
+                                "OPUS"
+                            ],
+                            "default":[
+                                "PCMU"
+                            ]
+                        }
+                    }
+                },
+                "video":{
+                    "description":"The default video media parameters",
+                    "type":"object",
+                    "properties":{
+                        "codecs":{
+                            "name":"Video Codecs",
+                            "description":"A list of default codecs to use",
+                            "type":"array",
+                            "enum":[
+                                "H261",
+                                "H263",
+                                "H264",
+                                "VP8"
+                            ],
+                            "default":[
 
-         }
-      },
-      "music_on_hold":{
-         "description":"The default music on hold parameters",
-         "type":"object",
-         "properties":{
-            "media_id":{
-               "name":"Music On Hold (media ID)",
-               "description":"The ID of a media object that should be used as the default music on hold",
-               "type":"string",
-               "maxLength":128
-            }
-         },
-         "default":{
+                            ]
+                        }
+                    }
+                },
+                "fax":{
+                    "description":"The default fax media parameters",
+                    "type":"object",
+                    "properties":{
+                        "option":{
+                            "name":"Fax Option",
+                            "description":"A list of default codecs to use",
+                            "type":"string",
+                            "enum":[
+                                "true",
+                                "false",
+                                "auto"
+                            ],
+                            "default":"auto"
+                        }
+                    }
+                }
+            },
+            "default":{
 
-         }
-      }
-   }
+            }
+        },
+        "music_on_hold":{
+            "description":"The default music on hold parameters",
+            "type":"object",
+            "properties":{
+                "media_id":{
+                    "name":"Music On Hold (media ID)",
+                    "description":"The ID of a media object that should be used as the default music on hold",
+                    "type":"string",
+                    "maxLength":128
+                }
+            },
+            "default":{
+
+            }
+        }
+    }
 }

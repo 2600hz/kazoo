@@ -245,7 +245,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
     case wapi_dialplan:store_fax_v(JObj) of
         'false' -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
         'true' ->
-            File = wh_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID)),            
+            File = wh_json:get_value(<<"Fax-Local-Filename">>, JObj, ecallmgr_util:fax_filename(UUID)),
             lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->
@@ -401,7 +401,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
     case wapi_dialplan:say_v(JObj) of
         'false' -> {'error', <<"say failed to execute as JObj did not validate">>};
         'true' ->
-            Lang = wh_json:get_value(<<"Language">>, JObj),
+            Lang = say_language(wh_json:get_value(<<"Language">>, JObj)),
             Type = wh_json:get_value(<<"Type">>, JObj),
             Method = wh_json:get_value(<<"Method">>, JObj),
             Txt = wh_json:get_value(<<"Say-Text">>, JObj),
@@ -424,7 +424,6 @@ get_fs_app(Node, UUID, JObj, <<"eavesdrop">>) ->
         'false' -> {'error', <<"eavesdrop failed to execute as JObj did not validate">>};
         'true' -> eavesdrop(Node, UUID, JObj)
     end;
-
 
 get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
     case wapi_dialplan:execute_extension_v(JObj) of
@@ -1128,6 +1127,11 @@ set_terminators(Node, UUID, Ts) ->
                 E -> E
             end
     end.
+
+%% FreeSWITCH 'say' or 'say_string' may support more, but for now, map to the primary language
+say_language('undefined') -> <<"en">>;
+say_language(<<_:2/binary>> = Lang) -> Lang;
+say_language(<<Lang:2/binary, _/binary>>) -> Lang.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
