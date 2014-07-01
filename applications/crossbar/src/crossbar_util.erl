@@ -29,7 +29,7 @@
          ,response_auth/3
         ]).
 -export([get_account_realm/1, get_account_realm/2
-         ,flush_registration/2
+         ,flush_registrations/1, flush_registration/2
         ]).
 -export([move_account/2]).
 -export([get_descendants/1]).
@@ -311,6 +311,13 @@ get_account_realm(Db, AccountId) ->
             lager:debug("error while looking up account realm: ~p", [R]),
             'undefined'
     end.
+
+-spec flush_registrations(ne_binary()) -> 'ok'.
+flush_registrations(Realm) ->
+    FlushCmd = [{<<"Realm">>, Realm}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ],
+    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1).
 
 -spec flush_registration(api_binary(), ne_binary()) -> 'ok'.
 flush_registration('undefined', _Realm) -> 'ok';
