@@ -70,3 +70,16 @@ You can use the keys as `prompt_id` attributes when creating alternative transla
 To see what translations exist in the system for a given prompt, the listing can be obtained from Crossbar as well:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server.com:8000/v2/media/prompts/vm-enter_pass'
+
+### Setting the Language Per-Callflow
+
+Add the `language` callflow action before a branch to set what language will be used when playing prompts:
+
+    {"module":"language"
+     ,"data":{"language":"en-us"}
+     ,"children":{
+       "_":{YOUR_FLOW_HERE}
+     }
+    }
+
+If no language is specified, the account's language will be used; if that is missing, the system default language will be used.
