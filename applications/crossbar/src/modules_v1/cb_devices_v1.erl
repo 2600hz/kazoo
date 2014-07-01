@@ -36,7 +36,6 @@
 
 -define(STATUS_PATH_TOKEN, <<"status">>).
 
-
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
@@ -168,7 +167,6 @@ validate_device(Context, DeviceId, ?HTTP_POST) ->
     validate_request(DeviceId, Context);
 validate_device(Context, DeviceId, ?HTTP_DELETE) ->
     load_device(DeviceId, Context).
-
 
 validate(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _) ->
     Context1 = maybe_validate_quickcall(load_device(DeviceId, Context)),
@@ -537,8 +535,14 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
-            _ = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
-            _ = wapi_switch:publish_reload_acls(),
+            {'ok', Device} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
+
+            whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
+            crossbar_util:flush_registration(
+              wh_json:get_value([<<"sip">>, <<"username">>], Device)
+              ,crossbar_util:get_account_realm(Context)
+             ),
+
             'true'
     end;
 maybe_aggregate_device(_, _, _) -> 'false'.
@@ -555,11 +559,16 @@ maybe_remove_aggregate(DeviceId, Context) ->
     maybe_remove_aggregate(DeviceId, Context, cb_context:resp_status(Context)).
 
 maybe_remove_aggregate('undefined', _Context, _RespStatus) -> 'false';
-maybe_remove_aggregate(DeviceId, _Context, 'success') ->
+maybe_remove_aggregate(DeviceId, Context, 'success') ->
     case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
         {'ok', JObj} ->
             _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
-            _ = wapi_switch:publish_reload_acls(),
+
+            whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
+            crossbar_util:flush_registration(
+              wh_json:get_value([<<"sip">>, <<"username">>], JObj)
+              ,crossbar_util:get_account_realm(Context)
+             ),
             'true';
         {'error', 'not_found'} -> 'false'
     end;
