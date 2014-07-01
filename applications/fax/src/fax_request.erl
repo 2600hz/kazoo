@@ -168,11 +168,8 @@ handle_cast({'fax_status', Event, JObj}, State) ->
     lager:debug("fax status not handled - ~s",[Event]),
     %% TODO update stats/websockets/job 
     {'noreply', State};
-handle_cast({'exec_completed', <<"store_fax">>, <<"success">>, JObj}, State) ->
-    check_for_upload(JObj, State),
-    {'stop', 'normal', State};
-handle_cast({'exec_completed', <<"store_fax">>, Error, JObj}, State) ->
-    maybe_retry_storage(Error, JObj, State);
+handle_cast({'exec_completed', <<"store_fax">>, Status, JObj}, State) ->
+    check_retry_storage(Status, JObj, State);
 handle_cast({'exec_completed', <<"receive_fax">>, Result, _JObj}, State) ->
     lager:debug("Fax Receive Result ~s",[Result]),
     {'noreply', State };
@@ -421,7 +418,24 @@ store_attachment(#state{call=Call
     lager:debug("storing fax ~s to ~s", [FaxFile, FaxUrl]),
     whapps_call_command:store_fax(FaxUrl, FaxFile, Call),
     State#state{fax_store_count=Count+1}.
-    
+
+-spec check_retry_storage(ne_binary(), wh_json:object(), state()) ->
+          {'noreply', state()} | {'stop', 'normal', state()}.
+check_retry_storage(<<"success">>, JObj, #state{fax_result=FaxResultObj} =State) ->
+    case check_for_upload(State) of
+        'ok' -> notify_success(FaxResultObj, State),
+                {'stop', 'normal', State};
+        'error' -> maybe_retry_storage(<<"storage success but no attachment">>, JObj, State)
+    end;
+check_retry_storage(Error, JObj, #state{fax_result=FaxResultObj} = State) ->
+    case check_for_upload(State) of
+        'ok' ->
+            lager:debug("got error ~s from store_fax but check for upload succeeded",[Error]),
+            notify_success(FaxResultObj, State),
+            {'stop', 'normal', State};
+        'error' -> maybe_retry_storage(Error, JObj, State)
+    end.
+
 -spec maybe_retry_storage(binary(), wh_json:object(), state()) ->
           {'noreply', state()} | {'stop', 'normal', state()}.
 maybe_retry_storage(Error, JObj, #state{fax_store_count=Count}=State) ->
@@ -432,39 +446,35 @@ maybe_retry_storage(Error, JObj, #state{fax_store_count=Count}=State) ->
                    {'stop', 'normal', State}
     end.
     
--spec check_for_upload(wh_json:object(), state()) -> 'ok'.
-check_for_upload(JObj, #state{call=Call
-                              ,storage=#fax_storage{id=FaxDocId
-                                                    ,db=FaxDb}
-                             }=State) ->
+-spec check_for_upload(state()) -> 'ok' | 'error'.
+check_for_upload(#state{call=Call
+                        ,storage=#fax_storage{id=FaxDocId
+                                              ,db=FaxDb}
+                       }=State) ->
     case couch_mgr:open_doc(FaxDb, FaxDocId) of
         {'ok', FaxDoc} ->
-            check_upload_for_attachment(JObj, FaxDoc, State);
+            check_upload_for_attachment(FaxDoc, State);
         {'error', Error} ->
-            notify_failure(JObj, Error, State)
-    end,
-    'ok'.
+            lager:debug("error reading document ~s/~s when looking for valid attachment : ~p"
+                       ,[FaxDb, FaxDocId, Error]),
+            'error'
+    end.
 
 
--spec check_upload_for_attachment(wh_json:object(), wh_json:object(), state()) -> 'ok'.
-check_upload_for_attachment(JObj, FaxDoc, State) ->
+-spec check_upload_for_attachment(wh_json:object(), state()) -> 'ok' | 'error'.
+check_upload_for_attachment(FaxDoc, State) ->
     case wh_json:get_keys(<<"_attachments">>, FaxDoc) of
-        [] ->
-            notify_failure(JObj, <<"no attachment uploaded">>, State );
+        [] -> 'error';
         [AttachmentName] ->
-            check_attachment_for_data(JObj, FaxDoc, AttachmentName, State)
-    end,
-    'ok'.
+            check_attachment_for_data(FaxDoc, AttachmentName, State)
+    end.
 
--spec check_attachment_for_data(wh_json:object(), wh_json:object(), state(), ne_binary()) -> 'ok'.
-check_attachment_for_data(_JObj, FaxDoc, AttachmentName, #state{fax_result=JObj}=State) ->
+-spec check_attachment_for_data(wh_json:object(), state(), ne_binary()) -> 'ok' | 'error'.
+check_attachment_for_data(FaxDoc, AttachmentName, #state{fax_result=JObj}=State) ->
     case wh_json:get_value([<<"_attachments">>, AttachmentName, <<"length">>], FaxDoc) of
-        0 ->
-            notify_failure(JObj, <<"no data available in attachment ", AttachmentName/binary>>, State );
-        _Len ->
-            notify_success(JObj, State)
-    end,
-    'ok'.
+        0 -> 'error';
+        _Len -> 'ok'
+    end.
 
 
 -spec create_fax_doc(wh_json:object(), state()) -> 
@@ -612,10 +622,10 @@ notify_success(JObj, #state{call=Call
                                                  ,db=FaxDb}
                            }=State) ->
     Message = props:filter_undefined(
-                notify_fields(Call, JObj) ++ 
+                notify_fields(Call, JObj) ++
                     [{<<"Fax-ID">>, FaxId}
                     ,{<<"Owner-ID">>, OwnerId}
-                    ,{<<"FaxBox-ID">>, FaxBoxId}                     
+                    ,{<<"FaxBox-ID">>, FaxBoxId}
                     ,{<<"Fax-Notifications">>, Notify}
                     ]),
     wapi_notifications:publish_fax_inbound(Message).
