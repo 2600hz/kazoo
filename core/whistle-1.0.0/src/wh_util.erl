@@ -217,7 +217,8 @@ format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
     format_account_id(AccountId, to_integer(Year), Month);
 format_account_id(AccountId, Year, Month) when not is_integer(Month) ->
     format_account_id(AccountId, Year, to_integer(Month));
-format_account_id(AccountId, Year, Month) when is_integer(Year), is_integer(Month) ->
+format_account_id(Account, Year, Month) when is_integer(Year), is_integer(Month) ->
+    AccountId = format_account_id(Account, 'raw'),
     <<(format_account_id(AccountId, 'encoded'))/binary
       ,"-"
       ,(to_binary(Year))/binary
@@ -227,8 +228,8 @@ format_account_id(AccountId, Year, Month) when is_integer(Year), is_integer(Mont
 -spec format_account_mod_id(ne_binary()) -> ne_binary().
 -spec format_account_mod_id(ne_binary(), pos_integer() | wh_now()) -> ne_binary().
 -spec format_account_mod_id(ne_binary(), wh_year(), wh_month()) -> ne_binary().
-format_account_mod_id(AccountId) ->
-    format_account_mod_id(AccountId, os:timestamp()).
+format_account_mod_id(Account) ->
+    format_account_mod_id(Account, os:timestamp()).
 
 format_account_mod_id(AccountId, {_,_,_}=Timestamp) ->
     {{Year, Month, _}, _} = calendar:now_to_universal_time(Timestamp),
