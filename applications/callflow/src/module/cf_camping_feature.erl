@@ -37,6 +37,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
+    whapps_call_command:answer(Call),
     lager:info("Camping feature started"),
     Number = whapps_call:kvs_fetch('cf_capture_group', Call),
     {'ok', Callflow, IsNoMatch} = cf_util:lookup_callflow(Number, whapps_call:account_id(Call)),
