@@ -22,4 +22,10 @@
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook(),...] | [].
 
+-record(webhook_event, {
+          id :: ne_binary() | '$1' | '_'
+          ,received :: pos_integer() | '$1' | '_'
+         }).
+-type webhook_event() :: #webhook_event{}.
+
 -endif.

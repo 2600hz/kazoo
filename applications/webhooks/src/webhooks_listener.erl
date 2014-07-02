@@ -38,8 +38,10 @@
 
 -include("webhooks.hrl").
 
--record(state, {}).
+-record(state, {cleanup_webhook_events_ref :: reference()}).
 -type state() :: #state{}.
+
+-define(CLEANUP_MESSAGE, 'cleanup_webhook_events').
 
 %% Three main call events
 -define(BINDINGS, [{'conf', [{'action', <<"*">>}
@@ -198,10 +200,35 @@ handle_channel_event(JObj, _) ->
 -spec maybe_handle_channel_event(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
     lager:debug("evt ~s for ~s", [HookEvent, AccountId]),
-    case webhooks_util:find_webhooks(HookEvent, AccountId) of
+    case should_fire(HookEvent, wh_json:get_value(<<"Call-ID">>, JObj))
+        andalso webhooks_util:find_webhooks(HookEvent, AccountId)
+    of
+        'false' -> lager:debug("hook ~s for ~s already fired", [HookEvent, AccountId]);
         [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
         Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
     end.
+
+-spec should_fire(ne_binary(), ne_binary()) -> boolean().
+should_fire(HookEvent, CallId) ->
+    ets:insert_new(table_id()
+                   ,#webhook_event{id=hook_event_id(HookEvent, CallId)
+                                   ,received = wh_util:current_tstamp()
+                                  }
+                  ).
+
+-spec hook_event_id(ne_binary(), ne_binary()) -> ne_binary().
+hook_event_id(HookEvent, CallId) ->
+    <<HookEvent/binary, ".", CallId/binary>>.
+
+-spec cleanup_webhook_events() -> non_neg_integer().
+cleanup_webhook_events() ->
+    RemoveTimestamp = wh_util:current_tstamp() - 5, % five seconds ago
+    ets:select_delete(table_id()
+                      ,[{#webhook_event{received='$1'}
+                         ,[{'<', '$1', RemoveTimestamp}]
+                         ,['true']
+                        }]
+                     ).
 
 -spec hook_event_name(ne_binary()) -> ne_binary().
 hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
@@ -298,7 +325,7 @@ print_summary({[#webhook{uri=URI
 init([]) ->
     wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
-    {'ok', #state{}}.
+    {'ok', #state{cleanup_webhook_events_ref=start_cleanup_timer()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -364,6 +391,10 @@ handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
     _ = spawn(?MODULE, 'maybe_handle_channel_event', [AccountId, EventType, JObj]),
     {'noreply', State};
+handle_info({'timeout', Ref, ?CLEANUP_MESSAGE}, #state{cleanup_webhook_events_ref=Ref}=State) ->
+    _Removed = cleanup_webhook_events(),
+    lager:debug("removed ~p webhook events", [_Removed]),
+    {'noreply', State#state{cleanup_webhook_events_ref=start_cleanup_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -456,8 +487,7 @@ init_mods([Acct|Accts], Year, Month) ->
 -spec init_mod(wh_json:object(), wh_year(), wh_month()) -> 'ok'.
 init_mod(Acct, Year, Month) ->
     Db = wh_util:format_account_id(wh_json:get_value(<<"key">>, Acct), Year, Month),
-    _ = couch_mgr:db_create(Db),
-    _ = couch_mgr:revise_doc_from_file(Db, 'crossbar', <<"views/webhooks.json">>),
+    kazoo_modb:create(Db),
     lager:debug("updated account_mod ~s", [Db]).
 
 -spec init_webhooks() -> 'ok'.
@@ -533,3 +563,7 @@ hook_event_lowered(Bin) -> Bin.
 retries(N) when N > 0, N < 5 -> N;
 retries(N) when N < 1 -> 1;
 retries(_) -> 5.
+
+-spec start_cleanup_timer() -> reference().
+start_cleanup_timer() ->
+    erlang:start_timer(?MILLISECONDS_IN_MINUTE, self(), ?CLEANUP_MESSAGE).
