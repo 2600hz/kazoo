@@ -41,6 +41,8 @@
                            ,{<<"application">>, <<"x-base64">>}
                           ]).
 
+-define(SOX_CONVERT, <<"sox -r 8000 ">>).
+
 -define(CB_LIST, <<"media/crossbar_listing">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
@@ -50,6 +52,8 @@
 %%% API
 %%%===================================================================
 init() ->
+    maybe_configure_sox(),
+
     _ = crossbar_bindings:bind(<<"*.content_types_provided.media">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.media">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.media">>, ?MODULE, 'allowed_methods'),
@@ -61,6 +65,54 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.media">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.media">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.media">>, ?MODULE, 'delete').
+
+-spec maybe_configure_sox() -> 'ok'.
+maybe_configure_sox() ->
+    case os:cmd("whereis sox") of
+        "sox:\n" ->
+            whapps_config:set(?MOD_CONFIG_CAT, <<"convert_media">>, 'false'),
+            lager:debug("'sox' not found on this server");
+        "sox: "++_Path ->
+            lager:debug("'sox' found at ~s", [_Path]),
+            configure_sox();
+        _Whereis ->
+            lager:debug("unhandled return to 'whereis sox': ~p", [_Whereis])
+    end.
+
+-spec configure_sox() -> 'ok'.
+-spec configure_sox(ne_binary()) -> 'ok'.
+configure_sox() ->
+    "sox:" ++ VersionPlus = os:cmd("sox --version"),
+    Version = wh_util:strip_right_binary(
+                wh_util:strip_binary(
+                  wh_util:to_binary(VersionPlus)
+                 )
+                ,$\n
+               ),
+    configure_sox(Version).
+
+configure_sox(<<_/binary>> = Version) ->
+    lager:debug("configuring ~s", [Version]),
+
+    MP3Capable = sox_supports_mp3(),
+    lager:debug("mp3 capable sox: ~p", [MP3Capable]),
+    whapps_config:set(?MOD_CONFIG_CAT, <<"sox_mp3_capable">>, MP3Capable),
+    whapps_config:set(?MOD_CONFIG_CAT, <<"sox_version">>, Version),
+    'ok'.
+
+-spec sox_supports_mp3() -> boolean().
+sox_supports_mp3() ->
+    Output = wh_util:to_binary(os:cmd("sox -h")),
+    Lines = binary:split(Output, <<"\n">>, ['global']),
+    sox_supports(<<"mp3">>, Lines).
+
+-spec sox_supports(ne_binary(), ne_binaries()) -> boolean().
+sox_supports(_Format, []) -> 'false';
+sox_supports(Format, [<<"AUDIO FILE FORMATS: ", FormatsBin/binary>> | _Lines]) ->
+    Formats = binary:split(FormatsBin, <<" ">>, ['global']),
+    lists:member(Format, Formats);
+sox_supports(Format, [_Line| Lines]) ->
+    sox_supports(Format, Lines).
 
 %%--------------------------------------------------------------------
 %% @public
