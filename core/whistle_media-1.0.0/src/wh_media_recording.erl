@@ -93,8 +93,11 @@ handle_call_event(JObj, Props) ->
     wh_util:put_callid(JObj),
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
-            lager:debug("channel bridge maybe start recording"),
+            lager:debug("channel bridge maybe start recording on bridge"),
             gen_listener:cast(props:get_value('server', Props), 'maybe_start_recording');
+        {<<"call_event">>, <<"CHANNEL_ANSWER">>} ->
+            lager:debug("channel bridge maybe start recording on answer"),
+            gen_listener:cast(props:get_value('server', Props), 'maybe_start_recording_on_answer');
         {<<"call_event">>, <<"RECORD_START">>} ->
             lager:debug("record_start event recv'd"),
             gen_listener:cast(props:get_value('server', Props), 'record_start');
@@ -178,13 +181,24 @@ handle_cast('maybe_start_recording', #state{is_recording='true'}=State) ->
     lager:debug("we've already starting a recording for this call"),
     {'noreply', State};
 handle_cast('maybe_start_recording', #state{is_recording='false'
+                                            ,record_on_answer='false'
                                             ,call=Call
                                             ,media_name=MediaName
                                             ,time_limit=TimeLimit
                                            }=State) ->
     start_recording(Call, MediaName, TimeLimit),
     {'noreply', State};
-
+handle_cast('maybe_start_recording_on_answer', #state{is_recording='true'}=State) ->
+    lager:debug("we've already starting a recording for this call"),
+    {'noreply', State};
+handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
+                                            ,record_on_answer='true'
+                                            ,call=Call
+                                            ,media_name=MediaName
+                                            ,time_limit=TimeLimit
+                                           }=State) ->
+    start_recording(Call, MediaName, TimeLimit),
+    {'noreply', State};
 handle_cast('stop_call', #state{store_attempted='true'}=State) ->
     lager:debug("we've already sent a store attempt, waiting to hear back"),
     {'noreply', State};
