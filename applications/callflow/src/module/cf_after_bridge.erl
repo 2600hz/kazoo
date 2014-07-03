@@ -18,13 +18,6 @@
 
 -export([handle/2]).
 
--spec post_bridge_actions() -> ne_binaries().
-post_bridge_actions() ->
-    [{<<"park">>,<<"Park-After-Pickup">>}
-     ,{<<"transfer">>, <<"Transfer-After-Pickup">>}
-     ,{<<"hangup">>, <<"Hangup-After-Pickup">>}
-    ].
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -34,12 +27,18 @@ post_bridge_actions() ->
 handle(Data, Call) ->
     PostBridgeAction = wh_json:get_value(<<"action">>, Data),
     PostBridgeData = wh_json:get_value(<<"data">>, Data),
-    case props:get_value(PostBridgeAction, post_bridge_actions(), 'undefined') of
-        'undefined' ->
-            lager:info("Can't found action, skipping"),
-            'ok';
-        Action ->
-            lager:info("Got action ~s", [Action]),
-            whapps_call_command:set(wh_json:from_list([{Action, PostBridgeData}]), wh_json:new(), Call)
-    end,
+    lager:info("Injecting ~s(~p)", [PostBridgeAction, PostBridgeData]),
+    Action = build_action(PostBridgeAction, PostBridgeData),
+    whapps_call_command:set(Action, wh_json:new(), Call),
     cf_exe:continue(Call).
+
+-spec build_action(ne_binary(), ne_binary()) -> wh_json:object().
+build_action(<<"park">>, ShouldPark) ->
+    wh_json:from_list([{<<"Park-After-Pickup">>, wh_util:is_true(ShouldPark)}]);
+build_action(<<"hangup">>, ShouldHangup) ->
+    wh_json:from_list([{<<"Hangup-After-Pickup">>, wh_util:is_true(ShouldHangup)}]);
+build_action(<<"transfer">>, ToExtension) when is_binary(ToExtension) ->
+    wh_json:from_list([{<<"Transfer-After-Pickup">>, ToExtension}]);
+build_action(_Cmd, _Data) ->
+    lager:info("Unkown command: ~s(~p)", [_Cmd, _Data]),
+    wh_json:new().
