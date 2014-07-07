@@ -156,12 +156,12 @@ handle_cast('wait', #state{try_after = Time} = State) ->
     lager:info("wait before nex try"),
     timer:apply_after(Time, 'gen_listener', 'cast', [self(), 'count']),
     {'noreply', State};
+handle_cast('stop_campering', #state{stop_timer = 'undefined'} = State) ->
+    lager:info("stopping"),
+    {'stop', 'normal', State};
 handle_cast('stop_campering', #state{stop_timer = Timer} = State) ->
     lager:info("stopping"),
     timer:cancel(Timer),
-    {'stop', 'normal', State};
-handle_cast('stop_campering', #state{stop_timer = 'undefined'} = State) ->
-    lager:info("stopping"),
     {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
