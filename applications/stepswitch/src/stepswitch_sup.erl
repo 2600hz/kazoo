@@ -25,7 +25,14 @@
                   ,'permanent', 5000, 'worker', ['poolboy']
                  }).
 
--define(CHILDREN, [?CACHE(?STEPSWITCH_CACHE)
+-define(ORIGIN_BINDINGS, [
+                          [{'type', <<"resource">>}]
+                         ]).
+-define(CACHE_PROPS, [
+                      {'origin_bindings', ?ORIGIN_BINDINGS}
+                     ]).
+
+-define(CHILDREN, [?CACHE_ARGS(?STEPSWITCH_CACHE, ?CACHE_PROPS)
                    ,?POOL(?STEPSWITCH_CNAM_POOL)
                    ,?SUPER('stepswitch_request_sup')
                    ,?WORKER('stepswitch_listener')
