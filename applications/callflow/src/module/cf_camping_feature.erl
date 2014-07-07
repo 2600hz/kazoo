@@ -106,7 +106,7 @@ no_channels(#call_target{type = <<"offnet">>
     NewCall = whapps_call:kvs_store('call_id', whapps_call:call_id(Call), Call),
     NewCall1 = whapps_call:kvs_store('control_queue', whapps_call:control_queue(Call), NewCall),
     Msg = wh_json:from_list([{<<"Number">>, Number}
-                             ,{<<"Call-Object">>, whapps_call:to_json(NewCall1)}
+                             ,{<<"Call">>, whapps_call:to_json(NewCall1)}
                             ]),
     JObj = wh_json:from_list([{<<"Delegate-Message">>, Msg}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)

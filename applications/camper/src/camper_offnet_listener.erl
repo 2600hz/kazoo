@@ -68,7 +68,7 @@ start_link() ->
 handle_offnet_req(JObj, _Props) ->
     Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
     Number = wh_json:get_value(<<"Number">>, Msg),
-    Call = whapps_call:from_json(wh_json:get_value(<<"Call-Object">>, Msg)),
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, Msg)),
     camper_offnet_handler:add_request(Number, Call).
 
 %%%===================================================================
