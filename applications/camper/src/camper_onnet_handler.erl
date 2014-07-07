@@ -257,7 +257,7 @@ get_endpoints(Call, UserId, <<"user">>) ->
     Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
                                    ]),
-    lists:foldr(fun(EndpointId, Acc) ->
+    lists:foldl(fun(EndpointId, Acc) ->
         case cf_endpoint:build(EndpointId, Properties, Call) of
             {'ok', Endpoint} -> Endpoint ++ Acc;
             {'error', _E} -> Acc
