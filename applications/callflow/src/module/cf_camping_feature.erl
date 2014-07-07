@@ -75,13 +75,13 @@ get_sip_usernames_for_target(TargetId, TargetType, Call) ->
                       lager:debug("Can't found camping target's type. May be wrong extension number?"),
                       []
               end,
-    lists:map(
-        fun(DevId) ->
-            {'ok', JObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), DevId),
-            wh_json:get_value([<<"sip">>, <<"username">>], JObj)
-        end
-        ,Targets
-    ).
+    AccountDb = whapps_call:account_db(Call),
+    [get_device_sip_username(AccountDb, DeviceId) || DeviceId <- Targets].
+
+-spec get_device_sip_username(ne_binary(), ne_binary()) -> ne_binary().
+get_device_sip_username(AccountDb, DeviceId) ->
+    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, DeviceId),
+    wh_json:get_value([<<"sip">>, <<"username">>], JObj).
 
 -spec no_channels(call_target(), whapps_call:call()) -> 'ok'.
 no_channels(#call_target{id = TargetId
