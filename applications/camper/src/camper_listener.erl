@@ -32,9 +32,9 @@
 -define(BINDINGS, [{'call'
                    ,[{'restrict_to', ['CHANNEL_DESTROY']}]}
                   ]).
--define(QUEUE_NAME, <<"camper_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
