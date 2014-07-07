@@ -28,8 +28,8 @@
                      ,[{<<"callflow">>, <<"delegate">>}]
                      }
                     ]).
--define(BINDINGS, [{'cf_delegate', [{'app_name', ?APP_NAME}
-                                    ,{'route_key', <<"offnet">>}]}]).
+-define(BINDINGS, [{'delegate', [{'app_name', ?APP_NAME}
+                                  ,{'route_key', <<"offnet">>}]}]).
 -define(QUEUE_NAME, <<"camper_offnet_requests">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).

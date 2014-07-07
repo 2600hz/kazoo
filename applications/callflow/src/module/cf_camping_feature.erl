@@ -107,7 +107,7 @@ no_channels(#call_target{type = <<"offnet">>
     JObj = wh_json:from_list([{<<"Delegate-Message">>, Msg}
                               | wh_api:default_headers(<<"callflow">>, <<"delegate">>, ?APP_NAME, ?APP_VERSION)
                              ]),
-    wapi_cf_delegate:publish_delegate(<<"camper">>, <<"offnet">>, JObj),
+    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>),
     cf_exe:stop(Call);
 no_channels(Target, Call) ->
     lager:info("Unknown target: ~s", [Target]),
@@ -128,5 +128,5 @@ has_channels(#call_target{id = TargetId
     JObj = wh_json:from_list([{<<"Delegate-Message">>, Msg}
                               | wh_api:default_headers(<<"callflow">>, <<"delegate">>, ?APP_NAME, ?APP_VERSION)
                              ]),
-    wapi_cf_delegate:publish_delegate(<<"camper">>, <<"onnet">>, JObj),
+    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"onnet">>),
     cf_exe:stop(Call).

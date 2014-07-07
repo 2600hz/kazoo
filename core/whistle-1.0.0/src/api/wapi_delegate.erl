@@ -2,7 +2,7 @@
 %%% @copyright (C) 2013, 2600Hz
 %%% @doc
 %%%
-%%%  Delegate job from callflow action to another app.
+%%%  Delegate job from one app to another app.
 %%%
 %%%  App/Key combo used to send messages.
 %%%
@@ -10,7 +10,7 @@
 %%% @contributors
 %%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(wapi_cf_delegate).
+-module(wapi_delegate).
 
 -export([delegate/1, delegate_v/1]).
 
@@ -20,11 +20,14 @@
 -export([declare_exchanges/0]).
 -export([publish_delegate/2, publish_delegate/3, publish_delegate/4]).
 
--include("callflow.hrl").
--include_lib("eunit/include/eunit.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
--define(DELEGATE_ROUTING_KEY(App, Key), <<"callflow.delegate", App/binary, ".", Key/binary>>).
-%-define(DELEGATE_ROUTING_KEY(App), <<"callflow.delegate", App/binary, ".common">>).
+-define(APIKEY, <<"delegate">>).
+
+-type maybe_key() :: ne_binary() | 'undefined'.
+
+-define(DELEGATE_ROUTING_KEY(App, Key), <<?APIKEY/binary, ".", App/binary, ".", Key/binary>>).
+-define(DELEGATE_ROUTING_KEY(App), <<?APIKEY/binary, ".", App/binary>>).
 
 -define(DELEGATE_HEADERS, [<<"Delegate-Message">>]).
 -define(OPTIONAL_DELEGATE_HEADERS, [<<"Event-Category">>, <<"Event-Name">>]).
@@ -52,17 +55,25 @@ delegate_v(Prop) when is_list(Prop) ->
 delegate_v(JObj) -> delegate_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), ne_binary(), maybe_key()) -> 'ok'.
 bind_q(Q, Props) ->
     App = props:get_value('app_name', Props),
-    ?assertNot(App =:= 'undefined'),
-    Key = props:get_value('route_key', Props, <<"#">>),
+    Key = props:get_value('route_key', Props),
+    bind_q(Q, App, Key).
+bind_q(Q, <<_/binary>> = App, 'undefined') ->
+    amqp_util:bind_q_to_whapps(Q, ?DELEGATE_ROUTING_KEY(App));
+bind_q(Q, <<_/binary>> = App, Key) ->
     amqp_util:bind_q_to_whapps(Q, ?DELEGATE_ROUTING_KEY(App, Key)).
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), ne_binary(), maybe_key()) -> 'ok'.
 unbind_q(Q, Props) ->
     App = props:get_ne_value('app_name', Props),
-    ?assertNot(App =:= 'undefined'),
-    Key = props:get_value('route_key', Props, <<"#">>),
+    Key = props:get_value('route_key', Props),
+    unbind_q(Q, App, Key).
+unbind_q(Q, <<_/binary>> = App, 'undefined') ->
+    amqp_util:unbind_q_from_whapps(Q, ?DELEGATE_ROUTING_KEY(App));
+unbind_q(Q, <<_/binary>> = App, Key) ->
     amqp_util:unbind_q_from_whapps(Q, ?DELEGATE_ROUTING_KEY(App, Key)).
 
 %%--------------------------------------------------------------------
@@ -79,13 +90,15 @@ declare_exchanges() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_delegate(ne_binary(), api_terms()) -> 'ok'.
--spec publish_delegate(ne_binary(), ne_binary(), api_terms()) -> 'ok'.
--spec publish_delegate(ne_binary(), ne_binary(), api_terms(), binary()) -> 'ok'.
-publish_delegate(TargetApp, JObj) ->
-    publish_delegate(TargetApp, <<"common">>, JObj).
-publish_delegate(TargetApp, Key, JObj) ->
-    publish_delegate(TargetApp, Key, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_delegate(TargetApp, Key, API, ContentType) ->
-    ?assertNot(TargetApp =:= 'undefined'),
+-spec publish_delegate(ne_binary(), api_terms(), maybe_key()) -> 'ok'.
+-spec publish_delegate(ne_binary(), api_terms(), maybe_key(), binary()) -> 'ok'.
+publish_delegate(TargetApp, API) ->
+    publish_delegate(TargetApp, API, 'undefined').
+publish_delegate(TargetApp, API, Key) ->
+    publish_delegate(TargetApp, API, Key, ?DEFAULT_CONTENT_TYPE).
+publish_delegate(<<_/binary>> = TargetApp, API, 'undefined', ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?DELEGATE_VALUES, fun ?MODULE:delegate/1),
+    amqp_util:whapps_publish(?DELEGATE_ROUTING_KEY(TargetApp), Payload, ContentType);
+publish_delegate(<<_/binary>> = TargetApp, API, Key, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?DELEGATE_VALUES, fun ?MODULE:delegate/1),
     amqp_util:whapps_publish(?DELEGATE_ROUTING_KEY(TargetApp, Key), Payload, ContentType).
