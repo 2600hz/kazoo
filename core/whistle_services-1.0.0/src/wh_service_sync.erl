@@ -265,9 +265,35 @@ sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) ->
             Bookkeeper:charge_transactions(BillingId, Transactions),
             case couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"transactions">>, [], ServiceJObj)) of
                 {'error', _E} -> lager:warning("failed to clean pending transactions ~p", [_E]);
-                {'ok', _} -> 'ok'
+                {'ok', _} -> handle_topup_transactions(AccountId, Transactions)
             end
     end.
+
+-spec handle_topup_transactions(ne_binary(), wh_json:objects()) -> 'ok'.
+-spec handle_topup_transactions(ne_binary(), wh_json:objects(), integer()) -> 'ok'.
+handle_topup_transactions(Account, JObjs) ->
+    handle_topup_transactions(Account, JObjs, 3).
+
+handle_topup_transactions(_, [], _) -> 'ok';
+handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
+    case wh_json:get_value(<<"pvt_reason">>, JObj) of
+        <<"topup">> ->
+            Amount = wh_json:get_value(<<"pvt_amount">>, JObj),
+            Transaction = wh_transaction:credit(Account, Amount),
+            Transaction1 = wh_transaction:set_reason(<<"topup">>, Transaction),
+            case wh_transaction:save(Transaction1) of
+                {'ok', _} -> 'ok';
+                {'error', 'conflict'} ->
+                    lager:warning("did not write top up transaction for account ~s already exist for today", [Account]);
+                {'error', _E} ->
+                    lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p), retrying ~p..."
+                                ,[_E, Account, Amount, Retry]),
+                    handle_topup_transactions(Account, [JObj|JObjs], Retry-1)
+            end;
+        _ -> handle_topup_transactions(Account, JObjs)
+    end;
+handle_topup_transactions(Account, _, _) ->
+    lager:error("failed to write top up transaction for account ~s too many retries", [Account]).
 
 -spec maybe_sync_reseller(ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_sync_reseller(AccountId, ServiceJObj) ->

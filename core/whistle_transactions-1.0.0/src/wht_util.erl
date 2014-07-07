@@ -47,6 +47,7 @@
                   ,{<<"auto_addition">>, 3003}
                   ,{<<"sub_account_auto_addition">>, 3004}
                   ,{<<"admin_discretion">>, 3005}
+                  ,{<<"topup">>, 3006}
                   ,{<<"database_rollup">>, 4000}
                   ,{<<"unknown">>, 9999}
                  ]).
@@ -120,6 +121,7 @@ get_balance(Account, ViewOptions) ->
         {'ok', []} -> get_balance_from_previous(Account, ViewOptions);
         {'ok', [ViewRes|_]} ->
             Balance = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
+            _ = spawn('wh_topup', 'init', [Account, Balance]),
             maybe_rollup(Account, ViewOptions, Balance);
         {'error', _E} ->
             lager:warning("unable to get current balance for ~s: ~p", [Account, _E]),
@@ -164,7 +166,6 @@ maybe_rollup(Account, ViewOptions, Balance) ->
             %%   create the rollup for this month
             maybe_rollup_previous_month(Account, Balance)
     end.
-
 
 -spec verify_monthly_rollup_exists(ne_binary(), integer()) -> integer().
 verify_monthly_rollup_exists(Account, Balance) ->

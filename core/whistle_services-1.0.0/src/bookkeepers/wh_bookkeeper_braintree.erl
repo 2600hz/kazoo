@@ -13,6 +13,7 @@
 -export([subscriptions/1]).
 -export([commit_transactions/2]).
 -export([charge_transactions/2]).
+-export([already_charged/2]).
 
 
 -include("../whistle_services.hrl").
@@ -180,16 +181,76 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> 'ok'.
+-spec charge_transactions(ne_binary(), wh_json:objects()) -> 'ok'.
 charge_transactions(BillingId, Transactions) ->
-    Amount = lists:foldl(fun(JObj, Acc) ->
-                            wh_json:get_value(<<"pvt_amount">>, JObj, 0) + Acc
-                         end
-                         ,0
-                         ,Transactions
-                        ),
-     braintree_transaction:quick_sale(BillingId, wht_util:units_to_dollars(Amount)),
-     'ok'.
+    charge_transactions(BillingId, Transactions, dict:new()).
+
+charge_transactions(BillingId, [], Dict) ->
+    dict:fold(
+        fun(Code, Amount, _) when Code =:= 3006 ->
+            BinaryCode = wh_util:to_binary(Code),
+            Props = [{<<"purchase_order">>, BinaryCode}],
+            case already_charged(BillingId, BinaryCode) of
+                'true' -> 'ok';
+                'false' ->
+                    braintree_transaction:quick_sale(
+                        BillingId
+                        ,wht_util:units_to_dollars(Amount)
+                        ,Props),
+                    'ok'
+            end;
+        (Code, Amount, _) ->
+            Props = [{<<"purchase_order">>, Code}],
+            braintree_transaction:quick_sale(
+                BillingId
+                ,wht_util:units_to_dollars(Amount)
+                ,Props),
+            'ok'
+        end
+        ,'ok'
+        ,Dict
+    );
+charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
+    Code = wh_json:get_value(<<"code">>, Transaction),
+    Amount = wh_json:get_value(<<"pvt_amount">>, Transaction, 0),
+    charge_transactions(BillingId
+                        ,Transactions
+                        ,dict:update_counter(Code, Amount, Dict)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+already_charged(BillingId, Code) ->
+    lager:debug("checking if ~s has been charge for transaction of type ~p today", [BillingId, Code]),
+    BtTransactions = braintree_transaction:find_by_customer(BillingId),
+    Transactions = [braintree_transaction:record_to_json(BtTransaction) || BtTransaction <- BtTransactions],
+    already_charged(BillingId, wh_util:to_binary(Code), Transactions).
+
+already_charged(_, _, []) ->
+    lager:debug("no transactions found matching code or made today"),
+    'false';
+already_charged(BillingId, Code, [Transaction|Transactions]) ->
+    TrCode = wh_json:get_value(<<"purchase_order">>, Transaction),
+    case TrCode =:= Code of
+        'false' -> already_charged(BillingId, Code, Transactions);
+        'true' ->
+            <<Year:4/binary, _:1/binary
+              ,Month:2/binary, _:1/binary
+              ,Day:2/binary
+              ,_/binary
+            >> = wh_json:get_value(<<"created_at">>, Transaction),
+            {YearNow, M, D} = erlang:date(),
+            Now = {wh_util:to_binary(YearNow), wh_util:pad_month(M), wh_util:pad_month(D)},
+            case {Year, Month, Day} =:= Now of
+                'true' ->
+                    lager:debug("found transaction matching code and date (~p)", [wh_json:get_value(<<"id">>, Transaction)]),
+                    'true';
+                'false' -> already_charged(BillingId, Code, Transactions)
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
