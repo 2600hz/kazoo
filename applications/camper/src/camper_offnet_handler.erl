@@ -188,7 +188,7 @@ handle_info(_Info, State) ->
 
 -spec handle_resource_response(wh_json:object(), proplist()) -> 'ok'.
 handle_resource_response(JObj, Props) ->
-    Srv = proplists:get_value('server', Props),
+    Srv = props:get_value('server', Props),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     case {wh_json:get_value(<<"Event-Category">>, JObj)
           ,wh_json:get_value(<<"Event-Name">>, JObj)}
@@ -274,7 +274,7 @@ originate_park(Exten, Call, Q) ->
 
 -spec handle_originate_ready(wh_json:object(), proplist()) -> 'ok'.
 handle_originate_ready(JObj, Props) ->
-    Srv = proplists:get_value('server', Props),
+    Srv = props:get_value('server', Props),
     case {wh_json:get_value(<<"Event-Category">>, JObj)
           ,wh_json:get_value(<<"Event-Name">>, JObj)}
     of
