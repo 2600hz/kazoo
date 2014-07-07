@@ -30,9 +30,9 @@
 -define(DELEGATE_ROUTING_KEY(App), <<?APIKEY/binary, ".", App/binary>>).
 
 -define(DELEGATE_HEADERS, [<<"Delegate-Message">>]).
--define(OPTIONAL_DELEGATE_HEADERS, [<<"Event-Category">>, <<"Event-Name">>]).
--define(DELEGATE_VALUES, [{<<"Event-Category">>, <<"callflow">>}
-                        ,{<<"Event-Name">>, <<"delegate">>}
+-define(OPTIONAL_DELEGATE_HEADERS, []).
+-define(DELEGATE_VALUES, [{<<"Event-Category">>, <<"delegate">>}
+                        ,{<<"Event-Name">>, <<"job">>}
                        ]).
 -define(DELEGATE_TYPES, []).
 

@@ -109,7 +109,7 @@ no_channels(#call_target{type = <<"offnet">>
                              ,{<<"Call-Object">>, whapps_call:to_json(NewCall1)}
                             ]),
     JObj = wh_json:from_list([{<<"Delegate-Message">>, Msg}
-                              | wh_api:default_headers(<<"callflow">>, <<"delegate">>, ?APP_NAME, ?APP_VERSION)
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
     wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>),
     cf_exe:stop(Call);
@@ -130,7 +130,7 @@ has_channels(#call_target{id = TargetId
                              ,{<<"Targets">>, Targets}
                             ]),
     JObj = wh_json:from_list([{<<"Delegate-Message">>, Msg}
-                              | wh_api:default_headers(<<"callflow">>, <<"delegate">>, ?APP_NAME, ?APP_VERSION)
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
     wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"onnet">>),
     cf_exe:stop(Call).

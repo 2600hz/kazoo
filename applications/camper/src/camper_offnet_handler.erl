@@ -284,7 +284,7 @@ handle_originate_ready(JObj, Props) ->
             CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
             Prop = [{<<"Call-ID">>, CallId}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    | wh_api:default_headers(gen_listener:queue_name(Srv), <<"dialplan">>, <<"originate_execute">>, ?APP_NAME, ?APP_VERSION)
+                    | wh_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
             ],
             gen_listener:cast(Srv, {'offnet_ctl_queue', CtrlQ}),
             gen_listener:add_binding(Srv, {'call', ?MK_CALL_BINDING(CallId)}),

@@ -25,7 +25,7 @@
 -export([handle_offnet_req/2]).
 
 -define(RESPONDERS, [{{'camper_offnet_listener', 'handle_offnet_req'}
-                     ,[{<<"callflow">>, <<"delegate">>}]
+                     ,[{<<"delegate">>, <<"job">>}]
                      }
                     ]).
 -define(BINDINGS, [{'delegate', [{'app_name', ?APP_NAME}
