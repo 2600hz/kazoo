@@ -21,10 +21,6 @@
 
 -include("camper.hrl").
 
--define(CACHE_PROPS, ['new_node_flush'
-                      ,'channel_reconnect_flush'
-]).
-
 -define(CHILDREN, [?WORKER_TYPE('camper_offnet_handler', 'temporary')]).
 
 %%%===================================================================
@@ -60,8 +56,6 @@ new(Exten, Call) -> supervisor:start_child(?MODULE, [[Exten, Call]]).
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    lager:info("Offnet supervisor started"),
-    process_flag('trap_exit', 'true'),
     RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

@@ -234,8 +234,6 @@ originate_quickcall(Endpoints, Exten, Call) ->
                ,{<<"Timeout">>, ?RINGING_TIMEOUT}
                ,{<<"Outbound-Caller-ID-Name">>, <<"Campered call">>}
                ,{<<"Outbound-Caller-ID-Number">>, Exten}
-%               ,{<<"Outbound-Callee-ID-Name">>, get_caller_id_name(Context)}
-%               ,{<<"Outbound-Callee-ID-Number">>, get_caller_id_number(Context)}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Continue-On-Fail">>, 'false'}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}

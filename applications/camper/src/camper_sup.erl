@@ -18,10 +18,6 @@
 
 -include("camper.hrl").
 
--define(CACHE_PROPS, ['new_node_flush'
-                      ,'channel_reconnect_flush'
-                     ]).
-
 -define(CHILDREN, [?WORKER('camper_listener')
                    ,?WORKER('camper_onnet_handler')
                    ,?SUPER('camper_offnet_sup')
