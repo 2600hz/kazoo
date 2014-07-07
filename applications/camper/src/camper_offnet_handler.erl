@@ -29,7 +29,16 @@
 
 -include("camper.hrl").
 
--record(state, {exten, stored_call, queue, n_try, max_tries, try_after, stop_timer, parked_call, offnet_ctl_q}).
+-record(state, {exten :: ne_binary()
+                ,stored_call :: whapps_call:call()
+                ,queue :: queue()
+                ,n_try :: non_neg_integer()
+                ,max_tries :: non_neg_integer()
+                ,try_after :: non_neg_integer()
+                ,stop_timer :: non_neg_integer()
+                ,parked_call :: ne_binary()
+                ,offnet_ctl_q :: ne_binary()
+               }).
 
 -define(MK_CALL_BINDING(CALLID), [{'callid', CALLID}, {'restrict_to', [<<"*">>]}]).
 

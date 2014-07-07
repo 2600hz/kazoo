@@ -24,7 +24,11 @@
 
 -export([handle/2]).
 
--record(call_target, {id, type, no_match_flag, number}).
+-record(call_target, {id :: ne_binary()
+                      ,type :: ne_binary()
+                      ,no_match_flag :: boolean()
+                      ,number :: ne_binary()
+                     }).
 -type call_target() :: #call_target{}.
 
 

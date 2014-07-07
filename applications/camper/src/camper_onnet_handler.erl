@@ -32,27 +32,29 @@
                  }
        ).
 
--spec get_requests(#'state'{}) -> dict().
+-type state() :: #'state'{}.
+
+-spec get_requests(state()) -> dict().
 get_requests(#'state'{'requests' = Val}) ->
     Val.
 
--spec get_requestor_queues(#'state'{}) -> dict().
+-spec get_requestor_queues(state()) -> dict().
 get_requestor_queues(#'state'{'requestor_queues' = Val}) ->
     Val.
 
--spec get_sipnames(#'state'{}) -> dict().
+-spec get_sipnames(state()) -> dict().
 get_sipnames(#'state'{'sipnames' = Val}) ->
     Val.
 
--spec get_account_db(#'state'{}) -> dict().
+-spec get_account_db(state()) -> ne_binary().
 get_account_db(#'state'{'account_db' = Val}) ->
     Val.
 
--spec set_requests(#'state'{}, dict()) -> #'state'{}.
+-spec set_requests(state(), dict()) -> state().
 set_requests(S, Val) ->
     S#'state'{'requests' = Val}.
 
--spec set_requestor_queues(#'state'{}, dict()) -> #'state'{}.
+-spec set_requestor_queues(state(), dict()) -> state().
 set_requestor_queues(S, Val) ->
     S#'state'{'requestor_queues' = Val}.
 
@@ -243,6 +245,7 @@ originate_quickcall(Endpoints, Exten, Call) ->
     wapi_resource:publish_originate_req(props:filter_undefined(Request)),
     lager:debug("Originate request published").
 
+-spec get_endpoints(whapps_call:call(), ne_binary(), ne_binary()) -> wh_json:objects().
 get_endpoints(Call, EndpointId, <<"device">>) ->
     Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
@@ -265,6 +268,7 @@ get_endpoints(Call, UserId, <<"user">>) ->
 get_endpoints(_, _, _) ->
     [].
 
+-spec clear_request(ne_binary(), ne_binary(), state()) -> state().
 clear_request(Requestor, Exten, Local) ->
     {'ok', SIPNames} = dict:find(Exten, get_sipnames(Local)),
     lists:foldl(fun (SIPName, Acc) ->
