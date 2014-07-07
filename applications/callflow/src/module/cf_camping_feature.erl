@@ -111,8 +111,8 @@ no_channels(#call_target{type = <<"offnet">>
                              ]),
     wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>),
     cf_exe:stop(Call);
-no_channels(Target, Call) ->
-    lager:info("Unknown target: ~s", [Target]),
+no_channels(_Target, Call) ->
+    lager:info("Unknown target: ~s", [_Target]),
     cf_exe:stop(Call).
 
 -spec has_channels(call_target(), whapps_call:call()) -> 'ok'.

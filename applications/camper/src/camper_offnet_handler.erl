@@ -209,12 +209,12 @@ handle_resource_response(JObj, Props) ->
                 {<<"bridge">>, <<"SUCCESS">>} ->
                     lager:info("Users bridged"),
                     gen_listener:cast(Srv, 'stop_campering');
-                Ev -> lager:info("Unhandled event: ~p", [Ev])
+                _Ev -> lager:info("Unhandled event: ~p", [_Ev])
             end;
         {<<"error">>,<<"originate_resp">>} ->
             gen_listener:cast(Srv, 'hangup_parked_call'),
             'ok';
-        Ev -> lager:info("Unhandled event ~p", [Ev])
+        _Ev -> lager:info("Unhandled event ~p", [_Ev])
     end,
     'ok'.
 
@@ -289,7 +289,7 @@ handle_originate_ready(JObj, Props) ->
             gen_listener:cast(Srv, {'offnet_ctl_queue', CtrlQ}),
             gen_listener:add_binding(Srv, {'call', ?MK_CALL_BINDING(CallId)}),
             wapi_dialplan:publish_originate_execute(Q, Prop);
-        _ -> lager:info("unkown event: ~p", [JObj])
+        _Ev -> lager:info("unkown event: ~p", [_Ev])
     end,
     'ok'.
 
