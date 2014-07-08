@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(camper_offnet_listener).
+-module(camper_request_listener).
 
 -export([start_link/0]).
 -export([init/1
@@ -18,19 +18,20 @@
 ]).
 
 -include("camper.hrl").
+-include_lib("rabbitmq_server/plugins-src/rabbitmq-erlang-client/include/amqp_client.hrl").
 
 -behaviour(gen_listener).
 
 %% gen_listener callbacks
--export([handle_offnet_req/2]).
+-export([handle_camper_req/3]).
 
--define(RESPONDERS, [{{'camper_offnet_listener', 'handle_offnet_req'}
+-define(RESPONDERS, [{{'camper_offnet_listener', 'handle_camper_req'}
                      ,[{<<"delegate">>, <<"job">>}]
                      }
                     ]).
 -define(BINDINGS, [{'delegate', [{'app_name', ?APP_NAME}
-                                  ,{'route_key', <<"offnet">>}]}]).
--define(QUEUE_NAME, <<"camper_offnet_requests">>).
+                                  ,{'route_key', <<"*">>}]}]).
+-define(QUEUE_NAME, <<"camper_requests">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
@@ -64,12 +65,23 @@ start_link() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_offnet_req(wh_json:object(), wh_proplist()) -> any().
-handle_offnet_req(JObj, _Props) ->
-    Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
-    Number = wh_json:get_value(<<"Number">>, Msg),
-    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, Msg)),
-    camper_offnet_handler:add_request(Number, Call).
+-spec handle_camper_req(wh_json:object(), wh_proplist(), gen_listener:basic_deliver()) -> any().
+handle_camper_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
+    case binary:split(Key, <<".">>, ['global']) of
+        [_, ?APP_NAME, <<"offnet">>] ->
+            Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
+            Number = wh_json:get_value(<<"Number">>, Msg),
+            Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, Msg)),
+            camper_offnet_handler:add_request(Number, Call);
+        [_, ?APP_NAME, <<"onnet">>] ->
+            Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
+            AccountDb = wh_json:get_value(<<"Account-DB">>, Msg),
+            Id = wh_json:get_value(<<"Authorizing-ID">>, Msg),
+            Type = wh_json:get_value(<<"Authorizing-Type">>, Msg),
+            Number = wh_json:get_value(<<"Number">>, Msg),
+            Targets = wh_json:get_value(<<"Targets">>, Msg),
+            camper_onnet_handler:add_request(AccountDb, {Id, Type}, Number, Targets)
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
