@@ -18,8 +18,7 @@
 
 -include("camper.hrl").
 
--define(CHILDREN, [?WORKER('camper_listener')
-                   ,?WORKER('camper_onnet_handler')
+-define(CHILDREN, [?WORKER('camper_onnet_handler')
                    ,?SUPER('camper_offnet_sup')
                    ,?WORKER('camper_request_listener')
                    ]).

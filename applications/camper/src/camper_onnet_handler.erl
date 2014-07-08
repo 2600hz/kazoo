@@ -22,6 +22,7 @@
          ,available_device/2]).
 
 -include("camper.hrl").
+-include_lib("whistle_apps/include/wh_hooks.hrl").
 
 -define(RINGING_TIMEOUT, 30).
 
@@ -126,6 +127,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'add_request',AccountDb, Dev, Exten, Targets}, GlobalState) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    wh_hooks:register(AccountId, <<"CHANNEL_DESTROY">>),
     Timeout = whapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT),
     NewGlobal = with_state(AccountId
                           ,GlobalState
@@ -310,6 +312,12 @@ maybe_update_queues(SIPNames, Requestor, Queues) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(?HOOK_EVT(_AccountId, _, JObj), State) ->
+    AcctId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    SIPName = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),
+    lager:debug("available device: ~s(~s)", [SIPName, AcctId]),
+    camper_onnet_handler:available_device(AcctId, SIPName),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
