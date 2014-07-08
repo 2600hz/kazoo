@@ -19,9 +19,9 @@
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, notify_low_balance_text_tmpl).
--define(DEFAULT_HTML_TMPL, notify_low_balance_html_tmpl).
--define(DEFAULT_SUBJ_TMPL, notify_low_balance_subj_tmpl).
+-define(DEFAULT_TEXT_TMPL, 'notify_low_balance_text_tmpl').
+-define(DEFAULT_HTML_TMPL, 'notify_low_balance_html_tmpl').
+-define(DEFAULT_SUBJ_TMPL, 'notify_low_balance_subj_tmpl').
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>).
 
@@ -34,9 +34,9 @@
 -spec init() -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
-    {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
-    {ok, _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
-    {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
@@ -49,20 +49,16 @@ init() ->
 send(CurrentBalance, Account) ->
     AccountId = wh_json:get_value(<<"_id">>, Account),
     case collect_recipients(AccountId) of
-        [] -> 'ok';
+        'undefined' -> 'ok';
         To ->
             lager:debug("sending low balance alert for account ~s", [AccountId]),
             Props = create_template_props(CurrentBalance, Account),
-
             CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_text_template">>], Account),
-            {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
-
+            {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
             CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_html_template">>], Account),
-            {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
-
+            {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
             CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"low_balance">>, <<"email_subject_template">>], Account),
-            {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-
+            {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
             build_and_send_email(TxtBody, HTMLBody, Subject, To, Props)
     end.
 
@@ -126,65 +122,50 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collect_recipients(ne_binary()) -> ne_binaries().
+-spec collect_recipients(ne_binary()) -> api_binary().
 collect_recipients(AccountId) ->
     case whapps_config:get(?MOD_CONFIG_CAT, <<"override_to">>) of
-        'undefined' ->
-            Routines = [fun(T) -> maybe_send_to_account_admins(AccountId, T) end
-                        ,fun(T) -> maybe_send_to_master_support(T) end
-                       ],
-            To = lists:foldl(fun(F, T) -> F(T) end, [], Routines),
-            sets:to_list(sets:from_list(To));
-        To -> [To]
+        'undefined' -> get_email(AccountId);
+        To -> To
     end.
 
--spec maybe_send_to_account_admins(ne_binary(), ne_binaries()) -> ne_binaries().
-maybe_send_to_account_admins(AccountId, To) ->
-    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    maybe_send_to_account_admins(MasterAccountId, AccountId, To).
-
--spec maybe_send_to_account_admins(ne_binary(), ne_binary(), ne_binaries()) -> ne_binaries().
-maybe_send_to_account_admins(MasterAccountId, AccountId, To) ->
+-spec get_email(ne_binary()) -> api_binary().
+get_email(AccountId) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
-    maybe_send_to_account_admins(ResellerId, MasterAccountId, AccountId, To).
+    get_reseller_email(ResellerId, AccountId).
 
--spec maybe_send_to_account_admins(ne_binary(), ne_binary(), ne_binary(), ne_binaries()) -> ne_binaries().
-maybe_send_to_account_admins(ResellerId, ResellerId, AccountId, To) ->
-    send_to_account_admins(AccountId, To);
-maybe_send_to_account_admins(ResellerId, MasterAccountId, AccountId, To) ->
-    lager:debug("following reseller tree for ~s to ~s", [AccountId, ResellerId]),
-    maybe_send_to_account_admins(MasterAccountId, ResellerId, To).
+-spec get_reseller_email(ne_binary(), ne_binary()) -> api_binary().
+get_reseller_email(AccountId, AccountId) ->
+    lager:debug("account ~s is a reseller", [AccountId]),
+    get_account_email(AccountId);
+get_reseller_email(ResellerId, AccountId) ->
+    lager:debug("trying reseller ~s for account ~s", [ResellerId, AccountId]),
+    case find_account_email(ResellerId) of
+        'undefined' -> get_account_email(AccountId);
+        Email -> Email
+    end.
 
--spec send_to_account_admins(ne_binary(), ne_binaries()) -> ne_binaries().
-send_to_account_admins(AccountId, To) ->
+-spec get_account_email(ne_binary()) -> api_binary().
+get_account_email(AccountId) ->
+    lager:debug("trying account ~s", [AccountId]),
+    case find_account_email(AccountId) of
+        'undefined' -> get_master_email();
+        Email -> Email
+    end.
+
+-spec get_master_email() -> api_binary().
+get_master_email() ->
+    lager:debug("trying default_to in ~p", [?MOD_CONFIG_CAT]),
+    whapps_config:get_non_empty(?MOD_CONFIG_CAT, <<"default_to">>, 'undefined').
+
+
+-spec find_account_email(ne_binary()) -> api_binary().
+find_account_email(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    ViewOptions = [{'key', <<"user">>}
-                   ,'include_docs'
-                  ],
-    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
-        {'ok', JObjs} ->
-            find_account_admins(JObjs, To);
-        {'error', _R} ->
-            lager:debug("faild to find users in ~s: ~p", [AccountId, _R]),
-            To
-    end.
-
--spec find_account_admins(wh_json:objects(), ne_binaries()) -> ne_binaries().
-find_account_admins([], To) ->
-    To;
-find_account_admins([JObj|JObjs], To) ->
-    Email = wh_json:get_ne_value([<<"doc">>, <<"email">>], JObj),
-    case wh_json:get_value([<<"doc">>, <<"priv_level">>], JObj) =:= <<"admin">>
-        andalso Email =/= 'undefined'
-    of
-        'false' -> find_account_admins(JObjs, To);
-        'true' ->
-            find_account_admins(JObjs, [Email|To])
-    end.
-
--spec maybe_send_to_master_support(ne_binaries()) -> ne_binaries().
-maybe_send_to_master_support(To) ->
-    case whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>) of
-        'undefined' -> To;
-        DefaultTo -> [DefaultTo|To]
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', _E} ->
+            lager:error("could not open account ~s : ~p", [AccountId, _E]),
+            'undefined';
+        {'ok', JObj} ->
+            wh_json:get_ne_value([<<"contact">>, <<"billing">>, <<"email">>], JObj)
     end.
