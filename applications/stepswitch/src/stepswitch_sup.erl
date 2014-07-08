@@ -26,7 +26,8 @@
                  }).
 
 -define(ORIGIN_BINDINGS, [
-                          [{'type', <<"resource">>}]
+                          [{'type', <<"resource">>}
+                           ,{'type', <<"number">>}]
                          ]).
 -define(CACHE_PROPS, [
                       {'origin_bindings', ?ORIGIN_BINDINGS}
