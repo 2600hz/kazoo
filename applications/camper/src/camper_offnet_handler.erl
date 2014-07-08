@@ -40,7 +40,8 @@
                 ,offnet_ctl_q :: ne_binary()
                }).
 
--define(MK_CALL_BINDING(CALLID), [{'callid', CALLID}, {'restrict_to', [<<"*">>]}]).
+-define(MK_CALL_BINDING(CALLID), [{'callid', CALLID}, {'restrict_to', [<<"CHANNEL_DESTROY">>
+                                                                       ,<<"CHANNEL_ANSWER">>]}]).
 
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_resource_response'}
