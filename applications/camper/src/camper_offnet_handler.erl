@@ -114,7 +114,7 @@ handle_cast({'gen_listener', {'created_queue', Q}}, #state{queue = 'undefined'} 
     gen_listener:cast(self(), 'count'),
     {'noreply', S#state{queue = Q}};
 handle_cast('count', State) ->
-    lager:info("count"),
+    lager:debug("count"),
     NTry = State#state.n_try,
     MaxTries = State#state.max_tries,
     case NTry < MaxTries of
@@ -126,7 +126,7 @@ handle_cast('count', State) ->
             {'stop', 'normal', State}
     end;
 handle_cast('originate_park', State) ->
-    lager:info("originate park"),
+    lager:debug("originate park"),
     Exten = State#state.exten,
     Call = State#state.stored_call,
     Q = State#state.queue,
@@ -135,7 +135,7 @@ handle_cast('originate_park', State) ->
 handle_cast({'offnet_ctl_queue', CtrlQ}, State) ->
     {'noreply', State#state{offnet_ctl_q = CtrlQ}};
 handle_cast('hangup_parked_call', State) ->
-    lager:info("hangup park"),
+    lager:debug("hangup park"),
     ParkedCall = State#state.parked_call,
     case ParkedCall =:= 'undefined' of
         'false' ->
@@ -149,18 +149,18 @@ handle_cast('hangup_parked_call', State) ->
     {'noreply', State#state{parked_call = 'undefined'}};
 handle_cast({'parked', CallId}, State) ->
     Req = build_bridge_request(CallId, State#state.stored_call, State#state.queue),
-    lager:info("Publishing bridge request"),
+    lager:debug("Publishing bridge request"),
     wapi_resource:publish_originate_req(Req),
     {'noreply', State#state{parked_call = CallId}};
 handle_cast('wait', #state{try_after = Time} = State) ->
-    lager:info("wait before nex try"),
+    lager:debug("wait before next try"),
     timer:apply_after(Time, 'gen_listener', 'cast', [self(), 'count']),
     {'noreply', State};
 handle_cast('stop_campering', #state{stop_timer = 'undefined'} = State) ->
-    lager:info("stopping"),
+    lager:debug("stopping"),
     {'stop', 'normal', State};
 handle_cast('stop_campering', #state{stop_timer = Timer} = State) ->
-    lager:info("stopping"),
+    lager:debug("stopping"),
     timer:cancel(Timer),
     {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
@@ -197,17 +197,17 @@ handle_resource_response(JObj, Props) ->
             ResResp = wh_json:get_value(<<"Resource-Response">>, JObj),
             handle_originate_ready(ResResp, Props);
         {<<"call_event">>,<<"CHANNEL_ANSWER">>} ->
-            lager:info("time to bridge"),
+            lager:debug("time to bridge"),
             gen_listener:cast(Srv, {'parked', CallId});
         {<<"call_event">>,<<"CHANNEL_DESTROY">>} ->
-            lager:info("Got channel destroy, retrying..."),
+            lager:debug("Got channel destroy, retrying..."),
             gen_listener:cast(Srv, 'wait');
         {<<"resource">>,<<"originate_resp">>} ->
             case {wh_json:get_value(<<"Application-Name">>, JObj)
                   ,wh_json:get_value(<<"Application-Response">>, JObj)}
             of
                 {<<"bridge">>, <<"SUCCESS">>} ->
-                    lager:info("Users bridged"),
+                    lager:debug("Users bridged"),
                     gen_listener:cast(Srv, 'stop_campering');
                 _Ev -> lager:info("Unhandled event: ~p", [_Ev])
             end;

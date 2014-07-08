@@ -94,7 +94,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:debug("started campering..."),
+    lager:debug("onnet handler started"),
     {'ok', dict:new()}.
 
 %%--------------------------------------------------------------------
@@ -326,7 +326,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("camper ~p termination", [_Reason]),
+    lager:debug("onnet handler ~p termination", [_Reason]),
     'ok'.
 
 %%--------------------------------------------------------------------

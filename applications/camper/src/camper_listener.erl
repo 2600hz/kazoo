@@ -70,7 +70,7 @@ start_link() ->
 handle_req(JObj, _Props) ->
     AcctId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     SIPName = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj),
-    lager:info("available device: ~s(~s)", [SIPName, AcctId]),
+    lager:debug("available device: ~s(~s)", [SIPName, AcctId]),
     camper_onnet_handler:available_device(AcctId, SIPName).
 
 %%%===================================================================
@@ -89,7 +89,7 @@ handle_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:info("started campering..."),
+    lager:info("started device listener"),
     {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
@@ -164,7 +164,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:info("camper ~p termination", [_Reason]),
+    lager:info("device listener ~p termination", [_Reason]),
     'ok'.
 
 %%--------------------------------------------------------------------

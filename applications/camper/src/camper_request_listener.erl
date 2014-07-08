@@ -99,7 +99,7 @@ handle_camper_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:info("started campering..."),
+    lager:info("started request listener"),
     {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
@@ -154,17 +154,6 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
-%% @end
-%%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {'reply', []}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -174,7 +163,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:info("camper ~p termination", [_Reason]),
+    lager:info("request listener ~p termination", [_Reason]),
     'ok'.
 
 %%--------------------------------------------------------------------
