@@ -92,3 +92,6 @@ intercept-no_channels: No channels
 intercept-no_users: No users found
 eavesdrop-no_channels: No channels
 
+camper-deny: Your request is denied.
+camper-queue: Your request is accepted.
+
