@@ -124,48 +124,87 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%--------------------------------------------------------------------
 -spec collect_recipients(ne_binary()) -> api_binary().
 collect_recipients(AccountId) ->
-    case whapps_config:get(?MOD_CONFIG_CAT, <<"override_to">>) of
-        'undefined' -> get_email(AccountId);
-        To -> To
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    lager:debug("trying to get an email for account ~s", [AccountId]),
+    get_email(AccountId, MasterAccountId, 3).
+
+
+-spec get_email(wh_json:object()) -> api_binary().
+-spec get_email(ne_binary(), ne_binary(), integer()) -> api_binary().
+get_email(AccountDoc) ->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, AccountDoc),
+    case is_notify_enabled(AccountDoc) of
+        'false' ->
+            lager:debug("notify low balance is disabled for account ~s", [AccountId]),
+            'undefined';
+        'true' ->
+            case find_account_email(AccountDoc) of
+                'undefined' ->
+                    lager:debug("billing contact email not set for account ~s", [AccountId]),
+                    'undefined';
+                Email -> Email
+            end
     end.
 
--spec get_email(ne_binary()) -> api_binary().
-get_email(AccountId) ->
-    ResellerId = wh_services:find_reseller_id(AccountId),
-    get_reseller_email(ResellerId, AccountId).
-
--spec get_reseller_email(ne_binary(), ne_binary()) -> api_binary().
-get_reseller_email(AccountId, AccountId) ->
-    lager:debug("account ~s is a reseller", [AccountId]),
-    get_account_email(AccountId);
-get_reseller_email(ResellerId, AccountId) ->
-    lager:debug("trying reseller ~s for account ~s", [ResellerId, AccountId]),
-    case find_account_email(ResellerId) of
-        'undefined' -> get_account_email(AccountId);
-        Email -> Email
-    end.
-
--spec get_account_email(ne_binary()) -> api_binary().
-get_account_email(AccountId) ->
+get_email(MasterAccountId, MasterAccountId, Retry) when Retry >= 0 ->
+    AccountDb = wh_util:format_account_id(MasterAccountId, 'encoded'),
+    lager:debug("last resort master account ~s", [MasterAccountId]),
+    case couch_mgr:open_doc(AccountDb, MasterAccountId) of
+        {'error', _E} ->
+            lager:error("could not open account ~s : ~p", [MasterAccountId, _E]),
+            get_email(MasterAccountId, MasterAccountId, Retry-1);
+        {'ok', JObj} -> get_email(JObj)
+    end;
+get_email(AccountId, _, 0) ->
+    lager:error("too many attempt to get ~s", [AccountId]),
+    'undefined';
+get_email(AccountId, MasterAccountId, Retry) ->
     lager:debug("trying account ~s", [AccountId]),
-    case find_account_email(AccountId) of
-        'undefined' -> get_master_email();
-        Email -> Email
-    end.
-
--spec get_master_email() -> api_binary().
-get_master_email() ->
-    lager:debug("trying default_to in ~p", [?MOD_CONFIG_CAT]),
-    whapps_config:get_non_empty(?MOD_CONFIG_CAT, <<"default_to">>, 'undefined').
-
-
--spec find_account_email(ne_binary()) -> api_binary().
-find_account_email(AccountId) ->
+    ResellerId = wh_services:find_reseller_id(AccountId),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', _E} ->
             lager:error("could not open account ~s : ~p", [AccountId, _E]),
-            'undefined';
+            get_email(AccountId, MasterAccountId, Retry-1);
         {'ok', JObj} ->
-            wh_json:get_ne_value([<<"contact">>, <<"billing">>, <<"email">>], JObj)
+            case get_email(JObj) of
+                'undefined' -> get_email(ResellerId, MasterAccountId, 3);
+                Email -> Email
+            end
     end.
+
+-spec is_notify_enabled(ne_binary() | wh_json:object()) -> boolean().
+is_notify_enabled(AccountId) when is_binary(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> is_notify_enabled(JObj);
+        {'error', _E} ->
+            lager:error("could not open account ~s : ~p", [AccountId, _E]),
+            is_notify_enabled_default()
+    end;
+is_notify_enabled(JObj) ->
+    case  wh_json:get_value([<<"notifications">>,
+                             <<"low_balance">>,
+                             <<"enabled">>
+                            ], JObj)
+    of
+        'undefined' -> is_notify_enabled_default();
+        Value -> wh_util:is_true(Value)
+    end.
+
+-spec is_notify_enabled_default() -> boolean().
+is_notify_enabled_default() ->
+    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'false').
+
+
+-spec find_account_email(ne_binary() | wh_json:object()) -> api_binary().
+find_account_email(AccountId) when is_binary(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'ok', JObj} -> find_account_email(JObj);
+        {'error', _E} ->
+            lager:error("could not open account ~s : ~p", [AccountId, _E]),
+            'undefined'
+    end;
+find_account_email(JObj) ->
+    wh_json:get_ne_value([<<"contact">>, <<"billing">>, <<"email">>], JObj).
