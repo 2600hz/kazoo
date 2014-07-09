@@ -24,13 +24,84 @@
 
 -export([handle/2]).
 
--record(call_target, {id :: ne_binary()
-                      ,type :: ne_binary()
-                      ,no_match_flag :: boolean()
-                      ,number :: ne_binary()
-                     }).
--type call_target() :: #call_target{}.
+-record(state, {callflow :: wh_json:object()
+                ,is_no_match :: boolean()
+                ,id :: ne_binary()
+                ,type :: ne_binary()
+                ,number :: ne_binary()
+                ,channels :: wh_json:objects()
+               }).
+-type state() :: #state{}.
 
+-type maybe(X) :: 'Nothing' | {'Just', X}.
+
+-spec '>>='(maybe(A), fun((A) -> maybe(B))) -> maybe(B).
+'>>='('Nothing', _) ->
+    'Nothing';
+'>>='({'Just', X}, Fun) ->
+    Fun(X).
+
+-spec just(A) -> maybe(A).
+just(X) ->
+    {'Just', X}.
+
+-spec nothing() -> maybe(any()).
+nothing() ->
+    'Nothing'.
+
+init(Call) ->
+    whapps_call_command:answer(Call),
+    lager:info("Camping feature started"),
+    Number = whapps_call:kvs_fetch('cf_capture_group', Call),
+    CF = cf_util:lookup_callflow(Number, whapps_call:account_id(Call)),
+    case CF of
+        {'ok', Callflow, IsNoMatch} -> just(#state{callflow = Callflow
+                                                   ,is_no_match = IsNoMatch
+                                                  });
+        _ -> nothing()
+    end.
+
+-spec get_target(state()) -> maybe(state()).
+get_target(#state{callflow = Callflow} = S) ->
+    TargetId = wh_json:get_ne_value([<<"flow">>, <<"data">>, <<"id">>], Callflow),
+    TargetType = wh_json:get_ne_value([<<"flow">>, <<"module">>], Callflow),
+    case {TargetType, TargetId} of
+        % coz i can
+        {'undefined', _} -> nothing();
+        {_, 'undefined'} -> nothing();
+        {_, _} -> just(S#state{id = TargetId, type = TargetType})
+    end.
+
+-spec check_target_type(state()) -> maybe(state()).
+check_target_type(#state{type = TargetType} = S) ->
+    case lists:member(TargetType, [<<"offnet">>, <<"user">>, <<"device">>]) of
+        'true' -> just(S);
+        'false' -> nothing()
+    end.
+
+-spec get_channels(state(), whapps_call:call()) -> maybe(state()).
+get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
+    Usernames = case TargetType of
+                   <<"device">> -> cf_util:sip_users_from_device_ids([TargetId], Call);
+                   <<"user">> ->
+                       EPs = cf_util:find_user_endpoints([TargetId], [], Call),
+                       cf_util:sip_users_from_device_ids(EPs, Call);
+                   <<"offnet">> ->
+                       []
+               end,
+    just(cf_util:find_channels(Usernames, Call)).
+
+-spec send_request(state(), whapps_call:call()) -> maybe('ok').
+send_request(#state{channels = Channels} = S, Call) ->
+    case Channels of
+        [] -> no_channels(S, Call);
+        _ -> has_channels(S, Call)
+    end,
+    just('ok').
+
+-spec do(maybe(A), [fun((A) -> maybe(B))]) -> maybe(B).
+do(Monad, Actions) ->
+    lists:foldl(fun(Action, Acc) -> '>>='(Acc, Action) end, Monad, Actions).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -41,29 +112,15 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
-    whapps_call_command:answer(Call),
-    lager:info("Camping feature started"),
-    Number = whapps_call:kvs_fetch('cf_capture_group', Call),
-    {'ok', Callflow, IsNoMatch} = cf_util:lookup_callflow(Number, whapps_call:account_id(Call)),
-    TargetId = wh_json:get_ne_value([<<"flow">>, <<"data">>, <<"id">>], Callflow),
-    TargetType = wh_json:get_ne_value([<<"flow">>, <<"module">>], Callflow),
-    Usernames = case TargetType of
-                   <<"device">> -> cf_util:sip_users_from_device_ids([TargetId], Call);
-                   <<"user">> ->
-                       EPs = cf_util:find_user_endpoints([TargetId], [], Call),
-                       cf_util:sip_users_from_device_ids(EPs, Call);
-                   <<"offnet">> ->
-                       []
-               end,
-    Channels = cf_util:find_channels(Usernames, Call),
-    Target = #call_target{id = TargetId
-                          ,type = TargetType
-                          ,no_match_flag = IsNoMatch
-                          ,number = Number
-                         },
-    case Channels of
-        [] -> no_channels(Target, Call);
-        _ -> has_channels(Target, Call)
+    Ok = do(just(Call),[fun init/1
+                        ,fun get_target/1
+                        ,fun check_target_type/1
+                        ,fun (State) -> get_channels(State, Call) end
+                        ,fun (State) -> send_request(State, Call) end
+                        ]),
+    case Ok of
+        {'Just', 'ok'} -> whapps_call_command:b_prompt(<<"camper-queue">>, Call);
+        'Nothing' -> whapps_call_command:b_prompt(<<"camper-deny">>, Call)
     end.
 
 -spec get_sip_usernames_for_target(ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
@@ -83,23 +140,18 @@ get_device_sip_username(AccountDb, DeviceId) ->
     {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, DeviceId),
     wh_json:get_value([<<"sip">>, <<"username">>], JObj).
 
--spec no_channels(call_target(), whapps_call:call()) -> 'ok'.
-no_channels(#call_target{id = TargetId
-                         ,type = <<"device">>
-                         ,no_match_flag = 'false'
-                        }
+-spec no_channels(state(), whapps_call:call()) -> 'ok'.
+no_channels(#state{id = TargetId
+                   ,type = TargetType
+                   ,is_no_match = 'false'
+                  }
             ,Call) ->
-    Data = wh_json:from_list([{<<"id">>, TargetId}]),
-    cf_device:handle(Data, Call);
-no_channels(#call_target{id = TargetId
-                        ,type = <<"user">>
-                        ,no_match_flag = 'false'
-                        }
-            ,Call) ->
-    Data = wh_json:from_list([{<<"id">>, TargetId}]),
-    cf_user:handle(Data, Call);
-no_channels(#call_target{type = <<"offnet">>
-                        ,no_match_flag = 'true'
+    Flow = wh_json:from_list([{<<"module">>, TargetType}
+                              ,{<<"data">>, wh_json:from_list([{<<"id">>, TargetId}])}
+                             ]),
+    cf_exe:branch(Flow, Call);
+no_channels(#state{type = <<"offnet">>
+                        ,is_no_match = 'true'
                         ,number = Number
                         }
             ,Call) ->
@@ -109,14 +161,10 @@ no_channels(#call_target{type = <<"offnet">>
     JObj = wh_json:from_list([{<<"Delegate-Message">>, Msg}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
-    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>),
-    cf_exe:stop(Call);
-no_channels(_Target, Call) ->
-    lager:info("Unknown target: ~s", [_Target]),
-    cf_exe:stop(Call).
+    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>).
 
--spec has_channels(call_target(), whapps_call:call()) -> 'ok'.
-has_channels(#call_target{id = TargetId
+-spec has_channels(state(), whapps_call:call()) -> 'ok'.
+has_channels(#state{id = TargetId
                           ,type = TargetType
                           ,number = Number
                          }, Call) ->
@@ -130,5 +178,4 @@ has_channels(#call_target{id = TargetId
     JObj = wh_json:from_list([{<<"Delegate-Message">>, Msg}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
-    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"onnet">>),
-    cf_exe:stop(Call).
+    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"onnet">>).
