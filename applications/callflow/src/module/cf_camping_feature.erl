@@ -91,6 +91,14 @@ get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
                end,
     just(cf_util:find_channels(Usernames, Call)).
 
+-spec check_self(state(), whapps_call:call()) -> maybe(state()).
+check_self(State, Call) ->
+    case {whapps_call:authorizing_id(Call), whapps_call:authorizing_type(Call)} of
+        {'undefined', _} -> nothing();
+        {_, 'undefined'} -> nothing();
+        _ -> just(State)
+    end.
+
 -spec send_request(state(), whapps_call:call()) -> maybe('ok').
 send_request(#state{channels = Channels} = S, Call) ->
     case Channels of
@@ -115,6 +123,7 @@ handle(_Data, Call) ->
     Ok = do(just(Call),[fun init/1
                         ,fun get_target/1
                         ,fun check_target_type/1
+                        ,fun (State) -> check_self(State, Call) end
                         ,fun (State) -> get_channels(State, Call) end
                         ,fun (State) -> send_request(State, Call) end
                         ]),
