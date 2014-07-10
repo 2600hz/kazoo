@@ -130,7 +130,8 @@ handle(_Data, Call) ->
     case Ok of
         {'Just', 'ok'} -> whapps_call_command:b_prompt(<<"camper-queue">>, Call);
         'Nothing' -> whapps_call_command:b_prompt(<<"camper-deny">>, Call)
-    end.
+    end,
+    cf_exe:stop(Call).
 
 -spec get_sip_usernames_for_target(ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
 get_sip_usernames_for_target(TargetId, TargetType, Call) ->
