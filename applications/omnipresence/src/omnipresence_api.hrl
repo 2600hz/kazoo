@@ -16,6 +16,7 @@
 
 -define(PRESENCE_STATES, [<<"trying">>, <<"early">>
                           ,<<"confirmed">>, <<"terminated">>
+                          ,<<"online">>, <<"offline">>
                          ]).
 
 -define(UPDATE_HEADERS, [<<"To">>, <<"From">>]).

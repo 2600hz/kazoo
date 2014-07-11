@@ -92,6 +92,7 @@
                                       ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
                                       ,<<"Callee-ID-Number">>, <<"Callee-ID-Name">>
                                       ,<<"Custom-SIP-Headers">>, <<"Fax-Info">>
+                                      ,<<"From-Tag">>, <<"To-Tag">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}

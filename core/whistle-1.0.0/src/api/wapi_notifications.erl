@@ -218,7 +218,8 @@
 -define(PRESENCE_PROBE_TYPES, []).
 
 %% Notify Presence Update
--define(PRESENCE_UPDATE_STATES, [<<"early">>, <<"confirmed">>, <<"terminated">>]).
+-define(PRESENCE_UPDATE_STATES, [<<"early">>, <<"confirmed">>, <<"terminated">>
+                                 ,<<"online">>, <<"offline">>]).
 
 -define(PRESENCE_UPDATE_HEADERS, [<<"Presence-ID">>]).
 -define(OPTIONAL_PRESENCE_UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>

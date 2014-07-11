@@ -45,6 +45,7 @@
 -define(EXPIRE_MESSAGE, 'clear_expired').
 -define(BLF_EVENT, <<"dialog">>).
 -define(MWI_EVENT, <<"message-summary">>).
+-define(PRESENCE_EVENT, <<"presence">>).
 -define(DEFAULT_EVENT, ?BLF_EVENT).
 
 -record(state, {
@@ -252,9 +253,10 @@ handle_cast({'subscribe', #omnip_subscription{user=_U
                                   }=O} ->
             lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
                         ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
+            maybe_resubscribe_update(S),
             ets:delete_object(table_id(), O);
         {'error', 'not_found'} ->
-            maybe_update_mwi(S),
+            maybe_initial_update(S),
             lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1])
     end,
     ets:insert(table_id(), S),
@@ -314,8 +316,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_update_mwi(subscription()) -> 'ok'.
-maybe_update_mwi(#omnip_subscription{event = <<"message-summary">>
+-spec maybe_initial_update(subscription()) -> 'ok'.
+maybe_initial_update(#omnip_subscription{event = <<"message-summary">>
                                      ,username=Username
                                      ,realm=Realm
                                      ,call_id=CallId}) ->
@@ -329,7 +331,64 @@ maybe_update_mwi(#omnip_subscription{event = <<"message-summary">>
     wh_amqp_worker:cast(Query
                         ,fun wapi_notifications:publish_mwi_query/1
                        );
-maybe_update_mwi(_) -> 'ok'.
+maybe_initial_update(#omnip_subscription{event = <<"presence">>
+                                     ,username=Username
+                                     ,realm=Realm
+                                     ,call_id=CallId}) ->
+    lager:debug("publishing presence probe for ~s@~s", [Username, Realm]),
+    URI = <<Username/binary, "@", Realm/binary>>,
+    Query = [{<<"From-User">>, Username}
+             ,{<<"From-Realm">>, Realm}
+             ,{<<"To-User">>, Username}
+             ,{<<"To-Realm">>, Realm}
+             ,{<<"From">>, URI}
+             ,{<<"To">>, URI}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Subscription">>, <<"presence">>}
+             ,{<<"Switch-Nodename">>, node()}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wh_amqp_worker:cast(Query
+                        ,fun wapi_notifications:publish_presence_probe/1
+                       );
+maybe_initial_update(_) -> 'ok'.
+
+-spec maybe_resubscribe_update(subscription()) -> 'ok'.
+maybe_resubscribe_update(#omnip_subscription{event = <<"message-summary">>
+                                     ,username=Username
+                                     ,realm=Realm
+                                     ,call_id=CallId}) ->
+    lager:debug("publishing message query for ~s@~s", [Username, Realm]),
+    Query = [{<<"Username">>, Username}
+             ,{<<"Realm">>, Realm}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Subscription-Call-ID">>, CallId}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wh_amqp_worker:cast(Query
+                        ,fun wapi_notifications:publish_mwi_query/1
+                       );
+maybe_resubscribe_update(#omnip_subscription{event = <<"presence">>
+                                     ,username=Username
+                                     ,realm=Realm
+                                     ,call_id=CallId}) ->
+    lager:debug("publishing presence probe for ~s@~s", [Username, Realm]),
+    URI = <<Username/binary, "@", Realm/binary>>,
+    Query = [{<<"From-User">>, Username}
+             ,{<<"From-Realm">>, Realm}
+             ,{<<"To-User">>, Username}
+             ,{<<"To-Realm">>, Realm}
+             ,{<<"From">>, URI}
+             ,{<<"To">>, URI}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Subscription">>, <<"presence">>}
+             ,{<<"Switch-Nodename">>, node()}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wh_amqp_worker:cast(Query
+                        ,fun wapi_notifications:publish_presence_probe/1
+                       );
+maybe_resubscribe_update(_) -> 'ok'.
 
 -spec start_expire_ref() -> reference().
 start_expire_ref() ->
@@ -489,6 +548,8 @@ maybe_send_update(JObj, State) ->
                        [{<<"To">>, To}
                         ,{<<"State">>, State}
                         ,{<<"Direction">>, Direction}
+                        ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                        ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
                         ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                         ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -498,21 +559,28 @@ maybe_send_update(JObj, State) ->
                          [{<<"From">>, From}
                           ,{<<"State">>, State}
                           ,{<<"Direction">>, Direction}
+                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
                           ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                           ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                          ])}
             end,
-    case find_subscriptions(User) of
+    send_updates([?BLF_EVENT, ?PRESENCE_EVENT], User, Props, Direction).
+
+-spec send_updates(list(), ne_binary(), wh_proplist(), ne_binary()) -> 'ok'.
+send_updates([], User, Props, Direction) -> 'ok';
+send_updates([Event|Events], User, Props, Direction) ->
+    case find_subscriptions(Event, User) of
         {'ok', Subs} ->
             [send_update(Props, Direction, S)
              || S <- Subs
             ];
         {'error', 'not_found'} ->
-            lager:debug("no subscriptions for ~s (state ~s)"
-                        ,[User, State]
-                       )
-    end.
+            lager:debug("no ~s subscriptions for ~s",[Event, User])
+    end,
+    send_updates(Events, User, Props, Direction).
+    
 
 -spec send_update(wh_proplist(), ne_binary(), subscription()) -> 'ok'.
 send_update(Props, <<"inbound">>, #omnip_subscription{user=User}=Subscription) ->
@@ -529,14 +597,14 @@ send_update(Props, #omnip_subscription{stalker=Q
     To = props:get_value(<<"To">>, Props),
     From = props:get_value(<<"From">>, Props, F),
     State = props:get_value(<<"State">>, Props),
-    lager:debug("sending update ~s/~s ~s to '~s'", [To, From, State, Q]),
-    whapps_util:amqp_pool_send([{<<"To">>, <<Protocol/binary, ":", To/binary>>}
-                                ,{<<"From">>, <<Protocol/binary, ":", From/binary>>}
-                                ,{<<"Event-Package">>, Event}
-                                | props:delete_keys([<<"To">>, <<"From">>], Props)
-                               ]
-                               ,fun(P) -> wapi_presence:publish_update(Q, P) end
-                              ).
+    lager:debug("sending ~s update ~s/~s ~s to '~s'", [Event, To, From, State, Q]),
+    Payload = props:filter_undefined(
+                [{<<"To">>, <<Protocol/binary, ":", To/binary>>}
+                 ,{<<"From">>, <<Protocol/binary, ":", From/binary>>}
+                 ,{<<"Event-Package">>, Event}
+                 | props:delete_keys([<<"To">>, <<"From">>], Props)
+                ]),
+    whapps_util:amqp_pool_send(Payload, fun(P) -> wapi_presence:publish_update(Q, P) end).
 
 -spec subscribe_to_record(wh_json:object()) -> subscription().
 subscribe_to_record(JObj) ->
