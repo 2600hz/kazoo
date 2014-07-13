@@ -47,6 +47,7 @@
 -define(MWI_EVENT, <<"message-summary">>).
 -define(PRESENCE_EVENT, <<"presence">>).
 -define(DEFAULT_EVENT, ?BLF_EVENT).
+-define(DEFAULT_SEND_EVENT_LIST, [?BLF_EVENT, ?PRESENCE_EVENT]).
 
 -record(state, {
           expire_ref :: reference()
@@ -132,7 +133,7 @@ handle_mwi_update(JObj, _Props) ->
 -spec handle_presence_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_presence_update(JObj, _Props) ->
     'true' = wapi_notifications:presence_update_v(JObj),
-    maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj)).
+    maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj),[?PRESENCE_EVENT]).
 
 -spec handle_channel_event(ne_binary(), wh_json:object()) -> 'ok'.
 handle_channel_event(<<"CHANNEL_CREATE">>, JObj) -> handle_new_channel(JObj);
@@ -538,6 +539,10 @@ send_mwi_update(Update, #omnip_subscription{stalker=S
 
 -spec maybe_send_update(wh_json:object(), ne_binary()) -> any().
 maybe_send_update(JObj, State) ->
+    maybe_send_update(JObj, State, ?DEFAULT_SEND_EVENT_LIST).
+
+-spec maybe_send_update(wh_json:object(), ne_binary(), ne_binaries()) -> any().
+maybe_send_update(JObj, State, Events) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_value(<<"From">>, JObj),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
@@ -548,8 +553,6 @@ maybe_send_update(JObj, State) ->
                        [{<<"To">>, To}
                         ,{<<"State">>, State}
                         ,{<<"Direction">>, Direction}
-                        ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
-                        ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
                         ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                         ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -559,14 +562,12 @@ maybe_send_update(JObj, State) ->
                          [{<<"From">>, From}
                           ,{<<"State">>, State}
                           ,{<<"Direction">>, Direction}
-                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
-                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
                           ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                           ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                          ])}
             end,
-    send_updates([?BLF_EVENT, ?PRESENCE_EVENT], User, Props, Direction).
+    send_updates(Events, User, Props, Direction).
 
 -spec send_updates(list(), ne_binary(), wh_proplist(), ne_binary()) -> 'ok'.
 send_updates([], User, Props, Direction) -> 'ok';
@@ -580,13 +581,13 @@ send_updates([Event|Events], User, Props, Direction) ->
             lager:debug("no ~s subscriptions for ~s",[Event, User])
     end,
     send_updates(Events, User, Props, Direction).
-    
+
 
 -spec send_update(wh_proplist(), ne_binary(), subscription()) -> 'ok'.
 send_update(Props, <<"inbound">>, #omnip_subscription{user=User}=Subscription) ->
-    send_update([{<<"From">>, User}|Props], Subscription);
+    send_update([{<<"From">>, User} | Props], Subscription);
 send_update(Props, _, #omnip_subscription{user=User}=Subscription) ->
-    send_update([{<<"To">>, User}|Props], Subscription).
+    send_update([{<<"To">>, User} | Props], Subscription).
 
 -spec send_update(wh_proplist(), subscription()) -> 'ok'.
 send_update(Props, #omnip_subscription{stalker=Q
