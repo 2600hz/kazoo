@@ -478,20 +478,21 @@ resource_exists(Req, Context, _Nouns) ->
 
 -spec does_request_validate(cowboy_req:req(), cb_context:context()) ->
                                    {boolean(), cowboy_req:req(), cb_context:context()}.
-does_request_validate(Req, Context) ->
+does_request_validate(Req, Context0) ->
     lager:debug("requested resource exists, validating it"),
-    Context1 = api_util:validate(Context),
-    Verb = cb_context:req_verb(Context1),
-    case api_util:succeeded(Context1) of
+    Context1 = cb_context:store(Context0, 'req', Req),
+    Context2 = api_util:validate(Context1),
+    Verb = cb_context:req_verb(Context2),
+    case api_util:succeeded(Context2) of
         'true' when Verb =/= ?HTTP_PUT ->
             lager:debug("requested resource update validated"),
-            {'true', Req, Context1};
+            {'true', Req, Context2};
         'true' ->
             lager:debug("requested resource creation validated"),
-            {'false', Req, Context1};
+            {'false', Req, Context2};
         'false' ->
             lager:debug("failed to validate resource"),
-            api_util:halt(Req, Context1)
+            api_util:halt(Req, Context2)
     end.
 
 -spec moved_temporarily(cowboy_req:req(), cb_context:context()) ->
@@ -620,16 +621,25 @@ from_form(Req0, Context0) ->
 
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
                      {iolist() | ne_binary() | 'halt', cowboy_req:req(), cb_context:context()}.
-to_json(Req, Context) ->
+to_json(Req0, Context0) ->
     lager:debug("run: to_json"),
-    case is_csv_request(Context) of
-        'true' ->
-            lager:debug("overriding JSON, sending as CSV"),
-            to_csv(Req, Context);
+    [{Mod, _Params}|_] = cb_context:req_nouns(Context0),
+    Verb = cb_context:req_verb(Context0),
+    Event = api_util:create_event_name(Context0, [<<"to_json">>
+                                        ,wh_util:to_lower_binary(Verb)
+                                        ,Mod
+                                       ]),
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+    case cowboy_req:has_resp_header(<<"is_chunked">>, Req1) of
+        'true' -> {<<>>, Req1, Context1};
         'false' ->
-            Event = api_util:create_event_name(Context, <<"to_json">>),
-            _ = crossbar_bindings:map(Event, {Req, Context}),
-            api_util:create_pull_response(Req, Context)
+            case is_csv_request(Context1) of
+                'true' ->
+                    lager:debug("overriding JSON, sending as CSV"),
+                    to_csv(Req1, Context1);
+                'false' ->
+                    api_util:create_pull_response(Req1, Context1)
+            end
     end.
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
