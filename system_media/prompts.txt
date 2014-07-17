@@ -87,3 +87,6 @@ dnd-deactivated: Do not disturb is now disabled.  Receiving calls, including
 call forwarding, has resumed.
 dnd-not_available: Do not disturb is not supported from this phone.  Please
 contact your system administrator if you believe this is in error.
+
+pickup_any_group-no_channels: No channels to pickup
+
