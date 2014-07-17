@@ -12,7 +12,7 @@
 %%%   Karl Anderson
 %%%   Ben Wann
 %%%-------------------------------------------------------------------
--module(cb_cdrs_v2).
+-module(cb_cdrs).
 
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
@@ -27,28 +27,33 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
 -define(MAX_BULK, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
 
--define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner_v2">>).
--define(CB_LIST, <<"cdrs/crossbar_listing_v2">>).
+-define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
+-define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.cdrs">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.content_types_provided.cdrs">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v2_resource.to_json.get.cdrs">>, ?MODULE, 'to_json'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.cdrs">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.cdrs">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.cdrs">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.cdrs">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.to_json.get.cdrs">>, ?MODULE, 'to_json'),
+    _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, 'validate').
 
 
 to_json({Req1, Context}) ->
-    Headers = cowboy_req:get('resp_headers', Req1),
-    {'ok', Req2} = cowboy_req:chunked_reply(200, Headers, Req1),
-    'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req2),
-    {Req3, _} = send_chunked_cdrs({Req2, Context}),
-    'ok' = cowboy_req:chunk("]}", Req3),
-    'ok' = cowboy_req:ensure_response(Req3, 200),
-    {Req3, cb_context:store(Context, 'is_chunked', 'true')}.
+    Nouns = cb_context:req_nouns(Context),
+    case props:get_value(<<"cdrs">>, Nouns, []) of
+        [_|_] -> {Req1, Context};
+        [] ->
+            Headers = cowboy_req:get('resp_headers', Req1),
+            {'ok', Req2} = cowboy_req:chunked_reply(200, Headers, Req1),
+            'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req2),
+            {Req3, _} = send_chunked_cdrs({Req2, Context}),
+            'ok' = cowboy_req:chunk("]}", Req3),
+            'ok' = cowboy_req:ensure_response(Req3, 200),
+            {Req3, cb_context:store(Context, 'is_chunked', 'true')}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -278,12 +283,25 @@ send_chunked_cdrs([Db | Dbs], {_, Context}=Payload) ->
 -spec get_cdr_ids(ne_binary(), ne_binary(), wh_proplist()) ->
                                 {'ok', ne_binaries()} | {'error', _}.
 get_cdr_ids(Db, View, ViewOptions) ->
+    _ = maybe_add_design_doc(Db),
     case couch_mgr:get_results(Db, View, ViewOptions) of
         {'error', _R} = E -> E;
         {'ok', JObjs} ->
             {'ok', [wh_json:get_value(<<"id">>, JObj)
                     || JObj <- JObjs
                     ]}
+    end.
+
+-spec maybe_add_design_doc(ne_binary()) -> 'ok' | {'error', 'not_found'}.
+maybe_add_design_doc(Db) ->
+    case couch_mgr:lookup_doc_rev(Db, <<"_design/cdrs">>) of
+        {'error', 'not_found'} ->
+            lager:warning("adding cdr views to Db ~s", [Db]),
+            couch_mgr:revise_doc_from_file(Db
+                                           ,'crossbar'
+                                           ,<<"account/cdrs.json">>
+                                          );
+        {'ok', _ } -> 'ok'
     end.
 
 -spec load_chunked_cdrs(ne_binary(), ne_binaries(), payload()) -> payload().
@@ -322,7 +340,6 @@ normalize_and_send([JObj|JObjs], {Req, Context}) ->
 -spec normalize_cdr(wh_json:object(), cb_context:context()) -> wh_json:object().
 normalize_cdr(JObj, Context) ->
     Timestamp = wh_json:get_value(<<"timestamp">>, JObj, 0),
-    io:format("cb_cdrs_v2.erl:MARKER:325 ~p~n", [JObj]),
     maybe_reseller_cdr(
         wh_json:from_list([
             {<<"id">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}
