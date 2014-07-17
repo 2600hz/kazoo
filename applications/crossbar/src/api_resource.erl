@@ -630,9 +630,9 @@ to_json(Req0, Context0) ->
                                         ,Mod
                                        ]),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-    case cowboy_req:has_resp_header(<<"is_chunked">>, Req1) of
-        'true' -> {<<>>, Req1, Context1};
-        'false' ->
+    case cb_context:fetch(Context1, 'is_chunked') of
+        'true' -> {'halt', Req1, Context1};
+        _ ->
             case is_csv_request(Context1) of
                 'true' ->
                     lager:debug("overriding JSON, sending as CSV"),

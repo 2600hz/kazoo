@@ -106,7 +106,7 @@
           ,req_data :: wh_json:json_term()  % the "data" from the request JSON envelope
           ,query_json = wh_json:new() :: wh_json:object()
           ,account_id :: api_binary()
-          ,db_name :: api_binary()
+          ,db_name :: api_binary() | ne_binaries()
           ,doc :: api_object() | wh_json:objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
           ,resp_etag :: 'automatic' | string() | api_binary()

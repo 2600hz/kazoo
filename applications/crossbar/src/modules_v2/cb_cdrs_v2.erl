@@ -41,9 +41,14 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.validate.cdrs">>, ?MODULE, 'validate').
 
 
-to_json({Req, Context}) ->
-    Req1 = cowboy_req:set_resp_header(<<"is_chunked">>, 'true', Req),
-    {Req1, Context}.
+to_json({Req1, Context}) ->
+    Headers = cowboy_req:get('resp_headers', Req1),
+    {'ok', Req2} = cowboy_req:chunked_reply(200, Headers, Req1),
+    'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req2),
+    {Req3, _} = send_chunked_cdrs({Req2, Context}),
+    'ok' = cowboy_req:chunk("]}", Req3),
+    'ok' = cowboy_req:ensure_response(Req3, 200),
+    {Req3, cb_context:store(Context, 'is_chunked', 'true')}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -148,9 +153,8 @@ create_view_options(OwnerId, Context) ->
     TStamp =  wh_util:current_tstamp(),
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
     CreatedFrom = created_from(Context, TStamp, MaxRange),
-    CreatedTo = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)),
-    Diff = CreatedTo - CreatedFrom,
-    case Diff of
+    CreatedTo = created_to(Context, CreatedFrom, MaxRange),
+    case CreatedTo - CreatedFrom of
         N when N < 0 ->
             Message = <<"created_from is prior to created_to">>,
             cb_context:add_validation_error(<<"created_from">>
@@ -178,11 +182,10 @@ create_view_options(OwnerId, Context) ->
                    ]}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
+-spec created_to(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
+created_to(Context, CreatedFrom, MaxRange) ->
+    wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)).
+
 -spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
 created_from(Context, TStamp, MaxRange) ->
     created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
@@ -203,151 +206,203 @@ created_from(_Context, _TStamp, _MaxRange, StartKey) ->
 -spec load_view(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
 load_view(View, ViewOptions, Context) ->
     AccountId = cb_context:account_id(Context),
-    From = view_key_created_from(ViewOptions),
-    To = view_key_created_to(ViewOptions),
+    ToMODb = view_created_to_modb(AccountId, ViewOptions),
+    FromMODb = view_created_from_modb(AccountId, ViewOptions),
+    load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context).
 
-    Context1 = chunk('start', Context, 'ok'),
+-spec load_chunked_db(ne_binary(), wh_proplist(), ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+load_chunked_db(View, ViewOptions, Db, Db, Context) ->
+    C = cb_context:set_account_db(Context, [Db]),
+    load_chunked_view_options(View, ViewOptions, C);
+load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context) ->
+    C = cb_context:set_account_db(Context, [ToMODb, FromMODb]),
+    load_chunked_view_options(View, ViewOptions, C).
 
-    case {kazoo_modb:get_modb(AccountId, From)
-          ,kazoo_modb:get_modb(AccountId, To)}
-    of
-        {Db, Db} ->
-            fetch_cdrs(View, ViewOptions, Context1, [Db]);
-        {DbFrom, DbTo} ->
-            fetch_cdrs(View, ViewOptions, Context1, [DbFrom, DbTo])
-    end.
+-spec load_chunked_view_options(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
+load_chunked_view_options(View, ViewOptions, Context) ->
+    C = cb_context:store(Context, 'chunked_view_options', ViewOptions),
+    load_chunked_view(View, C).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_cdrs(ne_binary(), wh_proplist(), cb_context:context(), ne_binaries()) ->
-                        cb_context:context().
-fetch_cdrs(_, _, Context, []) ->
-    Context1 = chunk('end', Context, 'ok'),
-    cb_context:set_resp_status(Context1, 'success');
-fetch_cdrs(View, ViewOptions, Context, [Db|Dbs]) ->
-    case couch_mgr:get_results(Db, View, ViewOptions) of
-        {'ok', JObjs} ->
-            Ids = [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs],
-            _ = chunk_cdrs(Db, Context, Ids),
-            fetch_cdrs(View, ViewOptions, Context, Dbs);
-        {'error', _E} ->
-            fetch_cdrs(View, ViewOptions, Context, Dbs)
-    end.
+-spec load_chunked_view(ne_binary(), cb_context:context()) -> cb_context:context().
+load_chunked_view(View, Context) ->
+    C = cb_context:store(Context, 'chunked_view', View),
+    cb_context:set_resp_status(C, 'success').
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-chunk_cdrs(_, _, []) -> 'ok';
-chunk_cdrs(Db, Context, Ids) ->
-    Split = case erlang:length(Ids) < ?MAX_BULK of
-                'true' -> erlang:length(Ids);
-                'false' -> ?MAX_BULK
-            end,
-    {BulkIds, Remaining} = lists:split(Split, Ids),
-    ViewOptions = [{'keys', BulkIds}
-                   ,'include_docs'
-                  ],
-    case couch_mgr:all_docs(Db, ViewOptions) of
-        {'ok', JObjs} ->
-            normalize_and_send(JObjs, Context),
-            case erlang:length(Ids) < ?MAX_BULK of
-                'true' -> 'ok';
-                'false' -> chunk('comma', Context, 'ok')
-            end,
-            chunk_cdrs(Db, Context, Remaining);
-        {'error', _E} ->
-            chunk_cdrs(Db, Context, Remaining)
-    end.
+-spec view_created_to_modb(ne_binary(), wh_proplist()) -> ne_binary().
+view_created_to_modb(AccountId, ViewOptions) ->
+    kazoo_modb:get_modb(AccountId, view_key_created_to(ViewOptions)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-normalize_and_send([], _) -> 'ok';
-normalize_and_send([JObj|[]], Context) ->
-    Doc = wh_json:get_value(<<"doc">>, JObj),
-    CDRJObj = normalize_cdr(Doc),
-    _ = chunk('data', Context, CDRJObj),
-    normalize_and_send([], Context);
-normalize_and_send([JObj|JObjs], Context) ->
-    Doc = wh_json:get_value(<<"doc">>, JObj),
-    CDRJObj = normalize_cdr(Doc),
-    _ = chunk('data', Context, CDRJObj),
-    _ = chunk('comma', Context, 'ok'),
-    normalize_and_send(JObjs, Context).
-
-normalize_cdr(JObj) ->
-    Timestamp = wh_json:get_value(<<"timestamp">>, JObj, 0),
-    wh_json:from_list([
-        {<<"datetime">>, wh_util:pretty_print_datetime(Timestamp)}
-        ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, JObj, <<>>)}
-        ,{<<"to_number">>, wh_json:get_value(<<"callee_id_number">>, JObj, <<>>)}
-        ,{<<"caller_id">>, wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)}
-        ,{<<"caller_id">>, wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)}
-        ,{<<"billing_seconds">>, wh_json:get_value(<<"billing_seconds">>, JObj, <<>>)}
-        ,{<<"customer_cost">>, wht_util:call_cost(JObj)}
-        ,{<<"gregorian_timestamp">>, Timestamp}
-        ,{<<"unix_timestamp">>, wh_util:gregorian_seconds_to_unix_seconds(Timestamp)}
-    ]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-chunk('start', Context, _) ->
-    Req0 = cb_context:fetch(Context, 'req'),
-    Headers = cowboy_req:get('resp_headers', Req0),
-    {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req0),
-    Context1 = cb_context:store(Context, 'req', Req1),
-    'ok' = cowboy_req:chunk("{\"status\":\"success\", \"data\":[", Req1),
-    Context1;
-chunk('data', Context, Data) ->
-    Req = cb_context:fetch(Context, 'req'),
-    'ok' = cowboy_req:chunk(
-                binary:bin_to_list(
-                    wh_json:encode(Data)
-                ), Req),
-    Context;
-chunk('comma', Context, _) ->
-    Req = cb_context:fetch(Context, 'req'),
-    'ok' = cowboy_req:chunk(",", Req),
-    Context;
-chunk('end', Context, _) ->
-    Req = cb_context:fetch(Context, 'req'),
-    'ok' = cowboy_req:chunk("]}", Req),
-    'ok' = cowboy_req:ensure_response(Req, 200),
-    Context.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec view_key_created_to(wh_proplist()) -> pos_integer().
-view_key_created_to(Props) ->
-    case props:get_value('endkey', Props) of
+view_key_created_to(ViewOptions) ->
+    case props:get_value('endkey', ViewOptions) of
         [_, CreatedTo] -> CreatedTo;
         CreatedTo -> CreatedTo
     end.
 
+-spec view_created_from_modb(ne_binary(), wh_proplist()) -> ne_binary().
+view_created_from_modb(AccountId, ViewOptions) ->
+    kazoo_modb:get_modb(AccountId, view_key_created_from(ViewOptions)).
+
+-spec view_key_created_from(wh_proplist()) -> pos_integer().
+view_key_created_from(ViewOptions) ->
+    case props:get_value('startkey', ViewOptions) of
+        [_, CreatedFrom] -> CreatedFrom;
+        CreatedFrom -> CreatedFrom
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec view_key_created_from(wh_proplist()) -> pos_integer().
-view_key_created_from(Props) ->
-    case props:get_value('startkey', Props) of
-        [_, CreatedFrom] -> CreatedFrom;
-        CreatedFrom -> CreatedFrom
+-type payload() :: {_, cb_context:context()}.
+
+-spec send_chunked_cdrs(payload()) -> payload().
+send_chunked_cdrs({Req, Context}) ->
+    Db = cb_context:account_db(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    IsReseller = wh_services:is_reseller(AuthAccountId),
+    send_chunked_cdrs(Db, {Req, cb_context:store(Context, 'is_reseller', IsReseller)}).
+
+-spec send_chunked_cdrs(ne_binaries(), payload()) -> payload().
+send_chunked_cdrs([], Payload) -> Payload;
+send_chunked_cdrs([Db | Dbs], {_, Context}=Payload) ->
+    View = cb_context:fetch(Context, 'chunked_view'),
+    ViewOptions = cb_context:fetch(Context, 'chunked_view_options'),
+    P = case get_cdr_ids(Db, View, ViewOptions) of
+            {'ok', Ids} -> load_chunked_cdrs(Db, Ids, Payload);
+            {'error', _} -> Payload
+        end,
+    send_chunked_cdrs(Dbs, P).
+
+-spec get_cdr_ids(ne_binary(), ne_binary(), wh_proplist()) ->
+                                {'ok', ne_binaries()} | {'error', _}.
+get_cdr_ids(Db, View, ViewOptions) ->
+    case couch_mgr:get_results(Db, View, ViewOptions) of
+        {'error', _R} = E -> E;
+        {'ok', JObjs} ->
+            {'ok', [wh_json:get_value(<<"id">>, JObj)
+                    || JObj <- JObjs
+                    ]}
     end.
+
+-spec load_chunked_cdrs(ne_binary(), ne_binaries(), payload()) -> payload().
+load_chunked_cdrs(_, [], Payload) -> Payload;
+load_chunked_cdrs(Db, Ids, Payload) ->
+    {BulkIds, Remaining} =
+        case erlang:length(Ids) < ?MAX_BULK of
+            'true' -> {Ids, []};
+            'false' -> lists:split(?MAX_BULK, Ids)
+        end,
+   ViewOptions = [{'keys', BulkIds}
+                  ,'include_docs'
+                 ],
+    case couch_mgr:all_docs(Db, ViewOptions) of
+        {'ok', Results} ->
+            JObjs = [wh_json:get_value(<<"doc">>, Result)
+                     || Result <- Results
+                    ],
+            P = normalize_and_send(JObjs, Payload),
+            load_chunked_cdrs(Db, Remaining, P);
+        {'error', _E} ->
+            load_chunked_cdrs(Db, Remaining, Payload)
+    end.
+
+-spec normalize_and_send(wh_json:objects(), payload()) -> payload().
+normalize_and_send([], Payload) -> Payload;
+normalize_and_send([JObj|JObjs], {Req, Context}) ->
+    CDR = normalize_cdr(JObj, Context),
+    JSON = case cb_context:fetch(Context, 'started_chunk') of
+               'undefined' -> wh_json:encode(CDR);
+                _Else -> <<",", (wh_json:encode(CDR))/binary>>
+            end,
+    'ok' = cowboy_req:chunk(JSON, Req),
+    normalize_and_send(JObjs, {Req, cb_context:store(Context, 'started_chunk', 'true')}).
+
+-spec normalize_cdr(wh_json:object(), cb_context:context()) -> wh_json:object().
+normalize_cdr(JObj, Context) ->
+    Timestamp = wh_json:get_value(<<"timestamp">>, JObj, 0),
+    io:format("cb_cdrs_v2.erl:MARKER:325 ~p~n", [JObj]),
+    maybe_reseller_cdr(
+        wh_json:from_list([
+            {<<"id">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}
+            ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, JObj, <<>>)}
+            ,{<<"caller_id_number">>, wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)}
+            ,{<<"caller_id_name">>, wh_json:get_value(<<"caller_id_name">>, JObj, <<>>)}
+            ,{<<"callee_id_number">>, wh_json:get_value(<<"callee_id_number">>, JObj, <<>>)}
+            ,{<<"callee_id_name">>, wh_json:get_value(<<"callee_id_name">>, JObj, <<>>)}
+            ,{<<"duration_seconds">>, wh_json:get_value(<<"duration_seconds">>, JObj, <<>>)}
+            ,{<<"billing_seconds">>, wh_json:get_value(<<"billing_seconds">>, JObj, <<>>)}
+            ,{<<"timestamp">>, Timestamp}
+            ,{<<"hangup_cause">>, wh_json:get_value(<<"hangup_cause">>, JObj, <<>>)}
+            ,{<<"other_leg_call_id">>, wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>)}
+            ,{<<"owner_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>)}
+            ,{<<"to">>, wh_json:get_value(<<"to">>, JObj, <<>>)}
+            ,{<<"from">>, wh_json:get_value(<<"from">>, JObj, <<>>)}
+            ,{<<"direction">>, wh_json:get_value(<<"call_direction">>, JObj, <<>>)}
+            ,{<<"request">>, wh_json:get_value(<<"request">>, JObj, <<>>)}
+            ,{<<"authorizing_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)}
+            ,{<<"cost">>, customer_cost(JObj)}
+            % New fields
+            ,{<<"dialed_number">>, dialed_number(JObj)}
+            ,{<<"calling_from">>, calling_from(JObj)}
+            ,{<<"datetime">>, wh_util:pretty_print_datetime(Timestamp)}
+            ,{<<"unix_timestamp">>, wh_util:gregorian_seconds_to_unix_seconds(Timestamp)}
+            ,{<<"call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)}
+            ,{<<"rate">>, wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))}
+            ,{<<"rate_name">>, wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)}
+        ])
+        ,Context
+    ).
+
+-spec dialed_number(wh_json:object()) -> binary().
+dialed_number(JObj) ->
+    case wh_json:get_value(<<"call_direction">>, JObj) of
+        <<"inbound">> ->
+            [Num|_] = binary:split(wh_json:get_value(<<"request">>, JObj, <<>>), <<"@">>),
+            Num;
+        <<"outbound">> ->
+            [Num|_] = binary:split(wh_json:get_value(<<"to">>, JObj, <<>>), <<"@">>),
+            Num
+    end.
+
+-spec calling_from(wh_json:object()) -> binary().
+calling_from(JObj) ->
+    case wh_json:get_value(<<"call_direction">>, JObj) of
+        <<"inbound">> ->wh_json:get_value(<<"caller_id_number">>, JObj, <<>>);
+        <<"outbound">> ->
+            [Num|_] = binary:split(wh_json:get_value(<<"from_uri">>, JObj, <<>>), <<"@">>),
+            Num
+    end.
+
+-spec maybe_reseller_cdr(wh_json:object(), cb_context:context()) -> wh_json:object().
+maybe_reseller_cdr(JObj, Context) ->
+    case cb_context:fetch(Context, 'is_reseller') of
+        'false' -> JObj;
+        'true' -> reseller_cdr(JObj)
+    end.
+
+-spec reseller_cdr(wh_json:object()) -> wh_json:object().
+reseller_cdr(JObj) ->
+    wh_json:set_values([
+        {<<"reseller_cost">>, reseller_cost(JObj)}
+        ,{<<"reseller_call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>)}
+    ], JObj).
+
+-spec customer_cost(wh_json:object()) -> pos_integer().
+customer_cost(JObj) ->
+    case wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj) of
+        <<"per_minute">> -> wht_util:call_cost(JObj);
+        _ -> 0
+    end.
+
+-spec reseller_cost(wh_json:object()) -> pos_integer().
+reseller_cost(JObj) ->
+    case wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj) of
+        <<"per_minute">> -> wht_util:call_cost(JObj);
+        _ -> 0
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
