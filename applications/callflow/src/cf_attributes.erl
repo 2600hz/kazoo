@@ -13,6 +13,7 @@
 -export([valid_emergency_numbers/1]).
 -export([temporal_rules/1]).
 -export([groups/1, groups/2]).
+-export([group_membership/1, group_membership/2]).
 -export([caller_id/2]).
 -export([callee_id/2]).
 -export([moh_attributes/2, moh_attributes/3]).
@@ -52,6 +53,25 @@ groups(Call, ViewOptions) ->
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/groups">>, ViewOptions) of
         {'ok', JObjs} -> JObjs;
         {'error', _} -> []
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec group_membership(whapps_call:call()) -> wh_json:objects().
+-spec group_membership(whapps_call:call(), ne_binary()) -> wh_json:objects().
+group_membership(Call) ->
+    group_membership(Call, whapps_call:authorizing_id(Call)).
+group_membership(Call, EndpointId) ->
+    ViewOptions = [{'key', EndpointId}],
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/group_members">>, ViewOptions) of
+        {'ok', JObjs} -> JObjs;
+        {'error', _} = _Err ->
+            lager:info("Can't explore group membership: ~p", [_Err]),
+            []
     end.
 
 %%-----------------------------------------------------------------------------

@@ -32,6 +32,9 @@
        },
        "groups": {
 		   "map": "function (doc) {if (doc.pvt_type != 'group' || doc.pvt_deleted || !doc.endpoints) return;emit(null, doc.endpoints);}"
+       },
+       "group_members" : {
+		   "map": "function (doc) {if (doc.pvt_type != 'group' || doc.pvt_deleted || !doc.endpoints) return; var EPs = doc.endpoints; for(var id in EPs) {if (EPs[id].type == 'device' || EPs[id].type == 'user' || EPs[id].type == 'group') emit(id, {'id' : doc.id, 'name' : doc.name})};}"
        }
    }
 }
