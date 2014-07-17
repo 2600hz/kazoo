@@ -108,17 +108,18 @@ connected() -> gen_server:call(?MODULE, 'connected_nodes').
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary(), ne_binary()) -> 'ok'.
-flush() ->
-    [freeswitch:api(Node, 'xml_flush_cache', <<>>)
-     || Node <- connected()
-    ],
-    'ok'.
+flush() -> do_flush(<<>>).
 
 flush(User, Realm) ->
-    lager:debug("flushing user ~s@~s from all FreeSWITCH servers", [User, Realm]),
-    [freeswitch:api(Node, 'xml_flush_cache', list_to_binary([<<"id ">>, User
-                                                            ,<<" ">>, Realm
-                                                            ]))
+    Args = <<"id "
+             ,User/binary, " "
+             ,(wh_util:to_lower_binary(Realm))/binary>>,
+    do_flush(Args).
+
+-spec do_flush(binary()) -> 'ok'.
+do_flush(Args) ->
+    lager:debug("flushing xml cache ~s from all FreeSWITCH servers", [Args]),
+    [freeswitch:api(Node, 'xml_flush_cache', Args)
      || Node <- connected()
     ],
     'ok'.

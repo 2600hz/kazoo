@@ -9,9 +9,17 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_util).
 
--export([response/2, response/3, response/4, response/5]).
--export([response_deprecated/1, response_deprecated_redirect/2, response_deprecated_redirect/3
-         ,response_redirect/3, response_redirect/4
+-export([response/2
+         ,response/3
+         ,response/4
+         ,response/5
+        ]).
+-export([response_deprecated/1]).
+-export([response_deprecated_redirect/2
+         ,response_deprecated_redirect/3
+        ]).
+-export([response_redirect/3
+         ,response_redirect/4
         ]).
 -export([response_202/2]).
 -export([response_402/2]).
@@ -28,17 +36,27 @@
          ,response_auth/2
          ,response_auth/3
         ]).
--export([get_account_realm/1, get_account_realm/2
-         ,flush_registrations/1, flush_registration/2
+-export([get_account_realm/1
+         ,get_account_realm/2
+        ]).
+-export([flush_registrations/1
+         ,flush_registration/2
         ]).
 -export([move_account/2]).
 -export([get_descendants/1]).
 -export([get_tree/1]).
 -export([replicate_account_definition/1]).
--export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
+-export([disable_account/1
+         ,enable_account/1
+         ,change_pvt_enabled/2
+        ]).
 -export([get_path/2]).
--export([get_user_lang/2, get_account_lang/1]).
--export([get_user_timezone/2, get_account_timezone/1]).
+-export([get_user_lang/2
+         ,get_account_lang/1
+        ]).
+-export([get_user_timezone/2
+         ,get_account_timezone/1
+        ]).
 -export([apply_response_map/2]).
 -export([maybe_remove_attachments/1]).
 

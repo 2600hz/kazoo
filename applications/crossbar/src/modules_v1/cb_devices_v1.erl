@@ -182,6 +182,7 @@ post(Context, DeviceId) ->
         'true' ->
             Context1 = crossbar_doc:save(Context),
             _ = maybe_aggregate_device(DeviceId, Context1),
+            _ = registration_update(Context),
             _ = provisioner_util:maybe_provision(Context1),
             Context1;
         'false' ->
@@ -198,6 +199,7 @@ put(Context) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
     Context1 = crossbar_doc:delete(Context),
+    _ = registration_update(Context),
     _ = provisioner_util:maybe_delete_provision(Context),
     _ = maybe_remove_aggregate(DeviceId, Context),
     Context1.
@@ -205,6 +207,13 @@ delete(Context, DeviceId) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec registration_update(cb_context:context()) -> 'ok'.
+registration_update(Context) ->
+    Device = cb_context:doc(Context),
+    crossbar_util:flush_registration(
+      wh_json:get_value([<<"sip">>, <<"username">>], Device)
+      ,crossbar_util:get_account_realm(Context)
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -536,13 +545,7 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
             {'ok', Device} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
-
             whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
-            crossbar_util:flush_registration(
-              wh_json:get_value([<<"sip">>, <<"username">>], Device)
-              ,crossbar_util:get_account_realm(Context)
-             ),
-
             'true'
     end;
 maybe_aggregate_device(_, _, _) -> 'false'.
