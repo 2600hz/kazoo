@@ -53,12 +53,12 @@
                             ]).
 -define(REG_SUCCESS_TYPES, []).
 
-%% Registration Success
+%% Registration Flush
 -define(REG_FLUSH_HEADERS, [<<"Realm">>]).
 -define(OPTIONAL_REG_FLUSH_HEADERS, [<<"Username">>]).
 -define(REG_FLUSH_VALUES, [{<<"Event-Category">>, <<"directory">>}
-                             ,{<<"Event-Name">>, <<"reg_flush">>}
-                            ]).
+                           ,{<<"Event-Name">>, <<"reg_flush">>}
+                          ]).
 -define(REG_FLUSH_TYPES, []).
 
 %% Query Registrations

@@ -101,17 +101,23 @@ post(Context, _) ->
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
+    registration_update(Context),
     crossbar_doc:save(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
+    registration_update(Context),
     track_assignment('delete', Context),
     crossbar_doc:delete(Context).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
+-spec registration_update(cb_context:context()) -> 'ok'.
+registration_update(Context) ->
+    crossbar_util:flush_registrations(
+      crossbar_util:get_account_realm(Context)
+     ).
 
 %%--------------------------------------------------------------------
 %% @private

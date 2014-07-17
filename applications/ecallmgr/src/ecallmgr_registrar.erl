@@ -43,7 +43,6 @@
 
 -include("ecallmgr.hrl").
 
-
 -define(RESPONDERS, [{{?MODULE, 'reg_query'}
                       ,[{<<"directory">>, <<"reg_query">>}]
                      }
@@ -378,7 +377,8 @@ handle_cast({'flush', Realm}, State) ->
     R = wh_util:to_lower_binary(Realm),
     MatchSpec = [{#registration{realm = '$1'
                                 ,account_realm = '$2'
-                                ,_ = '_'}
+                                ,_ = '_'
+                               }
                   ,[{'orelse', {'=:=', '$1', {'const', R}}
                      ,{'=:=', '$2', {'const', R}}}
                    ]
@@ -386,9 +386,11 @@ handle_cast({'flush', Realm}, State) ->
                  }],
     NumberDeleted = ets:select_delete(?MODULE, MatchSpec),
     lager:debug("removed ~p expired registrations", [NumberDeleted]),
+    ecallmgr_fs_nodes:flush(),
     {'noreply', State};
 handle_cast({'flush', Username, Realm}, State) ->
     _ = ets:delete(?MODULE, registration_id(Username, Realm)),
+    ecallmgr_fs_nodes:flush(Username, Realm),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -1007,7 +1009,6 @@ print_details({[#registration{}=Reg], Continuation}, Count) ->
          || {K, V} <- to_props(Reg)
         ],
     print_details(ets:select(Continuation), Count + 1).
-
 
 print_property(<<"Expires">> =Key, Value, #registration{expires=Expires
                                                         ,last_registration=LastRegistration

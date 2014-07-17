@@ -34,6 +34,7 @@
          ,add_capability/2
          ,get_capability/2, get_capabilities/1, get_capabilities/2
          ,remove_capabilities/1, remove_capability/2
+         ,flush/0, flush/2
         ]).
 
 -export([init/1
@@ -102,8 +103,26 @@ nodeup(Node) -> gen_server:cast(?MODULE, {'fs_nodeup', Node}).
 -spec remove(atom()) -> 'ok'.
 remove(Node) -> gen_server:cast(?MODULE, {'rm_fs_node', Node}).
 
--spec connected() -> [atom(),...] | [].
+-spec connected() -> atoms().
 connected() -> gen_server:call(?MODULE, 'connected_nodes').
+
+-spec flush() -> 'ok'.
+-spec flush(ne_binary(), ne_binary()) -> 'ok'.
+flush() -> do_flush(<<>>).
+
+flush(User, Realm) ->
+    Args = <<"id "
+             ,User/binary, " "
+             ,(wh_util:to_lower_binary(Realm))/binary>>,
+    do_flush(Args).
+
+-spec do_flush(binary()) -> 'ok'.
+do_flush(Args) ->
+    lager:debug("flushing xml cache ~s from all FreeSWITCH servers", [Args]),
+    [freeswitch:api(Node, 'xml_flush_cache', Args)
+     || Node <- connected()
+    ],
+    'ok'.
 
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) -> gen_server:call(?MODULE, {'is_node_up', Node}).
@@ -199,7 +218,6 @@ remove_capability(Node, Name) ->
                   ,['true']
                  }],
     ets:select_delete(?CAPABILITY_TBL, MatchSpec).
-
 
 -spec get_capability(atom(), ne_binary()) ->
                             capability() | api_object().

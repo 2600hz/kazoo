@@ -83,10 +83,10 @@ authn_resp_xml(<<"gsm">>, JObj) ->
     PassEl1 = param_el(<<"password">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
     PassEl2 = param_el(<<"nonce">>, wh_json:get_value(<<"Auth-Nonce">>, JObj)),
     ParamsEl = params_el([PassEl1, PassEl2]),
-    
+
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj) ],
     VariablesEl = variables_el(VariableEls),
-    
+
     HeaderEls = [header_el(K, V) || {K, V} <- get_custom_sip_headers(JObj) ],
     HeadersEl = registration_headers_el(HeaderEls),
     {'ok', [VariablesEl, ParamsEl, HeadersEl]};
@@ -306,7 +306,7 @@ route_resp_xml(<<"chatplan_error">>, _Routes, JObj) ->
     SectionEl = section_el(<<"chatplan">>, <<"Route Error Response">>, ContextEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')};
 
-route_resp_xml(<<"sms">>, Routes, JObj) ->
+route_resp_xml(<<"sms">>, _Routes, JObj) ->
     lager:debug("creating a chatplan XML response"),
     StopActionEl = action_el(<<"stop">>, <<"stored">>),
     StopExtEl = extension_el(<<"chat plan">>, <<"false">>, [condition_el([StopActionEl])]),
@@ -524,7 +524,7 @@ get_channel_params(JObj) ->
     lists:foldl(fun({<<"variable_", K/binary>>,V}, CV) ->
                         [{K, V} | CV];
                    ({K,V}, CV) ->
-                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]                
+                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
                 end, CV1, Custom).
 
 -spec get_custom_sip_headers(wh_json:object()) -> wh_json:json_proplist().
@@ -636,7 +636,11 @@ user_el(Id, Children) when not is_list(Id) ->
     user_el(user_el_default_props(Id), Children);
 user_el(Props, Children) ->
     #xmlElement{name='user'
-                ,attributes=[xml_attrib(K, V) || {K , V} <- props:unique(props:filter_undefined(Props))]
+                ,attributes=[xml_attrib(K, V)
+                             || {K, V} <- props:unique(
+                                            props:filter_undefined(Props)
+                                           )
+                            ]
                 ,content=Children
                }.
 
@@ -644,9 +648,10 @@ user_el(Props, Children) ->
 user_el_default_props(Id) ->
     [{'id', Id}
      ,{'cacheable', ecallmgr_config:get_integer(<<"user_cache_time_in_ms">>
-                                                ,?DEFAULT_USER_CACHE_TIME_IN_MS)}
+                                                ,?DEFAULT_USER_CACHE_TIME_IN_MS
+                                               )
+      }
     ].
-                           
 
 -spec chat_user_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 chat_user_el(Name, Commands) ->
