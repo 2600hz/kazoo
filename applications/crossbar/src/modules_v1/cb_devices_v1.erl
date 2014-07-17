@@ -544,7 +544,7 @@ maybe_aggregate_device(DeviceId, Context, 'success') ->
             maybe_remove_aggregate(DeviceId, Context);
         'true' ->
             lager:debug("adding device to the sip auth aggregate"),
-            {'ok', Device} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
+            {'ok', _} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
             whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
             'true'
     end;
@@ -562,16 +562,11 @@ maybe_remove_aggregate(DeviceId, Context) ->
     maybe_remove_aggregate(DeviceId, Context, cb_context:resp_status(Context)).
 
 maybe_remove_aggregate('undefined', _Context, _RespStatus) -> 'false';
-maybe_remove_aggregate(DeviceId, Context, 'success') ->
+maybe_remove_aggregate(DeviceId, _Context, 'success') ->
     case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
         {'ok', JObj} ->
             _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
-
             whapps_util:amqp_pool_send([], fun(_) -> wapi_switch:publish_reload_acls() end),
-            crossbar_util:flush_registration(
-              wh_json:get_value([<<"sip">>, <<"username">>], JObj)
-              ,crossbar_util:get_account_realm(Context)
-             ),
             'true';
         {'error', 'not_found'} -> 'false'
     end;
