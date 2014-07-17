@@ -156,6 +156,8 @@ get_prompt(Name, 'undefined', Call) ->
 get_prompt(Name, Lang, Call) ->
     get_account_prompt(Name, Lang, Call).
 
+-spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call()) -> api_binary().
+-spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call(), ne_binary()) -> api_binary().
 %% tries account default, then system
 get_account_prompt(Name, 'undefined', Call) ->
     PromptId = prompt_id(Name),
@@ -169,7 +171,7 @@ get_account_prompt(Name, <<_Primary:2/binary>> = Lang, Call) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
     case lookup_prompt(whapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call);
+        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call, Lang);
         {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
     end;
 %% First tries "en-US" or "fr-CA", etc, then tries "en", "fr", etc.
@@ -177,7 +179,7 @@ get_account_prompt(Name, <<Primary:2/binary, "-", _SubTag:2/binary>> = Lang, Cal
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
     case lookup_prompt(whapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call);
+        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call, Lang);
         {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
     end;
 %% First tries "en-us_fr-fr", then "en-us"
@@ -185,7 +187,7 @@ get_account_prompt(Name, <<Primary:5/binary, "_", _Secondary:5/binary>> = Lang, 
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
     case lookup_prompt(whapps_call:account_db(Call), PromptId) of
-        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call);
+        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call, Lang);
         {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
     end;
 %% Matches anything else, then tries account default
@@ -198,12 +200,58 @@ get_account_prompt(Name, Lang, Call) ->
         {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
     end.
 
+get_account_prompt(Name, 'undefined', Call, OriginalLang) ->
+    PromptId = prompt_id(Name),
+    lager:debug("getting account prompt for '~s'", [PromptId]),
+    case lookup_prompt(whapps_call:account_db(Call), PromptId) of
+        {'error', 'not_found'} -> get_prompt(Name, OriginalLang, 'undefined');
+        {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
+    end;
+get_account_prompt(Name, <<_:2/binary>> = Primary, Call, Original) ->
+    PromptId = prompt_id(Name, Primary),
+    lager:debug("getting account prompt for '~s'", [PromptId]),
+
+    case lookup_prompt(whapps_call:account_db(Call), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call, Original);
+        {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
+    end;
+get_account_prompt(Name, <<Primary:2/binary, "-", _Secondary:2/binary>> = Lang, Call, Original) ->
+    PromptId = prompt_id(Name, Lang),
+    lager:debug("getting account prompt for '~s'", [PromptId]),
+
+    case lookup_prompt(whapps_call:account_db(Call), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, Primary, Call, Original);
+        {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
+    end;
+get_account_prompt(Name, Lang, Call, OriginalLang) ->
+    PromptId = prompt_id(Name, Lang),
+    lager:debug("getting account prompt for '~s'", [PromptId]),
+
+    case lookup_prompt(whapps_call:account_db(Call), PromptId) of
+        {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', Call, OriginalLang);
+        {'ok', _} -> prompt_path(whapps_call:account_id(Call), PromptId)
+    end.
+
 -spec lookup_prompt(ne_binary(), ne_binary()) ->
                            {'ok', wh_json:object()} |
                            {'error', 'not_found'}.
 lookup_prompt(Db, Id) ->
-    couch_mgr:open_cache_doc(Db, Id).
+    case couch_mgr:open_cache_doc(Db, Id) of
+        {'ok', Doc} ->
+            prompt_is_usable(Doc);
+        Error -> Error
+    end.
 
+-spec prompt_is_usable(wh_json:object()) ->
+                              {'ok', wh_json:object()} |
+                              {'error', 'not_found'}.
+prompt_is_usable(Doc) ->
+    case wh_json:is_true(<<"pvt_deleted">>, Doc, 'false') of
+        'true' -> {'error', 'not_found'};
+        'false' -> {'ok', Doc}
+    end.
+
+-spec get_system_prompt(ne_binary(), api_binary()) -> api_binary().
 get_system_prompt(Name, 'undefined') ->
     PromptId = prompt_id(Name),
     lager:debug("getting system prompt for '~s'", [PromptId]),
