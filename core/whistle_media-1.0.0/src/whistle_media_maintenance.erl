@@ -35,7 +35,8 @@ import_prompts(Path) ->
     import_prompts(Path, wh_media_util:default_prompt_language()).
 
 import_prompts(Path, Lang) ->
-    case filelib:wildcard([Path, "/*.{wav,mp3}"]) of
+    MediaPath = filename:join([Path, "*.{wav,mp3}"]),
+    case filelib:wildcard(wh_util:to_list(MediaPath)) of
         [] ->
             io:format("failed to find media files in '~s'~n", [Path]);
         Files ->
