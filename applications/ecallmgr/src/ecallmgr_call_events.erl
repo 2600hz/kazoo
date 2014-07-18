@@ -699,6 +699,8 @@ specific_call_event_props(_, <<"play_and_get_digits">>, Props) ->
     [{<<"Application-Name">>, <<"play_and_collect_digits">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Props, <<"">>)}
     ];
+specific_call_event_props(<<"FAX_DETECTED">>, _, Props) ->
+    [{<<"Application-Name">>, <<"fax_detection">>}];
 specific_call_event_props(<<"CHANNEL_FAX_STATUS">>, <<"rxfax", Event/binary>>, Prop) ->
     [{<<"Application-Name">>, <<"receive_fax">>}
     ,{<<"Application-Event">>, Event}
@@ -793,6 +795,10 @@ should_publish(_, <<"transfer">>, _) ->
     'true';
 should_publish(<<"CHANNEL_FAX_STATUS">>, _, _) ->
     'true';
+should_publish(<<"FAX_DETECTED">>, _, _) ->
+    'true';
+should_publish(<<"DETECTED_TONE">>, _, _) ->
+    'true';
 should_publish(EventName, _A, _) ->
     lists:member(EventName, ?CALL_EVENTS).
 
@@ -841,9 +847,18 @@ get_event_name(Props) ->
         <<"spandsp::txfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
         <<"spandsp::rxfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
         _Else ->
-            props:get_first_defined([<<"whistle_event_name">>
-                                     ,<<"Event-Name">>
-                                    ], Props)
+            case  props:get_first_defined([<<"whistle_event_name">>
+                                           ,<<"Event-Name">>
+                                          ], Props)
+            of
+                <<"DETECTED_TONE">> ->
+                    lager:debug("DETECTED TONE"),
+                    case props:get_value(<<"Detected-Fax-Tone">>, Props) of
+                        'undefined' -> <<"DETECTED_TONE">>;
+                        _FaxDetected -> <<"FAX_DETECTED">>
+                    end;
+                Event -> Event
+            end
     end.
 
 -spec get_application_name(wh_proplist()) -> api_binary().

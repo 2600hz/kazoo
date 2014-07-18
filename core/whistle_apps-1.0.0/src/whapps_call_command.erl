@@ -158,6 +158,12 @@
          ,default_application_timeout/0
         ]).
 
+-export([start_fax_detection/3
+         ,stop_fax_detection/1
+         ,fax_detection/3
+         ,wait_for_fax_detection/2
+        ]).
+
 -export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
 
@@ -2197,6 +2203,7 @@ wait_for_fax(Timeout) ->
             end
     end.
 
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -2383,3 +2390,49 @@ get_inbound_t38_settings('undefined') ->
      ,{<<"Enable-T38-Passthrough">>, 'undefined'}
      ,{<<"Enable-T38-Gateway">>, 'undefined'}
     ].
+
+-spec start_fax_detection(ne_binary(), integer(), whapps_call:call()) -> 'ok'.
+start_fax_detection(Direction, Duration, Call) ->
+    CallId = whapps_call:call_id(Call),
+    Command = [{<<"Application-Name">>, <<"fax_detection">>}
+               ,{<<"Action">>, <<"start">>}
+               ,{<<"Duration">>, Duration}
+               ,{<<"Direction">>, Direction}
+               ,{<<"Call-ID">>, CallId}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
+
+-spec stop_fax_detection(whapps_call:call()) -> 'ok'.
+stop_fax_detection(Call) ->
+    CallId = whapps_call:call_id(Call),
+    Command = [{<<"Application-Name">>, <<"fax_detection">>}
+               ,{<<"Action">>, <<"stop">>}
+               ,{<<"Call-ID">>, CallId}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
+
+-spec fax_detection(ne_binary(), integer(), whapps_call:call()) -> 'true' | 'false'.
+fax_detection(Direction, Duration, Call) ->
+    start_fax_detection(Direction, Duration, Call),
+    Result = case wait_for_fax_detection((Duration + 2) * 1000, Call) of
+                 {'error', 'timeout'} -> 'false';
+                 {'ok', JObj} -> 'true'
+             end,
+    stop_fax_detection(Call),
+    Result.
+
+-spec wait_for_fax_detection(integer(), whapps_call:call()) -> 'ok'.
+wait_for_fax_detection(Timeout, _Call) ->
+    Start = os:timestamp(),
+    case receive_event(Timeout) of
+        {'error', 'timeout'}=E -> E;
+        {'ok', JObj} ->
+            case get_event_type(JObj) of
+                {<<"call_event">>, <<"FAX_DETECTED">>, _ } ->
+                    {'ok', wh_json:set_value(<<"Fax-Success">>, 'true', JObj)};
+                _ -> wait_for_fax_detection(wh_util:decr_timeout(Timeout, Start), _Call)
+            end
+    end.
+

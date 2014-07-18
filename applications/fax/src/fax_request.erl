@@ -111,7 +111,7 @@ init([Call, JObj]) ->
                  ,action = get_action(JObj)
                  ,owner_id = wh_json:get_value(<<"Owner-ID">>, JObj)
                  ,faxbox_id = wh_json:get_value(<<"FaxBox-ID">>, JObj)
-                 ,fax_option = wh_json:get_value(<<"Fax-T38-Option">>, JObj)
+                 ,fax_option = wh_json:get_value(<<"Fax-T38-Option">>, JObj, 'false')
              }}.
 
 %%--------------------------------------------------------------------
