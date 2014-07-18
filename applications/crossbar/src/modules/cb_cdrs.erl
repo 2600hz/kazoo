@@ -398,7 +398,7 @@ normalize_cdr(JObj, Context) ->
             % New fields
             ,{<<"dialed_number">>, dialed_number(JObj)}
             ,{<<"calling_from">>, calling_from(JObj)}
-            ,{<<"datetime">>, wh_util:pretty_print_datetime(Timestamp)}
+            ,{<<"datetime">>, pretty_print_datetime(Timestamp)}
             ,{<<"unix_timestamp">>, wh_util:gregorian_seconds_to_unix_seconds(Timestamp)}
             ,{<<"call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)}
             ,{<<"rate">>, wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))}
@@ -431,7 +431,7 @@ normalize_cdr_to_csv(JObj, Context) ->
             % New fields
             ,(dialed_number(JObj))/binary, ","
             ,(calling_from(JObj))/binary, ","
-            ,(wh_util:pretty_print_datetime(Timestamp))/binary, ","
+            ,(pretty_print_datetime(Timestamp))/binary, ","
             ,(wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp)))/binary, ","
             ,(wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>))/binary, ","
             ,(wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))))/binary, ","
@@ -479,6 +479,13 @@ normalize_cdr_to_csv_header(JObj, Context) ->
                     ,"\r"
                   >>
     end.
+
+-spec pretty_print_datetime(wh_datetime() | wh_now()) -> ne_binary().
+pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
+    pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
+pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
+                                   [Y, Mo, D, H, Mi, S])).
 
 -spec dialed_number(wh_json:object()) -> binary().
 dialed_number(JObj) ->
