@@ -623,22 +623,21 @@ from_form(Req0, Context0) ->
                      {iolist() | ne_binary() | 'halt', cowboy_req:req(), cb_context:context()}.
 to_json(Req0, Context0) ->
     lager:debug("run: to_json"),
-    [{Mod, _Params}|_] = cb_context:req_nouns(Context0),
-    Verb = cb_context:req_verb(Context0),
-    Event = api_util:create_event_name(Context0, [<<"to_json">>
-                                        ,wh_util:to_lower_binary(Verb)
-                                        ,Mod
-                                       ]),
-    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-    case cb_context:fetch(Context1, 'is_chunked') of
-        'true' -> {'halt', Req1, Context1};
-        _ ->
-            case is_csv_request(Context1) of
-                'true' ->
-                    lager:debug("overriding JSON, sending as CSV"),
-                    to_csv(Req1, Context1);
-                'false' ->
-                    api_util:create_pull_response(Req1, Context1)
+    case is_csv_request(Context0) of
+        'true' ->
+            lager:debug("overriding JSON, sending as CSV"),
+            to_csv(Req0, Context0);
+        'false' ->
+            [{Mod, _Params}|_] = cb_context:req_nouns(Context0),
+            Verb = cb_context:req_verb(Context0),
+            Event = api_util:create_event_name(Context0, [<<"to_json">>
+                                                ,wh_util:to_lower_binary(Verb)
+                                                ,Mod
+                                               ]),
+            {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+            case cb_context:fetch(Context1, 'is_chunked') of
+                'true' -> {'halt', Req1, Context1};
+                _ -> api_util:create_pull_response(Req1, Context1)
             end
     end.
 
@@ -655,17 +654,27 @@ to_binary(Req, Context) ->
                     {iolist(), cowboy_req:req(), cb_context:context()}.
 to_csv(Req, Context) ->
     lager:debug("run: to_csv"),
-
-    RespBody = maybe_flatten_jobj(Context),
-    RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
-                    ,{<<"Content-Length">>, iolist_size(RespBody)}
-                    ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
-                    | cb_context:resp_headers(Context)
-                   ],
-    {RespBody
-     ,api_util:set_resp_headers(Req, cb_context:set_resp_headers(Context, RespHeaders1))
-     ,Context
-    }.
+    [{Mod, _Params}|_] = cb_context:req_nouns(Context),
+    Verb = cb_context:req_verb(Context),
+    Event = api_util:create_event_name(Context, [<<"to_csv">>
+                                        ,wh_util:to_lower_binary(Verb)
+                                        ,Mod
+                                       ]),
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req, Context}),
+     case cb_context:fetch(Context1, 'is_chunked') of
+        'true' -> {'halt', Req1, Context1};
+        _ ->
+            RespBody = maybe_flatten_jobj(Context1),
+            RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
+                            ,{<<"Content-Length">>, iolist_size(RespBody)}
+                            ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
+                            | cb_context:resp_headers(Context1)
+                           ],
+            {RespBody
+             ,api_util:set_resp_headers(Req1, cb_context:set_resp_headers(Context1, RespHeaders1))
+             ,Context1
+            }
+    end.
 
 -spec is_csv_request(cb_context:context()) -> boolean().
 is_csv_request(Context) ->
