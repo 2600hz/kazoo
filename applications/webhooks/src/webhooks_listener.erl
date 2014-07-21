@@ -13,7 +13,7 @@
 -export([start_link/0
          ,handle_config/2
          ,handle_channel_event/2
-         ,maybe_handle_channel_event/4
+         ,maybe_handle_channel_event/3
          ,hooks_configured/0
          ,hooks_configured/1
         ]).
@@ -38,10 +38,8 @@
 
 -include("webhooks.hrl").
 
--record(state, {cleanup_webhook_events_ref :: reference()}).
+-record(state, {}).
 -type state() :: #state{}.
-
--define(CLEANUP_MESSAGE, 'cleanup_webhook_events').
 
 %% Three main call events
 -define(BINDINGS, [{'conf', [{'action', <<"*">>}
@@ -184,7 +182,7 @@ find_hook(JObj) ->
                       ).
 
 -spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_channel_event(JObj, Props) ->
+handle_channel_event(JObj, _Props) ->
     HookEvent = hook_event_name(wh_json:get_value(<<"Event-Name">>, JObj)),
     case wh_hooks_util:lookup_account_id(JObj) of
         {'error', _R} ->
@@ -194,41 +192,16 @@ handle_channel_event(JObj, Props) ->
             J = wh_json:set_value([<<"Custom-Channel-Vars">>
                                    ,<<"Account-ID">>
                                   ], AccountId, JObj),
-            maybe_handle_channel_event(AccountId, HookEvent, J, Props)
+            maybe_handle_channel_event(AccountId, HookEvent, J)
     end.
 
--spec maybe_handle_channel_event(ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
-maybe_handle_channel_event(AccountId, HookEvent, JObj, Props) ->
+-spec maybe_handle_channel_event(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_handle_channel_event(AccountId, HookEvent, JObj) ->
     lager:debug("evt ~s for ~s", [HookEvent, AccountId]),
-    case should_fire(HookEvent, wh_json:get_value(<<"Call-ID">>, JObj), Props)
-        andalso webhooks_util:find_webhooks(HookEvent, AccountId)
-    of
-        'false' -> lager:debug("hook ~s for ~s already fired", [HookEvent, AccountId]);
+    case webhooks_util:find_webhooks(HookEvent, AccountId) of
         [] -> lager:debug("no hooks to handle ~s for ~s", [HookEvent, AccountId]);
         Hooks -> webhooks_util:fire_hooks(format_event(JObj, AccountId, HookEvent), Hooks)
     end.
-
--spec should_fire(ne_binary(), ne_binary(), wh_proplist()) -> boolean().
-should_fire(<<_/binary>> = HookEvent, <<_/binary>> = CallId, Props) ->
-    gen_listener:call(props:get_value('server', Props)
-                      ,{'should_fire', HookEvent, CallId}
-                     ).
-
--spec hook_event_id(ne_binary(), ne_binary()) -> ne_binary().
-hook_event_id(HookEvent, CallId) ->
-    <<HookEvent/binary, ".", CallId/binary>>.
-
--spec cleanup_webhook_events() -> non_neg_integer().
-cleanup_webhook_events() ->
-    RemoveTimestamp = wh_util:current_tstamp() - 5, % five seconds ago
-    ets:select_delete(table_id()
-                      ,[{#webhook_event{received='$1'
-                                        ,_='_'
-                                       }
-                         ,[{'<', '$1', RemoveTimestamp}]
-                         ,['true']
-                        }]
-                     ).
 
 -spec hook_event_name(ne_binary()) -> ne_binary().
 hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
@@ -325,7 +298,7 @@ print_summary({[#webhook{uri=URI
 init([]) ->
     wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
-    {'ok', #state{cleanup_webhook_events_ref=start_cleanup_timer()}}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -341,15 +314,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'should_fire', HookEvent, CallId}, _From, State) ->
-    {'reply'
-     ,ets:insert_new(table_id()
-                     ,#webhook_event{id=hook_event_id(HookEvent, CallId)
-                                     ,received = wh_util:current_tstamp()
-                                    }
-                    )
-     ,State
-    };
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -400,13 +364,9 @@ handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
     _ = spawn(?MODULE
               ,'maybe_handle_channel_event'
-              ,[AccountId, EventType, JObj, [{'server', self()}]]
+              ,[AccountId, EventType, JObj]
              ),
     {'noreply', State};
-handle_info({'timeout', Ref, ?CLEANUP_MESSAGE}, #state{cleanup_webhook_events_ref=Ref}=State) ->
-    _Removed = cleanup_webhook_events(),
-    lager:debug("removed ~p webhook events", [_Removed]),
-    {'noreply', State#state{cleanup_webhook_events_ref=start_cleanup_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
@@ -575,7 +535,3 @@ hook_event_lowered(Bin) -> Bin.
 retries(N) when N > 0, N < 5 -> N;
 retries(N) when N < 1 -> 1;
 retries(_) -> 5.
-
--spec start_cleanup_timer() -> reference().
-start_cleanup_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_MINUTE, self(), ?CLEANUP_MESSAGE).
