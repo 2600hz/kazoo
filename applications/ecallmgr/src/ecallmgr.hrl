@@ -230,6 +230,8 @@
                                ,{<<"park_after_bridge">>, <<"park_after_bridge">>}
                                ,{<<"Park-After-Pickup">>, <<"park_after_bridge">>}
                                ,{<<"park_after_pickup">>, <<"park_after_bridge">>}
+                               ,{<<"Transfer-After-Pickup">>, <<"transfer_after_bridge">>}
+                               ,{<<"Hangup-After-Pickup">>, <<"hangup_after_bridge">>}
                                ,{<<"continue_on_fail">>, <<"continue_on_fail">>}
                                ,{<<"continue_on_cancel">>, <<"continue_on_cancel">>}
                                ,{<<"Unbridged-Only">>, <<"intercept_unbridged_only">>}
