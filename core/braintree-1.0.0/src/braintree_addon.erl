@@ -96,7 +96,7 @@ record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
 %% Convert a given json obj into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(#bt_discount{}) -> wh_json:object().
+-spec json_to_record(api_object()) -> bt_addon() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_addon{id = wh_json:get_binary_value(<<"id">>, JObj)

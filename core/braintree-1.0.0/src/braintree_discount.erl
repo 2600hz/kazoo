@@ -77,7 +77,7 @@ record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
              ,{<<"amount">>, Amount}
              ,{<<"quantity">>, wh_util:to_integer(Q)}
             ],
-    wh_json:from_list([KV || {_, V}=KV <- Props, V =/= undefined]).
+    wh_json:from_list([KV || {_, V}=KV <- Props, V =/= 'undefined']).
 
 
 %%--------------------------------------------------------------------
@@ -86,7 +86,7 @@ record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
 %% Convert a given json obj into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record(#bt_discount{}) -> wh_json:object().
+-spec json_to_record(api_object()) -> bt_discount() | 'undefined'.
 json_to_record('undefined') -> 'undefined';
 json_to_record(JObj) ->
     #bt_discount{id = wh_json:get_binary_value(<<"id">>, JObj)

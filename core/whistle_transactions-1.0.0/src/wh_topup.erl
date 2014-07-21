@@ -19,6 +19,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec init(ne_binary(), integer()) -> 'ok'.
 init(Account, Balance) ->
     case get_top_up(Account) of
         {'error', 'topup_undefined'} ->
@@ -37,6 +38,7 @@ init(Account, Balance) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec get_top_up(api_binary() | wh_json:object()) -> {'error', any()} | {'ok', integer(), integer()}.
 get_top_up(Account) when is_binary(Account) ->
     case whapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>, 'false') of
         'false' -> {'error', 'topup_disabled'};
@@ -69,6 +71,7 @@ get_top_up(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_top_up(ne_binary(), integer(), integer(), integer()) -> 'ok'.
 maybe_top_up(Account, Balance, Amount, Threshold) when Balance =< Threshold ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
@@ -87,6 +90,7 @@ maybe_top_up(Account, Balance, _, Threshold) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec trying_top_up(ne_binary(), integer(), wh_json:objects()) -> 'ok'.
 trying_top_up(Account, Amount, []) ->
     lager:info("no top up transactions found, processing..."),
     top_up(Account, Amount);
@@ -105,6 +109,7 @@ trying_top_up(Account, Amount, [JObj|JObjs]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec top_up(ne_binary(), integer()) -> 'ok'.
 top_up(Account, Amount) ->
     Transaction = wh_transaction:debit(Account, wht_util:dollars_to_units(Amount)),
     Transaction1 = wh_transaction:set_reason(<<"topup">>, Transaction),

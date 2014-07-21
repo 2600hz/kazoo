@@ -182,6 +182,7 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec charge_transactions(ne_binary(), wh_json:objects()) -> 'ok'.
+-spec charge_transactions(ne_binary(), wh_json:objects(), dict()) -> 'ok'.
 charge_transactions(BillingId, Transactions) ->
     charge_transactions(BillingId, Transactions, dict:new()).
 
@@ -223,6 +224,8 @@ charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec already_charged(ne_binary(), integer()) -> boolean().
+-spec already_charged(ne_binary(), integer(), wh_json:objects()) -> boolean().
 already_charged(BillingId, Code) ->
     lager:debug("checking if ~s has been charge for transaction of type ~p today", [BillingId, Code]),
     BtTransactions = braintree_transaction:find_by_customer(BillingId),
