@@ -181,42 +181,82 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), wh_json:objects()) -> 'ok'.
--spec charge_transactions(ne_binary(), wh_json:objects(), dict()) -> 'ok'.
+-spec charge_transactions(ne_binary(), wh_json:objects()) -> wh_transactions:wh_transactions() | [].
+-spec charge_transactions(ne_binary(), wh_json:objects(), dict()) -> wh_transactions:wh_transactions() | [].
 charge_transactions(BillingId, Transactions) ->
     charge_transactions(BillingId, Transactions, dict:new()).
 
 charge_transactions(BillingId, [], Dict) ->
     dict:fold(
-        fun(Code, Amount, _) when Code =:= 3006 ->
+        fun(Code, JObjs, Acc) when Code =:= 3006 ->
             BinaryCode = wh_util:to_binary(Code),
             Props = [{<<"purchase_order">>, BinaryCode}],
+            Amount = calculate_amount(JObjs),
             case already_charged(BillingId, BinaryCode) of
                 'true' -> 'ok';
                 'false' ->
-                    braintree_transaction:quick_sale(
-                        BillingId
-                        ,wht_util:units_to_dollars(Amount)
-                        ,Props),
-                    'ok'
+                    BT = braintree_transaction:quick_sale(
+                            BillingId
+                            ,wht_util:units_to_dollars(Amount)
+                            ,Props),
+                    case handle_quick_sale_response(BT) of
+                        'true' -> Acc;
+                        'false' -> Acc ++ JObjs
+                    end
             end;
-        (Code, Amount, _) ->
+        (Code, JObjs, Acc) ->
             Props = [{<<"purchase_order">>, Code}],
-            braintree_transaction:quick_sale(
-                BillingId
-                ,wht_util:units_to_dollars(Amount)
-                ,Props),
-            'ok'
+            Amount = calculate_amount(JObjs),
+            BT = braintree_transaction:quick_sale(
+                            BillingId
+                            ,wht_util:units_to_dollars(Amount)
+                            ,Props),
+            case handle_quick_sale_response(BT) of
+                'true' -> Acc;
+                'false' -> Acc ++ JObjs
+            end
         end
-        ,'ok'
+        ,[]
         ,Dict
     );
 charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
     Code = wh_json:get_value(<<"code">>, Transaction),
-    Amount = wh_json:get_value(<<"pvt_amount">>, Transaction, 0),
+    L = case dict:find(Code, Dict) of
+            'error' -> [];
+            {'ok', Value} -> [Transaction] ++ Value
+        end,
     charge_transactions(BillingId
                         ,Transactions
-                        ,dict:update_counter(Code, Amount, Dict)).
+                        ,dict:store(Code, L, Dict)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_amount(wh_json:objects()) -> integer().
+-spec calculate_amount(wh_json:objects(), integer()) -> integer().
+calculate_amount(JObjs) ->
+    calculate_amount(JObjs, 0).
+
+calculate_amount([], Amount) -> Amount;
+calculate_amount([JObj|JObjs], Amount) ->
+    calculate_amount(JObjs
+                    ,wh_json:get_value(<<"pvt_amount">>, JObj, 0) + Amount).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_quick_sale_response(_) -> boolean().
+handle_quick_sale_response(BtTransaction) ->
+    Transaction = braintree_transaction:record_to_json(BtTransaction),
+    RespCode = wh_json:get_value(<<"processor_response_code">>, Transaction, 9999),
+    % https://www.braintreepayments.com/docs/ruby/reference/processor_responses
+    wh_util:to_integer(RespCode) < 2000.
 
 %%--------------------------------------------------------------------
 %% @private
