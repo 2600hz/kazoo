@@ -55,6 +55,7 @@
          ,originate_ready/1, originate_ready_v/1
          ,originate_execute/1, originate_execute_v/1
          ,metaflow/1, metaflow_v/1
+         ,fax_detection/1, fax_detection_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -1107,3 +1108,21 @@ local_store_url(Call, JObj) ->
 offsite_store_url('undefined', _) -> throw({'error', <<"URL not defined">>});
 offsite_store_url(Url, MediaName) ->
     iolist_to_binary([wh_util:strip_right_binary(Url, $/), "/", MediaName]).
+
+%%--------------------------------------------------------------------
+%% @doc Detect fax on the line
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec fax_detection(api_terms()) -> api_formatter_return().
+fax_detection(Prop) when is_list(Prop) ->
+    case fax_detection_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?FAX_DETECTION_REQ_HEADERS, ?OPTIONAL_FAX_DETECTION_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for tone_detect"}
+    end;
+fax_detection(JObj) -> fax_detection(wh_json:to_proplist(JObj)).
+
+-spec fax_detection_v(api_terms()) -> boolean().
+fax_detection_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?FAX_DETECTION_REQ_HEADERS, ?FAX_DETECTION_REQ_VALUES, ?FAX_DETECTION_REQ_TYPES);
+fax_detection_v(JObj) -> fax_detection_v(wh_json:to_proplist(JObj)).

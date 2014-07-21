@@ -534,6 +534,23 @@ get_fs_app(Node, UUID, JObj, <<"conference">>) ->
         'true' -> get_conference_app(Node, UUID, JObj, wh_json:is_true(<<"Reinvite">>, JObj, 'false'))
     end;
 
+get_fs_app(Node, UUID, JObj, <<"fax_detection">>) ->
+    case wapi_dialplan:fax_detection_v(JObj) of
+        'false' -> {'error', <<"fax detect failed to execute as JObj did not validate">>};
+        'true' ->
+            case wh_json:get_value(<<"Action">>, JObj) of
+                <<"start">> ->
+                    Duration = wh_json:get_integer_value(<<"Duration">>, JObj, 3),
+                    Tone = case wh_json:get_value(<<"Direction">>, JObj, <<"inbound">>) of
+                               <<"inbound">> -> <<"cng">>;
+                               <<"outbound">> -> <<"ced">>
+                           end,
+                    {<<"spandsp_start_fax_detect">>, list_to_binary(["set 'noop' ", wh_util:to_binary(Duration), " ", Tone])};
+                <<"stop">> ->
+                    {<<"spandsp_stop_fax_detect">>, <<>>}
+            end
+    end;
+
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.

@@ -616,3 +616,15 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
                                    ,{<<"Event-Name">>, <<"originate_execute">>}
                                   ]).
 -define(ORIGINATE_EXECUTE_TYPES, []).
+
+%% Fax Detection
+-define(FAX_DETECTION_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Action">>]).
+-define(OPTIONAL_FAX_DETECTION_REQ_HEADERS, [<<"Direction">>, <<"Action">>, <<"Duration">>, <<"Insert-At">>]).
+-define(FAX_DETECTION_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                                 ,{<<"Event-Name">>, <<"command">>}
+                                 ,{<<"Application-Name">>, <<"fax_detection">>}
+                                 ,{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
+                                 ,{<<"Action">>, [<<"start">>, <<"stop">>]}
+                                 ,?INSERT_AT_TUPLE
+                                ]).
+-define(FAX_DETECTION_REQ_TYPES, []).
