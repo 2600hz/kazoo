@@ -39,9 +39,13 @@ handle_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_audio_req(wh_json:object()) -> any().
+-spec handle_audio_req(ne_binary(), wh_json:object()) -> any().
 handle_audio_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
     lager:debug("received outbound audio resource request for ~s", [Number]),
+    handle_audio_req(Number, JObj).
+
+handle_audio_req(Number, JObj) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
             maybe_force_outbound(wh_number_properties:set_account_id(Props, AccountId), JObj);
@@ -127,8 +131,19 @@ maybe_force_outbound_sms(Props, JObj) ->
 -spec maybe_bridge(ne_binary(), wh_json:object()) -> any().
 maybe_bridge(Number, JObj) ->
     case stepswitch_resources:endpoints(Number, JObj) of
-        [] -> publish_no_resources(JObj);
+        [] -> maybe_correct_shortdial(Number, JObj);
         Endpoints -> stepswitch_request_sup:bridge(Endpoints, JObj)
+    end.
+
+-spec maybe_correct_shortdial(ne_binary(), wh_json:object()) -> any().
+maybe_correct_shortdial(Number, JObj) ->
+    case stepswitch_util:correct_shortdial(Number, JObj) of
+        'undefined' ->
+            lager:debug("no endpoints found for '~s', and no shortdial correction available", [Number]),
+            publish_no_resources(JObj);
+        CorrectedNumber ->
+            lager:debug("corrected shortdial from '~s' to '~s', trying routing again", [Number, CorrectedNumber]),
+            handle_audio_req(CorrectedNumber, JObj)
     end.
 
 %%--------------------------------------------------------------------
