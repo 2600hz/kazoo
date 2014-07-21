@@ -70,7 +70,12 @@ filter_empty(Props) ->
 
 -spec filter_undefined(wh_proplist()) -> wh_proplist().
 filter_undefined(Props) ->
-    [KV || {_, V}=KV <- Props, V =/= 'undefined'].
+    [KV || KV <- Props,
+           case KV of
+               {_, 'undefined'} -> 'false';
+               _ -> 'true'
+           end
+    ].
 
 -spec get_value(wh_proplist_key(), wh_proplist()) -> term().
 -spec get_value(wh_proplist_key(), wh_proplist(), Default) -> Default | term().
@@ -272,6 +277,8 @@ filter_empty_test() ->
     ?assertEqual([], filter_empty([{a, 0}, {b, []}, {c, <<>>}, {z, undefined}])).
 
 filter_undefined_test() ->
+    ?assertEqual(['a'], filter_undefined(['a'])),
+
     ?assertEqual([], filter_undefined([])),
     ?assertEqual([{a, 10}, {b, 8}, {c, 6}], filter_undefined([{a, 10}, {b, 8}, {c, 6}])),
     ?assertEqual([{a, 0}, {b, []}, {c, <<>>}], filter_undefined([{a, 0}, {b, []}, {c, <<>>}, {z, undefined}])).
