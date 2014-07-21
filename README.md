@@ -62,13 +62,7 @@ Kazoo
 
 ### Cloud-Based Telecommunications For Everyone
 
-Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and
-telecommunications to everyone.
-Our goal is to provide the world with a free, open telecommunications software
-platform. Released under the OSI-approved MPL 1.1 open source software
-license, we're building upon strong FOSS components like Linux, Erlang,
-FreeSWITCH, CouchDB (specifically BigCouch), and RabbitMQ. Our project is a
-great example of the wonderful things that can happen when software is open.
+Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](http://opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](https://www.gnu.org/)/[Linux](https://en.wikipedia.org/wiki/Linux), [Erlang](http://erlang.org), [FreeSWITCH](https://freeswitch.org), [CouchDB](https://couchdb.apache.org) \(specifically [BigCouch](http://bigcouch.cloudant.com)), and [RabbitMQ](https://www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
 
 ### What is Kazoo?
 
