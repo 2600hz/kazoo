@@ -513,18 +513,18 @@ fetch_local_resources(AccountId) ->
             lager:warning("unable to fetch local resources from ~s: ~p", [AccountId, _R]),
             [];
         {'ok', JObjs} ->
-            CacheProps = [{'origin', fetch_global_cache_origin(JObjs, AccountDb, [])}],
+            CacheProps = [{'origin', fetch_local_cache_origin(JObjs, AccountDb, [])}],
             Resources = resources_from_jobjs([wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]),
             LocalResources = [Resource#resrc{global='false'} || Resource <- Resources],
             wh_cache:store_local(?STEPSWITCH_CACHE, {'local_resources', AccountId}, LocalResources, CacheProps),
             LocalResources
     end.
 
--spec fetch_global_cache_origin(wh_json:objects(), ne_binary(), wh_cache_props()) -> wh_cache_props().
-fetch_global_cache_origin([], _, Props) -> Props;
-fetch_global_cache_origin([JObj|JObjs], AccountDb, Props) ->
+-spec fetch_local_cache_origin(wh_json:objects(), ne_binary(), wh_cache_props()) -> wh_cache_props().
+fetch_local_cache_origin([], _, Props) -> Props;
+fetch_local_cache_origin([JObj|JObjs], AccountDb, Props) ->
     Id = wh_json:get_value(<<"id">>, JObj),
-    fetch_global_cache_origin(JObjs, AccountDb, [{'db', AccountDb, Id}|Props]).
+    fetch_local_cache_origin(JObjs, AccountDb, [{'db', AccountDb, Id}|Props]).
 
 %%--------------------------------------------------------------------
 %% @private
