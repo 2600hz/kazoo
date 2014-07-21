@@ -465,15 +465,9 @@ normalize_view_results(JObj, Acc) ->
 normalize_incoming_view_results(JObj, Acc) ->
     [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
 
--spec get_incoming_view_options(cb_context:context()) ->
-                                       {'ok', wh_proplist()} |
-                                       cb_context:context().
 -spec get_incoming_view_options(cb_context:context(), api_binaries(), api_binaries()) ->
                                        {'ok', wh_proplist()} |
                                        cb_context:context().
-
-get_incoming_view_options(Context) ->
-    get_incoming_view_options(Context, 'undefined', 'undefined').
 
 get_incoming_view_options(Context, 'undefined', SuffixKey) ->
     get_incoming_view_options(Context, [], SuffixKey);

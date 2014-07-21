@@ -23,10 +23,12 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case whapps_util:amqp_pool_request(
-           build_offnet_request(Data, Call),
-           fun wapi_offnet_resource:publish_req/1,
-           fun wapi_offnet_resource:resp_v/1, 30000) of
-        {'ok', Res } ->
+           build_offnet_request(Data, Call)
+           ,fun wapi_offnet_resource:publish_req/1
+           ,fun wapi_offnet_resource:resp_v/1
+           ,30000)
+    of
+        {'ok', _Res} ->
             doodle_exe:continue(Call);
         {'error', _E} ->
             lager:debug("error executing offnet action : ~p",[_E]),
@@ -180,11 +182,11 @@ get_flags(Data, Call) ->
 
 -spec get_resource_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
 get_resource_flags(JObj, Call, Flags) ->
-    get_resource_type_flags(whapps_call:resource_type(Call), JObj, Call, Flags).    
+    get_resource_type_flags(whapps_call:resource_type(Call), JObj, Call, Flags).
 
 -spec get_resource_type_flags(ne_binary(), wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
-get_resource_type_flags(<<"sms">>, JObj, Call, Flags) -> [<<"sms">> | Flags];
-get_resource_type_flags(_Other, JObj, Call, Flags) -> Flags.
+get_resource_type_flags(<<"sms">>, _JObj, _Call, Flags) -> [<<"sms">> | Flags];
+get_resource_type_flags(_Other, _JObj, _Call, Flags) -> Flags.
 
 -spec get_endpoint_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
 get_endpoint_flags(_, Call, Flags) ->
@@ -265,28 +267,3 @@ get_diversions(Call) ->
 -spec get_inception(whapps_call:call()) -> api_binary().
 get_inception(Call) ->
     wh_json:get_value(<<"Inception">>, whapps_call:custom_channel_vars(Call)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Consume Erlang messages and return on offnet response
-%% @end
-%%--------------------------------------------------------------------
--spec wait_for_stepswitch(whapps_call:call()) -> {ne_binary(), api_binary()}.
-wait_for_stepswitch(Call) ->
-    case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
-        {'ok', JObj} ->
-            case wh_util:get_event_type(JObj) of
-                {<<"resource">>, <<"offnet_resp">>} ->
-                    {wh_json:get_value(<<"Response-Message">>, JObj)
-                     ,wh_json:get_value(<<"Response-Code">>, JObj)
-                    };
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-                    lager:info("recv channel destroy"),
-                    {wh_json:get_value(<<"Hangup-Cause">>, JObj)
-                     ,wh_json:get_value(<<"Hangup-Code">>, JObj)
-                    };
-                _ -> wait_for_stepswitch(Call)
-            end;
-        _ -> wait_for_stepswitch(Call)
-    end.

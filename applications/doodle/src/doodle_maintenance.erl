@@ -25,7 +25,7 @@ start_check_sms_by_owner_id(AccountId, OwnerId) ->
     spawn(?MODULE, 'check_sms_by_owner_id', [AccountId, OwnerId]).
 
 -spec check_sms_by_device_id(ne_binary(), ne_binary()) -> any().
-check_sms_by_device_id(AccountId, 'undefined') -> 'ok';
+check_sms_by_device_id(_AccountId, 'undefined') -> 'ok';
 check_sms_by_device_id(AccountId, DeviceId) ->
     ViewOptions = [{'key', DeviceId}],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_device">>, ViewOptions) of
@@ -37,7 +37,7 @@ check_sms_by_device_id(AccountId, DeviceId) ->
     end.
 
 -spec check_sms_by_owner_id(ne_binary(), ne_binary()) -> any().
-check_sms_by_owner_id(AccountId, 'undefined') -> 'ok';
+check_sms_by_owner_id(_AccountId, 'undefined') -> 'ok';
 check_sms_by_owner_id(AccountId, OwnerId) ->
     ViewOptions = [{'key', OwnerId}],
     case kazoo_modb:get_results(AccountId, <<"sms/deliver_to_owner">>, ViewOptions) of
@@ -49,7 +49,7 @@ check_sms_by_owner_id(AccountId, OwnerId) ->
     end.
 
 -spec start_check_sms_by_account(ne_binary(), wh_json:object()) -> any().
-start_check_sms_by_account(AccountId, JObj) ->
+start_check_sms_by_account(AccountId, _JObj) ->
     spawn(?MODULE, 'check_pending_sms_for_outbound_delivery', [AccountId]).
 
 -spec check_pending_sms_for_outbound_delivery(ne_binary()) -> any().

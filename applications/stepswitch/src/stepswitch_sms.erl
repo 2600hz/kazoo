@@ -32,9 +32,11 @@
                 ,queue :: api_binary()
                 ,timeout :: reference()
                }).
+-type state() :: #state{}.
 
--define(RESPONDERS, [
-                     {{?MODULE, 'handle_message_delivery'}, [{<<"message">>, <<"delivery">>}]}
+-define(RESPONDERS, [ {{?MODULE, 'handle_message_delivery'}
+                       ,[{<<"message">>, <<"delivery">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -126,7 +128,7 @@ handle_cast({'wh_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=ControlQ}=State) ->
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=_ControlQ}=State) ->
     'ok' = wapi_sms:publish_message(build_sms(State)),
     lager:debug("sent sms command"),
     {'noreply', State};
@@ -177,8 +179,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, State) ->
-    %lager:debug("unhandled event in sms : ~p",[JObj]),
+handle_event(_JObj, _State) ->
     {'reply', []}.
 
 %%--------------------------------------------------------------------
@@ -220,10 +221,10 @@ handle_message_delivery(JObj, Props) ->
         'false' -> gen_listener:cast(Server, {'sms_success', JObj})
     end.
 
-
+-spec build_sms(state()) -> wh_proplist().
 build_sms(#state{endpoints=Endpoints
                     ,resource_req=JObj
-                    ,queue=Q
+                    ,queue=_Q
                    }) ->
     {CIDNum, CIDName} = bridge_caller_id(Endpoints, JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
@@ -501,5 +502,5 @@ get_diversions(Inception, Diversions) ->
 
 -spec find_diversion_count(wh_json:objects()) -> non_neg_integer().
 find_diversion_count([]) -> 0;
-find_diversion_count(Diversions) -> 
+find_diversion_count(Diversions) ->
     lists:max([kzsip_diversion:counter(Diversion) || Diversion <- Diversions]).

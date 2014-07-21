@@ -25,11 +25,11 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
   terminate/2, code_change/3]).
-  
+
 -export([send_notify/2]).
 
 
--record(state, 
+-record(state,
         {
          faxbox_id :: ne_binary(),
          printer_id = 'undefined' :: api_binary(),
@@ -39,27 +39,27 @@
          session :: pid(),
          jid :: exmpp_jid:jid(),
          full_jid = 'undefined' :: api_binary(),
-         monitor :: reference() 
+         monitor :: reference()
         }).
 
 -type state() :: #state{}.
 -type packet() :: #received_packet{}.
 
-start(PrinterId) -> 
+start(PrinterId) ->
   gen_server:start({local, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
 
-start_link(PrinterId) -> 
+start_link(PrinterId) ->
   gen_server:start_link({local, wh_util:to_atom(PrinterId, 'true')}, ?MODULE, [PrinterId], []).
-  
+
 stop(PrinterId) ->
   gen_server:cast({local, wh_util:to_atom(PrinterId, 'true')}, stop).
-  
+
 init([PrinterId]) ->
     process_flag(trap_exit, 'true'),
-    gen_server:cast(self(), 'start'),    
+    gen_server:cast(self(), 'start'),
     {ok, #state{faxbox_id=PrinterId}, ?POLLING_INTERVAL}.
-  
-  
+
+
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
@@ -84,7 +84,7 @@ handle_cast('start', #state{faxbox_id=FaxBoxId} = State) ->
 
 handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=RefreshToken}=State) ->
     {'ok', App} = kazoo_oauth_util:get_oauth_app(AppId),
-    {'ok', #oauth_token{token=Token} = OAuthToken} = kazoo_oauth_util:token(App, RefreshToken),
+    {'ok', #oauth_token{token=Token} = _OAuthToken} = kazoo_oauth_util:token(App, RefreshToken),
     case connect(wh_util:to_list(JID), wh_util:to_list(Token)) of
         {ok, {MySession, MyJID}} ->
             Monitor = erlang:monitor('process', MySession),
@@ -94,7 +94,7 @@ handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=Re
                                  ,jid=MyJID
                                  ,connected='true'}
             , ?POLLING_INTERVAL};
-        _ -> 
+        _ ->
             {stop, <<"Error connecting to xmpp server">>, State}
     end;
 
@@ -104,30 +104,30 @@ handle_cast('status', State) ->
 handle_cast('subscribe', #state{jid=#jid{raw=JFull}=MyJID, session=MySession}=State) ->
     lager:debug("xmpp subscribe ~s",[JFull]),
     IQ = get_sub_msg(MyJID),
-    PacketId = exmpp_session:send_packet(MySession, IQ),
+    _PacketId = exmpp_session:send_packet(MySession, IQ),
     {noreply, State, ?POLLING_INTERVAL};
 
 handle_cast(stop, State) -> {stop, normal, State};
 handle_cast(_Msg, State) -> {noreply, State}.
 
-handle_info(#received_packet{packet_type='message'}=Packet, State) ->    
+handle_info(#received_packet{packet_type='message'}=Packet, State) ->
     process_received_packet(Packet, State),
     {noreply, State, ?POLLING_INTERVAL};
 handle_info(#received_packet{packet_type='iq'
-                            ,raw_packet=Packet}, State) ->    
+                            ,raw_packet=Packet}, State) ->
     lager:debug("xmpp received iq packet ~s",[exmpp_xml:document_to_binary(Packet)]),
     {noreply, State, ?POLLING_INTERVAL};
 handle_info(#received_packet{}=Packet, State) ->
     lager:debug("xmpp received unknown packet type : ~p",[Packet]),
     {noreply, State, ?POLLING_INTERVAL};
-handle_info(timeout, State) ->    
+handle_info(timeout, State) ->
     gen_server:cast(self(), 'subscribe'),
     {noreply, State, ?POLLING_INTERVAL};
-handle_info({'DOWN', MonitorRef, Type, Object, Info}=A, #state{monitor=MonitorRef}=State) -> 
+handle_info({'DOWN', MonitorRef, _Type, _Object, _Info}=A, #state{monitor=MonitorRef}=State) ->
   lager:debug("xmpp session down ~p",[A]),
-  gen_server:cast(self(), 'start'),  
+  gen_server:cast(self(), 'start'),
   {noreply, State, ?POLLING_INTERVAL};
-handle_info(_Info, State) ->    
+handle_info(_Info, State) ->
     lager:debug("xmpp handle_info ~p",[_Info]),
     {noreply, State, ?POLLING_INTERVAL}.
 
@@ -135,19 +135,19 @@ terminate(_Reason, #state{jid=#jid{raw=JFull}
                          ,session=MySession
                          ,monitor=MonitorRef
                          ,connected='true'}) ->
-    
+
     lager:debug("terminating xmpp session ~s",[JFull]),
     erlang:demonitor(MonitorRef, ['flush']),
     disconnect(MySession),
     'ok';
-terminate(_Reason, State) -> 
+terminate(_Reason, _State) ->
     lager:debug("terminate xmpp module with reason ~p",[_Reason]),
     'ok'.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 -spec get_sub_msg(exmpp_jid:jid()) -> ne_binary().
-get_sub_msg( #jid{raw=JFull, node=JUser, domain=JDomain} = JID) ->
+get_sub_msg( #jid{raw=JFull, node=JUser, domain=JDomain} = _JID) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     Document = <<"<iq type='set' from='", JFull/binary, "' to='",BareJID/binary,"'>"
                  ,   "<subscribe xmlns='google:push'>"
@@ -161,11 +161,11 @@ get_sub_msg( #jid{raw=JFull, node=JUser, domain=JDomain} = JID) ->
 
 -spec process_received_packet(packet(), state()) -> any().
 process_received_packet(#received_packet{raw_packet=Packet}
-                       ,#state{jid=#jid{node=JUser,domain=JDomain}}=State) ->
+                       ,#state{jid=#jid{node=JUser,domain=JDomain}}=_State) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     case exmpp_xml:get_element(Packet, ?NS_PUSH, 'push') of
         'undefined' -> 'undefined';
-        Push -> 
+        Push ->
             DataNode = exmpp_xml:get_element(Push, ?NS_PUSH, 'data'),
             Data64 = exmpp_xml:get_cdata(DataNode),
             PrinterId = base64:decode(Data64),
@@ -189,8 +189,8 @@ connect(JID, Password) ->
     Session = exmpp_session:start({1,0}),
     Jid = exmpp_jid:parse(JID),
     exmpp_session:auth(Session, Jid, Password, "X-OAUTH2"),
-    StreamId  = exmpp_session:connect_TCP(Session, ?XMPP_SERVER, 5222,[{'starttls', 'enabled'}]),
-    
+    _StreamId  = exmpp_session:connect_TCP(Session, ?XMPP_SERVER, 5222,[{'starttls', 'enabled'}]),
+
     try init_session(Session, Password)
     catch
       _:Error -> lager:debug("error connecting xmpp session: ~p", [Error]),
@@ -210,7 +210,7 @@ init_session(Session, Password) ->
   ok.
 
 disconnect(MySession) ->
-  try 
+  try
         exmpp_session:stop(MySession)
   catch
     E:R ->

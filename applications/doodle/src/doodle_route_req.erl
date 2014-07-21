@@ -35,7 +35,7 @@ handle_req(JObj, Props) ->
                 {'error', R} ->
                     lager:info("unable to find callflow ~p", [R])
             end;
-        
+
         'false' ->
             'ok'
     end.
@@ -63,7 +63,7 @@ allow_no_match_type(Call) ->
         _ -> 'true'
     end.
 
-   
+
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
                                                        ,whapps_call:account_id(Call)
@@ -99,10 +99,8 @@ bucket_cost(Flow) ->
         N -> N
     end.
 
-
-
 -spec send_route_response(wh_json:object(), wh_json:object(), ne_binary(), whapps_call:call()) -> 'ok'.
-send_route_response(Flow, JObj, Q, Call) ->
+send_route_response(_Flow, JObj, Q, _Call) ->
     Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                                    ,{<<"Routes">>, []}
                                    ,{<<"Method">>, <<"sms">>}
@@ -115,7 +113,7 @@ send_route_response(Flow, JObj, Q, Call) ->
 
 -spec cache_call(wh_json:object(), boolean(), ne_binary(), whapps_call:call(), wh_json:object()) -> 'ok'.
 cache_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
-    
+
     Updaters = [fun(C) ->
                         Props = [{'cf_flow_id', wh_json:get_value(<<"_id">>, Flow)}
                                  ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
@@ -134,7 +132,7 @@ cache_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
 
 -spec cache_resource_types(wh_json:object(), whapps_call:call(), wh_json:object()) -> whapps_call:call().
 cache_resource_types(Flow, Call, JObj) ->
-     lists:foldl(fun([K | K1]=KL , C1) ->
+     lists:foldl(fun([_K | _K1]=KL , C1) ->
                          whapps_call:kvs_store(lists:nthtail(1, KL), wh_json:get_value(KL, JObj), C1);
                     (K, C1) ->
                          whapps_call:kvs_store(K, wh_json:get_value(K, JObj), C1)
@@ -142,8 +140,6 @@ cache_resource_types(Flow, Call, JObj) ->
 
 
 -spec cache_resource_types(ne_binary(), wh_json:object(), whapps_call:call(), wh_json:object()) -> wh_proplist().
-cache_resource_types(<<"sms">>, Flow, Call, JObj) ->
+cache_resource_types(<<"sms">>, _Flow, _Call, _JObj) ->
     [<<"Message-ID">>, <<"Body">>];
 cache_resource_types(_Other, _Flow, _Call, _JObj) -> [].
-    
-

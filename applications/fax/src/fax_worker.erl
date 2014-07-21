@@ -187,10 +187,10 @@ handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
     release_failed_job('channel_destroy', JObj, Job),
     gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', reset(State)};
-handle_cast({'channel_destroy', JobId2, JObj}, #state{job_id=JobId}=State) ->
+handle_cast({'channel_destroy', JobId2, _JObj}, #state{job_id=JobId}=State) ->
     lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
-handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{job=Job
+handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{job=_Job
                                                                       ,pages=Pages
                                                                       ,account_id=AccountId
                                                                       }=State) ->
@@ -201,7 +201,7 @@ handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{job=Job
     send_status(JobId, Status, AccountId, Data),
     {'noreply', State#state{status=Status, page=1, fax_status=Data}};
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
-           , #state{job=Job, pages=Pages, page=Page, account_id=AccountId}=State) ->
+           , #state{job=_Job, pages=Pages, page=Page, account_id=AccountId}=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
     TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, Data),
     lager:debug("fax status - page result - ~s : ~p : ~p"
@@ -229,12 +229,12 @@ handle_cast({'fax_status', <<"result">>, JobId, JObj}
 handle_cast({'fax_status', Event, JobId, _}, State) ->
     lager:debug("fax status ~s - ~s event not handled",[JobId, Event]),
     {'noreply', State};
-handle_cast({'query_status', JobId, Queue, MsgId, JObj}
+handle_cast({'query_status', JobId, Queue, MsgId, _JObj}
            , #state{status=Status,job_id=JobId, account_id=AccountId, fax_status=Data}=State) ->
     lager:debug("query fax status ~s handled by this queue",[JobId]),
     send_reply_status(Queue, MsgId, JobId, Status, AccountId, Data),
     {'noreply', State};
-handle_cast({'query_status', JobId, Queue, MsgId, JObj}, State) ->
+handle_cast({'query_status', JobId, Queue, MsgId, _JObj}, State) ->
     lager:debug("query fax status ~s not handled by this queue",[JobId]),
     Status = list_to_binary(["Fax ", JobId, " not being processed by this Queue"]),
     send_reply_status(Queue, MsgId, JobId, Status, <<"*">>,'undefined'),
@@ -595,12 +595,12 @@ apply_reschedule_logic(JObj) ->
             lager:debug("no rules applied in fax reschedule logic"),
             JObj2;
         {'ok', JObj2} ->
-            lager:debug("rule '~s' applied in fax reschedule logic", 
+            lager:debug("rule '~s' applied in fax reschedule logic",
                         [wh_json:get_value(<<"reschedule_rule">>, JObj2)]),
             JObj2
     end.
 
--spec apply_reschedule_rules({wh_json:json_terms(), wh_json:json_strings()}, wh_json:object()) -> 
+-spec apply_reschedule_rules({wh_json:json_terms(), wh_json:json_strings()}, wh_json:object()) ->
           {'ok', wh_json:object()} | {'no_rules', wh_json:object()}.
 apply_reschedule_rules({[], _}, JObj) -> {'no_rules', JObj};
 apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
@@ -640,15 +640,14 @@ set_default_update_fields(JObj) ->
 
 
 -spec maybe_notify(wh_proplist(), wh_json:object(), wh_json:object(), ne_binary()) -> any().
-maybe_notify(Result, JObj, Resp, <<"completed">>) ->
+maybe_notify(_Result, JObj, Resp, <<"completed">>) ->
     Message = notify_fields(JObj, Resp),
     wapi_notifications:publish_fax_outbound(Message);
-maybe_notify(Result, JObj, Resp, <<"failed">>) ->
+maybe_notify(_Result, JObj, Resp, <<"failed">>) ->
     Message = notify_fields(JObj, Resp),
     wapi_notifications:publish_fax_outbound_error(Message);
-maybe_notify(Result, JObj, Resp, Status) ->
+maybe_notify(_Result, _JObj, _Resp, Status) ->
     lager:debug("notify Status ~p not handled",[Status]).
-
 
 -spec notify_fields(wh_json:object(), wh_json:object()) -> wh_proplist().
 notify_fields(JObj, Resp) ->
@@ -797,8 +796,7 @@ normalize_content_type(<<"application/pdf">>) -> <<"application/pdf">>;
 normalize_content_type(<<"application/x-pdf">>) -> <<"application/pdf">>;
 normalize_content_type(<<"text/pdf">>) -> <<"application/pdf">>;
 normalize_content_type(<<"text/x-pdf">>) -> <<"application/pdf">>;
-normalize_content_type(<<Else/binary>>) ->
-    Else;
+normalize_content_type(<<_/binary>> = Else) -> Else;
 normalize_content_type(CT) ->
     normalize_content_type(wh_util:to_binary(CT)).
 
@@ -808,37 +806,34 @@ send_fax(JobId, JObj, Q) ->
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = wh_util:rand_hex_binary(8),
-    Request = props:filter_undefined([
-                {<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
-               ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
-               ,{<<"Outbound-Callee-ID-Number">>, ToNumber}
-               ,{<<"Outbound-Callee-ID-Name">>, ToName }
-               ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-               ,{<<"To-DID">>, wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))}
-               ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity_number">>, JObj)}
-               ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_identity_name">>, JObj)}
-               ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
-               ,{<<"Flags">>, wh_json:get_value(<<"flags">>, JObj)}
-               ,{<<"Resource-Type">>, <<"originate">>}
-               ,{<<"Msg-ID">>, JobId}
-               ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
-                                                              ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
-                                                              ])}
-               ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
-               ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
-               ,{<<"Application-Name">>, <<"fax">>}
-               ,{<<"Application-Data">>, get_proxy_url(JobId)}
-               ,{<<"Outbound-Call-ID">>, CallId}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ]),
+    Request = props:filter_undefined(
+                [{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
+                 ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
+                 ,{<<"Outbound-Callee-ID-Number">>, ToNumber}
+                 ,{<<"Outbound-Callee-ID-Name">>, ToName }
+                 ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+                 ,{<<"To-DID">>, wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))}
+                 ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity_number">>, JObj)}
+                 ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_identity_name">>, JObj)}
+                 ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
+                 ,{<<"Flags">>, wh_json:get_value(<<"flags">>, JObj)}
+                 ,{<<"Resource-Type">>, <<"originate">>}
+                 ,{<<"Msg-ID">>, JobId}
+                 ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
+                                                                 ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
+                                                                ])}
+                 ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
+                 ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
+                 ,{<<"Application-Name">>, <<"fax">>}
+                 ,{<<"Application-Data">>, get_proxy_url(JobId)}
+                 ,{<<"Outbound-Call-ID">>, CallId}
+                 | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                ]),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-                                             ,{'restrict_to',[<<"CHANNEL_FAX_STATUS">>]
-                                              }
+                                              ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>]}
                                              ]),
     wapi_offnet_resource:publish_req(Request).
-
-
 
 -spec get_proxy_url(ne_binary()) -> ne_binary().
 get_proxy_url(JobId) ->
@@ -855,29 +850,28 @@ reset(State) ->
                }.
 
 -spec send_status(ne_binary(), ne_binary() | ne_binaries(), ne_binary(), api_object()) -> any().
-send_status(JobId, [], _, _) ->
-    'ok';
+send_status(_JobId, [], _, _) -> 'ok';
 send_status(JobId, [Status|Other], AccountId, JObj) ->
     send_status(JobId, Status, AccountId, JObj),
     send_status(JobId, Other, AccountId, JObj);
 send_status(JobId, Status, AccountId, JObj) ->
     Payload = props:filter_undefined(
-      [{<<"Job-ID">>, JobId}
-      ,{<<"Status">>, Status}
-      ,{<<"Account-ID">>, AccountId}
-      ,{<<"Fax-Info">>, JObj}
-      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-      ]),
+                [{<<"Job-ID">>, JobId}
+                 ,{<<"Status">>, Status}
+                 ,{<<"Account-ID">>, AccountId}
+                 ,{<<"Fax-Info">>, JObj}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
     wapi_fax:publish_status(Payload).
 
 -spec send_reply_status(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_object()) -> 'ok'.
 send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
     Payload = props:filter_undefined(
-      [{<<"Job-ID">>, JobId}
-      ,{<<"Status">>, Status}
-      ,{<<"Msg-ID">>, MsgId}
-      ,{<<"Account-ID">>, AccountId}
-      ,{<<"Fax-Info">>, JObj}
-      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-      ]),
+                [{<<"Job-ID">>, JobId}
+                 ,{<<"Status">>, Status}
+                 ,{<<"Msg-ID">>, MsgId}
+                 ,{<<"Account-ID">>, AccountId}
+                 ,{<<"Fax-Info">>, JObj}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
     wapi_fax:publish_targeted_status(Q, Payload).

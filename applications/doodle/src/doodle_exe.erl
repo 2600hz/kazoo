@@ -583,7 +583,6 @@ cf_module_prefix(Call) ->
 cf_module_prefix(_Call, <<"sms">>) -> <<"cf_sms_">>;
 cf_module_prefix(_Call, _) -> <<"cf_">>.
 
-
 maybe_stop_caring('undefined') -> 'ok';
 maybe_stop_caring({P, R}) ->
     unlink(P),
@@ -600,20 +599,12 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
             spawn_cf_module(CFModule, Data, Call)
     catch
         'error':'undef' ->
-%            cf_module_not_found(Call)
             cf_module_skip(ModuleBin, Call)
     end.
 
--spec cf_module_not_found(whapps_call:call()) ->
-                                 {'undefined', atom()}.
-cf_module_not_found(Call) ->
-    lager:error("unknown callflow action, reverting to last action"),
-    ?MODULE:continue(self()),
-    {'undefined', whapps_call:kvs_fetch('cf_last_action', Call)}.
-
 -spec cf_module_skip(ne_binary(), whapps_call:call()) ->
                                  {'undefined', atom()}.
-cf_module_skip(CFModule, Call) ->
+cf_module_skip(CFModule, _Call) ->
     lager:error("unknown callflow action '~s', skipping to next action",[CFModule]),
     ?MODULE:continue(self()),
     {'undefined', CFModule}.

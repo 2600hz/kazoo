@@ -14,7 +14,7 @@
 
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
-handle_req(JObj, Props) ->
+handle_req(JObj, _Props) ->
     'true' = wapi_registration:success_v(JObj),
     _ = wh_util:put_callid(JObj),
     Username = wh_json:get_value(<<"Username">>, JObj),
@@ -47,4 +47,3 @@ handle_req(JObj, Props) ->
                     lager:debug("error finding ~s@~s endpoint in sip_db : ~p", [Username, Realm, _E])
             end
     end.
-

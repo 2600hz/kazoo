@@ -20,11 +20,9 @@
 %% Supervisor callbacks
 -export([init/1]).
 
-
 -define(XMPP_PRINTER(PrinterId) ,?WORKER_NAME_ARGS('fax_xmpp',wh_util:to_atom(PrinterId, 'true'),[PrinterId])).
 
 -define(CHILDREN, [?SUPER('exmpp_sup')]).
-                  
 
 %% ===================================================================
 %% API functions
@@ -46,18 +44,17 @@ start_printer(PrinterId) ->
 
 -spec stop_printer(ne_binary()) -> any().
 stop_printer(PrinterId) ->
-    [
-     begin
+    [begin
          supervisor:terminate_child(?MODULE, Id),
          supervisor:delete_child(?MODULE, Id)
      end
-    || {Id, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE), (Id == wh_util:to_atom(PrinterId, 'true')) ].
-
+     || {Id, _Pid, 'worker', [_]} <- supervisor:which_children(?MODULE),
+        (Id == wh_util:to_atom(PrinterId, 'true'))
+    ].
 
 -spec printers() -> [{ne_binary(), pid()},...].
 printers() ->
     [ {Id, Pid} || {Id, Pid, 'worker', [_]} <- supervisor:which_children(?MODULE)].
-
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -79,5 +76,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    
+
     {'ok', {SupFlags, ?CHILDREN}}.

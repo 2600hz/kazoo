@@ -577,7 +577,7 @@ maybe_add_capability(Node, Capability) ->
 maybe_replay_registrations(Node) ->
     replay_registration(Node, get_registrations(Node)).
 
-replay_registration(Node, []) -> 'ok';
+replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
     Payload = [
                {<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
@@ -621,14 +621,15 @@ get_registrations(Node) ->
     end.
 
 -spec get_registration_details(list()) -> wh_proplist().
-get_registration_details(Lines) when length(Lines) > 3 ->
-            Header = lists:nth(1, Lines),
-            [ begin
-                   {Res,Total} = lists:mapfoldl(
-                                   fun(E, Acc) ->
-                                           {{lists:nth(Acc, Header),E}, Acc+1}
-                                   end, 1, Row),
-                   Res
-               end
-             || Row <- lists:sublist(Lines, 2, length(Lines)-4)];
-get_registration_details(List) -> [].
+get_registration_details([_, _, _, _ | _] = Lines) ->
+    Header = lists:nth(1, Lines),
+    [begin
+         {Res, _Total} = lists:mapfoldl(
+                           fun(E, Acc) ->
+                                   {{lists:nth(Acc, Header),E}, Acc+1}
+                           end, 1, Row),
+         Res
+     end
+     || Row <- lists:sublist(Lines, 2, length(Lines)-4)
+    ];
+get_registration_details(_List) -> [].
