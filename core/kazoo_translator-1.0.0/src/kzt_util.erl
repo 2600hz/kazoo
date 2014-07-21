@@ -78,43 +78,9 @@ http_method(<<_/binary>> = Method) ->
     end;
 http_method(Method) -> http_method(wh_util:to_binary(Method)).
 
--spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | binary() | 'undefined') -> ne_binary().
-resolve_uri(Raw, 'undefined') ->
-    wh_util:to_binary(Raw);
-resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
-resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
-    wh_util:join_binary(
-      resolve_uri_path(RawPath, Relative)
-      ,<<"/">>
-     );
-resolve_uri(RawPath, Relative) ->
-    resolve_uri(wh_util:to_binary(RawPath), wh_util:to_binary(Relative)).
-
--spec resolve_uri_path(ne_binary(), ne_binary()) -> ne_binaries().
-resolve_uri_path(RawPath, Relative) ->
-    PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, ['global'])),
-    UrlTokens = binary:split(Relative, <<"/">>, ['global']),
-
-    lists:reverse(
-      lists:foldl(fun resolve_uri_fold/2, PathTokensRev, UrlTokens)
-     ).
-
--spec resolve_uri_fold(ne_binary(), ne_binaries()) -> ne_binaries().
-resolve_uri_fold(<<"..">>, []) -> [];
-resolve_uri_fold(<<"..">>, [_ | PathTokens]) -> PathTokens;
-resolve_uri_fold(<<".">>, PathTokens) -> PathTokens;
-resolve_uri_fold(<<>>, PathTokens) -> PathTokens;
-resolve_uri_fold(Segment, [<<>>|DirTokens]) ->
-    [Segment|DirTokens];
-resolve_uri_fold(Segment, [LastToken|DirTokens]=PathTokens) ->
-    case filename:extension(LastToken) of
-        <<>> ->
-            %% no extension, append Segment to Tokens
-            [Segment | PathTokens];
-        _Ext ->
-            %% Extension found, append Segment to DirTokens
-            [Segment|DirTokens]
-    end.
+-spec resolve_uri(ne_binary(), ne_binary()) -> ne_binary().
+resolve_uri(Path, NewPath) ->
+    wh_util:resolve_uri(Path, NewPath).
 
 %% see cf_offnet.erl
 -spec offnet_req(wh_proplist(), whapps_call:call()) -> 'ok'.
@@ -342,16 +308,5 @@ get_request_vars(Call) ->
         ])).
 
 -ifdef(TEST).
--spec test() -> 'ok'.
-test() -> 'ok'.
-
--spec get_path_test() -> any().
-get_path_test() ->
-    RawPath = <<"http://pivot/script.php">>,
-    Relative = <<"script2.php">>,
-    RawPathList = [<<"http:">>, <<>>, <<"pivot">>, <<"script2.php">>],
-
-    ?assertEqual(RawPathList, resolve_uri_path(RawPath, Relative)),
-    ?assertEqual(RawPathList, resolve_uri_path(RawPath, <<"/", Relative/binary>>)).
 
 -endif.
