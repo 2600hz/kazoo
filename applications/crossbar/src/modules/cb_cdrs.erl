@@ -322,7 +322,7 @@ maybe_add_design_doc(Db) ->
 
 -spec load_chunked_cdrs(ne_binary(), ne_binaries(), payload()) -> payload().
 load_chunked_cdrs(_, [], Payload) -> Payload;
-load_chunked_cdrs(Db, Ids, Payload) ->
+load_chunked_cdrs(Db, Ids, {_, Context}=Payload) ->
     {BulkIds, Remaining} =
         case erlang:length(Ids) < ?MAX_BULK of
             'true' -> {Ids, []};
@@ -333,9 +333,10 @@ load_chunked_cdrs(Db, Ids, Payload) ->
                  ],
     case couch_mgr:all_docs(Db, ViewOptions) of
         {'ok', Results} ->
+            HasQSFilter = crossbar_doc:has_qs_filter(Context),
             JObjs = [wh_json:get_value(<<"doc">>, Result)
                      || Result <- Results
-                    ],
+                        ,crossbar_doc:filtered_doc_by_qs(Result, HasQSFilter, Context)],
             P = normalize_and_send(JObjs, Payload),
             load_chunked_cdrs(Db, Remaining, P);
         {'error', _E} ->
@@ -353,24 +354,28 @@ normalize_and_send(JObjs, {_, Context}=Payload) ->
 normalize_and_send('json', [], Payload) -> Payload;
 normalize_and_send('json', [JObj|JObjs], {Req, Context}) ->
     CDR = normalize_cdr(JObj, Context),
-    JSON = case cb_context:fetch(Context, 'started_chunk') of
-               'undefined' -> wh_json:encode(CDR);
-                _Else -> <<",", (wh_json:encode(CDR))/binary>>
-           end,
-    'ok' = cowboy_req:chunk(JSON, Req),
-    normalize_and_send('json', JObjs, {Req, cb_context:store(Context, 'started_chunk', 'true')});
+    case cb_context:fetch(Context, 'started_chunk') of
+        'true' ->
+            'ok' = cowboy_req:chunk(<<",", (wh_json:encode(CDR))/binary>>, Req),
+            normalize_and_send('json', JObjs, {Req, Context});
+        _Else ->
+            'ok' = cowboy_req:chunk(wh_json:encode(CDR), Req),
+            normalize_and_send('json', JObjs, {Req, cb_context:store(Context, 'started_chunk', 'true')})
+    end;
 
 normalize_and_send('csv', [], Payload) -> Payload;
 normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
-    CSV = case cb_context:fetch(Context, 'started_chunk') of
-               'undefined' ->
-                    <<(normalize_cdr_to_csv_header(JObj, Context))/binary
+    case cb_context:fetch(Context, 'started_chunk') of
+        'true' ->
+            CSV =  <<(normalize_cdr_to_csv_header(JObj, Context))/binary
                       ,(normalize_cdr_to_csv(JObj, Context))/binary
-                    >>;
-                _Else -> normalize_cdr_to_csv(JObj, Context)
-          end,
-    'ok' = cowboy_req:chunk(CSV, Req),
-    normalize_and_send('csv', JObjs, {Req, cb_context:store(Context, 'started_chunk', 'true')}).
+                    >>,
+            'ok' = cowboy_req:chunk(CSV, Req),
+            normalize_and_send('csv', JObjs, {Req, Context});
+        _Else ->
+            'ok' = cowboy_req:chunk(normalize_cdr_to_csv(JObj, Context), Req),
+            normalize_and_send('csv', JObjs, {Req, cb_context:store(Context, 'started_chunk', 'true')})
+    end.
 
 -spec normalize_cdr(wh_json:object(), cb_context:context()) -> wh_json:object().
 normalize_cdr(JObj, Context) ->
@@ -410,33 +415,34 @@ normalize_cdr(JObj, Context) ->
 -spec normalize_cdr_to_csv(wh_json:object(), cb_context:context()) -> ne_binary().
 normalize_cdr_to_csv(JObj, Context) ->
     Timestamp = wh_json:get_value(<<"timestamp">>, JObj, 0),
-    CSV = <<(wh_json:get_value(<<"_id">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"call_id">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"caller_id_number">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"caller_id_name">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"callee_id_number">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"callee_id_name">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"duration_seconds">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"billing_seconds">>, JObj, <<>>))/binary, ","
-            ,(wh_util:to_binary(Timestamp))/binary, ","
-            ,(wh_json:get_value(<<"hangup_cause">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"to">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"from">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"call_direction">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value(<<"request">>, JObj, <<>>))/binary, ","
-            ,(wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>))/binary, ","
-            ,(wh_util:to_binary(customer_cost(JObj)))/binary, ","
-            % New fields
-            ,(dialed_number(JObj))/binary, ","
-            ,(calling_from(JObj))/binary, ","
-            ,(pretty_print_datetime(Timestamp))/binary, ","
-            ,(wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp)))/binary, ","
-            ,(wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>))/binary, ","
-            ,(wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))))/binary, ","
-            ,(wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>))/binary
-          >>,
+    CSV = wh_util:join_binary([
+        wh_json:get_value(<<"_id">>, JObj, <<>>)
+        ,wh_json:get_value(<<"call_id">>, JObj, <<>>)
+        ,wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)
+        ,wh_json:get_value(<<"caller_id_name">>, JObj, <<>>)
+        ,wh_json:get_value(<<"callee_id_number">>, JObj, <<>>)
+        ,wh_json:get_value(<<"callee_id_name">>, JObj, <<>>)
+        ,wh_json:get_value(<<"duration_seconds">>, JObj, <<>>)
+        ,wh_json:get_value(<<"billing_seconds">>, JObj, <<>>)
+        ,wh_util:to_binary(Timestamp)
+        ,wh_json:get_value(<<"hangup_cause">>, JObj, <<>>)
+        ,wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>)
+        ,wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>)
+        ,wh_json:get_value(<<"to">>, JObj, <<>>)
+        ,wh_json:get_value(<<"from">>, JObj, <<>>)
+        ,wh_json:get_value(<<"call_direction">>, JObj, <<>>)
+        ,wh_json:get_value(<<"request">>, JObj, <<>>)
+        ,wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)
+        ,wh_util:to_binary(customer_cost(JObj))
+        % New fields
+        ,dialed_number(JObj)
+        ,calling_from(JObj)
+        ,pretty_print_datetime(Timestamp)
+        ,wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp))
+        ,wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)
+        ,wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0)))
+        ,wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)
+    ], <<",">>),
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;
         'true' ->  <<CSV/binary, ",reseller_cost,reseller_call_type\r">>

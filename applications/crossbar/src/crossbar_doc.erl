@@ -25,6 +25,8 @@
          ,update_pvt_parameters/2
          ,start_key/1, start_key/2
          ,pagination_page_size/0, pagination_page_size/1
+         ,has_qs_filter/1
+         ,filtered_doc_by_qs/3
         ]).
 
 -export([handle_json_success/2]).
@@ -795,6 +797,12 @@ maybe_apply_custom_filter(FilterFun, JObjs) ->
         (not wh_util:is_empty(JObj))
     ].
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec filtered_doc_by_qs(wh_json:object(), boolean(), cb_context:context()) -> boolean().
 filtered_doc_by_qs(_JObj, 'false', _Context) -> 'true';
 filtered_doc_by_qs(JObj, 'true', Context) ->
@@ -968,7 +976,7 @@ extract_included_docs(JObjs) ->
     [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Given a context or query parameter json object determines if the
 %% request has a filter defined
