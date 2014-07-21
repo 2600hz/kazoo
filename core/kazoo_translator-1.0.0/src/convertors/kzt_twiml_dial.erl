@@ -10,6 +10,11 @@
 
 -export([exec/3]).
 
+-ifdef(TEST).
+-export([test/0]).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -include("../kzt.hrl").
 
 -spec exec(whapps_call:call(), xml_els() | xml_texts(), xml_attribs()) ->
@@ -199,7 +204,8 @@ maybe_end_dial(Call, Props, ActionUrl) ->
     {'request', whapps_call:exec(Setters, Call)}.
 
 -spec cleanup_dial_me(binary()) -> binary().
-cleanup_dial_me(Txt) -> << <<C>> || <<C>> <= Txt, is_numeric_or_plus(C)>>.
+cleanup_dial_me(<<_/binary>> = Txt) ->
+    << <<C>> || <<C>> <= Txt, is_numeric_or_plus(C)>>.
 
 -spec is_numeric_or_plus(pos_integer()) -> boolean().
 is_numeric_or_plus(Num) when Num >= $0, Num =< $9 -> 'true';
@@ -426,3 +432,14 @@ conference_member_flags(ConfProps) ->
         'true' -> <<"endconf">>;
         'false' -> 'undefined'
     end.
+
+-ifdef(TEST).
+
+-spec test() -> 'ok'.
+test() -> 'ok'.
+
+-spec cleanup_dial_me_test() -> any().
+cleanup_dial_me_test() ->
+    ?assertEqual(<<"+14158867900">>, cleanup_dial_me(<<"+1 (415) 886-7900">>)).
+
+-endif.

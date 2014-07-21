@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz
 %%% @doc
 %%% One change handler with BigCouch, stream changes to interested PIDs
 %%% via Erlang messaging
@@ -27,7 +27,7 @@
 
 -include("wh_couch.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 
 -record(listener, {
           pid :: pid()

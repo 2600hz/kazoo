@@ -59,8 +59,10 @@
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
--export([current_tstamp/0, ensure_started/1]).
--export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
+-export([ensure_started/1]).
+
+-export([current_tstamp/0, current_unix_tstamp/0
+         ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
          ,pretty_print_datetime/1
          ,decr_timeout/2
         ]).
@@ -836,6 +838,9 @@ ceiling(X) ->
 -spec current_tstamp() -> non_neg_integer().
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
+
+current_unix_tstamp() ->
+    gregorian_seconds_to_unix_seconds(current_tstamp()).
 
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
 -spec whistle_version() -> ne_binary().

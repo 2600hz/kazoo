@@ -307,13 +307,6 @@ mark_clean_and_status(Status, JObj) ->
                                                             ,{<<"pvt_status">>, Status}
                                                            ], JObj)).
 
--spec mark_status(ne_binary(), wh_json:object()) -> wh_std_return().
-mark_status(Status, JObj) ->
-    lager:debug("marking services with status ~s", [Status]),
-    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                                            ,{<<"pvt_status">>, Status}
-                                                           ], JObj)).
-
 -spec maybe_update_billing_id(ne_binary(), ne_binary(), wh_json:object()) -> wh_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, BillingId) of

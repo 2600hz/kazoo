@@ -20,10 +20,12 @@ service_token(AppId, Scopes) when is_binary(AppId) ->
         {'ok', App } -> service_token(App, Scopes);
         {'error', Error} ->
             lager:debug("service token ~p",[Error]),'undefined'
-    end;   
-service_token(#oauth_service_app{private_key=PrivateKey,provider=#oauth_provider{auth_url=URL}}=ServiceApp, Scopes) ->
+    end;
+service_token(#oauth_service_app{private_key=_PrivateKey
+                                 ,provider=#oauth_provider{auth_url=URL}
+                                }=ServiceApp, Scopes) ->
     Assertion = kazoo_oauth_util:jwt(ServiceApp, Scopes),
-    GrantType = wh_util:to_list(wh_util:uri_encode(?OAUTH_GRANT_TYPE)),	
+    GrantType = wh_util:to_list(wh_util:uri_encode(?OAUTH_GRANT_TYPE)),
     Headers = [{"Content-Type","application/x-www-form-urlencoded"}
                ,{"User-Agent", "Kazoo"}
               ],
@@ -34,8 +36,7 @@ service_token(#oauth_service_app{private_key=PrivateKey,provider=#oauth_provider
     case ibrowse:send_req(wh_util:to_list(URL), Headers, 'post', Body) of
         {'ok', "200", _RespHeaders, RespXML} ->
             wh_json:decode(RespXML);
-        _Else -> 
+        _Else ->
             lager:debug("unable to request service token: ~p", [_Else]),
             'undefined'
     end.
-

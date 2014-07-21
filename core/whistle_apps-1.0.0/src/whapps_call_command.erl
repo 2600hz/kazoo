@@ -2418,7 +2418,7 @@ fax_detection(Direction, Duration, Call) ->
     start_fax_detection(Direction, Duration, Call),
     Result = case wait_for_fax_detection((Duration + 2) * 1000, Call) of
                  {'error', 'timeout'} -> 'false';
-                 {'ok', JObj} -> 'true'
+                 {'ok', _JObj} -> 'true'
              end,
     stop_fax_detection(Call),
     Result.
@@ -2435,4 +2435,3 @@ wait_for_fax_detection(Timeout, _Call) ->
                 _ -> wait_for_fax_detection(wh_util:decr_timeout(Timeout, Start), _Call)
             end
     end.
-

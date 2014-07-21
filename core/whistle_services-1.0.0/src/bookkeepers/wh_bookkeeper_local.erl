@@ -40,5 +40,4 @@ commit_transactions(_BillingId, Transactions) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> ok.
-charge_transactions(BillingId, Transactions) -> 'ok'.
-
+charge_transactions(_BillingId, _Transactions) -> 'ok'.
