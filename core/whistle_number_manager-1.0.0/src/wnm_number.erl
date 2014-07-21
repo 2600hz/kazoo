@@ -728,6 +728,7 @@ record_to_json(#number{number_doc=JObj}=N) ->
                ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                ,{<<"pvt_created">>, wh_json:get_value(<<"pvt_created">>, JObj, wh_util:current_tstamp())}
                ,{<<"used_by">>, N#number.used_by}
+               ,{<<"pvt_type">>, <<"number">>}
               ],
     lists:foldl(fun({K, 'undefined'}, J) -> wh_json:delete_key(K, J);
                    ({K, V}, J) -> wh_json:set_value(K, V, J)
