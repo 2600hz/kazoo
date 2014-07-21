@@ -120,16 +120,8 @@ sort_resources(Resources) ->
 -spec endpoints(ne_binary(), wh_json:object()) -> wh_json:objects().
 endpoints(Number, JObj) ->
     case maybe_get_endpoints(Number, JObj) of
-        [] -> sort_endpoints(maybe_correct_shortdial(Number, JObj));
+        [] -> [];
         Endpoints -> sort_endpoints(Endpoints)
-    end.
-
--spec maybe_correct_shortdial(ne_binary(), wh_json:object()) -> wh_json:objects().
-maybe_correct_shortdial(Number, JObj) ->
-    case stepswitch_util:correct_shortdial(Number, JObj) of
-        'undefined' -> [];
-        CorrectedNumber ->
-            maybe_get_endpoints(CorrectedNumber, JObj)
     end.
 
 -spec maybe_get_endpoints(ne_binary(), wh_json:object()) -> wh_json:objects().
