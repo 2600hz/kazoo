@@ -42,6 +42,7 @@
                           ]).
 
 -define(SOX_CONVERT, <<"sox {input_file} -r 8000 {output_file}">>).
+-define(NORMALIZATION_FORMAT, whapps_config:get(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)).
 
 -define(CB_LIST, <<"media/crossbar_listing">>).
 
@@ -71,7 +72,7 @@ maybe_configure_sox() ->
     case os:cmd("whereis sox") of
         "sox:\n" ->
             whapps_config:set(?MOD_CONFIG_CAT, <<"convert_media">>, 'false'),
-            lager:debug("'sox' not found on this server");
+            lager:info("'sox' not found on this server");
         "sox: "++_Path ->
             lager:debug("'sox' found at ~s", [_Path]),
             configure_sox();
@@ -89,22 +90,22 @@ configure_sox() ->
                  )
                 ,$\n
                ),
+    whapps_config:set(?MOD_CONFIG_CAT, <<"sox_version">>, Version),
     configure_sox(Version).
 
 configure_sox(<<_/binary>> = Version) ->
     lager:debug("configuring ~s", [Version]),
 
-    MP3Capable = sox_supports_mp3(),
-    lager:debug("mp3 capable sox: ~p", [MP3Capable]),
-    whapps_config:set(?MOD_CONFIG_CAT, <<"sox_mp3_capable">>, MP3Capable),
-    whapps_config:set(?MOD_CONFIG_CAT, <<"sox_version">>, Version),
+    Capable = sox_supports_normalization_format(),
+    lager:debug("~s capable sox: ~p", [?NORMALIZATION_FORMAT, Capable]),
+    whapps_config:set(?MOD_CONFIG_CAT, <<"sox_normalization_capable">>, Capable),
     'ok'.
 
--spec sox_supports_mp3() -> boolean().
-sox_supports_mp3() ->
+-spec sox_supports_normalization_format() -> boolean().
+sox_supports_normalization_format() ->
     Output = wh_util:to_binary(os:cmd("sox -h")),
     Lines = binary:split(Output, <<"\n">>, ['global']),
-    sox_supports(<<"mp3">>, Lines).
+    sox_supports(?NORMALIZATION_FORMAT, Lines).
 
 -spec sox_supports(ne_binary(), ne_binaries()) -> boolean().
 sox_supports(_Format, []) -> 'false';
@@ -330,23 +331,23 @@ maybe_normalize_upload(Context, MediaId, FileJObj) ->
 normalize_upload(Context, MediaId, FileJObj) ->
     normalize_upload(Context, MediaId, FileJObj, wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj)).
 
-normalize_upload(Context, MediaId, FileJObj, <<"audio/mp3">>) ->
-    lager:debug("upload is an mp3 already, just save as normal"),
-    validate_upload(Context, MediaId, FileJObj);
 normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
     FromExt = cb_modules_util:content_type_to_extension(UploadContentType),
-    lager:info("upload is of type '~s', normalizing from ~s to mp3", [UploadContentType, FromExt]),
+    lager:info("upload is of type '~s', normalizing from ~s to "
+               ,[UploadContentType, FromExt, ?NORMALIZATION_FORMAT]
+              ),
     case wh_media_util:normalize_media(FromExt
-                                       ,<<"mp3">>
+                                       ,?NORMALIZATION_FORMAT
                                        ,wh_json:get_value(<<"contents">>, FileJObj)
                                       )
     of
-        {'ok', MP3Contents} ->
-            lager:debug("successfully converted to mp3"),
+        {'ok', Contents} ->
+            lager:debug("successfully converted to ~s", [?NORMALIZATION_FORMAT]),
+            {Major, Minor, _} = cow_mimetypes:all(<<"foo.", (?NORMALIZATION_FORMAT)/binary>>),
 
-            NewFileJObj = wh_json:set_values([{[<<"headers">>, <<"content_type">>], <<"audio/mp3">>}
-                                              ,{[<<"headers">>, <<"content_length">>], byte_size(MP3Contents)}
-                                              ,{<<"contents">>, MP3Contents}
+            NewFileJObj = wh_json:set_values([{[<<"headers">>, <<"content_type">>], <<Major/binary, "/", Minor/binary>>}
+                                              ,{[<<"headers">>, <<"content_length">>], byte_size(Contents)}
+                                              ,{<<"contents">>, Contents}
                                              ], FileJObj),
 
             validate_upload(cb_context:set_req_files(Context
@@ -358,7 +359,7 @@ normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
                             ,NewFileJObj
                            );
         {'error', Reason} ->
-            lager:warning("failed to convert to mp3: ~s", [Reason]),
+            lager:warning("failed to convert to ~s: ~s", [?NORMALIZATION_FORMAT, Reason]),
 
             validate_upload(cb_context:set_doc(Context
                                                ,wh_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context))
