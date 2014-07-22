@@ -190,8 +190,7 @@ handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
 handle_cast({'channel_destroy', JobId2, _JObj}, #state{job_id=JobId}=State) ->
     lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
-handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{job=_Job
-                                                                      ,pages=Pages
+handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{pages=Pages
                                                                       ,account_id=AccountId
                                                                       }=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
@@ -201,7 +200,7 @@ handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{job=_Job
     send_status(JobId, Status, AccountId, Data),
     {'noreply', State#state{status=Status, page=1, fax_status=Data}};
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
-           , #state{job=_Job, pages=Pages, page=Page, account_id=AccountId}=State) ->
+           , #state{pages=Pages, page=Page, account_id=AccountId}=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
     TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, Data),
     lager:debug("fax status - page result - ~s : ~p : ~p"

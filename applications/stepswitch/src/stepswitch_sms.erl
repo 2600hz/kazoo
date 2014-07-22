@@ -128,7 +128,7 @@ handle_cast({'wh_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=_ControlQ}=State) ->
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
     'ok' = wapi_sms:publish_message(build_sms(State)),
     lager:debug("sent sms command"),
     {'noreply', State};
@@ -224,7 +224,6 @@ handle_message_delivery(JObj, Props) ->
 -spec build_sms(state()) -> wh_proplist().
 build_sms(#state{endpoints=Endpoints
                     ,resource_req=JObj
-                    ,queue=_Q
                    }) ->
     {CIDNum, CIDName} = bridge_caller_id(Endpoints, JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),

@@ -108,7 +108,7 @@ create_custom_sip_headers(?GSM_ANY_METHOD, #auth_user{a3a8_kc=KC
                                            ,account_realm=AccountRealm
                                            ,realm=Realm
                                            ,username=Username
-                                           }=_AuthUser) ->
+                                           }) ->
     Props = props:filter_undefined(
               [{<<"P-GSM-Kc">>, KC}
                ,{<<"P-GSM-SRes">>, SRES}
@@ -361,9 +361,7 @@ maybe_msisdn(#auth_user{msisdn='undefined'
 maybe_msisdn(AuthUser) -> AuthUser.
 
 -spec maybe_msisdn_from_callflows(auth_user(), ne_binary(), ne_binary()) -> auth_user().
-maybe_msisdn_from_callflows(#auth_user{doc=_JObj
-                                       ,account_db=AccountDB
-                                      }=AuthUser
+maybe_msisdn_from_callflows(#auth_user{account_db=AccountDB}=AuthUser
                             ,Type, Id) ->
     ViewOptions = [{'startkey', [Type, Id]}
                    ,{'endkey', [Type, Id, <<"9999999">>]}

@@ -84,7 +84,7 @@ handle_cast('start', #state{faxbox_id=FaxBoxId} = State) ->
 
 handle_cast('connect', #state{oauth_app_id=AppId, full_jid=JID, refresh_token=RefreshToken}=State) ->
     {'ok', App} = kazoo_oauth_util:get_oauth_app(AppId),
-    {'ok', #oauth_token{token=Token} = _OAuthToken} = kazoo_oauth_util:token(App, RefreshToken),
+    {'ok', #oauth_token{token=Token}} = kazoo_oauth_util:token(App, RefreshToken),
     case connect(wh_util:to_list(JID), wh_util:to_list(Token)) of
         {ok, {MySession, MyJID}} ->
             Monitor = erlang:monitor('process', MySession),
@@ -147,7 +147,7 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 -spec get_sub_msg(exmpp_jid:jid()) -> ne_binary().
-get_sub_msg( #jid{raw=JFull, node=JUser, domain=JDomain} = _JID) ->
+get_sub_msg( #jid{raw=JFull, node=JUser, domain=JDomain}) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     Document = <<"<iq type='set' from='", JFull/binary, "' to='",BareJID/binary,"'>"
                  ,   "<subscribe xmlns='google:push'>"
@@ -161,7 +161,7 @@ get_sub_msg( #jid{raw=JFull, node=JUser, domain=JDomain} = _JID) ->
 
 -spec process_received_packet(packet(), state()) -> any().
 process_received_packet(#received_packet{raw_packet=Packet}
-                       ,#state{jid=#jid{node=JUser,domain=JDomain}}=_State) ->
+                       ,#state{jid=#jid{node=JUser,domain=JDomain}}) ->
     BareJID = <<JUser/binary,"@",JDomain/binary>>,
     case exmpp_xml:get_element(Packet, ?NS_PUSH, 'push') of
         'undefined' -> 'undefined';

@@ -103,8 +103,7 @@ pem_to_rsa(PemFileContents) ->
 
 jwt(#oauth_service_app{email=AccountEmail}=App, Scope) ->
     jwt(App, Scope, AccountEmail).
-jwt(#oauth_service_app{email=_AccountEmail
-                       ,private_key=PrivateKey
+jwt(#oauth_service_app{private_key=PrivateKey
                        ,public_key=PublicKey
                        ,provider=#oauth_provider{auth_url=URL}
                       }
