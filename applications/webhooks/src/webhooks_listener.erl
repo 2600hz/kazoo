@@ -182,7 +182,7 @@ find_hook(JObj) ->
                       ).
 
 -spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_channel_event(JObj, _) ->
+handle_channel_event(JObj, _Props) ->
     HookEvent = hook_event_name(wh_json:get_value(<<"Event-Name">>, JObj)),
     case wh_hooks_util:lookup_account_id(JObj) of
         {'error', _R} ->
@@ -362,7 +362,10 @@ handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     spawn(?MODULE, 'load_hooks', [self()]),
     {'noreply', State};
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
-    _ = spawn(?MODULE, 'maybe_handle_channel_event', [AccountId, EventType, JObj]),
+    _ = spawn(?MODULE
+              ,'maybe_handle_channel_event'
+              ,[AccountId, EventType, JObj]
+             ),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
@@ -456,8 +459,7 @@ init_mods([Acct|Accts], Year, Month) ->
 -spec init_mod(wh_json:object(), wh_year(), wh_month()) -> 'ok'.
 init_mod(Acct, Year, Month) ->
     Db = wh_util:format_account_id(wh_json:get_value(<<"key">>, Acct), Year, Month),
-    _ = couch_mgr:db_create(Db),
-    _ = couch_mgr:revise_doc_from_file(Db, 'crossbar', <<"views/webhooks.json">>),
+    kazoo_modb:create(Db),
     lager:debug("updated account_mod ~s", [Db]).
 
 -spec init_webhooks() -> 'ok'.
