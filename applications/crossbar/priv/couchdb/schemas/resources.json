@@ -1,396 +1,405 @@
 {
-  "_id": "resources",
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "type": "object",
-  "required": true,
-  "name": "Resource",
-  "description": "Schema for resources",
-  "properties": {
-    "name": {
-      "type": "string",
-      "required": true,
-      "name": "Name",
-      "description": "A friendly name for the resource",
-      "minLength": 1,
-      "maxLength": 128
-    },
-    "enabled": {
-      "type": "boolean",
-      "required": false,
-      "name": "Is Enabled?",
-      "description": "Determines if the resource is currently enabled",
-      "default": true
-    },
-    "emergency": {
-      "type": "boolean",
-      "required": false,
-      "name": "Is Emergency?",
-      "description": "Determines if the resource represents emergency services",
-      "default": false
-    },
-    "grace_period": {
-      "type": "integer",
-      "required": false,
-      "name": "Grace Period",
-      "description": "The amount of time, in seconds, to wait before starting another resource",
-      "default": 5,
-      "minimum": 1,
-      "maximum": 20
-    },
-    "weight_cost": {
-      "type": "integer",
-      "required": false,
-      "name": "Weight Cost",
-      "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",
-      "default": 50,
-      "minimum": 0,
-      "maximum": 100
-    },
-    "flags": {
-      "type": "array",
-      "required": false,
-      "name": "Flags",
-      "description": "A list of flags that can be provided on the request and must match for the resource to be eligible",
-      "default": [],
-      "items": {
-        "type": "string",
-        "required": false
-      }
-    },
-    "require_flags": {
-      "type": "boolean",
-      "required": false,
-      "name": "Require Flags?",
-      "description": "When set to true this resource is ignored if the request does not specify outbound flags"
-    },
-    "format_from_uri": {
-      "type": "boolean",
-      "required": false,
-      "name": "Format SIP From?",
-      "description": "When set to true requests to this resource will have a re-formated SIP From Header"
-    },
-    "from_uri_realm": {
-      "type": "string",
-      "required": false,
-      "name": "SIP From Realm",
-      "description": "When formating SIP From on outbound requests this can be used to override the realm"
-    },
-    "rules": {
-      "type": "array",
-      "required": false,
-      "name": "Rules",
-      "description": "A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups",
-      "default": [],
-      "items": {
-        "type": "string",
-        "required": false
-      }
-    },
-    "media": {
-      "type": "object",
-      "required": false,
-      "name": "Default Resource Media Parameters",
-      "description": "The default resouce media parameters applied if not present to all specified gateways",
-      "properties": {
-        "bypass_media": {
-          "type": "boolean",
-          "required": false,
-          "name": "Is Media Direct?",
-          "description": "Default bypass media mode"
-        },
-        "audio": {
-          "type": "object",
-          "required": false,
-          "name": "Audio Options",
-          "description": "The default audio media parameters",
-          "properties": {
-            "codecs": {
-              "type": "array",
-              "required": false,
-              "uniqueItems": true,
-              "name": "Codecs",
-              "description": "A list of default codecs to use",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "G729",
-                  "PCMU",
-                  "PCMA",
-                  "G722_16",
-                  "G722_32",
-                  "CELT_48",
-                  "CELT_64",
-                  "Speex",
-                  "GSM",
-                  "OPUS"
-                ]
-              },
-              "default": [
-                "PCMU"
-              ]
-            }
-          },
-          "default": {}
-        },
-        "video": {
-          "type": "object",
-          "required": false,
-          "name": "Video Options",
-          "description": "The default video media parameters",
-          "properties": {
-            "codecs": {
-              "type": "array",
-              "required": false,
-              "uniqueItems": true,
-              "description": "A list of default codecs to use",
-              "items": {
-                "type": "string",
-                "enum": [
-                  "H261",
-                  "H263",
-                  "H264",
-                  "VP8"
-                ]
-              },
-              "default": []
-            }
-          },
-          "default": {}
-        },
-        "fax_option": {
-          "type": "boolean",
-          "required": false,
-          "name": "Is T.38 Supported?",
-          "description": "Support T.38"
-        }
-      },
-      "default": {}
-    },
-    "gateways": {
-      "type": "array",
-      "required": true,
-      "description": "A list of gateways avaliable for this resource",
-      "items": {
-        "type": "object",
-        "required": false,
-        "properties": {
-          "enabled": {
-            "type": "boolean",
+    "_id": "resources",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "required": true,
+    "name": "Resource",
+    "description": "Schema for resources",
+    "properties": {
+        "name": {
+            "type": "string",
             "required": true,
-            "name": "Enabled",
-            "description": "Determines if the resource gateway is currently enabled",
+            "name": "Name",
+            "description": "A friendly name for the resource",
+            "minLength": 1,
+            "maxLength": 128
+        },
+        "enabled": {
+            "type": "boolean",
+            "required": false,
+            "name": "Is Enabled?",
+            "description": "Determines if the resource is currently enabled",
             "default": true
-          },
-          "server": {
-            "type": "string",
-            "required": true,
-            "name": "Server",
-            "description": "This resource gateway server",
-            "minLength": 1,
-            "maxLength": 64
-          },
-          "realm": {
-            "type": "string",
-            "required": false,
-            "name": "Realm",
-            "description": "This resource gateway authentication realm",
-            "minLength": 1,
-            "maxLength": 64
-          },
-          "username": {
-            "type": "string",
-            "required": false,
-            "name": "Username",
-            "description": "SIP authentication username",
-            "minLength": 5,
-            "maxLength": 32
-          },
-          "password": {
-            "type": "string",
-            "required": false,
-            "name": "Password",
-            "description": "SIP authentication password",
-            "minLength": 5,
-            "maxLength": 32
-          },
-          "route": {
-            "type": "string",
-            "required": false,
-            "name": "Route",
-            "description": "A staticly configured SIP URI to route all call to",
-            "minLength": 4
-          },
-          "prefix": {
-            "type": "string",
-            "required": false,
-            "name": "Prefix",
-            "description": "A string to prepend to the dialed number or capture group of the matching rule",
-            "minLength": 1,
-            "maxLength": 64,
-            "default": "+1"
-          },
-          "suffix": {
-            "type": "string",
-            "required": false,
-            "name": "Suffix",
-            "description": "A string to append to the dialed number or capture group of the matching rule",
-            "minLength": 1,
-            "maxLength": 64
-          },
-          "codecs": {
-            "type": "array",
-            "required": false,
-            "name": "Codecs",
-            "description": "A list of single list codecs supported by this gateway (to support backward compatibilty)",
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "enum": [
-                "G729",
-                "PCMU",
-                "PCMA",
-                "G722_16",
-                "G722_32",
-                "CELT_48",
-                "CELT_64",
-                "Speex",
-                "GSM",
-                "OPUS",
-                "H261",
-                "H263",
-                "H264",
-                "VP8"
-              ]
-            }
-          },
-          "media": {
-            "type": "object",
-            "required": false,
-            "name": "Media Options",
-            "description": "The media parameters for the resource gateway",
-            "properties": {
-              "fax_option": {
-                "type": "boolean",
-                "required": false,
-                "name": "Is T.38 Supported?",
-                "description": "Support T.38"
-              }
-            }
-          },
-          "bypass_media": {
+        },
+        "emergency": {
             "type": "boolean",
             "required": false,
-            "name": "Is Media Direct?",
-            "description": "The resource gateway bypass media mode"
-          },
-          "progress_timeout": {
+            "name": "Is Emergency?",
+            "description": "Determines if the resource represents emergency services",
+            "default": false
+        },
+        "grace_period": {
             "type": "integer",
             "required": false,
-            "name": "Progress Timeout",
-            "description": "The progress timeout to apply to the resource gateway"
-          },
-          "custom_sip_headers": {
-            "type": "object",
+            "name": "Grace Period",
+            "description": "The amount of time, in seconds, to wait before starting another resource",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 20
+        },
+        "weight_cost": {
+            "type": "integer",
             "required": false,
-            "name": "Custom SIP Header",
-            "default": {}
-          },
-          "custom_sip_interface": {
-            "type": "string",
+            "name": "Weight Cost",
+            "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",
+            "default": 50,
+            "minimum": 0,
+            "maximum": 100
+        },
+        "flags": {
+            "type": "array",
             "required": false,
-            "name": "SIP Inteface",
-            "description": "The name of a custom SIP interface"
-          },
-          "invite_format": {
-            "type": "string",
+            "name": "Flags",
+            "description": "A list of flags that can be provided on the request and must match for the resource to be eligible",
+            "default": [],
+            "items": {
+                "type": "string",
+                "required": false
+            }
+        },
+        "require_flags": {
+            "type": "boolean",
             "required": false,
-            "name": "Invite Format",
-            "description": "The format of the DID needed by the underlying hardware/gateway",
-            "enum": [
-              "route",
-              "username",
-              "e164",
-              "npan",
-              "1npan"
-            ],
-            "default": "route"
-          },
-          "caller_id_type": {
-            "type": "string",
-            "required": false,
-            "name": "Caller ID Type",
-            "description": "The type of caller id to use",
-            "enum": [
-              "internal",
-              "external",
-              "emergency"
-            ]
-          },
-          "endpoint_type": {
-            "type": "string",
-            "required": false,
-            "name": "Endpoint Type",
-            "description": "What type of endpoint is this gateway",
-            "enum": [
-              "sip",
-              "freetdm",
-              "skype"
-            ],
-            "default": "sip"
-          },
-          "channel_selection": {
-            "type": "string",
-            "required": false,
-            "name": "Channel Selection (gateways)",
-            "description": "Automatic selection of the channel within the span: ascending starts at 1 and moves up; descending is the opposite",
-            "enum": [
-              "ascending",
-              "descending"
-            ],
-            "default": "ascending"
-          },
-          "span": {
-            "type": "string",
-            "required": false,
-            "name": "Span",
-            "description": "The identity of the hardware on the media server"
-          },
-          "format_from_uri": {
+            "name": "Require Flags?",
+            "description": "When set to true this resource is ignored if the request does not specify outbound flags"
+        },
+        "format_from_uri": {
             "type": "boolean",
             "required": false,
             "name": "Format SIP From?",
-            "description": "When set to true requests to this resource gateway will have a re-formated SIP From Header"
-          },
-          "from_uri_realm": {
+            "description": "When set to true requests to this resource will have a re-formated SIP From Header"
+        },
+        "from_uri_realm": {
             "type": "string",
             "required": false,
             "name": "SIP From Realm",
             "description": "When formating SIP From on outbound requests this can be used to override the realm"
-          },
-          "skype_interface": {
-            "type": "string",
-            "required": false,
-            "name": "Skype Interface",
-            "description": "The name of the Skype interface to route the call over"
-          },
-          "skype_rr": {
-            "type": "boolean",
-            "required": false,
-            "name": "Skype Round-Robin",
-            "description": "Determines whether to round-robin calls amongst all interfaces (overrides \"skype_interface\" setting)",
-            "default": true
-          },
-          "emergency": {
-            "type": "boolean",
-            "required": false,
-            "name": "Is Emergency?",
-            "description": "Determines if the resource gateway represents emergency services",
-            "default": false
-          }
         },
-        "default": {}
-      },
-      "default": []
+        "rules": {
+            "type": "array",
+            "required": false,
+            "name": "Rules",
+            "description": "A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups",
+            "default": [],
+            "items": {
+                "type": "string",
+                "required": false
+            }
+        },
+        "media": {
+            "type": "object",
+            "required": false,
+            "name": "Default Resource Media Parameters",
+            "description": "The default resouce media parameters applied if not present to all specified gateways",
+            "properties": {
+                "bypass_media": {
+                    "type": "boolean",
+                    "required": false,
+                    "name": "Is Media Direct?",
+                    "description": "Default bypass media mode"
+                },
+                "audio": {
+                    "type": "object",
+                    "required": false,
+                    "name": "Audio Options",
+                    "description": "The default audio media parameters",
+                    "properties": {
+                        "codecs": {
+                            "type": "array",
+                            "required": false,
+                            "uniqueItems": true,
+                            "name": "Codecs",
+                            "description": "A list of default codecs to use",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "OPUS",
+                                    "CELT@32000h",
+                                    "G7221@32000h",
+                                    "G7221@16000h",
+                                    "G722",
+                                    "speex@32000h",
+                                    "speex@16000h",
+                                    "PCMU",
+                                    "PCMA",
+                                    "G729",
+                                    "GSM",
+                                    "CELT@48000h",
+                                    "CELT@64000h",
+
+                                    "G722_16",
+                                    "G722_32",
+                                    "CELT_48",
+                                    "CELT_64",
+                                    "Speex"
+                                ]
+                            },
+                            "default": [
+                                "PCMU"
+                            ]
+                        }
+                    },
+                    "default": {}
+                },
+                "video": {
+                    "type": "object",
+                    "required": false,
+                    "name": "Video Options",
+                    "description": "The default video media parameters",
+                    "properties": {
+                        "codecs": {
+                            "type": "array",
+                            "required": false,
+                            "uniqueItems": true,
+                            "description": "A list of default codecs to use",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "H261",
+                                    "H263",
+                                    "H264",
+                                    "VP8"
+                                ]
+                            },
+                            "default": []
+                        }
+                    },
+                    "default": {}
+                },
+                "fax_option": {
+                    "type": "boolean",
+                    "required": false,
+                    "name": "Is T.38 Supported?",
+                    "description": "Support T.38"
+                }
+            },
+            "default": {}
+        },
+        "gateways": {
+            "type": "array",
+            "required": true,
+            "description": "A list of gateways avaliable for this resource",
+            "items": {
+                "type": "object",
+                "required": false,
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "required": true,
+                        "name": "Enabled",
+                        "description": "Determines if the resource gateway is currently enabled",
+                        "default": true
+                    },
+                    "server": {
+                        "type": "string",
+                        "required": true,
+                        "name": "Server",
+                        "description": "This resource gateway server",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "realm": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Realm",
+                        "description": "This resource gateway authentication realm",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "username": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Username",
+                        "description": "SIP authentication username",
+                        "minLength": 5,
+                        "maxLength": 32
+                    },
+                    "password": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Password",
+                        "description": "SIP authentication password",
+                        "minLength": 5,
+                        "maxLength": 32
+                    },
+                    "route": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Route",
+                        "description": "A staticly configured SIP URI to route all call to",
+                        "minLength": 4
+                    },
+                    "prefix": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Prefix",
+                        "description": "A string to prepend to the dialed number or capture group of the matching rule",
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "default": "+1"
+                    },
+                    "suffix": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Suffix",
+                        "description": "A string to append to the dialed number or capture group of the matching rule",
+                        "minLength": 1,
+                        "maxLength": 64
+                    },
+                    "codecs": {
+                        "type": "array",
+                        "required": false,
+                        "name": "Codecs",
+                        "description": "A list of single list codecs supported by this gateway (to support backward compatibilty)",
+                        "uniqueItems": true,
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "G729",
+                                "PCMU",
+                                "PCMA",
+                                "G722_16",
+                                "G722_32",
+                                "CELT_48",
+                                "CELT_64",
+                                "Speex",
+                                "GSM",
+                                "OPUS",
+                                "H261",
+                                "H263",
+                                "H264",
+                                "VP8"
+                            ]
+                        }
+                    },
+                    "media": {
+                        "type": "object",
+                        "required": false,
+                        "name": "Media Options",
+                        "description": "The media parameters for the resource gateway",
+                        "properties": {
+                            "fax_option": {
+                                "type": "boolean",
+                                "required": false,
+                                "name": "Is T.38 Supported?",
+                                "description": "Support T.38"
+                            }
+                        }
+                    },
+                    "bypass_media": {
+                        "type": "boolean",
+                        "required": false,
+                        "name": "Is Media Direct?",
+                        "description": "The resource gateway bypass media mode"
+                    },
+                    "progress_timeout": {
+                        "type": "integer",
+                        "required": false,
+                        "name": "Progress Timeout",
+                        "description": "The progress timeout to apply to the resource gateway"
+                    },
+                    "custom_sip_headers": {
+                        "type": "object",
+                        "required": false,
+                        "name": "Custom SIP Header",
+                        "default": {}
+                    },
+                    "custom_sip_interface": {
+                        "type": "string",
+                        "required": false,
+                        "name": "SIP Inteface",
+                        "description": "The name of a custom SIP interface"
+                    },
+                    "invite_format": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Invite Format",
+                        "description": "The format of the DID needed by the underlying hardware/gateway",
+                        "enum": [
+                            "route",
+                            "username",
+                            "e164",
+                            "npan",
+                            "1npan"
+                        ],
+                        "default": "route"
+                    },
+                    "caller_id_type": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Caller ID Type",
+                        "description": "The type of caller id to use",
+                        "enum": [
+                            "internal",
+                            "external",
+                            "emergency"
+                        ]
+                    },
+                    "endpoint_type": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Endpoint Type",
+                        "description": "What type of endpoint is this gateway",
+                        "enum": [
+                            "sip",
+                            "freetdm",
+                            "skype"
+                        ],
+                        "default": "sip"
+                    },
+                    "channel_selection": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Channel Selection (gateways)",
+                        "description": "Automatic selection of the channel within the span: ascending starts at 1 and moves up; descending is the opposite",
+                        "enum": [
+                            "ascending",
+                            "descending"
+                        ],
+                        "default": "ascending"
+                    },
+                    "span": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Span",
+                        "description": "The identity of the hardware on the media server"
+                    },
+                    "format_from_uri": {
+                        "type": "boolean",
+                        "required": false,
+                        "name": "Format SIP From?",
+                        "description": "When set to true requests to this resource gateway will have a re-formated SIP From Header"
+                    },
+                    "from_uri_realm": {
+                        "type": "string",
+                        "required": false,
+                        "name": "SIP From Realm",
+                        "description": "When formating SIP From on outbound requests this can be used to override the realm"
+                    },
+                    "skype_interface": {
+                        "type": "string",
+                        "required": false,
+                        "name": "Skype Interface",
+                        "description": "The name of the Skype interface to route the call over"
+                    },
+                    "skype_rr": {
+                        "type": "boolean",
+                        "required": false,
+                        "name": "Skype Round-Robin",
+                        "description": "Determines whether to round-robin calls amongst all interfaces (overrides \"skype_interface\" setting)",
+                        "default": true
+                    },
+                    "emergency": {
+                        "type": "boolean",
+                        "required": false,
+                        "name": "Is Emergency?",
+                        "description": "Determines if the resource gateway represents emergency services",
+                        "default": false
+                    }
+                },
+                "default": {}
+            },
+            "default": []
+        }
     }
-  }
 }
