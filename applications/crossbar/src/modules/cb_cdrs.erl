@@ -31,6 +31,8 @@
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
+-type payload() :: {cowboy_req:req(), cb_context:context()}.
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -43,6 +45,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, 'validate').
 
 
+-spec to_json(payload()) -> payload().
 to_json({Req1, Context}) ->
     Nouns = cb_context:req_nouns(Context),
     case props:get_value(<<"cdrs">>, Nouns, []) of
@@ -57,6 +60,7 @@ to_json({Req1, Context}) ->
             {Req3, cb_context:store(Context, 'is_chunked', 'true')}
     end.
 
+-spec to_csv(payload()) -> payload().
 to_csv({Req, Context}) ->
     Nouns = cb_context:req_nouns(Context),
     case props:get_value(<<"cdrs">>, Nouns, []) of
@@ -276,8 +280,6 @@ view_key_created_from(ViewOptions) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type payload() :: {_, cb_context:context()}.
-
 -spec send_chunked_cdrs(payload()) -> payload().
 send_chunked_cdrs({Req, Context}) ->
     Db = cb_context:account_db(Context),
