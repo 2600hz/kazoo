@@ -388,8 +388,7 @@ maybe_store_fax(JObj, State) ->
 
 -spec store_fax(wh_json:object(), state() ) ->
           {'ok', ne_binary()} | {'error', any()}.
-store_fax(JObj, #state{call=_Call
-                       ,storage=#fax_storage{id=FaxDocId
+store_fax(JObj, #state{storage=#fax_storage{id=FaxDocId
                                              ,attachment_id=_AttachmentId
                                             }
                       }=State) ->
@@ -409,7 +408,6 @@ get_fs_filename(#state{storage=#fax_storage{attachment_id=AttachmentId}}) ->
 -spec store_attachment(state()) -> 'ok'.
 store_attachment(#state{call=Call
                         ,fax_store_count=Count
-                        ,storage=#fax_storage{id=_FaxDocId}
                        }=State) ->
     FaxUrl = attachment_url(State),
     FaxFile = get_fs_filename(State),
