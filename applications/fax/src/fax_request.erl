@@ -391,7 +391,6 @@ maybe_store_fax(JObj, State) ->
 store_fax(JObj, #state{call=_Call
                        ,storage=#fax_storage{id=FaxDocId
                                              ,attachment_id=_AttachmentId
-                                             ,db=_FaxDb
                                             }
                       }=State) ->
     case create_fax_doc(JObj, State) of
@@ -410,10 +409,7 @@ get_fs_filename(#state{storage=#fax_storage{attachment_id=AttachmentId}}) ->
 -spec store_attachment(state()) -> 'ok'.
 store_attachment(#state{call=Call
                         ,fax_store_count=Count
-                        ,storage=#fax_storage{id=_FaxDocId
-                                              ,attachment_id=_AttachmentId
-                                              ,db=_FaxDb
-                                             }
+                        ,storage=#fax_storage{id=_FaxDocId}
                        }=State) ->
     FaxUrl = attachment_url(State),
     FaxFile = get_fs_filename(State),
@@ -472,7 +468,7 @@ check_upload_for_attachment(FaxDoc, State) ->
     end.
 
 -spec check_attachment_for_data(wh_json:object(), state(), ne_binary()) -> 'ok' | 'error'.
-check_attachment_for_data(FaxDoc, AttachmentName, #state{fax_result=_JObj}=_State) ->
+check_attachment_for_data(FaxDoc, AttachmentName, _State) ->
     case wh_json:get_value([<<"_attachments">>, AttachmentName, <<"length">>], FaxDoc) of
         0 -> 'error';
         _Len -> 'ok'
@@ -533,7 +529,7 @@ attachment_url(#state{storage=#fax_storage{id=FaxDocId
                                            ,attachment_id=AttachmentId
                                            ,db=AccountDb
                                           }
-                     }=_State) ->
+                     }) ->
     _ = case couch_mgr:open_doc(AccountDb, FaxDocId) of
             {'ok', JObj} ->
                 case wh_json:get_keys(<<"_attachments">>, JObj) of
@@ -582,10 +578,8 @@ notify_failure(JObj, Reason, #state{call=Call
                                    ,owner_id=OwnerId
                                    ,faxbox_id=FaxBoxId
                                    ,fax_notify=Notify
-                                   ,storage=#fax_storage{id=FaxId
-                                                         ,db=_FaxDb
-                                                        }
-                                   }=_State) ->
+                                   ,storage=#fax_storage{id=FaxId}
+                                   }) ->
     Message = props:filter_undefined(
                  notify_fields(Call, JObj) ++
                      [{<<"Fax-ID">>, FaxId}
@@ -601,10 +595,8 @@ notify_success(JObj, #state{call=Call
                            ,owner_id=OwnerId
                            ,faxbox_id=FaxBoxId
                            ,fax_notify=Notify
-                           ,storage=#fax_storage{id=FaxId
-                                                 ,db=_FaxDb
-                                                }
-                           }=_State) ->
+                           ,storage=#fax_storage{id=FaxId}
+                           }) ->
     Message = props:filter_undefined(
                 notify_fields(Call, JObj) ++
                     [{<<"Fax-ID">>, FaxId}
