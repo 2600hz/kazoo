@@ -30,16 +30,22 @@
 -define(AUTH_PASSWORD, whapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, wh_util:rand_hex_binary(8))).
 -define(USE_AUTH_STORE, whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, 'true')).
 
+-define(NORMALIZE_EXE, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_executable">>, <<"sox">>)).
+-define(NORMALIZE_SOURCE_ARGS, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_source_args">>, <<>>)).
+-define(NORMALIZE_DEST_ARGS, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_destination_args">>, <<"-r 8000">>)).
+
+-type normalized_media() :: {'ok', iolist()} |
+                            {'error', ne_binary()}.
 -spec normalize_media(ne_binary(), ne_binary(), binary()) ->
-                             {'ok', binary()} |
-                             {'error', ne_binary()}.
+                             normalized_media().
 normalize_media(FromFormat, FromFormat, FileContents) ->
     {'ok', FileContents};
 normalize_media(FromFormat, ToFormat, FileContents) ->
     OldFlag = process_flag('trap_exit', 'true'),
 
-    Command = iolist_to_binary(["sox -t ", FromFormat, " - "
-                                ,"-r 8000 -t ", ToFormat, " - "
+    Command = iolist_to_binary([?NORMALIZE_EXE
+                                ," -t ", FromFormat, " ", ?NORMALIZE_SOURCE_ARGS, " - "
+                                ," -t ", ToFormat, " ", ?NORMALIZE_DEST_ARGS, " - "
                                ]),
     PortOptions = ['binary'
                    ,'exit_status'
@@ -60,8 +66,7 @@ normalize_media(FromFormat, ToFormat, FileContents) ->
     Response.
 
 -spec normalize_media(binary(), port()) ->
-                             {'ok', binary()} |
-                             {'error', ne_binary()}.
+                             normalized_media().
 normalize_media(FileContents, Port) ->
     try erlang:port_command(Port, FileContents) of
         'true' ->
@@ -74,24 +79,20 @@ normalize_media(FileContents, Port) ->
             {'error', <<"failed to communicate with conversion utility">>}
     end.
 
--spec wait_for_results(port()) ->
-                              {'ok' | 'error', binary()}.
+-spec wait_for_results(port()) ->  normalized_media().
+-spec wait_for_results(port(), iolist()) -> normalized_media().
 wait_for_results(Port) ->
-    wait_for_results(Port, <<>>).
+    wait_for_results(Port, []).
 wait_for_results(Port, Response) ->
     receive
         {Port, {'data', Msg}} ->
-            lager:debug("recv data msg from port: ~p", [Msg]),
             wait_for_results(Port, [Response | [Msg]]);
         {Port, {'exit_status', 0}} ->
             lager:debug("process exited successfully"),
-            {'ok', iolist_to_binary(Response)};
+            {'ok', Response};
         {Port, {'exit_status', _Err}} ->
             lager:debug("process exited with status ~p", [_Err]),
             {'error', iolist_to_binary(Response)};
-        {Port, 'eof'} ->
-            lager:debug("eof recv"),
-            wait_for_results(Port, Response);
         {'EXIT', Port, _Reason} ->
             lager:debug("port closed unexpectedly: ~p", [_Reason]),
             {'error', iolist_to_binary(Response)}
