@@ -534,7 +534,7 @@ get_fs_app(Node, UUID, JObj, <<"conference">>) ->
         'true' -> get_conference_app(Node, UUID, JObj, wh_json:is_true(<<"Reinvite">>, JObj, 'false'))
     end;
 
-get_fs_app(Node, UUID, JObj, <<"fax_detection">>) ->
+get_fs_app(_Node, _UUID, JObj, <<"fax_detection">>) ->
     case wapi_dialplan:fax_detection_v(JObj) of
         'false' -> {'error', <<"fax detect failed to execute as JObj did not validate">>};
         'true' ->

@@ -8,8 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(kzt_util).
 
--include_lib("eunit/include/eunit.hrl").
-
 -export([http_method/1
          ,resolve_uri/2
          ,offnet_req/2
@@ -55,6 +53,11 @@
          ,set_chat_permissions/2, get_chat_permissions/1
         ]).
 
+-ifdef(TEST).
+-export([test/0]).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -include("kzt.hrl").
 
 -define(DEFAULT_HTTP_METHOD, 'post').
@@ -75,37 +78,9 @@ http_method(<<_/binary>> = Method) ->
     end;
 http_method(Method) -> http_method(wh_util:to_binary(Method)).
 
--spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | binary() | 'undefined') -> ne_binary().
-resolve_uri(Raw, 'undefined') ->
-    wh_util:to_binary(Raw);
-resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) ->
-    wh_util:to_binary(Abs);
-resolve_uri(_Raw, <<"http", _/binary>> = Abs) ->
-    Abs;
-resolve_uri(RawPath, Relative) ->
-    lager:debug("taking url ~s and applying path ~s", [RawPath, Relative]),
-    PathTokensRev = lists:reverse(binary:split(wh_util:to_binary(RawPath), <<"/">>, ['global'])),
-    UrlTokens = binary:split(wh_util:to_binary(Relative), <<"/">>),
-
-    wh_util:join_binary(
-      lists:reverse(
-        lists:foldl(fun(<<"..">>, []) -> [];
-                       (<<"..">>, [_ | PathTokens]) -> PathTokens;
-                       (<<".">>, PathTokens) -> PathTokens;
-                       (<<>>, PathTokens) -> PathTokens;
-                       (Segment, [<<>>|DirTokens]) ->
-                            [Segment|DirTokens];
-                       (Segment, [LastToken|DirTokens]=PathTokens) ->
-                            case filename:extension(LastToken) of
-                                <<>> ->
-                                    %% no extension, append Segment to Tokens
-                                    [Segment | PathTokens];
-                                _Ext ->
-                                    %% Extension found, append Segment to DirTokens
-                                    [Segment|DirTokens]
-                            end
-                    end, PathTokensRev, UrlTokens)
-       ), <<"/">>).
+-spec resolve_uri(ne_binary(), ne_binary()) -> ne_binary().
+resolve_uri(Path, NewPath) ->
+    wh_util:resolve_uri(Path, NewPath).
 
 %% see cf_offnet.erl
 -spec offnet_req(wh_proplist(), whapps_call:call()) -> 'ok'.
@@ -161,78 +136,131 @@ get_errors(Call) -> whapps_call:kvs_fetch(<<"response_errors">>, Call).
 set_hangup_dtmf(DTMF, Call) -> whapps_call:kvs_store(<<"hangup_dtmf">>, DTMF, Call).
 get_hangup_dtmf(Call) -> whapps_call:kvs_fetch(<<"hangup_dtmf">>, Call).
 
+-spec set_digit_pressed(api_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_digit_pressed(whapps_call:call()) -> api_binary().
 set_digit_pressed(DTMF, Call) -> whapps_call:kvs_store(<<"digit_pressed">>, DTMF, Call).
 get_digit_pressed(Call) -> whapps_call:kvs_fetch(<<"digit_pressed">>, Call).
 
+-spec set_record_call(boolean(), whapps_call:call()) -> whapps_call:call().
+-spec get_record_call(whapps_call:call()) -> api_boolean().
 set_record_call(R, Call) -> whapps_call:kvs_store(<<"record_call">>, R, Call).
 get_record_call(Call) -> whapps_call:kvs_fetch(<<"record_call">>, Call).
 
+-spec set_call_timeout(pos_integer(), whapps_call:call()) -> whapps_call:call().
+-spec get_call_timeout(whapps_call:call()) -> api_integer().
 set_call_timeout(T, Call) -> whapps_call:kvs_store(<<"call_timeout">>, T, Call).
 get_call_timeout(Call) -> whapps_call:kvs_fetch(<<"call_timeout">>, Call).
 
+-spec set_call_time_limit(pos_integer(), whapps_call:call()) -> whapps_call:call().
+-spec get_call_time_limit(whapps_call:call()) -> api_integer().
 set_call_time_limit(T, Call) -> whapps_call:kvs_store(<<"call_time_limit">>, T, Call).
 get_call_time_limit(Call) -> whapps_call:kvs_fetch(<<"call_time_limit">>, Call).
 
+-spec set_voice_uri(api_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_voice_uri(whapps_call:call()) -> api_binary().
 set_voice_uri(Uri, Call) -> whapps_call:kvs_store(<<"voice_uri">>, Uri, Call).
 get_voice_uri(Call) -> whapps_call:kvs_fetch(<<"voice_uri">>, Call).
 
+-spec set_voice_uri_method('get' | 'post', whapps_call:call()) -> whapps_call:call().
+-spec get_voice_uri_method(whapps_call:call()) -> 'get' | 'post'.
 set_voice_uri_method(M, Call) -> whapps_call:kvs_store(<<"voice_uri_method">>, M, Call).
 get_voice_uri_method(Call) -> whapps_call:kvs_fetch(<<"voice_uri_method">>, Call).
 
+-spec set_digits_collected(api_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_digits_collected(whapps_call:call()) -> binary().
+-spec clear_digits_collected(whapps_call:call()) -> whapps_call:call().
+-spec add_digit_collected(ne_binary(), whapps_call:call()) -> whapps_call:call().
 set_digits_collected(Ds, Call) -> whapps_call:kvs_store(<<"digits_collected">>, Ds, Call).
 get_digits_collected(Call) -> whapps_call:kvs_fetch(<<"digits_collected">>, Call).
 clear_digits_collected(Call) -> whapps_call:kvs_store(<<"digits_collected">>, <<>>, Call).
 add_digit_collected(D, Call) ->
-    whapps_call:kvs_update(<<"digits_collected">>, fun(Ds) -> <<Ds/binary, D/binary>> end, D, Call).
+    whapps_call:kvs_update(<<"digits_collected">>, fun(<<_/binary>> = Ds) -> <<Ds/binary, D/binary>>;
+                                                      (_) -> D
+                                                   end
+                           ,D, Call).
 
+-spec set_recording_url(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_recording_url(whapps_call:call()) -> api_binary().
 set_recording_url(RU, Call) -> whapps_call:kvs_store(<<"recording_url">>, RU, Call).
 get_recording_url(Call) -> whapps_call:kvs_fetch(<<"recording_url">>, Call).
 
+-spec set_recording_duration(pos_integer(), whapps_call:call()) -> whapps_call:call().
+-spec get_recording_duration(whapps_call:call()) -> api_integer().
 set_recording_duration(RD, Call) -> whapps_call:kvs_store(<<"recording_duration">>, RD, Call).
 get_recording_duration(Call) -> whapps_call:kvs_fetch(<<"recording_duration">>, Call).
 
+-spec set_recording_sid(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_recording_sid(whapps_call:call()) -> api_binary().
 set_recording_sid(SID, Call) -> whapps_call:kvs_store(<<"recording_sid">>, SID, Call).
 get_recording_sid(Call) -> whapps_call:kvs_fetch(<<"recording_sid">>, Call).
 
+-spec set_transcription_sid(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_transcription_sid(whapps_call:call()) -> api_binary().
 set_transcription_sid(SID, Call) -> whapps_call:kvs_store(<<"transcription_sid">>, SID, Call).
 get_transcription_sid(Call) -> whapps_call:kvs_fetch(<<"transcription_sid">>, Call).
 
+-spec set_transcription_text(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_transcription_text(whapps_call:call()) -> api_binary().
 set_transcription_text(RD, Call) -> whapps_call:kvs_store(<<"transcription_text">>, RD, Call).
 get_transcription_text(Call) -> whapps_call:kvs_fetch(<<"transcription_text">>, Call).
 
+-spec set_transcription_status(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_transcription_status(whapps_call:call()) -> api_binary().
 set_transcription_status(RD, Call) -> whapps_call:kvs_store(<<"transcription_status">>, RD, Call).
 get_transcription_status(Call) -> whapps_call:kvs_fetch(<<"transcription_status">>, Call).
 
+-spec set_transcription_url(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_transcription_url(whapps_call:call()) -> api_binary().
 set_transcription_url(RD, Call) -> whapps_call:kvs_store(<<"transcription_url">>, RD, Call).
 get_transcription_url(Call) -> whapps_call:kvs_fetch(<<"transcription_url">>, Call).
 
+-spec set_dial_call_status(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_dial_call_status(whapps_call:call()) -> api_binary().
 set_dial_call_status(DCS, Call) -> whapps_call:kvs_store(<<"dial_call_status">>, DCS, Call).
 get_dial_call_status(Call) -> whapps_call:kvs_fetch(<<"dial_call_status">>, Call).
 
+-spec set_dial_call_sid(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_dial_call_sid(whapps_call:call()) -> api_binary().
 set_dial_call_sid(DCS, Call) -> whapps_call:kvs_store(<<"dial_call_sid">>, DCS, Call).
 get_dial_call_sid(Call) -> whapps_call:kvs_fetch(<<"dial_call_sid">>, Call).
 
+-spec set_dial_call_duration(pos_integer(), whapps_call:call()) -> whapps_call:call().
+-spec get_dial_call_duration(whapps_call:call()) -> api_integer().
 set_dial_call_duration(DCS, Call) -> whapps_call:kvs_store(<<"dial_call_duration">>, DCS, Call).
 get_dial_call_duration(Call) -> whapps_call:kvs_fetch(<<"dial_call_duration">>, Call).
 
+-spec set_queue_sid(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_queue_sid(whapps_call:call()) -> api_binary().
 set_queue_sid(DCS, Call) -> whapps_call:kvs_store(<<"queue_sid">>, DCS, Call).
 get_queue_sid(Call) -> whapps_call:kvs_fetch(<<"queue_sid">>, Call).
 
+-spec set_dequeue_result(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_dequeue_result(whapps_call:call()) -> api_binary().
 set_dequeue_result(DCS, Call) -> whapps_call:kvs_store(<<"dequeue_result">>, DCS, Call).
 get_dequeue_result(Call) -> whapps_call:kvs_fetch(<<"dequeue_result">>, Call).
 
+-spec set_dequeued_call_sid(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_dequeued_call_sid(whapps_call:call()) -> api_binary().
 set_dequeued_call_sid(DCS, Call) -> whapps_call:kvs_store(<<"dequeued_call_sid">>, DCS, Call).
 get_dequeued_call_sid(Call) -> whapps_call:kvs_fetch(<<"dequeued_call_sid">>, Call).
 
+-spec set_dequeued_call_queue_time(pos_integer(), whapps_call:call()) -> whapps_call:call().
+-spec get_dequeued_call_queue_time(whapps_call:call()) -> api_integer().
 set_dequeued_call_queue_time(DCS, Call) -> whapps_call:kvs_store(<<"dequeued_call_queue_time">>, DCS, Call).
 get_dequeued_call_queue_time(Call) -> whapps_call:kvs_fetch(<<"dequeued_call_queue_time">>, Call).
 
+-spec set_dequeued_call_duration(pos_integer(), whapps_call:call()) -> whapps_call:call().
+-spec get_dequeued_call_duration(whapps_call:call()) -> api_integer().
 set_dequeued_call_duration(DCS, Call) -> whapps_call:kvs_store(<<"dequeued_call_duration">>, DCS, Call).
 get_dequeued_call_duration(Call) -> whapps_call:kvs_fetch(<<"dequeued_call_duration">>, Call).
 
+-spec set_media_meta(wh_json:object(), whapps_call:call()) -> whapps_call:call().
+-spec get_media_meta(whapps_call:call()) -> api_object().
 set_media_meta(DCS, Call) -> whapps_call:kvs_store(<<"media_meta">>, DCS, Call).
 get_media_meta(Call) -> whapps_call:kvs_fetch(<<"media_meta">>, Call).
 
+-spec set_amqp_listener(ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_amqp_listener(whapps_call:call()) -> api_binary().
 set_amqp_listener(Pid, Call) -> whapps_call:kvs_store(<<"amqp_listener">>, Pid, Call).
 get_amqp_listener(Call) -> whapps_call:kvs_fetch(<<"amqp_listener">>, Call).
 
@@ -280,15 +308,5 @@ get_request_vars(Call) ->
         ])).
 
 -ifdef(TEST).
-
--spec get_path_test() -> any().
-get_path_test() ->
-    RawPath = <<"http://pivot/script.php">>,
-    Relative = <<"script2.php">>,
-    RawPath1 = <<"http://pivot/script2.php">>,
-
-    ?assertEqual(RawPath1, resolve_uri(RawPath, Relative)),
-    ?assertEqual(RawPath1, resolve_uri(RawPath, RawPath1)),
-    ?assertEqual(RawPath1, resolve_uri(RawPath, <<"/", Relative/binary>>)).
 
 -endif.

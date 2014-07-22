@@ -393,7 +393,7 @@ get_event_uris_props(Uri, Base) ->
      ,{<<Base/binary, "-Realm">>, Realm }].
 
 -spec is_ccv(tuple()) -> boolean().
-is_ccv({?GET_CCV(K), _V}) -> 'true';
+is_ccv({?GET_CCV(_K), _V}) -> 'true';
 is_ccv(_) -> 'false'.
 
 -spec get_ccvs(wh_proplist()) -> wh_proplist().

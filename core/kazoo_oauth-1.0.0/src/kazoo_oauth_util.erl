@@ -32,8 +32,8 @@ get_oauth_provider(ProviderId) ->
 oauth_provider_from_jobj(ProviderId, JObj) ->
     #oauth_provider{name=ProviderId
                     ,auth_url= wh_json:get_value(<<"oauth_url">>, JObj)
-                    ,tokeninfo_url= wh_json:get_value(<<"tokeninfo_url">>, JObj) 
-                    ,profile_url= wh_json:get_value(<<"profile_url">>, JObj) 
+                    ,tokeninfo_url= wh_json:get_value(<<"tokeninfo_url">>, JObj)
+                    ,profile_url= wh_json:get_value(<<"profile_url">>, JObj)
                     ,servers= wh_json:get_value(<<"servers">>, JObj)
                     ,scopes= wh_json:get_value(<<"scopes">>, JObj)
                    }.
@@ -53,11 +53,11 @@ get_oauth_app(AppId) ->
 
 oauth_app_from_jobj(AppId, Provider, JObj) ->
     #oauth_app{name=AppId
-               ,account_id=wh_json:get_value(<<"pvt_account_id">>, JObj) 
-               ,secret=wh_json:get_value(<<"pvt_secret">>, JObj) 
-               ,user_prefix=wh_json:get_value(<<"pvt_user_prefix">>, JObj) 
+               ,account_id=wh_json:get_value(<<"pvt_account_id">>, JObj)
+               ,secret=wh_json:get_value(<<"pvt_secret">>, JObj)
+               ,user_prefix=wh_json:get_value(<<"pvt_user_prefix">>, JObj)
                ,provider=Provider}.
-        
+
 get_oauth_service_app(AppId) ->
     case couch_mgr:open_doc(?OAUTH_DB, AppId) of
         {'ok', JObj} ->
@@ -73,22 +73,22 @@ get_oauth_service_app(AppId) ->
 
 oauth_service_from_jobj(AppId, Provider, JObj) ->
     #oauth_service_app{name=AppId
-                       ,account_id=wh_json:get_value(<<"pvt_account_id">>, JObj) 
-                       ,email=wh_json:get_value(<<"email">>, JObj) 
-                       ,public_key_fingerprints=wh_json:get_value(<<"public_key_fingerprints">>, JObj) 
+                       ,account_id=wh_json:get_value(<<"pvt_account_id">>, JObj)
+                       ,email=wh_json:get_value(<<"email">>, JObj)
+                       ,public_key_fingerprints=wh_json:get_value(<<"public_key_fingerprints">>, JObj)
                        ,provider=Provider}.
 
 load_service_app_keys(#oauth_service_app{name=AppId}=App) ->
     case couch_mgr:fetch_attachment(?OAUTH_DB, AppId, <<"public_key.pem">>) of
         {'ok', PublicKey} ->
             case couch_mgr:fetch_attachment(?OAUTH_DB, AppId, <<"private_key.pem">>) of
-                {'ok', PrivateKey} -> 
+                {'ok', PrivateKey} ->
                     {'ok',  oauth_service_app_from_keys(PublicKey, PrivateKey, App)};
                 {'error', _R}=Error ->
                     lager:debug("unable to fetch private key from ~s: ~p", [AppId, _R]),
                     Error
             end;
-        {'error', _R}=Error -> 
+        {'error', _R}=Error ->
             lager:debug("unable to fetch public key from ~s: ~p", [AppId, _R]),
             Error
     end.
@@ -99,24 +99,23 @@ oauth_service_app_from_keys(PublicKey, PrivateKey, App) ->
 
 pem_to_rsa(PemFileContents) ->
     [RSAEntry] = public_key:pem_decode(PemFileContents),
-    public_key:pem_entry_decode(RSAEntry).	
+    public_key:pem_entry_decode(RSAEntry).
 
 jwt(#oauth_service_app{email=AccountEmail}=App, Scope) ->
     jwt(App, Scope, AccountEmail).
-jwt(#oauth_service_app{email=AccountEmail
-                       ,private_key=PrivateKey
+jwt(#oauth_service_app{private_key=PrivateKey
                        ,public_key=PublicKey
-                       ,provider=#oauth_provider{auth_url=URL}}
+                       ,provider=#oauth_provider{auth_url=URL}
+                      }
    ,Scope, EMail) ->
-    
+
     JObj = wh_json:from_list([{<<"iss">>, EMail}
                               ,{<<"aud">>, URL}
                               ,{<<"scope">>, Scope}
-                              ,{<<"iat">>,current_tstamp_unix()-500}
-                              ,{<<"exp">>,current_tstamp_unix()+2000}
+                              ,{<<"iat">>, wh_util:current_unix_tstamp()-500}
+                              ,{<<"exp">>, wh_util:current_unix_tstamp()+2000}
                              ]),
-    
-      
+
     JWT64 = base64:encode(wh_json:encode(JObj)),
     JWT64_HEADER = <<"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9">>,
     JWT_FOR_SIGN = <<JWT64_HEADER/binary, ".", JWT64/binary>>,
@@ -127,7 +126,9 @@ jwt(#oauth_service_app{email=AccountEmail
     _Verify = public_key:verify(JWT_FOR_SIGN, 'sha256', JWT_SIGNATURE, PublicKey),
     Assertion.
 
--spec token( api_binary() | oauth_app(), api_binary() | oauth_refresh_token() ) -> {'ok', oauth_token()} | {'error', any()}.
+-spec token(api_binary() | oauth_app(), api_binary() | oauth_refresh_token()) ->
+                   {'ok', oauth_token()} |
+                   {'error', any()}.
 token(AppId, UserId) when is_binary(AppId) ->
     lager:debug("getting oauth-app ~p",[AppId]),
     case get_oauth_app(AppId) of
@@ -169,7 +170,7 @@ token(#oauth_app{name=AppId
             lager:info("unable to get oauth token: ~p", [Else]),
             {'error', Else}
 	end.
-	
+
 -spec verify_token(api_binary() | oauth_provider(), api_binary()) -> {'ok', api_object()} | {'error', api_binary()}.
 verify_token(ProviderId, AccessToken) when is_binary(ProviderId) ->
     case get_oauth_provider(ProviderId) of
@@ -214,19 +215,3 @@ refresh_token(#oauth_app{name=ClientId
             lager:debug("unable to get new oauth token: ~p", [Else]),
             {'error', Else}
     end.
-
-
--spec current_tstamp_unix() -> non_neg_integer().
-current_tstamp_unix() -> gregorian_seconds_to_unix_seconds(calendar:datetime_to_gregorian_seconds(calendar:universal_time())).
-
-%% there are 86400 seconds in a day
-%% there are 62167219200 seconds between Jan 1, 0000 and Jan 1, 1970
--define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
-
--spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> non_neg_integer().
-gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
-    wh_util:to_integer(GregorianSeconds) - ?UNIX_EPOCH_AS_GREG_SECONDS.
-
--spec unix_seconds_to_gregorian_seconds(integer() | string() | binary()) -> non_neg_integer().
-unix_seconds_to_gregorian_seconds(UnixSeconds) ->
-    wh_util:to_integer(UnixSeconds) + ?UNIX_EPOCH_AS_GREG_SECONDS.

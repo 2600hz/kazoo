@@ -678,7 +678,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
      ,{<<"Billing-Seconds">>, props:get_value(<<"variable_billsec">>, Props)}
      ,{<<"Ringing-Seconds">>, props:get_value(<<"variable_progresssec">>, Props)}
      ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
-     ,{<<"Fax-Info">>, maybe_fax_specific(Props)}     
+     ,{<<"Fax-Info">>, maybe_fax_specific(Props)}
     ];
 specific_call_event_props(<<"RECORD_STOP">>, _, Props) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -699,7 +699,7 @@ specific_call_event_props(_, <<"play_and_get_digits">>, Props) ->
     [{<<"Application-Name">>, <<"play_and_collect_digits">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Props, <<"">>)}
     ];
-specific_call_event_props(<<"FAX_DETECTED">>, _, Props) ->
+specific_call_event_props(<<"FAX_DETECTED">>, _, _Props) ->
     [{<<"Application-Name">>, <<"fax_detection">>}];
 specific_call_event_props(<<"CHANNEL_FAX_STATUS">>, <<"rxfax", Event/binary>>, Prop) ->
     [{<<"Application-Name">>, <<"receive_fax">>}
@@ -774,7 +774,7 @@ fax_specific(Props) ->
        ,{<<"Fax-Identity-Number">>, props:get_value(<<"variable_fax_ident">>, Props)}
        ,{<<"Fax-Identity-Name">>, props:get_value(<<"variable_fax_header">>, Props)}
        ,{<<"Fax-Doc-ID">>, props:get_value(<<"variable_fax_doc_id">>, Props)}
-       ,{<<"Fax-Doc-DB">>, props:get_value(<<"variable_fax_doc_database">>, Props)}      
+       ,{<<"Fax-Doc-DB">>, props:get_value(<<"variable_fax_doc_database">>, Props)}
        ]).
 
 -spec should_publish(ne_binary(), ne_binary(), boolean()) -> boolean().

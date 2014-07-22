@@ -13,7 +13,7 @@
 -include("doodle.hrl").
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, Props) ->
+handle_req(JObj, _Props) ->
     'true' = wapi_sms:delivery_v(JObj),
     _ = wh_util:put_callid(JObj),
     maybe_update_doc(JObj).
@@ -26,7 +26,7 @@ maybe_update_doc(JObj) ->
                 {_ , <<"200">> } -> <<"delivered">>;
                 {_ , <<"202">> } -> <<"accepted">>;
                 {<<"Success">>, _ } -> <<"completed">>;
-                Else -> <<"pending">>
+                _Else -> <<"pending">>
             end,
     update_doc(JObj, Value).
 
@@ -42,5 +42,3 @@ update_doc(JObj, Value) ->
         {'error', _E} ->
             lager:debug("error reading doc ~s from modb in account ~s",[CallId, AccountId])
     end.
-
-

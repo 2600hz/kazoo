@@ -49,6 +49,7 @@
 
 -export([uri_encode/1
          ,uri_decode/1
+         ,resolve_uri/2
         ]).
 
 -export([uri/2]).
@@ -59,8 +60,10 @@
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
--export([current_tstamp/0, ensure_started/1]).
--export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
+-export([ensure_started/1]).
+
+-export([current_tstamp/0, current_unix_tstamp/0
+         ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
          ,pretty_print_datetime/1
          ,decr_timeout/2
         ]).
@@ -83,14 +86,15 @@
         ]).
 
 -include_lib("kernel/include/inet.hrl").
+
 -ifdef(TEST).
 -include_lib("proper/include/proper.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include("../include/wh_types.hrl").
--include("../include/wh_log.hrl").
--include("../include/wh_databases.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, 'whistle_version'}).
 
@@ -588,6 +592,43 @@ uri_encode(String) when is_list(String) ->
 uri_encode(Atom) when is_atom(Atom) ->
     to_atom(http_uri:encode(to_list(Atom)), 'true').
 
+-spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | binary() | 'undefined') -> ne_binary().
+resolve_uri(Raw, 'undefined') -> to_binary(Raw);
+resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
+resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
+    join_binary(
+      resolve_uri_path(RawPath, Relative)
+      ,<<"/">>
+     );
+resolve_uri(RawPath, Relative) ->
+    resolve_uri(to_binary(RawPath), to_binary(Relative)).
+
+-spec resolve_uri_path(ne_binary(), ne_binary()) -> ne_binaries().
+resolve_uri_path(RawPath, Relative) ->
+    PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, ['global'])),
+    UrlTokens = binary:split(Relative, <<"/">>, ['global']),
+
+    lists:reverse(
+      lists:foldl(fun resolve_uri_fold/2, PathTokensRev, UrlTokens)
+     ).
+
+-spec resolve_uri_fold(ne_binary(), ne_binaries()) -> ne_binaries().
+resolve_uri_fold(<<"..">>, []) -> [];
+resolve_uri_fold(<<"..">>, [_ | PathTokens]) -> PathTokens;
+resolve_uri_fold(<<".">>, PathTokens) -> PathTokens;
+resolve_uri_fold(<<>>, PathTokens) -> PathTokens;
+resolve_uri_fold(Segment, [<<>>|DirTokens]) ->
+    [Segment|DirTokens];
+resolve_uri_fold(Segment, [LastToken|DirTokens]=PathTokens) ->
+    case filename:extension(LastToken) of
+        <<>> ->
+            %% no extension, append Segment to Tokens
+            [Segment | PathTokens];
+        _Ext ->
+            %% Extension found, append Segment to DirTokens
+            [Segment|DirTokens]
+    end.
+
 -spec uri(binary(), ne_binaries()) -> binary().
 uri(BaseUrl, Tokens) ->
     [Pro, Url] = binary:split(BaseUrl, <<"://">>),
@@ -837,6 +878,9 @@ ceiling(X) ->
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
+current_unix_tstamp() ->
+    gregorian_seconds_to_unix_seconds(current_tstamp()).
+
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
 -spec whistle_version() -> ne_binary().
 whistle_version() ->
@@ -979,7 +1023,7 @@ prop_to_binary() ->
 prop_iolist_t() ->
     ?FORALL(IO, iolist(), is_binary(to_binary(IO))).
 
-prop_to_from_hex_test() ->
+prop_to_from_hex() ->
     ?FORALL({F}, {binary()},
             begin
                 F =:= from_hex_binary(to_hex_binary(F))
@@ -1118,4 +1162,16 @@ uri_test() ->
     ?assertEqual(<<"http://test.com/path1/path2">>, uri(<<"http://test.com">>, [<<"path1">>, <<"path2">>])),
     ?assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>])),
     ?assertEqual(<<"http://test.com/path1/path2">>, uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>])).
+
+
+-spec resolve_uri_test() -> any().
+resolve_uri_test() ->
+    RawPath = <<"http://pivot/script.php">>,
+    Relative = <<"script2.php">>,
+    RawPathList = [<<"http:">>, <<>>, <<"pivot">>, <<"script2.php">>],
+
+    ?assertEqual(RawPathList, resolve_uri_path(RawPath, Relative)),
+    ?assertEqual(RawPathList, resolve_uri_path(RawPath, <<"/", Relative/binary>>)).
+
+
 -endif.

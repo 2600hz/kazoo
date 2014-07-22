@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with fax attachment to the user.
@@ -14,18 +14,18 @@
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, notify_fax_outbound_text_tmpl).
--define(DEFAULT_HTML_TMPL, notify_fax_outbound_html_tmpl).
--define(DEFAULT_SUBJ_TMPL, notify_fax_outbound_subj_tmpl).
+-define(DEFAULT_TEXT_TMPL, 'notify_fax_outbound_text_tmpl').
+-define(DEFAULT_HTML_TMPL, 'notify_fax_outbound_html_tmpl').
+-define(DEFAULT_SUBJ_TMPL, 'notify_fax_outbound_subj_tmpl').
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_outbound_to_email">>).
 
 -spec init() -> 'ok'.
 init() ->
     %% ensure the fax template can compile, otherwise crash the processes
-    {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
-    {ok, _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
-    {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
@@ -39,11 +39,11 @@ handle_req(JObj, _Props) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     JobId = wh_json:get_value(<<"Fax-JobId">>, JObj),
     lager:debug("account-id: ~s, fax-id: ~s", [AccountId, JobId]),
-    {ok, FaxDoc} = couch_mgr:open_doc(?WH_FAXES, JobId),
+    {'ok', FaxDoc} = couch_mgr:open_doc(?WH_FAXES, JobId),
 
     Emails = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
 
-    {ok, AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
 
@@ -57,9 +57,9 @@ handle_req(JObj, _Props) ->
                                                <<"outbound_fax_to_email">>,
                                                <<"email_subject_template">>], AcctObj),
 
-    {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
-    {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
-    {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
+    {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
+    {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
+    {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
     try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props)) of
         _ -> lager:debug("built and sent")
@@ -164,18 +164,18 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %% create a friendly file name
 %% @end
 %%--------------------------------------------------------------------
--spec get_file_name(proplist(), string()) -> ne_binary().
+-spec get_file_name(wh_proplist(), string()) -> ne_binary().
 get_file_name(Props, Ext) ->
     %% CallerID_Date_Time.mp3
     Fax = props:get_value(<<"fax">>, Props),
     CallerID = case {props:get_value(<<"caller_id_name">>, Fax), props:get_value(<<"caller_id_number">>, Fax)} of
-                   {undefined, undefined} -> <<"Unknown">>;
-                   {undefined, Num} -> wh_util:to_binary(Num);
+                   {'undefined', 'undefined'} -> <<"Unknown">>;
+                   {'undefined', Num} -> wh_util:to_binary(Num);
                    {Name, _} -> wh_util:to_binary(Name)
                end,
     LocalDateTime = props:get_value(<<"date_called">>, Fax, <<"0000-00-00_00-00-00">>),
     FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
-    re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{return, binary}, global]).
+    re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -183,9 +183,11 @@ get_file_name(Props, Ext) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_attachment(proplist()) -> {ne_binary(), ne_binary(), ne_binary()} | {'error', _}.
+-spec get_attachment(wh_proplist()) ->
+                            {ne_binary(), ne_binary(), ne_binary()} |
+                            {'error', _}.
 get_attachment(Props) ->
-    {ok, AttachmentBin, ContentType} = raw_attachment_binary(Props),
+    {'ok', AttachmentBin, ContentType} = raw_attachment_binary(Props),
     case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>) of
         <<"pdf">> -> convert_to_pdf(AttachmentBin, Props, ContentType);
         _Else -> convert_to_tiff(AttachmentBin, Props, ContentType)
@@ -197,11 +199,13 @@ get_attachment(Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec raw_attachment_binary(proplist()) -> {'ok', ne_binary()} | {'error', _}.
+-spec raw_attachment_binary(wh_proplist()) ->
+                                   {'ok', ne_binary()} |
+                                   {'error', _}.
 raw_attachment_binary(Props) ->
     Fax = props:get_value(<<"fax">>, Props),
     FaxId = props:get_value(<<"fax_jobid">>, Fax),
-    {ok, FaxJObj} = couch_mgr:open_doc(?WH_FAXES, FaxId),
+    {'ok', FaxJObj} = couch_mgr:open_doc(?WH_FAXES, FaxId),
     [AttachmentId] = wh_json:get_keys(<<"_attachments">>, FaxJObj),
     ContentType = wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], FaxJObj, <<"image/tiff">>),
     {'ok', AttachmentBin} = couch_mgr:fetch_attachment(?WH_FAXES, FaxId, AttachmentId),
@@ -213,8 +217,8 @@ raw_attachment_binary(Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_to_tiff(ne_binary(), proplist(), ne_binary()) -> {ne_binary(), ne_binary(), ne_binary()}.
-convert_to_tiff(AttachmentBin, Props, ContentType) ->
+-spec convert_to_tiff(ne_binary(), wh_proplist(), ne_binary()) -> {ne_binary(), ne_binary(), ne_binary()}.
+convert_to_tiff(AttachmentBin, Props, _ContentType) ->
     {<<"image/tiff">>, get_file_name(Props, "tiff"), AttachmentBin}.
 
 %%--------------------------------------------------------------------
@@ -223,10 +227,12 @@ convert_to_tiff(AttachmentBin, Props, ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec convert_to_pdf(ne_binary(), proplist(), ne_binary()) -> {ne_binary(), ne_binary(), ne_binary()} | {'error', _}.
+-spec convert_to_pdf(ne_binary(), wh_proplist(), ne_binary()) ->
+                            {ne_binary(), ne_binary(), ne_binary()} |
+                            {'error', _}.
 convert_to_pdf(AttachmentBin, Props, <<"application/pdf">>) ->
     {<<"application/pdf">>, get_file_name(Props, "pdf"), AttachmentBin};
-convert_to_pdf(AttachmentBin, Props, ContentType) ->
+convert_to_pdf(AttachmentBin, Props, _ContentType) ->
     TiffFile = tmp_file_name(<<"tiff">>),
     PDFFile = tmp_file_name(<<"pdf">>),
     _ = file:write_file(TiffFile, AttachmentBin),
@@ -234,10 +240,10 @@ convert_to_pdf(AttachmentBin, Props, ContentType) ->
     _ = os:cmd(Cmd),
     _ = file:delete(TiffFile),
     case file:read_file(PDFFile) of
-        {ok, PDFBin} ->
+        {'ok', PDFBin} ->
             _ = file:delete(PDFFile),
             {<<"application/pdf">>, get_file_name(Props, "pdf"), PDFBin};
-        {error, _R}=E ->
+        {'error', _R}=E ->
             lager:debug("unable to convert tiff: ~p", [_R]),
             E
     end.

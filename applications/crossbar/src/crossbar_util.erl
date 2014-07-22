@@ -744,24 +744,10 @@ apply_response_map(Context, Map) ->
 
 -spec get_path(cowboy_req:req() | ne_binary(), ne_binary()) -> ne_binary().
 get_path(<<_/binary>> = RawPath, Relative) ->
-    PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, ['global'])),
-    UrlTokens = binary:split(Relative, <<"/">>),
-
-    wh_util:join_binary(
-      lists:reverse(
-        lists:foldl(fun get_path_fold/2, PathTokensRev, UrlTokens)
-       ), <<"/">>);
+    wh_util:resolve_uri(RawPath, Relative);
 get_path(Req, Relative) ->
     {RawPath, _} = cowboy_req:path(Req),
     get_path(RawPath, Relative).
-
-get_path_fold(Segment, [<<>> | PathTokens]) ->
-    get_path_fold(Segment, PathTokens);
-get_path_fold(<<"..">>, []) -> [];
-get_path_fold(<<"..">>, [_ | PathTokens]) -> PathTokens;
-get_path_fold(<<".">>, PathTokens) -> PathTokens;
-get_path_fold(<<>>, PathTokens) -> PathTokens;
-get_path_fold(Segment, PathTokens) -> [Segment | PathTokens].
 
 -spec maybe_remove_attachments(cb_context:context()) -> cb_context:context().
 maybe_remove_attachments(Context) ->
@@ -847,11 +833,5 @@ year_month_sequence_test() ->
                  ,generate_year_month_sequence({2013, 11}
                                                ,{2014, 1}
                                               )).
-
-get_path_test() ->
-    RawPath = <<"/v1/accounts/acct_id/module">>,
-    Relative = <<"../other_mod">>,
-    ?assertEqual(get_path1(RawPath, Relative), <<"/v1/accounts/acct_id/other_mod">>),
-    ?assertEqual(get_path1(RawPath, <<Relative/binary, "/mod_id">>), <<"/v1/accounts/acct_id/other_mod/mod_id">>).
 
 -endif.

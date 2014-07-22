@@ -24,6 +24,7 @@
          ,cdr_srv/1
          ,conference_srv/1
          ,event_stream_sup/1
+         ,msg_srv/1
         ]).
 
 -export([init/1]).
