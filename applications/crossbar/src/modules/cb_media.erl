@@ -305,26 +305,78 @@ validate_media_binary(Context, MediaId, ?HTTP_POST, [{_Filename, FileObj}]) ->
     lager:debug("loaded media meta for '~s'", [MediaId]),
     case cb_context:resp_status(Context1) of
         'success' ->
-            CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
-            Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
-                                             ,FileObj
-                                             ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))
-                                            ),
-
-            Props = [{<<"content_type">>, CT}
-                     ,{<<"content_length">>, Size}
-                     ,{<<"media_source">>, <<"recording">>}
-                    ],
-            validate_request(MediaId
-                             ,cb_context:set_req_data(Context1
-                                                      ,wh_json:set_values(Props, cb_context:doc(Context1))
-                                                     )
-                            );
+            maybe_normalize_upload(Context1, MediaId, FileObj);
         _Status -> Context1
     end;
 validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
     Message = <<"please provide a single media file">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
+
+-spec maybe_normalize_upload(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
+maybe_normalize_upload(Context, MediaId, FileJObj) ->
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"convert_media">>, 'false') of
+        'true' ->
+            lager:debug("normalizing uploaded media"),
+            normalize_upload(Context, MediaId, FileJObj);
+        'false' ->
+            lager:debug("normalization not enabled, leaving upload as-is"),
+            validate_upload(Context, MediaId, FileJObj)
+    end.
+
+-spec normalize_upload(cb_context:context(), ne_binary(), wh_json:object()) ->
+                              cb_context:context().
+-spec normalize_upload(cb_context:context(), ne_binary(), wh_json:object(), api_binary()) ->
+                              cb_context:context().
+normalize_upload(Context, MediaId, FileJObj) ->
+    normalize_upload(Context, MediaId, FileJObj, wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj)).
+
+normalize_upload(Context, MediaId, FileJObj, <<"audio/mp3">>) ->
+    lager:debug("upload is an mp3 already, just save as normal"),
+    validate_upload(Context, MediaId, FileJObj);
+normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
+    FromExt = cb_modules_util:content_type_to_extension(UploadContentType),
+    lager:debug("upload is of type '~s', normalizing from ~s to mp3", [UploadContentType, FromExt]),
+    case wh_media_util:normalize_media(FromExt
+                                       ,<<"mp3">>
+                                       ,wh_json:get_value(<<"contents">>, FileJObj)
+                                      )
+    of
+        {'ok', MP3Contents} ->
+            lager:debug("successfully converted to mp3"),
+
+            NewFileJObj = wh_json:set_values([{[<<"headers">>, <<"content_type">>], <<"audio/mp3">>}
+                                              ,{[<<"headers">>, <<"content_length">>], byte_size(MP3Contents)}
+                                              ,{<<"contents">>, MP3Contents}
+                                             ], FileJObj),
+
+            validate_upload(cb_context:set_req_files(Context
+                                                     ,[{<<"normalized_media">>, NewFileJObj}]
+                                                    )
+                            ,MediaId
+                            ,NewFileJObj
+                           );
+        {'error', Reason} ->
+            lager:debug("failed to convert to mp3: ~s", [Reason]),
+            crossbar_util:response('error', Reason, Context)
+    end.
+
+-spec validate_upload(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
+validate_upload(Context, MediaId, FileJObj) ->
+    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj, <<"application/octet-stream">>),
+    Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
+                                     ,FileJObj
+                                     ,byte_size(wh_json:get_value(<<"contents">>, FileJObj, <<>>))
+                                    ),
+
+    Props = [{<<"content_type">>, CT}
+             ,{<<"content_length">>, Size}
+             ,{<<"media_source">>, <<"recording">>}
+            ],
+    validate_request(MediaId
+                     ,cb_context:set_req_data(Context
+                                              ,wh_json:set_values(Props, cb_context:doc(Context))
+                                             )
+                    ).
 
 -spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 get(Context, _MediaId, ?BIN_DATA) ->
