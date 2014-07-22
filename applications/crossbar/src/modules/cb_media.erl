@@ -41,7 +41,7 @@
                            ,{<<"application">>, <<"x-base64">>}
                           ]).
 
--define(SOX_CONVERT, <<"sox -r 8000 ">>).
+-define(SOX_CONVERT, <<"sox {input_file} -r 8000 {output_file}">>).
 
 -define(CB_LIST, <<"media/crossbar_listing">>).
 
