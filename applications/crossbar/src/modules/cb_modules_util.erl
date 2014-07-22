@@ -13,7 +13,10 @@
          ,get_devices_owned_by/2
          ,maybe_originate_quickcall/1
          ,is_superduper_admin/1
+
          ,attachment_name/2
+         ,content_type_to_extension/1
+
          ,bucket_name/1
          ,reconcile_services/1
          ,bind/2
@@ -330,7 +333,6 @@ content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
 content_type_to_extension(<<"application/x-pdf">>) -> <<"pdf">>;
 content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>.
-
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
