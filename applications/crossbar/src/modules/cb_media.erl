@@ -41,20 +41,17 @@
                            ,{<<"application">>, <<"x-base64">>}
                           ]).
 
--define(SOX_CONVERT, <<"sox {input_file} -r 8000 {output_file}">>).
--define(NORMALIZATION_FORMAT, whapps_config:get(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)).
-
 -define(CB_LIST, <<"media/crossbar_listing">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
+
 -define(DEFAULT_VOICE, whapps_config:get(<<"speech">>, <<"tts_default_voice">>, <<"female/en-US">>)).
+-define(NORMALIZATION_FORMAT, whapps_config:get(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    maybe_configure_sox(),
-
     _ = crossbar_bindings:bind(<<"*.content_types_provided.media">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.media">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.media">>, ?MODULE, 'allowed_methods'),
@@ -66,54 +63,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.media">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.media">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.media">>, ?MODULE, 'delete').
-
--spec maybe_configure_sox() -> 'ok'.
-maybe_configure_sox() ->
-    case os:cmd("whereis sox") of
-        "sox:\n" ->
-            whapps_config:set(?MOD_CONFIG_CAT, <<"convert_media">>, 'false'),
-            lager:info("'sox' not found on this server");
-        "sox: "++_Path ->
-            lager:debug("'sox' found at ~s", [_Path]),
-            configure_sox();
-        _Whereis ->
-            lager:debug("unhandled return to 'whereis sox': ~p", [_Whereis])
-    end.
-
--spec configure_sox() -> 'ok'.
--spec configure_sox(ne_binary()) -> 'ok'.
-configure_sox() ->
-    "sox:" ++ VersionPlus = os:cmd("sox --version"),
-    Version = wh_util:strip_right_binary(
-                wh_util:strip_binary(
-                  wh_util:to_binary(VersionPlus)
-                 )
-                ,$\n
-               ),
-    whapps_config:set(?MOD_CONFIG_CAT, <<"sox_version">>, Version),
-    configure_sox(Version).
-
-configure_sox(<<_/binary>> = Version) ->
-    lager:debug("configuring ~s", [Version]),
-
-    Capable = sox_supports_normalization_format(),
-    lager:debug("~s capable sox: ~p", [?NORMALIZATION_FORMAT, Capable]),
-    whapps_config:set(?MOD_CONFIG_CAT, <<"sox_normalization_capable">>, Capable),
-    'ok'.
-
--spec sox_supports_normalization_format() -> boolean().
-sox_supports_normalization_format() ->
-    Output = wh_util:to_binary(os:cmd("sox -h")),
-    Lines = binary:split(Output, <<"\n">>, ['global']),
-    sox_supports(?NORMALIZATION_FORMAT, Lines).
-
--spec sox_supports(ne_binary(), ne_binaries()) -> boolean().
-sox_supports(_Format, []) -> 'false';
-sox_supports(Format, [<<"AUDIO FILE FORMATS: ", FormatsBin/binary>> | _Lines]) ->
-    Formats = binary:split(FormatsBin, <<" ">>, ['global']),
-    lists:member(Format, Formats);
-sox_supports(Format, [_Line| Lines]) ->
-    sox_supports(Format, Lines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -333,7 +282,7 @@ normalize_upload(Context, MediaId, FileJObj) ->
 
 normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
     FromExt = cb_modules_util:content_type_to_extension(UploadContentType),
-    lager:info("upload is of type '~s', normalizing from ~s to "
+    lager:info("upload is of type '~s', normalizing from ~s to ~s"
                ,[UploadContentType, FromExt, ?NORMALIZATION_FORMAT]
               ),
     case wh_media_util:normalize_media(FromExt
@@ -346,7 +295,7 @@ normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
             {Major, Minor, _} = cow_mimetypes:all(<<"foo.", (?NORMALIZATION_FORMAT)/binary>>),
 
             NewFileJObj = wh_json:set_values([{[<<"headers">>, <<"content_type">>], <<Major/binary, "/", Minor/binary>>}
-                                              ,{[<<"headers">>, <<"content_length">>], byte_size(Contents)}
+                                              ,{[<<"headers">>, <<"content_length">>], iolist_size(Contents)}
                                               ,{<<"contents">>, Contents}
                                              ], FileJObj),
 
@@ -375,7 +324,7 @@ validate_upload(Context, MediaId, FileJObj) ->
     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj, <<"application/octet-stream">>),
     Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
                                      ,FileJObj
-                                     ,byte_size(wh_json:get_value(<<"contents">>, FileJObj, <<>>))
+                                     ,iolist_size(wh_json:get_value(<<"contents">>, FileJObj, <<>>))
                                     ),
 
     Props = [{<<"content_type">>, CT}
@@ -495,7 +444,7 @@ maybe_update_tts(Context, Text, Voice, 'success') ->
         {'ok', ContentType, Content} ->
             MediaId = wh_json:get_value(<<"_id">>, JObj),
             Headers = wh_json:from_list([{<<"content_type">>, ContentType}
-                                         ,{<<"content_length">>, byte_size(Content)}
+                                         ,{<<"content_length">>, iolist_size(Content)}
                                         ]),
             FileJObj = wh_json:from_list([{<<"headers">>, Headers}
                                           ,{<<"contents">>, Content}
@@ -528,7 +477,7 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
         {'error', R} -> crossbar_util:response('error', wh_util:to_binary(R), Context);
         {'ok', ContentType, Content} ->
             Headers = wh_json:from_list([{<<"content_type">>, ContentType}
-                                         ,{<<"content_length">>, byte_size(Content)}
+                                         ,{<<"content_length">>, iolist_size(Content)}
                                         ]),
             FileJObj = wh_json:from_list([{<<"headers">>, Headers}
                                           ,{<<"contents">>, Content}
