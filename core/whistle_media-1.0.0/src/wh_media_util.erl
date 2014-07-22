@@ -33,6 +33,8 @@
 -spec normalize_media(ne_binary(), ne_binary(), binary()) ->
                              {'ok', binary()} |
                              {'error', ne_binary()}.
+normalize_media(FromFormat, FromFormat, FileContents) ->
+    {'ok', FileContents};
 normalize_media(FromFormat, ToFormat, FileContents) ->
     OldFlag = process_flag('trap_exit', 'true'),
 
@@ -75,33 +77,33 @@ normalize_media(FileContents, Port) ->
 -spec wait_for_results(port()) ->
                               {'ok' | 'error', binary()}.
 wait_for_results(Port) ->
-    wait_for_results(Port, <<"failed to convert media: unknown">>).
+    wait_for_results(Port, <<>>).
 wait_for_results(Port, Response) ->
     receive
         {Port, {'data', Msg}} ->
-            lager:debug("recv data msg from port"),
-            wait_for_results(Port, Msg);
+            lager:debug("recv data msg from port: ~p", [Msg]),
+            wait_for_results(Port, [Response | [Msg]]);
         {Port, {'exit_status', 0}} ->
             lager:debug("process exited successfully"),
-            {'ok', Response};
+            {'ok', iolist_to_binary(Response)};
         {Port, {'exit_status', _Err}} ->
             lager:debug("process exited with status ~p", [_Err]),
-            {'error', Response};
+            {'error', iolist_to_binary(Response)};
         {Port, 'eof'} ->
             lager:debug("eof recv"),
             wait_for_results(Port, Response);
         {'EXIT', Port, _Reason} ->
             lager:debug("port closed unexpectedly: ~p", [_Reason]),
-            {'error', Response}
+            {'error', iolist_to_binary(Response)}
     after 5000 ->
             lager:debug("timeout, sending error response: ~p", [Response]),
             catch erlang:port_close(Port),
-            {'error', Response}
+            {'error', iolist_to_binary(Response)}
     end.
 
 -spec recording_url(ne_binary(), wh_json:object()) -> ne_binary().
 recording_url(CallId, Data) ->
-    Format = wh_json:get_value(<<"format">>, Data, <<".mp3">>),
+    Format = wh_json:get_value(<<"format">>, Data, <<"mp3">>),
     Url = wh_json:get_value(<<"url">>, Data, <<>>),
     <<Url/binary, "call_recording_", CallId/binary, ".", Format/binary>>.
 
