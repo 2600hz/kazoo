@@ -21,7 +21,6 @@
 -spec save_sms(wh_json:object(), whapps_call:call()) -> 'ok'.
 save_sms(JObj, Call) ->
     AccountId = whapps_call:account_id(Call),
-    _CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     OwnerId = whapps_call:owner_id(Call),
     AuthType = whapps_call:authorizing_type(Call),
     AuthId = whapps_call:authorizing_id(Call),
@@ -109,7 +108,6 @@ get_endpoint_from_sipdb(Realm, Username) ->
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = wh_json:get_value(<<"id">>, JObj),
-            _AccountDb = wh_json:get_value(<<"account_db">>, JObj),
             CacheProps = [{'origin', {'db', ?WH_SIP_DB, EndpointId}}],
             Doc = wh_json:get_value(<<"doc">>, JObj),
             wh_cache:store_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username), Doc, CacheProps),
