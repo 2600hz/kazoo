@@ -15,5 +15,7 @@
 
 -spec handle(wh_json:object(), whapps_call:call()) ->
                     {'continue', whapps_call:call()}.
-handle(_Data, _Call) ->
-    'ok'.
+handle(_Data, Call) ->
+    lager:debug("putting b-leg ~s on hold", [whapps_call:other_leg_call_id(Call)]),
+    lager:debug("data: ~p", [_Data]),
+    whapps_call_command:hold(whapps_call:other_leg_call_id(Call)).
