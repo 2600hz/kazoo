@@ -42,6 +42,7 @@
 -export([apply_dialplan/2]).
 -export([encryption_method_map/2]).
 -export([maybe_start_metaflows/2]).
+-export([sip_users_from_device_ids/2]).
 
 -export([caller_belongs_to_group/2
          ,maybe_belongs_to_group/3
@@ -879,6 +880,23 @@ check_value_of_fields(Perms, Def, Data, Call) ->
     of
         [] -> Def;
         [{K, F}|_] -> F(wh_json:get_value(K, Data), Call)
+    end.
+
+-spec sip_users_from_device_ids(ne_binaries(), whapps_call:call()) -> ne_binaries().
+sip_users_from_device_ids(EndpointIds, Call) ->
+    lists:foldl(fun(EndpointId, Acc) ->
+        case sip_user_from_device_id(EndpointId, Call) of
+            'undefined' -> Acc;
+            Username -> [Username|Acc]
+        end
+    end, [], EndpointIds).
+
+-spec sip_user_from_device_id(ne_binary(), whapps_call:call()) -> api_binary().
+sip_user_from_device_id(EndpointId, Call) ->
+    case cf_endpoint:get(EndpointId, Call) of
+        {'error', _} -> 'undefined';
+        {'ok', Endpoint} ->
+            wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
     end.
 
 -ifdef(TEST).

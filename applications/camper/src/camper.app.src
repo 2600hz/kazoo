@@ -1,0 +1,13 @@
+{application, camper,
+ [
+  {description, "Camper - wait for the right moment"}
+  ,{vsn, "0.1.0"}
+  ,{modules, []}
+  ,{registered, []}
+  ,{applications, [
+		   kernel
+		   ,stdlib
+		  ]}
+  ,{mod, { camper_app, []} }
+  ,{env, []}
+ ]}.

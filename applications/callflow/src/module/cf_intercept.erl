@@ -267,34 +267,17 @@ find_sip_endpoints(Data, Call) ->
                 'undefined' ->
                     find_sip_users(wh_json:get_value(<<"group_id">>, Data), Call);
                 UserId ->
-                    sip_users_from_endpoints(
+                    cf_util:sip_users_from_device_ids(
                       cf_util:find_user_endpoints([UserId], [], Call), Call
                      )
             end;
         DeviceId ->
-             sip_users_from_endpoints([DeviceId], Call)
+             cf_util:sip_users_from_device_ids([DeviceId], Call)
     end.
 
 -spec find_sip_users(ne_binary(), whapps_call:call()) -> ne_binaries().
 find_sip_users(GroupId, Call) ->
-  sip_users_from_endpoints(find_group_endpoints(GroupId, Call), Call).
-
--spec sip_users_from_endpoints(ne_binaries(), whapps_call:call()) -> ne_binaries().
-sip_users_from_endpoints(EndpointIds, Call) ->
-    lists:foldl(fun(EndpointId, Acc) ->
-                        case sip_user_of_endpoint(EndpointId, Call) of
-                            'undefined' -> Acc;
-                            Username -> [Username|Acc]
-                        end
-                end, [], EndpointIds).
-
--spec sip_user_of_endpoint(ne_binary(), whapps_call:call()) -> api_binary().
-sip_user_of_endpoint(EndpointId, Call) ->
-    case cf_endpoint:get(EndpointId, Call) of
-        {'error', _} -> 'undefined';
-        {'ok', Endpoint} ->
-            wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
-    end.
+    cf_util:sip_users_from_device_ids(find_group_endpoints(GroupId, Call), Call).
 
 -spec no_users(whapps_call:call()) -> any().
 no_users(Call) ->

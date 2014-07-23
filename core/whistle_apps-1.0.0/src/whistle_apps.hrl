@@ -23,6 +23,7 @@
                          ,'omnipresence'
                          ,'milliwatt'
                          ,'pivot'
+                         ,'camper'
                         ]).
 
 -define(WHISTLE_APPS_HRL, 'true').
