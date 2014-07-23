@@ -18,4 +18,6 @@
 handle(_Data, Call) ->
     lager:debug("putting b-leg ~s on hold", [whapps_call:other_leg_call_id(Call)]),
     lager:debug("data: ~p", [_Data]),
-    whapps_call_command:hold(whapps_call:other_leg_call_id(Call)).
+
+    Cmd = whapps_call_command:hold_command(whapps_call:other_leg_call_id(Call)),
+    whapps_call_command:send_command(Cmd, Call).
