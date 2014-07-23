@@ -304,11 +304,12 @@ normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
 
             validate_upload(
               cb_context:setters(Context
-                                 ,{fun cb_context:set_req_files/2, [{<<"original_media">>, FileJObj}
-                                                                    ,{<<"normalized_media">>, NewFileJObj}
-                                                                   ]
-                                  }
-                                 ,{fun cb_context:set_doc/2, wh_json:delete_key(<<"normalization_error">>, cb_context:doc(Context))}
+                                 ,[{fun cb_context:set_req_files/2, [{<<"original_media">>, FileJObj}
+                                                                     ,{<<"normalized_media">>, NewFileJObj}
+                                                                    ]
+                                   }
+                                   ,{fun cb_context:set_doc/2, wh_json:delete_key(<<"normalization_error">>, cb_context:doc(Context))}
+                                  ]
                                 )
               ,MediaId
               ,NewFileJObj
