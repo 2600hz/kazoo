@@ -264,7 +264,7 @@ validate_media_binary(Context, _MediaId, ?HTTP_POST, _Files) ->
 
 -spec maybe_normalize_upload(cb_context:context(), ne_binary(), wh_json:object()) -> cb_context:context().
 maybe_normalize_upload(Context, MediaId, FileJObj) ->
-    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"convert_media">>, 'false') of
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"normalize_media">>, 'false') of
         'true' ->
             lager:debug("normalizing uploaded media"),
             normalize_upload(Context, MediaId, FileJObj);
@@ -299,14 +299,17 @@ normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
                                               ,{<<"contents">>, Contents}
                                              ], FileJObj),
 
-            validate_upload(cb_context:set_req_files(Context
-                                                     ,[{<<"original_media">>, FileJObj}
-                                                       ,{<<"normalized_media">>, NewFileJObj}
-                                                      ]
-                                                    )
-                            ,MediaId
-                            ,NewFileJObj
-                           );
+            validate_upload(
+              cb_context:setters(Context
+                                 ,{fun cb_context:set_req_files/2, [{<<"original_media">>, FileJObj}
+                                                                    ,{<<"normalized_media">>, NewFileJObj}
+                                                                   ]
+                                  }
+                                 ,{fun cb_context:set_doc/2, wh_json:delete_key(<<"normalization_error">>, cb_context:doc(Context))}
+                                )
+              ,MediaId
+              ,NewFileJObj
+             );
         {'error', Reason} ->
             lager:warning("failed to convert to ~s: ~s", [?NORMALIZATION_FORMAT, Reason]),
 
