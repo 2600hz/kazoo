@@ -282,17 +282,20 @@ normalize_upload(Context, MediaId, FileJObj) ->
 
 normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
     FromExt = cb_modules_util:content_type_to_extension(UploadContentType),
+    ToExt =  ?NORMALIZATION_FORMAT,
+
     lager:info("upload is of type '~s', normalizing from ~s to ~s"
-               ,[UploadContentType, FromExt, ?NORMALIZATION_FORMAT]
+               ,[UploadContentType, FromExt, ToExt]
               ),
+
     case wh_media_util:normalize_media(FromExt
-                                       ,?NORMALIZATION_FORMAT
+                                       ,ToExt
                                        ,wh_json:get_value(<<"contents">>, FileJObj)
                                       )
     of
         {'ok', Contents} ->
-            lager:debug("successfully converted to ~s", [?NORMALIZATION_FORMAT]),
-            {Major, Minor, _} = cow_mimetypes:all(<<"foo.", (?NORMALIZATION_FORMAT)/binary>>),
+            lager:debug("successfully converted to ~s", [ToExt]),
+            {Major, Minor, _} = cow_mimetypes:all(<<"foo.", (ToExt)/binary>>),
 
             NewFileJObj = wh_json:set_values([{[<<"headers">>, <<"content_type">>], <<Major/binary, "/", Minor/binary>>}
                                               ,{[<<"headers">>, <<"content_length">>], iolist_size(Contents)}
@@ -311,7 +314,7 @@ normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
               ,NewFileJObj
              );
         {'error', Reason} ->
-            lager:warning("failed to convert to ~s: ~s", [?NORMALIZATION_FORMAT, Reason]),
+            lager:warning("failed to convert to ~s: ~s", [ToExt, Reason]),
 
             validate_upload(cb_context:set_doc(Context
                                                ,wh_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context))
