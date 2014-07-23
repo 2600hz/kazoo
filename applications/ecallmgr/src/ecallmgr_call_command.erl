@@ -493,9 +493,11 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         'false' -> {'error', <<"set failed to execute as JObj did not validate">>};
         'true' ->
             ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+            lager:debug("setting ~p", [ChannelVars]),
             _ = ecallmgr_util:set(Node, UUID, ChannelVars),
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
+            lager:debug("exporting ~p", [CallVars]),
             _ = ecallmgr_util:export(Node, UUID, CallVars),
 
             {<<"set">>, 'noop'}
