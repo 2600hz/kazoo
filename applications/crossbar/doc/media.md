@@ -171,15 +171,32 @@ By default, if enabled, normalization will convert all media to MP3 (retaining t
 
 ### Enable Normalization
 
-In the `system_config/crossbar.media` document, create or update the key `normalize_media` to `true`. Flush the whapps_config cache, `sup whapps_config flush crossbar.media`, on all servers running Crossbar.
+#### Via SUP
+
+Enable normalization for this particular server: `sup whapps_config set crossbar.media normalize_media true`
+
+Enable normalization for all servers: `sup whapps_config set_default crossbar.media normalize_media true`
+
+#### Via DB
+
+1. Open `system_config/crossbar.media` document, create or update the key `normalize_media` to `true`.
+2. Flush the whapps_config cache, `sup whapps_config flush crossbar.media`, on all servers running Crossbar.
 
 ### Set Target Format
+
+#### Via SUP
+
+For the server: `sup whapps_config set crossbar.media normalization_format ogg`
+
+For all servers: `sup whapps_config set_default crossbar.media normalization_format ogg`
+
+#### Via DB
 
 In the `system_config/crossbar.media` document, create or update the key `normalization_format` to your desired format (`mp3`, `wav`, etc). Flush the whapps_config cache on all servers running Crossbar. All new uploads will be normalized (if possible) to the new format.
 
 ### Normalization parameters
 
-The default *sox* command is `sox -t <input_format> - -r 8000 -t <output_format> -` but this is configurable via the `system_config/media` document.
+The default *sox* command is `sox -t <input_format> - -r 8000 -t <output_format> -` but this is configurable via the `system_config/media` document (or similar SUP command).
 
 You can fine-tune the source and destination arguments using the `normalize_source_args` and `normalize_destination_args` keys respectively. By default, the source args are "" and the destination args are "-r 8000" (as can be seen from the default sox command above.
 
