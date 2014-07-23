@@ -503,7 +503,9 @@ numbers(Call, JObj) ->
 patterns(Call, JObj) ->
     case wh_json:get_value(<<"Patterns">>, JObj) of
         'undefined' -> konami_config:patterns(whapps_call:account_id(Call));
-        Patterns -> Patterns
+        Patterns ->
+            lager:debug("loading patterns from api: ~p", [Patterns]),
+            Patterns
     end.
 
 -spec digit_timeout(whapps_call:call(), wh_json:object()) -> pos_integer().
