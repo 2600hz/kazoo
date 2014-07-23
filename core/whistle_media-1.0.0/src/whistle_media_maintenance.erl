@@ -80,13 +80,14 @@ import_prompt(Path0, Lang0, Contents) ->
 
     {Category, Type, _} = cow_mimetypes:all(Path),
 
-    ContentLength = byte_size(Contents),
+    ContentLength = iolist_size(Contents),
 
     ID = wh_media_util:prompt_id(PromptName, Lang),
 
     io:format("  importing as '~s'~n", [ID]),
 
     Now = wh_util:current_tstamp(),
+    ContentType = <<Category/binary, "/", Type/binary>>,
 
     MetaJObj = wh_json:from_list(
                  [{<<"_id">>, ID}
@@ -95,7 +96,7 @@ import_prompt(Path0, Lang0, Contents) ->
                   ,{<<"description">>, <<"System prompt in ", Lang/binary, " for ", PromptName/binary>>}
                   ,{<<"content_length">>, ContentLength}
                   ,{<<"language">>, wh_util:to_lower_binary(Lang)}
-                  ,{<<"content_type">>, <<Category/binary, "/", Type/binary>>}
+                  ,{<<"content_type">>, ContentType}
                   ,{<<"source_type">>, ?MODULE}
                   ,{<<"streamable">>, 'true'}
                   ,{<<"pvt_type">>, <<"media">>}
@@ -107,15 +108,21 @@ import_prompt(Path0, Lang0, Contents) ->
     case couch_mgr:ensure_saved(?WH_MEDIA_DB, MetaJObj) of
         {'ok', _MetaJObj1} ->
             io:format("  saved metadata about '~s'~n", [Path]),
-            upload_prompt(ID, PromptName, Contents);
+            upload_prompt(ID
+                          ,<<PromptName/binary, (wh_util:to_binary(Extension))/binary>>
+                          ,Contents
+                          ,[{'content_type', wh_util:to_list(ContentType)}
+                            ,{'content_length', ContentLength}
+                           ]
+                         );
         {'error', E} ->
             io:format("  error saving metadata: ~p~n", [E]),
             {'error', E}
     end.
 
--spec upload_prompt(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', _}.
-upload_prompt(ID, AttachmentName, Contents) ->
-    case couch_mgr:put_attachment(?WH_MEDIA_DB, ID, AttachmentName, Contents) of
+-spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok' | {'error', _}.
+upload_prompt(ID, AttachmentName, Contents, Options) ->
+    case couch_mgr:put_attachment(?WH_MEDIA_DB, ID, AttachmentName, Contents, Options) of
         {'ok', _MetaJObj} ->
             io:format("  uploaded prompt binary to ~s as ~s~n", [ID, AttachmentName]);
         {'error', E} ->
