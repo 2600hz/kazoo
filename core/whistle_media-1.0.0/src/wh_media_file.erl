@@ -105,7 +105,7 @@ maybe_find_attachment(Db, Id, JObj) ->
         Attachments ->
             {Attachment, _} = hd(wh_json:to_proplist(Attachments)),
             lager:debug("found first attachment ~s on ~s in ~s", [Attachment, Id, Db]),
-            {'ok', {Db, Id, Attachment}}
+            {'ok', {Db, cow_qs:urlencode(Id), Attachment}}
     end.
 
 -spec maybe_local_haproxy_uri(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
