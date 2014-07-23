@@ -834,9 +834,9 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
 -spec hold(whapps_call:call()) -> 'ok'.
 -spec hold(api_binary(), whapps_call:call()) -> 'ok'.
 
--spec hold_command(whapps_call:call()) ->
+-spec hold_command(whapps_call:call() | ne_binary()) ->
                           wh_json:object().
--spec hold_command(api_binary(), whapps_call:call()) ->
+-spec hold_command(api_binary(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
 
 -spec b_hold(whapps_call:call()) ->
@@ -853,14 +853,16 @@ hold(MOH, Call) ->
 
 hold_command(Call) ->
     hold_command('undefined', Call).
-hold_command(MOH, Call) ->
+hold_command(MOH, <<_/binary>> = CallId) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"hold">>}
          ,{<<"Insert-At">>, <<"now">>}
-         ,{<<"Hold-Media">>, wh_media_util:media_path(MOH, Call)}
-         ,{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
-        ])).
+         ,{<<"Hold-Media">>, MOH}
+         ,{<<"Call-ID">>, CallId}
+        ]));
+hold_command(MOH, Call) ->
+    hold_command(wh_media_util:media_path(MOH, Call), whapps_call:call_id_direct(Call)).
 
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
 
