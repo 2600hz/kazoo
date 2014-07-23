@@ -51,7 +51,7 @@
          ,admin_all_docs/1
          ,all_docs/2
          ,all_design_docs/2, admin_all_docs/2
-         ,copy_doc/3, copy_doc/4, copy_doc/5   
+         ,copy_doc/3, copy_doc/4, copy_doc/5
          ,move_doc/3, move_doc/4, move_doc/5
         ]).
 

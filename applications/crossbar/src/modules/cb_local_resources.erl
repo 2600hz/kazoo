@@ -15,7 +15,7 @@
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
          ,validate/1, validate/2
-         ,put/1
+         ,put/1, put/2
          ,post/2
          ,delete/2
         ]).
@@ -24,6 +24,7 @@
 
 -define(CB_LIST, <<"local_resources/crossbar_listing">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".local_resources">>).
+-define(COLLECTION, <<"collection">>).
 
 %%%===================================================================
 %%% API
@@ -49,6 +50,8 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+allowed_methods(?COLLECTION) ->
+    [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -62,8 +65,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -79,8 +82,10 @@ resource_exists(_) -> true.
 validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    validate_request(undefined, Context).
+    validate_request('undefined', Context).
 
+validate(Context, ?COLLECTION) ->
+    Context#cb_context{resp_status='success'};
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
@@ -89,18 +94,26 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
     read(Id, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, ?COLLECTION) ->
+    collection_process(Context, cb_context:req_verb(Context));
 post(Context, _) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_resource(Context1),
     Context1.
 
 -spec put(cb_context:context()) -> cb_context:context().
+-spec put(#cb_context{}, path_token()) -> #cb_context{}.
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_resource(Context1),
     Context1.
 
+put(Context, ?COLLECTION) ->
+    collection_process(Context, cb_context:req_verb(Context)).
+
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, ?COLLECTION) ->
+    collection_process(Context, cb_context:req_verb(Context));
 delete(Context, ResourceId) ->
     Context1 = crossbar_doc:delete(Context),
     _ = maybe_remove_aggregate(ResourceId, Context1),
@@ -350,3 +363,142 @@ validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
                                   IP =/= AuthIp
                                       orelse ResourceId =:= Id
                           end, SIPAuth).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec collection_process(cb_context:context(), ne_binary()) -> cb_context:context().
+collection_process(Context, ?HTTP_POST) ->
+    ReqData = cb_context:req_data(Context),
+    Db = cb_context:account_db(Context),
+    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_ressource(JObj)} || JObj <- ReqData],
+    Ids = props:get_keys(Updates),
+    ViewOptions = [{'keys', Ids}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:all_docs(Db, ViewOptions) of
+        {'error', _R} ->
+            lager:error("could not open ~p in ~p", [Ids, Db]),
+            crossbar_util:response('error', <<"failed to open resources">>, Context);
+        {'ok', JObjs} ->
+            Resources = [update_ressource(JObj, Updates) || JObj <- JObjs],
+            case couch_mgr:save_docs(Db, Resources) of
+                {'error', _R} ->
+                    lager:error("failed to update ~p in ~p", [Ids, Db]),
+                    crossbar_util:response('error', <<"failed to update resources">>, Context);
+                {'ok', _} ->
+                    _ = maybe_aggregate_resources(Resources),
+                    cb_context:set_resp_data(Context, [clean_ressource(Resource) || Resource <- Resources])
+            end
+    end;
+collection_process(Context, ?HTTP_PUT) ->
+    ReqData = cb_context:req_data(Context),
+    Db = cb_context:account_db(Context),
+    Options = [{'type', <<"resource">>}],
+    Resources = [wh_doc:update_pvt_parameters(JObj, 'undefined', Options) || JObj <- ReqData],
+    case couch_mgr:save_docs(Db, Resources) of
+        {'error', _R} ->
+            lager:error("failed to create resources"),
+            crossbar_util:response('error', <<"failed to create resources">>, Context);
+        {'ok', JObjs} ->
+            Ids = [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs],
+            ViewOptions = [{'keys', Ids}
+                           ,'include_docs'
+                          ],
+            _ = maybe_aggregate_resources(Resources),
+            case couch_mgr:all_docs(Db, ViewOptions) of
+                {'error', _R} ->
+                    lager:error("could not open ~p in ~p", [Ids, Db]),
+                    cb_context:set_resp_data(Context, Ids);
+                {'ok', NewResources} ->
+                    cb_context:set_resp_data(Context, [clean_ressource(Resource) || Resource <- NewResources])
+            end
+    end;
+collection_process(Context, ?HTTP_DELETE) ->
+    ReqData = cb_context:req_data(Context),
+    Db = cb_context:account_db(Context),
+    case couch_mgr:del_docs(Db, ReqData) of
+        {'error', _R} ->
+            lager:error("failed to delete resources"),
+            crossbar_util:response('error', <<"failed to delete resources">>, Context);
+        {'ok', JObjs} ->
+            _ = maybe_remove_aggregates(ReqData),
+            cb_context:set_resp_data(Context, [wh_json:delete_key(<<"rev">>, JObj) || JObj <- JObjs])
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_aggregate_resources(wh_json:objects()) -> 'ok'.
+maybe_aggregate_resources([]) -> 'ok';
+maybe_aggregate_resources([Resource|Resources]) ->
+    case lists:any(fun(Gateway) ->
+                           wh_json:is_true(<<"register">>, Gateway)
+                               andalso
+                                 (not wh_json:is_false(<<"enabled">>, Gateway))
+                   end, wh_json:get_value(<<"gateways">>, Resource, []))
+    of
+        'true' ->
+            lager:debug("adding resource to the sip auth aggregate"),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Resource)),
+            _ = wapi_switch:publish_reload_gateways(),
+            _ = wapi_switch:publish_reload_acls(),
+            maybe_aggregate_resources(Resources);
+        'false' ->
+            _ = maybe_remove_aggregates([Resource]),
+            maybe_aggregate_resources(Resources)
+    end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_remove_aggregates(wh_json:objects()) -> 'ok'.
+maybe_remove_aggregates([]) -> 'ok';
+maybe_remove_aggregates([Resource|Resources]) ->
+    ResourceId = wh_json:get_first_defined([<<"_id">>, <<"id">>], Resource),
+    case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
+        {'ok', JObj} ->
+            couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            _ = wapi_switch:publish_reload_gateways(),
+            _ = wapi_switch:publish_reload_acls(),
+            maybe_remove_aggregates(Resources);
+        {'error', 'not_found'} ->
+            maybe_remove_aggregates(Resources)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_ressource(wh_json:object()) -> wh_json:object().
+clean_ressource(JObj) ->
+    case wh_json:get_value(<<"doc">>, JObj) of
+        'undefined' ->
+            case wh_json:get_value(<<"_id">>, JObj) of
+                'undefined' ->
+                     JObj1 = wh_doc:public_fields(JObj),
+                    wh_json:delete_key(<<"id">>, JObj1);
+                Id ->
+                    JObj1 = wh_json:set_value(<<"id">>, Id, JObj),
+                    wh_doc:public_fields(JObj1)
+            end;
+        Doc -> clean_ressource(Doc)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec update_ressource(wh_json:object(), wh_proplist()) -> wh_json:object().
+update_ressource(JObj, Updates) ->
+    Doc = wh_json:get_value(<<"doc">>, JObj),
+    Id = wh_json:get_value(<<"_id">>, Doc),
+    wh_json:merge_recursive([Doc, props:get_value(Id, Updates)]).
+
