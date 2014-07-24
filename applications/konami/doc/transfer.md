@@ -95,10 +95,16 @@ The *transfer* module requires being used with Metaflow "patterns". In the examp
 
 #### Resume Metaflow
 
+Fill me out
+
 ### API Transfer
 
 #### Account Channels
 
-
-
-#### Account Channels
+     POST v1/accounts/{ACCOUNT_ID}/channels/{CALL_ID}
+     {
+       "data": {
+         "action": "transfer",
+         "target": "2600"
+       }
+     }
