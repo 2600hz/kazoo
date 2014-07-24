@@ -226,7 +226,7 @@ presence(State, PresenceId, CallId) when is_binary(CallId) orelse CallId =:= 'un
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    wapi_notifications:publish_presence_update(Command);
+    wapi_presence:publish_update(Command);
 presence(State, PresenceId, Call) ->
     presence(State, PresenceId, whapps_call:call_id(Call)).
 

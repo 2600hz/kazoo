@@ -9,16 +9,45 @@
 -module(wapi_omnipresence).
 
 -export([subscribe/1, subscribe_v/1
-         ,presence_update/1, presence_update_v/1
+         ,update/1, update_v/1
          ,bind_q/2
          ,unbind_q/2
-         ,declare_exchanges/0
          ,publish_subscribe/1, publish_subscribe/2
-         ,publish_presence_update/1, publish_presence_update/2
+         ,publish_update/2, publish_update/3
+         ,declare_exchanges/0
          ]).
 
 -include("omnipresence.hrl").
--include("omnipresence_api.hrl").
+
+-define(SUBSCRIPTIONS_EXCHANGE, <<"dialoginfo_subs">>).
+-define(UPDATES_EXCHANGE, <<"dialoginfo">>).
+
+-define(SUBSCRIBE_HEADERS, [<<"User">>, <<"Expires">>]).
+-define(OPTIONAL_SUBSCRIBE_HEADERS, [<<"Queue">>, <<"From">>
+                                    ,<<"Event-Package">>, <<"Call-ID">>
+                                    ,<<"From-Tag">>, <<"To-Tag">>
+                                    ,<<"Contact">>
+                                    ]).
+-define(SUBSCRIBE_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                           ,{<<"Event-Name">>, <<"subscription">>}
+                          ]).
+-define(SUBSCRIBE_TYPES, [{<<"Expires">>, fun(V) -> is_integer(wh_util:to_integer(V)) end}]).
+
+-define(UPDATE_HEADERS, [<<"To">>, <<"From">>]).
+-define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>
+                                 ,<<"Call-ID">>, <<"Direction">>
+                                 ,<<"Event-Package">>, <<"State">>
+                                 ,<<"From-Tag">>, <<"To-Tag">>
+                                 ,<<"Messages-Waiting">>, <<"Messages-New">>
+                                 ,<<"Messages-Saved">>, <<"Messages-Urgent">>
+                                 ,<<"Messages-Urgent-Saved">>, <<"Message-Account">>
+                                 ]).
+-define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                       ,{<<"Event-Name">>, <<"update">>}
+                       ]).
+-define(UPDATE_TYPES, [
+                       {<<"State">>, fun(A) -> lists:member(A, wapi_presence:presence_states()) end}
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @doc Subscribing for updates
@@ -38,66 +67,94 @@ subscribe_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?SUBSCRIBE_HEADERS, ?SUBSCRIBE_VALUES, ?SUBSCRIBE_TYPES);
 subscribe_v(JObj) -> subscribe_v(wh_json:to_proplist(JObj)).
 
+publish_subscribe(JObj) -> publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_subscribe(Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SUBSCRIBE_VALUES, fun ?MODULE:subscribe/1),
+    amqp_util:basic_publish(?SUBSCRIPTIONS_EXCHANGE, <<>>, Payload, ContentType).
+
 %%--------------------------------------------------------------------
 %% @doc Someone's presence is updated, update tracking
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec presence_update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
-presence_update(Prop) when is_list(Prop) ->
-    case presence_update_v(Prop) of
+-spec update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+update(Prop) when is_list(Prop) ->
+    case update_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?UPDATE_HEADERS, ?OPTIONAL_UPDATE_HEADERS);
-        'false' -> {'error', "Proplist failed validation for presence_update"}
+        'false' -> {'error', "Proplist failed validation for update"}
     end;
-presence_update(JObj) -> presence_update(wh_json:to_proplist(JObj)).
+update(JObj) -> update(wh_json:to_proplist(JObj)).
 
--spec presence_update_v(api_terms()) -> boolean().
-presence_update_v(Prop) when is_list(Prop) ->
+-spec update_v(api_terms()) -> boolean().
+update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?UPDATE_HEADERS, ?UPDATE_VALUES, ?UPDATE_TYPES);
-presence_update_v(JObj) -> presence_update_v(wh_json:to_proplist(JObj)).
+update_v(JObj) -> update_v(wh_json:to_proplist(JObj)).
 
+-spec publish_update(ne_binary(), api_terms()) -> 'ok'.
+publish_update(Q, JObj) -> publish_update(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_update(Q, Req, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(Req, ?UPDATE_VALUES, fun ?MODULE:update/1),
+    amqp_util:basic_publish(?UPDATES_EXCHANGE, Q, Payload, ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 bind_q(Queue, Props) ->
-    bind_q(Queue, Props, props:get_value('restrict_to', Props)).
+    bind_q(Queue, props:get_value('restrict_to', Props), Props).
 
-bind_q(Queue, Props, 'undefined') ->
-    Realm = props:get_value('realm', Props, <<"*">>),
-    amqp_util:bind_q_to_whapps(Queue, wapi_presence:subscribe_routing_key(Realm)),
-
-    To = props:get_value('to', Props, <<"*">>),
-    State = props:get_value('presence_state', Props, <<"*">>),
-    amqp_util:bind_q_to_whapps(Queue, presence_update_routing_key(To, State));
-bind_q(Queue, Props, ['subscribe'|Ps]) ->
-    Realm = props:get_value('realm', Props, <<"*">>),
-    amqp_util:bind_q_to_whapps(Queue, wapi_presence:subscribe_routing_key(Realm)),
-    bind_q(Queue, Props, Ps);
-bind_q(Queue, Props, ['presence_update'|Ps]) ->
-    To = props:get_value('to', Props, <<"*">>),
-    State = props:get_value('presence_state', Props, <<"*">>),
-
-    amqp_util:bind_q_to_whapps(Queue, presence_update_routing_key(To, State)),
-    bind_q(Queue, Props, Ps);
-bind_q(Queue, Props, [_|Ps]) ->
-    bind_q(Queue, Props, Ps);
-bind_q(_, _, []) -> 'ok'.
+bind_q(Queue, 'undefined', _Props) ->
+    amqp_util:bind_q_to_exchange(Queue
+                                 ,Queue
+                                 ,?SUBSCRIPTIONS_EXCHANGE
+                                ),
+    amqp_util:bind_q_to_exchange(Queue
+                                 ,Queue
+                                 ,?UPDATES_EXCHANGE
+                                );
+bind_q(Queue, ['subscribe'|Restrict], Props) ->
+    amqp_util:bind_q_to_exchange(Queue
+                                 ,Queue
+                                 ,?SUBSCRIPTIONS_EXCHANGE
+                                ),
+    bind_q(Queue, Restrict, Props);
+bind_q(Queue, ['update'|Restrict], Props) ->
+    amqp_util:bind_q_to_exchange(Queue
+                                 ,Queue
+                                 ,?UPDATES_EXCHANGE
+                                ),
+    bind_q(Queue, Restrict, Props);
+bind_q(Queue, [_|Restrict], Props) ->
+    bind_q(Queue, Restrict, Props);
+bind_q(_, [], _) -> 'ok'.
 
 unbind_q(Queue, Props) ->
-    unbind_q(Queue, Props, props:get_value('restrict_to', Props)).
+    unbind_q(Queue, props:get_value('restrict_to', Props), Props).
 
-unbind_q(Queue, Props, 'undefined') ->
-    Realm = props:get_value('realm', Props, <<"*">>),
-    amqp_util:unbind_q_from_whapps(Queue, wapi_presence:subscribe_routing_key(Realm));
-unbind_q(Queue, Props, ['subscribe'|Ps]) ->
-    Realm = props:get_value('realm', Props, <<"*">>),
-    amqp_util:unbind_q_from_whapps(Queue, wapi_presence:subscribe_routing_key(Realm)),
-    unbind_q(Queue, Props, Ps);
-unbind_q(Queue, Props, ['presence_update'|Ps]) ->
-    To = props:get_value('to', Props, <<"*">>),
-    State = props:get_value('presence_state', Props, <<"*">>),
-
-    amqp_util:unbind_q_from_whapps(Queue, presence_update_routing_key(To, State)),
-    unbind_q(Queue, Props, Ps);
-unbind_q(Queue, Props, [_|Ps]) ->
-    unbind_q(Queue, Props, Ps);
+unbind_q(Queue, _Props, 'undefined') ->
+    amqp_util:unbind_q_from_exchange(Queue
+                                     ,Queue
+                                     ,?SUBSCRIPTIONS_EXCHANGE
+                                    ),
+    amqp_util:unbind_q_from_exchange(Queue
+                                     ,Queue
+                                     ,?UPDATES_EXCHANGE
+                                    );
+unbind_q(Queue, ['subscribe'|Restrict], Props) ->
+    amqp_util:unbind_q_from_exchange(Queue
+                                     ,Queue
+                                     ,?SUBSCRIPTIONS_EXCHANGE
+                                    ),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['update'|Restrict], Props) ->
+    amqp_util:unbind_q_from_exchange(Queue
+                                     ,Queue
+                                     ,?UPDATES_EXCHANGE
+                                    ),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, [_|Restrict], Props) ->
+    unbind_q(Queue, Restrict, Props);
 unbind_q(_, _, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -107,24 +164,5 @@ unbind_q(_, _, []) -> 'ok'.
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:whapps_exchange().
-    
-publish_subscribe(JObj) ->
-    publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_subscribe(API, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?SUBSCRIBE_VALUES, fun ?MODULE:subscribe/1),
-    amqp_util:whapps_publish(wapi_presence:subscribe_routing_key(API), Payload, ContentType).
-
-publish_presence_update(JObj) ->
-    publish_presence_update(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_presence_update(API, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?UPDATE_VALUES, fun ?MODULE:presence_update/1),
-    amqp_util:whapps_publish(presence_update_routing_key(API), Payload, ContentType).
-
-presence_update_routing_key(Prop) when is_list(Prop) ->
-    presence_update_routing_key(props:get_value(<<"To">>, Prop), props:get_value(<<"State">>, Prop));
-presence_update_routing_key(JObj) ->
-    presence_update_routing_key(wh_json:get_value(<<"To">>, JObj), wh_json:get_value(<<"State">>, JObj)).
-
-presence_update_routing_key(To, State) ->
-    <<"omnipresence.update.", (amqp_util:encode(To))/binary, ".", State/binary>>.
+    amqp_util:new_exchange(?SUBSCRIPTIONS_EXCHANGE, <<"fanout">>),
+    amqp_util:new_exchange(?UPDATES_EXCHANGE, <<"direct">>).

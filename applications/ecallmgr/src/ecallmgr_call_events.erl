@@ -580,6 +580,8 @@ generic_call_event_props(Props) ->
      ,{<<"Replaced-By">>, props:get_value(<<"att_xfer_replaced_by">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
+     ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
+     ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

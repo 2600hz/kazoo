@@ -33,7 +33,7 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'acdc_agent', [{'restrict_to', ['status', 'stats_req']}]}
-                   ,{'notifications', [{'restrict_to', ['presence_probe']}]}
+                   ,{'presence', [{'restrict_to', ['probe']}]}
                    ,{'conf', [{'type', <<"user">>}
                               ,'federate'
                              ]}
@@ -54,7 +54,7 @@
                        ,[{<<"agent">>, <<"stats_req">>}]
                       }
                      ,{{'acdc_agent_handler', 'handle_presence_probe'}
-                       ,[{<<"notification">>, <<"presence_probe">>}]
+                       ,[{<<"presence">>, <<"probe">>}]
                       }
                      ,{{'acdc_agent_handler', 'handle_config_change'}
                        ,[{<<"configuration">>, <<"*">>}]

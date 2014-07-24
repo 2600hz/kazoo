@@ -84,4 +84,5 @@ declare_exchanges() ->
     _ = wapi_offnet_resource:declare_exchanges(),
     _ = wapi_pivot:declare_exchanges(), %% TODO: decouple
     _ = wapi_route:declare_exchanges(),
+    _ = wapi_presence:declare_exchanges(),
     wapi_self:declare_exchanges().

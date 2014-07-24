@@ -27,9 +27,10 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                   ,{'omnipresence', [{'restrict_to', ['subscribe', 'presence_update']}]}
-                   %% new Kamailio presence APIs
-                   ,{'presence', [{'restrict_to', ['subscribe', 'search_req']}]}
+                   ,{'presence', [{'restrict_to', ['search_req'
+                                                   ,'subscribe'
+                                                   ,'flush'
+                                                  ]}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_search_req'}
                        ,[{<<"presence">>, <<"search_req">>}]
@@ -37,8 +38,8 @@
                      ,{{'omnip_subscriptions', 'handle_subscribe'}
                        ,[{<<"presence">>, <<"subscription">>}]
                       }
-                     ,{{'omnip_subscriptions', 'handle_reset'}
-                       ,[{<<"presence">>, <<"reset">>}]
+                     ,{{'omnip_subscriptions', 'handle_flush'}
+                       ,[{<<"presence">>, <<"flush">>}]
                       }
                     ]).
 
@@ -82,7 +83,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     put('callid', ?MODULE),
-    gen_listener:cast(self(), {'find_subscriptions_srv'}),
+    gen_listener:cast(self(), 'find_subscriptions_srv'),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
 
@@ -113,11 +114,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'find_subscriptions_srv'}, #state{subs_pid=_Pid}=State) ->
+handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
     case omnipresence_sup:subscriptions_srv() of
         'undefined' ->
             lager:debug("no subs_pid"),
-            gen_listener:cast(self(), {'find_subscriptions_srv'}),
+            gen_listener:cast(self(), 'find_subscriptions_srv'),
             {'noreply', State#state{subs_pid='undefined'}};
         P when is_pid(P) ->
             lager:debug("new subs pid: ~p", [P]),
@@ -125,7 +126,6 @@ handle_cast({'find_subscriptions_srv'}, #state{subs_pid=_Pid}=State) ->
                                     ,subs_ref=erlang:monitor('process', P)
                                    }}
     end;
-
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
@@ -147,11 +147,10 @@ handle_cast(_Msg, State) ->
 handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
                                                       ,subs_ref=Ref
                                                      }=State) ->
-    gen_listener:cast(self(), {'find_subscriptions_srv'}),
+    gen_listener:cast(self(), 'find_subscriptions_srv'),
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};
-
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.

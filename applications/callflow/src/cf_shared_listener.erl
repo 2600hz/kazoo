@@ -24,23 +24,28 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{{'cf_util', 'presence_probe'}
-                      ,[{<<"notification">>, <<"presence_probe">>}]
-                     }
-                     ,{{'cf_util', 'presence_mwi_query'}
-                       ,[{<<"notification">>, <<"mwi_query">>}]
-                      }
-                     ,{{'cf_util', 'presence_mwi_query'}
-                       ,[{<<"notification">>, <<"register">>}]
-                      }
-                     ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
-                    ]).
 -define(BINDINGS, [{'notifications'
-                    ,[{'restrict_to', ['presence_probe', 'mwi_query', 'register']}]
+                    ,[{'restrict_to', ['register']}]
+                   },
+                   {'presence'
+                    ,[{'restrict_to', ['probe', 'mwi_query']}
+                      ,{'probe-type', <<"dialog">>}
+                     ]
                    }
                    ,{'self', []}
                    ,{'callflow', []}
                   ]).
+-define(RESPONDERS, [{{'cf_util', 'presence_probe'}
+                      ,[{<<"presence">>, <<"probe">>}]
+                     }
+                     ,{{'cf_util', 'presence_mwi_query'}
+                       ,[{<<"presence">>, <<"mwi_query">>}]
+                      }
+                     ,{{'cf_util', 'notification_register'}
+                       ,[{<<"notification">>, <<"register">>}]
+                      }
+                     ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
+                    ]).
 -define(QUEUE_NAME, <<"callflow_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).

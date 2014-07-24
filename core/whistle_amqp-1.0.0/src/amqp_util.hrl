@@ -76,6 +76,11 @@
 -define(EXCHANGE_WHAPPS, <<"whapps">>).
 -define(TYPE_WHAPPS, <<"topic">>).
 
+%% Presence Exchange
+%% - For presence related communication
+-define(EXCHANGE_PRESENCE, <<"presence">>).
+-define(TYPE_PRESENCE, <<"topic">>).
+
 %% Notification Exchange
 %% - For notification events
 -define(EXCHANGE_NOTIFICATIONS, <<"notifications">>).

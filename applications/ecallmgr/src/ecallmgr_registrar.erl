@@ -14,6 +14,7 @@
 -export([lookup_contact/2
          ,lookup_original_contact/2
          ,lookup_registration/2
+         ,get_registration/2
         ]).
 -export([reg_success/2
          ,reg_query/2
@@ -758,7 +759,7 @@ registration_notify(#registration{previous_contact=PrevContact
                ,{<<"Realm">>, Realm}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ]),
-    wapi_notifications:publish_register_overwrite(Props).
+    wapi_presence:publish_register_overwrite(Props).
 
 -spec maybe_initial_registration(registration()) -> 'ok'.
 maybe_initial_registration(#registration{initial='false'}) -> 'ok';
