@@ -125,6 +125,9 @@ send_cmd(Node, UUID, "conference", Args) ->
     Args1 = iolist_to_binary([UUID, " conference:", Args, ",park inline"]),
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
     freeswitch:api(Node, 'uuid_transfer', wh_util:to_list(Args1));
+send_cmd(Node, _UUID, "transfer", Args) ->
+    lager:debug("transfering on ~s: ~s", [Node, Args]),
+    freeswitch:api(Node, 'uuid_transfer', wh_util:to_list(Args));
 send_cmd(Node, UUID, AppName, Args) ->
     Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                              ,{"execute-app-name", AppName}
