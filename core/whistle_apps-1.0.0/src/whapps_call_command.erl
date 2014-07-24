@@ -46,7 +46,7 @@
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
          ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7
-         ,unbridge/1
+         ,unbridge/1, unbridge/2, unbridge/3
         ]).
 -export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
@@ -855,9 +855,32 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
 b_bridge_wait(Timeout, Call) ->
     wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call).
 
+-spec unbridge(whapps_call:call()) -> 'ok'.
+-spec unbridge(whapps_call:call(), ne_binary()) -> 'ok'.
+-spec unbridge(whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
 unbridge(Call) ->
-    Command = [{<<"Application-Name">>, <<"unbridge">>}],
+    Command = unbridge_command(Call),
     send_command(Command, Call).
+unbridge(Call, Leg) ->
+    Command = unbridge_command(Call, Leg),
+    send_command(Command, Call).
+unbridge(Call, Leg, Insert) ->
+    Command = unbridge_command(Call, Leg, Insert),
+    send_command(Command, Call).
+
+-spec unbridge_command(whapps_call:call()) -> wh_proplist().
+-spec unbridge_command(whapps_call:call(), ne_binary()) -> wh_proplist().
+-spec unbridge_command(whapps_call:call(), ne_binary(), ne_binary()) -> wh_proplist().
+unbridge_command(Call) ->
+    unbridge_command(Call, <<"Both">>).
+unbridge_command(Call, Leg) ->
+    unbridge_command(Call, Leg, <<"now">>).
+unbridge_command(Call, Leg, Insert) ->
+    [{<<"Application-Name">>, <<"unbridge">>}
+     ,{<<"Insert-At">>, Insert}
+     ,{<<"Leg">>, Leg}
+     ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+    ].
 
 %%--------------------------------------------------------------------
 %% @public

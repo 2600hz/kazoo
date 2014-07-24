@@ -26,10 +26,13 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 -define(IS_TERMINATOR, fun terminators_v/1).
 
 -define(UNBRIDGE_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>]).
--define(OPTIONAL_UNBRIDGE_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_UNBRIDGE_REQ_HEADERS, [<<"Insert-At">>
+                                        ,<<"Leg">>
+                                       ]).
 -define(UNBRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                               ,{<<"Event-Name">>, <<"command">>}
                               ,{<<"Application-Name">>, <<"unbridge">>}
+                              ,{<<"Leg">>, [<<"A">>, <<"B">>, <<"Both">>]}
                               ,?INSERT_AT_TUPLE
                              ]).
 -define(UNBRIDGE_REQ_TYPES, []).
