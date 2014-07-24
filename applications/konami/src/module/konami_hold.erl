@@ -22,6 +22,9 @@ handle(Data, Call) ->
 
     RequestingLeg = wh_json:get_value(<<"dtmf_leg">>, Data),
 
+    lager:debug("first, unbridging the call"),
+    whapps_call_command:unbridge(Call),
+
     HoldLeg =
         case whapps_call:call_id(Call) of
             RequestingLeg -> whapps_call:other_leg_call_id(Call);
