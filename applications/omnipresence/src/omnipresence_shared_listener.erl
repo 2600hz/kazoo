@@ -51,7 +51,7 @@
                       ,[{<<"call_event">>, <<"*">>}]
                      }
                      ,{{'omnip_subscriptions', 'handle_presence_update'}
-                       ,[{<<"notification">>, <<"presence_update">>}]
+                       ,[{<<"presence">>, <<"update">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_mwi_update'}
                        ,[{<<"presence">>, <<"mwi_update">>}]

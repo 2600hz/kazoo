@@ -77,7 +77,8 @@
 -define(UPDATE_HEADERS, [<<"Presence-ID">>, <<"State">>]).
 -define(OPTIONAL_UPDATE_HEADERS, [<<"To">>, <<"To-Tag">>
                                   ,<<"From">>, <<"From-Tag">>
-                                  ,<<"Direction">>, <<"Event-Package">>
+                                  ,<<"Call-Direction">>, <<"Call-ID">>
+                                  ,<<"Event-Package">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                         ,{<<"Event-Name">>, <<"update">>}
@@ -269,7 +270,7 @@ publish_update(JObj) ->
     publish_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_update(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?UPDATE_VALUES, fun ?MODULE:update/1),
-     amqp_util:presence_publish(update_routing_key(Req), Payload, ContentType).
+    amqp_util:presence_publish(update_routing_key(Req), Payload, ContentType).
 
 -spec update_routing_key(ne_binary() | api_terms()) -> ne_binary().
 -spec update_routing_key(ne_binary(), ne_binary()) -> ne_binary().
@@ -499,6 +500,7 @@ publish_flush(Req, ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     RestrictTo = props:get_value('restrict_to', Props),
     bind_q(Queue, RestrictTo, Props).
@@ -555,8 +557,62 @@ bind_q(Queue, [_|Restrict], Props) ->
     bind_q(Queue, Restrict, Props);
 bind_q(_, [], _) -> 'ok'.
 
+-spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
+unbind_q(Queue, Props) ->
+    RestrictTo = props:get_value('restrict_to', Props),
+    unbind_q(Queue, RestrictTo, Props).
 
-unbind_q(Queue, Props) -> 'ok'.
+-spec unbind_q(ne_binary(), api_binary(), wh_proplist()) -> 'ok'.
+unbind_q(Queue, 'undefined', _) ->
+    amqp_util:unbind_q_from_presence(Queue, <<"#">>);
+unbind_q(Queue, ['search_req'|Restrict], Props) ->
+    Realm = props:get_value('realm', Props, <<"*">>),
+    RoutingKey = search_req_routing_key(Realm),
+    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['subscribe'|Restrict], Props) ->
+    User = props:get_value('user', Props, <<"*">>),
+    RoutingKey = subscribe_routing_key(User),
+    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['update'|Restrict], Props) ->
+    State = props:get_value('state', Props, <<"*">>),
+    PresenceId = props:get_value('presence-id', Props, <<"*">>),
+    RoutingKey = update_routing_key(State, PresenceId),
+    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['probe'|Restrict], Props) ->
+    ProbeType = props:get_value('probe-type', Props, <<"*">>),
+    RoutingKey = probe_routing_key(ProbeType),
+    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['mwi_update'|Restrict], Props) ->
+    User = props:get_value('user', Props, <<"*">>),
+    RoutingKey = mwi_update_routing_key(User),
+    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['mwi_query'|Restrict], Props) ->
+    User = props:get_value('user', Props, <<"*">>),
+    RoutingKey = mwi_query_routing_key(User),
+    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['register_overwrite'|Restrict], Props) ->
+    Realm = props:get_value('realm', Props, <<"*">>),
+    RoutingKey = register_overwrite_routing_key(Realm),
+    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['flush'|Restrict], Props) ->
+    amqp_util:unbind_q_from_presence(Queue, <<"flush">>),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, ['reset'|Restrict], Props) ->
+    Username = props:get_value('username', Props, <<"*">>),
+    Realm = props:get_value('realm', Props, <<"*">>),
+    RoutingKey = reset_routing_key(Realm, Username),
+    amqp_util:unbind_q_from_presence(Queue, RoutingKey),
+    unbind_q(Queue, Restrict, Props);
+unbind_q(Queue, [_|Restrict], Props) ->
+    unbind_q(Queue, Restrict, Props);
+unbind_q(_, [], _) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @doc

@@ -116,8 +116,7 @@ presence_parking_slot_resp(Username, Realm, AccountDb, SlotNumber) ->
 -spec manual_presence(ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
 manual_presence(Username, Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
-        {'ok', AccountDb} ->
-            check_manual_presence(Username, Realm, AccountDb);
+        {'ok', AccountDb} -> check_manual_presence(Username, Realm, AccountDb);
         _E -> 'not_found'
     end.
 
@@ -125,8 +124,7 @@ manual_presence(Username, Realm) ->
 check_manual_presence(Username, Realm, AccountDb) ->
     case wh_cache:fetch_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb)) of
         {'ok', JObj} -> manual_presence_resp(Username, Realm, JObj);
-        {'error', 'not_found'} ->
-            fetch_manual_presence_doc(AccountDb, Username, Realm)
+        {'error', 'not_found'} -> fetch_manual_presence_doc(Username, Realm, AccountDb)
     end.
 
 -spec fetch_manual_presence_doc(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.

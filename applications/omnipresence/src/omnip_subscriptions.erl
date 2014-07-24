@@ -151,8 +151,8 @@ handle_mwi_update(JObj, _Props) ->
 
 -spec handle_presence_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_presence_update(JObj, _Props) ->
-    'true' = wapi_presence:presence_update_v(JObj),
-    maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj), [?PRESENCE_EVENT]).
+    'true' = wapi_presence:update_v(JObj),
+    maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj)).
 
 -spec handle_channel_event(ne_binary(), wh_json:object()) -> 'ok'.
 handle_channel_event(<<"CHANNEL_CREATE">>, JObj) -> handle_new_channel(JObj);
@@ -316,10 +316,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec distribute_subscribe(wh_json:object()) -> 'ok'.
-distribute_subscribe(JObj) ->
-    whapps_util:amqp_pool_send(
-      wh_json:delete_key(<<"Node">>, JObj)
-      ,fun wapi_presence:publish_subscribe/1).
+distribute_subscribe(_JObj) -> 'ok'.
+%% TODO: Kamailio sends subscriptions to a fanout
+%%  meaning they will not round-robin.  Once the
+%%  exchange type is updated this can be uncommented.
+%%    whapps_util:amqp_pool_send(
+%%      wh_json:delete_key(<<"Node">>, JObj)
+%%      ,fun wapi_presence:publish_subscribe/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -455,10 +458,11 @@ maybe_send_update(JObj, State, Events) ->
             'true' ->
                 {From, props:filter_undefined(
                        [{<<"To">>, To}
+                        ,{<<"From">>, From}
                         ,{<<"State">>, State}
                         ,{<<"Direction">>, Direction}
-                        ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
-                        ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                        ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj, <<" ">>)}
+                        ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj, <<" ">>)}
                         ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                         ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -466,10 +470,11 @@ maybe_send_update(JObj, State, Events) ->
             'false' ->
                 {To, props:filter_undefined(
                          [{<<"From">>, From}
+                          ,{<<"To">>, To}
                           ,{<<"State">>, State}
                           ,{<<"Direction">>, Direction}
-                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
-                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj, <<" ">>)}
+                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj, <<" ">>)}
                           ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                           ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -478,7 +483,7 @@ maybe_send_update(JObj, State, Events) ->
     send_updates(Events, User, Props, Direction).
 
 -spec send_updates(list(), ne_binary(), wh_proplist(), ne_binary()) -> 'ok'.
-send_updates([], User, Props, Direction) -> 'ok';
+send_updates([], _User, _Props, _Direction) -> 'ok';
 send_updates([Event|Events], User, Props, Direction) ->
     case find_subscriptions(Event, User) of
         {'ok', Subs} ->
