@@ -121,7 +121,6 @@ get_balance(Account, ViewOptions) ->
         {'ok', []} -> get_balance_from_previous(Account, ViewOptions);
         {'ok', [ViewRes|_]} ->
             Balance = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
-            _ = spawn('wh_topup', 'init', [Account, Balance]),
             maybe_rollup(Account, ViewOptions, Balance);
         {'error', _E} ->
             lager:warning("unable to get current balance for ~s: ~p", [Account, _E]),

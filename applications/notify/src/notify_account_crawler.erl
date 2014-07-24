@@ -302,14 +302,18 @@ maybe_test_for_low_balance(AccountId, AccountDb, JObj) ->
 
 -spec test_for_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 test_for_low_balance(AccountId, AccountDb, JObj) ->
-    Threshold = low_balance_threshold(AccountDb),
+    Threshold = low_balance_threshold(AccountId),
     CurrentBalance = wht_util:current_balance(AccountId),
     lager:debug("checking if account ~s balance is below $~w", [AccountId, Threshold]),
     case CurrentBalance < wht_util:dollars_to_units(Threshold) of
         'false' ->
             maybe_reset_low_balance(AccountId, AccountDb, JObj);
         'true' ->
-            maybe_handle_low_balance(CurrentBalance, AccountId, AccountDb, JObj)
+            case wh_topup:init(AccountId, Balance) of
+                'ok' -> 'ok';
+                'error' ->
+                    maybe_handle_low_balance(CurrentBalance, AccountId, AccountDb, JObj)
+            end.
     end.
 
 -spec maybe_reset_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
@@ -370,7 +374,17 @@ notify_low_balance(CurrentBalance, AccountId, AccountDb, JObj) ->
     end.
 
 -spec low_balance_threshold(ne_binary()) -> float().
-low_balance_threshold(_AccountDb) ->
+low_balance_threshold(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     ConfigCat = <<(?NOTIFY_CONFIG_CAT)/binary, ".low_balance">>,
-    whapps_config:get_float(ConfigCat, <<"threshold">>, 5.00).
+    Default = whapps_config:get_float(ConfigCat, <<"threshold">>, 5.00),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', _R} -> Default;
+        {'ok', JObj} ->
+            wh_json:get_float_value([<<"topup">>, <<"threshold">>], JObj, Default)
+    end.
+
+
+
 
