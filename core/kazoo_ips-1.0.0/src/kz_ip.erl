@@ -88,7 +88,7 @@ create(IP, Zone, Host) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary()) -> ip().
+-spec fetch(ne_binary()) -> {'ok', ip()} | {'error', _}.
 fetch(IP) ->
     case couch_mgr:open_doc(?WH_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> {'ok', from_json(JObj)};
