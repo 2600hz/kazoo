@@ -20,7 +20,18 @@
 handle(Data, Call) ->
     MOH = wh_json:get_value(<<"moh">>, Data),
 
-    HoldCommand = whapps_call_command:hold_command(MOH, Call),
+    RequestingLeg = wh_json:get_value(<<"dtmf_leg">>, Data),
+
+    HoldLeg =
+        case whapps_call:call_id(Call) of
+            RequestingLeg -> whapps_call:other_leg_call_id(Call);
+            CallId -> CallId
+        end,
+
+    HoldCommand = whapps_call_command:hold_command(MOH, HoldLeg),
+
+    lager:debug("leg ~s is putting ~s on hold", [RequestingLeg, HoldLeg]),
+
     whapps_call_command:send_command(
       wh_json:set_value(<<"Insert-At">>, <<"now">>, HoldCommand)
       ,Call
