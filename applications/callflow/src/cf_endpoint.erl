@@ -46,26 +46,12 @@ get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
     case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}) of
-        {'ok', Endpoint} -> {'ok', maybe_mangle_codec(Endpoint)};
+        {'ok', Endpoint} -> {'ok', Endpoint};
         {'error', 'not_found'} ->
             maybe_fetch_endpoint(EndpointId, AccountDb)
     end;
 get(EndpointId, Call) ->
     get(EndpointId, whapps_call:account_db(Call)).
-
-maybe_mangle_codec(Endpoint) ->
-    Username = wh_json:get_value([<<"sip">>, <<"username">>], Endpoint),
-    maybe_mangle_codec(Username, Endpoint).
-
-maybe_mangle_codec(<<"w", _/binary>>, Endpoint) ->
-    Codecs = [<<"OPUS">>],
-    lager:info("overriding webrtc codecs with: ~p", [Codecs]),
-    wh_json:set_value([<<"audio">>, <<"codecs">>], Codecs, Endpoint);
-maybe_mangle_codec(<<"a", _/binary>>, Endpoint) ->
-    Codecs = [<<"PCMU">>],
-    lager:info("overriding android codecs with: ~p", [Codecs]),
-    wh_json:set_value([<<"audio">>, <<"codecs">>], Codecs, Endpoint);
-maybe_mangle_codec(_, Endpoint) -> Endpoint.
 
 -spec maybe_fetch_endpoint(ne_binary(), ne_binary()) -> wh_jobj_return().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
