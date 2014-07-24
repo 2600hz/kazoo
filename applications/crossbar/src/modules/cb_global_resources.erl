@@ -80,41 +80,41 @@ resource_exists(_) -> 'true'.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_req(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
 
 validate(Context, ?COLLECTION) ->
-    validate_req(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}, ?COLLECTION);
+    validate_req(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB), ?COLLECTION);
 validate(Context, Id) ->
-    validate_req(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}, Id).
+    validate_req(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB), Id).
 
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
     _ = wapi_switch:publish_reload_acls(),
     collection_process(Context, cb_context:req_verb(Context));
 post(Context, _) ->
     _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:save(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
+    crossbar_doc:save(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
 
--spec put(#cb_context{}) -> #cb_context{}.
--spec put(#cb_context{}, path_token()) -> #cb_context{}.
+-spec put(cb_context:context()) -> cb_context:context().
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:save(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
+    crossbar_doc:save(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
 
 put(Context, ?COLLECTION) ->
     _ = wapi_switch:publish_reload_acls(),
     collection_process(Context, cb_context:req_verb(Context)).
 
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
     _ = wapi_switch:publish_reload_acls(),
     collection_process(Context, cb_context:req_verb(Context));
 delete(Context, _) ->
     _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:delete(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
+    crossbar_doc:delete(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
 
 %%%===================================================================
 %%% Internal functions
@@ -129,8 +129,8 @@ delete(Context, _) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate_req(#cb_context{}) -> #cb_context{}.
--spec validate_req(#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate_req(cb_context:context()) -> cb_context:context().
+-spec validate_req(cb_context:context(), path_token()) -> cb_context:context().
 
 validate_req(#cb_context{req_verb = ?HTTP_GET}=Context) ->
     summary(Context);
@@ -138,7 +138,7 @@ validate_req(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     create(Context).
 
 validate_req(Context, ?COLLECTION) ->
-    Context#cb_context{resp_status='success'};
+    cb_context:set_resp_status(Context, 'success');
 validate_req(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context);
 validate_req(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
@@ -152,7 +152,7 @@ validate_req(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(#cb_context{}) -> #cb_context{}.
+-spec create(cb_context:context()) -> cb_context:context().
 create(#cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
@@ -163,7 +163,7 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -174,7 +174,7 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update(ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, #cb_context{}=Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
@@ -186,7 +186,7 @@ update(Id, #cb_context{}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(#cb_context{}) -> #cb_context{}.
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -196,7 +196,7 @@ summary(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec on_successful_validation('undefined' | ne_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)};
 on_successful_validation(Id, #cb_context{}=Context) ->
@@ -221,7 +221,7 @@ normalize_view_results(JObj, Acc) ->
 -spec collection_process(cb_context:context(), ne_binary()) -> cb_context:context().
 collection_process(Context, ?HTTP_POST) ->
     ReqData = cb_context:req_data(Context),
-    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_ressource(JObj)} || JObj <- ReqData],
+    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_resource(JObj)} || JObj <- ReqData],
     Ids = props:get_keys(Updates),
     ViewOptions = [{'keys', Ids}
                    ,'include_docs'
@@ -231,13 +231,13 @@ collection_process(Context, ?HTTP_POST) ->
             lager:error("could not open ~p in ~p", [Ids, ?GLOBAL_RESOURCE_DB]),
             crossbar_util:response('error', <<"failed to open resources">>, Context);
         {'ok', JObjs} ->
-            Resources = [update_ressource(JObj, Updates) || JObj <- JObjs],
+            Resources = [update_resource(JObj, Updates) || JObj <- JObjs],
             case couch_mgr:save_docs(?GLOBAL_RESOURCE_DB, Resources) of
                 {'error', _R} ->
                     lager:error("failed to update ~p in ~p", [Ids, ?GLOBAL_RESOURCE_DB]),
                     crossbar_util:response('error', <<"failed to update resources">>, Context);
                 {'ok', _} ->
-                    cb_context:set_resp_data(Context, [clean_ressource(Resource) || Resource <- Resources])
+                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- Resources])
             end
     end;
 collection_process(Context, ?HTTP_PUT) ->
@@ -258,7 +258,7 @@ collection_process(Context, ?HTTP_PUT) ->
                     lager:error("could not open ~p in ~p", [Ids, ?GLOBAL_RESOURCE_DB]),
                     cb_context:set_resp_data(Context, Ids);
                 {'ok', NewResources} ->
-                    cb_context:set_resp_data(Context, [clean_ressource(Resource) || Resource <- NewResources])
+                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- NewResources])
             end
     end;
 collection_process(Context, ?HTTP_DELETE) ->
@@ -276,8 +276,8 @@ collection_process(Context, ?HTTP_DELETE) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec clean_ressource(wh_json:object()) -> wh_json:object().
-clean_ressource(JObj) ->
+-spec clean_resource(wh_json:object()) -> wh_json:object().
+clean_resource(JObj) ->
     case wh_json:get_value(<<"doc">>, JObj) of
         'undefined' ->
             case wh_json:get_value(<<"_id">>, JObj) of
@@ -288,7 +288,7 @@ clean_ressource(JObj) ->
                     JObj1 = wh_json:set_value(<<"id">>, Id, JObj),
                     wh_doc:public_fields(JObj1)
             end;
-        Doc -> clean_ressource(Doc)
+        Doc -> clean_resource(Doc)
     end.
 
 %%--------------------------------------------------------------------
@@ -296,8 +296,8 @@ clean_ressource(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_ressource(wh_json:object(), wh_proplist()) -> wh_json:object().
-update_ressource(JObj, Updates) ->
+-spec update_resource(wh_json:object(), wh_proplist()) -> wh_json:object().
+update_resource(JObj, Updates) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
     Id = wh_json:get_value(<<"_id">>, Doc),
     wh_json:merge_recursive([Doc, props:get_value(Id, Updates)]).
