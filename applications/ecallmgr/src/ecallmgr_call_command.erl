@@ -414,6 +414,9 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
 get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
     ecallmgr_fs_bridge:call_command(Node, UUID, JObj);
 
+get_fs_app(_Node, UUID, JObj, <<"unbridge">>) ->
+    ecallmgr_fs_bridge:unbridge(UUID, JObj);
+
 get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
     case wapi_dialplan:call_pickup_v(JObj) of
         'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
