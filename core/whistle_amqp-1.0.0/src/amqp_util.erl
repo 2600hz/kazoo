@@ -81,6 +81,13 @@
 -export([unbind_q_from_conference/2, unbind_q_from_conference/3]).
 -export([conference_publish/2, conference_publish/3, conference_publish/4, conference_publish/5]).
 
+-export([presence_exchange/0]).
+-export([new_presence_queue/0, new_presence_queue/1]).
+-export([delete_presence_queue/1]).
+-export([bind_q_to_presence/2, bind_q_to_presence/3]).
+-export([unbind_q_from_presence/2]).
+-export([presence_publish/2, presence_publish/3, presence_publish/4]).
+
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
@@ -150,6 +157,16 @@ whapps_publish(Routing, Payload, ContentType) ->
     whapps_publish(Routing, Payload, ContentType, []).
 whapps_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_WHAPPS, Routing, Payload, ContentType, Opts).
+
+-spec presence_publish(ne_binary(), amqp_payload()) -> 'ok'.
+-spec presence_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec presence_publish(ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
+presence_publish(Routing, Payload) ->
+    presence_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+presence_publish(Routing, Payload, ContentType) ->
+    presence_publish(Routing, Payload, ContentType, []).
+presence_publish(Routing, Payload, ContentType, Opts) ->
+    basic_publish(?EXCHANGE_PRESENCE, Routing, Payload, ContentType, Opts).
 
 -spec notifications_publish(ne_binary(), amqp_payload()) -> 'ok'.
 -spec notifications_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
@@ -380,6 +397,10 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
 whapps_exchange() ->
     new_exchange(?EXCHANGE_WHAPPS, ?TYPE_WHAPPS).
 
+-spec presence_exchange() -> 'ok'.
+presence_exchange() ->
+    new_exchange(?EXCHANGE_PRESENCE, ?TYPE_PRESENCE).
+
 -spec targeted_exchange() -> 'ok'.
 targeted_exchange() ->
     new_exchange(?EXCHANGE_TARGETED, ?TYPE_TARGETED).
@@ -462,6 +483,11 @@ new_nodes_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 -spec new_whapps_queue(binary()) -> ne_binary() | {'error', _}.
 new_whapps_queue() -> new_whapps_queue(<<>>).
 new_whapps_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
+
+-spec new_presence_queue() -> ne_binary() | {'error', _}.
+-spec new_presence_queue(binary()) -> ne_binary() | {'error', _}.
+new_presence_queue() -> new_presence_queue(<<>>).
+new_presence_queue(Queue) -> new_queue(Queue, [{'nowait', 'false'}]).
 
 -spec new_notifications_queue() -> ne_binary() | {'error', _}.
 -spec new_notifications_queue(binary()) -> ne_binary() | {'error', _}.
@@ -615,6 +641,7 @@ message_ttl(Args, Acc) ->
 delete_targeted_queue(Queue) -> queue_delete(Queue, []).
 delete_nodes_queue(Queue) -> queue_delete(Queue, []).
 delete_whapps_queue(Queue) -> queue_delete(Queue, []).
+delete_presence_queue(Queue) -> queue_delete(Queue, []).
 delete_notifications_queue(Queue) -> queue_delete(Queue, []).
 delete_sysconf_queue(Queue) -> queue_delete(Queue, []).
 delete_callmgr_queue(Queue) -> queue_delete(Queue, []).
@@ -667,6 +694,13 @@ bind_q_to_whapps(Queue, Routing) ->
     bind_q_to_whapps(Queue, Routing, []).
 bind_q_to_whapps(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_WHAPPS, Options).
+
+-spec bind_q_to_presence(ne_binary(), ne_binary()) -> 'ok'.
+-spec bind_q_to_presence(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+bind_q_to_presence(Queue, Routing) ->
+    bind_q_to_presence(Queue, Routing, []).
+bind_q_to_presence(Queue, Routing, Options) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_PRESENCE, Options).
 
 -spec bind_q_to_notifications(ne_binary(), ne_binary()) -> 'ok'.
 -spec bind_q_to_notifications(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
@@ -807,6 +841,9 @@ unbind_q_from_nodes(Queue) ->
 
 unbind_q_from_whapps(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_WHAPPS).
+
+unbind_q_from_presence(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_PRESENCE).
 
 -spec unbind_q_from_exchange(ne_binary(), ne_binary(), ne_binary()) ->
                                     'ok' | {'error', _}.

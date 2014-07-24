@@ -101,16 +101,16 @@ handle_queue_change(_, AccountId, QueueId, <<"doc_deleted">>) ->
     end.
 
 handle_presence_probe(JObj, _Props) ->
-    'true' = wapi_notifications:presence_probe_v(JObj),
+    'true' = wapi_presence:probe_v(JObj),
 
-    FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
-    case whapps_util:get_account_by_realm(FromRealm) of
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    case whapps_util:get_account_by_realm(Realm) of
         {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, wh_util:format_account_id(AcctDb, raw));
         _ -> 'ok'
     end.
 
 maybe_respond_to_presence_probe(JObj, AcctId) ->
-    case wh_json:get_value(<<"To-User">>, JObj) of
+    case wh_json:get_value(<<"Username">>, JObj) of
         'undefined' -> 'ok';
         QueueId ->
             update_probe(JObj
@@ -133,15 +133,14 @@ update_probe(JObj, _Sup, AcctId, QueueId) ->
     end.
 
 send_probe(JObj, State) ->
-    To = wh_json:get_value(<<"To">>, JObj),
-
+    To = <<(wh_json:get_value(<<"Username">>, JObj))/binary
+           ,"@"
+           ,(wh_json:get_value(<<"Realm">>, JObj))/binary>>,
     PresenceUpdate =
         [{<<"State">>, State}
          ,{<<"Presence-ID">>, To}
          ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(To))}
-         ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, JObj)}
-         ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, JObj)}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    wapi_notifications:publish_presence_update(PresenceUpdate).
+    wapi_presence:publish_update(PresenceUpdate).
 

@@ -11,15 +11,13 @@
 -behaviour(gen_server).
 
 -export([start_link/0
-         ,handle_subscribe/2
-         ,handle_channel_event/2
-         ,handle_new_channel/1
-         ,handle_answered_channel/1
-         ,handle_destroyed_channel/1
-         ,handle_mwi_update/2
-         ,handle_presence_update/2
          ,handle_search_req/2
          ,handle_reset/2
+         ,handle_subscribe/2
+         ,handle_kamailio_subscribe/2
+         ,handle_mwi_update/2
+         ,handle_presence_update/2
+         ,handle_channel_event/2
          ,table_id/0
          ,table_config/0
          ,find_subscription/1
@@ -121,19 +119,40 @@ handle_reset(JObj, _Props) ->
 -spec handle_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_subscribe(JObj, Props) ->
     'true' = wapi_presence:subscribe_v(JObj),
-    gen_listener:cast(props:get_value(?MODULE, Props)
-                      ,{'subscribe', subscribe_to_record(JObj)}
-                     ).
+    case wh_json:get_value(<<"Node">>, JObj) =:= wh_util:to_binary(node()) of
+        'true' -> 'ok';
+        'false' ->
+            gen_listener:call(props:get_value(?MODULE, Props)
+                              ,{'subscribe', subscribe_to_record(JObj)}
+                             )
+    end.
+
+-spec handle_kamailio_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_kamailio_subscribe(JObj, Props) ->
+    'true' = wapi_omnipresence:subscribe_v(JObj),
+    case gen_listener:call(props:get_value(?MODULE, Props)
+                           ,{'subscribe', subscribe_to_record(JObj)}
+                          )
+    of
+        'invalid' -> 'ok';
+        {'unsubscribe', _} -> distribute_subscribe(JObj);
+        {'resubscribe', Subscription} ->
+            _ = resubscribe_notify(Subscription),
+            distribute_subscribe(JObj);
+        {'subscribe', Subscription} ->
+            _ = subscription_initial_notify(Subscription),
+            distribute_subscribe(JObj)
+    end.
 
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
-    'true' = wapi_notifications:mwi_update_v(JObj),
+    'true' = wapi_presence:mwi_update_v(JObj),
     maybe_send_mwi_update(JObj).
 
 -spec handle_presence_update(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_presence_update(JObj, _Props) ->
-    'true' = wapi_notifications:presence_update_v(JObj),
-    maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj),[?PRESENCE_EVENT]).
+    'true' = wapi_presence:presence_update_v(JObj),
+    maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj), [?PRESENCE_EVENT]).
 
 -spec handle_channel_event(ne_binary(), wh_json:object()) -> 'ok'.
 handle_channel_event(<<"CHANNEL_CREATE">>, JObj) -> handle_new_channel(JObj);
@@ -142,43 +161,14 @@ handle_channel_event(<<"CHANNEL_DESTROY">>, JObj) -> handle_destroyed_channel(JO
 handle_channel_event(<<"CHANNEL_CONNECTED">>, JObj) -> handle_connected_channel(JObj);
 handle_channel_event(<<"CHANNEL_DISCONNECTED">>, JObj) -> handle_disconnected_channel(JObj).
 
--spec handle_new_channel(wh_json:object()) -> 'ok'.
-handle_new_channel(JObj) ->
-    'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
-    lager:debug("received channel create, checking for subscribers"),
-    maybe_send_update(JObj, ?PRESENCE_RINGING).
+-spec table_id() -> 'omnipresence_subscriptions'.
+table_id() -> 'omnipresence_subscriptions'.
 
--spec handle_answered_channel(wh_json:object()) -> any().
-handle_answered_channel(JObj) ->
-    'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
-    lager:debug("received channel answer, checking for subscribers"),
-    maybe_send_update(JObj, ?PRESENCE_ANSWERED).
-
--spec handle_destroyed_channel(wh_json:object()) -> any().
-handle_destroyed_channel(JObj) ->
-    'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
-    lager:debug("received channel destroy, checking for subscribers"),
-    maybe_send_update(JObj, ?PRESENCE_HANGUP),
-    %% When multiple omnipresence instances are in multiple
-    %% zones its possible (due to the round-robin) for the
-    %% instance closest to rabbitmq to process the terminate
-    %% before a confirm/early if both are sent immediately.
-    timer:sleep(1000),
-    maybe_send_update(JObj, ?PRESENCE_HANGUP).
-
--spec handle_disconnected_channel(wh_json:object()) -> any().
-handle_disconnected_channel(JObj) ->
-    'true' = wapi_call:event_v(JObj),
-    wh_util:put_callid(JObj),
-    lager:debug("channel has been disconnected, checking status of channel on the cluster"),
-    handle_destroyed_channel(JObj).
-
--spec handle_connected_channel(wh_json:object()) -> 'ok'.
-handle_connected_channel(_JObj) ->
-    'ok'.
+-spec table_config() -> wh_proplist().
+table_config() ->
+    ['protected', 'named_table', 'bag'
+     ,{'keypos', #omnip_subscription.user}
+    ].
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -213,6 +203,44 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'subscribe', #omnip_subscription{from = <<>>}=_S}, _From, State) ->
+    lager:debug("subscription with no from: ~p", [subscription_to_json(_S)]),
+    {'reply', 'invalid', State};
+handle_call({'subscribe', #omnip_subscription{expires=E
+                                              ,user=_U
+                                              ,from=_F
+                                              ,stalker=_S
+                                             }=S}
+            ,_From, State) when E =< 0 ->
+    case find_subscription(S) of
+        {'error', 'not_found'} -> {'reply', {'unsubscribe', S}, State};
+        {'ok', #omnip_subscription{timestamp=_T
+                                   ,expires=_E
+                                   }=O} ->
+            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - wh_util:elapsed_s(_T)]),
+            ets:delete_object(table_id(), O),
+            {'reply', {'unsubscribe', O}, State}
+    end;
+handle_call({'subscribe', #omnip_subscription{user=_U
+                                              ,from=_F
+                                              ,expires=_E1
+                                              ,stalker=_S
+                                             }=S}
+            ,_From, State) ->
+    case find_subscription(S) of
+        {'ok', #omnip_subscription{timestamp=_T
+                                   ,expires=_E2
+                                  }=O} ->
+            lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
+                        ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
+            ets:delete_object(table_id(), O),
+            ets:insert(table_id(), S),
+            {'reply', {'resubscribe', S}, State};
+        {'error', 'not_found'} ->
+            lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),
+            ets:insert(table_id(), S),
+            {'reply', {'subscribe', S}, State}
+    end;
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -226,42 +254,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'subscribe', #omnip_subscription{from = <<>>}=_S}, State) ->
-    lager:debug("subscription with no from: ~p", [subscription_to_json(_S)]),
-    {'noreply', State};
-handle_cast({'subscribe', #omnip_subscription{expires=E
-                                              ,user=_U
-                                              ,from=_F
-                                              ,stalker=_S
-                                             }=S}, State) when E =< 0 ->
-    case find_subscription(S) of
-        {'ok', #omnip_subscription{timestamp=_T
-                                   ,expires=_E
-                                   }=O} ->
-            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - wh_util:elapsed_s(_T)]),
-            ets:delete_object(table_id(), O);
-        {'error', 'not_found'} -> 'ok'
-    end,
-    {'noreply', State};
-handle_cast({'subscribe', #omnip_subscription{user=_U
-                                              ,from=_F
-                                              ,expires=_E1
-                                              ,stalker=_S
-                                             }=S}, State) ->
-    case find_subscription(S) of
-        {'ok', #omnip_subscription{timestamp=_T
-                                   ,expires=_E2
-                                  }=O} ->
-            lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
-                        ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
-            maybe_resubscribe_update(S),
-            ets:delete_object(table_id(), O);
-        {'error', 'not_found'} ->
-            maybe_initial_update(S),
-            lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1])
-    end,
-    ets:insert(table_id(), S),
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -317,84 +309,290 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_initial_update(subscription()) -> 'ok'.
-maybe_initial_update(#omnip_subscription{event = <<"message-summary">>
-                                     ,username=Username
-                                     ,realm=Realm
-                                     ,call_id=CallId}) ->
-    lager:debug("publishing message query for ~s@~s", [Username, Realm]),
-    Query = [{<<"Username">>, Username}
-             ,{<<"Realm">>, Realm}
-             ,{<<"Call-ID">>, CallId}
-             ,{<<"Subscription-Call-ID">>, CallId}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    wh_amqp_worker:cast(Query
-                        ,fun wapi_notifications:publish_mwi_query/1
-                       );
-maybe_initial_update(#omnip_subscription{event = <<"presence">>
-                                     ,username=Username
-                                     ,realm=Realm
-                                     ,call_id=CallId}) ->
-    lager:debug("publishing presence probe for ~s@~s", [Username, Realm]),
-    URI = <<Username/binary, "@", Realm/binary>>,
-    Query = [{<<"From-User">>, Username}
-             ,{<<"From-Realm">>, Realm}
-             ,{<<"To-User">>, Username}
-             ,{<<"To-Realm">>, Realm}
-             ,{<<"From">>, URI}
-             ,{<<"To">>, URI}
-             ,{<<"Call-ID">>, CallId}
-             ,{<<"Subscription">>, <<"presence">>}
-             ,{<<"Switch-Nodename">>, node()}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    wh_amqp_worker:cast(Query
-                        ,fun wapi_notifications:publish_presence_probe/1
-                       );
-maybe_initial_update(_) -> 'ok'.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec distribute_subscribe(wh_json:object()) -> 'ok'.
+distribute_subscribe(JObj) ->
+    whapps_util:amqp_pool_send(
+      wh_json:delete_key(<<"Node">>, JObj)
+      ,fun wapi_presence:publish_subscribe/1).
 
--spec maybe_resubscribe_update(subscription()) -> 'ok'.
-maybe_resubscribe_update(#omnip_subscription{event = <<"message-summary">>
-                                     ,username=Username
-                                     ,realm=Realm
-                                     ,call_id=CallId}) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec subscribe_to_record(wh_json:object()) -> subscription().
+subscribe_to_record(JObj) ->
+    {P, U, [Username, Realm]} = omnip_util:extract_user(wh_json:get_value(<<"User">>, JObj)),
+    {P, F, _} = omnip_util:extract_user(wh_json:get_value(<<"From">>, JObj, <<>>)),
+    #omnip_subscription{user=U
+                        ,from=F
+                        ,protocol=P
+                        ,expires=expires(JObj)
+                        ,normalized_user=wh_util:to_lower_binary(U)
+                        ,normalized_from=wh_util:to_lower_binary(F)
+                        ,username=wh_util:to_lower_binary(Username)
+                        ,realm=wh_util:to_lower_binary(Realm)
+                        ,stalker=wh_json:get_first_defined([<<"Queue">>
+                                                            ,<<"Server-ID">>
+                                                           ], JObj)
+                        ,event=wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT)
+                        ,from_tag=wh_json:get_value(<<"From-Tag">>, JObj)
+                        ,to_tag=wh_json:get_value(<<"To-Tag">>, JObj)
+                        ,contact=wh_json:get_value(<<"Contact">>, JObj)
+                        ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
+                       }.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec subscriptions_to_json(subscriptions()) -> wh_json:objects().
+subscriptions_to_json(Subs) ->
+    [subscription_to_json(S) || S <- Subs].
+
+-spec subscription_to_json(subscription()) -> wh_json:object().
+subscription_to_json(#omnip_subscription{user=User
+                                         ,from=From
+                                         ,stalker=Stalker
+                                         ,expires=Expires
+                                         ,timestamp=Timestamp
+                                         ,protocol=Protocol
+                                         ,username=Username
+                                         ,realm=Realm
+                                         ,event=Event
+                                         ,from_tag=FromTag
+                                         ,to_tag=ToTag
+                                         ,contact=Contact
+                                         ,call_id=CallId
+                                        }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"user">>, User}
+         ,{<<"from">>, From}
+         ,{<<"stalker">>, Stalker}
+         ,{<<"expires">>, Expires}
+         ,{<<"timestamp">>, Timestamp}
+         ,{<<"protocol">>, Protocol}
+         ,{<<"username">>, Username}
+         ,{<<"realm">>, Realm}
+         ,{<<"event">>, Event}
+         ,{<<"from_tag">>, FromTag}
+         ,{<<"to_tag">>, ToTag}
+         ,{<<"contact">>, Contact}
+         ,{<<"call_id">>, CallId}
+        ])).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_new_channel(wh_json:object()) -> 'ok'.
+handle_new_channel(JObj) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+    lager:debug("received channel create, checking for subscribers"),
+    maybe_send_update(JObj, ?PRESENCE_RINGING).
+
+-spec handle_answered_channel(wh_json:object()) -> any().
+handle_answered_channel(JObj) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+    lager:debug("received channel answer, checking for subscribers"),
+    maybe_send_update(JObj, ?PRESENCE_ANSWERED).
+
+-spec handle_destroyed_channel(wh_json:object()) -> any().
+handle_destroyed_channel(JObj) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+    lager:debug("received channel destroy, checking for subscribers"),
+    maybe_send_update(JObj, ?PRESENCE_HANGUP),
+    %% When multiple omnipresence instances are in multiple
+    %% zones its possible (due to the round-robin) for the
+    %% instance closest to rabbitmq to process the terminate
+    %% before a confirm/early if both are sent immediately.
+    timer:sleep(1000),
+    maybe_send_update(JObj, ?PRESENCE_HANGUP).
+
+-spec handle_disconnected_channel(wh_json:object()) -> any().
+handle_disconnected_channel(JObj) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+    lager:debug("channel has been disconnected, checking status of channel on the cluster"),
+    handle_destroyed_channel(JObj).
+
+-spec handle_connected_channel(wh_json:object()) -> 'ok'.
+handle_connected_channel(_JObj) ->
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_send_update(wh_json:object(), ne_binary()) -> any().
+maybe_send_update(JObj, State) ->
+    maybe_send_update(JObj, State, ?DEFAULT_SEND_EVENT_LIST).
+
+-spec maybe_send_update(wh_json:object(), ne_binary(), ne_binaries()) -> any().
+maybe_send_update(JObj, State, Events) ->
+    To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
+    From = wh_json:get_value(<<"From">>, JObj),
+    Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
+    {User, Props} =
+        case Direction =:= <<"inbound">> of
+            'true' ->
+                {From, props:filter_undefined(
+                       [{<<"To">>, To}
+                        ,{<<"State">>, State}
+                        ,{<<"Direction">>, Direction}
+                        ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                        ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                        ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                       ])};
+            'false' ->
+                {To, props:filter_undefined(
+                         [{<<"From">>, From}
+                          ,{<<"State">>, State}
+                          ,{<<"Direction">>, Direction}
+                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                          ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                          ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                         ])}
+            end,
+    send_updates(Events, User, Props, Direction).
+
+-spec send_updates(list(), ne_binary(), wh_proplist(), ne_binary()) -> 'ok'.
+send_updates([], User, Props, Direction) -> 'ok';
+send_updates([Event|Events], User, Props, Direction) ->
+    case find_subscriptions(Event, User) of
+        {'ok', Subs} ->
+            [send_update(Props, Direction, S)
+             || S <- Subs
+            ];
+        {'error', 'not_found'} ->
+            lager:debug("no ~s subscriptions for ~s",[Event, User])
+    end,
+    send_updates(Events, User, Props, Direction).
+
+-spec send_update(wh_proplist(), ne_binary(), subscription()) -> 'ok'.
+send_update(Props, <<"inbound">>, #omnip_subscription{user=User}=Subscription) ->
+    send_update([{<<"From">>, User} | Props], Subscription);
+send_update(Props, _, #omnip_subscription{user=User}=Subscription) ->
+    send_update([{<<"To">>, User} | Props], Subscription).
+
+-spec send_update(wh_proplist(), subscription()) -> 'ok'.
+send_update(Props, #omnip_subscription{stalker=Q
+                                       ,protocol=Protocol
+                                       ,from=F
+                                       ,event=Event
+                                      }) ->
+    To = props:get_value(<<"To">>, Props),
+    From = props:get_value(<<"From">>, Props, F),
+    State = props:get_value(<<"State">>, Props),
+    lager:debug("sending ~s update ~s/~s ~s to '~s'", [Event, To, From, State, Q]),
+    Payload = props:filter_undefined(
+                [{<<"To">>, <<Protocol/binary, ":", To/binary>>}
+                 ,{<<"From">>, <<Protocol/binary, ":", From/binary>>}
+                 ,{<<"Event-Package">>, Event}
+                 | props:delete_keys([<<"To">>, <<"From">>], Props)
+                ]),
+    whapps_util:amqp_pool_send(Payload, fun(P) -> wapi_omnipresence:publish_update(Q, P) end).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec subscription_initial_notify(subscription()) -> 'ok'.
+subscription_initial_notify(#omnip_subscription{event = <<"message-summary">>
+                                                ,username=Username
+                                                ,realm=Realm
+                                                ,call_id=CallId}) ->
     lager:debug("publishing message query for ~s@~s", [Username, Realm]),
     Query = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}
              ,{<<"Call-ID">>, CallId}
-             ,{<<"Subscription-Call-ID">>, CallId}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wh_amqp_worker:cast(Query
-                        ,fun wapi_notifications:publish_mwi_query/1
+                        ,fun wapi_presence:publish_mwi_query/1
                        );
-maybe_resubscribe_update(#omnip_subscription{event = <<"presence">>
-                                     ,username=Username
-                                     ,realm=Realm
-                                     ,call_id=CallId}) ->
+subscription_initial_notify(#omnip_subscription{event=EventPackage
+                                                ,username=Username
+                                                ,realm=Realm
+                                                ,call_id=CallId}) ->
     lager:debug("publishing presence probe for ~s@~s", [Username, Realm]),
-    URI = <<Username/binary, "@", Realm/binary>>,
-    Query = [{<<"From-User">>, Username}
-             ,{<<"From-Realm">>, Realm}
-             ,{<<"To-User">>, Username}
-             ,{<<"To-Realm">>, Realm}
-             ,{<<"From">>, URI}
-             ,{<<"To">>, URI}
+    Query = [{<<"Username">>, Username}
+             ,{<<"Realm">>, Realm}
              ,{<<"Call-ID">>, CallId}
-             ,{<<"Subscription">>, <<"presence">>}
-             ,{<<"Switch-Nodename">>, node()}
+             ,{<<"Event-Package">>, EventPackage}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wh_amqp_worker:cast(Query
-                        ,fun wapi_notifications:publish_presence_probe/1
-                       );
-maybe_resubscribe_update(_) -> 'ok'.
+                        ,fun wapi_presence:publish_probe/1
+                       ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec resubscribe_notify(subscription()) -> 'ok'.
+resubscribe_notify(#omnip_subscription{event = <<"message-summary">>}) -> 'ok';
+resubscribe_notify(#omnip_subscription{event=EventPackage
+                                       ,username=Username
+                                       ,realm=Realm
+                                       ,call_id=CallId}) ->
+    lager:debug("publishing presence probe for ~s@~s", [Username, Realm]),
+    Query = [{<<"Username">>, Username}
+             ,{<<"Realm">>, Realm}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Event-Package">>, EventPackage}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wh_amqp_worker:cast(Query
+                        ,fun wapi_presence:publish_probe/1
+                       ).
 
 -spec start_expire_ref() -> reference().
 start_expire_ref() ->
     erlang:start_timer(?EXPIRE_SUBSCRIPTIONS, self(), ?EXPIRE_MESSAGE).
 
+-spec expire_old_subscriptions() -> integer().
+expire_old_subscriptions() ->
+    Now = wh_util:current_tstamp(),
+    ets:select_delete(table_id(), [{#omnip_subscription{timestamp='$1'
+                                                        ,expires='$2'
+                                                        ,_='_'
+                                                       }
+                                    ,[{'>', {'const', Now}, {'+', '$1', '$2'}}]
+                                    ,['true']
+                                   }]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec find_subscription(subscription()) ->
                                {'ok', subscription()} |
                                {'error', 'not_found'}.
@@ -469,47 +667,36 @@ dedup([#omnip_subscription{normalized_user=User
     D = dict:store({User, Stalker, Event}, Subscription, Dictionary),
     dedup(Subscriptions, D).
 
-expire_old_subscriptions() ->
-    Now = wh_util:current_tstamp(),
-    ets:select_delete(table_id(), [{#omnip_subscription{timestamp='$1'
-                                                        ,expires='$2'
-                                                        ,_='_'
-                                                       }
-                                    ,[{'>', {'const', Now}, {'+', '$1', '$2'}}]
-                                    ,['true']
-                                   }]).
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_send_mwi_update(wh_json:object()) -> 'ok'.
 maybe_send_mwi_update(JObj) ->
-    Username = wh_json:get_value(<<"Notify-User">>, JObj),
-    Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
-    To = <<Username/binary,"@",Realm/binary>>,
-    From = <<Username/binary,"@",Realm/binary>>,
+    To = wh_json:get_value(<<"To">>, JObj),
     MessagesNew = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
-    MessagesSaved = wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0),
+    MessagesSaved = wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0),
     MessagesUrgent = wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0),
-    MessagesUrgentSaved = wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0),
+    MessagesUrgentSaved = wh_json:get_integer_value(<<"Messages-Urgent-Waiting">>, JObj, 0),
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
-    MessageAccount = <<"sip:",To/binary>>,
-
     Update = props:filter_undefined(
-               [{<<"To">>, To }
-                ,{<<"From">>, From }
-                ,{<<"Messages-Waiting">>, MessagesWaiting }
-                ,{<<"Messages-New">>, MessagesNew }
-                ,{<<"Messages-Saved">>, MessagesSaved }
-                ,{<<"Messages-Urgent">>, MessagesUrgent }
-                ,{<<"Messages-Urgent-Saved">>, MessagesUrgentSaved }
-                ,{<<"Message-Account">>, MessageAccount }
+               [{<<"To">>, To}
+                ,{<<"From">>, To}
+                ,{<<"Messages-Waiting">>, MessagesWaiting}
+                ,{<<"Messages-New">>, MessagesNew}
+                ,{<<"Messages-Saved">>, MessagesSaved}
+                ,{<<"Messages-Urgent">>, MessagesUrgent}
+                ,{<<"Messages-Urgent-Saved">>, MessagesUrgentSaved}
                 ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     case find_subscriptions(?MWI_EVENT, To) of
+        {'error', 'not_found'} -> lager:debug("no subs for ~s", [To]);
         {'ok', Subs} ->
             _ = [send_mwi_update(Update, S) || S <- Subs],
-            'ok';
-        {'error', 'not_found'} ->
-            lager:debug("no subs for ~s or ~s", [To, From])
+            'ok'
     end.
 
 -spec send_mwi_update(wh_proplist(), subscription()) -> 'ok'.
@@ -534,160 +721,31 @@ send_mwi_update(Update, #omnip_subscription{stalker=S
                                 ,{<<"To-Tag">>, <<ToTag/binary>>}
                                 | props:delete_keys([<<"To">>, <<"From">>], Update)
                                ]
-                               ,fun(P) -> wapi_presence:publish_update(S, P) end
+                               ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
                               ).
 
--spec maybe_send_update(wh_json:object(), ne_binary()) -> any().
-maybe_send_update(JObj, State) ->
-    maybe_send_update(JObj, State, ?DEFAULT_SEND_EVENT_LIST).
-
--spec maybe_send_update(wh_json:object(), ne_binary(), ne_binaries()) -> any().
-maybe_send_update(JObj, State, Events) ->
-    To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
-    From = wh_json:get_value(<<"From">>, JObj),
-    Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
-    {User, Props} =
-        case Direction =:= <<"inbound">> of
-            'true' ->
-                {From, props:filter_undefined(
-                       [{<<"To">>, To}
-                        ,{<<"State">>, State}
-                        ,{<<"Direction">>, Direction}
-                        ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
-                        ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
-                        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                        ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                       ])};
-            'false' ->
-                {To, props:filter_undefined(
-                         [{<<"From">>, From}
-                          ,{<<"State">>, State}
-                          ,{<<"Direction">>, Direction}
-                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
-                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
-                          ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                          ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                         ])}
-            end,
-    send_updates(Events, User, Props, Direction).
-
--spec send_updates(list(), ne_binary(), wh_proplist(), ne_binary()) -> 'ok'.
-send_updates([], User, Props, Direction) -> 'ok';
-send_updates([Event|Events], User, Props, Direction) ->
-    case find_subscriptions(Event, User) of
-        {'ok', Subs} ->
-            [send_update(Props, Direction, S)
-             || S <- Subs
-            ];
-        {'error', 'not_found'} ->
-            lager:debug("no ~s subscriptions for ~s",[Event, User])
-    end,
-    send_updates(Events, User, Props, Direction).
-
-
--spec send_update(wh_proplist(), ne_binary(), subscription()) -> 'ok'.
-send_update(Props, <<"inbound">>, #omnip_subscription{user=User}=Subscription) ->
-    send_update([{<<"From">>, User} | Props], Subscription);
-send_update(Props, _, #omnip_subscription{user=User}=Subscription) ->
-    send_update([{<<"To">>, User} | Props], Subscription).
-
--spec send_update(wh_proplist(), subscription()) -> 'ok'.
-send_update(Props, #omnip_subscription{stalker=Q
-                                       ,protocol=Protocol
-                                       ,from=F
-                                       ,event=Event
-                                      }) ->
-    To = props:get_value(<<"To">>, Props),
-    From = props:get_value(<<"From">>, Props, F),
-    State = props:get_value(<<"State">>, Props),
-    lager:debug("sending ~s update ~s/~s ~s to '~s'", [Event, To, From, State, Q]),
-    Payload = props:filter_undefined(
-                [{<<"To">>, <<Protocol/binary, ":", To/binary>>}
-                 ,{<<"From">>, <<Protocol/binary, ":", From/binary>>}
-                 ,{<<"Event-Package">>, Event}
-                 | props:delete_keys([<<"To">>, <<"From">>], Props)
-                ]),
-    whapps_util:amqp_pool_send(Payload, fun(P) -> wapi_presence:publish_update(Q, P) end).
-
--spec subscribe_to_record(wh_json:object()) -> subscription().
-subscribe_to_record(JObj) ->
-    {P, U, [Username, Realm]} = omnip_util:extract_user(wh_json:get_value(<<"User">>, JObj)),
-    {P, F, _} = omnip_util:extract_user(wh_json:get_value(<<"From">>, JObj, <<>>)),
-    #omnip_subscription{user=U
-                        ,from=F
-                        ,protocol=P
-                        ,expires=expires(JObj)
-                        ,normalized_user=wh_util:to_lower_binary(U)
-                        ,normalized_from=wh_util:to_lower_binary(F)
-                        ,username=wh_util:to_lower_binary(Username)
-                        ,realm=wh_util:to_lower_binary(Realm)
-                        ,stalker=wh_json:get_first_defined([<<"Queue">>
-                                                            ,<<"Server-ID">>
-                                                           ], JObj)
-                        ,event=wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT)
-                        ,from_tag=wh_json:get_value(<<"From-Tag">>, JObj)
-                        ,to_tag=wh_json:get_value(<<"To-Tag">>, JObj)
-                        ,contact=wh_json:get_value(<<"Contact">>, JObj)
-                        ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
-                       }.
-
--spec subscriptions_to_json(subscriptions()) -> wh_json:objects().
-subscriptions_to_json(Subs) ->
-    [subscription_to_json(S) || S <- Subs].
-
--spec subscription_to_json(subscription()) -> wh_json:object().
-subscription_to_json(#omnip_subscription{user=User
-                                         ,from=From
-                                         ,stalker=Stalker
-                                         ,expires=Expires
-                                         ,timestamp=Timestamp
-                                         ,protocol=Protocol
-                                         ,username=Username
-                                         ,realm=Realm
-                                         ,event=Event
-                                         ,from_tag=FromTag
-                                         ,to_tag=ToTag
-                                         ,contact=Contact
-                                         ,call_id=CallId
-                                        }) ->
-    wh_json:from_list(
-      props:filter_undefined(
-        [{<<"user">>, User}
-         ,{<<"from">>, From}
-         ,{<<"stalker">>, Stalker}
-         ,{<<"expires">>, Expires}
-         ,{<<"timestamp">>, Timestamp}
-         ,{<<"protocol">>, Protocol}
-         ,{<<"username">>, Username}
-         ,{<<"realm">>, Realm}
-         ,{<<"event">>, Event}
-         ,{<<"from_tag">>, FromTag}
-         ,{<<"to_tag">>, ToTag}
-         ,{<<"contact">>, Contact}
-         ,{<<"call_id">>, CallId}
-        ])).
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec expires(integer() | wh_json:object()) -> non_neg_integer().
 expires(I) when is_integer(I), I >= 0 -> I;
 expires(JObj) -> expires(wh_json:get_integer_value(<<"Expires">>, JObj)).
 
--spec table_id() -> 'omnipresence_subscriptions'.
-table_id() -> 'omnipresence_subscriptions'.
-
--spec table_config() -> wh_proplist().
-table_config() ->
-    ['protected', 'named_table', 'bag'
-     ,{'keypos', #omnip_subscription.user}
-    ].
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec search_for_subscriptions(ne_binary() | '_', ne_binary()) -> subscriptions().
 -spec search_for_subscriptions(ne_binary() | '_', ne_binary(), ne_binary() | '_') -> subscriptions().
 search_for_subscriptions(Event, Realm) ->
     MatchSpec =
         #omnip_subscription{realm=wh_util:to_lower_binary(Realm)
-                           ,event=Event
+                            ,event=Event
                             ,_='_'
                            },
     ets:match_object(table_id(), MatchSpec).
@@ -701,6 +759,12 @@ search_for_subscriptions(Event, Realm, Username) ->
                            },
     ets:match_object(table_id(), MatchSpec).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec publish_flush(subscriptions()) -> 'ok'.
 publish_flush([]) -> 'ok';
 publish_flush([#omnip_subscription{stalker=Q, user=User, event=Event}

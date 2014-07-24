@@ -14,12 +14,12 @@
 -export([lookup_contact/2
          ,lookup_original_contact/2
          ,lookup_registration/2
+         ,get_registration/2
         ]).
 -export([reg_success/2
          ,reg_query/2
          ,reg_flush/2
          ,handle_reg_success/2
-         ,reg_probe/2
         ]).
 -export([summary/0
          ,summary/1
@@ -53,9 +53,6 @@
                      ,{{?MODULE, 'reg_flush'}
                        ,[{<<"directory">>, <<"reg_flush">>}]
                       }
-                     ,{{?MODULE, 'reg_probe'}
-                       ,[{<<"notification">>, <<"presence_probe">>}]
-                      }
                     ]).
 -define(BINDINGS, [{'registration', [{'restrict_to', ['reg_success'
                                               	      ,'reg_query'
@@ -63,8 +60,6 @@
                                                      ]}
                                      ,'federate'
                                     ]}
-
-                   ,{'notifications' ,[{'restrict_to', ['presence_probe']}]}                  
                    ,{'self', []}
                   ]).
 -define(SERVER, ?MODULE).
@@ -764,7 +759,7 @@ registration_notify(#registration{previous_contact=PrevContact
                ,{<<"Realm">>, Realm}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ]),
-    wapi_notifications:publish_register_overwrite(Props).
+    wapi_presence:publish_register_overwrite(Props).
 
 -spec maybe_initial_registration(registration()) -> 'ok'.
 maybe_initial_registration(#registration{initial='false'}) -> 'ok';
@@ -1023,52 +1018,3 @@ print_property(<<"Expires">> =Key, Value, #registration{expires=Expires
     io:format("~-19s: ~b/~s~n", [Key, Remaining, wh_util:to_binary(Value)]);
 print_property(Key, Value, _) ->
     io:format("~-19s: ~s~n", [Key, wh_util:to_binary(Value)]).
-
--spec reg_probe(wh_json:object(), wh_proplist()) -> 'ok'.
-reg_probe(JObj, _Props) ->
-    'true' = wapi_notifications:presence_probe_v(JObj),
-    _ = wh_util:put_callid(JObj),
-    {ToUser, ToRealm} =
-        case wh_json:get_value(<<"To">>, JObj) of
-            'undefined' ->
-                {wh_json:get_value(<<"To-User">>, JObj)
-                 ,wh_json:get_value(<<"To-Realm">>, JObj)
-                };
-            To -> list_to_tuple(binary:split(To, <<"@">>))
-        end,
-
-    {FromUser, FromRealm} =
-        case wh_json:get_value(<<"From">>, JObj) of
-            'undefined' ->
-                {wh_json:get_value(<<"From-User">>, JObj)
-                 ,wh_json:get_value(<<"From-Realm">>, JObj)
-                };
-            From -> list_to_tuple(binary:split(From, <<"@">>))
-        end,
-
-    Subscription = wh_json:get_value(<<"Subscription">>, JObj),
-    maybe_resp_to_probe(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj).
-
--spec maybe_resp_to_probe(ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
-maybe_resp_to_probe(<<"presence">>, {FromUser, FromRealm}, _To , JObj) ->
-    Fields = [{<<"Realm">>, FromRealm}
-              ,{<<"Username">>, FromUser}
-             ],
-    MatchSpec = build_query_spec(wh_json:set_values(Fields, wh_json:new()), 'false'),
-    State = case ets:select(?MODULE, MatchSpec) of
-                [] -> <<"offline">>;
-                _  -> <<"online">>
-            end,
-    resp_to_probe(State, FromUser, FromRealm);
-maybe_resp_to_probe(_Subscription, _From, _To, _JObj) -> 'ok'.
-
--spec resp_to_probe(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-resp_to_probe(State, User, Realm) ->
-    PresenceId = <<User/binary, "@", Realm/binary>>,
-    PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
-                              ,{<<"State">>, State}
-                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
-                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                             ],
-    wh_amqp_worker:cast(PresenceUpdate, fun wapi_notifications:publish_presence_update/1).
-

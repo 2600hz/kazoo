@@ -375,16 +375,15 @@ handle_agent_change(_, AccountId, AgentId, <<"doc_deleted">>) ->
     end.
 
 handle_presence_probe(JObj, _Props) ->
-    'true' = wapi_notifications:presence_probe_v(JObj),
-
-    FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
-    case whapps_util:get_account_by_realm(FromRealm) of
+    'true' = wapi_presence:probe_v(JObj),
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    case whapps_util:get_account_by_realm(Realm) of
         {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, wh_util:format_account_id(AcctDb, 'raw'));
-        _ -> lager:debug("ignoring presence probe from realm ~s", [FromRealm])
+        _ -> lager:debug("ignoring presence probe from realm ~s", [Realm])
     end.
 
 maybe_respond_to_presence_probe(JObj, AccountId) ->
-    case wh_json:get_value(<<"To-User">>, JObj) of
+    case wh_json:get_value(<<"Username">>, JObj) of
         'undefined' -> lager:debug("no user on presence probe for ~s", [AccountId]);
         AgentId ->
             update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AccountId, AgentId))
@@ -396,15 +395,16 @@ update_probe(JObj, P) when is_pid(P) ->
     send_probe(JObj, ?PRESENCE_GREEN).
 
 send_probe(JObj, State) ->
-    To = wh_json:get_value(<<"To">>, JObj),
+    To = <<(wh_json:get_value(<<"Username">>, JObj))/binary
+           ,"@"
+           ,(wh_json:get_value(<<"Realm">>, JObj))/binary>>,
     PresenceUpdate =
         [{<<"State">>, State}
          ,{<<"Presence-ID">>, To}
          ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(To))}
-         ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, JObj)}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
-    wapi_notifications:publish_presence_update(PresenceUpdate).
+    wapi_presence:publish_update(PresenceUpdate).
 
 handle_destroy(JObj, Props) ->
     'true' = wapi_call:event_v(JObj),

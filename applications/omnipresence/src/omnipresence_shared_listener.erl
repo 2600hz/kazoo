@@ -28,7 +28,6 @@
                 ,subs_ref :: reference()
                }).
 
-%% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
                    %% channel events that toggle presence lights
                    ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
@@ -40,25 +39,28 @@
                                               ]}
                               ,'federate'
                              ]}
-                   ,{'presence', [{'restrict_to', ['update', 'reset']}]}
-                   ,{'notifications', [{'restrict_to', ['presence_update','mwi_update']}
-                                       ,'federate'
-                                      ]}
+                   ,{'presence', [{'restrict_to', ['update'
+                                                   ,'mwi_update'
+                                                   ,'reset'
+                                                  ]}
+                                  ,'federate'
+                                 ]}
+                   ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
                   ]).
--define(RESPONDERS, [{{'omnip_subscriptions', 'handle_presence_update'}
+-define(RESPONDERS, [{{?MODULE, 'handle_channel_event'}
+                      ,[{<<"call_event">>, <<"*">>}]
+                     }
+                     ,{{'omnip_subscriptions', 'handle_presence_update'}
                        ,[{<<"notification">>, <<"presence_update">>}]
                       }
-                    ,{{'omnip_subscriptions', 'handle_mwi_update'}
-                       ,[{<<"notification">>, <<"mwi">>}]
-                      }
-                     ,{{'omnip_subscriptions', 'handle_subscribe'}
-                       ,[{<<"presence">>, <<"subscription">>}]
+                     ,{{'omnip_subscriptions', 'handle_mwi_update'}
+                       ,[{<<"presence">>, <<"mwi_update">>}]
                       }
                      ,{{'omnip_subscriptions', 'handle_reset'}
                        ,[{<<"presence">>, <<"reset">>}]
                       }
-                     ,{{?MODULE, 'handle_channel_event'}
-                       ,[{<<"call_event">>, <<"*">>}]
+                     ,{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
+                       ,[{<<"presence">>, <<"subscription">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<"omnip_shared_listener">>).
@@ -106,7 +108,7 @@ handle_channel_event(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     put('callid', ?MODULE),
-    gen_listener:cast(self(), {'find_subscriptions_srv'}),
+    gen_listener:cast(self(), 'find_subscriptions_srv'),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.
 
@@ -137,11 +139,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'find_subscriptions_srv'}, #state{subs_pid=_Pid}=State) ->
+handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
     case omnipresence_sup:subscriptions_srv() of
         'undefined' ->
             lager:debug("no subs_pid"),
-            gen_listener:cast(self(), {'find_subscriptions_srv'}),
+            gen_listener:cast(self(), 'find_subscriptions_srv'),
             timer:sleep(500),
             {'noreply', State#state{subs_pid='undefined'}};
         P when is_pid(P) ->
@@ -171,7 +173,7 @@ handle_cast(_Msg, State) ->
 handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
                                                       ,subs_ref=Ref
                                                      }=State) ->
-    gen_listener:cast(self(), {'find_subscriptions_srv'}),
+    gen_listener:cast(self(), 'find_subscriptions_srv'),
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};

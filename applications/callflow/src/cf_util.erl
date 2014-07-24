@@ -28,6 +28,7 @@
 
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
+-export([notification_register/2]).
 -export([unsolicited_owner_mwi_update/2]).
 -export([unsolicited_endpoint_mwi_update/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
@@ -62,34 +63,98 @@
 %%--------------------------------------------------------------------
 -spec presence_probe(wh_json:object(), wh_proplist()) -> any().
 presence_probe(JObj, _Props) ->
-    'true' = wapi_notifications:presence_probe_v(JObj),
-    {ToUser, ToRealm} =
-        case wh_json:get_value(<<"To">>, JObj) of
-            'undefined' ->
-                {wh_json:get_value(<<"To-User">>, JObj)
-                 ,wh_json:get_value(<<"To-Realm">>, JObj)
-                };
-            To -> list_to_tuple(binary:split(To, <<"@">>))
-        end,
-
-    {FromUser, FromRealm} =
-        case wh_json:get_value(<<"From">>, JObj) of
-            'undefined' ->
-                {wh_json:get_value(<<"From-User">>, JObj)
-                 ,wh_json:get_value(<<"From-Realm">>, JObj)
-                };
-            From -> list_to_tuple(binary:split(From, <<"@">>))
-        end,
-
-    Subscription = wh_json:get_value(<<"Subscription">>, JObj),
-
-    ProbeRepliers = [fun presence_mwi_update/4
-                     ,fun presence_parking_slot/4
-                     ,fun manual_presence/4
+    'true' = wapi_presence:probe_v(JObj),
+    Username = wh_json:get_value(<<"Username">>, JObj),
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    ProbeRepliers = [fun manual_presence/2
+                     ,fun presence_parking_slot/2
                     ],
-    [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj)
-     || Fun <- ProbeRepliers
-    ].
+    lists:takewhile(fun(Fun) ->
+                            Fun(Username, Realm) =:= 'not_found'
+                    end, ProbeRepliers).
+
+-spec presence_parking_slot(ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+presence_parking_slot(Username, Realm) ->
+    case whapps_util:get_account_by_realm(Realm) of
+        {'ok', AccountDb} ->
+            maybe_presence_parking_slot_resp(Username, Realm, AccountDb);
+        _E -> 'not_found'
+    end.
+
+-spec maybe_presence_parking_slot_resp(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
+    case wh_cache:fetch_local(?CALLFLOW_CACHE, ?PARKING_PRESENCE_KEY(AccountDb, Username)) of
+        {'ok', 'false'} -> 'not_found';
+        {'ok', SlotNumber} ->
+            presence_parking_slot_resp(Username, Realm, AccountDb, SlotNumber);
+        {'error', 'not_found'} ->
+            maybe_presence_parking_flow(Username, Realm, AccountDb)
+    end.
+
+-spec maybe_presence_parking_flow(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+maybe_presence_parking_flow(Username, Realm, AccountDb) ->
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    _ = lookup_callflow(Username, AccountId),
+    case wh_cache:fetch_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(Username, AccountDb)) of
+        {'error', 'not_found'} -> 'not_found';
+        {'ok', Flow} ->
+            case wh_json:get_value([<<"flow">>, <<"module">>], Flow) of
+                <<"park">> ->
+                    SlotNumber = wh_json:get_ne_value(<<"capture_group">>, Flow, Username),
+                    wh_cache:store_local(?CALLFLOW_CACHE, ?PARKING_PRESENCE_KEY(AccountDb, Username), SlotNumber),
+                    presence_parking_slot_resp(Username, Realm, AccountDb, SlotNumber);
+                _Else ->
+                    wh_cache:store_local(?CALLFLOW_CACHE, ?PARKING_PRESENCE_KEY(AccountDb, Username), 'false'),
+                    'not_found'
+            end
+    end.
+
+-spec presence_parking_slot_resp(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+presence_parking_slot_resp(Username, Realm, AccountDb, SlotNumber) ->
+    cf_park:update_presence(SlotNumber, <<Username/binary, "@", Realm/binary>>, AccountDb).
+
+-spec manual_presence(ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+manual_presence(Username, Realm) ->
+    case whapps_util:get_account_by_realm(Realm) of
+        {'ok', AccountDb} ->
+            check_manual_presence(Username, Realm, AccountDb);
+        _E -> 'not_found'
+    end.
+
+-spec check_manual_presence(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+check_manual_presence(Username, Realm, AccountDb) ->
+    case wh_cache:fetch_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb)) of
+        {'ok', JObj} -> manual_presence_resp(Username, Realm, JObj);
+        {'error', 'not_found'} ->
+            fetch_manual_presence_doc(AccountDb, Username, Realm)
+    end.
+
+-spec fetch_manual_presence_doc(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | 'not_found'.
+fetch_manual_presence_doc(Username, Realm, AccountDb) ->
+    case couch_mgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
+        {'ok', JObj} ->
+            CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
+            wh_cache:store_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb), JObj, CacheProps),
+            manual_presence_resp(Username, Realm, JObj);
+        {'error', 'not_found'} ->
+            CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
+            wh_cache:store_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb), wh_json:new(), CacheProps);
+        {'error', _} -> 'not_found'
+    end.
+
+-spec manual_presence_resp(ne_binary(), ne_binary(), wh_json:object()) -> 'ok' | 'not_found'.
+manual_presence_resp(Username, Realm, JObj) ->
+    PresenceId = <<Username/binary, "@", Realm/binary>>,
+    case wh_json:get_value(PresenceId, JObj) of
+        'undefined' -> 'not_found';
+        State ->
+            PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
+                              ,{<<"State">>, State}
+                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ],
+            whapps_util:amqp_pool_send(PresenceUpdate, fun wapi_presence:publish_update/1)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -99,15 +164,39 @@ presence_probe(JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec presence_mwi_query(wh_json:object(), wh_proplist()) -> 'ok'.
 presence_mwi_query(JObj, _Props) ->
+    'true' = wapi_presence:mwi_query_v(JObj),
     _ = wh_util:put_callid(JObj),
+    mwi_query(JObj).
+
+-spec notification_register(wh_json:object(), wh_proplist()) -> 'ok'.
+notification_register(JObj, _Props) ->
+    'true' = wapi_notifications:register_v(JObj),
+    _ = wh_util:put_callid(JObj),
+    mwi_query(JObj).
+
+-spec mwi_query(wh_json:object()) -> 'ok'.
+mwi_query(JObj) ->
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     case whapps_util:get_account_by_realm(Realm) of
         {'ok', AccountDb} ->
             lager:debug("replying to mwi query"),
-            presence_mwi_resp(Username, Realm, AccountDb, JObj);
+            mwi_resp(Username, Realm, AccountDb, JObj);
         _Else -> 'ok'
     end.
+
+-spec mwi_resp(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+mwi_resp(Username, Realm, AccountDb, JObj) ->
+    case owner_ids_by_sip_username(AccountDb, Username) of
+        {'ok', [OwnerId]} ->
+            mwi_resp(Username, Realm, OwnerId, AccountDb, JObj);
+        _Else -> 'ok'
+    end.
+
+-spec mwi_resp(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
+    {New, Waiting} = vm_count_by_owner(AccountDb, OwnerId),
+    send_mwi_update(New, Waiting, Username, Realm, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -152,12 +241,6 @@ unsolicited_owner_mwi_update(AccountDb, OwnerId) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec unsolicited_endpoint_mwi_update(api_binary(), api_binary()) ->
                                              'ok' | {'error', _}.
 unsolicited_endpoint_mwi_update('undefined', _) ->
@@ -171,6 +254,8 @@ unsolicited_endpoint_mwi_update(AccountDb, EndpointId) ->
             maybe_send_endpoint_mwi_update(JObj, AccountDb)
     end.
 
+-spec maybe_send_endpoint_mwi_update(wh_json:object(), ne_binary()) ->
+                                            'ok' | {'error', 'not_appropriate'}.
 maybe_send_endpoint_mwi_update(JObj, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
     Username = wh_json:get_value([<<"sip">>, <<"username">>], JObj),
@@ -180,10 +265,58 @@ maybe_send_endpoint_mwi_update(JObj, AccountDb) ->
         andalso Username =/= 'undefined'
         andalso Realm =/= 'undefined'
     of
+        'false' -> {'error', 'not_appropriate'};
         'true' ->
             {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-            send_mwi_update(New, Saved, Username, Realm);
-        'false' -> {'error', 'not_appropriate'}
+            send_mwi_update(New, Saved, Username, Realm)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-type vm_count() :: ne_binary() | non_neg_integer().
+-spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary()) -> 'ok'.
+send_mwi_update(New, Waiting, Username, Realm) ->
+    send_mwi_update(New, Waiting, Username, Realm, wh_json:new()).
+
+-spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+send_mwi_update(New, Waiting, Username, Realm, JObj) ->
+    Command = [{<<"To">>, <<Username/binary, "@", Realm/binary>>}
+               ,{<<"Messages-New">>, New}
+               ,{<<"Messages-Waiting">>, Waiting}
+               ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    lager:debug("updating MWI for ~s@~s (~b/~b)", [Username, Realm, New, Waiting]),
+    whapps_util:amqp_pool_send(Command, fun wapi_presence:publish_mwi_update/1).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
+vm_count_by_owner(_, 'undefined') -> {0, 0};
+vm_count_by_owner(AccountDb, OwnerId) ->
+    ViewOptions = [{'reduce', 'true'}
+                   ,{'group', 'true'}
+                   ,{'group_level', 2}
+                   ,{'startkey', [OwnerId]}
+                   ,{'endkey', [OwnerId, "\ufff0"]}
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
+        {'ok', MessageCounts} ->
+            Props = [{wh_json:get_value([<<"key">>, 2], MessageCount), wh_json:get_value(<<"value">>, MessageCount)}
+                     || MessageCount <- MessageCounts
+                    ],
+            {props:get_value(<<"new">>, Props, 0), props:get_value(<<"saved">>, Props, 0)};
+        {'error', _R} ->
+            lager:info("unable to lookup vm counts by owner: ~p", [_R]),
+            {0, 0}
     end.
 
 %%--------------------------------------------------------------------
@@ -539,184 +672,6 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
             end;
         _ ->
             test_callflow_patterns(T, Number, Result)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--type vm_count() :: ne_binary() | non_neg_integer().
--spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary()) -> 'ok'.
-send_mwi_update(New, Saved, Username, Realm) ->
-    send_mwi_update(New, Saved, Username, Realm, wh_json:new()).
-
--spec send_mwi_update(vm_count(), vm_count(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-send_mwi_update(New, Saved, Username, Realm, JObj) ->
-    DefaultAccount = <<"sip:", Username/binary, "@", Realm/binary>>,
-    Command = [{<<"Messages-New">>, New}
-               ,{<<"Messages-Saved">>, Saved}
-               ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-               ,{<<"Switch-Nodename">>, wh_json:get_value(<<"Switch-Nodename">>, JObj)}
-               ,{<<"Subscription-Call-ID">>, wh_json:get_value(<<"Subscription-Call-ID">>, JObj)}
-               ,{<<"Notify-User">>, Username}
-               ,{<<"Notify-Realm">>, Realm}
-               ,{<<"Message-Account">>, wh_json:get_value(<<"Message-Account">>, JObj, DefaultAccount)}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    lager:debug("updating MWI for ~s (~b/~b)", [DefaultAccount, New, Saved]),
-    whapps_util:amqp_pool_send(Command, fun wapi_notifications:publish_mwi_update/1).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec presence_mwi_update(ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
-presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
-    case whapps_util:get_account_by_realm(FromRealm) of
-        {'ok', AccountDb} ->
-            lager:debug("replying to mwi presence probe"),
-            presence_mwi_resp(FromUser, FromRealm, AccountDb, JObj);
-        _E ->
-            lager:info("failed to find the account for realm ~s: ~p", [FromRealm, _E])
-    end;
-presence_mwi_update(_, _, _, _) -> 'ok'.
-
--spec presence_parking_slot(ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
-presence_parking_slot(<<"message-summary">>, _, _, _) -> 'ok';
-presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
-    case whapps_util:get_account_by_realm(FromRealm) of
-        {'ok', AccountDb} ->
-            maybe_presence_parking_slot_resp(ToUser, ToRealm, AccountDb);
-        _E -> 'ok'
-    end.
-
--spec manual_presence(ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
-manual_presence(<<"message-summary">>, _, _, _) -> 'ok';
-manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
-    case whapps_util:get_account_by_realm(FromRealm) of
-        {'ok', AccountDb} ->
-            check_manual_presence(AccountDb, ToUser, ToRealm, Event);
-        _E -> 'ok'
-    end.
-
--spec check_manual_presence(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-check_manual_presence(AccountDb, ToUser, ToRealm, Event) ->
-    case wh_cache:fetch_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb)) of
-        {'ok', JObj} ->
-            manual_presence_resp(JObj, ToUser, ToRealm, Event);
-        {'error', 'not_found'} ->
-            fetch_manual_presence_doc(AccountDb, ToUser, ToRealm, Event)
-    end.
-
--spec fetch_manual_presence_doc(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-fetch_manual_presence_doc(AccountDb, ToUser, ToRealm, Event) ->
-    case couch_mgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
-        {'ok', JObj} ->
-            CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
-            wh_cache:store_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb), JObj, CacheProps),
-            manual_presence_resp(JObj, ToUser, ToRealm, Event);
-        {'error', 'not_found'} ->
-            CacheProps = [{'origin', {'db', AccountDb, ?MANUAL_PRESENCE_DOC}}],
-            wh_cache:store_local(?CALLFLOW_CACHE, ?MANUAL_PRESENCE_KEY(AccountDb), wh_json:new(), CacheProps);
-        {'error', _} -> 'ok'
-    end.
-
--spec manual_presence_resp(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-manual_presence_resp(JObj, ToUser, ToRealm, Event) ->
-    PresenceId = <<ToUser/binary, "@", ToRealm/binary>>,
-    case wh_json:get_value(PresenceId, JObj) of
-        'undefined' -> 'ok';
-        State ->
-            PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
-                              ,{<<"State">>, State}
-                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
-                              ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, Event)}
-                              ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, Event)}
-                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                             ],
-            whapps_util:amqp_pool_send(PresenceUpdate, fun wapi_notifications:publish_presence_update/1)
-    end.
-
--spec maybe_presence_parking_slot_resp(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-maybe_presence_parking_slot_resp(Request, Realm, AccountDb) ->
-    case wh_cache:fetch_local(?CALLFLOW_CACHE, ?PARKING_PRESENCE_KEY(AccountDb, Request)) of
-        {'ok', 'false'} -> 'ok';
-        {'ok', SlotNumber} ->
-            presence_parking_slot_resp(SlotNumber, Request, Realm, AccountDb);
-        {'error', 'not_found'} ->
-            maybe_presence_parking_flow(Request, Realm, AccountDb)
-    end.
-
--spec maybe_presence_parking_flow(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-maybe_presence_parking_flow(Request, Realm, AccountDb) ->
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    _ = lookup_callflow(Request, AccountId),
-    case wh_cache:fetch_local(?CALLFLOW_CACHE, ?CF_FLOW_CACHE_KEY(Request, AccountDb)) of
-        {'error', 'not_found'} -> 'ok';
-        {'ok', Flow} ->
-            case wh_json:get_value([<<"flow">>, <<"module">>], Flow) of
-                <<"park">> ->
-                    SlotNumber = wh_json:get_ne_value(<<"capture_group">>, Flow, Request),
-                    wh_cache:store_local(?CALLFLOW_CACHE, ?PARKING_PRESENCE_KEY(AccountDb, Request), SlotNumber),
-                    presence_parking_slot_resp(SlotNumber, Request, Realm, AccountDb);
-                _Else ->
-                    wh_cache:store_local(?CALLFLOW_CACHE, ?PARKING_PRESENCE_KEY(AccountDb, Request), 'false'),
-                    'ok'
-            end
-    end.
-
--spec presence_parking_slot_resp(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-presence_parking_slot_resp(SlotNumber, Request, Realm, AccountDb) ->
-    cf_park:update_presence(SlotNumber, <<Request/binary, "@", Realm/binary>>, AccountDb).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec presence_mwi_resp(ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-presence_mwi_resp(Username, Realm, AccountDb, JObj) ->
-    case owner_ids_by_sip_username(AccountDb, Username) of
-        {'ok', [OwnerId]} ->
-            presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj);
-        _Else -> 'ok'
-    end.
-
--spec presence_mwi_resp(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
-    {New, Saved} = vm_count_by_owner(AccountDb, OwnerId),
-    send_mwi_update(New, Saved, Username, Realm, JObj).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec vm_count_by_owner(ne_binary(), api_binary()) -> {non_neg_integer(), non_neg_integer()}.
-vm_count_by_owner(_, 'undefined') ->
-    {0, 0};
-vm_count_by_owner(AccountDb, OwnerId) ->
-    ViewOptions = [{'reduce', 'true'}
-                   ,{'group', 'true'}
-                   ,{'group_level', 2}
-                   ,{'startkey', [OwnerId]}
-                   ,{'endkey', [OwnerId, "\ufff0"]}
-                  ],
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
-        {'ok', MessageCounts} ->
-            Props = [{wh_json:get_value([<<"key">>, 2], MessageCount), wh_json:get_value(<<"value">>, MessageCount)}
-                     || MessageCount <- MessageCounts
-                    ],
-            {props:get_value(<<"new">>, Props, 0), props:get_value(<<"saved">>, Props, 0)};
-        {'error', _R} ->
-            lager:info("unable to lookup vm counts by owner: ~p", [_R]),
-            {0, 0}
     end.
 
 %%--------------------------------------------------------------------

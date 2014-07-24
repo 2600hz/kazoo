@@ -18,14 +18,8 @@
          ,fax_inbound_error/1, fax_inbound_error_v/1
          ,fax_outbound/1, fax_outbound_v/1
          ,fax_outbound_error/1, fax_outbound_error_v/1
-         ,mwi_update/1, mwi_update_v/1
-         ,mwi_query/1, mwi_query_v/1
          ,register/1, register_v/1
          ,deregister/1, deregister_v/1
-         ,register_overwrite/1, register_overwrite_v/1
-         ,presence_probe/1, presence_probe_v/1
-         ,presence_update/1, presence_update_v/1
-         ,presence_states/0
          ,pwd_recovery/1, pwd_recovery_v/1
          ,new_account/1, new_account_v/1
          ,port_request/1, port_request_v/1
@@ -46,13 +40,8 @@
          ,publish_fax_outbound/1, publish_fax_outbound/2
          ,publish_fax_inbound_error/1, publish_fax_inbound_error/2
          ,publish_fax_outbound_error/1, publish_fax_outbound_error/2
-         ,publish_mwi_update/1, publish_mwi_update/2
-         ,publish_mwi_query/1, publish_mwi_query/2
          ,publish_register/1, publish_register/2
          ,publish_deregister/1, publish_deregister/2
-         ,publish_register_overwrite/1, publish_register_overwrite/2
-         ,publish_presence_probe/1, publish_presence_probe/2
-         ,publish_presence_update/1, publish_presence_update/2
          ,publish_pwd_recovery/1, publish_pwd_recovery/2
          ,publish_new_account/1, publish_new_account/2
          ,publish_port_request/1, publish_port_request/2
@@ -74,15 +63,9 @@
 -define(NOTIFY_FAX_OUTBOUND, <<"notifications.fax.outbound">>).
 -define(NOTIFY_FAX_INBOUND_ERROR, <<"notifications.fax.inbound_error">>).
 -define(NOTIFY_FAX_OUTBOUND_ERROR, <<"notifications.fax.outbound_error">>).
--define(NOTIFY_MWI_UPDATE, <<"notifications.sip.mwi_update">>).
--define(NOTIFY_MWI_QUERY, <<"notifications.sip.mwi_query">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
--define(NOTIFY_REGISTER_OVERWRITE, <<"notifications.sip.register_overwrite">>).
+%%-define(NOTIFY_REGISTER_OVERWRITE, <<"notifications.sip.register_overwrite">>).
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
--define(NOTIFY_PRESENCE_UPDATE, <<"notifications.presence.update">>).
--define(NOTIFY_PRESENCE_PROBE, <<"notifications.presence.probe">>).
--define(NOTIFY_PRESENCE_IN, <<"notifications.presence.in">>).
--define(NOTIFY_PRESENCE_OUT, <<"notifications.presence.out">>).
 -define(NOTIFY_PWD_RECOVERY, <<"notifications.password.recovery">>).
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
@@ -181,57 +164,6 @@
                                    ]).
 -define(FAX_OUTBOUND_ERROR_TYPES, []).
 
-%% Notify updated MWI
--define(MWI_REQ_HEADERS, [<<"Notify-User">>, <<"Notify-Realm">>, <<"Messages-New">>, <<"Messages-Saved">>]).
--define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>
-                                   ,<<"Call-ID">>, <<"Subscription-Call-ID">>
-                                   ,<<"Switch-Nodename">>, <<"Message-Account">>
-                                  ]).
--define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                         ,{<<"Event-Name">>, <<"mwi">>}
-                        ]).
--define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-                        ,{<<"Messages-Saved">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-                        ,{<<"Messages-Urgent">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-                        ,{<<"Messages-Urgent-Saved">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-                       ]).
-
-%% Notify updated MWI
--define(MWI_QUERY_HEADERS, [<<"Username">>, <<"Realm">>]).
--define(OPTIONAL_MWI_QUERY_HEADERS, [<<"Call-ID">>, <<"Subscription-Call-ID">>
-                                     ,<<"Switch-Nodename">>, <<"Message-Account">>
-                                    ]).
--define(MWI_QUERY_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                           ,{<<"Event-Name">>, <<"mwi_query">>}
-                          ]).
--define(MWI_QUERY_TYPES, []).
-
-%% Notify Presence_Probe
--define(PRESENCE_PROBE_HEADERS, [<<"From">>, <<"To">>, <<"Switch-Nodename">>]).
--define(OPTIONAL_PRESENCE_PROBE_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
-                                          ,<<"Expires">>, <<"Subscription-Call-ID">>, <<"Subscription-Type">>
-                                          ,<<"Subscription">>, <<"Dialog-State">>
-                                         ]).
--define(PRESENCE_PROBE_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                ,{<<"Event-Name">>, <<"presence_probe">>}
-                               ]).
--define(PRESENCE_PROBE_TYPES, []).
-
-%% Notify Presence Update
--define(PRESENCE_UPDATE_STATES, [<<"early">>, <<"confirmed">>, <<"terminated">>
-                                 ,<<"online">>, <<"offline">>]).
-
--define(PRESENCE_UPDATE_HEADERS, [<<"Presence-ID">>]).
--define(OPTIONAL_PRESENCE_UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>
-                                           ,<<"Call-ID">>, <<"Subscription-Call-ID">>
-                                           ,<<"Switch-Nodename">>, <<"Dialog-State">>
-                                          ]).
--define(PRESENCE_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                 ,{<<"Event-Name">>, <<"presence_update">>}
-                                 ,{<<"State">>, ?PRESENCE_UPDATE_STATES}
-                                ]).
--define(PRESENCE_UPDATE_TYPES, []).
-
 %% Notify Deregister
 -define(DEREGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
 -define(OPTIONAL_DEREGISTER_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
@@ -244,17 +176,6 @@
                             ,{<<"Event-Name">>, <<"deregister">>}
                            ]).
 -define(DEREGISTER_TYPES, []).
-
-
-%% Notify Register_Overwrite
--define(REGISTER_OVERWRITE_HEADERS, [<<"Previous-Contact">>, <<"Contact">>
-                                    ,<<"Username">>, <<"Realm">>
-                                    ]).
--define(OPTIONAL_REGISTER_OVERWRITE_HEADERS, []).
--define(REGISTER_OVERWRITE_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                                   ,{<<"Event-Name">>, <<"register_overwrite">>}
-                                   ]).
--define(REGISTER_OVERWRITE_TYPES, []).
 
 %% Notify Register
 -define(REGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
@@ -352,7 +273,6 @@
                              ]).
 -define(SYSTEM_ALERT_TYPES, []).
 
-
 %% Notify webhook
 -define(WEBHOOK_HEADERS, [<<"Hook">>, <<"Data">>]).
 -define(OPTIONAL_WEBHOOK_HEADERS, []).
@@ -369,7 +289,6 @@
                                ,{<<"Status">>, [<<"completed">>, <<"failed">>]}
                               ]).
 -define(NOTIFY_UPDATE_TYPES, []).
-
 
 
 %%--------------------------------------------------------------------
@@ -475,42 +394,6 @@ fax_outbound_error_v(Prop) when is_list(Prop) ->
 fax_outbound_error_v(JObj) -> fax_outbound_error_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
-%% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec mwi_update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
-mwi_update(Prop) when is_list(Prop) ->
-    case mwi_update_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?MWI_REQ_HEADERS, ?OPTIONAL_MWI_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for mwi_req"}
-    end;
-mwi_update(JObj) -> mwi_update(wh_json:to_proplist(JObj)).
-
--spec mwi_update_v(api_terms()) -> boolean().
-mwi_update_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES);
-mwi_update_v(JObj) -> mwi_update_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc MWI - Query the Message Waiting Indicator on a device - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec mwi_query(api_terms()) -> {'ok', iolist()} | {'error', string()}.
-mwi_query(Prop) when is_list(Prop) ->
-    case mwi_query_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?MWI_QUERY_HEADERS, ?OPTIONAL_MWI_QUERY_HEADERS);
-        'false' -> {'error', "Proplist failed validation for mwi query"}
-    end;
-mwi_query(JObj) -> mwi_query(wh_json:to_proplist(JObj)).
-
--spec mwi_query_v(api_terms()) -> boolean().
-mwi_query_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?MWI_QUERY_HEADERS, ?MWI_QUERY_VALUES, ?MWI_QUERY_TYPES);
-mwi_query_v(JObj) -> mwi_query_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
 %% @doc Register (unregister is a key word) - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -543,61 +426,6 @@ deregister(JObj) -> deregister(wh_json:to_proplist(JObj)).
 deregister_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?DEREGISTER_HEADERS, ?DEREGISTER_VALUES, ?DEREGISTER_TYPES);
 deregister_v(JObj) -> deregister_v(wh_json:to_proplist(JObj)).
-
-
-%%--------------------------------------------------------------------
-%% @doc Register_Overwrite (unregister is a key word) - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
-register_overwrite(Prop) when is_list(Prop) ->
-    case register_overwrite_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?REGISTER_OVERWRITE_HEADERS, ?OPTIONAL_REGISTER_OVERWRITE_HEADERS);
-        'false' -> {'error', "Proplist failed validation for register_overwrite"}
-    end;
-register_overwrite(JObj) -> register_overwrite(wh_json:to_proplist(JObj)).
-
--spec register_overwrite_v(api_terms()) -> boolean().
-register_overwrite_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?REGISTER_OVERWRITE_HEADERS, ?REGISTER_OVERWRITE_VALUES, ?REGISTER_OVERWRITE_TYPES);
-register_overwrite_v(JObj) -> register_overwrite_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc Presence_Probe (unregister is a key word) - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
-presence_probe(Prop) when is_list(Prop) ->
-    case presence_probe_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?PRESENCE_PROBE_HEADERS, ?OPTIONAL_PRESENCE_PROBE_HEADERS);
-        'false' -> {'error', "Proplist failed validation for presence_probe"}
-    end;
-presence_probe(JObj) -> presence_probe(wh_json:to_proplist(JObj)).
-
--spec presence_probe_v(api_terms()) -> boolean().
-presence_probe_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?PRESENCE_PROBE_HEADERS, ?PRESENCE_PROBE_VALUES, ?PRESENCE_PROBE_TYPES);
-presence_probe_v(JObj) -> presence_probe_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc Presence_Update (unregister is a key word) - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec presence_states() -> ne_binaries().
-presence_states() -> ?PRESENCE_UPDATE_STATES.
-
-presence_update(Prop) when is_list(Prop) ->
-    case presence_update_v(Prop) of
-        'true' -> wh_api:build_message(Prop, ?PRESENCE_UPDATE_HEADERS, ?OPTIONAL_PRESENCE_UPDATE_HEADERS);
-        'false' -> {'error', "Proplist failed validation for presence_update"}
-    end;
-presence_update(JObj) -> presence_update(wh_json:to_proplist(JObj)).
-
--spec presence_update_v(api_terms()) -> boolean().
-presence_update_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?PRESENCE_UPDATE_HEADERS, ?PRESENCE_UPDATE_VALUES, ?PRESENCE_UPDATE_TYPES);
-presence_update_v(JObj) -> presence_update_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Pwd_Recovery (unregister is a key word) - see wiki
@@ -818,32 +646,11 @@ bind_to_q(Q, ['fax_error'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_INBOUND_ERROR),
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_OUTBOUND_ERROR),
     bind_to_q(Q, T);
-bind_to_q(Q, ['mwi_update'|T]) ->
-    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_UPDATE),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['mwi_query'|T]) ->
-    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_QUERY),
-    bind_to_q(Q, T);
 bind_to_q(Q, ['register'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_REGISTER),
     bind_to_q(Q, T);
 bind_to_q(Q, ['deregister'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['register_overwrite'|T]) ->
-    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_REGISTER_OVERWRITE),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['presence_update'|T]) ->
-    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['presence_probe'|T]) ->
-    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['presence_in'|T]) ->
-    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_IN),
-    bind_to_q(Q, T);
-bind_to_q(Q, ['presence_out'|T]) ->
-    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_OUT),
     bind_to_q(Q, T);
 bind_to_q(Q, ['pwd_recovery'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY),
@@ -911,32 +718,11 @@ unbind_q_from(Q, ['fax_error'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_OUTBOUND_ERROR),
     'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_INBOUND_ERROR),
     unbind_q_from(Q, T);
-unbind_q_from(Q, ['mwi_update'|T]) ->
-    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_UPDATE),
-    unbind_q_from(Q, T);
-unbind_q_from(Q, ['mwi_query'|T]) ->
-    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_QUERY),
-    unbind_q_from(Q, T);
 unbind_q_from(Q, ['register'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_REGISTER),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['deregister'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER),
-    unbind_q_from(Q, T);
-unbind_q_from(Q, ['register_overwrite'|T]) ->
-    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_REGISTER_OVERWRITE),
-    unbind_q_from(Q, T);
-unbind_q_from(Q, ['presence_update'|T]) ->
-    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
-    unbind_q_from(Q, T);
-unbind_q_from(Q, ['presence_probe'|T]) ->
-    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
-    unbind_q_from(Q, T);
-unbind_q_from(Q, ['presence_in'|T]) ->
-    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_IN),
-    unbind_q_from(Q, T);
-unbind_q_from(Q, ['presence_out'|T]) ->
-    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_OUT),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['pwd_recovery'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PWD_RECOVERY),
@@ -1022,21 +808,6 @@ publish_fax_outbound_error(Fax, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_ERROR_VALUES, fun ?MODULE:fax_outbound_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_ERROR, Payload, ContentType).
 
-
--spec publish_mwi_update(api_terms()) -> 'ok'.
--spec publish_mwi_update(api_terms(), ne_binary()) -> 'ok'.
-publish_mwi_update(JObj) -> publish_mwi_update(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_mwi_update(API, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?MWI_REQ_VALUES, fun ?MODULE:mwi_update/1),
-    amqp_util:notifications_publish(?NOTIFY_MWI_UPDATE, Payload, ContentType).
-
--spec publish_mwi_query(api_terms()) -> 'ok'.
--spec publish_mwi_query(api_terms(), ne_binary()) -> 'ok'.
-publish_mwi_query(JObj) -> publish_mwi_query(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_mwi_query(API, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?MWI_QUERY_VALUES, fun ?MODULE:mwi_query/1),
-    amqp_util:notifications_publish(?NOTIFY_MWI_QUERY, Payload, ContentType).
-
 -spec publish_register(api_terms()) -> 'ok'.
 -spec publish_register(api_terms(), ne_binary()) -> 'ok'.
 publish_register(JObj) -> publish_register(JObj, ?DEFAULT_CONTENT_TYPE).
@@ -1050,29 +821,6 @@ publish_deregister(JObj) -> publish_deregister(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_deregister(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?DEREGISTER_VALUES, fun ?MODULE:deregister/1),
     amqp_util:notifications_publish(?NOTIFY_DEREGISTER, Payload, ContentType).
-
--spec publish_register_overwrite(api_terms()) -> 'ok'.
--spec publish_register_overwrite(api_terms(), ne_binary()) -> 'ok'.
-publish_register_overwrite(JObj) -> publish_register_overwrite(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_register_overwrite(API, ContentType) when is_list(API) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?REGISTER_OVERWRITE_VALUES, fun ?MODULE:register_overwrite/1),
-    amqp_util:notifications_publish(?NOTIFY_REGISTER_OVERWRITE, Payload, ContentType);
-publish_register_overwrite(JObj, ContentType) ->
-    publish_register_overwrite(wh_json:to_proplist(JObj), ContentType).
-
--spec publish_presence_update(api_terms()) -> 'ok'.
--spec publish_presence_update(api_terms(), ne_binary()) -> 'ok'.
-publish_presence_update(JObj) -> publish_presence_update(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_presence_update(API, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?PRESENCE_UPDATE_VALUES, fun ?MODULE:presence_update/1),
-    amqp_util:notifications_publish(?NOTIFY_PRESENCE_UPDATE, Payload, ContentType).
-
--spec publish_presence_probe(api_terms()) -> 'ok'.
--spec publish_presence_probe(api_terms(), ne_binary()) -> 'ok'.
-publish_presence_probe(JObj) -> publish_presence_probe(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_presence_probe(API, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(API, ?PRESENCE_PROBE_VALUES, fun ?MODULE:presence_probe/1),
-    amqp_util:notifications_publish(?NOTIFY_PRESENCE_PROBE, Payload, ContentType).
 
 -spec publish_pwd_recovery(api_terms()) -> 'ok'.
 -spec publish_pwd_recovery(api_terms(), ne_binary()) -> 'ok'.

@@ -79,20 +79,16 @@ subscribe(Realm, User) ->
     end.
 
 -spec send_mwi_update(ne_binary(), ne_binary() | integer(), ne_binary() | integer() ) -> 'ok'.
-send_mwi_update(User, New, Saved ) when is_binary(New) ->
-  send_mwi_update(User, wh_util:to_integer(New), Saved );
-send_mwi_update(User, New, Saved ) when is_binary(Saved) ->
-  send_mwi_update(User, New, wh_util:to_integer(Saved) );
-send_mwi_update(User, New, Saved ) ->
-    DefaultAccount = <<"sip:", User/binary>>,
-    [Username, Realm] = binary:split(User, <<"@">>),
+send_mwi_update(User, New, Waiting) when is_binary(New) ->
+  send_mwi_update(User, wh_util:to_integer(New), Waiting);
+send_mwi_update(User, New, Waiting) when is_binary(Waiting) ->
+  send_mwi_update(User, New, wh_util:to_integer(Waiting));
+send_mwi_update(User, New, Waiting) ->
     Command = [{<<"Messages-New">>, New}
-               ,{<<"Messages-Saved">>, Saved}
+               ,{<<"Messages-Waiting">>, Waiting}
                ,{<<"Call-ID">>, wh_util:rand_hex_binary(16) }
-               ,{<<"Notify-User">>, Username}
-               ,{<<"Notify-Realm">>, Realm}
-               ,{<<"Message-Account">>, DefaultAccount}
+               ,{<<"To">>, User}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    whapps_util:amqp_pool_send(Command, fun wapi_notifications:publish_mwi_update/1),
+    whapps_util:amqp_pool_send(Command, fun wapi_presence:publish_mwi_update/1),
     'ok'.

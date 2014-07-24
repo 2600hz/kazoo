@@ -70,7 +70,7 @@
                                           ,{'account_id', A}
                                           ,{'queue_id', Q}
                                          ]}
-                         ,{'notifications', [{'restrict_to', ['presence_probe']}]}
+                         ,{'presence', [{'restrict_to', ['probe']}]}
                         ]).
 
 -define(RESPONDERS, [{{'acdc_queue_handler', 'handle_config_change'}
@@ -80,7 +80,7 @@
                        ,[{<<"queue">>, <<"stats_req">>}]
                       }
                      ,{{'acdc_queue_handler', 'handle_presence_probe'}
-                       ,[{<<"notification">>, <<"presence_probe">>}]
+                       ,[{<<"presence">>, <<"probe">>}]
                       }
                      ,{{'acdc_queue_manager', 'handle_member_call'}
                        ,[{<<"member">>, <<"call">>}]
