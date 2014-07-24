@@ -21,10 +21,18 @@ terminators_v(_) -> 'false'.
 
 terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
-
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
 -define(IS_TERMINATOR, fun terminators_v/1).
+
+-define(UNBRIDGE_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>]).
+-define(OPTIONAL_UNBRIDGE_REQ_HEADERS, [<<"Insert-At">>]).
+-define(UNBRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"unbridge">>}
+                              ,?INSERT_AT_TUPLE
+                             ]).
+-define(UNBRIDGE_REQ_TYPES, []).
 
 -define(DIAL_METHOD_SINGLE, <<"single">>).
 -define(DIAL_METHOD_SIMUL, <<"simultaneous">>).

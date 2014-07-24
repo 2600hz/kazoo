@@ -18,6 +18,7 @@
 -export([optional_bridge_req_endpoint_headers/0]).
 
 -export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1
+         ,unbridge/1, unbridge_v/1
          ,page/1, page_v/1
          ,store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
          ,store_http_resp/1, store_http_resp_v/1
@@ -146,6 +147,26 @@ bridge_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?BRIDGE_REQ_HEADERS, ?BRIDGE_REQ_VALUES, ?BRIDGE_REQ_TYPES);
 bridge_v(JObj) ->
     bridge_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Unbridge a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec unbridge(api_terms()) -> api_formatter_return().
+unbridge(Prop) when is_list(Prop) ->
+    case unbridge_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?UNBRIDGE_REQ_HEADERS, ?OPTIONAL_UNBRIDGE_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for unbridge_req"}
+    end;
+unbridge(JObj) ->
+    unbridge(wh_json:to_proplist(JObj)).
+
+-spec unbridge_v(api_terms()) -> boolean().
+unbridge_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?UNBRIDGE_REQ_HEADERS, ?UNBRIDGE_REQ_VALUES, ?UNBRIDGE_REQ_TYPES);
+unbridge_v(JObj) ->
+    unbridge_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Endpoints for bridging a call - see wiki

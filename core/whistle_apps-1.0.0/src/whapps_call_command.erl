@@ -46,6 +46,7 @@
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
          ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7
+         ,unbridge/1
         ]).
 -export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
@@ -789,8 +790,8 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
                       whapps_api_bridge_return().
 -spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), whapps_call:call()) ->
                       whapps_api_bridge_return().
--spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call())
-              -> whapps_api_bridge_return().
+-spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call()) ->
+                      whapps_api_bridge_return().
 
 bridge_command(Endpoints, Call) ->
     bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
@@ -853,6 +854,10 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
 -spec b_bridge_wait(pos_integer(), whapps_call:call()) -> whapps_api_bridge_return().
 b_bridge_wait(Timeout, Call) ->
     wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call).
+
+unbridge(Call) ->
+    Command = [{<<"Application-Name">>, <<"unbridge">>}],
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public
