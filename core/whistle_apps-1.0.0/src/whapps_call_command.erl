@@ -44,7 +44,9 @@
          ,receive_fax/4
          ,b_receive_fax/1
         ]).
--export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
+-export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
+         ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7
+        ]).
 -export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
          ,hold_command/1, hold_command/2
@@ -103,7 +105,7 @@
 -export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
 -export([b_echo/1]).
 -export([b_ring/1]).
--export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
+
 -export([b_page/2, b_page/3, b_page/4, b_page/5, b_page/6]).
 
 -export([b_prompt/2, b_prompt/3]).
@@ -790,39 +792,66 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
 -spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call())
               -> whapps_api_bridge_return().
 
+bridge_command(Endpoints, Call) ->
+    bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+bridge_command(Endpoints, Timeout, Call) ->
+    bridge_command(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
+bridge_command(Endpoints, Timeout, Strategy, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, 'true', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
+    [{<<"Application-Name">>, <<"bridge">>}
+     ,{<<"Endpoints">>, Endpoints}
+     ,{<<"Timeout">>, Timeout}
+     ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+     ,{<<"Ringback">>, cf_util:correct_media_path(Ringback, Call)}
+     ,{<<"Dial-Endpoint-Method">>, Strategy}
+     ,{<<"SIP-Headers">>, SIPHeaders}
+    ].
+
 bridge(Endpoints, Call) ->
-    bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+    Command = bridge_command(Endpoints, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Call) ->
-    bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
+    Command = bridge_command(Endpoints, Timeout, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, Call) ->
-    bridge(Endpoints, Timeout, Strategy, <<"true">>, Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
-    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
-    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
-    Command = [{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, Endpoints}
-               ,{<<"Timeout">>, Timeout}
-               ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-               ,{<<"Ringback">>, cf_util:correct_media_path(Ringback, Call)}
-               ,{<<"Dial-Endpoint-Method">>, Strategy}
-               ,{<<"SIP-Headers">>, SIPHeaders}
-              ],
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
     send_command(Command, Call).
 
 b_bridge(Endpoints, Call) ->
-    b_bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+    bridge(Endpoints, Call),
+    b_bridge_wait(?DEFAULT_TIMEOUT_S, Call).
 b_bridge(Endpoints, Timeout, Call) ->
-    b_bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
+    bridge(Endpoints, Timeout, Call),
+    b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, <<"false">>, Call).
+    bridge(Endpoints, Timeout, Strategy, Call),
+    b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call),
+    b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
+    b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
+    b_bridge_wait(Timeout, Call).
+
+-spec b_bridge_wait(pos_integer(), whapps_call:call()) -> whapps_api_bridge_return().
+b_bridge_wait(Timeout, Call) ->
     wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call).
 
 %%--------------------------------------------------------------------
