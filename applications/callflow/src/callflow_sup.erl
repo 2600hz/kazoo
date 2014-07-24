@@ -24,6 +24,7 @@
                           ,[{'type', <<"user">>}]
                           ,[{'type', <<"device">>}]
                           ,[{'type', <<"parked_calls">>}]
+                          ,[{'doc_id', ?MANUAL_PRESENCE_DOC}]
                          ]).
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
                       ,'new_node_flush'

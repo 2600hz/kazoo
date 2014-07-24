@@ -461,8 +461,8 @@ maybe_send_update(JObj, State, Events) ->
                         ,{<<"From">>, From}
                         ,{<<"State">>, State}
                         ,{<<"Direction">>, Direction}
-                        ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj, <<" ">>)}
-                        ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj, <<" ">>)}
+                        ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                        ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
                         ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                         ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -473,13 +473,14 @@ maybe_send_update(JObj, State, Events) ->
                           ,{<<"To">>, To}
                           ,{<<"State">>, State}
                           ,{<<"Direction">>, Direction}
-                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj, <<" ">>)}
-                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj, <<" ">>)}
+                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
                           ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                           ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                          ])}
             end,
+    io:format("~p~n", [Props]),
     send_updates(Events, User, Props, Direction).
 
 -spec send_updates(list(), ne_binary(), wh_proplist(), ne_binary()) -> 'ok'.
