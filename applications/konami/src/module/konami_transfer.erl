@@ -2,7 +2,8 @@
 %%% @copyright (C) 2014, 2600Hz
 %%% @doc
 %%% Transfers caller to the extension extracted in the regex
-%%% Data = {}
+%%% Data = {
+%%% }
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -179,9 +180,71 @@ add_transferee_bindings(CallId) ->
                                                     ,'CHANNEL_BRIDGE'
                                                    ]).
 
-originate_to_extension(Extension, TransferorLeg, _Call) ->
+-spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call()) ->
+                                    {'ok', ne_binary()}.
+originate_to_extension(Extension, TransferorLeg, Call) ->
     lager:debug("originating to ~s from ~s", [Extension, TransferorLeg]),
 
     %% don't forget to usurp the callflow exe for the call if C-leg answers and transfers
+    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, whapps_call:account_id(Call)),
 
-    {'ok', <<"foo">>}.
+    CCVs = [{<<"Account-ID">>, whapps_call:account_id(Call)}
+            ,{<<"Auto-Answer">>, 'true'}
+            ,{<<"Retain-CID">>, 'true'}
+            ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+            ,{<<"Inherit-Codec">>, 'false'}
+            ,{<<"Authorizing-Type">>, <<"device">>}
+           ],
+
+    Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
+                ,{<<"Route">>, Extension}
+                ,{<<"To-DID">>, Extension}
+                ,{<<"To-Realm">>, wh_json:get_value(<<"realm">>, AccountDoc)}
+                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+               ],
+
+    MsgId = wh_util:rand_hex_binary(4),
+    TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
+
+    konami_event_listener:add_call_binding(TargetCallId, ['CHANNEL_ANSWER'
+                                                          ,'CHANNEL_DESTROY'
+                                                         ]),
+
+    Request = props:filter_undefined(
+                [{<<"Application-Name">>, <<"transfer">>}
+                 ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Extension}])}
+
+                 ,{<<"Msg-ID">>, MsgId}
+                 ,{<<"Endpoints">>, [wh_json:from_list(Endpoint)]}
+
+                 ,{<<"Timeout">>, 20000}
+
+                 ,{<<"Outbound-Callee-ID-Name">>, Extension}
+                 ,{<<"Outbound-Callee-ID-Number">>, Extension}
+                 ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
+                 ,{<<"Outbound-Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
+                 ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+                 ,{<<"Continue-On-Fail">>, 'true'}
+                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                 ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+                 ,{<<"Existing-Call-ID">>, TransferorLeg}
+                 ,{<<"Outbound-Call-ID">>, TargetCallId}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+
+    whapps_util:amqp_pool_publish(Request
+                                  ,fun wapi_resource:publish_originate_req/1
+                                 ),
+    {'ok', TargetCallId}.
+
+caller_id_name(Call, CallerLeg) ->
+    case whapps_call:call_id(Call) of
+        CallerLeg -> whapps_call:caller_id_name(Call);
+        _CalleeLeg -> whapps_call:callee_id_name(Call)
+    end.
+
+caller_id_number(Call, CallerLeg) ->
+    case whapps_call:call_id(Call) of
+        CallerLeg -> whapps_call:caller_id_number(Call);
+        _CalleeLeg -> whapps_call:callee_id_number(Call)
+    end.
