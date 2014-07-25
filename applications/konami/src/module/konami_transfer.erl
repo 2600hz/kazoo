@@ -15,9 +15,15 @@
 
 -spec handle(wh_json:object(), whapps_call:call()) ->
                     {'continue', whapps_call:call()}.
-handle(_Data, Call) ->
-    lager:debug("putting b-leg ~s on hold", [whapps_call:other_leg_call_id(Call)]),
+handle(Data, Call) ->
     lager:debug("data: ~p", [_Data]),
 
-    Cmd = whapps_call_command:hold_command(whapps_call:other_leg_call_id(Call)),
-    whapps_call_command:send_command(Cmd, Call).
+    lager:debug("first, unbridge and put other leg on hold"),
+    konami_hold:handle(Data, Call),
+
+    [Extension|_] = wh_json:get_value(<<"captures">>, Data),
+    lager:debug("ok, now we need to originate to the requested number ~s", [Extension]),
+
+    %% originate to Extension
+    %% enter FSM for attended_transfer state
+    ok.
