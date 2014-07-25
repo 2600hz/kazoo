@@ -102,7 +102,7 @@ event(FSM, CallId, <<"DTMF">>, JObj) ->
                              ,wh_json:get_value(<<"DTMF-Digit">>, JObj)
                             });
 event(FSM, CallId, Event, JObj) ->
-    gen_fsm:send_all_state_event(FSM, {'event', CallId, Event, JObj}).
+    gen_fsm:send_all_state_event(FSM, ?EVENT(CallId, Event, JObj)).
 
 -spec transfer_to(whapps_call:call(), 'a' | 'b') -> 'ok'.
 transfer_to(Call, Leg) ->
@@ -278,7 +278,7 @@ handle_event({'transfer_to', NewCall, 'b'}, StateName, #state{listen_on=ListenOn
                                           ,b_endpoint_id='undefined'
                                          }};
 
-handle_event({'event', CallId, <<"CHANNEL_BRIDGE">>, JObj}, StateName, State) ->
+handle_event(?EVENT(CallId, <<"CHANNEL_BRIDGE">>, JObj), StateName, State) ->
     lager:debug("channel_bridge recv for ~s", [CallId]),
     {'next_state', StateName
      ,handle_channel_event(CallId

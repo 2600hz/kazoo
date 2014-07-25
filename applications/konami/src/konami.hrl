@@ -8,5 +8,9 @@
 -define(APP_NAME, <<"konami">>).
 -define(APP_VERSION, <<"1.0.0">>).
 
+-define(EVENT(CallId, EventName, Event)
+        ,{'event', CallId, EventName, Event}
+       ).
+
 -define(KONAMI_HRL, 'true').
 -endif.
