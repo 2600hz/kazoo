@@ -24,13 +24,13 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec available() -> wh_json:objects().
+-spec available() -> {'ok', wh_json:objects()} | {'error', _}.
 available() -> available('undefined').
 
--spec available(api_binary()) -> wh_json:objects().
+-spec available(api_binary()) -> {'ok', wh_json:objects()} | {'error', _}.
 available(Zone) -> available(Zone, 1).
 
--spec available(api_binary(), non_neg_integer()) -> wh_json:objects().
+-spec available(api_binary(), non_neg_integer()) ->{'ok', wh_json:objects()} | {'error', _}.
 available(Zone, Quantity) ->
     ViewOptions = props:filter_undefined(
                     [{'key', Zone}
@@ -45,7 +45,8 @@ available(Zone, Quantity) ->
             kz_ip_utils:refresh_database(
               fun() -> kz_ips:available(Zone, Quantity) end
              );
-        {'ok', JObjs} -> JObjs;
+        {'ok', JObjs} ->
+            {'ok', [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs]};
         {'error', _R}=E ->
             lager:debug("unable to get available dedicated ips: ~p", [_R]),
             E
