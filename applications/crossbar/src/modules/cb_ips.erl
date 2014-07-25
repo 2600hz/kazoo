@@ -195,7 +195,7 @@ load_hosts(Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_ip(cb_context:context()) -> cb_context:context().
+-spec load_ip(cb_context:context(), ne_binary()) -> cb_context:context().
 load_ip(Context, Id) ->
     case kz_ip:fetch(Id) of
         {'ok', IP} ->
@@ -213,7 +213,7 @@ load_ip(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assign_ip(cb_context:context()) -> cb_context:context().
+-spec assign_ip(cb_context:context(), ne_binary()) -> cb_context:context().
 assign_ip(Context, Id) ->
     AccountId = cb_context:account_id(Context),
     case kz_ip:assign(AccountId, Id) of
@@ -232,7 +232,7 @@ assign_ip(Context, Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec release_ip(cb_context:context()) -> cb_context:context().
+-spec release_ip(cb_context:context(), ne_binary()) -> cb_context:context().
 release_ip(Context, Id) ->
     case kz_ip:release(Id) of
         {'ok', IP} ->
@@ -263,4 +263,3 @@ clean_ip(JObj) ->
             ,{<<"assigned_to">>, wh_json:get_value(<<"pvt_assigned_to">>, JObj)}
         ])
     ).
-
