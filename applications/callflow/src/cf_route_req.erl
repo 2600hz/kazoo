@@ -163,7 +163,6 @@ is_resource_allowed('undefined') -> 'true';
 is_resource_allowed(ResourceType) ->
     lists:member(ResourceType, ?RESOURCE_TYPES_HANDLED).
 
-
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
