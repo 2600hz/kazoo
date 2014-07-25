@@ -500,6 +500,7 @@ endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
                                       ,[{Key, BridgeEndpoint}|BridgeEndpoints])
     end.
 
+-spec endpoint_key(wh_json:object()) -> api_binaries().
 endpoint_key(Endpoint) ->
     [wh_json:get_value(<<"Invite-Format">>, Endpoint)
      ,wh_json:get_value(<<"To-User">>, Endpoint)
@@ -566,6 +567,11 @@ build_bridge_channels(Endpoints) ->
 -spec build_bridge_channels(bridge_endpoints(), build_returns()) -> bridge_channels().
 %% If the Invite-Format is "route" then we have been handed a sip route, do that now
 build_bridge_channels([#bridge_endpoint{invite_format = <<"route">>}=Endpoint|Endpoints], Channels) ->
+    case build_channel(Endpoint) of
+        {'error', _} -> build_bridge_channels(Endpoints, Channels);
+        {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
+    end;
+build_bridge_channels([#bridge_endpoint{invite_format = <<"loopback">>}=Endpoint|Endpoints], Channels) ->
     case build_channel(Endpoint) of
         {'error', _} -> build_bridge_channels(Endpoints, Channels);
         {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
@@ -679,6 +685,8 @@ maybe_failover(Endpoint) ->
 
 -spec get_sip_contact(bridge_endpoint()) -> ne_binary().
 get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) -> Route;
+get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) ->
+    <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
 get_sip_contact(#bridge_endpoint{ip_address='undefined'
                                  ,realm=Realm
                                  ,username=Username
@@ -692,11 +700,15 @@ maybe_clean_contact(<<"sip:", Contact/binary>>, Endpoint) ->
     maybe_clean_contact(Contact, Endpoint);
 maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
+maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
+    Contact;
 maybe_clean_contact(Contact, _) ->
     re:replace(Contact, <<"^.*?[^=]sip:">>, <<>>, [{'return', 'binary'}]).
 
 -spec ensure_username_present(ne_binary(), bridge_endpoint()) -> ne_binary().
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
+    Contact;
+ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
     Contact;
 ensure_username_present(Contact, Endpoint) ->
     case binary:split(Contact, <<"@">>) of

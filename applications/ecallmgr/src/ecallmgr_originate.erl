@@ -432,7 +432,7 @@ get_originate_action(<<"fax">>, JObj) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
     <<"&txfax(${http_get(", Data/binary, ")})">>;
 get_originate_action(<<"transfer">>, JObj) ->
-    get_transfer_action(JObj, wh_json:get_value([<<"Application-Data">>, <<"Invite-Format">>], JObj));
+    get_transfer_action(JObj, wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj));
 get_originate_action(<<"bridge">>, JObj) ->
     lager:debug("got originate with action bridge"),
     CallId = wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj),
@@ -452,33 +452,14 @@ get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
 
-get_transfer_action(JObj, 'undefined') ->
-    get_transfer_action(JObj, <<"route">>);
-get_transfer_action(JObj, <<"route">>) ->
-    lager:debug("got originate with action transfer and 'route' Invite-Format"),
-    case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
-        'undefined' -> <<"error">>;
-        Route ->
-            Context = ?DEFAULT_FREESWITCH_CONTEXT,
-            list_to_binary(["'m:^:", get_unset_vars(JObj)
-                            ,"transfer:", Route
-                            ," XML ", Context, "' inline"
-                           ])
-    end;
-get_transfer_action(JObj, <<"loopback">>) ->
-    lager:debug("got originate with action transfer and 'loopback' Invite-Format"),
-    case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
-        'undefined' -> <<"error">>;
-        Extension ->
-            Context = ?DEFAULT_FREESWITCH_CONTEXT,
-            list_to_binary(["'m:^:", get_unset_vars(JObj)
-                            ,"transfer:loopback/", Extension, "/", Context
-                            ," XML ", Context, "' inline"
-                           ])
-    end;
-get_transfer_action(JObj, _Invite) ->
-    lager:debug("unhandled invite format: ~p", [_Invite]),
-    get_transfer_action(JObj, <<"route">>).
+-spec get_transfer_action(wh_json:object(), api_binary()) -> ne_binary().
+get_transfer_action(_JObj, 'undefined') -> <<"error">>;
+get_transfer_action(JObj, Route) ->
+    Context = ?DEFAULT_FREESWITCH_CONTEXT,
+    list_to_binary(["'m:^:", get_unset_vars(JObj)
+                    ,"transfer:", Route
+                    ," XML ", Context, "' inline"
+                   ]).
 
 -spec intercept_unbridged_only(ne_binary() | 'undefined', wh_json:object()) -> ne_binary().
 intercept_unbridged_only('undefined', JObj) ->
