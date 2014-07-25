@@ -56,12 +56,11 @@ handle(Data, Call) ->
     [Extension|_] = wh_json:get_value(<<"captures">>, Data),
     lager:debug("ok, now we need to originate to the requested number ~s", [Extension]),
 
-    {'ok', TargetLeg} = originate_to_extension(Extension, TransferorLeg, Call),
+    'ok' = originate_to_extension(Extension, TransferorLeg, Call),
 
     try gen_fsm:enter_loop(?MODULE, [], 'attended_wait'
                            ,#state{transferor=TransferorLeg
                                    ,transferee=TransfereeLeg
-                                   ,target=TargetLeg
                                    ,call=Call
                                   }
                           )
@@ -84,16 +83,52 @@ attended_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
 attended_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{transferor=Transferor}=State
              ) ->
-    lager:debug("transferor ~s hungup, going to a partial transfer"),
+    lager:debug("transferor ~s hungup, going to a partial transfer", [Transferor]),
     {'next_state', 'partial_wait', State};
 attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target=Target
                       ,call=Call
                      }=State
              ) ->
-    lager:debug("target ~s didn't answer, reconnecting"),
+    lager:debug("target ~s didn't answer, reconnecting", [Target]),
     _ = konami_resume:handle(wh_json:new(), Call),
     {'stop', 'normal', State};
+attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
+              ,#state{transferor=Transferor
+                      ,transferee=Transferee
+                      ,target=Target
+                     }=State
+             ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+        Target ->
+            lager:debug("transferor and target are connected"),
+            {'next_state', 'attended_answer', State};
+        Transferee ->
+            lager:debug("transferor and transferee have reconnected"),
+            {'stop', 'normal', State}
+    end;
+attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
+              ,#state{transferor=Transferor
+                      ,transferee=Transferee
+                      ,target='undefined'
+                      ,call=Call
+                     }=State
+             ) when Target =/= Transferor,
+                    Target =/= Transferee
+                    ->
+    lager:debug("target ~s has answered, connect to transferor ~s", [Target, Transferor]),
+    whapps_call_command:pickup(Target, <<"now">>, whapps_call:set_call_id(Transferor, Call)),
+    {'next_state', 'attended_answer', State#state{target=Target}};
+attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
+              ,#state{transferor=Transferor
+                      ,target=Target
+                      ,call=Call
+                     }=State
+             ) ->
+    lager:debug("target ~s has answered, connect to transferor ~s", [Target, Transferor]),
+    whapps_call_command:pickup(Target, <<"now">>, whapps_call:set_call_id(Transferor, Call)),
+    {'next_state', 'attended_answer', State};
+
 attended_wait(Msg, State) ->
     lager:debug("attended_wait: unhandled msg ~p", [Msg]),
     {'next_state', 'attended_wait', State}.
@@ -102,6 +137,36 @@ attended_wait(Msg, From, State) ->
     lager:debug("attended_wait: unhandled msg from ~p: ~p", [From, Msg]),
     {'reply', {'error', 'not_implemented'}, 'attended_wait', State}.
 
+partial_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
+             ,#state{transferee=Transferee}=State
+            ) ->
+    lager:debug("transferee ~s hungup while transferor and target were talking"),
+    lager:debug("transferor and target are on their own"),
+    {'stop', 'normal', State};
+partial_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
+             ,#state{transferor=Transferor
+                     ,transferee=Transferee
+                     ,target=Target
+                     ,call=Call
+                    }=State
+            ) ->
+    lager:debug("transferor ~s hungup, connected transferee ~s and target ~s"
+                ,[Transferor, Transferee, Target]
+               ),
+    whapps_call_command:pickup(Transferee, whapps_call:set_call_id(Target, Call)),
+    {'stop', 'normal', State};
+partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
+             ,#state{target=Target
+                     ,transferor=_Transferor
+                     ,transferee=_Transferee
+                     ,call=Call
+                    }=State
+            ) ->
+    lager:debug("target ~s hungup, reconnecting transferor ~s to transferee ~s"
+                ,[Target, _Transferor, _Transferee]
+               ),
+    _ = konami_resume:handle(wh_json:new(), Call),
+    {'stop', 'normal', State};
 partial_wait(Msg, State) ->
     lager:debug("partial_wait: unhandled msg ~p", [Msg]),
     {'next_state', 'partial_wait', State}.
@@ -110,6 +175,50 @@ partial_wait(Msg, From, State) ->
     lager:debug("partial_wait: unhandled msg from ~p: ~p", [From, Msg]),
     {'reply', {'error', 'not_implemented'}, 'partial_wait', State}.
 
+attended_answer(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
+                ,#state{transferor=Transferor
+                        ,transferee=Transferee
+                        ,target=Target
+                       }=State
+               ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+        Target ->
+            lager:debug("transferor and target are connected"),
+            {'next_state', 'attended_answer', State};
+        Transferee ->
+            lager:debug("transferor and transferee have reconnected"),
+            {'stop', 'normal', State}
+    end;
+attended_answer(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
+                ,#state{transferee=Transferee}=State
+               ) ->
+    lager:debug("transferee ~s hungup while transferor and target were talking"),
+    lager:debug("transferor and target are on their own"),
+    {'stop', 'normal', State};
+attended_answer(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
+              ,#state{transferor=Transferor
+                      ,transferee=Transferee
+                      ,target=Target
+                      ,call=Call
+                     }=State
+             ) ->
+    lager:debug("transferor ~s hungup, connected transferee ~s and target ~s"
+                ,[Transferor, Transferee, Target]
+               ),
+    whapps_call_command:pickup(Transferee, <<"now">>, whapps_call:set_call_id(Target, Call)),
+    {'stop', 'normal', State};
+attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
+              ,#state{target=Target
+                      ,transferor=_Transferor
+                      ,transferee=_Transferee
+                      ,call=Call
+                     }=State
+             ) ->
+    lager:debug("target ~s hungup, reconnecting transferor ~s to transferee ~s"
+                ,[Target, _Transferor, _Transferee]
+               ),
+    _ = konami_resume:handle(wh_json:new(), Call),
+    {'stop', 'normal', State};
 attended_answer(Msg, State) ->
     lager:debug("attended_answer: unhandled msg ~p", [Msg]),
     {'next_state', 'attended_answer', State}.
@@ -180,62 +289,113 @@ add_transferee_bindings(CallId) ->
                                                     ,'CHANNEL_BRIDGE'
                                                    ]).
 
--spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call()) ->
-                                    {'ok', ne_binary()}.
+-spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call(), wh_json:object()) -> 'ok'.
 originate_to_extension(Extension, TransferorLeg, Call) ->
-    lager:debug("originating to ~s from ~s", [Extension, TransferorLeg]),
+    case cf_util:lookup_callflow(Extension, whapps_call:account_id(Call)) of
+        {'ok', Flow, 'false'} ->
+            lager:debug("found flow for extension ~s", [Extension]),
+            originate_to_extension(Extension, TransferorLeg, Call, wh_json:get_value(<<"flow">>, Flow));
+        {'ok', _Flow, 'true'} ->
+            lager:debug("only the no-match flow was found, not currently allowed"),
+            {'error', 'no_flow'};
+        {'error', _E} ->
+            lager:debug("unable to find flow for extension ~s", [Extension]),
+            {'error', 'no_flow'}
+    end.
 
+originate_to_extension(_Extension, TransferorLeg, Call, Flow) ->
+    case find_endpoints(Call, Flow) of
+        [] ->
+            lager:debug("no endpoints found in flow ~s: ~p", [_Extension, Flow]),
+            {'error', 'no_endpoints'};
+        Endpoints ->
+            originate_to_endpoints(TransferorLeg, Call, Endpoints)
+    end.
+
+-spec originate_to_endpoints(ne_binary(), whapps_call:call(), wh_json:objects()) -> 'ok'.
+originate_to_endpoints(TransferorLeg, Call, Endpoints) ->
     %% don't forget to usurp the callflow exe for the call if C-leg answers and transfers
-    {'ok', AccountDoc} = couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, whapps_call:account_id(Call)),
-
-    CCVs = [{<<"Account-ID">>, whapps_call:account_id(Call)}
-            ,{<<"Auto-Answer">>, 'true'}
-            ,{<<"Retain-CID">>, 'true'}
-            ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
-            ,{<<"Inherit-Codec">>, 'false'}
-            ,{<<"Authorizing-Type">>, <<"device">>}
-           ],
-
-    Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
-                ,{<<"Route">>, Extension}
-                ,{<<"To-DID">>, Extension}
-                ,{<<"To-Realm">>, wh_json:get_value(<<"realm">>, AccountDoc)}
-                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-               ],
-
     MsgId = wh_util:rand_hex_binary(4),
-    TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
 
+    Request = props:filter_undefined(
+                add_call_id(
+                  [{<<"Application-Name">>, <<"park">>}
+                   ,{<<"Msg-ID">>, MsgId}
+                   ,{<<"Endpoints">>, update_endpoints(Endpoints)}
+
+                   ,{<<"Timeout">>, 20000}
+
+                   ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
+                   ,{<<"Outbound-Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
+                   ,{<<"Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
+                   ,{<<"Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
+
+                   ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+                   ,{<<"Continue-On-Fail">>, 'true'}
+                   ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+                   ,{<<"Existing-Call-ID">>, TransferorLeg}
+                   ,{<<"Resource-Type">>, <<"originate">>}
+                   ,{<<"Originate-Immediate">>, 'true'}
+                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                  ])),
+
+    wh_amqp_worker:cast(Request
+                        ,fun wapi_resource:publish_originate_req/1
+                       ).
+
+update_endpoints(Endpoints) ->
+    [update_endpoint(Endpoint) || Endpoint <- Endpoints].
+update_endpoint(Endpoint) ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint),
+    wh_json:set_value(<<"Custom-Channel-Vars">>
+                      ,wh_json:set_values([{<<"Hangup-After-Pickup">>, 'false'}
+                                           ,{<<"Park-After-Pickup">>, 'true'}
+                                           ,{<<"Unbridged-Only">>, 'true'}
+                                          ]
+                                          ,CCVs
+                                         )
+                      ,add_call_id(Endpoint)
+                     ).
+-spec add_call_id(api_terms()) -> api_terms().
+add_call_id([_|_]=Endpoint) ->
+    TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
     konami_event_listener:add_call_binding(TargetCallId, ['CHANNEL_ANSWER'
                                                           ,'CHANNEL_DESTROY'
                                                          ]),
+    props:set_value(<<"Outbound-Call-ID">>, TargetCallId, Endpoint);
+add_call_id(Endpoint) ->
+    TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
+    konami_event_listener:add_call_binding(TargetCallId, ['CHANNEL_ANSWER'
+                                                          ,'CHANNEL_DESTROY'
+                                                         ]),
+    wh_json:set_value(<<"Outbound-Call-ID">>, TargetCallId, Endpoint).
 
-    Request = props:filter_undefined(
-                [{<<"Application-Name">>, <<"transfer">>}
-                 ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Extension}])}
+find_endpoints(Call, Flow) ->
+    case wh_json:get_value(<<"module">>, Flow) of
+        <<"device">> ->
+            Data = wh_json:get_value(<<"data">>, Flow),
+            EndpointId = wh_json:get_value(<<"id">>, Data),
 
-                 ,{<<"Msg-ID">>, MsgId}
-                 ,{<<"Endpoints">>, [wh_json:from_list(Endpoint)]}
+            lager:debug("building device ~s endpoint", [EndpointId]),
 
-                 ,{<<"Timeout">>, 20000}
+            case cf_endpoint:build(EndpointId, Data, new_call(Call)) of
+                {'error', _} -> [];
+                {'ok', Endpoints} -> Endpoints
+            end;
+        <<"user">> ->
+            Data = wh_json:get_value(<<"data">>, Flow),
+            UserId = wh_json:get_value(<<"id">>, Data),
 
-                 ,{<<"Outbound-Callee-ID-Name">>, Extension}
-                 ,{<<"Outbound-Callee-ID-Number">>, Extension}
-                 ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
-                 ,{<<"Outbound-Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
-                 ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-                 ,{<<"Continue-On-Fail">>, 'true'}
-                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-                 ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-                 ,{<<"Existing-Call-ID">>, TransferorLeg}
-                 ,{<<"Outbound-Call-ID">>, TargetCallId}
-                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                ]),
+            lager:debug("getting user ~s endpoints", [UserId]),
 
-    whapps_util:amqp_pool_publish(Request
-                                  ,fun wapi_resource:publish_originate_req/1
-                                 ),
-    {'ok', TargetCallId}.
+            cf_user:get_endpoints(UserId, Data, new_call(Call));
+        _ ->
+            case wh_json:get_value([<<"children">>, <<"_">>], Flow) of
+                'undefined' -> [];
+                SubFlow -> find_endpoints(Call, SubFlow)
+            end
+    end.
 
 caller_id_name(Call, CallerLeg) ->
     case whapps_call:call_id(Call) of
@@ -248,3 +408,10 @@ caller_id_number(Call, CallerLeg) ->
         CallerLeg -> whapps_call:caller_id_number(Call);
         _CalleeLeg -> whapps_call:callee_id_number(Call)
     end.
+
+new_call(Call) ->
+    whapps_call:exec([{fun whapps_call:set_account_id/2, whapps_call:account_id(Call)}
+                      ,{fun whapps_call:set_account_db/2, whapps_call:account_db(Call)}
+                     ]
+                     ,whapps_call:new()
+                    ).
