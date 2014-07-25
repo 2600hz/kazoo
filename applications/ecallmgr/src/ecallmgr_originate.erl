@@ -779,17 +779,26 @@ maybe_start_call_handlers(UUID, State) ->
 start_abandon_timer() ->
     erlang:send_after(?REPLY_TIMEOUT, self(), {'abandon_originate'}).
 
--spec update_endpoint(wh_json:object(), state() | created_uuid()) -> wh_json:object().
 update_endpoint(Endpoint, #state{node=Node
                                  ,originate_req=JObj
                                 }=State) ->
-    {_, Id} = UUID = create_uuid(Endpoint, JObj, Node),
+    {_, Id} = UUID =
+        case wh_json:get_value(<<"Outbound-Call-ID">>, Endpoint) of
+            'undefined' -> create_uuid(Endpoint, JObj, Node);
+            OutboundCallId -> {'api', OutboundCallId}
+        end,
     maybe_start_call_handlers(UUID, State#state{uuid=UUID
                                                 ,control_pid='undefined'
                                                }),
     fix_hold_media(wh_json:set_value(<<"origination_uuid">>, Id, Endpoint), State);
-update_endpoint(Endpoint, {_, ID}=State) ->
-    fix_hold_media(wh_json:set_value(<<"origination_uuid">>, ID, Endpoint), State).
+update_endpoint(Endpoint, {_, BuiltId}=State) ->
+    Id =
+        case wh_json:get_value(<<"Outbound-Call-ID">>, Endpoint) of
+            'undefined' -> BuiltId;
+            OutboundCallId -> OutboundCallId
+        end,
+
+    fix_hold_media(wh_json:set_value(<<"origination_uuid">>, Id, Endpoint), State).
 
 -spec fix_hold_media(wh_json:object(), _) -> wh_json:object().
 fix_hold_media(Endpoint, _State) ->
