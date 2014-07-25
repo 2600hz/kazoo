@@ -10,6 +10,13 @@
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
+%% For dialplan messages, what does the Invite-Format param accept as values?
+-define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>
+                                  ,[<<"username">>, <<"e164">>
+                                    ,<<"npan">>, <<"1npan">>
+                                    ,<<"route">>, <<"loopback">>
+                                   ]
+                             }).
 
 -spec terminators_v(api_binaries() | binary()) -> boolean().
 -spec terminator_v(ne_binary()) -> boolean().
