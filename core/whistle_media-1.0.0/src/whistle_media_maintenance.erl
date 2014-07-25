@@ -11,6 +11,7 @@
          ,migrate/0, migrate_prompts/0
          ,import_prompts/1, import_prompts/2
          ,import_prompt/1, import_prompt/2
+         ,set_account_language/2
          ,refresh/0
         ]).
 
@@ -30,6 +31,26 @@ migrate() ->
 migrate_prompts() ->
     io:format("Now updating existing system_media docs to be internationalizable!~n", []),
     'no_return'.
+
+-spec set_account_language(ne_binary(), ne_binary()) -> 'ok'.
+set_account_language(Account, Language) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    OldLang = wh_media_util:prompt_language(AccountId),
+
+    try whapps_account_config:set(AccountId
+                                  ,?WHS_CONFIG_CAT
+                                  ,?PROMPT_LANGUAGE_KEY
+                                  ,wh_util:to_lower_binary(Language)
+                                 )
+    of
+        _Config ->
+            io:format("successfully updated account ~s's language from '~s' to '~s'~n"
+                      ,[AccountId, OldLang, Language]
+                     )
+    catch
+        _E:_R ->
+            io:format("", [])
+    end.
 
 import_prompts(Path) ->
     import_prompts(Path, wh_media_util:default_prompt_language()).
