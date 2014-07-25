@@ -299,19 +299,19 @@ default_prompt_language() ->
     default_prompt_language(<<"en-us">>).
 default_prompt_language(Default) ->
     wh_util:to_lower_binary(
-      whapps_config:get(?WHS_CONFIG_CAT, <<"default_language">>, Default)
+      whapps_config:get(?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
      ).
 
 -spec prompt_language(api_binary(), ne_binary()) -> ne_binary().
 prompt_language('undefined') -> default_prompt_language();
 prompt_language(<<_/binary>> = AccountId) ->
     wh_util:to_lower_binary(
-      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, <<"default_language">>, default_prompt_language())
+      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, default_prompt_language())
      ).
 
 prompt_language('undefined', Default) ->
     default_prompt_language(Default);
 prompt_language(<<_/binary>> = AccountId, Default) ->
     wh_util:to_lower_binary(
-      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, <<"default_language">>, wh_util:to_lower_binary(Default))
+      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, wh_util:to_lower_binary(Default))
      ).

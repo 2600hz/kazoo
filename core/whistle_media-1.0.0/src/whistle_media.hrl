@@ -22,6 +22,8 @@
 
 -define(CONFIG_CAT, ?WHS_CONFIG_CAT).
 
+-define(PROMPT_LANGUAGE_KEY, <<"default_language">>).
+
 -define(CONFIG_KVS, [{<<"use_https">>, 'false'}
                      ,{<<"authenticated_playback">>, 'false'}
                      ,{<<"proxy_username">>, 'undefined'}

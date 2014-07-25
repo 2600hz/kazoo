@@ -76,9 +76,7 @@ get(Account, Config, Key, Default) ->
 set(Account, Config, Key, Value) ->
     JObj = wh_json:set_value(Key, Value, ?MODULE:get(Account, Config)),
 
-
     AccountDb = account_db(Account),
-
     {'ok', JObj1} = couch_mgr:ensure_saved(AccountDb
                                            ,wh_doc:update_pvt_parameters(JObj
                                                                          ,AccountDb
