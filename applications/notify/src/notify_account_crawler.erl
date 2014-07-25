@@ -309,11 +309,18 @@ test_for_low_balance(AccountId, AccountDb, JObj) ->
         'false' ->
             maybe_reset_low_balance(AccountId, AccountDb, JObj);
         'true' ->
-            case wh_topup:init(AccountId, Balance) of
-                'ok' -> 'ok';
+            case wh_topup:init(AccountId, CurrentBalance) of
+                'ok' ->
+                    Props = [{<<"Account-ID">>, AccountId}],
+                    whapps_util:amqp_pool_request(
+                        Props
+                       ,fun wapi_notifications:publish_topup/1
+                       ,fun wapi_notifications:topup_v/1
+                    ),
+                    'ok';
                 'error' ->
                     maybe_handle_low_balance(CurrentBalance, AccountId, AccountDb, JObj)
-            end.
+            end
     end.
 
 -spec maybe_reset_low_balance(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.

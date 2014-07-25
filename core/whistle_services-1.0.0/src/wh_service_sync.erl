@@ -265,19 +265,33 @@ sync_services_bookkeeper(AccountId, ServiceJObj, ServiceItems) ->
             FailedTransactions = Bookkeeper:charge_transactions(BillingId, Transactions),
             case couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"transactions">>, FailedTransactions, ServiceJObj)) of
                 {'error', _E} -> lager:warning("failed to clean pending transactions ~p", [_E]);
-                {'ok', _} -> handle_topup_transactions(AccountId, Transactions)
+                {'ok', _} -> handle_topup_transactions(AccountId, Transactions, FailedTransactions)
             end
     end.
 
--spec handle_topup_transactions(ne_binary(), wh_json:objects()) -> 'ok'.
--spec handle_topup_transactions(ne_binary(), wh_json:objects(), integer()) -> 'ok'.
-handle_topup_transactions(Account, JObjs) ->
-    handle_topup_transactions(Account, JObjs, 3).
+-spec did_topup_failed(wh_json:objects()) -> boolean().
+did_topup_failed(JObjs) ->
+    lists:foldl(
+        fun(JObj, Acc) ->
+            case wh_json:get_integer_value(<<"code">>, JObj) of
+                3006 -> 'true';
+                _ -> Acc
+            end
+        end
+        ,'false'
+        ,JObjs
+    ).
 
+-spec handle_topup_transactions(ne_binary(), wh_json:objects(), wh_json:objects()| integer()) -> 'ok'.
+handle_topup_transactions(Account, JObjs, Failed) when is_list(Failed) ->
+    case did_topup_failed(Failed) of
+        'true' -> 'ok';
+        'false' -> handle_topup_transactions(Account, JObjs, 3)
+    end;
 handle_topup_transactions(_, [], _) -> 'ok';
 handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
-    case wh_json:get_value(<<"pvt_reason">>, JObj) of
-        <<"topup">> ->
+    case wh_json:get_integer_value(<<"code">>, JObj) of
+        3006 ->
             Amount = wh_json:get_value(<<"pvt_amount">>, JObj),
             Transaction = wh_transaction:credit(Account, Amount),
             Transaction1 = wh_transaction:set_reason(<<"topup">>, Transaction),
@@ -290,7 +304,7 @@ handle_topup_transactions(Account, [JObj|JObjs], Retry) when Retry > 0 ->
                                 ,[_E, Account, Amount, Retry]),
                     handle_topup_transactions(Account, [JObj|JObjs], Retry-1)
             end;
-        _ -> handle_topup_transactions(Account, JObjs)
+        _ -> handle_topup_transactions(Account, JObjs, 3)
     end;
 handle_topup_transactions(Account, _, _) ->
     lager:error("failed to write top up transaction for account ~s too many retries", [Account]).

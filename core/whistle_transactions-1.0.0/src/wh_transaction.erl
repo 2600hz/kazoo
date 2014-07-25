@@ -506,7 +506,7 @@ service_save(#wh_transaction{}=Transaction) ->
     end.
 
 -spec service_save_transaction(transaction()) -> {'ok', wh_json:object()} | {'error', _}.
-service_save_transaction(#wh_transaction{pvt_account_id=AccountId, pvt_created=Created}=Transaction) ->
+service_save_transaction(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
     TransactionJObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _R}=Error ->
