@@ -21,6 +21,7 @@
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1]).
 -export([record_to_json/1]).
+-export([json_to_record/1]).
 
 -import('braintree_util', [make_doc_xml/2]).
 -import('wh_util', [get_xml_value/2]).
@@ -136,6 +137,7 @@ create(CustomerId, Transaction) ->
 -spec sale(bt_transaction()) -> bt_transaction().
 -spec sale(ne_binary(), bt_transaction()) -> bt_transaction().
 -spec quick_sale(ne_binary(), ne_binary()) -> bt_transaction().
+-spec quick_sale(ne_binary(), ne_binary(), wh_proplist()) -> bt_transaction().
 
 sale(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE}).
@@ -146,8 +148,9 @@ sale(CustomerId, Transaction) ->
 quick_sale(CustomerId, Amount) ->
     sale(CustomerId, #bt_transaction{amount=Amount}).
 
-quick_sale(CustomerId, Token, Amount) ->
-    sale(CustomerId, #bt_transaction{amount=Amount, payment_token=Token}).
+quick_sale(CustomerId, Amount, Props) ->
+    Transaction = json_to_record(wh_json:from_list(Props)),
+    sale(CustomerId, Transaction#bt_transaction{amount=Amount}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -400,3 +403,56 @@ record_to_json(#bt_transaction{}=Transaction) ->
                                 ]}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
+
+-spec json_to_record(api_object()) -> bt_transaction() | 'undefined'.
+json_to_record('undefined') -> 'undefined';
+json_to_record(JObj) ->
+    #bt_transaction{
+        id = wh_json:get_binary_value(<<"id">>, JObj)
+        ,status = wh_json:get_binary_value(<<"status">>, JObj)
+        ,type = wh_json:get_binary_value(<<"type">>, JObj)
+        ,currency_code = wh_json:get_binary_value(<<"currency_code">>, JObj)
+        ,amount = wh_json:get_binary_value(<<"amount">>, JObj)
+        ,merchant_account_id = wh_json:get_binary_value(<<"merchant_account_id">>, JObj)
+        ,order_id = wh_json:get_binary_value(<<"order_id">>, JObj)
+        ,purchase_order = wh_json:get_binary_value(<<"purchase_order">>, JObj)
+        ,created_at = wh_json:get_binary_value(<<"created_at">>, JObj)
+        ,update_at = wh_json:get_binary_value(<<"update_at">>, JObj)
+        ,refund_id = wh_json:get_binary_value(<<"refund_id">>, JObj)
+        ,refund_ids = wh_json:get_binary_value(<<"refund_ids">>, JObj)
+        ,refunded_transaction = wh_json:get_binary_value(<<"refunded_transaction">>, JObj)
+        ,settlement_batch = wh_json:get_binary_value(<<"settlement_batch">>, JObj)
+        ,avs_error_code = wh_json:get_binary_value(<<"avs_error_code">>, JObj)
+        ,avs_postal_response = wh_json:get_binary_value(<<"avs_postal_response">>, JObj)
+        ,avs_street_response = wh_json:get_binary_value(<<"avs_street_response">>, JObj)
+        ,ccv_response_code = wh_json:get_binary_value(<<"ccv_response_code">>, JObj)
+        ,gateway_rejection = wh_json:get_binary_value(<<"gateway_rejection">>, JObj)
+        ,processor_authorization_code = wh_json:get_binary_value(<<"processor_authorization_code">>, JObj)
+        ,processor_response_code = wh_json:get_binary_value(<<"processor_response_code">>, JObj)
+        ,processor_response_text = wh_json:get_binary_value(<<"processor_response_text">>, JObj)
+        ,tax_amount = wh_json:get_binary_value(<<"tax_amount">>, JObj)
+        ,tax_exempt = wh_json:get_value(<<"tax_exempt">>, JObj, 'false')
+        ,billing_address = braintree_address:json_to_record(wh_json:get_value(<<"billing_address">>, JObj))
+        ,shipping_address_id  = wh_json:get_binary_value(<<"shipping_address_id">>, JObj)
+        ,shipping_address = braintree_address:json_to_record(wh_json:get_value(<<"shipping_address">>, JObj))
+        ,customer_id = wh_json:get_binary_value(<<"customer_id">>, JObj)
+        ,customer = braintree_customer:json_to_record(wh_json:get_value(<<"customer">>, JObj))
+        ,payment_token = wh_json:get_binary_value(<<"payment_token">>, JObj)
+        ,card = braintree_card:json_to_record(wh_json:get_value(<<"customer">>, JObj))
+        ,subscription_id = wh_json:get_binary_value(<<"subscription_id">>, JObj)
+        ,add_ons = [braintree_addon:json_to_record(Addon)
+                       || Addon <- wh_json:get_value(<<"add_ons">>, JObj, [])
+                   ]
+
+        ,discounts = [braintree_discount:json_to_record(Discount)
+                        || Discount <- wh_json:get_value(<<"discounts">>, JObj, [])
+                     ]
+        ,descriptor = wh_json:get_binary_value(<<"descriptor">>, JObj)
+        ,store_in_vault = wh_json:get_value(<<"store_in_vault">>, JObj, 'false')
+        ,store_on_success = wh_json:get_value(<<"store_on_success">>, JObj, 'false')
+        ,settle = wh_json:get_value(<<"tax_exempt">>, JObj, 'false')
+        ,change_billing_address = wh_json:get_value(<<"change_billing_address">>, JObj, 'false')
+        ,store_shipping_address = wh_json:get_value(<<"store_shipping_address">>, JObj, 'false')
+    }.
+
+

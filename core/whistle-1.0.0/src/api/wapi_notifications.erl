@@ -27,6 +27,7 @@
          ,ported/1, ported_v/1
          ,cnam_request/1, cnam_request_v/1
          ,low_balance/1, low_balance_v/1
+         ,topup/1, topup_v/1
          ,transaction/1, transaction_v/1
          ,system_alert/1, system_alert_v/1
          ,webhook/1, webhook_v/1
@@ -49,6 +50,7 @@
          ,publish_ported/1, publish_ported/2
          ,publish_cnam_request/1, publish_cnam_request/2
          ,publish_low_balance/1, publish_low_balance/2
+         ,publish_topup/1, publish_topup/2
          ,publish_transaction/1, publish_transaction/2
          ,publish_system_alert/1, publish_system_alert/2
          ,publish_webhook/1, publish_webhook/2
@@ -74,6 +76,7 @@
 -define(NOTIFY_PORTED, <<"notifications.number.ported">>).
 -define(NOTIFY_CNAM_REQUEST, <<"notifications.number.cnam">>).
 -define(NOTIFY_LOW_BALANCE, <<"notifications.account.low_balance">>).
+-define(NOTIFY_TOPUP, <<"notifications.account.topup">>).
 -define(NOTIFY_TRANSACTION, <<"notifications.account.transaction">>).
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
@@ -254,6 +257,15 @@
                              ,{<<"Event-Name">>, <<"low_balance">>}
                             ]).
 -define(LOW_BALANCE_TYPES, []).
+
+%% Notify Top Up
+-define(TOPUP_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_TOPUP_HEADERS, []).
+-define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                        ,{<<"Event-Name">>, <<"low_balance">>}
+                      ]).
+-define(TOPUP_TYPES, []).
+
 
 %% Notify Transaction
 -define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Transaction">>]).
@@ -546,6 +558,24 @@ low_balance_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?LOW_BALANCE_HEADERS, ?LOW_BALANCE_VALUES, ?LOW_BALANCE_TYPES);
 low_balance_v(JObj) -> low_balance_v(wh_json:to_proplist(JObj)).
 
+
+%%--------------------------------------------------------------------
+%% @doc Topup notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+topup(Prop) when is_list(Prop) ->
+    case topup_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?TOPUP_HEADERS, ?OPTIONAL_TOPUP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for topup"}
+    end;
+topup(JObj) -> topup(wh_json:to_proplist(JObj)).
+
+-spec topup_v(api_terms()) -> boolean().
+topup_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?TOPUP_HEADERS, ?TOPUP_VALUES, ?TOPUP_TYPES);
+topup_v(JObj) -> topup_v(wh_json:to_proplist(JObj)).
+
 %%--------------------------------------------------------------------
 %% @doc Low Balance notification - see wiki
 %% Takes proplist, creates JSON string or error
@@ -673,6 +703,9 @@ bind_to_q(Q, ['cnam_requests'|T]) ->
 bind_to_q(Q, ['low_balance'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_LOW_BALANCE),
     bind_to_q(Q, T);
+bind_to_q(Q, ['topup'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_TOPUP),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['transaction'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_TRANSACTION),
     bind_to_q(Q, T);
@@ -744,6 +777,9 @@ unbind_q_from(Q, ['cnam_request'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['low_balance'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_LOW_BALANCE),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['topup'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_TOPUP),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['transaction'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_TRANSACTION),
@@ -870,6 +906,13 @@ publish_low_balance(JObj) -> publish_low_balance(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_low_balance(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?LOW_BALANCE_VALUES, fun ?MODULE:low_balance/1),
     amqp_util:notifications_publish(?NOTIFY_LOW_BALANCE, Payload, ContentType).
+
+-spec publish_topup(api_terms()) -> 'ok'.
+-spec publish_topup(api_terms(), ne_binary()) -> 'ok'.
+publish_topup(JObj) -> publish_topup(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_topup(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?TOPUP_VALUES, fun ?MODULE:topup/1),
+    amqp_util:notifications_publish(?NOTIFY_TOPUP, Payload, ContentType).
 
 -spec publish_transaction(api_terms()) -> 'ok'.
 -spec publish_transaction(api_terms(), ne_binary()) -> 'ok'.

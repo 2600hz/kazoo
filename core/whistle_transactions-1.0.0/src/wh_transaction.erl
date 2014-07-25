@@ -42,8 +42,11 @@
 -export([from_json/1]).
 -export([remove/1]).
 -export([save/1]).
+-export([service_save/1]).
 
 -include("whistle_transactions.hrl").
+
+-define(WH_SERVICES_DB, <<"services">>).
 
 -record(wh_transaction, {id :: binary()
                          ,rev :: api_binary()
@@ -489,6 +492,33 @@ save_transaction(#wh_transaction{pvt_account_id=AccountId, pvt_created=Created}=
     end.
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec service_save(transaction()) -> {'ok', wh_json:object()} | {'error', _}.
+service_save(#wh_transaction{}=Transaction) ->
+    case prepare_transaction(Transaction) of
+        {'error', _}=E -> E;
+        #wh_transaction{}=T ->
+            service_save_transaction(T)
+    end.
+
+-spec service_save_transaction(transaction()) -> {'ok', wh_json:object()} | {'error', _}.
+service_save_transaction(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
+    TransactionJObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {'error', _R}=Error ->
+            lager:debug("unable to open account ~s services doc: ~p", [AccountId, _R]),
+            Error;
+        {'ok', JObj} ->
+            Transactions = wh_json:get_value(<<"transactions">>, JObj, []),
+            JObj1 = wh_json:set_value(<<"transactions">>, [TransactionJObj|Transactions], JObj),
+            couch_mgr:save_doc(?WH_SERVICES_DB, JObj1)
+    end.
+
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
@@ -509,6 +539,8 @@ prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 3001 =:= Co
     prepare_manual_addition_transaction(Transaction);
 prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 4000 =:= Code ->
     prepare_rollup_transaction(Transaction);
+prepare_transaction(#wh_transaction{pvt_code=Code}=Transaction) when 3006 =:= Code ->
+    prepare_topup_transaction(Transaction);
 prepare_transaction(Transaction) ->
     Transaction.
 
@@ -549,9 +581,18 @@ prepare_manual_addition_transaction(#wh_transaction{sub_account_id='undefined', 
     {'error', 'sub_accuont_id_missing'};
 prepare_manual_addition_transaction(Transaction) ->
     Transaction.
+
 -spec prepare_rollup_transaction(transaction()) -> transaction().
 prepare_rollup_transaction(Transaction) ->
     Id = <<"monthly_rollup">>,
+    Transaction#wh_transaction{id=Id}.
+
+-spec prepare_topup_transaction(transaction()) -> transaction().
+prepare_topup_transaction(Transaction) ->
+    {_, M, D} = erlang:date(),
+    Month = wh_util:pad_month(M),
+    Day = wh_util:pad_month(D),
+    Id = <<"topup-", Month/binary, Day/binary>>,
     Transaction#wh_transaction{id=Id}.
 
 %%--------------------------------------------------------------------

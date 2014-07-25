@@ -13,6 +13,7 @@
 -export([subscriptions/1]).
 -export([commit_transactions/2]).
 -export([charge_transactions/2]).
+-export([already_charged/2]).
 
 
 -include("../whistle_services.hrl").
@@ -180,16 +181,119 @@ commit_transactions(BillingId, _Transactions, _Try) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), wh_transactions:wh_transactions()) -> 'ok'.
+-spec charge_transactions(ne_binary(), wh_json:objects()) -> wh_transactions:wh_transactions() | [].
+-spec charge_transactions(ne_binary(), wh_json:objects(), dict()) -> wh_transactions:wh_transactions() | [].
 charge_transactions(BillingId, Transactions) ->
-    Amount = lists:foldl(fun(JObj, Acc) ->
-                            wh_json:get_value(<<"pvt_amount">>, JObj, 0) + Acc
-                         end
-                         ,0
-                         ,Transactions
-                        ),
-     braintree_transaction:quick_sale(BillingId, wht_util:units_to_dollars(Amount)),
-     'ok'.
+    charge_transactions(BillingId, Transactions, dict:new()).
+
+charge_transactions(BillingId, [], Dict) ->
+    dict:fold(
+        fun(Code, JObjs, Acc) when Code =:= 3006 ->
+            BinaryCode = wh_util:to_binary(Code),
+            Props = [{<<"purchase_order">>, BinaryCode}],
+            Amount = calculate_amount(JObjs),
+            case already_charged(BillingId, BinaryCode) of
+                'true' -> 'ok';
+                'false' ->
+                    BT = braintree_transaction:quick_sale(
+                            BillingId
+                            ,wht_util:units_to_dollars(Amount)
+                            ,Props),
+                    case handle_quick_sale_response(BT) of
+                        'true' -> Acc;
+                        'false' -> Acc ++ JObjs
+                    end
+            end;
+        (Code, JObjs, Acc) ->
+            Props = [{<<"purchase_order">>, Code}],
+            Amount = calculate_amount(JObjs),
+            BT = braintree_transaction:quick_sale(
+                            BillingId
+                            ,wht_util:units_to_dollars(Amount)
+                            ,Props),
+            case handle_quick_sale_response(BT) of
+                'true' -> Acc;
+                'false' -> Acc ++ JObjs
+            end
+        end
+        ,[]
+        ,Dict
+    );
+charge_transactions(BillingId, [Transaction|Transactions], Dict) ->
+    Code = wh_json:get_value(<<"code">>, Transaction),
+    L = case dict:find(Code, Dict) of
+            'error' -> [];
+            {'ok', Value} -> [Transaction] ++ Value
+        end,
+    charge_transactions(BillingId
+                        ,Transactions
+                        ,dict:store(Code, L, Dict)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec calculate_amount(wh_json:objects()) -> integer().
+-spec calculate_amount(wh_json:objects(), integer()) -> integer().
+calculate_amount(JObjs) ->
+    calculate_amount(JObjs, 0).
+
+calculate_amount([], Amount) -> Amount;
+calculate_amount([JObj|JObjs], Amount) ->
+    calculate_amount(JObjs
+                    ,wh_json:get_value(<<"pvt_amount">>, JObj, 0) + Amount).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_quick_sale_response(_) -> boolean().
+handle_quick_sale_response(BtTransaction) ->
+    Transaction = braintree_transaction:record_to_json(BtTransaction),
+    RespCode = wh_json:get_value(<<"processor_response_code">>, Transaction, 9999),
+    % https://www.braintreepayments.com/docs/ruby/reference/processor_responses
+    wh_util:to_integer(RespCode) < 2000.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec already_charged(ne_binary(), integer()) -> boolean().
+-spec already_charged(ne_binary(), integer(), wh_json:objects()) -> boolean().
+already_charged(BillingId, Code) ->
+    lager:debug("checking if ~s has been charge for transaction of type ~p today", [BillingId, Code]),
+    BtTransactions = braintree_transaction:find_by_customer(BillingId),
+    Transactions = [braintree_transaction:record_to_json(BtTransaction) || BtTransaction <- BtTransactions],
+    already_charged(BillingId, wh_util:to_binary(Code), Transactions).
+
+already_charged(_, _, []) ->
+    lager:debug("no transactions found matching code or made today"),
+    'false';
+already_charged(BillingId, Code, [Transaction|Transactions]) ->
+    TrCode = wh_json:get_value(<<"purchase_order">>, Transaction),
+    case TrCode =:= Code of
+        'false' -> already_charged(BillingId, Code, Transactions);
+        'true' ->
+            <<Year:4/binary, _:1/binary
+              ,Month:2/binary, _:1/binary
+              ,Day:2/binary
+              ,_/binary
+            >> = wh_json:get_value(<<"created_at">>, Transaction),
+            {YearNow, M, D} = erlang:date(),
+            Now = {wh_util:to_binary(YearNow), wh_util:pad_month(M), wh_util:pad_month(D)},
+            case {Year, Month, Day} =:= Now of
+                'true' ->
+                    lager:debug("found transaction matching code and date (~p)", [wh_json:get_value(<<"id">>, Transaction)]),
+                    'true';
+                'false' -> already_charged(BillingId, Code, Transactions)
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
