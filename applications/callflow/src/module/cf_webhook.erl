@@ -31,6 +31,7 @@ handle_webhook(Data, Call) ->
     Hook = set_hook(Data, CallJObj),
     JObj = wh_json:from_list([
                 {<<"Hook">>, Hook}
+                ,{<<"Timestamp">>, wh_util:current_tstamp()}
                 ,{<<"Data">>, CallJObj}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
