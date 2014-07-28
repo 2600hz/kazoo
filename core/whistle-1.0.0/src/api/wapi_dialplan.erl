@@ -66,7 +66,7 @@
 %% API Helpers
 -export([dial_method_single/0
          ,dial_method_simultaneous/0
-         ,terminators/1
+         ,terminators/1, terminators_v/1
          ,local_store_url/2, offsite_store_url/2
         ]).
 
@@ -1111,6 +1111,16 @@ declare_exchanges() ->
 terminators(Bin) when is_binary(Bin) ->
     [<<B>> || <<B>> <= Bin, lists:member(<<B>>, ?ANY_DIGIT)];
 terminators('undefined') -> ?ANY_DIGIT.
+
+-spec terminators_v(api_binaries() | binary()) -> boolean().
+-spec terminator_v(ne_binary()) -> boolean().
+terminators_v(Ts) when is_list(Ts) ->
+    lists:all(fun terminator_v/1, Ts);
+terminators_v(<<>>) -> 'true';
+terminators_v(<<"none">>) -> 'true';
+terminators_v(_) -> 'false'.
+
+terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 -spec local_store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
 local_store_url(Call, JObj) ->

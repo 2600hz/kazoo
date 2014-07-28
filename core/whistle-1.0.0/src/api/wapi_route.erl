@@ -9,8 +9,6 @@
 %%%-------------------------------------------------------------------
 -module(wapi_route).
 
--include_lib("whistle/include/wh_api.hrl").
-
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
          ,win/1, win_v/1
@@ -24,6 +22,9 @@
          ,req_event_type/0
          ,is_actionable_resp/1
         ]).
+
+-include_lib("whistle/include/wh_api.hrl").
+-include("wapi_dialplan.hrl").
 
 %% routing keys to use in the callmgr exchange
 -define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call

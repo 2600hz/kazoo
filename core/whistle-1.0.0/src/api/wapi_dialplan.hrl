@@ -7,30 +7,21 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
+-ifndef(WAPI_DIALPLAN_HRL).
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
 %% For dialplan messages, what does the Invite-Format param accept as values?
 -define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>
-                                  ,[<<"username">>, <<"e164">>
-                                    ,<<"npan">>, <<"1npan">>
-                                    ,<<"route">>, <<"loopback">>
-                                   ]
+                              ,[<<"username">>, <<"e164">>
+                                ,<<"npan">>, <<"1npan">>
+                                ,<<"route">>, <<"loopback">>
+                               ]
                              }).
-
--spec terminators_v(api_binaries() | binary()) -> boolean().
--spec terminator_v(ne_binary()) -> boolean().
-terminators_v(Ts) when is_list(Ts) ->
-    lists:all(fun terminator_v/1, Ts);
-terminators_v(<<>>) -> 'true';
-terminators_v(<<"none">>) -> 'true';
-terminators_v(_) -> 'false'.
-
-terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
--define(IS_TERMINATOR, fun terminators_v/1).
+-define(IS_TERMINATOR, fun wapi_dialplan:terminators_v/1).
 
 -define(UNBRIDGE_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>]).
 -define(OPTIONAL_UNBRIDGE_REQ_HEADERS, [<<"Insert-At">>
@@ -647,3 +638,6 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
                                  ,?INSERT_AT_TUPLE
                                 ]).
 -define(FAX_DETECTION_REQ_TYPES, []).
+
+-define(WAPI_DIALPLAN_HRL, 'true').
+-endif.
