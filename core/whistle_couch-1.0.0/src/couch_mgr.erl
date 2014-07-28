@@ -18,7 +18,8 @@
          ,db_delete/1
          ,db_replicate/1
         ]).
--export([admin_db_info/0, admin_db_info/1
+-export([admin_db_exists/1
+         ,admin_db_info/0, admin_db_info/1
          ,admin_db_compact/1
          ,admin_db_view_cleanup/1
          ,design_info/2
@@ -51,7 +52,7 @@
          ,admin_all_docs/1
          ,all_docs/2
          ,all_design_docs/2, admin_all_docs/2
-         ,copy_doc/3, copy_doc/4, copy_doc/5   
+         ,copy_doc/3, copy_doc/4, copy_doc/5
          ,move_doc/3, move_doc/4, move_doc/5
         ]).
 
@@ -264,6 +265,15 @@ db_exists(DbName) when ?VALID_DBNAME ->
 db_exists(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> db_exists(Db);
+        {'error', _}=E -> E
+    end.
+
+-spec admin_db_exists(text()) -> boolean().
+admin_db_exists(DbName) when ?VALID_DBNAME ->
+    couch_util:db_exists(wh_couch_connections:get_admin_server(), DbName);
+admin_db_exists(DbName) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> admin_db_exists(Db);
         {'error', _}=E -> E
     end.
 
