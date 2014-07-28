@@ -23,8 +23,7 @@
          ,cancel_all_jobs/0
          ,start_auto_compaction/0
          ,stop_auto_compaction/0
-         ,compact_automatically/0
-         ,compact_automatically/1
+         ,compact_automatically/0, compact_automatically/1
 
          %% Inspection
          ,nodes_left/0
@@ -896,7 +895,7 @@ compact('status', _, #state{current_node=N
                       ,{'queued_jobs', queued_jobs_status(Jobs)}
                       ,{'nodes_left', length(Ns)}
                       ,{'dbs_left', length(Dbs)}
-                      ,{'start_time', Start}
+                      ,{'start_time', calendar:now_to_universal_time(Start)}
                       ,{'elapsed_s', wh_util:elapsed_s(Start)}
                      ]}, 'compact', State};
 
@@ -985,7 +984,7 @@ wait('status', _, #state{current_node=N
               ,{'queued_jobs', queued_jobs_status(Jobs)}
               ,{'nodes_left', length(Ns)}
               ,{'dbs_left', length(Dbs)}
-              ,{'start_time', Start}
+              ,{'start_time', calendar:now_to_universal_time(Start)}
               ,{'elapsed_s', wh_util:elapsed_s(Start)}
              ]}
      ,'wait'
