@@ -34,6 +34,7 @@
                 ,transferee :: ne_binary()
                 ,target :: ne_binary()
                 ,call :: whapps_call:call()
+                ,target_call = whapps_call:new() :: whapps_call:call() | 'undefined'
                }).
 
 -spec handle(wh_json:object(), whapps_call:call()) ->
@@ -56,11 +57,13 @@ handle(Data, Call) ->
     [Extension|_] = wh_json:get_value(<<"captures">>, Data),
     lager:debug("ok, now we need to originate to the requested number ~s", [Extension]),
 
-    'ok' = originate_to_extension(Extension, TransferorLeg, Call),
+    Target = originate_to_extension(Extension, TransferorLeg, Call),
+    lager:debug("originating to ~s", [Target]),
 
     try gen_fsm:enter_loop(?MODULE, [], 'attended_wait'
                            ,#state{transferor=TransferorLeg
                                    ,transferee=TransfereeLeg
+                                   ,target=Target
                                    ,call=Call
                                   }
                           )
@@ -109,26 +112,22 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
     end;
 attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
               ,#state{transferor=Transferor
-                      ,transferee=Transferee
-                      ,target='undefined'
-                      ,call=Call
-                     }=State
-             ) when Target =/= Transferor,
-                    Target =/= Transferee
-                    ->
-    lager:debug("target ~s has answered, connect to transferor ~s", [Target, Transferor]),
-    whapps_call_command:pickup(Target, <<"now">>, whapps_call:set_call_id(Transferor, Call)),
-    {'next_state', 'attended_answer', State#state{target=Target}};
-attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
-              ,#state{transferor=Transferor
                       ,target=Target
-                      ,call=Call
+                      ,target_call=TargetCall
                      }=State
              ) ->
     lager:debug("target ~s has answered, connect to transferor ~s", [Target, Transferor]),
-    whapps_call_command:pickup(Target, <<"now">>, whapps_call:set_call_id(Transferor, Call)),
+    lager:debug("target ctrl ~s", [whapps_call:control_queue(TargetCall)]),
+    whapps_call_command:pickup(Transferor, <<"now">>, TargetCall),
     {'next_state', 'attended_answer', State};
-
+attended_wait(?EVENT(Target, <<"originate_uuid">>, Evt), #state{target=Target
+                                                                ,target_call=TargetCall
+                                                               }=State) ->
+    lager:debug("recv control for target ~s", [Target]),
+    {'next_state', 'attended_wait', State#state{target_call=whapps_call:from_originate_uuid(Evt, TargetCall)}};
+attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
+    lager:debug("attanded_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
+    {'next_state', 'attended_wait', State};
 attended_wait(Msg, State) ->
     lager:debug("attended_wait: unhandled msg ~p", [Msg]),
     {'next_state', 'attended_wait', State}.
@@ -167,6 +166,25 @@ partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
                ),
     _ = konami_resume:handle(wh_json:new(), Call),
     {'stop', 'normal', State};
+partial_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
+             ,#state{transferee=Transferee
+                     ,target=Target
+                     ,target_call=TargetCall
+                    }=State
+            ) ->
+    lager:debug("target ~s has answered, connect to transferee ~s", [Target, Transferee]),
+    lager:debug("target ctrl ~s", [whapps_call:control_queue(TargetCall)]),
+    whapps_call_command:pickup(Transferee, <<"now">>, TargetCall),
+    {'stop', 'normal', State};
+partial_wait(?EVENT(Target, <<"originate_uuid">>, Evt), #state{target=Target
+                                                               ,target_call=TargetCall
+                                                              }=State) ->
+    lager:debug("recv control for target ~s", [Target]),
+    {'next_state', 'partial_wait', State#state{target_call=whapps_call:from_originate_uuid(Evt, TargetCall)}};
+
+partial_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
+    lager:debug("partial_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
+    {'next_state', 'partial_wait', State};
 partial_wait(Msg, State) ->
     lager:debug("partial_wait: unhandled msg ~p", [Msg]),
     {'next_state', 'partial_wait', State}.
@@ -199,13 +217,14 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{transferor=Transferor
                       ,transferee=Transferee
                       ,target=Target
-                      ,call=Call
+                      ,target_call=TargetCall
                      }=State
              ) ->
-    lager:debug("transferor ~s hungup, connected transferee ~s and target ~s"
+    lager:debug("transferor ~s hungup, connecting transferee ~s and target ~s"
                 ,[Transferor, Transferee, Target]
                ),
-    whapps_call_command:pickup(Transferee, <<"now">>, whapps_call:set_call_id(Target, Call)),
+    lager:debug("target ctrl ~s", [whapps_call:control_queue(TargetCall)]),
+    whapps_call_command:pickup(Transferee, <<"now">>, TargetCall),
     {'stop', 'normal', State};
 attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target=Target
@@ -219,6 +238,9 @@ attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
                ),
     _ = konami_resume:handle(wh_json:new(), Call),
     {'stop', 'normal', State};
+attended_answer(?EVENT(_CallId, _EventName, _Evt), State) ->
+    lager:debug("attanded_answer: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
+    {'next_state', 'attended_answer', State};
 attended_answer(Msg, State) ->
     lager:debug("attended_answer: unhandled msg ~p", [Msg]),
     {'next_state', 'attended_answer', State}.
@@ -253,7 +275,9 @@ handle_sync_event(_Event, _From, StateName, State) ->
 
 handle_info({'amqp_msg', JObj}, StateName, State) ->
     gen_fsm:send_event(self()
-                       ,?EVENT(wh_json:get_value(<<"Call-ID">>, JObj)
+                       ,?EVENT(wh_json:get_first_defined([<<"Call-ID">>
+                                                          ,<<"Outbound-Call-ID">>
+                                                         ], JObj)
                                ,wh_json:get_value(<<"Event-Name">>, JObj)
                                ,JObj
                               )
@@ -289,41 +313,35 @@ add_transferee_bindings(CallId) ->
                                                     ,'CHANNEL_BRIDGE'
                                                    ]).
 
--spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
--spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call(), wh_json:object()) -> 'ok'.
+-spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
 originate_to_extension(Extension, TransferorLeg, Call) ->
-    case cf_util:lookup_callflow(Extension, whapps_call:account_id(Call)) of
-        {'ok', Flow, 'false'} ->
-            lager:debug("found flow for extension ~s", [Extension]),
-            originate_to_extension(Extension, TransferorLeg, Call, wh_json:get_value(<<"flow">>, Flow));
-        {'ok', _Flow, 'true'} ->
-            lager:debug("only the no-match flow was found, not currently allowed"),
-            {'error', 'no_flow'};
-        {'error', _E} ->
-            lager:debug("unable to find flow for extension ~s", [Extension]),
-            {'error', 'no_flow'}
-    end.
-
-originate_to_extension(_Extension, TransferorLeg, Call, Flow) ->
-    case find_endpoints(Call, Flow) of
-        [] ->
-            lager:debug("no endpoints found in flow ~s: ~p", [_Extension, Flow]),
-            {'error', 'no_endpoints'};
-        Endpoints ->
-            originate_to_endpoints(TransferorLeg, Call, Endpoints)
-    end.
-
--spec originate_to_endpoints(ne_binary(), whapps_call:call(), wh_json:objects()) -> 'ok'.
-originate_to_endpoints(TransferorLeg, Call, Endpoints) ->
     %% don't forget to usurp the callflow exe for the call if C-leg answers and transfers
     MsgId = wh_util:rand_hex_binary(4),
 
+    CCVs = [{<<"Account-ID">>, whapps_call:account_id(Call)}
+            ,{<<"Auto-Answer">>, 'true'}
+            ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+            ,{<<"Authorizing-Type">>, <<"device">>}
+           ],
+
+    Endpoint = update_endpoint(
+                 wh_json:from_list(
+                   [{<<"Invite-Format">>, <<"loopback">>}
+                    ,{<<"Route">>,  Extension}
+                    ,{<<"To-DID">>, Extension}
+                    ,{<<"To-Realm">>, whapps_call:account_realm(Call)}
+                    ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                   ])),
+
     Request = props:filter_undefined(
                 add_call_id(
-                  [{<<"Application-Name">>, <<"park">>}
+                  [{<<"Endpoints">>, [Endpoint]}
+                   ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                    ,{<<"Msg-ID">>, MsgId}
-                   ,{<<"Endpoints">>, update_endpoints(Endpoints)}
-
+                   ,{<<"Continue-On-Fail">>, 'true'}
+                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                   ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+                   ,{<<"Application-Name">>, <<"park">>}
                    ,{<<"Timeout">>, 20000}
 
                    ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
@@ -331,21 +349,18 @@ originate_to_endpoints(TransferorLeg, Call, Endpoints) ->
                    ,{<<"Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
                    ,{<<"Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
 
-                   ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
-                   ,{<<"Continue-On-Fail">>, 'true'}
-                   ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
                    ,{<<"Existing-Call-ID">>, TransferorLeg}
                    ,{<<"Resource-Type">>, <<"originate">>}
                    ,{<<"Originate-Immediate">>, 'true'}
-                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   | wh_api:default_headers(konami_event_listener:queue_name(), ?APP_NAME, ?APP_VERSION)
                   ])),
 
     wh_amqp_worker:cast(Request
                         ,fun wapi_resource:publish_originate_req/1
-                       ).
+                       ),
+    props:get_value(<<"Outbound-Call-ID">>, Request).
 
-update_endpoints(Endpoints) ->
-    [update_endpoint(Endpoint) || Endpoint <- Endpoints].
+-spec update_endpoint(wh_json:object()) -> wh_json:object().
 update_endpoint(Endpoint) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint),
     wh_json:set_value(<<"Custom-Channel-Vars">>
@@ -355,8 +370,9 @@ update_endpoint(Endpoint) ->
                                           ]
                                           ,CCVs
                                          )
-                      ,add_call_id(Endpoint)
+                      ,Endpoint
                      ).
+
 -spec add_call_id(api_terms()) -> api_terms().
 add_call_id([_|_]=Endpoint) ->
     TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
@@ -371,47 +387,16 @@ add_call_id(Endpoint) ->
                                                          ]),
     wh_json:set_value(<<"Outbound-Call-ID">>, TargetCallId, Endpoint).
 
-find_endpoints(Call, Flow) ->
-    case wh_json:get_value(<<"module">>, Flow) of
-        <<"device">> ->
-            Data = wh_json:get_value(<<"data">>, Flow),
-            EndpointId = wh_json:get_value(<<"id">>, Data),
-
-            lager:debug("building device ~s endpoint", [EndpointId]),
-
-            case cf_endpoint:build(EndpointId, Data, new_call(Call)) of
-                {'error', _} -> [];
-                {'ok', Endpoints} -> Endpoints
-            end;
-        <<"user">> ->
-            Data = wh_json:get_value(<<"data">>, Flow),
-            UserId = wh_json:get_value(<<"id">>, Data),
-
-            lager:debug("getting user ~s endpoints", [UserId]),
-
-            cf_user:get_endpoints(UserId, Data, new_call(Call));
-        _ ->
-            case wh_json:get_value([<<"children">>, <<"_">>], Flow) of
-                'undefined' -> [];
-                SubFlow -> find_endpoints(Call, SubFlow)
-            end
-    end.
-
+-spec caller_id_name(whapps_call:call(), ne_binary()) -> ne_binary().
 caller_id_name(Call, CallerLeg) ->
     case whapps_call:call_id(Call) of
         CallerLeg -> whapps_call:caller_id_name(Call);
         _CalleeLeg -> whapps_call:callee_id_name(Call)
     end.
 
+-spec caller_id_number(whapps_call:call(), ne_binary()) -> ne_binary().
 caller_id_number(Call, CallerLeg) ->
     case whapps_call:call_id(Call) of
         CallerLeg -> whapps_call:caller_id_number(Call);
         _CalleeLeg -> whapps_call:callee_id_number(Call)
     end.
-
-new_call(Call) ->
-    whapps_call:exec([{fun whapps_call:set_account_id/2, whapps_call:account_id(Call)}
-                      ,{fun whapps_call:set_account_db/2, whapps_call:account_db(Call)}
-                     ]
-                     ,whapps_call:new()
-                    ).
