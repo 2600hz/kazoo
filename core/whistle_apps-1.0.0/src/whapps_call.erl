@@ -14,6 +14,7 @@
 -export([new/0, put_callid/1]).
 -export([from_route_req/1, from_route_req/2]).
 -export([from_route_win/1, from_route_win/2]).
+-export([from_originate_uuid/1, from_originate_uuid/2]).
 -export([to_json/1, from_json/1, from_json/2]).
 -export([to_proplist/1]).
 -export([is_call/1]).
@@ -42,6 +43,7 @@
 
 -export([set_account_db/2, account_db/1]).
 -export([set_account_id/2, account_id/1]).
+-export([account_realm/1]).
 
 -export([set_switch_nodename/2, switch_nodename/1]).
 -export([set_switch_hostname/2, switch_hostname/1]).
@@ -267,6 +269,17 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                      ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, CCVs, OldFetchId)
                      ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
                      ,language = wh_media_util:prompt_language(AccountId, OldLanguage)
+                    }.
+
+-spec from_originate_uuid(wh_json:object()) -> call().
+-spec from_originate_uuid(wh_json:object(), call()) -> call().
+from_originate_uuid(JObj) ->
+    from_originate_uuid(JObj, new()).
+
+from_originate_uuid(JObj, #whapps_call{}=Call) ->
+    'true' = wapi_resource:originate_uuid_v(JObj),
+    Call#whapps_call{control_q=wh_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj, control_queue(Call))
+                     ,call_id=wh_json:get_value(<<"Outbound-Call-ID">>, JObj, call_id(Call))
                     }.
 
 %%--------------------------------------------------------------------
@@ -636,6 +649,13 @@ set_account_id(AccountId, #whapps_call{}=Call) when is_binary(AccountId) ->
 -spec account_id(call()) -> api_binary().
 account_id(#whapps_call{account_id=AccountId}) ->
     AccountId.
+
+-spec account_realm(call()) -> ne_binary().
+account_realm(#whapps_call{account_id=AccountId
+                           ,account_db=AccountDb
+                          }) ->
+    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    wh_json:get_value(<<"realm">>, Doc).
 
 -spec set_authorizing_id(ne_binary(), call()) -> call().
 set_authorizing_id(AuthorizingId, #whapps_call{}=Call) when is_binary(AuthorizingId) ->
