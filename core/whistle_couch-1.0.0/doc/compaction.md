@@ -124,3 +124,50 @@ The next job in the queue will execute.
 You can also cancel a specific shard being compacted:
 
 `sup couch_compactor_fsm cancel_current_shard`
+
+## Configuration
+
+The compactor's configuration can be found in the `system_config/whistle_couch` doc. The following fields are available for tweaking:
+
+* `autocompaction_check`: Defaults to 60000 ms (60 seconds); how often to check if auto-compaction is enabled, and if so and the compactor isn't running a job, start a compact job.
+* `bigcouch_cookie`: The cookie value of all the BigCouch nodes.
+* `min_data_size`: Defaults to 131072 bytes; the minimum size of a database's data to consider the database for compaction. If the database's data size is under the threshold, the database is skipped.
+* `min_ratio`: Defaults to 1.2; the ratio of disk_size to data_size of a database. The larger the ratio, the more "junk" that is in the database file. Compaction will be skipped for any database under the ratio.
+* `compact_automatically`: Whether to compact automatically.
+* `max_wait_for_compaction_pids`: Defaults to 360000ms (360 seconds); some compaction jobs take a long time. This timer will stop waiting for the shard to finish and move on to the next shard.
+* `max_compacting_shards`: Defaults to 2; the number of shards to compact in parallel. This will increase disk activity. Tread carefully increasing it.
+* `max_compacting_views`: Defaults to 2; the number of views to compact in parallel. Same caveat as `max_compacting_shard`.
+* `sleep_between_poll`: Defaults to 3000ms (3 seconds); Kazoo must poll the BigCouch node to know when a database has finished compacting. This setting is how long to wait between polling.
+* `sleep_between_compaction`: Defaults to 60000ms (60 seconds); how long to sleep between compaction jobs. Increase if BigCouch nodes are being impacted by compaction (will allow them to catch up).
+* `sleep_between_views`: Defaults to 2000ms; typically lower impact, so no need to wait as long. How long to wait between view compactions.
+
+## Troubleshooting
+
+### Failure to connect
+
+If the Kazoo node can't talk to the BigCouch node directly (using Distributed Erlang), this typically means the BigCouch cookie isn't set properly in the system_config.
+
+Check the cookie:
+
+`sup whapps_config get whistle_couch bigcouch_cookie`
+
+If it is returning an improper value, set it to the proper cookie:
+
+`sup whapps_config set whistle_couch bigcouch_cookie [cookie_value]`
+
+### Warning while compacting
+
+When you manually compact a db, especially if the Kazoo node has recently started up, you may see warnings like:
+
+    5> couch_compactor_fsm:compact_db(<<"bigcouch@db01.somehost.com">>,<<"some_db">>).
+    =ERROR REPORT==== 16-May-2012::23:39:09 ===
+    global: 'whistle_con_1337211446@whapps.somehost.com' failed to connect to 'bigcouch@db01.somehost.com'
+    =ERROR REPORT==== 16-May-2012::23:39:09 ===
+    global: 'whistle_con_1337211446@whapps.somehost.com' failed to connect to 'bigcouch@db02.somehost.com'
+    =ERROR REPORT==== 16-May-2012::23:39:10 ===
+    global: 'whistle_con_1337211446@whapps.somehost.com' failed to connect to 'bigcouch@db03.somehost.com'
+    =ERROR REPORT==== 16-May-2012::23:39:10 ===
+    global: 'whistle_con_1337211446@whapps.somehost.com' failed to connect to 'bigcouch@db04.somehost.com'
+    done
+
+These are ignorable and are part of the initial connection between a Kazoo and BigCouch node.
