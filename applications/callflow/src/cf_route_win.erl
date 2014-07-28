@@ -239,7 +239,7 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
     Params = wh_json:from_list([{<<"can_call_self">>, 'true'}]),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'ok', Endpoints} ->
-            lager:debug("trying to send metaflow for a-leg endpiont ~s", [EndpointId]),
+            lager:debug("trying to send metaflow for a-leg endpoint ~s", [EndpointId]),
             cf_util:maybe_start_metaflows(Call, Endpoints);
         {'error', _E} -> lager:debug("failed to build endpoint ~s: ~p", [EndpointId, _E])
     end.
