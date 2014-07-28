@@ -13,6 +13,8 @@
          ,add_call_binding/1, add_call_binding/2
          ,rm_call_binding/1, rm_call_binding/2
          ,handle_call_event/2
+         ,handle_originate_event/2
+         ,queue_name/0
         ]).
 
 -export([init/1
@@ -30,10 +32,15 @@
 -record(state, {bindings = dict:new() :: dict()}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, []).
+-define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
                       ,[{<<"call_event">>, <<"*">>}]
                      }
+                     ,{{?MODULE, 'handle_originate_event'}
+                       ,[{<<"resource">>, <<"*">>}
+                         ,{<<"error">>, <<"*">>}
+                        ]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -117,6 +124,15 @@ handle_call_event(JObj, _Props, Event) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     relay_to_fsms(CallId, Event, JObj),
     relay_to_pids(CallId, JObj).
+
+-spec handle_originate_event(wh_json:object(), wh_proplist()) -> any().
+handle_originate_event(JObj, _Props) ->
+    CallId = wh_json:get_first_defined([<<"Call-ID">>, <<"Outbound-Call-ID">>], JObj),
+    lager:debug("originate: ~p", [JObj]),
+    relay_to_pids(CallId, JObj).
+
+-spec queue_name() -> ne_binary().
+queue_name() -> gen_listener:queue_name(?MODULE).
 
 -spec relay_to_fsms(ne_binary(), ne_binary(), wh_json:object()) -> any().
 relay_to_fsms(CallId, Event, JObj) ->
