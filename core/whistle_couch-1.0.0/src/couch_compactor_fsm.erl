@@ -1576,6 +1576,7 @@ queued_jobs_status(Jobs) ->
         Js -> [[{'job', J}, {'requested_by', P}] || {J, P, _} <- Js]
     end.
 
+-spec compact_automatically() -> boolean().
 compact_automatically() ->
     Default = case wh_cache:fetch_local(?WH_COUCH_CACHE, <<"compact_automatically">>) of
                   {'ok', V} -> wh_util:is_true(V);
