@@ -422,6 +422,11 @@ get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
         'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
         'true' -> call_pickup(Node, UUID, JObj)
     end;
+get_fs_app(Node, UUID, JObj, <<"connect_leg">>) ->
+    case wapi_dialplan:connect_leg_v(JObj) of
+        'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
+        'true' -> connect_leg(Node, UUID, JObj)
+    end;
 
 get_fs_app(Node, UUID, JObj, <<"eavesdrop">>) ->
     case wapi_dialplan:eavesdrop_v(JObj) of
@@ -592,7 +597,19 @@ eavesdrop(Node, UUID, JObj) ->
 call_pickup(Node, UUID, JObj) ->
     case prepare_app(Node, UUID, JObj) of
         {'execute', AppNode, AppUUID, AppJObj, AppTarget} ->
-            get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget);
+            get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget, <<"intercept">>);
+        Other ->
+            Other
+    end.
+
+-spec connect_leg(atom(), ne_binary(), wh_json:object()) ->
+                         {ne_binary(), ne_binary()} |
+                         {'return', ne_binary()} |
+                         {'error', ne_binary()}.
+connect_leg(Node, UUID, JObj) ->
+    case prepare_app(Node, UUID, JObj) of
+        {'execute', AppNode, AppUUID, AppJObj, AppTarget} ->
+            get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget, <<"call_pickup">>);
         Other ->
             Other
     end.
@@ -718,9 +735,9 @@ prepare_app_usurpers(Node, UUID) ->
                         ,fun(C) -> wapi_call:publish_usurp_publisher(UUID, C) end
                        ).
 
--spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
+-spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
-get_call_pickup_app(Node, UUID, JObj, Target) ->
+get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
     ExportsApi = [{<<"Park-After-Pickup">>, <<"false">>}
                   ,{<<"Continue-On-Fail">>, <<"true">>}
                   ,{<<"Continue-On-Cancel">>, <<"true">>}
@@ -746,7 +763,7 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
     ecallmgr_util:export(Node, UUID, Exports),
-    {<<"intercept">>, Target}.
+    {Command, Target}.
 
 -spec get_eavesdrop_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.

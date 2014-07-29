@@ -115,7 +115,8 @@ send_cmd(Node, _UUID, "broadcast", Args) ->
     Resp = freeswitch:api(Node, 'uuid_broadcast', wh_util:to_list(iolist_to_binary(Args))),
     lager:debug("broadcast resulted in: ~p", [Resp]),
     Resp;
-send_cmd(Node, _UUID, "call_pickup", Args) ->
+send_cmd(Node, UUID, "call_pickup", Target) ->
+    Args = iolist_to_binary([UUID, " ", Target]),
     lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
     freeswitch:api(Node, 'uuid_bridge', wh_util:to_list(Args));
 send_cmd(Node, UUID, "hangup", _) ->

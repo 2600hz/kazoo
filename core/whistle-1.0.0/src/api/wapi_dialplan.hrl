@@ -398,6 +398,23 @@
                                 ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
                                ]).
 
+%% Call Pickup
+-define(CONNECT_LEG_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Target-Call-ID">>]).
+-define(OPTIONAL_CONNECT_LEG_REQ_HEADERS, [<<"Insert-At">>, <<"Unbridged-Only">>, <<"Unanswered-Only">>
+                                           ,<<"Other-Leg">>
+                                           ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
+                                           ,<<"Park-After-Pickup">> %% Will park either leg after cancel
+                                           ,<<"Move-Channel-If-Necessary">>
+                                          ]).
+-define(CONNECT_LEG_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                                 ,{<<"Event-Name">>, <<"command">>}
+                                 ,{<<"Application-Name">>, <<"connect_leg">>}
+                                 ,?INSERT_AT_TUPLE
+                                ]).
+-define(CONNECT_LEG_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}
+                                ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
+                               ]).
+
 %% Eavesdrop
 -define(EAVESDROP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Target-Call-ID">>]).
 -define(OPTIONAL_EAVESDROP_REQ_HEADERS, [<<"Insert-At">>, <<"Enable-DTMF">>

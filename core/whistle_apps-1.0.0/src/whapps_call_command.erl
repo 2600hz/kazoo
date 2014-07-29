@@ -28,6 +28,10 @@
          ,pickup_command/2, pickup_command/3, pickup_command/4, pickup_command/5, pickup_command/6
          ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
         ]).
+-export([connect_leg/2, connect_leg/3, connect_leg/4, connect_leg/5, connect_leg/6
+         ,connect_leg_command/2, connect_leg_command/3, connect_leg_command/4, connect_leg_command/5, connect_leg_command/6
+         ,b_connect_leg/2, b_connect_leg/3, b_connect_leg/4, b_connect_leg/5, b_connect_leg/6
+        ]).
 -export([redirect/2
          ,redirect/3
         ]).
@@ -504,6 +508,81 @@ b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     wait_for_channel_unbridge().
 b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
+    wait_for_channel_unbridge().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec connect_leg(ne_binary(), whapps_call:call()) -> 'ok'.
+-spec connect_leg(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+-spec connect_leg(ne_binary(), api_binary(), boolean(), whapps_call:call()) -> 'ok'.
+-spec connect_leg(ne_binary(), api_binary(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+-spec connect_leg(ne_binary(), api_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+
+connect_leg(TargetCallId, Call) ->
+    Command = connect_leg_command(TargetCallId, Call),
+    send_command(Command, Call).
+
+connect_leg(TargetCallId, Insert, Call) ->
+    Command = connect_leg_command(TargetCallId, Insert, Call),
+    send_command(Command, Call).
+
+connect_leg(TargetCallId, Insert, ContinueOnFail, Call) ->
+    Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, Call),
+    send_command(Command, Call).
+
+connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
+    send_command(Command, Call).
+
+connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterConnect_Leg, Call) ->
+    Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterConnect_Leg, Call),
+    send_command(Command, Call).
+
+connect_leg_command(TargetCallId, Call) ->
+    connect_leg_command(TargetCallId, <<"tail">>, Call).
+connect_leg_command(TargetCallId, Insert, Call) ->
+    connect_leg_command(TargetCallId, Insert, 'false', Call).
+connect_leg_command(TargetCallId, Insert, ContinueOnFail, Call) ->
+    connect_leg_command(TargetCallId, Insert, ContinueOnFail, 'true', Call).
+connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
+connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    [{<<"Application-Name">>, <<"connect_leg">>}
+     ,{<<"Target-Call-ID">>, TargetCallId}
+     ,{<<"Insert-At">>, Insert}
+     ,{<<"Continue-On-Fail">>, ContinueOnFail}
+     ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+     ,{<<"Park-After-Pickup">>, ParkAfterPickup}
+     ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+    ].
+
+-spec b_connect_leg(ne_binary(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+-spec b_connect_leg(ne_binary(), ne_binary(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+-spec b_connect_leg(ne_binary(), ne_binary(), boolean(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+-spec b_connect_leg(ne_binary(), ne_binary(), boolean(), boolean(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+-spec b_connect_leg(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+b_connect_leg(TargetCallId, Call) ->
+    connect_leg(TargetCallId, Call),
+    wait_for_channel_unbridge().
+b_connect_leg(TargetCallId, Insert, Call) ->
+    connect_leg(TargetCallId, Insert, Call),
+    wait_for_channel_unbridge().
+b_connect_leg(TargetCallId, Insert, ContinueOnFail, Call) ->
+    connect_leg(TargetCallId, Insert, ContinueOnFail, Call),
+    wait_for_channel_unbridge().
+b_connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
+    wait_for_channel_unbridge().
+b_connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     wait_for_channel_unbridge().
 
 %%--------------------------------------------------------------------
