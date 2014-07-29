@@ -513,7 +513,7 @@ build_originate_args(Action, #state{uuid=UUID}=State, JObj, FetchId) ->
             'undefined';
         [Endpoint] ->
             lager:debug("only one endpoint, don't create per-endpoint UUIDs"),
-            maybe_start_call_handlers(UUID, State#state{control_pid='undefined'}),
+            maybe_start_call_handlers(UUID, State),
             build_originate_args_from_endpoints(Action, [update_endpoint(Endpoint, UUID)], JObj, FetchId);
         Endpoints ->
             lager:debug("multiple endpoints defined, assigning uuids to each"),
