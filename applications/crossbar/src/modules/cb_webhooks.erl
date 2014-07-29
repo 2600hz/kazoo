@@ -165,7 +165,13 @@ update(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST
+                           ,[{'startkey', [cb_context:account_id(Context)]}
+                             ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
+                            ]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
 
 summary_attempts(Context) ->
     summary_attempts(Context, 'undefined').
