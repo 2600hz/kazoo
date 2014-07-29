@@ -324,6 +324,8 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
             ,{<<"Authorizing-Type">>, <<"device">>}
            ],
 
+    TargetCallId = create_call_id(),
+
     Endpoint = update_endpoint(
                  wh_json:from_list(
                    [{<<"Invite-Format">>, <<"loopback">>}
@@ -331,34 +333,35 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                     ,{<<"To-DID">>, Extension}
                     ,{<<"To-Realm">>, whapps_call:account_realm(Call)}
                     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                    ,{<<"Outbound-Call-ID">>, TargetCallId}
                    ])),
 
     Request = props:filter_undefined(
-                add_call_id(
-                  [{<<"Endpoints">>, [Endpoint]}
-                   ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-                   ,{<<"Msg-ID">>, MsgId}
-                   ,{<<"Continue-On-Fail">>, 'true'}
-                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-                   ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
-                   ,{<<"Application-Name">>, <<"park">>}
-                   ,{<<"Timeout">>, 20000}
+                [{<<"Endpoints">>, [Endpoint]}
+                 ,{<<"Outbound-Call-ID">>, TargetCallId}
+                 ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+                 ,{<<"Msg-ID">>, MsgId}
+                 ,{<<"Continue-On-Fail">>, 'true'}
+                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                 ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+                 ,{<<"Application-Name">>, <<"park">>}
+                 ,{<<"Timeout">>, 20000}
 
-                   ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
-                   ,{<<"Outbound-Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
-                   ,{<<"Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
-                   ,{<<"Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
+                 ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
+                 ,{<<"Outbound-Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
+                 ,{<<"Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
+                 ,{<<"Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
 
-                   ,{<<"Existing-Call-ID">>, TransferorLeg}
-                   ,{<<"Resource-Type">>, <<"originate">>}
-                   ,{<<"Originate-Immediate">>, 'true'}
-                   | wh_api:default_headers(konami_event_listener:queue_name(), ?APP_NAME, ?APP_VERSION)
-                  ])),
+                 ,{<<"Existing-Call-ID">>, TransferorLeg}
+                 ,{<<"Resource-Type">>, <<"originate">>}
+                 ,{<<"Originate-Immediate">>, 'true'}
+                 | wh_api:default_headers(konami_event_listener:queue_name(), ?APP_NAME, ?APP_VERSION)
+                ]),
 
     wh_amqp_worker:cast(Request
                         ,fun wapi_resource:publish_originate_req/1
                        ),
-    props:get_value(<<"Outbound-Call-ID">>, Request).
+    TargetCallId.
 
 -spec update_endpoint(wh_json:object()) -> wh_json:object().
 update_endpoint(Endpoint) ->
@@ -373,19 +376,16 @@ update_endpoint(Endpoint) ->
                       ,Endpoint
                      ).
 
--spec add_call_id(api_terms()) -> api_terms().
-add_call_id([_|_]=Endpoint) ->
+create_call_id() ->
     TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
     konami_event_listener:add_call_binding(TargetCallId, ['CHANNEL_ANSWER'
                                                           ,'CHANNEL_DESTROY'
+                                                          ,'CHANNEL_CREATE'
                                                          ]),
-    props:set_value(<<"Outbound-Call-ID">>, TargetCallId, Endpoint);
-add_call_id(Endpoint) ->
-    TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
-    konami_event_listener:add_call_binding(TargetCallId, ['CHANNEL_ANSWER'
-                                                          ,'CHANNEL_DESTROY'
-                                                         ]),
-    wh_json:set_value(<<"Outbound-Call-ID">>, TargetCallId, Endpoint).
+
+
+
+    TargetCallId.
 
 -spec caller_id_name(whapps_call:call(), ne_binary()) -> ne_binary().
 caller_id_name(Call, CallerLeg) ->
