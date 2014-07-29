@@ -738,9 +738,10 @@ prepare_app_usurpers(Node, UUID) ->
 -spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
-    ExportsApi = [{<<"Park-After-Pickup">>, <<"false">>}
-                  ,{<<"Continue-On-Fail">>, <<"true">>}
+    ExportsApi = [{<<"Continue-On-Fail">>, <<"true">>}
                   ,{<<"Continue-On-Cancel">>, <<"true">>}
+                  ,{<<"Park-After-Pickup">>, <<"false">>}
+                  ,{<<"Hangup-After-Pickup">>, <<"false">>}
                  ],
 
     SetApi = [{<<"Unbridged-Only">>, 'undefined', <<"intercept_unbridged_only">>}
