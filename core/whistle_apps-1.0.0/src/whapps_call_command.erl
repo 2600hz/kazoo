@@ -25,6 +25,7 @@
 
 -export([audio_macro/2]).
 -export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
+         ,pickup_command/2, pickup_command/3, pickup_command/4, pickup_command/5, pickup_command/6
          ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
         ]).
 -export([redirect/2
@@ -53,6 +54,7 @@
          ,hold_command/1, hold_command/2
          ,b_hold/1, b_hold/2, b_hold/3
          ,park/1
+         ,park_command/1
         ]).
 -export([play/2, play/3, play/4
          ,play_command/2, play_command/3, play_command/4
@@ -439,23 +441,44 @@ response(Code, Cause, Media, Call) ->
 -spec pickup(ne_binary(), api_binary(), boolean(), whapps_call:call()) -> 'ok'.
 -spec pickup(ne_binary(), api_binary(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
 -spec pickup(ne_binary(), api_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+
 pickup(TargetCallId, Call) ->
-    pickup(TargetCallId, <<"tail">>, Call).
-pickup(TargetCallId, Insert, Call) ->
-    pickup(TargetCallId, Insert, 'false', Call).
-pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
-    pickup(TargetCallId, Insert, ContinueOnFail, 'true', Call).
-pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
-    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
-pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
-    Command = [{<<"Application-Name">>, <<"call_pickup">>}
-               ,{<<"Target-Call-ID">>, TargetCallId}
-               ,{<<"Insert-At">>, Insert}
-               ,{<<"Continue-On-Fail">>, ContinueOnFail}
-               ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
-               ,{<<"Park-After-Pickup">>, ParkAfterPickup}
-              ],
+    Command = pickup_command(TargetCallId, Call),
     send_command(Command, Call).
+
+pickup(TargetCallId, Insert, Call) ->
+    Command = pickup_command(TargetCallId, Insert, Call),
+    send_command(Command, Call).
+
+pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
+    Command = pickup_command(TargetCallId, Insert, ContinueOnFail, Call),
+    send_command(Command, Call).
+
+pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    Command = pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
+    send_command(Command, Call).
+
+pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    Command = pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
+    send_command(Command, Call).
+
+pickup_command(TargetCallId, Call) ->
+    pickup_command(TargetCallId, <<"tail">>, Call).
+pickup_command(TargetCallId, Insert, Call) ->
+    pickup_command(TargetCallId, Insert, 'false', Call).
+pickup_command(TargetCallId, Insert, ContinueOnFail, Call) ->
+    pickup_command(TargetCallId, Insert, ContinueOnFail, 'true', Call).
+pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
+pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    [{<<"Application-Name">>, <<"call_pickup">>}
+     ,{<<"Target-Call-ID">>, TargetCallId}
+     ,{<<"Insert-At">>, Insert}
+     ,{<<"Continue-On-Fail">>, ContinueOnFail}
+     ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+     ,{<<"Park-After-Pickup">>, ParkAfterPickup}
+     ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+    ].
 
 -spec b_pickup(ne_binary(), whapps_call:call()) ->
                       {'ok', wh_json:object()}.
@@ -933,10 +956,17 @@ b_hold(Timeout, MOH, Call) ->
 
 -spec park(whapps_call:call()) -> 'ok'.
 park(Call) ->
-    Command = [{<<"Application-Name">>, <<"park">>}
-               ,{<<"Insert-At">>, <<"now">>}
-              ],
+    Command = park_command(Call),
     send_command(Command, Call).
+
+park_command(<<_/binary>> = CallId) ->
+    wh_json:from_list(
+      [{<<"Application-Name">>, <<"park">>}
+       ,{<<"Insert-At">>, <<"now">>}
+       ,{<<"Call-ID">>, CallId}
+      ]);
+park_command(Call) ->
+    park_command(whapps_call:call_id(Call)).
 
 %%--------------------------------------------------------------------
 %% @public
