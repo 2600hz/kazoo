@@ -125,6 +125,20 @@ attended_wait(?EVENT(Target, <<"originate_uuid">>, Evt), #state{target=Target
                                                                }=State) ->
     lager:debug("recv control for target ~s", [Target]),
     {'next_state', 'attended_wait', State#state{target_call=whapps_call:from_originate_uuid(Evt, TargetCall)}};
+attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
+              ,#state{transferor=Transferor
+                      ,transferee=Transferee
+                      ,target=Target
+                     }=State
+             ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+        Target ->
+            lager:debug("transferor and target are connected"),
+            {'next_state', 'attended_answer', State};
+        Transferee ->
+            lager:debug("transferor and transferee have reconnected"),
+            {'stop', 'normal', State}
+    end;
 attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
     lager:debug("attanded_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
     {'next_state', 'attended_wait', State};
@@ -369,7 +383,6 @@ update_endpoint(Endpoint) ->
     wh_json:set_value(<<"Custom-Channel-Vars">>
                       ,wh_json:set_values([{<<"Hangup-After-Pickup">>, 'false'}
                                            ,{<<"Park-After-Pickup">>, 'true'}
-                                           ,{<<"Unbridged-Only">>, 'true'}
                                           ]
                                           ,CCVs
                                          )
