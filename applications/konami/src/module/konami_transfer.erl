@@ -51,8 +51,9 @@ handle(Data, Call) ->
     add_transferor_bindings(TransferorLeg),
     add_transferee_bindings(TransfereeLeg),
 
-    lager:debug("unbridge and put transferee ~s on hold", [TransfereeLeg]),
-    konami_hold:handle(Data, Call),
+    lager:debug("unbridge and put transferee ~s into park", [TransfereeLeg]),
+    ParkCommand = whapps_call_command:park_command(TransfereeLeg),
+    whapps_call_command:send_command(ParkCommand, Call),
 
     [Extension|_] = wh_json:get_value(<<"captures">>, Data),
     lager:debug("ok, now we need to originate to the requested number ~s", [Extension]),
