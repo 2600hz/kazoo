@@ -352,15 +352,14 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
 
     TargetCallId = create_call_id(),
 
-    Endpoint = update_endpoint(
-                 wh_json:from_list(
-                   [{<<"Invite-Format">>, <<"loopback">>}
-                    ,{<<"Route">>,  Extension}
-                    ,{<<"To-DID">>, Extension}
-                    ,{<<"To-Realm">>, whapps_call:account_realm(Call)}
-                    ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-                    ,{<<"Outbound-Call-ID">>, TargetCallId}
-                   ])),
+    Endpoint = wh_json:from_list(
+                 [{<<"Invite-Format">>, <<"loopback">>}
+                  ,{<<"Route">>,  Extension}
+                  ,{<<"To-DID">>, Extension}
+                  ,{<<"To-Realm">>, whapps_call:account_realm(Call)}
+                  ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                  ,{<<"Outbound-Call-ID">>, TargetCallId}
+                 ]),
 
     Request = props:filter_undefined(
                 [{<<"Endpoints">>, [Endpoint]}
@@ -388,18 +387,6 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                         ,fun wapi_resource:publish_originate_req/1
                        ),
     TargetCallId.
-
--spec update_endpoint(wh_json:object()) -> wh_json:object().
-update_endpoint(Endpoint) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, Endpoint),
-    wh_json:set_value(<<"Custom-Channel-Vars">>
-                      ,wh_json:set_values([{<<"Hangup-After-Pickup">>, 'false'}
-                                           ,{<<"Park-After-Pickup">>, 'true'}
-                                          ]
-                                          ,CCVs
-                                         )
-                      ,Endpoint
-                     ).
 
 create_call_id() ->
     TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
@@ -432,6 +419,5 @@ connect_to_target(Leg, Call) ->
                ,{<<"Continue-On-Fail">>, 'true'}
                ,{<<"Continue-On-Cancel">>, 'true'}
                ,{<<"Park-After-Pickup">>, 'true'}
-               ,{<<"Hangup-After-Pickup">>, 'false'}
               ],
     whapps_call_command:send_command(Command, Call).
