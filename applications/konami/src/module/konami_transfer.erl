@@ -120,9 +120,11 @@ attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
     lager:debug("target ctrl ~s", [whapps_call:control_queue(TargetCall)]),
     whapps_call_command:pickup(Transferor, <<"now">>, TargetCall),
     {'next_state', 'attended_answer', State};
-attended_wait(?EVENT(Target, <<"originate_uuid">>, Evt), #state{target=Target
-                                                                ,target_call=TargetCall
-                                                               }=State) ->
+attended_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
+              ,#state{target=Target
+                      ,target_call=TargetCall
+                     }=State
+             ) ->
     lager:debug("recv control for target ~s", [Target]),
     {'next_state', 'attended_wait', State#state{target_call=whapps_call:from_originate_uuid(Evt, TargetCall)}};
 attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
@@ -190,9 +192,11 @@ partial_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
     lager:debug("target ctrl ~s", [whapps_call:control_queue(TargetCall)]),
     whapps_call_command:pickup(Transferee, <<"now">>, TargetCall),
     {'stop', 'normal', State};
-partial_wait(?EVENT(Target, <<"originate_uuid">>, Evt), #state{target=Target
-                                                               ,target_call=TargetCall
-                                                              }=State) ->
+partial_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
+             ,#state{target=Target
+                     ,target_call=TargetCall
+                    }=State
+            ) ->
     lager:debug("recv control for target ~s", [Target]),
     {'next_state', 'partial_wait', State#state{target_call=whapps_call:from_originate_uuid(Evt, TargetCall)}};
 
