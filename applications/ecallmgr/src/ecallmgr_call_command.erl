@@ -740,12 +740,12 @@ prepare_app_usurpers(Node, UUID) ->
 get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
     ExportsApi = [{<<"Continue-On-Fail">>, <<"true">>}
                   ,{<<"Continue-On-Cancel">>, <<"true">>}
-                  ,{<<"Park-After-Pickup">>, <<"false">>}
-                  ,{<<"Hangup-After-Pickup">>, <<"false">>}
                  ],
 
     SetApi = [{<<"Unbridged-Only">>, 'undefined', <<"intercept_unbridged_only">>}
               ,{<<"Unanswered-Only">>, 'undefined', <<"intercept_unanswered_only">>}
+              ,{<<"Park-After-Pickup">>, <<"false">>}
+              ,{<<"Hangup-After-Pickup">>, <<"false">>}
              ],
 
     Exports = [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}
