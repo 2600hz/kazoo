@@ -141,7 +141,10 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
             {'next_state', 'attended_answer', State};
         Transferee ->
             lager:debug("transferor and transferee have reconnected"),
-            {'stop', 'normal', State}
+            {'stop', 'normal', State};
+        _CallId ->
+            lager:debug("transferor ~s bridged to ~s", [Transferor, _CallId]),
+            {'next_state', 'attended_answer', State}
     end;
 attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
     lager:debug("attanded_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
@@ -225,7 +228,10 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
             {'next_state', 'attended_answer', State};
         Transferee ->
             lager:debug("transferor and transferee have reconnected"),
-            {'stop', 'normal', State}
+            {'stop', 'normal', State};
+        _CallId ->
+            lager:debug("transferor ~s bridged to ~s", [Transferor, _CallId]),
+            {'next_state', 'attended_answer', State}
     end;
 attended_answer(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
                 ,#state{transferee=Transferee}=State
@@ -249,14 +255,14 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
 attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target=Target
                       ,transferor=_Transferor
-                      ,transferee=_Transferee
+                      ,transferee=Transferee
                       ,call=Call
                      }=State
              ) ->
     lager:debug("target ~s hungup, reconnecting transferor ~s to transferee ~s"
-                ,[Target, _Transferor, _Transferee]
+                ,[Target, _Transferor, Transferee]
                ),
-    _ = konami_resume:handle(wh_json:new(), Call),
+    connect_to_target(Transferee, Call),
     {'stop', 'normal', State};
 attended_answer(?EVENT(_CallId, _EventName, _Evt), State) ->
     lager:debug("attanded_answer: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
@@ -419,4 +425,13 @@ caller_id_number(Call, CallerLeg) ->
 
 -spec connect_to_target(ne_binary(), whapps_call:call()) -> 'ok'.
 connect_to_target(Leg, Call) ->
-    whapps_call_command:connect_leg(Leg, <<"now">>, 'true', 'true', 'true', Call).
+    Command = [{<<"Application-Name">>, <<"connect_leg">>}
+               ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+               ,{<<"Target-Call-ID">>, Leg}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Continue-On-Fail">>, 'true'}
+               ,{<<"Continue-On-Cancel">>, 'true'}
+               ,{<<"Park-After-Pickup">>, 'true'}
+               ,{<<"Hangup-After-Pickup">>, 'false'}
+              ],
+    whapps_call_command:send_command(Command, Call).
