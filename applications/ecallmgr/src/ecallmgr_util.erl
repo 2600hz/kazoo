@@ -389,6 +389,7 @@ set(Node, UUID, [{_, _}|_]=Props) ->
                            end, [], Props),
     ecallmgr_fs_command:set(Node, UUID, Multiset).
 
+set_fold(_Node, _UUID, {_Key, 'undefined'}, Acc) -> Acc;
 set_fold(Node, UUID, {<<"Hold-Media">>, Value}, Acc) ->
     Media = media_path(Value, 'extant', UUID, wh_json:new()),
     AppArg = wh_util:to_list(<<"hold_music=", Media/binary>>),

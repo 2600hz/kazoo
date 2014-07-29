@@ -744,8 +744,8 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
 
     SetApi = [{<<"Unbridged-Only">>, 'undefined', <<"intercept_unbridged_only">>}
               ,{<<"Unanswered-Only">>, 'undefined', <<"intercept_unanswered_only">>}
-              ,{<<"Park-After-Pickup">>, <<"false">>}
-              ,{<<"Hangup-After-Pickup">>, <<"false">>}
+              ,{<<"Park-After-Pickup">>, 'undefined'}
+              ,{<<"Hangup-After-Pickup">>, 'undefined'}
              ],
 
     Exports = [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}
