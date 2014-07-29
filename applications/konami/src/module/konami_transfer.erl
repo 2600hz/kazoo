@@ -52,8 +52,9 @@ handle(Data, Call) ->
     add_transferee_bindings(TransfereeLeg),
 
     lager:debug("unbridge and put transferee ~s into park", [TransfereeLeg]),
-    ParkCommand = whapps_call_command:park_command(TransfereeLeg),
-    whapps_call_command:send_command(ParkCommand, Call),
+    whapps_call_command:unbridge(Call),
+    %% ParkCommand = whapps_call_command:park_command(TransfereeLeg),
+    %% whapps_call_command:send_command(ParkCommand, Call),
 
     [Extension|_] = wh_json:get_value(<<"captures">>, Data),
     lager:debug("ok, now we need to originate to the requested number ~s", [Extension]),
@@ -119,7 +120,7 @@ attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
              ) ->
     lager:debug("target ~s has answered, connect to transferor ~s", [Target, Transferor]),
     lager:debug("target ctrl ~s", [whapps_call:control_queue(TargetCall)]),
-    whapps_call_command:pickup(Transferor, <<"now">>, TargetCall),
+    connect_to_target(Transferor, TargetCall),
     {'next_state', 'attended_answer', State};
 attended_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
               ,#state{target=Target
@@ -163,13 +164,13 @@ partial_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{transferor=Transferor
                      ,transferee=Transferee
                      ,target=Target
-                     ,call=Call
+                     ,target_call=TargetCall
                     }=State
             ) ->
     lager:debug("transferor ~s hungup, connected transferee ~s and target ~s"
                 ,[Transferor, Transferee, Target]
                ),
-    whapps_call_command:pickup(Transferee, whapps_call:set_call_id(Target, Call)),
+    connect_to_target(Transferee, TargetCall),
     {'stop', 'normal', State};
 partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{target=Target
@@ -191,7 +192,7 @@ partial_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
             ) ->
     lager:debug("target ~s has answered, connect to transferee ~s", [Target, Transferee]),
     lager:debug("target ctrl ~s", [whapps_call:control_queue(TargetCall)]),
-    whapps_call_command:pickup(Transferee, <<"now">>, TargetCall),
+    connect_to_target(Transferee, TargetCall),
     {'stop', 'normal', State};
 partial_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
              ,#state{target=Target
@@ -243,7 +244,7 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
                 ,[Transferor, Transferee, Target]
                ),
     lager:debug("target ctrl ~s", [whapps_call:control_queue(TargetCall)]),
-    whapps_call_command:pickup(Transferee, <<"now">>, TargetCall),
+    connect_to_target(Transferee, TargetCall),
     {'stop', 'normal', State};
 attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target=Target
@@ -400,9 +401,6 @@ create_call_id() ->
                                                           ,'CHANNEL_DESTROY'
                                                           ,'CHANNEL_CREATE'
                                                          ]),
-
-
-
     TargetCallId.
 
 -spec caller_id_name(whapps_call:call(), ne_binary()) -> ne_binary().
@@ -418,3 +416,7 @@ caller_id_number(Call, CallerLeg) ->
         CallerLeg -> whapps_call:caller_id_number(Call);
         _CalleeLeg -> whapps_call:callee_id_number(Call)
     end.
+
+-spec connect_to_target(ne_binary(), whapps_call:call()) -> 'ok'.
+connect_to_target(Leg, Call) ->
+    whapps_call_command:connect_leg(Leg, <<"now">>, 'true', 'true', 'true', Call).
