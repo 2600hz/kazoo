@@ -387,6 +387,7 @@
                                            ,<<"Other-Leg">>
                                            ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
                                            ,<<"Park-After-Pickup">> %% Will park either leg after cancel
+                                           ,<<"Hangup-After-Pickup">>
                                            ,<<"Move-Channel-If-Necessary">>
                                           ]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
@@ -395,6 +396,7 @@
                                  ,?INSERT_AT_TUPLE
                                 ]).
 -define(CALL_PICKUP_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}
+                                ,{<<"Hangup-After-Pickup">>, fun wh_util:is_boolean/1}
                                 ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
                                ]).
 
@@ -404,6 +406,7 @@
                                            ,<<"Other-Leg">>
                                            ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
                                            ,<<"Park-After-Pickup">> %% Will park either leg after cancel
+                                           ,<<"Hangup-After-Pickup">>
                                            ,<<"Move-Channel-If-Necessary">>
                                           ]).
 -define(CONNECT_LEG_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
@@ -412,6 +415,7 @@
                                  ,?INSERT_AT_TUPLE
                                 ]).
 -define(CONNECT_LEG_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}
+                                ,{<<"Hangup-After-Pickup">>, fun wh_util:is_boolean/1}
                                 ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
                                ]).
 
