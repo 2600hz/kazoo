@@ -113,6 +113,13 @@ from_jobj(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(ne_binary(), request(), j5_limits:limits()) -> request().
+authorize(Reason, #request{reseller_id=AccountId
+                           ,account_id=AccountId}=Request
+          ,Limits) ->
+            lager:debug("account ~s authorized channel: ~s"
+                        ,[AccountId, Reason]),
+            Request#request{account_billing=Reason
+                            ,account_authorized='true'};
 authorize(Reason, #request{reseller_id=ResellerId
                            ,account_id=AccountId}=Request
           ,Limits) ->
