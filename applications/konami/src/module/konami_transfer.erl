@@ -3,6 +3,7 @@
 %%% @doc
 %%% Transfers caller to the extension extracted in the regex
 %%% Data = {
+%%%   "takeback_dtmf":"2" // Transferor can cancel the transfer request
 %%% }
 %%% @end
 %%% @contributors
@@ -331,6 +332,7 @@ init(_) -> 'ok'.
 add_transferor_bindings(CallId) ->
     konami_event_listener:add_call_binding(CallId, ['CHANNEL_DESTROY'
                                                     ,'CHANNEL_BRIDGE'
+                                                    ,'DTMF'
                                                    ]).
 
 -spec add_transferee_bindings(ne_binary()) -> 'ok'.
