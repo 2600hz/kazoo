@@ -36,7 +36,13 @@
                 ,target :: ne_binary()
                 ,call :: whapps_call:call()
                 ,target_call = whapps_call:new() :: whapps_call:call() | 'undefined'
+                ,takeback_dtmf :: ne_binary()
+                ,transferor_dtmf = <<>> :: binary()
                }).
+
+-define(DEFAULT_TAKEBACK_DTMF
+        ,whapps_config:get(?CONFIG_CAT, [<<"transfer">>, <<"default_takeback_dtmf">>], <<"*1">>)
+       ).
 
 -spec handle(wh_json:object(), whapps_call:call()) ->
                     no_return().
@@ -68,6 +74,7 @@ handle(Data, Call) ->
                                    ,transferee=TransfereeLeg
                                    ,target=Target
                                    ,call=Call
+                                   ,takeback_dtmf=wh_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
                                   }
                           )
     of
