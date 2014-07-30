@@ -4,6 +4,7 @@
 %%% Transfers caller to the extension extracted in the regex
 %%% Data = {
 %%%   "takeback_dtmf":"2" // Transferor can cancel the transfer request
+%%%   ,"moh":"media_id" // custom music on hold
 %%% }
 %%% @end
 %%% @contributors
@@ -59,10 +60,11 @@ handle(Data, Call) ->
     add_transferor_bindings(TransferorLeg),
     add_transferee_bindings(TransfereeLeg),
 
-    lager:debug("unbridge and put transferee ~s into park", [TransfereeLeg]),
+    lager:debug("unbridge and put transferee ~s into hold", [TransfereeLeg]),
     whapps_call_command:unbridge(Call),
-    %% ParkCommand = whapps_call_command:park_command(TransfereeLeg),
-    %% whapps_call_command:send_command(ParkCommand, Call),
+
+    HoldCommand = whapps_call_command:hold_command(wh_json:get_value(<<"moh">>, Data), TransfereeLeg),
+    whapps_call_command:send_command(HoldCommand, Call),
 
     [Extension|_] = wh_json:get_value(<<"captures">>, Data),
     lager:debug("ok, now we need to originate to the requested number ~s", [Extension]),
