@@ -96,7 +96,7 @@ attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
                      }=State
              ) ->
     lager:debug("target ~s didn't answer, reconnecting", [Target]),
-    _ = konami_resume:handle(wh_json:new(), Call),
+    connect_to_target(Call),
     {'stop', 'normal', State};
 attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
               ,#state{transferor=Transferor
@@ -185,7 +185,7 @@ partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
     lager:debug("target ~s hungup, reconnecting transferor ~s to transferee ~s"
                 ,[Target, _Transferor, _Transferee]
                ),
-    _ = konami_resume:handle(wh_json:new(), Call),
+    connect_to_target(Call),
     {'stop', 'normal', State};
 partial_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
              ,#state{transferee=Transferee
@@ -410,7 +410,10 @@ caller_id_number(Call, CallerLeg) ->
         _CalleeLeg -> whapps_call:callee_id_number(Call)
     end.
 
+-spec connect_to_target(whapps_call:call()) -> 'ok'.
 -spec connect_to_target(ne_binary(), whapps_call:call()) -> 'ok'.
+connect_to_target(Call) ->
+    connect_to_target(whapps_call:other_leg_call_id(Call), Call).
 connect_to_target(Leg, Call) ->
     Command = [{<<"Application-Name">>, <<"connect_leg">>}
                ,{<<"Call-ID">>, whapps_call:call_id(Call)}
