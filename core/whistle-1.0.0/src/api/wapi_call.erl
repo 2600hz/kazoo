@@ -164,12 +164,13 @@
 
 %% Query Account Channels Req
 -define(QUERY_ACCOUNT_CHANNELS_REQ_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_QUERY_ACCOUNT_CHANNELS_REQ_HEADERS, []).
+-define(OPTIONAL_QUERY_ACCOUNT_CHANNELS_REQ_HEADERS, [<<"Active-Only">>, <<"Username">>, <<"Usernames">>]).
 -define(QUERY_ACCOUNT_CHANNELS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                             ,{<<"Event-Name">>, <<"query_account_channels_req">>}
                                            ]).
 -define(QUERY_ACCOUNT_CHANNELS_REQ_TYPES, [{<<"Usernames">>, fun erlang:is_list/1}
                                            ,{<<"Username">>, fun erlang:is_binary/1}
+                                           ,{<<"Active-Only">>, fun wh_util:is_boolean/1}
                                           ]).
 
 %% Query Account Channels Resp
