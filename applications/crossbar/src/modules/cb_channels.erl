@@ -156,10 +156,16 @@ summary(Context) ->
         [{<<"channels">>, []}, {<<"accounts">>, [_AccountId]} | _] ->
             lager:debug("getting account summary"),
             account_summary(Context);
+        [{<<"channels">>, []}, {<<"devices">>, [DeviceId]} | _] ->
+            device_summary(Context, DeviceId);
         _Nouns ->
             lager:debug("unexpected nouns: ~p", [_Nouns]),
             Context
     end.
+
+device_summary(Context, DeviceId) ->
+    {'ok', DeviceJObj} = couch_mgr:open_cache_doc(cb_context:account_db(Context), DeviceId),
+    get_channels(Context, [DeviceJObj], fun wapi_call:publish_query_user_channels_req/1).
 
 user_summary(Context, UserId) ->
     Options = [{'key', [UserId, <<"device">>]}
@@ -172,6 +178,7 @@ user_summary(Context, UserId) ->
         'false' -> get_channels(Context1, cb_context:doc(Context1), fun wapi_call:publish_query_user_channels_req/1)
     end.
 
+-spec account_summary(cb_context:context()) -> cb_context:context().
 account_summary(Context) ->
     get_channels(Context, [], fun wapi_call:publish_query_account_channels_req/1).
 
@@ -183,19 +190,23 @@ account_summary(Context) ->
 -spec get_channels(cb_context:context(), wh_json:objects(), function()) -> cb_context:context().
 get_channels(Context, Devices, PublisherFun) ->
     Realm = crossbar_util:get_account_realm(cb_context:account_id(Context)),
+
     Usernames = [Username
                  || JObj <- Devices,
-                    (Username = wh_json:get_value([<<"doc">>
-                                                   ,<<"sip">>
-                                                   ,<<"username">>
-                                                  ], JObj))
+                    (Username = wh_json:get_first_defined(
+                                  [[<<"doc">>, <<"sip">>, <<"username">>]
+                                   ,[<<"sip">>, <<"username">>]
+                                  ], JObj))
                         =/= 'undefined'
                 ],
     Req = [{<<"Realm">>, Realm}
            ,{<<"Usernames">>, Usernames}
            ,{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Active-Only">>, 'false'}
+           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
+
     case whapps_util:amqp_pool_collect(Req
                                        ,PublisherFun
                                        ,{'ecallmgr', 'true'}
@@ -204,8 +215,10 @@ get_channels(Context, Devices, PublisherFun) ->
         {'error', _R} ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
             crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context);
-        {_, Resp} ->
+        {_OK, Resp} ->
+            lager:debug("got back ~p", [_OK]),
             Channels = merge_user_channels_jobjs(Resp),
+            lager:debug("merged"),
             crossbar_util:response(Channels, Context)
     end.
 
