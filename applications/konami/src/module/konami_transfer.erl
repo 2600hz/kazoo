@@ -39,6 +39,7 @@
                 ,takeback_dtmf :: ne_binary()
                 ,transferor_dtmf = <<>> :: binary()
                }).
+-type state() :: #state{}.
 
 -define(DEFAULT_TAKEBACK_DTMF
         ,whapps_config:get(?CONFIG_CAT, [<<"transfer">>, <<"default_takeback_dtmf">>], <<"*1">>)
@@ -87,15 +88,17 @@ handle(Data, Call) ->
             wh_util:log_stacktrace(ST)
     end.
 
-attended_wait(?EVENT(Transferor, <<"DTMF">>, Evt)
-              ,#state{transferor=Transferor
-                      ,call=Call
-                      ,target_call=TargetCall
-                      ,takeback_dtmf=TakebackDTMF
-                      ,transferor_dtmf=DTMFs
-                     }=State
-             ) ->
-    Digit = wh_json:get_value(<<"DTMF-Digit">>, Evt),
+-spec handle_transferor_dtmf(wh_json:object(), NextState, state()) ->
+                                    {'stop', 'normal', state()} |
+                                    {'next_state', NextState, state()}.
+handle_transferor_dtmf(Evt, NextState
+                       ,#state{call=Call
+                               ,target_call=TargetCall
+                               ,takeback_dtmf=TakebackDTMF
+                               ,transferor_dtmf=DTMFs
+                              }=State
+                      ) ->
+        Digit = wh_json:get_value(<<"DTMF-Digit">>, Evt),
     lager:debug("recv transferor dtmf '~s', adding to '~s'", [Digit, DTMFs]),
 
     Collected = <<DTMFs/binary, Digit/binary>>,
@@ -107,8 +110,11 @@ attended_wait(?EVENT(Transferor, <<"DTMF">>, Evt)
             whapps_call_command:hangup(TargetCall),
             {'stop', 'normal', State};
         'false' ->
-            {'next_state', 'attended_wait', State#state{transferor_dtmf=Collected}}
-    end;
+            {'next_state', NextState, State#state{transferor_dtmf=Collected}}
+    end.
+
+attended_wait(?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
+    handle_transferor_dtmf(Evt, 'attended_wait', State);
 attended_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{transferee=Transferee}=State
              ) ->
@@ -246,6 +252,8 @@ partial_wait(Msg, From, State) ->
     lager:debug("partial_wait: unhandled msg from ~p: ~p", [From, Msg]),
     {'reply', {'error', 'not_implemented'}, 'partial_wait', State}.
 
+attended_answer(?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
+    handle_transferor_dtmf(Evt, 'attended_answer', State);
 attended_answer(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                 ,#state{transferor=Transferor
                         ,transferee=Transferee
