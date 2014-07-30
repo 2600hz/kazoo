@@ -21,11 +21,11 @@ The purpose is of this project is to allow callers to preform an attended transf
 
 ### Non-Goals
 
-### Scenarios 
+### Scenarios
 #### App-less Transfer
 As a user when I on a call with someone I would like the ability to preform an attended transfer by dialing some feature code into the native dialer.
 
-#### App-based Transfer 
+#### App-based Transfer
 As a user using an application I installed on my mobile device, I would like to be able to press a transfer button that makes an attended transfer.
 
 ### Prerequisites
@@ -36,13 +36,13 @@ Some phones do not support the ability to initiate transfers. The Konami *transf
 Additional, transfer will be able to be initiated via Kazoo API requests.
 
 ### In-Call Feature Codes
-Say Alice calls Bob from a phone that does not support transfers from the phone, but she needs to transfer Bob to Mary. What's a lady to do?
+Say Alice calls Bob from a phone that does not support transfers from the phone, but she needs to transfer Bob to Carol. What's a lady to do?
 
-Fortunately, Alice has configured a metaflow that allows her to press `*21` plus the extension she wishes to dial. Since Mary's extension is 2600, Alice would press `*212600` to initiate the transfer. Bob would be put on hold, and Alice would be connected to Mary. Once Alice hangs up, Bob and Mary would be connected to begin their conversation.
+Fortunately, Alice has configured a metaflow that allows her to press `*21` plus the extension she wishes to dial. Since Carol's extension is 2600, Alice would press `*212600` to initiate the transfer. Bob would be put on hold, and Alice would be connected to Carol. Once Alice hangs up, Bob and Carol would be connected to begin their conversation.
 
 #### Partial transfer
 
-Alice doesn't have to speak with Mary first, of course. She could initiate the transfer, and before Mary answers her phone, Alice may hangup. As soon as Mary answers her phone, she will be connected with Bob.
+Alice doesn't have to speak with Carol first, of course. She could initiate the transfer, and before Carol answers her phone, Alice may hangup. As soon as Carol answers her phone, she will be connected with Bob.
 
 #### What if Alice misdials
 
@@ -50,7 +50,7 @@ In the case that Alice dials an number that doesnt answer or rings but does answ
 
 #### Cancel a transfer
 
-Suppose Mary is taking too long to answer her phone or does not want to talk to Bob.  Alice can use the Konami [*resume*](./resume.md) code to be reconnected to Bob, stopping the call to Mary immediately.  For example, while Mary's phone is ringing Alice can dial `*22`.
+Suppose Carol is taking too long to answer her phone or does not want to talk to Bob. She can configure her *transfer* metaflow to listen for a DTMF sequence (called `takeback_dtmf`) to immediately reconnect her with Bob and cancel the call to Carol. The `takeback_dtmf` defaults to `*1` unless overridden in the data portion of the metaflow.
 
 ### API Transfer
 
@@ -86,7 +86,9 @@ The *transfer* module requires being used with Metaflow "patterns". In the examp
         ,"patterns":{
             "21(\\d+)":{
                 "module":"transfer"
-                ,"data":{}
+                ,"data":{
+                    "takeback_dtmf":"*1"
+                }
             }
         }
         ,"binding_key":"*"
