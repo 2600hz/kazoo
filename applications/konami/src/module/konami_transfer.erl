@@ -88,31 +88,6 @@ handle(Data, Call) ->
             wh_util:log_stacktrace(ST)
     end.
 
--spec handle_transferor_dtmf(wh_json:object(), NextState, state()) ->
-                                    {'stop', 'normal', state()} |
-                                    {'next_state', NextState, state()}.
-handle_transferor_dtmf(Evt, NextState
-                       ,#state{call=Call
-                               ,target_call=TargetCall
-                               ,takeback_dtmf=TakebackDTMF
-                               ,transferor_dtmf=DTMFs
-                              }=State
-                      ) ->
-        Digit = wh_json:get_value(<<"DTMF-Digit">>, Evt),
-    lager:debug("recv transferor dtmf '~s', adding to '~s'", [Digit, DTMFs]),
-
-    Collected = <<DTMFs/binary, Digit/binary>>,
-
-    case wh_util:suffix_binary(TakebackDTMF, Collected) of
-        'true' ->
-            lager:debug("takeback dtmf sequence (~s) engaged!", [TakebackDTMF]),
-            connect_to_target(Call),
-            whapps_call_command:hangup(TargetCall),
-            {'stop', 'normal', State};
-        'false' ->
-            {'next_state', NextState, State#state{transferor_dtmf=Collected}}
-    end.
-
 attended_wait(?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
     handle_transferor_dtmf(Evt, 'attended_wait', State);
 attended_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
@@ -463,3 +438,28 @@ connect_to_target(Leg, Call) ->
                ,{<<"Park-After-Pickup">>, 'true'}
               ],
     whapps_call_command:send_command(Command, Call).
+
+-spec handle_transferor_dtmf(wh_json:object(), NextState, state()) ->
+                                    {'stop', 'normal', state()} |
+                                    {'next_state', NextState, state()}.
+handle_transferor_dtmf(Evt, NextState
+                       ,#state{call=Call
+                               ,target_call=TargetCall
+                               ,takeback_dtmf=TakebackDTMF
+                               ,transferor_dtmf=DTMFs
+                              }=State
+                      ) ->
+        Digit = wh_json:get_value(<<"DTMF-Digit">>, Evt),
+    lager:debug("recv transferor dtmf '~s', adding to '~s'", [Digit, DTMFs]),
+
+    Collected = <<DTMFs/binary, Digit/binary>>,
+
+    case wh_util:suffix_binary(TakebackDTMF, Collected) of
+        'true' ->
+            lager:debug("takeback dtmf sequence (~s) engaged!", [TakebackDTMF]),
+            connect_to_target(Call),
+            whapps_call_command:hangup(TargetCall),
+            {'stop', 'normal', State};
+        'false' ->
+            {'next_state', NextState, State#state{transferor_dtmf=Collected}}
+    end.
