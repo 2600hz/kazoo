@@ -104,7 +104,7 @@ validate_channels(Context, ?HTTP_GET) ->
 
 -spec validate_channel(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_channel(Context, Id, ?HTTP_GET) ->
-    read(Id, Context);
+    read(cb_context:set_resp_data(Context, wh_json:new()), Id);
 validate_channel(Context, Id, ?HTTP_POST) ->
     update(Id, Context).
 
@@ -125,9 +125,30 @@ post(Context, _) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+-spec read(cb_context:context(), ne_binary()) -> cb_context:context().
+read(Context, CallId) ->
+    Req = [{<<"Call-ID">>, CallId}
+           ,{<<"Active-Only">>, 'true'}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case wh_amqp_worker:call(Req
+                             ,fun wapi_call:publish_channel_status_req/1
+                             ,fun wapi_call:channel_status_resp_v/1
+                            )
+    of
+        {'ok', StatusJObj} ->
+            lager:debug("status: ~p", [StatusJObj]),
+            crossbar_util:response(normalize_channel(StatusJObj), Context);
+        {'returned', JObj} ->
+            lager:debug("return: ~p", [JObj]),
+            crossbar_util:response(JObj, Context);
+        {'timeout', _Resp} ->
+            lager:debug("timeout: ~p", [_Resp]),
+            crossbar_util:response_datastore_timeout(Context);
+        {'error', _E} ->
+            lager:debug("error: ~p", [_E]),
+            crossbar_util:response_datastore_timeout(Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -252,4 +273,20 @@ delete_keys(JObj) ->
                          ,<<"precedence">>
                          ,<<"profile">>
                          ,<<"realm">>
+                         ,<<"app_name">>
+                         ,<<"app_version">>
+                         ,<<"event_category">>
+                         ,<<"event_name">>
+                         ,<<"msg_id">>
+                         ,<<"node">>
+                         ,<<"server_id">>
+                         ,<<"switch_hostname">>
+                         ,<<"switch_nodename">>
+                         ,<<"switch_url">>
                         ], JObj).
+
+-spec normalize_channel(wh_json:object()) -> wh_json:object().
+normalize_channel(JObj) ->
+    delete_keys(
+      wh_json:normalize(JObj)
+     ).
