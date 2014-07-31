@@ -66,7 +66,12 @@ handle(Data, Call) ->
     HoldCommand = whapps_call_command:hold_command(wh_json:get_value(<<"moh">>, Data), TransfereeLeg),
     whapps_call_command:send_command(HoldCommand, Call),
 
-    [Extension|_] = wh_json:get_value(<<"captures">>, Data),
+    Extension =
+        case wh_json:get_first_defined([<<"captures">>, <<"target">>], Data) of
+            [Ext|_] -> Ext;
+            <<_/binary>> = Ext -> Ext
+        end,
+
     lager:debug("ok, now we need to originate to the requested number ~s", [Extension]),
 
     Target = originate_to_extension(Extension, TransferorLeg, Call),

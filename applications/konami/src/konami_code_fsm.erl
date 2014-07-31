@@ -287,6 +287,10 @@ handle_event(?EVENT(CallId, <<"CHANNEL_BRIDGE">>, JObj), StateName, State) ->
                            ,State
                           )
     };
+handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{call=Call}=State) ->
+    _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+    lager:debug("recv metaflow request for ~s, processing in ~p", [CallId, _Pid]),
+    {'next_state', StateName, State};
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
