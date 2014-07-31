@@ -128,12 +128,12 @@ post(Context, _) ->
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 read(Context, CallId) ->
     Req = [{<<"Call-ID">>, CallId}
-           ,{<<"Active-Only">>, 'true'}
+           ,{<<"Fields">>, <<"all">>}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case wh_amqp_worker:call(Req
-                             ,fun wapi_call:publish_channel_status_req/1
-                             ,fun wapi_call:channel_status_resp_v/1
+                             ,fun wapi_call:publish_query_channels_req/1
+                             ,fun wapi_call:query_channels_resp_v/1
                             )
     of
         {'ok', StatusJObj} ->
