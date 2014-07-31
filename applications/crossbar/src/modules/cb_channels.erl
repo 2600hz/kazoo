@@ -178,31 +178,76 @@ update(_Id, Context) ->
 summary(Context) ->
     case cb_context:req_nouns(Context) of
         [{<<"channels">>, []}, {<<"users">>, [UserId]} | _] ->
-            lager:debug("getting user summary for ~s", [UserId]),
             user_summary(Context, UserId);
+        [{<<"channels">>, []}, {<<"devices">>, [DeviceId]} | _] ->
+            device_summary(Context, DeviceId);
+        [{<<"channels">>, []}, {<<"groups">>, [GroupId]} | _] ->
+            group_summary(Context, GroupId);
         [{<<"channels">>, []}, {<<"accounts">>, [_AccountId]} | _] ->
             lager:debug("getting account summary"),
             account_summary(Context);
-        [{<<"channels">>, []}, {<<"devices">>, [DeviceId]} | _] ->
-            device_summary(Context, DeviceId);
         _Nouns ->
             lager:debug("unexpected nouns: ~p", [_Nouns]),
-            Context
+            crossbar_util:response_faulty_request(Context)
     end.
 
-device_summary(Context, DeviceId) ->
-    {'ok', DeviceJObj} = couch_mgr:open_cache_doc(cb_context:account_db(Context), DeviceId),
-    get_channels(Context, [DeviceJObj], fun wapi_call:publish_query_user_channels_req/1).
+-spec device_summary(cb_context:context(), ne_binary()) -> cb_context:context().
+device_summary(Context, _DeviceId) ->
+    get_channels(Context, [cb_context:doc(Context)], fun wapi_call:publish_query_user_channels_req/1).
 
+-spec user_summary(cb_context:context(), ne_binary()) -> cb_context:context().
 user_summary(Context, UserId) ->
+    {UserEndpoints, Context1} = user_endpoints(Context, UserId),
+    case cb_context:has_errors(Context1) of
+        'true' -> Context1;
+        'false' ->
+            get_channels(Context
+                         ,UserEndpoints
+                         ,fun wapi_call:publish_query_user_channels_req/1
+                        )
+    end.
+
+-spec user_endpoints(cb_context:context(), ne_binary()) ->
+                            {ne_binaries(), cb_context:context()}.
+user_endpoints(Context, UserId) ->
     Options = [{'key', [UserId, <<"device">>]}
                ,'include_docs'
               ],
     %% TODO: Using the cf_attributes from crossbar isn't exactly kosher
     Context1 = crossbar_doc:load_view(<<"cf_attributes/owned">>, Options, Context),
+    {cb_context:doc(Context1), Context1}.
+
+-spec group_summary(cb_context:context(), ne_binary()) -> cb_context:context().
+group_summary(Context, GroupId) ->
+    {GroupEndpoints, Context1} = group_endpoints(Context, GroupId),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
-        'false' -> get_channels(Context1, cb_context:doc(Context1), fun wapi_call:publish_query_user_channels_req/1)
+        'false' ->
+            get_channels(Context
+                         ,GroupEndpoints
+                         ,fun wapi_call:publish_query_user_channels_req/1
+                        )
+    end.
+
+-spec group_endpoints(cb_context:context(), ne_binary()) -> {wh_json:objects(), cb_context:context()}.
+group_endpoints(Context, _GroupId) ->
+    Members = wh_json:get_value(<<"endpoints">>, cb_context:doc(Context)),
+
+    wh_json:foldl(fun group_endpoints_fold/3, {[], Context}, Members).
+
+-spec group_endpoints_fold(ne_binary(), wh_json:object(), {wh_json:objects(), cb_context:context()}) ->
+                                  {wh_json:objects(), cb_context:context()}.
+group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
+    case wh_json:get_value(<<"type">>, EndpointData) of
+        <<"user">> ->
+            {EPs, Context1} = user_endpoints(Context, EndpointId),
+            {EPs ++ Acc, Context1};
+        <<"device">> ->
+            Context1 = crossbar_doc:load(EndpointId, Context),
+            {[cb_context:doc(Context1) | Acc], Context1};
+        _Type ->
+            lager:debug("skipping type ~s", [_Type]),
+            {Acc, Context}
     end.
 
 -spec account_summary(cb_context:context()) -> cb_context:context().
@@ -226,8 +271,9 @@ get_channels(Context, Devices, PublisherFun) ->
                                   ], JObj))
                         =/= 'undefined'
                 ],
+
     Req = [{<<"Realm">>, Realm}
-           ,{<<"Usernames">>, Usernames}
+           ,{<<"Usernames">>, lists:usort(Usernames)} % unique list of usernames
            ,{<<"Account-ID">>, cb_context:account_id(Context)}
            ,{<<"Active-Only">>, 'false'}
            ,{<<"Msg-ID">>, cb_context:req_id(Context)}
@@ -243,9 +289,7 @@ get_channels(Context, Devices, PublisherFun) ->
             lager:error("could not reach ecallmgr channels: ~p", [_R]),
             crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context);
         {_OK, Resp} ->
-            lager:debug("got back ~p", [_OK]),
             Channels = merge_user_channels_jobjs(Resp),
-            lager:debug("merged"),
             crossbar_util:response(Channels, Context)
     end.
 
