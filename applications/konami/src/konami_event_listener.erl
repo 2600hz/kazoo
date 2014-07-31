@@ -30,7 +30,7 @@
 -include("konami.hrl").
 
 %% {callid, [event,...]}
--record(state, {bindings = dict:new() :: dict()}).
+-record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}]).
@@ -94,7 +94,6 @@ add_call_binding(CallId) when is_binary(CallId) ->
     Events = ?TRACKED_CALL_EVENTS,
     lager:debug("add fsm binding for call ~s: ~p", [CallId, Events]),
     gproc:reg(?KONAMI_REG({'fsm', CallId})),
-    gen_listener:cast(?MODULE, {'add_bindings', CallId, [<<"metaflow">> | Events]}),
     gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
     gen_listener:add_binding(?MODULE, ?META_BINDINGS(CallId));
 add_call_binding(Call) ->
@@ -104,7 +103,6 @@ add_call_binding('undefined', _) -> 'ok';
 add_call_binding(CallId, Events) when is_binary(CallId) ->
     lager:debug("add pid binding for call ~s: ~p", [CallId, Events]),
     gproc:reg(?KONAMI_REG({'pid', CallId})),
-    gen_listener:cast(?MODULE, {'add_bindings', CallId, [<<"metaflow">> | Events]}),
     gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
     gen_listener:add_binding(?MODULE, ?META_BINDINGS(CallId));
 add_call_binding(Call, Events) ->
@@ -113,11 +111,13 @@ add_call_binding(Call, Events) ->
 -spec rm_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
 rm_call_binding('undefined') -> 'ok';
 rm_call_binding(CallId) ->
-    gen_listener:cast(?MODULE, {'rm_bindings', CallId}).
+    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, ?TRACKED_CALL_EVENTS)),
+    gen_listener:rm_binding(?MODULE, ?META_BINDINGS(CallId)).
 
 rm_call_binding('undefined', _) -> 'ok';
 rm_call_binding(CallId, Events) when is_binary(CallId) ->
-    gen_listener:cast(?MODULE, {'rm_bindings', CallId, Events});
+    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
+    gen_listener:rm_binding(?MODULE, ?META_BINDINGS(CallId));
 rm_call_binding(Call, Events) ->
     rm_call_binding(whapps_call:call_id_direct(Call), Events).
 
@@ -215,56 +215,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'add_bindings', CallId, Events}, #state{bindings=Bs}=State) ->
-    lager:debug("adding events for ~s: ~p", [CallId, Events]),
-    EventsSet = sets:from_list(Events),
-    CurrentEventsSet = call_events(CallId, Bs),
-    NewEventsSet = sets:union(CurrentEventsSet, EventsSet),
-    {'noreply', State#state{bindings=dict:store(CallId, NewEventsSet, Bs)}, 'hibernate'};
-handle_cast({'rm_bindings', CallId, Events}, #state{bindings=Bs}=State) ->
-    lager:debug("removing events for ~s: ~p", [CallId, Events]),
-    EventsSet = sets:from_list(Events),
-    CurrentEventsSet = call_events(CallId, Bs),
-    NewEventsSet = sets:subtract(CurrentEventsSet, EventsSet),
-    RemoveEventsSet = sets:intersection(CurrentEventsSet, EventsSet),
-
-    _ = gen_listener:rm_binding(self(), ?DYN_BINDINGS(CallId, sets:to_list(
-                                                                sets:del_element(<<"metaflow">>, RemoveEventsSet)
-                                                               )
-                                                     )),
-    SaveEventsSet = case sets:is_element(<<"metaflow">>, RemoveEventsSet) of
-                        'true' ->
-                            lager:debug("removing metaflow binding for ~s", [CallId]),
-                            gen_listener:rm_binding(self(), ?META_BINDINGS(CallId)),
-                            sets:del_element(<<"metaflow">>, NewEventsSet);
-                        'false' -> NewEventsSet
-                    end,
-
-    lager:debug("removing from ~s: ~p", [CallId, sets:to_list(RemoveEventsSet)]),
-
-    Bs1 = case sets:size(SaveEventsSet) of
-              0 -> dict:erase(CallId, Bs);
-              _Size -> dict:store(CallId, SaveEventsSet, Bs)
-          end,
-
-    {'noreply', State#state{bindings=Bs1}, 'hibernate'};
-handle_cast({'rm_bindings', CallId}, #state{bindings=Bs}=State) ->
-    EventsSet = call_events(CallId, Bs),
-    lager:debug("evt set for ~s: ~p", [CallId, sets:to_list(EventsSet)]),
-
-    case sets:to_list(sets:del_element(<<"metaflow">>, EventsSet)) of
-        [] -> {'noreply', State};
-        Events ->
-            lager:debug("removing all events for ~s: ~p", [CallId, Events]),
-            _ = gen_listener:rm_binding(self(), ?DYN_BINDINGS(CallId, Events)),
-            sets:is_element(<<"metaflow">>, EventsSet)
-                andalso begin
-                            lager:debug("removing metaflow binding for ~s", [CallId]),
-                            gen_listener:rm_binding(self(), ?META_BINDINGS(CallId))
-                        end,
-            {'noreply', State#state{bindings=dict:erase(CallId, Bs)}, 'hibernate'}
-    end;
-
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -325,10 +275,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec call_events(ne_binary(), dict()) -> set().
-call_events(CallId, Bindings) ->
-    try dict:fetch(CallId, Bindings) of
-        Events -> Events
-    catch
-        'error':'badarg' -> sets:new()
-    end.
