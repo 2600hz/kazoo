@@ -111,7 +111,7 @@ validate_channels(Context, ?HTTP_GET) ->
 validate_channel(Context, Id, ?HTTP_GET) ->
     read(cb_context:set_resp_data(Context, wh_json:new()), Id);
 validate_channel(Context, Id, ?HTTP_POST) ->
-    update(Id, Context).
+    update(Context, Id).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -122,7 +122,7 @@ validate_channel(Context, Id, ?HTTP_POST) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
-    crossbar_doc:save(Context).
+    cb_context:set_resp_status(Context, 'success').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -168,9 +168,25 @@ read(Context, CallId) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(_Id, Context) ->
-    Context.
+-spec update(cb_context:context(), ne_binary()) -> cb_context:context().
+update(Context, CallId) ->
+    Context1 = read(Context, CallId),
+
+    case cb_context:has_errors(Context1) of
+        'true' -> Context1;
+        'false' -> maybe_execute_command(Context1, CallId)
+    end.
+
+-spec maybe_execute_command(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_execute_command(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
+maybe_execute_command(Context, CallId) ->
+    maybe_execute_command(Context, CallId, cb_context:req_value(Context, <<"action">>)).
+
+maybe_execute_command(Context, Transferor, <<"transfer">>) ->
+    maybe_transfer(Context, Transferor);
+maybe_execute_command(Context, _CallId, _Command) ->
+    lager:debug("unknown command: ~s", [_Command]),
+    crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -352,3 +368,35 @@ normalize_channel(JObj) ->
     delete_keys(
       wh_json:normalize(JObj)
      ).
+
+-spec maybe_transfer(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_transfer(Context, Transferor) ->
+    Channel = cb_context:resp_data(Context),
+
+    case wh_json:get_value(<<"other_leg_call_id">>, Channel) of
+        'undefined' ->
+            lager:debug("no transferee leg found"),
+            cb_context:add_validation_error(<<"other_leg_call_id">>, <<"required">>, <<"Channel is not bridged">>, Context);
+        Transferee ->
+            maybe_transfer(Context, Transferor, Transferee)
+    end.
+
+maybe_transfer(Context, Transferor, Transferee) ->
+    case cb_context:req_value(Context, <<"target">>) of
+        'undefined' ->
+            lager:debug("no target destination"),
+            cb_context:add_validation_error(<<"target">>, <<"required">>, <<"No target destination specified">>, Context);
+        Target ->
+            maybe_transfer(Context, Transferor, Transferee, Target)
+    end.
+
+maybe_transfer(Context, Transferor, Transferee, Target) ->
+    _API = [{<<"Transferor">>, Transferor}
+           ,{<<"Transferee">>, Transferee}
+           ,{<<"Target">>, Target}
+           ,{<<"Takeback-DTMF">>, cb_context:req_value(Context, <<"takeback_dtmf">>)}
+           ,{<<"MOH">>, cb_context:req_value(Context, <<"moh">>)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+
+    cb_context:set_resp_status(Context, 'success').
