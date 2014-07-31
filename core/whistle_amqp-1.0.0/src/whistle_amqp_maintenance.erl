@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -466,4 +466,3 @@ print_consumer_history([Command|Commands]) ->
     {'$lager_record', Name, Props} = lager:pr(Command, ?MODULE),
     io:format("    ~s~n      ~p~n", [Name, Props]),
     print_consumer_history(Commands).
-
