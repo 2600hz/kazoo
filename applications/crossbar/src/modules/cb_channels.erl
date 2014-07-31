@@ -137,8 +137,14 @@ read(Context, CallId) ->
                             )
     of
         {'ok', StatusJObj} ->
-            lager:debug("status: ~p", [StatusJObj]),
-            crossbar_util:response(normalize_channel(StatusJObj), Context);
+            Channel = wh_json:get_value([<<"Channels">>, CallId], StatusJObj),
+            case wh_json:get_value(<<"Account-ID">>, Channel) =:= cb_context:account_id(Context) of
+                'true' ->
+                    crossbar_util:response(normalize_channel(Channel), Context);
+                'false' ->
+                    lager:warning("trying to get info about a channel ~s not in the account ~s", [CallId, cb_context:account_id(Context)]),
+                    crossbar_util:response_bad_identifier(CallId, Context)
+            end;
         {'returned', JObj} ->
             lager:debug("return: ~p", [JObj]),
             crossbar_util:response(JObj, Context);
@@ -283,9 +289,15 @@ delete_keys(JObj) ->
                          ,<<"switch_hostname">>
                          ,<<"switch_nodename">>
                          ,<<"switch_url">>
+                         ,<<"media_node">>
+                         ,<<"fetch_id">>
                         ], JObj).
 
--spec normalize_channel(wh_json:object()) -> wh_json:object().
+-spec normalize_channel(api_object() | wh_json:objects()) -> api_object() | wh_json:objects().
+normalize_channel('undefined') -> [];
+normalize_channel([]) -> [];
+normalize_channel([_|_]=JObjs) ->
+    [normalize_channel(JObj) || JObj <- JObjs];
 normalize_channel(JObj) ->
     delete_keys(
       wh_json:normalize(JObj)
