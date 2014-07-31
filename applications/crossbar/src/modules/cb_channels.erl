@@ -390,13 +390,17 @@ maybe_transfer(Context, Transferor, Transferee) ->
             maybe_transfer(Context, Transferor, Transferee, Target)
     end.
 
-maybe_transfer(Context, Transferor, Transferee, Target) ->
-    _API = [{<<"Transferor">>, Transferor}
-           ,{<<"Transferee">>, Transferee}
-           ,{<<"Target">>, Target}
-           ,{<<"Takeback-DTMF">>, cb_context:req_value(Context, <<"takeback_dtmf">>)}
-           ,{<<"MOH">>, cb_context:req_value(Context, <<"moh">>)}
+maybe_transfer(Context, Transferor, _Transferee, Target) ->
+    API = [{<<"Call-ID">>, Transferor}
+           ,{<<"Action">>, <<"transfer">>}
+           ,{<<"Data">>, wh_json:from_list(
+                           [{<<"target">>, Target}
+                            ,{<<"takeback_dtmf">>, cb_context:req_value(Context, <<"takeback_dtmf">>)}
+                            ,{<<"moh">>, cb_context:req_value(Context, <<"moh">>)}
+                           ])
+            }
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    cb_context:set_resp_status(Context, 'success').
+    wh_amqp_worker:cast(API, fun wapi_metaflow:publish_req/1),
+    crossbar_util:response_202(<<"transfer initiated">>, Context).
