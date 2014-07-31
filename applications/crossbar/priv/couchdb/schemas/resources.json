@@ -225,16 +225,13 @@
             "required": false,
             "name": "Prefix",
             "description": "A string to prepend to the dialed number or capture group of the matching rule",
-            "minLength": 1,
-            "maxLength": 64,
-            "default": "+1"
+            "maxLength": 64
           },
           "suffix": {
             "type": "string",
             "required": false,
             "name": "Suffix",
             "description": "A string to append to the dialed number or capture group of the matching rule",
-            "minLength": 1,
             "maxLength": 64
           },
           "codecs": {
