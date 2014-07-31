@@ -208,7 +208,7 @@ user_summary(Context, UserId) ->
     end.
 
 -spec user_endpoints(cb_context:context(), ne_binary()) ->
-                            {ne_binaries(), cb_context:context()}.
+                            endpoints_return().
 user_endpoints(Context, UserId) ->
     Options = [{'key', [UserId, <<"device">>]}
                ,'include_docs'
@@ -229,14 +229,17 @@ group_summary(Context, GroupId) ->
                         )
     end.
 
--spec group_endpoints(cb_context:context(), ne_binary()) -> {wh_json:objects(), cb_context:context()}.
+-type endpoints_return() :: {wh_json:objects(), cb_context:context()}.
+
+-spec group_endpoints(cb_context:context(), ne_binary()) -> endpoints_return().
 group_endpoints(Context, _GroupId) ->
-    Members = wh_json:get_value(<<"endpoints">>, cb_context:doc(Context)),
+    wh_json:foldl(fun group_endpoints_fold/3
+                  ,{[], Context}
+                  ,wh_json:get_value(<<"endpoints">>, cb_context:doc(Context), wh_json:new())
+                 ).
 
-    wh_json:foldl(fun group_endpoints_fold/3, {[], Context}, Members).
-
--spec group_endpoints_fold(ne_binary(), wh_json:object(), {wh_json:objects(), cb_context:context()}) ->
-                                  {wh_json:objects(), cb_context:context()}.
+-spec group_endpoints_fold(ne_binary(), wh_json:object(), endpoints_return()) ->
+                                  endpoints_return().
 group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
     case wh_json:get_value(<<"type">>, EndpointData) of
         <<"user">> ->
