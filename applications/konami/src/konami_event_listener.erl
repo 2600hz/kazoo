@@ -14,6 +14,7 @@
          ,rm_call_binding/1, rm_call_binding/2
          ,handle_call_event/2
          ,handle_originate_event/2
+         ,handle_metaflow_req/2
          ,queue_name/0
         ]).
 
@@ -41,6 +42,9 @@
                          ,{<<"error">>, <<"*">>}
                         ]
                       }
+                     ,{{?MODULE, 'handle_metaflow_req'}
+                       ,[{<<"metaflow">>, <<"req">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -54,6 +58,9 @@
 -define(DYN_BINDINGS(CallId, Events), {'call', [{'restrict_to', Events}
                                                 ,{'callid', CallId}
                                                ]}).
+-define(META_BINDINGS(CallId), {'metaflow', [{'callid', CallId}
+                                             ,{'action', <<"*">>}
+                                            ]}).
 
 -define(KONAMI_REG(CallId), {'p', 'l', {'event', CallId}}).
 
@@ -87,8 +94,9 @@ add_call_binding(CallId) when is_binary(CallId) ->
     Events = ?TRACKED_CALL_EVENTS,
     lager:debug("add fsm binding for call ~s: ~p", [CallId, Events]),
     gproc:reg(?KONAMI_REG({'fsm', CallId})),
-    gen_listener:cast(?MODULE, {'add_bindings', CallId, Events}),
-    gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events));
+    gen_listener:cast(?MODULE, {'add_bindings', CallId, [<<"metaflow">> | Events]}),
+    gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
+    gen_listener:add_binding(?MODULE, ?META_BINDINGS(CallId));
 add_call_binding(Call) ->
     add_call_binding(whapps_call:call_id_direct(Call)).
 
@@ -96,8 +104,9 @@ add_call_binding('undefined', _) -> 'ok';
 add_call_binding(CallId, Events) when is_binary(CallId) ->
     lager:debug("add pid binding for call ~s: ~p", [CallId, Events]),
     gproc:reg(?KONAMI_REG({'pid', CallId})),
-    gen_listener:cast(?MODULE, {'add_bindings', CallId, Events}),
-    gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events));
+    gen_listener:cast(?MODULE, {'add_bindings', CallId, [<<"metaflow">> | Events]}),
+    gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
+    gen_listener:add_binding(?MODULE, ?META_BINDINGS(CallId));
 add_call_binding(Call, Events) ->
     add_call_binding(whapps_call:call_id_direct(Call), Events).
 
@@ -128,8 +137,18 @@ handle_call_event(JObj, _Props, Event) ->
 -spec handle_originate_event(wh_json:object(), wh_proplist()) -> any().
 handle_originate_event(JObj, _Props) ->
     CallId = wh_json:get_first_defined([<<"Call-ID">>, <<"Outbound-Call-ID">>], JObj),
-    lager:debug("originate: ~p", [JObj]),
     relay_to_pids(CallId, JObj).
+
+-spec handle_metaflow_req(wh_json:object(), wh_proplist()) -> any().
+handle_metaflow_req(JObj, _Props) ->
+    'true' = wapi_metaflow:req_v(JObj),
+
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    Evt = wh_json:from_list(
+            [{<<"module">>, wh_json:get_value(<<"Action">>, JObj)}
+             ,{<<"data">>, wh_json:set_value(<<"dtmf_leg">>, CallId, wh_json:get_value(<<"Data">>, JObj))}
+            ]),
+    relay_to_fsm(CallId, <<"metaflow_exe">>, Evt).
 
 -spec queue_name() -> ne_binary().
 queue_name() -> gen_listener:queue_name(?MODULE).
@@ -139,6 +158,11 @@ relay_to_fsms(CallId, Event, JObj) ->
     [konami_code_fsm:event(FSM, CallId, Event, JObj)
      || FSM <- gproc:lookup_pids(?KONAMI_REG({'fsm', CallId}))
     ].
+
+-spec relay_to_fsm(ne_binary(), ne_binary(), wh_json:object()) -> any().
+relay_to_fsm(CallId, Event, JObj) ->
+    [FSM | _] = gproc:lookup_pids(?KONAMI_REG({'fsm', CallId})),
+    konami_code_fsm:event(FSM, CallId, Event, JObj).
 
 -spec relay_to_pids(ne_binary(), wh_json:object()) -> any().
 relay_to_pids(CallId, JObj) ->
@@ -204,22 +228,40 @@ handle_cast({'rm_bindings', CallId, Events}, #state{bindings=Bs}=State) ->
     NewEventsSet = sets:subtract(CurrentEventsSet, EventsSet),
     RemoveEventsSet = sets:intersection(CurrentEventsSet, EventsSet),
 
-    _ = gen_listener:rm_binding(self(), ?DYN_BINDINGS(CallId, sets:to_list(RemoveEventsSet))),
+    _ = gen_listener:rm_binding(self(), ?DYN_BINDINGS(CallId, sets:to_list(
+                                                                sets:del_element(<<"metaflow">>, RemoveEventsSet)
+                                                               )
+                                                     )),
+    SaveEventsSet = case sets:is_element(<<"metaflow">>, RemoveEventsSet) of
+                        'true' ->
+                            lager:debug("removing metaflow binding for ~s", [CallId]),
+                            gen_listener:rm_binding(self(), ?META_BINDINGS(CallId)),
+                            sets:del_element(<<"metaflow">>, NewEventsSet);
+                        'false' -> NewEventsSet
+                    end,
+
     lager:debug("removing from ~s: ~p", [CallId, sets:to_list(RemoveEventsSet)]),
 
-    Bs1 = case sets:size(NewEventsSet) of
+    Bs1 = case sets:size(SaveEventsSet) of
               0 -> dict:erase(CallId, Bs);
-              _Size -> dict:store(CallId, NewEventsSet, Bs)
+              _Size -> dict:store(CallId, SaveEventsSet, Bs)
           end,
 
     {'noreply', State#state{bindings=Bs1}, 'hibernate'};
 handle_cast({'rm_bindings', CallId}, #state{bindings=Bs}=State) ->
     EventsSet = call_events(CallId, Bs),
-    case sets:to_list(EventsSet) of
+    lager:debug("evt set for ~s: ~p", [CallId, sets:to_list(EventsSet)]),
+
+    case sets:to_list(sets:del_element(<<"metaflow">>, EventsSet)) of
         [] -> {'noreply', State};
         Events ->
             lager:debug("removing all events for ~s: ~p", [CallId, Events]),
-            gen_listener:rm_binding(self(), ?DYN_BINDINGS(CallId, Events)),
+            _ = gen_listener:rm_binding(self(), ?DYN_BINDINGS(CallId, Events)),
+            sets:is_element(<<"metaflow">>, EventsSet)
+                andalso begin
+                            lager:debug("removing metaflow binding for ~s", [CallId]),
+                            gen_listener:rm_binding(self(), ?META_BINDINGS(CallId))
+                        end,
             {'noreply', State#state{bindings=dict:erase(CallId, Bs)}, 'hibernate'}
     end;
 
