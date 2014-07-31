@@ -21,6 +21,8 @@
 
 -include("../crossbar.hrl").
 
+-type endpoints_return() :: {wh_json:objects(), cb_context:context()}.
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -79,7 +81,10 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) ->
-    Context.
+    CTPs = [{'to_json', ?JSON_CONTENT_TYPES}
+            ,{'to_csv', ?CSV_CONTENT_TYPES}
+           ],
+    cb_context:add_content_types_provided(Context, CTPs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -228,8 +233,6 @@ group_summary(Context, GroupId) ->
                          ,fun wapi_call:publish_query_user_channels_req/1
                         )
     end.
-
--type endpoints_return() :: {wh_json:objects(), cb_context:context()}.
 
 -spec group_endpoints(cb_context:context(), ne_binary()) -> endpoints_return().
 group_endpoints(Context, _GroupId) ->
