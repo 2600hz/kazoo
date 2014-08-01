@@ -869,7 +869,7 @@ change_pin(#mailbox{mailbox_id=Id
                 invalid_pin(Box, Call)
         end
     catch
-        _:_ ->
+        _E:_R ->
             lager:info("new pin was invalid, trying again"),
             invalid_pin(Box, Call)
     end.
@@ -885,10 +885,8 @@ invalid_pin(Box, Call) ->
                                  {'ok', wh_json:object()} |
                                  {'error', _}.
 validate_box_schema(JObj) ->
-    case jesse:validate_with_schema(wh_json_schema:load(<<"vmboxes">>)
-                                    ,wh_json:public_fields(JObj)
-                                   )
-    of
+    {'ok', Schema} = wh_json_schema:load(<<"vmboxes">>),
+    case jesse:validate_with_schema(Schema, wh_json:public_fields(JObj)) of
         {'ok', _}=OK -> OK;
         {'error', _Errors} ->
             lager:debug("failed to validate vmbox schema: ~p", [_Errors]),
