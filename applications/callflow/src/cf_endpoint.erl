@@ -821,7 +821,7 @@ create_mobile_endpoint(Endpoint, Properties, Call) ->
             lager:info("unable to build mobile endpoint: ~s", [_R]),
             Error;
         Route ->
-            Codecs = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"codecs">>, ?DEFAULT_MOBILE_CODECS),
+            Codecs = whapps_config:get(?CF_MOBILE_CONFIG_CAT, <<"codecs">>, ?DEFAULT_MOBILE_CODECS),
             Prop = [{<<"Invite-Format">>, <<"route">>}
                     ,{<<"Ignore-Early-Media">>, <<"true">>}
                     ,{<<"Route">>, Route}
