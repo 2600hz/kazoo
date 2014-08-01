@@ -112,7 +112,16 @@ log_stacktrace() ->
     log_stacktrace(ST).
 log_stacktrace(ST) ->
     lager:debug("stacktrace:"),
-    _ = [lager:debug("st: ~p", [Line]) || Line <- ST],
+    _ = [log_stacktrace_mfa(M, F, A, Info)
+         || {M, F, A, Info} <- ST
+        ],
+    'ok'.
+
+log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
+    lager:debug("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
+log_stacktrace_mfa(M, F, Args, Info) ->
+    lager:debug("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
+    [lager:debug("args: ~p", [Arg]) || Arg <- Args],
     'ok'.
 
 -define(LOG_LEVELS, ['emergency'
