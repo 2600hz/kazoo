@@ -8,11 +8,15 @@
 %%%-------------------------------------------------------------------
 -module(cf_route_req).
 
+-export([handle_req/2]).
+
 -include("callflow.hrl").
 
--define(RESOURCE_TYPES_HANDLED,[<<"audio">>,<<"video">>]).
+-define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
--export([handle_req/2]).
+-define(DEFAULT_METAFLOWS(AccountId)
+        ,whapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, 'false')
+       ).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
@@ -233,7 +237,7 @@ cache_call(Flow, NoMatch, ControllerQ, Call) ->
                                  ,{'cf_flow', wh_json:get_value(<<"flow">>, Flow)}
                                  ,{'cf_capture_group', wh_json:get_ne_value(<<"capture_group">>, Flow)}
                                  ,{'cf_no_match', NoMatch}
-                                 ,{'cf_metaflow', wh_json:get_value(<<"metaflows">>, Flow)}
+                                 ,{'cf_metaflow', wh_json:get_value(<<"metaflows">>, Flow, ?DEFAULT_METAFLOWS(whapps_call:account_id(Call)))}
                                 ],
                         whapps_call:kvs_store_proplist(Props, C)
                 end

@@ -258,7 +258,6 @@ maybe_start_metaflow(Call, MetaFlow) ->
 start_metaflow(Call) ->
     start_metaflow(Call, wh_json:new()).
 start_metaflow(Call, MetaFlow) ->
-    lager:debug("metaflow: ~p", [MetaFlow]),
     case wh_json:is_json_object(MetaFlow) of
         'false' -> 'ok';
         'true' ->
