@@ -85,7 +85,7 @@ validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
     validate_request('undefined', Context).
 
 validate(Context, ?COLLECTION) ->
-    Context#cb_context{resp_status='success'};
+     cb_context:resp_status(Context, 'success');
 validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
@@ -102,7 +102,7 @@ post(Context, _) ->
     Context1.
 
 -spec put(cb_context:context()) -> cb_context:context().
--spec put(#cb_context{}, path_token()) -> #cb_context{}.
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_resource(Context1),
@@ -373,7 +373,7 @@ validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
 collection_process(Context, ?HTTP_POST) ->
     ReqData = cb_context:req_data(Context),
     Db = cb_context:account_db(Context),
-    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_ressource(JObj)} || JObj <- ReqData],
+    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_resource(JObj)} || JObj <- ReqData],
     Ids = props:get_keys(Updates),
     ViewOptions = [{'keys', Ids}
                    ,'include_docs'
@@ -383,14 +383,14 @@ collection_process(Context, ?HTTP_POST) ->
             lager:error("could not open ~p in ~p", [Ids, Db]),
             crossbar_util:response('error', <<"failed to open resources">>, Context);
         {'ok', JObjs} ->
-            Resources = [update_ressource(JObj, Updates) || JObj <- JObjs],
+            Resources = [update_resource(JObj, Updates) || JObj <- JObjs],
             case couch_mgr:save_docs(Db, Resources) of
                 {'error', _R} ->
                     lager:error("failed to update ~p in ~p", [Ids, Db]),
                     crossbar_util:response('error', <<"failed to update resources">>, Context);
                 {'ok', _} ->
                     _ = maybe_aggregate_resources(Resources),
-                    cb_context:set_resp_data(Context, [clean_ressource(Resource) || Resource <- Resources])
+                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- Resources])
             end
     end;
 collection_process(Context, ?HTTP_PUT) ->
@@ -413,7 +413,7 @@ collection_process(Context, ?HTTP_PUT) ->
                     lager:error("could not open ~p in ~p", [Ids, Db]),
                     cb_context:set_resp_data(Context, Ids);
                 {'ok', NewResources} ->
-                    cb_context:set_resp_data(Context, [clean_ressource(Resource) || Resource <- NewResources])
+                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- NewResources])
             end
     end;
 collection_process(Context, ?HTTP_DELETE) ->
@@ -476,8 +476,8 @@ maybe_remove_aggregates([Resource|Resources]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec clean_ressource(wh_json:object()) -> wh_json:object().
-clean_ressource(JObj) ->
+-spec clean_resource(wh_json:object()) -> wh_json:object().
+clean_resource(JObj) ->
     case wh_json:get_value(<<"doc">>, JObj) of
         'undefined' ->
             case wh_json:get_value(<<"_id">>, JObj) of
@@ -488,7 +488,7 @@ clean_ressource(JObj) ->
                     JObj1 = wh_json:set_value(<<"id">>, Id, JObj),
                     wh_doc:public_fields(JObj1)
             end;
-        Doc -> clean_ressource(Doc)
+        Doc -> clean_resource(Doc)
     end.
 
 %%--------------------------------------------------------------------
@@ -496,8 +496,8 @@ clean_ressource(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_ressource(wh_json:object(), wh_proplist()) -> wh_json:object().
-update_ressource(JObj, Updates) ->
+-spec update_resource(wh_json:object(), wh_proplist()) -> wh_json:object().
+update_resource(JObj, Updates) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
     Id = wh_json:get_value(<<"_id">>, Doc),
     wh_json:merge_recursive([Doc, props:get_value(Id, Updates)]).
