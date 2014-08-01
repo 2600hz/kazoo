@@ -115,6 +115,24 @@ call_charges(Ledger, CallId, Event, 'false') ->
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_by_reason(ne_binary(), wh_transactions()) -> wh_transactions().
+filter_by_reason(<<"no_calls">>, Transactions) ->
+    lists:foldr(
+      fun(Transaction, Acc) ->
+              Code = wh_transaction:code(Transaction),
+              case Code >= 1000 andalso Code < 2000 of
+                  'false' -> [Transaction | Acc];
+                  'true' -> Acc
+              end
+      end, [], Transactions);
+filter_by_reason(<<"only_calls">>, Transactions) ->
+    lists:foldr(
+      fun(Transaction, Acc) ->
+              Code = wh_transaction:code(Transaction),
+              case Code >= 1000 andalso Code < 2000 of
+                  'true' -> [Transaction | Acc];
+                  'false' -> Acc
+              end
+      end, [], Transactions);
 filter_by_reason(Reason, Transactions) ->
     lists:foldr(
       fun(Transaction, Acc) ->
