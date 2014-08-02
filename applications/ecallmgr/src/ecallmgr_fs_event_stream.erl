@@ -240,6 +240,16 @@ process_event(<<"sofia::register">>, _UUID, Props, Node) ->
 process_event(_, _, _, _) -> 'ok'.
 
 -spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
+    case props:get_value(<<"variable_bridge_uuid">>, Props) of
+        'undefined' ->
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),    
+            maybe_send_call_event(UUID, Props, Node);
+        BridgeID ->
+            SwappedProps = ecallmgr_call_events:swap_call_legs(Props),
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BridgeID | SwappedProps]}),    
+            maybe_send_call_event(BridgeID, SwappedProps, Node)
+    end;
 maybe_send_event(EventName, UUID, Props, Node) ->
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         'true' -> 'ok';
