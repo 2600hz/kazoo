@@ -15,7 +15,7 @@
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
 -define(DEFAULT_METAFLOWS(AccountId)
-        ,whapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, 'false')
+        ,whapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, 'true')
        ).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -44,7 +44,9 @@ handle_req(JObj, Props) ->
     end.
 
 -spec maybe_exec_preflow(wh_json:object(), wh_proplist()
-                         ,whapps_call:call(), wh_json:object(), boolean()) -> whapps_call:call().
+                         ,whapps_call:call(), wh_json:object()
+                         ,boolean()
+                        ) -> whapps_call:call().
 maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch) ->
     AccountId = whapps_call:account_id(Call),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
