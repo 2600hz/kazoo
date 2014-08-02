@@ -690,9 +690,9 @@ handle_sofia_replaced(ReplacedBy, #state{callid=CallId
 -spec handle_channel_create(wh_proplist(), state()) -> state().
 handle_channel_create(Props, #state{callid=CallId}=State) ->
     LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
-    case ecallmgr_fs_channel:get_other_leg(LegId, Props) =:= CallId of
-        'true' -> add_leg(Props, LegId, State);
-        'false' -> State
+    case ecallmgr_fs_channel:get_other_leg(LegId, Props) of
+        CallId -> add_leg(Props, LegId, State);
+        OtherLeg -> maybe_add_cleg(Props, OtherLeg, LegId, State )
     end.
 
 -spec add_leg(wh_proplist(), api_binary(), state()) -> state().
@@ -718,6 +718,45 @@ publish_leg_addition(Props) ->
                                               ,'undefined'
                                               ,ecallmgr_call_events:swap_call_legs(Props)),
     ecallmgr_call_events:publish_event(Event).
+
+-spec maybe_add_cleg(wh_proplist(), api_binary(), api_binary(), state()) -> state().
+maybe_add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs}=State) ->
+    case lists:member(OtherLeg, Legs) of
+        'true' -> add_cleg(Props, OtherLeg, LegId, State);
+        'false' -> State
+    end.
+
+-spec add_cleg(wh_proplist(), api_binary(), api_binary(), state()) -> state().
+add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
+                             ,callid=CallId
+                            }=State) ->
+    case is_atom(LegId) orelse lists:member(LegId, Legs) of
+        'true' -> State;
+        'false' ->
+            lager:debug("added cleg ~s to call", [LegId]),
+            ConsumerPid = wh_amqp_channel:consumer_pid(),
+            _ = spawn(fun() ->
+                              _ = put('callid', CallId),
+                              wh_amqp_channel:consumer_pid(ConsumerPid),
+                              publish_cleg_addition(Props, OtherLeg, CallId)
+                      end),
+            State#state{other_legs=[LegId|Legs]}
+    end.
+
+-spec publish_cleg_addition(wh_proplist(), ne_binary(), ne_binary()) -> 'ok'.
+publish_cleg_addition(Props, OtherLeg, CallId) ->
+    Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>
+                                              ,'undefined'
+                                              ,ecallmgr_call_events:swap_call_legs(Props)),
+    Event1 = replace_call_id(Event, OtherLeg, CallId, []),
+    ecallmgr_call_events:publish_event(Event1).
+
+-spec replace_call_id(wh_proplist(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+replace_call_id([], _Call1, _Call2, Swap) -> Swap;
+replace_call_id([{Key, Call1}|T], Call1, Call2, Swap) ->
+    replace_call_id(T, Call1, Call2, [{Key, Call2}|Swap]);
+replace_call_id([Prop|T], Call1, Call2, Swap) ->
+    replace_call_id(T, Call1, Call2, [Prop|Swap]).
 
 %%--------------------------------------------------------------------
 %% @private
