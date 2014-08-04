@@ -664,17 +664,12 @@ failed_error({'data_invalid'
                          ,<<"Value did not match type(s): ", Types/binary>>
                          ,Context
                         );
-
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,{'missing_required_property', FailKey}
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    lager:debug("failed message: ~p", [FailKey]),
-    lager:debug("failed schema: ~p", [_FailedSchemaJObj]),
-    lager:debug("failed value: ~p", [_FailedValue]),
-    lager:debug("failed keypath: ~p", [FailedKeyPath]),
     add_validation_error([FailedKeyPath, FailKey]
                          ,<<"required">>
                          ,<<"Field is required but missing">>
