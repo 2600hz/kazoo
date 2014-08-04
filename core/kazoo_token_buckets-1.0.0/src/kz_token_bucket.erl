@@ -84,11 +84,15 @@ start_link(Max, FillRate, FillBlock, FillTime) when is_integer(FillRate), FillRa
 stop(Srv) ->
     gen_server:cast(Srv, 'stop').
 
--spec consume(pid(), pos_integer()) -> boolean().
+-spec consume(pid(), non_neg_integer()) -> boolean().
+consume(_Srv, Tokens) when is_integer(Tokens) andalso Tokens =< 0 ->
+    'true';
 consume(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
     gen_server:call(Srv, {'consume', Tokens}).
 
--spec consume_until(pid(), pos_integer()) -> boolean().
+-spec consume_until(pid(), non_neg_integer()) -> boolean().
+consume_until(_Srv, Tokens) when is_integer(Tokens) andalso Tokens =< 0 ->
+    'true';
 consume_until(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
     gen_server:call(Srv, {'consume_until', Tokens}).
 
