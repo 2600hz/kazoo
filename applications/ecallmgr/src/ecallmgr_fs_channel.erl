@@ -206,6 +206,8 @@ to_props(Channel) ->
        ,{<<"dialplan">>, Channel#channel.dialplan}
        ,{<<"other_leg">>, Channel#channel.other_leg}
        ,{<<"handling_locally">>, Channel#channel.handling_locally}
+       ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
+
       ]).
 
 -spec to_api_json(channel()) -> wh_json:object().
