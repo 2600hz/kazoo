@@ -352,12 +352,13 @@ max_failures(AcctDb, AcctId) ->
     case couch_mgr:open_cache_doc(AcctDb, AcctId) of
         {'ok', AcctJObj} ->
             case wh_json:get_integer_value(<<"max_connect_failures">>, AcctJObj, ?MAX_FAILURES) of
-                N when N > 0 -> N;
+                N when is_integer(N), N > 0 -> N;
                 _ -> 'infinity'
             end;
         {'error', _} -> ?MAX_FAILURES
     end.
 
+-spec wait_for_listener(pid(), pid(), wh_proplist(), boolean()) -> 'ok'.
 wait_for_listener(Supervisor, FSM, Props, IsThief) ->
     case acdc_agent_sup:listener(Supervisor) of
         'undefined' ->
