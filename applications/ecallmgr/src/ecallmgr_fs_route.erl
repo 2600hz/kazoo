@@ -272,7 +272,8 @@ wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
             CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
             J = wh_json:set_value(<<"Custom-Channel-Vars">>
                                   ,wh_json:merge_jobjs(CCVs, AuthzCCVs)
-                                  ,JObj),
+                                  ,JObj
+                                 ),
             reply_affirmative(Section, Node, FetchId, CallId, J);
         _Else -> reply_forbidden(Section, Node, FetchId)
     end.
