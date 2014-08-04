@@ -26,10 +26,10 @@ authorize(Props, CallId, Node) ->
     put('callid', CallId),
     case maybe_authorize_channel(Props, Node) of
         'true' ->
-            lager:debug("channel is authorized", []),
+            lager:debug("channel is authorized"),
             'true';
         'false' ->
-            lager:debug("channel is not authorized", []),
+            lager:debug("channel is not authorized"),
             'false'
     end.
 
@@ -40,7 +40,7 @@ kill_channel(Props, Node) ->
     Direction = props:get_value(<<"Call-Direction">>, Props),
     ResourceType = props:get_value(<<"Resource-Type">>, Props, <<"audio">>),
     CallId = props:get_value(<<"Unique-ID">>, Props),
-    lager:debug("killing unauthorized channel", []),
+    lager:debug("killing unauthorized channel"),
     kill_channel(Direction, ResourceType, CallId, Node).
 
 kill_channel(_, <<"sms">>, _CallId, _Node) -> 'ok';
@@ -231,6 +231,7 @@ maybe_deny_call(Props, CallId, Node) ->
 rate_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put('callid', CallId),
+
     ReqResp = wh_amqp_worker:call(rating_req(CallId, Props)
                                   ,fun wapi_rate:publish_req/1
                                   ,fun wapi_rate:resp_v/1
@@ -302,9 +303,17 @@ authz_req(Props) ->
 -spec rating_req(ne_binary(), wh_proplist()) -> wh_proplist().
 rating_req(CallId, Props) ->
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
-    [{<<"To-DID">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
-     ,{<<"From-DID">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
-                                       ,props:get_value(<<"Caller-Caller-ID-Number">>, Props))}
+    [{<<"To-DID">>, props:get_first_defined([?GET_CCV(<<"Original-Number">>)
+                                             ,<<"Caller-Destination-Number">>
+                                            ], Props
+                                           )
+     }
+     ,{<<"From-DID">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
+                                                ,<<"Caller-Caller-ID-Number">>
+                                               ]
+                                               ,Props
+                                              )
+      }
      ,{<<"Call-ID">>, CallId}
      ,{<<"Account-ID">>, AccountId}
      ,{<<"Direction">>, props:get_value(<<"Call-Direction">>, Props)}
