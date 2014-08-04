@@ -81,8 +81,11 @@
          ,registrar_details/1
          ,registrar_details/2
         ]).
--export([flush_authn/0]).
--export([flush_util/0]).
+-export([flush_authn/0
+         ,flush_util/0
+         ,enable_authz/0, enable_local_resource_authz/0
+         ,disable_authz/0, disable_local_resource_authz/0
+        ]).
 
 -export([show_channels/0]).
 -export([show_calls/0]).
@@ -589,3 +592,23 @@ sbc_acl(IP, Type) ->
                        ,{<<"network-list-name">>, <<"authoritative">>}
                        ,{<<"cidr">>, wh_network_utils:to_cidr(IP)}
                       ]).
+
+-spec enable_authz() -> 'ok'.
+enable_authz() ->
+    ecallmgr_config:set_default(<<"authz_enabled">>, 'true'),
+    io:format("turned on authz; calls will now require authorization~n").
+
+-spec disable_authz() -> 'ok'.
+disable_authz() ->
+    ecallmgr_config:set_default(<<"authz_enabled">>, 'false'),
+    io:format("turned off authz; calls will no longer require authorization~n").
+
+-spec enable_local_resource_authz() -> 'ok'.
+enable_local_resource_authz() ->
+    ecallmgr_config:set_default(<<"authz_local_resources">>, 'true'),
+    io:format("turned on authz for local resources; calls to local resources will now require authorization~n").
+
+-spec disable_local_resource_authz() -> 'ok'.
+disable_local_resource_authz() ->
+    ecallmgr_config:set_default(<<"authz_local_resources">>, 'false'),
+    io:format("turned off authz for local resources; calls to local resources will no longer require authorization~n").
