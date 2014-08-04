@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -37,7 +37,7 @@ authorize(Request, Limits) ->
                         ,[j5_limits:account_id(Limits)]),
             maybe_consume_flat_rate(Request, Limits);
         'false' ->
-            lager:debug("number is not eligible for flat rate trunks", []),
+            lager:debug("number '~s' is not eligible for flat rate trunks", [j5_request:number(Request)]),
             Request
     end.
 
@@ -168,4 +168,3 @@ consume_limit(Limit, Used, Type) ->
                         ,[Used - 1, Limit, Type]),
             0
     end.
-
