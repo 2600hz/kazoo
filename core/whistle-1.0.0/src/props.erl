@@ -66,7 +66,12 @@ filter(Props, Term) when is_list(Props) ->
 
 -spec filter_empty(wh_proplist()) -> wh_proplist().
 filter_empty(Props) ->
-    [KV || {_, V}=KV <- Props, (not wh_util:is_empty(V))].
+    [KV || KV <- Props,
+           case KV of
+               {_, V} -> not wh_util:is_empty(V);
+               _V -> 'true'
+           end
+    ].
 
 -spec filter_undefined(wh_proplist()) -> wh_proplist().
 filter_undefined(Props) ->
@@ -274,7 +279,9 @@ filter_test() ->
 filter_empty_test() ->
     ?assertEqual([], filter_empty([])),
     ?assertEqual([{a, 10}, {b, 8}, {c, 6}], filter_empty([{a, 10}, {b, 8}, {c, 6}])),
-    ?assertEqual([], filter_empty([{a, 0}, {b, []}, {c, <<>>}, {z, undefined}])).
+    ?assertEqual([], filter_empty([{a, 0}, {b, []}, {c, <<>>}, {z, undefined}])),
+    ?assertEqual(['a'], filter_empty(['a'])),
+    ?assertEqual(['a'], filter_empty(['a', {'b', 0}])).
 
 filter_undefined_test() ->
     ?assertEqual(['a'], filter_undefined(['a'])),
