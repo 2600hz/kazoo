@@ -161,10 +161,12 @@ get_global_endpoints(Number, JObj) ->
 
 -spec sort_endpoints(wh_json:objects()) -> wh_json:objects().
 sort_endpoints(Endpoints) ->
-    lists:sort(fun(P1, P2) ->
-                       wh_json:get_value(<<"Weight">>, P1, 1)
-                           =< wh_json:get_value(<<"Weight">>, P2, 1)
-               end, Endpoints).
+    lists:sort(fun endpoint_ordering/2, Endpoints).
+
+-spec endpoint_ordering(wh_json:object(), wh_json:object()) -> boolean().
+endpoint_ordering(P1, P2) ->
+    wh_json:get_value(<<"Weight">>, P1, 1)
+        =< wh_json:get_value(<<"Weight">>, P2, 1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -388,10 +390,13 @@ gateways_to_endpoints(Number, [Gateway|Gateways], JObj, Endpoints) ->
 -spec gateway_to_endpoint(ne_binary(), gateway(), wh_json:object()) ->
                                 wh_json:object().
 gateway_to_endpoint(Number, Gateway, JObj) ->
-    CCVs = props:filter_undefined(
+    CCVs = props:filter_empty(
              [{<<"Emergency-Resource">>, gateway_emergency_resource(Gateway)}
               ,{<<"Format-From-URI">>, Gateway#gateway.format_from_uri}
               ,{<<"From-URI-Realm">>, Gateway#gateway.from_uri_realm}
+              ,{<<"Prefix">>, Gateway#gateway.prefix}
+              ,{<<"Suffix">>, Gateway#gateway.suffix}
+              ,{<<"Original-Number">>, Number}
              ]),
     wh_json:from_list(
       props:filter_empty(
