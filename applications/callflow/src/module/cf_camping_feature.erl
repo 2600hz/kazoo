@@ -80,7 +80,7 @@ check_target_type(#state{type = TargetType} = S) ->
     end.
 
 -spec get_channels(state(), whapps_call:call()) -> maybe(state()).
-get_channels(#state{type = TargetType, id = TargetId}, Call) ->
+get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
     Usernames = case TargetType of
                    <<"device">> -> cf_util:sip_users_from_device_ids([TargetId], Call);
                    <<"user">> ->
@@ -89,7 +89,7 @@ get_channels(#state{type = TargetType, id = TargetId}, Call) ->
                    <<"offnet">> ->
                        []
                end,
-    just(cf_util:find_channels(Usernames, Call)).
+    just(S#state{channels = cf_util:find_channels(Usernames, Call)}).
 
 -spec check_self(state(), whapps_call:call()) -> maybe(state()).
 check_self(State, Call) ->

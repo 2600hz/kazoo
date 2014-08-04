@@ -25,7 +25,7 @@
 %% gen_listener callbacks
 -export([handle_camper_req/3]).
 
--define(RESPONDERS, [{{'camper_offnet_listener', 'handle_camper_req'}
+-define(RESPONDERS, [{{'camper_request_listener', 'handle_camper_req'}
                      ,[{<<"delegate">>, <<"job">>}]
                      }
                     ]).
