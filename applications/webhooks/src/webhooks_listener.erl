@@ -218,12 +218,17 @@ format_event(JObj, AccountId, <<"CHANNEL_ANSWER">>) ->
                       ,base_hook_event(JObj, AccountId)
                      );
 format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
-    wh_json:set_value(<<"hook_event">>, <<"channel_destroy">>
-                      ,base_hook_event(JObj, AccountId)
-                     ).
+    base_hook_event(JObj, AccountId
+                    ,[{<<"hook_event">>, <<"channel_destroy">>}
+                      ,{<<"hangup_cause">>, wh_json:get_value(<<"Hangup-Cause">>, JObj)}
+                      ,{<<"hangup_code">>, wh_json:get_value(<<"Hangup-Code">>, JObj)}
+                     ]).
 
 -spec base_hook_event(wh_json:object(), api_binary()) -> wh_json:object().
+-spec base_hook_event(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().
 base_hook_event(JObj, AccountId) ->
+    base_hook_event(JObj, AccountId, []).
+base_hook_event(JObj, AccountId, Acc) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"call_direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
@@ -235,6 +240,11 @@ base_hook_event(JObj, AccountId) ->
          ,{<<"inception">>, wh_json:get_value(<<"Inception">>, JObj)}
          ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
          ,{<<"other_leg_call_id">>, wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj)}
+         ,{<<"caller_id_name">>, wh_json:get_value(<<"Caller-ID-Name">>, JObj)}
+         ,{<<"caller_id_number">>, wh_json:get_value(<<"Caller-ID-Number">>, JObj)}
+         ,{<<"callee_id_name">>, wh_json:get_value(<<"Callee-ID-Name">>, JObj)}
+         ,{<<"callee_id_number">>, wh_json:get_value(<<"Callee-ID-Number">>, JObj)}
+         | Acc
         ])).
 
 -spec hooks_configured() -> 'ok'.
