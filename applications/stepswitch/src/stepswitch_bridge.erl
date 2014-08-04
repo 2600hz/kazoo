@@ -185,7 +185,7 @@ handle_event(JObj, #state{request_handler=RequestHandler
                         ,[wh_util:to_binary(wh_json:encode(JObj))]),
             gen_listener:cast(RequestHandler, {'bridge_result', bridge_error(JObj, Request)});
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-            lager:debug("channel was destroy while waiting for bridge", []),
+            lager:debug("channel was destroyed while waiting for bridge"),
             Result = case wh_json:get_value(<<"Disposition">>, JObj)
                          =:= <<"SUCCESS">>
                      of
@@ -195,7 +195,7 @@ handle_event(JObj, #state{request_handler=RequestHandler
             gen_listener:cast(RequestHandler, {'bridge_result', Result});
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             <<"bridge">> = wh_json:get_value(<<"Application-Name">>, JObj),
-            lager:debug("channel execute complete for bridge", []),
+            lager:debug("channel execute complete for bridge"),
             Result = case wh_json:get_value(<<"Disposition">>, JObj)
                          =:= <<"SUCCESS">>
                      of
@@ -495,7 +495,7 @@ bridge_failure(JObj, Request) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec get_sip_headers(wh_json:object()) -> 'undefined' | wh_json:object().
+-spec get_sip_headers(wh_json:object()) -> api_object().
 get_sip_headers(JObj) ->
     case get_diversions(JObj) of
         'undefined' -> 'undefined';
@@ -503,13 +503,13 @@ get_sip_headers(JObj) ->
             wh_json:from_list([{<<"Diversion">>, Diversion}])
     end.
 
--spec get_diversions(wh_json:object()) -> 'undefined' | wh_json:object().
+-spec get_diversions(wh_json:object()) -> api_object().
 get_diversions(JObj) ->
     Inception = wh_json:get_value(<<"Inception">>, JObj),
     Diversions = wh_json:get_value(<<"Diversions">>, JObj, []),
     get_diversions(Inception, Diversions).
 
--spec get_diversions(api_binary(), wh_json:object()) -> 'undefined' | wh_json:object().
+-spec get_diversions(api_binary(), wh_json:object()) -> api_object().
 get_diversions('undefined', _) -> 'undefined';
 get_diversions(Inception, Diversions) ->
     wh_json:from_list([{<<"address">>, <<"sip:", Inception/binary>>}
