@@ -394,8 +394,6 @@ gateway_to_endpoint(Number, Gateway, JObj) ->
              [{<<"Emergency-Resource">>, gateway_emergency_resource(Gateway)}
               ,{<<"Format-From-URI">>, Gateway#gateway.format_from_uri}
               ,{<<"From-URI-Realm">>, Gateway#gateway.from_uri_realm}
-              ,{<<"Prefix">>, Gateway#gateway.prefix}
-              ,{<<"Suffix">>, Gateway#gateway.suffix}
               ,{<<"Original-Number">>, Number}
              ]),
     wh_json:from_list(
