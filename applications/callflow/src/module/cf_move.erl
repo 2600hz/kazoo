@@ -36,9 +36,6 @@ handle(_Data, Call) ->
                     lager:warning('cannot decide which channel to move to, too many channels', []),
                     whapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call),
                     cf_exe:stop(Call);
-                {'error', _E} ->
-                    lager:error('error while filtering channels ~p', [_E]),
-                    cf_exe:stop(Call);
                 {'ok', Channel} ->
                     OtherLegId = wh_json:get_value(<<"other_leg">>, Channel),
                     whapps_call_command:pickup(OtherLegId, Call),
@@ -46,7 +43,7 @@ handle(_Data, Call) ->
             end
     end.
 
--spec get_channels(ne_binary(), whapps_call:call()) -> wh_json:objects().
+-spec get_channels(ne_binary(), whapps_call:call()) -> dict().
 get_channels(OwnerId, Call) ->
     DeviceIds = cf_attributes:owned_by(OwnerId, <<"device">>, Call),
     Req = [{<<"Authorizing-IDs">>, DeviceIds}
@@ -82,14 +79,15 @@ clean_channel(JObj, Dict) ->
         ,wh_json:get_value(<<"Channels">>, JObj, [])
     ).
 
--spec filter_channels(wh_json:objects(), whapps_call:call()) -> {'ok', wh_json:object()} | {'error', atom()}.
+-spec filter_channels(dict(), whapps_call:call()) ->
+                             {'ok', wh_json:object()} |
+                             {'error', atom()}.
 filter_channels(Channels, Call) ->
     CallId = whapps_call:call_id(Call),
     NChannels = dict:erase(CallId, Channels),
-    case dict:size(NChannels) of
-        0 -> {'error', 'no_channel'};
-        1 ->
-            [{_, Channel}|_] = dict:to_list(NChannels),
+    case dict:to_list(NChannels) of
+        [] -> {'error', 'no_channel'};
+        [{_, Channel}] ->
             {'ok', Channel};
-        _ -> {'error', 'too_many_channels'}
+        [_|_] -> {'error', 'too_many_channels'}
     end.

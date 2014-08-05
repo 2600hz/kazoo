@@ -83,8 +83,8 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
                 }=CF, CaptureGroup, Call) ->
     lager:info("playing call forwarding menu"),
     Prompt = case Enabled of
-                 'true' -> whapps_util:get_prompt(<<"cf-enabled_menu">>, Call);
-                 'false' -> whapps_util:get_prompt(<<"cf-disabled_menu">>, Call)
+                 'true' -> wh_media_util:get_prompt(<<"cf-enabled_menu">>, Call);
+                 'false' -> wh_media_util:get_prompt(<<"cf-disabled_menu">>, Call)
              end,
     _  = whapps_call_command:b_flush(Call),
 
@@ -184,7 +184,7 @@ cf_deactivate(CF, Call) ->
 cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call) when is_atom(CaptureGroup)
                                                                                       ;CaptureGroup =:= <<>>
                                                                                       ->
-    EnterNumber = whapps_util:get_prompt(<<"cf-enter_number">>, Call),
+    EnterNumber = wh_media_util:get_prompt(<<"cf-enter_number">>, Call),
 
     NoopId = whapps_call_command:play(EnterNumber, Call),
     Min = ?MIN_CALLFWD_NUMBER_LENGTH,

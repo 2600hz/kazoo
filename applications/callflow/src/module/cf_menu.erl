@@ -336,7 +336,7 @@ play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
 %%--------------------------------------------------------------------
 -spec get_prompt(menu(), whapps_call:call()) -> ne_binary().
 get_prompt(#cf_menu_data{greeting_id='undefined'}, Call) ->
-    whapps_util:get_prompt(<<"menu-no_prompt">>, Call);
+    wh_media_util:get_prompt(<<"menu-no_prompt">>, Call);
 get_prompt(#cf_menu_data{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
     ID;
 get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
