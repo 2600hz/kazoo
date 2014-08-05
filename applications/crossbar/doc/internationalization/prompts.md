@@ -53,7 +53,7 @@ To do so, use the standard `PUT /media` but include `prompt_id` in the data payl
 
 #### Set the account's language
 
-Currently, a SUP command is required to set the account's langauge: `sup whapps_account_config {ACCOUNT_ID} media default_language fr-ca`
+Currently, a SUP command is required to set the account's language: `sup whapps_account_config {ACCOUNT_ID} media default_language fr-ca`
 
 You can test what language will be selected for an account (barring a callflow language action changing it) thusly: `sup wh_media_util prompt_language {ACCOUNT_ID}`
 
@@ -63,7 +63,7 @@ If you are a superduper admin, you can also manipulate the system_media prompts 
 
 ### Languages supported
 
-While we encourage you to use proper RFC [langauge tags](http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.10) for identifying prompts, there is no system limitation. If the language to be used is "en-US", the system will first try to find "en-US" then fall back to "en" prompts. If the language is "fr-FR", the system will try "fr-fr" and then "fr". However, nothing stops you from doing dual-language prompts (where both languages are in one media file) and using "fr-fr_en-us". In this case, "fr-fr_en-us" will be tried, then "fr-fr", and finally "fr".
+While we encourage you to use proper RFC [language tags](http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.10) for identifying prompts, there is no system limitation. If the language to be used is "en-US", the system will first try to find "en-US" then fall back to "en" prompts. If the language is "fr-FR", the system will try "fr-fr" and then "fr". However, nothing stops you from doing dual-language prompts (where both languages are in one media file) and using "fr-fr_en-us". In this case, "fr-fr_en-us" will be tried, then "fr-fr", and finally "fr".
 
 ### Existing Prompts
 
@@ -88,4 +88,4 @@ Add the `language` callflow action before a branch to set what language will be 
      }
     }
 
-This will override the account and system langauges. If no language is specified, the account's language will be used; if that is missing, the system default language will be used.
+This will override the account and system languages. If no language is specified, the account's language will be used; if that is missing, the system default language will be used.
