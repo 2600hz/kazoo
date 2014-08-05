@@ -14,7 +14,9 @@
 
 -behaviour(gen_fsm).
 
--export([handle/2]).
+-export([handle/2
+         ,pattern_builder/1
+        ]).
 
 -export([attended_wait/2, attended_wait/3
          ,partial_wait/2, partial_wait/3
@@ -470,3 +472,7 @@ handle_transferor_dtmf(Evt, NextState
         'false' ->
             {'next_state', NextState, State#state{transferor_dtmf=Collected}}
     end.
+
+-spec pattern_builder(wh_json:object()) -> wh_json:object().
+pattern_builder(DefaultJObj) ->
+    DefaultJObj.
