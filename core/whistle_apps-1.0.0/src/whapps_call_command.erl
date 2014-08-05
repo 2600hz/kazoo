@@ -992,7 +992,7 @@ tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
 tts_command(SayMe, Call) ->
     tts_command(SayMe, <<"female">>, Call).
 tts_command(SayMe, Voice, Call) ->
-    tts_command(SayMe, Voice, whapps_call:langauge(Call), Call).
+    tts_command(SayMe, Voice, whapps_call:language(Call), Call).
 tts_command(SayMe, Voice, Language, Call) ->
     tts_command(SayMe, Voice, Language, ?ANY_DIGIT, Call).
 tts_command(SayMe, Voice, Language, Terminators, Call) ->
