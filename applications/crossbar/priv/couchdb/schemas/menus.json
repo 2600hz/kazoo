@@ -57,18 +57,18 @@
     "timeout": {
       "type": "integer",
       "required": false,
-      "name": "Timeout (seconds)",
-      "description": "The amount of time (in seconds) to wait for the caller to beging entering digits",
+      "name": "Timeout (milliseconds)",
+      "description": "The amount of time (in milliseconds) to wait for the caller to beging entering digits",
       "minimum": 1,
-      "maximum": 10
+      "maximum": 10000
     },
     "interdigit_timeout": {
       "type": "integer",
       "required": false,
-      "name": "Interdigit Timeout (seconds)",
-      "description": "The amount of time (in seconds) to wait for the caller to press the next digit after pressing a digit",
+      "name": "Interdigit Timeout (millliseconds)",
+      "description": "The amount of time (in milliseconds) to wait for the caller to press the next digit after pressing a digit",
       "minimum": 1,
-      "maximum": 10
+      "maximum": 10000
     },
     "hunt_deny": {
       "type": "string",
