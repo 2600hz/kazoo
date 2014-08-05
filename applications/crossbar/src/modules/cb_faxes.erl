@@ -429,8 +429,8 @@ outgoing_summary(Context) ->
                   ]};
             _Else ->
                 {?CB_LIST_BY_ACCOUNT
-                 ,[{'startkey', cb_context:account_id(Context)} 
-                   ,{'endkey', [cb_context:account_id(Context), wh_json:new()]} 
+                 ,[{'startkey', [cb_context:account_id(Context)]}
+                   ,{'endkey', [cb_context:account_id(Context), wh_json:new()]}
                    ,'include_docs'
                   ]}
         end,
