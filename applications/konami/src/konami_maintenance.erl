@@ -12,6 +12,8 @@
          ,add_default_account_metaflow/1
         ]).
 
+-include("konami.hrl").
+
 is_running() ->
     case lists:keyfind('konami', 1, application:which_applications()) of
         'false' -> io:format("Konami is not currently running on this node~n", []);
@@ -34,6 +36,7 @@ add_default_account_metaflow(AccountId) ->
                            end).
 
 intro_builder(Default, SaveFun) ->
+    wh_util:ensure_started('konami'),
     io:format("The current default metaflow:~n"),
     io:format("  Binding Digit: ~s~n"
               ,[wh_json:get_value(<<"binding_digit">>, Default, konami_config:binding_digit())]
@@ -86,8 +89,56 @@ menu_builder_action(Default, SaveFun, _) ->
     io:format("Action not recognized!~n~n"),
     menu_builder(Default, SaveFun).
 
-number_builder(_Default, _SaveFun) ->
-    'ok'.
+number_builder(Default, SaveFun) ->
+    Ms = builder_modules('number_builder'),
+    number_builder_menu(Default, SaveFun, lists:zip(lists:seq(1, length(Ms)), Ms)).
+
+number_builder_menu(Default, SaveFun, Builders) ->
+    io:format("Number Builders:~n", []),
+
+    [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders],
+    io:format("  0. Return to Menu~n~n", []),
+
+    {'ok', [Option]} = io:fread("Which builder to add: ", "~d"),
+    number_builder_action(Default, SaveFun, Builders, Option).
+
+-spec builder_name(ne_binary() | atom()) -> ne_binary().
+builder_name(<<"konami_", Name/binary>>) -> wh_util:ucfirst_binary(Name);
+builder_name(<<_/binary>> = Name) -> wh_util:ucfirst_binary(Name);
+builder_name(M) -> builder_name(wh_util:to_binary(M)).
+
+number_builder_action(Default, SaveFun, _Builders, 0) ->
+    menu_builder(Default, SaveFun);
+number_builder_action(Default, SaveFun, Builders, N) ->
+    case lists:keyfind(N, 1, Builders) of
+        'false' ->
+            io:format("invalid option selected~n", []),
+            number_builder_menu(Default, SaveFun, Builders);
+        {_, Module} ->
+            try Module:number_builder(Default) of
+                NewDefault ->
+                    io:format("  Numbers: ~s~n~n", [wh_json:encode(wh_json:get_value(<<"numbers">>, NewDefault, wh_json:new()))]),
+                    number_builder_menu(NewDefault, SaveFun, Builders)
+            catch
+                _E:_R ->
+                    io:format("failed to build number metaflow for ~s~n", [Module]),
+                    io:format("~s: ~p~n~n", [_E, _R]),
+                    number_builder_menu(Default, SaveFun, Builders)
+            end
+    end.
 
 pattern_builder(_Default, _SaveFun) ->
     'ok'.
+
+-spec builder_modules(atom()) -> atoms().
+builder_modules(F) ->
+    {'ok', Modules} = application:get_key('konami', 'modules'),
+    [M || M <- Modules, is_builder_module(M, F)].
+
+-spec is_builder_module(atom(), atom()) -> boolean().
+is_builder_module(M, F) ->
+    try M:module_info('exports') of
+        Exports -> props:get_value(F, Exports) =:= 1
+    catch
+        _E:_R -> 'false'
+    end.
