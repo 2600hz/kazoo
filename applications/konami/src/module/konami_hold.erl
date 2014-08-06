@@ -56,6 +56,7 @@ number_builder(DefaultJObj) ->
         NumberJObj -> wh_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
+-spec number_builder_check(api_object()) -> api_object().
 number_builder_check('undefined') ->
     number_builder_moh(wh_json:new());
 number_builder_check(NumberJObj) ->
@@ -65,6 +66,7 @@ number_builder_check(NumberJObj) ->
     {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
     number_builder_check_option(NumberJObj, Option).
 
+-spec number_builder_check_option(wh_json:object(), string()) -> api_object().
 number_builder_check_option(NumberJObj, "e") ->
     number_builder_moh(NumberJObj);
 number_builder_check_option(_NumberJObj, "d") ->
@@ -73,10 +75,12 @@ number_builder_check_option(NumberJObj, _Option) ->
     io:format("invalid selection~n", []),
     number_builder_check(NumberJObj).
 
+-spec number_builder_moh(wh_json:object()) -> wh_json:object().
 number_builder_moh(NumberJObj) ->
     {'ok', [MOH]} = io:fread("Any custom music on hold to play ('n' to leave as default MOH, 'h' for help)? ", "~s"),
     metaflow_jobj(NumberJObj, MOH).
 
+-spec metaflow_jobj(wh_json:object(), string()) -> wh_json:object().
 metaflow_jobj(NumberJObj, "h") ->
     io:format("To set a system_media file as MOH, enter: /system_media/{MEDIA_ID}~n", []),
     io:format("To set an account's media file as MOH, enter: /{ACCOUNT_ID}/{MEDIA_ID}~n", []),
