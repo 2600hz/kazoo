@@ -733,7 +733,28 @@ on_successful_validation('undefined', Context) ->
             ],
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(MediaId, Context) ->
-    crossbar_doc:load_merge(MediaId, Context).
+    Context1 = crossbar_doc:load_merge(MediaId, Context),
+    maybe_validate_prompt(MediaId, Context1, cb_context:resp_status(Context1)).
+
+maybe_validate_prompt(MediaId, Context, 'success') ->
+    case wh_json:get_value(<<"prompt_id">>, cb_context:doc(Context)) of
+        'undefined' -> Context;
+        PromptId ->
+            validate_prompt(MediaId, Context, PromptId)
+    end;
+maybe_validate_prompt(_MediaId, Context, _Status) ->
+    Context.
+
+validate_prompt(MediaId, Context, PromptId) ->
+    Language = wh_util:to_lower_binary(wh_json:get_value(<<"language">>, cb_context:doc(Context))),
+    case wh_media_util:prompt_id(PromptId, Language) of
+        MediaId -> Context;
+        _OtherId ->
+            lager:info("attempt to change prompt id '~s' is not allowed on existing media doc '~s'"
+                       ,[PromptId, MediaId]
+                      ),
+            cb_context:add_validation_error(<<"prompt_id">>, <<"invalid">>, <<"Changing the prompt_id on an existing prompt is not allowed">>, Context)
+    end.
 
 -spec maybe_add_prompt_fields(cb_context:context()) -> wh_proplist().
 maybe_add_prompt_fields(Context) ->
