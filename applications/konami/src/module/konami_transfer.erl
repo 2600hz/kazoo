@@ -5,6 +5,7 @@
 %%% Data = {
 %%%   "takeback_dtmf":"2" // Transferor can cancel the transfer request
 %%%   ,"moh":"media_id" // custom music on hold
+%%%   ,"target":"1000" // extension/DID to transfer to
 %%% }
 %%% @end
 %%% @contributors
@@ -16,6 +17,7 @@
 
 -export([handle/2
          ,pattern_builder/1
+         ,number_builder/1
         ]).
 
 -export([attended_wait/2, attended_wait/3
@@ -476,3 +478,65 @@ handle_transferor_dtmf(Evt, NextState
 -spec pattern_builder(wh_json:object()) -> wh_json:object().
 pattern_builder(DefaultJObj) ->
     DefaultJObj.
+
+number_builder(DefaultJObj) ->
+    io:format("Let's add a transfer metaflow to a specific extension/DID~n", []),
+
+    {'ok', [Number]} = io:fread("First, what number should invoke 'transfer'? ", "~d"),
+
+    K = [<<"numbers">>, wh_util:to_binary(Number)],
+    case number_builder_check(wh_json:get_value(K, DefaultJObj)) of
+        'undefined' -> wh_json:delete_key(K, DefaultJObj);
+        NumberJObj -> wh_json:set_value(K, NumberJObj, DefaultJObj)
+    end.
+
+number_builder_check('undefined') ->
+    number_builder_target(wh_json:new());
+number_builder_check(NumberJObj) ->
+    io:format("  Existing config for this number: ~s~n", [wh_json:encode(NumberJObj)]),
+    io:format("  e. Edit Number~n", []),
+    io:format("  d. Delete Number~n", []),
+    {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
+    number_builder_check_option(NumberJObj, Option).
+
+number_builder_check_option(NumberJObj, "e") ->
+    number_builder_target(NumberJObj);
+number_builder_check_option(_NumberJObj, "d") ->
+    'undefined';
+number_builder_check_option(NumberJObj, _Option) ->
+    io:format("invalid selection~n", []),
+    number_builder_check(NumberJObj).
+
+number_builder_target(NumberJObj) ->
+    {'ok', [Target]} = io:fread("What is the target extension/DID to transfer to? ", "~s"),
+    number_builder_takeback_dtmf(NumberJObj, wh_util:to_binary(Target)).
+
+number_builder_takeback_dtmf(NumberJObj, Target) ->
+    {'ok', [Takeback]} = io:fread("What is the takeback DTMF ('n' to use the default)? ", "~s"),
+    number_builder_moh(NumberJObj, Target, wh_util:to_binary(Takeback)).
+
+number_builder_moh(NumberJObj, Target, Takeback) ->
+    {'ok', [MOH]} = io:fread("Any custom music-on-hold ('n' for none, 'h' for help')? ", "~s"),
+    metaflow_jobj(NumberJObj, Target, Takeback, wh_util:to_binary(MOH)).
+
+metaflow_jobj(NumberJObj, Target, Takeback, <<"h">>) ->
+    io:format("To set a system_media file as MOH, enter: /system_media/{MEDIA_ID}~n", []),
+    io:format("To set an account's media file as MOH, enter: /{ACCOUNT_ID}/{MEDIA_ID}~n", []),
+    io:format("To set an third-party HTTP url, enter: http://other.server.com/moh.mp3~n~n", []),
+    number_builder_moh(NumberJObj, Target, Takeback);
+metaflow_jobj(NumberJObj, Target, Takeback, MOH) ->
+    wh_json:set_values([{<<"module">>, <<"transfer">>}
+                        ,{<<"data">>, transfer_data(Target, Takeback, MOH)}
+                       ], NumberJObj).
+
+transfer_data(Target, Takeback, <<"n">>) ->
+    transfer_data(Target, Takeback, 'undefined');
+transfer_data(Target, <<"n">>, MOH) ->
+    transfer_data(Target, 'undefined', MOH);
+transfer_data(Target, Takeback, MOH) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"target">>, Target}
+         ,{<<"takeback_dtmf">>, Takeback}
+         ,{<<"moh">>, MOH}
+        ])).

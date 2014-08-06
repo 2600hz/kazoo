@@ -45,7 +45,7 @@ handle(Data, Call) ->
 
 -spec number_builder(wh_json:object()) -> wh_json:object().
 number_builder(DefaultJObj) ->
-    io:format("let's add the 'hold' metaflow~n", []),
+    io:format("Let's configure a 'hold' metaflow~n", []),
 
     {'ok', [Number]} = io:fread("What number should invoke 'hold'? ", "~d"),
 
@@ -59,9 +59,10 @@ number_builder(DefaultJObj) ->
 number_builder_check('undefined') ->
     number_builder_moh(wh_json:new());
 number_builder_check(NumberJObj) ->
+    io:format("  Existing config for this number: ~s~n", [wh_json:encode(NumberJObj)]),
     io:format("  e. Edit Number~n", []),
     io:format("  d. Delete Number~n", []),
-    {'ok', [Option]} = io:fread("Number exists. What would you like to do: ", "~s"),
+    {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
     number_builder_check_option(NumberJObj, Option).
 
 number_builder_check_option(NumberJObj, "e") ->
