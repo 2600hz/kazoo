@@ -14,6 +14,11 @@
 
 -include("konami.hrl").
 
+-record(builder_action, {module_fun_name :: atom()
+                         ,metaflow_key :: ne_binary()
+                         ,builders :: atoms()
+                        }).
+
 is_running() ->
     case lists:keyfind('konami', 1, application:which_applications()) of
         'false' -> io:format("Konami is not currently running on this node~n", []);
@@ -91,44 +96,76 @@ menu_builder_action(Default, SaveFun, _) ->
 
 number_builder(Default, SaveFun) ->
     Ms = builder_modules('number_builder'),
-    number_builder_menu(Default, SaveFun, lists:zip(lists:seq(1, length(Ms)), Ms)).
+    builder_menu(Default
+                 ,SaveFun
+                 ,#builder_action{builders=lists:zip(lists:seq(1, length(Ms)), Ms)
+                                  ,metaflow_key = <<"numbers">>
+                                  ,module_fun_name='number_builder'
+                                 }
+                ).
 
-number_builder_menu(Default, SaveFun, Builders) ->
-    io:format("Number Builders:~n", []),
+pattern_builder(Default, SaveFun) ->
+    Ms = builder_modules('pattern_builder'),
+    builder_menu(Default
+                 ,SaveFun
+                 ,#builder_action{builders=lists:zip(lists:seq(1, length(Ms)), Ms)
+                                  ,metaflow_key = <<"patterns">>
+                                  ,module_fun_name='pattern_builder'
+                                 }
+                ).
 
-    [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders],
-    io:format("  0. Return to Menu~n~n", []),
-
-    {'ok', [Option]} = io:fread("Which builder to add: ", "~d"),
-    number_builder_action(Default, SaveFun, Builders, Option).
+print_builders(Builders) ->
+    [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders].
 
 -spec builder_name(ne_binary() | atom()) -> ne_binary().
 builder_name(<<"konami_", Name/binary>>) -> wh_util:ucfirst_binary(Name);
 builder_name(<<_/binary>> = Name) -> wh_util:ucfirst_binary(Name);
 builder_name(M) -> builder_name(wh_util:to_binary(M)).
 
-number_builder_action(Default, SaveFun, _Builders, 0) ->
+builder_menu(Default, SaveFun, #builder_action{builders=Builders
+                                               ,metaflow_key=Key
+                                              }=BA) ->
+    io:format("~s Builders:~n", [wh_util:ucfirst_binary(Key)]),
+
+    print_builders(Builders),
+    io:format("  0. Return to Menu~n~n", []),
+
+    {'ok', [Option]} = io:fread("Which builder to add: ", "~d"),
+    builder_action(Default
+                   ,SaveFun
+                   ,BA
+                   ,Option
+                  ).
+
+builder_action(Default, SaveFun, _BA, 0) ->
     menu_builder(Default, SaveFun);
-number_builder_action(Default, SaveFun, Builders, N) ->
+builder_action(Default, SaveFun, #builder_action{builders=Builders}=BA, N) ->
     case lists:keyfind(N, 1, Builders) of
         'false' ->
-            io:format("invalid option selected~n", []),
-            number_builder_menu(Default, SaveFun, Builders);
+            invalid_action(Default, SaveFun, BA);
         {_, Module} ->
-            try Module:number_builder(Default) of
-                NewDefault ->
-                    io:format("  Numbers: ~s~n~n", [wh_json:encode(wh_json:get_value(<<"numbers">>, NewDefault, wh_json:new()))]),
-                    number_builder_menu(NewDefault, SaveFun, Builders)
-            catch
-                _E:_R ->
-                    io:format("failed to build number metaflow for ~s~n", [Module]),
-                    io:format("~s: ~p~n~n", [_E, _R]),
-                    number_builder_menu(Default, SaveFun, Builders)
-            end
+            execute_action(Default, SaveFun, BA, Module)
     end.
 
-pattern_builder(_Default, _SaveFun) ->
-    'ok'.
+execute_action(Default, SaveFun, #builder_action{module_fun_name=ModuleFun
+                                                 ,metaflow_key=Key
+                                                }=BA, Module) ->
+    try Module:ModuleFun(Default) of
+        NewDefault ->
+            io:format("  ~s: ~s~n~n", [wh_util:ucfirst_binary(Key)
+                                       ,wh_json:encode(wh_json:get_value(Key, NewDefault, wh_json:new()))
+                                      ]),
+            builder_menu(NewDefault, SaveFun, BA)
+    catch
+        _E:_R ->
+            io:format("failed to build ~s metaflow for ~s~n", [Key, Module]),
+            io:format("~s: ~p~n~n", [_E, _R]),
+            builder_menu(Default, SaveFun, BA)
+    end.
+
+invalid_action(Default, SaveFun, BA) ->
+    io:format("invalid option selected~n", []),
+    builder_menu(Default, SaveFun, BA).
 
 -spec builder_modules(atom()) -> atoms().
 builder_modules(F) ->
