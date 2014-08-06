@@ -100,7 +100,7 @@ number_builder_media(NumberJObj) ->
 
 -spec number_builder_leg(wh_json:object(), ne_binary()) -> wh_json:object().
 number_builder_leg(NumberJObj, Media) ->
-    {'ok', [Leg]} = io:fread("On what leg of the call ('self', 'peer', or 'both'? ", "~s"),
+    {'ok', [Leg]} = io:fread("On what leg of the call ('self', 'peer', or 'both')? ", "~s"),
     metaflow_jobj(NumberJObj, Media, wh_util:to_binary(Leg)).
 
 -spec metaflow_jobj(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
