@@ -481,6 +481,7 @@ pattern_builder(DefaultJObj) ->
 
     pattern_builder_regex(DefaultJObj).
 
+-spec pattern_builder_regex(wh_json:object()) -> wh_json:object().
 pattern_builder_regex(DefaultJObj) ->
     {'ok', [Regex]} = io:fread("First, what regex should invoke the 'transfer'? ", "~s"),
     case re:compile(Regex) of
@@ -495,6 +496,7 @@ pattern_builder_regex(DefaultJObj) ->
             pattern_builder_regex(DefaultJObj)
     end.
 
+-spec pattern_builder_check(api_object()) -> api_object().
 pattern_builder_check('undefined') ->
     builder_takeback_dtmf(wh_json:new(), 'undefined');
 pattern_builder_check(PatternJObj) ->
@@ -510,6 +512,7 @@ pattern_builder_check(PatternJObj) ->
                           end
                         ).
 
+-spec number_builder(wh_json:object()) -> wh_json:object().
 number_builder(DefaultJObj) ->
     io:format("Let's add a transfer metaflow to a specific extension/DID~n", []),
 
@@ -521,6 +524,7 @@ number_builder(DefaultJObj) ->
         NumberJObj -> wh_json:set_value(K, NumberJObj, DefaultJObj)
     end.
 
+-spec number_builder_check(api_object()) -> api_object().
 number_builder_check('undefined') ->
     builder_target(wh_json:new());
 number_builder_check(NumberJObj) ->
@@ -534,6 +538,10 @@ number_builder_check(NumberJObj) ->
                          ,fun builder_target/1
                         ).
 
+-type check_fun() :: fun((api_object()) -> api_object()).
+-type build_fun() :: fun((wh_json:object()) -> wh_json:object()).
+
+-spec builder_check_option(wh_json:object(), string(), check_fun(), build_fun()) -> api_object().
 builder_check_option(JObj, "e", _CheckFun, BuilderFun) ->
     BuilderFun(JObj);
 builder_check_option(_JObj, "d", _CheckFun, _BuilderFun) ->
@@ -542,18 +550,22 @@ builder_check_option(JObj, _Option, CheckFun, _BuilderFun) ->
     io:format("invalid selection~n", []),
     CheckFun(JObj).
 
+-spec builder_target(wh_json:object()) -> wh_json:object().
 builder_target(JObj) ->
     {'ok', [Target]} = io:fread("What is the target extension/DID to transfer to? ", "~s"),
     builder_takeback_dtmf(JObj, wh_util:to_binary(Target)).
 
+-spec builder_takeback_dtmf(wh_json:object(), ne_binary()) -> wh_json:object().
 builder_takeback_dtmf(JObj, Target) ->
     {'ok', [Takeback]} = io:fread("What is the takeback DTMF ('n' to use the default)? ", "~s"),
     builder_moh(JObj, Target, wh_util:to_binary(Takeback)).
 
+-spec builder_moh(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
 builder_moh(JObj, Target, Takeback) ->
     {'ok', [MOH]} = io:fread("Any custom music-on-hold ('n' for none, 'h' for help')? ", "~s"),
     metaflow_jobj(JObj, Target, Takeback, wh_util:to_binary(MOH)).
 
+-spec metaflow_jobj(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
 metaflow_jobj(JObj, Target, Takeback, <<"h">>) ->
     io:format("To set a system_media file as MOH, enter: /system_media/{MEDIA_ID}~n", []),
     io:format("To set an account's media file as MOH, enter: /{ACCOUNT_ID}/{MEDIA_ID}~n", []),
@@ -564,6 +576,7 @@ metaflow_jobj(JObj, Target, Takeback, MOH) ->
                         ,{<<"data">>, transfer_data(Target, Takeback, MOH)}
                        ], JObj).
 
+-spec transfer_data(ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
 transfer_data(Target, Takeback, <<"n">>) ->
     transfer_data(Target, Takeback, 'undefined');
 transfer_data(Target, <<"n">>, MOH) ->
