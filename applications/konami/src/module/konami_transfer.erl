@@ -477,7 +477,38 @@ handle_transferor_dtmf(Evt, NextState
 
 -spec pattern_builder(wh_json:object()) -> wh_json:object().
 pattern_builder(DefaultJObj) ->
-    DefaultJObj.
+    io:format("Let's add a transfer metaflow using a regex to capture the extension/DID~n", []),
+
+    pattern_builder_regex(DefaultJObj).
+
+pattern_builder_regex(DefaultJObj) ->
+    {'ok', [Regex]} = io:fread("First, what regex should invoke the 'transfer'? ", "~s"),
+    case re:compile(Regex) of
+        {'ok', _} ->
+            K = [<<"patterns">>, wh_util:to_binary(Regex)],
+            case pattern_builder_check(wh_json:get_value(K, DefaultJObj)) of
+                'undefined' -> wh_json:delete_key(K, DefaultJObj);
+                PatternJObj -> wh_json:set_value(K, PatternJObj, DefaultJObj)
+            end;
+        {'error', _E} ->
+            io:format("We were unable to compile the regex supplied: ~p~n", [_E]),
+            pattern_builder_regex(DefaultJObj)
+    end.
+
+pattern_builder_check('undefined') ->
+    builder_takeback_dtmf(wh_json:new(), 'undefined');
+pattern_builder_check(PatternJObj) ->
+    io:format("  Existing config for this pattern: ~s~n", [wh_json:encode(PatternJObj)]),
+    io:format("  e. Edit Pattern~n", []),
+    io:format("  d. Delete Pattern~n", []),
+    {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
+    builder_check_option(PatternJObj
+                         ,Option
+                         ,fun pattern_builder_check/1
+                         ,fun(JObj) ->
+                                  builder_takeback_dtmf(JObj, 'undefined')
+                          end
+                        ).
 
 number_builder(DefaultJObj) ->
     io:format("Let's add a transfer metaflow to a specific extension/DID~n", []),
@@ -491,43 +522,47 @@ number_builder(DefaultJObj) ->
     end.
 
 number_builder_check('undefined') ->
-    number_builder_target(wh_json:new());
+    builder_target(wh_json:new());
 number_builder_check(NumberJObj) ->
     io:format("  Existing config for this number: ~s~n", [wh_json:encode(NumberJObj)]),
     io:format("  e. Edit Number~n", []),
     io:format("  d. Delete Number~n", []),
     {'ok', [Option]} = io:fread("What would you like to do: ", "~s"),
-    number_builder_check_option(NumberJObj, Option).
+    builder_check_option(NumberJObj
+                         ,Option
+                         ,fun number_builder_check/1
+                         ,fun builder_target/1
+                        ).
 
-number_builder_check_option(NumberJObj, "e") ->
-    number_builder_target(NumberJObj);
-number_builder_check_option(_NumberJObj, "d") ->
+builder_check_option(JObj, "e", _CheckFun, BuilderFun) ->
+    BuilderFun(JObj);
+builder_check_option(_JObj, "d", _CheckFun, _BuilderFun) ->
     'undefined';
-number_builder_check_option(NumberJObj, _Option) ->
+builder_check_option(JObj, _Option, CheckFun, _BuilderFun) ->
     io:format("invalid selection~n", []),
-    number_builder_check(NumberJObj).
+    CheckFun(JObj).
 
-number_builder_target(NumberJObj) ->
+builder_target(JObj) ->
     {'ok', [Target]} = io:fread("What is the target extension/DID to transfer to? ", "~s"),
-    number_builder_takeback_dtmf(NumberJObj, wh_util:to_binary(Target)).
+    builder_takeback_dtmf(JObj, wh_util:to_binary(Target)).
 
-number_builder_takeback_dtmf(NumberJObj, Target) ->
+builder_takeback_dtmf(JObj, Target) ->
     {'ok', [Takeback]} = io:fread("What is the takeback DTMF ('n' to use the default)? ", "~s"),
-    number_builder_moh(NumberJObj, Target, wh_util:to_binary(Takeback)).
+    builder_moh(JObj, Target, wh_util:to_binary(Takeback)).
 
-number_builder_moh(NumberJObj, Target, Takeback) ->
+builder_moh(JObj, Target, Takeback) ->
     {'ok', [MOH]} = io:fread("Any custom music-on-hold ('n' for none, 'h' for help')? ", "~s"),
-    metaflow_jobj(NumberJObj, Target, Takeback, wh_util:to_binary(MOH)).
+    metaflow_jobj(JObj, Target, Takeback, wh_util:to_binary(MOH)).
 
-metaflow_jobj(NumberJObj, Target, Takeback, <<"h">>) ->
+metaflow_jobj(JObj, Target, Takeback, <<"h">>) ->
     io:format("To set a system_media file as MOH, enter: /system_media/{MEDIA_ID}~n", []),
     io:format("To set an account's media file as MOH, enter: /{ACCOUNT_ID}/{MEDIA_ID}~n", []),
     io:format("To set an third-party HTTP url, enter: http://other.server.com/moh.mp3~n~n", []),
-    number_builder_moh(NumberJObj, Target, Takeback);
-metaflow_jobj(NumberJObj, Target, Takeback, MOH) ->
+    builder_moh(JObj, Target, Takeback);
+metaflow_jobj(JObj, Target, Takeback, MOH) ->
     wh_json:set_values([{<<"module">>, <<"transfer">>}
                         ,{<<"data">>, transfer_data(Target, Takeback, MOH)}
-                       ], NumberJObj).
+                       ], JObj).
 
 transfer_data(Target, Takeback, <<"n">>) ->
     transfer_data(Target, Takeback, 'undefined');
