@@ -81,7 +81,9 @@ send_auth_error(JObj) ->
     wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec create_ccvs(auth_user()) -> wh_json:object().
-create_ccvs(#auth_user{}=AuthUser) ->
+create_ccvs(#auth_user{account_db=AccountDb
+                       ,authorizing_id=DeviceId
+                       ,owner_id=OwnerId}=AuthUser) ->
     Props = [{<<"Username">>, AuthUser#auth_user.username}
              ,{<<"Realm">>, AuthUser#auth_user.realm}
              ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
@@ -90,9 +92,24 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
              ,{<<"Account-Realm">>, AuthUser#auth_user.account_realm}
              ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
+             ,{<<"Presence-ID">>, get_presence_id(AccountDb, DeviceId, OwnerId)}
             | create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
             ],
     wh_json:from_list(props:filter_undefined(Props)).
+
+
+-spec get_presence_id(api_binary(), api_binary(), api_binary()) -> api_binary().
+get_presence_id(_, 'undefined', 'undefined') -> 'undefined';
+get_presence_id(AccoundDb, 'undefined', OwnerId) ->
+    case couch_mgr:open_cache_doc(AccoundDb, OwnerId) of
+        {'error', _E} -> 'undefined';
+        {'ok', Doc} -> wh_json:get_value(<<"presence_id">>, Doc)
+    end;
+get_presence_id(AccoundDb, DeviceId, OwnerId) ->
+    case couch_mgr:open_cache_doc(AccoundDb, DeviceId) of
+        {'ok', Doc} -> wh_json:get_value(<<"presence_id">>, Doc);
+        {'error', _E} -> get_presence_id(AccoundDb, 'undefined', OwnerId)
+    end.
 
 -spec create_specific_ccvs(auth_user(), ne_binary()) -> wh_proplist().
 create_specific_ccvs(#auth_user{}=AuthUser, ?GSM_ANY_METHOD) ->
@@ -122,6 +139,7 @@ create_custom_sip_headers(?GSM_ANY_METHOD, #auth_user{a3a8_kc=KC
         _ -> wh_json:from_list(Props)
     end;
 create_custom_sip_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
+
 
 -spec get_tel_uri(api_binary()) -> api_binary().
 get_tel_uri('undefined') -> 'undefined';
