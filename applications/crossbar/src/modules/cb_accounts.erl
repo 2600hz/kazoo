@@ -455,7 +455,7 @@ validate_realm_is_unique(AccountId, Context) ->
 -spec validate_account_name_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
 validate_account_name_is_unique(AccountId, Context) ->
     Name = wh_json:get_ne_value(<<"name">>, cb_context:req_data(Context)),
-    case is_unique_account_name(AccountId, Name) of
+    case maybe_is_unique_account_name(AccountId, Name) of
         'true' -> validate_account_schema(AccountId, Context);
         'false' ->
             C = cb_context:add_validation_error([<<"name">>]
@@ -1073,9 +1073,17 @@ is_unique_realm(AccountId, Realm) ->
 %% This function will determine if the account name is unique
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_is_unique_account_name(api_binary(), ne_binary()) -> boolean().
+maybe_is_unique_account_name(AccountId, Name) ->
+    case whapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"ensure_unique_name">>, 'true') of
+        'true' -> is_unique_account_name(AccountId, Name);
+        'false' -> 'true'
+    end.
+
 -spec is_unique_account_name(api_binary(), ne_binary()) -> boolean().
 is_unique_account_name(AccountId, Name) ->
-    ViewOptions = [{'key', Name}],
+    AccountName = wh_util:normalize_account_name(Name),
+    ViewOptions = [{'key', AccountName}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_NAME, ViewOptions) of
         {'ok', []} -> 'true';
         {'error', 'not_found'} -> 'true';
