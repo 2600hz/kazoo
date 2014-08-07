@@ -49,18 +49,33 @@ maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch) ->
             lager:warning("coudl not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
             maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
         {'ok', Doc} ->
+        	{NewFlow,Opaque} = case wh_json:get_ne_value([<<"preflow">>, <<"ringback">>], Doc) of
+				'undefined' ->
+					lager:debug("no preflow ringback set ~p",[Doc]),
+					{Flow,'undefined'};
+				Module -> 
+					try 
+						case (wh_util:to_atom(Module, 'true')):get_ringback(Call) of
+							'undefined' -> {Flow,'undefined'};
+							{Media,Opaq} -> {wh_json:set_value([<<"ringback">>, <<"early">>], Media, Flow),Opaq};
+							Media -> {wh_json:set_value([<<"ringback">>, <<"early">>], Media, Flow),'undefined'}
+						end
+					catch _ -> {Flow,'undefined'}
+					end
+			end,
             case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
                 'undefined' ->
-                    lager:debug("ignore preflow, not set"),
-                    maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
+                    lager:debug("ignore preflow, not set ~p"),
+                    maybe_reply_to_req(JObj, Props, Call, NewFlow, NoMatch);
                 PreflowId ->
-                    NewFlow = exec_preflow(AccountId, PreflowId, Flow),
-                    maybe_reply_to_req(JObj, Props, Call, NewFlow, NoMatch)
+                    lager:debug("preflow set! will execute ~p",[PreflowId]),
+                    NewFlow1 = exec_preflow(AccountId, PreflowId, NewFlow, Opaque),
+					maybe_reply_to_req(JObj, Props, Call, NewFlow1, NoMatch)
             end
     end.
 
--spec exec_preflow(ne_binary(), ne_binary(), wh_json:object()) -> wh_json:object().
-exec_preflow(AccountId, PreflowId, Flow) ->
+-spec exec_preflow(ne_binary(), ne_binary(), wh_json:object(), ne_binary()) -> wh_json:object().
+exec_preflow(AccountId, PreflowId, Flow, Opaque) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, PreflowId) of
         {'error', _E} ->
@@ -71,7 +86,11 @@ exec_preflow(AccountId, PreflowId, Flow) ->
             Preflow = wh_json:set_value(<<"children">>
                                         ,Children
                                         ,wh_json:get_value(<<"flow">>, Doc)),
-            wh_json:set_value(<<"flow">>, Preflow, Flow)
+            Preflow1 = case Opaque of
+            	'undefined' -> Preflow;
+            	_ -> wh_json:set_value([<<"data">>,<<"opaque">>],Opaque,Preflow)
+            end,
+            wh_json:set_value(<<"flow">>, Preflow1, Flow)
     end.
 
 -spec maybe_reply_to_req(wh_json:object(), wh_proplist()

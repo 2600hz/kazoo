@@ -296,6 +296,12 @@
       "description": "Each property provides functionality that can be applied to calls using the callflow application",
       "additionalProperties": false,
       "properties": {
+        "ringback": {
+          "type": "string",
+          "required": false,
+          "name": "Ringback module",
+          "description": "The module name exposing get_ringback(whapps_call:call()) -> {ne_binary(),ne_binary()}. Will be called to get {custom ringback media,opaque binary}. Opaque will be added to the preflow.always callflow arguments as opaque property"
+        },
         "always": {
           "type": "string",
           "required": false,
