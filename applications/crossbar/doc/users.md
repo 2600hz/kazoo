@@ -8,4 +8,4 @@ Language: en-US
 
 
 # Static Presence ID
-You can set a presence ID at the users level. By addind: `presence_id` fiend on your user document.
+You can set a presence ID at the user level. By adding: `presence_id` field on your user document. This will fix any presence issue regarding inbound/outbound call on a cellphone device.
