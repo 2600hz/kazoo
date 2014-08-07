@@ -197,9 +197,7 @@ create_faxbox(Context) ->
 
 -spec delete_faxbox(ne_binary(), cb_context:context()) -> cb_context:context().
 delete_faxbox(Id, Context) ->
-    % should not allow the deletion of default faxbox
-    OnSuccess = fun(C) -> on_faxbox_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"faxbox">>, Context, OnSuccess).
+    read(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
