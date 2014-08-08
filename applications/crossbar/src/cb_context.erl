@@ -664,7 +664,6 @@ failed_error({'data_invalid'
                          ,<<"Value did not match type(s): ", Types/binary>>
                          ,Context
                         );
-
 failed_error({'data_invalid'
               ,_FailedSchemaJObj
               ,{'missing_required_property', FailKey}
@@ -700,7 +699,7 @@ get_disallow(JObj) ->
 
 -spec get_types(wh_json:object()) -> ne_binary().
 get_types(JObj) ->
-    case wh_json:get_value(<<"types">>, JObj) of
+    case wh_json:get_first_defined([<<"type">>, <<"types">>], JObj) of
         <<_/binary>> = Type -> Type;
         Types when is_list(Types) -> wh_util:join_binary(Types);
         _TypeSchema -> <<"type schema">>
