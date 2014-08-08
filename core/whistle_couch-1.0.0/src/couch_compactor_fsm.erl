@@ -15,6 +15,7 @@
          ,compact/0
          ,compact_node/1, compact_node/2
          ,compact_db/1, compact_db/2, compact_db/3
+
          ,status/0
          ,is_compactor_running/0
          ,cancel_current_job/0
@@ -22,8 +23,7 @@
          ,cancel_all_jobs/0
          ,start_auto_compaction/0
          ,stop_auto_compaction/0
-         ,compact_automatically/0
-         ,compact_automatically/1
+         ,compact_automatically/0, compact_automatically/1
 
          %% Inspection
          ,nodes_left/0
@@ -153,14 +153,21 @@ compact_node(Node, Opts) ->
         'false' -> {'error', 'compactor_down'}
     end.
 
--spec compact_db(ne_binary()) -> {'queued', reference()} | not_compacting().
+-spec compact_db(ne_binary()) ->
+                        {'queued', reference()} |
+                        not_compacting().
+-spec compact_db(ne_binary(), ne_binary()) ->
+                        {'queued', reference()} |
+                        not_compacting().
+-spec compact_db(ne_binary(), ne_binary(), wh_proplist()) ->
+                        {'queued', reference()} |
+                        not_compacting().
 compact_db(Db) ->
     case is_compactor_running() of
         'true' -> gen_fsm:sync_send_event(?SERVER, {'req_compact_db', Db});
         'false' -> {'error', 'compactor_down'}
     end.
 
--spec compact_db(ne_binary(), ne_binary()) -> {'queued', reference()} | not_compacting().
 compact_db(Node, Db) ->
     case is_compactor_running() of
         'true' -> gen_fsm:sync_send_event(?SERVER, {'req_compact_db', Node, Db, []});
@@ -332,7 +339,6 @@ ready('next_job', #state{queued_jobs=Jobs}=State) ->
                                                }};
         {{'value', {Job, P, Ref}}, Jobs1} ->
             maybe_send_update(P, Ref, 'job_starting'),
-            lager:debug("starting job ~p", [Job]),
             gen_fsm:send_event(self(), Job),
             lager:debug("starting queued job for ~p:~p: ~p", [P, Ref, Job]),
             lager:debug("returning to 'ready'"),
@@ -889,7 +895,7 @@ compact('status', _, #state{current_node=N
                       ,{'queued_jobs', queued_jobs_status(Jobs)}
                       ,{'nodes_left', length(Ns)}
                       ,{'dbs_left', length(Dbs)}
-                      ,{'start_time', Start}
+                      ,{'start_time', calendar:now_to_universal_time(Start)}
                       ,{'elapsed_s', wh_util:elapsed_s(Start)}
                      ]}, 'compact', State};
 
@@ -978,7 +984,7 @@ wait('status', _, #state{current_node=N
               ,{'queued_jobs', queued_jobs_status(Jobs)}
               ,{'nodes_left', length(Ns)}
               ,{'dbs_left', length(Dbs)}
-              ,{'start_time', Start}
+              ,{'start_time', calendar:now_to_universal_time(Start)}
               ,{'elapsed_s', wh_util:elapsed_s(Start)}
              ]}
      ,'wait'
@@ -1164,29 +1170,46 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec get_nodes() -> ne_binaries().
 get_nodes() ->
     {'ok', Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
     shuffle([wh_json:get_value(<<"id">>, Node) || Node <- Nodes]).
 
-get_nodes(D) ->
-    {'ok', DbDoc} = couch_mgr:admin_open_doc(<<"dbs">>, D),
-    shuffle(wh_json:get_keys(wh_json:get_value(<<"by_node">>, DbDoc))).
+-spec get_nodes(ne_binary()) -> ne_binaries().
+get_nodes(Database) ->
+    case couch_mgr:admin_open_doc(<<"dbs">>, Database) of
+        {'ok', DbDoc} ->
+            shuffle(wh_json:get_keys(wh_json:get_value(<<"by_node">>, DbDoc)));
+        {'error', 'not_found'} ->
+            lager:debug("database '~s' not found", [Database]),
+            get_admin_nodes(Database);
+        {'error', _E} ->
+            lager:debug("failed to get nodes for db '~s': ~p", [Database, _E]),
+            []
+    end.
+
+-spec get_admin_nodes(ne_binary()) -> ne_binaries().
+get_admin_nodes(Database) ->
+    case couch_mgr:admin_db_exists(Database) of
+        'true' ->
+            lager:debug("database '~s' is an admin DB", [Database]),
+            {'ok', NodesJObj} = couch_mgr:admin_all_docs(<<"nodes">>),
+            shuffle([wh_json:get_value(<<"id">>, NodeJObj) || NodeJObj <- NodesJObj]);
+        'false' -> []
+    end.
 
 -spec shuffle(ne_binaries()) -> ne_binaries().
 shuffle(L) -> [O || {_, O} <- lists:keysort(1, [{random:uniform(), N} || N <- L])].
 
-encode_db(D) ->
-    SRs = [{<<"/">>, <<"%2F">>}
-           ,{<<"+">>, <<"%2B">>}
-          ],
-    lists:foldl(fun({S, R}, B) ->
-                        binary:replace(B, S, R, ['global'])
-                end, D, SRs).
+-spec encode_db(ne_binary()) -> ne_binary().
+encode_db(Database) ->
+    cow_qs:urlencode(Database).
 
+-spec encode_design_doc(ne_binary()) -> ne_binary().
 encode_design_doc(Design) ->
     binary:replace(Design, <<"_design/">>, <<>>, ['global']).
 
--spec node_dbs(server()) -> {'ok', wh_json:json_strings()}.
+-spec node_dbs(server()) -> {'ok', ne_binaries()}.
 node_dbs(AdminConn) ->
     {'ok', Dbs} = couch_util:all_docs(AdminConn, <<"dbs">>, []),
     {'ok', shuffle([wh_json:get_value(<<"id">>, Db) || Db <- Dbs])}.
@@ -1197,12 +1220,24 @@ db_shards(AdminConn, N, D) ->
         {'ok', Doc} ->
             Suffix = wh_json:get_value(<<"shard_suffix">>, Doc),
             Ranges = wh_json:get_value([<<"by_node">>, N], Doc, []),
-            [<<"shards%2f", Range/binary, "%2f", (encode_db(D))/binary, (wh_util:to_binary(Suffix))/binary>>
+            [cow_qs:urlencode(<<"shards/", Range/binary, "/", D/binary, (wh_util:to_binary(Suffix))/binary>>)
              || Range <- Ranges
             ];
+        {'error', 'not_found'} ->
+            lager:debug("didn't find db '~s' on node ~s in 'dbs'", [D, N]),
+            db_admin(AdminConn, D);
         {'error', _E} ->
-            lager:debug("failed to fetch shards for ~s on ~s", [D, N]),
+            lager:debug("failed to fetch shards for '~s' on ~s", [D, N]),
             []
+    end.
+
+-spec db_admin(server(), ne_binary()) -> ne_binaries().
+db_admin(AdminConn, D) ->
+    case couch_util:db_exists(AdminConn, D) of
+        'true' ->
+            lager:debug("db '~s' is an admin db", [D]),
+            [D];
+        'false' -> []
     end.
 
 -spec db_design_docs(server(), ne_binary()) -> ne_binaries().
@@ -1541,6 +1576,7 @@ queued_jobs_status(Jobs) ->
         Js -> [[{'job', J}, {'requested_by', P}] || {J, P, _} <- Js]
     end.
 
+-spec compact_automatically() -> boolean().
 compact_automatically() ->
     Default = case wh_cache:fetch_local(?WH_COUCH_CACHE, <<"compact_automatically">>) of
                   {'ok', V} -> wh_util:is_true(V);

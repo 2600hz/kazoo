@@ -96,7 +96,7 @@ add_pvt_created(JObj, _, Opts) ->
     end.
 
 -spec update_pvt_modified(wh_json:object()) -> wh_json:object().
--spec add_pvt_modified(wh_json:object(), ne_binary(), wh_proplist()) -> wh_json:object().
+-spec add_pvt_modified(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().
 update_pvt_modified(JObj) ->
     add_pvt_modified(JObj, 'undefined', [{'now', wh_util:current_tstamp()}]).
 add_pvt_modified(JObj, _, Opts) ->
