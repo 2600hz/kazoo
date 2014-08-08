@@ -23,7 +23,7 @@
          ,put/1
          ,post/2
          ,delete/2
-		 ,patch/2
+         ,patch/2
         ]).
 
 -include("../crossbar.hrl").
@@ -205,13 +205,12 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _) ->
+delete(Context, _Id) ->
     crossbar_doc:delete(Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _) -> 
-	crossbar_doc:patch(Context).
-
+patch(Context, _Id) ->
+    crossbar_doc:patch(Context).
 
 %%--------------------------------------------------------------------
 %% @private
