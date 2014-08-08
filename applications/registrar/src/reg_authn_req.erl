@@ -81,7 +81,9 @@ send_auth_error(JObj) ->
     wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec create_ccvs(auth_user()) -> wh_json:object().
-create_ccvs(#auth_user{}=AuthUser) ->
+create_ccvs(#auth_user{account_db=AccountDb
+                       ,authorizing_id=DeviceId
+                       ,owner_id=OwnerId}=AuthUser) ->
     Props = [{<<"Username">>, AuthUser#auth_user.username}
              ,{<<"Realm">>, AuthUser#auth_user.realm}
              ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
@@ -90,9 +92,37 @@ create_ccvs(#auth_user{}=AuthUser) ->
              ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
              ,{<<"Account-Realm">>, AuthUser#auth_user.account_realm}
              ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
+             ,{<<"Presence-ID">>, get_presence_id(AccountDb, DeviceId, OwnerId)}
             | create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
             ],
     wh_json:from_list(props:filter_undefined(Props)).
+
+
+-spec get_presence_id(api_binary(), api_binary(), api_binary()) -> api_binary().
+get_presence_id('undefined', _, _) -> 'undefined';
+get_presence_id(_, 'undefined', 'undefined') -> 'undefined';
+get_presence_id(AccountDb, DeviceId, 'undefined') ->
+    get_device_presence_id(AccountDb, DeviceId);
+get_presence_id(AccountDb, DeviceId, OwnerId) ->
+    maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId).
+
+-spec maybe_get_owner_presence_id(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
+maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'error', _} -> 'undefined';
+        {'ok', JObj} ->
+            case wh_json:get_ne_value(<<"presence_id">>, JObj) of
+                'undefined' -> get_device_presence_id(AccountDb, DeviceId);
+                PresenceId -> PresenceId
+            end
+    end.
+
+-spec get_device_presence_id(ne_binary(), ne_binary()) -> api_binary().
+get_device_presence_id(AccountDb, DeviceId) ->
+    case couch_mgr:open_cache_doc(AccountDb, DeviceId) of
+        {'error', _} -> 'undefined';
+        {'ok', JObj} -> wh_json:get_ne_value(<<"presence_id">>, JObj)
+    end.
 
 -spec create_specific_ccvs(auth_user(), ne_binary()) -> wh_proplist().
 create_specific_ccvs(#auth_user{}=AuthUser, ?GSM_ANY_METHOD) ->
@@ -122,6 +152,7 @@ create_custom_sip_headers(?GSM_ANY_METHOD, #auth_user{a3a8_kc=KC
         _ -> wh_json:from_list(Props)
     end;
 create_custom_sip_headers(?ANY_AUTH_METHOD, _) -> 'undefined'.
+
 
 -spec get_tel_uri(api_binary()) -> api_binary().
 get_tel_uri('undefined') -> 'undefined';
