@@ -1188,6 +1188,7 @@ get_nodes(Database) ->
             []
     end.
 
+-spec get_admin_nodes(ne_binary()) -> ne_binaries().
 get_admin_nodes(Database) ->
     case couch_mgr:admin_db_exists(Database) of
         'true' ->
