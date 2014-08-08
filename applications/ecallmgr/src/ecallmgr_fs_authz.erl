@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP, INC
+%%% @copyright (C) 2011-2014, 2600Hz, INC
 %%% @doc
 %%% Make a request for authorization, and answer queries about the CallID
 %%% @end
@@ -26,10 +26,10 @@ authorize(Props, CallId, Node) ->
     put('callid', CallId),
     case maybe_authorize_channel(Props, Node) of
         'true' ->
-            lager:debug("channel is authorized", []),
+            lager:debug("channel is authorized"),
             'true';
         'false' ->
-            lager:debug("channel is not authorized", []),
+            lager:debug("channel is not authorized"),
             'false'
     end.
 
@@ -40,7 +40,7 @@ kill_channel(Props, Node) ->
     Direction = props:get_value(<<"Call-Direction">>, Props),
     ResourceType = props:get_value(<<"Resource-Type">>, Props, <<"audio">>),
     CallId = props:get_value(<<"Unique-ID">>, Props),
-    lager:debug("killing unauthorized channel", []),
+    lager:debug("killing unauthorized channel"),
     kill_channel(Direction, ResourceType, CallId, Node).
 
 kill_channel(_, <<"sms">>, _CallId, _Node) -> 'ok';
@@ -56,33 +56,40 @@ kill_channel(<<"outbound">>, _, CallId, Node) ->
 -spec maybe_authorize_channel(wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
+
     case props:get_value(?GET_CCV(<<"Channel-Authorized">>), Props) of
         <<"true">> ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
-                                 ,{'true', wh_json:new()}),
+                                 ,{'true', wh_json:new()}
+                                ),
             'true';
         <<"false">> ->
             wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                  ,?AUTHZ_RESPONSE_KEY(CallId)
-                                 ,'false'),
+                                 ,'false'
+                                ),
             'false';
         _Else ->
             case props:get_value(<<"Hunt-Destination-Number">>, Props) of
                 <<"conference">> ->
                     wh_cache:store_local(?ECALLMGR_UTIL_CACHE
-                                 ,?AUTHZ_RESPONSE_KEY(CallId)
-                                 ,{'true', wh_json:new()}),
+                                         ,?AUTHZ_RESPONSE_KEY(CallId)
+                                         ,{'true', wh_json:new()}
+                                        ),
                     'true';
-                _ -> maybe_channel_recovering(Props, CallId, Node)
+                _Hunt ->
+                    maybe_channel_recovering(Props, CallId, Node)
             end
     end.
 
 -spec maybe_channel_recovering(wh_proplist(), ne_binary(), atom()) -> boolean().
 maybe_channel_recovering(Props, CallId, Node) ->
     case props:is_true(<<"variable_recovered">>, Props, 'false') of
-        'true' -> allow_call(Props, CallId, Node);
-        'false' -> is_authz_enabled(Props, CallId, Node)
+        'true' ->
+            allow_call(Props, CallId, Node);
+        'false' ->
+            is_authz_enabled(Props, CallId, Node)
     end.
 
 -spec is_authz_enabled(wh_proplist(), ne_binary(), atom()) -> boolean().
@@ -133,7 +140,8 @@ request_channel_authorization(Props, CallId, Node) ->
     ReqResp = wh_amqp_worker:call(authz_req(Props)
                                   ,fun wapi_authz:publish_authz_req/1
                                   ,fun wapi_authz:authz_resp_v/1
-                                  ,5000),
+                                  ,5000
+                                 ),
     case ReqResp of
         {'error', _R} ->
             lager:debug("authz request lookup failed: ~p", [_R]),
@@ -184,7 +192,8 @@ authorize_reseller(JObj, Props, CallId, Node) ->
 
 -spec rate_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
-    spawn(?MODULE, 'rate_channel', [Props, Node]),
+    _P = spawn(?MODULE, 'rate_channel', [Props, Node]),
+    lager:debug("rating call in ~p", [_P]),
     allow_call(Props, CallId, Node).
 
 -spec allow_call(wh_proplist(), ne_binary(), atom()) -> 'true'.
@@ -200,7 +209,8 @@ allow_call(Props, CallId, Node) ->
              ]),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                          ,?AUTHZ_RESPONSE_KEY(CallId)
-                         ,{'true', wh_json:from_list(Vars)}),
+                         ,{'true', wh_json:from_list(Vars)}
+                        ),
     _ = case props:is_true(<<"Call-Setup">>, Props, 'false') of
             'false' -> ecallmgr_util:set(Node, CallId, Vars);
             'true' -> 'ok'
@@ -221,7 +231,7 @@ maybe_deny_call(Props, CallId, Node) ->
 rate_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put('callid', CallId),
-    lager:debug("sending rate request"),
+
     ReqResp = wh_amqp_worker:call(rating_req(CallId, Props)
                                   ,fun wapi_rate:publish_req/1
                                   ,fun wapi_rate:resp_v/1
@@ -293,9 +303,17 @@ authz_req(Props) ->
 -spec rating_req(ne_binary(), wh_proplist()) -> wh_proplist().
 rating_req(CallId, Props) ->
     AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
-    [{<<"To-DID">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
-     ,{<<"From-DID">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
-                                       ,props:get_value(<<"Caller-Caller-ID-Number">>, Props))}
+    [{<<"To-DID">>, props:get_first_defined([?GET_CCV(<<"Original-Number">>)
+                                             ,<<"Caller-Destination-Number">>
+                                            ], Props
+                                           )
+     }
+     ,{<<"From-DID">>, props:get_first_defined([<<"variable_effective_caller_id_number">>
+                                                ,<<"Caller-Caller-ID-Number">>
+                                               ]
+                                               ,Props
+                                              )
+      }
      ,{<<"Call-ID">>, CallId}
      ,{<<"Account-ID">>, AccountId}
      ,{<<"Direction">>, props:get_value(<<"Call-Direction">>, Props)}

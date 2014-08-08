@@ -85,8 +85,11 @@
 -spec from_jobj(wh_json:object()) -> request().
 from_jobj(JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+
     Request = wh_json:get_value(<<"Request">>, JObj),
-    [Number|_] = binary:split(Request, <<"@">>),
+    [Num|_] = binary:split(Request, <<"@">>),
+    Number = request_number(Num, CCVs),
+
     #request{account_id = wh_json:get_ne_value(<<"Account-ID">>, CCVs)
              ,account_billing = wh_json:get_ne_value(<<"Account-Billing">>, CCVs, <<"limits_enforced">>)
              ,reseller_id = wh_json:get_ne_value(<<"Reseller-ID">>, CCVs)
@@ -104,7 +107,17 @@ from_jobj(JObj) ->
              ,timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())
              ,classification = wnm_util:classify_number(Number)
              ,number = Number
-             ,request_jobj = JObj}.
+             ,request_jobj = JObj
+            }.
+
+-spec request_number(ne_binary(), wh_json:object()) -> ne_binary().
+request_number(Number, CCVs) ->
+    case wh_json:get_value(<<"Original-Number">>, CCVs) of
+        'undefined' -> Number;
+        Original ->
+            lager:debug("using original number ~s instead of ~s", [Original, Number]),
+            Original
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
