@@ -240,6 +240,25 @@ process_event(<<"sofia::register">>, _UUID, Props, Node) ->
 process_event(_, _, _, _) -> 'ok'.
 
 -spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
+    BridgeID = props:get_value(<<"variable_bridge_uuid">>, Props),
+    Direction = props:get_value(<<"Call-Direction">>, Props),
+    CallerDirection = props:get_value(<<"Caller-Direction">>, Props),
+    LogicalDirection = props:get_value(<<"Caller-Logical-Direction">>, Props),
+    App = props:get_value(<<"variable_current_application">>, Props),
+
+    case {BridgeID, Direction, CallerDirection, LogicalDirection, App} of
+        {'undefined', _, _, _, _} ->
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),    
+            maybe_send_call_event(UUID, Props, Node);
+        {BridgeID, <<"inbound">>, <<"inbound">>, <<"inbound">>, <<"intercept">>} ->
+            SwappedProps = ecallmgr_call_events:swap_call_legs(Props),
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BridgeID | SwappedProps]}),    
+            maybe_send_call_event(BridgeID, SwappedProps, Node);
+        _Else ->
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),    
+            maybe_send_call_event(UUID, Props, Node)
+    end;
 maybe_send_event(EventName, UUID, Props, Node) ->
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         'true' -> 'ok';
