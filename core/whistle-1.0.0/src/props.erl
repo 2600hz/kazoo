@@ -16,6 +16,7 @@
          ,get_integer_value/2, get_integer_value/3
          ,get_atom_value/2, get_atom_value/3
          ,get_binary_value/2, get_binary_value/3
+         ,get_ne_binary_value/2, get_ne_binary_value/3
          ,get_is_true/2, get_is_true/3, is_true/2, is_true/3
          ,get_is_false/2, get_is_false/3, is_false/2, is_false/3
          ,get_keys/1
@@ -166,6 +167,18 @@ get_binary_value(Key, Props) ->
 get_binary_value(Key, Props, Default) ->
     case ?MODULE:get_value(Key, Props) of
         'undefined' -> Default;
+        V -> wh_util:to_binary(V)
+    end.
+
+-spec get_ne_binary_value(wh_proplist_key(), wh_proplist()) -> api_binary().
+-spec get_ne_binary_value(wh_proplist_key(), wh_proplist(), Default) ->
+                              ne_binary() | Default.
+get_ne_binary_value(Key, Props) ->
+    get_ne_binary_value(Key, Props, 'undefined').
+get_ne_binary_value(Key, Props, Default) ->
+    case ?MODULE:get_value(Key, Props) of
+        'undefined' -> Default;
+        <<>> -> Default;
         V -> wh_util:to_binary(V)
     end.
 

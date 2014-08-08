@@ -57,7 +57,7 @@ delegate_v(JObj) -> delegate_v(wh_json:to_proplist(JObj)).
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 -spec bind_q(ne_binary(), ne_binary(), maybe_key()) -> 'ok'.
 bind_q(Q, Props) ->
-    App = props:get_value('app_name', Props),
+    App = props:get_binary_value('app_name', Props),
     Key = props:get_value('route_key', Props),
     bind_q(Q, App, Key).
 bind_q(Q, <<_/binary>> = App, 'undefined') ->
@@ -68,7 +68,7 @@ bind_q(Q, <<_/binary>> = App, Key) ->
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 -spec unbind_q(ne_binary(), ne_binary(), maybe_key()) -> 'ok'.
 unbind_q(Q, Props) ->
-    App = props:get_ne_value('app_name', Props),
+    App = props:get_binary_value('app_name', Props),
     Key = props:get_value('route_key', Props),
     unbind_q(Q, App, Key).
 unbind_q(Q, <<_/binary>> = App, 'undefined') ->
