@@ -16,7 +16,6 @@
          ,load_view/3, load_view/4, load_view/5, load_view/6
          ,load_attachment/3, load_docs/2
          ,save/1, save/2
-         ,patch/1
          ,delete/1, delete/2
          ,save_attachment/4, save_attachment/5
          ,delete_attachment/3
@@ -466,32 +465,6 @@ save(Context, JObj, Options) ->
             Context1 = handle_couch_mgr_success(JObj1, Context),
             provisioner_util:maybe_send_contact_list(Context1)
     end.
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function attempts to patch the provided document to the accounts
-%% database. The result is loaded into the context record.
-%%
-%% Failure here returns 500 or 503
-%% @end
-%%--------------------------------------------------------------------
-patch(Context) -> 
-	patch(Context,[]).
-patch(Context, JObj) ->
-    JObj0 = update_pvt_parameters(JObj, Context),
-    DocId = wh_json:get_value(<<"_id">>, JObj0),
-    case couch_mgr:update_doc(cb_context:account_db(Context), DocId,JObj0) of
-        {'error', Error} ->
-            handle_couch_mgr_errors(Error, DocId, Context);
-        {'ok', JObj1} ->
-            couch_mgr:flush_cache_doc(cb_context:account_db(Context), wh_json:get_value(<<"_id">>, JObj1)),
-            Context1 = handle_couch_mgr_success(JObj1, Context),
-            provisioner_util:maybe_send_contact_list(Context1)
-    end.
-
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -948,7 +921,7 @@ handle_couch_mgr_errors(Else, _View, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_pvt_parameters(wh_json:object() | wh_json:objects(), cb_context:context()) ->
-                                         wh_json:object() | wh_json:objects().
+                                   wh_json:object() | wh_json:objects().
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
 update_pvt_parameters(JObj0, Context) ->
