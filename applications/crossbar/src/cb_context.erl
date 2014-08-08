@@ -467,10 +467,15 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    MinLen = wh_json:get_binary_value(<<"minLength">>, FailedSchemaJObj),
+    Minimum = wh_json:get_value(<<"minLength">>, FailedSchemaJObj),
+    MinLen = wh_util:to_binary(Minimum),
+
     add_validation_error(FailedKeyPath
                          ,<<"minLength">>
-                         ,<<"String must be at least ", MinLen/binary, " characters">>
+                         ,build_error_message(cb_context:api_version(Context)
+                                              ,<<"String must be at least ", MinLen/binary, " characters">>
+                                              ,Minimum
+                                             )
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -479,10 +484,15 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    MaxLen = wh_json:get_binary_value(<<"maxLength">>, FailedSchemaJObj),
+    Maximum = wh_json:get_value(<<"maxLength">>, FailedSchemaJObj),
+    MaxLen = wh_util:to_binary(Maximum),
+
     add_validation_error(FailedKeyPath
                          ,<<"maxLength">>
-                         ,<<"String must not be more ", MaxLen/binary, " characters">>
+                         ,build_error_message(cb_context:api_version(Context)
+                                              ,<<"String must not be more than ", MaxLen/binary, " characters">>
+                                              ,Maximum
+                                             )
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -502,12 +512,15 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Min = wh_util:to_binary(
-            wh_json:get_first_defined([<<"minimum">>, <<"exclusiveMinimum">>], FailedSchemaJObj)
-           ),
+    Minimum = wh_json:get_first_defined([<<"minimum">>, <<"exclusiveMinimum">>], FailedSchemaJObj),
+    Min = wh_util:to_binary(Minimum),
+
     add_validation_error(FailedKeyPath
                          ,<<"minimum">>
-                         ,<<"Value must be at least ", Min/binary>>
+                         ,build_error_message(cb_context:api_version(Context)
+                                              ,<<"Value must be at least ", Min/binary>>
+                                              ,Minimum
+                                             )
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -516,12 +529,15 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Max = wh_util:to_binary(
-            wh_json:get_first_defined([<<"maximum">>, <<"exclusiveMaximum">>], FailedSchemaJObj)
-           ),
+    Maximum = wh_json:get_first_defined([<<"maximum">>, <<"exclusiveMaximum">>], FailedSchemaJObj),
+    Max = wh_util:to_binary(Maximum),
+
     add_validation_error(FailedKeyPath
                          ,<<"maximum">>
-                         ,<<"Value must be at most ", Max/binary>>
+                         ,build_error_message(cb_context:api_version(Context)
+                                              ,<<"Value must be at most ", Max/binary>>
+                                              ,Maximum
+                                             )
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -530,10 +546,15 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Min = wh_json:get_binary_value(<<"minItems">>, FailedSchemaJObj),
+    Minimum = wh_json:get_value(<<"minItems">>, FailedSchemaJObj),
+    Min = wh_util:to_binary(Minimum),
+
     add_validation_error(FailedKeyPath
                          ,<<"minItems">>
-                         ,<<"The list is not at least ", Min/binary, " items">>
+                         ,build_error_message(cb_context:api_version(Context)
+                                              ,<<"The list must have at least ", Min/binary, " items">>
+                                              ,Minimum
+                                             )
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -542,21 +563,32 @@ failed_error({'data_invalid'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
-    Max = wh_json:get_binary_value(<<"maxItems">>, FailedSchemaJObj),
+    Maximum = wh_json:get_value(<<"maxItems">>, FailedSchemaJObj),
+    Max = wh_util:to_binary(Maximum),
+
     add_validation_error(FailedKeyPath
                          ,<<"maxItems">>
-                         ,<<"The list is more than ", Max/binary, " items">>
+                         ,build_error_message(cb_context:api_version(Context)
+                                              ,<<"The list is more than ", Max/binary, " items">>
+                                              ,Maximum
+                                             )
                          ,Context
                         );
 failed_error({'data_invalid'
-              ,_FailedSchemaJObj
+              ,FailedSchemaJObj
               ,'wrong_min_properties'
               ,_FailedValue
               ,FailedKeyPath
              }, Context) ->
+    Minimum = wh_json:get_value(<<"minProperties">>, FailedSchemaJObj),
+    Min = wh_util:to_binary(Minimum),
+
     add_validation_error(FailedKeyPath
                          ,<<"minProperties">>
-                         ,<<"Not enough keys in the object">>
+                         ,build_error_message(cb_context:api_version(Context)
+                                              ,<<"The object must have at least ", Min/binary, " keys">>
+                                              ,Minimum
+                                             )
                          ,Context
                         );
 failed_error({'data_invalid'
@@ -865,3 +897,12 @@ add_depreciated_validation_error(Property, Code, Message, #cb_context{validation
                        ,resp_data=wh_json:new()
                        ,resp_error_msg = <<"invalid data">>
                       }.
+
+-spec build_error_message(ne_binary(), ne_binary(), ne_binary() | integer()) ->
+                                 ne_binary() | wh_json:object().
+build_error_message(<<"v1">>, V1Msg, _V2Target) ->
+    V1Msg;
+build_error_message(_Version, V1Msg, V2Target) ->
+    wh_json:from_list([{<<"message">>, V1Msg}
+                       ,{<<"target">>, V2Target}
+                      ]).
