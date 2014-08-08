@@ -23,6 +23,7 @@
          ,put/1
          ,post/2
          ,delete/2
+		 ,patch/2
         ]).
 
 -include("../crossbar.hrl").
@@ -56,6 +57,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.users">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.users">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.users">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.users">>, ?MODULE, 'patch').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -171,6 +173,8 @@ validate_user(Context, UserId, ?HTTP_GET) ->
 validate_user(Context, UserId, ?HTTP_POST) ->
     validate_request(UserId, Context);
 validate_user(Context, UserId, ?HTTP_DELETE) ->
+    load_user(UserId, Context);
+validate_user(Context, UserId, ?HTTP_PATCH) ->
     load_user(UserId, Context).
 
 validate(Context, UserId, ?CHANNELS) ->
@@ -237,6 +241,11 @@ dry_run(Context) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _) -> 
+	crossbar_doc:patch(Context).
+
 
 %%--------------------------------------------------------------------
 %% @private
