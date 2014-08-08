@@ -99,16 +99,29 @@ create_ccvs(#auth_user{account_db=AccountDb
 
 
 -spec get_presence_id(api_binary(), api_binary(), api_binary()) -> api_binary().
+get_presence_id('undefined', _, _) -> 'undefined';
 get_presence_id(_, 'undefined', 'undefined') -> 'undefined';
-get_presence_id(AccoundDb, 'undefined', OwnerId) ->
-    case couch_mgr:open_cache_doc(AccoundDb, OwnerId) of
-        {'error', _E} -> 'undefined';
-        {'ok', Doc} -> wh_json:get_value(<<"presence_id">>, Doc)
-    end;
-get_presence_id(AccoundDb, DeviceId, OwnerId) ->
-    case couch_mgr:open_cache_doc(AccoundDb, DeviceId) of
-        {'ok', Doc} -> wh_json:get_value(<<"presence_id">>, Doc);
-        {'error', _E} -> get_presence_id(AccoundDb, 'undefined', OwnerId)
+get_presence_id(AccountDb, DeviceId, 'undefined') ->
+    get_device_presence_id(AccountDb, DeviceId);
+get_presence_id(AccountDb, DeviceId, OwnerId) ->
+    maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId).
+
+-spec maybe_get_owner_presence_id(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
+maybe_get_owner_presence_id(AccountDb, DeviceId, OwnerId) ->
+    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+        {'error', _} -> 'undefined';
+        {'ok', JObj} ->
+            case wh_json:get_ne_value(<<"presence_id">>, JObj) of
+                'undefined' -> get_device_presence_id(AccountDb, DeviceId);
+                PresenceId -> PresenceId
+            end
+    end.
+
+-spec get_device_presence_id(ne_binary(), ne_binary()) -> api_binary().
+get_device_presence_id(AccountDb, DeviceId) ->
+    case couch_mgr:open_cache_doc(AccountDb, DeviceId) of
+        {'error', _} -> 'undefined';
+        {'ok', JObj} -> wh_json:get_ne_value(<<"presence_id">>, JObj)
     end.
 
 -spec create_specific_ccvs(auth_user(), ne_binary()) -> wh_proplist().
