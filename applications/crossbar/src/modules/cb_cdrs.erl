@@ -309,10 +309,11 @@ send_chunked_cdrs([Db | Dbs], {Req, Context}=Payload) ->
     View = cb_context:fetch(Context, 'chunked_view'),
     ViewOptions = fetch_view_options(Context),
     Context1 = cb_context:store(Context, 'start_key', props:get_value('startkey', ViewOptions)),
+    Context2 = cb_context:store(Context1, 'page_size', 0),
     P = case get_cdr_ids(Db, View, ViewOptions) of
             {'ok', Ids} ->
-                {Context2, CDRIds} = maybe_paginate_and_clean(Context1, Ids),
-                load_chunked_cdrs(Db, CDRIds, {Req, Context2});
+                {Context3, CDRIds} = maybe_paginate_and_clean(Context2, Ids),
+                load_chunked_cdrs(Db, CDRIds, {Req, Context3});
             {'error', _} -> Payload
         end,
     send_chunked_cdrs(Dbs, P).
