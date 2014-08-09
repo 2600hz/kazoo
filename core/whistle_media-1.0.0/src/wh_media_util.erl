@@ -96,7 +96,7 @@ wait_for_results(Port, Response) ->
         {'EXIT', Port, _Reason} ->
             lager:debug("port closed unexpectedly: ~p", [_Reason]),
             {'error', iolist_to_binary(Response)}
-    after 5000 ->
+    after 20000 ->
             lager:debug("timeout, sending error response: ~p", [Response]),
             catch erlang:port_close(Port),
             {'error', iolist_to_binary(Response)}
