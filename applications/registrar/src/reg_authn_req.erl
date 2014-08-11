@@ -81,9 +81,7 @@ send_auth_error(JObj) ->
     wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec create_ccvs(auth_user()) -> wh_json:object().
-create_ccvs(#auth_user{account_db=AccountDb
-                       ,authorizing_id=DeviceId
-                       ,owner_id=OwnerId}=AuthUser) ->
+create_ccvs(#auth_user{}=AuthUser) ->
     Props = [{<<"Username">>, AuthUser#auth_user.username}
              ,{<<"Realm">>, AuthUser#auth_user.realm}
              ,{<<"Account-ID">>, AuthUser#auth_user.account_id}
@@ -92,11 +90,25 @@ create_ccvs(#auth_user{account_db=AccountDb
              ,{<<"Owner-ID">>, AuthUser#auth_user.owner_id}
              ,{<<"Account-Realm">>, AuthUser#auth_user.account_realm}
              ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
-             ,{<<"Presence-ID">>, get_presence_id(AccountDb, DeviceId, OwnerId)}
+             ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
             | create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
             ],
     wh_json:from_list(props:filter_undefined(Props)).
 
+-spec maybe_get_presence_id(auth_user()) -> api_binary().
+maybe_get_presence_id(#auth_user{account_db=AccountDb
+                                 ,authorizing_id=DeviceId
+                                 ,owner_id=OwnerId
+                                 ,username=Username
+                                 ,account_realm=Realm}) ->
+    case get_presence_id(AccountDb, DeviceId, OwnerId) of
+        'undefined' -> <<Username/binary, "@", Realm/binary>>;
+        PresenceId ->
+            case binary:match(PresenceId, <<"@">>) of
+                'nomatch' -> <<PresenceId/binary, "@", Realm/binary>>;
+                _ -> PresenceId
+        end
+    end.
 
 -spec get_presence_id(api_binary(), api_binary(), api_binary()) -> api_binary().
 get_presence_id('undefined', _, _) -> 'undefined';
