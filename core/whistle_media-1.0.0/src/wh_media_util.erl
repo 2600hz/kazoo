@@ -10,7 +10,9 @@
 
 -export([recording_url/2]).
 -export([base_url/1, base_url/2, base_url/3]).
--export([convert_stream_type/1]).
+-export([convert_stream_type/1
+         ,normalize_media/3
+        ]).
 -export([media_path/1, media_path/2]).
 -export([max_recording_time_limit/0]).
 -export([get_prompt/1, get_prompt/2, get_prompt/3
@@ -28,9 +30,81 @@
 -define(AUTH_PASSWORD, whapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, wh_util:rand_hex_binary(8))).
 -define(USE_AUTH_STORE, whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, 'true')).
 
+-define(NORMALIZE_EXE, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_executable">>, <<"sox">>)).
+-define(NORMALIZE_SOURCE_ARGS, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_source_args">>, <<>>)).
+-define(NORMALIZE_DEST_ARGS, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_destination_args">>, <<"-r 8000">>)).
+
+-type normalized_media() :: {'ok', iolist()} |
+                            {'error', ne_binary()}.
+-spec normalize_media(ne_binary(), ne_binary(), binary()) ->
+                             normalized_media().
+normalize_media(FromFormat, FromFormat, FileContents) ->
+    {'ok', FileContents};
+normalize_media(FromFormat, ToFormat, FileContents) ->
+    OldFlag = process_flag('trap_exit', 'true'),
+
+    Command = iolist_to_binary([?NORMALIZE_EXE
+                                ," -t ", FromFormat, " ", ?NORMALIZE_SOURCE_ARGS, " - "
+                                ," -t ", ToFormat, " ", ?NORMALIZE_DEST_ARGS, " - "
+                               ]),
+    PortOptions = ['binary'
+                   ,'exit_status'
+                   ,'use_stdio'
+                   ,'stderr_to_stdout'
+                  ],
+    Response =
+        try open_port({'spawn', wh_util:to_list(Command)}, PortOptions) of
+            Port ->
+                lager:debug("opened port ~p to sox with '~s'", [Port, Command]),
+                normalize_media(FileContents, Port)
+        catch
+            _E:_R ->
+                lager:debug("failed to open port with '~s': ~s: ~p", [Command, _E, _R]),
+                {'error', <<"failed to open conversion utility">>}
+        end,
+    process_flag('trap_exit', OldFlag),
+    Response.
+
+-spec normalize_media(binary(), port()) ->
+                             normalized_media().
+normalize_media(FileContents, Port) ->
+    try erlang:port_command(Port, FileContents) of
+        'true' ->
+            lager:debug("sent data to port"),
+            wait_for_results(Port)
+    catch
+        _E:_R ->
+            lager:debug("failed to send data to port: ~s: ~p", [_E, _R]),
+            catch erlang:port_close(Port),
+            {'error', <<"failed to communicate with conversion utility">>}
+    end.
+
+-spec wait_for_results(port()) ->  normalized_media().
+-spec wait_for_results(port(), iolist()) -> normalized_media().
+wait_for_results(Port) ->
+    wait_for_results(Port, []).
+wait_for_results(Port, Response) ->
+    receive
+        {Port, {'data', Msg}} ->
+            wait_for_results(Port, [Response | [Msg]]);
+        {Port, {'exit_status', 0}} ->
+            lager:debug("process exited successfully"),
+            {'ok', Response};
+        {Port, {'exit_status', _Err}} ->
+            lager:debug("process exited with status ~p", [_Err]),
+            {'error', iolist_to_binary(Response)};
+        {'EXIT', Port, _Reason} ->
+            lager:debug("port closed unexpectedly: ~p", [_Reason]),
+            {'error', iolist_to_binary(Response)}
+    after 20000 ->
+            lager:debug("timeout, sending error response: ~p", [Response]),
+            catch erlang:port_close(Port),
+            {'error', iolist_to_binary(Response)}
+    end.
+
 -spec recording_url(ne_binary(), wh_json:object()) -> ne_binary().
 recording_url(CallId, Data) ->
-    Format = wh_json:get_value(<<"format">>, Data, <<".mp3">>),
+    Format = wh_json:get_value(<<"format">>, Data, <<"mp3">>),
     Url = wh_json:get_value(<<"url">>, Data, <<>>),
     <<Url/binary, "call_recording_", CallId/binary, ".", Format/binary>>.
 
