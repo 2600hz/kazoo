@@ -21,9 +21,13 @@
 -record(prompts, {accept_tone =
                       whapps_config:get_binary(?MOD_CONFIG_CAT, <<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>),
                   reject_tone =
-                      whapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"/system_media/dynamic-cid-invalid_using_default">>),
+                      wh_media_util:get_prompt(
+                        whapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
+                       ),
                   default_prompt =
-                      whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"/system_media/dynamic-cid-enter_cid">>)
+                      wh_media_util:get_prompt(
+                        whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
+                       )
                  }).
 -type prompts() :: #prompts{}.
 

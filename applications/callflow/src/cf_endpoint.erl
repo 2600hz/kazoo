@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -963,7 +963,8 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                                 lager:info("call forwarding configured to require key press"),
                                 Confirm = [{<<"Confirm-Key">>, <<"1">>}
                                            ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
-                                           ,{<<"Confirm-File">>, ?CONFIRM_FILE}],
+                                           ,{<<"Confirm-File">>, ?CONFIRM_FILE}
+                                          ],
                                 wh_json:merge_jobjs(wh_json:from_list(Confirm), J)
                         end
                 end

@@ -187,7 +187,7 @@ default_response(<<"CRASH">>) -> 'undefined';
 default_response(<<"UNALLOCATED_NUMBER">>) ->
     [{<<"Code">>, <<"404">>}
      ,{<<"Message">>, <<"No route to destination">>}
-     ,{<<"Media">>, <<"/system_media/fault-can_not_be_completed_as_dialed">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>)}
     ];
 default_response(<<"NO_ROUTE_TRANSIT_NET">>) ->
     [{<<"Code">>, <<"404">>}
@@ -196,7 +196,7 @@ default_response(<<"NO_ROUTE_TRANSIT_NET">>) ->
 default_response(<<"NO_ROUTE_DESTINATION">>) ->
     [{<<"Code">>, <<"404">>}
      ,{<<"Message">>, <<"No route to destination">>}
-     ,{<<"Media">>, <<"/system_media/fault-can_not_be_completed_as_dialed">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>)}
     ];
 default_response(<<"NORMAL_CLEARING">>) ->
     [{<<"Media">>, <<"tone_stream://%(500,500,480,620);loops=25">>}];
@@ -234,17 +234,17 @@ default_response(<<"REDIRECTION_TO_NEW_DESTINATION">>) ->
 default_response(<<"EXCHANGE_ROUTING_ERROR">>) ->
     [{<<"Code">>, <<"483">>}
      ,{<<"Message">>, <<"Exchange routing error">>}
-     ,{<<"Media">>, <<"/system_media/fault-facility_trouble">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>)}
     ];
 default_response(<<"DESTINATION_OUT_OF_ORDER">>) ->
     [{<<"Code">>, <<"502">>}
      ,{<<"Message">>, <<"Destination out of order">>}
-     ,{<<"Media">>, <<"/system_media/fault-can_not_be_completed_as_dialed">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>)}
     ];
 default_response(<<"INVALID_NUMBER_FORMAT">>) ->
     [{<<"Code">>, <<"484">>}
      ,{<<"Message">>, <<"Invalid number format">>}
-     ,{<<"Media">>, <<"/system_media/fault-can_not_be_completed_as_dialed">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_as_dialed">>)}
     ];
 default_response(<<"FACILITY_REJECTED">>) ->
     [{<<"Code">>, <<"510">>}
@@ -265,7 +265,7 @@ default_response(<<"NETWORK_OUT_OF_ORDER">>) ->
 default_response(<<"NORMAL_TEMPORARY_FAILURE">>) ->
     [{<<"Code">>, <<"503">>}
      ,{<<"Message">>, <<"Normal temporary failure">>}
-     ,{<<"Media">>, <<"/system_media/fault-can_not_be_completed_at_this_time">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_at_this_time">>)}
     ];
 default_response(<<"SWITCH_CONGESTION">>) ->
     [{<<"Code">>, <<"503">>}
@@ -302,17 +302,17 @@ default_response(<<"FACILITY_NOT_IMPLEMENTED">>) ->
 default_response(<<"SERVICE_NOT_IMPLEMENTED">>) ->
     [{<<"Code">>, <<"501">>}
      ,{<<"Message">>, <<"Service not implemented">>}
-     ,{<<"Media">>, <<"/system_media/fault-facility_trouble">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>)}
     ];
 default_response(<<"INCOMPATIBLE_DESTINATION">>) ->
     [{<<"Code">>, <<"488">>}
      ,{<<"Message">>, <<"Incompatible destination">>}
-     ,{<<"Media">>, <<"/system_media/fault-facility_trouble">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>)}
     ];
 default_response(<<"MANDATORY_IE_MISSING">>) ->
     [{<<"Code">>, <<"400">>}
      ,{<<"Message">>, <<"Mandatory informatin missing">>}
-     ,{<<"Media">>, <<"/system_media/fault-facility_trouble">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>)}
     ];
 default_response(<<"RECOVERY_ON_TIMER_EXPIRE">>) ->
     [{<<"Code">>, <<"504">>}
@@ -322,7 +322,7 @@ default_response(<<"RECOVERY_ON_TIMER_EXPIRE">>) ->
 default_response(<<"MANDATORY_IE_LENGTH_ERROR">>) ->
     [{<<"Code">>, <<"400">>}
      ,{<<"Message">>, <<"Mandatory informatin missing">>}
-     ,{<<"Media">>, <<"/system_media/fault-facility_trouble">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-facility_trouble">>)}
     ];
 default_response(<<"ORIGINATOR_CANCEL">>) ->
     [{<<"Code">>, <<"487">>}
@@ -336,5 +336,5 @@ default_response(<<"MEDIA_TIMEOUT">>) ->
 default_response(<<"PROGRESS_TIMEOUT">>) ->
     [{<<"Code">>, <<"486">>}
      ,{<<"Message">>, <<"Progress timeout">>}
-     ,{<<"Media">>, <<"/system_media/fault-can_not_be_completed_at_this_time">>}
+     ,{<<"Media">>, wh_media_util:get_prompt(<<"fault-can_not_be_completed_at_this_time">>)}
     ].

@@ -40,10 +40,10 @@
               }).
 -type keys() :: #keys{}.
 
--record(prompts, {marked_disabled = <<"/system_media/temporal-marked_disabled">> :: ne_binary()
-                  ,marked_enabled = <<"/system_media/temporal-marked_enabled">> :: ne_binary()
-                  ,marker_reset = <<"/system_media/temporal-marker_reset">> :: ne_binary()
-                  ,main_menu = <<"/system_media/temporal-menu">> :: ne_binary()
+-record(prompts, {marked_disabled = <<"temporal-marked_disabled">> :: ne_binary()
+                  ,marked_enabled = <<"temporal-marked_enabled">> :: ne_binary()
+                  ,marker_reset = <<"temporal-marker_reset">> :: ne_binary()
+                  ,main_menu = <<"temporal-menu">> :: ne_binary()
                  }).
 -type prompts() :: #prompts{}.
 
@@ -310,7 +310,7 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
                               ,prompts=#prompts{main_menu=MainMenu}
                               ,interdigit_timeout=Interdigit
                              }=Temporal, Rules, Call) ->
-    NoopId = whapps_call_command:play(MainMenu, Call),
+    NoopId = whapps_call_command:prompt(MainMenu, Call),
 
     case whapps_call_command:collect_digits(1
                                             ,whapps_call_command:default_collect_timeout()
@@ -341,7 +341,7 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable
 %%--------------------------------------------------------------------
 -spec disable_temporal_rules(temporal(), rules(), whapps_call:call()) -> cf_api_std_return().
 disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, [], Call) ->
-    whapps_call_command:b_play(Disabled, Call);
+    whapps_call_command:b_prompt(Disabled, Call);
 disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
         AccountDb = whapps_call:account_db(Call),
@@ -373,7 +373,7 @@ disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 %%--------------------------------------------------------------------
 -spec reset_temporal_rules(temporal(), rules(), whapps_call:call()) -> cf_api_std_return().
 reset_temporal_rules(#temporal{prompts=#prompts{marker_reset=Reset}}, [], Call) ->
-    whapps_call_command:b_play(Reset, Call);
+    whapps_call_command:b_prompt(Reset, Call);
 reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
         AccountDb = whapps_call:account_db(Call),
@@ -405,7 +405,7 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
 %%--------------------------------------------------------------------
 -spec enable_temporal_rules(temporal(), rules(), whapps_call:call()) -> cf_api_std_return().
 enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], Call) ->
-    whapps_call_command:b_play(Enabled, Call);
+    whapps_call_command:b_prompt(Enabled, Call);
 enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
         AccountDb = whapps_call:account_db(Call),

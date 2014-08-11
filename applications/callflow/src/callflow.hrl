@@ -26,7 +26,7 @@
 
 -define(RECORDED_NAME_KEY, [<<"media">>, <<"name">>]).
 
--define(CONFIRM_FILE, <<"/system_media/ivr-group_confirm">>).
+-define(CONFIRM_FILE, wh_media_util:get_prompt(<<"ivr-group_confirm">>)).
 
 -define(DIALPLAN_MAP, [{<<"tone">>, <<"tones">>}]).
 
