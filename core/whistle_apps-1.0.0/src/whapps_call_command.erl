@@ -2423,8 +2423,10 @@ fax_detection(Direction, Duration, Call) ->
     stop_fax_detection(Call),
     Result.
 
--spec wait_for_fax_detection(integer(), whapps_call:call()) -> 'ok'.
-wait_for_fax_detection(Timeout, _Call) ->
+-spec wait_for_fax_detection(integer(), whapps_call:call()) ->
+                                    {'error', 'timeout'} |
+                                    {'ok', wh_json:object()}.
+wait_for_fax_detection(Timeout, Call) ->
     Start = os:timestamp(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
@@ -2432,6 +2434,6 @@ wait_for_fax_detection(Timeout, _Call) ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"FAX_DETECTED">>, _ } ->
                     {'ok', wh_json:set_value(<<"Fax-Success">>, 'true', JObj)};
-                _ -> wait_for_fax_detection(wh_util:decr_timeout(Timeout, Start), _Call)
+                _ -> wait_for_fax_detection(wh_util:decr_timeout(Timeout, Start), Call)
             end
     end.

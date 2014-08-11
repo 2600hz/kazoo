@@ -192,6 +192,8 @@ media_path(Path, Call) ->
 prompt_path(PromptId) ->
     prompt_path(?WH_MEDIA_DB, PromptId).
 
+prompt_path(Db, <<"/system_media/", PromptId/binary>>) ->
+    prompt_path(Db, PromptId);
 prompt_path(Db, PromptId) ->
     wh_util:join_binary([<<>>, Db, PromptId], <<"/">>).
 
@@ -199,6 +201,8 @@ prompt_path(Db, PromptId) ->
 -spec prompt_id(ne_binary(), api_binary()) -> ne_binary().
 prompt_id(PromptId) -> prompt_id(PromptId, 'undefined').
 
+prompt_id(<<"/system_media/", PromptId/binary>>, Lang) ->
+    prompt_id(PromptId, Lang);
 prompt_id(PromptId, 'undefined') -> PromptId;
 prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
@@ -223,6 +227,8 @@ get_prompt(Name, Call) ->
                ,Call
               ).
 
+get_prompt(<<"/system_media/", Name/binary>>, Lang, Call) ->
+    get_prompt(Name, Lang, Call);
 get_prompt(Name, Lang, 'undefined') ->
     get_system_prompt(Name, Lang);
 get_prompt(Name, 'undefined', Call) ->
