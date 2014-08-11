@@ -279,7 +279,7 @@ init([Node, Options]) ->
     lager:info("starting new fs node listener for ~s", [Node]),
     gproc:reg({'p', 'l', 'fs_node'}),
     sync_channels(self()),
-    _Pid = run_start_cmds(Node),
+    _Pid = run_start_cmds(Node, Options),
     lager:debug("running start commands in ~p", [_Pid]),
 
     {'ok', #state{node=Node, options=Options}}.
@@ -397,13 +397,14 @@ code_change(_OldVsn, State, _Extra) ->
                       {'timeout', {atom(), ne_binary()}}.
 -type cmd_results() :: [cmd_result(),...] | [].
 
--spec run_start_cmds(atom()) -> pid().
-run_start_cmds(Node) ->
+-spec run_start_cmds(atom(), wh_proplist()) -> pid().
+run_start_cmds(Node, Options) ->
     Parent = self(),
     spawn_link(fun() ->
+                       wh_util:put_callid(Node),
                        timer:sleep(5000),
                        Cmds = ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node),
-                       Res = process_cmds(Node, Cmds),
+                       Res = process_cmds(Node, Options, Cmds),
                        case lists:filter(fun was_not_successful_cmd/1, Res) of
                            [] -> 'ok';
                            Errs -> print_api_responses(Errs)
@@ -413,39 +414,53 @@ run_start_cmds(Node) ->
                        sync_capabilities(Parent)
                end).
 
--spec process_cmds(atom(), wh_json:object() | ne_binaries()) -> cmd_results().
-process_cmds(_, []) ->
+-spec process_cmds(atom(), wh_proplist(), wh_json:object() | ne_binaries()) -> cmd_results().
+process_cmds(_Node, _Options, []) ->
     lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the whapps running sysconf?"),
     [];
-process_cmds(Node, Cmds) when is_list(Cmds) ->
-    lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Cmd, Acc) end, [], Cmds);
-process_cmds(Node, Cmds) ->
+process_cmds(Node, Options, Cmds) when is_list(Cmds) ->
+    lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Options, Cmd, Acc) end, [], Cmds);
+process_cmds(Node, Options, Cmds) ->
     case wh_json:is_json_object(Cmds) of
-        'true' -> process_cmd(Node, Cmds, []);
+        'true' -> process_cmd(Node, Options, Cmds, []);
         'false' ->
             lager:debug("recv something other than a list for fs_cmds: ~p", [Cmds]),
             timer:sleep(5000),
-            run_start_cmds(Node)
+            run_start_cmds(Node, Options)
     end.
 
--spec process_cmd(atom(), wh_json:object(), cmd_results()) -> cmd_results().
-process_cmd(Node, JObj, Acc0) ->
-    lists:foldl(fun({ApiCmd, ApiArg}, Acc) ->
-                        process_cmd(Node, ApiCmd, ApiArg, Acc)
-                end, Acc0, wh_json:to_proplist(JObj)).
+-spec process_cmd(atom(), wh_proplist(), wh_json:object(), cmd_results()) -> cmd_results().
+process_cmd(Node, Options, JObj, Acc0) ->
+    wh_json:foldl(fun(ApiCmd, ApiArg, Acc) ->
+                        lager:debug("process ~s: ~s: ~s", [Node, ApiCmd, ApiArg]),
+                        process_cmd(Node, Options, ApiCmd, ApiArg, Acc)
+                end, Acc0, JObj).
 
--spec process_cmd(atom(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
-process_cmd(Node, ApiCmd0, ApiArg, Acc) ->
-    process_cmd(Node, ApiCmd0, ApiArg, Acc, 'binary').
-process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
+-spec process_cmd(atom(), wh_proplist(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
+process_cmd(Node, Options, ApiCmd0, ApiArg, Acc) ->
+    process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'binary').
+process_cmd(Node, Options, <<"reloadacl">> = ApiCmd, ApiArg, Acc, ArgFormat) ->
+    case props:is_true('reloadacls', Options) of
+        'true' ->
+            lager:debug("loading ACLs for ~s", [Node]),
+            execute_command(Node, Options, ApiCmd, ApiArg, Acc, ArgFormat);
+        'false' ->
+            lager:debug("not loading ACLs for ~s: ~p", [Node, Options]),
+            Acc
+    end;
+process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
+    execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat).
+
+execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     ApiCmd = wh_util:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
+    lager:debug("exec ~s on ~s", [ApiCmd, Node]),
     case freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
         {'ok', BGApiID} ->
             receive
                 {'bgok', BGApiID, FSResp} ->
                     process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, ['global']), Acc);
                 {'bgerror', BGApiID, _} when ArgFormat =:= 'binary' ->
-                    process_cmd(Node, ApiCmd0, ApiArg, Acc, 'list');
+                    process_cmd(Node, Options, ApiCmd, ApiArg, Acc, 'list');
                 {'bgerror', BGApiID, Error} -> [{'error', Error} | Acc]
             after 120000 ->
                     [{'timeout', {ApiCmd, ApiArg}} | Acc]
