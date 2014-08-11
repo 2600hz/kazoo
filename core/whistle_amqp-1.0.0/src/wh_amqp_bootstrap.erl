@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%% Karls Hackity Hack....
 %%% We want to block during startup until we have a AMQP connection
@@ -64,6 +64,9 @@ init([]) ->
     lager:info("waiting for first amqp connection...", []),
     wh_amqp_connections:wait_for_available(),
     timer:sleep(2000),
+
+    wapi_self:declare_exchanges(), %% build targeted exchange for wh_amqp_worker
+
     {'ok', #state{}, 100}.
 
 %%--------------------------------------------------------------------
