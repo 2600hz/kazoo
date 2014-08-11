@@ -613,12 +613,10 @@ compact('compact', #state{nodes=[N|Ns]}=State) ->
                                           ,admin_conn='undefined'
                                           ,nodes=Ns
                                          }};
-
 compact({'compact', {N, _}}, #state{admin_conn=AdminConn}=State) ->
     lager:debug("compacting node ~s w/ options", [N]),
 
-    {'ok', DBs} = node_dbs(AdminConn),
-    [D|Ds] = shuffle(DBs),
+    {'ok', [D|Ds]} = node_dbs(AdminConn),
     gen_fsm:send_event(self(), {'compact', N, D}),
     {'next_state', 'compact', State#state{dbs=Ds
                                           ,current_db=D
@@ -627,19 +625,20 @@ compact({'compact', {N, _}}, #state{admin_conn=AdminConn}=State) ->
 compact({'compact', N}, #state{admin_conn=AdminConn}=State) ->
     lager:debug("compacting node ~s", [N]),
 
-    {'ok', DBs} = node_dbs(AdminConn),
-    [D|Ds] = shuffle(DBs),
+    {'ok', [D|Ds]} = node_dbs(AdminConn),
     gen_fsm:send_event(self(), {'compact', N, D}),
     {'next_state', 'compact', State#state{dbs=Ds
                                           ,current_db=D
                                           ,current_node=N
                                          }};
-
 compact({'compact', {N, _}, D}, State) ->
     lager:debug("compacting node ~s db ~s", [N, D]),
     gen_fsm:send_event(self(), {'compact', N, D}),
     {'next_state', 'compact', State};
-
+compact({'compact', N, <<"dbs">> = D}, State) ->
+    lager:debug("compacting the 'dbs' db"),
+    gen_fsm:send_event(self(), {'compact', N, D, [], []}),
+    {'next_state', 'compact', State};
 compact({'compact', N, D}, #state{conn=Conn
                                   ,admin_conn=AdminConn
                                   ,dbs=[]
@@ -665,7 +664,6 @@ compact({'compact', N, D}, #state{conn=Conn
                                                   ,current_node=N
                                                  }}
     end;
-
 compact({'compact', N, D}, #state{conn=Conn
                                   ,admin_conn=AdminConn
                                   ,dbs=[Db|Dbs]
@@ -674,8 +672,8 @@ compact({'compact', N, D}, #state{conn=Conn
     lager:debug("checking if should compact ~s on ~s", [D, N]),
 
     Encoded = encode_db(D),
-    case couch_util:db_exists(Conn, Encoded) andalso
-        should_compact(Conn, Encoded, Heur)
+    case couch_util:db_exists(Conn, Encoded)
+        andalso should_compact(Conn, Encoded, Heur)
     of
         'false' ->
             lager:debug("db ~s not found on ~s OR heuristic not met", [D, N]),
@@ -694,7 +692,6 @@ compact({'compact', N, D}, #state{conn=Conn
                                                   ,current_node=N
                                                  }}
     end;
-
 compact({'compact_db', {N, _}, D}, State) ->
     lager:debug("compacting node ~s on ~s", [N, D]),
     gen_fsm:send_event(self(), {'compact_db', N, D}),
@@ -767,6 +764,22 @@ compact({'compact_db', N, D}, #state{conn=Conn
                                                  }}
     end;
 
+compact({'compact', N, <<"dbs">> = D, _Shards, _DDs}, #state{conn=Conn
+                                                             ,admin_conn=AdminConn
+                                                             ,dbs=Dbs
+                                                            }=State) ->
+    ShardsPidRef = compact_shards(Conn, AdminConn, N, [D], []),
+
+    {NextMsg, NextDbs} =
+        case Dbs of
+            [] -> {'compact', Dbs};
+            [Db|T] ->  {{'compact', N, Db}, T}
+        end,
+
+    {'next_state', 'compact', State#state{shards_pid_ref=ShardsPidRef
+                                          ,next_compaction_msg=NextMsg
+                                          ,dbs=NextDbs
+                                         }};
 compact({'compact', N, D, [], _}, #state{dbs=[]}=State) ->
     lager:debug("no shards to compact for ~s on ~s", [D, N]),
     gen_fsm:send_event(self(), 'compact'),
@@ -1212,7 +1225,7 @@ encode_design_doc(Design) ->
 -spec node_dbs(server()) -> {'ok', ne_binaries()}.
 node_dbs(AdminConn) ->
     {'ok', Dbs} = couch_util:all_docs(AdminConn, <<"dbs">>, []),
-    {'ok', shuffle([wh_json:get_value(<<"id">>, Db) || Db <- Dbs])}.
+    {'ok', shuffle([<<"dbs">> | [wh_json:get_value(<<"id">>, Db) || Db <- Dbs]])}.
 
 -spec db_shards(server(), ne_binary(), ne_binary()) -> ne_binaries().
 db_shards(AdminConn, N, D) ->
