@@ -23,6 +23,7 @@
          ,put/1
          ,post/2
          ,delete/2
+         ,patch/2
         ]).
 
 -include("../crossbar.hrl").
@@ -55,7 +56,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.validate.users">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.users">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.users">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.users">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.users">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.patch.users">>, ?MODULE, 'patch').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -74,7 +76,7 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
 allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
 allowed_methods(_, ?CHANNELS) ->
     [?HTTP_GET].
@@ -171,7 +173,9 @@ validate_user(Context, UserId, ?HTTP_GET) ->
 validate_user(Context, UserId, ?HTTP_POST) ->
     validate_request(UserId, Context);
 validate_user(Context, UserId, ?HTTP_DELETE) ->
-    load_user(UserId, Context).
+    load_user(UserId, Context);
+validate_user(Context, UserId, ?HTTP_PATCH) ->
+    validate_patch(UserId, Context).
 
 validate(Context, UserId, ?CHANNELS) ->
     Options = [{'key', [UserId, <<"device">>]}
@@ -201,8 +205,12 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _) ->
+delete(Context, _Id) ->
     crossbar_doc:delete(Context).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, _Id) ->
+    crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -286,6 +294,21 @@ load_user(UserId, Context) -> crossbar_doc:load(UserId, Context).
 validate_request(UserId, Context) ->
     prepare_username(UserId, Context).
 
+-spec validate_patch(api_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(UserId, Context) ->
+    Context1 = load_user(UserId, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            UserJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context1)),
+
+            lager:debug("patched doc, now validating"),
+            prepare_username(UserId, cb_context:set_req_data(Context, UserJObj));
+        _Status ->
+            Context1
+    end.
+
+-spec prepare_username(api_binary(), cb_context:context()) -> cb_context:context().
 prepare_username(UserId, Context) ->
     JObj = cb_context:req_data(Context),
     case wh_json:get_ne_value(<<"username">>, JObj) of
@@ -295,10 +318,12 @@ prepare_username(UserId, Context) ->
             check_user_schema(UserId, cb_context:set_req_data(Context, JObj1))
     end.
 
+-spec check_user_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_user_schema(UserId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(UserId, C) end,
     cb_context:validate_request_data(<<"users">>, Context, OnSuccess).
 
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"user">>}],
     maybe_import_credintials('undefined'
@@ -309,6 +334,7 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(UserId, Context) ->
     maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context)).
 
+-spec maybe_import_credintials(api_binary(), cb_context:context()) -> cb_context:context().
 maybe_import_credintials(UserId, Context) ->
     JObj = cb_context:doc(Context),
     case wh_json:get_ne_value(<<"credentials">>, JObj) of
@@ -323,6 +349,7 @@ maybe_import_credintials(UserId, Context) ->
             maybe_validate_username(UserId, C)
     end.
 
+-spec maybe_validate_username(api_binary(), cb_context:context()) -> cb_context:context().
 maybe_validate_username(UserId, Context) ->
     NewUsername = wh_json:get_ne_value(<<"username">>, cb_context:doc(Context)),
     CurrentUsername = case cb_context:fetch(Context, 'db_doc') of
@@ -349,6 +376,7 @@ maybe_validate_username(UserId, Context) ->
             manditory_rehash_creds(UserId, NewUsername, C)
     end.
 
+-spec maybe_rehash_creds(api_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 maybe_rehash_creds(UserId, Username, Context) ->
     case wh_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         %% No username or hash, no creds for you!
@@ -361,7 +389,7 @@ maybe_rehash_creds(UserId, Username, Context) ->
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
--spec manditory_rehash_creds(ne_binary(), ne_binary(), cb_context:context()) ->
+-spec manditory_rehash_creds(api_binary(), api_binary(), cb_context:context()) ->
                                     cb_context:context().
 manditory_rehash_creds(UserId, Username, Context) ->
     case wh_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
@@ -374,15 +402,15 @@ manditory_rehash_creds(UserId, Username, Context) ->
         Password -> rehash_creds(UserId, Username, Password, Context)
     end.
 
--spec rehash_creds(_, api_binary(), ne_binary(), cb_context:context()) ->
+-spec rehash_creds(api_binary(), api_binary(), ne_binary(), cb_context:context()) ->
                           cb_context:context().
-rehash_creds(_, 'undefined', _, Context) ->
+rehash_creds(_UserId, 'undefined', _Password, Context) ->
     cb_context:add_validation_error(<<"username">>
                                     ,<<"required">>
                                     ,<<"The username must be provided when updating the password">>
                                     ,Context
                                    );
-rehash_creds(_, Username, Password, Context) ->
+rehash_creds(_UserId, Username, Password, Context) ->
     lager:debug("password set on doc, updating hashes for ~s", [Username]),
     {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
     JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}

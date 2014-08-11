@@ -58,6 +58,16 @@ The HTTP verb will determine the class of actions to take against the resource. 
     * POST: Updates the full respresentation of the resource
     * DELETE: Deletes the resource
 
+#### PATCH
+
+Some resources are beginning to support the PATCH verb, allowing partial updates instead of requiring the request to include the full version of the document. `/users/{USER_ID}`, for instance, now supports PATCH:
+
+    curl -v -X PATCH -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://crossbar.server.com:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}' -d '{"data":{"vm_to_email_enabled":true}}'
+
+This cURL request will patch the user's doc and set `vm_to_email_enabled` to `true`. All normal validation will occur after patching the document; this also means clients can PATCH documents with their own data only.
+
+If a resource does not support PATCH yet, clients can expect to receive a `405 Method Not Allowed` error.
+
 #### Tunneling the HTTP Verb
 
 Some clients do not support the full range of HTTP verbs, and are typically limited to *GET* and *POST*. To access the functionalities of *PUT* and *DELETE*, you can tunnel the verb in a *POST* in a couple of ways:

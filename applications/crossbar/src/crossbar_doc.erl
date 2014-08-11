@@ -921,7 +921,7 @@ handle_couch_mgr_errors(Else, _View, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_pvt_parameters(wh_json:object() | wh_json:objects(), cb_context:context()) ->
-                                         wh_json:object() | wh_json:objects().
+                                   wh_json:object() | wh_json:objects().
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
 update_pvt_parameters(JObj0, Context) ->

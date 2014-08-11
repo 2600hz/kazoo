@@ -737,10 +737,11 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 update_doc(DbName, Id, UpdateProps) ->
     update_doc(DbName, Id, UpdateProps, []).
 
-update_doc(DbName, Id, UpdateProps, CreateProps) ->
+update_doc(DbName, Id, UpdateProps, CreateProps) when is_list(UpdateProps),
+                                                      is_list(CreateProps) ->
     case open_doc(DbName, Id) of
         {'error', 'not_found'} ->
-            JObj = wh_json:from_list(lists:append([[{<<"_id">>, Id}| CreateProps], UpdateProps])),
+            JObj = wh_json:from_list(lists:append([[{<<"_id">>, Id} | CreateProps], UpdateProps])),
             save_doc(DbName, JObj);
         {'error', _}=E -> E;
         {'ok', JObj}=Ok ->
