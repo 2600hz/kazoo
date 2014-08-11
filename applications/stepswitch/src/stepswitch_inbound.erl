@@ -40,6 +40,7 @@ maybe_relay_request(JObj) ->
         {'ok', _, NumberProps} ->
             lager:debug("relaying route request"),
             Routines = [fun set_account_id/2
+                        ,fun set_ignore_display_updates/2
                         ,fun set_inception/2
                         ,fun maybe_find_resource/2
                         ,fun maybe_format_destination/2
@@ -67,6 +68,18 @@ maybe_relay_request(JObj) ->
 set_account_id(NumberProps, JObj) ->
     AccountId = wh_number_properties:account_id(NumberProps),
     wh_json:set_value(?CCV(<<"Account-ID">>), AccountId, JObj).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_ignore_display_updates(wh_proplist(), wh_json:object()) ->
+                                        wh_json:object().
+set_ignore_display_updates(_, JObj) ->
+    wh_json:set_value(?CCV(<<"Ignore-Display-Updates">>), <<"true">>, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
