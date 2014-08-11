@@ -1,8 +1,0 @@
-{application, rabbitmq_federation,
- [{description, "RabbitMQ Federation"},
-  {vsn, "%%VSN%%"},
-  {modules, []},
-  {registered, []},
-  {mod, {rabbit_federation_app, []}},
-  {env, []},
-  {applications, [kernel, stdlib, rabbit, amqp_client]}]}.
