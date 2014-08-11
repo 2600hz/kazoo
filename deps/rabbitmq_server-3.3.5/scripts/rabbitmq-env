@@ -50,9 +50,9 @@ SERVER_ERL_ARGS="+K true +A30 +P 1048576 \
   -kernel inet_default_connect_options [{nodelay,true}]"
 
 # warn about old rabbitmq.conf file, if no new one
-if [ -f /etc/rabbitmq/rabbitmq.conf ] && \
+if [ -f /etc/kazoo/rabbitmq/rabbitmq.conf ] && \
    [ ! -f ${CONF_ENV_FILE} ] ; then
-    echo -n "WARNING: ignoring /etc/rabbitmq/rabbitmq.conf -- "
+    echo -n "WARNING: ignoring /etc/kazoo/rabbitmq/rabbitmq.conf -- "
     echo "location has moved to ${CONF_ENV_FILE}"
 fi
 
