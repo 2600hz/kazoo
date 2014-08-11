@@ -68,7 +68,7 @@ bind_q(Q, <<_/binary>> = App, Key) ->
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 -spec unbind_q(ne_binary(), ne_binary(), maybe_key()) -> 'ok'.
 unbind_q(Q, Props) ->
-    App = props:get_ne_value('app_name', Props),
+    App = props:get_value('app_name', Props),
     Key = props:get_value('route_key', Props),
     unbind_q(Q, App, Key).
 unbind_q(Q, <<_/binary>> = App, 'undefined') ->
