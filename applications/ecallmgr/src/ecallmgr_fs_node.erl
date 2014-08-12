@@ -435,7 +435,6 @@ run_start_cmds(Node, Options, Parent) ->
 
 -spec sync(pid()) -> any().
 sync(Parent) ->
-    lager:debug("syncing parent pid ~p", [Parent]),
     sync_interface(Parent),
     sync_registrations(Parent),
     sync_capabilities(Parent).
@@ -456,7 +455,6 @@ process_cmds(Node, Options, Cmds) ->
 
 -spec process_cmd(atom(), wh_proplist(), wh_json:object(), cmd_results()) -> cmd_results().
 process_cmd(Node, Options, JObj, Acc0) ->
-    lager:debug("jobj: ~p", [JObj]),
     wh_json:foldl(fun(ApiCmd, ApiArg, Acc) ->
                         lager:debug("process ~s: ~s: ~s", [Node, ApiCmd, ApiArg]),
                         process_cmd(Node, Options, ApiCmd, ApiArg, Acc)
@@ -644,12 +642,12 @@ replay_registration(Node, [Reg | Regs]) ->
 replay_profile(V) ->
     lists:nth(2, binary:split(V, <<"/">>, ['global'] ) ).
 
--spec replay_expires(ne_binary()) -> ne_binary().
+-spec replay_expires(ne_binary()) -> pos_integer().
 replay_expires(V) ->
-    wh_util:unix_seconds_to_gregorian_seconds(
-      wh_util:to_integer(V)) -
-        wh_util:current_tstamp() +
-        ecallmgr_config:get_integer(<<"expires_deviation_time">>, 0).
+    wh_util:unix_seconds_to_gregorian_seconds(wh_util:to_integer(V)) -
+        (wh_util:current_tstamp() +
+             ecallmgr_config:get_integer(<<"expires_deviation_time">>, 0)
+        ).
 
 -spec replay_contact(ne_binary()) -> ne_binary().
 replay_contact(V) ->
@@ -661,7 +659,8 @@ get_registrations(Node) ->
         {'ok', Response} ->
             R = binary:replace(Response, <<" ">>, <<>>, ['global']),
             Lines = [binary:split(Line, <<",">>, ['global'] )
-                    || Line <- binary:split(R, <<"\n">>, ['global'])],
+                     || Line <- binary:split(R, <<"\n">>, ['global'])
+                    ],
             get_registration_details(Lines);
         _Else -> []
     end.
