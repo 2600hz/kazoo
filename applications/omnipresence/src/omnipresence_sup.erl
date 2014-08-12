@@ -11,26 +11,56 @@
 
 -export([start_link/0
          ,subscriptions_srv/0
+         ,get_appid/3
         ]).
 -export([init/1]).
 
 -include("omnipresence.hrl").
+
+-define(SIP_APP, <<"omni">>).
 
 -define(SUBS_ETS_OPTS, [{'table_id', omnip_subscriptions:table_id()}
                         ,{'table_options', omnip_subscriptions:table_config()}
                         ,{'find_me_function', fun ?MODULE:subscriptions_srv/0}
                        ]).
 
+
+
+-define(PROXYSUPER(I,A), {A, {I, 'start_link', [A,[]]}, 'permanent', 'infinity', 'supervisor', [I]}).
+-define(APPID(AppName, Module, Opts), get_appid(AppName, Module, Opts)).
+-define(PROXYOPTIONS,
+         [
+        {plugins, [nksip_gruu, nksip_event_compositor, nksip_trace]}                      
+        ,{transports, [{udp, all, 5090}, {tls, all, 5091}]}
+        ,{from,<<"<sip:kazoo@sipproxy-04.90e9.com>">>}
+        ,{log_level, info}
+        ,{event_expires, 3600}
+        ,{events, "dialog, message-summary, presence, presence.winfo, call-info, sla, line-seize, vq-rtcpxr"}
+        ,{allow, "ACK,OPTIONS,SUBSCRIBE,PUBLISH,NOTIFY"}
+        ]        
+         ).
+-define(PROXY,?APPID(?SIP_APP,'omnipresence_proxy', ?PROXYOPTIONS)).
+
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'omnipresence_subscriptions_tbl', [?SUBS_ETS_OPTS])
                    ,?WORKER('omnip_subscriptions')
                    ,?WORKER('omnipresence_listener')
                    ,?WORKER('omnipresence_shared_listener')
+                   ,?PROXYSUPER('nksip_sipapp_sup',?PROXY)
+                   ,?SUPER('omnipresence_pkg_sup')
                   ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+get_appid(AppName, Module, Opts) ->
+    Config = nksip_config_cache:app_config(),
+    Opts1 = Config ++ [{name, AppName}, {module, Module}|Opts],
+    case nksip_sipapp_config:start(Opts1) of
+        {ok, AppId} -> AppId;
+        {error, Error} -> {error, Error}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
