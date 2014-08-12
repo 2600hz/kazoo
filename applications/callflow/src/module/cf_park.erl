@@ -77,7 +77,7 @@ handle(Data, Call) ->
                     Slot = create_slot(cf_exe:callid(Call), Call),
                     case retrieve(SlotNumber, ParkedCalls, Call) of
                         {'error', _} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call);
-                        {'ok', 'channel_hungup'} -> park_call(SlotNumber, Slot, ParkedCalls, 'undefined', Call)
+                        {'ok', _} -> cf_exe:continue(Call)
                     end
             end;
         'nomatch' ->
