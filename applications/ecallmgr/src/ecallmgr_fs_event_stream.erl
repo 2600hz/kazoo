@@ -245,12 +245,13 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
     DialPlan = props:get_value(<<"Caller-Dialplan">>, Props),
     Direction = props:get_value(<<"Call-Direction">>, Props),
     App = props:get_value(<<"variable_current_application">>, Props),
+    Destination = props:get_value(<<"Caller-Destination-Number">>, Props),
 
-    case {BridgeID, Direction, DialPlan, App} of
-        {'undefined', _, _, _} ->
+    case {BridgeID, Direction, DialPlan, App, Destination} of
+        {'undefined', _, _, _, _} ->
             gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),    
             maybe_send_call_event(UUID, Props, Node);
-        {BridgeID, <<"inbound">>, <<"inline">>, <<"intercept">>} ->
+        {BridgeID, <<"inbound">>, <<"inline">>, <<"intercept">>, 'undefined'} ->
             SwappedProps = ecallmgr_call_events:swap_call_legs(Props),
             gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BridgeID | SwappedProps]}),    
             maybe_send_call_event(BridgeID, SwappedProps, Node);
