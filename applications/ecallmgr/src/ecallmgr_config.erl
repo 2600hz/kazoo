@@ -175,7 +175,7 @@ fetch(Key, Default, Node) ->
            ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    lager:debug("looking up ~s from sysconf", [Key]),
+    lager:debug("looking up '~s' from sysconf", [Key]),
     ReqResp = wh_amqp_worker:call(props:filter_undefined(Req)
                                   ,fun wapi_sysconf:publish_get_req/1
                                   ,fun wapi_sysconf:get_resp_v/1
@@ -188,7 +188,6 @@ fetch(Key, Default, Node) ->
             Value = get_response_value(JObj, Default),
             _ = maybe_cache_resp(Key, Node, Value),
             Value
-
     end.
 
 -spec maybe_cache_resp(ne_binary(), ne_binary(), term()) -> 'ok'.
