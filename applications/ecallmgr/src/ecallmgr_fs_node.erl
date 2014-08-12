@@ -123,6 +123,7 @@
 -record(state, {node :: atom()
                 ,options = []                         :: wh_proplist()
                 ,interface = #interface{}             :: interface()
+                ,start_cmds_pid_ref :: pid_ref() | 'undefined'
                }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
@@ -279,10 +280,13 @@ init([Node, Options]) ->
     lager:info("starting new fs node listener for ~s", [Node]),
     gproc:reg({'p', 'l', 'fs_node'}),
     sync_channels(self()),
-    _Pid = run_start_cmds(Node, Options),
-    lager:debug("running start commands in ~p", [_Pid]),
+    PidRef = run_start_cmds(Node, Options),
+    lager:debug("running start commands in ~p", [PidRef]),
 
-    {'ok', #state{node=Node, options=Options}}.
+    {'ok', #state{node=Node
+                  ,options=Options
+                  ,start_cmds_pid_ref=PidRef
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -319,7 +323,10 @@ handle_cast('sync_interface', #state{node=Node}=State) ->
     Interface = interface_from_props(ecallmgr_util:get_interface_properties(Node)),
     {'noreply', State#state{interface=Interface}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
-    _ = spawn(fun() -> probe_capabilities(Node, ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES)) end),
+    _Pid = spawn(fun() ->
+                         probe_capabilities(Node)
+                 end),
+    lager:debug("syncing capabilities in ~p", [_Pid]),
     {'noreply', State};
 handle_cast('sync_channels', #state{node=Node}=State) ->
     Channels = [wh_json:get_value(<<"uuid">>, J)
@@ -328,7 +335,8 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
     _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
 handle_cast('sync_registrations', #state{node=Node}=State) ->
-    _ = spawn(fun() -> maybe_replay_registrations(Node) end),
+    _Pid = spawn(fun() -> maybe_replay_registrations(Node) end),
+    lager:debug("syncing registrations in ~p", [_Pid]),
     {'noreply', State};
 handle_cast(_Req, State) ->
     {'noreply', State}.
@@ -349,6 +357,8 @@ handle_info({'bgok', _Job, _Result}, State) ->
 handle_info({'bgerror', _Job, _Result}, State) ->
     lager:debug("job ~s finished with an error: ~p", [_Job, _Result]),
     {'noreply', State};
+handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{start_cmds_pid_ref={Pid, Ref}}=State) ->
+    {'noreply', State#state{start_cmds_pid_ref='undefined'}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -395,24 +405,40 @@ code_change(_OldVsn, State, _Extra) ->
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
                       {'timeout', {atom(), ne_binary()}}.
--type cmd_results() :: [cmd_result(),...] | [].
+-type cmd_results() :: [cmd_result(),...] | [] |
+                       {'error', 'retry'}.
 
--spec run_start_cmds(atom(), wh_proplist()) -> pid().
+-spec run_start_cmds(atom(), wh_proplist()) -> pid_ref().
 run_start_cmds(Node, Options) ->
     Parent = self(),
-    spawn_link(fun() ->
-                       wh_util:put_callid(Node),
-                       timer:sleep(5000),
-                       Cmds = ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node),
-                       Res = process_cmds(Node, Options, Cmds),
-                       case lists:filter(fun was_not_successful_cmd/1, Res) of
-                           [] -> 'ok';
-                           Errs -> print_api_responses(Errs)
-                       end,
-                       sync_interface(Parent),
-                       sync_registrations(Parent),
-                       sync_capabilities(Parent)
-               end).
+    spawn_monitor(fun() ->
+                          run_start_cmds(Node, Options, Parent)
+                  end).
+
+-spec run_start_cmds(atom(), wh_proplist(), pid()) -> any().
+run_start_cmds(Node, Options, Parent) ->
+    wh_util:put_callid(Node),
+    timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5000, Node)),
+    Cmds = ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node),
+
+    Res = process_cmds(Node, Options, Cmds),
+
+    case is_list(Res) andalso lists:filter(fun was_not_successful_cmd/1, Res) of
+        [] -> sync(Parent);
+        'false' ->
+            lager:debug("failed to run start commands, retrying"),
+            run_start_cmds(Node, Options, Parent);
+        Errs ->
+            print_api_responses(Errs),
+            sync(Parent)
+    end.
+
+-spec sync(pid()) -> any().
+sync(Parent) ->
+    lager:debug("syncing parent pid ~p", [Parent]),
+    sync_interface(Parent),
+    sync_registrations(Parent),
+    sync_capabilities(Parent).
 
 -spec process_cmds(atom(), wh_proplist(), wh_json:object() | ne_binaries()) -> cmd_results().
 process_cmds(_Node, _Options, []) ->
@@ -425,12 +451,12 @@ process_cmds(Node, Options, Cmds) ->
         'true' -> process_cmd(Node, Options, Cmds, []);
         'false' ->
             lager:debug("recv something other than a list for fs_cmds: ~p", [Cmds]),
-            timer:sleep(5000),
-            run_start_cmds(Node, Options)
+            {'error', 'retry'}
     end.
 
 -spec process_cmd(atom(), wh_proplist(), wh_json:object(), cmd_results()) -> cmd_results().
 process_cmd(Node, Options, JObj, Acc0) ->
+    lager:debug("jobj: ~p", [JObj]),
     wh_json:foldl(fun(ApiCmd, ApiArg, Acc) ->
                         lager:debug("process ~s: ~s: ~s", [Node, ApiCmd, ApiArg]),
                         process_cmd(Node, Options, ApiCmd, ApiArg, Acc)
@@ -562,12 +588,16 @@ interface_from_props(Props) ->
 -spec split_codes(ne_binary(), wh_proplist()) -> ne_binaries().
 split_codes(Key, Props) ->
     [Codec
-     || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, [global])
+     || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, ['global'])
             ,not wh_util:is_empty(Codec)
     ].
 
+-spec probe_capabilities(atom()) -> 'ok'.
 -spec probe_capabilities(atom(), wh_json:objects()) -> 'ok'.
+probe_capabilities(Node) ->
+    probe_capabilities(Node, ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES)).
 probe_capabilities(Node, PossibleCapabilities) ->
+    wh_util:put_callid(Node),
     lists:foreach(fun(Capability) ->
                             maybe_add_capability(Node, Capability)
                     end, PossibleCapabilities).
@@ -590,20 +620,21 @@ maybe_add_capability(Node, Capability) ->
     end.
 
 maybe_replay_registrations(Node) ->
+    wh_util:put_callid(Node),
     replay_registration(Node, get_registrations(Node)).
 
 replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
-    Payload = [
-               {<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
+    Payload = [{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
                ,{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
-              | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
-                                  {K, F(props:get_value(V, Reg))};
-                             ({K,V}) ->
-                                  {K, props:get_value(V, Reg)}
-                          end, ?REPLAY_REG_MAP)
-              ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)] ,
-    lager:debug("Replaying registration ~p",[Payload]),
+               | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
+                                   {K, F(props:get_value(V, Reg))};
+                              ({K,V}) ->
+                                   {K, props:get_value(V, Reg)}
+                           end, ?REPLAY_REG_MAP)
+               ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    lager:debug("replaying registration: ~p",[Payload]),
     wh_amqp_worker:cast(Payload
                         ,fun wapi_registration:publish_success/1
                        ),
