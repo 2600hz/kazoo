@@ -41,9 +41,6 @@
 
 -define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, 1000)).
 -define(EXPIRE_MESSAGE, 'clear_expired').
--define(BLF_EVENT, <<"dialog">>).
--define(MWI_EVENT, <<"message-summary">>).
--define(PRESENCE_EVENT, <<"presence">>).
 -define(DEFAULT_EVENT, ?BLF_EVENT).
 -define(DEFAULT_SEND_EVENT_LIST, [?BLF_EVENT, ?PRESENCE_EVENT]).
 
@@ -51,25 +48,7 @@
           expire_ref :: reference()
          }).
 
--record(omnip_subscription, {
-          user                                  :: api_binary() | '_' %% user@realm.com
-          ,from                                 :: api_binary() | <<>> | '_' %% user@realm.com
-          ,stalker                              :: api_binary() | '_' % amqp queue to publish updates to
-          ,expires = 0                          :: non_neg_integer() | '_' | '$2'
-          ,timestamp = wh_util:current_tstamp() :: non_neg_integer() | '_' | '$1'
-          ,protocol = <<"sip">>                 :: ne_binary() | '_' % protocol
-          ,username                             :: api_binary() | '_'
-          ,realm                                :: api_binary() | '_'
-          ,normalized_user                      :: api_binary() | '_' | '$1'
-          ,normalized_from                      :: api_binary() | '_'
-          ,event                                :: api_binary() | '_'
-          ,from_tag                             :: api_binary() | '_'
-          ,to_tag                               :: api_binary() | '_'
-          ,contact                              :: api_binary() | '_'
-          ,call_id                              :: api_binary() | '_'
-         }).
--type subscription() :: #omnip_subscription{}.
--type subscriptions() :: [subscription(),...] | [].
+
 
 %%%===================================================================
 %%% API
@@ -154,6 +133,9 @@ handle_presence_update(JObj, _Props) ->
     'true' = wapi_presence:update_v(JObj),
     maybe_send_update(JObj, wh_json:get_value(<<"State">>, JObj)).
 
+-spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_channel_event(JObj, _Props) ->
+
 -spec handle_channel_event(ne_binary(), wh_json:object()) -> 'ok'.
 handle_channel_event(<<"CHANNEL_CREATE">>, JObj) -> handle_new_channel(JObj);
 handle_channel_event(<<"CHANNEL_ANSWER">>, JObj) -> handle_answered_channel(JObj);
@@ -203,44 +185,25 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'subscribe', #omnip_subscription{from = <<>>}=_S}, _From, State) ->
-    lager:debug("subscription with no from: ~p", [subscription_to_json(_S)]),
-    {'reply', 'invalid', State};
-handle_call({'subscribe', #omnip_subscription{expires=E
-                                              ,user=_U
-                                              ,from=_F
-                                              ,stalker=_S
-                                             }=S}
-            ,_From, State) when E =< 0 ->
-    case find_subscription(S) of
-        {'error', 'not_found'} -> {'reply', {'unsubscribe', S}, State};
-        {'ok', #omnip_subscription{timestamp=_T
-                                   ,expires=_E
-                                   }=O} ->
-            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - wh_util:elapsed_s(_T)]),
-            ets:delete_object(table_id(), O),
-            {'reply', {'unsubscribe', O}, State}
-    end;
-handle_call({'subscribe', #omnip_subscription{user=_U
-                                              ,from=_F
-                                              ,expires=_E1
-                                              ,stalker=_S
-                                             }=S}
-            ,_From, State) ->
-    case find_subscription(S) of
-        {'ok', #omnip_subscription{timestamp=_T
-                                   ,expires=_E2
-                                  }=O} ->
-            lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
-                        ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
-            ets:delete_object(table_id(), O),
-            ets:insert(table_id(), S),
-            {'reply', {'resubscribe', S}, State};
-        {'error', 'not_found'} ->
-            lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),
-            ets:insert(table_id(), S),
-            {'reply', {'subscribe', S}, State}
-    end;
+handle_call({'subscribe', #omnip_subscription{}=Sub}, _From, State) ->
+    {'reply', subscribe(Sub), State};
+handle_call({'proxy_subscribe', #omnip_subscription{}=Sub}, _From, State) ->
+    SubscribeResult = subscribe(Sub),
+    case SubscribeResult of
+        'invalid' -> 'ok';
+        {'unsubscribe', _} -> 'ok';
+        {'resubscribe', Subscription} ->
+            _ = gen_server:cast(omnipresence_sup:subscriptions_srv(), {'resubscribe_notify', Subscription}),
+            _ = gen_server:cast(omnipresence_sup:subscriptions_srv(), {'distribute_subscribe', Subscription});
+        {'subscribe', Subscription} ->
+            _ = gen_server:cast(omnipresence_sup:subscriptions_srv(), {'subscribe_notify', Subscription}),
+            _ = gen_server:cast(omnipresence_sup:subscriptions_srv(), {'distribute_subscribe', Subscription})
+    end,
+    {'reply', SubscribeResult, State};
+handle_call({'proxy_subscribe', Props}, _From, State) when is_list(Props) ->
+    handle_call({'proxy_subscribe', wh_json:from_list(Props)}, _From, State);
+handle_call({'proxy_subscribe', Props}, _From, State) ->
+    handle_call({'proxy_subscribe', subscribe_to_record(Props)}, _From, State);
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -254,6 +217,23 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+
+handle_cast({'subscribe_notify', #omnip_subscription{event=Package
+                                                     ,user=User
+                                                    }=Subscription}, State) ->
+    Msg = {'omnipresence', {'subscribe_notify', Package, User, Subscription}},
+    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
+           <- supervisor:which_children('omnipresence_pkg_sup'), Pid =/= 'restarting'],
+    {'noreply', State};
+handle_cast({'resubscribe_notify', #omnip_subscription{event=Package
+                                                       ,user=User
+                                                      }=Subscription}, State) ->
+    Msg = {'omnipresence', {'resubscribe_notify', Package, User, Subscription}},
+    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
+           <- supervisor:which_children('omnipresence_pkg_sup'), Pid =/= 'restarting'],
+    {'noreply', State};
+handle_cast({'distribute_subscribe', #omnip_subscription{}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -342,14 +322,15 @@ subscribe_to_record(JObj) ->
                         ,normalized_from=wh_util:to_lower_binary(F)
                         ,username=wh_util:to_lower_binary(Username)
                         ,realm=wh_util:to_lower_binary(Realm)
-                        ,stalker=wh_json:get_first_defined([<<"Queue">>
+                        ,stalker=wh_json:get_first_defined([<<"Subscription-ID">>
                                                             ,<<"Server-ID">>
+                                                            ,<<"Queue">>
                                                            ], JObj)
                         ,event=wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT)
-                        ,from_tag=wh_json:get_value(<<"From-Tag">>, JObj)
-                        ,to_tag=wh_json:get_value(<<"To-Tag">>, JObj)
                         ,contact=wh_json:get_value(<<"Contact">>, JObj)
                         ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
+                        ,subscription_id=wh_json:get_value(<<"Subscription-ID">>, JObj)
+                        ,proxy_route= <<"<sip:192.168.16.149:5060>">> %%wh_json:get_value(<<"Proxy-Route">>, JObj)
                        }.
 
 %%--------------------------------------------------------------------
@@ -372,10 +353,10 @@ subscription_to_json(#omnip_subscription{user=User
                                          ,username=Username
                                          ,realm=Realm
                                          ,event=Event
-                                         ,from_tag=FromTag
-                                         ,to_tag=ToTag
                                          ,contact=Contact
                                          ,call_id=CallId
+                                         ,subscription_id=SubId
+                                         ,proxy_route=ProxyRoute
                                         }) ->
     wh_json:from_list(
       props:filter_undefined(
@@ -388,10 +369,10 @@ subscription_to_json(#omnip_subscription{user=User
          ,{<<"username">>, Username}
          ,{<<"realm">>, Realm}
          ,{<<"event">>, Event}
-         ,{<<"from_tag">>, FromTag}
-         ,{<<"to_tag">>, ToTag}
          ,{<<"contact">>, Contact}
          ,{<<"call_id">>, CallId}
+         ,{<<"subscription_id">>, SubId}
+         ,{<<"proxy_route">>, ProxyRoute}
         ])).
 
 %%--------------------------------------------------------------------
@@ -419,13 +400,13 @@ handle_destroyed_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
     lager:debug("received channel destroy, checking for subscribers"),
-    maybe_send_update(JObj, ?PRESENCE_HANGUP),
+    maybe_send_update(JObj, ?PRESENCE_HANGUP).
     %% When multiple omnipresence instances are in multiple
     %% zones its possible (due to the round-robin) for the
     %% instance closest to rabbitmq to process the terminate
     %% before a confirm/early if both are sent immediately.
-    timer:sleep(1000),
-    maybe_send_update(JObj, ?PRESENCE_HANGUP).
+%%     timer:sleep(1000),
+%%     maybe_send_update(JObj, ?PRESENCE_HANGUP).
 
 -spec handle_disconnected_channel(wh_json:object()) -> any().
 handle_disconnected_channel(JObj) ->
@@ -709,8 +690,6 @@ send_mwi_update(Update, #omnip_subscription{stalker=S
                                             ,protocol=Proto
                                             ,from=F
                                             ,call_id=CallID
-                                            ,from_tag=FromTag
-                                            ,to_tag=ToTag
                                             ,event=Event
                                            }) ->
     To = props:get_value(<<"To">>, Update),
@@ -722,8 +701,6 @@ send_mwi_update(Update, #omnip_subscription{stalker=S
                                 ,{<<"From">>, <<Proto/binary, ":", From/binary>>}
                                 ,{<<"Call-ID">>, <<CallID/binary>>}
                                 ,{<<"Event-Package">>, Event}
-                                ,{<<"From-Tag">>, <<FromTag/binary>>}
-                                ,{<<"To-Tag">>, <<ToTag/binary>>}
                                 | props:delete_keys([<<"To">>, <<"From">>], Update)
                                ]
                                ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
@@ -736,7 +713,7 @@ send_mwi_update(Update, #omnip_subscription{stalker=S
 %% @end
 %%--------------------------------------------------------------------
 -spec expires(integer() | wh_json:object()) -> non_neg_integer().
-expires(I) when is_integer(I), I >= 0 -> I;
+expires(I) when is_integer(I), I >= 0 -> I + 10;
 expires(JObj) -> expires(wh_json:get_integer_value(<<"Expires">>, JObj)).
 
 %%--------------------------------------------------------------------
@@ -783,3 +760,43 @@ publish_flush([#omnip_subscription{stalker=Q, user=User, event=Event}
     lager:debug("sending flush for ~s to ~s", [User, Q]),
     whapps_util:amqp_pool_send(Props, fun(P) -> wapi_presence:publish_flush(Q, P) end),
     publish_flush(Subscriptions).
+
+-spec subscribe(subscription()) -> 'invalid' | {'subscribe', subscription()}
+                                             | {'resubscribe', subscription()}
+                                             | {'unsubscribe', subscription()}.
+subscribe(#omnip_subscription{from = <<>>}=_S) ->
+    lager:debug("subscription with no from: ~p", [subscription_to_json(_S)]),
+    'invalid';
+subscribe(#omnip_subscription{expires=E
+                              ,user=_U
+                              ,from=_F
+                              ,stalker=_S
+                              }=S)
+  when E =< 0 ->
+    case find_subscription(S) of
+        {'error', 'not_found'} -> {'unsubscribe', S};
+        {'ok', #omnip_subscription{timestamp=_T
+                                   ,expires=_E
+                                  }=O} ->
+            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - wh_util:elapsed_s(_T)]),
+            ets:delete_object(table_id(), O),
+            {'unsubscribe', O}
+    end;
+subscribe(#omnip_subscription{user=_U
+                              ,from=_F
+                              ,expires=_E1
+                              ,stalker=_S}=S) ->
+    case find_subscription(S) of
+        {'ok', #omnip_subscription{timestamp=_T
+                                   ,expires=_E2
+                                  }=O} ->
+            lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
+                        ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
+            ets:delete_object(table_id(), O),
+            ets:insert(table_id(), S),
+            {'resubscribe', S};
+        {'error', 'not_found'} ->
+            lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),
+            ets:insert(table_id(), S),
+            {'subscribe', S}
+    end.
