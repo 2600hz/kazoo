@@ -289,7 +289,7 @@ build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[wh_util:join_binary(ReqH, ","), Error]
+                        ,[wh_util:join_binary(ReqH, <<",">>), Error]
                        ),
             Error;
         {Headers1, Prop1} ->
@@ -305,7 +305,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[wh_util:join_binary(ReqH, ","), Error]
+                        ,[wh_util:join_binary(ReqH, <<",">>), Error]
                        ),
             Error;
         {Headers1, Prop1} ->
