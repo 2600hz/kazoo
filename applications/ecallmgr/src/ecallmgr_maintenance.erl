@@ -145,7 +145,7 @@ carrier_acls('true') ->
 carrier_acls('false') ->
     list_acls(get_acls(), ?FS_CARRIER_ACL_LIST).
 
--spec test_carrier_ip(ne_binary(), ne_binary()) -> 'no_return'.
+-spec test_carrier_ip(ne_binary(), ne_binary()) -> 'ok'.
 test_carrier_ip(IP, Node) ->
     test_ip_against_acl(IP, Node, ?FS_CARRIER_ACL_LIST).
 
@@ -208,7 +208,7 @@ sbc_acls('true') ->
 sbc_acls('false') ->
     list_acls(get_acls(), ?FS_SBC_ACL_LIST).
 
--spec test_sbc_ip(ne_binary(), ne_binary()) -> 'no_return'.
+-spec test_sbc_ip(ne_binary(), ne_binary()) -> 'ok'.
 test_sbc_ip(IP, Node) ->
     test_ip_against_acl(IP, Node, ?FS_SBC_ACL_LIST).
 
@@ -300,7 +300,7 @@ reload_acls() ->
         ],
     'no_return'.
 
--spec test_ip_against_acl(ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
+-spec test_ip_against_acl(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 test_ip_against_acl(IP, NodeBin, AclList) ->
     Node = wh_util:to_atom(NodeBin, 'true'),
     {'ok', Bool} = freeswitch:api(Node, 'acl', <<IP/binary, " ", AclList/binary>>),
