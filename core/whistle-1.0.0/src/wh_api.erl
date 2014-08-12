@@ -278,7 +278,7 @@ build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]
+                        ,[wh_util:join_binary(ReqH, ","), Error]
                        ),
             Error;
         {Headers1, Prop1} ->
@@ -294,7 +294,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]
+                        ,[wh_util:join_binary(ReqH, ","), Error]
                        ),
             Error;
         {Headers1, Prop1} ->
@@ -388,7 +388,8 @@ values_check(Prop, Values) ->
                                    'true' -> 'true';
                                    'false' ->
                                        lager:debug("API key '~s' value '~p' is not one of the values: ~p"
-                                                   ,[Key, V, Vs]),
+                                                   ,[Key, V, Vs]
+                                                  ),
                                        'false'
                                end
                       end;
@@ -398,7 +399,8 @@ values_check(Prop, Values) ->
                           V -> 'true';
                           _Val ->
                               lager:debug("API key '~s' value '~p' is not '~p'"
-                                          ,[Key, _Val, V]),
+                                          ,[Key, _Val, V]
+                                         ),
                               'false'
                       end
               end, Values).
@@ -406,29 +408,28 @@ values_check(Prop, Values) ->
 %% checks Prop against a list of {Key, Fun}, running the value of Key through Fun, which returns a
 %% boolean.
 type_check(Prop, Types) ->
-    lists:all(fun({Key, Fun}) ->
-                      case props:get_value(Key, Prop) of
-                          %% isn't defined in Prop, has_all will error if req'd
-                          'undefined' -> 'true';
-                          Value ->
-                              try case Fun(Value) of % returns boolean
-                                      'true' -> 'true';
-                                      'false' ->
-                                          lager:debug("API key '~s' value '~p' failed validation fun", [Key, Value]),
-                                          'false'
-                                  end
-                              catch
-                                  _:_R ->
-                                      lager:debug("API key '~s' value '~p' caused validation fun exception: ~p", [Key, Value, _R]),
-                                      'false'
-                              end
-                      end
-              end, Types).
+    lists:all(fun type_check_all/1, Types).
+
+type_check_all({Key, Fun}) ->
+    case props:get_value(Key, Prop) of
+        %% isn't defined in Prop, has_all will error if req'd
+        'undefined' -> 'true';
+        Value ->
+            try Fun(Value) of % returns boolean
+                'true' -> 'true';
+                'false' ->
+                    lager:debug("API key '~s' value '~p' failed validation fun", [Key, Value]),
+                    'false'
+            catch
+                _:_R ->
+                    lager:debug("API key '~s' value '~p' caused validation fun exception: ~p", [Key, Value, _R]),
+                    'false'
+            end
+    end.
 
 %% EUNIT TESTING
-
--include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 has_all_test() ->
     Prop = [{<<"k1">>, <<"v1">>}
