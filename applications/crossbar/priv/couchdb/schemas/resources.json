@@ -185,7 +185,7 @@
                 "properties": {
                     "enabled": {
                         "type": "boolean",
-                        "required": true,
+                        "required": false,
                         "name": "Enabled",
                         "description": "Determines if the resource gateway is currently enabled",
                         "default": true
