@@ -230,7 +230,10 @@ publish_get_req(Api, ContentType) ->
 publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_resp(RespQ, Api, ContentType) ->
-    {'ok', Payload} = wh_api:prepare_api_payload(Api, ?SYSCONF_GET_RESP_VALUES, fun ?MODULE:get_resp/1),
+    PrepareOptions = [{'formatter', fun ?MODULE:get_resp/1}
+                      ,{'remove_recursive', 'false'}
+                     ],
+    {'ok', Payload} = wh_api:prepare_api_payload(Api, ?SYSCONF_GET_RESP_VALUES, PrepareOptions),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_set_req(api_terms()) -> 'ok'.
