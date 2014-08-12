@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -19,6 +19,7 @@
 
 -export([carrier_acls/0
          ,carrier_acls/1
+         ,test_carrier_ip/2
         ]).
 -export([allow_carrier/2
          ,allow_carrier/3
@@ -29,6 +30,7 @@
 
 -export([sbc_acls/0
          ,sbc_acls/1
+         ,test_sbc_ip/2
         ]).
 -export([allow_sbc/2
          ,allow_sbc/3
@@ -139,9 +141,13 @@ carrier_acls() -> carrier_acls('false').
 carrier_acls(AsDefault) when not is_boolean(AsDefault) ->
     carrier_acls(wh_util:is_true(AsDefault));
 carrier_acls('true') ->
-    list_acls(get_acls(<<"default">>), <<"trusted">>);
+    list_acls(get_acls(<<"default">>), ?FS_CARRIER_ACL_LIST);
 carrier_acls('false') ->
-    list_acls(get_acls(), <<"trusted">>).
+    list_acls(get_acls(), ?FS_CARRIER_ACL_LIST).
+
+-spec test_carrier_ip(ne_binary(), ne_binary()) -> 'no_return'.
+test_carrier_ip(IP, Node) ->
+    test_ip_against_acl(IP, Node, ?FS_CARRIER_ACL_LIST).
 
 -spec allow_carrier(ne_binary(), ne_binary()) -> 'no_return'.
 allow_carrier(Name, IP) ->
@@ -198,9 +204,13 @@ sbc_acls() -> sbc_acls('false').
 sbc_acls(AsDefault) when not is_boolean(AsDefault) ->
     sbc_acls(wh_util:is_true(AsDefault));
 sbc_acls('true') ->
-    list_acls(get_acls(<<"default">>), <<"authoritative">>);
+    list_acls(get_acls(<<"default">>), ?FS_SBC_ACL_LIST);
 sbc_acls('false') ->
-    list_acls(get_acls(), <<"authoritative">>).
+    list_acls(get_acls(), ?FS_SBC_ACL_LIST).
+
+-spec test_sbc_ip(ne_binary(), ne_binary()) -> 'no_return'.
+test_sbc_ip(IP, Node) ->
+    test_ip_against_acl(IP, Node, ?FS_SBC_ACL_LIST).
 
 -spec allow_sbc(ne_binary(), ne_binary()) -> 'no_return'.
 allow_sbc(Name, IP) ->
@@ -289,6 +299,12 @@ reload_acls() ->
          || Node <- ecallmgr_fs_nodes:connected()
         ],
     'no_return'.
+
+-spec test_ip_against_acl(ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
+test_ip_against_acl(IP, NodeBin, AclList) ->
+    Node = wh_util:to_atom(NodeBin, 'true'),
+    {'ok', Bool} = freeswitch:api(Node, 'acl', <<IP/binary, " ", AclList/binary>>),
+    io:format("IP ~s on node ~s would be allowed: ~s~n", [IP, NodeBin, Bool]).
 
 -spec flush_acls() -> 'ok'.
 flush_acls() ->
@@ -579,7 +595,7 @@ carrier_acl(IP) -> carrier_acl(IP, <<"allow">>).
 -spec carrier_acl(ne_binary(), ne_binary()) -> wh_json:object().
 carrier_acl(IP, Type) ->
     wh_json:from_list([{<<"type">>, Type}
-                       ,{<<"network-list-name">>, <<"trusted">>}
+                       ,{<<"network-list-name">>, ?FS_CARRIER_ACL_LIST}
                        ,{<<"cidr">>, wh_network_utils:to_cidr(IP)}
                       ]).
 
@@ -589,7 +605,7 @@ sbc_acl(IP) -> sbc_acl(IP, <<"allow">>).
 -spec sbc_acl(ne_binary(), ne_binary()) -> wh_json:object().
 sbc_acl(IP, Type) ->
     wh_json:from_list([{<<"type">>, Type}
-                       ,{<<"network-list-name">>, <<"authoritative">>}
+                       ,{<<"network-list-name">>, ?FS_SBC_ACL_LIST}
                        ,{<<"cidr">>, wh_network_utils:to_cidr(IP)}
                       ]).
 
