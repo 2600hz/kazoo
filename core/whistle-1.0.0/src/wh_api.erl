@@ -104,22 +104,24 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec prepare_api_payload(api_terms(), wh_proplist()) -> wh_proplist().
--spec prepare_api_payload(api_terms(), wh_proplist(), fun((api_terms()) -> api_formatter_return())) ->
+-spec prepare_api_payload(api_terms(), wh_proplist(), fun((api_terms()) -> api_formatter_return()) | wh_proplist()) ->
                                  api_formatter_return().
-prepare_api_payload(Prop, HeaderValues) when is_list(Prop) ->
-    CleanupFuns = [fun (P) -> remove_empty_values(P) end
+
+prepare_api_payload(Prop, HeaderValues) ->
+    prepare_api_payload(Prop, HeaderValues, []).
+
+
+prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_function(FormatterFun, 1) ->
+    prepare_api_payload(Prop, HeaderValues, [{'formatter', FormatterFun}]);
+prepare_api_payload(Prop, HeaderValues, Options) when is_list(Prop) ->
+    FormatterFun = props:get_value('formatter', Options, fun wh_util:identity/1),
+    CleanupFuns = [fun (P) -> remove_empty_values(P, props:get_is_true('remove_recusive', Options, 'true')) end
                    ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
                    ,fun (P) -> set_missing_values(P, HeaderValues) end
                   ],
-    lists:foldr(fun(F, P) -> F(P) end, Prop, CleanupFuns);
-prepare_api_payload(JObj, HeaderValues) ->
-    prepare_api_payload(wh_json:to_proplist(JObj), HeaderValues).
-
-prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_list(Prop),
-                                                           is_function(FormatterFun, 1) ->
-    FormatterFun(prepare_api_payload(Prop, HeaderValues));
-prepare_api_payload(JObj, HeaderValues, FormatterFun) when is_function(FormatterFun, 1) ->
-    prepare_api_payload(wh_json:to_proplist(JObj), HeaderValues, FormatterFun).
+    FormatterFun(lists:foldr(fun(F, P) -> F(P) end, Prop, CleanupFuns));
+prepare_api_payload(JObj, HeaderValues, Options) ->
+    prepare_api_payload(wh_json:to_proplist(JObj), HeaderValues, Options).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -147,30 +149,35 @@ set_missing_values(JObj, HeaderValues) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec remove_empty_values(api_terms()) -> api_terms().
-remove_empty_values(Prop) when is_list(Prop) ->
-    do_empty_value_removal(Prop, []);
-remove_empty_values(JObj) ->
-    Prop = remove_empty_values(wh_json:to_proplist(JObj)),
+remove_empty_values(API) ->
+    remove_empty_values(API, 'true').
+
+remove_empty_values(Prop, Recursive) when is_list(Prop) ->
+    do_empty_value_removal(Prop, Recursive, []);
+remove_empty_values(JObj, Recursive) ->
+    Prop = remove_empty_values(wh_json:to_proplist(JObj), Recursive),
     wh_json:from_list(Prop).
 
-do_empty_value_removal([], Acc) ->
+do_empty_value_removal([], _Recursive, Acc) ->
     lists:reverse(Acc);
-do_empty_value_removal([{<<"Server-ID">>,_}=KV|T], Acc) ->
-    do_empty_value_removal(T, [KV|Acc]);
-do_empty_value_removal([{<<"Msg-ID">>,_}=KV|T], Acc) ->
-    do_empty_value_removal(T, [KV|Acc]);
-do_empty_value_removal([{K,V}=KV|T], Acc) ->
+do_empty_value_removal([{<<"Server-ID">>,_}=KV|T], Recursive, Acc) ->
+    do_empty_value_removal(T, Recursive, [KV|Acc]);
+do_empty_value_removal([{<<"Msg-ID">>,_}=KV|T], Recursive, Acc) ->
+    do_empty_value_removal(T, Recursive, [KV|Acc]);
+do_empty_value_removal([{K,V}=KV|T], Recursive, Acc) ->
     case is_empty(V) of
-        'true' -> do_empty_value_removal(T, Acc);
+        'true' -> do_empty_value_removal(T, Recursive, Acc);
         'false' ->
-            case wh_json:is_json_object(V) orelse
-                wh_util:is_proplist(V)
+            case (wh_json:is_json_object(V) orelse
+                  wh_util:is_proplist(V)
+                 )
+                andalso Recursive
             of
                 'true' ->
-                    SubElm = {K, remove_empty_values(V)},
-                    do_empty_value_removal(T, [SubElm|Acc]);
+                    SubElm = {K, remove_empty_values(V, Recursive)},
+                    do_empty_value_removal(T, Recursive, [SubElm|Acc]);
                 'false' ->
-                    do_empty_value_removal(T, [KV|Acc])
+                    do_empty_value_removal(T, Recursive, [KV|Acc])
             end
     end.
 
@@ -381,36 +388,38 @@ has_any(Prop, Headers) ->
 %% checks Prop against a list of values to ensure known key/value pairs are correct (like Event-Category
 %% and Event-Name). We don't care if a key is defined in Values and not in Prop; that is handled by has_all/1
 values_check(Prop, Values) ->
-    lists:all(fun({Key, Vs}) when is_list(Vs) ->
-                      case props:get_value(Key, Prop) of
-                          'undefined' -> 'true'; % isn't defined in Prop, has_all will error if req'd
-                          V -> case lists:member(V, Vs) of
-                                   'true' -> 'true';
-                                   'false' ->
-                                       lager:debug("API key '~s' value '~p' is not one of the values: ~p"
-                                                   ,[Key, V, Vs]
-                                                  ),
-                                       'false'
-                               end
-                      end;
-                 ({Key, V}) ->
-                      case props:get_value(Key, Prop) of
-                          'undefined' -> 'true'; % isn't defined in Prop, has_all will error if req'd
-                          V -> 'true';
-                          _Val ->
-                              lager:debug("API key '~s' value '~p' is not '~p'"
-                                          ,[Key, _Val, V]
-                                         ),
-                              'false'
-                      end
-              end, Values).
+    lists:all(fun(Value) -> values_check_all(Prop, Value) end, Values).
+
+values_check_all(Prop, {Key, Vs}) when is_list(Vs) ->
+    case props:get_value(Key, Prop) of
+        'undefined' -> 'true'; % isn't defined in Prop, has_all will error if req'd
+        V ->
+            case lists:member(V, Vs) of
+                'true' -> 'true';
+                'false' ->
+                    lager:debug("API key '~s' value '~p' is not one of the values: ~p"
+                                ,[Key, V, Vs]
+                               ),
+                    'false'
+            end
+    end;
+values_check_all(Prop, {Key, V}) ->
+    case props:get_value(Key, Prop) of
+        'undefined' -> 'true'; % isn't defined in Prop, has_all will error if req'd
+        V -> 'true';
+        _Val ->
+            lager:debug("API key '~s' value '~p' is not '~p'"
+                        ,[Key, _Val, V]
+                       ),
+            'false'
+    end.
 
 %% checks Prop against a list of {Key, Fun}, running the value of Key through Fun, which returns a
 %% boolean.
 type_check(Prop, Types) ->
-    lists:all(fun type_check_all/1, Types).
+    lists:all(fun(Type) -> type_check_all(Prop, Type) end, Types).
 
-type_check_all({Key, Fun}) ->
+type_check_all(Prop, {Key, Fun}) ->
     case props:get_value(Key, Prop) of
         %% isn't defined in Prop, has_all will error if req'd
         'undefined' -> 'true';
