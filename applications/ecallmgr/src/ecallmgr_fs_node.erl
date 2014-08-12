@@ -617,10 +617,13 @@ maybe_add_capability(Node, Capability) ->
             lager:debug("failed to probe node ~s: ~p", [Node, _E])
     end.
 
+-spec maybe_replay_registrations(atom()) -> 'ok'.
 maybe_replay_registrations(Node) ->
     wh_util:put_callid(Node),
     replay_registration(Node, get_registrations(Node)).
 
+-spec replay_registration(atom(), list(wh_proplist()) | []) -> 'ok'.
+replay_registration(_Node, [[]]) -> 'ok';
 replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
     Payload = [{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
@@ -653,21 +656,20 @@ replay_expires(V) ->
 replay_contact(V) ->
     <<"<", (lists:nth(3, binary:split(V, <<"/">>, ['global'] ) ))/binary, ">">>.
 
--spec get_registrations(atom()) -> wh_proplist().
+-spec get_registrations(atom()) -> list(wh_proplist()).
 get_registrations(Node) ->
     case freeswitch:api(Node, 'show', "registrations") of
         {'ok', Response} ->
             R = binary:replace(Response, <<" ">>, <<>>, ['global']),
-            Lines = [binary:split(Line, <<",">>, ['global'] )
+            Lines = [binary:split(Line, <<",">>, ['global'])
                      || Line <- binary:split(R, <<"\n">>, ['global'])
                     ],
             get_registration_details(Lines);
-        _Else -> []
+        _Else -> [[]]
     end.
 
--spec get_registration_details(list()) -> wh_proplist().
-get_registration_details([_, _, _, _ | _] = Lines) ->
-    Header = lists:nth(1, Lines),
+-spec get_registration_details(list()) -> list(wh_proplist()).
+get_registration_details([Header, _, _, _| _] = Lines) ->
     [begin
          {Res, _Total} = lists:mapfoldl(
                            fun(E, Acc) ->
