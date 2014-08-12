@@ -121,9 +121,9 @@
                               ]).
 
 -record(state, {node :: atom()
-                ,options = []                         :: wh_proplist()
-                ,interface = #interface{}             :: interface()
-                ,start_cmds_pid_ref :: pid_ref() | 'undefined'
+                ,options = []             :: wh_proplist()
+                ,interface = #interface{} :: interface()
+                ,start_cmds_pid_ref       :: pid_ref() | 'undefined'
                }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
@@ -284,7 +284,7 @@ init([Node, Options]) ->
     lager:debug("running start commands in ~p", [PidRef]),
 
     {'ok', #state{node=Node
-                  ,options=Options
+                  ,options=props:delete('reconnecting', Options)
                   ,start_cmds_pid_ref=PidRef
                  }}.
 
@@ -419,7 +419,15 @@ run_start_cmds(Node, Options) ->
 run_start_cmds(Node, Options, Parent) ->
     wh_util:put_callid(Node),
     timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5000, Node)),
-    Cmds = ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node),
+
+    Cmds = case props:get_is_true('reconnecting', Options) of
+              'false' -> ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node);
+              'true' ->
+                  case ecallmgr_config:get(<<"fs_reconnect_cmds">>) of
+                      'undefined' -> ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node);
+                      ReconCmds -> ReconCmds
+                  end
+           end,
 
     Res = process_cmds(Node, Options, Cmds),
 
