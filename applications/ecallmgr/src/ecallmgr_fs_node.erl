@@ -463,15 +463,6 @@ process_cmd(Node, Options, JObj, Acc0) ->
 -spec process_cmd(atom(), wh_proplist(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
 process_cmd(Node, Options, ApiCmd0, ApiArg, Acc) ->
     process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'binary').
-process_cmd(Node, Options, <<"reloadacl">> = ApiCmd, ApiArg, Acc, ArgFormat) ->
-    case props:is_true('reloadacls', Options) of
-        'true' ->
-            lager:debug("loading ACLs for ~s", [Node]),
-            execute_command(Node, Options, ApiCmd, ApiArg, Acc, ArgFormat);
-        'false' ->
-            lager:debug("not loading ACLs for ~s: ~p", [Node, Options]),
-            Acc
-    end;
 process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat).
 

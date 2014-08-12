@@ -599,7 +599,6 @@ maybe_start_node_handlers(#node{node=NodeName
                                }=Node) ->
     try ecallmgr_fs_sup:add_node(NodeName, [{'cookie', Cookie}
                                             ,{'client_version', Version}
-                                            ,{'reloadacls', 'true'}
                                             | props:delete('cookie', Props)
                                            ])
     of
