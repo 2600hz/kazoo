@@ -103,19 +103,23 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
 %% validation definitions and remove any empty values
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_api_payload(api_terms(), wh_proplist()) -> wh_proplist().
--spec prepare_api_payload(api_terms(), wh_proplist(), fun((api_terms()) -> api_formatter_return()) | wh_proplist()) ->
-                                 api_formatter_return().
+-type api_formatter_fun() :: fun((api_terms()) -> api_formatter_return()).
+-type prepare_option_el() :: {'formatter', api_formatter_fun()} |
+                             {'remove_recursive', boolean()}.
+-type prepare_options() :: [prepare_option_el(),...] | [].
+
+-spec prepare_api_payload(api_terms(), wh_proplist()) -> api_formatter_return() | wh_proplist().
+-spec prepare_api_payload(api_terms(), wh_proplist(), api_formatter_fun() | prepare_options()) ->
+                                 api_formatter_return() | wh_proplist().
 
 prepare_api_payload(Prop, HeaderValues) ->
     prepare_api_payload(Prop, HeaderValues, []).
-
 
 prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_function(FormatterFun, 1) ->
     prepare_api_payload(Prop, HeaderValues, [{'formatter', FormatterFun}]);
 prepare_api_payload(Prop, HeaderValues, Options) when is_list(Prop) ->
     FormatterFun = props:get_value('formatter', Options, fun wh_util:identity/1),
-    CleanupFuns = [fun (P) -> remove_empty_values(P, props:get_is_true('remove_recusive', Options, 'true')) end
+    CleanupFuns = [fun (P) -> remove_empty_values(P, props:get_is_true('remove_recursive', Options, 'true')) end
                    ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
                    ,fun (P) -> set_missing_values(P, HeaderValues) end
                   ],
