@@ -150,7 +150,7 @@ authorize_media(_Context, _Nouns, _AccountId) ->
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), http_method()) ->
                                     cb_context:context().
 content_types_provided(Context, MediaId, ?BIN_DATA) ->
-    content_types_provided(Context, MediaId, ?BIN_DATA, cb_context:req_verb(Context)).
+    content_types_provided(Context, cow_qs:urlencode(MediaId), ?BIN_DATA, cb_context:req_verb(Context)).
 
 content_types_provided(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
     Context1 = load_media_meta(Context, MediaId),
@@ -163,7 +163,8 @@ content_types_provided(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
                     CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
                     [Type, SubType] = binary:split(CT, <<"/">>),
                     cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
-            end
+            end;
+        _Status -> Context1
     end;
 content_types_provided(Context, _MediaId, ?BIN_DATA, _Verb) ->
     Context.
