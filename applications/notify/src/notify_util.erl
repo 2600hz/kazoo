@@ -83,7 +83,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
               ,{<<"Msg-ID">>, MsgId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    lager:debug("notification update sending to ~s", [RespQ]),
+    lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
     wapi_notifications:publish_notify_update(RespQ, Prop).
 
 %%--------------------------------------------------------------------
