@@ -2,6 +2,10 @@
 Section: Internationalization
 Title: Prompts
 Language: en-US
+Sponsers: CloudPBX
+Sponsor message:
+Feature enhancements to support multi-lingual media prompts have been proudly sponsored by CloudPBX Inc. (http://cloudpbx.ca)
+L'amélioration des différents messages vocaux multilingues a été rendu possible par CloudPBX Inc. (http://cloudpbx.ca), qui ont fièrement *commandité* le développement nécessaire.
 */
 
 Kazoo provides many prompts, such as during voicemail, to instruct callers on things to do. The default prompts that ship with Kazoo are provided in English, but as is often the case, supporting callers who don't speak English requires alternative language prompts.
