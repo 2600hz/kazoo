@@ -16,9 +16,9 @@ Similar to i18n efforts on the front end, Kazoo is now configurable to provide t
 * Manually set during a callflow
 * The default system language
 
-Feature enhancements to support multi-lingual media prompts have been proudly sponsored by CloudPBX Inc. (http://cloudpbx.ca)
+Feature enhancements to support multi-lingual media prompts have been proudly sponsored by [CloudPBX Inc.](http://cloudpbx.ca)
 
-L'amélioration des différents messages vocaux multilingues a été rendu possible par CloudPBX Inc. (http://cloudpbx.ca), qui ont fièrement commandité le développement nécessaire.
+L'amélioration des différents messages vocaux multilingues a été rendu possible par [CloudPBX Inc.](http://cloudpbx.ca), qui ont fièrement commandité le développement nécessaire.
 
 ## Prompt Installation
 
