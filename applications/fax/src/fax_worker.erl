@@ -811,7 +811,7 @@ send_fax(JobId, JObj, Q) ->
                  ,{<<"Outbound-Callee-ID-Number">>, ToNumber}
                  ,{<<"Outbound-Callee-ID-Name">>, ToName }
                  ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-                 ,{<<"To-DID">>, wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))}
+                 ,{<<"To-DID">>, get_did(JObj)}
                  ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity_number">>, JObj)}
                  ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_identity_name">>, JObj)}
                  ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
@@ -827,12 +827,20 @@ send_fax(JobId, JObj, Q) ->
                  ,{<<"Application-Name">>, <<"fax">>}
                  ,{<<"Application-Data">>, get_proxy_url(JobId)}
                  ,{<<"Outbound-Call-ID">>, CallId}
+                 ,{<<"Bypass-E164">>, wh_json:is_true(<<"Bypass-E164">>, JObj)}
                  | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                 ]),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
                                               ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>]}
                                              ]),
     wapi_offnet_resource:publish_req(Request).
+
+-spec get_did(wh_json:object()) -> ne_binary().
+get_did(JObj) ->
+    case wh_json:is_true(<<"Bypass-E164">>, JObj, 'false') of
+        'true' -> wh_json:get_value(<<"to_number">>, JObj);
+        'false' -> wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))
+    end.
 
 -spec get_proxy_url(ne_binary()) -> ne_binary().
 get_proxy_url(JobId) ->
