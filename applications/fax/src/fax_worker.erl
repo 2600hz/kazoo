@@ -827,7 +827,7 @@ send_fax(JobId, JObj, Q) ->
                  ,{<<"Application-Name">>, <<"fax">>}
                  ,{<<"Application-Data">>, get_proxy_url(JobId)}
                  ,{<<"Outbound-Call-ID">>, CallId}
-                 ,{<<"Bypass-E164">>, wh_json:is_true(<<"Bypass-E164">>, JObj)}
+                 ,{<<"Bypass-E164">>, wh_json:is_true(<<"bypass_e164">>, JObj)}
                  | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                 ]),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
@@ -837,7 +837,7 @@ send_fax(JobId, JObj, Q) ->
 
 -spec get_did(wh_json:object()) -> ne_binary().
 get_did(JObj) ->
-    case wh_json:is_true(<<"Bypass-E164">>, JObj, 'false') of
+    case wh_json:is_true(<<"bypass_e164">>, JObj, 'false') of
         'true' -> wh_json:get_value(<<"to_number">>, JObj);
         'false' -> wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))
     end.
