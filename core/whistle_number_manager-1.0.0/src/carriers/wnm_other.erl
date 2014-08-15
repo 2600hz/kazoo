@@ -182,19 +182,13 @@ get_numbers(Url, Number, Quantity, Props) ->
 format_numbers_resp(Body) ->
     case wh_json:get_value(<<"status">>, Body) of
         <<"success">> ->
-            Numbers = wh_json:foldl(fun format_numbers_resp_fold/3
-                                    ,[]
-                                    ,wh_json:get_value(<<"data">>, Body, wh_json:new())
-                                   ),
+            Numbers = wh_json:get_value(<<"data">>, Body, [])
             {'ok', Numbers};
         _Error ->
             lager:error("block lookup resp error: ~p", [_Error]),
             {'error', 'non_available'}
     end.
 
--spec format_numbers_resp_fold(wh_json:key(), wh_json:object(), wh_json:objects()) -> wh_json:objects().
-format_numbers_resp_fold(K, V, Acc) ->
-    [wh_json:set_value(<<"number">>, K, V)|Acc].
 
 -spec get_blocks(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                         {'error', 'non_available'} |
@@ -227,7 +221,7 @@ get_blocks(Url, Number, Quantity, Props) ->
 format_blocks_resp(Body) ->
     case wh_json:get_value(<<"status">>, Body) of
         <<"success">> ->
-            Numbers = wh_json:get_value(<<"data">>, Body, wh_json:new()),
+            Numbers = wh_json:get_value(<<"data">>, Body, []),
             {'ok', Numbers};
         _Error ->
             lager:error("block lookup resp error: ~p", [Body]),
