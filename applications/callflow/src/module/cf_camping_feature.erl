@@ -57,6 +57,7 @@ init(Call) ->
     case CF of
         {'ok', Callflow, IsNoMatch} -> just(#state{callflow = Callflow
                                                    ,is_no_match = IsNoMatch
+                                                   ,number = Number
                                                   });
         _ -> nothing()
     end.
