@@ -24,4 +24,4 @@ fi
 
 ERL_COOKIE=`../utils/sup/sup erlang get_cookie -n ecallmgr`
 
-exec erl -setcookie $ERL_COOKIE -name ${SHELL_NAME} -remsh ${REMOTE_SHELL}
+exec erl -setcookie ${ERL_COOKIE//\'} -name ${SHELL_NAME} -remsh ${REMOTE_SHELL}
