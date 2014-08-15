@@ -39,7 +39,6 @@ sip_subscribe(Req, _Call) ->
 
 sip_resubscribe(Req, _Call) ->
     {ok, ReqId} = nksip_request:get_handle(Req),
-%    spawn(?MODULE, update_manager, [ReqId]),
     spawn(fun() -> update_manager(ReqId) end),
     'noreply'.
 

@@ -7,10 +7,9 @@
 %%%-------------------------------------------------------------------
 -module(omnip_pkg_dialog).
 
--behaviour(gen_listener).
+-behaviour(gen_server).
 
 -export([start_link/0
-         ,handle_channel_event/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -22,26 +21,6 @@
         ]).
 
 -include("omnipresence.hrl").
-
--define(BINDINGS, [{'self', []}
-                   %% channel events that toggle presence lights
-                   ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
-                                               ,'CHANNEL_ANSWER'
-                                               ,'CHANNEL_DESTROY'
-
-                                               ,'CHANNEL_CONNECTED'
-                                               ,'CHANNEL_DISCONNECTED'
-                                              ]}
-                              ,'federate'
-                             ]}
-                  ]).
--define(RESPONDERS, [{{?MODULE, 'handle_channel_event'}
-                      ,[{<<"call_event">>, <<"*">>}]
-                     }
-                    ]).
--define(QUEUE_NAME, <<"omnip_pkg_dialog_shared_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -record(state, {}).
 
@@ -63,17 +42,8 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
--spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_channel_event(JObj, _Props) ->
-    EventType = wh_json:get_value(<<"Event-Name">>, JObj),
-    channel_event(EventType, JObj).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -93,7 +63,7 @@ handle_channel_event(JObj, _Props) ->
 init([]) ->
     put('callid', ?MODULE),
     ensure_template(),
-    lager:debug("omnipresence_listener started"),
+    lager:debug("omnipresence event dialog package started"),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -136,12 +106,16 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"dialog">>, User, #omnip_subs
 handle_cast({'omnipresence',{'resubscribe_notify', <<"dialog">>, User, #omnip_subscription{}=Subscription}}, State) ->
     [Username, Realm] = binary:split(User, <<"@">>),
     Props = [{<<"user">>, Username}, {<<"realm">>, Realm}],
-%    spawn(fun() -> maybe_send_update(User, Props) end),
     spawn(fun() -> send_update(User, Props, [Subscription]) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
     spawn(fun() -> channel_event(EventType, JObj) end),
+    {'noreply', State};
+handle_cast({'omnipresence',{'presence_event', JObj}}, State) ->
+    spawn(fun() -> presence_event(JObj) end),
+    {'noreply', State};
+handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -207,7 +181,7 @@ channel_event(<<"CHANNEL_CREATE">>, JObj) -> handle_new_channel(JObj);
 channel_event(<<"CHANNEL_ANSWER">>, JObj) -> handle_answered_channel(JObj);
 channel_event(<<"CHANNEL_DESTROY">>, JObj) -> handle_destroyed_channel(JObj);
 channel_event(<<"CHANNEL_CONNECTED">>, JObj) -> handle_connected_channel(JObj);
-channel_event(<<"CHANNEL_DISCONNECTED">>, JObj) -> handle_disconnected_channel(JObj).
+channel_event(<<"CHANNEL_DISCONNECTED">>, JObj) -> handle_disconnected_channel(JObj);
 channel_event(_, _JObj) -> 'ok'.
 
 -spec handle_new_channel(wh_json:object()) -> 'ok'.
@@ -241,6 +215,9 @@ handle_disconnected_channel(JObj) ->
 -spec handle_connected_channel(wh_json:object()) -> 'ok'.
 handle_connected_channel(_JObj) ->
     'ok'.
+
+-spec presence_event(wh_json:object()) -> 'ok'.
+presence_event( _JObj) -> 'ok'.
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, State) ->

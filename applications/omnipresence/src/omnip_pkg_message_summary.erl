@@ -7,10 +7,9 @@
 %%%-------------------------------------------------------------------
 -module(omnip_pkg_message_summary).
 
--behaviour(gen_listener).
+-behaviour(gen_server).
 
 -export([start_link/0
-         ,handle_mwi_update/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -22,20 +21,6 @@
         ]).
 
 -include("omnipresence.hrl").
-
--define(BINDINGS, [{'self', []}                 
-                   ,{'presence', [{'restrict_to', ['mwi_update']}
-                                  ,'federate'
-                                 ]}
-
-                  ]).
--define(RESPONDERS, [{{?MODULE, 'handle_mwi_update'}
-                       ,[{<<"presence">>, <<"mwi_update">>}]
-                      }                    
-                    ]).
--define(QUEUE_NAME, <<"omnip_pkg_message_summary_shared_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -record(state, {}).
 
@@ -51,17 +36,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
-
--spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
-handle_mwi_update(JObj, _Props) ->
-    'true' = wapi_presence:mwi_update_v(JObj),
-    handle_update(JObj).
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -81,7 +56,7 @@ handle_mwi_update(JObj, _Props) ->
 init([]) ->
     put('callid', ?MODULE),
     ensure_template(),
-    lager:debug("omnipresence message-summary listener started"),
+    lager:debug("omnipresence event message-summary package started"),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -130,7 +105,12 @@ handle_cast({'omnipresence',{'resubscribe_notify', <<"message-summary">>, User, 
              ,{<<"Realm">>, Realm}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),    
+    wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
+    {'noreply', State};
+handle_cast({'omnipresence',{'mwi_update', JObj}}, State) ->
+    spawn(fun() -> mwi_event(JObj) end),
+    {'noreply', State};
+handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -190,11 +170,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec mwi_event(wh_json:object()) -> 'ok'.
+mwi_event(JObj) ->
+    handle_update(JObj).
 
 
 -spec handle_update(wh_json:object()) -> any().
 handle_update(JObj) ->
-    lager:debug("HANDLE_MWI ~p", [JObj]),
     User = wh_json:get_value(<<"To">>, JObj),
     MessagesNew = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     MessagesSaved = wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0),

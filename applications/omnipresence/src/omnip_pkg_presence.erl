@@ -7,10 +7,9 @@
 %%%-------------------------------------------------------------------
 -module(omnip_pkg_presence).
 
--behaviour(gen_listener).
+-behaviour(gen_server).
 
 -export([start_link/0
-         ,handle_channel_event/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -22,26 +21,6 @@
         ]).
 
 -include("omnipresence.hrl").
-
--define(BINDINGS, [{'self', []}
-                   %% channel events that toggle presence lights
-                   ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
-                                               ,'CHANNEL_ANSWER'
-                                               ,'CHANNEL_DESTROY'
-
-                                               ,'CHANNEL_CONNECTED'
-                                               ,'CHANNEL_DISCONNECTED'
-                                              ]}
-                              ,'federate'
-                             ]}
-                  ]).
--define(RESPONDERS, [{{?MODULE, 'handle_channel_event'}
-                      ,[{<<"call_event">>, <<"*">>}]
-                     }
-                    ]).
--define(QUEUE_NAME, <<"omnip_pkg_dialog_shared_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 -record(state, {}).
 
@@ -63,17 +42,8 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
--spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_channel_event(JObj, _Props) ->
-    EventType = wh_json:get_value(<<"Event-Name">>, JObj),
-    channel_event(EventType, JObj).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -93,7 +63,7 @@ handle_channel_event(JObj, _Props) ->
 init([]) ->
     put('callid', ?MODULE),
     ensure_template(),
-    lager:debug("omnipresence_listener started"),
+    lager:debug("omnipresence event presence package started"),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -136,8 +106,12 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"presence">>, User, #omnip_su
 handle_cast({'omnipresence',{'resubscribe_notify', <<"presence">>, User, #omnip_subscription{}=Subscription}}, State) ->
     [Username, Realm] = binary:split(User, <<"@">>),
     Props = [{<<"user">>, Username}, {<<"realm">>, Realm}],
-%    spawn(fun() -> maybe_send_update(User, Props) end),
     spawn(fun() -> send_update(User, Props, [Subscription]) end),
+    {'noreply', State};
+handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
+    spawn(fun() -> presence_event(JObj) end),
+    {'noreply', State};
+handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -198,9 +172,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec presence_event(wh_json:object()) -> 'ok'.
+presence_event(JObj) ->
+    State = wh_json:get_value(<<"State">>, JObj),
+    maybe_handle_presence_state(State, JObj).
+    
+-spec maybe_handle_presence_state(api_binary(), wh_json:object()) -> 'ok'.
+maybe_handle_presence_state(<<"online">>=State, JObj) ->
+    handle_update(State, JObj);
+maybe_handle_presence_state(_, _JObj) -> 'ok'.
 
--spec handle_update(wh_json:object(), ne_binary()) -> any().
-handle_update(JObj, State) ->
+-spec handle_update(ne_binary(), wh_json:object()) -> any().
+handle_update(State, JObj) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_value(<<"From">>, JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
@@ -243,7 +226,7 @@ maybe_send_update(User, Props) ->
 send_update(User, Props, Subscriptions) ->
     Body = build_body(User, Props),
     Options = [{body, Body}
-               ,{content_type, <<"application/dialog-info+xml">>}
+               ,{content_type, <<"application/pidf+xml">>}
                ,{subscription_state, active}
                ],
     [nksip_uac:notify(SubscriptionId,
@@ -324,13 +307,13 @@ build_variables(User, Props) ->
 -spec build_body(ne_binary(), wh_proplist()) -> ne_binary().
 build_body(User, Props) ->
     Variables = build_variables(User, Props),
-    {'ok', Text} = sub_package_dialog:render(Variables),
+    {'ok', Text} = sub_package_presence:render(Variables),
     Body = wh_util:to_binary(Text),
     binary:replace(Body, <<"\n\n">>, <<"\n">>, [global]).
 
 
 ensure_template() ->
     BasePath = code:lib_dir(omnipresence, priv),
-    File = lists:concat([BasePath, "/packages/dialog.xml"]),
-    Mod = wh_util:to_atom(<<"sub_package_dialog">>, 'true'),
+    File = lists:concat([BasePath, "/packages/presence.xml"]),
+    Mod = wh_util:to_atom(<<"sub_package_presence">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{record_info, [{call, record_info(fields, call)}]}]).

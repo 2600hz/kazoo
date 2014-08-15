@@ -19,6 +19,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('omnip_pkg_dialog')
                    ,?WORKER('omnip_pkg_message_summary')
+                   ,?WORKER('omnip_pkg_presence')
                   ]).
 
 %% ===================================================================
