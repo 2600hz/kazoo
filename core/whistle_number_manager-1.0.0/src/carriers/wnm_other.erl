@@ -182,7 +182,7 @@ get_numbers(Url, Number, Quantity, Props) ->
 format_numbers_resp(Body) ->
     case wh_json:get_value(<<"status">>, Body) of
         <<"success">> ->
-            Numbers = wh_json:get_value(<<"data">>, Body, [])
+            Numbers = wh_json:get_value(<<"data">>, Body, []),
             {'ok', Numbers};
         _Error ->
             lager:error("block lookup resp error: ~p", [_Error]),
