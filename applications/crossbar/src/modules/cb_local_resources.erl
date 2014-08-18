@@ -156,11 +156,11 @@ summary(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(ResourceId, Context) ->
     check_for_registering_gateways(ResourceId, Context).
 
--spec check_for_registering_gateways(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec check_for_registering_gateways(api_binary(), cb_context:context()) -> cb_context:context().
 check_for_registering_gateways(ResourceId, Context) ->
     case lists:any(fun is_registering_gateway/1
                    ,cb_context:req_value(<<"gateways">>, Context, [])
@@ -177,7 +177,7 @@ is_registering_gateway(Gateway) ->
     wh_json:is_true(<<"register">>, Gateway)
         andalso wh_json:is_true(<<"enabled">>, Gateway).
 
--spec check_if_peer(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec check_if_peer(api_binary(), cb_context:context()) -> cb_context:context().
 check_if_peer(ResourceId, Context) ->
     case {wh_json:is_true(cb_context:req_value(<<"peer">>, Context))
           ,whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')
@@ -196,7 +196,7 @@ check_if_peer(ResourceId, Context) ->
             check_resource_schema(ResourceId, Context)
     end.
 
--spec check_if_gateways_have_ip(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec check_if_gateways_have_ip(api_binary(), cb_context:context()) -> cb_context:context().
 check_if_gateways_have_ip(ResourceId, Context) ->
     Gateways = cb_context:req_value(<<"gateways">>, Context, []),
     IPs = extract_gateway_ips(Gateways, 0, []),
@@ -204,7 +204,7 @@ check_if_gateways_have_ip(ResourceId, Context) ->
     ACLs = get_all_acl_ips(),
     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context)).
 
--spec validate_gateway_ips(gateway_ips(), sip_auth_ips(), acl_ips(), ne_binary(), cb_context:context(), crossbar_status()) -> cb_context:context().
+-spec validate_gateway_ips(gateway_ips(), sip_auth_ips(), acl_ips(), api_binary(), cb_context:context(), crossbar_status()) -> cb_context:context().
 validate_gateway_ips([], _, _, ResourceId, Context, 'error') ->
     check_resource_schema(ResourceId, Context);
 validate_gateway_ips([], _, _, ResourceId, Context, 'success') ->
@@ -380,7 +380,7 @@ extract_gateway_ips([Gateway|Gateways], Idx, IPs) ->
          },
     extract_gateway_ips(Gateways, Idx + 1, [IP|IPs]).
 
--spec validate_ip(api_binary(), sip_auth_ips(), acl_ips(), ne_binary()) -> boolean().
+-spec validate_ip(api_binary(), sip_auth_ips(), acl_ips(), api_binary()) -> boolean().
 validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
     lists:all(fun({CIDR, AuthId}) ->
                       AuthId =:= ResourceId
