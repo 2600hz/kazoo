@@ -250,14 +250,17 @@ validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId
             validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context))
     end.
 
+-spec check_resource_schema(api_binary(), cb_context:context()) -> cb_context:context().
 check_resource_schema(ResourceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(ResourceId, C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation('undefined', #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)};
-on_successful_validation(Id, #cb_context{}=Context) ->
+on_successful_validation('undefined', Context) ->
+    cb_context:set_doc(Context
+                       ,wh_json:set_value(<<"pvt_type">>, <<"resource">>, cb_context:doc(Context))
+                      );
+on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
 %%--------------------------------------------------------------------
@@ -277,22 +280,31 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_aggregate_resource(cb_context:context()) -> boolean().
-maybe_aggregate_resource(#cb_context{resp_status='success', doc=JObj}=Context) ->
+-spec maybe_aggregate_resource(cb_context:context(), crossbar_status()) -> boolean().
+maybe_aggregate_resource(Context) ->
+    maybe_aggregate_resource(Context, cb_context:resp_status(Context)).
+
+maybe_aggregate_resource(Context, 'success') ->
     case wh_util:is_true(cb_context:fetch(Context, 'aggregate_resource')) of
         'false' ->
-            ResourceId = wh_json:get_value(<<"_id">>, JObj),
+            ResourceId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
             maybe_remove_aggregate(ResourceId, Context);
         'true' ->
             lager:debug("adding resource to the sip auth aggregate"),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, cb_context:doc(Context))),
             _ = wapi_switch:publish_reload_gateways(),
             _ = wapi_switch:publish_reload_acls(),
             'true'
     end;
-maybe_aggregate_resource(_) -> 'false'.
+maybe_aggregate_resource(_Context, _Status) -> 'false'.
 
 -spec maybe_remove_aggregate(ne_binary(), cb_context:context()) -> boolean().
-maybe_remove_aggregate(ResourceId, #cb_context{resp_status='success'}) ->
+-spec maybe_remove_aggregate(ne_binary(), cb_context:context(), crossbar_status()) -> boolean().
+
+maybe_remove_aggregate(ResourceId, Context) ->
+    maybe_remove_aggregate(ResourceId, Context, cb_context:resp_status(Context)).
+
+maybe_remove_aggregate(ResourceId, _Context, 'success') ->
     case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
         {'ok', JObj} ->
             couch_mgr:del_doc(?WH_SIP_DB, JObj),
@@ -301,7 +313,7 @@ maybe_remove_aggregate(ResourceId, #cb_context{resp_status='success'}) ->
             'true';
         {'error', 'not_found'} -> 'false'
     end;
-maybe_remove_aggregate(_, _) -> 'false'.
+maybe_remove_aggregate(_ResourceId, _Context, _Status) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -311,6 +323,7 @@ maybe_remove_aggregate(_, _) -> 'false'.
 %%--------------------------------------------------------------------
 -type sip_auth_ip() :: {ne_binary(), ne_binary()}.
 -type sip_auth_ips() :: [sip_auth_ip(),...] | [].
+
 -spec get_all_sip_auth_ips() -> sip_auth_ips().
 get_all_sip_auth_ips() ->
     ViewOptions = [],
@@ -352,9 +365,7 @@ extract_all_ips(JObj) ->
                             'undefined' -> IPs;
                             CIDR ->
                                 AuthorizingId = wh_json:get_value([K, <<"authorizing_id">>], JObj),
-                                [{CIDR, AuthorizingId}
-                                 |IPs
-                                ]
+                                [{CIDR, AuthorizingId} | IPs]
                         end
                 end, [], wh_json:get_keys(JObj)).
 
@@ -365,7 +376,8 @@ extract_gateway_ips([], _, IPs) -> IPs;
 extract_gateway_ips([Gateway|Gateways], Idx, IPs) ->
     IP = {Idx
           ,wh_json:get_ne_value(<<"inbound_ip">>, Gateway)
-          ,wh_json:get_ne_value(<<"server">>, Gateway)},
+          ,wh_json:get_ne_value(<<"server">>, Gateway)
+         },
     extract_gateway_ips(Gateways, Idx + 1, [IP|IPs]).
 
 -spec validate_ip(api_binary(), sip_auth_ips(), acl_ips(), ne_binary()) -> boolean().
