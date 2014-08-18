@@ -179,7 +179,7 @@ is_registering_gateway(Gateway) ->
 
 -spec check_if_peer(api_binary(), cb_context:context()) -> cb_context:context().
 check_if_peer(ResourceId, Context) ->
-    case {wh_json:is_true(cb_context:req_value(Context, <<"peer">>))
+    case {wh_util:is_true(cb_context:req_value(Context, <<"peer">>))
           ,whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')
          }
     of
