@@ -23,14 +23,13 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"global_resources/crossbar_listing">>).
--define(GLOBAL_RESOURCE_DB, ?WH_OFFNET_DB).
 -define(COLLECTION, <<"collection">>).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    _ = couch_mgr:revise_doc_from_file(?GLOBAL_RESOURCE_DB, 'crossbar', "views/global_resources.json"),
+    _ = couch_mgr:revise_doc_from_file(?WH_OFFNET_DB, 'crossbar', "views/global_resources.json"),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.global_resources">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.global_resources">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.global_resources">>, ?MODULE, 'validate'),
@@ -81,12 +80,40 @@ resource_exists(_) -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
-    validate_req(Context#cb_context{db_name=?GLOBAL_RESOURCE_DB}).
+    validate_resources(cb_context:set_account_db(Context, ?WH_OFFNET_DB), cb_context:req_verb(Context)).
 
 validate(Context, ?COLLECTION) ->
-    validate_req(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB), ?COLLECTION);
+    validate_collection(cb_context:set_account_db(Context, ?WH_OFFNET_DB), cb_context:req_verb(Context));
 validate(Context, Id) ->
-    validate_req(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB), Id).
+    validate_resource(cb_context:set_account_db(Context, ?WH_OFFNET_DB), Id, cb_context:req_verb(Context)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function determines if the parameters and content are correct
+%% for this request
+%%
+%% Failure here returns 400
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_resources(cb_context:context(), http_method()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+-spec validate_collection(cb_context:context(), http_method()) -> cb_context:context().
+
+validate_resources(Context, ?HTTP_GET) ->
+    summary(Context);
+validate_resources(Context, ?HTTP_PUT) ->
+    create(Context).
+
+validate_collection(Context, _Verb) ->
+    cb_context:set_resp_status(Context, 'success').
+
+validate_resource(Context, Id, ?HTTP_GET) ->
+    read(Id, Context);
+validate_resource(Context, Id, ?HTTP_POST) ->
+    update(Id, Context);
+validate_resource(Context, Id, ?HTTP_DELETE) ->
+    read(Id, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
@@ -94,13 +121,13 @@ post(Context, ?COLLECTION) ->
     collection_process(Context, cb_context:req_verb(Context));
 post(Context, _) ->
     _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:save(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
+    crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:save(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
+    crossbar_doc:save(Context).
 
 put(Context, ?COLLECTION) ->
     _ = wapi_switch:publish_reload_acls(),
@@ -112,7 +139,7 @@ delete(Context, ?COLLECTION) ->
     collection_process(Context, cb_context:req_verb(Context));
 delete(Context, _) ->
     _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:delete(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
+    crossbar_doc:delete(Context).
 
 %%%===================================================================
 %%% Internal functions
@@ -121,37 +148,11 @@ delete(Context, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function determines if the parameters and content are correct
-%% for this request
-%%
-%% Failure here returns 400
-%% @end
-%%--------------------------------------------------------------------
--spec validate_req(cb_context:context()) -> cb_context:context().
--spec validate_req(cb_context:context(), path_token()) -> cb_context:context().
-
-validate_req(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    summary(Context);
-validate_req(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
-    create(Context).
-
-validate_req(Context, ?COLLECTION) ->
-    cb_context:set_resp_status(Context, 'success');
-validate_req(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
-    read(Id, Context);
-validate_req(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
-    update(Id, Context);
-validate_req(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
-    read(Id, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
-create(#cb_context{}=Context) ->
+create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
@@ -173,7 +174,7 @@ read(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Id, #cb_context{}=Context) ->
+update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
 
@@ -194,10 +195,12 @@ summary(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), cb_context:context()) -> cb_context:context().
-on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)};
-on_successful_validation(Id, #cb_context{}=Context) ->
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', Context) ->
+    cb_context:set_doc(Context
+                       ,wh_json:set_value(<<"pvt_type">>, <<"resource">>, cb_context:doc(Context))
+                      );
+on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
 %%--------------------------------------------------------------------
@@ -208,7 +211,7 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [wh_json:get_value(<<"value">>, JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -223,15 +226,15 @@ collection_process(Context, ?HTTP_POST) ->
     ViewOptions = [{'keys', Ids}
                    ,'include_docs'
                   ],
-    case couch_mgr:all_docs(?GLOBAL_RESOURCE_DB, ViewOptions) of
+    case couch_mgr:all_docs(?WH_OFFNET_DB, ViewOptions) of
         {'error', _R} ->
-            lager:error("could not open ~p in ~p", [Ids, ?GLOBAL_RESOURCE_DB]),
+            lager:error("could not open ~p in ~p", [Ids, ?WH_OFFNET_DB]),
             crossbar_util:response('error', <<"failed to open resources">>, Context);
         {'ok', JObjs} ->
             Resources = [update_resource(JObj, Updates) || JObj <- JObjs],
-            case couch_mgr:save_docs(?GLOBAL_RESOURCE_DB, Resources) of
+            case couch_mgr:save_docs(?WH_OFFNET_DB, Resources) of
                 {'error', _R} ->
-                    lager:error("failed to update ~p in ~p", [Ids, ?GLOBAL_RESOURCE_DB]),
+                    lager:error("failed to update ~p in ~p", [Ids, ?WH_OFFNET_DB]),
                     crossbar_util:response('error', <<"failed to update resources">>, Context);
                 {'ok', _} ->
                     cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- Resources])
@@ -241,7 +244,7 @@ collection_process(Context, ?HTTP_PUT) ->
     ReqData = cb_context:req_data(Context),
     Options = [{'type', <<"resource">>}],
     Resources = [wh_doc:update_pvt_parameters(JObj, 'undefined', Options) || JObj <- ReqData],
-    case couch_mgr:save_docs(?GLOBAL_RESOURCE_DB, Resources) of
+    case couch_mgr:save_docs(?WH_OFFNET_DB, Resources) of
         {'error', _R} ->
             lager:error("failed to create resources"),
             crossbar_util:response('error', <<"failed to create resources">>, Context);
@@ -250,9 +253,9 @@ collection_process(Context, ?HTTP_PUT) ->
             ViewOptions = [{'keys', Ids}
                            ,'include_docs'
                           ],
-            case couch_mgr:all_docs(?GLOBAL_RESOURCE_DB, ViewOptions) of
+            case couch_mgr:all_docs(?WH_OFFNET_DB, ViewOptions) of
                 {'error', _R} ->
-                    lager:error("could not open ~p in ~p", [Ids, ?GLOBAL_RESOURCE_DB]),
+                    lager:error("could not open ~p in ~p", [Ids, ?WH_OFFNET_DB]),
                     cb_context:set_resp_data(Context, Ids);
                 {'ok', NewResources} ->
                     cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- NewResources])
@@ -260,7 +263,7 @@ collection_process(Context, ?HTTP_PUT) ->
     end;
 collection_process(Context, ?HTTP_DELETE) ->
     ReqData = cb_context:req_data(Context),
-    case couch_mgr:del_docs(?GLOBAL_RESOURCE_DB, ReqData) of
+    case couch_mgr:del_docs(?WH_OFFNET_DB, ReqData) of
         {'error', _R} ->
             lager:error("failed to delete resources"),
             crossbar_util:response('error', <<"failed to delete resources">>, Context);
