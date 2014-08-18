@@ -204,6 +204,7 @@ check_if_gateways_have_ip(ResourceId, Context) ->
     ACLs = get_all_acl_ips(),
     validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context)).
 
+-spec validate_gateway_ips(gateway_ips(), sip_auth_ips(), acl_ips(), ne_binary(), cb_context:context(), crossbar_status()) -> cb_context:context().
 validate_gateway_ips([], _, _, ResourceId, Context, 'error') ->
     check_resource_schema(ResourceId, Context);
 validate_gateway_ips([], _, _, ResourceId, Context, 'success') ->
@@ -227,26 +228,26 @@ validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, Resource
                                                         ,<<"Gateway server ip is already in use">>
                                                         ,Context
                                                        ),
-                    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C)
+                    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->
-            validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context)
+            validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context))
     end;
-validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context) ->
+validate_gateway_ips([{Idx, InboundIP, ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
     case wh_network_utils:is_ipv4(InboundIP) of
         'true' ->
             case validate_ip(InboundIP, SIPAuth, ACLs, ResourceId) of
                 'true' ->
-                    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context);
+                    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
                     C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"inbound_ip">>]
                                                         ,<<"unique">>
                                                         ,<<"Gateway inbound ip is already in use">>
                                                         ,Context),
-                    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C)
+                    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C))
             end;
         'false' ->
-            validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context)
+            validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context))
     end.
 
 check_resource_schema(ResourceId, Context) ->
