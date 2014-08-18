@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for local resource documents
@@ -79,18 +79,24 @@ resource_exists(_) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+validate(Context) ->
+    validate_resources(Context, cb_context:req_verb(Context)).
+
+validate_resources(Context, ?HTTP_GET) ->
     summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_resources(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
 validate(Context, ?COLLECTION) ->
-     cb_context:resp_status(Context, 'success');
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
+    cb_context:resp_status(Context, 'success');
+validate(Context, Id) ->
+    validate_resource(Context, Id, cb_context:req_verb(Context)).
+
+validate_resource(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
+validate_resource(Context, Id, ?HTTP_POST) ->
     validate_request(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
+validate_resource(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
@@ -150,21 +156,26 @@ summary(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec validate_request(ne_binary(), cb_context:context()) -> cb_context:context().
 validate_request(ResourceId, Context) ->
     check_for_registering_gateways(ResourceId, Context).
 
+-spec check_for_registering_gateways(ne_binary(), cb_context:context()) -> cb_context:context().
 check_for_registering_gateways(ResourceId, Context) ->
-    case lists:any(fun(Gateway) ->
-                           wh_json:is_true(<<"register">>, Gateway)
-                               andalso
-                                 (not wh_json:is_false(<<"enabled">>, Gateway))
-                   end, wh_json:get_value(<<"gateways">>, cb_context:req_data(Context), []))
+    case lists:any(fun is_registering_gateway/1
+                   ,cb_context:req_value(<<"gateways">>, Context, [])
+                  )
     of
         'true' ->
             check_if_peer(ResourceId, cb_context:store(Context, 'aggregate_resource', 'true'));
         'false' ->
             check_if_peer(ResourceId, Context)
     end.
+
+-spec is_registering_gateway(wh_json:object()) -> boolean().
+is_registering_gateway(Gateway) ->
+    wh_json:is_true(<<"register">>, Gateway)
+        andalso wh_json:is_true(<<"enabled">>, Gateway).
 
 check_if_peer(ResourceId, Context) ->
     case {wh_json:is_true(<<"peer">>, cb_context:req_data(Context)),
@@ -501,4 +512,3 @@ update_resource(JObj, Updates) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
     Id = wh_json:get_value(<<"_id">>, Doc),
     wh_json:merge_recursive([Doc, props:get_value(Id, Updates)]).
-
