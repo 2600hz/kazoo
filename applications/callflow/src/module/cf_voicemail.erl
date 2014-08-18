@@ -972,12 +972,11 @@ update_mailbox(#mailbox{mailbox_id=Id
     'ok'.
 
 -spec collecting(wh_json:objects()) -> boolean().
-collecting([JObj|_]=JObjs) ->
-    io:format("cf_voicemail.erl:MARKER:990 ~p~n", [JObjs]),
-    case wh_json:get_value(<<"Status">>, JObj) of
+collecting([JObj|_]) ->
+    case wapi_notifications:notify_update_v(JObj) andalso wh_json:get_value(<<"Status">>, JObj) of
         <<"completed">> -> 'true';
         <<"failed">> -> 'true';
-        <<"pending">> -> 'false'
+        _ -> 'false'
     end.
 
 -spec get_completed_msg(wh_json:objects()) -> wh_json:object().
