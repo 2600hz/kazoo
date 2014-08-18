@@ -163,7 +163,7 @@ validate_request(ResourceId, Context) ->
 -spec check_for_registering_gateways(api_binary(), cb_context:context()) -> cb_context:context().
 check_for_registering_gateways(ResourceId, Context) ->
     case lists:any(fun is_registering_gateway/1
-                   ,cb_context:req_value(<<"gateways">>, Context, [])
+                   ,cb_context:req_value(Context, <<"gateways">>, [])
                   )
     of
         'true' ->
@@ -179,7 +179,7 @@ is_registering_gateway(Gateway) ->
 
 -spec check_if_peer(api_binary(), cb_context:context()) -> cb_context:context().
 check_if_peer(ResourceId, Context) ->
-    case {wh_json:is_true(cb_context:req_value(<<"peer">>, Context))
+    case {wh_json:is_true(cb_context:req_value(Context, <<"peer">>))
           ,whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')
          }
     of
@@ -198,7 +198,7 @@ check_if_peer(ResourceId, Context) ->
 
 -spec check_if_gateways_have_ip(api_binary(), cb_context:context()) -> cb_context:context().
 check_if_gateways_have_ip(ResourceId, Context) ->
-    Gateways = cb_context:req_value(<<"gateways">>, Context, []),
+    Gateways = cb_context:req_value(Context, <<"gateways">>, []),
     IPs = extract_gateway_ips(Gateways, 0, []),
     SIPAuth = get_all_sip_auth_ips(),
     ACLs = get_all_acl_ips(),
@@ -398,9 +398,10 @@ validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
 %%--------------------------------------------------------------------
 -spec collection_process(cb_context:context(), ne_binary()) -> cb_context:context().
 collection_process(Context, ?HTTP_POST) ->
-    ReqData = cb_context:req_data(Context),
     Db = cb_context:account_db(Context),
-    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_resource(JObj)} || JObj <- ReqData],
+    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_resource(JObj)}
+               || JObj <- cb_context:req_data(Context)
+              ],
     Ids = props:get_keys(Updates),
     ViewOptions = [{'keys', Ids}
                    ,'include_docs'
@@ -421,10 +422,11 @@ collection_process(Context, ?HTTP_POST) ->
             end
     end;
 collection_process(Context, ?HTTP_PUT) ->
-    ReqData = cb_context:req_data(Context),
     Db = cb_context:account_db(Context),
     Options = [{'type', <<"resource">>}],
-    Resources = [wh_doc:update_pvt_parameters(JObj, 'undefined', Options) || JObj <- ReqData],
+    Resources = [wh_doc:update_pvt_parameters(JObj, 'undefined', Options)
+                 || JObj <- cb_context:req_data(Context)
+                ],
     case couch_mgr:save_docs(Db, Resources) of
         {'error', _R} ->
             lager:error("failed to create resources"),
