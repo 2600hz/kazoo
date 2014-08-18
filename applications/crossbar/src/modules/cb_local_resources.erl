@@ -88,7 +88,7 @@ validate_resources(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
 validate(Context, ?COLLECTION) ->
-    cb_context:resp_status(Context, 'success');
+    cb_context:set_resp_status(Context, 'success');
 validate(Context, Id) ->
     validate_resource(Context, Id, cb_context:req_verb(Context)).
 
