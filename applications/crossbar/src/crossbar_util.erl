@@ -377,7 +377,9 @@ move_account(AccountId, ToAccount) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_move(ne_binary(), ne_binary()) -> {'error', _} | {'ok', wh_json:object(), ne_binaries()}.
+-spec validate_move(ne_binary(), ne_binary()) ->
+                           {'error', _} |
+                           {'ok', wh_json:object(), ne_binaries()}.
 validate_move(AccountId, ToAccount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
@@ -395,10 +397,11 @@ validate_move(AccountId, ToAccount) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_descendants(ne_binary(), ne_binaries()) -> {'ok', wh_json:object()} | {'error',any()}.
-move_descendants(AccountId, Tree) when is_binary(AccountId) ->
-    Descendants = crossbar_util:get_descendants(AccountId),
-    move_descendants(Descendants, Tree);
+-spec move_descendants(ne_binary() | ne_binaries(), ne_binaries()) ->
+                              {'ok', 'done'} |
+                              {'error', _}.
+move_descendants(<<_/binary>> = AccountId, Tree) ->
+    move_descendants(get_descendants(AccountId), Tree);
 move_descendants([], _) -> {'ok', 'done'};
 move_descendants([Descendant|Descendants], Tree) ->
     AccountId = wh_util:format_account_id(Descendant, 'raw'),
@@ -427,8 +430,9 @@ move_descendants([Descendant|Descendants], Tree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_service(ne_binary(), ne_binaries(), 'undefined' | 'true' | 'false') ->
-                          {'ok', wh_json:object()} | {'error',any()}.
+-spec move_service(ne_binary(), ne_binaries(), 'undefined' | boolean()) ->
+                          {'ok', wh_json:object()} |
+                          {'error', _}.
 move_service(AccountId, NewTree, Dirty) ->
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {'error', _E}=Error -> Error;
@@ -452,27 +456,26 @@ move_service(AccountId, NewTree, Dirty) ->
 %% Return all descendants of the account id
 %% @end
 %%--------------------------------------------------------------------
--spec get_descendants(api_binary()) -> 'ok' | {'error', _}.
+-spec get_descendants(api_binary()) -> ne_binaries().
 get_descendants('undefined') -> [];
 get_descendants(AccountId) ->
-    ViewOptions = [{<<"startkey">>, [AccountId]}
-                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                   ,{'endkey', [AccountId, wh_json:new()]}
                   ],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'ok', JObjs} ->
             lists:foldl(
-                fun(JObj, Acc) ->
-                    Id = wh_json:get_value(<<"id">>, JObj),
-                    case Id =:= AccountId of
-                        'true' -> Acc;
-                        'false' -> [Id|Acc]
-                    end
-                end
-                ,[]
-                ,JObjs
-            );
-        {'error', R} ->
-            lager:debug("unable to disable descendants of ~s: ~p", [AccountId, R]),
+              fun(JObj, Acc) ->
+                      case wh_json:get_value(<<"id">>, JObj) of
+                          AccountId -> Acc;
+                          Id -> [Id | Acc]
+                      end
+              end
+              ,[]
+              ,JObjs
+             );
+        {'error', _R} ->
+            lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
             []
     end.
 
@@ -486,7 +489,9 @@ mark_dirty(JObj) ->
     couch_mgr:save_doc(?WH_SERVICES_DB
                        ,wh_json:set_values([{<<"pvt_dirty">>, 'true'}
                                             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                                           ], JObj)).
+                                           ], JObj
+                                          )
+                      ).
 
 %%--------------------------------------------------------------------
 %% @public
