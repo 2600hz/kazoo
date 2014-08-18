@@ -20,6 +20,8 @@
          ,delete/2
         ]).
 
+-export([validate_resources/2]).
+
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"local_resources/crossbar_listing">>).

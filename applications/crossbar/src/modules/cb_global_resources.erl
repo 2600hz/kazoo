@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
-%%%
 %%%
 %%% Handle client requests for global resource documents
 %%%
@@ -24,9 +23,8 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"global_resources/crossbar_listing">>).
--define(GLOBAL_RESOURCE_DB, <<"offnet">>).
+-define(GLOBAL_RESOURCE_DB, ?WH_OFFNET_DB).
 -define(COLLECTION, <<"collection">>).
-
 
 %%%===================================================================
 %%% API
@@ -211,7 +209,6 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
 
 %%--------------------------------------------------------------------
 %% @private
