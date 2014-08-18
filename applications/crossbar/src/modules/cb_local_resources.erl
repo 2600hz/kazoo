@@ -177,9 +177,11 @@ is_registering_gateway(Gateway) ->
     wh_json:is_true(<<"register">>, Gateway)
         andalso wh_json:is_true(<<"enabled">>, Gateway).
 
+-spec check_if_peer(ne_binary(), cb_context:context()) -> cb_context:context().
 check_if_peer(ResourceId, Context) ->
-    case {wh_json:is_true(<<"peer">>, cb_context:req_data(Context)),
-          whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')}
+    case {wh_json:is_true(cb_context:req_value(<<"peer">>, Context))
+          ,whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_peers">>, 'false')
+         }
     of
         {'true', 'true'} ->
             check_if_gateways_have_ip(ResourceId, Context);
@@ -194,30 +196,31 @@ check_if_peer(ResourceId, Context) ->
             check_resource_schema(ResourceId, Context)
     end.
 
+-spec check_if_gateways_have_ip(ne_binary(), cb_context:context()) -> cb_context:context().
 check_if_gateways_have_ip(ResourceId, Context) ->
-    Gateways = wh_json:get_value(<<"gateways">>, cb_context:req_data(Context), []),
+    Gateways = cb_context:req_value(<<"gateways">>, Context, []),
     IPs = extract_gateway_ips(Gateways, 0, []),
     SIPAuth = get_all_sip_auth_ips(),
     ACLs = get_all_acl_ips(),
-    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context).
+    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context)).
 
-validate_gateway_ips([], _, _, ResourceId, #cb_context{resp_status='error'}=Context) ->
+validate_gateway_ips([], _, _, ResourceId, Context, 'error') ->
     check_resource_schema(ResourceId, Context);
-validate_gateway_ips([], _, _, ResourceId, Context) ->
+validate_gateway_ips([], _, _, ResourceId, Context, 'success') ->
     check_resource_schema(ResourceId, cb_context:store(Context, 'aggregate_resource', 'true'));
-validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context) ->
+validate_gateway_ips([{Idx, 'undefined', 'undefined'}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
     C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
                                         ,<<"required">>
                                         ,<<"Gateway server must be an IP when peering with the resource">>
                                         ,Context
                                        ),
-    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C);
-validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context) ->
+    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, C, cb_context:resp_status(C));
+validate_gateway_ips([{Idx, 'undefined', ServerIP}|IPs], SIPAuth, ACLs, ResourceId, Context, 'success') ->
     case wh_network_utils:is_ipv4(ServerIP) of
         'true' ->
             case validate_ip(ServerIP, SIPAuth, ACLs, ResourceId) of
                 'true' ->
-                    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context);
+                    validate_gateway_ips(IPs, SIPAuth, ACLs, ResourceId, Context, cb_context:resp_status(Context));
                 'false' ->
                     C = cb_context:add_validation_error([<<"gateways">>, Idx, <<"server">>]
                                                         ,<<"unique">>
