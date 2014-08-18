@@ -39,6 +39,7 @@
                    ,fun add_pvt_account_db/2
                    ,fun add_pvt_created/2
                    ,fun add_pvt_modified/2
+                   ,fun add_pvt_request_id/2
                   ]).
 
 -define(PAGINATION_PAGE_SIZE, whapps_config:get_integer(?CONFIG_CAT
@@ -964,6 +965,11 @@ add_pvt_created(JObj, _) ->
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
+
+-spec add_pvt_request_id(wh_json:object(), cb_context:context()) -> wh_json:object().
+add_pvt_request_id(JObj, Context) ->
+    RequestId = cb_context:req_id(Context),
+    wh_json:set_value(<<"pvt_request_id">>, RequestId, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
