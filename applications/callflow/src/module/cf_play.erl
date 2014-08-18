@@ -12,6 +12,8 @@
 
 -export([handle/2]).
 
+-define(POST_ANSWER_DELAY, whapps_config:get_integer(?CF_CONFIG_CAT, <<"post_answer_delay">>, 100)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -34,7 +36,7 @@ play(Data, Call, Media) ->
         'true' -> 'ok';
         'false' ->
             whapps_call_command:answer(Call),
-            timer:sleep(100)
+            timer:sleep(?POST_ANSWER_DELAY)
     end,
     lager:info("playing media ~s", [Media]),
     _ = whapps_call_command:b_play(Media, Call).
