@@ -63,10 +63,11 @@ init(Call) ->
 
 -spec get_target(state()) -> maybe(state()).
 get_target(#state{callflow = Callflow} = S) ->
+    lager:debug("Getting target"),
     TargetId = wh_json:get_ne_value([<<"flow">>, <<"data">>, <<"id">>], Callflow),
     TargetType = wh_json:get_ne_value([<<"flow">>, <<"module">>], Callflow),
     case {TargetType, TargetId} of
-        % coz i can
+        {<<"offnet">>, _} -> just(S#state{type = TargetType});
         {'undefined', _} -> nothing();
         {_, 'undefined'} -> nothing();
         {_, _} -> just(S#state{id = TargetId, type = TargetType})
@@ -74,6 +75,7 @@ get_target(#state{callflow = Callflow} = S) ->
 
 -spec check_target_type(state()) -> maybe(state()).
 check_target_type(#state{type = TargetType} = S) ->
+    lager:debug("Checking target type"),
     case lists:member(TargetType, [<<"offnet">>, <<"user">>, <<"device">>]) of
         'true' -> just(S);
         'false' -> nothing()
@@ -81,6 +83,7 @@ check_target_type(#state{type = TargetType} = S) ->
 
 -spec get_channels(state(), whapps_call:call()) -> maybe(state()).
 get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
+    lager:debug("Exlpoing channels"),
     Usernames = case TargetType of
                    <<"device">> -> cf_util:sip_users_from_device_ids([TargetId], Call);
                    <<"user">> ->
@@ -93,6 +96,7 @@ get_channels(#state{type = TargetType, id = TargetId} = S, Call) ->
 
 -spec check_self(state(), whapps_call:call()) -> maybe(state()).
 check_self(State, Call) ->
+    lager:debug("Check on self"),
     case {whapps_call:authorizing_id(Call), whapps_call:authorizing_type(Call)} of
         {'undefined', _} -> nothing();
         {_, 'undefined'} -> nothing();
@@ -101,6 +105,7 @@ check_self(State, Call) ->
 
 -spec send_request(state(), whapps_call:call()) -> maybe('ok').
 send_request(#state{channels = Channels} = S, Call) ->
+    lager:debug("Sending request"),
     case Channels of
         [] -> no_channels(S, Call);
         _ -> has_channels(S, Call)
