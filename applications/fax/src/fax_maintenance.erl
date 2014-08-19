@@ -96,7 +96,7 @@ recover_private_media(Account) ->
 maybe_recover_private_media(AccountDb, JObj) ->
     DocId = wh_json:get_value(<<"id">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(AccountDb, DocId),
-    migrate_private_media(AccountDb, Doc, wh_json:get_value(<<"media_type">>, Doc)).
+    recover_private_media(AccountDb, Doc, wh_json:get_value(<<"media_type">>, Doc)).
 
 recover_private_media(_AccountDb, _Doc, <<"tiff">>) ->
     'ok';
