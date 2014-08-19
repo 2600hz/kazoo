@@ -95,10 +95,8 @@ validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
-    _ = stepswitch_maintenance:flush(),
     collection_process(Context, cb_context:req_verb(Context));
 post(Context, _) ->
-    _ = stepswitch_maintenance:flush(),
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_resource(Context1),
     Context1.
@@ -106,21 +104,17 @@ post(Context, _) ->
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
-    _ = stepswitch_maintenance:flush(),
     Context1 = crossbar_doc:save(Context),
     _ = maybe_aggregate_resource(Context1),
     Context1.
 
 put(Context, ?COLLECTION) ->
-    _ = stepswitch_maintenance:flush(),
     collection_process(Context, cb_context:req_verb(Context)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
-    _ = stepswitch_maintenance:flush(),
     collection_process(Context, cb_context:req_verb(Context));
 delete(Context, ResourceId) ->
-    _ = stepswitch_maintenance:flush(),
     Context1 = crossbar_doc:delete(Context),
     _ = maybe_remove_aggregate(ResourceId, Context1),
     Context1.

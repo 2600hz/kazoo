@@ -487,7 +487,7 @@ fetch_global_resources() ->
 -type wh_cache_props() :: [cache_property(),...] | [].
 
 -spec fetch_global_cache_origin(wh_json:objects(), wh_cache_props()) -> wh_cache_props().
-fetch_global_cache_origin([], Props) -> Props;
+fetch_global_cache_origin([], Props) -> [{'type', <<"resource">>} | Props];
 fetch_global_cache_origin([JObj|JObjs], Props) ->
     Id = wh_json:get_value(<<"id">>, JObj),
     fetch_global_cache_origin(JObjs, [{'db', ?RESOURCES_DB, Id}|Props]).
@@ -516,7 +516,7 @@ fetch_local_resources(AccountId) ->
     end.
 
 -spec fetch_local_cache_origin(wh_json:objects(), ne_binary(), wh_cache_props()) -> wh_cache_props().
-fetch_local_cache_origin([], _, Props) -> Props;
+fetch_local_cache_origin([], _, Props) -> [{'type', <<"resource">>} | Props];
 fetch_local_cache_origin([JObj|JObjs], AccountDb, Props) ->
     Id = wh_json:get_value(<<"id">>, JObj),
     fetch_local_cache_origin(JObjs, AccountDb, [{'db', AccountDb, Id}|Props]).
