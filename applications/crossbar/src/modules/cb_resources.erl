@@ -73,7 +73,7 @@ authorize(Context, [{<<"resources">>, _}]) ->
         'true' -> 'true';
         'false' -> {'halt', Context}
     end;
-authorize(Context, _Nouns) ->
+authorize(_Context, _Nouns) ->
     'false'.
 
 %%--------------------------------------------------------------------
@@ -199,31 +199,38 @@ put(Context) ->
 
 do_put(Context, ?WH_OFFNET_DB) ->
     reload_acls(),
-    crossbar_doc:save(cb_context:set_account_db(Context, ?WH_OFFNET_DB)).
+    crossbar_doc:save(Context);
 do_put(Context, _AccountDb) ->
     cb_local_resources:put(Context).
 
 put(Context, ?COLLECTION) ->
-    collection_process(Context, cb_context:req_verb(Context)).
-put(Context, ?COLLECTION) ->
-    _ = wapi_switch:publish_reload_acls(),
-    collection_process(Context, cb_context:req_verb(Context)).
+    put_collection(Context, cb_context:account_db(Context)).
+
+put_collection(Context, ?WH_OFFNET_DB) ->
+    cb_global_resources:collection_process(Context, cb_context:req_verb(Context));
+put_collection(Context, _AccountDb) ->
+    reload_acls(),
+    cb_local_resources:collection_process(Context, cb_context:req_verb(Context)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
-    collection_process(Context, cb_context:req_verb(Context));
+    delete_collection(Context, cb_context:account_db(Context));
 delete(Context, ResourceId) ->
+    do_delete(Context, ResourceId, cb_context:account_db(Context)).
+
+do_delete(Context, _ResourceId, ?WH_OFFNET_DB) ->
+    reload_acls(),
+    crossbar_doc:delete(Context);
+do_delete(Context, ResourceId, _AccountDb) ->
     Context1 = crossbar_doc:delete(Context),
-    _ = maybe_remove_aggregate(ResourceId, Context1),
+    cb_local_resources:maybe_remove_aggregate(ResourceId, Context1),
     Context1.
 
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, ?COLLECTION) ->
-    _ = wapi_switch:publish_reload_acls(),
-    collection_process(Context, cb_context:req_verb(Context));
-delete(Context, _) ->
-    _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:delete(cb_context:set_account_db(Context, ?WH_OFFNET_DB)).
+delete_collection(Context, ?WH_OFFNET_DB) ->
+    cb_global_resources:collection_process(Context, cb_context:req_verb(Context));
+delete_collection(Context, _AccountDb) ->
+    reload_acls(),
+    cb_local_resources:collection_process(Context, cb_context:req_verb(Context)).
 
 %%%===================================================================
 %%% Internal functions
