@@ -42,6 +42,7 @@ migrate_faxes(Account) when not is_binary(Account) ->
     migrate_faxes(wh_util:to_binary(Account));
 migrate_faxes(Account) ->
     migrate_private_media(Account),
+    recover_private_media(Account),
     migrate_faxes_to_modb(Account).
 
 -spec migrate_private_media(ne_binary()) -> 'ok'.
@@ -68,11 +69,40 @@ maybe_migrate_private_media(AccountDb, JObj) ->
     {'ok', Doc } = couch_mgr:open_doc(AccountDb, DocId),
     migrate_private_media(AccountDb, Doc, wh_json:get_value(<<"media_type">>, Doc)).
 
-
 migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
     _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"fax">>, Doc)),
     'ok';
 migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
+
+-spec recover_private_media(ne_binary()) -> 'ok'.
+-spec recover_private_media(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_recover_private_media(ne_binary(), wh_json:object()) -> 'ok'.
+
+recover_private_media(Account) ->
+    AccountDb = case couch_mgr:db_exists(Account) of
+                    'true' -> Account;
+                    'false' -> wh_util:format_account_id(Account, 'encoded')
+                end,
+    ViewOptions = [{'key', <<"fax">>}],
+    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {'ok', []} -> 'ok';
+        {'ok', JObjs3}->
+            _ = [maybe_recover_private_media(AccountDb, JObj) || JObj <- JObjs3],
+            'ok';
+        {'error', _}=E3 ->
+            io:format("unable to fetch private media files in db ~s: ~p~n", [AccountDb, E3])
+    end.
+
+maybe_recover_private_media(AccountDb, JObj) ->
+    DocId = wh_json:get_value(<<"id">>, JObj),
+    {'ok', Doc } = couch_mgr:open_doc(AccountDb, DocId),
+    migrate_private_media(AccountDb, Doc, wh_json:get_value(<<"media_type">>, Doc)).
+
+recover_private_media(_AccountDb, _Doc, <<"tiff">>) ->
+    'ok';
+recover_private_media(AccountDb, Doc, _MediaType) ->
+    _ = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_type">>, <<"private_media">>, Doc)),
+    'ok'.
 
 -spec migrate_faxes_to_modb(ne_binary()) -> 'ok'.
 -spec maybe_migrate_fax_to_modb(ne_binary(), wh_json:object()) -> 'ok'.
