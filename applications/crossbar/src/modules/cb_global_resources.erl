@@ -93,27 +93,33 @@ validate(Context, Id) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
     _ = wapi_switch:publish_reload_acls(),
+    _ = stepswitch_maintenance:flush(),
     collection_process(Context, cb_context:req_verb(Context));
 post(Context, _) ->
     _ = wapi_switch:publish_reload_acls(),
+    _ = stepswitch_maintenance:flush(),
     crossbar_doc:save(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
     _ = wapi_switch:publish_reload_acls(),
+    _ = stepswitch_maintenance:flush(),
     crossbar_doc:save(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
 
 put(Context, ?COLLECTION) ->
     _ = wapi_switch:publish_reload_acls(),
+    _ = stepswitch_maintenance:flush(),
     collection_process(Context, cb_context:req_verb(Context)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
     _ = wapi_switch:publish_reload_acls(),
+    _ = stepswitch_maintenance:flush(),
     collection_process(Context, cb_context:req_verb(Context));
 delete(Context, _) ->
     _ = wapi_switch:publish_reload_acls(),
+    _ = stepswitch_maintenance:flush(),
     crossbar_doc:delete(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
 
 %%%===================================================================
