@@ -5,9 +5,9 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--define(ROUTES_DB, <<"offnet">>).
--define(RESOURCES_DB, <<"offnet">>).
--define(LOCAL_RESOURCES_VIEW, <<"local_resources/crossbar_listing">>).
+-define(ROUTES_DB, ?WH_OFFNET_DB).
+-define(RESOURCES_DB, ?WH_OFFNET_DB).
+-define(LOCAL_RESOURCES_VIEW, <<"resources/crossbar_listing">>).
 
 -define(LIST_ROUTES_BY_NUMBER, <<"routes/listing_by_number">>).
 -define(LIST_ROUTE_DUPS, <<"routes/listing_by_assignment">>).
@@ -22,5 +22,5 @@
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
--define(STEPSWITCH_HRL, true).
+-define(STEPSWITCH_HRL, 'true').
 -endif.
