@@ -99,15 +99,18 @@ validate_callflow(Context, DocId, ?HTTP_DELETE) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
+    'ok' = track_assignment('post', Context),
     maybe_reconcile_numbers(crossbar_doc:save(Context)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
+    'ok' = track_assignment('put', Context),
     maybe_reconcile_numbers(crossbar_doc:save(Context)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _DocId) ->
-    crossbar_doc:delete(track_assignment('delete', Context)).
+    'ok' = track_assignment('delete', Context),
+    crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -326,8 +329,7 @@ maybe_reconcile_numbers(Context, 'success') ->
                  || Number <- sets:to_list(NewNumbers)
                 ],
             Context
-    end,
-    track_assignment('update', Context);
+    end;
 maybe_reconcile_numbers(Context, _Status) -> Context.
 
 %%--------------------------------------------------------------------
@@ -337,19 +339,23 @@ maybe_reconcile_numbers(Context, _Status) -> Context.
 %% @end
 %%--------------------------------------------------------------------
 -spec  track_assignment(atom(), cb_context:context()) ->cb_context:context().
-track_assignment('update', Context) ->
+track_assignment('post', Context) ->
     NewNums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
     OldNums = wh_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), []),
-
-    Unassigned = [{Num, <<>>} || Num <- OldNums, not(lists:member(Num, NewNums))],
-    Assigned =  [{Num, <<"callflow">>} || Num <- NewNums],
-    'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned ++ Assigned),
-    Context;
+    Unassigned = [{Num, <<>>} || Num <- OldNums, not(lists:member(Num, NewNums)) andalso Num =/= <<"undefined">>],
+    Assigned =  [{Num, <<"callflow">>} || Num <- NewNums,  Num =/= <<"undefined">>],
+    lager:debug("assign ~p, unassign ~p", [Assigned, Unassigned]),
+    wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned ++ Assigned);
+track_assignment('put', Context) ->
+    NewNums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
+    Assigned =  [{Num, <<"callflow">>} || Num <- NewNums, Num =/= <<"undefined">>],
+    lager:debug("assign ~p", [Assigned]),
+    wh_number_manager:track_assignment(cb_context:account_id(Context), Assigned);
 track_assignment('delete', Context) ->
     Nums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
-    Unassigned =  [{Num, <<>>} || Num <- Nums],
-    'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned),
-    Context.
+    Unassigned =  [{Num, <<>>} || Num <- Nums,  Num =/= <<"undefined">>],
+    lager:debug("unassign ~p", [Unassigned]),
+    wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned).
 
 %%--------------------------------------------------------------------
 %% @private

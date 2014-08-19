@@ -96,7 +96,7 @@ validate_connectivity_pbx(Context, Id, ?HTTP_DELETE) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
-    track_assignment('update', Context),
+    'ok' = track_assignment('post', Context),
     crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -107,7 +107,7 @@ put(Context) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     registration_update(Context),
-    track_assignment('delete', Context),
+    'ok' = track_assignment('delete', Context),
     crossbar_doc:delete(Context).
 
 %%%===================================================================
@@ -126,20 +126,18 @@ registration_update(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec  track_assignment(atom(), cb_context:context()) -> cb_context:context().
-track_assignment('update', Context) ->
+track_assignment('post', Context) ->
     OldNums = get_numbers(cb_context:fetch(Context, 'db_doc')),
     NewNums = get_numbers(cb_context:doc(Context)),
-
     Assigned = [{Num, <<"trunkstore">>} || Num <- NewNums, not (lists:member(Num, OldNums))],
     Unassigned = [{Num, <<>>} || Num <- OldNums, not (lists:member(Num, NewNums))],
-
-    'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Assigned ++ Unassigned),
-    Context;
+    lager:debug("assign ~p, unassign ~p", [Assigned, Unassigned]),
+    wh_number_manager:track_assignment(cb_context:account_id(Context), Assigned ++ Unassigned);
 track_assignment('delete', Context) ->
     Nums = get_numbers(cb_context:doc(Context)),
     Unassigned = [{Num, <<>>} || Num <- Nums],
-    'ok' = wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned),
-    Context.
+    lager:debug("unassign ~p", [Unassigned]),
+    wh_number_manager:track_assignment(cb_context:account_id(Context), Unassigned).
 
 %%--------------------------------------------------------------------
 %% @private
