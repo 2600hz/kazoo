@@ -32,6 +32,9 @@
 %%% API
 %%%===================================================================
 init() ->
+    _ = couch_mgr:revise_doc_from_file(?WH_SIP_DB, 'crossbar', "views/resources.json"),
+    _ = couch_mgr:revise_doc_from_file(?WH_OFFNET_DB, 'crossbar', "views/resources.json"),
+
     [crossbar_bindings:bind(Binding, ?MODULE, F)
      || {Binding, F} <- [{<<"*.allowed_methods.resources">>, 'allowed_methods'}
                          ,{<<"*.resource_exists.resources">>, 'resource_exists'}
@@ -65,12 +68,16 @@ authorize(Context) ->
 
 authorize(Context, [{<<"global_resources">>, _}|_]) ->
     case cb_modules_util:is_superduper_admin(Context) of
-        'true' -> 'true';
+        'true' ->
+            lager:debug("authz the request for global_resources"),
+            'true';
         'false' -> {'halt', Context}
     end;
 authorize(Context, [{<<"resources">>, _}]) ->
     case cb_modules_util:is_superduper_admin(Context) of
-        'true' -> 'true';
+        'true' ->
+            lager:debug("authz the request for resources"),
+            'true';
         'false' -> {'halt', Context}
     end;
 authorize(_Context, _Nouns) ->
@@ -181,16 +188,18 @@ post(Context, Id) ->
 -spec do_collection(cb_context:context(), ne_binary()) -> cb_context:context().
 do_collection(Context, ?WH_OFFNET_DB) ->
     reload_acls(),
-    cb_global_resources:collection_process(Context, cb_context:req_verb(Context));
+    collection_process(Context, cb_context:req_verb(Context));
 do_collection(Context, _AccountDb) ->
-    cb_local_resources:collection_process(Context, cb_context:req_verb(Context)).
+    collection_process(Context, cb_context:req_verb(Context)).
 
 -spec do_post(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 do_post(Context, _Id, ?WH_OFFNET_DB) ->
     reload_acls(),
     crossbar_doc:save(Context);
-do_post(Context, Id, _AccountDb) ->
-    cb_local_resources:post(Context, Id).
+do_post(Context, _Id, _AccountDb) ->
+    Context1 = crossbar_doc:save(Context),
+    _ = cb_local_resources:maybe_aggregate_resource(Context1),
+    Context1.
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -201,16 +210,18 @@ do_put(Context, ?WH_OFFNET_DB) ->
     reload_acls(),
     crossbar_doc:save(Context);
 do_put(Context, _AccountDb) ->
-    cb_local_resources:put(Context).
+    Context1 = crossbar_doc:save(Context),
+    cb_local_resources:maybe_aggregate_resource(Context1),
+    Context1.
 
 put(Context, ?COLLECTION) ->
     put_collection(Context, cb_context:account_db(Context)).
 
 put_collection(Context, ?WH_OFFNET_DB) ->
-    cb_global_resources:collection_process(Context, cb_context:req_verb(Context));
+    collection_process(Context, cb_context:req_verb(Context));
 put_collection(Context, _AccountDb) ->
     reload_acls(),
-    cb_local_resources:collection_process(Context, cb_context:req_verb(Context)).
+    collection_process(Context, cb_context:req_verb(Context)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
@@ -227,10 +238,10 @@ do_delete(Context, ResourceId, _AccountDb) ->
     Context1.
 
 delete_collection(Context, ?WH_OFFNET_DB) ->
-    cb_global_resources:collection_process(Context, cb_context:req_verb(Context));
+    collection_process(Context, cb_context:req_verb(Context));
 delete_collection(Context, _AccountDb) ->
     reload_acls(),
-    cb_local_resources:collection_process(Context, cb_context:req_verb(Context)).
+    collection_process(Context, cb_context:req_verb(Context)).
 
 %%%===================================================================
 %%% Internal functions
@@ -304,5 +315,89 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
+-spec reload_acls() -> 'ok'.
 reload_acls() ->
+    lager:debug("published reloadacl"),
     wh_amqp_worker:cast([], fun(_) -> wapi_switch:publish_reload_acls() end).
+
+-spec collection_process(cb_context:context(), http_method()) -> cb_context:context().
+collection_process(Context, ?HTTP_POST) ->
+    Db = cb_context:account_db(Context),
+    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_resource(JObj)}
+               || JObj <- cb_context:req_data(Context)
+              ],
+    Ids = props:get_keys(Updates),
+    ViewOptions = [{'keys', Ids}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:all_docs(Db, ViewOptions) of
+        {'error', _R} ->
+            lager:error("could not open ~p in ~p", [Ids, Db]),
+            crossbar_util:response('error', <<"failed to open resources">>, Context);
+        {'ok', JObjs} ->
+            Resources = [update_resource(JObj, Updates) || JObj <- JObjs],
+            case couch_mgr:save_docs(Db, Resources) of
+                {'error', _R} ->
+                    lager:error("failed to update ~p in ~p", [Ids, Db]),
+                    crossbar_util:response('error', <<"failed to update resources">>, Context);
+                {'ok', _} ->
+                    (Db =/= ?WH_OFFNET_DB) andalso cb_local_resources:maybe_aggregate_resources(Resources),
+                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- Resources])
+            end
+    end;
+collection_process(Context, ?HTTP_PUT) ->
+    Db = cb_context:account_db(Context),
+    Options = [{'type', <<"resource">>}],
+    Resources = [wh_doc:update_pvt_parameters(JObj, 'undefined', Options)
+                 || JObj <- cb_context:req_data(Context)
+                ],
+    case couch_mgr:save_docs(Db, Resources) of
+        {'error', _R} ->
+            lager:error("failed to create resources"),
+            crossbar_util:response('error', <<"failed to create resources">>, Context);
+        {'ok', JObjs} ->
+            Ids = [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs],
+            ViewOptions = [{'keys', Ids}
+                           ,'include_docs'
+                          ],
+            (Db =/= ?WH_OFFNET_DB) andalso cb_local_resources:maybe_aggregate_resources(Resources),
+            case couch_mgr:all_docs(Db, ViewOptions) of
+                {'error', _R} ->
+                    lager:error("could not open ~p in ~p", [Ids, Db]),
+                    cb_context:set_resp_data(Context, Ids);
+                {'ok', NewResources} ->
+                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- NewResources])
+            end
+    end;
+collection_process(Context, ?HTTP_DELETE) ->
+    ReqData = cb_context:req_data(Context),
+    Db = cb_context:account_db(Context),
+    case couch_mgr:del_docs(Db, ReqData) of
+        {'error', _R} ->
+            lager:error("failed to delete resources"),
+            crossbar_util:response('error', <<"failed to delete resources">>, Context);
+        {'ok', JObjs} ->
+            (Db =/= ?WH_OFFNET_DB) andalso cb_local_resources:maybe_remove_aggregates(ReqData),
+            cb_context:set_resp_data(Context, [wh_json:delete_key(<<"rev">>, JObj) || JObj <- JObjs])
+    end.
+
+-spec clean_resource(wh_json:object()) -> wh_json:object().
+clean_resource(JObj) ->
+    case wh_json:get_value(<<"doc">>, JObj) of
+        'undefined' ->
+            case wh_json:get_value(<<"_id">>, JObj) of
+                'undefined' ->
+                     JObj1 = wh_doc:public_fields(JObj),
+                    wh_json:delete_key(<<"id">>, JObj1);
+                Id ->
+                    JObj1 = wh_json:set_value(<<"id">>, Id, JObj),
+                    wh_doc:public_fields(JObj1)
+            end;
+        Doc -> clean_resource(Doc)
+    end.
+
+-spec update_resource(wh_json:object(), wh_proplist()) -> wh_json:object().
+update_resource(JObj, Updates) ->
+    Doc = wh_json:get_value(<<"doc">>, JObj),
+    Id = wh_json:get_value(<<"_id">>, Doc),
+    wh_json:merge_recursive([Doc, props:get_value(Id, Updates)]).

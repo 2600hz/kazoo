@@ -11,145 +11,25 @@
 %%%-------------------------------------------------------------------
 -module(cb_local_resources).
 
--export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,put/1, put/2
-         ,post/2
-         ,delete/2
-        ]).
+-export([init/0]).
 
--export([validate_resources/2
-         ,collection_process/2
-         ,validate_request/2
+-export([validate_request/2
          ,maybe_remove_aggregate/2
+         ,maybe_aggregate_resources/1
+         ,maybe_aggregate_resource/1
+         ,maybe_remove_aggregates/1
         ]).
 
 -include("../crossbar.hrl").
 
--define(CB_LIST, <<"local_resources/crossbar_listing">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".local_resources">>).
--define(COLLECTION, <<"collection">>).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
+    _ = couch_mgr:revise_doc_from_file(?WH_SIP_DB, 'crossbar', "views/resources.json"),
     crossbar_maintenance:start_module('cb_resources').
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
-%%
-%% Failure here returns 405
-%% @end
-%%--------------------------------------------------------------------
--spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
-allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(?COLLECTION) ->
-    [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
-allowed_methods(_) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
-%% @end
-%%--------------------------------------------------------------------
--spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function determines if the parameters and content are correct
-%% for this request
-%%
-%% Failure here returns 400
-%% @end
-%%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(Context) ->
-    validate_resources(Context, cb_context:req_verb(Context)).
-
-validate_resources(Context, ?HTTP_GET) ->
-    summary(Context);
-validate_resources(Context, ?HTTP_PUT) ->
-    validate_request('undefined', Context).
-
-validate(Context, ?COLLECTION) ->
-    cb_context:set_resp_status(Context, 'success');
-validate(Context, Id) ->
-    validate_resource(Context, Id, cb_context:req_verb(Context)).
-
-validate_resource(Context, Id, ?HTTP_GET) ->
-    read(Id, Context);
-validate_resource(Context, Id, ?HTTP_POST) ->
-    validate_request(Id, Context);
-validate_resource(Context, Id, ?HTTP_DELETE) ->
-    read(Id, Context).
-
--spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, ?COLLECTION) ->
-    collection_process(Context, cb_context:req_verb(Context));
-post(Context, _) ->
-    Context1 = crossbar_doc:save(Context),
-    _ = maybe_aggregate_resource(Context1),
-    Context1.
-
--spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), path_token()) -> cb_context:context().
-put(Context) ->
-    Context1 = crossbar_doc:save(Context),
-    _ = maybe_aggregate_resource(Context1),
-    Context1.
-
-put(Context, ?COLLECTION) ->
-    collection_process(Context, cb_context:req_verb(Context)).
-
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, ?COLLECTION) ->
-    collection_process(Context, cb_context:req_verb(Context));
-delete(Context, ResourceId) ->
-    Context1 = crossbar_doc:delete(Context),
-    _ = maybe_remove_aggregate(ResourceId, Context1),
-    Context1.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
-%% @end
-%%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load a summarized listing of all instances of this
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
--spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -263,16 +143,6 @@ on_successful_validation('undefined', Context) ->
                       );
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -397,72 +267,6 @@ validate_ip(IP, SIPAuth, ACLs, ResourceId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec collection_process(cb_context:context(), ne_binary()) -> cb_context:context().
-collection_process(Context, ?HTTP_POST) ->
-    Db = cb_context:account_db(Context),
-    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_resource(JObj)}
-               || JObj <- cb_context:req_data(Context)
-              ],
-    Ids = props:get_keys(Updates),
-    ViewOptions = [{'keys', Ids}
-                   ,'include_docs'
-                  ],
-    case couch_mgr:all_docs(Db, ViewOptions) of
-        {'error', _R} ->
-            lager:error("could not open ~p in ~p", [Ids, Db]),
-            crossbar_util:response('error', <<"failed to open resources">>, Context);
-        {'ok', JObjs} ->
-            Resources = [update_resource(JObj, Updates) || JObj <- JObjs],
-            case couch_mgr:save_docs(Db, Resources) of
-                {'error', _R} ->
-                    lager:error("failed to update ~p in ~p", [Ids, Db]),
-                    crossbar_util:response('error', <<"failed to update resources">>, Context);
-                {'ok', _} ->
-                    _ = maybe_aggregate_resources(Resources),
-                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- Resources])
-            end
-    end;
-collection_process(Context, ?HTTP_PUT) ->
-    Db = cb_context:account_db(Context),
-    Options = [{'type', <<"resource">>}],
-    Resources = [wh_doc:update_pvt_parameters(JObj, 'undefined', Options)
-                 || JObj <- cb_context:req_data(Context)
-                ],
-    case couch_mgr:save_docs(Db, Resources) of
-        {'error', _R} ->
-            lager:error("failed to create resources"),
-            crossbar_util:response('error', <<"failed to create resources">>, Context);
-        {'ok', JObjs} ->
-            Ids = [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs],
-            ViewOptions = [{'keys', Ids}
-                           ,'include_docs'
-                          ],
-            _ = maybe_aggregate_resources(Resources),
-            case couch_mgr:all_docs(Db, ViewOptions) of
-                {'error', _R} ->
-                    lager:error("could not open ~p in ~p", [Ids, Db]),
-                    cb_context:set_resp_data(Context, Ids);
-                {'ok', NewResources} ->
-                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- NewResources])
-            end
-    end;
-collection_process(Context, ?HTTP_DELETE) ->
-    ReqData = cb_context:req_data(Context),
-    Db = cb_context:account_db(Context),
-    case couch_mgr:del_docs(Db, ReqData) of
-        {'error', _R} ->
-            lager:error("failed to delete resources"),
-            crossbar_util:response('error', <<"failed to delete resources">>, Context);
-        {'ok', JObjs} ->
-            _ = maybe_remove_aggregates(ReqData),
-            cb_context:set_resp_data(Context, [wh_json:delete_key(<<"rev">>, JObj) || JObj <- JObjs])
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec maybe_aggregate_resources(wh_json:objects()) -> 'ok'.
 maybe_aggregate_resources([]) -> 'ok';
 maybe_aggregate_resources([Resource|Resources]) ->
@@ -500,34 +304,3 @@ maybe_remove_aggregates([Resource|Resources]) ->
         {'error', 'not_found'} ->
             maybe_remove_aggregates(Resources)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec clean_resource(wh_json:object()) -> wh_json:object().
-clean_resource(JObj) ->
-    case wh_json:get_value(<<"doc">>, JObj) of
-        'undefined' ->
-            case wh_json:get_value(<<"_id">>, JObj) of
-                'undefined' ->
-                     JObj1 = wh_doc:public_fields(JObj),
-                    wh_json:delete_key(<<"id">>, JObj1);
-                Id ->
-                    JObj1 = wh_json:set_value(<<"id">>, Id, JObj),
-                    wh_doc:public_fields(JObj1)
-            end;
-        Doc -> clean_resource(Doc)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec update_resource(wh_json:object(), wh_proplist()) -> wh_json:object().
-update_resource(JObj, Updates) ->
-    Doc = wh_json:get_value(<<"doc">>, JObj),
-    Id = wh_json:get_value(<<"_id">>, Doc),
-    wh_json:merge_recursive([Doc, props:get_value(Id, Updates)]).
