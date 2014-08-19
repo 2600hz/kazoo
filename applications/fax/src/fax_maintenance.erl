@@ -90,7 +90,7 @@ recover_private_media(Account) ->
             _ = [maybe_recover_private_media(AccountDb, JObj) || JObj <- JObjs3],
             'ok';
         {'error', _}=E3 ->
-            io:format("unable to fetch private media files in db ~s: ~p~n", [AccountDb, E3])
+            io:format("unable to fetch fax docs in db ~s: ~p~n", [AccountDb, E3])
     end.
 
 maybe_recover_private_media(AccountDb, JObj) ->
