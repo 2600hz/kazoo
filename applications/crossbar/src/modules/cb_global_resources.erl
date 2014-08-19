@@ -18,6 +18,8 @@
          ,put/1, put/2
          ,post/2
          ,delete/2
+
+         ,collection_process/2
         ]).
 
 -include("../crossbar.hrl").

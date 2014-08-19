@@ -12,6 +12,7 @@
 -module(cb_resources).
 
 -export([init/0
+         ,authorize/1
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
@@ -31,12 +32,49 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.resources">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.resources">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.resources">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.resources">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.resources">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"*.execute.delete.resources">>, ?MODULE, 'delete').
+    [crossbar_bindings:bind(Binding, ?MODULE, F)
+     || {Binding, F} <- [{<<"*.allowed_methods.resources">>, 'allowed_methods'}
+                         ,{<<"*.resource_exists.resources">>, 'resource_exists'}
+                         ,{<<"*.validate.resources">>, 'validate'}
+                         ,{<<"*.execute.put.resources">>, 'put'}
+                         ,{<<"*.execute.post.resources">>, 'post'}
+                         ,{<<"*.execute.delete.resources">>, 'delete'}
+
+                         ,{<<"*.allowed_methods.global_resources">>, 'allowed_methods'}
+                         ,{<<"*.resource_exists.global_resources">>, 'resource_exists'}
+                         ,{<<"*.validate.global_resources">>, 'validate'}
+                         ,{<<"*.execute.put.global_resources">>, 'put'}
+                         ,{<<"*.execute.post.global_resources">>, 'post'}
+                         ,{<<"*.execute.delete.global_resources">>, 'delete'}
+
+                         ,{<<"*.allowed_methods.local_resources">>, 'allowed_methods'}
+                         ,{<<"*.resource_exists.local_resources">>, 'resource_exists'}
+                         ,{<<"*.validate.local_resources">>, 'validate'}
+                         ,{<<"*.execute.put.local_resources">>, 'put'}
+                         ,{<<"*.execute.post.local_resources">>, 'post'}
+                         ,{<<"*.execute.delete.local_resources">>, 'delete'}
+
+                         ,{<<"*.authorize">>, 'authorize'}
+                        ]
+    ].
+
+-spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context(), req_nouns()) -> boolean().
+authorize(Context) ->
+    authorize(Context, cb_context:req_nouns(Context)).
+
+authorize(Context, [{<<"global_resources">>, _}|_]) ->
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> 'true';
+        'false' -> {'halt', Context}
+    end;
+authorize(Context, [{<<"resources">>, _}]) ->
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' -> 'true';
+        'false' -> {'halt', Context}
+    end;
+authorize(Context, _Nouns) ->
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -131,28 +169,44 @@ validate_resource(Context, Id, ?HTTP_POST) ->
 validate_resource(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
+validate(Context, ?JOBS, _JobId) ->
+    Context.
+
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
-    cb_context:account_db(Context) =:= ?WH_OFFNET_DB andalso wapi_switch:publish_reload_acls(),
-    collection_process(Context, cb_context:req_verb(Context));
+    do_collection(Context, cb_context:account_db(Context));
 post(Context, Id) ->
     do_post(Context, Id, cb_context:account_db(Context)).
 
+-spec do_collection(cb_context:context(), ne_binary()) -> cb_context:context().
+do_collection(Context, ?WH_OFFNET_DB) ->
+    reload_acls(),
+    cb_global_resources:collection_process(Context, cb_context:req_verb(Context));
+do_collection(Context, _AccountDb) ->
+    cb_local_resources:collection_process(Context, cb_context:req_verb(Context)).
+
 -spec do_post(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 do_post(Context, _Id, ?WH_OFFNET_DB) ->
-    _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:save(Save);
+    reload_acls(),
+    crossbar_doc:save(Context);
 do_post(Context, Id, _AccountDb) ->
     cb_local_resources:post(Context, Id).
 
 -spec put(cb_context:context()) -> cb_context:context().
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context) ->
-    Context1 = crossbar_doc:save(Context),
-    _ = maybe_aggregate_resource(Context1),
-    Context1.
+    do_put(Context, cb_context:account_db(Context)).
+
+do_put(Context, ?WH_OFFNET_DB) ->
+    reload_acls(),
+    crossbar_doc:save(cb_context:set_account_db(Context, ?WH_OFFNET_DB)).
+do_put(Context, _AccountDb) ->
+    cb_local_resources:put(Context).
 
 put(Context, ?COLLECTION) ->
+    collection_process(Context, cb_context:req_verb(Context)).
+put(Context, ?COLLECTION) ->
+    _ = wapi_switch:publish_reload_acls(),
     collection_process(Context, cb_context:req_verb(Context)).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -163,24 +217,13 @@ delete(Context, ResourceId) ->
     _ = maybe_remove_aggregate(ResourceId, Context1),
     Context1.
 
-
--spec put(cb_context:context()) -> cb_context:context().
--spec put(cb_context:context(), path_token()) -> cb_context:context().
-put(Context) ->
-    _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:save(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
-
-put(Context, ?COLLECTION) ->
-    _ = wapi_switch:publish_reload_acls(),
-    collection_process(Context, cb_context:req_verb(Context)).
-
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
     _ = wapi_switch:publish_reload_acls(),
     collection_process(Context, cb_context:req_verb(Context));
 delete(Context, _) ->
     _ = wapi_switch:publish_reload_acls(),
-    crossbar_doc:delete(cb_context:set_account_db(Context, ?GLOBAL_RESOURCE_DB)).
+    crossbar_doc:delete(cb_context:set_account_db(Context, ?WH_OFFNET_DB)).
 
 %%%===================================================================
 %%% Internal functions
@@ -253,3 +296,6 @@ on_successful_validation('undefined', Context) ->
                       );
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
+
+reload_acls() ->
+    wh_amqp_worker:cast([], fun(_) -> wapi_switch:publish_reload_acls() end).
