@@ -15,7 +15,7 @@
          ,send_mwi_update/3
         ]).
 
--define(SUBSCRIPTION_FORMAT_STR, " ~50.s | ~30.s | ~10.s | ~20.s |~n").
+-define(SUBSCRIPTION_FORMAT_STR, " ~50.s | ~50.s | ~10.s | ~20.s |~n").
 
 current_subscriptions() ->
     print_subscriptions(

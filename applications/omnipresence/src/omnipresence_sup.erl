@@ -35,6 +35,7 @@
         ,{from,<<"<sip:kazoo@sipproxy-04.90e9.com>">>}
         ,{log_level, info}
         ,{event_expires, 3600}
+        ,{event_expires_offset, 10}
         ,{events, "dialog, message-summary, presence, presence.winfo, call-info, sla, line-seize, vq-rtcpxr"}
         ,{allow, "ACK,OPTIONS,SUBSCRIBE,PUBLISH,NOTIFY"}
         ]        

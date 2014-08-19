@@ -24,12 +24,6 @@
 
 -record(state, {}).
 
--record(call, {call_id     :: api_binary()
-               ,direction  :: api_binary()
-               ,state      :: api_binary()
-               ,to         :: api_binary()
-              }).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -249,14 +243,13 @@ handle_update(JObj, State) ->
             end,
     maybe_send_update(User, Props).
     
--spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.   
+-spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
 maybe_send_update(User, Props) ->
     case omnip_subscriptions:find_subscriptions(?DIALOG_EVENT, User) of
         {'ok', Subs} ->
             send_update(User, Props, Subs);
         {'error', 'not_found'} ->
-            lager:debug("no ~s subscriptions for ~s",[?DIALOG_EVENT, User]),
-            build_body(User, Props)
+            lager:debug("no ~s subscriptions for ~s",[?DIALOG_EVENT, User])
     end.
 
 -spec send_update(ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.

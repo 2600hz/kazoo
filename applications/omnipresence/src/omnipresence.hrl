@@ -40,5 +40,14 @@
 -type subscription() :: #omnip_subscription{}.
 -type subscriptions() :: [subscription(),...] | [].
 
+-record(channel, {call_id     :: api_binary()
+               ,direction  :: api_binary()
+               ,state      :: api_binary()
+               ,to         :: api_binary()
+              }).
+
+-type channel() :: #channel{}.
+-type channels() :: [channel(),...] | [].
+
 -define(OMNIPRESENCE_HRL, 'true').
 -endif.

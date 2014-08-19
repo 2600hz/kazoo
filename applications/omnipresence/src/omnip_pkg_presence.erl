@@ -111,6 +111,10 @@ handle_cast({'omnipresence',{'resubscribe_notify', <<"presence">>, User, #omnip_
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
     spawn(fun() -> presence_event(JObj) end),
     {'noreply', State};
+handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
+    EventType = wh_json:get_value(<<"Event-Name">>, JObj),
+    spawn(fun() -> channel_event(EventType, JObj) end),
+    {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
@@ -172,6 +176,46 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+-spec channel_event(ne_binary(), wh_json:object()) -> 'ok'.
+channel_event(<<"CHANNEL_CREATE">>, JObj) -> handle_new_channel(JObj);
+channel_event(<<"CHANNEL_ANSWER">>, JObj) -> handle_answered_channel(JObj);
+channel_event(<<"CHANNEL_DESTROY">>, JObj) -> handle_destroyed_channel(JObj);
+channel_event(<<"CHANNEL_CONNECTED">>, JObj) -> handle_connected_channel(JObj);
+channel_event(<<"CHANNEL_DISCONNECTED">>, JObj) -> handle_disconnected_channel(JObj);
+channel_event(_, _JObj) -> 'ok'.
+
+-spec handle_new_channel(wh_json:object()) -> 'ok'.
+handle_new_channel(JObj) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+    lager:debug("received channel create, checking for subscribers"),
+    handle_update(JObj, ?PRESENCE_RINGING).
+
+-spec handle_answered_channel(wh_json:object()) -> any().
+handle_answered_channel(JObj) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+    lager:debug("received channel answer, checking for subscribers"),
+    handle_update(JObj, ?PRESENCE_ANSWERED).
+
+-spec handle_destroyed_channel(wh_json:object()) -> any().
+handle_destroyed_channel(JObj) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+    lager:debug("received channel destroy, checking for subscribers"),
+    handle_update(JObj, ?PRESENCE_HANGUP).
+
+-spec handle_disconnected_channel(wh_json:object()) -> any().
+handle_disconnected_channel(JObj) ->
+    'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
+    lager:debug("channel has been disconnected, checking status of channel on the cluster"),
+    handle_destroyed_channel(JObj).
+
+-spec handle_connected_channel(wh_json:object()) -> 'ok'.
+handle_connected_channel(_JObj) ->
+    'ok'.
+
 -spec presence_event(wh_json:object()) -> 'ok'.
 presence_event(JObj) ->
     State = wh_json:get_value(<<"State">>, JObj),
@@ -218,8 +262,7 @@ maybe_send_update(User, Props) ->
         {'ok', Subs} ->
             send_update(User, Props, Subs);
         {'error', 'not_found'} ->
-            lager:debug("no ~s subscriptions for ~s",[?PRESENCE_EVENT, User]),
-            build_body(User, Props)
+            lager:debug("no ~s subscriptions for ~s",[?PRESENCE_EVENT, User])
     end.
 
 -spec send_update(ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.

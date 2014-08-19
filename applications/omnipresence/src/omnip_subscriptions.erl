@@ -137,7 +137,6 @@ handle_presence_update(JObj, _Props) ->
 handle_channel_event(JObj, _Props) ->
     gen_server:cast(?MODULE, {'channel_event', JObj}).
 
-
 -spec table_id() -> 'omnipresence_subscriptions'.
 table_id() -> 'omnipresence_subscriptions'.
 
@@ -217,32 +216,27 @@ handle_cast({'subscribe_notify', #omnip_subscription{event=Package
                                                      ,user=User
                                                     }=Subscription}, State) ->
     Msg = {'omnipresence', {'subscribe_notify', Package, User, Subscription}},
-    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
-           <- supervisor:which_children('omnipresence_pkg_sup'), Pid =/= 'restarting'],
+    notify_packages(Msg),
     {'noreply', State};
 handle_cast({'resubscribe_notify', #omnip_subscription{event=Package
                                                        ,user=User
                                                       }=Subscription}, State) ->
     Msg = {'omnipresence', {'resubscribe_notify', Package, User, Subscription}},
-    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
-           <- supervisor:which_children('omnipresence_pkg_sup'), Pid =/= 'restarting'],
+    notify_packages(Msg),
     {'noreply', State};
 handle_cast({'distribute_subscribe', #omnip_subscription{}}, State) ->
     {'noreply', State};
 handle_cast({'channel_event', JObj}, State) ->
     Msg = {'omnipresence', {'channel_event', JObj}},
-    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
-           <- supervisor:which_children('omnipresence_pkg_sup'), Pid =/= 'restarting'],
+    notify_packages(Msg),
     {'noreply', State};
 handle_cast({'mwi_update', JObj}, State) ->
     Msg = {'omnipresence', {'mwi_update', JObj}},
-    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
-           <- supervisor:which_children('omnipresence_pkg_sup'), Pid =/= 'restarting'],
+    notify_packages(Msg),
     {'noreply', State};
 handle_cast({'presence_update', JObj}, State) ->
     Msg = {'omnipresence', {'presence_update', JObj}},
-    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
-           <- supervisor:which_children('omnipresence_pkg_sup'), Pid =/= 'restarting'],
+    notify_packages(Msg),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -299,6 +293,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec notify_packages(any()) -> 'ok'.
+notify_packages(Msg) ->
+    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
+           <- supervisor:which_children('omnipresence_pkg_sup'),
+                                        Pid =/= 'restarting'],
+    'ok'.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
