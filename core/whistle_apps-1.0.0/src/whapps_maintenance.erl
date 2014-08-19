@@ -109,8 +109,8 @@ migrate() ->
     %% Create missing limits doc
     _ = migrate_limits(),
 
-    %% Migrate Faxes with private_media to fax
-    _ = migrate_faxes(),
+  %% Migrate Faxes with private_media to fax
+    _ = fax_maintenance:migrate(),
 
     %% Ensure the phone_numbers doc in the account db is up-to-date
     _ = whistle_number_manager_maintenance:reconcile_numbers(),
