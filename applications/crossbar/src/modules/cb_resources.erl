@@ -133,6 +133,7 @@ resource_exists(?JOBS, _ID) -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     case cb_context:account_id(Context) of
         'undefined' ->
@@ -144,16 +145,14 @@ validate(Context) ->
             validate_resources(Context, cb_context:req_verb(Context))
     end.
 
-validate_resources(Context, ?HTTP_GET) ->
-    summary(Context);
-validate_resources(Context, ?HTTP_PUT) ->
-    case cb_context:account_db(Context) of
-        ?WH_OFFNET_DB -> create(Context);
-        _AccountDb -> cb_local_resources:validate_request('undefined', Context)
-    end.
-
 validate(Context, ?COLLECTION) ->
-    cb_context:set_resp_status(Context, 'success');
+    case cb_Context:account_id(Context) of
+        'undefined' ->
+            lager:debug("validating global resources collection"),
+            validate_collection(cb_context:set_account_db(Context, ?WH_OFFNET_DB));
+        _AccountId ->
+            validate_collection(Context)
+    end;
 validate(Context, Id) ->
     case cb_context:account_id(Context) of
         'undefined' ->
@@ -166,6 +165,19 @@ validate(Context, Id) ->
             validate_resource(Context, Id, cb_context:req_verb(Context))
     end.
 
+validate(Context, ?JOBS, _JobId) ->
+    Context.
+
+-spec validate_resources(cb_context:context(), http_method()) -> cb_context:context().
+validate_resources(Context, ?HTTP_GET) ->
+    summary(Context);
+validate_resources(Context, ?HTTP_PUT) ->
+    case cb_context:account_db(Context) of
+        ?WH_OFFNET_DB -> create(Context);
+        _AccountDb -> cb_local_resources:validate_request('undefined', Context)
+    end.
+
+-spec validate_resource(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_resource(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_resource(Context, Id, ?HTTP_POST) ->
@@ -176,8 +188,36 @@ validate_resource(Context, Id, ?HTTP_POST) ->
 validate_resource(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
-validate(Context, ?JOBS, _JobId) ->
-    Context.
+validate_collection(Context) ->
+    validate_collection(Context, cb_context:req_verb(Context)).
+
+validate_collection(Context, ?HTTP_PUT) ->
+    F = case cb_context:account_db(Context) of
+            ?WH_OFFNET_DB -> fun create/1;
+            _AccountDb -> fun(C) -> cb_local_resources:validate_request('undefined', C) end
+        end,
+
+    lists:foldl(fun(Resource, C) ->
+                        F(cb_context:set_req_data(C, Resource))
+                end, Context, cb_context:req_data(Context)
+               );
+validate_collection(Context, ?HTTP_POST) ->
+    F = case cb_context:account_db(Context) of
+            ?WH_OFFNET_DB -> fun update/2;
+            _AccountDb -> fun cb_local_resources:validate_request/2
+        end,
+
+    lists:foldl(fun(Resource, C) ->
+                        F(wh_json:get_value(<<"id">>, Resource)
+                          ,cb_context:set_req_data(C, Resource)
+                         )
+                end, Context, cb_context:req_data(Context)
+               );
+validate_collection(Context, ?HTTP_DELETE) ->
+    lists:all(fun(Resource) ->
+                      not cb_context:has_errors(read(wh_json:get_value(<<"id">>, Resource), Context))
+              end, cb_context:req_data(Context)
+             ).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
@@ -206,6 +246,10 @@ do_post(Context, _Id, _AccountDb) ->
 put(Context) ->
     do_put(Context, cb_context:account_db(Context)).
 
+put(Context, ?COLLECTION) ->
+    put_collection(Context, cb_context:account_db(Context)).
+
+-spec do_put(cb_context:context(), ne_binary()) -> cb_context:context().
 do_put(Context, ?WH_OFFNET_DB) ->
     reload_acls(),
     crossbar_doc:save(Context);
@@ -214,9 +258,7 @@ do_put(Context, _AccountDb) ->
     cb_local_resources:maybe_aggregate_resource(Context1),
     Context1.
 
-put(Context, ?COLLECTION) ->
-    put_collection(Context, cb_context:account_db(Context)).
-
+-spec put_collection(cb_context:context(), ne_binary()) -> cb_context:context().
 put_collection(Context, ?WH_OFFNET_DB) ->
     collection_process(Context, cb_context:req_verb(Context));
 put_collection(Context, _AccountDb) ->
@@ -229,6 +271,7 @@ delete(Context, ?COLLECTION) ->
 delete(Context, ResourceId) ->
     do_delete(Context, ResourceId, cb_context:account_db(Context)).
 
+-spec do_delete(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 do_delete(Context, _ResourceId, ?WH_OFFNET_DB) ->
     reload_acls(),
     crossbar_doc:delete(Context);
@@ -237,6 +280,7 @@ do_delete(Context, ResourceId, _AccountDb) ->
     cb_local_resources:maybe_remove_aggregate(ResourceId, Context1),
     Context1.
 
+-spec delete_collection(cb_context:context(), ne_binary()) -> cb_context:context().
 delete_collection(Context, ?WH_OFFNET_DB) ->
     collection_process(Context, cb_context:req_verb(Context));
 delete_collection(Context, _AccountDb) ->
