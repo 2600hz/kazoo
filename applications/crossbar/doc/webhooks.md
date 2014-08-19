@@ -40,3 +40,34 @@ Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting 
 ### Delete a webhook
 
     curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+
+## Hook Payload
+
+### Base Payload
+
+* hook\_event: The type of hook being fired
+* call_direction: "inbound" or "outbound", relative to Kazoo
+* timestamp: gregorian timestamp of the event
+* account_id: ID of the account generating the event
+* request: SIP Request
+* to: SIP To
+* from: SIP From
+* call_id: SIP Call ID
+* other\_leg\_call\_id: If bridged, the Call ID of the other leg
+* caller\_id\_name: Caller ID Name
+* caller\_id\_number: Caller ID Number
+* callee\_id\_name: Callee Name
+* callee\_id\_number: Callee Number
+
+Most of these fields should be present on all payloads.
+
+### Hook Specific
+
+* channel\_create
+    * hook\_event: channel\_create
+* channel\_answer
+    * hook\_event: channel\_answer
+* channel_destroy
+    * hook\_event: channel\_destroy
+    * hangup\_cause: SIP Hangup Cause (NORMAL\_CLEARING, ORIGINATOR_CANCEL, etc)
+    * hangup_code: SIP Hangup Code (404, 503, etc)
