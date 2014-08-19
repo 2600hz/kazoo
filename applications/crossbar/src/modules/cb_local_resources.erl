@@ -18,11 +18,13 @@
          ,put/1, put/2
          ,post/2
          ,delete/2
-
-         ,collection_process/2
         ]).
 
--export([validate_resources/2]).
+-export([validate_resources/2
+         ,collection_process/2
+         ,validate_request/2
+         ,maybe_remove_aggregate/2
+        ]).
 
 -include("../crossbar.hrl").
 
