@@ -13,7 +13,7 @@
 
 %% API
 -export([start_link/0
-         ,new/2
+         ,new/1
         ]).
 
 %% Supervisor callbacks
@@ -38,8 +38,8 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new(ne_binary(), whapps_call:call()) -> sup_startchild_ret().
-new(Exten, Call) -> supervisor:start_child(?MODULE, [[Exten, Call]]).
+-spec new(wh_json:object()) -> sup_startchild_ret().
+new(JObj) -> supervisor:start_child(?MODULE, [JObj]).
 
 %%%===================================================================
 %%% Supervisor callbacks
