@@ -36,12 +36,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.local_resources">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.local_resources">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.local_resources">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.local_resources">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.local_resources">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"*.execute.delete.local_resources">>, ?MODULE, 'delete').
+    crossbar_maintenance:start_module('cb_resources').
 
 %%--------------------------------------------------------------------
 %% @public
