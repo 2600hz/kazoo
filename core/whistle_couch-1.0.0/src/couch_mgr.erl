@@ -777,7 +777,8 @@ del_doc(DbName, Doc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec del_docs(text(), wh_json:objects()) ->
-                      {'ok', wh_json:objects()}.
+                      {'ok', wh_json:objects()} |
+                      couchbeam_error().
 del_docs(DbName, Docs) when is_list(Docs) andalso ?VALID_DBNAME ->
     couch_util:del_docs(wh_couch_connections:get_server(), DbName, Docs);
 del_docs(DbName, Docs) when is_list(Docs) ->

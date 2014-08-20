@@ -351,13 +351,15 @@ flush_registration(Username, Realm) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error',any()}.
-move_account(AccountId, ToAccount) ->
+-spec move_account(ne_binary(), ne_binary()) ->
+                          {'ok', wh_json:object()} |
+                          {'error',any()}.
+move_account(<<_/binary>> = AccountId, <<_/binary>> = ToAccount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case validate_move(AccountId, ToAccount) of
+    case validate_move(AccountId, ToAccount, AccountDb) of
         {'error', _E}=Error -> Error;
         {'ok', JObj, ToTree} ->
-            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
             JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
                                         ,{<<"pvt_previous_tree">>, PreviousTree}
                                         ,{<<"pvt_modified">>, wh_util:current_tstamp()}
@@ -377,15 +379,14 @@ move_account(AccountId, ToAccount) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_move(ne_binary(), ne_binary()) ->
+-spec validate_move(ne_binary(), ne_binary(), ne_binary()) ->
                            {'error', _} |
                            {'ok', wh_json:object(), ne_binaries()}.
-validate_move(AccountId, ToAccount) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+validate_move(AccountId, ToAccount, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
-            ToTree = lists:append(crossbar_util:get_tree(ToAccount), [ToAccount]),
+            ToTree = lists:append(get_tree(ToAccount), [ToAccount]),
             case lists:member(AccountId, ToTree) of
                 'true' -> {'error', 'forbidden'};
                 'false' -> {'ok', JObj, ToTree}
@@ -397,19 +398,23 @@ validate_move(AccountId, ToAccount) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_descendants(ne_binary() | ne_binaries(), ne_binaries()) ->
+-spec move_descendants(ne_binary(), ne_binaries()) ->
                               {'ok', 'done'} |
                               {'error', _}.
 move_descendants(<<_/binary>> = AccountId, Tree) ->
-    move_descendants(get_descendants(AccountId), Tree);
-move_descendants([], _) -> {'ok', 'done'};
-move_descendants([Descendant|Descendants], Tree) ->
+    update_descendants_tree(get_descendants(AccountId), Tree).
+
+-spec update_descendants_tree(ne_binaries(), ne_binaries()) ->
+                                     {'ok', 'done'} |
+                                     {'error', _}.
+update_descendants_tree([], _) -> {'ok', 'done'};
+update_descendants_tree([Descendant|Descendants], Tree) ->
     AccountId = wh_util:format_account_id(Descendant, 'raw'),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', _E}=Error -> Error;
         {'ok', JObj} ->
-            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            PreviousTree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
             {_, Tail} = lists:split(erlang:length(Tree), PreviousTree),
             ToTree = Tree ++ Tail,
             JObj1 = wh_json:set_values([{<<"pvt_tree">>, ToTree}
@@ -421,7 +426,7 @@ move_descendants([Descendant|Descendants], Tree) ->
                 {'ok', _} ->
                     {'ok', _} = replicate_account_definition(JObj1),
                     {'ok', _} = move_service(AccountId, ToTree, 'undefined'),
-                    move_descendants(Descendants, ToTree)
+                    update_descendants_tree(Descendants, ToTree)
             end
     end.
 
@@ -430,7 +435,7 @@ move_descendants([Descendant|Descendants], Tree) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move_service(ne_binary(), ne_binaries(), 'undefined' | boolean()) ->
+-spec move_service(ne_binary(), ne_binaries(), api_boolean()) ->
                           {'ok', wh_json:object()} |
                           {'error', _}.
 move_service(AccountId, NewTree, Dirty) ->
@@ -456,9 +461,8 @@ move_service(AccountId, NewTree, Dirty) ->
 %% Return all descendants of the account id
 %% @end
 %%--------------------------------------------------------------------
--spec get_descendants(api_binary()) -> ne_binaries().
-get_descendants('undefined') -> [];
-get_descendants(AccountId) ->
+-spec get_descendants(ne_binary()) -> ne_binaries().
+get_descendants(<<_/binary>> = AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
                    ,{'endkey', [AccountId, wh_json:new()]}
                   ],
@@ -499,13 +503,13 @@ mark_dirty(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_tree(ne_binary()) -> ne_binaries().
-get_tree(Account) ->
+get_tree(<<_/binary>> = Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', JObj} -> wh_json:get_value(<<"pvt_tree">>, JObj, []);
         {'error', _E} ->
-            lager:error("could not load ~s in ~s", [AccountId, AccountDb]),
+            lager:error("could not load ~s in ~s: ~p", [AccountId, AccountDb, _E]),
             []
     end.
 

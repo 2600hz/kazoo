@@ -919,20 +919,21 @@ ensure_started(App) when is_atom(App) ->
 %% there are 62167219200 seconds between Jan 1, 0000 and Jan 1, 1970
 -define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
 
--spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> non_neg_integer().
+-spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
     to_integer(GregorianSeconds) - ?UNIX_EPOCH_AS_GREG_SECONDS.
 
--spec unix_seconds_to_gregorian_seconds(integer() | string() | binary()) -> non_neg_integer().
+-spec unix_seconds_to_gregorian_seconds(integer() | string() | binary()) -> integer().
 unix_seconds_to_gregorian_seconds(UnixSeconds) ->
     to_integer(UnixSeconds) + ?UNIX_EPOCH_AS_GREG_SECONDS.
 
--spec pretty_print_datetime(wh_datetime() | wh_now()) -> ne_binary().
+-spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
-                                   [Y, Mo, D, H, Mi, S])).
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w"
+                                   ,[Y, Mo, D, H, Mi, S]
+                                  )).
 
 -spec decr_timeout(wh_timeout(), non_neg_integer() | wh_now()) -> wh_timeout().
 decr_timeout('infinity', _) -> 'infinity';
