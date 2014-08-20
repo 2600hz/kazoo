@@ -72,12 +72,16 @@ init(JObj) ->
     Exten = wh_json:get_value(<<"Number">>, JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     lager:info("Statred offnet handler(~p) for request ~s->~s", [self(), whapps_call:from_user(Call), Exten]),
+
     MaxTriesSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"tries">>, 10),
     MaxTries = wh_json:get_value(<<"Tries">>, JObj, MaxTriesSystem),
-    TryIntervalSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"try_interval">>, timer:minutes(3)),
-    TryInterval = wh_json:get_value(<<"Try-Interval">>, JObj, TryIntervalSystem),
-    StopAfterSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"stop_after">>, timer:minutes(31)),
-    StopAfter = wh_json:get_value(<<"Stop-After">>, JObj, StopAfterSystem),
+
+    TryIntervalSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"try_interval">>,3),
+    TryInterval = timer:minutes(wh_json:get_value(<<"Try-Interval">>, JObj, TryIntervalSystem)),
+
+    StopAfterSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"stop_after">>, 31),
+    StopAfter = timer:minutes(wh_json:get_value(<<"Stop-After">>, JObj, StopAfterSystem)),
+
     StopTimer = timer:apply_after(StopAfter, 'gen_listener', 'cast', [self(), 'stop_campering']),
     {'ok', #state{exten = Exten
                   ,stored_call = Call

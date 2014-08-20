@@ -133,7 +133,10 @@ handle_cast({'add_request', JObj}, GlobalState) ->
           },
     Exten = wh_json:get_value(<<"Number">>, JObj),
     Targets = wh_json:get_value(<<"Targets">>, JObj),
-    Timeout = wh_json:get_value(<<"Timeout">>, JObj, whapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT)),
+    Timeout = timer:minutes(wh_json:get_value(<<"Timeout">>
+                                              ,JObj
+                                              ,whapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT)
+                                             )),
     wh_hooks:register(AccountId, <<"CHANNEL_DESTROY">>),
     NewGlobal = with_state(AccountId
                           ,GlobalState
