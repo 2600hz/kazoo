@@ -860,8 +860,8 @@ delete_attachment(DbName, DocId, AName, Options) ->
                               couchbeam_error().
 -spec get_all_results(ne_binary(), ne_binary()) -> get_results_return().
 -spec get_results(ne_binary(), ne_binary()) -> get_results_return().
--spec get_results(ne_binary(), ne_binary(), wh_proplist()) -> get_results_return().
--spec get_results_count(ne_binary(), ne_binary(), wh_proplist()) ->
+-spec get_results(ne_binary(), ne_binary(), view_options()) -> get_results_return().
+-spec get_results_count(ne_binary(), ne_binary(), view_options()) ->
                                {'ok', integer()} |
                                couchbeam_error().
 get_all_results(DbName, DesignDoc) ->

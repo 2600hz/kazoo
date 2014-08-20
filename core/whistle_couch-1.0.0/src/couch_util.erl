@@ -238,21 +238,21 @@ design_info(#server{}=Conn, DBName, Design) ->
     Db = get_db(Conn, DBName),
     do_get_design_info(Db, Design).
 
--spec all_design_docs(server(), ne_binary(), wh_proplist()) ->
+-spec all_design_docs(server(), ne_binary(), view_options()) ->
                              {'ok', wh_json:objects()} |
                              couchbeam_error().
 all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = get_db(Conn, DBName),
     do_fetch_results(Db, 'design_docs', Options).
 
--spec all_docs(server(), ne_binary(), wh_proplist()) ->
+-spec all_docs(server(), ne_binary(), view_options()) ->
                       {'ok', wh_json:objects()} |
                       couchbeam_error().
 all_docs(#server{}=Conn, DbName, Options) ->
     Db = get_db(Conn, DbName),
     do_fetch_results(Db, 'all_docs', Options).
 
--spec get_results(server(), ne_binary(), ne_binary(), wh_proplist()) ->
+-spec get_results(server(), ne_binary(), ne_binary(), view_options()) ->
                          {'ok', wh_json:objects() | ne_binaries()} |
                          couchbeam_error().
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
@@ -263,7 +263,7 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 %% Need to see how to get couchbeam to return the "rows" property instead of the result
 %% list; that would be better, but for not, setting the view's "reduce" to the _count
 %% function will suffice (provided a reduce isn't already defined).
--spec get_results_count(server(), ne_binary(), ne_binary(), wh_proplist()) ->
+-spec get_results_count(server(), ne_binary(), ne_binary(), view_options()) ->
                                {'ok', integer()} |
                                couchbeam_error().
 get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
@@ -271,7 +271,7 @@ get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     do_fetch_results_count(Db, DesignDoc, ViewOptions).
 
 %% Design Doc/View internal functions
--spec do_fetch_results(couchbeam_db(), ddoc(), wh_proplist()) ->
+-spec do_fetch_results(couchbeam_db(), ddoc(), view_options()) ->
                               {'ok', wh_json:objects() | ne_binaries()} |
                               couchbeam_error().
 do_fetch_results(Db, DesignDoc, Options) ->
@@ -292,8 +292,8 @@ format_error(E) ->
     lager:debug("unformatted error: ~p", [E]),
     E.
 
--spec do_fetch_results_count(couchbeam_db(), ddoc(), wh_proplist()) ->
-                                    {'ok', integer() | 'undefined'} |
+-spec do_fetch_results_count(couchbeam_db(), ddoc(), view_options()) ->
+                                    {'ok', api_integer()} |
                                     couchbeam_error().
 do_fetch_results_count(Db, DesignDoc, Options) ->
     ?RETRY_504(
