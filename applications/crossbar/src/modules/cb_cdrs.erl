@@ -228,10 +228,10 @@ load_view(View, ViewOptions, Context) ->
 -spec load_chunked_db(ne_binary(), wh_proplist(), ne_binary(), ne_binary(), cb_context:context()) ->
                              cb_context:context().
 load_chunked_db(View, ViewOptions, Db, Db, Context) ->
-    C = cb_context:set_account_db(Context, [Db]),
+    C = cb_context:store(Context, 'chunked_dbs', [Db]),
     load_chunked_view_options(View, ViewOptions, C);
 load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context) ->
-    C = cb_context:set_account_db(Context, [ToMODb, FromMODb]),
+    C = cb_context:store(Context, 'chunked_dbs', [ToMODb, FromMODb]),
     load_chunked_view_options(View, ViewOptions, C).
 
 -spec load_chunked_view_options(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
@@ -273,10 +273,10 @@ view_key_created_from(ViewOptions) ->
 %%--------------------------------------------------------------------
 -spec send_chunked_cdrs(payload()) -> payload().
 send_chunked_cdrs({Req, Context}) ->
-    Db = cb_context:account_db(Context),
+    Dbs = cb_context:fetch(Context, 'chunked_dbs'),
     AuthAccountId = cb_context:auth_account_id(Context),
     IsReseller = wh_services:is_reseller(AuthAccountId),
-    send_chunked_cdrs(Db, {Req, cb_context:store(Context, 'is_reseller', IsReseller)}).
+    send_chunked_cdrs(Dbs, {Req, cb_context:store(Context, 'is_reseller', IsReseller)}).
 
 -spec send_chunked_cdrs(ne_binaries(), payload()) -> payload().
 send_chunked_cdrs([], Payload) -> Payload;
@@ -412,7 +412,7 @@ normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
 
 -spec normalize_cdr(wh_json:object(), cb_context:context()) -> wh_json:object().
 normalize_cdr(JObj, Context) ->
-    Timestamp = wh_json:get_value(<<"timestamp">>, JObj, 0),
+    Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0),
     maybe_reseller_cdr(
       wh_json:from_list([{<<"id">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}
                          ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, JObj, <<>>)}
@@ -432,7 +432,7 @@ normalize_cdr(JObj, Context) ->
                          ,{<<"request">>, wh_json:get_value(<<"request">>, JObj, <<>>)}
                          ,{<<"authorizing_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)}
                          ,{<<"cost">>, customer_cost(JObj)}
-                                                % New fields
+                         %% New fields
                          ,{<<"dialed_number">>, dialed_number(JObj)}
                          ,{<<"calling_from">>, calling_from(JObj)}
                          ,{<<"datetime">>, pretty_print_datetime(Timestamp)}
@@ -446,7 +446,7 @@ normalize_cdr(JObj, Context) ->
 
 -spec normalize_cdr_to_csv(wh_json:object(), cb_context:context()) -> ne_binary().
 normalize_cdr_to_csv(JObj, Context) ->
-    Timestamp = wh_json:get_value(<<"timestamp">>, JObj, 0),
+    Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0),
     CSV = wh_util:join_binary([wh_json:get_value(<<"_id">>, JObj, <<>>)
                                ,wh_json:get_value(<<"call_id">>, JObj, <<>>)
                                ,wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)
@@ -465,7 +465,7 @@ normalize_cdr_to_csv(JObj, Context) ->
                                ,wh_json:get_value(<<"request">>, JObj, <<>>)
                                ,wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)
                                ,wh_util:to_binary(customer_cost(JObj))
-                                                % New fields
+                               %% New fields
                                ,dialed_number(JObj)
                                ,calling_from(JObj)
                                ,pretty_print_datetime(Timestamp)
@@ -517,12 +517,12 @@ normalize_cdr_to_csv_header(JObj, Context) ->
                   >>
     end.
 
--spec pretty_print_datetime(wh_datetime() | wh_now()) -> ne_binary().
+-spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
-                                   [Y, Mo, D, H, Mi, S]
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w"
+                                   ,[Y, Mo, D, H, Mi, S]
                                   )).
 
 -spec dialed_number(wh_json:object()) -> binary().
@@ -595,7 +595,7 @@ remove_qs_keys(Context) ->
 load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
     AcctDb = kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)),
-    Context1 = cb_context:set_account_db(Context,AcctDb),
+    Context1 = cb_context:set_account_db(Context, AcctDb),
     crossbar_doc:load(CDRId, Context1);
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),
