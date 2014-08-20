@@ -97,6 +97,7 @@ authorize(_Context, _Nouns) ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
 allowed_methods(?COLLECTION) ->
     [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
 allowed_methods(?JOBS) ->
@@ -146,13 +147,15 @@ validate(Context) ->
     end.
 
 validate(Context, ?COLLECTION) ->
-    case cb_Context:account_id(Context) of
+    case cb_context:account_id(Context) of
         'undefined' ->
             lager:debug("validating global resources collection"),
             validate_collection(cb_context:set_account_db(Context, ?WH_OFFNET_DB));
         _AccountId ->
             validate_collection(Context)
     end;
+validate(Context, ?JOBS) ->
+    validate_jobs(Context, cb_context:req_verb(Context));
 validate(Context, Id) ->
     case cb_context:account_id(Context) of
         'undefined' ->
@@ -218,6 +221,12 @@ validate_collection(Context, ?HTTP_DELETE) ->
                       not cb_context:has_errors(read(wh_json:get_value(<<"id">>, Resource), Context))
               end, cb_context:req_data(Context)
              ).
+
+-spec validate_jobs(cb_context:context(), http_method()) -> cb_context:context().
+validate_jobs(Context, ?HTTP_GET) ->
+    summary(cb_context:set_account_db(Context, cb_context:account_modb(Context)));
+validate_jobs(Context, ?HTTP_PUT) ->
+    Context.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
