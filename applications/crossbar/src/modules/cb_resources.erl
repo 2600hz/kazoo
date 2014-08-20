@@ -24,6 +24,7 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"resources/crossbar_listing">>).
+-define(JOBS_LIST, <<"resources/jobs_listing">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".resources">>).
 -define(COLLECTION, <<"collection">>).
 -define(JOBS, <<"jobs">>).
@@ -224,9 +225,9 @@ validate_collection(Context, ?HTTP_DELETE) ->
 
 -spec validate_jobs(cb_context:context(), http_method()) -> cb_context:context().
 validate_jobs(Context, ?HTTP_GET) ->
-    summary(cb_context:set_account_db(Context, cb_context:account_modb(Context)));
+    jobs_summary(Context);
 validate_jobs(Context, ?HTTP_PUT) ->
-    Context.
+    create_job(Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
@@ -324,6 +325,37 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec jobs_summary(cb_context:context()) -> cb_context:context().
+jobs_summary(Context) ->
+    case cb_modules_util:range_view_options(Context) of
+        {CreatedFrom, CreatedTo} ->
+            crossbar_doc:load_view(?JOBS_LIST
+                                   ,[{'startkey', CreatedFrom}
+                                     ,{'endkey', CreatedTo}
+                                     ,{'limit', crossbar_doc:pagination_page_size(Context) + 1}
+                                     ,{'databases', databases(Context, CreatedFrom, CreatedTo)}
+                                    ]
+                                   ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
+                                   ,fun normalize_view_results/2
+                                  );
+        Context1 -> Context1
+    end.
+
+-spec databases(cb_context:context(), pos_integer(), pos_integer()) -> ne_binaries().
+databases(Context, CreatedFrom, CreatedTo) ->
+    FromDb = cb_context:account_modb(Context, CreatedFrom),
+    case cb_context:account_modb(Context, CreatedTo) of
+        FromDb -> [FromDb];
+        ToDb -> [FromDb, ToDb]
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
@@ -341,6 +373,11 @@ normalize_view_results(JObj, Acc) ->
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"resources">>, Context, OnSuccess).
+
+-spec create_job(cb_context:context()) -> cb_context:context().
+create_job(Context) ->
+    OnSuccess = fun(C) -> on_successful_job_validation('undefined', C) end,
+    cb_context:validate_request_data(<<"resource_jobs">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -366,6 +403,16 @@ on_successful_validation('undefined', Context) ->
                        ,wh_json:set_value(<<"pvt_type">>, <<"resource">>, cb_context:doc(Context))
                       );
 on_successful_validation(Id, Context) ->
+    crossbar_doc:load_merge(Id, Context).
+
+-spec on_successful_job_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_job_validation('undefined', Context) ->
+    cb_context:set_doc(Context
+                       ,wh_json:set_values([{<<"pvt_type">>, <<"resource_job">>}
+                                            ,{<<"pvt_status">>, <<"pending">>}
+                                           ], cb_context:doc(Context))
+                      );
+on_successful_job_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
 -spec reload_acls() -> 'ok'.
