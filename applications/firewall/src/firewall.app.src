@@ -1,0 +1,13 @@
+{application, firewall,
+ [
+  {description, "Skel - A skeleton application useful for quickly creating services"},
+  {vsn, "0.0.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { firewall_app, []}},
+  {env, []}
+ ]}.
