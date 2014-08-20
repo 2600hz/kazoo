@@ -70,6 +70,7 @@
                ,start_date = ?RULE_DEFAULT_START_DATE :: wh_date()
                ,wtime_start = ?RULE_DEFAULT_WTIME_START :: non_neg_integer()
                ,wtime_stop = ?RULE_DEFAULT_WTIME_STOP :: non_neg_integer()
+               ,rule_set :: boolean() | false
               }).
 -type rule() :: #rule{}.
 -type rules() :: [rule(),...] | [].
@@ -84,6 +85,7 @@
                    ,prompts = #prompts{} :: prompts()
                    ,keys = #keys{} :: keys()
                    ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
+                   ,rule_set :: boolean() | false
                   }).
 -type temporal() :: #temporal{}.
 
@@ -144,17 +146,22 @@ process_rules(Temporal, [#rule{enabled='false'
 process_rules(_, [#rule{enabled='true'
                         ,id=Id
                         ,name=Name
+                        ,rule_set=RuleSet
                        }|_], _) ->
-    lager:info("time based rule ~s (~s) is forced active", [Id, Name]),
-    Id;
+    lager:info("time based rule ~s (~s) is forced active part of rule set? ~p", [Id, Name, RuleSet]),
+    case RuleSet of
+        'true' -> <<"rule_set">>;
+        'false' -> Id
+    end;
 process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T
               ,[#rule{id=Id
                       ,name=Name
                       ,wtime_start=TStart
                       ,wtime_stop=TStop
+                      ,rule_set=RuleSet
                      }=R|Rs]
               ,Call) ->
-    lager:info("processing temporal rule ~s (~s)", [Id, Name]),
+    lager:info("processing temporal rule ~s (~s) part of rule set? ~p", [Id, Name, RuleSet]),
     PrevDay = normalize_date({Y, M, D - 1}),
     BaseDate = next_rule_date(R, PrevDay),
     BastTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
@@ -167,7 +174,10 @@ process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T
             process_rules(T, Rs, Call);
         {_, End} ->
             lager:info("within active time window until ~w", [calendar:gregorian_seconds_to_datetime(End)]),
-            Id
+            case RuleSet of
+                'true' -> <<"rule_set">>;
+                'false' -> Id
+            end
     end;
 process_rules(_, [], _) ->
     lager:info("continuing with default callflow"),
@@ -184,19 +194,20 @@ process_rules(_, [], _) ->
 get_temporal_rules(#temporal{local_sec=LSec
                              ,routes=Routes
                              ,timezone=TZ
+                             ,rule_set=RuleSet
                             }, Call) ->
-    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), TZ, []).
+    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), RuleSet, TZ, []).
 
--spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary(), rules()) -> rules().
-get_temporal_rules(Routes, LSec, AccountDb, TZ, Rules) when is_binary(TZ) ->
+-spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), boolean(), ne_binary(), rules()) -> rules().
+get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Rules) when is_binary(TZ) ->
     Now = localtime:utc_to_local(calendar:universal_time()
                                  ,wh_util:to_list(TZ)
                                 ),
-    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules).
+    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules).
 
--spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary(), wh_datetime(), rules()) -> rules().
-get_temporal_rules([], _, _, _, _, Rules) -> lists:reverse(Rules);
-get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Now, Rules) ->
+-spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary(), boolean(), wh_datetime(), rules()) -> rules().
+get_temporal_rules([], _, _, _, _, _, Rules) -> lists:reverse(Rules);
+get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
     case couch_mgr:open_cache_doc(AccountDb, Route) of
         {'error', _R} ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
@@ -231,15 +242,16 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Now, Rules) ->
                              wh_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
                          ,wtime_stop =
                              wh_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
+                         ,rule_set = RuleSet
                         },
             case date_difference(Now, {Rule#rule.start_date, {0,0,0}}) of
                 'future' ->
                     lager:warning("rule ~p is in the future discarding", [Rule#rule.name]),
-                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
+                    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules);
                 'past' ->
-                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [Rule | Rules]);
+                    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, [Rule | Rules]);
                 'equal' ->
-                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [Rule | Rules])
+                    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, [Rule | Rules])
             end
     end.
 
@@ -272,7 +284,13 @@ get_temporal_route(JObj, Call) ->
                    Rules;
                Rules -> Rules
            end,
-    load_current_time(#temporal{routes = Keys
+    {IsRuleSet, Routes} =
+        case wh_json:get_value(<<"rule_set">>, JObj) of
+            'undefined' -> {'false', Keys};
+            RuleSet -> {'true', get_rule_set(RuleSet, Call)}
+        end,
+    load_current_time(#temporal{routes = Routes
+                                ,rule_set = IsRuleSet
                                 ,timezone = wh_json:get_value(<<"timezone">>, JObj, ?TEMPORAL_DEFAULT_TIMEZONE)
                                 ,interdigit_timeout =
                                     wh_json:get_integer_value(<<"interdigit_timeout">>
@@ -280,6 +298,23 @@ get_temporal_route(JObj, Call) ->
                                                               ,whapps_call_command:default_interdigit_timeout()
                                                              )
                                }).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Loads rules set from account db.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_rule_set(ne_binary(), whapps_call:call()) -> ne_binaries().
+get_rule_set(RuleSetId, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    lager:info("loading temporal rule set ~s", [RuleSetId]),
+    case couch_mgr:open_cache_doc(AccountDb, RuleSetId) of
+        {'error', _E} ->
+            lager:error("failed to load ~s in ~s", [RuleSetId, AccountDb]),
+            [];
+        {'ok', JObj} -> wh_json:get_value(<<"temporal_rules">>, JObj, [])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
