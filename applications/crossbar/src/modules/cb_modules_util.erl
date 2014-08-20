@@ -20,9 +20,65 @@
          ,bucket_name/1
          ,reconcile_services/1
          ,bind/2
+
+         ,range_view_options/1, range_view_options/2
         ]).
 
 -include("../crossbar.hrl").
+
+-define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31))).
+
+-spec range_view_options(cb_context:context()) ->
+                                {pos_integer(), pos_integer()} |
+                                cb_context:context().
+-spec range_view_options(cb_context:context(), pos_integer()) ->
+                                {pos_integer(), pos_integer()} |
+                                cb_context:context().
+range_view_options(Context) ->
+    range_view_options(Context, ?MAX_RANGE).
+range_view_options(Context, MaxRange) ->
+    TStamp =  wh_util:current_tstamp(),
+    CreatedFrom = created_from(Context, TStamp, MaxRange),
+    CreatedTo = created_to(Context, CreatedFrom, MaxRange),
+
+    case CreatedTo - CreatedFrom of
+        N when N < 0 ->
+            Message = <<"created_from is prior to created_to">>,
+            cb_context:add_validation_error(<<"created_from">>
+                                            ,<<"date_range">>
+                                            ,Message
+                                            ,Context
+                                           );
+        N when N > MaxRange ->
+            Message = <<"created_to is more than "
+                        ,(wh_util:to_binary(MaxRange))/binary
+                        ," seconds from created_from"
+                      >>,
+            cb_context:add_validation_error(<<"created_from">>
+                                            ,<<"date_range">>
+                                            ,Message
+                                            ,Context
+                                           );
+        _N -> {CreatedFrom, CreatedTo}
+    end.
+
+-spec created_to(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
+created_to(Context, CreatedFrom, MaxRange) ->
+    wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)).
+
+-spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
+created_from(Context, TStamp, MaxRange) ->
+    created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
+
+-spec created_from(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> pos_integer().
+created_from(Context, TStamp, MaxRange, 'undefined') ->
+    lager:debug("building created_from from req value"),
+    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
+created_from(_Context, _TStamp, _MaxRange, StartKey) ->
+    lager:debug("found startkey ~p as created_from", [StartKey]),
+    wh_util:to_integer(StartKey).
+
+
 
 -spec bind(atom(), wh_proplist()) -> 'ok'.
 bind(Module, Bindings) ->

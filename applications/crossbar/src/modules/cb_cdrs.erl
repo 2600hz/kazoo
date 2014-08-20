@@ -56,7 +56,10 @@ to_json({Req1, Context}) ->
             {Req3, Context1} = send_chunked_cdrs({Req2, Context}),
             'ok' = cowboy_req:chunk("]", Req3),
             _ = pagination({Req3, Context1}),
-            'ok' = cowboy_req:chunk("}", Req3),
+            'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
+                                     ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
+                                     ,"}"
+                                    ], Req3),
             'ok' = cowboy_req:ensure_response(Req3, 200),
             {Req3, cb_context:store(Context1, 'is_chunked', 'true')}
     end.
@@ -80,7 +83,8 @@ to_csv({Req, Context}) ->
         [_|_] -> {Req, Context};
         [] ->
             Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}]
-                                       ,cowboy_req:get('resp_headers', Req)),
+                                       ,cowboy_req:get('resp_headers', Req)
+                                      ),
             {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
             Context1 = cb_context:store(Context, 'is_csv', 'true'),
             {Req2, _} = send_chunked_cdrs({Req1, Context1}),
@@ -188,70 +192,42 @@ load_cdr_summary(Context, _Nouns) ->
                                  {'ok', wh_proplist()} |
                                  cb_context:context().
 create_view_options(OwnerId, Context) ->
-    TStamp =  wh_util:current_tstamp(),
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
-    CreatedFrom = created_from(Context, TStamp, MaxRange),
-    CreatedTo = created_to(Context, CreatedFrom, MaxRange),
-    Limit = crossbar_doc:pagination_page_size(Context) + 1,
-    case CreatedTo - CreatedFrom of
-        N when N < 0 ->
-            Message = <<"created_from is prior to created_to">>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
-        N when N > MaxRange ->
-            Message = <<"created_to is more than "
-                        ,(wh_util:to_binary(MaxRange))/binary
-                        ," seconds from created_from"
-                      >>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
-        _N when OwnerId =:= 'undefined' ->
-            {'ok', [{'startkey', CreatedFrom}
-                    ,{'endkey', CreatedTo}
-                    ,{'limit', Limit}
-                   ]};
-        _N ->
-            {'ok', [{'startkey', [OwnerId, CreatedFrom]}
-                    ,{'endkey', [OwnerId, CreatedTo]}
-                    ,{'limit', Limit}
-                   ]}
+
+    case cb_modules_util:range_view_options(Context, MaxRange) of
+        {CreatedFrom, CreatedTo} ->
+            create_view_options(OwnerId, Context, CreatedFrom, CreatedTo);
+        Context1 -> Context1
     end.
 
--spec created_to(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
-created_to(Context, CreatedFrom, MaxRange) ->
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)).
-
--spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
-created_from(Context, TStamp, MaxRange) ->
-    created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
-
--spec created_from(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> pos_integer().
-created_from(Context, TStamp, MaxRange, 'undefined') ->
-    lager:debug("building created_from from req value"),
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
-created_from(_Context, _TStamp, _MaxRange, StartKey) ->
-    lager:debug("found startkey ~p as created_from", [StartKey]),
-    wh_util:to_integer(StartKey).
+-spec create_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
+                                 {'ok', wh_proplist()}.
+create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
+    {'ok', [{'startkey', CreatedFrom}
+            ,{'endkey', CreatedTo}
+            ,{'limit', crossbar_doc:pagination_page_size(Context) + 1}
+           ]};
+create_view_options(OnwerId, Context, CreatedFrom, CreatedTo) ->
+    {'ok', [{'startkey', [OnwerId, CreatedFrom]}
+            ,{'endkey', [OnwerId, CreatedTo]}
+            ,{'limit', crossbar_doc:pagination_page_size(Context) + 1}
+           ]}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_view(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
+-spec load_view(ne_binary(), wh_proplist(), cb_context:context()) ->
+                       cb_context:context().
 load_view(View, ViewOptions, Context) ->
     AccountId = cb_context:account_id(Context),
     ToMODb = view_created_to_modb(AccountId, ViewOptions),
     FromMODb = view_created_from_modb(AccountId, ViewOptions),
     load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context).
 
--spec load_chunked_db(ne_binary(), wh_proplist(), ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_chunked_db(ne_binary(), wh_proplist(), ne_binary(), ne_binary(), cb_context:context()) ->
+                             cb_context:context().
 load_chunked_db(View, ViewOptions, Db, Db, Context) ->
     C = cb_context:set_account_db(Context, [Db]),
     load_chunked_view_options(View, ViewOptions, C);
