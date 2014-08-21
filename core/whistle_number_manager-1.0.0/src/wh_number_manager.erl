@@ -55,15 +55,22 @@ find(Number, Quantity) ->
 find(Number, Quantity, Opts) ->
     AccountId = props:get_value(<<"Account-ID">>, Opts),
     Num = wnm_util:normalize_number(Number),
-    lager:info("attempting to find ~p numbers with prefix '~s' for Account ~p", [Quantity, Number,AccountId]),
+    lager:info("attempting to find ~p numbers with prefix '~s' for account ~p"
+              ,[Quantity, Number, AccountId]),
     Results = [{Module, catch(Module:find_numbers(Num, Quantity, Opts))}
                || Module <- wnm_util:list_carrier_modules()
               ],
     NewOpts = [{<<"classification">>, wnm_util:classify_number(Num)}
-               ,{<<"services">>, wh_services:fetch(AccountId)}
+              ,{<<"account-id">>, AccountId}
+              ,{<<"services">>, maybe_get_services(AccountId)}
                | Opts
               ],
     prepare_find_results(Results, [], NewOpts).
+
+-spec maybe_get_services(api_binary()) -> api_binary().
+maybe_get_services('undefined') -> 'undefined';
+maybe_get_services(AccountId) ->
+    wh_services:fetch(AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -944,7 +951,7 @@ save_assignment(AccountDb, Updated, Props, Try) ->
 -spec prepare_find_results(wh_json:keys(), atom(), wh_json:object(), wh_json:keys(), wh_proplist()) ->
                                   wh_json:keys().
 prepare_find_results([], Found, _) -> Found;
-prepare_find_results([{'wnm_other', {'ok', ModuleResults}}|T], Found, Opts) ->
+prepare_find_results([{'wnm_other', {'bulk', ModuleResults}}|T], Found, Opts) ->
     prepare_find_results(T, ModuleResults++Found, Opts);
 prepare_find_results([{Module, {'ok', ModuleResults}}|T], Found, Opts) ->
     case wh_json:get_keys(ModuleResults) of
@@ -957,13 +964,21 @@ prepare_find_results([_|T], Found, Opts) ->
     prepare_find_results(T, Found, Opts).
 
 prepare_find_results([], _, _, Found,_) -> Found;
+prepare_find_results([Number|Numbers], 'wnm_other' = ModuleName, ModuleResults, Found, Opts) ->
+    JObj = wh_json:get_value(Number, ModuleResults),
+    Result = case maybe_get_activation_charge(Opts) of
+                 'undefined' ->
+                     [wh_json:set_value(<<"number">>, Number, JObj) | Found];
+                 Value ->
+                     [wh_json:set_values([{<<"activation_charge">>, Value}
+                                          ,{<<"number">>, Number}
+                                         ], JObj)
+                      | Found]
+             end,
+    prepare_find_results(Numbers, ModuleName, ModuleResults, Result, Opts);
 prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) ->
     JObj = wh_json:get_value(Number, ModuleResults),
-    Result = case wh_services:activation_charges(<<"phone_numbers">>
-                                                 ,props:get_value(<<"classification">>, Opts)
-                                                 ,props:get_value(<<"services">>, Opts)
-                                                )
-             of
+    Result = case maybe_get_activation_charge(Opts) of
                  'undefined' ->
                      [wh_json:set_value(<<"number">>, Number, JObj) | Found];
                  Value ->
@@ -996,4 +1011,16 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) -
         {_R, #number{}} ->
             lager:debug("failed to determine state of discovery ~s: ~p", [Number, _R]),
             prepare_find_results(Numbers, ModuleName, ModuleResults, Found, Opts)
+    end.
+
+-spec maybe_get_activation_charge(wh_proplist()) -> non_neg_integer().
+maybe_get_activation_charge(Opts) ->
+    case props:get_value(<<"services">>, Opts) of
+        'undefined' -> 'undefined';
+        Services ->
+            Classification = props:get_value(<<"classification">>, Opts),
+            wh_services:activation_charges(<<"phone_numbers">>
+                                          ,Classification
+                                          ,Services
+                                          )
     end.
