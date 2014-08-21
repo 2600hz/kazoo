@@ -337,6 +337,9 @@ flush_cache_doc(Server, #db{name=Name}, DocId, Options) ->
 flush_cache_doc(_, DbName, DocId, _Options) ->
     wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}).
 
+-spec flush_cache_docs() -> 'ok'.
+-spec flush_cache_docs(ne_binary()) -> 'ok'.
+
 flush_cache_docs() -> wh_cache:flush_local(?WH_COUCH_CACHE).
 flush_cache_docs(DbName) ->
     Filter = fun({?MODULE, DbName1, _}=K, _) when DbName1 =:= DbName ->
@@ -344,7 +347,8 @@ flush_cache_docs(DbName) ->
                      'true';
                 (_, _) -> 'false'
              end,
-    wh_cache:filter_local(?WH_COUCH_CACHE, Filter).
+    _ = wh_cache:filter_local(?WH_COUCH_CACHE, Filter),
+    'ok'.
 
 -spec open_doc(server(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |

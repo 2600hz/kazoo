@@ -539,6 +539,9 @@ flush_cache_doc(DbName, DocId, Options) ->
         {'error', _}=E -> E
     end.
 
+-spec flush_cache_docs() -> 'ok'.
+-spec flush_cache_docs(ne_binary()) -> 'ok'.
+
 flush_cache_docs() -> couch_util:flush_cache_docs().
 flush_cache_docs(DbName) ->
     case maybe_convert_dbname(DbName) of
