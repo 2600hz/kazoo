@@ -423,6 +423,7 @@ on_successful_validation(Id, Context) ->
 
 -spec on_successful_job_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_job_validation('undefined', Context) ->
+    lager:debug("creating job doc"),
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, <<"resource_job">>}
                                             ,{<<"pvt_status">>, <<"pending">>}
