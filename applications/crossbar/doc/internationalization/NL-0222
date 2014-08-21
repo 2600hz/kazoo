@@ -1,0 +1,7 @@
+NL-DenBurg-local         '^\+31222([^0]\d{6,7})$'
+NL-DenBurg-mobile"        '^\+316\d{8}$' 
+NL-DenBurg-Free"        '^\+31800\d{4,7}$' 
+NL-DenBurg-Premium"       '^\+3190\d{5,8}|8[47]\d{7}$' 
+NL-DenBurg-Nationaal"     '^\+31([1-57]\d{4,8}|8[58]\d{7})$' 
+NL-DenBurg-Internationaal '^\+((1[2-9]\d\d[2-9]\d{6})|(?(?!(31))([2-9]\d{6,14})))$' 
+NL-DenBurg-Service"       '^\+(112|14\d{2,4})$' 
