@@ -21,7 +21,7 @@
 -export([response_redirect/3
          ,response_redirect/4
         ]).
--export([response_202/2]).
+-export([response_202/2, response_202/3]).
 -export([response_402/2]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
@@ -88,8 +88,12 @@ response(JTerm, Context) ->
 
 -spec response_202(wh_json:json_string(), cb_context:context()) ->
                           cb_context:context().
+-spec response_202(wh_json:json_string(), wh_json:json_term(), cb_context:context()) ->
+                          cb_context:context().
 response_202(Msg, Context) ->
-    create_response('success', Msg, 202, Msg, Context).
+    response_202(Msg, Msg, Context).
+response_202(Msg, JTerm, Context) ->
+    create_response('success', Msg, 202, JTerm, Context).
 
 -spec response_402(wh_json:object(), cb_context:context()) ->
                           cb_context:context().
