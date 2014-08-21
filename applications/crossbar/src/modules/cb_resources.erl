@@ -356,10 +356,26 @@ read(Id, Context) ->
 -spec read_job(cb_context:context(), ne_binary()) -> cb_context:context().
 read_job(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = JobId) ->
     Modb = cb_context:account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
-    crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb));
+    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb)));
+read_job(Context, <<Year:4/binary, Month:1/binary, "-", _/binary>> = JobId) ->
+    Modb = cb_context:account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb)));
 read_job(Context, JobId) ->
     lager:debug("invalid job id format: ~s", [JobId]),
     crossbar_util:response_bad_identifier(JobId, Context).
+
+-spec leak_job_fields(cb_context:context()) -> cb_context:context().
+leak_job_fields(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            JObj = cb_context:doc(Context),
+            cb_context:set_resp_data(Context
+                                     ,wh_json:set_values([{<<"timestamp">>, wh_json:get_value(<<"pvt_created">>, JObj)}
+                                                          ,{<<"status">>, wh_json:get_value(<<"pvt_status">>, JObj)}
+                                                         ], cb_context:resp_data(Context))
+                                    );
+        _Status -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -461,7 +477,7 @@ on_successful_job_validation('undefined', Context) ->
 
     {Year, Month, _} = erlang:date(),
     Id = list_to_binary([wh_util:to_binary(Year)
-                         ,wh_util:to_binary(Month)
+                         ,wh_util:pad_month(Month)
                          ,"-"
                          ,wh_util:rand_hex_binary(6)
                         ]),
@@ -474,13 +490,17 @@ on_successful_job_validation('undefined', Context) ->
 
                                             ,{<<"successes">>, wh_json:new()}
                                             ,{<<"errors">>, wh_json:new()}
-                                           ], cb_context:doc(Context))
+                                           ]
+                                           ,wh_json:delete_keys([<<"carrier">>]
+                                                                ,cb_context:doc(Context)
+                                                               )
+                                          )
                       ).
 
 -spec get_job_carrier(cb_context:context()) -> ne_binary().
 -spec get_job_carrier(api_binary(), boolean()) -> ne_binary().
 get_job_carrier(Context) ->
-    case cb_context:req_value(<<"carrier">>, Context) of
+    case cb_context:req_value(Context, <<"carrier">>) of
         <<"local">> -> <<"local">>;
         Carrier -> get_job_carrier(Carrier, cb_modules_util:is_superduper_admin(Context))
     end.

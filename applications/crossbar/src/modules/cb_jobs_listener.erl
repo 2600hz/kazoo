@@ -223,4 +223,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec job_modb(ne_binary(), ne_binary()) -> ne_binary().
 job_modb(AccountId, <<Year:4/binary, Month:2/binary, "-", _/binary>>) ->
+    wh_util:format_account_mod_id(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month));
+job_modb(AccountId, <<Year:4/binary, Month:1/binary, "-", _/binary>>) ->
     wh_util:format_account_mod_id(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)).
