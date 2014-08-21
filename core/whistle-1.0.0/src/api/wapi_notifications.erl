@@ -298,7 +298,7 @@
 -define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>]).
 -define(NOTIFY_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                ,{<<"Event-Name">>, <<"update">>}
-                               ,{<<"Status">>, [<<"completed">>, <<"failed">>]}
+                               ,{<<"Status">>, [<<"completed">>, <<"failed">>, <<"pending">>]}
                               ]).
 -define(NOTIFY_UPDATE_TYPES, []).
 
