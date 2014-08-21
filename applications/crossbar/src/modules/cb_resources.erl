@@ -36,6 +36,9 @@ init() ->
     _ = couch_mgr:revise_doc_from_file(?WH_SIP_DB, 'crossbar', "views/resources.json"),
     _ = couch_mgr:revise_doc_from_file(?WH_OFFNET_DB, 'crossbar', "views/resources.json"),
 
+    _Pid = maybe_start_jobs_listener(),
+    lager:debug("started jobs listener: ~p", [_Pid]),
+
     [crossbar_bindings:bind(Binding, ?MODULE, F)
      || {Binding, F} <- [{<<"*.allowed_methods.resources">>, 'allowed_methods'}
                          ,{<<"*.resource_exists.resources">>, 'resource_exists'}
@@ -61,6 +64,20 @@ init() ->
                          ,{<<"*.authorize">>, 'authorize'}
                         ]
     ].
+
+-spec maybe_start_jobs_listener() -> pid().
+maybe_start_jobs_listener() ->
+    case jobs_listener_pid() of
+        'undefined' ->
+            {'ok', Pid} = crossbar_module_sup:start_child('cb_jobs_listener'),
+            Pid;
+        Pid -> Pid
+    end.
+
+-spec jobs_listener_pid() -> api_pid().
+jobs_listener_pid() ->
+    whereis('cb_jobs_listener').
+
 
 -spec authorize(cb_context:context()) ->
                        boolean() |
@@ -265,7 +282,9 @@ put(Context) ->
     do_put(Context, cb_context:account_db(Context)).
 
 put(Context, ?COLLECTION) ->
-    put_collection(Context, cb_context:account_db(Context)).
+    put_collection(Context, cb_context:account_db(Context));
+put(Context, ?JOBS) ->
+    put_job(Context).
 
 -spec do_put(cb_context:context(), ne_binary()) -> cb_context:context().
 do_put(Context, ?WH_OFFNET_DB) ->
@@ -282,6 +301,21 @@ put_collection(Context, ?WH_OFFNET_DB) ->
 put_collection(Context, _AccountDb) ->
     reload_acls(),
     collection_process(Context, cb_context:req_verb(Context)).
+
+-spec put_job(cb_context:context()) -> cb_context:context().
+put_job(Context) ->
+    Modb = cb_context:account_modb(Context),
+    Context1 = crossbar_doc:save(cb_context:set_account_db(Context, Modb)),
+
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_jobs_listener:publish_new_job(cb_context:account_id(Context1)
+                                             ,wh_json:get_value(<<"_id">>, cb_context:doc(Context1))
+                                            ),
+            crossbar_util:response_202(<<"Job scheduled">>, cb_context:resp_data(Context1), Context1);
+        _Status ->
+            Context1
+    end.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
@@ -421,16 +455,39 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
--spec on_successful_job_validation(api_binary(), cb_context:context()) -> cb_context:context().
+-spec on_successful_job_validation('undefined', cb_context:context()) -> cb_context:context().
 on_successful_job_validation('undefined', Context) ->
     lager:debug("creating job doc"),
+
+    {Year, Month, _} = erlang:date(),
+    Id = list_to_binary([wh_util:to_binary(Year)
+                         ,wh_util:to_binary(Month)
+                         ,"-"
+                         ,wh_util:rand_hex_binary(6)
+                        ]),
+
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, <<"resource_job">>}
                                             ,{<<"pvt_status">>, <<"pending">>}
+                                            ,{<<"pvt_carrier">>, get_job_carrier(Context)}
+                                            ,{<<"_id">>, Id}
+
+                                            ,{<<"successes">>, wh_json:new()}
+                                            ,{<<"errors">>, wh_json:new()}
                                            ], cb_context:doc(Context))
-                      );
-on_successful_job_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context).
+                      ).
+
+-spec get_job_carrier(cb_context:context()) -> ne_binary().
+-spec get_job_carrier(api_binary(), boolean()) -> ne_binary().
+get_job_carrier(Context) ->
+    case cb_context:req_value(<<"carrier">>, Context) of
+        <<"local">> -> <<"local">>;
+        Carrier -> get_job_carrier(Carrier, cb_modules_util:is_superduper_admin(Context))
+    end.
+
+get_job_carrier('undefined', 'true') -> <<"other">>;
+get_job_carrier(Carrier, 'true') -> Carrier;
+get_job_carrier(_Carrier, 'false') -> <<"local">>.
 
 -spec reload_acls() -> 'ok'.
 reload_acls() ->
