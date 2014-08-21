@@ -62,27 +62,35 @@ init() ->
                         ]
     ].
 
--spec authorize(cb_context:context()) -> boolean().
--spec authorize(cb_context:context(), req_nouns()) -> boolean().
+-spec authorize(cb_context:context()) ->
+                       boolean() |
+                       {'halt', cb_context:context()}.
+-spec authorize(cb_context:context(), req_nouns()) ->
+                       boolean() |
+                       {'halt', cb_context:context()}.
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
 authorize(Context, [{<<"global_resources">>, _}|_]) ->
-    case cb_modules_util:is_superduper_admin(Context) of
-        'true' ->
-            lager:debug("authz the request for global_resources"),
-            'true';
-        'false' -> {'halt', Context}
-    end;
-authorize(Context, [{<<"resources">>, _}]) ->
-    case cb_modules_util:is_superduper_admin(Context) of
-        'true' ->
-            lager:debug("authz the request for resources"),
-            'true';
-        'false' -> {'halt', Context}
+    maybe_authorize_admin(Context);
+authorize(Context, [{<<"resources">>, _} | _]) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> maybe_authorize_admin(Context);
+        _AccountId -> 'true'
     end;
 authorize(_Context, _Nouns) ->
     'false'.
+
+-spec maybe_authorize_admin(cb_context:context()) ->
+                                   'true' |
+                                   {'halt', cb_context:context()}.
+maybe_authorize_admin(Context) ->
+    case cb_modules_util:is_superduper_admin(Context) of
+        'true' ->
+            lager:debug("authz the request for global resources"),
+            'true';
+        'false' -> {'halt', Context}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
