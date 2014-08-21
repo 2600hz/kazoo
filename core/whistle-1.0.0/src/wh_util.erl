@@ -245,7 +245,9 @@ format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 
--spec pad_month(wh_month()) -> ne_binary().
+-spec pad_month(wh_month() | ne_binary()) -> ne_binary().
+pad_month(<<_/binary>> = Month) ->
+    pad_month(to_integer(Month));
 pad_month(Month) when Month < 10 ->
     <<"0", (to_binary(Month))/binary>>;
 pad_month(Month) ->

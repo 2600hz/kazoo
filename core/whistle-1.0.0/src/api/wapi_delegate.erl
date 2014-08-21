@@ -30,9 +30,9 @@
                                           ,(amqp_util:encode(App))/binary, "."
                                           ,(amqp_util:encode(Key))/binary
                                         >>).
--define(DELEGATE_ROUTING_KEY(App, Key), <<?APIKEY/binary, "."
-                                          ,(amqp_util:encode(App))/binary
-                                        >>).
+-define(DELEGATE_ROUTING_KEY(App), <<?APIKEY/binary, "."
+                                     ,(amqp_util:encode(App))/binary
+                                   >>).
 
 -define(DELEGATE_HEADERS, [<<"Delegate-Message">>]).
 -define(OPTIONAL_DELEGATE_HEADERS, []).
