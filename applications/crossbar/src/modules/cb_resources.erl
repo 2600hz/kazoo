@@ -177,8 +177,8 @@ validate(Context, Id) ->
             validate_resource(Context, Id, cb_context:req_verb(Context))
     end.
 
-validate(Context, ?JOBS, _JobId) ->
-    Context.
+validate(Context, ?JOBS, JobId) ->
+    read_job(Context, JobId).
 
 -spec validate_resources(cb_context:context(), http_method()) -> cb_context:context().
 validate_resources(Context, ?HTTP_GET) ->
@@ -318,6 +318,14 @@ delete_collection(Context, _AccountDb) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
+
+-spec read_job(cb_context:context(), ne_binary()) -> cb_context:context().
+read_job(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = JobId) ->
+    Modb = cb_context:account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb));
+read_job(Context, JobId) ->
+    lager:debug("invalid job id format: ~s", [JobId]),
+    crossbar_util:response_bad_identifier(JobId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
