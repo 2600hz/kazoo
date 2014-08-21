@@ -1,0 +1,14 @@
+Hi James
+
+Robert here from Yumminova
+
+Imnew to git so i have noclue yet what to do so bare with me.
+
+One way to make Kazoo international is to enable accounts to specify what country they are in, what region and what city.
+That way we could make rules to make it work, instead of using different clusters for 
+different country´s and then dealing with clients that have international numbers.
+
+So .. im baking some rules and can do so for all countries if needed.
+Would u think that if i cook up a rule to reconsile all numbers, also convert them into E.164 when needed 
+we could use one cluster by setting multiple classifiers in number manager?
+
