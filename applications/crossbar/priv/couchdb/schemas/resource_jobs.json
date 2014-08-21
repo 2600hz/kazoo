@@ -17,7 +17,7 @@
         ,"numbers":{
             "type":"array"
             ,"description":"The listing of numbers to import to the account"
-            ,"minimum":1
+            ,"minItems":1
             ,"required":true
             ,"items":{
                 "type":"string"
