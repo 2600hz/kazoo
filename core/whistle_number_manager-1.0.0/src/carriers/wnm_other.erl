@@ -35,8 +35,7 @@
                           wh_json:objects().
 find_numbers(Number, Quantity, Props) ->
     case whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
-        'undefined' ->
-            {'error', 'non_available'};
+        'undefined' -> {'error', 'non_available'};
         Url ->
             case props:get_value(<<"blocks">>, Props) of
                 'undefined' ->
@@ -94,6 +93,8 @@ format_check_numbers(Body) ->
             lager:error("number check resp error: ~p", [_Error]),
             {'error', 'resp_error'}
     end.
+
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -164,7 +165,6 @@ get_numbers(Url, Number, Quantity, Props) ->
     Country = whapps_config:get(?WNM_OTHER_CONFIG_CAT, <<"default_country">>, ?DEFAULT_COUNTRY),
     ReqBody = <<"?pattern=", Number/binary, "&limit=", Quantity/binary, "&offset=", Offset/binary>>,
     Uri = <<Url/binary, "/", Country/binary, "/search", ReqBody/binary>>,
-
     case ibrowse:send_req(wh_util:to_list(Uri), [], 'get') of
         {'error', _Reason} ->
             lager:error("number lookup error to ~s: ~p", [Uri, _Reason]),
@@ -179,22 +179,23 @@ get_numbers(Url, Number, Quantity, Props) ->
 -spec format_numbers_resp(wh_json:object()) ->
                                  {'error', 'non_available'} |
                                  wh_json:objects().
-format_numbers_resp(Body) ->
-    case wh_json:get_value(<<"status">>, Body) of
+format_numbers_resp(JObj) ->
+    case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
-            Numbers = wh_json:foldl(fun format_numbers_resp_fold/3
-                                    ,[]
-                                    ,wh_json:get_value(<<"data">>, Body, wh_json:new())
-                                   ),
-            {'ok', Numbers};
+            Numbers = lists:foldl(fun format_numbers_resp_fold/2
+                                 ,[]
+                                 ,wh_json:get_value(<<"data">>, JObj, [])
+                                 ),
+            {'ok', wh_json:from_list(Numbers)};
         _Error ->
             lager:error("block lookup resp error: ~p", [_Error]),
             {'error', 'non_available'}
     end.
 
--spec format_numbers_resp_fold(wh_json:key(), wh_json:object(), wh_json:objects()) -> wh_json:objects().
-format_numbers_resp_fold(K, V, Acc) ->
-    [wh_json:set_value(<<"number">>, K, V)|Acc].
+-spec format_numbers_resp_fold(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+format_numbers_resp_fold(JObj, Numbers) ->
+    Number = wnm_util:to_e164(wh_json:get_value(<<"number">>, JObj)),
+    [{Number, JObj} | Numbers].
 
 -spec get_blocks(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
                         {'error', 'non_available'} |
@@ -224,15 +225,27 @@ get_blocks(Url, Number, Quantity, Props) ->
                                 {'error', 'non_available'} |
                                 wh_json:object() |
                                 wh_json:objects().
-format_blocks_resp(Body) ->
-    case wh_json:get_value(<<"status">>, Body) of
+format_blocks_resp(JObj) ->
+    case wh_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
-            Numbers = wh_json:get_value(<<"data">>, Body, wh_json:new()),
-            {'ok', Numbers};
+            Numbers = lists:foldl(fun format_blocks_resp_fold/2
+                                 ,[]
+                                 ,wh_json:get_value(<<"data">>, JObj, [])
+                                 ),
+            {'bulk', Numbers};
         _Error ->
-            lager:error("block lookup resp error: ~p", [Body]),
+            lager:error("block lookup resp error: ~p", [JObj]),
             {'error', 'non_available'}
     end.
+
+-spec format_blocks_resp_fold(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+format_blocks_resp_fold(JObj, Numbers) ->
+    StartNumber = wnm_util:to_e164(wh_json:get_value(<<"start_number">>, JObj)),
+    EndNumber = wnm_util:to_e164(wh_json:get_value(<<"end_number">>, JObj)),
+    Props = [{<<"start_number">>, StartNumber}
+            ,{<<"end_number">>, EndNumber}
+            ],
+    [wh_json:set_values(Props, JObj) | Numbers].
 
 -spec format_acquire_resp(wh_json:object(), wnm_number()) -> wnm_number().
 format_acquire_resp(Body, Number) ->
