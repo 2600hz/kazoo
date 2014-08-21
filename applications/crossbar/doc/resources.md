@@ -166,3 +166,17 @@ This URI is used to manipulate the resources available to the account.
 #### _DELETE_ - Remove an account resource:
 
     curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+
+### The JOBS API
+
+It is helpful to be able to upload a list of numbers to a specific account, versus adding them one after another.
+
+#### _GET_ - List of jobs (pending or completed)
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs'
+
+#### _PUT_ - Create a new job to add a list of numbers
+
+#### _GET_ - Get a job's status and other information
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}'
