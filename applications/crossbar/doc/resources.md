@@ -174,9 +174,63 @@ It is helpful to be able to upload a list of numbers to a specific account, vers
 #### _GET_ - List of jobs (pending or completed)
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs'
+    {"auth_token": "{AUTH_TOKEN}",
+     "data": [
+        {
+            "failures": false,
+            "id": "201408-394de70ecf6f8252",
+            "status": "pending",
+            "timestamp": 63575950041
+        },
+        {
+            "failures": false,
+            "id": "201408-70766ed00a24",
+            "status": "pending",
+            "timestamp": 63575878379
+        }
+       ]
+     "page_size": 2,
+     "request_id": "{REQUEST_ID}",
+     "revision": "6d25843f5a4fc66b24c635d13904635d",
+     "start_key": 63573276761,
+     "status": "success"
+    }
+
+Do note you can use the `created_from` and `created_to` flags to change to time period queried.
 
 #### _PUT_ - Create a new job to add a list of numbers
+
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs' -d '{"data":{"numbers":["+12223334444", "+23334445555"], "carrier":"local"}}'
+    {"auth_token": "{AUTH_TOKEN}",
+     "data": {
+        "errors": {},
+        "id": "201408-39512771f9d2d499",
+        "numbers": [
+            "+12223334444"
+        ],
+        "successes": {}
+     },
+     "request_id": "{REQUEST_ID}",
+     "revision": "1-3d73b81456af994775d6de995020875b",
+     "status": "success"
+    }
 
 #### _GET_ - Get a job's status and other information
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}'
+    {"auth_token": "{AUTH_TOKEN}",
+     "data": {
+        "carrier": "other",
+        "errors": {},
+        "id": "201408-394de70ecf6f8252",
+        "numbers": [
+            "3148096310"
+        ],
+        "status": "pending",
+        "successes": {},
+        "timestamp": 63575950041
+     },
+     "request_id": "{REQUEST_ID}",
+     "revision": "1-8300dfdd9dd1b79efc3bace9dbe603a2",
+     "status": "success"
+    }
