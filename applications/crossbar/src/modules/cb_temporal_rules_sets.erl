@@ -93,15 +93,15 @@ validate_set(Context, ?HTTP_POST, DocId) ->
 validate_set(Context, ?HTTP_DELETE, DocId) ->
     read(DocId, Context).
 
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     crossbar_doc:save(Context).
 
--spec put(#cb_context{}) -> #cb_context{}.
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
 
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
@@ -115,8 +115,8 @@ delete(Context, _) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(#cb_context{}) -> #cb_context{}.
-create(#cb_context{}=Context) ->
+-spec create(cb_context:context()) -> cb_context:context().
+create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"temporal_rules_sets">>, Context, OnSuccess).
 
@@ -126,7 +126,7 @@ create(#cb_context{}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -137,8 +137,8 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{}=Context) ->
+-spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"temporal_rules_sets">>, Context, OnSuccess).
 
@@ -149,7 +149,7 @@ update(Id, #cb_context{}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(#cb_context{}) -> #cb_context{}.
+-spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -159,10 +159,11 @@ summary(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
-on_successful_validation('undefined', #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"temporal_rule_set">>, JObj)};
-on_successful_validation(Id, #cb_context{}=Context) ->
+-spec on_successful_validation('undefined' | ne_binary(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', Context) ->
+    Doc = cb_context:doc(Context),
+    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_type">>, <<"temporal_rule_set">>, Doc));
+on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
 %%--------------------------------------------------------------------
