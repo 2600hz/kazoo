@@ -15,12 +15,9 @@
 
 -include("../callflow.hrl").
 
--export([handle/2, normalize_date/1]).
-
--import('calendar', [gregorian_seconds_to_datetime/1, datetime_to_gregorian_seconds/1
-                     ,date_to_gregorian_days/1, date_to_gregorian_days/3, universal_time/0
-                     ,last_day_of_the_month/2, gregorian_days_to_date/1
-                    ]).
+-export([handle/2
+         ,normalize_date/1
+        ]).
 
 -define(FIND_RULES, <<>>).
 
@@ -59,7 +56,7 @@
 -define(RULE_DEFAULT_WTIME_STOP, ?SECONDS_IN_DAY).
 
 -record(rule, {id = <<>> :: binary()
-               ,enabled :: boolean() | 'undefined'
+               ,enabled :: api_boolean()
                ,name = ?RULE_DEFAULT_NAME :: binary()
                ,cycle = ?RULE_DEFAULT_CYCLE :: cycle_type()
                ,interval = ?RULE_DEFAULT_INTERVAL :: non_neg_integer()
@@ -70,7 +67,9 @@
                ,start_date = ?RULE_DEFAULT_START_DATE :: wh_date()
                ,wtime_start = ?RULE_DEFAULT_WTIME_START :: non_neg_integer()
                ,wtime_stop = ?RULE_DEFAULT_WTIME_STOP :: non_neg_integer()
+               ,rule_set  = 'false' :: boolean()
               }).
+
 -type rule() :: #rule{}.
 -type rules() :: [rule(),...] | [].
 
@@ -84,6 +83,7 @@
                    ,prompts = #prompts{} :: prompts()
                    ,keys = #keys{} :: keys()
                    ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
+                   ,rule_set = 'false' :: boolean()
                   }).
 -type temporal() :: #temporal{}.
 
@@ -144,17 +144,22 @@ process_rules(Temporal, [#rule{enabled='false'
 process_rules(_, [#rule{enabled='true'
                         ,id=Id
                         ,name=Name
+                        ,rule_set=RuleSet
                        }|_], _) ->
-    lager:info("time based rule ~s (~s) is forced active", [Id, Name]),
-    Id;
+    lager:info("time based rule ~s (~s) is forced active part of rule set? ~p", [Id, Name, RuleSet]),
+    case RuleSet of
+        'true' -> <<"rule_set">>;
+        'false' -> Id
+    end;
 process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T
               ,[#rule{id=Id
                       ,name=Name
                       ,wtime_start=TStart
                       ,wtime_stop=TStop
+                      ,rule_set=RuleSet
                      }=R|Rs]
               ,Call) ->
-    lager:info("processing temporal rule ~s (~s)", [Id, Name]),
+    lager:info("processing temporal rule ~s (~s) part of rule set? ~p", [Id, Name, RuleSet]),
     PrevDay = normalize_date({Y, M, D - 1}),
     BaseDate = next_rule_date(R, PrevDay),
     BastTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
@@ -167,7 +172,10 @@ process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T
             process_rules(T, Rs, Call);
         {_, End} ->
             lager:info("within active time window until ~w", [calendar:gregorian_seconds_to_datetime(End)]),
-            Id
+            case RuleSet of
+                'true' -> <<"rule_set">>;
+                'false' -> Id
+            end
     end;
 process_rules(_, [], _) ->
     lager:info("continuing with default callflow"),
@@ -184,23 +192,25 @@ process_rules(_, [], _) ->
 get_temporal_rules(#temporal{local_sec=LSec
                              ,routes=Routes
                              ,timezone=TZ
+                             ,rule_set=RuleSet
                             }, Call) ->
-    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), TZ, []).
+    get_temporal_rules(Routes, LSec, whapps_call:account_db(Call), RuleSet, TZ, []).
 
--spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary(), rules()) -> rules().
-get_temporal_rules(Routes, LSec, AccountDb, TZ, Rules) when is_binary(TZ) ->
+-spec get_temporal_rules(ne_binaries(), non_neg_integer(), ne_binary(), boolean(), ne_binary(), rules()) -> rules().
+get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Rules) when is_binary(TZ) ->
     Now = localtime:utc_to_local(calendar:universal_time()
                                  ,wh_util:to_list(TZ)
                                 ),
-    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules).
+    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules).
 
--spec get_temporal_rules(ne_binaries(), integer(), ne_binary(), ne_binary(), wh_datetime(), rules()) -> rules().
-get_temporal_rules([], _, _, _, _, Rules) -> lists:reverse(Rules);
-get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Now, Rules) ->
+-spec get_temporal_rules(ne_binaries(), non_neg_integer(), ne_binary(), boolean(), ne_binary(), wh_datetime(), rules()) ->
+                                rules().
+get_temporal_rules([], _, _, _, _, _, Rules) -> lists:reverse(Rules);
+get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
     case couch_mgr:open_cache_doc(AccountDb, Route) of
         {'error', _R} ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
-            get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
+            get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules);
         {'ok', JObj} ->
             Days = lists:foldr(
                         fun(Day, Acc) ->
@@ -231,15 +241,16 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, TZ, Now, Rules) ->
                              wh_json:get_integer_value(<<"time_window_start">>, JObj, ?RULE_DEFAULT_WTIME_START)
                          ,wtime_stop =
                              wh_json:get_integer_value(<<"time_window_stop">>, JObj, ?RULE_DEFAULT_WTIME_STOP)
+                         ,rule_set = RuleSet
                         },
             case date_difference(Now, {Rule#rule.start_date, {0,0,0}}) of
                 'future' ->
                     lager:warning("rule ~p is in the future discarding", [Rule#rule.name]),
-                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
+                    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules);
                 'past' ->
-                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [Rule | Rules]);
+                    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, [Rule | Rules]);
                 'equal' ->
-                    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [Rule | Rules])
+                    get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, [Rule | Rules])
             end
     end.
 
@@ -272,7 +283,13 @@ get_temporal_route(JObj, Call) ->
                    Rules;
                Rules -> Rules
            end,
-    load_current_time(#temporal{routes = Keys
+    {IsRuleSet, Routes} =
+        case wh_json:get_value(<<"rule_set">>, JObj) of
+            'undefined' -> {'false', Keys};
+            RuleSet -> {'true', get_rule_set(RuleSet, Call)}
+        end,
+    load_current_time(#temporal{routes = Routes
+                                ,rule_set = IsRuleSet
                                 ,timezone = wh_json:get_value(<<"timezone">>, JObj, ?TEMPORAL_DEFAULT_TIMEZONE)
                                 ,interdigit_timeout =
                                     wh_json:get_integer_value(<<"interdigit_timeout">>
@@ -280,6 +297,23 @@ get_temporal_route(JObj, Call) ->
                                                               ,whapps_call_command:default_interdigit_timeout()
                                                              )
                                }).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Loads rules set from account db.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_rule_set(ne_binary(), whapps_call:call()) -> ne_binaries().
+get_rule_set(RuleSetId, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    lager:info("loading temporal rule set ~s", [RuleSetId]),
+    case couch_mgr:open_cache_doc(AccountDb, RuleSetId) of
+        {'error', _E} ->
+            lager:error("failed to load ~s in ~s", [RuleSetId, AccountDb]),
+            [];
+        {'ok', JObj} -> wh_json:get_value(<<"temporal_rules">>, JObj, [])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -469,8 +503,8 @@ next_rule_date(#rule{cycle = <<"daily">>
                     }, {Y1, M1, D1}) ->
     %% Calculate the distance in days as a function of
     %%   the interval and fix
-    DS0 = date_to_gregorian_days({Y0, M0, D0}),
-    DS1 = date_to_gregorian_days({Y1, M1, D1}),
+    DS0 = calendar:date_to_gregorian_days({Y0, M0, D0}),
+    DS1 = calendar:date_to_gregorian_days({Y1, M1, D1}),
     Offset = trunc( ( DS1 - DS0 ) / I0 ) * I0,
     normalize_date({Y0, M0, D0 + Offset + I0});
 
@@ -716,10 +750,10 @@ normalize_date({Y, M, D}) when M < 1 ->
     normalize_date({Y - 1, M + 12, D});
 normalize_date({Y, M, D}) when D < 1 ->
     {Y1, M1, _} = normalize_date({Y, M - 1, 1}),
-    D0 = last_day_of_the_month(Y1, M1),
+    D0 = calendar:last_day_of_the_month(Y1, M1),
     normalize_date({Y1, M1, D + D0});
 normalize_date({Y, M, D}=Date) ->
-    case last_day_of_the_month(Y, M) of
+    case calendar:last_day_of_the_month(Y, M) of
         Days when D > Days ->
             normalize_date({Y, M + 1, D - Days});
         _ ->
@@ -847,8 +881,8 @@ find_last_weekday({Y, M, _}, Weekday) ->
 date_of_dow(Year, 1, Weekday, Ordinal) ->
     date_of_dow(Year - 1, 13, Weekday, Ordinal);
 date_of_dow(Year, Month, Weekday, Ordinal) ->
-    RefDate = {Year, Month - 1, last_day_of_the_month(Year, Month - 1)},
-    RefDays = date_to_gregorian_days(RefDate),
+    RefDate = {Year, Month - 1, calendar:last_day_of_the_month(Year, Month - 1)},
+    RefDays = calendar:date_to_gregorian_days(RefDate),
     DOW = to_dow(Weekday),
     Occurance = from_ordinal(Ordinal),
     Days = case day_of_the_week(RefDate) of
@@ -859,7 +893,7 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
                RefDOW ->
                    RefDays + abs(DOW - RefDOW) + (7 * Occurance)
           end,
-    {Y, M, D} = gregorian_days_to_date(Days),
+    {Y, M, D} = calendar:gregorian_days_to_date(Days),
     normalize_date({Y, M, D}).
 
 %%--------------------------------------------------------------------
@@ -878,8 +912,8 @@ date_of_dow(Year, Month, Weekday, Ordinal) ->
 %%--------------------------------------------------------------------
 -spec iso_week_difference(wh_date(), wh_date()) -> non_neg_integer().
 iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
-    DS0 = date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y0, M0, D0}))),
-    DS1 = date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y1, M1, D1}))),
+    DS0 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y0, M0, D0}))),
+    DS1 = calendar:date_to_gregorian_days(iso_week_to_gregorian_date(iso_week_number({Y1, M1, D1}))),
     trunc( abs( DS0 - DS1 ) / 7 ).
 
 %%--------------------------------------------------------------------
@@ -890,16 +924,16 @@ iso_week_difference({Y0, M0, D0}, {Y1, M1, D1}) ->
 %%--------------------------------------------------------------------
 -spec iso_week_to_gregorian_date(wh_iso_week()) -> wh_date().
 iso_week_to_gregorian_date({Year, Week}) ->
-    Jan1 = date_to_gregorian_days(Year, 1, 1),
+    Jan1 = calendar:date_to_gregorian_days(Year, 1, 1),
     Offset = 4 - day_of_the_week(Year, 1, 4),
     Days =
         if
             Offset =:= 0 ->
                 Jan1 + ( Week * 7 );
-            true ->
+            'true' ->
                 Jan1 + Offset + ( ( Week - 1 ) * 7 )
         end,
-    gregorian_days_to_date(Days).
+    calendar:gregorian_days_to_date(Days).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -935,20 +969,20 @@ our_iso_week_number({Year,_Month,_Day}=Date) ->
     W01_1_Year = gregorian_days_of_iso_w01_1(Year),
     W01_1_NextYear = gregorian_days_of_iso_w01_1(Year + 1),
     if W01_1_Year =< D andalso D < W01_1_NextYear ->
-            % Current Year Week 01..52(,53)
+            %% Current Year Week 01..52(,53)
             {Year, (D - W01_1_Year) div 7 + 1};
-        D < W01_1_Year ->
-            % Previous Year 52 or 53
+       D < W01_1_Year ->
+            %% Previous Year 52 or 53
             PWN = case day_of_the_week(Year - 1, 1, 1) of
-                4 -> 53;
-                _ -> case day_of_the_week(Year - 1, 12, 31) of
-                        4 -> 53;
-                        _ -> 52
-                     end
-                end,
+                      4 -> 53;
+                      _ -> case day_of_the_week(Year - 1, 12, 31) of
+                               4 -> 53;
+                               _ -> 52
+                           end
+                  end,
             {Year - 1, PWN};
-        W01_1_NextYear =< D ->
-            % Next Year, Week 01
+       W01_1_NextYear =< D ->
+            %% Next Year, Week 01
             {Year + 1, 1}
     end.
 
@@ -957,9 +991,9 @@ gregorian_days_of_iso_w01_1(Year) ->
     D0101 = calendar:date_to_gregorian_days(Year, 1, 1),
     DOW = calendar:day_of_the_week(Year, 1, 1),
     if DOW =< 4 ->
-        D0101 - DOW + 1;
-    true ->
-        D0101 + 7 - DOW + 1
+            D0101 - DOW + 1;
+       'true' ->
+            D0101 + 7 - DOW + 1
     end.
 
 %% day_of_the_week(Year, Month, Day)
