@@ -10,7 +10,7 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,publish_new_job/2
+         ,publish_new_job/1
          ,handle_job/2
         ]).
 -export([init/1
@@ -61,18 +61,26 @@ start_link() ->
                             ,[]
                            ).
 
--spec publish_new_job(ne_binary(), ne_binary()) -> 'ok'.
-publish_new_job(AccountId, JobId) ->
+-spec publish_new_job(cb_context:context()) -> 'ok'.
+publish_new_job(Context) ->
+    AccountId = cb_context:account_id(Context),
+    JobId = wh_json:get_value(<<"_id">>, cb_context:doc(Context)),
+    ReqId = cb_context:req_id(Context),
+
     Work = wh_json:from_list([{<<"Account-ID">>, AccountId}
                               ,{<<"Job-ID">>, JobId}
                              ]),
-    wh_amqp_worker:cast([{<<"Delegate-Message">>, Work}]
+    wh_amqp_worker:cast([{<<"Delegate-Message">>, Work}
+                         ,{<<"Msg-ID">>, ReqId}
+                         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                        ]
                         ,fun(API) -> wapi_delegate:publish_delegate(?APP_ROUTING, API) end
                        ).
 
 -spec handle_job(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_job(JObj, _Props) ->
     'true' = wapi_delegate:delegate_v(JObj),
+    wh_util:put_callid(wh_json:get_first_defined([<<"Msg-ID">>, [<<"Delegate-Message">>, <<"Job-ID">>]], JObj)),
     Job = wh_json:get_value(<<"Delegate-Message">>, JObj),
     process_job(wh_json:get_value(<<"Account-ID">>, Job)
                 ,wh_json:get_value(<<"Job-ID">>, Job)
@@ -80,8 +88,6 @@ handle_job(JObj, _Props) ->
 
 -spec process_job(ne_binary(), ne_binary()) -> 'ok'.
 process_job(<<_/binary>> = AccountId, <<_/binary>> = JobId) ->
-    wh_util:put_callid(JobId),
-
     JobModb = job_modb(AccountId, JobId),
     {'ok', Job} = couch_mgr:open_cache_doc(JobModb, JobId),
 
@@ -95,18 +101,58 @@ maybe_start_job(_Job, <<"complete">>) ->
 maybe_start_job(Job, <<"pending">>) ->
     lager:debug("job is pending, let's execute it!"),
     start_job(update_status(Job, <<"running">>)
-              ,wh_json:get_value(<<"carrier">>, Job)
+              ,wh_json:get_value(<<"pvt_account_id">>, Job)
+              ,wh_json:get_value(<<"pvt_auth_account_id">>, Job)
+              ,carrier_module(wh_json:get_value(<<"pvt_carrier">>, Job))
               ,wh_json:get_value(<<"numbers">>, Job)
              );
 maybe_start_job(Job, <<"running">>) ->
     lager:debug("job is running, ~s is in charge", [wh_json:get_value(<<"pvt_node">>, Job)]).
 
--spec start_job(wh_json:object(), atom(), ne_binaries()) -> 'ok'.
-start_job(Job, _CarrierModule, []) ->
+-spec start_job(wh_json:object(), ne_binary(), ne_binary(), atom(), ne_binaries()) -> 'ok'.
+start_job(Job, _AccountId, _AuthAccountId, _CarrierModule, []) ->
     update_status(Job, <<"complete">>),
     lager:debug("successfully finished job");
-start_job(_Job, _CarrierModule, _Numbers) ->
-    'ok'.
+start_job(Job, AccountId, AuthAccountId, CarrierModule, [Number|Numbers]) ->
+    Job1 = maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number),
+    start_job(Job1, AccountId, AuthAccountId, CarrierModule, Numbers).
+
+-spec maybe_create_number(wh_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
+                                 wh_json:object().
+maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
+    try wh_number_manager:create_number(Number
+                                        ,AccountId
+                                        ,AuthAccountId
+                                        ,wh_json:new()
+                                        ,'false'
+                                        ,CarrierModule
+                                       )
+    of
+        {'ok', NumberJObj} ->
+            lager:debug("successfully created number ~s for account ~s", [Number, AccountId]),
+            update_status(wh_json:set_value([<<"success">>, Number], NumberJObj, Job)
+                          ,<<"running">>
+                         );
+        {Failure, JObj} ->
+            lager:debug("failed to create number ~s for account ~s: ~p ~p", [Number, AccountId, Failure, JObj]),
+            update_status(wh_json:set_value([<<"errors">>, Number], JObj, Job)
+                          ,<<"running">>
+                         )
+    catch
+        E:_R ->
+            lager:debug("exception creating number ~s for account ~s: ~s: ~p", [Number, AccountId, E, _R]),
+            update_status(wh_json:set_value([<<"errors">>, Number]
+                                            ,wh_json:from_list([{<<"reason">>, wh_util:to_binary(E)}
+                                                               ])
+                                            ,Job
+                                           )
+                          ,<<"running">>
+                         )
+    end.
+
+-spec carrier_module(api_binary()) -> ne_binary().
+carrier_module('undefined') -> 'undefined';
+carrier_module(Carrier) -> <<"wnm_", Carrier/binary>>.
 
 -spec update_status(wh_json:object(), ne_binary()) -> wh_json:object().
 update_status(Job, Status) ->
