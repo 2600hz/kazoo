@@ -414,10 +414,20 @@ gateway_to_endpoint(Number, Gateway, JObj) ->
          ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
          ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(Gateway#gateway.progress_timeout)}
          ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-         | whapps_call_command:get_outbound_t38_settings(Gateway#gateway.fax_option
-                                                         ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj)
-                                                        )
+         | maybe_get_t38(Gateway, JObj)
         ])).
+
+-spec maybe_get_t38(gateway(), wh_json:object()) -> wh_proplist().
+maybe_get_t38(Gateway, JObj) ->
+    Flags = wh_json:get_value(<<"Flags">>, JObj, []),
+    case lists:member(<<"fax">>, Flags) of
+        'false' -> [];
+        'true' ->
+            whapps_call_command:get_outbound_t38_settings(
+                Gateway#gateway.fax_option
+                ,wh_json:get_value(<<"Fax-T38-Enabled">>, JObj)
+            )
+    end.
 
 -spec gateway_emergency_resource(gateway()) -> api_binary().
 gateway_emergency_resource(#gateway{is_emergency='true'}) ->

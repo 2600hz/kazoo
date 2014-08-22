@@ -64,7 +64,7 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
                             ,{<<"Flags">>, get_flags(Data, Call)}
                             ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Data)}
-                            ,{<<"Force-Fax">>, get_force_fax(Call)}
+                            ,{<<"Fax-T38-Enabled">>, get_t38_enabled(Call)}
                             ,{<<"SIP-Headers">>,get_sip_headers(Data, Call)}
                             ,{<<"To-DID">>, get_to_did(Data, Call)}
                             ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
@@ -161,8 +161,8 @@ get_sip_headers(Data, Call) ->
 get_ignore_early_media(Data) ->
     wh_util:to_binary(wh_json:is_true(<<"ignore_early_media">>, Data, <<"false">>)).
 
--spec get_force_fax(whapps_call:call()) -> 'undefined' | boolean().
-get_force_fax(Call) ->
+-spec get_t38_enabled(whapps_call:call()) -> 'undefined' | boolean().
+get_t38_enabled(Call) ->
     case cf_endpoint:get(Call) of
         {'ok', JObj} -> wh_json:is_true([<<"media">>, <<"fax_option">>], JObj);
         {'error', _} -> 'undefined'
