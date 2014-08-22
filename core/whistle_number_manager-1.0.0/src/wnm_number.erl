@@ -85,9 +85,10 @@ create_available(#number{auth_by='undefined'}=N) ->
 create_available(#number{number=Number
                          ,auth_by=AuthBy
                          ,number_doc=Doc
+                         ,module_name=ModName
                         }=N) ->
     Num = wnm_util:normalize_number(Number),
-    ModuleName = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"available_module_name">>, <<"wnm_local">>),
+    ModuleName = module_name(ModName),
     Updates = [{<<"_id">>, Num}
                ,{<<"pvt_module_name">>, ModuleName}
                ,{<<"pvt_module_data">>, wh_json:new()}
@@ -98,6 +99,12 @@ create_available(#number{number=Number
               ],
     JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
     json_to_record(JObj, 'true', N).
+
+-spec module_name(api_binary() | atom()) -> ne_binary().
+module_name('undefined') ->
+    whapps_config:get_binary(?WNM_CONFIG_CAT, <<"available_module_name">>, <<"wnm_local">>);
+module_name(M) -> wh_util:to_binary(M).
+
 
 %%--------------------------------------------------------------------
 %% @public
