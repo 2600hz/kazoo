@@ -372,6 +372,7 @@ leak_job_fields(Context) ->
             cb_context:set_resp_data(Context
                                      ,wh_json:set_values([{<<"timestamp">>, wh_json:get_value(<<"pvt_created">>, JObj)}
                                                           ,{<<"status">>, wh_json:get_value(<<"pvt_status">>, JObj)}
+                                                          ,{<<"carrier">>, wh_json:get_value(<<"pvt_carrier">>, JObj)}
                                                          ], cb_context:resp_data(Context))
                                     );
         _Status -> Context
@@ -473,13 +474,11 @@ on_successful_validation(Id, Context) ->
 
 -spec on_successful_job_validation('undefined', cb_context:context()) -> cb_context:context().
 on_successful_job_validation('undefined', Context) ->
-    lager:debug("creating job doc"),
-
     {Year, Month, _} = erlang:date(),
     Id = list_to_binary([wh_util:to_binary(Year)
                          ,wh_util:pad_month(Month)
                          ,"-"
-                         ,wh_util:rand_hex_binary(6)
+                         ,wh_util:rand_hex_binary(8)
                         ]),
 
     cb_context:set_doc(Context
