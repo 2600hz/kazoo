@@ -78,7 +78,6 @@ maybe_start_jobs_listener() ->
 jobs_listener_pid() ->
     whereis('cb_jobs_listener').
 
-
 -spec authorize(cb_context:context()) ->
                        boolean() |
                        {'halt', cb_context:context()}.
@@ -309,9 +308,7 @@ put_job(Context) ->
 
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_jobs_listener:publish_new_job(cb_context:account_id(Context1)
-                                             ,wh_json:get_value(<<"_id">>, cb_context:doc(Context1))
-                                            ),
+            cb_jobs_listener:publish_new_job(Context),
             crossbar_util:response_202(<<"Job scheduled">>, cb_context:resp_data(Context1), Context1);
         _Status ->
             Context1
@@ -485,6 +482,7 @@ on_successful_job_validation('undefined', Context) ->
                        ,wh_json:set_values([{<<"pvt_type">>, <<"resource_job">>}
                                             ,{<<"pvt_status">>, <<"pending">>}
                                             ,{<<"pvt_carrier">>, get_job_carrier(Context)}
+                                            ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
                                             ,{<<"_id">>, Id}
 
                                             ,{<<"successes">>, wh_json:new()}
