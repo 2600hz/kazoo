@@ -8,6 +8,14 @@ Resources represent external assets such as TDM hardware, SIP trunks, transcoder
 
 There are two levels of resources, global (or system-wide), and per-account (bring your own carrier). The JSON format for both is identical; only their location in the Kazoo database structure defines whether they are globally available or not.
 
+## Jobs
+
+It is possible to add numbers, in bulk, to an account using the Jobs API below. If a job fails to run, there is a recovery process that runs periodically to attempt to resume stalled jobs.
+
+You can configure how frequently the system checks for failed jobs in `system_config/crossbar.resources`, using the `job_recover_timeout_s` key (defaults to 6 hours).
+
+You can configure how what is considered a 'stalled' job by defining how old the job is (the last time the job document was modified) relative to the current time. Configure in `system_config/crossbar.resources`, using the `job_recover_threshold_s` key (defaults to 1 hour). If a job is not completed, and hasn't been modified in over an hour, there's a good chance the job executor died. A new job executor will be started to pick up where the old one left off.
+
 ## Crossbar
 
 ### URL Structure

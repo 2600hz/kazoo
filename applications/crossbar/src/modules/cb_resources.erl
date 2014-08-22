@@ -483,6 +483,7 @@ on_successful_job_validation('undefined', Context) ->
                                             ,{<<"pvt_status">>, <<"pending">>}
                                             ,{<<"pvt_carrier">>, get_job_carrier(Context)}
                                             ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
+                                            ,{<<"pvt_request_id">>, cb_context:req_id(Context)}
                                             ,{<<"_id">>, Id}
 
                                             ,{<<"successes">>, wh_json:new()}
