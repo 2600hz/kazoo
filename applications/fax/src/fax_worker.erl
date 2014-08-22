@@ -815,7 +815,7 @@ send_fax(JobId, JObj, Q) ->
                  ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity_number">>, JObj)}
                  ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_identity_name">>, JObj)}
                  ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
-                 ,{<<"Flags">>, wh_json:get_value(<<"flags">>, JObj)}
+                 ,{<<"Flags">>, [<<"fax">> | wh_json:get_value(<<"flags">>, JObj, [])]}
                  ,{<<"Resource-Type">>, <<"originate">>}
                  ,{<<"Msg-ID">>, JobId}
                  ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}

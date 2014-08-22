@@ -682,7 +682,8 @@ get_clid(Endpoint, Properties, Call) ->
 create_sip_endpoint(Endpoint, Properties, Call) ->
     Clid = get_clid(Endpoint, Properties, Call),
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
-    Prop =
+    wh_json:from_list(
+      props:filter_empty(
         [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
          ,{<<"To-User">>, get_to_user(SIPJObj, Properties)}
          ,{<<"To-Username">>, get_to_username(SIPJObj)}
@@ -711,12 +712,29 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
-         ,{<<"Force-Fax">>, get_force_fax(Endpoint)}
          ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
          ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
          ,{<<"Metaflows">>, wh_json:get_value(<<"metaflows">>, Endpoint)}
-        ],
-    wh_json:from_list(props:filter_undefined(Prop)).
+         | maybe_get_t38(Endpoint, Call)
+        ])).
+
+
+-spec maybe_get_t38(wh_json:object(), wh_json:object()) -> wh_proplist().
+maybe_get_t38(Endpoint, Call) ->
+    Opt =
+        case cf_endpoint:get(Call) of
+            {'ok', JObj} -> wh_json:is_true([<<"media">>, <<"fax_option">>], JObj);
+            {'error', _} -> 'undefined'
+        end,
+    DeviceType = wh_json:get_value(<<"device_type">>, Endpoint),
+    case DeviceType =:= <<"fax">> of
+        'false' -> [];
+        'true' ->
+            whapps_call_command:get_inbound_t38_settings(
+                Opt
+                ,wh_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
+            )
+    end.
 
 
 -spec maybe_build_failover(wh_json:object(), whapps_call:call()) -> api_object().
@@ -1062,13 +1080,6 @@ get_codecs(JObj) ->
     of
         [] -> 'undefined';
         Codecs -> Codecs
-    end.
-
--spec get_force_fax(wh_json:object()) -> api_binary().
-get_force_fax(JObj) ->
-    case wh_json:is_true([<<"media">>, <<"fax_option">>], JObj) of
-        'false' -> 'undefined';
-        'true' -> <<"self">>
     end.
 
 -spec get_ignore_completed_elsewhere(wh_json:object()) -> boolean().
