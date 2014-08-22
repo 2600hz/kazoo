@@ -70,7 +70,7 @@
                ,start_date = ?RULE_DEFAULT_START_DATE :: wh_date()
                ,wtime_start = ?RULE_DEFAULT_WTIME_START :: non_neg_integer()
                ,wtime_stop = ?RULE_DEFAULT_WTIME_STOP :: non_neg_integer()
-               ,rule_set :: boolean() | false
+               ,rule_set  = 'false' :: boolean()
               }).
 -type rule() :: #rule{}.
 -type rules() :: [rule(),...] | [].

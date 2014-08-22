@@ -71,18 +71,26 @@ resource_exists(_) -> true.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context) ->
+   validate_set(Context, cb_context:req_verb(Context)).
+
+validate(Context, DocId) ->
+    validate_set(Context, cb_context:req_verb(Context), DocId).
+
+-spec validate_set(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate_set(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate_set(Context, ?HTTP_GET) ->
     summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_set(Context, ?HTTP_PUT) ->
     create(Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, DocId) ->
+validate_set(Context, ?HTTP_GET, DocId) ->
     read(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, DocId) ->
+validate_set(Context, ?HTTP_POST, DocId) ->
     update(DocId, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, DocId) ->
+validate_set(Context, ?HTTP_DELETE, DocId) ->
     read(DocId, Context).
 
 -spec post(#cb_context{}, path_token()) -> #cb_context{}.

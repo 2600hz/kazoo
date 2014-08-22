@@ -19,7 +19,8 @@
             "required": false,
             "name": "Temporal Rules",
             "description": "Rules",
-            "itmes": {
+            "minimum":1,
+            "items": {
                 "type": "string",
                 "required": false
             }
