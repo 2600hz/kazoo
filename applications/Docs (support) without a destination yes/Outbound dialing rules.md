@@ -5,6 +5,9 @@ Language: en-US
 */
 // Please note that My English is rather crappy and i dont use a spell checker, feel free to adjust, but dont comment on any errors ))
 
+
+The picture of the porta way of doing it is just to give u a clue on what can be done, i had no better example at hand
+
 Since version (version here) Kazoo has better support for Internationalisation.
 In perspective to this document we are speaking about the ability to dial as if u are local.
 Kazoo can be used with clients acounts from all over the globe, so we needed a way to deal with that.
@@ -15,6 +18,9 @@ One can set dial paterns on
  Account level
  User level
  Device level
+ 
+in the database of your install: accounts>users>device
+
  
 The order in which we handle them is Device -> User -> Account.
 ----------------------------------------------------------------
@@ -53,6 +59,8 @@ What happens if u set different rules in the three docs is also unknown to me, i
 One might be able to create really great regexes that would catch all for a region, country or even better!
 If u did, please share them!!! U can fork this repo via git and commit the changes, 
 if thats too much u can email them to info@yumminova.eu and ill put them here with a big thumbs up.
+
+Please dont forget to issue a sup XXXXX command when done 
 
 Curtains close
 
