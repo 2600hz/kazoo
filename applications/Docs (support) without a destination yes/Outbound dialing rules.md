@@ -28,7 +28,7 @@ The order in which we handle them is Device -> User -> Account.
 Example
 ----------------------------------------------------------------
 
-dial_plan : {
+"dial_plan" : {
    "^(\\d{9})$": {
        "description": "Portugal",
        "prefix": "+351"
