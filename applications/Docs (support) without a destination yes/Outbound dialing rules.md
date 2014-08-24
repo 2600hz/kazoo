@@ -6,13 +6,18 @@ Language: en-US
 // Please note that My English is rather crappy and i dont use a spell checker, feel free to adjust, but dont comment on any errors ))
 
 
-The picture of the porta way of doing it is just to give u a clue on what can be done, i had no better example at hand
+//The picture of the porta way of doing it is just to give u a clue on what can be done, i had no better example at hand
+//ToDo at the bottom if this page
 
 Since version (version here) Kazoo has better support for Internationalisation.
 In perspective to this document we are speaking about the ability to dial as if u are local.
 Kazoo can be used with clients acounts from all over the globe, so we needed a way to deal with that.
 We created dial patterns, so that u can set some rules on how outbound dialed numbers are manipulated so that it will work.
 One can also set those kind of rules on many Devices such as SIP phones, we think it should be done on the platform.
+
+
+
+
 
 One can set dial paterns on
  Account level
@@ -63,6 +68,9 @@ if thats too much u can email them to info@yumminova.eu and ill put them here wi
 Please dont forget to issue a sup XXXXX command when done 
 
 Curtains close
+
+//ToDo
+Explain where to find those database documents. Its very unclear as an acount has so many (ugly named) documents, its hard to tell what is what
 
 
 
