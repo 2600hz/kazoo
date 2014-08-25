@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(firewall).
+-module(blacklist).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -24,7 +24,7 @@
 start_link() ->
     _ = start_deps(),
     _ = declare_exchanges(),
-    firewall_sup:start_link().
+    blacklist_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public

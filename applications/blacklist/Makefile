@@ -1,4 +1,4 @@
-PROJECT = firewall
+PROJECT = blacklist
 ROOT = ../..
 REBAR = $(ROOT)/utils/rebar/rebar
 DIALYZER = dialyzer

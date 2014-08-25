@@ -1,4 +1,4 @@
-{application, firewall,
+{application, blacklist,
  [
   {description, "Skel - A skeleton application useful for quickly creating services"},
   {vsn, "0.0.1"},
@@ -8,6 +8,6 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { firewall_app, []}},
+  {mod, { blacklist_app, []}},
   {env, []}
  ]}.

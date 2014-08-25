@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(firewall_app).
+-module(blacklist_app).
 
 -behaviour(application).
 
@@ -22,7 +22,7 @@
 -spec start(term(), term()) ->
                    {'ok', pid()} |
                    {'error', startlink_err()}.
-start(_Type, _Args) -> firewall:start_link().
+start(_Type, _Args) -> blacklist:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -31,4 +31,4 @@ start(_Type, _Args) -> firewall:start_link().
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(term()) -> 'ok'.
-stop(_State) -> firewall:stop().
+stop(_State) -> blacklist:stop().

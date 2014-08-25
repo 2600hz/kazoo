@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(fw_utils).
+-module(bl_utils).
 
 -export([get_global_action/1]).
 -export([get_account_action/2]).
@@ -14,17 +14,28 @@
 -export([update_account_cache/1]).
 
 -define(ACCOUNT_CACHE_KEY(AccountId, CallerId), {AccountId, CallerId}).
--define(DEFAULT_ACTION, <<"hangup">>).
+-define(DEFAULT_ACTION, <<"error">>).
 
--include("firewall.hrl").
+-include("blacklist.hrl").
 
-
-
-get_global_action(_CallerId) ->
-    {'error', 'not_handle'}.
+get_global_action(CallerId) ->
+    lager:debug("getting action from global options"),
+    case whapps_config:get(?CONFIG_CAT, <<"caller_id_numbers">>, []) of
+        [] -> {'error', 'undefined'};
+        CallerIds ->
+            io:format("bl_utils.erl:MARKER:28 ~p~n", [CallerIds]),
+            case lists:member(CallerId, CallerIds) of
+                'false' -> {'error', 'undefined'};
+                'true' ->
+                    Action = whapps_config:get(?CONFIG_CAT, <<"action">>, ?DEFAULT_ACTION),
+                    io:format("bl_utils.erl:MARKER:33 ~p~n", [Action]),
+                    {'ok', Action}
+            end
+    end.
 
 get_account_action(CallerId, AccountId) ->
-    case wh_cache:fetch_local(?FIREWALL_CACHE, ?ACCOUNT_CACHE_KEY(AccountId, CallerId)) of
+    lager:debug("getting action from account ~p", [AccountId]),
+    case wh_cache:fetch_local(?BLACKLIST_CACHE, ?ACCOUNT_CACHE_KEY(AccountId, CallerId)) of
         {'ok', _}=R ->
             lager:debug("got action from cache"),
             R;
@@ -39,14 +50,14 @@ get_action_from_account(AccountId, CallerId) ->
             lager:error("failed to load ~s in ~s : ~p", [AccountId, AccountDb, _E]),
             R;
         {'ok', JObj} ->
-            case wh_json:get_value([<<"firewall">>, <<"caller_id_numbers">>], JObj) of
+            case wh_json:get_value([<<"blacklist">>, <<"caller_id_numbers">>], JObj) of
                 'undefined' -> {'error', 'undefined'};
                 CallerIds ->
                     case lists:member(CallerId, CallerIds) of
                         'false' -> {'error', 'undefined'};
                         'true' ->
                             spawn(?MODULE, 'update_account_cache', [AccountId]),
-                            {'ok', wh_json:get_value([<<"firewall">>, <<"action">>], JObj, ?DEFAULT_ACTION)}
+                            {'ok', wh_json:get_value([<<"blacklist">>, <<"action">>], JObj, ?DEFAULT_ACTION)}
                     end
             end
     end.
@@ -57,15 +68,15 @@ update_account_cache(AccountId) ->
         {'error', _E} ->
             lager:error("failed to load ~s in ~s : ~p", [AccountId, AccountDb, _E]);
         {'ok', JObj} ->
-            case wh_json:get_value([<<"firewall">>, <<"caller_id_numbers">>], JObj) of
+            case wh_json:get_value([<<"blacklist">>, <<"caller_id_numbers">>], JObj) of
                 'undefined' ->
                     lager:error("caller_id_numbers is not set for account ~s", [AccountId]);
                 CallerIds ->
                     lists:foreach(
                         fun(CallerId) ->
-                            Action = wh_json:get_value([<<"firewall">>, <<"action">>], JObj, ?DEFAULT_ACTION),
+                            Action = wh_json:get_value([<<"blacklist">>, <<"action">>], JObj, ?DEFAULT_ACTION),
                             Key = ?ACCOUNT_CACHE_KEY(AccountId, CallerId),
-                            wh_cache:store_local(?FIREWALL_CACHE, Key, Action),
+                            wh_cache:store_local(?BLACKLIST_CACHE, Key, Action),
                             lager:debug("stored ~p with action ~p", [Key, Action])
                         end
                         ,CallerIds

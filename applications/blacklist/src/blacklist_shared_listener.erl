@@ -6,7 +6,7 @@
 %%% @contributors
 %%% Peter Defebvre
 %%%-------------------------------------------------------------------
--module(firewall_shared_listener).
+-module(blacklist_shared_listener).
 
 -behaviour(gen_listener).
 
@@ -20,17 +20,17 @@
          ,code_change/3
         ]).
 
--include("firewall.hrl").
+-include("blacklist.hrl").
 
 -record(state, {}).
 
 -define(BINDINGS, [{'route', []}
                    ,{'self', []}
                   ]).
--define(RESPONDERS, [{'firewall_route_req', [{<<"dialplan">>, <<"route_req">>}]}
-                     ,{'firewall_route_win', [{<<"dialplan">>, <<"route_win">>}]}
+-define(RESPONDERS, [{'blacklist_route_req', [{<<"dialplan">>, <<"route_req">>}]}
+                     ,{'blacklist_route_win', [{<<"dialplan">>, <<"route_win">>}]}
                     ]).
--define(QUEUE_NAME, <<"firewall_listener">>).
+-define(QUEUE_NAME, <<"blacklist_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 

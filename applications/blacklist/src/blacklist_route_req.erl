@@ -6,14 +6,14 @@
 %%% @contributors
 %%%   Peter Defebvre
 %%%-------------------------------------------------------------------
--module(firewall_route_req).
+-module(blacklist_route_req).
 
 -export([handle_req/2]).
 
 
 -define(ACCOUNT_CACHE_KEY(AccountId, CallerId), {AccountId, CallerId}).
 
--include("firewall.hrl").
+-include("blacklist.hrl").
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, Props) ->
@@ -23,15 +23,15 @@ handle_req(JObj, Props) ->
     Call = whapps_call:from_route_req(JObj),
     case get_action(Call) of
         {'error', _M} ->
-            lager:debug("firewall does not know what to do with this: ~p", [_M]);
+            lager:debug("blacklist does not know what to do with this: ~p", [_M]);
         {'ok', Action} -> excute_action(Action, JObj, Call, Props)
     end.
 
 get_action(Call) ->
     CallerId = whapps_call:caller_id_number(Call),
-    case whapps_call:custom_channel_var(<<"Account-ID">>, Call) of
-        'undefined' -> fw_utils:get_global_action(CallerId);
-        AccountId -> fw_utils:get_account_action(CallerId, AccountId)
+    case whapps_call:custom_channel_var(<<"Account-IDs">>, Call) of
+        'undefined' -> bl_utils:get_global_action(CallerId);
+        AccountId -> bl_utils:get_account_action(CallerId, AccountId)
     end.
 
 excute_action(<<"hangup">>, JObj, _Call, Props) ->
@@ -53,5 +53,5 @@ send_route_response(ControllerQ, JObj, Method) ->
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
     whapps_util:amqp_pool_send(Resp, Publisher),
-    lager:info("firewall knows how to route the call! sent ~s response", [Method]).
+    lager:info("blacklist knows how to route the call! sent ~s response", [Method]).
 

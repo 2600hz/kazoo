@@ -5,18 +5,18 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(firewall_sup).
+-module(blacklist_sup).
 
 -behaviour(supervisor).
 
 -export([start_link/0]).
 -export([init/1]).
 
--include("firewall.hrl").
+-include("blacklist.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('firewall_cache')
-                   ,?WORKER('firewall_shared_listener')
+-define(CHILDREN, [?CACHE('blacklist_cache')
+                   ,?WORKER('blacklist_shared_listener')
                   ]).
 
 %% ===================================================================
