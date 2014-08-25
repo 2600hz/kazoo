@@ -65,7 +65,12 @@ One might be able to create really great regexes that would catch all for a regi
 If u did, please share them!!! U can fork this repo via git and commit the changes, 
 if thats too much u can email them to info@yumminova.eu and ill put them here with a big thumbs up.
 
-Please dont forget to issue a sup XXXXX command when done 
+Please dont forget to issue 
+sup callflow_maintenance flush
+sup crossbar_maintenance flush
+sup whistle_couch_maintenance flush
+
+command when done 
 
 Curtains close
 
