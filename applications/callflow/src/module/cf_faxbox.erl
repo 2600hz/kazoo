@@ -37,4 +37,4 @@ handle(Data, Call) ->
 
 -spec get_faxbox_id(wh_json:object()) -> api_binary().
 get_faxbox_id(JObj) ->
-    wh_json:get_first_defined([<<"faxbox_id">>, <<"id">>], JObj).
+    wh_json:get_first_defined([<<"id">>, <<"faxbox_id">>], JObj).
