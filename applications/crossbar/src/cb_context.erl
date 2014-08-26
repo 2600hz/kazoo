@@ -114,13 +114,13 @@ account_id(#cb_context{account_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
 
 account_modb(Context) ->
-    wh_util:format_account_mod_id(account_id(Context)).
+    kazoo_modb:get_modb(account_id(Context)).
 account_modb(Context, {_,_,_}=Timestamp) ->
-    wh_util:format_account_mod_id(account_id(Context), Timestamp);
+    kazoo_modb:get_modb(account_id(Context), Timestamp);
 account_modb(Context, Timestamp) when is_integer(Timestamp), Timestamp > 0 ->
-    wh_util:format_account_mod_id(account_id(Context), Timestamp).
+    kazoo_modb:get_modb(account_id(Context), Timestamp).
 account_modb(Context, Year, Month) ->
-    wh_util:format_account_mod_id(account_id(Context), Year, Month).
+    kazoo_modb:get_modb(account_id(Context), Year, Month).
 
 account_realm(Context) ->
     wh_json:get_value(<<"pvt_realm">>, account_doc(Context)).

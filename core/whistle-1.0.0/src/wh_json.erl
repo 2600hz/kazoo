@@ -381,7 +381,7 @@ get_atom_value(Key, JObj, Default) ->
         Value -> wh_util:to_atom(Value)
     end.
 
--spec get_integer_value(key(), object() | objects()) -> 'undefined' | integer().
+-spec get_integer_value(key(), object() | objects()) -> api_integer().
 get_integer_value(Key, JObj) ->
     case get_value(Key, JObj) of
         'undefined' -> 'undefined';

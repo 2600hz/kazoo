@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%%  Delegate job from one app to another app.
@@ -26,14 +26,19 @@
 
 -type maybe_key() :: ne_binary() | 'undefined'.
 
--define(DELEGATE_ROUTING_KEY(App, Key), <<?APIKEY/binary, ".", App/binary, ".", Key/binary>>).
--define(DELEGATE_ROUTING_KEY(App), <<?APIKEY/binary, ".", App/binary>>).
+-define(DELEGATE_ROUTING_KEY(App, Key), <<?APIKEY/binary, "."
+                                          ,(amqp_util:encode(App))/binary, "."
+                                          ,(amqp_util:encode(Key))/binary
+                                        >>).
+-define(DELEGATE_ROUTING_KEY(App), <<?APIKEY/binary, "."
+                                     ,(amqp_util:encode(App))/binary
+                                   >>).
 
 -define(DELEGATE_HEADERS, [<<"Delegate-Message">>]).
 -define(OPTIONAL_DELEGATE_HEADERS, []).
 -define(DELEGATE_VALUES, [{<<"Event-Category">>, <<"delegate">>}
-                        ,{<<"Event-Name">>, <<"job">>}
-                       ]).
+                          ,{<<"Event-Name">>, <<"job">>}
+                         ]).
 -define(DELEGATE_TYPES, []).
 
 %%--------------------------------------------------------------------
@@ -62,7 +67,7 @@ bind_q(Q, Props) ->
     bind_q(Q, App, Key).
 bind_q(Q, <<_/binary>> = App, 'undefined') ->
     amqp_util:bind_q_to_whapps(Q, ?DELEGATE_ROUTING_KEY(App));
-bind_q(Q, <<_/binary>> = App, Key) ->
+bind_q(Q, <<_/binary>> = App, <<_/binary>> = Key) ->
     amqp_util:bind_q_to_whapps(Q, ?DELEGATE_ROUTING_KEY(App, Key)).
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
@@ -73,7 +78,7 @@ unbind_q(Q, Props) ->
     unbind_q(Q, App, Key).
 unbind_q(Q, <<_/binary>> = App, 'undefined') ->
     amqp_util:unbind_q_from_whapps(Q, ?DELEGATE_ROUTING_KEY(App));
-unbind_q(Q, <<_/binary>> = App, Key) ->
+unbind_q(Q, <<_/binary>> = App, <<_/binary>> = Key) ->
     amqp_util:unbind_q_from_whapps(Q, ?DELEGATE_ROUTING_KEY(App, Key)).
 
 %%--------------------------------------------------------------------
