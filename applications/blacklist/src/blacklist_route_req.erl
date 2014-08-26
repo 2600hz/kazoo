@@ -34,8 +34,10 @@ get_action(Call) ->
         AccountId -> bl_utils:get_account_action(CallerId, AccountId)
     end.
 
-excute_action(<<"hangup">>, JObj, _Call, Props) ->
+excute_action(<<"hangup">>, JObj, Call, Props) ->
     ControllerQ = props:get_value('queue', Props),
+    UpdatedCall = whapps_call:kvs_store(<<"blacklist_action">>, <<"hangup">>, Call),
+    whapps_call:cache(UpdatedCall, ?APP_NAME),
     send_route_response(ControllerQ, JObj, <<"park">>);
 excute_action(<<"error">>, JObj, _Call, Props) ->
     ControllerQ = props:get_value('queue', Props),

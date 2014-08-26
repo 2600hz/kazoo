@@ -23,12 +23,10 @@ get_global_action(CallerId) ->
     case whapps_config:get(?CONFIG_CAT, <<"caller_id_numbers">>, []) of
         [] -> {'error', 'undefined'};
         CallerIds ->
-            io:format("bl_utils.erl:MARKER:28 ~p~n", [CallerIds]),
             case lists:member(CallerId, CallerIds) of
                 'false' -> {'error', 'undefined'};
                 'true' ->
                     Action = whapps_config:get(?CONFIG_CAT, <<"action">>, ?DEFAULT_ACTION),
-                    io:format("bl_utils.erl:MARKER:33 ~p~n", [Action]),
                     {'ok', Action}
             end
     end.
