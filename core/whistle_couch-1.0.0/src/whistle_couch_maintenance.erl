@@ -11,6 +11,8 @@
 -include("wh_couch.hrl").
 
 -export([flush/0
+         ,flush/1
+         ,flush/2
          ,start_auto_compaction/0
          ,stop_auto_compaction/0
          ,compaction_status/0
@@ -28,8 +30,20 @@
 
 -export([change_api_url/2, change_api_url/3]).
 
+-spec flush() -> 'ok'.
+-spec flush(ne_binary()) -> 'ok'.
+-spec flush(ne_binary(), ne_binary()) -> 'ok'.
 flush() ->
-    wh_cache:flush_local(?WH_COUCH_CACHE).
+    _ = couch_mgr:flush_cache_docs(),
+    io:format("flushed all cached docs from Couch~n").
+
+flush(Account) ->
+    _ = couch_mgr:flush_cache_docs(wh_util:format_account_id(Account, 'encoded')),
+    io:format("flushed all docs cached for account ~s~n", [Account]).
+
+flush(Account, DocId) ->
+    _ = couch_mgr:flush_cache_doc(wh_util:format_account_id(Account, 'encoded'), DocId),
+    io:format("flushed cached doc ~s for account ~s~n", [DocId, Account]).
 
 start_auto_compaction() ->
     couch_compactor_fsm:start_auto_compaction().
