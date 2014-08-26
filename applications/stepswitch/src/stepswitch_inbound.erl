@@ -38,7 +38,6 @@ maybe_relay_request(JObj) ->
         {'error', _R} ->
             lager:info("unable to determine account for ~s: ~p", [Number, _R]);
         {'ok', _, NumberProps} ->
-            lager:debug("relaying route request"),
             Routines = [fun set_account_id/2
                         ,fun set_ignore_display_updates/2
                         ,fun set_inception/2
@@ -297,8 +296,13 @@ maybe_lookup_cnam(NumberProps, JObj) ->
 -spec relay_request(wh_proplist(), wh_json:object()) ->
                            wh_json:object().
 relay_request(_NumberProps, JObj) ->
-    wapi_route:publish_req(JObj),
-    JObj.
+    case is_blacklisted(JObj) of
+        'true' -> JObj;
+        'false' ->
+            lager:debug("relaying route request"),
+            wapi_route:publish_req(JObj),
+            JObj
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -321,3 +325,63 @@ maybe_transition_port_in(NumberProps, JObj) ->
                 end
         end,
     JObj.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_blacklisted(wh_json:object()) -> wh_json:object().
+is_blacklisted(JObj) ->
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    case get_blacklists(AccountId) of
+        {'error', _R} ->
+            lager:debug("not blacklisted ~p", [_R]),
+            'false';
+        {'ok', Blacklists} ->
+            Blacklist = get_blacklist(AccountId, Blacklists),
+            Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
+            case wh_json:get_value(Number, Blacklist) of
+                'undefined' ->
+                    lager:debug("~p not blacklisted, did not match any rule", [Number]),
+                    'false';
+                _Rule ->
+                    lager:info("~p is blacklisted", [Number]),
+                    'true'
+            end
+    end.
+
+-spec get_blacklists(ne_binary()) -> {'error', any()} | {'ok', ne_binaries()}.
+get_blacklists(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _R}=E ->
+            lager:error("could not open ~s in ~s: ~p", [AccountId, AccountDb, _R]),
+            E;
+        {'ok', Doc} ->
+            case wh_json:get_value(<<"blacklists">>, Doc, []) of
+                [] -> {'error', 'undefined'};
+                [_|_]=Blacklists-> {'ok', Blacklists};
+                _ -> {'error', 'miss_configured'}
+            end
+    end.
+
+-spec get_blacklist(ne_binary(), ne_binaries()) -> wh_json:object().
+get_blacklist(AccountId, Blacklists) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    lists:foldl(
+        fun(BlacklistId, Acc) ->
+            case couch_mgr:open_cache_doc(AccountDb, BlacklistId) of
+                {'error', _R} ->
+                    lager:error("could not open ~s in ~s: ~p", [BlacklistId, AccountDb, _R]),
+                    Acc;
+                {'ok', Doc} ->
+                    Numbers = wh_json:get_value(<<"caller_id_numbers">>, Doc, wh_json:new()),
+                    wh_json:merge_jobjs(Acc, Numbers)
+            end
+        end
+        ,wh_json:new()
+        ,Blacklists
+    ).
+
