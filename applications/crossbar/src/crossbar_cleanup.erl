@@ -263,10 +263,15 @@ start_cleanup_timer() ->
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
     start_timer(Expiry*1000, 'cleanup').
 
+-spec start_minute_timer() -> reference().
 start_minute_timer() ->
     start_timer(?MILLISECONDS_IN_MINUTE, 'minute_cleanup').
+
+-spec start_hour_timer() -> reference().
 start_hour_timer() ->
     start_timer(?MILLISECONDS_IN_HOUR, 'hour_cleanup').
+
+-spec start_day_timer() -> reference().
 start_day_timer() ->
     start_timer(?MILLISECONDS_IN_DAY, 'day_cleanup').
 
@@ -277,25 +282,25 @@ cleanup_soft_deletes(Account) ->
         'false' -> cleanup_db_soft_deletes(Account)
     end.
 
+-spec cleanup_account_soft_deletes(ne_binary()) -> 'ok'.
 cleanup_account_soft_deletes(Account) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     do_cleanup(AccountDb).
-cleanup_db_soft_deletes(Db) ->
-    do_cleanup(Db).
 
+-spec cleanup_db_soft_deletes(ne_binary()) -> 'ok'.
+cleanup_db_soft_deletes(_Db) ->
+    'ok'. %% no longer checking other dbs for soft deletes
+
+-spec do_cleanup(ne_binary()) -> 'ok'.
 do_cleanup(Db) ->
     case couch_mgr:get_results(Db, <<"maintenance/soft_deletes">>, [{'limit', 1000}]) of
         {'ok', []} -> 'ok';
         {'ok', L} ->
             lager:debug("removing ~b soft-deleted docs from ~s", [length(L), Db]),
-            couch_mgr:del_docs(Db, L);
+            _ = couch_mgr:del_docs(Db, L),
+            'ok';
         {'error', 'not_found'} ->
-            lager:debug("db ~s or view 'maintenance/soft_deletes' not found", [Db]),
-            try whapps_maintenance:refresh(Db) of
-                OK -> lager:debug("maintenance refresh: ~p", [OK])
-            catch
-                _E:_R -> lager:debug("maintenance refresh died: ~s: ~p", [_E, _R])
-            end;
+            lager:warning("db ~s or view 'maintenance/soft_deletes' not found", [Db]);
         {'error', _E} ->
             lager:debug("failed to lookup soft-deleted tokens: ~p", [_E])
     end.
