@@ -502,12 +502,15 @@ process_cmd(Node, Options, JObj, Acc0) ->
                         process_cmd(Node, Options, ApiCmd, ApiArg, Acc)
                 end, Acc0, JObj).
 
--spec process_cmd(atom(), wh_proplist(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
+-spec process_cmd(atom(), wh_proplist(), ne_binary(), wh_json:json_term(), cmd_results()) -> cmd_results().
+-spec process_cmd(atom(), wh_proplist(), ne_binary(), wh_json:json_term(), cmd_results(), 'list'|'binary') -> cmd_results().
 process_cmd(Node, Options, ApiCmd0, ApiArg, Acc) ->
     process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'binary').
 process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat).
 
+-spec execute_command(atom(), wh_proplist(), ne_binary(), wh_json:json_term(), cmd_results(), 'list'|'binary') ->
+                             cmd_results().
 execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     ApiCmd = wh_util:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
     lager:debug("exec ~s on ~s", [ApiCmd, Node]),
@@ -526,9 +529,11 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
             [Error | Acc]
     end.
 
+-spec format_args('list'|'binary', api_terms()) -> api_terms().
 format_args('list', Args) -> wh_util:to_list(Args);
 format_args('binary', Args) -> wh_util:to_binary(Args).
 
+-spec process_resp(atom(), api_terms(), ne_binaries(), cmd_results()) -> cmd_results().
 process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, Acc);
 process_resp(ApiCmd, ApiArg, [<<"+OK Reloading XML">>|Resps], Acc) ->
@@ -546,8 +551,14 @@ process_resp(ApiCmd, ApiArg, [<<"-ERR ", Err/binary>>|Resps], Acc) ->
     end;
 process_resp(_, _, [], Acc) -> Acc.
 
+-spec was_bad_error(ne_binary(), atom(), _) -> boolean().
 was_bad_error(<<"[Module already loaded]">>, 'load', _) -> 'false';
 was_bad_error(_E, _, _) -> 'true'.
+
+-spec was_not_successful_cmd({'ok', _} |
+                             {'ok', _, _} |
+                             _
+                            ) -> boolean().
 
 was_not_successful_cmd({'ok', _}) -> 'false';
 was_not_successful_cmd({'ok', _, _}) -> 'false';
