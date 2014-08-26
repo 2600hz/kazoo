@@ -452,16 +452,16 @@ is_restarting_status(UP) ->
 -spec run_start_cmds(atom(), wh_proplist(), pid(), boolean() | wh_json:objects()) -> 'ok'.
 run_start_cmds(Node, Options, Parent, 'true') ->
     lager:debug("node ~s is considered restarting", [Node]),
+    run_start_cmds(Node, Options, Parent
+                   ,ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node)
+                  );
+run_start_cmds(Node, Options, Parent, 'false') ->
+    lager:debug("node ~s is not considered restarting, trying reconnect cmds first", [Node]),
     Cmds = case ecallmgr_config:get(<<"fs_reconnect_cmds">>) of
                'undefined' -> ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node);
                ReconCmds -> ReconCmds
            end,
     run_start_cmds(Node, Options, Parent, Cmds);
-run_start_cmds(Node, Options, Parent, 'false') ->
-    lager:debug("node ~s is not considered restarting", [Node]),
-    run_start_cmds(Node, Options, Parent
-                   ,ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node)
-                  );
 run_start_cmds(Node, Options, Parent, Cmds) ->
     Res = process_cmds(Node, Options, Cmds),
 
