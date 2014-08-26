@@ -55,7 +55,6 @@
                ,connected = 'false' :: boolean()
                ,client_version :: api_binary()
                ,options = [] :: wh_proplist()
-               ,reconnecting = 'false' :: boolean()
               }).
 -type fs_node() :: #node{}.
 
@@ -560,9 +559,7 @@ handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
     gen_server:cast(Srv, {'remove_capabilities', NodeName}),
     case maybe_connect_to_node(Node) of
         {'error', _} ->
-            _ = gen_listener:cast(Srv, {'update_node', Node#node{connected='false'
-                                                                 ,reconnecting='true'
-                                                                }}),
+            _ = gen_listener:cast(Srv, {'update_node', Node#node{connected='false'}}),
             _ = maybe_start_node_pinger(Node),
             'ok';
         'ok' ->
@@ -599,11 +596,9 @@ maybe_start_node_handlers(#node{node=NodeName
                                 ,client_version=Version
                                 ,cookie=Cookie
                                 ,options=Props
-                                ,reconnecting=Reconnecting
                                }=Node) ->
     try ecallmgr_fs_sup:add_node(NodeName, [{'cookie', Cookie}
                                             ,{'client_version', Version}
-                                            ,{'reconnecting', Reconnecting}
                                             | props:delete('cookie', Props)
                                            ])
     of

@@ -34,6 +34,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(UPTIME_S, ecallmgr_config:get_integer(<<"fs_node_uptime_s">>, 600)).
+
 -record(interface, {name
                     ,domain_name
                     ,auto_nat
@@ -284,7 +286,7 @@ init([Node, Options]) ->
     lager:debug("running start commands in ~p", [PidRef]),
 
     {'ok', #state{node=Node
-                  ,options=props:delete('reconnecting', Options)
+                  ,options=Options
                   ,start_cmds_pid_ref=PidRef
                  }}.
 
@@ -420,15 +422,47 @@ run_start_cmds(Node, Options, Parent) ->
     wh_util:put_callid(Node),
     timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5000, Node)),
 
-    Cmds = case props:get_is_true('reconnecting', Options) of
-              'false' -> ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node);
-              'true' ->
-                  case ecallmgr_config:get(<<"fs_reconnect_cmds">>) of
-                      'undefined' -> ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node);
-                      ReconCmds -> ReconCmds
-                  end
-           end,
+    run_start_cmds(Node, Options, Parent, is_restarting(Node)).
 
+-spec is_restarting(atom()) -> boolean().
+is_restarting(Node) ->
+    case freeswitch:api(Node, 'status', <<>>) of
+        {'ok', Status} ->
+            [UP|_] = binary:split(Status, <<"\n">>),
+            is_restarting_status(UP);
+        _E ->
+            lager:debug("failed to get status of node ~s: ~p", [Node, _E]),
+            'false'
+    end.
+
+-spec is_restarting_status(ne_binary()) -> boolean().
+is_restarting_status(UP) ->
+    case re:run(UP, <<"UP (\\d+) years, (\\d+) days, (\\d+) hours, (\\d+) minutes, (\\d+) seconds, (\\d+) milliseconds, (\\d+) microseconds">>, [{'capture', 'all_but_first', 'binary'}]) of
+        {'match', [Years, Days, Hours, Minutes, Seconds, _Mille, _Micro]} ->
+            Uptime = (wh_util:to_integer(Years) * ?SECONDS_IN_YEAR)
+                + (wh_util:to_integer(Days) * ?SECONDS_IN_DAY)
+                + (wh_util:to_integer(Hours) * ?SECONDS_IN_HOUR)
+                + (wh_util:to_integer(Minutes) * ?SECONDS_IN_MINUTE)
+                + wh_util:to_integer(Seconds),
+            lager:debug("node has been up for ~b s (considered restarting: ~s)", [Uptime, Uptime < ?UPTIME_S]),
+            Uptime < ?UPTIME_S;
+        'nomatch' -> 'false'
+    end.
+
+-spec run_start_cmds(atom(), wh_proplist(), pid(), boolean() | wh_json:objects()) -> 'ok'.
+run_start_cmds(Node, Options, Parent, 'true') ->
+    lager:debug("node ~s is considered restarting", [Node]),
+    Cmds = case ecallmgr_config:get(<<"fs_reconnect_cmds">>) of
+               'undefined' -> ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node);
+               ReconCmds -> ReconCmds
+           end,
+    run_start_cmds(Node, Options, Parent, Cmds);
+run_start_cmds(Node, Options, Parent, 'false') ->
+    lager:debug("node ~s is not considered restarting", [Node]),
+    run_start_cmds(Node, Options, Parent
+                   ,ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node)
+                  );
+run_start_cmds(Node, Options, Parent, Cmds) ->
     Res = process_cmds(Node, Options, Cmds),
 
     case is_list(Res) andalso lists:filter(fun was_not_successful_cmd/1, Res) of
