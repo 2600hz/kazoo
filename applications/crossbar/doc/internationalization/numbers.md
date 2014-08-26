@@ -8,6 +8,10 @@ By default, Kazoo includes appropriate configurations for running the system in 
 
 2600Hz encourages you to consider sticking with the [E.164](https://en.wikipedia.org/wiki/E.164) format for globally routable numbers.
 
+#Kazoo can also have dialplans on a per account/user/device basis now! More on that near the bottom
+
+
+
 ## Determine if a number is "global"
 
 The first thing to configure is how to tell when a number is "globally routable" versus an internal extension. This is managed in the `system_config/number_manager` configuration document, under the `reconcile_regex` key.
@@ -125,3 +129,84 @@ The following characters can be used in a pretty print string to manipulate the 
 If you want a literal '#', 'S', or '*', prefix it with a '\' (so '\#', '\S', and '\*')
 
 `SS(###) ### - *` : this sample will convert numbers in the format of +14158867900 to (415) 886 - 7900
+
+
+
+Dialplans on a per account/user/device basis
+
+Since version (version here) Kazoo has better support for Internationalisation.
+In perspective to this document we are speaking about the ability to dial as if u are local and conected to the PSTN.
+
+Kazoo can be used with clients acounts from all over the globe, so we needed a way to deal with that.
+We created dial patterns, so that u can set some rules on how outbound dialed numbers are manipulated so that it will work.
+One can also set those kind of rules on many Devices such as SIP phones, we think it should be done on the platform.
+
+The format is the same as the settings as above, but now on a account/user/device level, neat huh?
+
+
+
+
+
+One can set dial paterns on
+ Account level
+ User level
+ Device level
+ 
+in the database of your install: accounts>users>device
+Futon interface> accounts > list by username
+or list by device
+or list by whatever to find what u are looking for.
+
+ 
+The order in which we handle them is Device -> User -> Account.
+----------------------------------------------------------------
+
+Example
+----------------------------------------------------------------
+
+"dial_plan" : {
+   "^(\\d{9})$": {
+       "description": "Portugal",
+       "prefix": "+351"
+   },
+   "^(\\d{10})$": {
+       "description": "USA",
+       "prefix": "+1"
+   },
+   "^0(\\d{9,})$": {
+       "description": "UK",
+       "prefix": "+44"
+   }
+}
+----------------------------------------------------------------
+
+As said u can set this on three levels: Device -> User -> Account
+This order is also the order in which we deal with this function.
+Please note that its one or the other 	(is this a correct assumption????)
+
+So... if u have an account with people from the same village that require the same set of dialing rules, u could set them on the acount level.
+If u have an account that has people from all over the country, u would need to set them on the user or Device level, i recommend to use the User level.
+
+If u want to specify it on a per Device basis, thats where u set it.
+
+At this time its unclear to me what happens if u set them in all documents, someone might edit this post to fix that though.
+What happens if u set different rules in the three docs is also unknown to me, i guess that the last one (account) would be used.
+
+One might be able to create really great regexes that would catch all for a region, country or even better!
+If u did, please share them!!! U can fork this repo via git and commit the changes, 
+if thats too much u can email them to info@yumminova.eu and ill put them here with a big thumbs up.
+
+Please dont forget to issue 
+sup callflow_maintenance flush
+sup crossbar_maintenance flush
+sup whistle_couch_maintenance flush
+
+command when done 
+
+Curtains close
+
+//ToDo
+Explain where to find those database documents. Its very unclear as an acount has so many (ugly named) documents, its hard to tell what is what
+Rumour has it that this is something being worked on.
+
+
