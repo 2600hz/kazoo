@@ -61,10 +61,9 @@ handle_member_retry(JObj, Props) ->
     'true' = wapi_acdc_queue:member_connect_retry_v(JObj),
     acdc_queue_fsm:member_connect_retry(props:get_value('fsm_pid', Props), JObj).
 
-handle_config_change(JObj, Props) ->
+-spec handle_config_change(wh_json:object(), wh_proplist()) -> any().
+handle_config_change(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
-
-    acdc_queue_manager:handle_config_change(props:get_value('server', Props), JObj),
 
     handle_queue_change(wh_json:get_value(<<"Database">>, JObj)
                         ,wh_json:get_value(<<"Account-ID">>, JObj)
@@ -143,4 +142,3 @@ send_probe(JObj, State) ->
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_presence:publish_update(PresenceUpdate).
-

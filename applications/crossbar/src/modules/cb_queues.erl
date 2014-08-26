@@ -510,12 +510,13 @@ add_queue_to_agents(Id, Context, AgentIds) ->
     add_queue_to_agents_diff(Id, Context, AddAgentIds).
 
 add_queue_to_agents_diff(_Id, Context, []) ->
+    lager:debug("no more agent ids to add to queue"),
     cb_context:set_doc(
       cb_context:set_resp_status(Context, 'success')
       ,[]
      );
 add_queue_to_agents_diff(Id, Context, AgentIds) ->
-    Context1 =  crossbar_doc:load(AgentIds, Context),
+    Context1 = crossbar_doc:load(AgentIds, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
             cb_context:set_doc(Context1
@@ -524,6 +525,7 @@ add_queue_to_agents_diff(Id, Context, AgentIds) ->
         _Status -> Context1
     end.
 
+-spec maybe_add_queue_to_agent(ne_binary(), wh_json:object()) -> wh_json:object().
 maybe_add_queue_to_agent(Id, A) ->
     Qs = case wh_json:get_value(<<"queues">>, A) of
              L when is_list(L) ->
@@ -533,7 +535,7 @@ maybe_add_queue_to_agent(Id, A) ->
                  end;
              _ -> [Id]
          end,
-    lager:debug("agent ~s queues: ~p", [wh_json:get_value(<<"_id">>, A), Qs]),
+    lager:debug("agent ~s adding queues: ~p", [wh_json:get_value(<<"_id">>, A), Qs]),
     wh_json:set_value(<<"queues">>, Qs, A).
 
 -spec maybe_rm_agents(ne_binary(), cb_context:context(), wh_json:keys()) -> cb_context:context().
