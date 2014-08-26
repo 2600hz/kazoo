@@ -18,7 +18,7 @@
     ,terminate/2
     ,code_change/3
 ]).
--export([add_request/4
+-export([add_request/1
          ,available_device/2]).
 
 -include("camper.hrl").
@@ -59,9 +59,9 @@ set_requests(S, Val) ->
 set_requestor_queues(S, Val) ->
     S#'state'{'requestor_queues' = Val}.
 
--spec add_request(ne_binary(), {ne_binary(), ne_binary()}, ne_binary(), ne_binaries()) -> 'ok'.
-add_request(AccountDb, Authorizing, Exten, Targets) ->
-    gen_server:cast(?MODULE, {'add_request', AccountDb, Authorizing, Exten, Targets}).
+-spec add_request(wh_json:object()) -> 'ok'.
+add_request(JObj) ->
+    gen_server:cast(?MODULE, {'add_request', JObj}).
 
 -spec available_device(ne_binary(), ne_binary()) -> 'ok'.
 available_device(AccountId, SIPName) ->
@@ -125,10 +125,19 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'add_request',AccountDb, Dev, Exten, Targets}, GlobalState) ->
+handle_cast({'add_request', JObj}, GlobalState) ->
+    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    Dev = {wh_json:get_value(<<"Authorizing-ID">>, JObj)
+          ,wh_json:get_value(<<"Authorizing-Type">>, JObj)
+          },
+    Exten = wh_json:get_value(<<"Number">>, JObj),
+    Targets = wh_json:get_value(<<"Targets">>, JObj),
+    Timeout = timer:minutes(wh_json:get_value(<<"Timeout">>
+                                              ,JObj
+                                              ,whapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT)
+                                             )),
     wh_hooks:register(AccountId, <<"CHANNEL_DESTROY">>),
-    Timeout = whapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT),
     NewGlobal = with_state(AccountId
                           ,GlobalState
                           ,fun(Local) ->
