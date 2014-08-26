@@ -159,10 +159,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec handle_config_req(atom(), ne_binary(), ne_binary(), wh_proplist() | 'undefined') -> fs_sendmsg_ret().
-handle_config_req(Node, Id, <<"acl.conf">>, _) ->
-    put('callid', Id),
+handle_config_req(Node, Id, <<"acl.conf">>, _Props) ->
+    wh_util:put_callid(Id),
+
     SysconfResp = ecallmgr_config:fetch(<<"acls">>, wh_json:new()),
+
     try generate_acl_xml(SysconfResp) of
+        'undefined' ->
+            lager:warning("failed to query for ACLs; is sysconf running?"),
+            {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+            freeswitch:fetch_reply(Node, Id, 'configuration', Resp);
         ConfigXml ->
             lager:debug("sending acl XML to ~s: ~s", [Node, ConfigXml]),
             freeswitch:fetch_reply(Node, Id, 'configuration', ConfigXml)
@@ -172,8 +178,9 @@ handle_config_req(Node, Id, <<"acl.conf">>, _) ->
             {'ok', Resp} = ecallmgr_fs_xml:not_found(),
             freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp))
     end;
-handle_config_req(Node, Id, <<"sofia.conf">>, _) ->
-    put('callid', Id),
+handle_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
+    wh_util:put_callid(Id),
+
     case wh_util:is_true(ecallmgr_config:get(<<"sofia_conf">>)) of
         'false' ->
             lager:info("sofia conf disabled"),
@@ -194,7 +201,8 @@ handle_config_req(Node, Id, <<"sofia.conf">>, _) ->
             end
     end;
 handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
-    put('callid', Id),
+    wh_util:put_callid(Id),
+
     Profile = props:get_value(<<"profile_name">>, Data, <<"default">>),
     Cmd =
         [{<<"Profile">>, Profile}
@@ -222,16 +230,21 @@ handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
     lager:debug("sending conference profile XML to ~s: ~s", [Node, XmlResp]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(XmlResp));
 handle_config_req(Node, Id, _Conf, _) ->
-    put('callid', Id),
+    wh_util:put_callid(Id),
+
     lager:debug("ignoring conf ~s: ~s", [_Conf, Id]),
     {'ok', Resp} = ecallmgr_fs_xml:not_found(),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Resp)).
 
+-spec generate_acl_xml(api_object()) -> api_binary().
+generate_acl_xml('undefined') ->
+    'undefined';
 generate_acl_xml(SysconfResp) ->
     'false' = wh_json:is_empty(SysconfResp),
     {'ok', ConfigXml} = ecallmgr_fs_xml:acl_xml(SysconfResp),
     erlang:iolist_to_binary(ConfigXml).
 
+-spec default_sip_profiles(atom()) -> wh_json:object().
 default_sip_profiles(Node) ->
     Gateways = case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, 'false')) of
                    'false' -> wh_json:new();
@@ -245,8 +258,10 @@ default_sip_profiles(Node) ->
                              ]),
     wh_json:set_value([wh_util:to_binary(?DEFAULT_FS_PROFILE), <<"Gateways">>]
                       ,Gateways
-                      ,JObj).
+                      ,JObj
+                     ).
 
+-spec default_sip_profile() -> wh_proplist().
 default_sip_profile() ->
     [{<<"Settings">>, wh_json:from_list(default_sip_settings())}
      ,{<<"Gateways">>, wh_json:from_list(default_sip_gateways())}

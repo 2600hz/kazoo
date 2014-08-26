@@ -235,8 +235,7 @@ refresh(?WH_SIP_DB) ->
                  || JObj <- JObjs
                 ];
             _ -> 'ok'
-        end,
-    wh_amqp_worker:cast([], fun(_) -> wapi_switch:publish_reload_acls() end);
+        end;
 refresh(?WH_SCHEMA_DB) ->
     couch_mgr:db_create(?WH_SCHEMA_DB),
     couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, 'crossbar', "schemas"),
