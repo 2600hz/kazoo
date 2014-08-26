@@ -79,7 +79,6 @@ upgrade() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
-    {'ok', {{'one_for_one', 10, 10}, [?CACHE(?CROSSBAR_CACHE)
-                                      ,?SUPER('crossbar_module_sup')
+    {'ok', {{'one_for_one', 10, 10}, [?SUPER('crossbar_module_sup')
                                       ,?WORKER('crossbar_cleanup')
                                      ]}}.

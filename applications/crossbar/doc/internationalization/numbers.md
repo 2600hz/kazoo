@@ -125,3 +125,64 @@ The following characters can be used in a pretty print string to manipulate the 
 If you want a literal '#', 'S', or '*', prefix it with a '\' (so '\#', '\S', and '\*')
 
 `SS(###) ### - *` : this sample will convert numbers in the format of +14158867900 to (415) 886 - 7900
+
+
+# Per-Account dial plans
+
+Users can dial local numbers, just as they do with the PSTN, by providing Kazoo with `dial_plan` regular expressions. These regexes will be used on the dialed numbers to correct them to properly routable numbers.
+
+It is possible to set these regexes on an account, user, or device basis. All that needs doing is adding a `dial_plan` key at the root level of the account, user, or device document. Kazoo will then apply the regexes in order, preferring the calling device's, then user's (if the calling device has an `owner_id` set), and finally the account's dialplan. Failing any of those, the system `e164_convertors` will be employed.
+
+## Example `dial_plan` object
+
+    "dial_plan" : {
+        "^(\\d{9})$": {
+            "description": "Portugal",
+            "prefix": "+351"
+        }
+        ,"^(\\d{10})$": {
+            "description": "USA",
+            "prefix": "+1"
+        }
+        ,"^(\\d{7})$":{
+            "description": "USA/CA/SF",
+            "prefix": "+1415"
+        },
+        "^0(\\d{9,})$": {
+            "description": "UK",
+            "prefix": "+44"
+        }
+    }
+
+The `dial_plan` key is a regex to match against the dialed number, with `prefix` and `suffix` rules to prepend and append to the capture group in the regex. Regexes are evaluated in order and the first regex to match is the one used.
+
+### Scenarios
+
+#### One locale for all devices in an account
+
+If all of the users/devices in an account are located in the same city, it would be most convenient to place a `dial_plan` at the account level, allowing them to dial as they are used to and converting it for Kazoo processing. For instance, we can poach the "USA/CA/SF" regex from above for an account who's users are all in San Francisco. Then, when a user dials a 7-digit number, it is prepended with the 415 area code (as well as +1).
+
+#### Globally distributed users
+
+Users within an account may be located anywhere in the world. An account-level `dial_plan` may not make sense for them. Instead, place `dial_plan` objects on the users' documents to ensure their local dialing preferences are honored.
+
+### Adding `dial_plan` example
+
+Using the PATCH HTTP verb, you can add the `dial_plan` object to an existing document:
+
+    curl -X PATCH -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID} -d '{"data":{"dial_plan":{"^(\\d7)$":{"prefix":"+1415","description":"USA/CA/SF"}}}}'
+
+You can, of course, POST the full document with the added `dial_plan` object.
+
+### Caches to flush
+
+Changes made via Crossbar *should* flush the appropriate caches automatically. If you make changes to the database directly, or aren't seeing your changes via Crossbar reflected, the following `sup` commands should flush the appropriate caches.
+
+Execute on VMs running:
+
+* Crossbar
+    * `sup whistle_couch_maintenance flush [{ACCOUNT_ID} [{DOCUMENT_ID}]]`
+* Callflow
+    * `sup callflow_maintenance flush`
+
+If you make a change to `system_config`, execute `sup whapps_config flush [{CONFIG_DOC}]`
