@@ -38,8 +38,6 @@
                           ,?HTTP_OPTIONS
                          ]).
 
--define(CROSSBAR_CACHE, 'crossbar_cache').
-
 -define(USERS_QCALL_NOUNS, [{<<"users">>, [_UserId, <<"quickcall">>, _Number]}
                             ,{?WH_ACCOUNTS_DB, [_]}
                            ]).
