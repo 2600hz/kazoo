@@ -391,9 +391,11 @@ has_any(Prop, Headers) ->
 
 %% checks Prop against a list of values to ensure known key/value pairs are correct (like Event-Category
 %% and Event-Name). We don't care if a key is defined in Values and not in Prop; that is handled by has_all/1
+-spec values_check(wh_proplist(), wh_proplist()) -> boolean().
 values_check(Prop, Values) ->
     lists:all(fun(Value) -> values_check_all(Prop, Value) end, Values).
 
+-spec values_check_all(wh_proplist(), {_, _}) -> boolean().
 values_check_all(Prop, {Key, Vs}) when is_list(Vs) ->
     case props:get_value(Key, Prop) of
         'undefined' -> 'true'; % isn't defined in Prop, has_all will error if req'd
@@ -420,9 +422,13 @@ values_check_all(Prop, {Key, V}) ->
 
 %% checks Prop against a list of {Key, Fun}, running the value of Key through Fun, which returns a
 %% boolean.
+-type typecheck() :: {ne_binary(), fun((_) -> boolean())}.
+-type typechecks() :: [typecheck(),...] | [].
+-spec type_check(wh_proplist(), typechecks()) -> boolean().
 type_check(Prop, Types) ->
     lists:all(fun(Type) -> type_check_all(Prop, Type) end, Types).
 
+-spec type_check_all(wh_proplist(), typecheck()) -> boolean().
 type_check_all(Prop, {Key, Fun}) ->
     case props:get_value(Key, Prop) of
         %% isn't defined in Prop, has_all will error if req'd
