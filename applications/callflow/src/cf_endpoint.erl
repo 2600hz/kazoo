@@ -728,8 +728,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          | maybe_get_t38(Endpoint, Call)
         ])).
 
-
--spec maybe_get_t38(wh_json:object(), wh_json:object()) -> wh_proplist().
+-spec maybe_get_t38(wh_json:object(), whapps_call:call()) -> wh_proplist().
 maybe_get_t38(Endpoint, Call) ->
     Opt =
         case cf_endpoint:get(Call) of
@@ -741,11 +740,10 @@ maybe_get_t38(Endpoint, Call) ->
         'false' -> [];
         'true' ->
             whapps_call_command:get_inbound_t38_settings(
-                Opt
-                ,wh_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
-            )
+              Opt
+              ,wh_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
+             )
     end.
-
 
 -spec maybe_build_failover(wh_json:object(), whapps_call:call()) -> api_object().
 maybe_build_failover(Endpoint, Call) ->
