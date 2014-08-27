@@ -36,7 +36,6 @@ handle_req(ApiJObj, _Props) ->
             lager:debug("sending reply for ~s.~s(~s): ~p"
                         ,[Category, Key, Node, Value]
                        ),
-
             Resp = [{<<"Category">>, Category}
                     ,{<<"Key">>, Key}
                     ,{<<"Value">>, Value}
