@@ -1107,6 +1107,11 @@ load_phone_number_doc(Account, 'false') ->
 %%--------------------------------------------------------------------
 -spec update_service_plans(wnm_number()) -> wnm_number().
 update_service_plans(#number{billing_id='undefined'
+                             ,assigned_to='undefined'
+                             ,prev_assigned_to=Account
+                            }=N) ->
+    update_service_plans(N#number{billing_id=wh_services:get_billing_id(Account)});
+update_service_plans(#number{billing_id='undefined'
                              ,assigned_to=Account
                             }=N) ->
     update_service_plans(N#number{billing_id=wh_services:get_billing_id(Account)});
