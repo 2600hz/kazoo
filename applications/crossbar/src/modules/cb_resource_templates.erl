@@ -89,7 +89,7 @@ validate_resource_templates(?HTTP_PUT, Context) ->
     end.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(Id, Context) ->
+validate(Context, Id) ->
     C = determine_template_database(Context),
     validate_resource_templates(cb_context:req_verb(C), Id, C).
 
