@@ -409,7 +409,7 @@ safe_cast(Value, Default, CastFun) ->
 get_number_value(Key, JObj) ->
     get_number_value(Key, JObj, 'undefined').
 
-get_number_value(Key, JObj, Default) when is_number(Default) ->
+get_number_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> safe_cast(Value, Default, fun wh_util:to_number/1)
@@ -420,7 +420,7 @@ get_number_value(Key, JObj, Default) when is_number(Default) ->
 get_float_value(Key, JObj) ->
     get_float_value(Key, JObj, 'undefined').
 
-get_float_value(Key, JObj, Default) when is_float(Default) ->
+get_float_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
         Value -> safe_cast(Value, Default, fun wh_util:to_float/1)
