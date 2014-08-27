@@ -315,6 +315,7 @@ build_offnet_request(Exten, Call, Q) ->
         ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
         ,{<<"Timeout">>, 10000}
         ,{<<"To-DID">>, Exten}
+        ,{<<"Format-From-URI">>, <<"true">>}
         ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}
         | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
     ]).
