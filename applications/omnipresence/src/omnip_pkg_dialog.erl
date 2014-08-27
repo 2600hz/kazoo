@@ -214,7 +214,15 @@ handle_connected_channel(_JObj) ->
 presence_event( _JObj) -> 'ok'.
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
-handle_update(JObj, State) ->
+handle_update(JObj, ?PRESENCE_HANGUP) ->
+    handle_update(JObj, ?PRESENCE_HANGUP, 5);
+handle_update(JObj, ?PRESENCE_RINGING) ->
+    handle_update(JObj, ?PRESENCE_RINGING, 120);
+handle_update(JObj, ?PRESENCE_ANSWERED) ->
+    handle_update(JObj, ?PRESENCE_ANSWERED, 36000).
+
+-spec handle_update(wh_json:object(), ne_binary(), integer()) -> any().
+handle_update(JObj, State, Expires) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_value(<<"From">>, JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
@@ -252,6 +260,7 @@ handle_update(JObj, State) ->
                     ,{<<"To-User">>, ToUsername}
                     ,{<<"To-Realm">>, ToRealm}
                     ,{<<"State">>, State}
+                    ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"initiator">>}
 %%                     ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
 %%                     ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
@@ -274,6 +283,7 @@ handle_update(JObj, State) ->
                     ,{<<"To-Realm">>, FromRealm}
                     ,{<<"To">>, <<"sip:", From/binary>>}
                     ,{<<"State">>, State}
+                    ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"recipient">>}
 %%                     ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
 %%                     ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
