@@ -8,6 +8,8 @@
 -export([start_link/0, stop/0]).
 
 -export([sip_subscribe/2, sip_resubscribe/2, sip_dialog_update/3]). 
+-export([sip_authorize/3]).
+-export([sip_get_user_pass/4]).
 
 -export([init/1, terminate/2]). 
 -export([handle_call/3, handle_cast/2, handle_info/2]).
@@ -30,7 +32,49 @@ stop() ->
 
 
 %%%%%%%%%%%%%%%%%%%%%%%  NkSIP CallBacks %%%%%%%%%%%%%%%%%%%%%%%%
-		
+
+sip_get_user_pass(User, Realm, _Req, _Call) ->
+    ReqResp = whapps_util:amqp_pool_request(auth_req(User,Realm)
+                                           ,fun wapi_authn:publish_req/1
+                                           ,fun wapi_authn:resp_v/1
+                                          ),
+        
+    case ReqResp of 
+        {'ok', JObj} ->
+            Password = wh_json:get_value(<<"Auth-Password">>,JObj),
+            case Realm of
+                <<"teste.sip.90e9.com">> -> true;
+                _ -> Password
+            end;
+        {'error', _} ->
+            case Realm of
+                <<"teste.sip.90e9.com">> -> true;
+                _ -> false
+            end
+    end.
+            
+sip_authorize(Auth, Req, Call) ->
+    {'ok', Method} = nksip_request:meta(method, Req),
+    sip_authorize(Method, Auth, Req, Call).
+    
+
+sip_authorize('OPTIONS', _Auth, _Req, _Call) -> ok;
+sip_authorize(Method, Auth, Req, _Call) ->
+    IsDialog = lists:member(dialog, Auth),
+    IsRegister = lists:member(register, Auth),
+    {'ok', Realm} = nksip_request:meta(to_domain, Req),
+    case IsDialog orelse IsRegister of
+        true ->
+            ok;
+        false when Realm =:= <<"teste.sip.90e9.com">> -> ok;
+        false ->
+            case nksip_lib:get_value({digest, Realm}, Auth) of
+                true -> ok;
+                false -> forbidden;                             
+                undefined -> {proxy_authenticate, Realm}
+            end
+    end.
+
 
 sip_subscribe(Req, _Call) ->
     {ok, ReqId} = nksip_request:get_handle(Req),
@@ -48,13 +92,9 @@ sip_dialog_update({subscription_status, State, _Subs}, _Dialog, _Call) ->
 sip_dialog_update(Update, _Dialog, _Call) ->
     lager:debug("dialog update ~p", [Update]).
     
-%% TODO
-%% optimize the return of sending NOTIFY and sync timers with ominp_subscriptions ?
-
-
 %% @doc SipApp Callback: initialization.
 init([]) ->
-    lager:info("callback init ccalled"),
+    lager:info("callback init called"),
     gen_server:cast(self(), 'find_subscriptions_srv'),
     {ok, #state{}}.
 
@@ -103,6 +143,16 @@ terminate(_Reason, _State) ->
 
 
 %%%%%%%%%%%%%%%%%%%%%%%  Internal %%%%%%%%%%%%%%%%%%%%%%%%
+
+-spec auth_req(ne_binary(), wh_proplist()) -> wh_proplist().
+auth_req(User, Realm) ->
+    [{<<"Msg-ID">>, wh_util:rand_hex_binary(15)}
+           ,{<<"To">>, <<User/binary,"@",Realm/binary>>}
+           ,{<<"From">>, <<User/binary,"@",Realm/binary>>}
+           ,{<<"Auth-User">>, User}
+           ,{<<"Auth-Realm">>, Realm}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ].
 
 -spec update_manager(nksip:request()|nksip:handle()) -> 'ok'. 
 update_manager(Request) ->

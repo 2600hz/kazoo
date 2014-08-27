@@ -177,24 +177,27 @@ mwi_event(JObj) ->
 
 -spec handle_update(wh_json:object()) -> any().
 handle_update(JObj) ->
-    User = wh_json:get_value(<<"To">>, JObj),
+    To = wh_json:get_value(<<"To">>, JObj),
     MessagesNew = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     MessagesSaved = wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0),
     MessagesUrgent = wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0),
     MessagesUrgentSaved = wh_json:get_integer_value(<<"Messages-Urgent-Waiting">>, JObj, 0),
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
-    [Username, Realm] = binary:split(User, <<"@">>),
-    Props = props:filter_undefined(
-              [{<<"New">>, MessagesNew}
-               ,{<<"Saved">>, MessagesSaved}
-               ,{<<"Urgent">>, MessagesUrgent}
-               ,{<<"Urgent-Saved">>, MessagesUrgentSaved}
-               ,{<<"Waiting">>, MessagesWaiting}
-               ,{<<"user">>, Username}
-               ,{<<"realm">>, Realm}
-              ]),
-    maybe_send_update(User, Props).
-    
+    Update = props:filter_undefined(
+               [{<<"To">>, <<"sip:", To/binary>>}
+                ,{<<"From">>, <<"sip:", To/binary>>}
+                ,{<<"Message-Account">>, <<"sip:", To/binary>>}
+                ,{<<"Messages-Waiting">>, MessagesWaiting}
+                ,{<<"Messages-New">>, MessagesNew}
+                ,{<<"Messages-Saved">>, MessagesSaved}
+                ,{<<"Messages-Urgent">>, MessagesUrgent}
+                ,{<<"Messages-Urgent-Saved">>, MessagesUrgentSaved}
+                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                ,{<<"Event-Package">>, <<"message-summary">>}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    maybe_send_update(To, Update).
+
 -spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.   
 maybe_send_update(User, Props) ->
     case omnip_subscriptions:find_subscriptions(?MWI_EVENT, User) of
@@ -206,6 +209,18 @@ maybe_send_update(User, Props) ->
 
 -spec send_update(ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
 send_update(User, Props, Subscriptions) ->
+    {Amqp, Sip} = lists:partition(fun(#omnip_subscription{version=V})-> V =:= 1 end, Subscriptions),
+    send_update(<<"amqp">>, User, Props, Amqp),
+    send_update(<<"sip">>, User, Props, Sip).
+
+-spec send_update(ne_binary(), ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
+send_update(_, User, Props, []) -> 'ok';
+send_update(<<"amqp">>, User, Props, Subscriptions) ->
+    Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
+    [whapps_util:amqp_pool_send(Props
+                               ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
+                              ) || S <- Stalkers];
+send_update(<<"sip">>, User, Props, Subscriptions) ->
     Body = build_body(User, Props),
     Options = [{body, Body}
                ,{content_type, <<"application/simple-message-summary">>}

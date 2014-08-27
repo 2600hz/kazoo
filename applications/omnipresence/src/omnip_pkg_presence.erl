@@ -111,10 +111,10 @@ handle_cast({'omnipresence',{'resubscribe_notify', <<"presence">>, User, #omnip_
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
     spawn(fun() -> presence_event(JObj) end),
     {'noreply', State};
-handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
-    EventType = wh_json:get_value(<<"Event-Name">>, JObj),
-    spawn(fun() -> channel_event(EventType, JObj) end),
-    {'noreply', State};
+%% handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
+%%     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
+%%     spawn(fun() -> channel_event(EventType, JObj) end),
+%%     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
@@ -228,6 +228,7 @@ maybe_handle_presence_state(_, _JObj) -> 'ok'.
 
 -spec handle_update(ne_binary(), wh_json:object()) -> any().
 handle_update(State, JObj) ->
+    lager:debug("UPDATE ~p", [JObj]),
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_value(<<"From">>, JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),

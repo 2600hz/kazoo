@@ -220,27 +220,73 @@ handle_update(JObj, State) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
+%%     {User, Props} =
+%%         case Direction =:= <<"inbound">> of
+%%             'true' ->
+%%                 {From, props:filter_undefined(
+%%                        [{<<"destination">>, ToUsername}
+%%                         ,{<<"state">>, State}
+%%                         ,{<<"direction">>, <<"initiator">>}
+%%                         ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+%%                         ,{<<"user">>, FromUsername}
+%%                         ,{<<"realm">>, FromRealm}
+%%                        ])};
+%%             'false' ->
+%%                 {To, props:filter_undefined(
+%%                        [{<<"destination">>, FromUsername}
+%%                         ,{<<"state">>, State}
+%%                         ,{<<"direction">>, <<"recipient">>}
+%%                         ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+%%                         ,{<<"user">>, ToUsername}
+%%                         ,{<<"realm">>, ToRealm}
+%%                        ])}
+%%             end,
     {User, Props} =
         case Direction =:= <<"inbound">> of
             'true' ->
                 {From, props:filter_undefined(
-                       [{<<"destination">>, ToUsername}
-                        ,{<<"state">>, State}
-                        ,{<<"direction">>, <<"initiator">>}
-                        ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                        ,{<<"user">>, FromUsername}
-                        ,{<<"realm">>, FromRealm}
-                       ])};
+                   [{<<"From">>, <<"sip:", From/binary>>}
+                    ,{<<"From-User">>, FromUsername}
+                    ,{<<"From-Realm">>, FromRealm}
+                    ,{<<"To">>, <<"sip:", To/binary>>}
+                    ,{<<"To-User">>, ToUsername}
+                    ,{<<"To-Realm">>, ToRealm}
+                    ,{<<"State">>, State}
+                    ,{<<"Direction">>, <<"initiator">>}
+%%                     ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+%%                     ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    ,{<<"Event-Package">>, <<"dialog">>}
+                    ,{<<"destination">>, ToUsername}
+                    ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                    ,{<<"user">>, FromUsername}
+                    ,{<<"realm">>, FromRealm}
+                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ])};
             'false' ->
                 {To, props:filter_undefined(
-                       [{<<"destination">>, FromUsername}
-                        ,{<<"state">>, State}
-                        ,{<<"direction">>, <<"recipient">>}
-                        ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                        ,{<<"user">>, ToUsername}
-                        ,{<<"realm">>, ToRealm}
-                       ])}
-            end,
+                   [{<<"From">>, <<"sip:", To/binary>>}
+                    ,{<<"From-User">>, ToUsername}
+                    ,{<<"From-Realm">>, ToRealm}
+                    ,{<<"To">>, <<"sip:", From/binary>>}
+                    ,{<<"To-User">>, FromUsername}
+                    ,{<<"To-Realm">>, FromRealm}
+                    ,{<<"To">>, <<"sip:", From/binary>>}
+                    ,{<<"State">>, State}
+                    ,{<<"Direction">>, <<"recipient">>}
+%%                     ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+%%                     ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    ,{<<"Event-Package">>, <<"dialog">>}
+                    ,{<<"destination">>, FromUsername}
+                    ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                    ,{<<"user">>, ToUsername}
+                    ,{<<"realm">>, ToRealm}
+                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ])}
+        end,    
     maybe_send_update(User, Props).
     
 -spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
@@ -254,6 +300,18 @@ maybe_send_update(User, Props) ->
 
 -spec send_update(ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
 send_update(User, Props, Subscriptions) ->
+    {Amqp, Sip} = lists:partition(fun(#omnip_subscription{version=V})-> V =:= 1 end, Subscriptions),
+    send_update(<<"amqp">>, User, Props, Amqp),
+    send_update(<<"sip">>, User, Props, Sip).
+    
+-spec send_update(ne_binary(), ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
+send_update(_, User, Props, []) -> 'ok';
+send_update(<<"amqp">>, User, Props, Subscriptions) ->
+    Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
+    [whapps_util:amqp_pool_send(Props
+                               ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
+                              ) || S <- Stalkers];
+send_update(<<"sip">>, User, Props, Subscriptions) ->
     Body = build_body(User, Props),
     Options = [{body, Body}
                ,{content_type, <<"application/dialog-info+xml">>}
@@ -303,11 +361,11 @@ map_direction(Other) -> Other.
 normalize_variables(Props) ->
     [{wh_json:normalize_key(K), V} || {K, V} <- Props ].
 
--spec props_to_call(wh_proplist()) -> #call{} | 'undefined'.
+-spec props_to_call(wh_proplist()) -> channel() | 'undefined'.
 props_to_call(Props) ->
     case props:is_defined(<<"uuid">>, Props) of
         'true' ->
-            #call{call_id = props:get_value(<<"uuid">>, Props) 
+            #channel{call_id = props:get_value(<<"uuid">>, Props) 
                   ,direction = map_direction(props:get_value(<<"direction">>, Props))
                   ,state = map_state(props:get_first_defined([<<"state">>, <<"answered">>], Props))
                   ,to = props:get_value(<<"destination">>, Props)
@@ -322,7 +380,7 @@ build_channels(User, Props) ->
         'undefined' ->
             Channels;
         UUID ->
-            [ UUID | [ Channel || Channel  <- Channels, Channel#call.call_id =/= UUID#call.call_id] ]
+            [ UUID | [ Channel || Channel  <- Channels, Channel#channel.call_id =/= UUID#channel.call_id] ]
     end.
 
 
@@ -346,4 +404,4 @@ ensure_template() ->
     BasePath = code:lib_dir(omnipresence, priv),
     File = lists:concat([BasePath, "/packages/dialog.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_dialog">>, 'true'),
-    {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{record_info, [{call, record_info(fields, call)}]}]).
+    {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{record_info, [{channel, record_info(fields, channel)}]}]).

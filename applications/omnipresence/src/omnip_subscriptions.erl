@@ -108,20 +108,22 @@ handle_subscribe(JObj, Props) ->
 
 -spec handle_kamailio_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_kamailio_subscribe(JObj, Props) ->
+    lager:debug("KAMAILIO ~p", [JObj]),
     'true' = wapi_omnipresence:subscribe_v(JObj),
-    case gen_listener:call(props:get_value(?MODULE, Props)
-                           ,{'subscribe', subscribe_to_record(JObj)}
-                          )
-    of
-        'invalid' -> 'ok';
-        {'unsubscribe', _} -> distribute_subscribe(JObj);
-        {'resubscribe', Subscription} ->
-            _ = resubscribe_notify(Subscription),
-            distribute_subscribe(JObj);
-        {'subscribe', Subscription} ->
-            _ = subscription_initial_notify(Subscription),
-            distribute_subscribe(JObj)
-    end.
+    gen_listener:call(?MODULE, {'proxy_subscribe', JObj}).
+%%     case gen_listener:call(props:get_value(?MODULE, Props)
+%%                            ,{'subscribe', subscribe_to_record(JObj)}
+%%                           )
+%%     of
+%%         'invalid' -> 'ok';
+%%         {'unsubscribe', _} -> distribute_subscribe(JObj);
+%%         {'resubscribe', Subscription} ->
+%%             _ = resubscribe_notify(Subscription),
+%%             distribute_subscribe(JObj);
+%%         {'subscribe', Subscription} ->
+%%             _ = subscription_initial_notify(Subscription),
+%%             distribute_subscribe(JObj)
+%%     end.
 
 -spec handle_mwi_update(wh_json:object(), wh_proplist()) -> any().
 handle_mwi_update(JObj, _Props) ->
@@ -179,8 +181,44 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({'subscribe', #omnip_subscription{}=Sub}, _From, State) ->
-    {'reply', subscribe(Sub), State};
+handle_call({'subscribe', #omnip_subscription{from = <<>>}=_S}, _From, State) ->
+    lager:debug("subscription with no from: ~p", [subscription_to_json(_S)]),
+    {'reply', 'invalid', State};
+handle_call({'subscribe', #omnip_subscription{expires=E
+                                              ,user=_U
+                                              ,from=_F
+                                              ,stalker=_S
+                                             }=S}
+            ,_From, State) when E =< 0 ->
+    case find_subscription(S) of
+        {'error', 'not_found'} -> {'reply', {'unsubscribe', S}, State};
+        {'ok', #omnip_subscription{timestamp=_T
+                                   ,expires=_E
+                                   }=O} ->
+            lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - wh_util:elapsed_s(_T)]),
+            ets:delete_object(table_id(), O),
+            {'reply', {'unsubscribe', O}, State}
+    end;
+handle_call({'subscribe', #omnip_subscription{user=_U
+                                              ,from=_F
+                                              ,expires=_E1
+                                              ,stalker=_S
+                                             }=S}
+            ,_From, State) ->
+    case find_subscription(S) of
+        {'ok', #omnip_subscription{timestamp=_T
+                                   ,expires=_E2
+                                  }=O} ->
+            lager:debug("re-subscribe ~s/~s expires in ~ps(prior remaing ~ps)"
+                        ,[_U, _F, _E1, _E2 - wh_util:elapsed_s(_T)]),
+            ets:delete_object(table_id(), O),
+            ets:insert(table_id(), S),
+            {'reply', {'resubscribe', S}, State};
+        {'error', 'not_found'} ->
+            lager:debug("subscribe ~s/~s expires in ~ps", [_U, _F, _E1]),
+            ets:insert(table_id(), S),
+            {'reply', {'subscribe', S}, State}
+    end;
 handle_call({'proxy_subscribe', #omnip_subscription{}=Sub}, _From, State) ->
     SubscribeResult = subscribe(Sub),
     case SubscribeResult of
@@ -326,6 +364,10 @@ distribute_subscribe(_JObj) -> 'ok'.
 subscribe_to_record(JObj) ->
     {P, U, [Username, Realm]} = omnip_util:extract_user(wh_json:get_value(<<"User">>, JObj)),
     {P, F, _} = omnip_util:extract_user(wh_json:get_value(<<"From">>, JObj, <<>>)),
+    Version = case wh_json:get_value(<<"Subscription-ID">>, JObj) of
+                  'undefined' -> 1;
+                  _Else -> 2
+              end,
     #omnip_subscription{user=U
                         ,from=F
                         ,protocol=P
@@ -342,7 +384,8 @@ subscribe_to_record(JObj) ->
                         ,contact=wh_json:get_value(<<"Contact">>, JObj)
                         ,call_id=wh_json:get_value(<<"Call-ID">>, JObj)
                         ,subscription_id=wh_json:get_value(<<"Subscription-ID">>, JObj)
-                        ,proxy_route= <<"<sip:192.168.16.149:5060>">> %%wh_json:get_value(<<"Proxy-Route">>, JObj)
+                        ,proxy_route= wh_json:get_value(<<"Proxy-Route">>, JObj)
+                        ,version=Version
                        }.
 
 %%--------------------------------------------------------------------
@@ -369,6 +412,7 @@ subscription_to_json(#omnip_subscription{user=User
                                          ,call_id=CallId
                                          ,subscription_id=SubId
                                          ,proxy_route=ProxyRoute
+                                         ,version=Version
                                         }) ->
     wh_json:from_list(
       props:filter_undefined(
@@ -385,6 +429,7 @@ subscription_to_json(#omnip_subscription{user=User
          ,{<<"call_id">>, CallId}
          ,{<<"subscription_id">>, SubId}
          ,{<<"proxy_route">>, ProxyRoute}
+         ,{<<"version">>, Version}
         ])).
 
 
@@ -550,7 +595,8 @@ dedup([#omnip_subscription{normalized_user=User
 %% @end
 %%--------------------------------------------------------------------
 -spec expires(integer() | wh_json:object()) -> non_neg_integer().
-expires(I) when is_integer(I), I >= 0 -> I + 10;
+expires(I) when is_integer(I), I =:= 0 -> I;
+expires(I) when is_integer(I), I > 0 -> I + 10;
 expires(JObj) -> expires(wh_json:get_integer_value(<<"Expires">>, JObj)).
 
 %%--------------------------------------------------------------------

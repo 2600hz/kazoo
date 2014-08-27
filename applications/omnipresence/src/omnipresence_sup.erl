@@ -30,9 +30,9 @@
 -define(APPID(AppName, Module, Opts), get_appid(AppName, Module, Opts)).
 -define(PROXYOPTIONS,
          [
-        {plugins, [nksip_gruu, nksip_event_compositor, nksip_trace]}                      
+        {plugins, [nksip_gruu, nksip_event_compositor, nksip_registrar, nksip_trace]}                      
         ,{transports, [{udp, all, 5090}, {tls, all, 5091}]}
-        ,{from,<<"<sip:kazoo@sipproxy-04.90e9.com>">>}
+        ,{from, "sip:kazoo@sipproxy-04.90e9.com"}
         ,{log_level, info}
         ,{event_expires, 3600}
         ,{event_expires_offset, 10}

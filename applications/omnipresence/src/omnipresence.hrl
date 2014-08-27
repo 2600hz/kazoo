@@ -36,6 +36,7 @@
           ,call_id                              :: api_binary() | '_'
           ,subscription_id                      :: api_binary() | '_'
           ,proxy_route                          :: api_binary() | '_'
+          ,version = 1                          :: non_neg_integer()
          }).
 -type subscription() :: #omnip_subscription{}.
 -type subscriptions() :: [subscription(),...] | [].
