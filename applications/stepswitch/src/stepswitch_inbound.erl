@@ -46,7 +46,7 @@ maybe_relay_request(JObj) ->
                         ,fun maybe_set_ringback/2
                         ,fun maybe_set_transfer_media/2
                         ,fun maybe_lookup_cnam/2
-                        ,fun relay_request/2
+                        ,fun maybe_blacklisted/2
                         ,fun maybe_transition_port_in/2
                        ],
             _ = lists:foldl(fun(F, J) ->  F(NumberProps, J) end
@@ -293,16 +293,27 @@ maybe_lookup_cnam(NumberProps, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec relay_request(wh_proplist(), wh_json:object()) ->
+-spec maybe_blacklisted(wh_proplist(), wh_json:object()) ->
                            wh_json:object().
-relay_request(_NumberProps, JObj) ->
+maybe_blacklisted(_NumberProps, JObj) ->
     case is_blacklisted(JObj) of
         'true' -> JObj;
         'false' ->
-            lager:debug("relaying route request"),
-            wapi_route:publish_req(JObj),
+            relay_request(JObj),
             JObj
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% relay a route request once populated with the new properties
+%% @end
+%%--------------------------------------------------------------------
+-spec relay_request(wh_json:object()) -> wh_json:object().
+relay_request(JObj) ->
+    wapi_route:publish_req(JObj),
+    lager:debug("relaying route request").
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -334,7 +345,7 @@ maybe_transition_port_in(NumberProps, JObj) ->
 %%--------------------------------------------------------------------
 -spec is_blacklisted(wh_json:object()) -> wh_json:object().
 is_blacklisted(JObj) ->
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    AccountId = wh_json:get_ne_value(?CCV(<<"Account-ID">>), JObj),
     case get_blacklists(AccountId) of
         {'error', _R} ->
             lager:debug("not blacklisted ~p", [_R]),
@@ -377,11 +388,10 @@ get_blacklist(AccountId, Blacklists) ->
                     lager:error("could not open ~s in ~s: ~p", [BlacklistId, AccountDb, _R]),
                     Acc;
                 {'ok', Doc} ->
-                    Numbers = wh_json:get_value(<<"caller_id_numbers">>, Doc, wh_json:new()),
+                    Numbers = wh_json:get_value(<<"numbers">>, Doc, wh_json:new()),
                     wh_json:merge_jobjs(Acc, Numbers)
             end
         end
         ,wh_json:new()
         ,Blacklists
     ).
-

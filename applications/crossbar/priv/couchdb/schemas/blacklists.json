@@ -14,7 +14,7 @@
             "minLength": 1,
             "maxLength": 128
         },
-        "caller_id_numbers": {
+        "numbers": {
             "type": "object",
             "required": false,
             "description": "Map of caller id number to block",

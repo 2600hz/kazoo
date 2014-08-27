@@ -11,12 +11,12 @@ A blacklist is a map of caller id numbers that can be then apply to the account 
 The structure is really simple:
 
 * `name`: A freindly name for your blacklist.
-* `caller_id_numbers`: A map of caller id to block
+* `numbers`: A map of caller id to block
 Ex:
 ```
 {
     "name": "Main Blacklist",
-    "caller_id_numbers": {
+    "numbers": {
         "+14151234567": {
         }
     }
@@ -55,11 +55,11 @@ Using Crossbar to modify Blacklist is very simple:
 
 #### PUT - Add account blacklists:
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists -d '{"data": {"name": "Main Blacklis","caller_id_numbers": {"+14151234567": {}}}'
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists -d '{"data": {"name": "Main Blacklis","numbers": {"+14151234567": {}}}'
 
 #### POST - Update account blacklists:
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID} -d '{"data": {"name": "Main Blacklis","caller_id_numbers": {"+14151234567": {}}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{ID} -d '{"data": {"name": "Main Blacklis","numbers": {"+14151234567": {}}}'
 
 #### DELETE - Remove account blacklists:
 
