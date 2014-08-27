@@ -299,7 +299,7 @@ maybe_blacklisted(_NumberProps, JObj) ->
     case is_blacklisted(JObj) of
         'true' -> JObj;
         'false' ->
-            relay_request(JObj),
+            _ = relay_request(JObj),
             JObj
     end.
 
