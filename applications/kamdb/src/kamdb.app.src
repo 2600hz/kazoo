@@ -1,0 +1,13 @@
+{application, kamdb,
+ [
+  {description, "KamDB - An application that provide acl/ratelimit info to kamailio"},
+  {vsn, "0.0.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { kamdb_app, []}},
+  {env, []}
+ ]}.
