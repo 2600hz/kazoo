@@ -158,9 +158,8 @@ max_wait(N) -> N * 1000.
 max_queue_size(N) when is_integer(N), N > 0 -> N;
 max_queue_size(_) -> 0.
 
--spec is_queue_full(non_neg_integer(), non_neg_integer() | 'undefined') -> boolean().
+-spec is_queue_full(non_neg_integer(), non_neg_integer()) -> boolean().
 is_queue_full(0, _) -> 'false';
-is_queue_full(_MaxQueueSize, 'undefined') -> 'false';
 is_queue_full(MaxQueueSize, CurrQueueSize) -> CurrQueueSize >= MaxQueueSize.
 
 -spec cancel_member_call(whapps_call:call(), ne_binary()) -> 'ok'.
