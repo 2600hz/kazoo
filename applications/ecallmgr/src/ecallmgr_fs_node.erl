@@ -290,9 +290,10 @@ handle_call('node', _, #state{node=Node}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('sync_interface', #state{node=Node}=State) ->
-    Interface = interface_from_props(ecallmgr_util:get_interface_properties(Node)),
-    {'noreply', State#state{interface=Interface}};
+handle_cast('sync_interface', #state{node=Node
+                                     ,interface=Interface
+                                    }=State) ->
+    {'noreply', State#state{interface=node_interface(Node, Interface)}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
     _ = spawn(fun() -> probe_capabilities(Node, ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES)) end),
     {'noreply', State};
@@ -303,6 +304,7 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
     _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
 handle_cast(_Req, State) ->
+    lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -315,6 +317,10 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info('sync_interface', #state{node=Node
+                                     ,interface=Interface
+                                    }=State) ->
+    {'noreply', State#state{interface=node_interface(Node, Interface)}};
 handle_info({'bgok', _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
     {'noreply', State};
@@ -543,4 +549,15 @@ maybe_add_capability(Node, Capability) ->
             end;
         {'error', _E} ->
             lager:debug("failed to probe node ~s: ~p", [Node, _E])
+    end.
+
+-spec node_interface(atom(), interface()) -> interface().
+node_interface(Node, CurrInterface) ->
+    case ecallmgr_util:get_interface_properties(Node) of
+        [] ->
+            lager:debug("no interface properties available at the moment, will sync again"),
+            _ = erlang:send_after(1000, self(), 'sync_interface'),
+            CurrInterface;
+        Props ->
+            interface_from_props(Props)
     end.
