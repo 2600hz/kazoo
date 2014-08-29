@@ -42,6 +42,7 @@
           ,proxy_ip :: tuple()
          }).
 
+-type state() :: #state{}.
 -type error_message() :: {'error', string(), #state{}}.
 
 -spec init(ne_binary(), non_neg_integer(), tuple(), list()) ->
@@ -130,15 +131,19 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
     lager:debug("Handle Data From ~p to ~p", [From,To]),
 
     %% JMA: Can this be done with wh_util:rand_hex_binary() ?
-    Reference = lists:flatten([io_lib:format("~2.16.0b", [X]) || <<X>> <= erlang:md5(term_to_binary(erlang:now()))]),
+    Reference = lists:flatten(
+                  [io_lib:format("~2.16.0b", [X])
+                   || <<X>> <= erlang:md5(term_to_binary(erlang:now()))
+                  ]),
 
     try mimemail:decode(Data) of
-        {Type,SubType,Headers,Parameters,Body} ->
-            lager:debug("Message decoded successfully!~n"),
-            {ProcessResult, NewState} = process_message(Type,SubType,Headers,Parameters,Body,State),
+        {Type, SubType, Headers, Parameters, Body} ->
+            lager:debug("Message decoded successfully!"),
+            {ProcessResult, NewState}
+                = process_message(Type, SubType, Headers, Parameters, Body, State),
             {ProcessResult, Reference, NewState};
         Other ->
-            lager:debug("mime decode other ~p",[Other]),
+            lager:debug("mime decode other ~p", [Other]),
             {'error', <<"Message decode failed">>, State}
     catch
         _What:_Why ->
@@ -223,13 +228,13 @@ terminate(Reason, State) ->
                           {'ok', #state{}} |
                           {'error', string(), #state{}}.
 check_faxbox(To, State) ->
-    [FaxNumber,Domain] = binary:split(wh_util:to_lower_binary(To),<<"@">>),
+    [FaxNumber, Domain] = binary:split(wh_util:to_lower_binary(To), <<"@">>),
     ViewOptions = [{'key', Domain}
                    ,'include_docs'
                   ],
     case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', []} -> {'error', "Not Found", State};
-        {'ok', [JObj]} -> check_faxbox_permissions(FaxNumber, wh_json:get_value(<<"doc">>,JObj), State );
+        {'ok', [JObj]} -> check_faxbox_permissions(FaxNumber, wh_json:get_value(<<"doc">>,JObj), State);
         {'error', 'not_found'} -> {'error', "Not Found", State};
         _ -> {'error', "Unknown Error", State}
     end.
@@ -246,50 +251,54 @@ match(Address, Element) ->
                                       {'ok', #state{}} |
                                       {'error', string(), #state{}}.
 check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From}=State) ->
-    lager:debug("checking if ~s can send to ~p.",[From,wh_json:get_value(<<"name">>,FaxBoxDoc)]),    
+    lager:debug("checking if ~s can send to ~p."
+               ,[From,wh_json:get_value(<<"name">>, FaxBoxDoc)]),
     case wh_json:get_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
         [] ->
             case whapps_config:get_is_true(<<"fax">>, <<"allow_all_addresses_when_empty">>, 'false') of
                 'true' -> add_fax_document(FaxNumber, FaxBoxDoc, State);
-                'false' -> 
+                'false' ->
                     lager:debug("faxbox permissions is empty and policy doesn't allow it"),
                     {'error', "not allowed", State}
             end;
         Permissions ->
             case lists:any(fun(A) -> match(From, A) end, Permissions) of
                 'true' -> add_fax_document(FaxNumber, FaxBoxDoc, State);
-                'false' -> 
+                'false' ->
                     lager:debug("address ~is not allowed on faxbox ~s",[From, wh_json:get_value(<<"_id">>,FaxBoxDoc)]),
-                    {'error', "not allowed", State}                    
+                    {'error', "not allowed", State}
             end
     end.
 
 add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
                                              ,from=From}=State) ->
-    FaxBoxId = wh_json:get_value(<<"_id">>,FaxBoxDoc),
-    AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
+    FaxBoxId = wh_json:get_value(<<"_id">>, FaxBoxDoc),
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
 
     FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>
                                           ,<<"outbound">>
                                           ,<<"email">>
-                                          ,<<"send_to">>],FaxBoxDoc,[]),
+                                          ,<<"send_to">>
+                                          ], FaxBoxDoc, []),
     FaxBoxNotify = wh_json:set_value([<<"notifications">>
                                      ,<<"outbound">>
                                      ,<<"email">>
-                                     ,<<"send_to">>]
-                                    ,lists:usort([From | FaxBoxEmailNotify]), FaxBoxDoc),
-    Notify = wh_json:get_value([<<"notifications">>,<<"outbound">>],FaxBoxNotify),
+                                     ,<<"send_to">>
+                                     ]
+                                    ,lists:usort([From | FaxBoxEmailNotify])
+                                    ,FaxBoxDoc),
+    Notify = wh_json:get_value([<<"notifications">>, <<"outbound">>], FaxBoxNotify),
 
     Props = props:filter_undefined(
-              [{<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
+              [{<<"from_name">>, wh_json:get_value(<<"caller_name">>, FaxBoxDoc)}
                ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_header">>, FaxBoxDoc)}
-               ,{<<"from_number">>,wh_json:get_value(<<"caller_id">>,FaxBoxDoc)}
+               ,{<<"from_number">>, wh_json:get_value(<<"caller_id">>, FaxBoxDoc)}
                ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
                ,{<<"fax_timezone">>, wh_json:get_value(<<"fax_timezone">>, FaxBoxDoc)}
-               ,{<<"to_name">>,FaxNumber}
-               ,{<<"to_number">>,FaxNumber}
-               ,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}
+               ,{<<"to_name">>, FaxNumber}
+               ,{<<"to_number">>, FaxNumber}
+               ,{<<"retries">>, wh_json:get_value(<<"retries">>, FaxBoxDoc, 3)}
                ,{<<"notifications">>, Notify }
                ,{<<"faxbox_id">>, FaxBoxId}
                ,{<<"folder">>, <<"outbox">>}
@@ -313,13 +322,17 @@ process_message(<<"multipart">>, <<"mixed">>, _Headers, _Parameters, Body, State
     lager:debug("processing multipart/mixed"),
     case Body of
         {Type, SubType, HeadersPart, ParametersPart, BodyPart} ->
-            lager:debug("processing ~s/~s",[Type,SubType]),
-            process_part(<<Type/binary,"/",SubType/binary>>,HeadersPart,ParametersPart,BodyPart, State);
+            lager:debug("processing ~s/~s", [Type, SubType]),
+            process_part(<<Type/binary, "/", SubType/binary>>
+                        ,HeadersPart
+                        ,ParametersPart
+                        ,BodyPart
+                        ,State);
         [{Type, SubType, _HeadersPart, _ParametersPart, _BodyParts}|_OtherParts]=Parts ->
-            lager:debug("processing multiple parts, first is ~s/~s",[Type,SubType]),
+            lager:debug("processing multiple parts, first is ~s/~s", [Type, SubType]),
             process_parts(Parts, State);
         A ->
-            lager:debug("missed processing ~p",[A]),
+            lager:debug("missed processing ~p", [A]),
             {'ok', State}
     end;
 process_message(_Type, _SubType, _Headers, _Parameters, _Body, State) ->
@@ -330,28 +343,81 @@ process_parts([], State) ->
     {'ok', State};
 process_parts([Part|Parts], State) ->
     case Part of
-        {Type,SubType,Headers,Parameters,BodyPart} ->
-            {_ , NewState} = process_part(<<Type/binary,"/",SubType/binary>>,Headers,Parameters,BodyPart,State),
-            process_parts(Parts,NewState);
+        {Type, SubType, Headers, Parameters, BodyPart} ->
+            {_ , NewState}
+                = process_part(<<Type/binary, "/", SubType/binary>>
+                              ,Headers
+                              ,Parameters
+                              ,BodyPart
+                              ,State),
+            process_parts(Parts, NewState);
         A ->
-            lager:debug("missed parts processing ~p",[A]),
+            lager:debug("missed parts processing ~p", [A]),
             {'ok', State}
     end.
 
 process_part(<<"application/pdf">>=CT, _Headers, _Parameters, Body, State) ->
     lager:debug("part is application/pdf"),
-    Filename = <<"/tmp/email_attachment_",(wh_util:to_binary(wh_util:current_tstamp()))/binary,".pdf">>,
+    Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".pdf">>,
     file:write_file(Filename, Body),
     {'ok', State#state{filename=Filename
                        ,content_type=CT
                       }};
 process_part(<<"image/tiff">>=CT, _Headers, _Parameters, Body, State) ->
     lager:debug("Part is image/tiff"),
-    Filename = <<"/tmp/email_attachment_",(wh_util:to_binary(wh_util:current_tstamp()))/binary,".tiff">>,
+    Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
     file:write_file(Filename, Body),
     {'ok', State#state{filename=Filename
                        ,content_type=CT
                       }};
+process_part(<<"application/octet-stream">>, _Headers, Parameters, Body, State) ->
+    lager:debug("part is application/octet-stream, try check attachemnt filename extension"),
+    case props:get_value(<<"disposition">>, Parameters) of
+        <<"attachment">> ->
+            Props = props:get_value(<<"disposition-params">>, Parameters),
+            maybe_process_part_attachment(Props, Body, State);
+         _Else ->
+            lager:debug("part is not attachment"),
+            {'ok', State}
+    end;
 process_part(_ContentType, _Headers, _Parameters, _Body, State) ->
     lager:debug("ignoring Part ~s",[_ContentType]),
     {'ok', State}.
+
+-spec maybe_process_part_attachment(wh_proplist(), iolist(), state()) -> {'ok', state()}.
+maybe_process_part_attachment(Props, Body, State) ->
+    case props:get_value(<<"filename">>, Props) of
+        'undefined' ->
+            lager:debug("attachment without filename"),
+            {'ok', State};
+        Filename -> process_part_attachment(Filename, Body, State)
+    end.
+
+-spec process_part_attachment(ne_binary(), iolist(), state()) -> {'ok', state()}.
+process_part_attachment(Filename, Body, State) ->
+    case filename:extension(wh_util:to_lower_binary(Filename)) of
+        <<".pdf">> ->
+            lager:debug("found pdf filename extension, set content-type to application/pdf"),
+            Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".pdf">>,
+            file:write_file(Filename, Body),
+            {'ok', State#state{filename=Filename
+                              ,content_type="application/pdf"
+                              }};
+        <<".tiff">> ->
+            lager:debug("found tiff filename extension, set content-type to image/tiff"),
+            Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
+            file:write_file(Filename, Body),
+            {'ok', State#state{filename=Filename
+                              ,content_type="image/tiff"
+                              }};
+        <<".tif">> ->
+            lager:debug("found tif filename extension, set content-type to image/tiff"),
+            Filename = <<"/tmp/email_attachment_", (wh_util:to_binary(wh_util:current_tstamp()))/binary, ".tiff">>,
+            file:write_file(Filename, Body),
+            {'ok', State#state{filename=Filename
+                              ,content_type="image/tiff"
+                              }};
+        _Else ->
+            lager:debug("not acceptable filename extension ~p", [_Else]),
+            {'ok', State}
+    end.
