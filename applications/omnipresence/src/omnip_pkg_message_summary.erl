@@ -178,6 +178,7 @@ mwi_event(JObj) ->
 -spec handle_update(wh_json:object()) -> any().
 handle_update(JObj) ->
     To = wh_json:get_value(<<"To">>, JObj),
+    [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     MessagesNew = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
     MessagesSaved = wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0),
     MessagesUrgent = wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0),
@@ -185,7 +186,11 @@ handle_update(JObj) ->
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
     Update = props:filter_undefined(
                [{<<"To">>, <<"sip:", To/binary>>}
+                ,{<<"To-User">>, ToUsername}
+                ,{<<"To-Realm">>, ToUsername}
                 ,{<<"From">>, <<"sip:", To/binary>>}
+                ,{<<"From-User">>, ToUsername}
+                ,{<<"From-Realm">>, ToUsername}
                 ,{<<"Message-Account">>, <<"sip:", To/binary>>}
                 ,{<<"Messages-Waiting">>, MessagesWaiting}
                 ,{<<"Messages-New">>, MessagesNew}
