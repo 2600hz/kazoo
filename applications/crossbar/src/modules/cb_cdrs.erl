@@ -160,7 +160,7 @@ load_cdr_summary(Context, [_, {?WH_ACCOUNTS_DB, [_]} | _]) ->
     case create_view_options('undefined', Context) of
         {'ok', ViewOptions} ->
             load_view(?CB_LIST
-                      ,ViewOptions
+                      ,props:filter_undefined(ViewOptions)
                       ,remove_qs_keys(Context)
                      );
         Else -> Else
@@ -170,7 +170,7 @@ load_cdr_summary(Context, [_, {<<"users">>, [UserId] } | _]) ->
     case create_view_options(UserId, Context) of
         {'ok', ViewOptions} ->
             load_view(?CB_LIST_BY_USER
-                      ,ViewOptions
+                      ,props:filter_undefined(ViewOptions)
                       ,remove_qs_keys(Context)
                      );
         Else -> Else
@@ -192,7 +192,7 @@ create_view_options(OwnerId, Context) ->
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
     CreatedFrom = created_from(Context, TStamp, MaxRange),
     CreatedTo = created_to(Context, CreatedFrom, MaxRange),
-    Limit = crossbar_doc:pagination_page_size(Context) + 1,
+    Limit = crossbar_doc:pagination_page_size(Context),
     case CreatedTo - CreatedFrom of
         N when N < 0 ->
             Message = <<"created_from is prior to created_to">>,
@@ -334,8 +334,8 @@ maybe_paginate_and_clean(Context, Ids) ->
             {Context, [Id || {Id, _} <- Ids]};
         _ ->
             ViewOptions = cb_context:fetch(Context, 'chunked_view_options'),
-            AskedFor = props:get_value('limit', ViewOptions)-1,
-            PageSize = erlang:length(Ids)-1,
+            PageSize = erlang:length(Ids) - 1,
+            AskedFor = props:get_value('limit', ViewOptions, PageSize) - 1,
             case AskedFor > erlang:length(Ids) of
                 'true' ->
                     Context1 = cb_context:store(Context, 'page_size', PageSize),
