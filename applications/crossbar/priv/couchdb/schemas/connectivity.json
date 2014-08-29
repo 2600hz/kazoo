@@ -90,13 +90,13 @@
               "auth_user": {
                 "type": "string",
                 "minLength": 1,
-                "required": true,
+                "required": false,
                 "description": "Username for authentication"
               },
               "auth_password": {
                 "type": "string",
                 "minLength": 1,
-                "required": true,
+                "required": false,
                 "description": "Password of the user@auth_realm"
               },
               "ip": {
