@@ -187,10 +187,10 @@ handle_update(JObj) ->
     Update = props:filter_undefined(
                [{<<"To">>, <<"sip:", To/binary>>}
                 ,{<<"To-User">>, ToUsername}
-                ,{<<"To-Realm">>, ToUsername}
+                ,{<<"To-Realm">>, ToRealm}
                 ,{<<"From">>, <<"sip:", To/binary>>}
                 ,{<<"From-User">>, ToUsername}
-                ,{<<"From-Realm">>, ToUsername}
+                ,{<<"From-Realm">>, ToRealm}
                 ,{<<"Message-Account">>, <<"sip:", To/binary>>}
                 ,{<<"Messages-Waiting">>, MessagesWaiting}
                 ,{<<"Messages-New">>, MessagesNew}
