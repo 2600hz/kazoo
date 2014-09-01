@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "BG national",
+			   "prefix": "+359"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "BG Sofia local",
+			   "prefix": "+3592"
+		   }
+}

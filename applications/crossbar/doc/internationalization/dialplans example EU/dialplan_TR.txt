@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "TR national",
+			   "prefix": "+90"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "TR Ankara local",
+			   "prefix": "+90312"
+		   }
+}
