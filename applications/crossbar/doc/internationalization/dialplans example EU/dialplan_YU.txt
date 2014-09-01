@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "YU national",
+			   "prefix": "+381"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "YU Belgrade local",
+			   "prefix": "+38111"
+		   }
+}

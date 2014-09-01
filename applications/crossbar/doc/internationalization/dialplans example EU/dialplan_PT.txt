@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "PT national",
+			   "prefix": "+351"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "PT Lisbon local",
+			   "prefix": "+35121"
+		   }
+}

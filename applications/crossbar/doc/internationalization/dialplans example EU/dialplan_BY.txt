@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "BY national",
+			   "prefix": "+375"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "BY Minsk local",
+			   "prefix": "+37517"
+		   }
+}

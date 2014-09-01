@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "SI national",
+			   "prefix": "+386"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "SI Ljubljana  local",
+			   "prefix": "+3861"
+		   }
+}

@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "UK national",
+			   "prefix": "+44"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "UK London local",
+			   "prefix": "+4420"
+		   }
+}

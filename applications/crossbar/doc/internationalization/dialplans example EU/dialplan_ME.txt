@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "ME national",
+			   "prefix": "+382"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "ME Podgorica  local",
+			   "prefix": "+38281"
+		   }
+}
