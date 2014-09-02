@@ -301,7 +301,7 @@ handle_update(JObj, State, Expires) ->
     
 -spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
 maybe_send_update(User, Props) ->
-    case omnip_subscriptions:find_subscriptions(?DIALOG_EVENT, User) of
+    case omnip_subscriptions:get_subscriptions(?DIALOG_EVENT, User) of
         {'ok', Subs} ->
             send_update(User, Props, Subs);
         {'error', 'not_found'} ->
