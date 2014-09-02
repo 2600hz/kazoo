@@ -71,7 +71,7 @@
                   ,context :: api_binary() | '_'
                   ,dialplan :: api_binary() | '_'
                   ,precedence = 5 :: pos_integer() | '$2' | '_'
-                  ,handling_locally = 'false' :: boolean() %% is this ecallmgr handling the call control?
+                  ,handling_locally = 'false' :: boolean() | '_' %% is this ecallmgr handling the call control?
                  }).
 
 -type channel() :: #channel{}.
@@ -389,6 +389,9 @@
 
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
 -define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).
+
+-define(FS_CARRIER_ACL_LIST, <<"trusted">>).
+-define(FS_SBC_ACL_LIST, <<"authoritative">>).
 
 -define(ECALLMGR_HRL, 'true').
 -endif.

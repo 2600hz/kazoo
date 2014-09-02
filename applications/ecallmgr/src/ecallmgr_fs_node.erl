@@ -34,6 +34,8 @@
 
 -include("ecallmgr.hrl").
 
+-define(UPTIME_S, ecallmgr_config:get_integer(<<"fs_node_uptime_s">>, 600)).
+
 -record(interface, {name
                     ,domain_name
                     ,auto_nat
@@ -121,8 +123,9 @@
                               ]).
 
 -record(state, {node :: atom()
-                ,options = []                         :: wh_proplist()
-                ,interface = #interface{}             :: interface()
+                ,options = []             :: wh_proplist()
+                ,interface = #interface{} :: interface()
+                ,start_cmds_pid_ref       :: pid_ref() | 'undefined'
                }).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_reload_acls'}
@@ -279,10 +282,13 @@ init([Node, Options]) ->
     lager:info("starting new fs node listener for ~s", [Node]),
     gproc:reg({'p', 'l', 'fs_node'}),
     sync_channels(self()),
-    _Pid = run_start_cmds(Node),
-    lager:debug("running start commands in ~p", [_Pid]),
+    PidRef = run_start_cmds(Node, Options),
+    lager:debug("running start commands in ~p", [PidRef]),
 
-    {'ok', #state{node=Node, options=Options}}.
+    {'ok', #state{node=Node
+                  ,options=Options
+                  ,start_cmds_pid_ref=PidRef
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -315,11 +321,15 @@ handle_call('node', _, #state{node=Node}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast('sync_interface', #state{node=Node}=State) ->
-    Interface = interface_from_props(ecallmgr_util:get_interface_properties(Node)),
-    {'noreply', State#state{interface=Interface}};
+handle_cast('sync_interface', #state{node=Node
+                                     ,interface=Interface
+                                    }=State) ->
+    {'noreply', State#state{interface=node_interface(Node, Interface)}};
 handle_cast('sync_capabilities', #state{node=Node}=State) ->
-    _ = spawn(fun() -> probe_capabilities(Node, ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES)) end),
+    _Pid = spawn(fun() ->
+                         probe_capabilities(Node)
+                 end),
+    lager:debug("syncing capabilities in ~p", [_Pid]),
     {'noreply', State};
 handle_cast('sync_channels', #state{node=Node}=State) ->
     Channels = [wh_json:get_value(<<"uuid">>, J)
@@ -328,9 +338,11 @@ handle_cast('sync_channels', #state{node=Node}=State) ->
     _ = ecallmgr_fs_channels:sync(Node, Channels),
     {'noreply', State};
 handle_cast('sync_registrations', #state{node=Node}=State) ->
-    _ = spawn(fun() -> maybe_replay_registrations(Node) end),
+    _Pid = spawn(fun() -> maybe_replay_registrations(Node) end),
+    lager:debug("syncing registrations in ~p", [_Pid]),
     {'noreply', State};
 handle_cast(_Req, State) ->
+    lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
@@ -343,12 +355,18 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info('sync_interface', #state{node=Node
+                                     ,interface=Interface
+                                    }=State) ->
+    {'noreply', State#state{interface=node_interface(Node, Interface)}};
 handle_info({'bgok', _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
     {'noreply', State};
 handle_info({'bgerror', _Job, _Result}, State) ->
     lager:debug("job ~s finished with an error: ~p", [_Job, _Result]),
     {'noreply', State};
+handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{start_cmds_pid_ref={Pid, Ref}}=State) ->
+    {'noreply', State#state{start_cmds_pid_ref='undefined'}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -395,57 +413,120 @@ code_change(_OldVsn, State, _Extra) ->
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
                       {'timeout', {atom(), ne_binary()}}.
--type cmd_results() :: [cmd_result(),...] | [].
+-type cmd_results() :: [cmd_result(),...] | [] |
+                       {'error', 'retry'}.
 
--spec run_start_cmds(atom()) -> pid().
-run_start_cmds(Node) ->
+-spec run_start_cmds(atom(), wh_proplist()) -> pid_ref().
+run_start_cmds(Node, Options) ->
     Parent = self(),
-    spawn_link(fun() ->
-                       timer:sleep(5000),
-                       Cmds = ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node),
-                       Res = process_cmds(Node, Cmds),
-                       case lists:filter(fun was_not_successful_cmd/1, Res) of
-                           [] -> 'ok';
-                           Errs -> print_api_responses(Errs)
-                       end,
-                       sync_interface(Parent),
-                       sync_registrations(Parent),
-                       sync_capabilities(Parent)
-               end).
+    spawn_monitor(fun() ->
+                          run_start_cmds(Node, Options, Parent)
+                  end).
 
--spec process_cmds(atom(), wh_json:object() | ne_binaries()) -> cmd_results().
-process_cmds(_, []) ->
-    lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the whapps running sysconf?"),
-    [];
-process_cmds(Node, Cmds) when is_list(Cmds) ->
-    lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Cmd, Acc) end, [], Cmds);
-process_cmds(Node, Cmds) ->
-    case wh_json:is_json_object(Cmds) of
-        'true' -> process_cmd(Node, Cmds, []);
-        'false' ->
-            lager:debug("recv something other than a list for fs_cmds: ~p", [Cmds]),
-            timer:sleep(5000),
-            run_start_cmds(Node)
+-spec run_start_cmds(atom(), wh_proplist(), pid()) -> any().
+run_start_cmds(Node, Options, Parent) ->
+    wh_util:put_callid(Node),
+    timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5000, Node)),
+
+    run_start_cmds(Node, Options, Parent, is_restarting(Node)).
+
+-spec is_restarting(atom()) -> boolean().
+is_restarting(Node) ->
+    case freeswitch:api(Node, 'status', <<>>) of
+        {'ok', Status} ->
+            [UP|_] = binary:split(Status, <<"\n">>),
+            is_restarting_status(UP);
+        _E ->
+            lager:debug("failed to get status of node ~s: ~p", [Node, _E]),
+            'false'
     end.
 
--spec process_cmd(atom(), wh_json:object(), cmd_results()) -> cmd_results().
-process_cmd(Node, JObj, Acc0) ->
-    lists:foldl(fun({ApiCmd, ApiArg}, Acc) ->
-                        process_cmd(Node, ApiCmd, ApiArg, Acc)
-                end, Acc0, wh_json:to_proplist(JObj)).
+-spec is_restarting_status(ne_binary()) -> boolean().
+is_restarting_status(UP) ->
+    case re:run(UP, <<"UP (\\d+) years, (\\d+) days, (\\d+) hours, (\\d+) minutes, (\\d+) seconds, (\\d+) milliseconds, (\\d+) microseconds">>, [{'capture', 'all_but_first', 'binary'}]) of
+        {'match', [Years, Days, Hours, Minutes, Seconds, _Mille, _Micro]} ->
+            Uptime = (wh_util:to_integer(Years) * ?SECONDS_IN_YEAR)
+                + (wh_util:to_integer(Days) * ?SECONDS_IN_DAY)
+                + (wh_util:to_integer(Hours) * ?SECONDS_IN_HOUR)
+                + (wh_util:to_integer(Minutes) * ?SECONDS_IN_MINUTE)
+                + wh_util:to_integer(Seconds),
+            lager:debug("node has been up for ~b s (considered restarting: ~s)", [Uptime, Uptime < ?UPTIME_S]),
+            Uptime < ?UPTIME_S;
+        'nomatch' -> 'false'
+    end.
 
--spec process_cmd(atom(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
-process_cmd(Node, ApiCmd0, ApiArg, Acc) ->
-    process_cmd(Node, ApiCmd0, ApiArg, Acc, 'binary').
-process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
+-spec run_start_cmds(atom(), wh_proplist(), pid(), boolean() | wh_json:objects()) -> 'ok'.
+run_start_cmds(Node, Options, Parent, 'true') ->
+    lager:debug("node ~s is considered restarting", [Node]),
+    run_start_cmds(Node, Options, Parent
+                   ,ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node)
+                  );
+run_start_cmds(Node, Options, Parent, 'false') ->
+    lager:debug("node ~s is not considered restarting, trying reconnect cmds first", [Node]),
+    Cmds = case ecallmgr_config:get(<<"fs_reconnect_cmds">>) of
+               'undefined' -> ecallmgr_config:get(<<"fs_cmds">>, ?DEFAULT_FS_COMMANDS, Node);
+               ReconCmds -> ReconCmds
+           end,
+    run_start_cmds(Node, Options, Parent, Cmds);
+run_start_cmds(Node, Options, Parent, Cmds) ->
+    Res = process_cmds(Node, Options, Cmds),
+
+    case is_list(Res) andalso lists:filter(fun was_not_successful_cmd/1, Res) of
+        [] -> sync(Parent);
+        'false' ->
+            lager:debug("failed to run start commands, retrying"),
+            run_start_cmds(Node, Options, Parent);
+        Errs ->
+            print_api_responses(Errs),
+            sync(Parent)
+    end.
+
+-spec sync(pid()) -> any().
+sync(Parent) ->
+    sync_interface(Parent),
+    sync_registrations(Parent),
+    sync_capabilities(Parent).
+
+-spec process_cmds(atom(), wh_proplist(), wh_json:object() | ne_binaries()) -> cmd_results().
+process_cmds(_Node, _Options, []) ->
+    lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the whapps running sysconf?"),
+    [];
+process_cmds(Node, Options, Cmds) when is_list(Cmds) ->
+    lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Options, Cmd, Acc) end, [], Cmds);
+process_cmds(Node, Options, Cmds) ->
+    case wh_json:is_json_object(Cmds) of
+        'true' -> process_cmd(Node, Options, Cmds, []);
+        'false' ->
+            lager:debug("recv something other than a list for fs_cmds: ~p", [Cmds]),
+            {'error', 'retry'}
+    end.
+
+-spec process_cmd(atom(), wh_proplist(), wh_json:object(), cmd_results()) -> cmd_results().
+process_cmd(Node, Options, JObj, Acc0) ->
+    wh_json:foldl(fun(ApiCmd, ApiArg, Acc) ->
+                        lager:debug("process ~s: ~s: ~s", [Node, ApiCmd, ApiArg]),
+                        process_cmd(Node, Options, ApiCmd, ApiArg, Acc)
+                end, Acc0, JObj).
+
+-spec process_cmd(atom(), wh_proplist(), ne_binary(), wh_json:json_term(), cmd_results()) -> cmd_results().
+-spec process_cmd(atom(), wh_proplist(), ne_binary(), wh_json:json_term(), cmd_results(), 'list'|'binary') -> cmd_results().
+process_cmd(Node, Options, ApiCmd0, ApiArg, Acc) ->
+    process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'binary').
+process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
+    execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat).
+
+-spec execute_command(atom(), wh_proplist(), ne_binary(), wh_json:json_term(), cmd_results(), 'list'|'binary') ->
+                             cmd_results().
+execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     ApiCmd = wh_util:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
+    lager:debug("exec ~s on ~s", [ApiCmd, Node]),
     case freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
         {'ok', BGApiID} ->
             receive
                 {'bgok', BGApiID, FSResp} ->
                     process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, ['global']), Acc);
                 {'bgerror', BGApiID, _} when ArgFormat =:= 'binary' ->
-                    process_cmd(Node, ApiCmd0, ApiArg, Acc, 'list');
+                    process_cmd(Node, Options, ApiCmd, ApiArg, Acc, 'list');
                 {'bgerror', BGApiID, Error} -> [{'error', Error} | Acc]
             after 120000 ->
                     [{'timeout', {ApiCmd, ApiArg}} | Acc]
@@ -454,9 +535,11 @@ process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
             [Error | Acc]
     end.
 
+-spec format_args('list'|'binary', api_terms()) -> api_terms().
 format_args('list', Args) -> wh_util:to_list(Args);
 format_args('binary', Args) -> wh_util:to_binary(Args).
 
+-spec process_resp(atom(), api_terms(), ne_binaries(), cmd_results()) -> cmd_results().
 process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, Acc);
 process_resp(ApiCmd, ApiArg, [<<"+OK Reloading XML">>|Resps], Acc) ->
@@ -474,8 +557,14 @@ process_resp(ApiCmd, ApiArg, [<<"-ERR ", Err/binary>>|Resps], Acc) ->
     end;
 process_resp(_, _, [], Acc) -> Acc.
 
+-spec was_bad_error(ne_binary(), atom(), _) -> boolean().
 was_bad_error(<<"[Module already loaded]">>, 'load', _) -> 'false';
 was_bad_error(_E, _, _) -> 'true'.
+
+-spec was_not_successful_cmd({'ok', _} |
+                             {'ok', _, _} |
+                             _
+                            ) -> boolean().
 
 was_not_successful_cmd({'ok', _}) -> 'false';
 was_not_successful_cmd({'ok', _, _}) -> 'false';
@@ -547,12 +636,16 @@ interface_from_props(Props) ->
 -spec split_codes(ne_binary(), wh_proplist()) -> ne_binaries().
 split_codes(Key, Props) ->
     [Codec
-     || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, [global])
+     || Codec <- binary:split(props:get_value(Key, Props, <<>>), <<",">>, ['global'])
             ,not wh_util:is_empty(Codec)
     ].
 
+-spec probe_capabilities(atom()) -> 'ok'.
 -spec probe_capabilities(atom(), wh_json:objects()) -> 'ok'.
+probe_capabilities(Node) ->
+    probe_capabilities(Node, ecallmgr_config:get(<<"capabilities">>, ?DEFAULT_CAPABILITIES)).
 probe_capabilities(Node, PossibleCapabilities) ->
+    wh_util:put_callid(Node),
     lists:foreach(fun(Capability) ->
                             maybe_add_capability(Node, Capability)
                     end, PossibleCapabilities).
@@ -574,21 +667,25 @@ maybe_add_capability(Node, Capability) ->
             lager:debug("failed to probe node ~s: ~p", [Node, _E])
     end.
 
+-spec maybe_replay_registrations(atom()) -> 'ok'.
 maybe_replay_registrations(Node) ->
+    wh_util:put_callid(Node),
     replay_registration(Node, get_registrations(Node)).
 
+-spec replay_registration(atom(), list(wh_proplist()) | []) -> 'ok'.
+replay_registration(_Node, [[]]) -> 'ok';
 replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
-    Payload = [
-               {<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
+    Payload = [{<<"FreeSWITCH-Nodename">>, wh_util:to_binary(Node)}
                ,{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
-              | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
-                                  {K, F(props:get_value(V, Reg))};
-                             ({K,V}) ->
-                                  {K, props:get_value(V, Reg)}
-                          end, ?REPLAY_REG_MAP)
-              ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)] ,
-    lager:debug("Replaying registration ~p",[Payload]),
+               | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
+                                   {K, F(props:get_value(V, Reg))};
+                              ({K,V}) ->
+                                   {K, props:get_value(V, Reg)}
+                           end, ?REPLAY_REG_MAP)
+               ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    lager:debug("replaying registration: ~p",[Payload]),
     wh_amqp_worker:cast(Payload
                         ,fun wapi_registration:publish_success/1
                        ),
@@ -598,31 +695,31 @@ replay_registration(Node, [Reg | Regs]) ->
 replay_profile(V) ->
     lists:nth(2, binary:split(V, <<"/">>, ['global'] ) ).
 
--spec replay_expires(ne_binary()) -> ne_binary().
+-spec replay_expires(ne_binary()) -> pos_integer().
 replay_expires(V) ->
-    wh_util:unix_seconds_to_gregorian_seconds(
-      wh_util:to_integer(V)) -
-        wh_util:current_tstamp() +
-        ecallmgr_config:get_integer(<<"expires_deviation_time">>, 0).
+    wh_util:unix_seconds_to_gregorian_seconds(wh_util:to_integer(V)) -
+        (wh_util:current_tstamp() +
+             ecallmgr_config:get_integer(<<"expires_deviation_time">>, 0)
+        ).
 
 -spec replay_contact(ne_binary()) -> ne_binary().
 replay_contact(V) ->
     <<"<", (lists:nth(3, binary:split(V, <<"/">>, ['global'] ) ))/binary, ">">>.
 
--spec get_registrations(atom()) -> wh_proplist().
+-spec get_registrations(atom()) -> list(wh_proplist()).
 get_registrations(Node) ->
     case freeswitch:api(Node, 'show', "registrations") of
         {'ok', Response} ->
             R = binary:replace(Response, <<" ">>, <<>>, ['global']),
-            Lines = [binary:split(Line, <<",">>, ['global'] )
-                    || Line <- binary:split(R, <<"\n">>, ['global'])],
+            Lines = [binary:split(Line, <<",">>, ['global'])
+                     || Line <- binary:split(R, <<"\n">>, ['global'])
+                    ],
             get_registration_details(Lines);
-        _Else -> []
+        _Else -> [[]]
     end.
 
--spec get_registration_details(list()) -> wh_proplist().
-get_registration_details([_, _, _, _ | _] = Lines) ->
-    Header = lists:nth(1, Lines),
+-spec get_registration_details(list()) -> list(wh_proplist()).
+get_registration_details([Header, _, _, _| _] = Lines) ->
     [begin
          {Res, _Total} = lists:mapfoldl(
                            fun(E, Acc) ->
@@ -633,3 +730,14 @@ get_registration_details([_, _, _, _ | _] = Lines) ->
      || Row <- lists:sublist(Lines, 2, length(Lines)-4)
     ];
 get_registration_details(_List) -> [].
+
+-spec node_interface(atom(), interface()) -> interface().
+node_interface(Node, CurrInterface) ->
+    case ecallmgr_util:get_interface_properties(Node) of
+        [] ->
+            lager:debug("no interface properties available at the moment, will sync again"),
+            _ = erlang:send_after(1000, self(), 'sync_interface'),
+            CurrInterface;
+        Props ->
+            interface_from_props(Props)
+    end.

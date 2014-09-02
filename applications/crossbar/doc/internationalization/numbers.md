@@ -8,10 +8,6 @@ By default, Kazoo includes appropriate configurations for running the system in 
 
 2600Hz encourages you to consider sticking with the [E.164](https://en.wikipedia.org/wiki/E.164) format for globally routable numbers.
 
-#Kazoo can also have dialplans on a per account/user/device basis now! More on that near the bottom
-
-
-
 ## Determine if a number is "global"
 
 The first thing to configure is how to tell when a number is "globally routable" versus an internal extension. This is managed in the `system_config/number_manager` configuration document, under the `reconcile_regex` key.
@@ -131,82 +127,62 @@ If you want a literal '#', 'S', or '*', prefix it with a '\' (so '\#', '\S', and
 `SS(###) ### - *` : this sample will convert numbers in the format of +14158867900 to (415) 886 - 7900
 
 
+# Per-Account dial plans
 
-Dialplans on a per account/user/device basis
+Users can dial local numbers, just as they do with the PSTN, by providing Kazoo with `dial_plan` regular expressions. These regexes will be used on the dialed numbers to correct them to properly routable numbers.
 
-Since version (version here) Kazoo has better support for Internationalisation.
-In perspective to this document we are speaking about the ability to dial as if u are local and conected to the PSTN.
+It is possible to set these regexes on an account, user, or device basis. All that needs doing is adding a `dial_plan` key at the root level of the account, user, or device document. Kazoo will then apply the regexes in order, preferring the calling device's, then user's (if the calling device has an `owner_id` set), and finally the account's dialplan. Failing any of those, the system `e164_convertors` will be employed.
 
-Kazoo can be used with clients acounts from all over the globe, so we needed a way to deal with that.
-We created dial patterns, so that u can set some rules on how outbound dialed numbers are manipulated so that it will work.
-One can also set those kind of rules on many Devices such as SIP phones, we think it should be done on the platform.
+## Example `dial_plan` object
 
-The format is the same as the settings as above, but now on a account/user/device level, neat huh?
+    "dial_plan" : {
+        "^(\\d{9})$": {
+            "description": "Portugal",
+            "prefix": "+351"
+        }
+        ,"^(\\d{10})$": {
+            "description": "USA",
+            "prefix": "+1"
+        }
+        ,"^(\\d{7})$":{
+            "description": "USA/CA/SF",
+            "prefix": "+1415"
+        },
+        "^0(\\d{9,})$": {
+            "description": "UK",
+            "prefix": "+44"
+        }
+    }
 
+The `dial_plan` key is a regex to match against the dialed number, with `prefix` and `suffix` rules to prepend and append to the capture group in the regex. Regexes are evaluated in order and the first regex to match is the one used.
 
+### Scenarios
 
+#### One locale for all devices in an account
 
+If all of the users/devices in an account are located in the same city, it would be most convenient to place a `dial_plan` at the account level, allowing them to dial as they are used to and converting it for Kazoo processing. For instance, we can poach the "USA/CA/SF" regex from above for an account who's users are all in San Francisco. Then, when a user dials a 7-digit number, it is prepended with the 415 area code (as well as +1).
 
-One can set dial paterns on
- Account level
- User level
- Device level
- 
-in the database of your install: accounts>users>device
-Futon interface> accounts > list by username
-or list by device
-or list by whatever to find what u are looking for.
+#### Globally distributed users
 
- 
-The order in which we handle them is Device -> User -> Account.
-----------------------------------------------------------------
+Users within an account may be located anywhere in the world. An account-level `dial_plan` may not make sense for them. Instead, place `dial_plan` objects on the users' documents to ensure their local dialing preferences are honored.
 
-Example
-----------------------------------------------------------------
+### Adding `dial_plan` example
 
-"dial_plan" : {
-   "^(\\d{9})$": {
-       "description": "Portugal",
-       "prefix": "+351"
-   },
-   "^(\\d{10})$": {
-       "description": "USA",
-       "prefix": "+1"
-   },
-   "^0(\\d{9,})$": {
-       "description": "UK",
-       "prefix": "+44"
-   }
-}
-----------------------------------------------------------------
+Using the PATCH HTTP verb, you can add the `dial_plan` object to an existing document:
 
-As said u can set this on three levels: Device -> User -> Account
-This order is also the order in which we deal with this function.
-Please note that its one or the other 	(is this a correct assumption????)
+    curl -X PATCH -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID} -d '{"data":{"dial_plan":{"^(\\d7)$":{"prefix":"+1415","description":"USA/CA/SF"}}}}'
 
-So... if u have an account with people from the same village that require the same set of dialing rules, u could set them on the acount level.
-If u have an account that has people from all over the country, u would need to set them on the user or Device level, i recommend to use the User level.
+You can, of course, POST the full document with the added `dial_plan` object.
 
-If u want to specify it on a per Device basis, thats where u set it.
+### Caches to flush
 
-At this time its unclear to me what happens if u set them in all documents, someone might edit this post to fix that though.
-What happens if u set different rules in the three docs is also unknown to me, i guess that the last one (account) would be used.
+Changes made via Crossbar *should* flush the appropriate caches automatically. If you make changes to the database directly, or aren't seeing your changes via Crossbar reflected, the following `sup` commands should flush the appropriate caches.
 
-One might be able to create really great regexes that would catch all for a region, country or even better!
-If u did, please share them!!! U can fork this repo via git and commit the changes, 
-if thats too much u can email them to info@yumminova.eu and ill put them here with a big thumbs up.
+Execute on VMs running:
 
-Please dont forget to issue 
-sup callflow_maintenance flush
-sup crossbar_maintenance flush
-sup whistle_couch_maintenance flush
+* Crossbar
+    * `sup whistle_couch_maintenance flush [{ACCOUNT_ID} [{DOCUMENT_ID}]]`
+* Callflow
+    * `sup callflow_maintenance flush`
 
-command when done 
-
-Curtains close
-
-//ToDo
-Explain where to find those database documents. Its very unclear as an acount has so many (ugly named) documents, its hard to tell what is what
-Rumour has it that this is something being worked on.
-
-
+If you make a change to `system_config`, execute `sup whapps_config flush [{CONFIG_DOC}]`

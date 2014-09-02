@@ -476,7 +476,7 @@ call_control_fs_nodeup(NodeName) ->
     Pids = gproc:lookup_pids({'p', 'l', 'call_control'}),
     call_control_fs_nodeup(Pids, NodeName).
 
--spec call_control_fs_nodeup([pid(),...] | [], atom()) -> 'ok'.
+-spec call_control_fs_nodeup(pids(), atom()) -> 'ok'.
 call_control_fs_nodeup([], _) -> 'ok';
 call_control_fs_nodeup([Pid|Pids], NodeName) ->
     _ = ecallmgr_call_control:fs_nodeup(Pid, NodeName),
@@ -487,7 +487,7 @@ call_control_fs_nodedown(NodeName) ->
     Pids = gproc:lookup_pids({'p', 'l', 'call_control'}),
     call_control_fs_nodedown(Pids, NodeName).
 
--spec call_control_fs_nodedown([pid(),...] | [], atom()) -> 'ok'.
+-spec call_control_fs_nodedown(pids(), atom()) -> 'ok'.
 call_control_fs_nodedown([], _) -> 'ok';
 call_control_fs_nodedown([Pid|Pids], NodeName) ->
     _ = ecallmgr_call_control:fs_nodedown(Pid, NodeName),

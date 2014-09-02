@@ -1,0 +1,34 @@
+{
+    "_id": "resource_jobs",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "required": true,
+    "name": "Resource Job",
+    "description": "Schema for resource jobs (bulk number uploads)",
+    "properties": {
+        "name": {
+            "type": "string",
+            "required": false,
+            "name": "Name",
+            "description": "A friendly name for the job, if you like",
+            "minLength": 1,
+            "maxLength": 128
+        }
+        ,"numbers":{
+            "type":"array"
+            ,"description":"The listing of numbers to import to the account"
+            ,"minItems":1
+            ,"required":true
+            ,"items":{
+                "type":"string"
+                ,"description":"The number to import"
+            }
+        }
+        ,"carrier":{
+            "type":"string"
+            ,"description":"The Carrier module to import the numbers under"
+            ,"default":"local"
+            ,"required":false
+        }
+    }
+}

@@ -14,7 +14,7 @@
 -export([check/1, check/2]).
 -export([lookup_account_by_number/1]).
 -export([ported/1]).
--export([create_number/3, create_number/4, create_number/5]).
+-export([create_number/3, create_number/4, create_number/5, create_number/6]).
 -export([port_in/3
          ,port_in/4
          ,port_in/5
@@ -55,15 +55,22 @@ find(Number, Quantity) ->
 find(Number, Quantity, Opts) ->
     AccountId = props:get_value(<<"Account-ID">>, Opts),
     Num = wnm_util:normalize_number(Number),
-    lager:info("attempting to find ~p numbers with prefix '~s' for Account ~p", [Quantity, Number,AccountId]),
+    lager:info("attempting to find ~p numbers with prefix '~s' for account ~p"
+              ,[Quantity, Number, AccountId]),
     Results = [{Module, catch(Module:find_numbers(Num, Quantity, Opts))}
                || Module <- wnm_util:list_carrier_modules()
               ],
     NewOpts = [{<<"classification">>, wnm_util:classify_number(Num)}
-               ,{<<"services">>, wh_services:fetch(AccountId)}
+              ,{<<"account-id">>, AccountId}
+              ,{<<"services">>, maybe_get_services(AccountId)}
                | Opts
               ],
     prepare_find_results(Results, [], NewOpts).
+
+-spec maybe_get_services(api_binary()) -> api_binary().
+maybe_get_services('undefined') -> 'undefined';
+maybe_get_services(AccountId) ->
+    wh_services:fetch(AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -330,7 +337,10 @@ check_ports(#number{number=MaybePortNumber}=Number) ->
                            operation_return().
 -spec create_number(ne_binary(), api_binary(), ne_binary() | 'system', wh_json:object()) ->
                            operation_return().
--spec create_number(ne_binary(), ne_binary(), ne_binary() | 'system', wh_json:object(), boolean()) -> operation_return().
+-spec create_number(ne_binary(), ne_binary(), ne_binary() | 'system', wh_json:object(), boolean()) ->
+                           operation_return().
+-spec create_number(ne_binary(), ne_binary(), ne_binary() | 'system', wh_json:object(), boolean(), api_binary()) ->
+                           operation_return().
 
 create_number(Number, AssignTo, AuthBy) ->
     create_number(Number, AssignTo, AuthBy, wh_json:new()).
@@ -339,23 +349,26 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
     create_number(Number, AssignTo, AuthBy, PublicFields, 'false').
 
 create_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
+    create_number(Number, AssignTo, AuthBy, PublicFields, DryRun, 'undefined').
+
+create_number(Number, AssignTo, AuthBy, PublicFields, DryRun, ModuleName) ->
     lager:debug("attempting to create number ~s for account ~s", [Number, AssignTo]),
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
                 ,fun({'not_found', #number{}=N}) ->
-                        lager:debug("try to create not_found number ~s", [Number]),
-                        create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N);
+                         lager:debug("try to create not_found number ~s", [Number]),
+                         create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N, ModuleName);
                     ({_, #number{}}=E) -> E;
                     (#number{current_state = ?NUMBER_STATE_AVAILABLE}=N) -> N;
                     (#number{}=N) -> wnm_number:error_number_exists(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{}=N) ->
-                         N#number{dry_run=DryRun}
+                    (#number{}=N) -> N#number{dry_run=DryRun}
                  end
                 ,fun({_, #number{}}=E) -> E;
-                    (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo
-                                                                  ,auth_by=AuthBy
-                                                                 })
+                    (#number{}=N) ->
+                         wnm_number:reserved(N#number{assign_to=AssignTo
+                                                      ,auth_by=AuthBy
+                                                     })
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
@@ -365,10 +378,11 @@ create_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                          {E, Reason};
                     (#number{dry_run='true'
                              ,services=Services
-                             ,activations=ActivationCharges}) ->
-                            {'dry_run', [{'services', Services}
-                                         ,{'activation_charges', ActivationCharges}
-                                        ]};
+                             ,activations=ActivationCharges
+                            }) ->
+                         {'dry_run', [{'services', Services}
+                                      ,{'activation_charges', ActivationCharges}
+                                     ]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("create number successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
@@ -376,9 +390,9 @@ create_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                ],
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
 
--spec create_not_found_number(ne_binary(), api_binary(), 'system' | ne_binary(), wh_json:object(), wnm_number()) ->
+-spec create_not_found_number(ne_binary(), api_binary(), 'system' | ne_binary(), wh_json:object(), wnm_number(), api_binary()) ->
                                      operation_return().
-create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N) ->
+create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N, ModuleName) ->
     AccountId = wh_util:format_account_id(AuthBy, 'raw'),
     AccountDb = wh_util:format_account_id(AuthBy, 'encoded'),
     try
@@ -397,6 +411,7 @@ create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N) ->
                                      ,assign_to=AssignTo
                                      ,auth_by=AuthBy
                                      ,number_doc=PublicFields
+                                     ,module_name=ModuleName
                                     },
                 wnm_number:create_available(NewNumber)
         end
@@ -944,7 +959,7 @@ save_assignment(AccountDb, Updated, Props, Try) ->
 -spec prepare_find_results(wh_json:keys(), atom(), wh_json:object(), wh_json:keys(), wh_proplist()) ->
                                   wh_json:keys().
 prepare_find_results([], Found, _) -> Found;
-prepare_find_results([{'wnm_other', {'ok', ModuleResults}}|T], Found, Opts) ->
+prepare_find_results([{'wnm_other', {'bulk', ModuleResults}}|T], Found, Opts) ->
     prepare_find_results(T, ModuleResults++Found, Opts);
 prepare_find_results([{Module, {'ok', ModuleResults}}|T], Found, Opts) ->
     case wh_json:get_keys(ModuleResults) of
@@ -957,13 +972,21 @@ prepare_find_results([_|T], Found, Opts) ->
     prepare_find_results(T, Found, Opts).
 
 prepare_find_results([], _, _, Found,_) -> Found;
+prepare_find_results([Number|Numbers], 'wnm_other' = ModuleName, ModuleResults, Found, Opts) ->
+    JObj = wh_json:get_value(Number, ModuleResults),
+    Result = case maybe_get_activation_charge(Opts) of
+                 'undefined' ->
+                     [wh_json:set_value(<<"number">>, Number, JObj) | Found];
+                 Value ->
+                     [wh_json:set_values([{<<"activation_charge">>, Value}
+                                          ,{<<"number">>, Number}
+                                         ], JObj)
+                      | Found]
+             end,
+    prepare_find_results(Numbers, ModuleName, ModuleResults, Result, Opts);
 prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) ->
     JObj = wh_json:get_value(Number, ModuleResults),
-    Result = case wh_services:activation_charges(<<"phone_numbers">>
-                                                 ,props:get_value(<<"classification">>, Opts)
-                                                 ,props:get_value(<<"services">>, Opts)
-                                                )
-             of
+    Result = case maybe_get_activation_charge(Opts) of
                  'undefined' ->
                      [wh_json:set_value(<<"number">>, Number, JObj) | Found];
                  Value ->
@@ -996,4 +1019,16 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) -
         {_R, #number{}} ->
             lager:debug("failed to determine state of discovery ~s: ~p", [Number, _R]),
             prepare_find_results(Numbers, ModuleName, ModuleResults, Found, Opts)
+    end.
+
+-spec maybe_get_activation_charge(wh_proplist()) -> non_neg_integer().
+maybe_get_activation_charge(Opts) ->
+    case props:get_value(<<"services">>, Opts) of
+        'undefined' -> 'undefined';
+        Services ->
+            Classification = props:get_value(<<"classification">>, Opts),
+            wh_services:activation_charges(<<"phone_numbers">>
+                                          ,Classification
+                                          ,Services
+                                          )
     end.

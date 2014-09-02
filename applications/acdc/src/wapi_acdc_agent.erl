@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% Bindings and JSON APIs for dealing with agents, as part of ACDc
@@ -217,7 +217,7 @@ stats_resp_v(JObj) ->
                                  ,<<"Presence-ID">>, <<"Presence-State">>
                                 ]).
 -define(AGENT_VALUES, [{<<"Event-Category">>, <<"agent">>}
-                       ,{<<"Presence-State">>, wapi_notifications:presence_states()}
+                       ,{<<"Presence-State">>, wapi_presence:presence_states()}
                       ]).
 -define(AGENT_TYPES, []).
 

@@ -13,7 +13,7 @@
 
 -include("ecallmgr.hrl").
 
--spec exec_cmd(atom(), ne_binary(), wh_json:object(), pid()) ->
+-spec exec_cmd(atom(), ne_binary(), wh_json:object(), api_pid()) ->
                       'ok' |
                       'error' |
                       ecallmgr_util:send_cmd_ret() |
@@ -592,9 +592,10 @@ call_pickup(Node, UUID, JObj) ->
     end.
 
 -spec prepare_app(atom(), ne_binary(), wh_json:object() ) ->
-    {ne_binary(), ne_binary()} |
-    {'return', ne_binary()} |
-    {'error', ne_binary()}.
+                         {ne_binary(), ne_binary()} |
+                         {'execute', atom(), ne_binary(), wh_json:object(), ne_binary()} |
+                         {'return', ne_binary()} |
+                         {'error', ne_binary()}.
 prepare_app(Node, UUID, JObj) ->
     Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
 
@@ -616,6 +617,7 @@ prepare_app(Node, UUID, JObj) ->
 -spec prepare_app_via_amqp(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                   {ne_binary(), ne_binary()} |
                                   {'return', ne_binary()} |
+                                  {'execute', atom(), ne_binary(), wh_json:object(), ne_binary()} |
                                   {'error', ne_binary()}.
 prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
     case wh_amqp_worker:call([{<<"Call-ID">>, TargetCallId}
@@ -636,6 +638,7 @@ prepare_app_via_amqp(Node, UUID, JObj, TargetCallId) ->
 
 -spec prepare_app_via_amqp(atom(), ne_binary(), wh_json:object(), ne_binary(), wh_json:object()) ->
                                   {ne_binary(), ne_binary()} |
+                                  {'execute', atom(), ne_binary(), wh_json:object(), ne_binary()} |
                                   {'return', ne_binary()}.
 prepare_app_via_amqp(Node, UUID, JObj, TargetCallId, Resp) ->
     TargetNode = wh_json:get_value(<<"Switch-Nodename">>, Resp),
@@ -649,6 +652,7 @@ maybe_answer(Node, UUID, 'false') ->
 
 -spec prepare_app_maybe_move(atom(), ne_binary(), wh_json:object(), ne_binary(), atom()) ->
                                     {ne_binary(), ne_binary()} |
+                                    {'execute', atom(), ne_binary(), wh_json:object(), ne_binary()} |
                                     {'return', ne_binary()}.
 prepare_app_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
     case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of
@@ -668,6 +672,7 @@ prepare_app_maybe_move(Node, UUID, JObj, Target, OtherNode) ->
 
 -spec prepare_app_maybe_move_remote(atom(), ne_binary(), wh_json:object(), ne_binary(), atom(), wh_json:object()) ->
                                            {ne_binary(), ne_binary()} |
+                                           {'execute', atom(), ne_binary(), wh_json:object(), ne_binary()} |
                                            {'return', ne_binary()}.
 prepare_app_maybe_move_remote(Node, UUID, JObj, TargetCallId, TargetNode, ChannelStatusJObj) ->
     case wh_json:is_true(<<"Move-Channel-If-Necessary">>, JObj, 'false') of

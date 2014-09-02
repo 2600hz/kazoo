@@ -43,7 +43,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.to_csv.get.cdrs">>, ?MODULE, 'to_csv'),
     _ = crossbar_bindings:bind(<<"*.validate.cdrs">>, ?MODULE, 'validate').
 
-
 -spec to_json(payload()) -> payload().
 to_json({Req1, Context}) ->
     Nouns = cb_context:req_nouns(Context),
@@ -56,7 +55,10 @@ to_json({Req1, Context}) ->
             {Req3, Context1} = send_chunked_cdrs({Req2, Context}),
             'ok' = cowboy_req:chunk("]", Req3),
             _ = pagination({Req3, Context1}),
-            'ok' = cowboy_req:chunk("}", Req3),
+            'ok' = cowboy_req:chunk([",\"request_id\":\"", cb_context:req_id(Context), "\""
+                                     ,",\"auth_token\":\"", cb_context:auth_token(Context), "\""
+                                     ,"}"
+                                    ], Req3),
             'ok' = cowboy_req:ensure_response(Req3, 200),
             {Req3, cb_context:store(Context1, 'is_chunked', 'true')}
     end.
@@ -80,7 +82,8 @@ to_csv({Req, Context}) ->
         [_|_] -> {Req, Context};
         [] ->
             Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}]
-                                       ,cowboy_req:get('resp_headers', Req)),
+                                       ,cowboy_req:get('resp_headers', Req)
+                                      ),
             {'ok', Req1} = cowboy_req:chunked_reply(200, Headers, Req),
             Context1 = cb_context:store(Context, 'is_csv', 'true'),
             {Req2, _} = send_chunked_cdrs({Req1, Context1}),
@@ -160,7 +163,7 @@ load_cdr_summary(Context, [_, {?WH_ACCOUNTS_DB, [_]} | _]) ->
     case create_view_options('undefined', Context) of
         {'ok', ViewOptions} ->
             load_view(?CB_LIST
-                      ,ViewOptions
+                      ,props:filter_undefined(ViewOptions)
                       ,remove_qs_keys(Context)
                      );
         Else -> Else
@@ -170,7 +173,7 @@ load_cdr_summary(Context, [_, {<<"users">>, [UserId] } | _]) ->
     case create_view_options(UserId, Context) of
         {'ok', ViewOptions} ->
             load_view(?CB_LIST_BY_USER
-                      ,ViewOptions
+                      ,props:filter_undefined(ViewOptions)
                       ,remove_qs_keys(Context)
                      );
         Else -> Else
@@ -188,75 +191,47 @@ load_cdr_summary(Context, _Nouns) ->
                                  {'ok', wh_proplist()} |
                                  cb_context:context().
 create_view_options(OwnerId, Context) ->
-    TStamp =  wh_util:current_tstamp(),
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
-    CreatedFrom = created_from(Context, TStamp, MaxRange),
-    CreatedTo = created_to(Context, CreatedFrom, MaxRange),
-    Limit = crossbar_doc:pagination_page_size(Context) + 1,
-    case CreatedTo - CreatedFrom of
-        N when N < 0 ->
-            Message = <<"created_from is prior to created_to">>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
-        N when N > MaxRange ->
-            Message = <<"created_to is more than "
-                        ,(wh_util:to_binary(MaxRange))/binary
-                        ," seconds from created_from"
-                      >>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
-        _N when OwnerId =:= 'undefined' ->
-            {'ok', [{'startkey', CreatedFrom}
-                    ,{'endkey', CreatedTo}
-                    ,{'limit', Limit}
-                   ]};
-        _N ->
-            {'ok', [{'startkey', [OwnerId, CreatedFrom]}
-                    ,{'endkey', [OwnerId, CreatedTo]}
-                    ,{'limit', Limit}
-                   ]}
+
+    case cb_modules_util:range_view_options(Context, MaxRange) of
+        {CreatedFrom, CreatedTo} ->
+            create_view_options(OwnerId, Context, CreatedFrom, CreatedTo);
+        Context1 -> Context1
     end.
 
--spec created_to(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
-created_to(Context, CreatedFrom, MaxRange) ->
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)).
-
--spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
-created_from(Context, TStamp, MaxRange) ->
-    created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
-
--spec created_from(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> pos_integer().
-created_from(Context, TStamp, MaxRange, 'undefined') ->
-    lager:debug("building created_from from req value"),
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
-created_from(_Context, _TStamp, _MaxRange, StartKey) ->
-    lager:debug("found startkey ~p as created_from", [StartKey]),
-    wh_util:to_integer(StartKey).
+-spec create_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
+                                 {'ok', wh_proplist()}.
+create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
+    {'ok', [{'startkey', CreatedFrom}
+            ,{'endkey', CreatedTo}
+            ,{'limit', crossbar_doc:pagination_page_size(Context)}
+           ]};
+create_view_options(OnwerId, Context, CreatedFrom, CreatedTo) ->
+    {'ok', [{'startkey', [OnwerId, CreatedFrom]}
+            ,{'endkey', [OnwerId, CreatedTo]}
+            ,{'limit', crossbar_doc:pagination_page_size(Context)}
+           ]}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec load_view(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
+-spec load_view(ne_binary(), wh_proplist(), cb_context:context()) ->
+                       cb_context:context().
 load_view(View, ViewOptions, Context) ->
     AccountId = cb_context:account_id(Context),
     ToMODb = view_created_to_modb(AccountId, ViewOptions),
     FromMODb = view_created_from_modb(AccountId, ViewOptions),
     load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context).
 
--spec load_chunked_db(ne_binary(), wh_proplist(), ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_chunked_db(ne_binary(), wh_proplist(), ne_binary(), ne_binary(), cb_context:context()) ->
+                             cb_context:context().
 load_chunked_db(View, ViewOptions, Db, Db, Context) ->
-    C = cb_context:set_account_db(Context, [Db]),
+    C = cb_context:store(Context, 'chunked_dbs', [Db]),
     load_chunked_view_options(View, ViewOptions, C);
 load_chunked_db(View, ViewOptions, ToMODb, FromMODb, Context) ->
-    C = cb_context:set_account_db(Context, [ToMODb, FromMODb]),
+    C = cb_context:store(Context, 'chunked_dbs', [ToMODb, FromMODb]),
     load_chunked_view_options(View, ViewOptions, C).
 
 -spec load_chunked_view_options(ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
@@ -298,10 +273,10 @@ view_key_created_from(ViewOptions) ->
 %%--------------------------------------------------------------------
 -spec send_chunked_cdrs(payload()) -> payload().
 send_chunked_cdrs({Req, Context}) ->
-    Db = cb_context:account_db(Context),
+    Dbs = cb_context:fetch(Context, 'chunked_dbs'),
     AuthAccountId = cb_context:auth_account_id(Context),
     IsReseller = wh_services:is_reseller(AuthAccountId),
-    send_chunked_cdrs(Db, {Req, cb_context:store(Context, 'is_reseller', IsReseller)}).
+    send_chunked_cdrs(Dbs, {Req, cb_context:store(Context, 'is_reseller', IsReseller)}).
 
 -spec send_chunked_cdrs(ne_binaries(), payload()) -> payload().
 send_chunked_cdrs([], Payload) -> Payload;
@@ -326,7 +301,8 @@ fetch_view_options(Context) ->
         _ -> ViewOptions
     end.
 
--spec maybe_paginate_and_clean(cb_context:context(), ne_binaries()) -> {cb_context:context(), ne_binaries()}.
+-spec maybe_paginate_and_clean(cb_context:context(), ne_binaries()) ->
+                                      {cb_context:context(), ne_binaries()}.
 maybe_paginate_and_clean(Context, []) -> {Context, []};
 maybe_paginate_and_clean(Context, Ids) ->
     case cb_context:fetch(Context, 'is_csv') of
@@ -334,8 +310,8 @@ maybe_paginate_and_clean(Context, Ids) ->
             {Context, [Id || {Id, _} <- Ids]};
         _ ->
             ViewOptions = cb_context:fetch(Context, 'chunked_view_options'),
-            AskedFor = props:get_value('limit', ViewOptions)-1,
-            PageSize = erlang:length(Ids)-1,
+            PageSize = erlang:length(Ids) - 1,
+            AskedFor = props:get_value('limit', ViewOptions, PageSize) - 1,
             case AskedFor > erlang:length(Ids) of
                 'true' ->
                     Context1 = cb_context:store(Context, 'page_size', PageSize),
@@ -349,7 +325,8 @@ maybe_paginate_and_clean(Context, Ids) ->
     end.
 
 -spec get_cdr_ids(ne_binary(), ne_binary(), wh_proplist()) ->
-                                {'ok', wh_proplist()} | {'error', _}.
+                         {'ok', wh_proplist()} |
+                         {'error', _}.
 get_cdr_ids(Db, View, ViewOptions) ->
     _ = maybe_add_design_doc(Db),
     case couch_mgr:get_results(Db, View, ViewOptions) of
@@ -358,10 +335,13 @@ get_cdr_ids(Db, View, ViewOptions) ->
             {'ok', [{wh_json:get_value(<<"id">>, JObj)
                      ,wh_json:get_value(<<"key">>, JObj)
                     }
-                    || JObj <- JObjs]}
+                    || JObj <- JObjs
+                   ]}
     end.
 
--spec maybe_add_design_doc(ne_binary()) -> 'ok' | {'error', 'not_found'}.
+-spec maybe_add_design_doc(ne_binary()) ->
+                                  'ok' |
+                                  {'error', 'not_found'}.
 maybe_add_design_doc(Db) ->
     case couch_mgr:lookup_doc_rev(Db, <<"_design/cdrs">>) of
         {'error', 'not_found'} ->
@@ -381,15 +361,16 @@ load_chunked_cdrs(Db, Ids, {_, Context}=Payload) ->
             'true' -> {Ids, []};
             'false' -> lists:split(?MAX_BULK, Ids)
         end,
-   ViewOptions = [{'keys', BulkIds}
-                  ,'include_docs'
-                 ],
+    ViewOptions = [{'keys', BulkIds}
+                   ,'include_docs'
+                  ],
     case couch_mgr:all_docs(Db, ViewOptions) of
         {'ok', Results} ->
             HasQSFilter = crossbar_doc:has_qs_filter(Context),
             JObjs = [wh_json:get_value(<<"doc">>, Result)
-                     || Result <- Results
-                        ,crossbar_doc:filtered_doc_by_qs(Result, HasQSFilter, Context)],
+                     || Result <- Results,
+                        crossbar_doc:filtered_doc_by_qs(Result, HasQSFilter, Context)
+                    ],
             P = normalize_and_send(JObjs, Payload),
             load_chunked_cdrs(Db, Remaining, P);
         {'error', _E} ->
@@ -415,14 +396,13 @@ normalize_and_send('json', [JObj|JObjs], {Req, Context}) ->
             'ok' = cowboy_req:chunk(wh_json:encode(CDR), Req),
             normalize_and_send('json', JObjs, {Req, cb_context:store(Context, 'started_chunk', 'true')})
     end;
-
 normalize_and_send('csv', [], Payload) -> Payload;
 normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
     case cb_context:fetch(Context, 'started_chunk') of
         'true' ->
-            CSV =  <<(normalize_cdr_to_csv_header(JObj, Context))/binary
-                      ,(normalize_cdr_to_csv(JObj, Context))/binary
-                    >>,
+            CSV = <<(normalize_cdr_to_csv_header(JObj, Context))/binary
+                    ,(normalize_cdr_to_csv(JObj, Context))/binary
+                  >>,
             'ok' = cowboy_req:chunk(CSV, Req),
             normalize_and_send('csv', JObjs, {Req, Context});
         _Else ->
@@ -432,70 +412,68 @@ normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
 
 -spec normalize_cdr(wh_json:object(), cb_context:context()) -> wh_json:object().
 normalize_cdr(JObj, Context) ->
-    Timestamp = wh_json:get_value(<<"timestamp">>, JObj, 0),
+    Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0),
     maybe_reseller_cdr(
-        wh_json:from_list([
-            {<<"id">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}
-            ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, JObj, <<>>)}
-            ,{<<"caller_id_number">>, wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)}
-            ,{<<"caller_id_name">>, wh_json:get_value(<<"caller_id_name">>, JObj, <<>>)}
-            ,{<<"callee_id_number">>, wh_json:get_value(<<"callee_id_number">>, JObj, <<>>)}
-            ,{<<"callee_id_name">>, wh_json:get_value(<<"callee_id_name">>, JObj, <<>>)}
-            ,{<<"duration_seconds">>, wh_json:get_value(<<"duration_seconds">>, JObj, <<>>)}
-            ,{<<"billing_seconds">>, wh_json:get_value(<<"billing_seconds">>, JObj, <<>>)}
-            ,{<<"timestamp">>, Timestamp}
-            ,{<<"hangup_cause">>, wh_json:get_value(<<"hangup_cause">>, JObj, <<>>)}
-            ,{<<"other_leg_call_id">>, wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>)}
-            ,{<<"owner_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>)}
-            ,{<<"to">>, wh_json:get_value(<<"to">>, JObj, <<>>)}
-            ,{<<"from">>, wh_json:get_value(<<"from">>, JObj, <<>>)}
-            ,{<<"direction">>, wh_json:get_value(<<"call_direction">>, JObj, <<>>)}
-            ,{<<"request">>, wh_json:get_value(<<"request">>, JObj, <<>>)}
-            ,{<<"authorizing_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)}
-            ,{<<"cost">>, customer_cost(JObj)}
-            % New fields
-            ,{<<"dialed_number">>, dialed_number(JObj)}
-            ,{<<"calling_from">>, calling_from(JObj)}
-            ,{<<"datetime">>, pretty_print_datetime(Timestamp)}
-            ,{<<"unix_timestamp">>, wh_util:gregorian_seconds_to_unix_seconds(Timestamp)}
-            ,{<<"call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)}
-            ,{<<"rate">>, wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))}
-            ,{<<"rate_name">>, wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)}
-        ])
-        ,Context
-    ).
+      wh_json:from_list([{<<"id">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}
+                         ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, JObj, <<>>)}
+                         ,{<<"caller_id_number">>, wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)}
+                         ,{<<"caller_id_name">>, wh_json:get_value(<<"caller_id_name">>, JObj, <<>>)}
+                         ,{<<"callee_id_number">>, wh_json:get_value(<<"callee_id_number">>, JObj, <<>>)}
+                         ,{<<"callee_id_name">>, wh_json:get_value(<<"callee_id_name">>, JObj, <<>>)}
+                         ,{<<"duration_seconds">>, wh_json:get_value(<<"duration_seconds">>, JObj, <<>>)}
+                         ,{<<"billing_seconds">>, wh_json:get_value(<<"billing_seconds">>, JObj, <<>>)}
+                         ,{<<"timestamp">>, Timestamp}
+                         ,{<<"hangup_cause">>, wh_json:get_value(<<"hangup_cause">>, JObj, <<>>)}
+                         ,{<<"other_leg_call_id">>, wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>)}
+                         ,{<<"owner_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>)}
+                         ,{<<"to">>, wh_json:get_value(<<"to">>, JObj, <<>>)}
+                         ,{<<"from">>, wh_json:get_value(<<"from">>, JObj, <<>>)}
+                         ,{<<"direction">>, wh_json:get_value(<<"call_direction">>, JObj, <<>>)}
+                         ,{<<"request">>, wh_json:get_value(<<"request">>, JObj, <<>>)}
+                         ,{<<"authorizing_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)}
+                         ,{<<"cost">>, customer_cost(JObj)}
+                         %% New fields
+                         ,{<<"dialed_number">>, dialed_number(JObj)}
+                         ,{<<"calling_from">>, calling_from(JObj)}
+                         ,{<<"datetime">>, pretty_print_datetime(Timestamp)}
+                         ,{<<"unix_timestamp">>, wh_util:gregorian_seconds_to_unix_seconds(Timestamp)}
+                         ,{<<"call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)}
+                         ,{<<"rate">>, wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))}
+                         ,{<<"rate_name">>, wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)}
+                        ])
+      ,Context
+     ).
 
 -spec normalize_cdr_to_csv(wh_json:object(), cb_context:context()) -> ne_binary().
 normalize_cdr_to_csv(JObj, Context) ->
-    Timestamp = wh_json:get_value(<<"timestamp">>, JObj, 0),
-    CSV = wh_util:join_binary([
-        wh_json:get_value(<<"_id">>, JObj, <<>>)
-        ,wh_json:get_value(<<"call_id">>, JObj, <<>>)
-        ,wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)
-        ,wh_json:get_value(<<"caller_id_name">>, JObj, <<>>)
-        ,wh_json:get_value(<<"callee_id_number">>, JObj, <<>>)
-        ,wh_json:get_value(<<"callee_id_name">>, JObj, <<>>)
-        ,wh_json:get_value(<<"duration_seconds">>, JObj, <<>>)
-        ,wh_json:get_value(<<"billing_seconds">>, JObj, <<>>)
-        ,wh_util:to_binary(Timestamp)
-        ,wh_json:get_value(<<"hangup_cause">>, JObj, <<>>)
-        ,wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>)
-        ,wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>)
-        ,wh_json:get_value(<<"to">>, JObj, <<>>)
-        ,wh_json:get_value(<<"from">>, JObj, <<>>)
-        ,wh_json:get_value(<<"call_direction">>, JObj, <<>>)
-        ,wh_json:get_value(<<"request">>, JObj, <<>>)
-        ,wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)
-        ,wh_util:to_binary(customer_cost(JObj))
-        % New fields
-        ,dialed_number(JObj)
-        ,calling_from(JObj)
-        ,pretty_print_datetime(Timestamp)
-        ,wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp))
-        ,wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)
-        ,wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0)))
-        ,wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)
-    ], <<",">>),
+    Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0),
+    CSV = wh_util:join_binary([wh_json:get_value(<<"_id">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"call_id">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"caller_id_number">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"caller_id_name">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"callee_id_number">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"callee_id_name">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"duration_seconds">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"billing_seconds">>, JObj, <<>>)
+                               ,wh_util:to_binary(Timestamp)
+                               ,wh_json:get_value(<<"hangup_cause">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"other_leg_call_id">>, JObj, <<>>)
+                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"owner_id">>], JObj, <<>>)
+                               ,wh_json:get_value(<<"to">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"from">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"call_direction">>, JObj, <<>>)
+                               ,wh_json:get_value(<<"request">>, JObj, <<>>)
+                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"authorizing_id">>], JObj, <<>>)
+                               ,wh_util:to_binary(customer_cost(JObj))
+                               %% New fields
+                               ,dialed_number(JObj)
+                               ,calling_from(JObj)
+                               ,pretty_print_datetime(Timestamp)
+                               ,wh_util:to_binary(wh_util:gregorian_seconds_to_unix_seconds(Timestamp))
+                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)
+                               ,wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0)))
+                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)
+                              ], <<",">>),
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;
         'true' ->  <<CSV/binary, ",reseller_cost,reseller_call_type\r">>
@@ -539,12 +517,13 @@ normalize_cdr_to_csv_header(JObj, Context) ->
                   >>
     end.
 
--spec pretty_print_datetime(wh_datetime() | wh_now()) -> ne_binary().
+-spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w",
-                                   [Y, Mo, D, H, Mi, S])).
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w"
+                                   ,[Y, Mo, D, H, Mi, S]
+                                  )).
 
 -spec dialed_number(wh_json:object()) -> binary().
 dialed_number(JObj) ->
@@ -560,7 +539,7 @@ dialed_number(JObj) ->
 -spec calling_from(wh_json:object()) -> binary().
 calling_from(JObj) ->
     case wh_json:get_value(<<"call_direction">>, JObj) of
-        <<"inbound">> ->wh_json:get_value(<<"caller_id_number">>, JObj, <<>>);
+        <<"inbound">> -> wh_json:get_value(<<"caller_id_number">>, JObj, <<>>);
         <<"outbound">> ->
             [Num|_] = binary:split(wh_json:get_value(<<"from_uri">>, JObj, <<>>), <<"@">>),
             Num
@@ -575,10 +554,9 @@ maybe_reseller_cdr(JObj, Context) ->
 
 -spec reseller_cdr(wh_json:object()) -> wh_json:object().
 reseller_cdr(JObj) ->
-    wh_json:set_values([
-        {<<"reseller_cost">>, reseller_cost(JObj)}
-        ,{<<"reseller_call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>)}
-    ], JObj).
+    wh_json:set_values([{<<"reseller_cost">>, reseller_cost(JObj)}
+                        ,{<<"reseller_call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>)}
+                       ], JObj).
 
 -spec customer_cost(wh_json:object()) -> pos_integer().
 customer_cost(JObj) ->
@@ -593,7 +571,6 @@ reseller_cost(JObj) ->
         <<"per_minute">> -> wht_util:call_cost(JObj);
         _ -> 0
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -618,7 +595,7 @@ remove_qs_keys(Context) ->
 load_cdr(<<Year:4/binary, Month:2/binary, "-", _/binary>> = CDRId, Context) ->
     AccountId = cb_context:account_id(Context),
     AcctDb = kazoo_modb:get_modb(AccountId, wh_util:to_integer(Year), wh_util:to_integer(Month)),
-    Context1 = cb_context:set_account_db(Context,AcctDb),
+    Context1 = cb_context:set_account_db(Context, AcctDb),
     crossbar_doc:load(CDRId, Context1);
 load_cdr(CDRId, Context) ->
     lager:debug("error loading cdr by id ~p", [CDRId]),

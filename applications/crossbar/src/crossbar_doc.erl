@@ -69,8 +69,8 @@ pagination_page_size(Context) ->
 pagination_page_size(_Context, <<"v1">>) -> 'undefined';
 pagination_page_size(Context, _Version) ->
     case cb_context:req_value(Context, <<"page_size">>) of
-        'undefined' -> pagination_page_size();
-        V -> wh_util:to_integer(V)
+        'undefined' -> pagination_page_size() + 1;
+        V -> wh_util:to_integer(V) + 1
     end.
 
 %%--------------------------------------------------------------------

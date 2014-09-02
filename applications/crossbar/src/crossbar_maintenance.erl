@@ -12,7 +12,7 @@
          ,migrate_accounts_data/0
          ,migrate_account_data/1
         ]).
--export([flush/0]).
+
 -export([start_module/1]).
 -export([stop_module/1]).
 -export([running_modules/0]).
@@ -96,16 +96,6 @@ migrate_accounts_data() ->
 migrate_account_data(Account) ->
     cb_clicktocall:maybe_migrate_history(Account),
     'no_return'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Flush the crossbar local cache
-%% @end
-%%--------------------------------------------------------------------
--spec flush() -> 'ok'.
-flush() ->
-    wh_cache:flush_local(?CROSSBAR_CACHE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -531,7 +521,3 @@ maybe_move_account(AccountId, ToAccountId) ->
         {'error', Reason} ->
             io:format("unable to complete move: ~p~n", [Reason])
     end.
-
-
-
-

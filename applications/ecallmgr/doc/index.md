@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: eCallMgr
 Title: Erlang Call Manager
 Language: en-US

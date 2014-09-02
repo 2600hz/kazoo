@@ -279,33 +279,18 @@ is_account_db(_) -> 'false'.
                                   {'error', 'not_found'}.
 get_account_by_realm(RawRealm) ->
     Realm = wh_util:to_lower_binary(RawRealm),
-    case wh_cache:peek(?ACCT_BY_REALM_CACHE(Realm)) of
-        {'ok', Ok} -> Ok;
-        {'error', 'not_found'} ->
-            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{'key', Realm}]) of
-                {'ok', [JObj]} ->
-                    AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
-                    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-                    CacheProps = [{'expires', ?SECONDS_IN_DAY}
-                                  ,{'origin', {'db', AccountDb, AccountId}}
-                                 ],
-                    wh_cache:store(?ACCT_BY_REALM_CACHE(Realm), {'ok', AccountDb}, CacheProps),
-                    {'ok', AccountDb};
-                {'ok', []} ->
-                    {'error', 'not_found'};
-                {'ok', [_|_]=JObjs} ->
-                    AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
-                    CacheProps = [{'expires', ?SECONDS_IN_DAY}
-                                  ,{'origin', [{'db', AccountDb, wh_util:format_account_id(AccountDb, 'raw')}
-                                               || AccountDb <- AccountDbs
-                                              ]}
-                                 ],
-                    wh_cache:store(?ACCT_BY_REALM_CACHE(Realm), {'multiples', AccountDbs}, CacheProps),
-                    {'multiples', AccountDbs};
-                _E ->
-                    lager:debug("error while fetching accounts by realm: ~p", [_E]),
-                    {'error', 'not_found'}
-            end
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{'key', Realm}]) of
+        {'ok', [JObj]} ->
+            AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
+            {'ok', AccountDb};
+        {'ok', []} ->
+            {'error', 'not_found'};
+        {'ok', [_|_]=JObjs} ->
+            AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
+            {'multiples', AccountDbs};
+        _E ->
+            lager:debug("error while fetching accounts by realm: ~p", [_E]),
+            {'error', 'not_found'}
     end.
 
 %%--------------------------------------------------------------------
@@ -319,32 +304,17 @@ get_account_by_realm(RawRealm) ->
                                   {'multiples', wh_json:key()} |
                                   {'error', 'not_found'}.
 get_accounts_by_name(Name) ->
-    case wh_cache:peek(?ACCT_BY_NAME_CACHE(Name)) of
-        {'ok', Ok} -> Ok;
-        {'error', 'not_found'} ->
-            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{'key', Name}]) of
-                {'ok', [JObj]} ->
-                    AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
-                    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-                    CacheProps = [{'expires', ?SECONDS_IN_DAY}
-                                  ,{'origin', {'db', AccountDb, AccountId}}
-                                 ],
-                    wh_cache:store(?ACCT_BY_NAME_CACHE(Name), {'ok', AccountDb}, CacheProps),
-                    {'ok', AccountDb};
-                {'ok', []} -> {'error', 'not_found'};
-                {'ok', [_|_]=JObjs} ->
-                    AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
-                    CacheProps = [{'expires', ?SECONDS_IN_DAY}
-                                  ,{'origin', [{'db', AccountDb, wh_util:format_account_id(AccountDb, 'raw')}
-                                               || AccountDb <- AccountDbs
-                                              ]}
-                                 ],
-                    wh_cache:store(?ACCT_BY_NAME_CACHE(Name), {'multiples', AccountDbs}, CacheProps),
-                    {'multiples', AccountDbs};
-                _E ->
-                    lager:debug("error while fetching accounts by name: ~p", [_E]),
-                    {'error', 'not_found'}
-            end
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{'key', Name}]) of
+        {'ok', [JObj]} ->
+            AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
+            {'ok', AccountDb};
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', [_|_]=JObjs} ->
+            AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
+            {'multiples', AccountDbs};
+        _E ->
+            lager:debug("error while fetching accounts by name: ~p", [_E]),
+            {'error', 'not_found'}
     end.
 
 %%--------------------------------------------------------------------

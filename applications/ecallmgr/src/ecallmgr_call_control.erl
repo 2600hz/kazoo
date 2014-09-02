@@ -176,7 +176,8 @@ queue_name(_) -> 'undefined'.
 other_legs(Srv) ->
     gen_listener:call(Srv, 'other_legs', 1000).
 
--spec event_execute_complete(pid(), ne_binary(), ne_binary()) -> 'ok'.
+-spec event_execute_complete(api_pid(), ne_binary(), ne_binary()) -> 'ok'.
+event_execute_complete('undefined', _CallId, _App) -> 'ok';
 event_execute_complete(Srv, CallId, App) ->
     gen_listener:cast(Srv, {'event_execute_complete', CallId, App, wh_json:new()}).
 
@@ -728,8 +729,8 @@ maybe_add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs}=State) ->
 
 -spec add_cleg(wh_proplist(), api_binary(), api_binary(), state()) -> state().
 add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
-                             ,callid=CallId
-                            }=State) ->
+                                        ,callid=CallId
+                                       }=State) ->
     case is_atom(LegId) orelse lists:member(LegId, Legs) of
         'true' -> State;
         'false' ->
@@ -743,15 +744,16 @@ add_cleg(Props, OtherLeg, LegId, #state{other_legs=Legs
             State#state{other_legs=[LegId|Legs]}
     end.
 
--spec publish_cleg_addition(wh_proplist(), ne_binary(), ne_binary()) -> 'ok'.
+-spec publish_cleg_addition(wh_proplist(), api_binary(), ne_binary()) -> 'ok'.
 publish_cleg_addition(Props, OtherLeg, CallId) ->
     Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>
                                               ,'undefined'
-                                              ,ecallmgr_call_events:swap_call_legs(Props)),
+                                              ,ecallmgr_call_events:swap_call_legs(Props)
+                                             ),
     Event1 = replace_call_id(Event, OtherLeg, CallId, []),
     ecallmgr_call_events:publish_event(Event1).
 
--spec replace_call_id(wh_proplist(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+-spec replace_call_id(wh_proplist(), api_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
 replace_call_id([], _Call1, _Call2, Swap) -> Swap;
 replace_call_id([{Key, Call1}|T], Call1, Call2, Swap) ->
     replace_call_id(T, Call1, Call2, [{Key, Call2}|Swap]);

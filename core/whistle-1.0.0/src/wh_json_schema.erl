@@ -10,6 +10,7 @@
 
 -export([add_defaults/2
          ,load/1
+         ,flush/0, flush/1
         ]).
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -23,6 +24,13 @@
                                   {'error', term()}.
 load(<<_/binary>> = Schema) ->
     couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema).
+
+-spec flush() -> 'ok'.
+-spec flush(ne_binary()) -> 'ok'.
+flush() ->
+    couch_mgr:flush_cache_docs(?WH_SCHEMA_DB).
+flush(Schema) ->
+    couch_mgr:flush_cache_doc(?WH_SCHEMA_DB, Schema).
 
 -spec add_defaults(api_object() | ne_binary(), ne_binary() | wh_json:object()) -> api_object().
 add_defaults(JObj, <<_/binary>> = Schema) ->

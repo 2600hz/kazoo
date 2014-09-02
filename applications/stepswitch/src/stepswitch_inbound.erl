@@ -38,7 +38,6 @@ maybe_relay_request(JObj) ->
         {'error', _R} ->
             lager:info("unable to determine account for ~s: ~p", [Number, _R]);
         {'ok', _, NumberProps} ->
-            lager:debug("relaying route request"),
             Routines = [fun set_account_id/2
                         ,fun set_ignore_display_updates/2
                         ,fun set_inception/2
@@ -47,7 +46,7 @@ maybe_relay_request(JObj) ->
                         ,fun maybe_set_ringback/2
                         ,fun maybe_set_transfer_media/2
                         ,fun maybe_lookup_cnam/2
-                        ,fun relay_request/2
+                        ,fun maybe_blacklisted/2
                         ,fun maybe_transition_port_in/2
                        ],
             _ = lists:foldl(fun(F, J) ->  F(NumberProps, J) end
@@ -294,11 +293,27 @@ maybe_lookup_cnam(NumberProps, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec relay_request(wh_proplist(), wh_json:object()) ->
+-spec maybe_blacklisted(wh_proplist(), wh_json:object()) ->
                            wh_json:object().
-relay_request(_NumberProps, JObj) ->
+maybe_blacklisted(_NumberProps, JObj) ->
+    case is_blacklisted(JObj) of
+        'true' -> JObj;
+        'false' ->
+            _ = relay_request(JObj),
+            JObj
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% relay a route request once populated with the new properties
+%% @end
+%%--------------------------------------------------------------------
+-spec relay_request(wh_json:object()) -> wh_json:object().
+relay_request(JObj) ->
     wapi_route:publish_req(JObj),
-    JObj.
+    lager:debug("relaying route request").
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -321,3 +336,62 @@ maybe_transition_port_in(NumberProps, JObj) ->
                 end
         end,
     JObj.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_blacklisted(wh_json:object()) -> wh_json:object().
+is_blacklisted(JObj) ->
+    AccountId = wh_json:get_ne_value(?CCV(<<"Account-ID">>), JObj),
+    case get_blacklists(AccountId) of
+        {'error', _R} ->
+            lager:debug("not blacklisted ~p", [_R]),
+            'false';
+        {'ok', Blacklists} ->
+            Blacklist = get_blacklist(AccountId, Blacklists),
+            Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
+            case wh_json:get_value(Number, Blacklist) of
+                'undefined' ->
+                    lager:debug("~p not blacklisted, did not match any rule", [Number]),
+                    'false';
+                _Rule ->
+                    lager:info("~p is blacklisted", [Number]),
+                    'true'
+            end
+    end.
+
+-spec get_blacklists(ne_binary()) -> {'error', any()} | {'ok', ne_binaries()}.
+get_blacklists(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'error', _R}=E ->
+            lager:error("could not open ~s in ~s: ~p", [AccountId, AccountDb, _R]),
+            E;
+        {'ok', Doc} ->
+            case wh_json:get_value(<<"blacklists">>, Doc, []) of
+                [] -> {'error', 'undefined'};
+                [_|_]=Blacklists-> {'ok', Blacklists};
+                _ -> {'error', 'miss_configured'}
+            end
+    end.
+
+-spec get_blacklist(ne_binary(), ne_binaries()) -> wh_json:object().
+get_blacklist(AccountId, Blacklists) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    lists:foldl(
+        fun(BlacklistId, Acc) ->
+            case couch_mgr:open_cache_doc(AccountDb, BlacklistId) of
+                {'error', _R} ->
+                    lager:error("could not open ~s in ~s: ~p", [BlacklistId, AccountDb, _R]),
+                    Acc;
+                {'ok', Doc} ->
+                    Numbers = wh_json:get_value(<<"numbers">>, Doc, wh_json:new()),
+                    wh_json:merge_jobjs(Acc, Numbers)
+            end
+        end
+        ,wh_json:new()
+        ,Blacklists
+    ).

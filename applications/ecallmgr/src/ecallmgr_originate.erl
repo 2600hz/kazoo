@@ -545,7 +545,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
         {'ok', <<"+OK ", ID/binary>>} ->
             UUID = wh_util:strip_binary(binary:replace(ID, <<"\n">>, <<>>)),
             Media = get('hold_media'),
-            spawn(fun() -> set_music_on_hold(Node, UUID, Media) end),
+            _Pid = spawn(fun() -> set_music_on_hold(Node, UUID, Media) end),
             {'ok', UUID};
         {'ok', Other} ->
             lager:debug("recv other 'ok': ~s", [Other]),
@@ -555,12 +555,11 @@ originate_execute(Node, Dialstrings, Timeout) ->
             {'error', wh_util:strip_binary(binary:replace(Error, <<"\n">>, <<>>))}
     end.
 
--spec set_music_on_hold(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec set_music_on_hold(atom(), ne_binary(), api_binary()) -> 'ok'.
 set_music_on_hold(_, _, 'undefined') -> 'ok';
 set_music_on_hold(Node, UUID, Media) ->
     Resp = ecallmgr_util:set(Node, UUID, [{<<"Hold-Media">>, Media}]),
-    lager:debug("setting Hold-Media ~p", [Resp]).
-
+    lager:debug("setting Hold-Media resp: ~p", [Resp]).
 
 -spec bind_to_call_events(ne_binary()) -> 'ok'.
 bind_to_call_events(CallId) ->
@@ -568,7 +567,7 @@ bind_to_call_events(CallId) ->
     Options = [{'callid', CallId}
                ,{'restrict_to', ['events']}
               ],
-    gen_listener:add_binding(self(), call, Options).
+    gen_listener:add_binding(self(), 'call', Options).
 
 -spec unbind_from_call_events() -> 'ok'.
 unbind_from_call_events() ->

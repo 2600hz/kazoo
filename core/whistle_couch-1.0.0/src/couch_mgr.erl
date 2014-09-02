@@ -539,6 +539,9 @@ flush_cache_doc(DbName, DocId, Options) ->
         {'error', _}=E -> E
     end.
 
+-spec flush_cache_docs() -> 'ok'.
+-spec flush_cache_docs(ne_binary()) -> 'ok'.
+
 flush_cache_docs() -> couch_util:flush_cache_docs().
 flush_cache_docs(DbName) ->
     case maybe_convert_dbname(DbName) of
@@ -777,7 +780,8 @@ del_doc(DbName, Doc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec del_docs(text(), wh_json:objects()) ->
-                      {'ok', wh_json:objects()}.
+                      {'ok', wh_json:objects()} |
+                      couchbeam_error().
 del_docs(DbName, Docs) when is_list(Docs) andalso ?VALID_DBNAME ->
     couch_util:del_docs(wh_couch_connections:get_server(), DbName, Docs);
 del_docs(DbName, Docs) when is_list(Docs) ->
@@ -860,8 +864,8 @@ delete_attachment(DbName, DocId, AName, Options) ->
                               couchbeam_error().
 -spec get_all_results(ne_binary(), ne_binary()) -> get_results_return().
 -spec get_results(ne_binary(), ne_binary()) -> get_results_return().
--spec get_results(ne_binary(), ne_binary(), wh_proplist()) -> get_results_return().
--spec get_results_count(ne_binary(), ne_binary(), wh_proplist()) ->
+-spec get_results(ne_binary(), ne_binary(), view_options()) -> get_results_return().
+-spec get_results_count(ne_binary(), ne_binary(), view_options()) ->
                                {'ok', integer()} |
                                couchbeam_error().
 get_all_results(DbName, DesignDoc) ->

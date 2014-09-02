@@ -444,7 +444,11 @@ add_number_conflict(Number, JObj, Context) ->
                           wh_json:object().
 get_metadata('undefined', _, JObj) -> JObj;
 get_metadata(Flow, Db, JObj) ->
-    JObj1 = case wh_json:get_value([<<"data">>, <<"id">>], Flow) of
+    JObj1 = case wh_json:get_first_defined(
+                   [[<<"data">>, <<"id">>]
+                   ,[<<"data">>, <<"faxbox_id">>]
+                   ], Flow)
+            of
                 %% this node has no id, dont change the metadata
                 'undefined' -> JObj;
                 %% node has an id, try to update the metadata

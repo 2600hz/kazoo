@@ -25,7 +25,7 @@
     ,handle_resource_response/2
 ]).
 
--export([add_request/2]).
+-export([add_request/1]).
 
 -include("camper.hrl").
 
@@ -68,11 +68,20 @@ start_link(Args) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], Args).
 
-init([Exten, Call]) ->
+init(JObj) ->
+    Exten = wh_json:get_value(<<"Number">>, JObj),
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     lager:info("Statred offnet handler(~p) for request ~s->~s", [self(), whapps_call:from_user(Call), Exten]),
-    MaxTries = whapps_config:get(?CAMPER_CONFIG_CAT, <<"tries">>, 10),
-    TryInterval = whapps_config:get(?CAMPER_CONFIG_CAT, <<"try_interval">>, timer:minutes(3)),
-    StopAfter = whapps_config:get(?CAMPER_CONFIG_CAT, <<"stop_after">>, timer:minutes(31)),
+
+    MaxTriesSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"tries">>, 10),
+    MaxTries = wh_json:get_value(<<"Tries">>, JObj, MaxTriesSystem),
+
+    TryIntervalSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"try_interval">>,3),
+    TryInterval = timer:minutes(wh_json:get_value(<<"Try-Interval">>, JObj, TryIntervalSystem)),
+
+    StopAfterSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"stop_after">>, 31),
+    StopAfter = timer:minutes(wh_json:get_value(<<"Stop-After">>, JObj, StopAfterSystem)),
+
     StopTimer = timer:apply_after(StopAfter, 'gen_listener', 'cast', [self(), 'stop_campering']),
     {'ok', #state{exten = Exten
                   ,stored_call = Call
@@ -168,10 +177,11 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
--spec add_request(ne_binary(), whapps_call:call()) -> 'ok'.
-add_request(Exten, Call) ->
+-spec add_request(wh_json:object()) -> 'ok'.
+add_request(JObj) ->
+    Exten = wh_json:get_value(<<"Number">>, JObj),
     lager:info("adding offnet request to ~s", [Exten]),
-    camper_offnet_sup:new(Exten, Call).
+    camper_offnet_sup:new(JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -315,6 +325,7 @@ build_offnet_request(Exten, Call, Q) ->
         ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
         ,{<<"Timeout">>, 10000}
         ,{<<"To-DID">>, Exten}
+        ,{<<"Format-From-URI">>, <<"true">>}
         ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}
         | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
     ]).

@@ -130,10 +130,10 @@ login_agent(Call, AgentId, Data) ->
                 ,{<<"Presence-State">>, presence_state(Data)}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    case whapps_util:amqp_pool_request(Update
-                                       ,fun wapi_acdc_agent:publish_login/1
-                                       ,fun wapi_acdc_agent:login_resp_v/1
-                                      )
+    case wh_amqp_worker:call(Update
+                             ,fun wapi_acdc_agent:publish_login/1
+                             ,fun wapi_acdc_agent:login_resp_v/1
+                            )
     of
         {'ok', RespJObj} ->
             wh_json:get_value(<<"Status">>, RespJObj);

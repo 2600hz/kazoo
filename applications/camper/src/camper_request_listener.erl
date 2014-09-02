@@ -70,17 +70,10 @@ handle_camper_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
     case binary:split(Key, <<".">>, ['global']) of
         [_, ?APP_NAME, <<"offnet">>] ->
             Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
-            Number = wh_json:get_value(<<"Number">>, Msg),
-            Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, Msg)),
-            camper_offnet_handler:add_request(Number, Call);
+            camper_offnet_handler:add_request(Msg);
         [_, ?APP_NAME, <<"onnet">>] ->
             Msg = wh_json:get_value(<<"Delegate-Message">>, JObj),
-            AccountDb = wh_json:get_value(<<"Account-DB">>, Msg),
-            Id = wh_json:get_value(<<"Authorizing-ID">>, Msg),
-            Type = wh_json:get_value(<<"Authorizing-Type">>, Msg),
-            Number = wh_json:get_value(<<"Number">>, Msg),
-            Targets = wh_json:get_value(<<"Targets">>, Msg),
-            camper_onnet_handler:add_request(AccountDb, {Id, Type}, Number, Targets)
+            camper_onnet_handler:add_request(Msg)
     end.
 
 %%%===================================================================

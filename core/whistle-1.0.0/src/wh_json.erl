@@ -338,7 +338,7 @@ get_string_value(Key, JObj) ->
 get_string_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> wh_util:to_list(Value)
+        Value -> safe_cast(Value, Default, fun wh_util:to_list/1)
     end.
 
 -spec get_binary_value(key(), object() | objects()) -> 'undefined' | binary().
@@ -348,7 +348,7 @@ get_binary_value(Key, JObj) ->
 get_binary_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> wh_util:to_binary(Value)
+        Value -> safe_cast(Value, Default, fun wh_util:to_binary/1)
     end.
 
 -spec get_ne_binary_value(key(), object() | objects()) -> api_binary().
@@ -364,63 +364,66 @@ get_ne_binary_value(Key, JObj, Default) ->
 
 -spec get_lower_binary(key(), object() | objects()) -> 'undefined' | binary().
 -spec get_lower_binary(key(), object() | objects(), Default) -> binary() | Default.
-get_lower_binary(Key, JObj) -> get_lower_binary(Key, JObj, 'undefined').
+get_lower_binary(Key, JObj) ->
+    get_lower_binary(Key, JObj, 'undefined').
+
 get_lower_binary(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> wh_util:to_lower_binary(Value)
+        Value -> safe_cast(Value, Default, fun wh_util:to_lower_binary/1)
     end.
 
 %% must be an existing atom
 -spec get_atom_value(key(), object() | objects()) -> 'undefined' | atom().
 -spec get_atom_value(key(), object() | objects(), Default) -> atom() | Default.
-get_atom_value(Key, JObj) -> get_atom_value(Key, JObj, 'undefined').
+get_atom_value(Key, JObj) ->
+    get_atom_value(Key, JObj, 'undefined').
+
 get_atom_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> wh_util:to_atom(Value)
+        Value -> safe_cast(Value, Default, fun wh_util:to_atom/1)
     end.
 
--spec get_integer_value(key(), object() | objects()) -> 'undefined' | integer().
+-spec get_integer_value(key(), object() | objects()) -> api_integer().
 get_integer_value(Key, JObj) ->
-    case get_value(Key, JObj) of
-        'undefined' -> 'undefined';
-        Value -> wh_util:to_integer(Value)
-    end.
+    get_integer_value(Key, JObj, 'undefined').
 
 -spec get_integer_value(key(), object() | objects(), Default) -> integer() | Default.
 get_integer_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> wh_util:to_integer(Value)
+        Value -> safe_cast(Value, Default, fun wh_util:to_integer/1)
+    end.
+
+-spec safe_cast(json_term(), json_term(), fun()) -> json_term().
+safe_cast(Value, Default, CastFun) ->
+    try CastFun(Value) of
+        Casted -> Casted
+    catch
+        _:_ -> Default
     end.
 
 -spec get_number_value(key(), object() | objects()) -> 'undefined' | number().
-get_number_value(Key, JObj) ->
-    case get_value(Key, JObj) of
-        'undefined' -> 'undefined';
-        Value -> wh_util:to_number(Value)
-    end.
-
 -spec get_number_value(key(), object() | objects(), Default) -> number() | Default.
-get_number_value(Key, JObj, Default) when is_number(Default) ->
+get_number_value(Key, JObj) ->
+    get_number_value(Key, JObj, 'undefined').
+
+get_number_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> wh_util:to_number(Value)
+        Value -> safe_cast(Value, Default, fun wh_util:to_number/1)
     end.
 
 -spec get_float_value(key(), object() | objects()) -> 'undefined' | float().
-get_float_value(Key, JObj) ->
-    case get_value(Key, JObj) of
-        'undefined' -> 'undefined';
-        Value -> wh_util:to_float(Value)
-    end.
-
 -spec get_float_value(key(), object() | objects(), Default) -> float() | Default.
-get_float_value(Key, JObj, Default) when is_float(Default) ->
+get_float_value(Key, JObj) ->
+    get_float_value(Key, JObj, 'undefined').
+
+get_float_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         'undefined' -> Default;
-        Value -> wh_util:to_float(Value)
+        Value -> safe_cast(Value, Default, fun wh_util:to_float/1)
     end.
 
 -spec is_false(key(), object() | objects()) -> boolean().

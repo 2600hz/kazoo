@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -19,6 +19,7 @@
 
 -export([carrier_acls/0
          ,carrier_acls/1
+         ,test_carrier_ip/1, test_carrier_ip/2
         ]).
 -export([allow_carrier/2
          ,allow_carrier/3
@@ -29,6 +30,7 @@
 
 -export([sbc_acls/0
          ,sbc_acls/1
+         ,test_sbc_ip/1, test_sbc_ip/2
         ]).
 -export([allow_sbc/2
          ,allow_sbc/3
@@ -139,9 +141,17 @@ carrier_acls() -> carrier_acls('false').
 carrier_acls(AsDefault) when not is_boolean(AsDefault) ->
     carrier_acls(wh_util:is_true(AsDefault));
 carrier_acls('true') ->
-    list_acls(get_acls(<<"default">>), <<"trusted">>);
+    list_acls(get_acls(<<"default">>), ?FS_CARRIER_ACL_LIST);
 carrier_acls('false') ->
-    list_acls(get_acls(), <<"trusted">>).
+    list_acls(get_acls(), ?FS_CARRIER_ACL_LIST).
+
+-spec test_carrier_ip(ne_binary()) -> 'ok'.
+-spec test_carrier_ip(ne_binary(), ne_binary()) -> 'ok'.
+test_carrier_ip(IP) ->
+    [N|_] = wh_util:shuffle_list(ecallmgr_fs_nodes:connected()),
+    test_carrier_ip(IP, N).
+test_carrier_ip(IP, Node) ->
+    test_ip_against_acl(IP, Node, ?FS_CARRIER_ACL_LIST).
 
 -spec allow_carrier(ne_binary(), ne_binary()) -> 'no_return'.
 allow_carrier(Name, IP) ->
@@ -149,7 +159,8 @@ allow_carrier(Name, IP) ->
                 ,wh_util:to_binary(IP)
                 ,get_acls()
                 ,fun carrier_acl/1
-                ,fun ecallmgr_config:set/2).
+                ,fun ecallmgr_config:set/2
+               ).
 
 -spec allow_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
 allow_carrier(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
@@ -159,13 +170,15 @@ allow_carrier(Name, IP, 'true') ->
                 ,wh_util:to_binary(IP)
                 ,get_acls(<<"default">>)
                 ,fun carrier_acl/1
-                ,fun ecallmgr_config:set_default/2);
+                ,fun ecallmgr_config:set_default/2
+               );
 allow_carrier(Name, IP, 'false') ->
     modify_acls(Name
                 ,IP
                 ,get_acls()
                 ,fun carrier_acl/1
-                ,fun ecallmgr_config:set_node/2).
+                ,fun ecallmgr_config:set_node/2
+               ).
 
 -spec deny_carrier(ne_binary(), ne_binary()) -> 'no_return'.
 deny_carrier(Name, IP) ->
@@ -173,7 +186,8 @@ deny_carrier(Name, IP) ->
                 ,wh_util:to_binary(IP)
                 ,get_acls()
                 ,fun(_) -> carrier_acl(IP, <<"deny">>) end
-                ,fun ecallmgr_config:set/2).
+                ,fun ecallmgr_config:set/2
+               ).
 
 -spec deny_carrier(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
 deny_carrier(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
@@ -183,13 +197,15 @@ deny_carrier(Name, IP, 'true') ->
                 ,wh_util:to_binary(IP)
                 ,get_acls(<<"default">>)
                 ,fun(_) -> carrier_acl(IP, <<"deny">>) end
-                ,fun ecallmgr_config:set_default/2);
+                ,fun ecallmgr_config:set_default/2
+               );
 deny_carrier(Name, IP, 'false') ->
     modify_acls(wh_util:to_binary(Name)
                 ,wh_util:to_binary(IP)
                 ,get_acls()
                 ,fun(_) -> carrier_acl(IP, <<"deny">>) end
-                ,fun ecallmgr_config:set_node/2).
+                ,fun ecallmgr_config:set_node/2
+               ).
 
 -spec sbc_acls() -> 'no_return'.
 sbc_acls() -> sbc_acls('false').
@@ -198,9 +214,17 @@ sbc_acls() -> sbc_acls('false').
 sbc_acls(AsDefault) when not is_boolean(AsDefault) ->
     sbc_acls(wh_util:is_true(AsDefault));
 sbc_acls('true') ->
-    list_acls(get_acls(<<"default">>), <<"authoritative">>);
+    list_acls(get_acls(<<"default">>), ?FS_SBC_ACL_LIST);
 sbc_acls('false') ->
-    list_acls(get_acls(), <<"authoritative">>).
+    list_acls(get_acls(), ?FS_SBC_ACL_LIST).
+
+-spec test_sbc_ip(ne_binary()) -> 'ok'.
+-spec test_sbc_ip(ne_binary(), ne_binary()) -> 'ok'.
+test_sbc_ip(IP) ->
+    [N|_] = wh_util:shuffle_list(ecallmgr_fs_nodes:connected()),
+    test_sbc_ip(IP, N).
+test_sbc_ip(IP, Node) ->
+    test_ip_against_acl(IP, Node, ?FS_SBC_ACL_LIST).
 
 -spec allow_sbc(ne_binary(), ne_binary()) -> 'no_return'.
 allow_sbc(Name, IP) ->
@@ -208,7 +232,8 @@ allow_sbc(Name, IP) ->
                 ,wh_util:to_binary(IP)
                 ,get_acls()
                 ,fun sbc_acl/1
-                ,fun ecallmgr_config:set/2).
+                ,fun ecallmgr_config:set/2
+               ).
 
 -spec allow_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
 allow_sbc(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
@@ -218,13 +243,15 @@ allow_sbc(Name, IP, 'true') ->
                 ,wh_util:to_binary(IP)
                 ,get_acls(<<"default">>)
                 ,fun sbc_acl/1
-                ,fun ecallmgr_config:set_default/2);
+                ,fun ecallmgr_config:set_default/2
+               );
 allow_sbc(Name, IP, 'false') ->
     modify_acls(wh_util:to_binary(Name)
                 ,wh_util:to_binary(IP)
                 ,get_acls()
                 ,fun sbc_acl/1
-                ,fun ecallmgr_config:set_node/2).
+                ,fun ecallmgr_config:set_node/2
+               ).
 
 -spec deny_sbc(ne_binary(), ne_binary()) -> 'no_return'.
 deny_sbc(Name, IP) ->
@@ -232,7 +259,8 @@ deny_sbc(Name, IP) ->
                 ,wh_util:to_binary(IP)
                 ,get_acls()
                 ,fun(_) -> sbc_acl(IP, <<"deny">>) end
-                ,fun ecallmgr_config:set/2).
+                ,fun ecallmgr_config:set/2
+               ).
 
 -spec deny_sbc(ne_binary(), ne_binary(), boolean() | text()) -> 'no_return'.
 deny_sbc(Name, IP, AsDefault) when not is_boolean(AsDefault) ->
@@ -242,13 +270,15 @@ deny_sbc(Name, IP, 'true') ->
                 ,wh_util:to_binary(IP)
                 ,get_acls(<<"default">>)
                 ,fun(_) -> sbc_acl(IP, <<"deny">>) end
-                ,fun ecallmgr_config:set_default/2);
+                ,fun ecallmgr_config:set_default/2
+               );
 deny_sbc(Name, IP, 'false') ->
     modify_acls(wh_util:to_binary(Name)
                 ,wh_util:to_binary(IP)
                 ,get_acls()
                 ,fun(_) -> sbc_acl(IP, <<"deny">>) end
-                ,fun ecallmgr_config:set_node/2).
+                ,fun ecallmgr_config:set_node/2
+               ).
 
 -spec acl_summary() -> 'no_return'.
 acl_summary() ->
@@ -266,7 +296,8 @@ acl_summary('false') ->
 remove_acl(Name) ->
     remove_acl(wh_util:to_binary(Name)
                ,get_acls()
-               ,fun ecallmgr_config:set/2).
+               ,fun ecallmgr_config:set/2
+              ).
 
 -spec remove_acl(text(), text() | boolean()) -> 'no_return'.
 remove_acl(Name, AsDefault) when not is_boolean(AsDefault) ->
@@ -274,11 +305,13 @@ remove_acl(Name, AsDefault) when not is_boolean(AsDefault) ->
 remove_acl(Name, 'true') ->
     remove_acl(wh_util:to_binary(Name)
                ,get_acls(<<"default">>)
-               ,fun ecallmgr_config:set_default/2);
+               ,fun ecallmgr_config:set_default/2
+              );
 remove_acl(Name, 'false') ->
     remove_acl(wh_util:to_binary(Name)
                ,get_acls()
-               ,fun ecallmgr_config:set_node/2).
+               ,fun ecallmgr_config:set_node/2
+              ).
 
 -spec reload_acls() -> 'no_return'.
 reload_acls() ->
@@ -289,6 +322,19 @@ reload_acls() ->
          || Node <- ecallmgr_fs_nodes:connected()
         ],
     'no_return'.
+
+-spec test_ip_against_acl(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+test_ip_against_acl(IP, NodeBin, AclList) ->
+    Node = wh_util:to_atom(NodeBin, 'true'),
+    {'ok', Bool} = freeswitch:api(Node, 'acl', <<IP/binary, " ", AclList/binary>>),
+    io:format("IP ~s on node ~s would be ~s~n", [IP, NodeBin, acl_action(Bool)]).
+
+-spec acl_action(ne_binary()) -> ne_binary().
+acl_action(Bool) ->
+    case wh_util:is_true(Bool) of
+        'true' -> <<"accepted">>;
+        'false' -> <<"denied">>
+    end.
 
 -spec flush_acls() -> 'ok'.
 flush_acls() ->
@@ -579,7 +625,7 @@ carrier_acl(IP) -> carrier_acl(IP, <<"allow">>).
 -spec carrier_acl(ne_binary(), ne_binary()) -> wh_json:object().
 carrier_acl(IP, Type) ->
     wh_json:from_list([{<<"type">>, Type}
-                       ,{<<"network-list-name">>, <<"trusted">>}
+                       ,{<<"network-list-name">>, ?FS_CARRIER_ACL_LIST}
                        ,{<<"cidr">>, wh_network_utils:to_cidr(IP)}
                       ]).
 
@@ -589,7 +635,7 @@ sbc_acl(IP) -> sbc_acl(IP, <<"allow">>).
 -spec sbc_acl(ne_binary(), ne_binary()) -> wh_json:object().
 sbc_acl(IP, Type) ->
     wh_json:from_list([{<<"type">>, Type}
-                       ,{<<"network-list-name">>, <<"authoritative">>}
+                       ,{<<"network-list-name">>, ?FS_SBC_ACL_LIST}
                        ,{<<"cidr">>, wh_network_utils:to_cidr(IP)}
                       ]).
 
