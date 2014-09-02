@@ -111,7 +111,17 @@ handle_subscribe(JObj, Props) ->
 handle_kamailio_subscribe(JObj, _Props) ->
     lager:debug("KAMAILIO ~p", [JObj]),
     'true' = wapi_omnipresence:subscribe_v(JObj),
-    gen_listener:call(?MODULE, {'proxy_subscribe', JObj}).
+    case gen_listener:call(?MODULE, {'proxy_subscribe', JObj}) of
+        'invalid' -> 'ok';
+        {'unsubscribe', _} -> 'ok';
+        {'resubscribe', Subscription} ->
+            _ = gen_server:cast(?MODULE, {'resubscribe_notify', Subscription}),
+            _ = gen_server:cast(?MODULE, {'distribute_subscribe', Subscription});
+        {'subscribe', Subscription} ->
+            _ = gen_server:cast(?MODULE, {'subscribe_notify', Subscription}),
+            _ = gen_server:cast(?MODULE, {'distribute_subscribe', Subscription})
+    end.
+
 %%     case gen_listener:call(props:get_value(?MODULE, Props)
 %%                            ,{'subscribe', subscribe_to_record(JObj)}
 %%                           )
@@ -222,16 +232,6 @@ handle_call({'subscribe', #omnip_subscription{user=_U
     end;
 handle_call({'proxy_subscribe', #omnip_subscription{}=Sub}, _From, State) ->
     SubscribeResult = subscribe(Sub),
-    case SubscribeResult of
-        'invalid' -> 'ok';
-        {'unsubscribe', _} -> 'ok';
-        {'resubscribe', Subscription} ->
-            _ = gen_server:cast(?MODULE, {'resubscribe_notify', Subscription}),
-            _ = gen_server:cast(?MODULE, {'distribute_subscribe', Subscription});
-        {'subscribe', Subscription} ->
-            _ = gen_server:cast(?MODULE, {'subscribe_notify', Subscription}),
-            _ = gen_server:cast(?MODULE, {'distribute_subscribe', Subscription})
-    end,
     {'reply', SubscribeResult, State};
 handle_call({'proxy_subscribe', Props}, _From, State) when is_list(Props) ->
     handle_call({'proxy_subscribe', wh_json:from_list(Props)}, _From, State);
@@ -297,6 +297,8 @@ handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='
         0 -> 'ok';
         _N -> lager:debug("expired ~p subscriptions", [_N])
     end,
+    {'noreply', State#state{expire_ref=start_expire_ref()}};
+handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{ready='false'}=State) ->
     {'noreply', State#state{expire_ref=start_expire_ref()}};
 handle_info(?TABLE_READY(_Tbl), State) ->
     lager:debug("recv table_ready for ~p", [_Tbl]),
@@ -402,6 +404,40 @@ subscriptions_to_json(Subs) ->
 
 -spec subscription_to_json(subscription()) -> wh_json:object().
 subscription_to_json(#omnip_subscription{user=User
+                                         ,from=From
+                                         ,stalker=Stalker
+                                         ,expires=Expires
+                                         ,timestamp=Timestamp
+                                         ,protocol=Protocol
+                                         ,username=Username
+                                         ,realm=Realm
+                                         ,event=Event
+                                         ,contact=Contact
+                                         ,call_id=CallId
+                                         ,subscription_id=SubId
+                                         ,proxy_route=ProxyRoute
+                                         ,version=Version
+                                        }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"user">>, User}
+         ,{<<"from">>, From}
+         ,{<<"stalker">>, Stalker}
+         ,{<<"expires">>, Expires}
+         ,{<<"timestamp">>, Timestamp}
+         ,{<<"protocol">>, Protocol}
+         ,{<<"username">>, Username}
+         ,{<<"realm">>, Realm}
+         ,{<<"event">>, Event}
+         ,{<<"contact">>, Contact}
+         ,{<<"call_id">>, CallId}
+         ,{<<"subscription_id">>, SubId}
+         ,{<<"proxy_route">>, ProxyRoute}
+         ,{<<"version">>, Version}
+        ])).
+
+-spec subscription_from_json(subscription()) -> wh_json:object().
+subscription_from_json(#omnip_subscription{user=User
                                          ,from=From
                                          ,stalker=Stalker
                                          ,expires=Expires
