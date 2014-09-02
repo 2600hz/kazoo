@@ -45,7 +45,8 @@
 -define(DEFAULT_SEND_EVENT_LIST, [?BLF_EVENT, ?PRESENCE_EVENT]).
 
 -record(state, {
-          expire_ref :: reference()
+          expire_ref :: reference(),
+          ready = 'false' :: boolean()
          }).
 
 
@@ -107,7 +108,7 @@ handle_subscribe(JObj, Props) ->
     end.
 
 -spec handle_kamailio_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_kamailio_subscribe(JObj, Props) ->
+handle_kamailio_subscribe(JObj, _Props) ->
     lager:debug("KAMAILIO ~p", [JObj]),
     'true' = wapi_omnipresence:subscribe_v(JObj),
     gen_listener:call(?MODULE, {'proxy_subscribe', JObj}).
@@ -225,11 +226,11 @@ handle_call({'proxy_subscribe', #omnip_subscription{}=Sub}, _From, State) ->
         'invalid' -> 'ok';
         {'unsubscribe', _} -> 'ok';
         {'resubscribe', Subscription} ->
-            _ = gen_server:cast(omnipresence_sup:subscriptions_srv(), {'resubscribe_notify', Subscription}),
-            _ = gen_server:cast(omnipresence_sup:subscriptions_srv(), {'distribute_subscribe', Subscription});
+            _ = gen_server:cast(?MODULE, {'resubscribe_notify', Subscription}),
+            _ = gen_server:cast(?MODULE, {'distribute_subscribe', Subscription});
         {'subscribe', Subscription} ->
-            _ = gen_server:cast(omnipresence_sup:subscriptions_srv(), {'subscribe_notify', Subscription}),
-            _ = gen_server:cast(omnipresence_sup:subscriptions_srv(), {'distribute_subscribe', Subscription})
+            _ = gen_server:cast(?MODULE, {'subscribe_notify', Subscription}),
+            _ = gen_server:cast(?MODULE, {'distribute_subscribe', Subscription})
     end,
     {'reply', SubscribeResult, State};
 handle_call({'proxy_subscribe', Props}, _From, State) when is_list(Props) ->
@@ -262,7 +263,8 @@ handle_cast({'resubscribe_notify', #omnip_subscription{event=Package
     Msg = {'omnipresence', {'resubscribe_notify', Package, User, Subscription}},
     notify_packages(Msg),
     {'noreply', State};
-handle_cast({'distribute_subscribe', #omnip_subscription{}}, State) ->
+handle_cast({'distribute_subscribe', #omnip_subscription{}=Sub}, State) ->
+    distribute_subscribe(subscription_to_json(Sub)),
     {'noreply', State};
 handle_cast({'channel_event', JObj}, State) ->
     Msg = {'omnipresence', {'channel_event', JObj}},
@@ -290,7 +292,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref}=State) ->
+handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref, ready='true'}=State) ->
     case expire_old_subscriptions() of
         0 -> 'ok';
         _N -> lager:debug("expired ~p subscriptions", [_N])
@@ -298,7 +300,7 @@ handle_info({'timeout', Ref, ?EXPIRE_MESSAGE}=_R, #state{expire_ref=Ref}=State) 
     {'noreply', State#state{expire_ref=start_expire_ref()}};
 handle_info(?TABLE_READY(_Tbl), State) ->
     lager:debug("recv table_ready for ~p", [_Tbl]),
-    {'noreply', State, 'hibernate'};
+    {'noreply', State#state{ready='true'}, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -431,66 +433,6 @@ subscription_to_json(#omnip_subscription{user=User
          ,{<<"proxy_route">>, ProxyRoute}
          ,{<<"version">>, Version}
         ])).
-
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec subscription_initial_notify(subscription()) -> 'ok'.
-subscription_initial_notify(#omnip_subscription{event = <<"message-summary">>
-                                                ,username=Username
-                                                ,realm=Realm
-                                                ,call_id=CallId}) ->
-    lager:debug("publishing message query for ~s@~s", [Username, Realm]),
-    Query = [{<<"Username">>, Username}
-             ,{<<"Realm">>, Realm}
-             ,{<<"Call-ID">>, CallId}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    wh_amqp_worker:cast(Query
-                        ,fun wapi_presence:publish_mwi_query/1
-                       );
-subscription_initial_notify(#omnip_subscription{event=EventPackage
-                                                ,username=Username
-                                                ,realm=Realm
-                                                ,call_id=CallId}) ->
-    lager:debug("publishing presence probe for ~s@~s", [Username, Realm]),
-    Query = [{<<"Username">>, Username}
-             ,{<<"Realm">>, Realm}
-             ,{<<"Call-ID">>, CallId}
-             ,{<<"Event-Package">>, EventPackage}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    wh_amqp_worker:cast(Query
-                        ,fun wapi_presence:publish_probe/1
-                       ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec resubscribe_notify(subscription()) -> 'ok'.
-resubscribe_notify(#omnip_subscription{event = <<"message-summary">>}) -> 'ok';
-resubscribe_notify(#omnip_subscription{event=EventPackage
-                                       ,username=Username
-                                       ,realm=Realm
-                                       ,call_id=CallId}) ->
-    lager:debug("publishing presence probe for ~s@~s", [Username, Realm]),
-    Query = [{<<"Username">>, Username}
-             ,{<<"Realm">>, Realm}
-             ,{<<"Call-ID">>, CallId}
-             ,{<<"Event-Package">>, EventPackage}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    wh_amqp_worker:cast(Query
-                        ,fun wapi_presence:publish_probe/1
-                       ).
 
 -spec start_expire_ref() -> reference().
 start_expire_ref() ->

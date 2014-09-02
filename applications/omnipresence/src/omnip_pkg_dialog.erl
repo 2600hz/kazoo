@@ -315,8 +315,8 @@ send_update(User, Props, Subscriptions) ->
     send_update(<<"sip">>, User, Props, Sip).
     
 -spec send_update(ne_binary(), ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
-send_update(_, User, Props, []) -> 'ok';
-send_update(<<"amqp">>, User, Props, Subscriptions) ->
+send_update(_, _User, _Props, []) -> 'ok';
+send_update(<<"amqp">>, _User, Props, Subscriptions) ->
     Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
     [whapps_util:amqp_pool_send(Props
                                ,fun(P) -> wapi_omnipresence:publish_update(S, P) end

@@ -59,7 +59,7 @@ sip_authorize(Auth, Req, Call) ->
     
 
 sip_authorize('OPTIONS', _Auth, _Req, _Call) -> ok;
-sip_authorize(Method, Auth, Req, _Call) ->
+sip_authorize(_Method, Auth, Req, _Call) ->
     IsDialog = lists:member(dialog, Auth),
     IsRegister = lists:member(register, Auth),
     {'ok', Realm} = nksip_request:meta(to_domain, Req),

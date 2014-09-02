@@ -47,7 +47,7 @@
                    ,?WORKER('omnip_subscriptions')
                    ,?WORKER('omnipresence_listener')
                    ,?WORKER('omnipresence_shared_listener')
-                   ,?PROXYSUPER('nksip_sipapp_sup',?PROXY)
+%                   ,?PROXYSUPER('nksip_sipapp_sup',?PROXY)
                    ,?SUPER('omnipresence_pkg_sup')
                   ]).
 

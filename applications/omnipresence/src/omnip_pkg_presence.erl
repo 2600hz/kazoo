@@ -111,6 +111,10 @@ handle_cast({'omnipresence',{'resubscribe_notify', <<"presence">>, User, #omnip_
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
     spawn(fun() -> presence_event(JObj) end),
     {'noreply', State};
+handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
+    EventType = wh_json:get_value(<<"Event-Name">>, JObj),
+    spawn(fun() -> channel_event(EventType, JObj) end),
+    {'noreply', State};
 %% handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
 %%     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
 %%     spawn(fun() -> channel_event(EventType, JObj) end),
@@ -226,9 +230,8 @@ maybe_handle_presence_state(<<"online">>=State, JObj) ->
     handle_update(State, JObj);
 maybe_handle_presence_state(_, _JObj) -> 'ok'.
 
--spec handle_update(ne_binary(), wh_json:object()) -> any().
-handle_update(State, JObj) ->
-    lager:debug("UPDATE ~p", [JObj]),
+-spec handle_update(wh_json:object(), ne_binary()) -> any().
+handle_update(JObj, State) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_value(<<"From">>, JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
@@ -267,7 +270,16 @@ maybe_send_update(User, Props) ->
     end.
 
 -spec send_update(ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
+send_update(_User, _Props, []) -> 'ok';
 send_update(User, Props, Subscriptions) ->
+    {Amqp, Sip} = lists:partition(fun(#omnip_subscription{version=V})-> V =:= 1 end, Subscriptions),
+    send_update(<<"amqp">>, User, Props, Amqp),
+    send_update(<<"sip">>, User, Props, Sip).
+    
+-spec send_update(ne_binary(), ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
+send_update(_, _User, _Props, []) -> 'ok';
+send_update(<<"amqp">>, _User, _Props, _) -> 'ok';
+send_update(<<"sip">>, User, Props, Subscriptions) ->
     Body = build_body(User, Props),
     Options = [{body, Body}
                ,{content_type, <<"application/pidf+xml">>}
