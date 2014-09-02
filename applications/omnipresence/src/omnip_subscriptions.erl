@@ -316,13 +316,10 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec distribute_subscribe(wh_json:object()) -> 'ok'.
-distribute_subscribe(_JObj) -> 'ok'.
-%% TODO: Kamailio sends subscriptions to a fanout
-%%  meaning they will not round-robin.  Once the
-%%  exchange type is updated this can be uncommented.
-%%    whapps_util:amqp_pool_send(
-%%      wh_json:delete_key(<<"Node">>, JObj)
-%%      ,fun wapi_presence:publish_subscribe/1).
+distribute_subscribe(JObj) ->
+    whapps_util:amqp_pool_send(
+      wh_json:delete_key(<<"Node">>, JObj)
+      ,fun wapi_presence:publish_subscribe/1).
 
 %%--------------------------------------------------------------------
 %% @private
