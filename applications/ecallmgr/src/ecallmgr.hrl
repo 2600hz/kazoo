@@ -242,6 +242,8 @@
                                ,{<<"conference_member_nospeak_check">>, <<"conference_member_nospeak_check">>}
                                ,{<<"Fax-Doc-ID">>, <<"fax_doc_id">>}
                                ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
+                               ,{<<"default_langauge">>, <<"default_language">>}
+                               ,{<<"Default-Language">>, <<"default_language">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
