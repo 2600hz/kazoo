@@ -18,6 +18,12 @@
 
 -include("ts.hrl").
 
+-define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
+                          ,[{'type', <<"connectivity">>}]
+                          ,[{'type', <<"sys_info">>}]
+                         ]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -34,6 +40,7 @@ init([]) ->
     {'ok', { {'one_for_one', 5, 10}
              ,[?SUPER('ts_onnet_sup') %% handles calls originating on-net (customer)
                ,?WORKER('ts_offnet_sup') %% handles calls originating off-net (carrier)
+               ,?CACHE_ARGS(?TRUNKSTORE_CACHE, ?CACHE_PROPS)
                ,?WORKER('ts_responder')
                ,?WORKER('trunkstore_listener')
               ]}

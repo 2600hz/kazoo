@@ -11,6 +11,8 @@
 %% couch params for the trunk store and its views
 -define(TS_DB, <<"ts">>).
 
+-define(TRUNKSTORE_CACHE, 'trunkstore_cache').
+
 %% cdr doc store
 -define(TS_CDR_PREFIX, <<"ts_cdr">>).
 
@@ -41,8 +43,8 @@
 -type active_calls() :: list(tuple(binary(), flat_rate | per_min)) | [].
 
 -record(ts_callflow_state, {
-          aleg_callid = <<>> :: binary()
-          ,bleg_callid = <<>> :: binary()
+          aleg_callid :: api_binary()
+          ,bleg_callid :: api_binary()
           ,acctid = <<>> :: binary()
           ,acctdb = <<>> :: binary()
           ,route_req_jobj = wh_json:new() :: wh_json:object()
