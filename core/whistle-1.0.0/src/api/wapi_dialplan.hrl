@@ -491,6 +491,7 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
                          ,<<"short_date_time">>
                         ]}
           ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
+          ,{<<"Gender">>, [<<"masculine">>, <<"feminine">>, <<"neuter">>]}
           ,?INSERT_AT_TUPLE
          ]).
 -define(SAY_REQ_TYPES, []).
