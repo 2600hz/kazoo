@@ -320,7 +320,7 @@ is_owner_enabled(AccountDb, OwnerId) ->
 -spec jobj_to_auth_user(wh_json:object(), ne_binary(), ne_binary(), wh_json:object()) ->
           {'ok', auth_user()} | {'error', any()}.
 jobj_to_auth_user(JObj, Username, Realm, Req) ->
-    AuthValue = wh_json:get_value([<<"doc">>,<<"sip">>], JObj),
+    AuthValue = get_auth_value(JObj),
     AuthDoc = wh_json:get_value(<<"doc">>, JObj),
     Method = get_auth_method(AuthDoc),
     AuthUser = #auth_user{realm = Realm
@@ -330,7 +330,7 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                ,password = wh_json:get_value(<<"password">>, AuthValue, wh_util:rand_hex_binary(6))
                ,authorizing_type = wh_json:get_value(<<"pvt_type">>, AuthDoc, <<"anonymous">>)
                ,authorizing_id = wh_json:get_value(<<"id">>, JObj)
-               ,method = Method
+               ,method = wh_util:to_lower_binary(Method)
                ,owner_id = wh_json:get_value(<<"owner_id">>, AuthDoc)
                ,suppress_unregister_notifications = wh_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
                ,register_overwrite_notify = wh_json:is_true(<<"register_overwrite_notify">>, AuthDoc)
@@ -338,6 +338,12 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                ,request=Req
               },
     maybe_auth_method(add_account_name(AuthUser), AuthDoc, Req, Method).
+
+-spec get_auth_value(wh_json:object()) -> 'undefined' | wh_json:object().
+get_auth_value(JObj) ->
+    wh_json:get_first_defined([[<<"doc">>,<<"sip">>]
+                              ,<<"value">>
+                              ], JObj).
 
 -spec add_account_name(auth_user()) -> 'ok'.
 add_account_name(#auth_user{account_id=AccountId}=AuthUser) ->
