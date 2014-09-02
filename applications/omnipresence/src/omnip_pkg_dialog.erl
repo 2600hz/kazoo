@@ -92,9 +92,9 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'omnipresence',{'subscribe_notify', <<"dialog">>, User, #omnip_subscription{}=Subscription}}, State) ->
+handle_cast({'omnipresence',{'subscribe_notify', <<"dialog">>, _User, #omnip_subscription{}=_Subscription}}, State) ->
     {'noreply', State};
-handle_cast({'omnipresence',{'resubscribe_notify', <<"dialog">>, User, #omnip_subscription{}=Subscription}}, State) ->
+handle_cast({'omnipresence',{'resubscribe_notify', <<"dialog">>, _User, #omnip_subscription{}=_Subscription}}, State) ->
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
@@ -216,7 +216,7 @@ handle_update(JObj, ?PRESENCE_RINGING) ->
     handle_update(JObj, ?PRESENCE_RINGING, 120);
 handle_update(JObj, ?PRESENCE_ANSWERED) ->
     handle_update(JObj, ?PRESENCE_ANSWERED, 36000);
-handle_update(JObj, _State) -> 'ok'.
+handle_update(_JObj, _State) -> 'ok'.
 
 -spec handle_update(wh_json:object(), ne_binary(), integer()) -> any().
 handle_update(JObj, State, Expires) ->

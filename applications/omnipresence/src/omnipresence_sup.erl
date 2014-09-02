@@ -11,7 +11,6 @@
 
 -export([start_link/0
          ,subscriptions_srv/0
-         ,get_appid/3
         ]).
 -export([init/1]).
 
