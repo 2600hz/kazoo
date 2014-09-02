@@ -80,9 +80,9 @@
          ,play_and_collect_digits/6, play_and_collect_digits/7
          ,play_and_collect_digits/8, play_and_collect_digits/9
         ]).
--export([say/2, say/3, say/4, say/5
-         ,say_command/2, say_command/3, say_command/4, say_command/5
-         ,b_say/2, b_say/3, b_say/4, b_say/5
+-export([say/2, say/3, say/4, say/5, say/6
+         ,say_command/2, say_command/3, say_command/4, say_command/5, say_command/6
+         ,b_say/2, b_say/3, b_say/4, b_say/5, b_say/6
         ]).
 
 -export([conference/2, conference/3
@@ -1457,11 +1457,13 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 -spec say(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 -spec say(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 -spec say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 
 -spec b_say(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_say(ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_say(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
 
 say(Say, Call) ->
     say(Say, <<"name_spelled">>, Call).
@@ -1470,13 +1472,17 @@ say(Say, Type, Call) ->
 say(Say, Type, Method, Call) ->
     say(Say, Type, Method, whapps_call:language(Call), Call).
 say(Say, Type, Method, Language, Call) ->
-    Command = say_command(Say, Type, Method, Language, Call),
+    say(Say, Type, Method, Language, 'undefined', Call).
+say(Say, Type, Method, Language, Gender, Call) ->
+    Command = say_command(Say, Type, Method, Language, Gender, Call),
     send_command(Command, Call).
 
 -spec say_command(ne_binary(), whapps_call:call()) -> wh_json:object().
 -spec say_command(ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
 -spec say_command(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
 -spec say_command(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
+-spec say_command(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) -> wh_json:object().
+
 say_command(Say, Call) ->
     say_command(Say, <<"name_spelled">>, Call).
 say_command(Say, Type, Call) ->
@@ -1484,6 +1490,9 @@ say_command(Say, Type, Call) ->
 say_command(Say, Type, Method, Call) ->
     say_command(Say, Type, Method, whapps_call:language(Call), Call).
 say_command(Say, Type, Method, Language, Call) ->
+    say_command(Say, Type, Method, Language, 'undefined', Call).
+
+say_command(Say, Type, Method, Language, Gender, Call) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"say">>}
@@ -1491,6 +1500,7 @@ say_command(Say, Type, Method, Language, Call) ->
          ,{<<"Type">>, say_type(Type)}
          ,{<<"Method">>, say_method(Method)}
          ,{<<"Language">>, say_language(Language, Call)}
+         ,{<<"Gender">>, say_gender(Gender)}
          ,{<<"Call-ID">>, whapps_call:call_id(Call)}
         ])).
 
@@ -1503,14 +1513,34 @@ say_method(M) -> M.
 say_language('undefined', Call) -> whapps_call:language(Call);
 say_language(L, _Call) -> L.
 
+-spec say_gender(api_binary()) -> api_binary().
+say_gender('undefined') -> 'undefined';
+say_gender(Gender) ->
+    say_gender_validate(wh_util:to_lower_binary(Gender)).
+
+-spec say_gender_validate(ne_binary()) -> ne_binary().
+say_gender_validate(<<"masculine">> = G) -> G;
+say_gender_validate(<<"feminine">> = G) -> G;
+say_gender_validate(<<"neuter">> = G) -> G.
+
 b_say(Say, Call) ->
-    b_say(Say, <<"name_spelled">>, Call).
+    say(Say, Call),
+    wait_for_say(Call).
 b_say(Say, Type, Call) ->
-    b_say(Say, Type, <<"pronounced">>, Call).
+    say(Say, Type, Call),
+    wait_for_say(Call).
 b_say(Say, Type, Method, Call) ->
-    b_say(Say, Type, Method, whapps_call:language(Call), Call).
+    say(Say, Type, Method, Call),
+    wait_for_say(Call).
 b_say(Say, Type, Method, Language, Call) ->
     say(Say, Type, Method, Language, Call),
+    wait_for_say(Call).
+b_say(Say, Type, Method, Language, Gender, Call) ->
+    say(Say, Type, Method, Language, Gender, Call),
+    wait_for_say(Call).
+
+-spec wait_for_say(whapps_call:call()) -> whapps_api_std_return().
+wait_for_say(Call) ->
     wait_for_message(Call, <<"say">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity').
 
 %%--------------------------------------------------------------------
