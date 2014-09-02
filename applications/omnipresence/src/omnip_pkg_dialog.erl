@@ -93,14 +93,8 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'omnipresence',{'subscribe_notify', <<"dialog">>, User, #omnip_subscription{}=Subscription}}, State) ->
-    [Username, Realm] = binary:split(User, <<"@">>),
-    Props = [{<<"user">>, Username}, {<<"realm">>, Realm}],
-    spawn(fun() -> send_update(User, Props, [Subscription]) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'resubscribe_notify', <<"dialog">>, User, #omnip_subscription{}=Subscription}}, State) ->
-    [Username, Realm] = binary:split(User, <<"@">>),
-    Props = [{<<"user">>, Username}, {<<"realm">>, Realm}],
-    spawn(fun() -> send_update(User, Props, [Subscription]) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
@@ -211,7 +205,9 @@ handle_connected_channel(_JObj) ->
     'ok'.
 
 -spec presence_event(wh_json:object()) -> 'ok'.
-presence_event( _JObj) -> 'ok'.
+presence_event(JObj) ->
+    State = wh_json:get_value(<<"State">>, JObj),
+    handle_update(JObj, State).
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, ?PRESENCE_HANGUP) ->
@@ -219,7 +215,8 @@ handle_update(JObj, ?PRESENCE_HANGUP) ->
 handle_update(JObj, ?PRESENCE_RINGING) ->
     handle_update(JObj, ?PRESENCE_RINGING, 120);
 handle_update(JObj, ?PRESENCE_ANSWERED) ->
-    handle_update(JObj, ?PRESENCE_ANSWERED, 36000).
+    handle_update(JObj, ?PRESENCE_ANSWERED, 36000);
+handle_update(JObj, _State) -> 'ok'.
 
 -spec handle_update(wh_json:object(), ne_binary(), integer()) -> any().
 handle_update(JObj, State, Expires) ->
@@ -228,27 +225,6 @@ handle_update(JObj, State, Expires) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
-%%     {User, Props} =
-%%         case Direction =:= <<"inbound">> of
-%%             'true' ->
-%%                 {From, props:filter_undefined(
-%%                        [{<<"destination">>, ToUsername}
-%%                         ,{<<"state">>, State}
-%%                         ,{<<"direction">>, <<"initiator">>}
-%%                         ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-%%                         ,{<<"user">>, FromUsername}
-%%                         ,{<<"realm">>, FromRealm}
-%%                        ])};
-%%             'false' ->
-%%                 {To, props:filter_undefined(
-%%                        [{<<"destination">>, FromUsername}
-%%                         ,{<<"state">>, State}
-%%                         ,{<<"direction">>, <<"recipient">>}
-%%                         ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-%%                         ,{<<"user">>, ToUsername}
-%%                         ,{<<"realm">>, ToRealm}
-%%                        ])}
-%%             end,
     {User, Props} =
         case Direction =:= <<"inbound">> of
             'true' ->
@@ -262,8 +238,6 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"initiator">>}
-%%                     ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
-%%                     ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
                     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Event-Package">>, <<"dialog">>}
@@ -285,8 +259,6 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"recipient">>}
-%%                     ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
-%%                     ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
                     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Event-Package">>, <<"dialog">>}

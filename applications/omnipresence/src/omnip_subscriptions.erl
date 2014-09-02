@@ -69,18 +69,22 @@ start_link() ->
 -spec handle_search_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_search_req(JObj, _Props) ->
     'true' = wapi_presence:search_req_v(JObj),
-    Event = wh_json:get_value(<<"Event-Package">>, JObj, '_'),
-    Username = wh_json:get_value(<<"Username">>, JObj, '_'),
-    Realm = wh_json:get_value(<<"Realm">>, JObj),
-    lager:debug("searching for subs for ~p@~s", [Username, Realm]),
-    case search_for_subscriptions(Event, Realm, Username) of
-        [] -> 'ok';
-        Subs ->
-            Resp = [{<<"Subscriptions">>, subscriptions_to_json(Subs)}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_presence:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+    case wh_json:get_value(<<"Node">>, JObj) =:= wh_util:to_binary(node()) of
+        'true' -> 'ok';
+        'false' ->
+            Event = wh_json:get_value(<<"Event-Package">>, JObj, '_'),
+            Username = wh_json:get_value(<<"Username">>, JObj, '_'),
+            Realm = wh_json:get_value(<<"Realm">>, JObj),
+            lager:debug("searching for subs for ~s@~s", [Username, Realm]),
+            case search_for_subscriptions(Event, Realm, Username) of
+                [] -> 'ok';
+                Subs ->
+                    Resp = [{<<"Subscriptions">>, subscriptions_to_json(Subs)}
+                            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                           ],
+                    wapi_presence:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+            end
     end.
 
 -spec handle_reset(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -100,7 +104,6 @@ handle_reset(JObj, _Props) ->
 %% queue, without the lookup of the current state
 -spec handle_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_subscribe(JObj, _Props) ->
-    lager:debug("SUBSCRIBE ~p", [JObj]),
     'true' = wapi_presence:subscribe_v(JObj),
     case wh_json:get_value(<<"Node">>, JObj) =:= wh_util:to_binary(node()) of
         'true' -> 'ok';
@@ -110,7 +113,6 @@ handle_subscribe(JObj, _Props) ->
 
 -spec handle_kamailio_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_kamailio_subscribe(JObj, _Props) ->
-    lager:debug("KAMAILIO ~p", [JObj]),
     'true' = wapi_omnipresence:subscribe_v(JObj),
     case gen_listener:call(?MODULE, {'subscribe', JObj}) of
         'invalid' -> 'ok';
@@ -490,28 +492,32 @@ find_subscriptions(Event, User) when is_binary(User) ->
                   ,['$_']
                  }],
     case ets:select(table_id(), MatchSpec) of
-        [] -> find_remote_subscriptions(Event, User); %%{'error', 'not_found'};
+        [] -> {'error', 'not_found'};
         Subs -> {'ok', dedup(Subs)}
     end.
 
 -spec get_subscriptions(ne_binary(), ne_binary()) -> {'ok', subscriptions()} |
                                                      {'error', 'not_found'}.
 get_subscriptions(Event, User) ->
-    [Username, Realm] = binary:split(User, <<"@">>),
-    Payload = [{<<"Realm">>, Realm}
-               ,{<<"Username">>, Username}
-               ,{<<"Event-Package">>, Event}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    Resp = wh_amqp_worker:call(Payload,
-                               fun wapi_presence:publish_search_req/1,
-                               fun wapi_presence:search_resp_v/1,
-                               500),
-    case Resp of
-        {'ok', JObj} ->
-            Subs = [subscription_from_json(WSub) || WSub <- wh_json:get_value(<<"Subscriptions">>, JObj, [])],
-            {'ok', Subs};
-        _ ->   {'error', 'not_found'}
+    case find_subscriptions(Event, User) of
+        {'ok', Subs} -> {'ok', Subs};
+        {'error', 'not_found'} ->
+            [Username, Realm] = binary:split(User, <<"@">>),
+            Payload = [{<<"Realm">>, Realm}
+                       ,{<<"Username">>, Username}
+                       ,{<<"Event-Package">>, Event}
+                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                      ],
+            Resp = wh_amqp_worker:call(Payload,
+                                       fun wapi_presence:publish_search_req/1,
+                                       fun wapi_presence:search_resp_v/1,
+                                       500),
+            case Resp of
+                {'ok', JObj} ->
+                    Subs = [subscription_from_json(WSub) || WSub <- wh_json:get_value(<<"Subscriptions">>, JObj, [])],
+                    {'ok', Subs};
+                _ ->   {'error', 'not_found'}
+            end
     end.
 
 -spec dedup(subscriptions()) -> subscriptions().
