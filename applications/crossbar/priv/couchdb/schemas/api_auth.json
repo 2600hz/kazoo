@@ -9,7 +9,7 @@
   "properties": {
     "api_key": {
       "type": "string",
-      "required": "true",
+      "required": true,
       "name": "API Key",
       "description": "The Accounts API key",
       "minLength": 64,

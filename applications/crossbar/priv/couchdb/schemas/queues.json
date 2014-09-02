@@ -8,7 +8,7 @@
   "properties": {
     "name": {
       "type": "string",
-      "required": "true",
+      "required": true,
       "name": "Name",
       "description": "A friendly name for the queue",
       "minLength": 1,
@@ -50,7 +50,7 @@
       "required": false,
       "name": "Enter When Empty",
       "description": "Allows a caller to enter a queue and wait when no agents are available",
-      "default": "true"
+      "default": true
     },
     "agent_wrapup_time": {
       "type": "integer",
@@ -109,7 +109,7 @@
       "required": false,
       "name": "Record Caller",
       "description": "When enabled, a caller's audio will be recorded",
-      "default": "false"
+      "default": false
     },
     "cdr_url": {
       "type": "string",

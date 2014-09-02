@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "shared_auth": {
-      "required": "true",
+      "required": true,
       "type": "string",
       "name": "Token",
       "description": "The shared token",
