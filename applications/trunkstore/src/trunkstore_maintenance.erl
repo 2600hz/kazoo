@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -13,9 +13,24 @@
          ,clear_old_calls/0
          ,classifier_allow/2
          ,classifier_deny/2
+         ,flush/0, flush/1
         ]).
 
 -include("ts.hrl").
+
+-spec flush() -> 'ok'.
+-spec flush(ne_binary()) -> 'ok'.
+flush() ->
+    wh_cache:flush_local(?TRUNKSTORE_CACHE).
+
+flush(Account) ->
+    AccountId = wh_util:format_account_id(Account),
+
+    Flush = wh_cache:filter_local(?TRUNKSTORE_CACHE
+                                  ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
+                                 ),
+    [wh_cache:erase(Key) || {Key, _Value} <- Flush],
+    'ok'.
 
 migrate() ->
     io:format("This command is ancient, if you REALLY know what you are duing run:~n", []),
@@ -28,7 +43,7 @@ i_understand_migrate() ->
             lager:info("ts database not found or ts_account/crossbar_listing view missing");
         {'ok', TSAccts} ->
             lager:info("trying ~b ts accounts", [length(TSAccts)]),
-            _ = [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct))) 
+            _ = [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct)))
                  || Acct <- TSAccts
                 ],
             lager:info("migration complete")
@@ -95,7 +110,7 @@ account_exists_with_realm(Realm) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Realm)}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
         {'ok', []} -> 'false';
-        {'ok', [AcctObj]} -> 
+        {'ok', [AcctObj]} ->
             {'true'
              ,wh_json:get_value([<<"value">>, <<"account_db">>], AcctObj)
              ,wh_json:get_value([<<"value">>, <<"account_id">>], AcctObj)};
@@ -177,10 +192,10 @@ set_classifier_action(Action, Classifier, UserR) ->
     io:format("Classifier: ~p",[Classifier]),
     Classifiers = wnm_util:available_classifiers(),
     case lists:member(Classifier, wh_json:get_keys(Classifiers)) of
-        'false' -> 
+        'false' ->
             io:format("\nNo ~p classifier among configured classifiers ~p\n",[Classifier, wh_json:get_keys(Classifiers)]),
             exit(no_such_classifier);
-        _ -> 
+        _ ->
             io:format("  ... found\n")
     end,
     [User, Realm] = re:split(UserR, <<"@">>, [{return,binary},{parts,2}]),
@@ -194,3 +209,10 @@ set_classifier_action(Action, Classifier, UserR) ->
         'false' ->
             io:format("Failed: account with realm ~p does not exist\n", [Realm])
     end.
+
+-spec is_ts_cache_object(tuple(), ne_binary()) -> boolean().
+is_ts_cache_object({'lookup_user_flags', _Realm, _User, AccountId}, AccountId) ->
+    'true';
+is_ts_cache_object({'lookup_did', _DID, AccountId}, AccountId) ->
+    'true';
+is_ts_cache_object(_Key, _AccountId) -> 'false'.
