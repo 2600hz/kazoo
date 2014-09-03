@@ -116,7 +116,8 @@ handle_kamailio_subscribe(JObj, _Props) ->
     'true' = wapi_omnipresence:subscribe_v(JObj),
     case gen_listener:call(?MODULE, {'subscribe', JObj}) of
         'invalid' -> 'ok';
-        {'unsubscribe', _} -> 'ok';
+        {'unsubscribe', _} ->
+            distribute_subscribe(JObj);
         {'resubscribe', Subscription} ->
             _ = resubscribe_notify(Subscription),
             distribute_subscribe(JObj);
