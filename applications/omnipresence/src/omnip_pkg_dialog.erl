@@ -210,6 +210,7 @@ handle_connected_channel(_JObj) ->
 initial_update(User) ->
     Headers = [{<<"From">>, User}
                ,{<<"To">>, User}
+               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(User))}
               ],
     handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
     
@@ -248,7 +249,7 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"initiator">>}
-                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, wh_util:to_hex_binary(crypto:md5(From)))}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Event-Package">>, <<"dialog">>}
                     ,{<<"destination">>, ToUsername}
@@ -269,7 +270,7 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"recipient">>}
-                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, wh_util:to_hex_binary(crypto:md5(To)))}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Event-Package">>, <<"dialog">>}
                     ,{<<"destination">>, FromUsername}
