@@ -175,4 +175,4 @@ You can also choose to receive pages in bigger or smaller increments by specifyi
 
 #### Disabling Pagination
 
-If you want to disable pagination for a request, simply include `pagination=false` on the query string.
+If you want to disable pagination for a request, simply include `paginate=false` on the query string.
