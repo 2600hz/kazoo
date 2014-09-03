@@ -92,9 +92,11 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
-handle_cast({'omnipresence',{'subscribe_notify', <<"dialog">>, _User, #omnip_subscription{}=_Subscription}}, State) ->
+handle_cast({'omnipresence',{'subscribe_notify', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
+    spawn(fun() -> initial_update(User) end),
     {'noreply', State};
-handle_cast({'omnipresence',{'resubscribe_notify', <<"dialog">>, _User, #omnip_subscription{}=_Subscription}}, State) ->
+handle_cast({'omnipresence',{'resubscribe_notify', <<"dialog">>, User, #omnip_subscription{}=_Subscription}}, State) ->
+    spawn(fun() -> initial_update(User) end),
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
@@ -204,6 +206,14 @@ handle_disconnected_channel(JObj) ->
 handle_connected_channel(_JObj) ->
     'ok'.
 
+-spec initial_update(ne_binary()) -> any().
+initial_update(User) ->
+    Headers = [{<<"From">>, User}
+               ,{<<"To">>, User}
+              ],
+    handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
+    
+    
 -spec presence_event(wh_json:object()) -> 'ok'.
 presence_event(JObj) ->
     State = wh_json:get_value(<<"State">>, JObj),
