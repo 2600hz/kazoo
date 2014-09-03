@@ -226,6 +226,7 @@ handle_connected_channel(_JObj) ->
 
 -spec presence_event(wh_json:object()) -> 'ok'.
 presence_event(JObj) ->
+    lager:info("PRESENCE EVENT ~p", [JObj]),
     State = wh_json:get_value(<<"State">>, JObj),
     maybe_handle_presence_state(JObj, State).
     
@@ -266,7 +267,8 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"initiator">>}
-                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, wh_util:to_hex_binary(crypto:md5(From)))}
+                    %,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From)}
+                    ,{<<"Call-ID">>, ?FAKE_CALLID(From)}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Event-Package">>, <<"presence">>}
                     ,{<<"destination">>, ToUsername}
@@ -287,7 +289,8 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"recipient">>}
-                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, wh_util:to_hex_binary(crypto:md5(To)))}
+                    %,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(To)}
+                    ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Event-Package">>, <<"presence">>}
                     ,{<<"destination">>, FromUsername}

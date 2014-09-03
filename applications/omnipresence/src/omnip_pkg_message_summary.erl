@@ -191,7 +191,8 @@ handle_update(JObj) ->
                 ,{<<"From">>, <<"sip:", To/binary>>}
                 ,{<<"From-User">>, ToUsername}
                 ,{<<"From-Realm">>, ToRealm}
-                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, wh_util:to_hex_binary(crypto:md5(To)))}
+                %%,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(To)}
+                ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
                 ,{<<"Message-Account">>, <<"sip:", To/binary>>}
                 ,{<<"Messages-Waiting">>, MessagesWaiting}
                 ,{<<"Messages-New">>, MessagesNew}
