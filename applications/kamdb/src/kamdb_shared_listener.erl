@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(kamdb_listener).
+-module(kamdb_shared_listener).
 
 -behaviour(gen_listener).
 
@@ -24,11 +24,14 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, []).
--define(RESPONDERS, []).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(BINDINGS, [{'kamdb', []}]).
+-define(RESPONDERS, [{{'kamdb_handlers', 'handle_rate_req'}
+                      ,[{<<"rate_limit">>, <<"query">>}]
+                     }
+                    ]).
+-define(QUEUE_NAME, <<"kamdb_shared_queue">>).
+-define(QUEUE_OPTIONS, [[{'exclusive', 'false'}]]).
+-define(CONSUME_OPTIONS, [[{'exclusive', 'false'}]]).
 
 %%%===================================================================
 %%% API
@@ -48,7 +51,6 @@ start_link() ->
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                      %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 
 %%%===================================================================

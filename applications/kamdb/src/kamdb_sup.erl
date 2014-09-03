@@ -15,8 +15,7 @@
 -include("kamdb.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?CACHE('kamdb_cache')
-                   ,?WORKER('kamdb_listener')
+-define(CHILDREN, [?WORKER('kamdb_shared_listener')
                   ]).
 
 %% ===================================================================
