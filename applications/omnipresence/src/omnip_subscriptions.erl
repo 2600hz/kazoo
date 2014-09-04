@@ -291,7 +291,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec notify_packages(any()) -> 'ok'.
 notify_packages(Msg) ->
     _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
-           <- supervisor:which_children('omnipresence_pkg_sup'),
+           <- supervisor:which_children('omnip_sup'),
                                         Pid =/= 'restarting'],
     'ok'.
 

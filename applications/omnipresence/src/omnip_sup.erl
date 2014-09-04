@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(omnipresence_pkg_sup).
+-module(omnip_sup).
 
 -behaviour(supervisor).
 
@@ -17,9 +17,9 @@
 
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('omnip_pkg_dialog')
-                   ,?WORKER('omnip_pkg_message_summary')
-                   ,?WORKER('omnip_pkg_presence')
+-define(CHILDREN, [?WORKER('omnip_dialog')
+                   ,?WORKER('omnip_message_summary')
+                   ,?WORKER('omnip_presence')
                   ]).
 
 %% ===================================================================

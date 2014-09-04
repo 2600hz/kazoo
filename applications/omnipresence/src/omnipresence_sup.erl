@@ -28,7 +28,7 @@
                    ,?WORKER('omnip_subscriptions')
                    ,?WORKER('omnipresence_listener')
                    ,?WORKER('omnipresence_shared_listener')
-                   ,?SUPER('omnipresence_pkg_sup')
+                   ,?SUPER('omnip_sup')
                   ]).
 
 %% ===================================================================

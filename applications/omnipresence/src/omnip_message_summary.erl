@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(omnip_pkg_message_summary).
+-module(omnip_message_summary).
 
 -behaviour(gen_server).
 
