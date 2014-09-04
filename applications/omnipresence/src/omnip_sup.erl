@@ -5,35 +5,32 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(omnipresence_sup).
+-module(omnip_sup).
 
 -behaviour(supervisor).
 
 -export([start_link/0
-         ,subscriptions_srv/0
         ]).
 -export([init/1]).
 
 -include("omnipresence.hrl").
 
--define(SIP_APP, <<"omni">>).
-
--define(SUBS_ETS_OPTS, [{'table_id', omnip_subscriptions:table_id()}
-                        ,{'table_options', omnip_subscriptions:table_config()}
-                        ,{'find_me_function', fun ?MODULE:subscriptions_srv/0}
-                       ]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'omnipresence_subscriptions_tbl', [?SUBS_ETS_OPTS])
-                   ,?WORKER('omnip_subscriptions')
-                   ,?WORKER('omnipresence_listener')
-                   ,?WORKER('omnipresence_shared_listener')
-                   ,?SUPER('omnip_sup')
+-define(CHILDREN, [?WORKER('omnip_dialog')
+                   ,?WORKER('omnip_message_summary')
+                   ,?WORKER('omnip_presence')
                   ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+%% TODO
+%% load / unload package
+%% load default/configured packages
+%% 
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,12 +42,6 @@
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
--spec subscriptions_srv() -> pid() | 'undefined'.
-subscriptions_srv() ->
-    case [P || {_, P, 'worker', ['omnip_subscriptions']} <- supervisor:which_children(?MODULE)] of
-        [] -> 'undefined';
-        [Pid] -> Pid
-    end.
 
 %% ===================================================================
 %% Supervisor callbacks

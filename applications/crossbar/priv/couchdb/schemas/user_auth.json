@@ -8,7 +8,7 @@
   "properties": {
     "credentials": {
       "type": "string",
-      "required": "true",
+      "required": true,
       "name": "Credentials",
       "description": "A hash of the uses credentials",
       "minLength": 1,
