@@ -464,10 +464,16 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                     {'noreply', State#state{defer_response=JObj}, 'hibernate'}
             end;
         'false' ->
-            lager:debug("response failed validator, waiting for more responses"),
-            {'noreply', State#state{neg_resp_count = NegCount + 1
-                                    ,neg_resp=JObj
-                                   }, 0}
+            case wh_json:is_true(<<"Defer-Response">>, JObj) of
+                'true' ->
+                    lager:debug("ignoring invalid resp as it was deferred"),
+                    {'noreply', State};
+                'false' ->
+                    lager:debug("response failed validator, waiting for more responses"),
+                    {'noreply', State#state{neg_resp_count = NegCount + 1
+                                            ,neg_resp=JObj
+                                           }, 0}
+            end
     end;
 handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                            ,client_from = From
