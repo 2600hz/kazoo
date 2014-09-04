@@ -144,10 +144,9 @@ migrate() ->
                      ,fun(L) -> [<<"omnipresence">> | lists:delete(<<"omnipresence">>, L)] end
                      ,fun(L) -> [<<"camper">> | lists:delete(<<"camper">>, L)] end
                     ],
-    StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, ?DEFAULT_WHAPPS),
     _ = whapps_config:set_default(<<"whapps_controller">>
                                   ,<<"whapps">>
-                                  ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)
+                                  ,lists:foldr(fun(F, L) -> F(L) end, ?DEFAULT_WHAPPS, WhappsUpdates)
                                  ),
 
     io:format("restarting updated modules~n", []),
