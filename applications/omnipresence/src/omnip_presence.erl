@@ -267,7 +267,6 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"initiator">>}
-                    %,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From)}
                     ,{<<"Call-ID">>, ?FAKE_CALLID(From)}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Event-Package">>, <<"presence">>}
@@ -275,7 +274,7 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                     ,{<<"user">>, FromUsername}
                     ,{<<"realm">>, FromRealm}
-                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ])};
             'false' ->
                 {To, props:filter_undefined(
@@ -289,7 +288,6 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Direction">>, <<"recipient">>}
-                    %,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(To)}
                     ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     ,{<<"Event-Package">>, <<"presence">>}
@@ -297,7 +295,7 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                     ,{<<"user">>, ToUsername}
                     ,{<<"realm">>, ToRealm}
-                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ])}
         end,    
     
