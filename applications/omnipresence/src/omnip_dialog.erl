@@ -10,6 +10,8 @@
 -behaviour(gen_server).
 
 -export([start_link/0
+         ,reset_blf/1
+         ,reset_user_blf/1
         ]).
 -export([init/1
          ,handle_call/3
@@ -209,11 +211,27 @@ handle_connected_channel(_JObj) ->
 -spec initial_update(ne_binary()) -> any().
 initial_update(User) ->
     Headers = [{<<"From">>, User}
-               ,{<<"To">>, User}
+               ,{<<"To">>, User}              
                ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(User))}
               ],
     handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
-    
+
+-spec reset_blf(ne_binary()) -> any().
+reset_blf(User) ->
+    Headers = [{<<"From">>, User}
+               ,{<<"To">>, User}
+               ,{<<"Flush-Level">>, 1}
+               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(User))}
+              ],
+    handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
+
+-spec reset_user_blf(ne_binary()) -> any().
+reset_user_blf(User) ->
+    case omnip_subscriptions:find_user_subscriptions(?DIALOG_EVENT, User) of
+        {'ok', Subs} ->
+            [ reset_blf(SubUser) || #omnip_subscription{user=SubUser} <- Subs];
+        _ -> 'ok'
+    end.
     
 -spec presence_event(wh_json:object()) -> 'ok'.
 presence_event(JObj) ->
@@ -248,6 +266,7 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"To-Realm">>, ToRealm}
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
+                    ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
                     ,{<<"Direction">>, <<"initiator">>}
                     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From))}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -269,6 +288,7 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"To">>, <<"sip:", From/binary>>}
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
+                    ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
                     ,{<<"Direction">>, <<"recipient">>}
                     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(To))}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}

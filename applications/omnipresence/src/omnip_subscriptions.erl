@@ -23,6 +23,7 @@
          ,find_subscription/1
          ,find_subscriptions/1
          ,find_subscriptions/2
+         ,find_user_subscriptions/2
          ,get_subscriptions/2
          ,search_for_subscriptions/2
          ,search_for_subscriptions/3
@@ -497,6 +498,23 @@ find_subscriptions(Event, User) when is_binary(User) ->
         Subs -> {'ok', dedup(Subs)}
     end.
 
+-spec find_user_subscriptions(ne_binary(), ne_binary()) ->
+                                {'ok', subscriptions()} |
+                                {'error', 'not_found'}.
+find_user_subscriptions(Event, User) when is_binary(User) ->
+    U = wh_util:to_lower_binary(User),
+    MatchSpec = [{#omnip_subscription{normalized_from='$1'
+                                      ,event=Event
+                                      ,_='_'
+                                     }
+                  ,[{'=:=', '$1', {'const', U}}]
+                  ,['$_']
+                 }],
+    case ets:select(table_id(), MatchSpec) of
+        [] -> {'error', 'not_found'};
+        Subs -> {'ok', Subs}
+    end.
+
 -spec get_subscriptions(ne_binary(), ne_binary()) -> {'ok', subscriptions()} |
                                                      {'error', 'not_found'}.
 get_subscriptions(Event, User) ->
@@ -520,6 +538,7 @@ get_subscriptions(Event, User) ->
                 _ ->   {'error', 'not_found'}
             end
     end.
+
 
 -spec dedup(subscriptions()) -> subscriptions().
 dedup(Subscriptions) ->

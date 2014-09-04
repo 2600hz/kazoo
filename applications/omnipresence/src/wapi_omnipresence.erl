@@ -43,7 +43,7 @@
                                  ,<<"Messages-Waiting">>, <<"Messages-New">>
                                  ,<<"Messages-Saved">>, <<"Messages-Urgent">>
                                  ,<<"Messages-Urgent-Saved">>, <<"Message-Account">>
-                                 ,<<"Expires">>
+                                 ,<<"Expires">>, <<"Flush-Level">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                        ,{<<"Event-Name">>, <<"update">>}
