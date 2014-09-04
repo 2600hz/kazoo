@@ -191,7 +191,6 @@ handle_update(JObj) ->
                 ,{<<"From">>, <<"sip:", To/binary>>}
                 ,{<<"From-User">>, ToUsername}
                 ,{<<"From-Realm">>, ToRealm}
-                %%,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(To)}
                 ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
                 ,{<<"Message-Account">>, <<"sip:", To/binary>>}
                 ,{<<"Messages-Waiting">>, MessagesWaiting}
@@ -201,7 +200,7 @@ handle_update(JObj) ->
                 ,{<<"Messages-Urgent-Saved">>, MessagesUrgentSaved}
                 ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                 ,{<<"Event-Package">>, <<"message-summary">>}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     maybe_send_update(To, Update).
 
