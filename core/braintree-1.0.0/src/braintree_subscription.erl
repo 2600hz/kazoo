@@ -470,19 +470,23 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
              ,{'discounts', create_discount_changes(Subscription#bt_subscription.discounts)}
             ],
     Conditionals = [fun(#bt_subscription{do_not_inherit=Value}, P) ->
-                            update_options('do-not-inherit-add-ons-or-discounts', Value, P)
+                        update_options('do-not-inherit-add-ons-or-discounts', Value, P)
                     end
                     ,fun(#bt_subscription{prorate_charges=Value}, P) ->
-                            update_options('prorate-charges', Value, P)
+                        case whapps_config:get_is_true(<<"braintree">>, <<"prorate">>, 'true') of
+                            'false' -> P;
+                            'true' ->
+                                update_options('prorate-charges', Value, P)
+                        end
                      end
                     ,fun(#bt_subscription{revert_on_prorate_fail=Value}, P) ->
-                            update_options('revert-subscription-on-proration-failure', Value, P)
+                        update_options('revert-subscription-on-proration-failure', Value, P)
                      end
                     ,fun(#bt_subscription{replace_add_ons=Value}, P) ->
-                             update_options('replace-all-add-ons-and-discounts', Value, P)
+                        update_options('replace-all-add-ons-and-discounts', Value, P)
                      end
                     ,fun(#bt_subscription{start_immediately=Value}, P) ->
-                             update_options('start-immediately', Value, P)
+                        update_options('start-immediately', Value, P)
                      end
                    ],
     Props1 = lists:foldr(fun(F, P) -> F(Subscription, P) end, Props, Conditionals),
