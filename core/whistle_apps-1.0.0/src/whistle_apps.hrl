@@ -7,23 +7,23 @@
 
 -define(WHAPPS_CONFIG_CACHE, 'whapps_config_cache').
 
--define(DEFAULT_WHAPPS, ['registrar'
-                         ,'reorder'
-                         ,'stepswitch'
-                         ,'sysconf'
-                         ,'media_mgr'
-                         ,'callflow'
-                         ,'notify'
-                         ,'cdr'
-                         ,'crossbar'
-                         ,'trunkstore'
-                         ,'conference'
-                         ,'fax'
-                         ,'hangups'
-                         ,'omnipresence'
-                         ,'milliwatt'
-                         ,'pivot'
-                         ,'camper'
+-define(DEFAULT_WHAPPS, [<<"registrar">>
+                         ,<<"reorder">>
+                         ,<<"stepswitch">>
+                         ,<<"sysconf">>
+                         ,<<"media_mgr">>
+                         ,<<"callflow">>
+                         ,<<"notify">>
+                         ,<<"cdr">>
+                         ,<<"crossbar">>
+                         ,<<"trunkstore">>
+                         ,<<"conference">>
+                         ,<<"fax">>
+                         ,<<"hangups">>
+                         ,<<"omnipresence">>
+                         ,<<"milliwatt">>
+                         ,<<"pivot">>
+                         ,<<"camper">>
                         ]).
 
 -define(WHISTLE_APPS_HRL, 'true').
