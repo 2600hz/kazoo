@@ -240,7 +240,7 @@ presence_event(JObj) ->
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, ?PRESENCE_HANGUP) ->
-    handle_update(JObj, ?PRESENCE_HANGUP, 5);
+    handle_update(JObj, ?PRESENCE_HANGUP, 130);
 handle_update(JObj, ?PRESENCE_RINGING) ->
     handle_update(JObj, ?PRESENCE_RINGING, 120);
 handle_update(JObj, ?PRESENCE_ANSWERED) ->
