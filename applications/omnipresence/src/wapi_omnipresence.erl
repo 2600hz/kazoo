@@ -38,9 +38,12 @@
                                  ,<<"Call-ID">>, <<"Direction">>
                                  ,<<"Event-Package">>, <<"State">>
                                  ,<<"From-Tag">>, <<"To-Tag">>
+                                 ,<<"From-User">>, <<"From-Realm">>
+                                 ,<<"To-User">>, <<"To-Realm">>
                                  ,<<"Messages-Waiting">>, <<"Messages-New">>
                                  ,<<"Messages-Saved">>, <<"Messages-Urgent">>
                                  ,<<"Messages-Urgent-Saved">>, <<"Message-Account">>
+                                 ,<<"Expires">>, <<"Flush-Level">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                        ,{<<"Event-Name">>, <<"update">>}

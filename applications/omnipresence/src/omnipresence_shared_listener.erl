@@ -33,7 +33,6 @@
                    ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
                                                ,'CHANNEL_ANSWER'
                                                ,'CHANNEL_DESTROY'
-
                                                ,'CHANNEL_CONNECTED'
                                                ,'CHANNEL_DISCONNECTED'
                                               ]}
@@ -47,7 +46,7 @@
                                  ]}
                    ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
                   ]).
--define(RESPONDERS, [{{?MODULE, 'handle_channel_event'}
+-define(RESPONDERS, [{{'omnip_subscriptions', 'handle_channel_event'}
                       ,[{<<"call_event">>, <<"*">>}]
                      }
                      ,{{'omnip_subscriptions', 'handle_presence_update'}

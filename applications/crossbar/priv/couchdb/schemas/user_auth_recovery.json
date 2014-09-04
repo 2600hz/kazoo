@@ -8,7 +8,7 @@
   "properties": {
     "username": {
       "type": "string",
-      "required": "true",
+      "required": true,
       "description": "The users username",
       "minLength": 1,
       "maxLength": 254

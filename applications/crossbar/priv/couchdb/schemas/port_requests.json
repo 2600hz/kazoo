@@ -16,7 +16,7 @@
     },
     "numbers": {
       "type": "object",
-      "required": "true",
+      "required": true,
       "name": "Numbers",
       "description": "The numbers to port in",
       "minProperties": 1,
