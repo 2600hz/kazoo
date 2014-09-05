@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author maksim
-%%% @copyright (C) 2014, <COMPANY>
+%%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created : 05. Sep 2014 4:00 PM
+%%% @contributors
+%%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(kamdb_ensure_rates_in_syscfg).
 
