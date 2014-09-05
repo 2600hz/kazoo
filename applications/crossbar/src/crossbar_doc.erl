@@ -108,7 +108,11 @@ load(DocId, Context, Options) ->
 
 load(_DocId, Context, _Options, 'error') -> Context;
 load(DocId, Context, Opts, _RespStatus) when is_binary(DocId) ->
-    case couch_mgr:open_cache_doc(cb_context:account_db(Context), DocId, Opts) of
+    OpenFun = case props:get_is_true('use_cache', Opts, 'true') of
+                  'true' -> fun couch_mgr:open_cache_doc/3;
+                  'false' -> fun couch_mgr:open_doc/3
+              end,
+    case OpenFun(cb_context:account_db(Context), DocId, Opts) of
         {'error', Error} ->
             handle_couch_mgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
@@ -533,7 +537,7 @@ save_attachment(DocId, AName, Contents, Context, Options) ->
     case couch_mgr:put_attachment(cb_context:account_db(Context), DocId, AName, Contents, Opts1) of
         {'error', 'conflict'=Error} ->
             lager:debug("saving attachment resulted in a conflict, checking for validity"),
-            Context1 = load(DocId, Context),
+            Context1 = load(DocId, Context, [{'use_cache', 'false'}]),
             case wh_json:get_value([<<"_attachments">>, AName], cb_context:doc(Context1)) of
                 'undefined' ->
                     lager:debug("attachment does appear to be missing, reporting error"),
