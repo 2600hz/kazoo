@@ -16,15 +16,17 @@
 -export([migrate/0, migrate/1]).
 
 -spec migrate() -> 'ok'.
--spec migrate(atom() | string() | binary()) -> 'ok'.
-
 migrate() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
     lists:foldr(fun(A, C) -> migrate_faxes_fold(A, C, Total) end, 1, Accounts),
     'ok'.
-migrate(Account) when not is_binary(Account) ->
-    migrate(wh_util:to_binary(Account));
+
+-spec migrate(ne_binaries() | ne_binary()) -> 'ok'.
+migrate([]) -> 'ok';
+migrate([Account|Accounts]) ->
+    _ = migrate_faxes(Account),
+    migrate(Accounts);
 migrate(Account) ->
     migrate_faxes(Account).
 

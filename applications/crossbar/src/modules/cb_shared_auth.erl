@@ -36,7 +36,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?TOKEN_DB),
+    couch_mgr:db_create(?KZ_TOKEN_DB),
     Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
 
     lager:debug("shared auth started up, using ~s as authoritative crossbar", [Url]),
@@ -198,7 +198,7 @@ create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
                                ,{<<"method">>, wh_util:to_binary(?MODULE)}
                                ,{<<"shared_token">>, SharedToken}
                               ]),
-    case couch_mgr:save_doc(?TOKEN_DB, Token) of
+    case couch_mgr:save_doc(?KZ_TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),
