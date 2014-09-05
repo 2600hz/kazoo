@@ -57,14 +57,14 @@
               "required": false,
               "name": "Name",
               "description": "The caller id name for the object type",
-              "maxLength": 30
+              "maxLength": 35
             },
             "number": {
               "type": "string",
               "required": false,
               "name": "Number",
               "description": "The caller id name for the object type",
-              "maxLength": 15
+              "maxLength": 35
             }
           }
         },
@@ -79,14 +79,14 @@
               "required": false,
               "name": "Name",
               "description": "The caller id name for the object type",
-              "maxLength": 30
+              "maxLength": 35
             },
             "number": {
               "type": "string",
               "required": false,
               "name": "Number",
               "description": "The caller id name for the object type",
-              "maxLength": 15
+              "maxLength": 35
             }
           }
         },
@@ -101,14 +101,14 @@
               "required": false,
               "name": "Name",
               "description": "The caller id name for the object type",
-              "maxLength": 30
+              "maxLength": 35
             },
             "number": {
               "type": "string",
               "required": false,
               "name": "Number",
               "description": "The caller id name for the object type",
-              "maxLength": 15
+              "maxLength": 35
             }
           }
         }

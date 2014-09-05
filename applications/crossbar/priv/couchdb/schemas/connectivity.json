@@ -28,13 +28,13 @@
             "cid_name": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 15,
+              "maxLength": 35,
               "required": true
             },
             "cid_number": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 15,
+              "maxLength": 35,
               "required": true
             }
           }
@@ -45,13 +45,13 @@
             "cid_name": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 15,
+              "maxLength": 35,
               "required": true
             },
             "cid_number": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 15,
+              "maxLength": 35,
               "required": true
             }
           }
@@ -120,13 +120,13 @@
                 "cid_name": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 15,
+                  "maxLength": 35,
                   "required": true
                 },
                 "cid_number": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 15,
+                  "maxLength": 35,
                   "required": true
                 }
               }
@@ -238,13 +238,13 @@
                       "cid_name": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 15,
+                        "maxLength": 35,
                         "required": true
                       },
                       "cid_number": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 15,
+                        "maxLength": 35,
                         "required": true
                       }
                     }
