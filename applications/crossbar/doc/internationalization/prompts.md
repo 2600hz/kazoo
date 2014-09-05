@@ -5,7 +5,6 @@ Title: Prompts
 
 Language: en-US
 
-Sponsors: CloudPBX
 */
 
 Kazoo provides many prompts, such as during voicemail, to instruct callers on things to do. The default prompts that ship with Kazoo are provided in English, but as is often the case, supporting callers who don't speak English requires alternative language prompts.
