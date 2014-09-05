@@ -42,6 +42,7 @@
 -include_lib("kazoo_etsmgr/include/kazoo_etsmgr.hrl").
 
 -define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, 1000)).
+-define(EXPIRES_FUDGE, whapps_config:get_integer(?CONFIG_CAT, <<"expires_fudge_s">>, 20)).
 -define(EXPIRE_MESSAGE, 'clear_expired').
 -define(DEFAULT_EVENT, ?BLF_EVENT).
 -define(DEFAULT_SEND_EVENT_LIST, [?BLF_EVENT, ?PRESENCE_EVENT]).
@@ -291,7 +292,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec notify_packages(any()) -> 'ok'.
 notify_packages(Msg) ->
-    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _} 
+    _ = [ gen_server:cast(Pid, Msg) || {_, Pid, _, _}
            <- supervisor:which_children('omnip_sup'),
                                         Pid =/= 'restarting'],
     'ok'.
@@ -321,7 +322,8 @@ subscribe_notify(#omnip_subscription{event=Package
 distribute_subscribe(JObj) ->
     whapps_util:amqp_pool_send(
       wh_json:delete_key(<<"Node">>, JObj)
-      ,fun wapi_presence:publish_subscribe/1).
+      ,fun wapi_presence:publish_subscribe/1
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -478,11 +480,11 @@ find_subscriptions(User) when is_binary(User) ->
     find_subscriptions(?DEFAULT_EVENT, User);
 find_subscriptions(JObj) ->
     find_subscriptions(
-      wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT),
-      <<(wh_json:get_value(<<"Username">>, JObj))/binary
-        ,"@"
-        ,(wh_json:get_value(<<"Realm">>, JObj))/binary
-      >>).
+      wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT)
+      ,<<(wh_json:get_value(<<"Username">>, JObj))/binary
+         ,"@"
+         ,(wh_json:get_value(<<"Realm">>, JObj))/binary
+       >>).
 
 find_subscriptions(Event, User) when is_binary(User) ->
     U = wh_util:to_lower_binary(User),
@@ -541,20 +543,21 @@ get_subscriptions(Event, User) ->
 
 
 -spec dedup(subscriptions()) -> subscriptions().
+-spec dedup(subscriptions(), dict()) -> subscriptions().
 dedup(Subscriptions) ->
     dedup(Subscriptions, dict:new()).
 
--spec dedup(subscriptions(), dict()) -> subscriptions().
 dedup([], Dictionary) ->
     [Subscription || {_, Subscription} <- dict:to_list(Dictionary)];
 dedup([#omnip_subscription{normalized_user=User
                            ,stalker=Stalker
-                          ,event=Event
+                           ,event=Event
                           }=Subscription
        | Subscriptions
       ], Dictionary) ->
-    D = dict:store({User, Stalker, Event}, Subscription, Dictionary),
-    dedup(Subscriptions, D).
+    dedup(Subscriptions
+          ,dict:store({User, Stalker, Event}, Subscription, Dictionary)
+         ).
 
 
 %%--------------------------------------------------------------------
@@ -564,8 +567,8 @@ dedup([#omnip_subscription{normalized_user=User
 %% @end
 %%--------------------------------------------------------------------
 -spec expires(integer() | wh_json:object()) -> non_neg_integer().
-expires(I) when is_integer(I), I =:= 0 -> I;
-expires(I) when is_integer(I), I > 0 -> I + 10;
+expires(0) -> 0;
+expires(I) when is_integer(I), I >= 0 -> I + ?EXPIRES_FUDGE;
 expires(JObj) -> expires(wh_json:get_integer_value(<<"Expires">>, JObj)).
 
 %%--------------------------------------------------------------------
