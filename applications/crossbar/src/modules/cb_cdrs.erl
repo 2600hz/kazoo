@@ -64,12 +64,16 @@ to_json({Req1, Context}) ->
 -spec pagination(payload()) -> payload().
 pagination({Req, Context}=Payload) ->
     PageSize = cb_context:fetch(Context, 'page_size'),
-    StartKey = cb_context:fetch(Context, 'start_key'),
     'ok' = cowboy_req:chunk(<<", \"page_size\": ", (wh_util:to_binary(PageSize))/binary>>, Req),
     case cb_context:fetch(Context, 'next_start_key') of
         'undefined' -> 'ok';
+        [_, Next] -> cowboy_req:chunk(<<", \"next_start_key\": \"", (wh_util:to_binary(Next))/binary, "\"">>, Req);
         Next -> cowboy_req:chunk(<<", \"next_start_key\": \"", (wh_util:to_binary(Next))/binary, "\"">>, Req)
     end,
+    StartKey = case cb_context:fetch(Context, 'start_key') of
+                   [_, Key] -> Key;
+                   Key -> Key
+               end,
     'ok' = cowboy_req:chunk(<<", \"start_key\": \"", (wh_util:to_binary(StartKey))/binary, "\"">>, Req),
     Payload.
 
