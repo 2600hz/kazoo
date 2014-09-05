@@ -19,7 +19,7 @@
       "required": true,
       "description": "The voicemail box number",
       "minLength": 2,
-      "maxLength": 6
+      "maxLength": 15
     },
     "require_pin": {
       "type": "boolean",
@@ -41,7 +41,7 @@
       "name": "Pin",
       "description": "The pin number for the voicemail box",
       "minLength": 4,
-      "maxLength": 6
+      "maxLength": 15
     },
     "media": {
       "type": "object",
@@ -137,14 +137,14 @@
             "required": false,
             "name": "Caller ID Number",
             "description": "The reported caller id number",
-            "maxLength": 15
+            "maxLength": 35
           },
           "caller_id_name": {
             "type": "string",
             "required": false,
             "name": "Caller ID Name",
             "description": "The reported caller id name",
-            "maxLength": 15
+            "maxLength": 35
           },
           "call_id": {
             "type": "string",
