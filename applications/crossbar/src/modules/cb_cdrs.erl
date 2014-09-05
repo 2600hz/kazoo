@@ -314,15 +314,15 @@ maybe_paginate_and_clean(Context, Ids) ->
             {Context, [Id || {Id, _} <- Ids]};
         _ ->
             ViewOptions = cb_context:fetch(Context, 'chunked_view_options'),
-            PageSize = erlang:length(Ids) - 1,
-            AskedFor = props:get_value('limit', ViewOptions, PageSize) - 1,
-            case AskedFor > erlang:length(Ids) of
+            PageSize = erlang:length(Ids),
+            AskedFor = props:get_value('limit', ViewOptions, PageSize),
+            case AskedFor >= erlang:length(Ids) of
                 'true' ->
                     Context1 = cb_context:store(Context, 'page_size', PageSize),
                     {Context1, [Id || {Id, _} <- Ids]};
                 'false' ->
                     {_, LastKey}=Last = lists:last(Ids),
-                    Context1 = cb_context:store(Context, 'page_size', PageSize),
+                    Context1 = cb_context:store(Context, 'page_size', PageSize - 1),
                     Context2 = cb_context:store(Context1, 'next_start_key', LastKey),
                     {Context2, [Id || {Id, _} <- lists:delete(Last, Ids)]}
             end
