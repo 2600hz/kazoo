@@ -564,7 +564,7 @@ create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
              ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
              ,{<<"method">>, wh_util:to_binary(?MODULE)}
             ],
-    case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
+    case couch_mgr:save_doc(?KZ_TOKEN_DB, wh_json:from_list(Token)) of
         {'ok', Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
             lager:debug("created new local auth token ~s", [AuthToken]),

@@ -256,17 +256,10 @@ is_matched_account_mod(_, _) ->
     'false'.
 
 -spec is_account_mod(ne_binary()) -> boolean().
-is_account_mod(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'true';
-is_account_mod(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'true';
-is_account_mod(_) -> 'false'.
+is_account_mod(Db) -> couch_util:db_classification(Db) =:= 'modb'.
 
 -spec is_account_db(ne_binary()) -> boolean().
-is_account_db(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'false';
-is_account_db(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'false';
-is_account_db(<<"account/", _/binary>>) -> 'true';
-is_account_db(<<"account%2f", _/binary>>) -> 'true';
-is_account_db(<<"account%2F", _/binary>>) -> 'true';
-is_account_db(_) -> 'false'.
+is_account_db(Db) -> couch_util:db_classification(Db) =:= 'account'.
 
 %%--------------------------------------------------------------------
 %% @public

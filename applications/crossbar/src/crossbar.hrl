@@ -9,8 +9,6 @@
 
 -define(CONFIG_CAT, <<"crossbar">>).
 
--define(TOKEN_DB, <<"token_auth">>).
-
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 

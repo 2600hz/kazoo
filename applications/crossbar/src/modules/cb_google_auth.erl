@@ -25,7 +25,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?TOKEN_DB),
+    couch_mgr:db_create(?KZ_TOKEN_DB),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.google_auth">>, ?MODULE, 'allowed_methods'),
@@ -221,7 +221,7 @@ create_auth_token(Context) ->
                     ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                     ,{<<"method">>, wh_util:to_binary(?MODULE)}
                     ],
-            case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
+            case couch_mgr:save_doc(?KZ_TOKEN_DB, wh_json:from_list(Token)) of
                 {'ok', Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),
