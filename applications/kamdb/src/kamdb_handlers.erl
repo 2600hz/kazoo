@@ -14,8 +14,6 @@
 -include("kamdb.hrl").
 
 -define(DEFAULT_RATES, <<"device-default-rate-limits">>).
--define(MINUTE, <<"per_minute">>).
--define(SECOND, <<"per_second">>).
 
 -spec method_to_name() -> wh_proplist().
 method_to_name() ->

@@ -16,6 +16,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER('kamdb_shared_listener')
+                   ,?WORKER('kamdb_ensure_rates_in_syscfg')
                   ]).
 
 %% ===================================================================
