@@ -13,7 +13,8 @@
 
 -include("kamdb.hrl").
 
--define(DEFAULT_RATES, <<"device-default-rate-limits">>).
+-define(DEVICE_DEFAULT_RATES, <<"device-default-rate-limits">>).
+-define(ACCOUNT_DEFAULT_RATES, <<"account-default-rate-limits">>).
 
 -spec method_to_name() -> wh_proplist().
 method_to_name() ->
@@ -30,6 +31,65 @@ resolve_method(Method) ->
 handle_rate_req(JObj, _Props) ->
     _ = get_ratelimits(JObj).
 
+-spec get_reqest_info(ne_binaries(), ne_binary(), boolean()) -> {ne_binary(), wh_proplist()}.
+get_reqest_info(Keys, Name, WithRealm) ->
+    case Keys of
+        [User, OnRealm] ->
+            lager:info("Lookup for ~s@~s", [User, OnRealm]),
+            V = case wh_util:is_true(WithRealm) of
+                    'true' ->
+                        lager:info("Lookup ~s", [OnRealm]),
+                        [{'keys', [[OnRealm, Name]
+                            , [?DEVICE_DEFAULT_RATES, Name]
+                            , [User, resolve_method(Name)]
+                        ]}];
+                    _ ->
+                        [{'keys', [[?DEVICE_DEFAULT_RATES, Name]
+                            , [User, Name]
+                        ]}]
+                end,
+            {OnRealm, V};
+        [JustRealm] ->
+            V = [{'key', [JustRealm, Name]}],
+            {JustRealm, V}
+    end.
+
+-spec get_sysconfig_rates(ne_binaries(), ne_binary(), boolean()) -> wh_json:object().
+get_sysconfig_rates(Keys, Name, WithRealm) ->
+    Limits = whapps_config:get(?APP_NAME, <<"rate_limits">>),
+    case Keys of
+        [_, _] ->
+            DeviceMinutes = wh_json:get_value([<<"device">>, ?MINUTE, Name], Limits),
+            DeviceSeconds = wh_json:get_value([<<"device">>, ?SECOND, Name], Limits),
+            JObj = wh_json:set_value(<<"Device">>
+                                     ,wh_json:from_list([{<<"Min">>, DeviceMinutes}
+                                                         ,{<<"Sec">>, DeviceSeconds}
+                                                        ])
+                                     ,wh_json:new()
+                                    ),
+            case wh_util:is_true(WithRealm) of
+               'true' ->
+                   AccountMinutes = wh_json:get_value([<<"account">>, ?MINUTE, Name], Limits),
+                   AccountSeconds = wh_json:get_value([<<"account">>, ?SECOND, Name], Limits),
+                   wh_json:set_value(<<"Realm">>
+                                           ,wh_json:from_list([{<<"Min">>, AccountMinutes}
+                                                               ,{<<"Sec">>, AccountSeconds}
+                                                              ])
+                                           ,JObj
+                                          );
+                _ -> JObj
+            end;
+        [_] ->
+            AccountMinutes = wh_json:get_value([<<"account">>, ?MINUTE, Name], Limits),
+            AccountSeconds = wh_json:get_value([<<"account">>, ?SECOND, Name], Limits),
+            wh_json:set_value(<<"Realm">>
+                              ,wh_json:from_list([{<<"Min">>, AccountMinutes}
+                                                  ,{<<"Sec">>, AccountSeconds}
+                                                 ])
+                              ,wh_json:new()
+                             )
+    end.
+
 -spec get_ratelimits(wh_json:object()) -> list().
 get_ratelimits(JObj) ->
     'true' = wapi_kamdb:ratelimits_req_v(JObj),
@@ -38,32 +98,14 @@ get_ratelimits(JObj) ->
                                  ]),
     ServerID = wh_json:get_value(<<"Server-ID">>, JObj),
     Entity = wh_json:get_value(<<"Entity">>, JObj),
-    Method = wh_json:get_value(<<"Method">>, JObj),
+    Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
     Keys = binary:split(Entity, <<"@">>),
-    {Realm, ViewOpts} = case Keys of
-                            [User, OnRealm] ->
-                                lager:info("Lookup for ~s@~s", [User, OnRealm]),
-                                V = case wh_json:is_true(<<"With-Realm">>, JObj) of
-                                        'true' ->
-                                            lager:info("Lookup ~s", [OnRealm]),
-                                            [{'keys',[[OnRealm, resolve_method(Method)]
-                                                      ,[?DEFAULT_RATES, resolve_method(Method)]
-                                                      ,[User, resolve_method(Method)]
-                                                     ]}];
-                                        _ ->
-                                            [{'keys',[[?DEFAULT_RATES, resolve_method(Method)]
-                                                      ,[User, resolve_method(Method)]
-                                                     ]}]
-                                    end,
-                                {OnRealm, V};
-                            [JustRealm] ->
-                                V = [{'key',[JustRealm, resolve_method(Method)]}],
-                                {JustRealm, V}
-                        end,
+    {Realm, ViewOpts} = get_reqest_info(Keys, Name, wh_json:get_value(<<"With-Realm">>, JObj)),
+    JSysRates = get_sysconfig_rates(Keys, Name, wh_json:get_value(<<"With-Realm">>, JObj)),
     DBase = get_dbase(Realm),
     {'ok', Results} = couch_mgr:get_results(DBase, <<"rate_limits/crossbar_listing">>, ViewOpts),
     Resp = lists:foldl(fun inject_rate_limits/2, RespStub, Results),
-    wapi_kamdb:publish_ratelimits_resp(ServerID, Resp).
+    wapi_kamdb:publish_ratelimits_resp(ServerID, wh_json:merge_recursive([JSysRates, Resp])).
 
 -spec get_dbase(ne_binary()) -> {ne_binary(), ne_binary()}.
 get_dbase(Realm) ->
@@ -79,7 +121,7 @@ inject_rate_limits(Result, Acc) ->
     case wh_json:get_value(<<"type">>, JVal) of
         <<"device">> ->
             case Name of
-                ?DEFAULT_RATES -> inject_if_not_exists(JVal, Acc);
+                ?DEVICE_DEFAULT_RATES -> inject_if_not_exists(JVal, Acc);
                 _ -> inject(JVal, Acc)
             end;
         <<"account">> -> inject(JVal, Acc)
