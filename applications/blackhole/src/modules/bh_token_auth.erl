@@ -24,8 +24,8 @@
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:db_create(?TOKEN_DB),
-    _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, 'crossbar', "views/token_auth.json"),
+    couch_mgr:db_create(?KZ_TOKEN_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
     _ = blackhole_bindings:bind(<<"blackhole.authenticate">>, ?MODULE, 'authenticate').
 
 %%--------------------------------------------------------------------
@@ -53,7 +53,7 @@ authenticate(Context, Foo) ->
                               {'true', cb_context:context()}.
 check_auth_token(Context, AuthToken) ->
     lager:debug("checking auth token: ~s", [AuthToken]),
-    case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
+    case couch_mgr:open_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating"),
             {'true'

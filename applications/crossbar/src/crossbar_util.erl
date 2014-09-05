@@ -802,7 +802,7 @@ create_auth_token(Context, Method) ->
                                                      ,Token
                                                     ),
 
-            case couch_mgr:save_doc(?TOKEN_DB, JObjToken) of
+            case couch_mgr:save_doc(?KZ_TOKEN_DB, JObjToken) of
                 {'ok', Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),

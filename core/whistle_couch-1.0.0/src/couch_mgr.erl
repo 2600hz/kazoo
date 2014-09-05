@@ -17,6 +17,7 @@
          ,db_view_cleanup/1
          ,db_delete/1
          ,db_replicate/1
+         ,db_archive/1
         ]).
 -export([admin_db_exists/1
          ,admin_db_info/0, admin_db_info/1
@@ -77,6 +78,7 @@
          ,enable_change_notice/0
          ,change_notice/0
         ]).
+
 
 %% Types
 -export_type([get_results_return/0
@@ -919,6 +921,68 @@ change_notice() ->
         'false' -> 'false';
         _Else -> 'true'
     end.
+
+-spec db_archive(ne_binary()) -> 'ok'.
+db_archive(Db) ->
+    {'ok', DbInfo} = couch_mgr:db_info(Db),
+
+    MaxDocs = whapps_config:get_integer(?CONFIG_CAT, <<"max_concurrent_docs_to_archive">>, 500),
+    Filename = filename:join(["/tmp", <<Db/binary, ".archive.json">>]),
+    {'ok', File} = file:open(Filename, ['write']),
+
+    lager:debug("archiving to ~s", [Filename]),
+    archive(Db, File, MaxDocs, wh_json:get_integer_value(<<"doc_count">>, DbInfo), 0),
+    file:close(File).
+
+%% MaxDocs = The biggest set of docs to pull from Couch
+%% N = The number of docs in the DB that haven't been archived
+%% Pos = Which doc will the next query start from (the offset)
+-spec archive(ne_binary(), file:io_device(), pos_integer(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+archive(Db, _File,  _MaxDocs, 0, _Pos) ->
+    lager:debug("account modb ~s done with exportation", [Db]);
+archive(Db, File, MaxDocs, N, Pos) when N =< MaxDocs ->
+    lager:debug("fetching next ~b docs", [N]),
+    ViewOptions = [{'limit', N}
+                   ,{'skip', Pos}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:all_docs(Db, ViewOptions) of
+        {'ok', []} -> lager:debug("no docs left after pos ~p, done", [Pos]);
+        {'ok', Docs} ->
+            'ok' = archive_docs(File, Docs),
+            lager:debug("archived ~p docs, done here", [N]);
+        {'error', _E} ->
+            lager:debug("error ~p asking for ~p docs from pos ~p", [_E, N, Pos]),
+            timer:sleep(500),
+            archive(Db, File, MaxDocs, N, Pos)
+    end;
+archive(Db, File, MaxDocs, N, Pos) ->
+    lager:debug("fetching next ~b docs", [MaxDocs]),
+    ViewOptions = [{'limit', MaxDocs}
+                   ,{'skip', Pos}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:all_docs(Db, ViewOptions) of
+        {'ok', []} -> lager:debug("no docs left after pos ~p, done", [Pos]);
+        {'ok', Docs} ->
+            'ok' = archive_docs(File, Docs),
+            lager:debug("archived ~p docs", [MaxDocs]),
+            archive(Db, File, MaxDocs, N - MaxDocs, Pos + MaxDocs);
+        {'error', _E} ->
+            lager:debug("error ~p asking for ~p docs from pos ~p", [_E, N, Pos]),
+            timer:sleep(500),
+            archive(Db, File, MaxDocs, N, Pos)
+    end.
+
+-spec archive_docs(file:io_device(), wh_json:objects()) -> 'ok'.
+archive_docs(File, Docs) ->
+    [archive_doc(File, wh_json:get_value(<<"doc">>, D)) || D <- Docs],
+    'ok'.
+
+-spec archive_doc(file:io_device(), wh_json:object()) -> 'ok'.
+archive_doc(File, Doc) ->
+    'ok' = file:write(File, [wh_json:encode(Doc), $\n]).
+
 
 %%%===================================================================
 %%% Internal functions

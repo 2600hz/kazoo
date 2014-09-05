@@ -9,6 +9,7 @@
 -module(crossbar_maintenance).
 
 -export([migrate/0
+         ,migrate/1
          ,migrate_accounts_data/0
          ,migrate_account_data/1
         ]).
@@ -39,6 +40,10 @@
 %%--------------------------------------------------------------------
 -spec migrate() -> 'no_return'.
 migrate() ->
+    migrate(whapps_util:get_all_accounts()).
+
+-spec migrate(ne_binaries()) -> 'no_return'.
+migrate(Accounts) ->
     io:format("updating default crossbar modules~n", []),
     whapps_config:flush(),
     StartModules = sets:from_list(whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, ?DEFAULT_MODULES)),
@@ -83,14 +88,19 @@ migrate() ->
         _Else -> 'ok'
     end,
 
-    _ = migrate_accounts_data(),
+    _ = migrate_accounts_data(Accounts),
 
     'no_return'.
 
 -spec migrate_accounts_data() -> 'no_return'.
 migrate_accounts_data() ->
-    [migrate_account_data(Account) || Account <- whapps_util:get_all_accounts()],
-    'no_return'.
+    migrate_accounts_data(whapps_util:get_all_accounts()).
+
+-spec migrate_accounts_data(ne_binaries()) -> 'no_return'.
+migrate_accounts_data([]) -> 'no_return';
+migrate_accounts_data([Account|Accounts]) ->
+    _ = migrate_account_data(Account),
+    migrate_accounts_data(Accounts).
 
 -spec migrate_account_data(ne_binary()) -> 'no_return'.
 migrate_account_data(Account) ->

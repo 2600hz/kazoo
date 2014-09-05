@@ -28,7 +28,7 @@
             "name": "First Name",
             "description": "The first name of the user",
             "minLength": 1,
-            "maxLength": 32
+            "maxLength": 128
         },
         "last_name": {
             "type": "string",
@@ -36,7 +36,7 @@
             "name": "Last Name",
             "description": "The last name of the user",
             "minLength": 1,
-            "maxLength": 32
+            "maxLength": 128
         },
         "email": {
             "type": "string",

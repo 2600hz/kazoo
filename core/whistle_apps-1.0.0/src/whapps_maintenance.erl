@@ -11,20 +11,34 @@
 
 -include("whistle_apps.hrl").
 
--export([migrate/0]).
+-export([rebuild_token_auth/0
+        ,rebuild_token_auth/1
+        ]).
+-export([migrate/0
+         ,migrate/1
+        ]).
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1]).
--export([blocking_refresh/0]).
--export([purge_doc_type/2, purge_doc_type/3]).
--export([cleanup_aggregated_account/1]).
+-export([blocking_refresh/0
+         ,blocking_refresh/1
+        ]).
+-export([remove_depreciated_databases/0]).
+-export([ensure_aggregate_devices/0
+        ,ensure_aggregate_device/1
+        ]).
+-export([cleanup_aggregated_devices/0
+         ,cleanup_aggregated_device/1
+        ]).
+-export([cleanup_aggregated_accounts/0
+        ,cleanup_aggregated_account/1
+        ,remove_aggregated_account/1
+        ]).
 -export([migrate_limits/0, migrate_limits/1]).
 -export([migrate_media/0, migrate_media/1]).
+-export([purge_doc_type/2, purge_doc_type/3]).
 -export([call_id_status/1, call_id_status/2]).
-
 -export([get_all_account_views/0]).
-
 -export([cleanup_voicemail_media/1]).
-
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
@@ -36,6 +50,347 @@
 
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec rebuild_token_auth() -> 'ok'.
+rebuild_token_auth() ->
+    rebuild_token_auth(5000).
+
+-spec rebuild_token_auth(text()) -> 'ok'.
+rebuild_token_auth(Pause) ->
+    _ = couch_mgr:db_delete(?KZ_TOKEN_DB),
+    timer:sleep(wh_util:to_integer(Pause)),
+    refresh(?KZ_TOKEN_DB).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec migrate() -> 'no_return'.
+migrate() ->
+    migrate(2000).
+
+-spec migrate(text()) -> 'no_return'.
+migrate(Pause) ->
+    {'ok', Databases} = couch_mgr:db_info(),
+    Accounts = [wh_util:format_account_id(Db, 'encoded')
+                || Db <- Databases
+                       ,whapps_util:is_account_db(Db)
+               ],
+
+    %% Remove depreciated dbs
+    io:format("removing depreciated databases...~n", []),
+    _  = remove_depreciated_databases(Databases),
+
+    %% Remove depreciated crossbar modules from the startup list and add new defaults
+    io:format("running crossbar migrations...~n", []),
+    _ = crossbar_maintenance:migrate(Accounts),
+
+    %% Migrate Faxes with private_media to fax
+    io:format("running fax migrations...~n", []),
+    _ = fax_maintenance:migrate(Accounts),
+
+    %% Migrate settings for whistle_media
+    io:format("running media migrations...~n", []),
+    _ = whistle_media_maintenance:migrate(),
+
+    %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
+    %% that need to be aggregated have been, and the account definition is aggregated
+    io:format("updating views...~n", []),
+    _ = refresh(Databases, Pause),
+
+    'no_return'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec blocking_refresh() -> 'ok'.
+blocking_refresh() -> refresh().
+
+-spec blocking_refresh(text()) -> 'ok'.
+blocking_refresh(Pause) ->
+    {'ok', Databases} = couch_mgr:db_info(),
+    refresh(Databases, Pause).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec refresh() -> 'ok'.
+refresh() ->
+    {'ok', Databases} = couch_mgr:db_info(),
+    refresh(Databases, 2000).
+
+refresh(Databases, Pause) ->
+    Total = length(Databases),
+    refresh(Databases, wh_util:to_integer(Pause), Total).
+
+-spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+refresh([], _, _) -> 'no_return';
+refresh([Database|Databases], Pause, Total) ->
+    io:format("refreshing database (~p/~p) '~s'~n"
+             ,[length(Databases) + 1, Total, Database]),
+    _ = refresh(Database),
+    _ = case Pause < 1 of
+            'false' -> timer:sleep(Pause);
+            'true' -> 'ok'
+        end,
+    refresh(Databases, Pause, Total).
+
+-spec refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
+refresh(?WH_OFFNET_DB) ->
+    stepswitch_maintenance:refresh();
+refresh(?WH_SERVICES_DB) ->
+    whistle_services_maintenance:refresh();
+refresh(?WH_SIP_DB) ->
+    couch_mgr:db_create(?WH_SIP_DB),
+    Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
+             ,whapps_util:get_view_json('registrar', <<"auth.json">>)
+             ,whapps_util:get_view_json('crossbar', <<"views/resources.json">>)
+            ],
+    whapps_util:update_views(?WH_SIP_DB, Views, 'true');
+refresh(?WH_SCHEMA_DB) ->
+    couch_mgr:db_create(?WH_SCHEMA_DB),
+    couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, 'crossbar', "schemas"),
+    'ok';
+refresh(?WH_CONFIG_DB) ->
+    couch_mgr:db_create(?WH_CONFIG_DB),
+    'ok';
+refresh(?WH_MEDIA_DB) ->
+    couch_mgr:db_create(?WH_MEDIA_DB),
+    whistle_media_maintenance:refresh(),
+    'ok';
+refresh(?WH_RATES_DB) ->
+    couch_mgr:db_create(?WH_RATES_DB),
+    couch_mgr:revise_docs_from_folder(?WH_RATES_DB, 'hotornot', "views"),
+    _ = couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', <<"views/rates.json">>),
+    couch_mgr:load_fixtures_from_folder(?WH_RATES_DB, 'hotornot'),
+    'ok';
+refresh(?WH_ANONYMOUS_CDR_DB) ->
+    couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
+    _ = couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
+    'ok';
+refresh(?WH_DEDICATED_IP_DB) ->
+    kz_ip_utils:refresh_database();
+refresh(?WH_ACCOUNTS_DB) ->
+    couch_mgr:db_create(?WH_ACCOUNTS_DB),
+    Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
+             ,whapps_util:get_view_json('whistle_apps', ?ACCOUNTS_AGG_VIEW_FILE)
+             ,whapps_util:get_view_json('notify', ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
+            ],
+    whapps_util:update_views(?WH_ACCOUNTS_DB, Views, 'true'),
+    'ok';
+refresh(?WH_FAXES) ->
+    couch_mgr:db_create(?WH_FAXES),
+    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'fax', ?FAXES_VIEW_FILE),
+    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'fax', ?FAXBOX_VIEW_FILE),
+    'ok';
+refresh(?KZ_PORT_REQUESTS_DB) ->
+    couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
+    'ok';
+refresh(?KZ_ACDC_DB) ->
+    couch_mgr:db_create(?KZ_ACDC_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
+    'ok';
+refresh(?KZ_TOKEN_DB) ->
+    _ = couch_mgr:db_create(?KZ_TOKEN_DB),
+    couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
+    'ok';
+refresh(Database) when is_binary(Database) ->
+    case couch_util:db_classification(Database) of
+        'account' -> refresh_account_db(Database);
+        'modb' -> kazoo_modb:refresh_views(Database);
+        _Else -> 'ok'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+refresh_account_db(Database) ->
+    AccountDb = wh_util:format_account_id(Database, 'encoded'),
+    AccountId = wh_util:format_account_id(Database, 'raw'),
+    _ = remove_depreciated_account_views(AccountDb),
+    _ = ensure_account_definition(AccountDb, AccountId),
+    Views = get_all_account_views(),
+    whapps_util:update_views(AccountDb, Views, 'true').
+
+-spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
+remove_depreciated_account_views(AccountDb) ->
+    _ = couch_mgr:del_doc(AccountDb, <<"_design/limits">>),
+    _ = couch_mgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
+    'ok'.
+
+-spec ensure_account_definition(ne_binary(), ne_binary()) -> 'ok'.
+ensure_account_definition(AccountDb, AccountId) ->
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', 'not_found'} ->
+            get_definition_from_accounts(AccountDb, AccountId);
+        {'ok', _} -> 'ok'
+    end.
+
+-spec get_definition_from_accounts(ne_binary(), ne_binary()) -> 'ok'.
+get_definition_from_accounts(AccountDb, AccountId) ->
+    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', JObj} ->
+            couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, JObj));
+        {'error', 'not_found'} ->
+            io:format("    account ~s is missing its local account definition, and not in the accounts db~n"
+                     ,[AccountId]),
+            _ = couch_mgr:db_archive(AccountDb),
+            couch_mgr:db_delete(AccountDb)
+    end.
+
+-spec get_all_account_views() -> wh_proplist().
+get_all_account_views() ->
+    case get('account_views') of
+        'undefined' ->
+            Views = fetch_all_account_views(),
+            put('account_views', Views),
+            Views;
+        Views -> Views
+    end.
+
+-spec fetch_all_account_views() -> wh_proplist().
+fetch_all_account_views() ->
+    [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
+    ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
+     |whapps_util:get_views_json('crossbar', "account")
+     ++ whapps_util:get_views_json('callflow', "views")
+    ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec remove_depreciated_databases() -> 'ok'.
+remove_depreciated_databases() ->
+    {'ok', Databases} = couch_mgr:db_info(),
+    remove_depreciated_databases(Databases).
+
+-spec remove_depreciated_databases(ne_binaries()) -> 'ok'.
+remove_depreciated_databases([]) -> 'ok';
+remove_depreciated_databases([Database|Databases]) ->
+    _ = case couch_util:db_classification(Database) of
+            'depreciated' ->
+                io:format("    archive and remove depreciated database ~s~n"
+                         ,[Database]),
+                _ = couch_mgr:db_archive(Database),
+                couch_mgr:db_delete(Database);
+            _Else -> 'ok'
+        end,
+    remove_depreciated_databases(Databases).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_aggregated_accounts() -> 'ok'.
+cleanup_aggregated_accounts() ->
+    case couch_mgr:all_docs(?WH_ACCOUNTS_DB, []) of
+        {'ok', JObjs} -> cleanup_aggregated_accounts(JObjs);
+        _ -> 'ok'
+    end.
+
+-spec cleanup_aggregated_accounts(wh_json:objects()) -> 'ok'.
+cleanup_aggregated_accounts([]) -> 'ok';
+cleanup_aggregated_accounts([JObj|JObjs]) ->
+    _ = case wh_json:get_value(<<"id">>, JObj) of
+            <<"_design", _/binary>> -> 'ok';
+            AccountId ->
+                io:format("    verifing ~s doc ~s~n"
+                         ,[?WH_ACCOUNTS_DB, AccountId]),
+                cleanup_aggregated_account(AccountId)
+        end,
+    cleanup_aggregated_accounts(JObjs).
+
+-spec cleanup_aggregated_account(ne_binary()) -> 'ok'.
+cleanup_aggregated_account(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', 'not_found'} ->
+            remove_aggregated_account(AccountDb);
+        _Else -> 'ok'
+    end.
+
+-spec remove_aggregated_account(ne_binary()) -> 'ok'.
+remove_aggregated_account(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    {'ok', JObj} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
+    io:format("    removing invalid ~s doc ~s~n"
+             ,[?WH_ACCOUNTS_DB, AccountId]),
+    _ = couch_mgr:del_doc(?WH_ACCOUNTS_DB, JObj),
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec cleanup_aggregated_devices() -> 'ok'.
+cleanup_aggregated_devices() ->
+    case couch_mgr:all_docs(?WH_SIP_DB, []) of
+        {'ok', JObjs} -> cleanup_aggregated_devices(JObjs);
+        _ -> 'ok'
+    end.
+
+-spec cleanup_aggregated_devices(wh_json:objects()) -> 'ok'.
+cleanup_aggregated_devices([]) -> 'ok';
+cleanup_aggregated_devices([JObj|JObjs]) ->
+    _ = case wh_json:get_value(<<"id">>, JObj) of
+            <<"_design", _/binary>> -> 'ok';
+            DocId ->
+                io:format("    verifing ~s doc ~s~n"
+                         ,[?WH_SIP_DB, DocId]),
+                cleanup_aggregated_device(DocId)
+        end,
+    cleanup_aggregated_devices(JObjs).
+
+-spec cleanup_aggregated_device(ne_binary()) -> 'ok'.
+cleanup_aggregated_device(DocId) ->
+    {'ok', JObj} = couch_mgr:open_doc(?WH_SIP_DB, DocId),
+    case wh_json:get_first_defined([<<"pvt_account_db">>
+                                   ,<<"pvt_account_id">>
+                                   ], JObj)
+    of
+        'undefined' -> 'ok';
+        Account ->
+            AccountDb = wh_util:format_account_id(Account, 'encoded'),
+            AccountId = wh_util:format_account_id(Account, 'raw'),
+            verify_aggregated_device(AccountDb, AccountId, JObj)
+    end.
+
+-spec verify_aggregated_device(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+verify_aggregated_device(AccountDb, AccountId, JObj) ->
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', 'not_found'} ->
+            io:format("    removing ~s doc ~s referencing missing db ~s~n"
+                     ,[?WH_SIP_DB, AccountId, AccountDb]),
+            _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            'ok';
+        _Else -> 'ok'
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -84,376 +439,8 @@ get_medias(Account) ->
         {'ok', ViewRes} ->
             [wh_json:get_value(<<"id">>, JObj) || JObj<- ViewRes];
         {'error', _E} ->
-            lager:error("coumd not load view ~p: ~p", [?PMEDIA_VIEW, _E]),
+            lager:error("could not load view ~p: ~p", [?PMEDIA_VIEW, _E]),
             []
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec migrate() -> 'no_return'.
-migrate() ->
-    %% Remove depreciated dbs
-    io:format("removing depreciated databases...~n", []),
-    couch_mgr:db_delete(<<"crossbar_schemas">>),
-    couch_mgr:db_delete(<<"registrations">>),
-    couch_mgr:db_delete(<<"crossbar%2Fsessions">>),
-
-    %% Ensure the offnet db exists and has all the necessary views
-    io:format("refreshing views used by Stepswitch...~n", []),
-    _ = stepswitch_maintenance:refresh(),
-
-    %% Create missing limits doc
-    _ = migrate_limits(),
-
-    %% Migrate Faxes with private_media to fax
-    _ = fax_maintenance:migrate(),
-
-    %% Ensure the phone_numbers doc in the account db is up-to-date
-    _ = whistle_number_manager_maintenance:reconcile_numbers(),
-
-    %% Load available providers into system_config
-    _ = whistle_number_manager_maintenance:reconcile_providers(),
-
-    %% Migrate settings for whistle_media
-    _ = whistle_media_maintenance:migrate(),
-
-    %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
-    %% that need to be aggregated have been, and the account definition is aggregated
-    _ = blocking_refresh(),
-
-    %% Clear the config cache as to ensure we manipulate what is actually in the db...
-    _ = whapps_config:flush(),
-
-    %% Remove depreciated crossbar modules from the startup list and add new defaults
-    _ = crossbar_maintenance:migrate(),
-
-    %% Migrate recorded name doc ids from VM Boxes to the Owner ID's doc (if exists)
-    _ = callflow_maintenance:migrate_recorded_name(),
-
-    %% Update ACDc DB with accounts using ACDc
-    _ = acdc_maintenance:migrate_to_acdc_db(),
-
-    %% Remove depreciated whapps from the startup list and add new defaults
-    io:format("updating default kazoo modules~n", []),
-    WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
-                     ,fun(L) -> [<<"reorder">> | lists:delete(<<"reorder">>, L)] end
-                     ,fun(L) -> [<<"omnipresence">> | lists:delete(<<"omnipresence">>, L)] end
-                     ,fun(L) -> [<<"camper">> | lists:delete(<<"camper">>, L)] end
-                    ],
-    StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, ?DEFAULT_WHAPPS),
-    _ = whapps_config:set_default(<<"whapps_controller">>
-                                  ,<<"whapps">>
-                                  ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)
-                                 ),
-
-    io:format("restarting updated modules~n", []),
-    %% Ensure the new settings are applied and the new defaults are running
-    io:format("restarting updated modules~n", []),
-    _ = whapps_controller:restart_app('sysconf'),
-    _ = whapps_controller:restart_app('notify'),
-    _ = whapps_controller:restart_app('acdc'),
-    _ = whapps_controller:restart_app('camper'),
-    'no_return'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find_invalid_acccount_dbs() -> ne_binaries().
-find_invalid_acccount_dbs() ->
-    lists:foldr(fun find_invalid_acccount_dbs_fold/2, [], whapps_util:get_all_accounts()).
-
-find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
-    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'error', 'not_found'} -> [AccountDb|Acc];
-        {'ok', _} -> Acc
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec blocking_refresh() -> pos_integer().
-blocking_refresh() ->
-    do_refresh().
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec refresh() -> 'started'.
--spec refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
--spec refresh(ne_binary(), wh_proplist()) -> 'ok' | 'remove'.
-
-refresh() ->
-    _ = spawn(fun do_refresh/0),
-    'started'.
-
--spec do_refresh() -> pos_integer().
-do_refresh() ->
-    [refresh(SystemDb) || SystemDb <- ?KZ_SYSTEM_DBS],
-
-    Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
-             ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
-             |whapps_util:get_views_json('crossbar', "account")
-             ++ whapps_util:get_views_json('callflow', "views")
-            ],
-    Accounts = whapps_util:get_all_accounts(),
-    Total = length(Accounts),
-    lists:foldr(fun(AccountDb, Current) ->
-                        io:format("refreshing database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
-                        _ = refresh(AccountDb, Views),
-                        Current + 1
-                end, 1, Accounts).
-
-refresh(?WH_OFFNET_DB) ->
-    stepswitch_maintenance:refresh();
-refresh(?WH_SERVICES_DB) ->
-    whistle_services_maintenance:refresh();
-refresh(?WH_SIP_DB) ->
-    couch_mgr:db_create(?WH_SIP_DB),
-    Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
-             ,whapps_util:get_view_json('registrar', <<"auth.json">>)
-             ,whapps_util:get_view_json('crossbar', <<"views/resources.json">>)
-            ],
-    whapps_util:update_views(?WH_SIP_DB, Views, 'true'),
-
-    _ = case couch_mgr:all_docs(?WH_SIP_DB, ['include_docs']) of
-            {'ok', JObjs} ->
-                [cleanup_aggregated_device(wh_json:get_value(<<"doc">>, JObj))
-                 || JObj <- JObjs
-                ];
-            _ -> 'ok'
-        end;
-refresh(?WH_SCHEMA_DB) ->
-    couch_mgr:db_create(?WH_SCHEMA_DB),
-    couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, 'crossbar', "schemas"),
-    'ok';
-refresh(?WH_CONFIG_DB) ->
-    couch_mgr:db_create(?WH_CONFIG_DB),
-    'ok';
-refresh(?WH_MEDIA_DB) ->
-    couch_mgr:db_create(?WH_MEDIA_DB),
-    whistle_media_maintenance:refresh(),
-    'ok';
-refresh(?WH_RATES_DB) ->
-    couch_mgr:db_create(?WH_RATES_DB),
-    couch_mgr:revise_docs_from_folder(?WH_RATES_DB, 'hotornot', "views"),
-    _ = couch_mgr:revise_doc_from_file(?WH_RATES_DB, 'crossbar', <<"views/rates.json">>),
-    couch_mgr:load_fixtures_from_folder(?WH_RATES_DB, 'hotornot'),
-    'ok';
-refresh(?WH_ANONYMOUS_CDR_DB) ->
-    couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
-    _ = couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
-    'ok';
-refresh(?WH_DEDICATED_IP_DB) ->
-    kz_ip_utils:refresh_database();
-refresh(?WH_ACCOUNTS_DB) ->
-    couch_mgr:db_create(?WH_ACCOUNTS_DB),
-    Views = [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
-             ,whapps_util:get_view_json('whistle_apps', ?ACCOUNTS_AGG_VIEW_FILE)
-             ,whapps_util:get_view_json('notify', ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
-            ],
-    whapps_util:update_views(?WH_ACCOUNTS_DB, Views, 'true'),
-    _ = case couch_mgr:all_docs(?WH_ACCOUNTS_DB, ['include_docs']) of
-            {'ok', JObjs} ->
-                _ = [cleanup_aggregated_account(wh_json:get_value(<<"doc">>, JObj))
-                     || JObj <- JObjs
-                    ];
-            _ -> 'ok'
-        end,
-    'ok';
-refresh(?WH_PROVISIONER_DB) ->
-    couch_mgr:db_create(?WH_PROVISIONER_DB),
-    _ = couch_mgr:revise_doc_from_file(?WH_PROVISIONER_DB, 'crossbar', "account/provisioner_templates.json"),
-    'ok';
-refresh(?WH_FAXES) ->
-    couch_mgr:db_create(?WH_FAXES),
-    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'fax', ?FAXES_VIEW_FILE),
-    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, 'fax', ?FAXBOX_VIEW_FILE),
-    'ok';
-refresh(?KZ_PORT_REQUESTS_DB) ->
-    couch_mgr:db_create(?KZ_PORT_REQUESTS_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_PORT_REQUESTS_DB, 'crossbar', <<"views/port_requests.json">>),
-    'ok';
-refresh(?KZ_ACDC_DB) ->
-    couch_mgr:db_create(?KZ_ACDC_DB),
-    _ = couch_mgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
-    'ok';
-refresh(Account) when is_binary(Account) ->
-    case whapps_util:is_account_db(Account) of
-        'true' -> refresh(Account, get_all_account_views());
-        'false' ->
-            lager:debug("database ~s is unhandled", [Account])
-    end;
-refresh(Database) ->
-    refresh(wh_util:to_binary(Database)).
-
-refresh(Account, Views) ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-
-    %% Remove old views
-    _ = couch_mgr:del_doc(AccountDb, <<"_design/limits">>),
-    _ = couch_mgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
-
-    %% Update MOD Views
-    _ = refresh_account_mods(AccountDb),
-
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-        {'error', 'not_found'} ->
-            _ = refresh_from_accounts_db(AccountDb, AccountId),
-            'remove';
-        {'ok', JObj} ->
-            refresh_account_db(AccountDb, AccountId, Views, JObj)
-    end.
-
--spec refresh_account_db(ne_binary(), ne_binary(), wh_proplist(), wh_json:object()) -> 'ok'.
-refresh_account_db(AccountDb, AccountId, Views, JObj) ->
-    _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
-    AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
-
-    _ = case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
-            {'ok', Devices} ->
-                _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),
-                refresh_account_devices(AccountDb, AccountRealm, Devices);
-            {'error', _} -> 'ok'
-        end,
-    io:format("    updating views in ~s~n", [AccountDb]),
-    whapps_util:update_views(AccountDb, Views, 'true').
-
--spec refresh_account_mods(ne_binary()) -> 'ok'.
-refresh_account_mods(AccountDb) ->
-    MODs = whapps_util:get_account_mods(AccountDb),
-    [refresh_account_mod(AccountMOD) || AccountMOD <- MODs],
-    'ok'.
-
--spec refresh_account_mod(ne_binary()) -> 'ok'.
-refresh_account_mod(AccountMOD) ->
-    io:format("    updating views in mod ~s~n", [AccountMOD]),
-    kazoo_modb:refresh_views(AccountMOD).
-
--spec refresh_account_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
-refresh_account_devices(AccountDb, AccountRealm, Devices) ->
-    [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
-     || Device <- Devices,
-        wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
-            orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =/= 'undefined'
-    ],
-    'ok'.
-
--spec remove_aggregate_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
-remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
-    [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
-     || Device <- Devices,
-        wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
-            andalso wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =:= 'undefined'
-    ],
-    'ok'.
-
--spec refresh_from_accounts_db(ne_binary(), ne_binary()) -> 'ok'.
-refresh_from_accounts_db(AccountDb, AccountId) ->
-    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-        {'ok', Def} ->
-            io:format("    account ~s is missing its local account definition, but it was recovered from the accounts db~n", [AccountId]),
-            couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def)),
-            'ok';
-        {'error', 'not_found'} ->
-            io:format("    account ~s is missing its local account definition, and not in the accounts db~n", [AccountId])
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec cleanup_aggregated_account(wh_json:object()) -> 'ok'.
-cleanup_aggregated_account(Account) ->
-    Default = case wh_json:get_value(<<"pvt_account_id">>, Account) of
-                  'undefined' -> 'undefined';
-                  Else -> wh_util:format_account_id(Else, 'encoded')
-              end,
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account, Default),
-    _ = case AccountDb =/= 'undefined'
-            andalso (couch_mgr:db_exists(AccountDb) =/= 'true')
-        of
-            'true' ->
-                io:format("    removing aggregated account for missing db ~s~n", [AccountDb]),
-                couch_mgr:del_doc(?WH_ACCOUNTS_DB, Account);
-            'false' -> 'ok'
-        end,
-    'ok'.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec cleanup_aggregated_device(wh_json:object()) -> 'ok'.
-cleanup_aggregated_device(Device) ->
-    Default = case wh_json:get_value(<<"pvt_account_id">>, Device) of
-                  'undefined' -> 'undefined';
-                  Else -> wh_util:format_account_id(Else, 'encoded')
-              end,
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Device, Default),
-    case AccountDb =/= 'undefined'
-        andalso (couch_mgr:db_exists(AccountDb) =/= 'true')
-    of
-        'false' -> 'ok';
-        'true' ->
-            io:format("    removing aggregated device for missing db ~s~n", [AccountDb]),
-            _ = couch_mgr:del_doc(?WH_SIP_DB, Device),
-            'ok'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec purge_doc_type(ne_binaries() | ne_binary(), ne_binary()) ->
-                            {'ok', wh_json:objects()} |
-                            {'error', term()} |
-                            'ok'.
--spec purge_doc_type(ne_binaries() | ne_binary(), ne_binary(), integer()) ->
-                            {'ok', wh_json:objects()} |
-                            {'error', term()} |
-                            'ok'.
-purge_doc_type([], _Account) -> 'ok';
-purge_doc_type([Type|Types], Account) ->
-    _ = purge_doc_type(Type, Account),
-    purge_doc_type(Types, Account, whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000));
-purge_doc_type(Type, Account) when not is_binary(Type) ->
-    purge_doc_type(wh_util:to_binary(Type), Account, whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000));
-purge_doc_type(Type, Account) when not is_binary(Account) ->
-    purge_doc_type(Type, wh_util:to_binary(Account), whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000)).
-purge_doc_type(Type, Account, ChunkSize) ->
-    Db = wh_util:format_account_id(Account, 'encoded'),
-    Opts = [{'key', Type}
-           ,{'limit', ChunkSize}
-           ,'include_docs'
-           ],
-    case couch_mgr:get_results(Db, <<"maintenance/listing_by_type">>, Opts) of
-        {'error', _}=E -> E;
-        {'ok', []} -> 'ok';
-        {'ok', Ds} ->
-            lager:debug('deleting up to ~p documents of type ~p', [ChunkSize, Type]),
-            couch_mgr:del_docs(Db, [wh_json:get_value(<<"doc">>, D) || D <- Ds]),
-            purge_doc_type(Type, Account, ChunkSize)
     end.
 
 %%--------------------------------------------------------------------
@@ -466,14 +453,21 @@ purge_doc_type(Type, Account, ChunkSize) ->
 -spec migrate_limits(atom() | string() | binary()) -> 'ok'.
 
 migrate_limits() ->
-    Accounts = whapps_util:get_all_accounts(),
+    migrate_all_limits(whapps_util:get_all_accounts()).
+
+-spec migrate_all_limits(ne_binaries()) -> 'ok'.
+migrate_all_limits(Accounts) ->
     Total = length(Accounts),
     lists:foldr(fun(A, C) -> migrate_limits_fold(A, C, Total) end, 1, Accounts),
     'ok'.
 
 migrate_limits_fold(AccountDb, Current, Total) ->
-    io:format("migrating limits doc in database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
-    _ = migrate_limits(AccountDb),
+    io:format("checking limits doc in database (~p/~p) '~s'~n"
+             ,[Current, Total, AccountDb]),
+    _ = case couch_mgr:open_doc(AccountDb, <<"limits">>) of
+            {'error', 'not_found'} -> migrate_limits(AccountDb);
+            _Else -> 'ok'
+        end,
     Current + 1.
 
 migrate_limits(Account) when not is_binary(Account) ->
@@ -505,17 +499,8 @@ migrate_limits(Account) ->
     _ = couch_mgr:save_doc(AccountDb, JObj),
     'ok'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec clean_trunkstore_docs(ne_binary(), integer(), integer()) ->
                                    {integer(), integer()}.
--spec clean_trunkstore_docs(ne_binary(), wh_json:objects(), integer(), integer()) ->
-                                   {integer(), integer()}.
-
 clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
     ViewOptions = ['include_docs'
                    ,{'reduce', 'false'}
@@ -524,6 +509,9 @@ clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
         {'ok', JObjs} -> clean_trunkstore_docs(AccountDb, JObjs, TwowayTrunks, InboundTrunks);
         {'error', _}=E -> E
     end.
+
+-spec clean_trunkstore_docs(ne_binary(), wh_json:objects(), integer(), integer()) ->
+                                   {integer(), integer()}.
 
 clean_trunkstore_docs(_, [], Trunks, InboundTrunks) ->
     {Trunks, InboundTrunks};
@@ -595,6 +583,69 @@ migrate_media(Account) ->
 
 
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec ensure_aggregate_devices() -> 'ok'.
+ensure_aggregate_devices() ->
+    ensure_aggregate_devices(whapps_util:get_all_accounts()).
+
+-spec ensure_aggregate_devices(ne_binaries()) -> 'ok'.
+ensure_aggregate_devices([]) -> 'ok';
+ensure_aggregate_devices([Account|Accounts]) ->
+    _ = ensure_aggregate_device(Account),
+ensure_aggregate_devices(Accounts).
+
+-spec ensure_aggregate_device(ne_binary()) -> 'ok'.
+ensure_aggregate_device(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
+    case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
+        {'ok', Devices} ->
+            _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),
+            refresh_account_devices(AccountDb, AccountRealm, Devices);
+        {'error', _} -> 'ok'
+    end.
+
+-spec refresh_account_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
+refresh_account_devices(AccountDb, AccountRealm, Devices) ->
+    [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
+     || Device <- Devices,
+        wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
+            orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =/= 'undefined'
+    ],
+    'ok'.
+
+-spec remove_aggregate_devices(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
+remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
+    [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
+     || Device <- Devices,
+        wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
+            andalso wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, 'undefined') =:= 'undefined'
+    ],
+    'ok'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_invalid_acccount_dbs() -> ne_binaries().
+find_invalid_acccount_dbs() ->
+    lists:foldr(fun find_invalid_acccount_dbs_fold/2, [], whapps_util:get_all_accounts()).
+
+find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
+    AccountId = wh_util:format_account_id(AccountDb, 'raw'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', 'not_found'} -> [AccountDb|Acc];
+        {'ok', _} -> Acc
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -790,14 +841,36 @@ is_audio_content(_) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_account_views() -> wh_proplist().
-get_all_account_views() ->
-    [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
-     ,whapps_util:get_view_json('whistle_apps', ?RESELLER_VIEW_FILE)
-     ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
-     |whapps_util:get_views_json('crossbar', "account")
-     ++ whapps_util:get_views_json('callflow', "views")
-    ].
+-spec purge_doc_type(ne_binaries() | ne_binary(), ne_binary()) ->
+                            {'ok', wh_json:objects()} |
+                            {'error', term()} |
+                            'ok'.
+-spec purge_doc_type(ne_binaries() | ne_binary(), ne_binary(), integer()) ->
+                            {'ok', wh_json:objects()} |
+                            {'error', term()} |
+                            'ok'.
+purge_doc_type([], _Account) -> 'ok';
+purge_doc_type([Type|Types], Account) ->
+    _ = purge_doc_type(Type, Account),
+    purge_doc_type(Types, Account, whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000));
+purge_doc_type(Type, Account) when not is_binary(Type) ->
+    purge_doc_type(wh_util:to_binary(Type), Account, whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000));
+purge_doc_type(Type, Account) when not is_binary(Account) ->
+    purge_doc_type(Type, wh_util:to_binary(Account), whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000)).
+purge_doc_type(Type, Account, ChunkSize) ->
+    Db = wh_util:format_account_id(Account, 'encoded'),
+    Opts = [{'key', Type}
+           ,{'limit', ChunkSize}
+           ,'include_docs'
+           ],
+    case couch_mgr:get_results(Db, <<"maintenance/listing_by_type">>, Opts) of
+        {'error', _}=E -> E;
+        {'ok', []} -> 'ok';
+        {'ok', Ds} ->
+            lager:debug('deleting up to ~p documents of type ~p', [ChunkSize, Type]),
+            couch_mgr:del_docs(Db, [wh_json:get_value(<<"doc">>, D) || D <- Ds]),
+            purge_doc_type(Type, Account, ChunkSize)
+    end.
 
 -spec call_id_status(ne_binary()) -> 'ok'.
 -spec call_id_status(ne_binary(), boolean() | ne_binary()) -> 'ok'.

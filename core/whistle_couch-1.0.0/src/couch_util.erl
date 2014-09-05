@@ -8,6 +8,7 @@
 %%%-----------------------------------------------------------------------------
 -module(couch_util).
 
+-export([db_classification/1]).
 -export([get_new_connection/4
          ,get_db/2
          ,server_url/1
@@ -72,9 +73,55 @@
 -define(RETRY_504(F), retry504s(fun() -> F end)).
 
 -type db_create_options() :: [{'q',integer()} | {'n',integer()},...] | [].
--export_type([db_create_options/0, couchbeam_errors/0]).
 
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
+
+-type db_classifications() :: 'account' | 'modb' | 'acdc' |
+                              'numbers' | 'aggregate' | 'system' |
+                              'depreciated' | 'undefined'.
+
+-export_type([db_create_options/0, couchbeam_errors/0, db_classifications/0]).
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec db_classification(text()) -> db_classifications().
+db_classification(Db) when not is_binary(Db) ->
+    db_classification(wh_util:to_binary(Db));
+db_classification(<<"ts">>) -> 'depreciated';
+db_classification(<<"crossbar_schemas">>) -> 'depreciated';
+db_classification(<<"registrations">>) -> 'depreciated';
+db_classification(<<"crossbar%2Fsessions">>) -> 'depreciated';
+db_classification(<<"signups">>) -> 'system'; %% Soon to be depreciated
+db_classification(<<"gloabl_provisioner">>) -> 'system'; %% Soon to be depreciated
+db_classification(<<"accounts">>) -> 'aggregate';
+db_classification(<<"token_auth">>) -> 'aggregate';
+db_classification(<<"sip_auth">>) -> 'aggregate';
+db_classification(<<"faxes">>) -> 'aggregate';
+db_classification(<<"sms">>) -> 'aggregate';
+db_classification(<<"acdc">>) -> 'aggregate';
+db_classification(<<"services">>) -> 'aggregate';
+db_classification(<<"port_requests">>) -> 'aggregate';
+db_classification(<<"webhooks">>) -> 'aggregate';
+db_classification(<<"nubmers/", _Prefix:5/binary>>) -> 'numbers';
+db_classification(<<"nubmers%2F", _Prefix:5/binary>>) -> 'numbers';
+db_classification(<<"nubmers%2f", _Prefix:5/binary>>) -> 'numbers';
+db_classification(<<"account/", _AccountId:34/binary, "-", _Date:6/binary>>) -> 'modb';
+db_classification(<<"account%2F", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'modb';
+db_classification(<<"account%2f", _AccountId:38/binary, "-", _Date:6/binary>>) -> 'modb';
+db_classification(<<"account/", _/binary>>) -> 'account';
+db_classification(<<"account%2f", _/binary>>) -> 'account';
+db_classification(<<"account%2F", _/binary>>) -> 'account';
+db_classification(<<"ratedeck">>) -> 'system';
+db_classification(<<"offnet">>) -> 'system';
+db_classification(<<"anonymous_cds">>) -> 'system';
+db_classification(<<"dedicated_ips">>) -> 'system';
+db_classification(<<"system_config">>) -> 'system';
+db_classification(<<"system_media">>) -> 'system';
+db_classification(<<"system_schemas">>) -> 'system';
+db_classification(_) -> 'undefined'.
 
 %%------------------------------------------------------------------------------
 %% @public
