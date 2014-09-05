@@ -85,6 +85,11 @@ migrate(Pause) ->
                        ,whapps_util:is_account_db(Db)
                ],
 
+    %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
+    %% that need to be aggregated have been, and the account definition is aggregated
+    io:format("updating views...~n", []),
+    _ = refresh(Databases, Pause),
+
     %% Remove depreciated dbs
     io:format("removing depreciated databases...~n", []),
     _  = remove_depreciated_databases(Databases),
@@ -100,11 +105,6 @@ migrate(Pause) ->
     %% Migrate settings for whistle_media
     io:format("running media migrations...~n", []),
     _ = whistle_media_maintenance:migrate(),
-
-    %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
-    %% that need to be aggregated have been, and the account definition is aggregated
-    io:format("updating views...~n", []),
-    _ = refresh(Databases, Pause),
 
     'no_return'.
 
