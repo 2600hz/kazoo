@@ -40,6 +40,7 @@
 -include_lib("kazoo_etsmgr/include/kazoo_etsmgr.hrl").
 
 -define(EXPIRE_SUBSCRIPTIONS, whapps_config:get_integer(?CONFIG_CAT, <<"expire_check_ms">>, 1000)).
+-define(EXPIRES_FUDGE, whapps_config:get_integer(?CONFIG_CAT, <<"expires_fudge_s">>, 20)).
 -define(EXPIRE_MESSAGE, 'clear_expired').
 -define(BLF_EVENT, <<"dialog">>).
 -define(MWI_EVENT, <<"message-summary">>).
@@ -216,7 +217,7 @@ handle_call({'subscribe', #omnip_subscription{expires=E
         {'error', 'not_found'} -> {'reply', {'unsubscribe', S}, State};
         {'ok', #omnip_subscription{timestamp=_T
                                    ,expires=_E
-                                   }=O} ->
+                                  }=O} ->
             lager:debug("unsubscribe ~s/~s (had ~p s left)", [_U, _F, _E - wh_util:elapsed_s(_T)]),
             ets:delete_object(table_id(), O),
             {'reply', {'unsubscribe', O}, State}
@@ -319,7 +320,8 @@ code_change(_OldVsn, State, _Extra) ->
 distribute_subscribe(JObj) ->
     whapps_util:amqp_pool_send(
       wh_json:delete_key(<<"Node">>, JObj)
-      ,fun wapi_presence:publish_subscribe/1).
+      ,fun wapi_presence:publish_subscribe/1
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -416,12 +418,6 @@ handle_destroyed_channel(JObj) ->
     'true' = wapi_call:event_v(JObj),
     wh_util:put_callid(JObj),
     lager:debug("received channel destroy, checking for subscribers"),
-    maybe_send_update(JObj, ?PRESENCE_HANGUP),
-    %% When multiple omnipresence instances are in multiple
-    %% zones its possible (due to the round-robin) for the
-    %% instance closest to rabbitmq to process the terminate
-    %% before a confirm/early if both are sent immediately.
-    timer:sleep(1000),
     maybe_send_update(JObj, ?PRESENCE_HANGUP).
 
 -spec handle_disconnected_channel(wh_json:object()) -> any().
@@ -442,10 +438,10 @@ handle_connected_channel(_JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_send_update(wh_json:object(), ne_binary()) -> any().
+-spec maybe_send_update(wh_json:object(), ne_binary(), ne_binaries()) -> any().
 maybe_send_update(JObj, State) ->
     maybe_send_update(JObj, State, ?DEFAULT_SEND_EVENT_LIST).
 
--spec maybe_send_update(wh_json:object(), ne_binary(), ne_binaries()) -> any().
 maybe_send_update(JObj, State, Events) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
     From = wh_json:get_value(<<"From">>, JObj),
@@ -526,7 +522,8 @@ send_update(Props, #omnip_subscription{stalker=Q
 subscription_initial_notify(#omnip_subscription{event = <<"message-summary">>
                                                 ,username=Username
                                                 ,realm=Realm
-                                                ,call_id=CallId}) ->
+                                                ,call_id=CallId
+                                               }) ->
     lager:debug("publishing message query for ~s@~s", [Username, Realm]),
     Query = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}
@@ -539,7 +536,8 @@ subscription_initial_notify(#omnip_subscription{event = <<"message-summary">>
 subscription_initial_notify(#omnip_subscription{event=EventPackage
                                                 ,username=Username
                                                 ,realm=Realm
-                                                ,call_id=CallId}) ->
+                                                ,call_id=CallId
+                                               }) ->
     lager:debug("publishing presence probe for ~s@~s", [Username, Realm]),
     Query = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}
@@ -562,7 +560,8 @@ resubscribe_notify(#omnip_subscription{event = <<"message-summary">>}) -> 'ok';
 resubscribe_notify(#omnip_subscription{event=EventPackage
                                        ,username=Username
                                        ,realm=Realm
-                                       ,call_id=CallId}) ->
+                                       ,call_id=CallId
+                                      }) ->
     lager:debug("publishing presence probe for ~s@~s", [Username, Realm]),
     Query = [{<<"Username">>, Username}
              ,{<<"Realm">>, Realm}
@@ -633,11 +632,11 @@ find_subscriptions(User) when is_binary(User) ->
     find_subscriptions(?DEFAULT_EVENT, User);
 find_subscriptions(JObj) ->
     find_subscriptions(
-      wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT),
-      <<(wh_json:get_value(<<"Username">>, JObj))/binary
-        ,"@"
-        ,(wh_json:get_value(<<"Realm">>, JObj))/binary
-      >>).
+      wh_json:get_value(<<"Event-Package">>, JObj, ?DEFAULT_EVENT)
+      ,<<(wh_json:get_value(<<"Username">>, JObj))/binary
+         ,"@"
+         ,(wh_json:get_value(<<"Realm">>, JObj))/binary
+       >>).
 
 find_subscriptions(Event, User) when is_binary(User) ->
     U = wh_util:to_lower_binary(User),
@@ -654,20 +653,21 @@ find_subscriptions(Event, User) when is_binary(User) ->
     end.
 
 -spec dedup(subscriptions()) -> subscriptions().
+-spec dedup(subscriptions(), dict()) -> subscriptions().
 dedup(Subscriptions) ->
     dedup(Subscriptions, dict:new()).
 
--spec dedup(subscriptions(), dict()) -> subscriptions().
 dedup([], Dictionary) ->
     [Subscription || {_, Subscription} <- dict:to_list(Dictionary)];
 dedup([#omnip_subscription{normalized_user=User
                            ,stalker=Stalker
-                          ,event=Event
+                           ,event=Event
                           }=Subscription
        | Subscriptions
       ], Dictionary) ->
-    D = dict:store({User, Stalker, Event}, Subscription, Dictionary),
-    dedup(Subscriptions, D).
+    dedup(Subscriptions
+          ,dict:store({User, Stalker, Event}, Subscription, Dictionary)
+         ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -733,7 +733,7 @@ send_mwi_update(Update, #omnip_subscription{stalker=S
 %% @end
 %%--------------------------------------------------------------------
 -spec expires(integer() | wh_json:object()) -> non_neg_integer().
-expires(I) when is_integer(I), I >= 0 -> I;
+expires(I) when is_integer(I), I >= 0 -> I + ?EXPIRES_FUDGE;
 expires(JObj) -> expires(wh_json:get_integer_value(<<"Expires">>, JObj)).
 
 %%--------------------------------------------------------------------
