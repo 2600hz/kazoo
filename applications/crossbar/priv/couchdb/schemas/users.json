@@ -95,14 +95,14 @@
                             "required": false,
                             "name": "Name",
                             "description": "The caller id name used internally",
-                            "maxLength": 30
+                            "maxLength": 35
                         },
                         "number": {
                             "type": "string",
                             "required": false,
                             "name": "Number",
                             "description": "The caller id name used internally",
-                            "maxLength": 15
+                            "maxLength": 35
                         }
                     }
                 },
@@ -117,14 +117,14 @@
                             "required": false,
                             "name": "Name",
                             "description": "The caller id name used when dialing outbound",
-                            "maxLength": 30
+                            "maxLength": 35
                         },
                         "number": {
                             "type": "string",
                             "required": false,
                             "name": "Number",
                             "description": "The caller id name used when dialing outbound",
-                            "maxLength": 15
+                            "maxLength": 35
                         }
                     }
                 },
@@ -139,14 +139,14 @@
                             "required": false,
                             "name": "Name",
                             "description": "The caller id name used when dialing an emergency resource",
-                            "maxLength": 30
+                            "maxLength": 35
                         },
                         "number": {
                             "type": "string",
                             "required": false,
                             "name": "Number",
                             "description": "The caller id name used when dialing an emergency resource",
-                            "maxLength": 15
+                            "maxLength": 35
                         }
                     }
                 }
@@ -429,7 +429,7 @@
                     "name": "Number",
                     "description": "The number to forward calls to",
                     "minLength": 3,
-                    "maxLength": 15
+                    "maxLength": 35
                 },
                 "substitute": {
                     "type": "boolean",
