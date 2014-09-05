@@ -418,6 +418,23 @@ save_attachment(DocId, AName, Contents, #cb_context{}=Context, Options) ->
             end,
 
     case couch_mgr:put_attachment(cb_context:account_db(Context), DocId, AName, Contents, Opts1) of
+        {'error', 'conflict'=Error} ->
+            lager:debug("saving attachment resulted in a conflict, checking for validity"),
+            Context1 = load(DocId, Context),
+            case wh_json:get_value([<<"_attachments">>, AName], cb_context:doc(Context1)) of
+                'undefined' ->
+                    lager:debug("attachment does appear to be missing, reporting error"),
+                    handle_couch_mgr_errors(Error, AName, Context);
+                _Attachment ->
+                    lager:debug("attachment ~s was in _attachments, considering it successful", [AName]),
+                    {'ok', Rev1} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
+                    cb_context:setters(Context
+                                       ,[{fun cb_context:set_doc/2, wh_json:new()}
+                                         ,{fun cb_context:set_resp_status/2, 'success'}
+                                         ,{fun cb_context:set_resp_data/2, wh_json:new()}
+                                         ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
+                                        ])
+            end;
         {'error', Error} ->
             lager:debug("error putting attachment into ~s: ~p"
                         ,[cb_context:account_db(Context), Error]
