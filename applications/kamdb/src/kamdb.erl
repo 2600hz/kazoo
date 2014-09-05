@@ -69,4 +69,4 @@ start_deps() ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    'ok'.
+    wapi_kamdb:declare_exchanges().
