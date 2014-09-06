@@ -105,7 +105,7 @@ ensure 2600hz is always leading the way in cloud telecom.
 
 _Everyone can!_
 
-### Do I have to know Erlang?
+### Not a coder?
 
 Of course not!  We have many different places where folks can chip in time. These include (but aren't limited to):
 
@@ -121,22 +121,11 @@ Of course not!  We have many different places where folks can chip in time. Thes
 * Browse the open [Issues](https://2600hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
 * Make a sugestion!
 
-### Non-English Language help
+### Internationalization Help
 
 Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
 
-### I know other languages! Can I still help code?
-
-#### Programming-related help
-
-* Write some automated testing tools for testing the APIs
-* Check out our [GUI](https://github.com/2600hz/kazoo_ui) and write some Javascript.
-* Check out our REST APIs and write SDKs in your favorite languages ([PHP](https://github.com/2600hz/kazoo-php-sdk) | [RUBY](https://github.com/2600hz/kazoo-ruby-sdk))
-* Check out our Pivot APIs and write SDKs in your favorite languages
-* Check out our AMQP APIs and write a WhApp in your favorite language
-* Write some SIPp / QA test scripts to test the full stack
-
-### I know (or am learning) Erlang! How do I help with Kazoo?
+### I know (or am learning) Erlang! How do I get started with Kazoo?
 
 * Clone the repo
 * If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo) to forking repos
@@ -146,6 +135,14 @@ Translation efforts are always appreciated. We're working on redesigning how our
 * Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests)
 * Please keep your pull requests focused and specific to the task at hand
 * If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
+
+### Do you know other languages?
+
+* Help us write some automated testing tools
+* Check out our Javascript/HTML/CSS [GUI](https://github.com/2600hz/kazoo_ui)
+* Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](https://github.com/2600hz/kazoo-php-sdk) | [RUBY](https://github.com/2600hz/kazoo-ruby-sdk))
+* Check out our Pivot APIs and help us create SDKs in your favorite languages
+* Check out our AMQP APIs and create a WhApp in your favorite language
 
 ## Build Dependencies
 
