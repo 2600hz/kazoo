@@ -14,7 +14,7 @@
 -include("kamdb.hrl").
 
 -define(DEVICE_DEFAULT_RATES, <<"device-default-rate-limits">>).
--define(ACCOUNT_DEFAULT_RATES, <<"account-default-rate-limits">>).
+-define(ACCOUNT_FALLBACK, <<"fallback">>).
 
 -spec method_to_name() -> wh_proplist().
 method_to_name() ->
@@ -29,30 +29,91 @@ resolve_method(Method) ->
 
 -spec handle_rate_req(wh_json:object(), wh_proplist()) -> any().
 handle_rate_req(JObj, _Props) ->
-    _ = get_ratelimits(JObj).
+    'true' = wapi_kamdb:ratelimits_req_v(JObj),
+    RespStub = wh_json:from_list([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                 ]),
+    ServerID = wh_json:get_value(<<"Server-ID">>, JObj),
+    Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
+    Entity = wh_json:get_value(<<"Entity">>, JObj),
+    Keys = binary:split(Entity, <<"@">>),
+    Limits = case Keys of
+                 [_, _] ->
+                     case wh_json:is_true(<<"With-Realm">>, JObj) of
+                         'true' -> wh_json:merge_jobjs(get_realm_limits(JObj)
+                                                       ,get_user_limits(JObj)
+                                                      );
+                         _ -> get_user_limits(JObj)
+                     end;
+                 [_] -> get_realm_limits(JObj)
+             end,
+    Resp = wh_json:merge_jobjs(RespStub, Limits),
+    JSysRates = get_sysconfig_rates(Keys, Name, wh_json:get_value(<<"With-Realm">>, JObj)),
+    wapi_kamdb:publish_ratelimits_resp(ServerID, wh_json:merge_recursive([JSysRates, Resp])).
 
--spec get_reqest_info(ne_binaries(), ne_binary(), boolean()) -> {ne_binary(), wh_proplist()}.
-get_reqest_info(Keys, Name, WithRealm) ->
-    case Keys of
-        [User, OnRealm] ->
-            lager:info("Lookup for ~s@~s", [User, OnRealm]),
-            V = case wh_util:is_true(WithRealm) of
-                    'true' ->
-                        lager:info("Lookup ~s", [OnRealm]),
-                        [{'keys', [[OnRealm, Name]
-                            , [?DEVICE_DEFAULT_RATES, Name]
-                            , [User, resolve_method(Name)]
-                        ]}];
-                    _ ->
-                        [{'keys', [[?DEVICE_DEFAULT_RATES, Name]
-                            , [User, Name]
-                        ]}]
-                end,
-            {OnRealm, V};
-        [JustRealm] ->
-            V = [{'key', [JustRealm, Name]}],
-            {JustRealm, V}
+-spec get_user_limits(wh_json:object()) -> wh_json:object().
+get_user_limits(JObj) ->
+    Entity = wh_json:get_value(<<"Entity">>, JObj),
+    [User, Realm] = binary:split(Entity, <<"@">>),
+    Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
+    {'ok', UserDb} = whapps_util:get_account_by_realm(Realm),
+    ViewOpts = [{'keys',[[User, Name]
+                         ,[?DEVICE_DEFAULT_RATES, Name]
+                        ]}],
+    {'ok', Results} = couch_mgr:get_results(UserDb, <<"rate_limits/crossbar_listing">>, ViewOpts),
+    lists:foldl(fun inject_device_rate_limits/2, wh_json:new(), Results).
+
+-spec get_realm_limits(wh_json:object()) -> wh_json:object().
+get_realm_limits(JObj) ->
+    Entity = wh_json:get_value(<<"Entity">>, JObj),
+    Realm = case binary:split(Entity, <<"@">>) of
+                [_, OnRealm] -> OnRealm;
+                [JustRealm] -> JustRealm
+            end,
+    Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
+    ViewOpts = [{'keys',[[Realm, Name]
+                         ,[Realm, ?ACCOUNT_FALLBACK]
+                        ]}],
+    {'ok', Results} = couch_mgr:get_results(<<"accounts">>, <<"rate_limits/crossbar_listing">>, ViewOpts),
+    {Rates, MaybeFallback} = lists:partition(fun is_rate_limit/1, Results),
+    RespCandidate = lists:foldl(fun (Rate, Acc) -> inject(wh_json:get_value(<<"value">>, Rate), Acc) end, wh_json:new(), Rates),
+    Parents = case MaybeFallback of
+                  [Fallback] -> wh_json:get_value([<<"value">>, <<"parents">>], Fallback);
+                  [] -> []
+              end,
+    maybe_run_through_fallbacks(RespCandidate, lists:reverse(Parents), Name).
+
+-spec maybe_run_through_fallbacks(wh_json:object(), list(), ne_binary()) -> wh_json:object().
+maybe_run_through_fallbacks(JObj, Parents, Name) ->
+    case wh_json:get_integer_value([<<"Realm">>, <<"Min">>], JObj) =:= 'undefined'
+        orelse wh_json:get_integer_value([<<"Realm">>, <<"Sec">>], JObj) =:= 'undefined'
+    of
+        'true' -> run_through_fallbacks(JObj, Parents, Name);
+        _ -> JObj
     end.
+
+-spec run_through_fallbacks(wh_json:object(), list(), ne_binary()) -> wh_json:object().
+run_through_fallbacks(JObj, Parents, Name) ->
+    case lists:dropwhile(fun not_limited/1, Parents) of
+        [Limiter | _] ->
+            {'ok', JDoc} = couch_mgr:open_cache_doc(<<"accounts">>, Limiter),
+            PerMinute = wh_json:get_value([<<"rate_limits">>, ?MINUTE, Name], JDoc),
+            PerSecond = wh_json:get_value([<<"rate_limits">>, ?SECOND, Name], JDoc),
+            wh_json:set_values([{[<<"Realm">>, <<"Min">>], PerMinute}
+                                ,{[<<"Realm">>, <<"Sec">>], PerSecond}
+                               ], JObj);
+        [] -> JObj
+    end.
+
+-spec not_limited(ne_binary()) -> boolean().
+not_limited(AccountId) ->
+    {'ok', JDoc} = couch_mgr:open_cache_doc(<<"accounts">>, AccountId),
+    wh_json:get_value(<<"rate_limits">>, JDoc) =/= 'undefuned'.
+
+-spec is_rate_limit(wh_json:object()) -> boolean().
+is_rate_limit(JObj) ->
+    [_, Type] = wh_json:get_value(<<"key">>, JObj),
+    Type =/= ?ACCOUNT_FALLBACK.
 
 -spec get_sysconfig_rates(ne_binaries(), ne_binary(), boolean()) -> wh_json:object().
 get_sysconfig_rates(Keys, Name, WithRealm) ->
@@ -90,41 +151,13 @@ get_sysconfig_rates(Keys, Name, WithRealm) ->
                              )
     end.
 
--spec get_ratelimits(wh_json:object()) -> list().
-get_ratelimits(JObj) ->
-    'true' = wapi_kamdb:ratelimits_req_v(JObj),
-    RespStub = wh_json:from_list([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                 ]),
-    ServerID = wh_json:get_value(<<"Server-ID">>, JObj),
-    Entity = wh_json:get_value(<<"Entity">>, JObj),
-    Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
-    Keys = binary:split(Entity, <<"@">>),
-    {Realm, ViewOpts} = get_reqest_info(Keys, Name, wh_json:get_value(<<"With-Realm">>, JObj)),
-    JSysRates = get_sysconfig_rates(Keys, Name, wh_json:get_value(<<"With-Realm">>, JObj)),
-    DBase = get_dbase(Realm),
-    {'ok', Results} = couch_mgr:get_results(DBase, <<"rate_limits/crossbar_listing">>, ViewOpts),
-    Resp = lists:foldl(fun inject_rate_limits/2, RespStub, Results),
-    wapi_kamdb:publish_ratelimits_resp(ServerID, wh_json:merge_recursive([JSysRates, Resp])).
-
--spec get_dbase(ne_binary()) -> {ne_binary(), ne_binary()}.
-get_dbase(Realm) ->
-    lager:info(Realm),
-    ViewOpts = [{'key', Realm}],
-    {'ok', [JObj]} = couch_mgr:get_results(<<"accounts">>, <<"accounts/listing_by_realm">>, ViewOpts),
-    wh_json:get_value([<<"value">>, <<"account_db">>], JObj).
-
--spec inject_rate_limits(wh_json:object(), wh_json:object()) -> wh_json:object().
-inject_rate_limits(Result, Acc) ->
+-spec inject_device_rate_limits(wh_json:object(), wh_json:object()) -> wh_json:object().
+inject_device_rate_limits(Result, Acc) ->
     [Name, _] = wh_json:get_value(<<"key">>, Result),
     JVal = wh_json:get_value(<<"value">>, Result),
-    case wh_json:get_value(<<"type">>, JVal) of
-        <<"device">> ->
-            case Name of
-                ?DEVICE_DEFAULT_RATES -> inject_if_not_exists(JVal, Acc);
-                _ -> inject(JVal, Acc)
-            end;
-        <<"account">> -> inject(JVal, Acc)
+    case Name of
+        ?DEVICE_DEFAULT_RATES -> inject_if_not_exists(JVal, Acc);
+        _ -> inject(JVal, Acc)
     end.
 
 -spec get_key_value(wh_json:object()) -> {wh_json:key(), term()}.
