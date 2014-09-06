@@ -107,7 +107,7 @@ _Everyone can!_
 
 ### Not a coder?
 
-Of course not!  We have many different places where folks can chip in time. These include (but aren't limited to):
+No problem!  We have many different places where folks can chip in time. These include (but aren't limited to):
 
 * Maintaining and expanding the documenation
 * Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, code, company, community, etc.
