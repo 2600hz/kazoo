@@ -125,7 +125,7 @@ No problem!  We have many different places where folks can chip in time. These i
 
 Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
 
-### I know (or am learning) Erlang! How do I get started with Kazoo?
+### I know me some Erlang! How do can I contribute?
 
 * Clone the repo
 * If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo) to forking repos
