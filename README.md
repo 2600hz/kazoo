@@ -1,5 +1,5 @@
-Kazoo
-======
+
+**[Have you signed up for the second annual KazooCon, this October 6th, 7th!](http://kazoocon.com/)**
 
 ````
     ... ........                                                
@@ -60,6 +60,8 @@ Kazoo
 
 [![Build Status](https://secure.travis-ci.org/2600hz/2600hz-platform.png)](http://travis-ci.org/2600hz/2600hz-platform)
 
+## Kazoo
+
 ### Cloud-Based Telecommunications For Everyone
 
 Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommunications to everyone. Our goal is to provide the world with a free, open telecommunications software platform. Released under the [OSI-approved MPL 1.1 open source software license](http://opensource.org/licenses/MPL-1.1), we're building upon strong FOSS components like [GNU](https://www.gnu.org/)/[Linux](https://en.wikipedia.org/wiki/Linux), [Erlang](http://erlang.org), [FreeSWITCH](https://freeswitch.org), [CouchDB](https://couchdb.apache.org) \(specifically [BigCouch](http://bigcouch.cloudant.com)), and [RabbitMQ](https://www.rabbitmq.com). Our project is a great example of the wonderful things that can happen when software is open.
@@ -99,7 +101,53 @@ managing services to carrier-grade termination, software design and
 professional services. Let us know how we can help you and, in return, we will
 ensure 2600hz is always leading the way in cloud telecom.
 
-### Build Dependencies
+## Who Can Contribute?
+
+_Everyone can!_
+
+### Do I have to know Erlang?
+
+Of course not!  We have many different places where folks can chip in time. These include (but aren't limited to):
+
+* Maintaining and expanding the documenation
+* Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, code, company, community, etc.
+* Join us in real time and help other community members:
+  * on IRC (#2600hz on Freenode)
+  * our [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-users)
+  * our [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev)
+  * our [Forum](http://forum.2600hz.com/)
+* Contribute scripts to the [community repo](https://github.com/2600hz/community-scripts)
+* Help with building RPMs, DEBs, and other system packages
+* Browse the open [Issues](https://2600hz.atlassian.net/browse/KAZOO) and test bugs to see if they're valid
+* Make a sugestion!
+
+### Non-English Language help
+
+Translation efforts are always appreciated. We're working on redesigning how our back- and front-ends handle the world's languages and hope to make it easy to contribute translations. Stay tuned for more; please let us know of your interest and be sure to join the mailing lists so you can receive announcements regarding internationalization efforts.
+
+### I know other languages! Can I still help code?
+
+#### Programming-related help
+
+* Write some automated testing tools for testing the APIs
+* Check out our [GUI](https://github.com/2600hz/kazoo_ui) and write some Javascript.
+* Check out our REST APIs and write SDKs in your favorite languages ([PHP](https://github.com/2600hz/kazoo-php-sdk) | [RUBY](https://github.com/2600hz/kazoo-ruby-sdk))
+* Check out our Pivot APIs and write SDKs in your favorite languages
+* Check out our AMQP APIs and write a WhApp in your favorite language
+* Write some SIPp / QA test scripts to test the full stack
+
+### I know (or am learning) Erlang! How do I help with Kazoo?
+
+* Clone the repo
+* If you're completely new to Git, read Github's [great introduction](https://help.github.com/articles/fork-a-repo) to forking repos
+* Squash a bug, build a feature, etc
+* Browse the [ticket queue](https://2600hz.atlassian.net/browse/KAZOO) and find one you'd like to tackle.
+* Feel free to drop a line to the [dev mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-dev) letting us know you're taking on a ticket, especially if you have questions.
+* Once you feel the code is ready for inclusion, issue a [pull request](https://help.github.com/articles/using-pull-requests)
+* Please keep your pull requests focused and specific to the task at hand
+* If, in the course of your work you add/modify/delete code unrelated to the core task, create a new ticket describing why you've made these additional changes, and issue a separate pull request.
+
+## Build Dependencies
 
 * erlang R15+
 * python-simplejson
@@ -111,8 +159,9 @@ ensure 2600hz is always leading the way in cloud telecom.
 * make
 * nc
 
-### Learn More
+## Learn More
 
+* Join us at [KazooCon!](http://kazoocon.com/) 
 * Visit http://2600hz.org
 * Read more at http://wiki.2600hz.org
 * Bugs and feature requests http://tickets.2600hz.org
