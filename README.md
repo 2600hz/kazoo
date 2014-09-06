@@ -1,5 +1,5 @@
 
-**[Have you signed up for the second annual KazooCon, this October 6th, 7th!](http://kazoocon.com/)**
+**[Have you signed up for the second annual KazooCon, this October 6th, 7th? Join us!](http://kazoocon.com/)**
 
 ````
     ... ........                                                
