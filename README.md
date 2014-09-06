@@ -110,7 +110,7 @@ _Everyone can!_
 No problem!  We have many different places where folks can chip in time. These include (but aren't limited to):
 
 * Maintaining and expanding the documenation
-* Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, code, company, community, etc.
+* Blogging, tweeting, and other forms of publicizing your usage of and love for the platform, community, code, company, etc.
 * Join us in real time and help other community members:
   * on IRC (#2600hz on Freenode)
   * our [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600hz-users)
