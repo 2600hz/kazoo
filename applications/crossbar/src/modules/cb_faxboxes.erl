@@ -217,7 +217,7 @@ leak_private_fields(JObj) ->
                         case wh_json:get_value(K, Acc) of
                             'undefined' -> Acc;
                             Value -> wh_json:set_value(K1, Value , Acc)
-                        end;
+                        end
                 end, J, ?LEAKED_FIELDS).
 
 -spec remove_private_fields(cb_context:context()) -> cb_context:context().
