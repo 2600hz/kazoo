@@ -143,6 +143,8 @@ Translation efforts are always appreciated. We're working on redesigning how our
 * Check out our REST APIs and help us create SDKs in your favorite languages ([PHP](https://github.com/2600hz/kazoo-php-sdk) | [RUBY](https://github.com/2600hz/kazoo-ruby-sdk))
 * Check out our Pivot APIs and help us create SDKs in your favorite languages
 * Check out our AMQP APIs and create a WhApp in your favorite language
+* Help out with the [configuration scripts](https://github.com/2600hz/kazoo-configs)
+* Test new features!
 
 ## Build Dependencies
 
