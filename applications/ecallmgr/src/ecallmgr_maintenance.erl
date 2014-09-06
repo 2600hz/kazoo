@@ -146,10 +146,15 @@ carrier_acls('false') ->
     list_acls(get_acls(), ?FS_CARRIER_ACL_LIST).
 
 -spec test_carrier_ip(ne_binary()) -> 'ok'.
--spec test_carrier_ip(ne_binary(), ne_binary()) -> 'ok'.
+-spec test_carrier_ip(ne_binary(), ne_binary() | ne_binaries()) -> 'ok'.
 test_carrier_ip(IP) ->
-    [N|_] = wh_util:shuffle_list(ecallmgr_fs_nodes:connected()),
-    test_carrier_ip(IP, N).
+    Nodes = ecallmgr_fs_nodes:connected(),
+    test_carrier_ip(IP, Nodes).
+
+test_carrier_ip(_, []) -> 'no_return';
+test_carrier_ip(IP, [Node|Nodes]) ->
+    _ = test_ip_against_acl(IP, Node, ?FS_CARRIER_ACL_LIST),
+    test_carrier_ip(IP, Nodes);
 test_carrier_ip(IP, Node) ->
     test_ip_against_acl(IP, Node, ?FS_CARRIER_ACL_LIST).
 
@@ -219,10 +224,15 @@ sbc_acls('false') ->
     list_acls(get_acls(), ?FS_SBC_ACL_LIST).
 
 -spec test_sbc_ip(ne_binary()) -> 'ok'.
--spec test_sbc_ip(ne_binary(), ne_binary()) -> 'ok'.
+-spec test_sbc_ip(ne_binary(), ne_binary() | ne_binaries()) -> 'ok'.
 test_sbc_ip(IP) ->
-    [N|_] = wh_util:shuffle_list(ecallmgr_fs_nodes:connected()),
-    test_sbc_ip(IP, N).
+    Nodes = ecallmgr_fs_nodes:connected(),
+    test_sbc_ip(IP, Nodes).
+
+test_sbc_ip(_, []) -> 'no_return';
+test_sbc_ip(IP, [Node|Nodes]) ->
+    _ = test_ip_against_acl(IP, Node, ?FS_SBC_ACL_LIST),
+    test_sbc_ip(IP, Nodes);
 test_sbc_ip(IP, Node) ->
     test_ip_against_acl(IP, Node, ?FS_SBC_ACL_LIST).
 
