@@ -69,6 +69,6 @@ resource_consumption_at_limit(Limits) ->
 -spec should_deny(integer(), integer()) -> boolean().
 should_deny(-1, _) -> 'false';
 should_deny(0, _) -> 'true';
-should_deny(Limit, Used) -> Limit > Used.
+should_deny(Limit, Used) -> Used > Limit.
 
 
