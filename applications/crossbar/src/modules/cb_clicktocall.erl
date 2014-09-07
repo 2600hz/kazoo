@@ -227,7 +227,7 @@ maybe_migrate_history(Account) ->
     case couch_mgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'ok', C2Cs} -> migrate_histories(AccountId, AccountDb, C2Cs);
-        {'eroor', _} -> 'ok'
+        {'error', _} -> 'ok'
     end.
 
 -spec migrate_histories(ne_binary(), ne_binary(), wh_json:objects()) -> 'ok'.
