@@ -1,4 +1,4 @@
-/* Section: Internationalization Title: Indonesia number_manager  Language: en-US
+/* Section: Internationalization Title: Indonesia _number_manager_  Language: en-US
 
 Contributors: godril-at-otakudang */
 
