@@ -28,7 +28,7 @@
          }).
 
 -define(SERVER, ?MODULE).
--define(MWI_BODY, "Message-Account: sip:~s\r\nMessages-Waiting: ~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
+-define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: sip:~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
 -define(BINDINGS, [{'presence', [{'restrict_to', ['mwi_update'
                                                   ,'register_overwrite'
@@ -117,8 +117,8 @@ mwi_update(JObj, Props) ->
 -spec send_mwi_update(wh_json:object(), atom(), wh_json:object()) -> 'ok'.
 send_mwi_update(JObj, Node, Registration) ->
     NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
-    Body = io_lib:format(?MWI_BODY, [wh_json:get_value(<<"To">>, JObj)
-                                     ,case NewMessages of 0 -> "no"; _ -> "yes" end
+    Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
+                                     ,wh_json:get_value(<<"To">>, JObj)
                                      ,NewMessages
                                      ,wh_json:get_integer_value(<<"Messages-Waiting">>, JObj, 0)
                                      ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
