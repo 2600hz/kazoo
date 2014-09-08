@@ -74,4 +74,5 @@ declare_exchanges() ->
     _ = wapi_call:declare_exchanges(),
     _ = wapi_notifications:declare_exchanges(),
     _ = wapi_presence:declare_exchanges(),
+    _ = wapi_omnipresence:declare_exchanges(),
     wapi_self:declare_exchanges().
