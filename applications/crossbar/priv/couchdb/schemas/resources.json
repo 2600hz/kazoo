@@ -203,7 +203,6 @@
                         "required": false,
                         "name": "Realm",
                         "description": "This resource gateway authentication realm",
-                        "minLength": 1,
                         "maxLength": 64
                     },
                     "username": {
@@ -211,7 +210,6 @@
                         "required": false,
                         "name": "Username",
                         "description": "SIP authentication username",
-                        "minLength": 5,
                         "maxLength": 32
                     },
                     "password": {
@@ -219,15 +217,13 @@
                         "required": false,
                         "name": "Password",
                         "description": "SIP authentication password",
-                        "minLength": 5,
                         "maxLength": 32
                     },
                     "route": {
                         "type": "string",
                         "required": false,
                         "name": "Route",
-                        "description": "A staticly configured SIP URI to route all call to",
-                        "minLength": 4
+                        "description": "A staticly configured SIP URI to route all call to"
                     },
                     "prefix": {
                         "type": "string",

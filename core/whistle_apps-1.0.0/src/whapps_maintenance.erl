@@ -253,7 +253,7 @@ get_definition_from_accounts(AccountDb, AccountId) ->
             io:format("    account ~s is missing its local account definition, and not in the accounts db~n"
                      ,[AccountId]),
             _ = couch_mgr:db_archive(AccountDb),
-            couch_mgr:db_delete(AccountDb)
+            maybe_delete_db(AccountDb)
     end.
 
 -spec get_all_account_views() -> wh_proplist().
@@ -293,7 +293,7 @@ remove_depreciated_databases([Database|Databases]) ->
                 io:format("    archive and remove depreciated database ~s~n"
                          ,[Database]),
                 _ = couch_mgr:db_archive(Database),
-                couch_mgr:db_delete(Database);
+                maybe_delete_db(Database);
             _Else -> 'ok'
         end,
     remove_depreciated_databases(Databases).
@@ -834,6 +834,22 @@ add_extension(A, _) -> A.
 -spec is_audio_content(ne_binary()) -> boolean().
 is_audio_content(<<"audio/", _/binary>>) -> 'true';
 is_audio_content(_) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_delete_db(ne_binary()) -> 'ok'.
+maybe_delete_db(Database) ->
+    case whapps_config:get_is_true(<<"whistle_couch">>, <<"allow_maintenance_db_delete">>, 'false') of
+        'true' ->
+            lager:warning("deleting database ~s", [Database]),
+            couch_mgr:db_delete(Database);
+        'false' ->
+            lager:warning("database deletion requested but disabled for ~s", [Database])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

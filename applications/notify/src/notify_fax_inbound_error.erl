@@ -33,11 +33,9 @@ handle_req(JObj, _Props) ->
     'true' = wapi_notifications:fax_inbound_error_v(JObj),
     _ = whapps_util:put_callid(JObj),
     lager:debug("new fax error left, sending to email if enabled"),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    case is_notice_enabled(AcctObj) of
-        'true' -> send(JObj, AcctObj);
+    {'ok', Account} = notify_util:get_account_doc(JObj),
+    case is_notice_enabled(Account) of
+        'true' -> send(JObj, Account);
         'false' -> 'ok'
     end.
 
@@ -169,4 +167,3 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
               ]
             },
     notify_util:send_email(From, To, Email).
-

@@ -512,7 +512,6 @@
                     "required": false,
                     "name": "Number",
                     "description": "The number to forward calls to",
-                    "minLength": 3,
                     "maxLength": 15
                 },
                 "substitute": {
