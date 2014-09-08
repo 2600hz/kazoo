@@ -17,21 +17,23 @@ optionally, since we know E.164 is 15 max digits (including country code), it ca
 
 
 ## E.164 Converter
-
-`"e164_converters": {
+```
+"e164_converters": {
     "^0(\\d{8,})$": {
         "prefix": "+62"
     },
     "^+62(\\d{8,})$": {
         "prefix": "+62"
-    }`
+    }
+```
 
 and of course, optionally:
-
-`"e164_converters": {
+```
+"e164_converters": {
     "^0(\\d{8,12})$": {
         "prefix": "+62"
     },
     "^+62(\\d{8,12})$": {
         "prefix": "+62"
-    }`
+    }
+```
