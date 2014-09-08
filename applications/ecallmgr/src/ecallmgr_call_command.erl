@@ -379,10 +379,12 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
             {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"park">>) ->
+get_fs_app(Node, UUID, JObj, <<"park">>) ->
     case wapi_dialplan:park_v(JObj) of
         'false' -> {'error', <<"park failed to execute as JObj did not validate">>};
-        'true' -> {<<"park">>, <<>>}
+        'true' ->
+            maybe_set_park_timeout(Node, UUID, JObj),
+            {<<"park">>, <<>>}
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"echo">>) ->
@@ -1154,6 +1156,20 @@ set_terminators(Node, UUID, Ts) ->
 say_language('undefined') -> <<"en">>;
 say_language(<<_:2/binary>> = Lang) -> Lang;
 say_language(<<Lang:2/binary, _/binary>>) -> Lang.
+
+-spec maybe_set_park_timeout(atom(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_set_park_timeout(Node, UUID, JObj) ->
+    case wh_json:get_integer_value(<<"Timeout">>, JObj) of
+        'undefined' -> 'ok';
+        Timeout ->
+            ParkTimeout =
+                case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                    'undefined' -> wh_util:to_binary(Timeout);
+                    Cause ->
+                        [wh_util:to_binary(Timeout), ":", Cause]
+                end,
+            ecallmgr_fs_command:set(Node, UUID, [{<<"park_timeout">>, ParkTimeout}])
+    end.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
