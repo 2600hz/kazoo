@@ -195,6 +195,7 @@ refresh(?WH_ACCOUNTS_DB) ->
              ,whapps_util:get_view_json('whistle_apps', ?ACCOUNTS_AGG_VIEW_FILE)
              ,whapps_util:get_view_json('whistle_apps', ?SEARCH_VIEW_FILE)            
              ,whapps_util:get_view_json('notify', ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
+             ,whapps_util:get_view_json('kamdb', <<"views/accounts/rate_limits.json">>)
             ],
     whapps_util:update_views(?WH_ACCOUNTS_DB, Views, 'true'),
     'ok';
@@ -280,6 +281,7 @@ get_all_account_views() ->
 fetch_all_account_views() ->
     [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
     ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
+    ,whapps_util:get_view_json('kamdb', <<"views/account/rate_limits.json">>)
      |whapps_util:get_views_json('crossbar', "account")
      ++ whapps_util:get_views_json('callflow', "views")
     ].
