@@ -124,6 +124,7 @@ hook_it_up(Hook) ->
     maybe_add_binding(Hook),
     'true' = gproc:reg(Hook).
 
+-spec maybe_add_binding(tuple()) -> 'ok'.
 maybe_add_binding(?HOOK_REG) ->
     maybe_add_binding_to_listener('wh_hooks_listener');
 maybe_add_binding(?HOOK_REG(_AccountId)) ->
@@ -131,12 +132,14 @@ maybe_add_binding(?HOOK_REG(_AccountId)) ->
 maybe_add_binding(?HOOK_REG(_AccountId, EventName)) ->
     maybe_add_binding_to_listener('wh_hooks_listener', EventName);
 maybe_add_binding(?HOOK_REG_RR) ->
-    maybe_add_binding_to_listener('wh_hooks_listener');
+    maybe_add_binding_to_listener('wh_hooks_shared_listener');
 maybe_add_binding(?HOOK_REG_RR(_AccountId)) ->
-    maybe_add_binding_to_listener('wh_hooks_listener');
+    maybe_add_binding_to_listener('wh_hooks_shared_listener');
 maybe_add_binding(?HOOK_REG_RR(_AccountId, EventName)) ->
     maybe_add_binding_to_listener('wh_hooks_shared_listener', EventName).
 
+-spec maybe_add_binding_to_listener(atom()) -> 'ok'.
+-spec maybe_add_binding_to_listener(atom(), ne_binary() | 'all') -> 'ok'.
 maybe_add_binding_to_listener(ServerName) ->
     maybe_add_binding_to_listener(ServerName, 'all').
 maybe_add_binding_to_listener(ServerName, EventName) ->

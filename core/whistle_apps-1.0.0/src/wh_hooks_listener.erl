@@ -42,6 +42,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -record(state, {call_events = [] :: ne_binaries()}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -82,7 +83,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', 'ok'}.
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
