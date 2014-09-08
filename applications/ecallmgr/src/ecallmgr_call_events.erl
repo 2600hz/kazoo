@@ -327,29 +327,10 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             timer:sleep(1000),
             {'noreply', State};
         {<<"RECORD_STOP">>, _} ->
-            spawn(
-                fun() ->
-                    case props:get_value(<<"variable_current_application_data">>, Props) of
-                        'undefined' ->
-                            MediaName = props:get_value(<<"variable_ecallmgr_Media-Name">>, Props),
-                            Destination = props:get_value(<<"variable_ecallmgr_Media-Transfer-Destination">>, Props),
-                            JObj = wh_json:from_list([
-                                {<<"Application-Name">>, <<"store">>}
-                                ,{<<"Insert-At">>, props:get_value(<<"variable_ecallmgr_Insert-At">>, Props)}
-                                ,{<<"Media-Name">>, MediaName}
-                                ,{<<"Media-Transfer-Destination">>, <<Destination/binary, MediaName/binary>>}
-                                ,{<<"Media-Transfer-Method">>, props:get_value(<<"variable_ecallmgr_Media-Transfer-Method">>, Props)}
-                                ,{<<"Call-ID">>, CallId}
-                                ,{<<"Event-Category">>, <<"call">>}
-                                ,{<<"Event-Name">>, <<"command">>}
-                                ,{<<"Msg-ID">>, CallId}
-                                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                            ]),
-                            ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined');
-                        _ -> process_channel_event(Props)
-                    end
-                end
-            ),
+            _ = case props:get_value(<<"variable_current_application_data">>, Props) of
+                    'undefined' -> spawn(fun() -> store_recording(Props, CallId, Node) end);
+                    _ -> process_channel_event(Props)
+                end,
             {'noreply', State};
         {_A, _B} ->
             process_channel_event(Props),
@@ -982,3 +963,27 @@ usurp_other_publishers(#state{node=Node
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wapi_call:publish_usurp_publisher(CallId, Usurp).
+
+-spec store_recording(wh_proplist(), ne_binary(), atom()) ->
+                             'ok' |
+                             'error' |
+                             ecallmgr_util:send_cmd_ret() |
+                             [ecallmgr_util:send_cmd_ret(),...].
+store_recording(Props, CallId, Node) ->
+    MediaName = props:get_value(<<"variable_ecallmgr_Media-Name">>, Props),
+    Destination = props:get_value(<<"variable_ecallmgr_Media-Transfer-Destination">>, Props),
+    %% TODO: if you change this logic be sure it matches wh_media_util as well!
+    Url = wh_util:strip_right_binary(Destination, <<"/">>),
+    JObj = wh_json:from_list(
+             [{<<"Call-ID">>, CallId}
+             ,{<<"Msg-ID">>, CallId}
+             ,{<<"Media-Name">>, MediaName}
+             ,{<<"Media-Transfer-Destination">>, <<Url/binary, "/", MediaName/binary>>}
+             ,{<<"Insert-At">>, props:get_value(<<"variable_ecallmgr_Insert-At">>, Props, <<"now">>)}
+             ,{<<"Media-Transfer-Method">>, props:get_value(<<"variable_ecallmgr_Media-Transfer-Method">>, Props, <<"put">>)}
+             ,{<<"Application-Name">>, <<"store">>}
+             ,{<<"Event-Category">>, <<"call">>}
+             ,{<<"Event-Name">>, <<"command">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined').

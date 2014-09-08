@@ -104,9 +104,12 @@ wait_for_results(Port, Response) ->
 
 -spec recording_url(ne_binary(), wh_json:object()) -> ne_binary().
 recording_url(CallId, Data) ->
+    %% TODO: look at the URL for {filename}, if present replace it with
+    %%   the filename, otherwise continue to append as we do today.
+    %%   If this is updated be sure and fix the similar code in ecallmgr_call_events!
     Format = wh_json:get_value(<<"format">>, Data, <<"mp3">>),
-    Url = wh_json:get_value(<<"url">>, Data, <<>>),
-    <<Url/binary, "call_recording_", CallId/binary, ".", Format/binary>>.
+    Url = wh_util:strip_right_binary(wh_json:get_value(<<"url">>, Data, <<>>), <<"/">>),
+    <<Url/binary, "/call_recording_", CallId/binary, ".", Format/binary>>.
 
 -spec max_recording_time_limit() -> ?SECONDS_IN_HOUR.
 max_recording_time_limit() ->
