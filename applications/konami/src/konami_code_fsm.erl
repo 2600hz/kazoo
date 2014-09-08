@@ -75,8 +75,8 @@ start_fsm(Call, JObj) ->
     konami_tracker:track(whapps_call:call_id(Call), whapps_call:other_leg_call_id(Call), ListenOn),
 
     lager:debug("starting code FSM, listening on ~s leg for binding digit ~s", [ListenOn
-                                                                              ,binding_digit(Call, JObj)
-                                                                             ]),
+                                                                                ,binding_digit(Call, JObj)
+                                                                               ]),
     lager:debug("a endpoint: ~s b endpoint: ~s", [whapps_call:authorizing_id(Call), BEndpointId]),
 
     gen_fsm:enter_loop(?MODULE, [], 'unarmed'
@@ -420,6 +420,12 @@ handle_channel_destroy(CallId, EndpointId, #state{call_id=CallId
                                                  }) when ListenOn =:= 'a';
                                                          ListenOn =:= 'ab' ->
     lager:debug("a leg has died and we were listening on it"),
+    exit('normal');
+handle_channel_destroy(CallId, EndpointId, #state{call_id=CallId
+                                                  ,other_leg='undefined'
+                                                  ,a_endpoint_id=EndpointId
+                                                 }) ->
+    lager:debug("a leg has died, but we only care about the b leg, which is undefined, so pease out"),
     exit('normal');
 handle_channel_destroy(CallId, EndpointId, #state{call_id=CallId
                                                   ,other_leg=OtherLeg
