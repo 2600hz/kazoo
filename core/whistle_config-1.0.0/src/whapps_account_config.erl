@@ -97,47 +97,55 @@ set_global(Account, Category, Key, Value) ->
               {'error', _} -> wh_json:set_value(Key, whapps_config:get(Category, Key), wh_json:new())
           end,
 
-    Doc1 = wh_json:set_value(Key, Value, wh_doc:update_pvt_parameters(Doc, AccountDb, [{'type', <<"account_config">>}])),
+    Doc1 = wh_json:set_value(Key
+                             ,Value
+                             ,wh_doc:update_pvt_parameters(Doc, AccountDb, [{'type', <<"account_config">>}])
+                            ),
 
-    {'ok', JObj1} = couch_mgr:ensure_saved(AccountDb, Category, Doc1),
+    {'ok', JObj1} = couch_mgr:ensure_saved(AccountDb, Doc1),
     wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Category)),
     JObj1.
 
+-spec config_doc_id(ne_binary()) -> ne_binary().
 config_doc_id(Config) -> <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>.
 
 -spec cache_key(ne_binary(), ne_binary()) -> {?MODULE, ne_binary(), ne_binary()}.
 cache_key(AccountId, Config) -> {?MODULE, Config, AccountId}.
 
+-spec account_id(account()) -> ne_binary().
 account_id(Account) when is_binary(Account) ->
     wh_util:format_account_id(Account, 'raw');
 account_id(Obj) ->
     account_id_from_call(Obj, whapps_call:is_call(Obj)).
+
+-spec account_id_from_call(whapps_call:call() | wh_json:object(), boolean()) -> ne_binary().
 account_id_from_call(Call, 'true') ->
     whapps_call:account_id(Call);
 account_id_from_call(Obj, 'false') ->
     account_id_from_jobj(Obj, wh_json:is_json_object(Obj)).
+
+-spec account_id_from_jobj(wh_json:object(), 'true') -> ne_binary().
 account_id_from_jobj(JObj, 'true') ->
-    case wh_json:get_value(<<"Account-ID">>, JObj) of
-        'undefined' -> wh_json:get_value(<<"account_id">>, JObj);
-        AcctId -> AcctId
-    end;
+    wh_json:get_first_defined([<<"Account-ID">>, <<"account_id">>], JObj);
 account_id_from_jobj(_Obj, 'false') ->
     lager:debug("unable to find account id from ~p", [_Obj]),
     throw({'error', 'unknown_object'}).
 
+-spec account_db(account()) -> ne_binary().
 account_db(Account) when is_binary(Account) ->
     wh_util:format_account_id(Account, 'encoded');
 account_db(Obj) ->
     account_db_from_call(Obj, whapps_call:is_call(Obj)).
+
+-spec account_db_from_call(whapps_call:call() | wh_json:object(), boolean()) -> ne_binary().
 account_db_from_call(Call, 'true') ->
     whapps_call:account_db(Call);
 account_db_from_call(Obj, 'false') ->
     account_db_from_jobj(Obj, wh_json:is_json_object(Obj)).
+
+-spec account_db_from_jobj(wh_json:object(), 'true') -> ne_binary().
 account_db_from_jobj(JObj, 'true') ->
-    case wh_json:get_value(<<"Account-DB">>, JObj) of
-        'undefined' -> wh_json:get_value(<<"account_db">>, JObj);
-        AcctDb -> AcctDb
-    end;
+    wh_json:get_first_defined([<<"Account-DB">>, <<"account_db">>], JObj);
 account_db_from_jobj(_Obj, 'false') ->
     lager:dxebug("unable to find account db from ~p", [_Obj]),
     throw({'error', 'unknown_object'}).
