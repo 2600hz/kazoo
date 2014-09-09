@@ -472,13 +472,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
     Conditionals = [fun(#bt_subscription{do_not_inherit=Value}, P) ->
                         update_options('do-not-inherit-add-ons-or-discounts', Value, P)
                     end
-                    ,fun(#bt_subscription{prorate_charges=Value}, P) ->
-                        case whapps_config:get_is_true(<<"braintree">>, <<"prorate">>, 'true') of
-                            'false' -> P;
-                            'true' ->
-                                update_options('prorate-charges', Value, P)
-                        end
-                     end
+                    ,fun should_prorate/2
                     ,fun(#bt_subscription{revert_on_prorate_fail=Value}, P) ->
                         update_options('revert-subscription-on-proration-failure', Value, P)
                      end
@@ -535,6 +529,20 @@ record_to_json(Subscription) ->
              ,{<<"create">>, Subscription#bt_subscription.create}
             ],
     wh_json:from_list(props:filter_undefined(Props)).
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec should_prorate(subscription(), wh_proplist()) -> wh_proplist().
+should_prorate(#bt_subscription{prorate_charges=Value}, Props) ->
+    case whapps_config:get_is_true(<<"braintree">>, <<"should_prorate">>, 'true') of
+        'true' -> update_options('prorate-charges', Value, Props);
+        'false' -> Props
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
