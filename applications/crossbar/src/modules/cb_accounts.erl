@@ -245,7 +245,10 @@ put(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = wh_json:get_value(<<"_id">>, JObj, couch_mgr:get_uuid()),
     try create_new_account_db(prepare_context(AccountId, Context)) of
-        C -> leak_pvt_fields(C)
+        C ->
+            Tree = wh_json:get_value(<<"pvt_tree">>, JObj),
+            _ = spawn('crossbar_maintenance', 'descendants_count', [lists:last(Tree)]),
+            leak_pvt_fields(C)
     catch
         'throw':C ->
             case cb_context:is_context(C) of
@@ -276,7 +279,10 @@ delete(Context, Account) ->
         'false' ->
             cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
         'true' ->
-            delete_remove_services(prepare_context(Context, AccountId, AccountDb))
+            Context1 = delete_remove_services(prepare_context(Context, AccountId, AccountDb)),
+            Tree = wh_json:get_value(<<"pvt_tree">>, cb_context:doc(Context1)),
+            _ = spawn('crossbar_maintenance', 'descendants_count', [lists:last(Tree)]),
+            Context1
     end.
 
 %%--------------------------------------------------------------------

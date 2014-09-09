@@ -9,10 +9,10 @@
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); emit([doc.pvt_account_id, t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); }"
         }
         ,"listing_by_parent": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); emit(doc.pvt_account_id, {'id': t.slice(-2,-1)[0]}); }"
+            "map":"function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var tree = doc.pvt_tree.slice(0);emit(doc.pvt_account_id, {'id': tree[tree.length-1]});}"
         }
         ,"listing_by_children": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); emit([t.slice(-2,-1)[0], t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); }"
+            "map":"function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var tree = doc.pvt_tree.slice(0),parent = tree[tree.length-1];tree.push(doc.pvt_account_id);emit([parent, tree], {'id': doc.pvt_account_id,'name': doc.name,'realm': doc.realm,'descendants_count': doc.descendants_count || 0});}"
         }
         ,"listing_by_descendants": {
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); for (var i in t) { emit([t[i], t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm, 'tree': doc.pvt_tree}); } }"
@@ -31,7 +31,11 @@
         },
         "listing_by_sso":{
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.sso ) return; for(id in doc.sso.ids) {emit([doc.sso.provider, doc.sso.ids[id]], {'account_id': doc._id, 'account_db': doc.pvt_account_db});} }"
-        }
+        },
+       "listing_by_descendants_count": {
+           "map": "function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var t = doc.pvt_tree.slice(0);for (var i in t) {emit(t[i], 1);}}",
+           "reduce": "_count"
+       }
     }
     ,"filters": {
         "export":"function(doc, req) { return ( doc.pvt_type == 'account' ); }"
