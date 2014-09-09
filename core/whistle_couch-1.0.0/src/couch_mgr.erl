@@ -529,8 +529,12 @@ cache_db_doc(DbName, DocId, Doc) ->
         {'error', _}=E -> E
     end.
 
--spec flush_cache_doc(ne_binary(), ne_binary()) -> 'ok'.
--spec flush_cache_doc(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+-spec flush_cache_doc(ne_binary(), ne_binary()) ->
+                             'ok' |
+                             {'error', 'invalid_db_name'}.
+-spec flush_cache_doc(ne_binary(), ne_binary(), wh_proplist()) ->
+                             'ok' |
+                             {'error', 'invalid_db_name'}.
 flush_cache_doc(DbName, DocId) ->
     flush_cache_doc(DbName, DocId, []).
 flush_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME ->
@@ -542,8 +546,7 @@ flush_cache_doc(DbName, DocId, Options) ->
     end.
 
 -spec flush_cache_docs() -> 'ok'.
--spec flush_cache_docs(ne_binary()) -> 'ok'.
-
+-spec flush_cache_docs(text()) -> 'ok' | {'error', 'invalid_db_name'}.
 flush_cache_docs() -> couch_util:flush_cache_docs().
 flush_cache_docs(DbName) ->
     case maybe_convert_dbname(DbName) of
