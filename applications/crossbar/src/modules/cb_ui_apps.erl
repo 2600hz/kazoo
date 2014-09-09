@@ -74,10 +74,10 @@ resource_exists(_) -> true.
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
-   validate_set(laod_account(Context), cb_context:req_verb(Context)).
+   validate_set(load_account(Context), cb_context:req_verb(Context)).
 
 validate(Context, AppId) ->
-    validate_set(laod_account(Context), cb_context:req_verb(Context), AppId).
+    validate_set(load_account(Context), cb_context:req_verb(Context), AppId).
 
 -spec validate_set(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate_set(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -96,50 +96,38 @@ validate_set(Context, ?HTTP_PUT, AppId) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, AppId) ->
-    case cb_context:resp_status(Context) of
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
         'success' ->
-            Context1 = crossbar_doc:save(Context),
-            case cb_context:resp_status(Context1) of
-                'success' ->
-                    JObj = cb_context:doc(Context1),
-                    _ = replicate_account_definition(JObj),
-                    RespData = wh_json:get_value([<<"apps">>, AppId], JObj, wh_json:new()),
-                    cb_context:set_resp_data(Context, RespData);
-                _Status -> Context1
-            end;
-        _ -> Context
+            JObj = cb_context:doc(Context1),
+            _ = replicate_account_definition(JObj),
+            RespData = wh_json:get_value([<<"apps">>, AppId], JObj, wh_json:new()),
+            cb_context:set_resp_data(Context, RespData);
+        _Status -> Context1
     end.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, AppId) ->
-    case cb_context:resp_status(Context) of
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
         'success' ->
-            Context1 = crossbar_doc:save(Context),
-            case cb_context:resp_status(Context1) of
-                'success' ->
-                    JObj = cb_context:doc(Context1),
-                    _ = replicate_account_definition(JObj),
-                    RespData = wh_json:get_value([<<"apps">>, AppId], JObj, wh_json:new()),
-                    cb_context:set_resp_data(Context, RespData);
-                _Status -> Context1
-            end;
-        _ -> Context
+            JObj = cb_context:doc(Context1),
+            _ = replicate_account_definition(JObj),
+            RespData = wh_json:get_value([<<"apps">>, AppId], JObj, wh_json:new()),
+            cb_context:set_resp_data(Context, RespData);
+        _Status -> Context1
     end.
 
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
-    case cb_context:resp_status(Context) of
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
         'success' ->
-            Context1 = crossbar_doc:save(Context),
-            case cb_context:resp_status(Context1) of
-                'success' ->
-                    JObj = cb_context:doc(Context1),
-                    _ = replicate_account_definition(JObj),
-                    cb_context:set_resp_data(Context, wh_json:new());
-                _Status -> Context1
-            end;
-        _ -> Context
+            JObj = cb_context:doc(Context1),
+            _ = replicate_account_definition(JObj),
+            cb_context:set_resp_data(Context, wh_json:new());
+        _Status -> Context1
     end.
 
 %%%===================================================================
@@ -263,8 +251,8 @@ uninstall(AppId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec laod_account(cb_context:context()) -> cb_context:context();
-laod_account(Context) ->
+-spec load_account(cb_context:context()) -> cb_context:context().
+load_account(Context) ->
     AccountId = cb_context:account_id(Context),
     crossbar_doc:load(AccountId, Context).
 
