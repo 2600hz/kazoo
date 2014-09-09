@@ -281,9 +281,9 @@ get_all_account_views() ->
 fetch_all_account_views() ->
     [whapps_util:get_view_json('whistle_apps', ?MAINTENANCE_VIEW_FILE)
     ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
-    ,whapps_util:get_view_json('kamdb', <<"views/account/rate_limits.json">>)
      |whapps_util:get_views_json('crossbar', "account")
      ++ whapps_util:get_views_json('callflow', "views")
+     ++ whapps_util:get_views_json('kamdb', <<"views/account">>)
     ].
 
 %%--------------------------------------------------------------------

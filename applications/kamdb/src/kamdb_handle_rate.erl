@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
--module(kamdb_handlers).
+-module(kamdb_handle_rate).
 
 -export([handle_rate_req/2
         ]).
@@ -30,7 +30,7 @@ resolve_method(Method) ->
 -spec handle_rate_req(wh_json:object(), wh_proplist()) -> any().
 handle_rate_req(JObj, _Props) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
-    case whapps_util:get_account_by_realm(extract_realm(Entity)) of
+    case whapps_util:get_account_by_realm(kamdb_utils:extract_realm(Entity)) of
         {'ok', _} -> send_response(JObj);
         _ -> deny(JObj)
     end.
@@ -42,7 +42,7 @@ deny(JObj) ->
                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                  ]),
     ServerID = wh_json:get_value(<<"Server-ID">>, JObj),
-    Section = case Entity =/= extract_realm(Entity) of
+    Section = case Entity =/= kamdb_utils:extract_realm(Entity) of
                   'true' -> <<"Device">>;
                   _ -> <<"Realm">>
               end,
@@ -82,13 +82,6 @@ send_response(JObj) ->
     JSysRates = get_sysconfig_rates(Keys, Name, wh_json:get_value(<<"With-Realm">>, JObj)),
     wapi_kamdb:publish_ratelimits_resp(ServerID, wh_json:merge_recursive([JSysRates, Resp])).
 
--spec extract_realm(ne_binary()) -> ne_binary().
-extract_realm(Entity) ->
-    case binary:split(Entity, <<"@">>) of
-        [_, OnRealm] -> OnRealm;
-        [JustRealm] -> JustRealm
-    end.
-
 -spec get_user_limits(wh_json:object()) -> wh_json:object().
 get_user_limits(JObj) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
@@ -104,7 +97,7 @@ get_user_limits(JObj) ->
 -spec get_realm_limits(wh_json:object()) -> wh_json:object().
 get_realm_limits(JObj) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
-    Realm = extract_realm(Entity),
+    Realm = kamdb_utils:extract_realm(Entity),
     Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
     ViewOpts = [{'keys',[[Realm, Name]
                          ,[Realm, ?ACCOUNT_FALLBACK]

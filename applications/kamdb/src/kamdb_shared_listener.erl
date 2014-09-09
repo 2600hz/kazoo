@@ -26,9 +26,12 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'kamdb', []}]).
--define(RESPONDERS, [{{'kamdb_handlers', 'handle_rate_req'}
+-define(RESPONDERS, [{{'kamdb_handle_rate', 'handle_rate_req'}
                       ,[{<<"rate_limit">>, <<"query">>}]
                      }
+                     ,{{'kamdb_handle_acl', 'handle_acl_req'}
+                       ,[{<<"acl">>, <<"query">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<"kamdb_shared_queue">>).
 -define(QUEUE_OPTIONS, [[{'exclusive', 'false'}]]).
