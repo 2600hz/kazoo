@@ -391,7 +391,8 @@ flush_cache_docs(DbName) ->
                      'true';
                 (_, _) -> 'false'
              end,
-    wh_cache:filter_local(?WH_COUCH_CACHE, Filter).
+    wh_cache:filter_local(?WH_COUCH_CACHE, Filter),
+    'ok'.
 
 -spec open_doc(server(), ne_binary(), ne_binary(), wh_proplist()) ->
                       {'ok', wh_json:object()} |
