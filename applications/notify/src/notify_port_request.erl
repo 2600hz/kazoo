@@ -93,10 +93,10 @@ create_template_props(NotifyJObj, AccountJObj) ->
     PortData = notify_util:json_to_template_props(wh_doc:public_fields(PortDoc)),
     Request = props:delete_keys([<<"uploads">>, <<"numbers">>], PortData),
 
-    [Number|_]=Numbers = find_numbers(PortData, NotifyJObj),
+    [{Num, _}|_]=Numbers = find_numbers(PortData, NotifyJObj),
 
-    [{<<"numbers">>, Numbers}
-     ,{<<"number">>, Number}
+    [{<<"numbers">>, [Number||{Number, _} <- Numbers]}
+     ,{<<"number">>, Num}
      ,{<<"request">>, Request}
      ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
