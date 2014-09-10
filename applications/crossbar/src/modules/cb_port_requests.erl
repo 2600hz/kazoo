@@ -419,6 +419,7 @@ send_port_request_notification(Context, Id) ->
     Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
            ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
            ,{<<"Port-Request-ID">>, Id}
+           ,{<<"Version">>, <<"v2">>}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     whapps_util:amqp_pool_send(Req, fun wapi_notifications:publish_port_request/1).

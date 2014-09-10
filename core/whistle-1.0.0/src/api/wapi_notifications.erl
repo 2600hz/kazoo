@@ -216,7 +216,7 @@
 -define(PORT_REQUEST_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Authorized-By">>, <<"Port-Request-ID">>
                                         ,<<"Number-State">>, <<"Local-Number">>
-                                        ,<<"Number">>, <<"Port">>
+                                        ,<<"Number">>, <<"Port">>, <<"Version">>
                                        ]).
 -define(PORT_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"port_request">>}
