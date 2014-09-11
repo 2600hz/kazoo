@@ -110,6 +110,7 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
 -spec merge_attributes(wh_json:object()) -> wh_json:object().
 merge_attributes(Endpoint) ->
     Keys = [<<"name">>
+            ,<<"opaque">>
             ,<<"call_restriction">>
             ,<<"music_on_hold">>
             ,<<"ringtones">>
