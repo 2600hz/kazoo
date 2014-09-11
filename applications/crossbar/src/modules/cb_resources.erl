@@ -124,7 +124,7 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
 allowed_methods(?COLLECTION) ->
-    [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
+    [?HTTP_PUT, ?HTTP_POST];
 allowed_methods(?JOBS) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_) ->
@@ -217,35 +217,69 @@ validate_resource(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 validate_collection(Context) ->
-    validate_collection(Context, cb_context:req_verb(Context)).
+    lists:foldl(fun validate_collection_fold/2
+                ,cb_context:setters(Context
+                                    ,[{fun cb_context:set_doc/2, wh_json:new()}
+                                      ,{fun cb_context:set_resp_data/2, wh_json:new()}
+                                      ,{fun cb_context:set_resp_status/2, 'success'}
+                                     ]
+                                   )
+                    ,cb_context:req_data(Context)
+               ).
 
-validate_collection(Context, ?HTTP_PUT) ->
-    F = case cb_context:account_db(Context) of
-            ?WH_OFFNET_DB -> fun create/1;
-            _AccountDb -> fun(C) -> cb_local_resources:validate_request('undefined', C) end
-        end,
+-type collection_fold_acc() :: cb_context:context().
+-spec validate_collection_fold(wh_json:object(), collection_fold_acc()) -> collection_fold_acc().
+validate_collection_fold(Resource, C) ->
+    Id = wh_json:get_value(<<"id">>, Resource, couch_mgr:get_uuid()),
+    case validate_collection_resource(wh_json:set_value(<<"id">>, Id, Resource)
+                                      ,C
+                                      ,cb_context:req_verb(C)
+                                     )
+    of
+        {'ok', C1} ->
+            lager:debug("~s loaded successfully", [Id]),
+            cb_context:set_resp_data(C
+                                     ,wh_json:set_value([<<"success">>, Id], cb_context:doc(C1), cb_context:resp_data(C))
+                                    );
+        {'error', 'not_found'} ->
+            RespData = cb_context:resp_data(C),
+            lager:debug("~s not found", [Id]),
+            cb_context:set_resp_data(C, wh_json:set_value([<<"errors">>, Id], <<"resource does not exist">>, RespData));
+        {'error', Errors} ->
+            RespData = cb_context:resp_data(C),
+            lager:debug("~s failed validation: ~p", [Id, Errors]),
+            lager:debug("Adding to ~p", [RespData]),
+            cb_context:set_resp_data(C, wh_json:set_value([<<"errors">>, Id], Errors, RespData))
+    end.
 
-    lists:foldl(fun(Resource, C) ->
-                        F(cb_context:set_req_data(C, Resource))
-                end, Context, cb_context:req_data(Context)
-               );
-validate_collection(Context, ?HTTP_POST) ->
-    F = case cb_context:account_db(Context) of
-            ?WH_OFFNET_DB -> fun update/2;
-            _AccountDb -> fun cb_local_resources:validate_request/2
-        end,
+-spec validate_collection_resource(wh_json:object(), cb_context:context(), http_method()) ->
+                                          {'ok', cb_context:context()} |
+                                          {'error', 'not_found' | wh_json:object()}.
+validate_collection_resource(Resource, Context, ?HTTP_POST) ->
+    C1 = crossbar_doc:load(wh_json:get_value(<<"id">>, Resource), Context),
+    case cb_context:resp_status(C1) of
+        'success' -> validate_collection_resource_patch(Resource, C1);
+        _Status -> {'error', 'not_found'}
+    end;
+validate_collection_resource(Resource, Context, ?HTTP_PUT) ->
+    Context1 = create(cb_context:set_req_data(Context, Resource)),
+    case cb_context:resp_status(Context1) of
+        'success' -> {'ok', Context1};
+        _Status -> {'error', cb_context:validation_errors(Context1)}
+    end.
 
-    lists:foldl(fun(Resource, C) ->
-                        F(wh_json:get_value(<<"id">>, Resource)
-                          ,cb_context:set_req_data(C, Resource)
-                         )
-                end, Context, cb_context:req_data(Context)
-               );
-validate_collection(Context, ?HTTP_DELETE) ->
-    lists:all(fun(Resource) ->
-                      not cb_context:has_errors(read(wh_json:get_value(<<"id">>, Resource), Context))
-              end, cb_context:req_data(Context)
-             ).
+-spec validate_collection_resource_patch(wh_json:object(), cb_context:context()) ->
+                                                {'ok', cb_context:context()} |
+                                                {'error', wh_json:object()}.
+validate_collection_resource_patch(PatchJObj, Context) ->
+    PatchedJObj = wh_json:merge_jobjs(wh_doc:public_fields(PatchJObj), cb_context:doc(Context)),
+    Context1 = update(wh_json:get_first_defined([<<"_id">>, <<"id">>], PatchedJObj)
+                      ,cb_context:set_req_data(Context, PatchedJObj)
+                     ),
+    case cb_context:resp_status(Context1) of
+        'success' -> {'ok', Context1};
+        _Status -> {'error', cb_context:validation_errors(Context1)}
+    end.
 
 -spec validate_jobs(cb_context:context(), http_method()) -> cb_context:context().
 validate_jobs(Context, ?HTTP_GET) ->
@@ -262,9 +296,9 @@ post(Context, Id) ->
 -spec do_collection(cb_context:context(), ne_binary()) -> cb_context:context().
 do_collection(Context, ?WH_OFFNET_DB) ->
     reload_acls(),
-    collection_process(Context, cb_context:req_verb(Context));
+    collection_process(Context);
 do_collection(Context, _AccountDb) ->
-    collection_process(Context, cb_context:req_verb(Context)).
+    collection_process(Context).
 
 -spec do_post(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
 do_post(Context, _Id, ?WH_OFFNET_DB) ->
@@ -296,10 +330,10 @@ do_put(Context, _AccountDb) ->
 
 -spec put_collection(cb_context:context(), ne_binary()) -> cb_context:context().
 put_collection(Context, ?WH_OFFNET_DB) ->
-    collection_process(Context, cb_context:req_verb(Context));
+    collection_process(Context);
 put_collection(Context, _AccountDb) ->
     reload_acls(),
-    collection_process(Context, cb_context:req_verb(Context)).
+    collection_process(Context).
 
 -spec put_job(cb_context:context()) -> cb_context:context().
 put_job(Context) ->
@@ -315,8 +349,6 @@ put_job(Context) ->
     end.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, ?COLLECTION) ->
-    delete_collection(Context, cb_context:account_db(Context));
 delete(Context, ResourceId) ->
     do_delete(Context, ResourceId, cb_context:account_db(Context)).
 
@@ -328,13 +360,6 @@ do_delete(Context, ResourceId, _AccountDb) ->
     Context1 = crossbar_doc:delete(Context),
     cb_local_resources:maybe_remove_aggregate(ResourceId, Context1),
     Context1.
-
--spec delete_collection(cb_context:context(), ne_binary()) -> cb_context:context().
-delete_collection(Context, ?WH_OFFNET_DB) ->
-    collection_process(Context, cb_context:req_verb(Context));
-delete_collection(Context, _AccountDb) ->
-    reload_acls(),
-    collection_process(Context, cb_context:req_verb(Context)).
 
 %%%===================================================================
 %%% Internal functions
@@ -512,84 +537,24 @@ reload_acls() ->
     lager:debug("published reloadacl"),
     wh_amqp_worker:cast([], fun(_) -> wapi_switch:publish_reload_acls() end).
 
--spec collection_process(cb_context:context(), http_method()) -> cb_context:context().
-collection_process(Context, ?HTTP_POST) ->
-    Db = cb_context:account_db(Context),
-    Updates = [{wh_json:get_value(<<"id">>, JObj), clean_resource(JObj)}
-               || JObj <- cb_context:req_data(Context)
-              ],
-    Ids = props:get_keys(Updates),
-    ViewOptions = [{'keys', Ids}
-                   ,'include_docs'
-                  ],
-    case couch_mgr:all_docs(Db, ViewOptions) of
-        {'error', _R} ->
-            lager:error("could not open ~p in ~p", [Ids, Db]),
-            crossbar_util:response('error', <<"failed to open resources">>, Context);
-        {'ok', JObjs} ->
-            Resources = [update_resource(JObj, Updates) || JObj <- JObjs],
-            case couch_mgr:save_docs(Db, Resources) of
-                {'error', _R} ->
-                    lager:error("failed to update ~p in ~p", [Ids, Db]),
-                    crossbar_util:response('error', <<"failed to update resources">>, Context);
-                {'ok', _} ->
-                    (Db =/= ?WH_OFFNET_DB) andalso cb_local_resources:maybe_aggregate_resources(Resources),
-                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- Resources])
-            end
-    end;
-collection_process(Context, ?HTTP_PUT) ->
-    Db = cb_context:account_db(Context),
-    Options = [{'type', <<"resource">>}],
-    Resources = [wh_doc:update_pvt_parameters(JObj, 'undefined', Options)
-                 || JObj <- cb_context:req_data(Context)
-                ],
-    case couch_mgr:save_docs(Db, Resources) of
-        {'error', _R} ->
-            lager:error("failed to create resources"),
-            crossbar_util:response('error', <<"failed to create resources">>, Context);
-        {'ok', JObjs} ->
-            Ids = [wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs],
-            ViewOptions = [{'keys', Ids}
-                           ,'include_docs'
-                          ],
-            (Db =/= ?WH_OFFNET_DB) andalso cb_local_resources:maybe_aggregate_resources(Resources),
-            case couch_mgr:all_docs(Db, ViewOptions) of
-                {'error', _R} ->
-                    lager:error("could not open ~p in ~p", [Ids, Db]),
-                    cb_context:set_resp_data(Context, Ids);
-                {'ok', NewResources} ->
-                    cb_context:set_resp_data(Context, [clean_resource(Resource) || Resource <- NewResources])
-            end
-    end;
-collection_process(Context, ?HTTP_DELETE) ->
-    ReqData = cb_context:req_data(Context),
-    Db = cb_context:account_db(Context),
-    case couch_mgr:del_docs(Db, ReqData) of
-        {'error', _R} ->
-            lager:error("failed to delete resources"),
-            crossbar_util:response('error', <<"failed to delete resources">>, Context);
-        {'ok', JObjs} ->
-            (Db =/= ?WH_OFFNET_DB) andalso cb_local_resources:maybe_remove_aggregates(ReqData),
-            cb_context:set_resp_data(Context, [wh_json:delete_key(<<"rev">>, JObj) || JObj <- JObjs])
-    end.
+-spec collection_process(cb_context:context()) -> cb_context:context().
+-spec collection_process(cb_context:context(), wh_json:objects()) -> cb_context:context().
+collection_process(Context) ->
+    RespData = cb_context:resp_data(Context),
 
--spec clean_resource(wh_json:object()) -> wh_json:object().
-clean_resource(JObj) ->
-    case wh_json:get_value(<<"doc">>, JObj) of
-        'undefined' ->
-            case wh_json:get_value(<<"_id">>, JObj) of
-                'undefined' ->
-                     JObj1 = wh_doc:public_fields(JObj),
-                    wh_json:delete_key(<<"id">>, JObj1);
-                Id ->
-                    JObj1 = wh_json:set_value(<<"id">>, Id, JObj),
-                    wh_doc:public_fields(JObj1)
-            end;
-        Doc -> clean_resource(Doc)
+    case wh_util:is_empty(wh_json:get_value(<<"errors">>, RespData)) of
+        'true' -> collection_process(Context, wh_json:get_value(<<"success">>, RespData));
+        'false' -> cb_context:set_resp_data(Context, wh_json:delete_key(<<"success">>, RespData))
     end.
-
--spec update_resource(wh_json:object(), wh_proplist()) -> wh_json:object().
-update_resource(JObj, Updates) ->
-    Doc = wh_json:get_value(<<"doc">>, JObj),
-    Id = wh_json:get_value(<<"_id">>, Doc),
-    wh_json:merge_recursive([Doc, props:get_value(Id, Updates)]).
+collection_process(Context, []) -> Context;
+collection_process(Context, Successes) ->
+    {Resources, _} = wh_json:get_values(Successes),
+    [lager:debug("save ~p", [Resource]) || Resource <- Resources],
+    Context1 = crossbar_doc:save(cb_context:set_doc(Context, Resources)),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            (cb_context:account_db(Context1) =/= ?WH_OFFNET_DB)
+                andalso cb_local_resources:maybe_aggregate_resources(Resources);
+        _Status -> 'ok'
+    end,
+    Context1.

@@ -70,6 +70,8 @@
          ,languages_provided/1, set_languages_provided/2
          ,encodings_provided/1, set_encodings_provided/2
 
+         ,validation_errors/1, set_validation_errors/2
+
          %% Special accessors
          ,req_value/2, req_value/3
         ]).
@@ -169,6 +171,8 @@ content_types_provided(#cb_context{content_types_provided=CTPs}) -> CTPs.
 languages_provided(#cb_context{languages_provided=LP}) -> LP.
 encodings_provided(#cb_context{encodings_provided=EP}) -> EP.
 
+validation_errors(#cb_context{validation_errors=Errs}) -> Errs.
+
 resp_error_code(#cb_context{resp_error_code=Code}) -> Code.
 resp_error_msg(#cb_context{resp_error_msg=Msg}) -> Msg.
 
@@ -217,6 +221,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_resp_error_code(context(), integer()) -> context().
 -spec set_resp_error_msg(context(), api_binary()) -> context().
 -spec set_magic_pathed(context(), boolean()) -> context().
+-spec set_validation_errors(context(), wh_json:object()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
@@ -269,6 +274,8 @@ add_resp_headers(#cb_context{resp_headers=RespHeaders}=Context, Headers) ->
 add_resp_header(#cb_context{resp_headers=RespHeaders}=Context, K, V) ->
     Context#cb_context{resp_headers=[{K, V} | RespHeaders]}.
 add_resp_headers_fold({K, V}, Hs) -> [{K, V} | Hs].
+
+set_validation_errors(#cb_context{}=Context, Errors) -> Context#cb_context{validation_errors=Errors}.
 
 %% Helpers
 
