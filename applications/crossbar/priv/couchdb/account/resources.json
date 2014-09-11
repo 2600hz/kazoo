@@ -3,7 +3,7 @@
    "language": "javascript",
    "views": {
        "crossbar_listing": {
-           "map": "function(doc) {if (doc.pvt_type != 'resource' || doc.pvt_deleted) return;var classifiers = [];for(var i in doc.classifiers) {if(doc.classifiers[i].enabled) {classifiers.push(doc.classifiers[i]);}}emit(doc._id, {'id': doc._id,'name': doc.name,'enabled': doc.enabled,'weight_cost': doc.weight_cost,'template_name': doc.template_name,'classifiers': classifiers});}"
+           "map": "function(doc) {if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id,'name': doc.name,'enabled': doc.enabled,'weight_cost': doc.weight_cost,'template_name': doc.template_name,'classifiers': doc.classifiers});}"
        }
        ,"resource_templates": {
            "map": "function(doc) { if (doc.pvt_type != 'resource_template' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'template_name': doc.template_name}); }"
