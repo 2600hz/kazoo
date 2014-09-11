@@ -147,6 +147,7 @@ handle_ccvs(DP, _Node, _UUID, JObj) ->
 pre_exec(DP, _, _, _) ->
     [{"application", "set continue_on_fail=true"}
      ,{"application", "export sip_redirect_context=context_2"}
+     ,{"application", "set hangup_after_bridge=true"}
      ,{"application", lists:concat(["export "
                                     ,?CHANNEL_VAR_PREFIX, "Inception"
                                     ,"="

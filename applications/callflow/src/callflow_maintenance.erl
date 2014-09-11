@@ -15,7 +15,9 @@
 -export([blocking_refresh/0]).
 -export([refresh/0, refresh/1]).
 -export([migrate_menus/0, migrate_menus/1]).
--export([migrate_recorded_name/0, migrate_recorded_name/1]).
+-export([migrate_recorded_names/0
+        ,migrate_recorded_name/1
+        ]).
 -export([show_calls/0]).
 -export([flush/0]).
 -export([account_set_classifier_allow/2
@@ -107,8 +109,6 @@ blocking_refresh() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh() -> 'started'.
--spec refresh(binary() | string()) -> 'ok'.
-
 refresh() ->
     spawn(fun() ->
                   lists:foreach(fun(AccountDb) ->
@@ -117,6 +117,7 @@ refresh() ->
           end),
     'started'.
 
+-spec refresh(binary() | string()) -> 'ok'.
 refresh(<<Account/binary>>) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     Views = whapps_util:get_views_json('callflow', "views"),
@@ -124,10 +125,23 @@ refresh(<<Account/binary>>) ->
 refresh(Account) ->
     refresh(wh_util:to_binary(Account)).
 
--spec migrate_recorded_name() -> any().
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec migrate_recorded_names() -> 'no_return'.
+migrate_recorded_names() ->
+    migrate_recorded_names(whapps_util:get_all_accounts()).
+
+-spec migrate_recorded_names(ne_binaries()) -> 'no_return'.
+migrate_recorded_names([]) -> 'no_return';
+migrate_recorded_names([Account|Accounts]) ->
+    _ = (catch migrate_recorded_name(Account)),
+    migrate_recorded_names(Accounts).
+
 -spec migrate_recorded_name(ne_binary()) -> any().
-migrate_recorded_name() ->
-    [catch migrate_recorded_name(AccountDb) || AccountDb <- whapps_util:get_all_accounts('encoded')].
 migrate_recorded_name(Db) ->
     lager:info("migrating all name recordings from vmboxes w/ owner_id in ~s", [Db]),
 
@@ -427,7 +441,7 @@ print_users_level_call_restrictions(DbName) ->
             io:format("\n\nUser level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
                              io:format("\nUsername: ~s\n\n", [wh_json:get_value([<<"value">>,<<"username">>],UserObj)]),
-                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj)) 
+                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -441,7 +455,7 @@ print_devices_level_call_restrictions(DbName) ->
             io:format("\n\nDevice level classifiers:\n"),
             lists:foreach(fun(UserObj) ->
                              io:format("\nDevice: ~s\n\n", [wh_json:get_value([<<"value">>,<<"name">>],UserObj)]),
-                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj)) 
+                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj))
                           end,
                           JObj);
         {'error', E} ->
@@ -455,10 +469,9 @@ print_trunkstore_call_restrictions(DbName) ->
             io:format("\n\nTrunkstore classifiers:\n\n"),
             lists:foreach(fun(UserObj) ->
                              io:format("Trunk: ~s@~s\n\n", lists:reverse(wh_json:get_value(<<"key">>,UserObj))),
-                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj)) 
+                             print_call_restrictions(DbName, wh_json:get_value(<<"id">>,UserObj))
                           end,
                           JObj);
         {'error', E} ->
             io:format("An error occurred: ~p", [E])
     end.
-

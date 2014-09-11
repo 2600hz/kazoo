@@ -336,7 +336,7 @@ update_category(Category, Keys, Value, Node, Opts) ->
             end
     end.
 
--spec update_category(config_category(), config_key(), term(), ne_binary() | atom(), wh_proplist(), wh_json:object()) ->
+-spec update_category(config_category(), config_key(), term(), ne_binary(), wh_proplist(), wh_json:object()) ->
                              {'ok', wh_json:object()}.
 update_category(Category, Keys, Value, Node, Opts, JObj) ->
     case wh_json:get_value([Node | Keys], JObj) =/= 'undefined'
@@ -356,12 +356,21 @@ update_category(Category, Keys, Value, Node, Opts, JObj) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
+-spec maybe_save_category(ne_binary(), wh_json:object()) ->
+                                 {'ok', wh_json:object()}.
+-spec maybe_save_category(ne_binary(), wh_json:object(), boolean()) ->
+                                 {'ok', wh_json:object()}.
 maybe_save_category(Category, JObj) ->
     maybe_save_category(Category, JObj, 'false').
 
 maybe_save_category(Category, JObj, Looped) ->
     lager:debug("updating configuration category ~s", [Category]),
-    JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
+    JObj1 =
+        wh_doc:update_pvt_parameters(
+          wh_json:set_value(<<"_id">>, Category, JObj)
+          ,?WH_CONFIG_DB
+          ,[{'type', <<"config">>}]
+         ),
     case couch_mgr:save_doc(?WH_CONFIG_DB, JObj1) of
         {'ok', SavedJObj} ->
             lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),

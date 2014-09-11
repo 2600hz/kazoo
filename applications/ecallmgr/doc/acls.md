@@ -58,4 +58,4 @@ You can test whether an IP would be accepted by the Carrier or SBC ACLs:
 * `sup -necallmgr ecallmgr_maintenance test_carrier_ip {CARRIER_IP} [{FREESWITCH_NODE}]`
 * `sup -necallmgr ecallmgr_maintenance test_sbc_ip {SBC_IP} [{FREESWITCH_NODE}]`
 
-If you don't provide a FreeSWITCH node, a random one will be chosen to be queried. `{FREESWITCH_NODE}` should be formatted as the mod_kazoo node name (`freeswitch@fs.server.com`).
+If you don't provide a FreeSWITCH node, all connected nodes will be queried. `{FREESWITCH_NODE}` should be formatted as the mod_kazoo node name (`freeswitch@fs.server.com`).

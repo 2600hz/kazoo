@@ -25,13 +25,14 @@
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
 %% Three main call events
--define(BINDINGS, [{'call', [{'restrict_to', ['CHANNEL_CREATE'
-                                              ,'CHANNEL_ANSWER'
-                                              ,'CHANNEL_DESTROY'
-                                             ]}
-                             ,'federate'
-                            ]}
-                  ]).
+-define(ALL_EVENTS, [<<"CHANNEL_CREATE">>
+                     ,<<"CHANNEL_ANSWER">>
+                     ,<<"CHANNEL_DESTROY">>
+                    ]).
+-define(CALL_BINDING(Events), {'call', [{'restrict_to', Events}
+                                        ,'federate'
+                                       ]}).
+-define(BINDINGS, []).
 -define(RESPONDERS, [{{'wh_hooks_util', 'handle_call_event'}
                       ,[{<<"call_event">>, <<"*">>}]
                      }
@@ -39,6 +40,9 @@
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
+
+-record(state, {call_events = [] :: ne_binaries()}).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -53,12 +57,16 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+    gen_listener:start_link({'local', ?MODULE}
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
+                             ]
+                            ,[]
+                           ).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -75,12 +83,13 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', 'ok'}.
+-spec init([]) -> {'ok', state()}.
 init([]) ->
+    wh_util:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     wapi_call:declare_exchanges(),
     _ = spawn('whistle_apps_sup', 'start_child', [?CACHE(?HOOKS_CACHE_NAME)]),
-    {'ok', 'ok'}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,6 +118,22 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'maybe_add_binding', 'all'}, #state{call_events=Events}=State) ->
+    case [E || E <- ?ALL_EVENTS, not lists:member(E, Events)] of
+        [] -> {'noreply', State};
+        Es ->
+            lager:debug("adding bindings for ~p", [Es]),
+            gen_listener:add_binding(self(), ?CALL_BINDING(Es)),
+            {'noreply', State#state{call_events=Es ++ Events}}
+    end;
+handle_cast({'maybe_add_binding', Event}, #state{call_events=Events}=State) ->
+    case lists:member(Event, Events) of
+        'true' -> {'noreply', State};
+        'false' ->
+            lager:debug("adding bindings for ~s", [Event]),
+            gen_listener:add_binding(self(), ?CALL_BINDING([Event])),
+            {'noreply', State#state{call_events=[Event | Events]}}
+    end;
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->

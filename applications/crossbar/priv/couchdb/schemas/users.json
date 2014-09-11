@@ -28,7 +28,7 @@
             "name": "First Name",
             "description": "The first name of the user",
             "minLength": 1,
-            "maxLength": 32
+            "maxLength": 128
         },
         "last_name": {
             "type": "string",
@@ -36,7 +36,7 @@
             "name": "Last Name",
             "description": "The last name of the user",
             "minLength": 1,
-            "maxLength": 32
+            "maxLength": 128
         },
         "email": {
             "type": "string",
@@ -95,14 +95,14 @@
                             "required": false,
                             "name": "Name",
                             "description": "The caller id name used internally",
-                            "maxLength": 30
+                            "maxLength": 35
                         },
                         "number": {
                             "type": "string",
                             "required": false,
                             "name": "Number",
                             "description": "The caller id name used internally",
-                            "maxLength": 15
+                            "maxLength": 35
                         }
                     }
                 },
@@ -117,14 +117,14 @@
                             "required": false,
                             "name": "Name",
                             "description": "The caller id name used when dialing outbound",
-                            "maxLength": 30
+                            "maxLength": 35
                         },
                         "number": {
                             "type": "string",
                             "required": false,
                             "name": "Number",
                             "description": "The caller id name used when dialing outbound",
-                            "maxLength": 15
+                            "maxLength": 35
                         }
                     }
                 },
@@ -139,14 +139,14 @@
                             "required": false,
                             "name": "Name",
                             "description": "The caller id name used when dialing an emergency resource",
-                            "maxLength": 30
+                            "maxLength": 35
                         },
                         "number": {
                             "type": "string",
                             "required": false,
                             "name": "Number",
                             "description": "The caller id name used when dialing an emergency resource",
-                            "maxLength": 15
+                            "maxLength": 35
                         }
                     }
                 }
@@ -428,8 +428,7 @@
                     "required": false,
                     "name": "Number",
                     "description": "The number to forward calls to",
-                    "minLength": 3,
-                    "maxLength": 15
+                    "maxLength": 35
                 },
                 "substitute": {
                     "type": "boolean",

@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+ %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
@@ -212,12 +212,13 @@ read(Id, Context) ->
 
 -spec leak_private_fields(wh_json:object()) -> wh_json:object().
 leak_private_fields(JObj) ->
+    J = wh_json:set_value(<<"id">>, wh_json:get_value(<<"_id">>, JObj), JObj),
     lists:foldl(fun(<<"pvt_", K1/binary>> = K, Acc) ->
                         case wh_json:get_value(K, Acc) of
                             'undefined' -> Acc;
                             Value -> wh_json:set_value(K1, Value , Acc)
                         end
-                end, JObj, ?LEAKED_FIELDS).
+                end, J, ?LEAKED_FIELDS).
 
 -spec remove_private_fields(cb_context:context()) -> cb_context:context().
 remove_private_fields(Context) ->

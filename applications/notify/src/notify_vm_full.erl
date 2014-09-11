@@ -45,10 +45,16 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_full_v(JObj),
     whapps_util:put_callid(JObj),
-
-    lager:debug("a vm_full notice has been received, sending email notification"),
-
+    lager:debug("voicemail full notice, sending to email if enabled"),
     {'ok', Account} = notify_util:get_account_doc(JObj),
+    case is_notice_enabled(Account) of
+        'true' -> send(JObj, Account);
+        'false' -> 'ok'
+    end.
+
+-spec send(wh_json:object(), wh_json:object()) -> 'ok'.
+send(JObj, Account) ->
+    lager:debug("a vm_full notice has been received, sending email notification"),
 
     Props = create_template_props(JObj),
 
@@ -169,3 +175,17 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
             },
     notify_util:send_email(From, To, Email),
     'ok'.
+
+-spec is_notice_enabled(wh_json:object()) -> boolean().
+is_notice_enabled(JObj) ->
+    case  wh_json:get_value([<<"notifications">>,
+                             <<"voicemail_full">>,
+                             <<"enabled">>], JObj)
+    of
+        'undefined' -> is_notice_enabled_default();
+        Value -> wh_util:is_true(Value)
+    end.
+
+-spec is_notice_enabled_default() -> boolean().
+is_notice_enabled_default() ->
+    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'false').

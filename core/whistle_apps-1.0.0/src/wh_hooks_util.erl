@@ -7,13 +7,13 @@
 %%%-------------------------------------------------------------------
 -module(wh_hooks_util).
 
--export([register/0
-         ,register/1
-         ,register/2
+-export([register/0, register/1, register/2
+         ,registered/0, registered/1, registered/2
+         ,all_registered/0
         ]).
--export([register_rr/0
-         ,register_rr/1
-         ,register_rr/2
+-export([register_rr/0, register_rr/1, register_rr/2
+         ,registered_rr/0, registered_rr/1, registered_rr/2
+         ,all_registered_rr/0
         ]).
 -export([lookup_account_id/1]).
 -export([handle_call_event/2]).
@@ -46,6 +46,34 @@ register(AccountId) ->
 register(AccountId, EventName) ->
     maybe_add_hook(?HOOK_REG(AccountId, EventName)).
 
+-spec registered() -> pids().
+-spec registered(ne_binary()) -> pids().
+-spec registered(ne_binary(), ne_binary()) -> pids().
+registered() ->
+    gproc:lookup_pids(?HOOK_REG).
+registered(AccountId) ->
+    gproc:lookup_pids(?HOOK_REG(AccountId)).
+registered(AccountId, EventName) ->
+    gproc:lookup_pids(?HOOK_REG(AccountId, EventName)).
+
+-spec all_registered() -> pids().
+all_registered() ->
+    lists:usort(
+      lists:foldl(fun all_registered_fold/2
+                  ,[]
+                  ,[?HOOK_REG
+                    ,?HOOK_REG('_')
+                    ,?HOOK_REG('_', '_')
+                   ])
+     ).
+
+all_registered_fold(HookPattern, Acc) ->
+    Match = [{{HookPattern, '$1', '_'}
+              ,[]
+              ,['$1']
+             }],
+    gproc:select(Match) ++ Acc.
+
 -spec register_rr() -> 'true'.
 -spec register_rr(ne_binary()) -> 'true'.
 -spec register_rr(ne_binary(), ne_binary()) -> 'true'.
@@ -56,15 +84,66 @@ register_rr(AccountId) ->
 register_rr(AccountId, EventName) ->
     maybe_add_hook(?HOOK_REG_RR(AccountId, EventName)).
 
+-spec registered_rr() -> pids().
+-spec registered_rr(ne_binary()) -> pids().
+-spec registered_rr(ne_binary(), ne_binary()) -> pids().
+registered_rr() ->
+    gproc:lookup_pids(?HOOK_REG_RR).
+registered_rr(AccountId) ->
+    gproc:lookup_pids(?HOOK_REG_RR(AccountId)).
+registered_rr(AccountId, EventName) ->
+    gproc:lookup_pids(?HOOK_REG_RR(AccountId, EventName)).
+
+-spec all_registered_rr() -> pids().
+all_registered_rr() ->
+    lists:usort(
+      lists:foldl(fun all_registered_fold/2
+                  ,[]
+                  ,[?HOOK_REG_RR
+                    ,?HOOK_REG_RR('_')
+                    ,?HOOK_REG_RR('_', '_')
+                   ])
+     ).
+
+-spec maybe_add_hook(tuple()) -> 'true'.
+-spec maybe_add_hook(tuple(), pids()) -> 'true'.
 maybe_add_hook(Hook) ->
     case gproc:lookup_pids(Hook) of
-        [] -> 'true' = gproc:reg(Hook);
-        Pids ->
-            case lists:member(self(), Pids) of
-                'true' -> 'true';
-                'false' -> 'true' = gproc:reg(Hook)
-            end
+        [] -> hook_it_up(Hook);
+        Pids -> maybe_add_hook(Hook, Pids)
     end.
+
+maybe_add_hook(Hook, Pids) ->
+    case lists:member(self(), Pids) of
+        'true' -> 'true';
+        'false' -> hook_it_up(Hook)
+    end.
+
+-spec hook_it_up(tuple()) -> 'true'.
+hook_it_up(Hook) ->
+    maybe_add_binding(Hook),
+    'true' = gproc:reg(Hook).
+
+-spec maybe_add_binding(tuple()) -> 'ok'.
+maybe_add_binding(?HOOK_REG) ->
+    maybe_add_binding_to_listener('wh_hooks_listener');
+maybe_add_binding(?HOOK_REG(_AccountId)) ->
+    maybe_add_binding_to_listener('wh_hooks_listener');
+maybe_add_binding(?HOOK_REG(_AccountId, EventName)) ->
+    maybe_add_binding_to_listener('wh_hooks_listener', EventName);
+maybe_add_binding(?HOOK_REG_RR) ->
+    maybe_add_binding_to_listener('wh_hooks_shared_listener');
+maybe_add_binding(?HOOK_REG_RR(_AccountId)) ->
+    maybe_add_binding_to_listener('wh_hooks_shared_listener');
+maybe_add_binding(?HOOK_REG_RR(_AccountId, EventName)) ->
+    maybe_add_binding_to_listener('wh_hooks_shared_listener', EventName).
+
+-spec maybe_add_binding_to_listener(atom()) -> 'ok'.
+-spec maybe_add_binding_to_listener(atom(), ne_binary() | 'all') -> 'ok'.
+maybe_add_binding_to_listener(ServerName) ->
+    maybe_add_binding_to_listener(ServerName, 'all').
+maybe_add_binding_to_listener(ServerName, EventName) ->
+    gen_listener:cast(ServerName, {'maybe_add_binding', EventName}).
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
@@ -82,7 +161,7 @@ handle_call_event(JObj, Props) ->
 handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
     lager:debug("event 'channel_create' had no account id"),
     case lookup_account_id(JObj) of
-        {'error', _R} -> 
+        {'error', _R} ->
             lager:debug("failed to determine account id for 'channel_create'", []);
         {'ok', AccountId} ->
             lager:debug("determined account id for 'channel_create' is ~s", [AccountId]),

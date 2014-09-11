@@ -25,6 +25,7 @@
                    ,fun add_pvt_created/3
                    ,fun add_pvt_modified/3
                    ,fun add_pvt_type/3
+                   ,fun add_pvt_node/3
                   ]).
 
 %%--------------------------------------------------------------------
@@ -83,6 +84,13 @@ add_pvt_type(JObj, _, Options) ->
     case props:get_value('type', Options) of
         'undefined' -> JObj;
         Type -> wh_json:set_value(<<"pvt_type">>, Type, JObj)
+    end.
+
+-spec add_pvt_node(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().
+add_pvt_node(JObj, _, Options) ->
+    case props:get_value('node', Options) of
+        'undefined' -> wh_json:set_value(<<"pvt_node">>, wh_util:to_binary(node()), JObj);
+        Node -> wh_json:set_value(<<"pvt_node">>, wh_util:to_binary(Node), JObj)
     end.
 
 -spec add_pvt_created(wh_json:object(), api_binary(), wh_proplist()) -> wh_json:object().

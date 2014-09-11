@@ -73,6 +73,10 @@ Since within France one needs only dial the 10-digit number (0 + 9 digit subscri
 
 Only capturing the 9-digit subscriber number, "+33" is prepended to form the E164-formatted version of the number. This checks either internally-dialed French numbers (the first regex) or externally-dialed French numbers (the second regex).
 
+## Examples
+
+See [the examples](./examples/number_manager) for user-contributed samples (and create pull requests of your own!).
+
 ## Classifiers
 
 This is a set of regexes to group numbers by type and are not used for routing. Classifiers are used to create groups of numbers that can be restricted, pretty print numbers in emails (like voicemail to email) and provide user friendly names in the UI.
@@ -132,6 +136,10 @@ If you want a literal '#', 'S', or '*', prefix it with a '\' (so '\#', '\S', and
 Users can dial local numbers, just as they do with the PSTN, by providing Kazoo with `dial_plan` regular expressions. These regexes will be used on the dialed numbers to correct them to properly routable numbers.
 
 It is possible to set these regexes on an account, user, or device basis. All that needs doing is adding a `dial_plan` key at the root level of the account, user, or device document. Kazoo will then apply the regexes in order, preferring the calling device's, then user's (if the calling device has an `owner_id` set), and finally the account's dialplan. Failing any of those, the system `e164_convertors` will be employed.
+
+*Warning*: It is possible that these `dial_plan` rules will interfere with extension dialing within an account. Please take common extension length into consideration when creating these `dial_plan` rules.
+
+See [the examples](./examples/dial_plan) for user-contributed samples (and create pull requests of your own!).
 
 ## Example `dial_plan` object
 

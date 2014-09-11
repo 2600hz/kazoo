@@ -66,12 +66,16 @@ to_json({Req1, Context}) ->
 -spec pagination(payload()) -> payload().
 pagination({Req, Context}=Payload) ->
     PageSize = cb_context:fetch(Context, 'page_size'),
-    StartKey = cb_context:fetch(Context, 'start_key'),
     'ok' = cowboy_req:chunk(<<", \"page_size\": ", (wh_util:to_binary(PageSize))/binary>>, Req),
     case cb_context:fetch(Context, 'next_start_key') of
         'undefined' -> 'ok';
+        [_, Next] -> cowboy_req:chunk(<<", \"next_start_key\": \"", (wh_util:to_binary(Next))/binary, "\"">>, Req);
         Next -> cowboy_req:chunk(<<", \"next_start_key\": \"", (wh_util:to_binary(Next))/binary, "\"">>, Req)
     end,
+    StartKey = case cb_context:fetch(Context, 'start_key') of
+                   [_, Key] -> Key;
+                   Key -> Key
+               end,
     'ok' = cowboy_req:chunk(<<", \"start_key\": \"", (wh_util:to_binary(StartKey))/binary, "\"">>, Req),
     Payload.
 
@@ -310,15 +314,15 @@ maybe_paginate_and_clean(Context, Ids) ->
             {Context, [Id || {Id, _} <- Ids]};
         _ ->
             ViewOptions = cb_context:fetch(Context, 'chunked_view_options'),
-            PageSize = erlang:length(Ids) - 1,
-            AskedFor = props:get_value('limit', ViewOptions, PageSize) - 1,
-            case AskedFor > erlang:length(Ids) of
+            PageSize = erlang:length(Ids),
+            AskedFor = props:get_value('limit', ViewOptions, PageSize),
+            case AskedFor >= erlang:length(Ids) of
                 'true' ->
                     Context1 = cb_context:store(Context, 'page_size', PageSize),
                     {Context1, [Id || {Id, _} <- Ids]};
                 'false' ->
                     {_, LastKey}=Last = lists:last(Ids),
-                    Context1 = cb_context:store(Context, 'page_size', PageSize),
+                    Context1 = cb_context:store(Context, 'page_size', PageSize - 1),
                     Context2 = cb_context:store(Context1, 'next_start_key', LastKey),
                     {Context2, [Id || {Id, _} <- lists:delete(Last, Ids)]}
             end

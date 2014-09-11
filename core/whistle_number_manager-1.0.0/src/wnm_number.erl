@@ -211,15 +211,20 @@ get_number_in_ports(#number{number=Number}=N) ->
 save(#number{}=Number) ->
     Routines = [fun(#number{}=N) -> exec_providers(N, 'save') end
                 ,fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
-                ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
+                ,fun(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
+                    (#number{}=N) -> get_updated_phone_number_docs(N)
+                 end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{dry_run='true'}=N) -> N;
                     (#number{}=N) -> save_number_doc(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
+                    (#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
                     (#number{}=N) -> save_phone_number_docs(N)
                  end
-                ,fun(#number{}=N) -> update_service_plans(N) end
+                ,fun(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
+                    (#number{}=N) -> update_service_plans(N)
+                 end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
 

@@ -21,10 +21,11 @@
 migrate() ->
     io:format("migrating relevant settings from system_config/callflow to system_config/~s~n", [?WHS_CONFIG_CAT]),
 
-    migrate_system_config(<<"callflow">>),
+    maybe_migrate_system_config(<<"callflow">>),
 
     io:format("migrating relevant settings from system_config/media_mgr to system_config/~s~n", [?WHS_CONFIG_CAT]),
-    migrate_system_config(<<"media_mgr">>),
+    maybe_migrate_system_config(<<"media_mgr">>),
+
     'no_return'.
 
 -spec migrate_prompts() -> 'no_return'.
@@ -141,22 +142,59 @@ import_prompt(Path0, Lang0, Contents) ->
             {'error', E}
     end.
 
--spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok' | {'error', _}.
+-spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), wh_proplist()) ->
+                           'ok' |
+                           {'error', _}.
+-spec upload_prompt(ne_binary(), ne_binary(), ne_binary(), wh_proplist(), non_neg_integer()) ->
+                           'ok' |
+                           {'error', _}.
 upload_prompt(ID, AttachmentName, Contents, Options) ->
+    upload_prompt(ID, AttachmentName, Contents, Options, 3).
+
+upload_prompt(_ID, _AttachmentName, _Contents, _Options, 0) ->
+    io:format("  retries exceeded for uploading ~s to ~s~n", [_AttachmentName, _ID]),
+    {'error', 'retries_exceeded'};
+upload_prompt(ID, AttachmentName, Contents, Options, Retries) ->
     case couch_mgr:put_attachment(?WH_MEDIA_DB, ID, AttachmentName, Contents, Options) of
         {'ok', _MetaJObj} ->
             io:format("  uploaded prompt binary to ~s as ~s~n", [ID, AttachmentName]);
+        {'error', 'conflict'} ->
+            io:format("  conflict when uploading media binary; checking doc to see if it was actually successful~n"),
+            maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries);
         {'error', E} ->
             io:format("  error uploading prompt binary: ~p~n", [E]),
-            io:format("  deleting metadata from ~s~n", [?WH_MEDIA_DB]),
-            case couch_mgr:del_doc(?WH_MEDIA_DB, ID) of
-                {'ok', _} ->
-                    io:format("  removed metadata for ~s~n", [ID]),
-                    {'error', E};
-                {'error', E1} ->
-                    io:format("  failed to remove metadata for ~s: ~p~n", [ID, E1]),
-                    {'error', E1}
-            end
+            maybe_cleanup_metadoc(ID, E)
+    end.
+
+-spec maybe_cleanup_metadoc(ne_binary(), _) -> {'error', _}.
+maybe_cleanup_metadoc(ID, E) ->
+    io:format("  deleting metadata from ~s~n", [?WH_MEDIA_DB]),
+    case couch_mgr:del_doc(?WH_MEDIA_DB, ID) of
+        {'ok', _} ->
+            io:format("  removed metadata for ~s~n", [ID]),
+            {'error', E};
+        {'error', E1} ->
+            io:format("  failed to remove metadata for ~s: ~p~n", [ID, E1]),
+            {'error', E1}
+    end.
+
+-spec maybe_retry_upload(ne_binary(), ne_binary(), ne_binary(), wh_proplist(), non_neg_integer()) ->
+                                'ok' |
+                                {'error', _}.
+maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
+    case couch_mgr:open_doc(?WH_MEDIA_DB, ID) of
+        {'ok', JObj} ->
+            case wh_json:get_value([<<"_attachments">>, AttachmentName], JObj) of
+                'undefined' ->
+                    io:format("  attachment does not appear on the document, retrying after a pause~n"),
+                    timer:sleep(1000),
+                    upload_prompt(ID, AttachmentName, Contents, Options, Retries-1);
+                _Attachment ->
+                    io:format("  attachment appears to have uploaded successfully!")
+            end;
+        {'error', E} ->
+            io:format("  failed to open the media doc again: ~p~n", [E]),
+            {'error', E}
     end.
 
 -spec refresh() -> 'ok'.
@@ -164,9 +202,15 @@ refresh() ->
     couch_mgr:revise_doc_from_file(?WH_MEDIA_DB, 'crossbar', "account/media.json"),
     'ok'.
 
--spec migrate_system_config(ne_binary()) -> 'ok'.
-migrate_system_config(ConfigId) ->
-    {'ok', ConfigJObj} = couch_mgr:open_doc(?WH_CONFIG_DB, ConfigId),
+-spec maybe_migrate_system_config(ne_binary()) -> 'ok'.
+maybe_migrate_system_config(ConfigId) ->
+    case couch_mgr:open_doc(?WH_CONFIG_DB, ConfigId) of
+        {'ok', JObj} -> migrate_system_config(JObj);
+        {'error', 'not_found'} -> 'ok'
+    end.
+
+-spec migrate_system_config(wh_json:object()) -> 'ok'.
+migrate_system_config(ConfigJObj) ->
     {'ok', MediaJObj} = get_media_config_doc(),
 
     UpdatedMediaJObj = wh_json:foldl(fun migrate_system_config_fold/3, MediaJObj, ConfigJObj),

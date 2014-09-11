@@ -10,7 +10,6 @@
 -define(APP_NAME, <<"blackhole">>).
 -define(APP_VERSION, <<"1.0.0">>).
 -define(BLACKHOLE_CONFIG_CAT, <<"blackhole">>).
--define(TOKEN_DB, <<"token_auth">>).
 
 -define(DEFAULT_MODULES, ['bh_token_auth']).
 
