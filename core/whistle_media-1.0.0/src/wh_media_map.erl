@@ -1,0 +1,388 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2014, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
+-module(wh_media_map).
+
+-behaviour(gen_listener).
+
+-export([start_link/0
+         ,prompt_path/3
+         ,handle_media_doc/2
+        ]).
+
+%% ETS related
+-export([table_id/0
+         ,table_options/0
+         ,find_me_function/0
+         ,gift_data/0
+        ]).
+
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
+
+-include("whistle_media.hrl").
+
+-record(state, {}).
+
+%% By convention, we put the options here in macros, but not required.
+-define(BINDINGS, [{'conf', [{'doc_type', <<"media">>}]}
+                  ]).
+-define(RESPONDERS, [{{?MODULE, 'handle_media_doc'}
+                      ,[{<<"configuration">>, <<"*">>}]
+                     }
+                    ]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
+
+-record(media_map, {id :: ne_binary() %% account/prompt-id
+                    ,account_id :: ne_binary()
+                    ,prompt_id :: ne_binary()
+                    ,languages = wh_json:object() :: wh_json:object() %% {"lang1":"path1", "lang2":"path2"}
+                   }).
+-type media_map() :: #media_map{}.
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link() ->
+    gen_listener:start_link({'local', ?MODULE}
+                            ,?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                              ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                              ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                             ]
+                            ,[]
+                           ).
+
+-spec prompt_path(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
+prompt_path(AccountId, PromptId, Language) ->
+    #media_map{languages=Langs} = get_map(AccountId, PromptId),
+    case wh_json:get_first_defined(language_keys(Language), Langs) of
+        'undefined' -> default_prompt_path(PromptId, Language);
+        Path -> Path
+    end.
+
+-spec default_prompt_path(ne_binary(), ne_binary()) -> api_binary().
+default_prompt_path(PromptId, Language) ->
+    #media_map{languages=Langs} = get_map(PromptId),
+    wh_json:get_first_defined(language_keys(Language), Langs).
+
+handle_media_doc(JObj, _Props) ->
+    'true' = wapi_conf:doc_update_v(JObj),
+    {'ok', Doc} = couch_mgr:open_doc(wh_json:get_value(<<"Database">>, JObj)
+                                     ,wh_json:get_value(<<"ID">>, JObj)
+                                    ),
+    gen_listener:cast(?MODULE, {'add_mapping', wh_json:get_value(<<"pvt_account_id">>, Doc), Doc}).
+
+-spec table_id() -> ?MODULE.
+table_id() -> ?MODULE.
+
+-spec table_options() -> wh_proplist().
+table_options() ->
+    ['set'
+     ,'protected'
+     ,{'keypos', #media_map.id}
+     ,'named_table'
+    ].
+
+-spec find_me_function() -> api_pid().
+find_me_function() -> whereis(?MODULE).
+
+-spec gift_data() -> 'ok'.
+gift_data() -> 'ok'.
+
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
+init([]) ->
+    {'ok', #state{}}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call({'add_mapping', AccountId, JObj}, _From, State) ->
+    maybe_add_prompt(AccountId, JObj),
+    {'reply', 'ok', State};
+handle_call({'new_map', Map}, _From, State) ->
+    {'reply', ets:insert_new(table_id(), Map), State};
+handle_call(_Request, _From, State) ->
+    lager:debug("unhandled call: ~p", [_Request]),
+    {'reply', {'error', 'not_implemented'}, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_cast({'add_mapping', AccountId, JObj}, State) ->
+    maybe_add_prompt(AccountId, JObj),
+    {'noreply', State};
+handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
+    {'noreply', State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
+    lager:debug("recv control of ~p from ~p", [_TableId, _From]),
+    _ = spawn(fun init_map/0),
+    {'noreply', State};
+handle_info(_Info, State) ->
+    {'noreply', State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
+handle_event(_JObj, _State) ->
+    {'reply', []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+    lager:debug("listener terminating: ~p", [_Reason]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+    {'ok', State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+init_map() ->
+    init_map(?WH_MEDIA_DB).
+
+init_map(Db) ->
+    init_map(Db, <<"media/crossbar_listing">>, <<>>, 50, fun gen_listener:cast/2).
+
+init_map(Db, View, StartKey, Limit, SendFun) ->
+    Options = [{'startkey', StartKey}
+               ,{'limit', Limit+1}
+               ,'include_docs'
+              ],
+    lager:debug("couch_mgr:get_results(~p, ~p, ~p)", [Db, View, Options]),
+    case couch_mgr:get_results(Db, View, Options) of
+        {'ok', []} -> lager:debug("no more results in ~s:~s", [Db, View]);
+        {'ok', ViewResults} ->
+            init_map(Db, View, StartKey, Limit, SendFun, ViewResults);
+        {'error', _E} ->
+            lager:debug("error loading ~s in ~s: ~p", [View, Db, _E])
+    end.
+
+init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
+    lager:debug("got ~b results, limit ~b", [length(ViewResults), Limit]),
+    try lists:split(Limit, ViewResults) of
+        {Results, []} ->
+            add_mapping(Db, SendFun, Results),
+            lager:debug("added the last of the view results from ~s", [View]);
+        {Results, [NextJObj]} ->
+            add_mapping(Db, SendFun, Results),
+            Key = wh_json:get_value(<<"key">>, NextJObj),
+            lager:debug("fetching more results, starting at ~s", [Key]),
+            init_map(Db, View, Key, Limit, SendFun)
+    catch
+        'error':'badarg' ->
+            add_mapping(Db, SendFun, ViewResults),
+            lager:debug("added the last of the view results from ~s", [View])
+    end.
+
+add_mapping(Db, SendFun, JObjs) ->
+    AccountId = wh_util:format_account_id(Db, 'raw'),
+    [SendFun(?MODULE, {'add_mapping', AccountId, wh_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs].
+
+maybe_add_prompt(Id, JObj) ->
+    maybe_add_prompt(Id, JObj, wh_json:get_value(<<"prompt_id">>, JObj)).
+
+maybe_add_prompt(_Id, _JObj, 'undefined') ->
+    lager:debug("no prompt id, ignoring ~s for ~s", [wh_json:get_value(<<"_id">>, _JObj), _Id]);
+maybe_add_prompt(Id, JObj, PromptId) ->
+    Lang = wh_json:get_value(<<"language">>, JObj, wh_media_util:prompt_language(Id)),
+
+    #media_map{languages=Langs}=Map = get_map(Id, PromptId),
+
+    lager:debug("adding language ~s for prompt ~s to db ~s", [Lang, PromptId, Id]),
+    ets:insert(table_id()
+               ,Map#media_map{
+                  account_id=Id
+                  ,prompt_id=PromptId
+                  ,languages=wh_json:set_value(Lang
+                                               ,wh_media_util:prompt_path(wh_json:get_value(<<"pvt_account_db">>, JObj)
+                                                                          ,wh_json:get_value(<<"_id">>, JObj)
+                                                                         )
+                                               ,Langs
+                                              )
+                 }
+              ).
+
+-spec get_map(ne_binary()) -> media_map().
+-spec get_map(ne_binary(), ne_binary()) -> media_map().
+get_map(PromptId) ->
+    get_map(?WH_MEDIA_DB, PromptId).
+
+get_map(?WH_MEDIA_DB = Db, PromptId) ->
+    MapId = list_to_binary([Db, "/", PromptId]),
+    case ets:lookup(table_id(), MapId) of
+        [] ->
+            lager:debug("init system media map"),
+            #media_map{id=MapId
+                       ,account_id=Db
+                       ,prompt_id=PromptId
+                       ,languages=wh_json:new()
+                      };
+        [Map] ->
+            lager:debug("found system map"),
+            Map
+    end;
+get_map(AccountId, PromptId) ->
+    MapId = list_to_binary([AccountId, "/", PromptId]),
+    case ets:lookup(table_id(), MapId) of
+        [] ->
+            lager:debug("failed to find map ~s for account, loading", [MapId]),
+            init_account_map(AccountId, PromptId),
+            load_account_map(AccountId, PromptId);
+        [Map] ->
+            lager:debug("found account map"),
+            Map
+    end.
+
+-spec init_account_map(ne_binary(), ne_binary()) -> 'true'.
+init_account_map(AccountId, PromptId) ->
+    SystemMap = get_map(PromptId),
+    MapId = list_to_binary([AccountId, "/", PromptId]),
+    'true' = gen_listener:call(?MODULE, {'new_map', SystemMap#media_map{
+                                                      id=MapId
+                                                      ,account_id=AccountId
+                                                     }}).
+
+-spec load_account_map(ne_binary(), ne_binary()) -> media_map().
+load_account_map(AccountId, PromptId) ->
+    lager:debug("loading account map for ~s", [AccountId]),
+
+    case couch_mgr:get_results(wh_util:format_account_id(AccountId, 'encoded')
+                               ,<<"media/listing_by_prompt">>
+                               ,[{'startkey', [PromptId]}
+                                 ,{'endkey', [PromptId, wh_json:new()]}
+                                 ,{'reduce', 'false'}
+                                 ,'include_docs'
+                                ]
+                              )
+    of
+        {'ok', []} ->
+            lager:debug("account ~s has 0 languages for prompt ~s", [AccountId, PromptId]);
+        {'ok', PromptFiles} ->
+            lager:debug("account ~s has prompts for prompt ~s: ~p", [AccountId, PromptId, PromptFiles]),
+            add_mapping(AccountId, fun gen_listener:call/2, PromptFiles);
+        {'error', _E} ->
+            lager:debug("failed to load account ~s prompts: ~p", [AccountId, _E])
+    end,
+    get_map(AccountId, PromptId).
+
+-spec language_keys(ne_binary()) -> ne_binaries().
+-spec language_keys(ne_binary(), ne_binaries()) -> ne_binaries().
+language_keys(Language) ->
+    language_keys(Language, []).
+
+language_keys(<<Primary:2/binary>>, Acc) ->
+    lists:reverse([Primary | Acc]);
+language_keys(<<Primary:2/binary, "-", _Secondary:2/binary>> = Lang, Acc) ->
+    language_keys(Primary, [Lang | Acc]);
+language_keys(<<Primary:5/binary, "_", _Secondary:5/binary>> = Lang, Acc) ->
+    language_keys(Primary, [Lang | Acc]);
+language_keys(Lang, Acc) ->
+    lists:reverse([Lang | Acc]).
+
+-ifdef(TEST).
+
+-include_lib("eunit/include/eunit.hrl").
+
+language_keys_test() ->
+    LangTests = [{<<"en">>, [<<"en">>]}
+                 ,{<<"en-us">>, [<<"en-us">>, <<"en">>]}
+                 ,{<<"en-us_fr-fr">>, [<<"en-us_fr-fr">>, <<"en-us">>, <<"en">>]}
+                 ,{<<"foo-bar">>, [<<"foo-bar">>]}
+                ],
+    [?assertEqual(Result, language_keys(Lang)) || {Lang, Result} <- LangTests].
+
+-endif.
