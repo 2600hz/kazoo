@@ -899,7 +899,8 @@ convert_whistle_app_name(App) ->
                           {'error', _}.
 lookup_media(MediaName, CallId, JObj, Type) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE
-                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName))
+                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+                             )
     of
         {'ok', _Path}=Ok ->
             lager:debug("media ~s exists in playback cache as ~s", [MediaName, _Path]),
