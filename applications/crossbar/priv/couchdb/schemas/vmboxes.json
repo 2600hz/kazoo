@@ -83,6 +83,13 @@
       "description": "Determines if the user has completed the initial configuration",
       "default": false
     },
+    "not_configurable": {
+      "type": "boolean",
+      "required": false,
+      "name": "Is configurable?",
+      "description": "Determines if the user can configure this voicemail.",
+      "default": false
+    },
     "skip_greeting": {
       "type": "boolean",
       "required": false,

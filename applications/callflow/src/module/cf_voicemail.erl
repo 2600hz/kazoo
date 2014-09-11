@@ -115,6 +115,7 @@
           ,interdigit_timeout = whapps_call_command:default_interdigit_timeout() :: pos_integer()
           ,play_greeting_intro = 'false' :: boolean()
           ,use_person_not_available = 'false' :: boolean()
+          ,not_configurable = 'false' :: boolean()
          }).
 -type mailbox() :: #mailbox{}.
 
@@ -474,10 +475,65 @@ main_menu(#mailbox{owner_id=OwnerId}, Call, Loop) when Loop > 4 ->
 main_menu(#mailbox{owner_id=OwnerId
                    ,keys=#keys{hear_new=HearNew
                                ,hear_saved=HearSaved
+                               ,exit=Exit
+                              }
+                   ,interdigit_timeout=Interdigit
+                   ,not_configurable='true'
+                  }=Box, Call, Loop) ->
+
+    lager:debug("playing mailbox main menu"),
+    _ = whapps_call_command:b_flush(Call),
+    AccountDb = whapps_call:account_db(Call),
+
+    Messages = get_messages(Box, Call),
+    New = count_messages(Messages, ?FOLDER_NEW),
+    Saved = count_messages(Messages, ?FOLDER_SAVED),
+
+    lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
+    NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
+                                             ++ [{'prompt', <<"vm-main_menu_not_configurable">>}]
+                                             ,Call),
+    put('cf_voicemail', ?LINE),
+    case whapps_call_command:collect_digits(?KEY_LENGTH
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,Interdigit
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
+        {'error', _} ->
+            lager:info("error during mailbox main menu"),
+            _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
+            'ok';
+        {'ok', Exit} ->
+            lager:info("user choose to exit voicemail menu"),
+            _ = cf_util:unsolicited_owner_mwi_update(AccountDb, OwnerId),
+            'ok';
+        {'ok', HearNew} ->
+            lager:info("playing all messages in folder: ~s", [?FOLDER_NEW]),
+            Folder = get_folder(Messages, ?FOLDER_NEW),
+            case play_messages(Folder, New, Box, Call) of
+                'ok' -> 'ok';
+                _Else -> main_menu(Box, Call)
+            end;
+        {'ok', HearSaved} ->
+            lager:info("playing all messages in folder: ~s", [?FOLDER_SAVED]),
+            Folder = get_folder(Messages, ?FOLDER_SAVED),
+            case play_messages(Folder, Saved, Box, Call) of
+                'ok' -> 'ok';
+                _Else ->  main_menu(Box, Call)
+            end;
+        _ ->
+            main_menu(Box, Call, Loop + 1)
+    end;
+main_menu(#mailbox{owner_id=OwnerId
+                   ,keys=#keys{hear_new=HearNew
+                               ,hear_saved=HearSaved
                                ,configure=Configure
                                ,exit=Exit
                               }
                    ,interdigit_timeout=Interdigit
+                   ,not_configurable='false'
                   }=Box, Call, Loop) ->
     lager:debug("playing mailbox main menu"),
     _ = whapps_call_command:b_flush(Call),
@@ -1214,6 +1270,8 @@ get_mailbox_profile(Data, Call) ->
                          wh_json:is_true(<<"play_greeting_intro">>, JObj, Default#mailbox.play_greeting_intro)
                      ,use_person_not_available =
                          wh_json:is_true(<<"use_person_not_available">>, JObj, Default#mailbox.use_person_not_available)
+                     ,not_configurable=
+                         wh_json:is_true(<<"not_configurable">>, JObj, 'false')
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
