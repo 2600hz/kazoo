@@ -148,7 +148,7 @@ maybe_apply_dialplan(Endpoint, Data, Call) ->
 maybe_bypass_e164(Data, Call) ->
     case wh_json:is_true(<<"bypass_e164">>, Data) of
         'true' -> get_original_request_user(Call);
-        'false' -> happs_call:request_user(Call)
+        'false' -> whapps_call:request_user(Call)
     end.
 
 -spec get_original_request_user(whapps_call:call()) -> ne_binary().
