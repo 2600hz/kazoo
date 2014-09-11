@@ -94,7 +94,14 @@ handle_media_doc(JObj, _Props) ->
     {'ok', Doc} = couch_mgr:open_doc(wh_json:get_value(<<"Database">>, JObj)
                                      ,wh_json:get_value(<<"ID">>, JObj)
                                     ),
-    gen_listener:cast(?MODULE, {'add_mapping', wh_json:get_value(<<"pvt_account_id">>, Doc), Doc}).
+    gen_listener:cast(?MODULE, {'add_mapping'
+                                ,wh_json:get_first_defined([<<"pvt_account_id">>
+                                                            ,<<"pvt_account_db">>
+                                                           ]
+                                                           ,Doc
+                                                          )
+                                ,Doc
+                               }).
 
 -spec table_id() -> ?MODULE.
 table_id() -> ?MODULE.
@@ -273,11 +280,13 @@ add_mapping(Db, SendFun, JObjs) ->
     [SendFun(?MODULE, {'add_mapping', AccountId, wh_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs].
 
 maybe_add_prompt(Id, JObj) ->
+    lager:debug("add prompt ~s: ~p", [Id, JObj]),
     maybe_add_prompt(Id, JObj, wh_json:get_value(<<"prompt_id">>, JObj)).
 
 maybe_add_prompt(_Id, _JObj, 'undefined') ->
     lager:debug("no prompt id, ignoring ~s for ~s", [wh_json:get_value(<<"_id">>, _JObj), _Id]);
 maybe_add_prompt(Id, JObj, PromptId) ->
+    lager:debug("add prompt ~s ~s: ~p", [Id, PromptId, JObj]),
     Lang = wh_json:get_value(<<"language">>, JObj, wh_media_util:prompt_language(Id)),
 
     #media_map{languages=Langs}=Map = get_map(Id, PromptId),
