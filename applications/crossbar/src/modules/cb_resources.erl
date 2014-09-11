@@ -554,7 +554,7 @@ collection_process(Context, Successes) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             (cb_context:account_db(Context1) =/= ?WH_OFFNET_DB)
-                andalso cb_local_resources:maybe_aggregate_resources(Resources);
+                andalso cb_local_resources:maybe_aggregate_resources(Resources),
+            summary(Context1);
         _Status -> 'ok'
-    end,
-    Context1.
+    end.
