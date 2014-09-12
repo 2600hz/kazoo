@@ -1,5 +1,6 @@
 vm-abort: I'm sorry, there have been too many failed attempts to log in; goodbye.
 vm-main_menu: To hear new messages, press one. To hear your saved messages, press two. To change your settings, press five.
+vm-main_menu_not_configurable: To hear new messages, press one. To hear your saved messages, press two.
 vm-settings_menu: To record your mailbox greeting, press one. To record your name, press two. To change your password, press three. To return to the main menu, press zero.
 vm-enter_id: Please enter you mailbox number, then press pound.
 vm-enter_new_pin_confirm: To confirm, please enter your new password again, then press pound.
