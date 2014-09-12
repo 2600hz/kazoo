@@ -95,6 +95,7 @@ handle_media_doc(JObj, _Props) ->
 
     handle_media_doc_change(JObj, wh_json:get_value(<<"Event-Name">>, JObj)).
 
+-spec handle_media_doc_change(wh_json:object(), ne_binary()) -> 'ok'.
 handle_media_doc_change(JObj, <<"doc_deleted">>) ->
     MediaId = wh_json:get_value(<<"ID">>, JObj),
     Database = wh_json:get_value(<<"Database">>, JObj),
