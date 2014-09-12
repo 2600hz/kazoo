@@ -501,7 +501,7 @@ store_recording(MediaName, Url, Call) ->
 append_path(Url, MediaName) ->
     S = byte_size(Url)-1,
 
-    Encoded = cowboy_http:urlencode(MediaName),
+    Encoded = wh_util:uri_encode(MediaName),
 
     case Url of
         <<_:S/binary, "/">> -> <<Url/binary, Encoded/binary>>;
