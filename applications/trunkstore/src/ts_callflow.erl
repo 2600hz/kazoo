@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Common functionality for onnet and offnet call handling
 %%% @end
@@ -237,8 +237,8 @@ get_account_id(#ts_callflow_state{acctid=ID}) -> ID.
 get_my_queue(#ts_callflow_state{my_q=Q}) -> Q.
 get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) -> CtlQ.
 
--spec get_aleg_id(ts_state()) -> ne_binary().
--spec get_bleg_id(ts_state()) -> ne_binary().
+-spec get_aleg_id(ts_state()) -> api_binary().
+-spec get_bleg_id(ts_state()) -> api_binary().
 get_aleg_id(#ts_callflow_state{aleg_callid=ALeg}) -> ALeg.
 get_bleg_id(#ts_callflow_state{bleg_callid=ALeg}) -> ALeg.
 

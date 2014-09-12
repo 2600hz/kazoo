@@ -98,7 +98,10 @@ constrain_weight(W) -> W.
                         {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case wh_cache:fetch({'lookup_did', DID, AccountId}) of
+    case wh_cache:fetch_local(?TRUNKSTORE_CACHE
+                              ,{'lookup_did', DID, AccountId}
+                             )
+    of
         {'ok', _}=Resp ->
             lager:info("cache hit for ~s", [DID]),
             Resp;
@@ -112,14 +115,20 @@ lookup_did(DID, AccountId) ->
                     lager:info("cache miss for ~s, found result with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
-                    wh_cache:store({'lookup_did', DID, AccountId}, Resp),
+                    wh_cache:store_local(?TRUNKSTORE_CACHE
+                                         ,{'lookup_did', DID, AccountId}
+                                         ,Resp
+                                        ),
                     {'ok', Resp};
                 {'ok', [ViewJObj | _Rest]} ->
                     lager:notice("multiple results for did ~s in acct ~s", [DID, AccountId]),
                     lager:info("cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
-                    wh_cache:store({'lookup_did', DID, AccountId}, Resp),
+                    wh_cache:store_local(?TRUNKSTORE_CACHE
+                                         ,{'lookup_did', DID, AccountId}
+                                         ,Resp
+                                        ),
                     {'ok', Resp};
                 {'error', _}=E ->
                     lager:info("cache miss for ~s, error ~p", [DID, E]),
@@ -132,7 +141,10 @@ lookup_did(DID, AccountId) ->
                                {'error', atom()}.
 lookup_user_flags(Name, Realm, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case wh_cache:fetch({'lookup_user_flags', Realm, Name, AccountId}) of
+    case wh_cache:fetch_local(?TRUNKSTORE_CACHE
+                              ,{'lookup_user_flags', Realm, Name, AccountId}
+                             )
+    of
         {'ok', _}=Result ->
             lager:info("cache hit for ~s@~s", [Name, Realm]),
             Result;
@@ -152,7 +164,10 @@ lookup_user_flags(Name, Realm, AccountId) ->
                     lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
                     ValJObj = wh_json:get_value(<<"value">>, User),
                     JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
-                    wh_cache:store({'lookup_user_flags', Realm, Name, AccountId}, JObj),
+                    wh_cache:store_local(?TRUNKSTORE_CACHE
+                                         ,{'lookup_user_flags', Realm, Name, AccountId}
+                                         ,JObj
+                                        ),
                     {'ok', JObj}
             end
     end.
@@ -276,7 +291,7 @@ simple_extract([JObj | T]) ->
 
 -type cid_type() :: 'external' | 'emergency'.
 
--spec maybe_ensure_cid_valid(cid_type(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec maybe_ensure_cid_valid(cid_type(), api_binary(), ne_binary(), ne_binary()) ->
                                     ne_binary().
 maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId) ->
     case ?VALIDATE_CALLER_ID of
@@ -289,7 +304,7 @@ maybe_ensure_cid_valid('emergency', ECIDNum, _FromUser, AccountId) ->
         'false' -> ECIDNum
     end.
 
--spec validate_emergency_number(ne_binary(), ne_binary()) -> ne_binary().
+-spec validate_emergency_number(api_binary(), ne_binary()) -> ne_binary().
 validate_emergency_number(ECIDNum, AccountId) ->
     lager:info("ensure_valid_emergency_number flag detected; will check whether ECID is legal..."),
     case wh_number_manager:lookup_account_by_number(ECIDNum) of
@@ -297,7 +312,7 @@ validate_emergency_number(ECIDNum, AccountId) ->
         _Else -> valid_emergency_number(AccountId)
     end.
 
--spec validate_external_cid(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec validate_external_cid(api_binary(), ne_binary(), ne_binary()) -> ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
     lager:info("ensure_valid_caller_id flag detected, will check whether CID is legal..."),
     case wh_number_manager:lookup_account_by_number(CIDNum) of
@@ -318,6 +333,7 @@ validate_from_user(FromUser, AccountId) ->
             DefaultCID
     end.
 
+-spec ensure_valid_emergency_number(api_binary(), ne_binary()) -> ne_binary().
 ensure_valid_emergency_number(ECIDNum, AccountId) ->
     Numbers = valid_emergency_numbers(AccountId),
     case lists:member(ECIDNum, Numbers) of
@@ -325,6 +341,7 @@ ensure_valid_emergency_number(ECIDNum, AccountId) ->
         'true' -> ECIDNum
     end.
 
+-spec valid_emergency_numbers(ne_binary()) -> ne_binaries().
 valid_emergency_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, <<"phone_numbers">>) of
@@ -339,6 +356,7 @@ valid_emergency_numbers(AccountId) ->
            DefaultECID
     end.
 
+-spec valid_emergency_number(ne_binary()) -> ne_binary().
 valid_emergency_number(AccountId) ->
     [H|_] = valid_emergency_numbers(AccountId),
     H.
