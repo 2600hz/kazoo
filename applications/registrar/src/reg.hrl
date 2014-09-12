@@ -8,28 +8,29 @@
 
 -define(CONFIG_CAT, <<"registrar">>).
 
--record(auth_user, {realm
-                    ,username
-                    ,password
-                    ,account_id
-                    ,account_db
-                    ,authorizing_type
-                    ,authorizing_id
-                    ,method
-                    ,owner_id
-                    ,suppress_unregister_notifications
-                    ,register_overwrite_notify
-                    ,account_realm
-                    ,account_name
-                    ,nonce
-                    ,a3a8_key
-                    ,a3a8_kc
-                    ,a3a8_sres
-                    ,msisdn
-                    ,doc
-                    ,request
+-record(auth_user, {realm :: ne_binary()
+                    ,username :: ne_binary()
+                    ,password :: api_binary()
+                    ,account_id :: api_binary()
+                    ,account_db :: api_binary()
+                    ,authorizing_type :: api_binary()
+                    ,authorizing_id :: api_binary()
+                    ,method :: api_binary()
+                    ,owner_id :: api_binary()
+                    ,suppress_unregister_notifications = 'false' :: boolean()
+                    ,register_overwrite_notify = 'false' :: boolean()
+                    ,account_realm :: api_binary()
+                    ,account_name :: api_binary()
+                    ,nonce :: api_binary()
+                    ,a3a8_key :: api_binary()
+                    ,a3a8_kc :: api_binary()
+                    ,a3a8_sres :: api_binary()
+                    ,msisdn :: api_binary()
+                    ,doc :: api_object()
+                    ,request :: api_object()
                    }).
 -type auth_user() :: #auth_user{}.
+
 
 -define(GSM_CACHED_METHOD, <<"gsm_cached">>).
 -define(GSM_A3A8_METHOD, <<"gsm_a3a8">>).

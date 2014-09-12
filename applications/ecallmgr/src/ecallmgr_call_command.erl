@@ -405,7 +405,9 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
             Type = wh_json:get_value(<<"Type">>, JObj),
             Method = wh_json:get_value(<<"Method">>, JObj),
             Txt = wh_json:get_value(<<"Say-Text">>, JObj),
-            Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
+            Gender = wh_json:get_value(<<"Gender">>, JObj, <<>>),
+
+            Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt, " ", Gender]),
             lager:debug("say command ~s", [Arg]),
             {<<"say">>, Arg}
     end;
