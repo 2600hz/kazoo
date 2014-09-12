@@ -21,6 +21,16 @@ playback('undefined', _) ->
 playback(<<"tts://", _/binary>> = TTS, Options) ->
     lager:debug("lookup tts media url for ~s", [TTS]),
     wh_media_tts:get_uri(TTS, Options);
+playback(<<"prompt://", PromptPath/binary>>, Options) ->
+    lager:debug("looking up prompt path ~s", [PromptPath]),
+    case binary:split(PromptPath, <<"/">>, ['global']) of
+        [AccountId, PromptId, Language] ->
+            Media = wh_media_map:prompt_path(AccountId, PromptId, Language),
+            playback(Media, Options);
+        _Path ->
+            lager:warning("invalid prompt path: ~p", [_Path]),
+            {'error', 'invalid_media_name'}
+    end;
 playback(Media, Options) ->
     lager:debug("lookup media url for ~s", [Media]),
     case wh_media_file:get_uri(Media, Options) of
@@ -29,7 +39,7 @@ playback(Media, Options) ->
             _ = wh_media_file:maybe_prepare_proxy(URI),
             Ok
     end.
-            
+
 -spec store(ne_binary(), ne_binary(), ne_binary()) ->
                    {'ok', ne_binary()} |
                    {'error', _}.
