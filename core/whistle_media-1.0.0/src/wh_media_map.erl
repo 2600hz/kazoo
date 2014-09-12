@@ -92,6 +92,17 @@ default_prompt_path(PromptId, Language) ->
 -spec handle_media_doc(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_media_doc(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
+
+    handle_media_doc_change(JObj, wh_json:get_value(<<"Event-Name">>, JObj)).
+
+handle_media_doc_change(JObj, <<"doc_deleted">>) ->
+    MediaId = wh_json:get_value(<<"ID">>, JObj),
+    Database = wh_json:get_value(<<"Database">>, JObj),
+    gen_listener:cast(?MODULE, {'rm_mapping'
+                                ,wh_util:format_account_id(Database, 'raw')
+                                ,MediaId
+                               });
+handle_media_doc_change(JObj, _Change) ->
     {'ok', Doc} = couch_mgr:open_doc(wh_json:get_value(<<"Database">>, JObj)
                                      ,wh_json:get_value(<<"ID">>, JObj)
                                     ),
@@ -156,6 +167,9 @@ init([]) ->
 handle_call({'add_mapping', AccountId, JObj}, _From, State) ->
     maybe_add_prompt(AccountId, JObj),
     {'reply', 'ok', State};
+handle_call({'rm_mapping', AccountId, PromptId}, _From, State) ->
+    lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
+    {'reply', ets:delete(table_id(), mapping_id(AccountId, PromptId)), State};
 handle_call({'new_map', Map}, _From, State) ->
     {'reply', ets:insert_new(table_id(), Map), State};
 handle_call(_Request, _From, State) ->
@@ -174,6 +188,10 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'add_mapping', AccountId, JObj}, State) ->
     maybe_add_prompt(AccountId, JObj),
+    {'noreply', State};
+handle_cast({'rm_mapping', AccountId, PromptId}, State) ->
+    lager:debug("removing prompt mappings for ~s/~s", [AccountId, PromptId]),
+    ets:delete(table_id(), mapping_id(AccountId, PromptId)),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
@@ -321,7 +339,7 @@ get_map(PromptId) ->
     get_map(?WH_MEDIA_DB, PromptId).
 
 get_map(?WH_MEDIA_DB = Db, PromptId) ->
-    MapId = list_to_binary([Db, "/", PromptId]),
+    MapId = mapping_id(Db, PromptId),
     case ets:lookup(table_id(), MapId) of
         [Map] -> Map;
         [] ->
@@ -332,7 +350,7 @@ get_map(?WH_MEDIA_DB = Db, PromptId) ->
                       }
     end;
 get_map(AccountId, PromptId) ->
-    MapId = list_to_binary([AccountId, "/", PromptId]),
+    MapId = mapping_id(AccountId, PromptId),
     case ets:lookup(table_id(), MapId) of
         [] ->
             lager:debug("failed to find map ~s for account, loading", [MapId]),
@@ -344,7 +362,7 @@ get_map(AccountId, PromptId) ->
 -spec init_account_map(ne_binary(), ne_binary()) -> 'true'.
 init_account_map(AccountId, PromptId) ->
     SystemMap = get_map(PromptId),
-    MapId = list_to_binary([AccountId, "/", PromptId]),
+    MapId = mapping_id(AccountId, PromptId),
     'true' = gen_listener:call(?MODULE, {'new_map', SystemMap#media_map{
                                                       id=MapId
                                                       ,account_id=AccountId
@@ -386,6 +404,10 @@ language_keys(<<Primary:5/binary, "_", _Secondary:5/binary>> = Lang, Acc) ->
     language_keys(Primary, [Lang | Acc]);
 language_keys(Lang, Acc) ->
     lists:reverse([Lang | Acc]).
+
+-spec mapping_id(ne_binary(), ne_binary()) -> ne_binary().
+mapping_id(AccountId, PromptId) ->
+    list_to_binary([AccountId, "/", PromptId]).
 
 -ifdef(TEST).
 
