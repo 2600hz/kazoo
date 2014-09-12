@@ -254,7 +254,6 @@ init_map(Db, View, StartKey, Limit, SendFun) ->
                ,{'limit', Limit+1}
                ,'include_docs'
               ],
-    lager:debug("couch_mgr:get_results(~p, ~p, ~p)", [Db, View, Options]),
     case couch_mgr:get_results(Db, View, Options) of
         {'ok', []} -> lager:debug("no more results in ~s:~s", [Db, View]);
         {'ok', ViewResults} ->
@@ -264,7 +263,6 @@ init_map(Db, View, StartKey, Limit, SendFun) ->
     end.
 
 init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
-    lager:debug("got ~b results, limit ~b", [length(ViewResults), Limit]),
     try lists:split(Limit, ViewResults) of
         {Results, []} ->
             add_mapping(Db, SendFun, Results),
@@ -291,6 +289,9 @@ add_mapping(Db, SendFun, JObjs) ->
 maybe_add_prompt(AccountId, JObj) ->
     maybe_add_prompt(AccountId, JObj, wh_json:get_value(<<"prompt_id">>, JObj)).
 
+maybe_add_prompt(?WH_MEDIA_DB, JObj, 'undefined') ->
+    lager:warning("adding old system prompt ~s", [wh_json:get_value(<<"_id">>, JObj)]),
+    maybe_add_prompt(?WH_MEDIA_DB, JObj, wh_json:get_value(<<"_id">>, JObj));
 maybe_add_prompt(_AccountId, _JObj, 'undefined') ->
     lager:debug("no prompt id, ignoring ~s for ~s", [wh_json:get_value(<<"_id">>, _JObj), _AccountId]);
 maybe_add_prompt(AccountId, JObj, PromptId) ->
@@ -299,7 +300,7 @@ maybe_add_prompt(AccountId, JObj, PromptId) ->
 
     #media_map{languages=Langs}=Map = get_map(AccountId, PromptId),
 
-    lager:debug("adding language ~s for prompt ~s to db ~s", [Lang, PromptId, AccountId]),
+    lager:debug("adding language ~s for prompt ~s to map for ~s", [Lang, PromptId, AccountId]),
     ets:insert(table_id()
                ,Map#media_map{
                   account_id=AccountId
@@ -322,27 +323,22 @@ get_map(PromptId) ->
 get_map(?WH_MEDIA_DB = Db, PromptId) ->
     MapId = list_to_binary([Db, "/", PromptId]),
     case ets:lookup(table_id(), MapId) of
+        [Map] -> Map;
         [] ->
-            lager:debug("init system media map"),
             #media_map{id=MapId
                        ,account_id=Db
                        ,prompt_id=PromptId
                        ,languages=wh_json:new()
-                      };
-        [Map] ->
-            lager:debug("found system map"),
-            Map
+                      }
     end;
 get_map(AccountId, PromptId) ->
     MapId = list_to_binary([AccountId, "/", PromptId]),
     case ets:lookup(table_id(), MapId) of
         [] ->
             lager:debug("failed to find map ~s for account, loading", [MapId]),
-            init_account_map(AccountId, PromptId),
+            _ = init_account_map(AccountId, PromptId),
             load_account_map(AccountId, PromptId);
-        [Map] ->
-            lager:debug("found account map"),
-            Map
+        [Map] -> Map
     end.
 
 -spec init_account_map(ne_binary(), ne_binary()) -> 'true'.
@@ -356,7 +352,7 @@ init_account_map(AccountId, PromptId) ->
 
 -spec load_account_map(ne_binary(), ne_binary()) -> media_map().
 load_account_map(AccountId, PromptId) ->
-    lager:debug("loading account map for ~s", [AccountId]),
+    lager:debug("attempting to load account map for ~s/~s", [AccountId, PromptId]),
 
     case couch_mgr:get_results(wh_util:format_account_id(AccountId, 'encoded')
                                ,<<"media/listing_by_prompt">>
@@ -370,7 +366,7 @@ load_account_map(AccountId, PromptId) ->
         {'ok', []} ->
             lager:debug("account ~s has 0 languages for prompt ~s", [AccountId, PromptId]);
         {'ok', PromptFiles} ->
-            lager:debug("account ~s has prompts for prompt ~s: ~p", [AccountId, PromptId, PromptFiles]),
+            lager:debug("account ~s has prompts for prompt ~s", [AccountId, PromptId]),
             add_mapping(AccountId, fun gen_listener:call/2, PromptFiles);
         {'error', _E} ->
             lager:debug("failed to load account ~s prompts: ~p", [AccountId, _E])
