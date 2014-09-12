@@ -350,7 +350,7 @@ get_auth_value(JObj) ->
                                ,<<"value">>
                               ], JObj).
 
--spec add_account_name(auth_user()) -> 'ok'.
+-spec add_account_name(auth_user()) -> auth_user().
 add_account_name(#auth_user{account_id=AccountId
                             ,account_db='undefined'
                            }=AuthUser
@@ -359,6 +359,7 @@ add_account_name(#auth_user{account_id=AccountId
 add_account_name(#auth_user{account_db=AccountDb}=AuthUser) ->
     add_account_name(AuthUser, AccountDb).
 
+-spec add_account_name(auth_user(), ne_binary()) -> auth_user().
 add_account_name(#auth_user{account_id=AccountId}=AuthUser, AccountDb) ->
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _} -> AuthUser;
