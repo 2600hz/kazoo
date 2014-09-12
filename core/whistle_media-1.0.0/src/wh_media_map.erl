@@ -89,6 +89,7 @@ default_prompt_path(PromptId, Language) ->
     #media_map{languages=Langs} = get_map(PromptId),
     wh_json:get_first_defined(language_keys(Language), Langs).
 
+-spec handle_media_doc(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_media_doc(JObj, _Props) ->
     'true' = wapi_conf:doc_update_v(JObj),
     {'ok', Doc} = couch_mgr:open_doc(wh_json:get_value(<<"Database">>, JObj)
@@ -238,6 +239,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec init_map() -> 'ok'.
+-spec init_map(ne_binary()) -> 'ok'.
+-spec init_map(ne_binary(), ne_binary(), binary(), pos_integer(), fun()) -> 'ok'.
+-spec init_map(ne_binary(), ne_binary(), binary(), pos_integer(), fun(), wh_json:objects()) -> 'ok'.
 init_map() ->
     init_map(?WH_MEDIA_DB).
 
@@ -275,26 +280,29 @@ init_map(Db, View, _StartKey, Limit, SendFun, ViewResults) ->
             lager:debug("added the last of the view results from ~s", [View])
     end.
 
+-spec add_mapping(ne_binary(), fun(), wh_json:objects()) -> 'ok'.
 add_mapping(Db, SendFun, JObjs) ->
     AccountId = wh_util:format_account_id(Db, 'raw'),
-    [SendFun(?MODULE, {'add_mapping', AccountId, wh_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs].
+    _ = [SendFun(?MODULE, {'add_mapping', AccountId, wh_json:get_value(<<"doc">>, JObj)}) || JObj <- JObjs],
+    'ok'.
 
-maybe_add_prompt(Id, JObj) ->
-    lager:debug("add prompt ~s: ~p", [Id, JObj]),
-    maybe_add_prompt(Id, JObj, wh_json:get_value(<<"prompt_id">>, JObj)).
+-spec maybe_add_prompt(ne_binary(), wh_json:object()) -> 'ok'.
+-spec maybe_add_prompt(ne_binary(), wh_json:object(), api_binary()) -> 'ok'.
+maybe_add_prompt(AccountId, JObj) ->
+    maybe_add_prompt(AccountId, JObj, wh_json:get_value(<<"prompt_id">>, JObj)).
 
-maybe_add_prompt(_Id, _JObj, 'undefined') ->
-    lager:debug("no prompt id, ignoring ~s for ~s", [wh_json:get_value(<<"_id">>, _JObj), _Id]);
-maybe_add_prompt(Id, JObj, PromptId) ->
-    lager:debug("add prompt ~s ~s: ~p", [Id, PromptId, JObj]),
-    Lang = wh_json:get_value(<<"language">>, JObj, wh_media_util:prompt_language(Id)),
+maybe_add_prompt(_AccountId, _JObj, 'undefined') ->
+    lager:debug("no prompt id, ignoring ~s for ~s", [wh_json:get_value(<<"_id">>, _JObj), _AccountId]);
+maybe_add_prompt(AccountId, JObj, PromptId) ->
+    lager:debug("add prompt ~s to ~s", [PromptId, AccountId]),
+    Lang = wh_json:get_value(<<"language">>, JObj, wh_media_util:prompt_language(AccountId)),
 
-    #media_map{languages=Langs}=Map = get_map(Id, PromptId),
+    #media_map{languages=Langs}=Map = get_map(AccountId, PromptId),
 
-    lager:debug("adding language ~s for prompt ~s to db ~s", [Lang, PromptId, Id]),
+    lager:debug("adding language ~s for prompt ~s to db ~s", [Lang, PromptId, AccountId]),
     ets:insert(table_id()
                ,Map#media_map{
-                  account_id=Id
+                  account_id=AccountId
                   ,prompt_id=PromptId
                   ,languages=wh_json:set_value(Lang
                                                ,wh_media_util:prompt_path(wh_json:get_value(<<"pvt_account_db">>, JObj)
@@ -303,7 +311,8 @@ maybe_add_prompt(Id, JObj, PromptId) ->
                                                ,Langs
                                               )
                  }
-              ).
+              ),
+    'ok'.
 
 -spec get_map(ne_binary()) -> media_map().
 -spec get_map(ne_binary(), ne_binary()) -> media_map().
