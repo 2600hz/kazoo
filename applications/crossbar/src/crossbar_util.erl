@@ -616,7 +616,8 @@ populate_resp(JObj, AccountId, UserId) ->
       ,JObj
      ).
 
--spec load_apps(ne_binary(), ne_binary()) -> api_object().
+-spec load_apps(ne_binary(), api_binary()) -> api_object().
+load_apps(_, 'undefined') -> 'undefined';
 load_apps(AccountId, UserId) ->
     MasterAccountDb = get_master_account_db(),
     Lang = get_language(AccountId, UserId),
@@ -649,7 +650,8 @@ filter_apps([JObj|JObjs], Lang, Acc) ->
         ),
     filter_apps(JObjs, Lang, [FormatedApp|Acc]).
 
--spec get_language(ne_binary(), ne_binary()) -> ne_binary().
+-spec get_language(ne_binary(), api_binary()) -> api_binary().
+get_language(_, 'undefined') -> 'undefined';
 get_language(AccountId, UserId) ->
     case ?MODULE:get_user_lang(AccountId, UserId) of
         {'ok', Lang} -> Lang;
