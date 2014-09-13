@@ -12,9 +12,8 @@ You can set a presence ID at the user level. By adding: `presence_id` field on y
 
 ## QuickCall
 
-Additional info for the WIKI on QuickCall
+Additional info for [QuickCall is on the wiki.](https://2600hz.atlassian.net/wiki/display/APIs/QuickCall+API)
 
-[QuickCall API](https://2600hz.atlassian.net/wiki/display/APIs/QuickCall+API)
 
 ```
 http://{your kazoo domain}:8000/v1/accounts/{account_id}/users/{user_id}/quickcall/{number_to_call}?auth_token={API key or Auth Token}&cid-number={caller ID number}&cid-name={caller ID name}
