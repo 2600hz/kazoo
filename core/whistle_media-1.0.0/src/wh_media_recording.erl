@@ -248,7 +248,8 @@ handle_cast('store_failed', State) ->
     {'stop', 'normal', State};
 
 handle_cast({'gen_listener',{'created_queue',Queue}}, #state{call=Call}=State) ->
-    {'noreply', State#state{call=whapps_call:set_controller_queue(Queue, Call)}};
+    Call1 = whapps_call:kvs_store('consumer_pid', wh_amqp_channel:consumer_pid(), Call),
+    {'noreply', State#state{call=whapps_call:set_controller_queue(Queue, Call1)}};
 
 handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='true'}=State) ->
     lager:debug("waiting for answer to start recording"),
