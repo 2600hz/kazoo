@@ -33,6 +33,11 @@ get_cdr_doc_id(Year, Month, CallId) ->
 
 -spec save_cdr(api_binary(), wh_json:object()) ->
                       'ok' | wh_std_return().
+save_cdr(?WH_ANONYMOUS_CDR_DB=Db, Doc) ->
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_anonymous">>, 'false') of
+        'false' -> 'ok';
+        'true' -> save_cdr(Db, Doc, 0)
+    end;
 save_cdr(AccountMOD, Doc) ->
     save_cdr(AccountMOD, Doc, 0).
 

@@ -39,15 +39,29 @@ bind(Module, Bindings) ->
 %%--------------------------------------------------------------------
 -spec reconcile_services(cb_context:context()) -> cb_context:context().
 reconcile_services(Context) ->
-    reconcile_services(Context, cb_context:req_verb(Context), cb_context:resp_status(Context)).
+    case cb_context:resp_status(Context) =:= 'success'
+        andalso cb_context:req_verb(Context) =/= <<"GET">>
+    of
+        'false' -> Context;
+        'true' ->
+            lager:debug("maybe reconciling services for account ~s"
+                       ,[cb_context:account_id(Context)]),
+            reconcile_services(Context, cb_context:req_nouns(Context))
+    end.
 
-reconcile_services(Context, <<"GET">>, 'success') -> Context;
-reconcile_services(Context, _Verb, 'success') ->
-    lager:debug("successful ~s, reconciling services", [_Verb]),
+reconcile_services(Context, [{<<"devices">>, _} | Nouns]) ->
+    lager:debug("reconcile services for devices", []),
     _ = wh_services:reconcile(cb_context:account_id(Context), <<"devices">>),
-    Context;
-reconcile_services(Context, _Verb, _Status) ->
-    Context.
+    reconcile_services(Context, Nouns);
+reconcile_services(Context, [{<<"users">>, _} | Nouns]) ->
+    lager:debug("reconcile services for users", []),
+    _ = wh_services:reconcile(cb_context:account_id(Context), <<"users">>),
+    reconcile_services(Context, Nouns);
+reconcile_services(Context, [{<<"limits">>, _} | Nouns]) ->
+    lager:debug("reconcile services for limits", []),
+    _ = wh_services:reconcile(cb_context:account_id(Context), <<"limits">>),
+    reconcile_services(Context, Nouns);
+reconcile_services(Context, _) -> Context.
 
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
