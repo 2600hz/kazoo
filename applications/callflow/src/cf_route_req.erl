@@ -54,13 +54,14 @@ maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch) ->
 					lager:debug("no preflow ringback set ~p",[Doc]),
 					{Flow,'undefined'};
 				Module -> 
-					try 
-						case (wh_util:to_atom(Module, 'true')):get_ringback(Call) of
-							'undefined' -> {Flow,'undefined'};
-							{Media,Opaq} -> {wh_json:set_value([<<"ringback">>, <<"early">>], Media, Flow),Opaq};
-							Media -> {wh_json:set_value([<<"ringback">>, <<"early">>], Media, Flow),'undefined'}
-						end
-					catch _ -> {Flow,'undefined'}
+					ModuleAsAtom = wh_util:to_atom(Module, 'true'),
+				        case (erlang:function_exported(ModuleAsAtom, get_ringback, 1)) of
+				        	true -> case (ModuleAsAtom:get_ringback(Call)) of
+								'undefined' -> {Flow,'undefined'};
+								{Media,Opaq} -> {wh_json:set_value([<<"ringback">>, <<"early">>], Media, Flow),Opaq};
+								Media -> {wh_json:set_value([<<"ringback">>, <<"early">>], Media, Flow),'undefined'}
+							end;
+						_ -> {Flow,'undefined'}
 					end
 			end,
             case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
