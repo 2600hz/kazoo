@@ -1,5 +1,5 @@
 {
-  "_id": "conference",
+  "_id": "conferences",
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "required": false,
@@ -59,6 +59,7 @@
           "required": false,
           "name": "Call In Numbers",
           "description": "Defines the conference number(s) for members",
+          "minItems": 0,
           "items": {
             "type": "string",
             "required": false
