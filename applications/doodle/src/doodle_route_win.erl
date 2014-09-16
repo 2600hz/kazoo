@@ -17,6 +17,7 @@
                            ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
                           ])).
 
+-define(DEFAULT_LANGUAGE, <<"en-US">>).
 -define(DEFAULT_UNAVAILABLE_MESSAGE, <<"sms service unavailable">>).
 -define(DEFAULT_UNAVAILABLE_MESSAGE_NODE, wh_json:from_list([{?DEFAULT_LANGUAGE, ?DEFAULT_UNAVAILABLE_MESSAGE}])).
 
