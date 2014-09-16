@@ -17,6 +17,9 @@
                            ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
                           ])).
 
+-define(DEFAULT_UNAVAILABLE_MESSAGE, <<"sms service unavailable">>).
+-define(DEFAULT_UNAVAILABLE_MESSAGE_NODE, wh_json:from_list([{?DEFAULT_LANGUAGE, ?DEFAULT_UNAVAILABLE_MESSAGE}])).
+
 -export([handle_req/2
          ,maybe_restrict_call/2
         ]).
@@ -40,6 +43,7 @@ maybe_restrict_call(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
             lager:debug("endpoint is restricted from making this call, terminate", []),
+            send_service_unavailable(JObj, Call),
             'ok';
         'false' ->
             lager:info("setting initial information about the call"),
@@ -243,3 +247,27 @@ update_ccvs(Call) ->
 execute_callflow(Call) ->
     lager:info("message has been setup, beginning to process the message"),
     doodle_exe_sup:new(Call).
+
+-spec send_service_unavailable(wh_json:object(), whapps_call:call()) -> 'ok'.
+send_service_unavailable(_JObj, Call) ->
+    EndpointId = whapps_call:authorizing_id(Call),
+    Body = get_unavailable_text(EndpointId),
+    case cf_endpoint:build(EndpointId, [], Call) of
+        {'error', Msg}=E ->
+            lager:debug("error getting endpoint for reply unavailable service ~s : ~p", [EndpointId, Msg]),
+            E;
+        {'ok', Endpoints} ->
+            Call1 = whapps_call:kvs_store(<<"body">>, Body, Call),
+            whapps_sms_command:b_send_sms(Endpoints, Call1)
+    end.
+
+-spec get_unavailable_text(ne_binary()) -> ne_binary().
+get_unavailable_text(EndpointId) ->
+    Endpoint = cf_endpoint:get(Call),
+    Language = wh_json:get_value(<<"language">>, Endpoint, ?DEFAULT_LANGUAGE),
+    TextNode = whapps_config:get(?CONFIG_CAT, <<"unavailable_message">>, ?DEFAULT_UNAVAILABLE_MESSAGE_NODE),
+    wh_json:get_value(Language, TextNode, ?DEFAULT_UNAVAILABLE_MESSAGE).
+
+    
+
+    
