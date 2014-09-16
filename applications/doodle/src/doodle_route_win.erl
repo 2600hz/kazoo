@@ -252,7 +252,7 @@ execute_callflow(Call) ->
 -spec send_service_unavailable(wh_json:object(), whapps_call:call()) -> 'ok'.
 send_service_unavailable(_JObj, Call) ->
     EndpointId = whapps_call:authorizing_id(Call),
-    Body = get_unavailable_text(EndpointId),
+    Body = get_unavailable_text(Call),
     case cf_endpoint:build(EndpointId, [], Call) of
         {'error', Msg}=E ->
             lager:debug("error getting endpoint for reply unavailable service ~s : ~p", [EndpointId, Msg]),
@@ -262,8 +262,8 @@ send_service_unavailable(_JObj, Call) ->
             whapps_sms_command:b_send_sms(Endpoints, Call1)
     end.
 
--spec get_unavailable_text(ne_binary()) -> ne_binary().
-get_unavailable_text(EndpointId) ->
+-spec get_unavailable_text(whapps_call:call()) -> ne_binary().
+get_unavailable_text(Call) ->
     Endpoint = cf_endpoint:get(Call),
     Language = wh_json:get_value(<<"language">>, Endpoint, ?DEFAULT_LANGUAGE),
     TextNode = whapps_config:get(?CONFIG_CAT, <<"unavailable_message">>, ?DEFAULT_UNAVAILABLE_MESSAGE_NODE),
