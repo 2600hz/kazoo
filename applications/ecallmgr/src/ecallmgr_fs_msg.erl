@@ -118,7 +118,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast('bind_to_msg_events', #state{node=Node}=State) ->
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"KZ::DELIVERY_REPORT">>)}),
-    gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"KZ::MESSAGE">>)}),
+    gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"SMS::DELIVERY_REPORT">>)}),
     lager:debug("bound to recv_message events on node ~s", [Node]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
@@ -354,6 +354,8 @@ process_fs_event(Node, Props) ->
 
 -spec process_fs_event(ne_binary(), ne_binary(), atom(), wh_proplist()) -> any().
 process_fs_event(<<"CUSTOM">>, <<"KZ::DELIVERY_REPORT">>, Node, Props) ->
+    process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props);
+process_fs_event(<<"CUSTOM">>, <<"SMS::DELIVERY_REPORT">>, Node, Props) ->
     _ServerID =  props:get_value(<<"Server-ID">>, Props),
     CallId = props:get_value(<<"Call-ID">>, Props),
     BaseProps = props:filter_empty(props:filter_undefined(

@@ -308,6 +308,7 @@
                            ,?CHANNEL_MOVE_RELEASED_EVENT
                            ,?CHANNEL_MOVE_COMPLETE_EVENT
                            ,'KZ::DELIVERY_REPORT'
+                           ,'SMS::DELIVERY_REPORT'
                            ,'KZ::MESSAGE'
                           ]).
 
