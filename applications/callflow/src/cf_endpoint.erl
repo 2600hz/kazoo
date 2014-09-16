@@ -119,6 +119,7 @@ merge_attributes(Endpoint) ->
             ,<<"call_forward">>
             ,<<"dial_plan">>
             ,<<"metaflows">>
+            ,<<"language">>
             ,?CF_ATTR_LOWER_KEY
            ],
     merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
