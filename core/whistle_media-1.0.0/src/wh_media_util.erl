@@ -34,6 +34,8 @@
 -define(NORMALIZE_SOURCE_ARGS, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_source_args">>, <<>>)).
 -define(NORMALIZE_DEST_ARGS, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_destination_args">>, <<"-r 8000">>)).
 
+-define(USE_ACCOUNT_OVERRIDES, whapps_config:get_is_true(?CONFIG_CAT, <<"support_account_overrides">>, 'true')).
+
 -type normalized_media() :: {'ok', iolist()} |
                             {'error', ne_binary()}.
 -spec normalize_media(ne_binary(), ne_binary(), binary()) ->
@@ -237,7 +239,10 @@ get_prompt(Name, Lang, 'undefined') ->
 get_prompt(Name, 'undefined', Call) ->
     get_prompt(Name, prompt_language(whapps_call:account_id(Call)), Call);
 get_prompt(Name, Lang, Call) ->
-    get_account_prompt(Name, Lang, Call).
+    case ?USE_ACCOUNT_OVERRIDES of
+        'false' -> get_system_prompt(Name, Lang);
+        'true' -> get_account_prompt(Name, Lang, Call)
+    end.
 
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call()) -> api_binary().
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call(), ne_binary()) -> api_binary().
@@ -385,16 +390,18 @@ default_prompt_language(Default) ->
       whapps_config:get(?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
      ).
 
--spec prompt_language(api_binary(), ne_binary()) -> ne_binary().
-prompt_language('undefined') -> default_prompt_language();
-prompt_language(<<_/binary>> = AccountId) ->
-    wh_util:to_lower_binary(
-      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, default_prompt_language())
-     ).
+-spec prompt_language(api_binary()) -> ne_binary().
+prompt_language(AccountId) ->
+    prompt_language(AccountId, default_prompt_language()).
 
+-spec prompt_language(api_binary(), ne_binary()) -> ne_binary().
 prompt_language('undefined', Default) ->
     default_prompt_language(Default);
 prompt_language(<<_/binary>> = AccountId, Default) ->
-    wh_util:to_lower_binary(
-      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, wh_util:to_lower_binary(Default))
-     ).
+    case ?USE_ACCOUNT_OVERRIDES of
+        'false' -> default_prompt_language();
+        'true' ->
+            wh_util:to_lower_binary(
+              whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, wh_util:to_lower_binary(Default))
+             )
+    end.
