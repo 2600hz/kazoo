@@ -11,17 +11,20 @@
 -module(cb_apps_store).
 
 -export([init/0
-         ,authenticate/1
-         ,authorize/1
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,validate/1, validate/2, validate/3, validate/4
          ,content_types_provided/3 ,content_types_provided/4
-         ,get/1, get/2, get/3, get/4
+         ,put/3
+         ,post/3
+         ,delete/3
         ]).
 
 -include("../crossbar.hrl").
 
+-define(LOCAL, <<"local">>).
+-define(ICON, <<"icon">>).
+-define(SCREENSHOT, <<"screenshot">>).
 -define(CB_LIST, <<"apps_store/crossbar_listing">>).
 
 %%%===================================================================
@@ -37,32 +40,13 @@
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_provided.apps_store">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.apps_store">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.apps_store">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.apps_store">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.apps_store">>, ?MODULE, 'get').
+    _ = crossbar_bindings:bind(<<"*.execute.put.apps_store">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.apps_store">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.apps_store">>, ?MODULE, 'delete').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
-%% known, or false if not.
-%% @end
-%%--------------------------------------------------------------------
--spec authenticate(cb_context:context()) -> 'false'.
-authenticate(_) -> 'false'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
-%% allowed to access the resource, or false if not.
-%% @end
-%%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> 'false'.
-authorize(_) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -79,6 +63,8 @@ allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_) ->
     [?HTTP_GET].
+allowed_methods(?LOCAL, _) ->
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PUT];
 allowed_methods(_, _) ->
     [?HTTP_GET].
 allowed_methods(_, _, _) ->
@@ -88,9 +74,6 @@ allowed_methods(_, _, _) ->
 %% @public
 %% @doc
 %% Does the path point to a valid resource
-%% So /apps_store => []
-%%    /apps_store/foo => [<<"foo">>]
-%%    /apps_store/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
@@ -107,10 +90,10 @@ resource_exists(_, _, _) -> 'true'.
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"icon">>) ->
-    case read(Id, Context) of
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?ICON) ->
+    case master_app_read(Id, Context) of
         #cb_context{resp_status='success', doc=JObj} ->
-            Icon = wh_json:get_value(<<"icon">>, JObj),
+            Icon = wh_json:get_value(?ICON, JObj),
             case wh_json:get_value([<<"_attachments">>, Icon], JObj) of
                 'undefined' -> Context;
                 Attachment ->
@@ -122,8 +105,8 @@ content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"icon">>
     end;
 content_types_provided(Context, _, _) -> Context.
 
-content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"screenshot">>, Num) ->
-    case read(Id, Context) of
+content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?SCREENSHOT, Num) ->
+    case master_app_read(Id, Context) of
         #cb_context{resp_status='success'}=Con ->
             case maybe_get_screenshot(Num, Con) of
                 'error' -> Context;
@@ -139,34 +122,123 @@ content_types_provided(Context, _, _, _) -> Context.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Check the request (request body, query string params, path tokens, etc)
-%% and load necessary information.
-%% /apps_store mights load a list of skel objects
-%% /apps_store/123 might load the skel object 123
-%% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
-    summary(Context).
+validate(Context) ->
+    validate_master_app(Context, cb_context:req_verb(Context)).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
-    read(Id, Context).
+validate(Context, ?LOCAL) ->
+    validate_local(load_account(Context), cb_context:req_verb(Context));
+validate(Context, Id) ->
+    validate_master_app(Context, cb_context:req_verb(Context), Id).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"icon">>) ->
+validate(Context, ?LOCAL, AppId) ->
+    validate_local(load_account(Context), cb_context:req_verb(Context), AppId);
+validate(Context, Id, ?ICON) ->
+    validate_master_app(Context, cb_context:req_verb(Context), Id, ?ICON).
+
+validate(Context, Id, ?SCREENSHOT, Num) ->
+    validate_master_app(Context, cb_context:req_verb(Context), Id, ?SCREENSHOT, Num).
+
+
+-spec validate_master_app(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate_master_app(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate_master_app(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec validate_master_app(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
+validate_master_app(Context, ?HTTP_GET) ->
+    master_app_summary(Context).
+
+validate_master_app(Context, ?HTTP_GET, Id) ->
+    master_app_read(Id, Context).
+
+validate_master_app(Context, ?HTTP_GET, Id, ?ICON) ->
     get_icon(Id, Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id, <<"screenshot">>, Num) ->
+validate_master_app(Context, ?HTTP_GET, Id, ?SCREENSHOT, Num) ->
     get_sreenshot(Id, Context, Num).
 
+-spec validate_local(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate_local(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate_local(Context, ?HTTP_GET) ->
+    summary(Context).
+
+validate_local(Context, ?HTTP_GET, AppId) ->
+    read(AppId, Context);
+validate_local(Context, ?HTTP_POST, AppId) ->
+    update(AppId, Context);
+validate_local(Context, ?HTTP_DELETE, AppId) ->
+    uninstall(AppId, Context);
+validate_local(Context, ?HTTP_PUT, AppId) ->
+    install(AppId, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+post(Context, ?LOCAL, AppId) ->
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
+            _ = replicate_account_definition(JObj),
+            RespData = wh_json:get_value([<<"apps">>, AppId], JObj, wh_json:new()),
+            cb_context:set_resp_data(Context, RespData);
+        _Status -> Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+put(Context, ?LOCAL, AppId) ->
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
+            _ = replicate_account_definition(JObj),
+            RespData = wh_json:get_value([<<"apps">>, AppId], JObj, wh_json:new()),
+            cb_context:set_resp_data(Context, RespData);
+        _Status -> Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+delete(Context, ?LOCAL, _) ->
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            JObj = cb_context:doc(Context1),
+            _ = replicate_account_definition(JObj),
+            cb_context:set_resp_data(Context, wh_json:new());
+        _Status -> Context1
+    end.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_icon(ne_binary(), cb_context:context()) -> cb_context:context().
 get_icon(Id, Context) ->
-    case read(Id, Context) of
+    case master_app_read(Id, Context) of
         #cb_context{resp_status='success', doc=JObj}=Con ->
-            Icon = wh_json:get_value(<<"icon">>, JObj),
+            Icon = wh_json:get_value(?ICON, JObj),
             case wh_json:get_value([<<"_attachments">>, Icon], JObj) of
                 'undefined' -> crossbar_util:response_bad_identifier(Id, Context);
                 Attachment ->
@@ -182,9 +254,14 @@ get_icon(Id, Context) ->
         Context1 -> Context1
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec get_sreenshot(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
 get_sreenshot(Id, Context, Num) ->
-    case read(Id, Context) of
+    case master_app_read(Id, Context) of
         #cb_context{resp_status='success'}=Con ->
             case maybe_get_screenshot(Num, Con) of
                 'error' ->
@@ -203,6 +280,11 @@ get_sreenshot(Id, Context, Num) ->
         Context1 -> Context1
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_get_screenshot(ne_binary(), cb_context:context()) ->
                                   'error' |
                                   {'ok', ne_binary(), ne_binary()}.
@@ -214,6 +296,11 @@ maybe_get_screenshot(Num, #cb_context{doc=JObj}=Context) ->
         _:_ -> 'error'
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec maybe_get_attachment(cb_context:context(), ne_binary()) ->
                                   'error' |
                                   {'ok', ne_binary(), wh_json:object()}.
@@ -224,33 +311,13 @@ maybe_get_attachment(#cb_context{doc=JObj}, Name) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is a GET, execute necessary code to fulfill the GET
-%% request. Generally, this will involve stripping pvt fields and loading
-%% the resource into the resp_data, resp_headers, etc...
-%% @end
-%%--------------------------------------------------------------------
--spec get(cb_context:context()) -> cb_context:context().
--spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec get(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
-get(#cb_context{}=Context) ->
-    Context.
-get(#cb_context{}=Context, _) ->
-    Context.
-get(#cb_context{}=Context, _, _) ->
-    Context.
-get(#cb_context{}=Context, _, _, _) ->
-    Context.
-
-%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(Id, Context) ->
+-spec master_app_read(ne_binary(), cb_context:context()) -> cb_context:context().
+master_app_read(Id, Context) ->
     Context1 = set_master_account_db(Context),
     crossbar_doc:load(Id, Context1).
 
@@ -261,8 +328,8 @@ read(Id, Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
+-spec master_app_summary(cb_context:context()) -> cb_context:context().
+master_app_summary(Context) ->
     Context1 = set_master_account_db(Context),
     crossbar_doc:load_view(?CB_LIST, [], Context1, fun normalize_view_results/2).
 
@@ -276,9 +343,153 @@ summary(Context) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% load all apps
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec summary(cb_context:context()) -> cb_context:context().
+summary(Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            Doc = cb_context:doc(Context),
+            RespData = wh_json:get_value(<<"apps">>, Doc, wh_json:new()),
+            cb_context:set_resp_data(Context, RespData);
+        _ -> Context
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load an instance from the database
+%% @end
+%%--------------------------------------------------------------------
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+read(Id, Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            Doc = cb_context:doc(Context),
+            RespData = wh_json:get_value([<<"apps">>, Id], Doc, wh_json:new()),
+            cb_context:set_resp_data(Context, RespData);
+        _ -> Context
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% install a new app on the account
+%% @end
+%%--------------------------------------------------------------------
+-spec install(ne_binary(), cb_context:context()) -> cb_context:context().
+install(AppId, Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            Doc = cb_context:doc(Context),
+            Data = cb_context:req_data(Context),
+            Apps = wh_json:get_value(<<"apps">>, Doc),
+
+            case wh_json:get_value(AppId, Apps) of
+                'undefined' ->
+                    UpdatedApps = wh_json:set_value(AppId, Data, Apps),
+                    UpdatedDoc = wh_json:set_value(<<"apps">>, UpdatedApps, Doc),
+                    cb_context:set_doc(Context, UpdatedDoc);
+                _ ->
+                    crossbar_util:response('error', <<"Application already installed">>, 400, Context)
+            end;
+        _ -> Context
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update an existing app
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec update(ne_binary(), cb_context:context()) -> cb_context:context().
+update(AppId, Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            Doc = cb_context:doc(Context),
+            Apps = wh_json:get_value(<<"apps">>, Doc),
+
+            case wh_json:get_value(AppId, Apps) of
+                'undefined' ->
+                    crossbar_util:response('error', <<"Application is not installed">>, 400, Context);
+                _ ->
+                    Data = cb_context:req_data(Context),
+                    UpdatedApps = wh_json:set_value(AppId, Data, Apps),
+                    UpdatedDoc = wh_json:set_value(<<"apps">>, UpdatedApps, Doc),
+                    cb_context:set_doc(Context, UpdatedDoc)
+            end;
+        _ -> Context
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Remove app from account
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec uninstall(ne_binary(), cb_context:context()) -> cb_context:context().
+uninstall(AppId, Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            Doc = cb_context:doc(Context),
+            Apps = wh_json:get_value(<<"apps">>, Doc),
+
+            case wh_json:get_value(AppId, Apps) of
+                'undefined' ->
+                    crossbar_util:response('error', <<"Application is not installed">>, 400, Context);
+                _ ->
+                    UpdatedApps = wh_json:delete_key(AppId, Apps),
+                    UpdatedDoc = wh_json:set_value(<<"apps">>, UpdatedApps, Doc),
+                    cb_context:set_doc(Context, UpdatedDoc)
+            end;
+        _ -> Context
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec set_master_account_db(cb_context:context()) -> cb_context:context().
 set_master_account_db(Context) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     MasterAccountDb = wh_util:format_account_id(MasterAccountId, 'encoded'),
     cb_context:set_account_db(Context, MasterAccountDb).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec load_account(cb_context:context()) -> cb_context:context().
+load_account(Context) ->
+    AccountId = cb_context:account_id(Context),
+    crossbar_doc:load(AccountId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec replicate_account_definition(wh_json:object()) ->
+                                          {'ok', wh_json:object()} |
+                                          {'error', _}.
+replicate_account_definition(JObj) ->
+    AccountId = wh_json:get_value(<<"_id">>, JObj),
+    case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', Rev} ->
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj));
+        _Else ->
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj))
+    end.
