@@ -105,6 +105,7 @@ reconcile_services(Context) ->
             reconcile_services(Context, cb_context:req_nouns(Context))
     end.
 
+-spec reconcile_services(cb_context:context(), req_nouns()) -> cb_context:context().
 reconcile_services(Context, [{<<"devices">>, _} | Nouns]) ->
     lager:debug("reconcile services for devices", []),
     _ = wh_services:reconcile(cb_context:account_id(Context), <<"devices">>),
