@@ -12,7 +12,6 @@
 -module(cb_notifications).
 
 -export([init/0
-         ,authenticate/1
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/3
@@ -30,7 +29,7 @@
                                   ,{<<"text">>, <<"plain">>}
                                  ]).
 -define(HTML, <<"html">>).
--define(TXT, <<"txt">>).
+-define(TXT, <<"text">>).
 -define(CB_LIST, <<"notifications/crossbar_listing">>).
 
 %%%===================================================================
@@ -45,27 +44,14 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.notifications">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.notifications">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.notifications">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.notifications">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.validate.notifications">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.notifications">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.notifications">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.notifications">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.notifications">>, ?MODULE, 'delete').
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
-%% known, or false if not.
-%% @end
-%%--------------------------------------------------------------------
--spec authenticate(cb_context:context()) -> 'false'.
-authenticate(_) -> 'false'.
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -76,6 +62,7 @@ authenticate(_) -> 'false'.
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
@@ -170,7 +157,7 @@ validate(Context, Id) ->
     case is_authorized(Context) of
         'true' ->
             validate_notifications(Context, fix_id(Id), cb_context:req_verb(Context));
-    'false' ->
+        'false' ->
             cb_context:add_system_error('forbidden', Context)
     end.
 
@@ -198,7 +185,7 @@ is_authorized(Context) ->
 
 is_authorized(_, AuthAccountId, [{<<"notifications">>, _}, {<<"accounts">>, AccountId}|_]) ->
     wh_services:is_reseller(AuthAccountId) andalso
-        wh_util:is_in_account_hierarchy(AccountId, AuthAccountId, 'true');
+        wh_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true');
 is_authorized(_, AuthAccountId, [{<<"notifications">>, _}|_]) ->
     AuthAccountId =:= whapps_util:get_master_account_id().
 
@@ -223,15 +210,37 @@ validate_template(Context, Id, ?HTTP_GET, _Files) ->
 validate_template(Context, _Id, ?HTTP_POST, []) ->
     Message = <<"please provide an template file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
-validate_template(Context, Id, ?HTTP_POST, [{_Filename, _File}]) ->
-    Context1 = read(Id, Context),
-    lager:debug("loaded media meta for '~s'", [Id]),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            lager:debug("loaded media meta for '~s'", [Id]),
-            Context1;
-        _Status -> Context1
+validate_template(Context, Id, ?HTTP_POST, [{_Filename, File}]) ->
+    case test_compile_template(File) of
+        'error' ->
+            crossbar_util:response('error', <<"Invalid template">>, 400, Context);
+        'ok' ->
+            Context1 = read(Id, Context),
+            case cb_context:resp_status(Context1) of
+                'success' ->
+                    lager:debug("loaded media meta for '~s'", [Id]),
+                    Context1;
+                _Status -> Context1
+            end
     end.
+
+test_compile_template(File) ->
+    Template = wh_json:get_value(<<"contents">>, File),
+    Name = erlang:list_to_atom(erlang:atom_to_list(?MODULE) ++ erlang:atom_to_list('_template')),
+    case erlydtl:compile_template(Template, Name, [{'out_dir', 'false'}]) of
+        {'ok', CustomTemplate} ->
+            lager:debug("template ~p compiled successfuly, purging now", [CustomTemplate]),
+            code:purge(CustomTemplate),
+            code:delete(CustomTemplate),
+            'ok';
+        {'error', _R} ->
+            lager:error("fail to compile template: ~p", [_R]),
+            'error';
+        _E ->
+            lager:error("fail to compile template"),
+            'error'
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -286,8 +295,10 @@ create(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+read(<<"notify_", ShortId/binary>>=Id, Context) ->
+    Context1 = crossbar_doc:load(Id, Context),
+    RespData = cb_context:resp_data(Context1),
+    cb_context:set_resp_data(Context1, wh_json:set_value(<<"id">>, ShortId, RespData)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -320,7 +331,13 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, wh_json:set_value(<<"pvt_type">>, <<"notification">>, cb_context:doc(Context)));
+    Doc = cb_context:doc(Context),
+    Id = fix_id(wh_json:get_value(<<"id">>, Doc)),
+    Doc1 = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
+                               ,{<<"_id">>, Id}
+                             ], Doc),
+    Doc2 = wh_json:delete_key(<<"id">>, Doc1),
+    cb_context:set_doc(Context, Doc2);
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 

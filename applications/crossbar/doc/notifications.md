@@ -44,8 +44,8 @@ Using Crossbar to modify notifications is very simple:
 * PUT - Add a notification.
 * POST - Updates a notification.
 * DELETE - Removes a notification.
-* GET/(HTM/TXT) - Get HTML or TXT template.
-* POST/(HTM/TXT) - Update HTML or TXT template.
+* GET/(HTM/TEXT) - Get HTML or TEXT template.
+* POST/(HTM/TEXT) - Update HTML or TEXT template.
 
 To modify an account notification. The requester must be a reseller of that account or the master account.
 
@@ -129,7 +129,7 @@ curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:application/json" -
 
     curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v1/accounts/{ACCOUNT_ID}/notifications/{ID}/html
 
-    curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v1/accounts/{ACCOUNT_ID}/notifications/{ID}/txt
+    curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v1/accounts/{ACCOUNT_ID}/notifications/{ID}/text
 
 
 #### POST - Update notification template:
