@@ -386,12 +386,13 @@ get_auth_method(JObj) ->
                                {'error', any()}.
 maybe_auth_method(AuthUser, JObj, Req, ?GSM_ANY_METHOD)->
     GsmDoc = wh_json:get_value(<<"gsm">>, JObj),
+    CachedNonce = wh_json:get_value(<<"nonce">>, GsmDoc, wh_util:rand_hex_binary(16)),
     Nonce = remove_dashes(
               wh_json:get_first_defined([<<"nonce">>
-                                             ,<<"Auth-Nonce">>
+                                         ,<<"Auth-Nonce">>
                                         ]
                                         ,Req
-                                        ,wh_util:rand_hex_binary(16)
+                                        ,CachedNonce
                                        )
              ),
     GsmKey = wh_json:get_value(<<"key">>, GsmDoc),

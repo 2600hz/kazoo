@@ -593,6 +593,13 @@
             "required": false,
             "name": "Directories",
             "description": "Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller."
+        },
+        "language": {
+            "type": "string",
+            "required": false,
+            "name": "Language",
+            "description": "The language for this user",
+            "default":"en-us"
         }
     }
 }
