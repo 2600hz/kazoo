@@ -226,16 +226,16 @@ handle_connected_channel(_JObj) ->
 
 -spec presence_event(wh_json:object()) -> 'ok'.
 presence_event(JObj) ->
-    lager:info("PRESENCE EVENT ~p", [JObj]),
     State = wh_json:get_value(<<"State">>, JObj),
     maybe_handle_presence_state(JObj, State).
     
 -spec maybe_handle_presence_state(wh_json:object(), api_binary()) -> 'ok'.
 maybe_handle_presence_state(JObj, <<"online">>=State) ->
-    handle_update(JObj, State);
+    handle_update(JObj, State, 0);
 maybe_handle_presence_state(JObj, <<"offline">>=State) ->
-    handle_update(JObj, State);
-maybe_handle_presence_state(_JObj, _) -> 'ok'.
+    handle_update(JObj, State, 0);
+maybe_handle_presence_state(JObj, State) ->
+    handle_update(wh_json:delete_keys([<<"From">>, <<"To">>], JObj), State, 0).
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, ?PRESENCE_HANGUP) ->
