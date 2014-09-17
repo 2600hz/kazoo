@@ -224,12 +224,15 @@ validate_template(Context, Id, ?HTTP_POST, [{_Filename, File}]) ->
             end
     end.
 
+-spec test_compile_template(wh_json:object()) -> 'ok' | 'error'.
 test_compile_template(File) ->
     Template = wh_json:get_value(<<"contents">>, File),
-    Name = erlang:list_to_atom(erlang:atom_to_list(?MODULE) ++ erlang:atom_to_list('_template')),
+    % Atom leak !!!!
+    {_, _, Now} = erlang:now(),
+    Name = wh_util:to_atom(Now, 'true'),
     case erlydtl:compile_template(Template, Name, [{'out_dir', 'false'}]) of
         {'ok', CustomTemplate} ->
-            lager:debug("template ~p compiled successfuly, purging now", [CustomTemplate]),
+            lager:debug("template compiled successfuly, purging now"),
             code:purge(CustomTemplate),
             code:delete(CustomTemplate),
             'ok';
