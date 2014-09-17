@@ -37,7 +37,4 @@
            "reduce": "_count"
        }
     }
-    ,"filters": {
-        "export":"function(doc, req) { return ( doc.pvt_type == 'account' ); }"
-    }
 }

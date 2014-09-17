@@ -65,6 +65,8 @@
          ,generate_year_month_sequence/3
         ]).
 
+-export([descendants_count/0, descendants_count/1]).
+
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE
@@ -839,6 +841,119 @@ generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, Range) ->
                                  ,{ToYear, ToMonth}
                                  ,[{FromYear, FromMonth} | Range]
                                 ).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec descendants_count() -> 'ok'.
+-spec descendants_count(wh_proplists() | ne_binary()) -> 'ok'.
+descendants_count() ->
+    Limit = whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000),
+    ViewOptions = [
+        {'limit', Limit}
+        ,{'skip', 0}
+    ],
+    descendants_count(ViewOptions).
+
+descendants_count(Opts) when is_list(Opts) ->
+    ViewOptions = [
+        {'group_level', 1}
+        |props:delete('group_level', Opts)
+    ],
+    case load_descendants_count(ViewOptions) of
+        {'error', 'no_descendants'} ->
+            case props:get_value('key', ViewOptions) of
+                'undefined' -> 'ok';
+                AccountId ->
+                    maybe_update_descendants_count(AccountId, 0)
+            end;
+        {'error', _E} ->
+            io:format("could not load view listing_by_descendants_count: ~p~n", [_E]);
+        {'ok', Counts} ->
+            lists:foreach(
+                fun({AccountId, Count}) ->
+                    maybe_update_descendants_count(AccountId, Count)
+                end
+                ,Counts
+            ),
+            case props:get_value('skip', ViewOptions) of
+                'undefined' -> 'ok';
+                Skip ->
+                    Limit = props:get_value('limit', ViewOptions),
+                    descendants_count(props:set_value('skip', Skip+Limit, ViewOptions))
+            end
+    end;
+descendants_count(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    descendants_count([{'key', AccountId}]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec load_descendants_count(wh_proplists()) -> {'ok', wh_proplists()} | {'error', _}.
+load_descendants_count(ViewOptions) ->
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
+        {'error', _E}=Resp -> Resp;
+        {'ok', []} -> {'error', 'no_descendants'};
+        {'ok', [JObj|[]]} ->
+            {'ok', [{wh_json:get_value(<<"key">>, JObj)
+                     ,wh_json:get_value(<<"value">>, JObj)}
+                   ]};
+        {'ok', JObjs} ->
+            Counts =
+                [{wh_json:get_value(<<"key">>, JObj)
+                 ,wh_json:get_value(<<"value">>, JObj)}
+                 || JObj <- JObjs],
+            {'ok', Counts}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_update_descendants_count(ne_binary(), integer()) -> 'ok'.
+maybe_update_descendants_count(AccountId, NewCount) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {'error', _E} ->
+            io:format("could not load account ~p: ~p~n", [AccountId, _E]);
+        {'ok', JObj} ->
+            OldCount = wh_json:get_integer_value(<<"descendants_count">>, JObj),
+            case OldCount =:= NewCount of
+                'true' ->
+                    io:format("~p the count is right~n", [AccountId]);
+                'false' ->
+                    update_descendants_count(AccountId, JObj, NewCount)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec update_descendants_count(ne_binary(), wh_json:object(), integer()) -> 'ok'.
+update_descendants_count(AccountId, JObj, NewCount) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    Doc = wh_json:set_value(<<"descendants_count">>, NewCount, JObj),
+    case couch_mgr:save_doc(AccountDb, Doc) of
+        {'error', _E} ->
+            io:format("failed to update count ~p: ~p~n", [AccountId, _E]);
+        {'ok', NewDoc} ->
+            _ = replicate_account_definition(NewDoc),
+            io:format("account ~p count updated~n", [AccountId]),
+            'ok'
+    end.
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
