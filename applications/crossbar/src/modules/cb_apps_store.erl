@@ -15,9 +15,9 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,validate/1, validate/2, validate/3, validate/4
          ,content_types_provided/3 ,content_types_provided/4
-         ,put/3
-         ,post/3
-         ,delete/3
+         ,put/2
+         ,post/2
+         ,delete/2
         ]).
 
 -include("../crossbar.hrl").
@@ -62,9 +62,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_) ->
-    [?HTTP_GET].
-allowed_methods(?LOCAL, _) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PUT];
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, _) ->
     [?HTTP_GET].
 allowed_methods(_, _, _) ->
@@ -90,7 +88,27 @@ resource_exists(_, _, _) -> 'true'.
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
-content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?ICON) ->
+content_types_provided(Context, Id, ?ICON) ->
+    case master_or_local(Context) of
+        'master' ->
+            content_types_provided_master(Context, cb_context:req_verb(Context), Id, ?ICON);
+        'local' -> Context
+    end;
+content_types_provided(Context, _, _) -> Context.
+
+content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
+    case master_or_local(Context) of
+        'master' ->
+            content_types_provided_master(Context, cb_context:req_verb(Context), Id, ?SCREENSHOT, Number);
+        'local' -> Context
+    end;
+content_types_provided(Context, _, _, _) -> Context.
+
+-spec content_types_provided_master(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
+-spec content_types_provided_master(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
+content_types_provided_master(Context, ?HTTP_GET, Id, ?ICON) ->
     case master_app_read(Id, Context) of
         #cb_context{resp_status='success', doc=JObj} ->
             Icon = wh_json:get_value(?ICON, JObj),
@@ -103,12 +121,12 @@ content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?ICON) ->
             end;
         _ -> Context
     end;
-content_types_provided(Context, _, _) -> Context.
+content_types_provided_master(Context, _, _, _) -> Context.
 
-content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?SCREENSHOT, Num) ->
+content_types_provided_master(Context, ?HTTP_GET, Id, ?SCREENSHOT, Number) ->
     case master_app_read(Id, Context) of
         #cb_context{resp_status='success'}=Con ->
-            case maybe_get_screenshot(Num, Con) of
+            case maybe_get_screenshot(Number, Con) of
                 'error' -> Context;
                 {'ok', _, Attachment} ->
                     CT = wh_json:get_value(<<"content_type">>, Attachment),
@@ -117,7 +135,7 @@ content_types_provided(#cb_context{req_verb = ?HTTP_GET}=Context, Id, ?SCREENSHO
             end;
         _ -> Context
     end;
-content_types_provided(Context, _, _, _) -> Context.
+content_types_provided_master(Context, _, _, _, _) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -129,21 +147,36 @@ content_types_provided(Context, _, _, _) -> Context.
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    validate_master_app(Context, cb_context:req_verb(Context)).
+    case master_or_local(Context) of
+        'local' ->
+            validate_local(load_account(Context), cb_context:req_verb(Context));
+        'master' ->
+            validate_master_app(Context, cb_context:req_verb(Context))
+    end.
 
-validate(Context, ?LOCAL) ->
-    validate_local(load_account(Context), cb_context:req_verb(Context));
 validate(Context, Id) ->
-    validate_master_app(Context, cb_context:req_verb(Context), Id).
+    case master_or_local(Context) of
+        'local' ->
+            validate_local(load_account(Context), cb_context:req_verb(Context), Id);
+        'master' ->
+            validate_master_app(Context, cb_context:req_verb(Context), Id)
+    end.
 
-validate(Context, ?LOCAL, AppId) ->
-    validate_local(load_account(Context), cb_context:req_verb(Context), AppId);
 validate(Context, Id, ?ICON) ->
-    validate_master_app(Context, cb_context:req_verb(Context), Id, ?ICON).
+    case master_or_local(Context) of
+        'local' ->
+            crossbar_util:response_bad_identifier(Id, Context);
+        'master' ->
+            validate_master_app(Context, cb_context:req_verb(Context), Id, ?ICON)
+    end.
 
-validate(Context, Id, ?SCREENSHOT, Num) ->
-    validate_master_app(Context, cb_context:req_verb(Context), Id, ?SCREENSHOT, Num).
-
+validate(Context, Id, ?SCREENSHOT, Number) ->
+    case master_or_local(Context) of
+        'local' ->
+            crossbar_util:response_bad_identifier(Id, Context);
+        'master' ->
+            validate_master_app(Context, cb_context:req_verb(Context), Id, ?SCREENSHOT, Number)
+    end.
 
 -spec validate_master_app(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate_master_app(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -158,8 +191,8 @@ validate_master_app(Context, ?HTTP_GET, Id) ->
 validate_master_app(Context, ?HTTP_GET, Id, ?ICON) ->
     get_icon(Id, Context).
 
-validate_master_app(Context, ?HTTP_GET, Id, ?SCREENSHOT, Num) ->
-    get_sreenshot(Id, Context, Num).
+validate_master_app(Context, ?HTTP_GET, Id, ?SCREENSHOT, Number) ->
+    get_sreenshot(Id, Context, Number).
 
 -spec validate_local(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate_local(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -180,8 +213,8 @@ validate_local(Context, ?HTTP_PUT, AppId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-post(Context, ?LOCAL, AppId) ->
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, AppId) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -197,8 +230,8 @@ post(Context, ?LOCAL, AppId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-put(Context, ?LOCAL, AppId) ->
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, AppId) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -214,8 +247,8 @@ put(Context, ?LOCAL, AppId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-delete(Context, ?LOCAL, _) ->
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, _) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -228,6 +261,19 @@ delete(Context, ?LOCAL, _) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec master_or_local(cb_context:context()) -> 'local' | 'master'.
+master_or_local(Context) ->
+    case cb_context:req_nouns(Context) of
+        [{<<"apps_store">>, _}, {<<"accounts">>, _}|_] -> 'local';
+        [{<<"apps_store">>, _}|_] -> 'master'
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -260,12 +306,12 @@ get_icon(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_sreenshot(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
-get_sreenshot(Id, Context, Num) ->
+get_sreenshot(Id, Context, Number) ->
     case master_app_read(Id, Context) of
         #cb_context{resp_status='success'}=Con ->
-            case maybe_get_screenshot(Num, Con) of
+            case maybe_get_screenshot(Number, Con) of
                 'error' ->
-                    crossbar_util:response_bad_identifier(Num, Context);
+                    crossbar_util:response_bad_identifier(Number, Context);
                 {'ok', Screenshot, Attachment} ->
                     lists:foldl(
                         fun({K, V}, C) ->
@@ -288,9 +334,9 @@ get_sreenshot(Id, Context, Num) ->
 -spec maybe_get_screenshot(ne_binary(), cb_context:context()) ->
                                   'error' |
                                   {'ok', ne_binary(), ne_binary()}.
-maybe_get_screenshot(Num, #cb_context{doc=JObj}=Context) ->
+maybe_get_screenshot(Number, #cb_context{doc=JObj}=Context) ->
     Screenshots = wh_json:get_value(<<"screenshots">>, JObj),
-    try lists:nth(wh_util:to_integer(Num)+1, Screenshots) of
+    try lists:nth(wh_util:to_integer(Number)+1, Screenshots) of
         S -> maybe_get_attachment(Context, S)
     catch
         _:_ -> 'error'
@@ -390,7 +436,6 @@ install(AppId, Context) ->
             Doc = cb_context:doc(Context),
             Data = cb_context:req_data(Context),
             Apps = wh_json:get_value(<<"apps">>, Doc),
-
             case wh_json:get_value(AppId, Apps) of
                 'undefined' ->
                     UpdatedApps = wh_json:set_value(AppId, Data, Apps),

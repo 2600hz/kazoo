@@ -67,25 +67,25 @@ Using Crossbar to modify Apps is very simple:
 
 ### Apps Store Local URIs
 
-`/v1/accounts/{ACCOUNT_ID}/apps_store/local`
+`/v1/accounts/{ACCOUNT_ID}/apps_store`
 
 #### GET - Fetch App(s):
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/local
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/local/{APP_ID}
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
 #### PUT - Install App:
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/local/{APP_ID} -d '{"data": {"all": false,"users": ["452d5706f66377970996b2ec1c0fc04a","b771eb3eee6ea48f4321e3cc31c050ab"]}}'
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID} -d '{"data": {"all": false,"users": ["452d5706f66377970996b2ec1c0fc04a","b771eb3eee6ea48f4321e3cc31c050ab"]}}'
 
 #### POST - Update App:
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/local/{APP_ID} -d '{"data": {"all": true,"users": []}}'
+    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID} -d '{"data": {"all": true,"users": []}}'
 
 #### DELETE - Uninstall App:
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/local/{APP_ID}
+    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
 
 ## Crossbar (Master apps)
@@ -96,19 +96,19 @@ Using Crossbar to modify Apps is very simple:
 
 ### Apps Store Master apps URIs
 
-`/v1/accounts/{ACCOUNT_ID}/apps_store`
+`/v1/apps_store`
 
 #### GET - Fetch App(s):
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/apps_store
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/apps_store/{APP_ID}
 
 #### GET - Fetch Icon:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/icon
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/apps_store/{APP_ID}/icon
 
 #### GET - Fetch screenshots(s):
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/screenshot/{NUMBER}
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/apps_store/{APP_ID}/screenshot/{NUMBER}
 
