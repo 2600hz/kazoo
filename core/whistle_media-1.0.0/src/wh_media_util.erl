@@ -16,6 +16,7 @@
 -export([media_path/1, media_path/2]).
 -export([max_recording_time_limit/0]).
 -export([get_prompt/1, get_prompt/2, get_prompt/3
+         ,get_account_prompt/3, get_system_prompt/2
          ,default_prompt_language/0, default_prompt_language/1
          ,prompt_language/1, prompt_language/2
          ,prompt_id/1, prompt_id/2
@@ -218,6 +219,7 @@ prompt_id(PromptId, Lang) ->
                         api_binary().
 -spec get_prompt(ne_binary(), api_binary(), api_binary() | whapps_call:call()) ->
                         api_binary().
+-spec get_prompt(ne_binary(), api_binary(), api_binary(), boolean()) -> api_binary().
 
 get_prompt(Name) ->
     get_prompt(Name, 'undefined').
@@ -234,15 +236,15 @@ get_prompt(Name, Call) ->
 
 get_prompt(<<"/system_media/", Name/binary>>, Lang, Call) ->
     get_prompt(Name, Lang, Call);
-get_prompt(Name, Lang, 'undefined') ->
-    get_system_prompt(Name, Lang);
-get_prompt(Name, 'undefined', Call) ->
-    get_prompt(Name, prompt_language(whapps_call:account_id(Call)), Call);
-get_prompt(Name, Lang, Call) ->
-    case ?USE_ACCOUNT_OVERRIDES of
-        'false' -> get_system_prompt(Name, Lang);
-        'true' -> get_account_prompt(Name, Lang, Call)
-    end.
+get_prompt(PromptId, Lang, 'undefined') ->
+    wh_util:join_binary([<<"prompt:/">>, ?WH_MEDIA_DB, PromptId, Lang], <<"/">>);
+get_prompt(PromptId, Lang, Call) ->
+    get_prompt(PromptId, Lang, Call, ?USE_ACCOUNT_OVERRIDES).
+
+get_prompt(PromptId, _Lang, _Call, 'false') ->
+    wh_util:join_binary([<<"prompt:/">>, ?WH_MEDIA_DB, PromptId, Lang], <<"/">>);
+get_prompt(PromptId, Lang, Call, 'true') ->
+    wh_util:join_binary([<<"prompt:/">>, whapps_call:account_id(Call), PromptId, Lang], <<"/">>).
 
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call()) -> api_binary().
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call(), ne_binary()) -> api_binary().
