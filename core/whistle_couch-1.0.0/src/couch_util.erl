@@ -520,13 +520,22 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
 -spec do_fetch_rev(couchbeam_db(), ne_binary()) ->
                           ne_binary() |
                           couchbeam_error().
-do_fetch_rev(#db{}=Db, DocId) -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId)).
+do_fetch_rev(#db{}=Db, DocId) ->
+    case wh_util:is_empty(DocId) of
+        'true' -> {'error', 'empty_doc_id'};
+        'false' ->
+            ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId))
+    end.
 
 -spec do_fetch_doc(couchbeam_db(), ne_binary(), wh_proplist()) ->
                           {'ok', wh_json:object()} |
                           couchbeam_error().
 do_fetch_doc(#db{}=Db, DocId, Options) ->
-    ?RETRY_504(couchbeam:open_doc(Db, DocId, Options)).
+    case wh_util:is_empty(DocId) of
+        'true' -> {'error', 'empty_doc_id'};
+        'false' ->
+            ?RETRY_504(couchbeam:open_doc(Db, DocId, Options))
+    end.
 
 -spec do_save_doc(couchbeam_db(), wh_json:object() | wh_json:objects(), wh_proplist()) ->
                          {'ok', wh_json:object()} |
