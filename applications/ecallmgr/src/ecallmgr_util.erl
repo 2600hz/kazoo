@@ -899,7 +899,8 @@ convert_whistle_app_name(App) ->
                           {'error', _}.
 lookup_media(MediaName, CallId, JObj, Type) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE
-                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName))
+                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+                             )
     of
         {'ok', _Path}=Ok ->
             lager:debug("media ~s exists in playback cache as ~s", [MediaName, _Path]),
@@ -924,9 +925,16 @@ request_media_url(MediaName, CallId, JObj, Type) ->
                                   ,fun wapi_media:resp_v/1
                                  ),
     case ReqResp of
-        {'error', _}=E -> E;
+        {'error', _E}=E ->
+             lager:debug("error get media url from amqp ~p", [E]),
+              E;
         {'ok', MediaResp} ->
-            {'ok', wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
+            MediaUrl = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
+            _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
+                                     ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+                                     ,MediaUrl),
+            lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
+            {'ok', MediaUrl}
     end.
 
 -spec custom_sip_headers(wh_proplist()) -> wh_json:object().
