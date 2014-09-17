@@ -104,7 +104,7 @@ handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
     spawn(fun() -> channel_event(EventType, JObj) end),
     {'noreply', State};
-handle_cast({'omnipresence',{'presence_event', JObj}}, State) ->
+handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
     spawn(fun() -> presence_event(JObj) end),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
@@ -211,32 +211,26 @@ handle_connected_channel(_JObj) ->
 -spec initial_update(ne_binary()) -> any().
 initial_update(User) ->
     Headers = [{<<"From">>, User}
-               ,{<<"To">>, User}              
-               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(User))}
-              ],
-    handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
-
--spec reset_blf(ne_binary()) -> any().
-reset_blf(User) ->
-    Headers = [{<<"From">>, User}
                ,{<<"To">>, User}
-               ,{<<"Flush-Level">>, 1}
-               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(User))}
+               ,{<<"Call-ID">>, wh_util:rand_hex_binary(16)}
               ],
     handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
-
--spec reset_user_blf(ne_binary()) -> any().
-reset_user_blf(User) ->
-    case omnip_subscriptions:find_user_subscriptions(?DIALOG_EVENT, User) of
-        {'ok', Subs} ->
-            [ reset_blf(SubUser) || #omnip_subscription{user=SubUser} <- Subs];
-        _ -> 'ok'
-    end.
-    
+  
 -spec presence_event(wh_json:object()) -> 'ok'.
 presence_event(JObj) ->
     State = wh_json:get_value(<<"State">>, JObj),
-    handle_update(JObj, State).
+    maybe_handle_presence_state(JObj, State).
+
+-spec maybe_handle_presence_state(wh_json:object(), api_binary()) -> 'ok'.
+maybe_handle_presence_state(_JObj, <<"online">>) -> 'ok';
+maybe_handle_presence_state(_JObj, <<"offline">>) -> 'ok';
+maybe_handle_presence_state(JObj, ?PRESENCE_HANGUP=State) ->
+    handle_update(JObj, State, 10);
+maybe_handle_presence_state(JObj, ?PRESENCE_RINGING=State) ->
+    handle_update(JObj, State, 0);
+maybe_handle_presence_state(JObj, State) ->
+    handle_update(JObj, State, 0).
+
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, ?PRESENCE_HANGUP) ->
@@ -250,7 +244,7 @@ handle_update(_JObj, _State) -> 'ok'.
 -spec handle_update(wh_json:object(), ne_binary(), integer()) -> any().
 handle_update(JObj, State, Expires) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
-    From = wh_json:get_value(<<"From">>, JObj),
+    From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
@@ -418,3 +412,20 @@ ensure_template() ->
     File = lists:concat([BasePath, "/packages/dialog.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_dialog">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{record_info, [{channel, record_info(fields, channel)}]}]).
+
+-spec reset_blf(ne_binary()) -> any().
+reset_blf(User) ->
+    Headers = [{<<"From">>, User}
+               ,{<<"To">>, User}
+               ,{<<"Flush-Level">>, 1}
+               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(User))}
+              ],
+    handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
+
+-spec reset_user_blf(ne_binary()) -> any().
+reset_user_blf(User) ->
+    case omnip_subscriptions:find_user_subscriptions(?DIALOG_EVENT, User) of
+        {'ok', Subs} ->
+            [ reset_blf(SubUser) || #omnip_subscription{user=SubUser} <- Subs];
+        _ -> 'ok'
+    end.

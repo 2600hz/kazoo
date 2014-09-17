@@ -11,7 +11,7 @@
 
 -include("./whapps_call_command.hrl").
 
--export([presence/2, presence/3]).
+-export([presence/2, presence/3, presence/4]).
 -export([channel_status/1, channel_status/2
          ,channel_status_command/1, channel_status_command/2
          ,b_channel_status/1
@@ -215,20 +215,26 @@ default_application_timeout() ->
 %%--------------------------------------------------------------------
 -spec presence(ne_binary(), ne_binary() | whapps_call:call()) -> 'ok'.
 -spec presence(ne_binary(), ne_binary() | whapps_call:call(), api_binary() | whapps_call:call()) -> 'ok'.
+-spec presence(ne_binary(), ne_binary() , api_binary() , api_binary()) -> 'ok'.
 presence(State, PresenceId) when is_binary(PresenceId) ->
     presence(State, PresenceId, 'undefined');
 presence(State, Call) ->
     presence(State, whapps_call:from(Call)).
 
 presence(State, PresenceId, CallId) when is_binary(CallId) orelse CallId =:= 'undefined' ->
-    Command = [{<<"Presence-ID">>, PresenceId}
-               ,{<<"State">>, State}
-               ,{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_presence:publish_update(Command);
+    presence(State, PresenceId, CallId, 'undefined');
 presence(State, PresenceId, Call) ->
     presence(State, PresenceId, whapps_call:call_id(Call)).
+
+presence(State, PresenceId, CallId, TargetURI) ->
+    Command = props:filter_undefined(
+                [{<<"Presence-ID">>, PresenceId}
+                 ,{<<"From">>, TargetURI}
+                 ,{<<"State">>, State}
+                 ,{<<"Call-ID">>, CallId}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    wapi_presence:publish_update(Command).
 
 %%--------------------------------------------------------------------
 %% @public
