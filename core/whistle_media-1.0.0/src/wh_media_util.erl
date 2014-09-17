@@ -238,13 +238,15 @@ get_prompt(<<"/system_media/", Name/binary>>, Lang, Call) ->
     get_prompt(Name, Lang, Call);
 get_prompt(PromptId, Lang, 'undefined') ->
     wh_util:join_binary([<<"prompt:/">>, ?WH_MEDIA_DB, PromptId, Lang], <<"/">>);
+get_prompt(PromptId, Lang, <<_/binary>> = AccountId) ->
+    get_prompt(PromptId, Lang, AccountId, ?USE_ACCOUNT_OVERRIDES);
 get_prompt(PromptId, Lang, Call) ->
-    get_prompt(PromptId, Lang, Call, ?USE_ACCOUNT_OVERRIDES).
+    get_prompt(PromptId, Lang, whapps_call:account_id(Call)).
 
-get_prompt(PromptId, _Lang, _Call, 'false') ->
-    wh_util:join_binary([<<"prompt:/">>, ?WH_MEDIA_DB, PromptId, Lang], <<"/">>);
-get_prompt(PromptId, Lang, Call, 'true') ->
-    wh_util:join_binary([<<"prompt:/">>, whapps_call:account_id(Call), PromptId, Lang], <<"/">>).
+get_prompt(PromptId, Lang, AccountId, 'true') ->
+    wh_util:join_binary([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>);
+get_prompt(PromptId, Lang, _AccountId, 'false') ->
+    wh_util:join_binary([<<"prompt:/">>, ?WH_MEDIA_DB, PromptId, Lang], <<"/">>).
 
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call()) -> api_binary().
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call(), ne_binary()) -> api_binary().
