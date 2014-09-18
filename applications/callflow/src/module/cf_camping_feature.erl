@@ -119,8 +119,7 @@ send_request(#state{channels = Channels} = S, Call) ->
     case Channels of
         [] -> no_channels(S, Call);
         _ -> has_channels(S, Call)
-    end,
-    just('ok').
+    end.
 
 -spec do(maybe(A), [fun((A) -> maybe(B))]) -> maybe(B).
 do(Monad, Actions) ->
@@ -143,10 +142,14 @@ handle(Data, Call) ->
                                 ,fun (State) -> send_request(State, Call) end
                                ]),
     case Ok of
-        {'Just', 'ok'} -> whapps_call_command:b_prompt(<<"camper-queue">>, Call);
-        'Nothing' -> whapps_call_command:b_prompt(<<"camper-deny">>, Call)
-    end,
-    cf_exe:stop(Call).
+        {'Just', 'accepted'} ->
+            whapps_call_command:b_prompt(<<"camper-queue">>, Call),
+            cf_exe:stop(Call);
+        {'Just', 'connected'} -> 'ok';
+        'Nothing' ->
+            whapps_call_command:b_prompt(<<"camper-deny">>, Call),
+            cf_exe:stop(Call)
+    end.
 
 -spec get_sip_usernames_for_target(ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
 get_sip_usernames_for_target(TargetId, TargetType, Call) ->
@@ -174,7 +177,8 @@ no_channels(#state{id = TargetId
     Flow = wh_json:from_list([{<<"module">>, TargetType}
                               ,{<<"data">>, wh_json:from_list([{<<"id">>, TargetId}])}
                              ]),
-    cf_exe:branch(Flow, Call);
+    cf_exe:branch(Flow, Call),
+    just('connected');
 no_channels(#state{type = <<"offnet">>
                         ,is_no_match = 'true'
                         ,number = Number
@@ -190,7 +194,8 @@ no_channels(#state{type = <<"offnet">>
     JObj = wh_json:from_list([{<<"Delegate-Message">>, wh_json:from_list(MsgProps)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
-    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>).
+    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>),
+    just('accepted').
 
 -spec has_channels(state(), whapps_call:call()) -> 'ok'.
 has_channels(#state{id = TargetId
@@ -209,4 +214,5 @@ has_channels(#state{id = TargetId
     JObj = wh_json:from_list([{<<"Delegate-Message">>, wh_json:from_list(MsgProps)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
-    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"onnet">>).
+    wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"onnet">>),
+    just('accepted').
