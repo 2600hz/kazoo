@@ -188,6 +188,8 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
             CallerId = wh_json:set_value([<<"emergency">>, <<"number">>], Number, Merged),
             merge_attributes(Keys, Account, wh_json:set_value(Key, CallerId, Endpoint), Owner)
     end;
+merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
+    merge_value(Keys, Account, Endpoint, Owner);
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
@@ -197,6 +199,23 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
                                     ),
 
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
+
+-spec merge_value(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
+                              wh_json:object().
+merge_value([Key|Keys], Account, Endpoint, Owner) ->
+    AccountValue = wh_json:get_ne_value(Key, Account),
+    EndpointValue = wh_json:get_ne_value(Key, Endpoint),
+    OwnerValue = wh_json:get_ne_value(Key, Owner),
+    case {AccountValue, EndpointValue, OwnerValue} of
+        {'undefined', 'undefined', 'undefined'} ->
+            merge_attributes(Keys, Account, Endpoint, Owner);
+        {_, _, OwnerValue} ->
+            merge_attributes(Keys, Account, wh_json:set_value(Key, OwnerValue, Endpoint), Owner);
+        {_, EndpointValue, _} ->
+            merge_attributes(Keys, Account, wh_json:set_value(Key, EndpointValue, Endpoint), Owner);
+        {AccountValue, _, _} ->
+            merge_attributes(Keys, Account, wh_json:set_value(Key, AccountValue, Endpoint), Owner)
+    end.
 
 -spec caller_id_owner_attr(wh_json:object()) -> wh_json:object().
 caller_id_owner_attr(Owner) ->
