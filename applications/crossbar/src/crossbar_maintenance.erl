@@ -27,6 +27,7 @@
 -export([create_account/4]).
 -export([create_account/1]).
 -export([move_account/2]).
+-export([descendants_count/0, descendants_count/1]).
 
 -include_lib("crossbar.hrl").
 
@@ -511,7 +512,7 @@ print_account_info(AccountDb, AccountId) ->
     {'ok', AccountId}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end
@@ -531,3 +532,19 @@ maybe_move_account(AccountId, ToAccountId) ->
         {'error', Reason} ->
             io:format("unable to complete move: ~p~n", [Reason])
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec descendants_count() -> 'ok'.
+-spec descendants_count(ne_binary()) -> 'ok'.
+descendants_count() ->
+    crossbar_util:descendants_count().
+
+descendants_count(AccountId) ->
+    crossbar_util:descendants_count(AccountId).
+
+
