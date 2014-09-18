@@ -154,7 +154,7 @@ get_numbers(JObj) ->
 
 -spec get_numbers_fold(wh_json:object(), ne_binaries()) -> ne_binaries().
 get_numbers_fold(Server, Acc) ->
-    wh_json:get_keys(wh_json:get_value(<<"DIDs">>, Server)) ++ Acc.
+    wh_json:get_keys(wh_json:get_value(<<"DIDs">>, Server, wh_json:new())) ++ Acc.
 
 %%--------------------------------------------------------------------
 %% @private
