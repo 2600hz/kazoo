@@ -540,11 +540,11 @@ maybe_move_account(AccountId, ToAccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec descendants_count() -> 'ok'.
--spec descendants_count(wh_proplists() | ne_binary()) -> 'ok'.
+-spec descendants_count(ne_binary()) -> 'ok'.
 descendants_count() ->
     crossbar_util:descendants_count().
 
-descendants_count(Opts) ->
-    crossbar_util:descendants_count(Opts).
+descendants_count(AccountId) ->
+    crossbar_util:descendants_count(AccountId).
 
 
