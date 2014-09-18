@@ -57,11 +57,11 @@ create_children_spec(Node, Props) ->
 create_event_children(Node, _Props, Children) ->
     lists:foldr(fun(Event, Childs) ->
                         [{Event, {'ecallmgr_fs_event_stream', 'start_link', [Node, Event, 'undefined']}
-                          ,'permanent', 6000, 'worker', [Event]}|Childs]
+                          ,'permanent', 6000, 'worker', []}|Childs]
                 end, Children, ?FS_EVENTS).
 
 create_custom_children(Node, _Props, Children) ->
     lists:foldr(fun(Subclass, Childs) ->
                         [{Subclass, {'ecallmgr_fs_event_stream', 'start_link', [Node, 'CUSTOM', Subclass]}
-                          ,'permanent', 6000, 'worker', [Subclass]}|Childs]
+                          ,'permanent', 6000, 'worker', []}|Childs]
                 end, Children, ?FS_CUSTOM_EVENTS).

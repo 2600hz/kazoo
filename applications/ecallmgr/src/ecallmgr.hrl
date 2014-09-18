@@ -288,8 +288,8 @@
                                ,{<<"conference">>, <<"page">>}
                               ]).
 
--define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_DESTROY'
-                    ,'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
+-define(FS_EVENTS, [['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']
+                    , 'CALL_UPDATE', 'DETECTED_TONE', 'CHANNEL_PROGRESS_MEDIA'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
                     ,'CHANNEL_DATA', 'CALL_SECURE'
