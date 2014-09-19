@@ -1901,9 +1901,6 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
                     {'error', JObj};
                 {Type, Event, Application} ->
                     {'ok', JObj};
-                {A, B, C} ->
-                    lager:debug("WAIT MSG ~p , ~p , ~p", [A, B, C]),
-                    wait_for_message(Call, Application, Event, Type, wh_util:decr_timeout(Timeout, Start));
                 _ ->
                     wait_for_message(Call, Application, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end
