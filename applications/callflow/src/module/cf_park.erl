@@ -108,7 +108,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             {'error', 'slot_empty'};
         Slot ->
             ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
-            lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller: ~p", [SlotNumber, ParkedCall, Slot]),
+            lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
             case maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) of
                 'ok' ->
                     cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)),
@@ -170,7 +170,6 @@ pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
 pickup_event(_Call, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}, _Evt) ->
     lager:debug("channel bridged to ~s", [wh_json:get_value(<<"Other-Leg-Call-ID">>, _Evt)]);
 pickup_event(Call, _Type, _Evt) ->
-    lager:debug("PICKUP unhandled evt ~p", [_Type]),
     wait_for_pickup(Call).
 
 %%--------------------------------------------------------------------
