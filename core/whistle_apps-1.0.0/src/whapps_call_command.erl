@@ -2526,9 +2526,6 @@ wait_for_unparked_call(Call, Timeout) ->
                     {'error', JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"hold">>} ->
                     {'ok', JObj};
-                {A, B, C} ->
-                    lager:debug("WAIT MSG ~p , ~p , ~p", [A, B, C]),
-                    wait_for_unparked_call(Call, wh_util:decr_timeout(Timeout, Start));
                 _ ->
                     wait_for_unparked_call(Call, wh_util:decr_timeout(Timeout, Start))
             end
