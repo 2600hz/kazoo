@@ -255,9 +255,11 @@ handle_update(JObj, State, Expires) ->
                    [{<<"From">>, <<"sip:", From/binary>>}
                     ,{<<"From-User">>, FromUsername}
                     ,{<<"From-Realm">>, FromRealm}
+                    ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
                     ,{<<"To">>, <<"sip:", To/binary>>}
                     ,{<<"To-User">>, ToUsername}
                     ,{<<"To-Realm">>, ToRealm}
+                    ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
@@ -276,10 +278,12 @@ handle_update(JObj, State, Expires) ->
                    [{<<"From">>, <<"sip:", To/binary>>}
                     ,{<<"From-User">>, ToUsername}
                     ,{<<"From-Realm">>, ToRealm}
-                    ,{<<"To">>, <<"sip:", From/binary>>}
+                    ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                    ,{<<"To">>, <<"sip:", From/binary,";kazoo-pickup=true">>}
                     ,{<<"To-User">>, FromUsername}
                     ,{<<"To-Realm">>, FromRealm}
-                    ,{<<"To">>, <<"sip:", From/binary>>}
+                    ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}                   
+                    ,{<<"To-URI">>, <<"sip:", From/binary,";kazoo-pickup=true">>}
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
