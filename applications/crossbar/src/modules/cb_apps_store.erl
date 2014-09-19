@@ -11,6 +11,7 @@
 -module(cb_apps_store).
 
 -export([init/0
+         ,authorize/1
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,validate/1, validate/2, validate/3, validate/4
@@ -40,6 +41,7 @@
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_provided.apps_store">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.apps_store">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.apps_store">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.apps_store">>, ?MODULE, 'validate'),
@@ -83,6 +85,19 @@ resource_exists(_) -> 'true'.
 resource_exists(_, _) -> 'true'.
 resource_exists(_, _, _) -> 'true'.
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+
+-spec authorize(req_nouns(), http_method()) -> boolean().
+authorize([{<<"apps_store">>, _}|_], ?HTTP_GET) ->
+    'true'.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
