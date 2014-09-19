@@ -88,7 +88,8 @@ migrate(Pause) ->
     %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
     %% that need to be aggregated have been, and the account definition is aggregated
     io:format("updating views...~n", []),
-    _ = refresh(Databases, Pause),
+    _ = refresh(?KZ_SYSTEM_DBS, Pause),
+    _ = refresh([Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))], Pause),
 
     %% Remove depreciated dbs
     io:format("removing depreciated databases...~n", []),

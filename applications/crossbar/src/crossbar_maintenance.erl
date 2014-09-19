@@ -46,51 +46,7 @@ migrate() ->
 -spec migrate(ne_binaries()) -> 'no_return'.
 migrate(Accounts) ->
     io:format("updating default crossbar modules~n", []),
-    whapps_config:flush(),
-    StartModules = sets:from_list(whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, ?DEFAULT_MODULES)),
-    XbarUpdates = [fun(L) -> sets:del_element(<<"cb_cdr">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_signups">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_resources">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_provisioner_templates">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_ts_accounts">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_local_provisioner_templates">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_global_provisioner_templates">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_servers">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_schema">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_system_stats">>, L) end
-
-                   ,fun(L) -> sets:add_element(<<"cb_phone_numbers">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_templates">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_onboard">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_connectivity">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_configs">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_services">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_agents">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_about">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_faxes">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_groups">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_contact_list">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_bulk">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_modb">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_metaflows">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_sup">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_faxboxes">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_lists">>, L) end
-                  ],
-    UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
-    _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),
-    case whapps_controller:stop_app('crossbar') of
-        'ok' -> whapps_controller:start_app('crossbar');
-        _Else -> 'ok'
-    end,
-
     _ = migrate_accounts_data(Accounts),
-
     'no_return'.
 
 -spec migrate_accounts_data() -> 'no_return'.
