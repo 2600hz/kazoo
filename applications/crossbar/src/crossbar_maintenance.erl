@@ -46,7 +46,16 @@ migrate() ->
 migrate(Accounts) ->
     io:format("updating default crossbar modules~n", []),
     _ = migrate_accounts_data(Accounts),
-    'no_return'.
+    Modules =
+        [wh_util:to_atom(Module, 'true')
+         || Module <- whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])
+        ],
+    add_missing_modules(
+      Modules,
+      [Module
+       || Module <- ?DEFAULT_MODULES
+              ,(not lists:member(Module, Modules))
+      ]).
 
 -spec migrate_accounts_data() -> 'no_return'.
 migrate_accounts_data() ->
@@ -61,6 +70,12 @@ migrate_accounts_data([Account|Accounts]) ->
 -spec migrate_account_data(ne_binary()) -> 'no_return'.
 migrate_account_data(Account) ->
     cb_clicktocall:maybe_migrate_history(Account),
+    'no_return'.
+
+-spec add_missing_modules(atoms(), atoms()) -> 'no_return'.
+add_missing_modules(_, []) -> 'no_return';
+add_missing_modules(Modules, MissingModules) ->
+    _ = whapps_config:set(<<"crossbar">>, <<"autoload_modules">>, Modules ++ MissingModules),
     'no_return'.
 
 %%--------------------------------------------------------------------

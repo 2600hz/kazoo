@@ -84,6 +84,11 @@
                           ,'cb_vmboxes'
                           ,'cb_whitelabel'
                           ,'cb_faxboxes'
+                          ,'cb_metaflows'
+                          ,'cb_webhooks'
+                          ,'cb_port_requests'
+                          ,'cb_resource_templates'
+                          ,'cb_ips'
                          ]).
 
 -record(cb_context, {
