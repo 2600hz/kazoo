@@ -9,10 +9,10 @@
 %%% GET /port_requests/{id}/loa - build an LOA (Letter of Authorization) PDF
 %%%
 %%% PUT /port_requests - start a new port request
-%%% PUT /port_requests/{id}/ready - indicate a port request is ready and let port dept know
+%%% PUT /port_requests/{id}/submitted - indicate a port request is ready and let port dept know
 %%%   Causes billing to occur
 %%%   Ensure there's at least one attachment of non-0 length
-%%% PUT /port_requests/{id}/progress - SDA indicates the port request is being processed
+%%% PUT /port_requests/{id}/scheduled - SDA indicates the port request is being processed
 %%% PUT /port_requests/{id}/completion - SDA can force completion of the port request (populate numbers DBs)
 %%% PUT /port_requests/{id}/rejection - SDA can force rejection of the port request
 %%%
@@ -138,9 +138,9 @@ cleanup(Db, OldPortRequests) ->
     'ok'.
 
 -spec should_delete_port_request([pos_integer() | ne_binary(),...]) -> boolean().
-should_delete_port_request([_Modified, ?PORT_READY]) ->
+should_delete_port_request([_Modified, ?PORT_SUBMITTED]) ->
     'false';
-should_delete_port_request([_Modified, ?PORT_PROGRESS]) ->
+should_delete_port_request([_Modified, ?PORT_SCHEDULED]) ->
     'false';
 should_delete_port_request(_) ->
     'true'.
@@ -164,9 +164,9 @@ allowed_methods(?PORT_DESCENDANTS) ->
 allowed_methods(_Id) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
-allowed_methods(_Id, ?PORT_READY) ->
+allowed_methods(_Id, ?PORT_SUBMITTED) ->
     [?HTTP_PUT];
-allowed_methods(_Id, ?PORT_PROGRESS) ->
+allowed_methods(_Id, ?PORT_SCHEDULED) ->
     [?HTTP_PUT];
 allowed_methods(_Id, ?PORT_COMPLETE) ->
     [?HTTP_PUT];
@@ -197,8 +197,8 @@ resource_exists() -> 'true'.
 
 resource_exists(_Id) -> 'true'.
 
-resource_exists(_Id, ?PORT_READY) -> 'true';
-resource_exists(_Id, ?PORT_PROGRESS) -> 'true';
+resource_exists(_Id, ?PORT_SUBMITTED) -> 'true';
+resource_exists(_Id, ?PORT_SCHEDULED) -> 'true';
 resource_exists(_Id, ?PORT_COMPLETE) -> 'true';
 resource_exists(_Id, ?PORT_REJECT) -> 'true';
 resource_exists(_Id, ?PORT_ATTACHMENT) -> 'true';
@@ -313,10 +313,10 @@ validate_port_request(Context, Id, ?HTTP_POST) ->
 validate_port_request(Context, Id, ?HTTP_DELETE) ->
     is_deletable(crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB))).
 
-validate(Context, Id, ?PORT_READY) ->
-    maybe_move_state(Id, Context, ?PORT_READY);
-validate(Context, Id, ?PORT_PROGRESS) ->
-    maybe_move_state(Id, Context, ?PORT_PROGRESS);
+validate(Context, Id, ?PORT_SUBMITTED) ->
+    maybe_move_state(Id, Context, ?PORT_SUBMITTED);
+validate(Context, Id, ?PORT_SCHEDULED) ->
+    maybe_move_state(Id, Context, ?PORT_SCHEDULED);
 validate(Context, Id, ?PORT_COMPLETE) ->
     maybe_move_state(Id, Context, ?PORT_COMPLETE);
 validate(Context, Id, ?PORT_REJECT) ->
@@ -389,7 +389,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
                                  ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
                                  ,Opts
                                 );
-put(Context, Id, ?PORT_READY) ->
+put(Context, Id, ?PORT_SUBMITTED) ->
     try send_port_request_notification(Context, Id) of
         _ ->
             lager:debug("port request notification sent"),
@@ -399,7 +399,7 @@ put(Context, Id, ?PORT_READY) ->
             lager:debug("failed to send the port request notification: ~s:~p", [_E, _R]),
             cb_context:add_system_error(<<"failed to send port request email to system admins">>, Context)
     end;
-put(Context, Id, ?PORT_PROGRESS) ->
+put(Context, Id, ?PORT_SCHEDULED) ->
     post(Context, Id);
 put(Context, Id, ?PORT_COMPLETE) ->
     post(Context, Id);
@@ -635,14 +635,8 @@ can_update_port_request(Context) ->
 
 can_update_port_request(_Context, ?PORT_WAITING) ->
     'true';
-can_update_port_request(Context, ?PORT_READY) ->
-    cb_modules_util:is_superduper_admin(Context);
-can_update_port_request(Context, ?PORT_PROGRESS) ->
-    cb_modules_util:is_superduper_admin(Context);
-can_update_port_request(_Context, ?PORT_COMPLETE) ->
-    'false';
-can_update_port_request(_Context, ?PORT_REJECT) ->
-    'true'.
+can_update_port_request(Context, _) ->
+    cb_modules_util:is_superduper_admin(Context).
 
 -spec successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 successful_validation('undefined', Context) ->

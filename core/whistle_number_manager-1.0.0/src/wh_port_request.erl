@@ -14,8 +14,8 @@
          ,get/1
          ,normalize_attachments/1
          ,normalize_numbers/1
-         ,transition_to_ready/1
-         ,transition_to_progress/1
+         ,transition_to_submitted/1
+         ,transition_to_scheduled/1
          ,transition_to_complete/1
          ,transition_to_rejected/1
          ,maybe_transition/2
@@ -77,28 +77,28 @@ normalize_numbers(JObj) ->
                       ,JObj
                      ).
 
--spec transition_to_ready(wh_json:object()) -> transition_response().
--spec transition_to_progress(wh_json:object()) -> transition_response().
+-spec transition_to_submitted(wh_json:object()) -> transition_response().
+-spec transition_to_scheduled(wh_json:object()) -> transition_response().
 -spec transition_to_complete(wh_json:object()) -> transition_response().
 -spec transition_to_rejected(wh_json:object()) -> transition_response().
 
-transition_to_ready(JObj) ->
-    transition(JObj, [?PORT_WAITING, ?PORT_REJECT], ?PORT_READY).
-transition_to_progress(JObj) ->
-    transition(JObj, [?PORT_READY], ?PORT_PROGRESS).
+transition_to_submitted(JObj) ->
+    transition(JObj, [?PORT_WAITING, ?PORT_REJECT], ?PORT_SUBMITTED).
+transition_to_scheduled(JObj) ->
+    transition(JObj, [?PORT_SUBMITTED], ?PORT_SCHEDULED).
 transition_to_complete(JObj) ->
-    case transition(JObj, [?PORT_READY, ?PORT_PROGRESS, ?PORT_REJECT], ?PORT_COMPLETE) of
+    case transition(JObj, [?PORT_SUBMITTED, ?PORT_SCHEDULED, ?PORT_REJECT], ?PORT_COMPLETE) of
         {'error', _}=E -> E;
         {'ok', Transitioned} -> completed_port(Transitioned)
     end.
 transition_to_rejected(JObj) ->
-    transition(JObj, [?PORT_READY, ?PORT_PROGRESS], ?PORT_REJECT).
+    transition(JObj, [?PORT_SUBMITTED, ?PORT_SCHEDULED], ?PORT_REJECT).
 
 -spec maybe_transition(wh_json:object(), ne_binary()) -> transition_response().
-maybe_transition(PortReq, ?PORT_READY) ->
-    transition_to_ready(PortReq);
-maybe_transition(PortReq, ?PORT_PROGRESS) ->
-    transition_to_progress(PortReq);
+maybe_transition(PortReq, ?PORT_SUBMITTED) ->
+    transition_to_submitted(PortReq);
+maybe_transition(PortReq, ?PORT_SCHEDULED) ->
+    transition_to_scheduled(PortReq);
 maybe_transition(PortReq, ?PORT_COMPLETE) ->
     transition_to_complete(PortReq);
 maybe_transition(PortReq, ?PORT_REJECT) ->

@@ -1,8 +1,8 @@
 -ifndef(WH_PORT_REQUEST_HRL).
 
 -define(PORT_WAITING, <<"unconfirmed">>).
--define(PORT_READY, <<"submitted">>).
--define(PORT_PROGRESS, <<"scheduled">>).
+-define(PORT_SUBMITTED, <<"submitted">>).
+-define(PORT_SCHEDULED, <<"scheduled">>).
 -define(PORT_COMPLETE, <<"completed">>).
 -define(PORT_REJECT, <<"rejected">>).
 -define(PORT_ATTACHMENT, <<"attachments">>).
