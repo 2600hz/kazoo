@@ -43,7 +43,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
                 end
         end,
     lager:debug("sending presence resp for parking slot ~s(~s): ~s", [SlotNumber, PresenceId, State]),
-    whapps_call_command:presence(State, PresenceId, ParkingId, ParkedURI2).
+    whapps_call_command:presence(State, PresenceId, ParkingId, ParkedURI2, 'undefined').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -117,7 +117,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
                     PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
                     ParkedURI = wh_json:get_value(<<"CID-URI">>, Slot),
                     lager:info("update presence-id '~s' with state: terminated", [PresenceId]),
-                    _ = whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCall, ParkedURI),
+                    _ = whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCall, ParkedURI, Call),
                     lager:debug("failed to retrieve slot: ~p", [_E]),
                     E
             end
@@ -221,7 +221,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
             PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
             ParkedURI = wh_json:get_value(<<"CID-URI">>, Slot),
             lager:info("call ~s parked in slot ~s, update presence-id '~s' with state: early", [ParkedCallId, SlotNumber, PresenceId]),
-            whapps_call_command:presence(<<"early">>, PresenceId, ParkedCallId, ParkedURI),
+            whapps_call_command:presence(<<"early">>, PresenceId, ParkedCallId, ParkedURI, Call),
             wait_for_pickup(SlotNumber, Slot, Call)
     end.
 
@@ -394,7 +394,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                     PresenceId = wh_json:get_value(<<"Presence-ID">>, UpdatedSlot),
                     ParkedCallURI = wh_json:get_value(<<"CID-URI">>, UpdatedSlot),
                     lager:info("update presence-id '~s' with state: early", [PresenceId]),
-                    whapps_call_command:presence(<<"early">>, PresenceId, CallId, ParkedCallURI),
+                    whapps_call_command:presence(<<"early">>, PresenceId, CallId, ParkedCallURI, Call),
                     {'ok', SlotNumber, UpdatedSlot};
                 {'error', 'conflict'} ->
                     update_call_id(Replaces, get_parked_calls(Call), Call);
@@ -503,7 +503,7 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
                             PresenceId = wh_json:get_value([<<"slots">>, SlotNumber, <<"Presence-ID">>], JObj),
                             ParkedURI = wh_json:get_value([<<"slots">>, SlotNumber, <<"CID-URI">>], JObj),
                             lager:info("update presence-id '~s' with state: terminated", [PresenceId]),
-                            _ = whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId, ParkedURI),
+                            _ = whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId, ParkedURI, 'undefined'),
                             Ok;
                         {'error', 'conflict'} -> cleanup_slot(SlotNumber, ParkedCallId, AccountDb);
                         {'error', _R}=E ->
@@ -534,7 +534,8 @@ wait_for_pickup(SlotNumber, Slot, Call) ->
                   'false' -> ?DEFAULT_RINGBACK_TM
               end,
     lager:info("waiting for parked caller to be picked up or hangup"),
-    case whapps_call_command:b_hold(Timeout, HoldMedia, Call) of
+    whapps_call_command:hold(HoldMedia, Call),
+    case whapps_call_command:wait_for_unparked_call(Call, Timeout) of
         {'error', 'timeout'} ->
             TmpCID = <<"Parking slot ", SlotNumber/binary>>,
             ChannelUp = case whapps_call_command:b_channel_status(Call) of
