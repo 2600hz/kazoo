@@ -81,10 +81,9 @@
                        ,[{<<"notification">>, <<"webhook">>}]
                       }
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
-
+-define(QUEUE_NAME, <<"webhooks_shared_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 %%%===================================================================
 %%% API
 %%%===================================================================
