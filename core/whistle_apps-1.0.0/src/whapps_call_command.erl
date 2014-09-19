@@ -249,10 +249,15 @@ presence(State, PresenceId, CallId, TargetURI, Call) ->
                  ,{<<"To-Tag">>, whapps_call:to_tag(Call)}
                  ,{<<"State">>, State}
                  ,{<<"Call-ID">>, CallId}
-                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 | wh_api:default_headers(module_as_app(Call), ?APP_VERSION)
                 ]),
     wapi_presence:publish_update(Command).
 
+-spec module_as_app( whapps_call:call() ) -> ne_binary().
+module_as_app(Call) ->
+    JObj = whapps_call:kvs_fetch(<<"cf_flow">>, wh_json:new(), Call),
+    wh_json:get_value(<<"module">>, JObj, ?APP_NAME).
+    
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
