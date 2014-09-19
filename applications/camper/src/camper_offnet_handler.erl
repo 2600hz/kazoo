@@ -38,6 +38,7 @@
                 ,stop_timer :: non_neg_integer()
                 ,parked_call :: ne_binary()
                 ,offnet_ctl_q :: ne_binary()
+                ,moh :: api_binary()
                }).
 
 -define(MK_CALL_BINDING(CALLID), [{'callid', CALLID}, {'restrict_to', [<<"CHANNEL_DESTROY">>
@@ -83,6 +84,16 @@ init(JObj) ->
     StopAfter = timer:minutes(wh_json:get_value(<<"Stop-After">>, JObj, StopAfterSystem)),
 
     StopTimer = timer:apply_after(StopAfter, 'gen_listener', 'cast', [self(), 'stop_campering']),
+
+    MohId = case couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:account_id(Call)) of
+                {'ok', JDoc} -> wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JDoc);
+                _ -> 'undefined'
+            end,
+    Moh = case MohId of
+              'undefined' -> 'undefined';
+              Id -> cf_util:correct_media_path(Id, Call)
+          end,
+
     {'ok', #state{exten = Exten
                   ,stored_call = Call
                   ,queue = 'undefined'
@@ -90,6 +101,7 @@ init(JObj) ->
                   ,max_tries = MaxTries
                   ,stop_timer = StopTimer
                   ,try_after = TryInterval
+                  ,moh = Moh
                  }}.
 
 %%--------------------------------------------------------------------
@@ -158,6 +170,12 @@ handle_cast('hangup_parked_call', State) ->
     end,
     {'noreply', State#state{parked_call = 'undefined'}};
 handle_cast({'parked', CallId}, State) ->
+    Hold = [{<<"Application-Name">>, <<"hold">>}
+              ,{<<"Insert-At">>, <<"now">>}
+              ,{<<"Hold-Media">>, State#state.moh}
+              ,{<<"Call-ID">>, CallId}
+              | wh_api:default_headers(State#state.queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)],
+    wapi_dialplan:publish_command(State#state.offnet_ctl_q, props:filter_undefined(Hold)),
     Req = build_bridge_request(CallId, State#state.stored_call, State#state.queue),
     lager:debug("Publishing bridge request"),
     wapi_resource:publish_originate_req(Req),
