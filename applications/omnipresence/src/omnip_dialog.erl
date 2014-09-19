@@ -248,8 +248,9 @@ handle_update(JObj, State, Expires) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
-    ToURI = case State of
-                ?PRESENCE_RINGING ->
+    App = wh_json:get_value(<<"App-Name">>, JObj),
+    ToURI = case {State ,App} of
+                {?PRESENCE_RINGING, <<"park">>} ->
                     <<"sip:", From/binary,";kazoo-pickup=true">>;
                 _ ->
                     <<"sip:", From/binary>>
