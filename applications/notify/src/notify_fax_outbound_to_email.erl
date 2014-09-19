@@ -8,15 +8,15 @@
 %%% @contributors
 %%%   James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(notify_fax_outbound).
+-module(notify_fax_outbound_to_email).
 
 -export([init/0, handle_req/2]).
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, 'notify_fax_outbound_text_tmpl').
--define(DEFAULT_HTML_TMPL, 'notify_fax_outbound_html_tmpl').
--define(DEFAULT_SUBJ_TMPL, 'notify_fax_outbound_subj_tmpl').
+-define(DEFAULT_TEXT_TMPL, 'notify_fax_outbound_to_email_text_tmpl').
+-define(DEFAULT_HTML_TMPL, 'notify_fax_outbound_to_email_html_tmpl').
+-define(DEFAULT_SUBJ_TMPL, 'notify_fax_outbound_to_email_subj_tmpl').
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_outbound_to_email">>).
 
