@@ -34,16 +34,16 @@
 -define(SUBSCRIBE_TYPES, [{<<"Expires">>, fun(V) -> is_integer(wh_util:to_integer(V)) end}]).
 
 -define(UPDATE_HEADERS, [<<"To">>, <<"From">>]).
--define(OPTIONAL_UPDATE_HEADERS, [<<"From-Tag">>, <<"To-Tag">>
-                                 ,<<"Call-ID">>, <<"Direction">>
+-define(OPTIONAL_UPDATE_HEADERS, [<<"Call-ID">>, <<"Direction">>
                                  ,<<"Event-Package">>, <<"State">>
                                  ,<<"From-Tag">>, <<"To-Tag">>
-                                 ,<<"From-User">>, <<"From-Realm">>
-                                 ,<<"To-User">>, <<"To-Realm">>
+                                 ,<<"From-User">>, <<"From-Realm">>, <<"From-URI">>
+                                 ,<<"To-User">>, <<"To-Realm">>, <<"To-URI">>
                                  ,<<"Messages-Waiting">>, <<"Messages-New">>
                                  ,<<"Messages-Saved">>, <<"Messages-Urgent">>
                                  ,<<"Messages-Urgent-Saved">>, <<"Message-Account">>
                                  ,<<"Expires">>, <<"Flush-Level">>
+                                 ,<<"Presentity">>, <<"Presentity-User">>, <<"Presentity-Realm">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                        ,{<<"Event-Name">>, <<"update">>}
