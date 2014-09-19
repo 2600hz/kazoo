@@ -924,12 +924,11 @@ maybe_update_descendants_count(AccountId, NewCount) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'error', _E} ->
-            io:format("could not load account ~p: ~p~n", [AccountId, _E]);
+            io:format("could not load account ~s: ~p~n", [AccountId, _E]);
         {'ok', JObj} ->
             OldCount = wh_json:get_integer_value(<<"descendants_count">>, JObj),
             case OldCount =:= NewCount of
-                'true' ->
-                    io:format("~p the count is right~n", [AccountId]);
+                'true' -> 'ok';
                 'false' ->
                     update_descendants_count(AccountId, JObj, NewCount)
             end
@@ -947,10 +946,10 @@ update_descendants_count(AccountId, JObj, NewCount) ->
     Doc = wh_json:set_value(<<"descendants_count">>, NewCount, JObj),
     case couch_mgr:save_doc(AccountDb, Doc) of
         {'error', _E} ->
-            io:format("failed to update count ~p: ~p~n", [AccountId, _E]);
+            io:format("failed to update descendant count for ~s: ~p~n", [AccountId, _E]);
         {'ok', NewDoc} ->
             _ = replicate_account_definition(NewDoc),
-            io:format("account ~p count updated~n", [AccountId]),
+            io:format("updated descendant count for ~s~n", [AccountId]),
             'ok'
     end.
 

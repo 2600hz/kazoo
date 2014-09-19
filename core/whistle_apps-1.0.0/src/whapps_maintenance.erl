@@ -229,7 +229,8 @@ refresh_account_db(Database) ->
     _ = remove_depreciated_account_views(AccountDb),
     _ = ensure_account_definition(AccountDb, AccountId),
     Views = get_all_account_views(),
-    whapps_util:update_views(AccountDb, Views, 'true').
+    _ = whapps_util:update_views(AccountDb, Views, 'true'),
+    crossbar_util:descendants_count(AccountId).
 
 -spec remove_depreciated_account_views(ne_binary()) -> 'ok'.
 remove_depreciated_account_views(AccountDb) ->
