@@ -4,6 +4,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("notify_templates.hrl").
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
 
