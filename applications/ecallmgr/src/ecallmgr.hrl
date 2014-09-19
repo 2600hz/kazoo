@@ -298,6 +298,7 @@
 -define(FS_CUSTOM_EVENTS, ['whistle::noop', 'whistle::masquerade'
                            ,'sofia::transferor', 'sofia::transferee'
                            ,'sofia::replaced', 'sofia::register'
+                           ,'sofia::intercepted'
                            ,'conference::maintenance'
                            ,'spandsp::txfaxresult'
                            ,'spandsp::rxfaxresult'
