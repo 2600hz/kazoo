@@ -248,6 +248,13 @@ handle_update(JObj, State, Expires) ->
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
+    ToURI = case State of
+                ?PRESENCE_RINGING ->
+                    <<"sip:", From/binary,";kazoo-pickup=true">>;
+                _ ->
+                    <<"sip:", From/binary>>
+            end,
+            
     {User, Props} =
         case Direction =:= <<"inbound">> of
             'true' ->
@@ -279,11 +286,11 @@ handle_update(JObj, State, Expires) ->
                     ,{<<"From-User">>, ToUsername}
                     ,{<<"From-Realm">>, ToRealm}
                     ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
-                    ,{<<"To">>, <<"sip:", From/binary,";kazoo-pickup=true">>}
+                    ,{<<"To">>, ToURI}
+                    ,{<<"To-URI">>, ToURI}
                     ,{<<"To-User">>, FromUsername}
                     ,{<<"To-Realm">>, FromRealm}
                     ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}                   
-                    ,{<<"To-URI">>, <<"sip:", From/binary,";kazoo-pickup=true">>}
                     ,{<<"State">>, State}
                     ,{<<"Expires">>, Expires}
                     ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
