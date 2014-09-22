@@ -111,10 +111,10 @@ chan_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
             {MyUUID, MyMediaServer, {Local, [Channel | Remote]}}
     end.
 
--spec eavesdrop_call(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec eavesdrop_call(ne_binary(), whapps_call:call()) -> 'ok'.
 eavesdrop_call(Chan, Call) ->
     UUID = wh_json:get_value(<<"uuid">>, Chan),
-    whapps_call_command:answer(Call),
+    whapps_call_command:b_answer(Call),
     whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
     lager:info("caller ~s is being eavesdropper", [whapps_call:caller_id_name(Call)]),
     _ = wait_for_eavesdrop_complete(Call),
