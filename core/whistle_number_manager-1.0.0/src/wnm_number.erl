@@ -155,7 +155,7 @@ get(Number, PublicFields) ->
                         end
                 end
                 ,fun(#number{number_db=Db}=N) ->
-                         case couch_mgr:open_cache_doc(Db, Num, [{'cache_failures', 'true'}]) of
+                         case couch_mgr:open_cache_doc(Db, Num, [{'cache_failures', ['not_found']}]) of
                              {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
                              {'error', 'not_found'} ->
                                  lager:debug("unable to find number ~s/~s"

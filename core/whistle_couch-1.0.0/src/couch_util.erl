@@ -80,7 +80,10 @@
                               'numbers' | 'aggregate' | 'system' |
                               'depreciated' | 'undefined'.
 
--export_type([db_create_options/0, couchbeam_errors/0, db_classifications/0]).
+-export_type([db_create_options/0
+              ,couchbeam_errors/0
+              ,db_classifications/0
+             ]).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -377,8 +380,17 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
     end.
 
 -spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error()) -> 'ok'.
+-spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error(), atoms()) -> 'ok'.
 maybe_cache_failure(DbName, DocId, Options, Error) ->
-    case props:get_is_true('cache_failures', Options, 'false') of
+    case props:get_value('cache_failures', Options) of
+        ErrorCodes when is_list(ErrorCodes) ->
+            maybe_cache_failure(DbName, DocId, Options, Error, ErrorCodes);
+        'true' -> cache_db_doc(DbName, DocId, Error);
+        'false' -> 'ok'
+    end.
+
+maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
+    case lists:member(ErrorCode, ErrorCodes) of
         'true' -> cache_db_doc(DbName, DocId, Error);
         'false' -> 'ok'
     end.
