@@ -73,53 +73,46 @@ eavesdrop_a_channel(Channels, Call) ->
 
     lager:debug("looking for channels on my node ~s that aren't me", [MyMediaServer]),
 
-    case sort_channels(Channels, MyUUID, MyMediaServer) of
+    {_, _, SortedChannels} = lists:foldl(fun channels_sort/2, {MyUUID, MyMediaServer, {[], []}}, Channels),
+
+    case SortedChannels of
         {[], []} ->
             lager:debug("no channels available to eavesdrop"),
             no_channels(Call);
-        {[], [RemoteUUID | _Remote]} ->
-            lager:debug("no calls on my media server, trying ~s", [RemoteUUID]),
-            eavesdrop_call(RemoteUUID, Call);
-        {[LocalUUID | _Cs], _} ->
-            lager:debug("found a call (~s) on my media server", [LocalUUID]),
-            eavesdrop_call(LocalUUID, Call)
+        {[], [RemoteChannel | _Remote]} ->
+            lager:info("no calls on my media server, trying ~s", [wh_json:get_value(<<"uuid">>, RemoteChannel)]),
+
+            eavesdrop_call(RemoteChannel, Call);
+        {[LocalChannel | _Cs], _} ->
+            lager:info("found a call (~s) on my media server", [wh_json:get_value(<<"uuid">>, LocalChannel)]),
+            eavesdrop_call(LocalChannel, Call)
     end.
 
--spec sort_channels(wh_json:objects(), ne_binary(), ne_binary()) ->
-                           {ne_binaries(), ne_binaries()}.
--spec sort_channels(wh_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}) ->
-                           {ne_binaries(), ne_binaries()}.
-sort_channels(Channels, MyUUID, MyMediaServer) ->
-    sort_channels(Channels, MyUUID, MyMediaServer, {[], []}).
+-type channels() :: {wh_json:objects(), wh_json:objects()}.
 
-sort_channels([], _MyUUID, _MyMediaServer, Acc) -> Acc;
-sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
+-spec channels_sort(wh_json:object(), {ne_binary(), ne_binary(), channels()}) -> channels().
+channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
     lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [wh_json:get_value(<<"uuid">>, Channel)
                                                         ,wh_json:is_true(<<"answered">>, Channel)
                                                         ,wh_json:get_value(<<"node">>, Channel)
                                                         ,wh_json:get_value(<<"other_leg">>, Channel)
                                                        ]),
-    maybe_add_leg(Channels, MyUUID, MyMediaServer, Acc, Channel).
-
--spec maybe_add_leg(wh_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}, wh_json:object()) ->
-                           {ne_binaries(), ne_binaries()}.
-maybe_add_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
     UUID = wh_json:get_value(<<"uuid">>, Channel),
     case wh_json:get_value(<<"node">>, Channel) of
         MyMediaServer ->
             case UUID of
                 MyUUID ->
-                    sort_channels(Channels, MyUUID, MyMediaServer, Acc);
+                    Acc;
                 _ ->
-                    sort_channels(Channels, MyUUID, MyMediaServer, {[UUID | Local], Remote})
+                    {MyUUID, MyMediaServer, {[Channel | Local], Remote}}
             end;
         _OtherMediaServer ->
-            sort_channels(Channels, MyUUID, MyMediaServer, {Local, [UUID | Remote]})
+            {MyUUID, MyMediaServer, {Local, [Channel | Remote]}}
     end.
 
 -spec eavesdrop_call(ne_binary(), whapps_call:call()) -> 'ok'.
-eavesdrop_call(Chan, Call) ->
-    UUID = wh_json:get_value(<<"uuid">>, Chan),
+eavesdrop_call(Channel, Call) ->
+    UUID = wh_json:get_value(<<"uuid">>, Channel),
     whapps_call_command:b_answer(Call),
     whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
     lager:info("caller ~s is being eavesdropper", [whapps_call:caller_id_name(Call)]),
