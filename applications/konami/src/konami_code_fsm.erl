@@ -570,8 +570,8 @@ has_number(Collected, Ns) ->
 has_pattern(Collected, Ps) ->
     Regexes = wh_json:get_keys(Ps),
     has_pattern(Collected, Ps, Regexes).
-has_pattern(_Collected, _Ps, []) ->
-    'false';
+
+has_pattern(_Collected, _Ps, []) -> 'false';
 has_pattern(Collected, Ps, [Regex|Regexes]) ->
     case re:run(Collected, Regex, [{'capture', 'all_but_first', 'binary'}]) of
         'nomatch' -> has_pattern(Collected, Ps, Regexes);
@@ -601,8 +601,7 @@ disarm_state(#state{a_digit_timeout_ref=ARef
 maybe_cancel_timer(Ref) when is_reference(Ref) ->
     catch erlang:cancel_timer(Ref),
     'ok';
-maybe_cancel_timer(_) ->
-    'ok'.
+maybe_cancel_timer(_) -> 'ok'.
 
 -spec maybe_start_leg_listeners(whapps_call:call(), 'a' | 'b' | 'ab') -> 'ok'.
 maybe_start_leg_listeners(Call, 'a') ->

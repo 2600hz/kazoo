@@ -103,6 +103,8 @@ The *transfer* module requires being used with Metaflow "patterns". In the examp
 
 #### Account Channels
 
+This requires the cb_channels module to be started: `sup crossbar_maintenance start_module cb_channels`
+
      POST v1/accounts/{ACCOUNT_ID}/channels/{CALL_ID}
      {
        "data": {
