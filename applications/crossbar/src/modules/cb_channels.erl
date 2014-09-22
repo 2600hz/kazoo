@@ -370,6 +370,8 @@ normalize_channel(JObj) ->
      ).
 
 -spec maybe_transfer(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_transfer(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec maybe_transfer(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_transfer(Context, Transferor) ->
     Channel = cb_context:resp_data(Context),
 
