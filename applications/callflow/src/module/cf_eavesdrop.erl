@@ -118,8 +118,9 @@ maybe_add_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
     end.
 
 -spec eavesdrop_call(ne_binary(), whapps_call:call()) -> 'ok'.
-eavesdrop_call(UUID, Call) ->
-    whapps_call_command:answer(Call),
+eavesdrop_call(Chan, Call) ->
+    UUID = wh_json:get_value(<<"uuid">>, Chan),
+    whapps_call_command:b_answer(Call),
     whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
     lager:info("caller ~s is being eavesdropper", [whapps_call:caller_id_name(Call)]),
     wait_for_eavesdrop_complete(),
