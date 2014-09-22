@@ -89,8 +89,9 @@ eavesdrop_a_channel(Channels, Call) ->
     end.
 
 -type channels() :: {wh_json:objects(), wh_json:objects()}.
+-type channel_sort_acc() :: {ne_binary(), ne_binary(), channels()}.
 
--spec channels_sort(wh_json:object(), {ne_binary(), ne_binary(), channels()}) -> channels().
+-spec channels_sort(wh_json:object(), channel_sort_acc()) -> channel_sort_acc().
 channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
     lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [wh_json:get_value(<<"uuid">>, Channel)
                                                         ,wh_json:is_true(<<"answered">>, Channel)
@@ -110,12 +111,37 @@ channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
             {MyUUID, MyMediaServer, {Local, [Channel | Remote]}}
     end.
 
--spec eavesdrop_call(ne_binary(), whapps_call:call()) -> 'ok'.
+-spec eavesdrop_call(wh_json:object(), whapps_call:call()) -> 'ok'.
 eavesdrop_call(Channel, Call) ->
     UUID = wh_json:get_value(<<"uuid">>, Channel),
     whapps_call_command:b_answer(Call),
     whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
-    lager:info("caller ~s is being eavesdropper", [whapps_call:caller_id_name(Call)]).
+    lager:info("caller ~s is being eavesdropper", [whapps_call:caller_id_name(Call)]),
+    _ = wait_for_eavesdrop_complete(UUID, Call),
+    cf_exe:stop(Call).
+
+-spec wait_for_eavesdrop_complete(ne_binary(), whapps_call:call()) -> 'ok'.
+wait_for_eavesdrop_complete(UUID, Call) ->
+    case whapps_call_command:wait_for_hangup(?MILLISECONDS_IN_SECOND*5) of
+        {'ok', 'channel_hungup'} -> 'ok';
+        {'error', 'timeout'} ->
+            verify_call_is_active(UUID, Call)
+    end.
+
+-spec verify_call_is_active(ne_binary(), whapps_call:call()) -> 'ok'.
+verify_call_is_active(UUID, Call) ->
+    lager:debug("timed out while waiting for hangup, checking call status"),
+    case whapps_call_command:b_channel_status(UUID) of
+        {'ok', ChannelStatus} ->
+            case wh_json:get_value(<<"Status">>, ChannelStatus) of
+                <<"active">> -> wait_for_eavesdrop_complete(UUID, Call);
+                _Status ->
+                    lager:debug("channel has status ~s", [_Status])
+            end;
+        {'error', _E} ->
+            lager:debug("failed to get status: ~p", [_E])
+    end,
+    whapps_call_command:hangup(Call).
 
 -spec eavesdrop_cmd(ne_binary()) -> wh_proplist().
 eavesdrop_cmd(TargetCallId) ->
