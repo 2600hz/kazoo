@@ -330,7 +330,7 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 %% Park
 -define(PARK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>, <<"Timeout">>, <<"Hangup-Cause">>]).
 -define(PARK_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"park">>}
