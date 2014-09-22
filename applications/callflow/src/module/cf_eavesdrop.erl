@@ -115,21 +115,7 @@ eavesdrop_call(Channel, Call) ->
     UUID = wh_json:get_value(<<"uuid">>, Channel),
     whapps_call_command:b_answer(Call),
     whapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
-    lager:info("caller ~s is being eavesdropper", [whapps_call:caller_id_name(Call)]),
-    wait_for_eavesdrop_complete(),
-    whapps_call_command:hangup(Call).
-
--spec wait_for_eavesdrop_complete() -> {'ok', wh_json:object()}.
-wait_for_eavesdrop_complete() ->
-    case whapps_call_command:receive_event('infinity') of
-        {'ok', JObj} ->
-            case whapps_util:get_event_type(JObj) of
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
-                {<<"error">>, <<"dialplan">>} -> {'ok', JObj};
-                _ -> wait_for_eavesdrop_complete()
-            end;
-        _ -> wait_for_eavesdrop_complete()
-    end.
+    lager:info("caller ~s is being eavesdropper", [whapps_call:caller_id_name(Call)]).
 
 -spec eavesdrop_cmd(ne_binary()) -> wh_proplist().
 eavesdrop_cmd(TargetCallId) ->
