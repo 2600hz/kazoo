@@ -386,7 +386,7 @@ maybe_cache_failure(DbName, DocId, Options, Error) ->
         ErrorCodes when is_list(ErrorCodes) ->
             maybe_cache_failure(DbName, DocId, Options, Error, ErrorCodes);
         'true' -> cache_db_doc(DbName, DocId, Error);
-        'false' -> 'ok'
+        _ -> 'ok'
     end.
 
 maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
