@@ -1,0 +1,33 @@
+	"dial_plan": {
+		   "^([^0]\\d{3,6}|18[59]0\\d{6})$": {
+			   "description": "IRE-Dublin-Local",
+			   "prefix": "+3531"
+                    },
+			 "^([01]800\\d{6,7})$": {
+			   "description": "IRE-Dublin-TollFree",
+			   "prefix": "+353"
+                    },
+			 "^(15\\d{7})$": {
+			   "description": "IRE-Dublin-Premium",
+			   "prefix": "+353"
+                    },
+			 "^0(8[35-9]\\d{7})$": {
+			   "description": "IRE-Dublin-Mobile",
+			   "prefix": "+353"
+                    },
+			 "^0((1[^0]\\d{6}|[24-79]\\d{7,9}))(\\D+\\d+)?$": {
+			   "description": "IRE-Dublin-National",
+			   "prefix": "+353"
+                    },
+			 "^(1\d{2,5}|999)$": {
+			   "description": "IRE-Dublin-Service",
+			   "prefix": "+"
+                    },
+			 "^(?:00)((1[2-9]\\d\\d[2-9]\\d{6})|([2-9]\\d{6,14}))(\\D+\\d+)?$": {
+			   "description": "IRE-Dublin-International",
+			   "prefix": "+"
+                    }
+					
+
+		   },
+}
