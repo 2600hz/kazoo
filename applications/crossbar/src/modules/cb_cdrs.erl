@@ -206,14 +206,16 @@ create_view_options(OwnerId, Context) ->
 -spec create_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                  {'ok', wh_proplist()}.
 create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
-    {'ok', [{'startkey', CreatedFrom}
-            ,{'endkey', CreatedTo}
+    {'ok', [{'startkey', CreatedTo}
+            ,{'endkey', CreatedFrom}
             ,{'limit', crossbar_doc:pagination_page_size(Context)}
+           ,'descending'
            ]};
-create_view_options(OnwerId, Context, CreatedFrom, CreatedTo) ->
-    {'ok', [{'startkey', [OnwerId, CreatedFrom]}
-            ,{'endkey', [OnwerId, CreatedTo]}
+create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
+    {'ok', [{'startkey', [OwnerId, CreatedTo]}
+            ,{'endkey', [OwnerId, CreatedFrom]}
             ,{'limit', crossbar_doc:pagination_page_size(Context)}
+            ,'descending'
            ]}.
 
 %%--------------------------------------------------------------------
@@ -315,14 +317,18 @@ maybe_paginate_and_clean(Context, Ids) ->
         _ ->
             ViewOptions = cb_context:fetch(Context, 'chunked_view_options'),
             PageSize = erlang:length(Ids),
-            AskedFor = props:get_value('limit', ViewOptions, PageSize),
+            AskedFor =
+                case props:get_value('limit', ViewOptions) of
+                    'undefined' -> PageSize;
+                    Limit -> Limit - 1
+                end,
             case AskedFor >= erlang:length(Ids) of
                 'true' ->
-                    Context1 = cb_context:store(Context, 'page_size', PageSize),
+                    Context1 = cb_context:store(Context, 'page_size', AskedFor),
                     {Context1, [Id || {Id, _} <- Ids]};
                 'false' ->
                     {_, LastKey}=Last = lists:last(Ids),
-                    Context1 = cb_context:store(Context, 'page_size', PageSize - 1),
+                    Context1 = cb_context:store(Context, 'page_size', AskedFor),
                     Context2 = cb_context:store(Context1, 'next_start_key', LastKey),
                     {Context2, [Id || {Id, _} <- lists:delete(Last, Ids)]}
             end
@@ -416,7 +422,8 @@ normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
 
 -spec normalize_cdr(wh_json:object(), cb_context:context()) -> wh_json:object().
 normalize_cdr(JObj, Context) ->
-    Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0),
+    Duration = wh_json:get_integer_value(<<"duration_seconds">>, JObj, 0),
+    Timestamp = wh_json:get_integer_value(<<"timestamp">>, JObj, 0) - Duration,
     maybe_reseller_cdr(
       wh_json:from_list([{<<"id">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}
                          ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, JObj, <<>>)}

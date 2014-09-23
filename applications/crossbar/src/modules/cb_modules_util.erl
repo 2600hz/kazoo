@@ -38,8 +38,8 @@ range_view_options(Context) ->
     range_view_options(Context, ?MAX_RANGE).
 range_view_options(Context, MaxRange) ->
     TStamp =  wh_util:current_tstamp(),
-    CreatedFrom = created_from(Context, TStamp, MaxRange),
-    CreatedTo = created_to(Context, CreatedFrom, MaxRange),
+    CreatedTo = created_to(Context, TStamp),
+    CreatedFrom = created_from(Context, CreatedTo, MaxRange),
 
     case CreatedTo - CreatedFrom of
         N when N < 0 ->
@@ -62,23 +62,21 @@ range_view_options(Context, MaxRange) ->
         _N -> {CreatedFrom, CreatedTo}
     end.
 
--spec created_to(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
-created_to(Context, CreatedFrom, MaxRange) ->
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)).
+-spec created_to(cb_context:context(), pos_integer()) -> pos_integer().
+created_to(Context, TStamp) ->
+    case crossbar_doc:start_key(Context) of
+        'undefined' ->
+            lager:debug("building created_to from req value"),
+            wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, TStamp));
+        StartKey ->
+            lager:debug("found startkey ~p as created_to", [StartKey]),
+            wh_util:to_integer(StartKey)
+    end.
 
 -spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
-created_from(Context, TStamp, MaxRange) ->
-    created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
-
--spec created_from(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> pos_integer().
-created_from(Context, TStamp, MaxRange, 'undefined') ->
+created_from(Context, CreatedTo, MaxRange) ->
     lager:debug("building created_from from req value"),
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
-created_from(_Context, _TStamp, _MaxRange, StartKey) ->
-    lager:debug("found startkey ~p as created_from", [StartKey]),
-    wh_util:to_integer(StartKey).
-
-
+    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, CreatedTo - MaxRange)).
 
 -spec bind(atom(), wh_proplist()) -> 'ok'.
 bind(Module, Bindings) ->
