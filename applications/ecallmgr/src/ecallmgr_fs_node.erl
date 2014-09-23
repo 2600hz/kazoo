@@ -526,7 +526,7 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
                 {'bgok', BGApiID, FSResp} ->
                     process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, ['global']), Acc);
                 {'bgerror', BGApiID, _} when ArgFormat =:= 'binary' ->
-                    process_cmd(Node, Options, ApiCmd, ApiArg, Acc, 'list');
+                    process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'list');
                 {'bgerror', BGApiID, Error} -> [{'error', Error} | Acc]
             after 120000 ->
                     [{'timeout', {ApiCmd, ApiArg}} | Acc]

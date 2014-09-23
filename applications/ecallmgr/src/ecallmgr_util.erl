@@ -555,7 +555,7 @@ build_simple_channels(Endpoints) ->
     EPs = endpoint_jobjs_to_records(Endpoints, 'false'),
     build_bridge_channels(EPs, []).
 
--spec build_bridge_channels(bridge_endpoints()) -> bridge_channels().
+-spec build_bridge_channels(wh_json:objects()) -> bridge_channels().
 build_bridge_channels(Endpoints) ->
     EPs = endpoint_jobjs_to_records(Endpoints),
     build_bridge_channels(EPs, []).
@@ -937,7 +937,7 @@ request_media_url(MediaName, CallId, JObj, Type) ->
             {'ok', MediaUrl}
     end.
 
--spec custom_sip_headers(wh_proplist()) -> wh_json:object().
+-spec custom_sip_headers(wh_proplist()) -> wh_proplist().
 custom_sip_headers(Props) ->
     lists:map(fun normalize_custom_sip_header_name/1
               ,props:filter(fun is_custom_sip_header/1, Props)

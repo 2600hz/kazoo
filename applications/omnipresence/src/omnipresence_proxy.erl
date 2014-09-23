@@ -1,17 +1,23 @@
-
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2014, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Luis Azedo
+%%%-------------------------------------------------------------------
 -module(omnipresence_proxy).
 
--include_lib("nksip/include/nksip.hrl").
 -include("omnipresence.hrl").
-
+-include_lib("nksip/include/nksip.hrl").
 
 -export([start_link/0, stop/0]).
 
--export([sip_subscribe/2, sip_resubscribe/2, sip_dialog_update/3]). 
+-export([sip_subscribe/2, sip_resubscribe/2, sip_dialog_update/3]).
 -export([sip_authorize/3]).
 -export([sip_get_user_pass/4]).
 
--export([init/1, terminate/2]). 
+-export([init/1, terminate/2]).
 -export([handle_call/3, handle_cast/2, handle_info/2]).
 
 -export([update_manager/1]).
@@ -30,7 +36,6 @@ stop() ->
     lager:info("stopping PROXY"),
     'ok'.
 
-
 %%%%%%%%%%%%%%%%%%%%%%%  NkSIP CallBacks %%%%%%%%%%%%%%%%%%%%%%%%
 
 sip_get_user_pass(User, Realm, _Req, _Call) ->
@@ -38,77 +43,72 @@ sip_get_user_pass(User, Realm, _Req, _Call) ->
                                            ,fun wapi_authn:publish_req/1
                                            ,fun wapi_authn:resp_v/1
                                           ),
-        
-    case ReqResp of 
+
+    case ReqResp of
         {'ok', JObj} ->
             Password = wh_json:get_value(<<"Auth-Password">>,JObj),
             case Realm of
-                <<"teste.sip.90e9.com">> -> true;
+                <<"teste.sip.90e9.com">> -> 'true';
                 _ -> Password
             end;
         {'error', _} ->
             case Realm of
-                <<"teste.sip.90e9.com">> -> true;
-                _ -> false
+                <<"teste.sip.90e9.com">> -> 'true';
+                _ -> 'false'
             end
     end.
-            
+
 sip_authorize(Auth, Req, Call) ->
     {'ok', Method} = nksip_request:meta(method, Req),
     sip_authorize(Method, Auth, Req, Call).
-    
 
-sip_authorize('OPTIONS', _Auth, _Req, _Call) -> ok;
+sip_authorize('OPTIONS', _Auth, _Req, _Call) -> 'ok';
 sip_authorize(_Method, Auth, Req, _Call) ->
-    IsDialog = lists:member(dialog, Auth),
-    IsRegister = lists:member(register, Auth),
-    {'ok', Realm} = nksip_request:meta(to_domain, Req),
+    IsDialog = lists:member('dialog', Auth),
+    IsRegister = lists:member('register', Auth),
+    {'ok', Realm} = nksip_request:meta('to_domain', Req),
     case IsDialog orelse IsRegister of
-        true ->
-            ok;
-        false when Realm =:= <<"teste.sip.90e9.com">> -> ok;
-        false ->
-            case nksip_lib:get_value({digest, Realm}, Auth) of
-                true -> ok;
-                false -> forbidden;                             
-                undefined -> {proxy_authenticate, Realm}
+        'true' -> 'ok';
+        'false' when Realm =:= <<"teste.sip.90e9.com">> -> 'ok';
+        'false' ->
+            case nksip_lib:get_value({'digest', Realm}, Auth) of
+                'true' -> 'ok';
+                'false' -> 'forbidden';
+                'undefined' -> {'proxy_authenticate', Realm}
             end
     end.
 
 
 sip_subscribe(Req, _Call) ->
-    {ok, ReqId} = nksip_request:get_handle(Req),
+    {'ok', ReqId} = nksip_request:get_handle(Req),
     spawn(fun() -> update_manager(ReqId) end),
     'noreply'.
 
 sip_resubscribe(Req, _Call) ->
-    {ok, ReqId} = nksip_request:get_handle(Req),
+    {'ok', ReqId} = nksip_request:get_handle(Req),
     spawn(fun() -> update_manager(ReqId) end),
     'noreply'.
 
-
-sip_dialog_update({subscription_status, State, _Subs}, _Dialog, _Call) ->
+sip_dialog_update({'subscription_status', State, _Subs}, _Dialog, _Call) ->
     lager:debug("subscription_status ~p", [State]);
 sip_dialog_update(Update, _Dialog, _Call) ->
     lager:debug("dialog update ~p", [Update]).
-    
+
 %% @doc SipApp Callback: initialization.
 init([]) ->
     lager:info("callback init called"),
     gen_server:cast(self(), 'find_subscriptions_srv'),
-    {ok, #state{}}.
-
+    {'ok', #state{}}.
 
 %% @doc SipApp Callback: Synchronous user call.
 handle_call(_Info, _From, State) ->
-	lager:info("unhandled call : ~p : ~p",[_Info,_From]),
-    {noreply, State}.
-
+    lager:info("unhandled call from ~p: ~p",[_From, _Info]),
+    {'noreply', State}.
 
 %% @doc SipApp Callback: Asynchronous user cast.
 handle_cast({'omnipresence_link', Props}, #state{subs_pid=Pid}=State) ->
     gen_server:call(Pid, {'proxy_subscribe', Props}),
-    {noreply, State};
+    {'noreply', State};
 handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
     case omnipresence_sup:subscriptions_srv() of
         'undefined' ->
@@ -123,8 +123,8 @@ handle_cast('find_subscriptions_srv', #state{subs_pid=_Pid}=State) ->
                                    }}
     end;
 handle_cast(_Info, State) ->
-	lager:info("unhandled cast : ~p",[_Info]),
-    {noreply, State}.
+    lager:info("unhandled cast: ~p",[_Info]),
+    {'noreply', State}.
 
 %% @doc SipApp Callback: External erlang message received.
 handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
@@ -135,8 +135,8 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
                             ,subs_ref='undefined'
                            }};
 handle_info(_Info, State) ->
-	lager:info("unhandled Info : ~p",[_Info]),
-    {noreply, State}.
+    lager:info("unhandled info: ~p", [_Info]),
+    {'noreply', State}.
 
 terminate(_Reason, _State) ->
     lager:debug("TERMINATE APP: ~p", [_Reason]).
@@ -144,68 +144,60 @@ terminate(_Reason, _State) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%  Internal %%%%%%%%%%%%%%%%%%%%%%%%
 
--spec auth_req(ne_binary(), wh_proplist()) -> wh_proplist().
+-spec auth_req(ne_binary(), ne_binary()) -> wh_proplist().
 auth_req(User, Realm) ->
     [{<<"Msg-ID">>, wh_util:rand_hex_binary(15)}
-           ,{<<"To">>, <<User/binary,"@",Realm/binary>>}
-           ,{<<"From">>, <<User/binary,"@",Realm/binary>>}
-           ,{<<"Auth-User">>, User}
-           ,{<<"Auth-Realm">>, Realm}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ].
+     ,{<<"To">>, <<User/binary,"@",Realm/binary>>}
+     ,{<<"From">>, <<User/binary,"@",Realm/binary>>}
+     ,{<<"Auth-User">>, User}
+     ,{<<"Auth-Realm">>, Realm}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
 
--spec update_manager(nksip:request()|nksip:handle()) -> 'ok'. 
+-spec update_manager(nksip:request()|nksip:handle()) -> 'ok'.
 update_manager(Request) ->
-    {ok, [{from, From}        
-          ,{to_user, ToUser}
-          ,{to, To}        
-          ,{subscription_handle, SubscriptionId}
-          ,{call_id, CallId}
-          ,{app_id, AppId}
-          ,{{header, <<"record-route">>}, RecordRoutes}
-          ,{expires, Expires}
-          ,{aor, AOR}
-         ]} = nksip_request:metas([from
-                                   ,to_user
-                                   ,to
-                                   ,subscription_handle
-                                   ,call_id
-                                   ,app_id
-                                   ,{header, <<"record-route">>}
-                                   ,expires
-                                   ,aor
-                                  ], Request),
-    {'ok', {EventName, _EventOptions}= _Event} = nksip_request:meta(event, Request),
-    {'ok', Expires} = nksip_request:meta(expires, Request),
-    
+    {'ok', [{'from', From}
+            ,{'to_user', ToUser}
+            ,{'to', To}
+            ,{'subscription_handle', SubscriptionId}
+            ,{'call_id', CallId}
+            ,{'app_id', AppId}
+            ,{{'header', <<"record-route">>}, RecordRoutes}
+            ,{'expires', Expires}
+            ,{'aor', AOR}
+           ]} = nksip_request:metas(['from'
+                                     ,'to_user'
+                                     ,'to'
+                                     ,'subscription_handle'
+                                     ,'call_id'
+                                     ,'app_id'
+                                     ,{'header', <<"record-route">>}
+                                     ,'expires'
+                                     ,'aor'
+                                    ], Request),
+    {'ok', {EventName, _EventOptions}= _Event} = nksip_request:meta('event', Request),
+    {'ok', Expires} = nksip_request:meta('expires', Request),
 
     FirstRoute = lists:nth(1, RecordRoutes),
     LastRoute = lists:last(RecordRoutes),
-    [FirstContact] = nksip_parse_uri:uris(FirstRoute),    
-    [LastContact] = nksip_parse_uri:uris(LastRoute),    
+    [FirstContact] = nksip_parse_uri:uris(FirstRoute),
+    [LastContact] = nksip_parse_uri:uris(LastRoute),
     Opts = [ C || {<<"transport">> , _B} = C <- LastContact#uri.opts],
     ProxyContact = LastContact#uri{user = ToUser, opts = Opts},
 
-    
-    nksip_request:reply({ok, [{contact, ProxyContact}]}, Request),
-                   
+    nksip_request:reply({'ok', [{'contact', ProxyContact}]}, Request),
 
-    Props = [
-             {<<"Subscription-ID">>, SubscriptionId}
-            ,{<<"Call-ID">>, CallId}
-            ,{<<"Event-Package">>, EventName}
-            ,{<<"From">>, nksip_unparse:uri(From)}
-            ,{<<"User">>, nksip_unparse:uri(To)}
-            ,{<<"Proxy-Route">>, nksip_unparse:uri(FirstContact)}
-%            ,{<<"Contact">>, nksip_unparse:uri(To)}
-            ,{<<"Contact">>, nksip_unparse:uri(ProxyContact)}
-            ,{<<"Expires">>, wh_util:to_integer(Expires)}
-            ,{<<"AOR">>, AOR}
-             ],
+    Props = [{<<"Subscription-ID">>, SubscriptionId}
+             ,{<<"Call-ID">>, CallId}
+             ,{<<"Event-Package">>, EventName}
+             ,{<<"From">>, nksip_unparse:uri(From)}
+             ,{<<"User">>, nksip_unparse:uri(To)}
+             ,{<<"Proxy-Route">>, nksip_unparse:uri(FirstContact)}
+%%           ,{<<"Contact">>, nksip_unparse:uri(To)}
+             ,{<<"Contact">>, nksip_unparse:uri(ProxyContact)}
+             ,{<<"Expires">>, wh_util:to_integer(Expires)}
+             ,{<<"AOR">>, AOR}
+            ],
     gen_server:cast(AppId, {'omnipresence_link', Props}).
-    
-  
-
 
 %%%%%%%%%%%%%%%%%%%%%%%  Utilities %%%%%%%%%%%%%%%%%%%%%%%%
-

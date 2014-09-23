@@ -93,6 +93,7 @@
                                       ,<<"Callee-ID-Number">>, <<"Callee-ID-Name">>
                                       ,<<"Custom-SIP-Headers">>, <<"Fax-Info">>
                                       ,<<"From-Tag">>, <<"To-Tag">>
+                                      ,<<"Intercepted-By">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
@@ -114,6 +115,7 @@
                                                ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
                                                ,<<"Switch-URL">>, <<"Other-Leg-Call-ID">>
                                                ,<<"Realm">>, <<"Username">>
+                                               ,<<"From-Tag">>, <<"To-Tag">>
                                               ]).
 -define(CHANNEL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                      ,{<<"Event-Name">>, <<"channel_status_resp">>}

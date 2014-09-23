@@ -55,6 +55,8 @@
 -export([set_fetch_id/2, fetch_id/1]).
 -export([set_bridge_id/2, bridge_id/1]).
 -export([set_language/2, language/1]).
+-export([set_to_tag/2, to_tag/1]).
+-export([set_from_tag/2, from_tag/1]).
 
 -export([set_custom_channel_var/3
          ,set_custom_channel_vars/2
@@ -134,6 +136,8 @@
                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       ,other_leg_callid :: api_binary()
                       ,resource_type :: api_binary()                      %% from route_req
+                      ,to_tag :: api_binary()
+                      ,from_tag :: api_binary()
                       }).
 
 -type call() :: #whapps_call{}.
@@ -222,6 +226,8 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
                      ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
                      ,ccvs = CCVs
                      ,resource_type = wh_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
+                     ,to_tag = wh_json:get_value(<<"To-Tag">>, RouteReq, to_tag(Call))
+                     ,from_tag = wh_json:get_value(<<"From-Tag">>, RouteReq, from_tag(Call))
                     }.
 
 -spec from_route_win(wh_json:object()) -> call().
@@ -313,6 +319,8 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
       ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Call#whapps_call.kvs, KVS)
       ,other_leg_callid = wh_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
       ,resource_type = wh_json:get_ne_value(<<"Resource-Type">>, JObj, resource_type(Call))
+      ,to_tag = wh_json:get_ne_value(<<"To-Tag">>, JObj, to_tag(Call))
+      ,from_tag = wh_json:get_ne_value(<<"From-Tag">>, JObj, from_tag(Call))
      }.
 
 %%--------------------------------------------------------------------
@@ -372,6 +380,8 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
      ,{<<"Resource-Type">>, resource_type(Call)}
      ,{<<"Language">>, language(Call)}
+     ,{<<"To-Tag">>, to_tag(Call)}
+     ,{<<"From-Tag">>, from_tag(Call)}
     ].
 
 -spec is_call(term()) -> boolean().
@@ -684,6 +694,22 @@ set_language(Language, #whapps_call{}=Call) when is_binary(Language) ->
 language(#whapps_call{language='undefined', account_id=AccountId}) ->
     wh_media_util:prompt_language(AccountId);
 language(#whapps_call{language=Language}) -> Language.
+
+-spec set_to_tag(ne_binary(), call()) -> call().
+set_to_tag(ToTag, #whapps_call{}=Call) when is_binary(ToTag) ->    
+    Call#whapps_call{to_tag=ToTag}.
+
+-spec to_tag(call()) -> ne_binary().
+to_tag(#whapps_call{to_tag=ToTag}) ->
+    ToTag.
+
+-spec set_from_tag(ne_binary(), call()) -> call().
+set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->    
+    Call#whapps_call{from_tag=FromTag}.
+
+-spec from_tag(call()) -> ne_binary().
+from_tag(#whapps_call{from_tag=FromTag}) ->
+    FromTag.
 
 -spec set_custom_channel_var(term(), term(), call()) -> call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->

@@ -505,7 +505,7 @@ get_eavesdrop_action(JObj) ->
         'undefined' -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
--spec build_originate_args(ne_binary(), state(), wh_json:object(), ne_binary()) -> ne_binary().
+-spec build_originate_args(ne_binary(), state(), wh_json:object(), ne_binary()) -> api_binary().
 build_originate_args(Action, #state{uuid=UUID}=State, JObj, FetchId) ->
     case wh_json:get_value(<<"Endpoints">>, JObj, []) of
         [] ->
@@ -521,7 +521,7 @@ build_originate_args(Action, #state{uuid=UUID}=State, JObj, FetchId) ->
             build_originate_args_from_endpoints(Action, UpdatedEndpoints, JObj, FetchId)
     end.
 
--spec build_originate_args_from_endpoints(ne_binary(), wh_json:object(), wh_json:object(), ne_binary()) ->
+-spec build_originate_args_from_endpoints(ne_binary(), wh_json:objects(), wh_json:object(), ne_binary()) ->
                                                  ne_binary().
 build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
@@ -531,8 +531,8 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
                     end,
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
     J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
-                                                   ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
-                                                   ,{<<"Loopback-Bowout">>, <<"true">>}
+                            ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
+                            ,{<<"Loopback-Bowout">>, <<"true">>}
                            ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
@@ -791,6 +791,7 @@ update_endpoint(Endpoint, #state{node=Node
 update_endpoint(Endpoint, {_, ID}=State) ->
     fix_hold_media(wh_json:set_value(<<"origination_uuid">>, ID, Endpoint), State).
 
+-spec fix_hold_media(wh_json:object(), _) -> wh_json:object().
 fix_hold_media(Endpoint, _State) ->
     put('hold_media', wh_json:get_value(<<"Hold-Media">>, Endpoint)),
     wh_json:delete_key(<<"Hold-Media">>, Endpoint).
