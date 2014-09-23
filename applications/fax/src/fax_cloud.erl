@@ -260,10 +260,10 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     Notify = wh_json:get_value([<<"notifications">>,<<"outbound">>],FaxBoxNotify),
     Props = props:filter_undefined(
               [{<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
-               ,{<<"fax_identity_name">>, wh_json:get_value(<<"caller_name">>, FaxBoxDoc)}
                ,{<<"from_number">>,wh_json:get_value(<<"caller_id">>,FaxBoxDoc)}
-               ,{<<"fax_identity_number">>, wh_json:get_value(<<"caller_id">>, FaxBoxDoc)}
-               ,{<<"fax_timezone">>, wh_json:get_value(<<"timezone">>, FaxBoxDoc)}
+               ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_identity_name">>, FaxBoxDoc)}
+               ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity_number">>, FaxBoxDoc)}
+               ,{<<"fax_timezone">>, wh_json:get_value(<<"fax_timezone">>, FaxBoxDoc)}
                ,{<<"to_name">>,FaxNumber}
                ,{<<"to_number">>,FaxNumber}
                ,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}
