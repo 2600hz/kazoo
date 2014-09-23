@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -10,7 +10,6 @@
 -behaviour(gen_listener).
 
 -export([start_link/0
-         ,handle_channel_event/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -84,11 +83,6 @@ start_link() ->
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
-
--spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_channel_event(JObj, _Props) ->
-    EventType = wh_json:get_value(<<"Event-Name">>, JObj),
-    omnip_subscriptions:handle_channel_event(EventType, JObj).
 
 %%%===================================================================
 %%% gen_server callbacks
