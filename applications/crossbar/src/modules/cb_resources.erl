@@ -427,6 +427,7 @@ jobs_summary(Context) ->
                                      ,{'endkey', CreatedTo}
                                      ,{'limit', crossbar_doc:pagination_page_size(Context)}
                                      ,{'databases', databases(Context, CreatedFrom, CreatedTo)}
+                                     ,'descending'
                                     ]
                                    ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
                                    ,fun normalize_view_results/2
