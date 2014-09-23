@@ -726,7 +726,7 @@ conference_specific(Props) ->
             end
     end.
 
--spec maybe_fax_specific(wh_proplist()) -> wh_proplist().
+-spec maybe_fax_specific(wh_proplist()) -> api_object().
 maybe_fax_specific(Props) ->
     case fax_specific(Props) of
         [] -> 'undefined';
@@ -977,7 +977,7 @@ store_recording(Props, CallId, Node) ->
     MediaName = props:get_value(<<"variable_ecallmgr_Media-Name">>, Props),
     Destination = props:get_value(<<"variable_ecallmgr_Media-Transfer-Destination">>, Props),
     %% TODO: if you change this logic be sure it matches wh_media_util as well!
-    Url = wh_util:strip_right_binary(Destination, <<"/">>),
+    Url = wh_util:strip_right_binary(Destination, $/),
     JObj = wh_json:from_list(
              [{<<"Call-ID">>, CallId}
              ,{<<"Msg-ID">>, CallId}
