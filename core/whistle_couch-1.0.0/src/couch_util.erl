@@ -80,7 +80,10 @@
                               'numbers' | 'aggregate' | 'system' |
                               'depreciated' | 'undefined'.
 
--export_type([db_create_options/0, couchbeam_errors/0, db_classifications/0]).
+-export_type([db_create_options/0
+              ,couchbeam_errors/0
+              ,db_classifications/0
+             ]).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -363,20 +366,39 @@ do_get_design_info(#db{}=Db, Design) ->
                                   couchbeam_error().
 open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
     case wh_cache:peek_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}) of
+        {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             case open_doc(Conn, DbName, DocId, Options) of
-                {'error', _}=E -> E;
+                {'error', _}=E ->
+                    maybe_cache_failure(DbName, DocId, Options, E),
+                    E;
                 {'ok', JObj}=Ok ->
                     cache_db_doc(DbName, DocId, JObj),
                     Ok
             end
     end.
 
--spec cache_db_doc(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-cache_db_doc(DbName, DocId, JObj) ->
+-spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error()) -> 'ok'.
+-spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error(), atoms()) -> 'ok'.
+maybe_cache_failure(DbName, DocId, Options, Error) ->
+    case props:get_value('cache_failures', Options) of
+        ErrorCodes when is_list(ErrorCodes) ->
+            maybe_cache_failure(DbName, DocId, Options, Error, ErrorCodes);
+        'true' -> cache_db_doc(DbName, DocId, Error);
+        _ -> 'ok'
+    end.
+
+maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
+    case lists:member(ErrorCode, ErrorCodes) of
+        'true' -> cache_db_doc(DbName, DocId, Error);
+        'false' -> 'ok'
+    end.
+
+-spec cache_db_doc(ne_binary(), ne_binary(), wh_json:object() | couchbeam_error()) -> 'ok'.
+cache_db_doc(DbName, DocId, CacheValue) ->
     CacheProps = [{'origin', {'db', DbName, DocId}}],
-    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, JObj, CacheProps).
+    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps).
 
 -spec flush_cache_doc(server() | 'undefined', ne_binary() | db(), ne_binary(), wh_proplist()) -> 'ok'.
 flush_cache_doc(Server, #db{name=Name}, DocId, Options) ->
