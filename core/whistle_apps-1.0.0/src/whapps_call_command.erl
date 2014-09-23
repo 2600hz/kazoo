@@ -216,15 +216,17 @@ default_application_timeout() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec presence(ne_binary(), ne_binary() | whapps_call:call()) -> 'ok'.
--spec presence(ne_binary(), ne_binary() | whapps_call:call(), api_binary() | whapps_call:call()) -> 'ok'.
--spec presence(ne_binary(), ne_binary() , api_binary() , whapps_call:call()) -> 'ok'.
--spec presence(ne_binary(), ne_binary() , api_binary() , api_binary(), whapps_call:call()) -> 'ok'.
-presence(State, PresenceId) when is_binary(PresenceId) ->
+-spec presence(ne_binary(), ne_binary(), api_binary() | whapps_call:call()) -> 'ok'.
+-spec presence(ne_binary(), ne_binary() , api_binary() , whapps_call:call() | 'undefined') -> 'ok'.
+-spec presence(ne_binary(), ne_binary() , api_binary() , api_binary(), whapps_call:call() | 'undefined') -> 'ok'.
+presence(State, <<_/binary>> = PresenceId) ->
     presence(State, PresenceId, 'undefined');
 presence(State, Call) ->
     presence(State, whapps_call:from(Call)).
 
-presence(State, PresenceId, CallId) when is_binary(CallId) orelse CallId =:= 'undefined' ->
+presence(State, PresenceId, 'undefined') ->
+    presence(State, PresenceId, 'undefined', 'undefined');
+presence(State, PresenceId, <<_/binary>> = CallId) ->
     presence(State, PresenceId, CallId, 'undefined');
 presence(State, PresenceId, Call) ->
     presence(State, PresenceId, whapps_call:call_id(Call), Call).
@@ -257,7 +259,7 @@ presence(State, PresenceId, CallId, TargetURI, Call) ->
 module_as_app(Call) ->
     JObj = whapps_call:kvs_fetch(<<"cf_flow">>, wh_json:new(), Call),
     wh_json:get_value(<<"module">>, JObj, ?APP_NAME).
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -2532,4 +2534,3 @@ wait_for_unparked_call(Call, Timeout) ->
                     wait_for_unparked_call(Call, wh_util:decr_timeout(Timeout, Start))
             end
     end.
-    
