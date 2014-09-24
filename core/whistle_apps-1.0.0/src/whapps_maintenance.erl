@@ -85,10 +85,12 @@ migrate(Pause) ->
                        ,whapps_util:is_account_db(Db)
                ],
 
+    io:format("updating system dbs...~n", []),
+    _ = refresh(?KZ_SYSTEM_DBS, Pause),
+
     %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
     %% that need to be aggregated have been, and the account definition is aggregated
     io:format("updating views...~n", []),
-    _ = refresh(?KZ_SYSTEM_DBS, Pause),
     _ = refresh([Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))], Pause),
 
     %% Remove depreciated dbs
@@ -152,8 +154,10 @@ refresh([Database|Databases], Pause, Total) ->
 
 -spec refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
 refresh(?WH_OFFNET_DB) ->
+    couch_mgr:db_create(?WH_OFFNET_DB),
     stepswitch_maintenance:refresh();
 refresh(?WH_SERVICES_DB) ->
+    couch_mgr:db_create(?WH_SERVICES_DB),
     whistle_services_maintenance:refresh();
 refresh(?WH_SIP_DB) ->
     couch_mgr:db_create(?WH_SIP_DB),
@@ -184,6 +188,7 @@ refresh(?WH_ANONYMOUS_CDR_DB) ->
     _ = couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, 'cdr', <<"cdr.json">>),
     'ok';
 refresh(?WH_DEDICATED_IP_DB) ->
+    couch_mgr:db_create(?WH_DEDICATED_IP_DB),
     kz_ip_utils:refresh_database();
 refresh(?WH_ACCOUNTS_DB) ->
     couch_mgr:db_create(?WH_ACCOUNTS_DB),
