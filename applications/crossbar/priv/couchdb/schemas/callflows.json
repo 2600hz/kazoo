@@ -15,7 +15,7 @@
         "type": "string",
         "required": false,
         "minLength": 1,
-        "maxLength": 25
+        "maxLength": 36
       },
       "default": []
     },
@@ -27,8 +27,7 @@
       "items": {
         "type": "string",
         "required": false,
-        "minLength": 1,
-        "maxLength": 30
+        "minLength": 1
       },
       "default": []
     },
