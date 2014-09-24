@@ -211,10 +211,12 @@ fetch_local(Srv, K) ->
     end.
 
 -spec erase_local(atom(), term()) -> 'ok'.
-erase_local(Srv, K) -> gen_server:cast(Srv, {'erase', K}).
+erase_local(Srv, K) ->
+    gen_server:cast(Srv, {'erase', K}).
 
 -spec flush_local(atom()) -> 'ok'.
-flush_local(Srv) -> gen_server:cast(Srv, {'flush'}).
+flush_local(Srv) ->
+    gen_server:cast(Srv, {'flush'}).
 
 -spec fetch_keys_local(atom()) -> list().
 fetch_keys_local(Srv) ->
@@ -305,6 +307,7 @@ handle_document_change(JObj, Props) ->
     Db = wh_json:get_value(<<"Database">>, JObj),
     Type = wh_json:get_value(<<"Type">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
+
     gen_listener:cast(Srv, {'change', Db, Type, Id}).
 
 %%%===================================================================
@@ -420,7 +423,10 @@ handle_cast({'update_timestamp', Key, Timestamp}, #state{tab=Tab}=State) ->
     {'noreply', State, 'hibernate'};
 handle_cast({'erase', Key}, #state{tab=Tab}=State) ->
     _ = maybe_exec_erase_callbacks(Key, Tab),
-    _ = maybe_remove_object(Key, Tab),
+    _Removed = maybe_remove_object(Key, Tab),
+
+    lager:debug("removed ~b objects for ~p", [_Removed, Key]),
+
     {'noreply', State, 'hibernate'};
 handle_cast({'flush'}, #state{tab=Tab}=State) ->
     _ = maybe_exec_flush_callbacks(Tab),
@@ -552,28 +558,29 @@ maybe_erase_changed(Db, Type, Id, Tab) ->
                   }
                 ],
     Objects = ets:select(Tab, MatchSpec),
-    _ = erase_changed(Objects, [], Tab),
-    'ok'.
+    erase_changed(Objects, [], Tab).
 
 -spec erase_changed(cache_objs(), list(), atom()) -> 'ok'.
 erase_changed([], _, _) -> 'ok';
 erase_changed([#cache_obj{type='pointer', value=Key}|Objects], Removed, Tab) ->
-    _ = case lists:member(Key, Removed) of
-            'true' -> 'ok';
-            'false' ->
-                lager:debug("removing updated cache object ~-300p", [Key]),
-                _ = maybe_exec_erase_callbacks(Key, Tab),
-                maybe_remove_object(Key, Tab)
-        end,
+    _Removed = case lists:member(Key, Removed) of
+                   'true' -> 0;
+                   'false' ->
+                       lager:debug("removing updated cache object ~-300p", [Key]),
+                       _ = maybe_exec_erase_callbacks(Key, Tab),
+                       maybe_remove_object(Key, Tab)
+               end,
+    lager:debug("removed ~b objects for ~p", [_Removed, Key]),
     erase_changed(Objects, [Key|Removed], Tab);
 erase_changed([#cache_obj{type='normal', key=Key}|Objects], Removed, Tab) ->
-    _ = case lists:member(Key, Removed) of
-            'true' -> 'ok';
-            'false' ->
-                lager:debug("removing updated cache object ~-300p", [Key]),
-                _ = maybe_exec_erase_callbacks(Key, Tab),
-                maybe_remove_object(Key, Tab)
+    _Removed = case lists:member(Key, Removed) of
+                   'true' -> 0;
+                   'false' ->
+                       lager:debug("removing updated cache object ~-300p", [Key]),
+                       _ = maybe_exec_erase_callbacks(Key, Tab),
+                       maybe_remove_object(Key, Tab)
         end,
+    lager:debug("removed ~b objects for ~p", [_Removed, Key]),
     erase_changed(Objects, [Key|Removed], Tab).
 
 -spec expire_objects(atom()) -> 'ok'.
@@ -606,8 +613,8 @@ maybe_exec_expired_callbacks([_|Objects], Tab) ->
 -spec maybe_remove_objects(list(), atom()) -> 'ok'.
 maybe_remove_objects([], _) -> 'ok';
 maybe_remove_objects(Objects, Tab) ->
-    [maybe_remove_object(Object, Tab) || Object <- Objects],
-    'ok'.
+    _Removed = [maybe_remove_object(Object, Tab) || Object <- Objects],
+    lager:debug("removed ~b objects", [lists:sum(_Removed)]).
 
 -spec maybe_remove_object(term(), atom()) -> non_neg_integer().
 maybe_remove_object(#cache_obj{key = Key}, Tab) ->
