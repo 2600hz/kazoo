@@ -110,7 +110,7 @@
                       ,callee_id_name :: api_binary()                     %% The callee name
                       ,callee_id_number :: api_binary()                   %% The callee number
                       ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
-                      ,switch_hostname :: ne_binary()                     %% The switch hostname (as reported by the switch)
+                      ,switch_hostname :: api_binary()                     %% The switch hostname (as reported by the switch)
                       ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
                       ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
                       ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
@@ -143,7 +143,7 @@
 -type call() :: #whapps_call{}.
 -export_type([call/0]).
 
--type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()) | 'undefined'.
+-type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()).
 
 -define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #whapps_call.caller_id_name}
                        ,{<<"Caller-ID-Number">>, #whapps_call.caller_id_number}
@@ -583,7 +583,7 @@ to_realm(#whapps_call{to_realm=ToRealm}) ->
 set_switch_hostname(Srv, #whapps_call{}=Call) ->
     Call#whapps_call{switch_hostname=Srv}.
 
--spec switch_hostname(call()) -> ne_binary().
+-spec switch_hostname(call()) -> api_binary().
 switch_hostname(#whapps_call{switch_hostname=Srv}) ->
     Srv.
 
@@ -696,7 +696,7 @@ language(#whapps_call{language='undefined', account_id=AccountId}) ->
 language(#whapps_call{language=Language}) -> Language.
 
 -spec set_to_tag(ne_binary(), call()) -> call().
-set_to_tag(ToTag, #whapps_call{}=Call) when is_binary(ToTag) ->    
+set_to_tag(ToTag, #whapps_call{}=Call) when is_binary(ToTag) ->
     Call#whapps_call{to_tag=ToTag}.
 
 -spec to_tag(call()) -> ne_binary().
@@ -704,7 +704,7 @@ to_tag(#whapps_call{to_tag=ToTag}) ->
     ToTag.
 
 -spec set_from_tag(ne_binary(), call()) -> call().
-set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->    
+set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->
     Call#whapps_call{from_tag=FromTag}.
 
 -spec from_tag(call()) -> ne_binary().
