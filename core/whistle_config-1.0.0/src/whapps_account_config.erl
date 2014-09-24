@@ -30,7 +30,7 @@ get_global(Account, Category, Key) ->
 get_global(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, config_doc_id(Category)) of
+    case couch_mgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]) of
         {'ok', JObj} -> get_global_from_doc(Category, Key, Default, JObj);
         {'error', _} -> whapps_config:get(Category, Key, Default)
     end.
@@ -47,7 +47,7 @@ get(Account, Config) ->
     AccountId = account_id(Account),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     DocId = config_doc_id(Config),
-    case couch_mgr:open_doc(AccountDb, DocId) of
+    case couch_mgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
         {'error', _} -> wh_json:set_value(<<"_id">>, DocId, wh_json:new());
         {'ok', JObj} -> JObj
     end.
@@ -92,7 +92,7 @@ set_global(Account, Category, Key, Value) ->
     AccountId = account_id(Account),
     AccountDb = account_db(Account),
 
-    Doc = case couch_mgr:open_doc(AccountDb, Category) of
+    Doc = case couch_mgr:open_cache_doc(AccountDb, Category, [{'cache_failures', ['not_found']}]) of
               {'ok', JObj} -> JObj;
               {'error', _} -> wh_json:set_value(Key, whapps_config:get(Category, Key), wh_json:new())
           end,
