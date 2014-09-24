@@ -338,7 +338,7 @@ maybe_reconcile_numbers(Context, _Status) -> Context.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec  track_assignment(atom(), cb_context:context()) ->cb_context:context().
+-spec track_assignment(atom(), cb_context:context()) -> 'ok' | 'error'.
 track_assignment('post', Context) ->
     NewNums = wh_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
     OldNums = wh_json:get_value(<<"numbers">>, cb_context:fetch(Context, 'db_doc'), []),
