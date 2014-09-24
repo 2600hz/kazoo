@@ -375,23 +375,23 @@ get_account_doc(JObj) ->
 
 -spec category_to_file(ne_binary()) -> iolist() | 'undefined'.
 category_to_file(<<"notify.voicemail_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_vm.config"];
+    [code:lib_dir('notify', 'priv'), "/notify_voicemail_to_email.config"];
 category_to_file(<<"notify.voicemail_full">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_vm_full.config"];
+    [code:lib_dir('notify', 'priv'), "/notify_voicemail_full.config"];
 category_to_file(<<"notify.fax_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax.config"];
+    [code:lib_dir('notify', 'priv'), "/notify_fax_to_email.config"];
 category_to_file(<<"notify.fax_inbound_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax_inbound.config"];
+    [code:lib_dir('notify', 'priv'), "/notify_fax_inbound_to_email.config"];
 category_to_file(<<"notify.fax_outbound_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax_outbound.config"];
+    [code:lib_dir('notify', 'priv'), "/notify_fax_outbound_to_email.config"];
 category_to_file(<<"notify.fax_inbound_error_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax_inbound_error.config"];
+    [code:lib_dir('notify', 'priv'), "/notify_fax_inbound_error_to_email.config"];
 category_to_file(<<"notify.fax_outbound_error_to_email">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_fax_outbound_error.config"];
+    [code:lib_dir('notify', 'priv'), "/notify_fax_outbound_error_to_email.config"];
 category_to_file(<<"notify.deregister">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_deregister.config"];
 category_to_file(<<"notify.password_recovery">>) ->
-    [code:lib_dir('notify', 'priv'), "/notify_pwd_recovery.config"];
+    [code:lib_dir('notify', 'priv'), "/notify_password_recovery.config"];
 category_to_file(<<"notify.new_account">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_new_account.config"];
 category_to_file(<<"notify.first_occurrence">>) ->
@@ -410,6 +410,8 @@ category_to_file(<<"notify.system_alert">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_system_alert.config"];
 category_to_file(<<"notify.transaction">>) ->
     [code:lib_dir('notify', 'priv'), "/notify_transaction.config"];
+category_to_file(<<"notify.topup">>) ->
+    [code:lib_dir('notify', 'priv'), "/notify_topup.config"];
 category_to_file(_) ->
     'undefined'.
 

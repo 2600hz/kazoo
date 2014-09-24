@@ -26,14 +26,14 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{'notify_vm', [{<<"notification">>, <<"new_voicemail">>}]}
-                     ,{'notify_vm_full', [{<<"notification">>, <<"voicemail_full">>}]}
-                     ,{'notify_fax_inbound', [{<<"notification">>, <<"inbound_fax">>}]}
-                     ,{'notify_fax_outbound', [{<<"notification">>, <<"outbound_fax">>}]}
-                     ,{'notify_fax_inbound_error', [{<<"notification">>, <<"inbound_fax_error">>}]}
-                     ,{'notify_fax_outbound_error', [{<<"notification">>, <<"outbound_fax_error">>}]}
+-define(RESPONDERS, [{'notify_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
+                     ,{'notify_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
+                     ,{'notify_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
+                     ,{'notify_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
+                     ,{'notify_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
+                     ,{'notify_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
                      ,{'notify_deregister', [{<<"notification">>, <<"deregister">>}]}
-                     ,{'notify_pwd_recovery', [{<<"notification">>, <<"password_recovery">>}]}
+                     ,{'notify_password_recovery', [{<<"notification">>, <<"password_recovery">>}]}
                      ,{'notify_new_account', [{<<"notification">>, <<"new_account">>}]}
                      ,{'notify_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
                      ,{'notify_port_request', [{<<"notification">>, <<"port_request">>}]}
@@ -42,6 +42,7 @@
                      ,{'notify_low_balance', [{<<"notification">>, <<"low_balance">>}]}
                      ,{'notify_transaction', [{<<"notification">>, <<"transaction">>}]}
                      ,{'notify_system_alert', [{<<"notification">>, <<"system_alert">>}]}
+                     ,{'notify_topup', [{<<"notification">>, <<"topup">>}]}
                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
