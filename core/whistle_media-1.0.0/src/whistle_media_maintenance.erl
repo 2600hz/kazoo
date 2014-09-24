@@ -57,6 +57,7 @@ import_prompts(Path) ->
     import_prompts(Path, wh_media_util:default_prompt_language()).
 
 import_prompts(Path, Lang) ->
+    couch_mgr:db_create(?WH_MEDIA_DB),
     MediaPath = filename:join([Path, "*.{wav,mp3}"]),
     case filelib:wildcard(wh_util:to_list(MediaPath)) of
         [] ->
@@ -84,6 +85,7 @@ import_prompt(Path) ->
     import_prompt(Path, wh_media_util:default_prompt_language()).
 
 import_prompt(Path, Lang) ->
+    couch_mgr:db_create(?WH_MEDIA_DB),
     case file:read_file(Path) of
         {'ok', Contents} ->
             io:format("importing prompt '~s' with language '~s'~n", [Path, Lang]),
