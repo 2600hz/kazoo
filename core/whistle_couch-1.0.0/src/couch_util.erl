@@ -389,7 +389,7 @@ flush_cache_doc(_, DbName, DocId, _Options) ->
 
 flush_cache_docs() -> wh_cache:flush_local(?WH_COUCH_CACHE).
 flush_cache_docs(DbName) ->
-    Filter = fun({?MODULE, DbName1, _}=K, _) when DbName1 =:= DbName ->
+    Filter = fun({?MODULE, DbName1, _DocId}=K, _) when DbName1 =:= DbName ->
                      wh_cache:erase_local(?WH_COUCH_CACHE, K),
                      'true';
                 (_, _) -> 'false'
@@ -546,7 +546,6 @@ do_save_doc(#db{}=Db, Doc, Options) ->
     case ?RETRY_504(couchbeam:save_doc(Db, maybe_set_docid(Doc), Options)) of
         {'ok', JObj}=Ok ->
             _ = maybe_publish_doc(Db, Doc, JObj),
-            flush_cache_doc('undefined', Db, wh_json:get_value(<<"_id">>, JObj), []),
             Ok;
         Else -> Else
     end.
@@ -736,29 +735,31 @@ retry504s(Fun, Cnt) ->
         OK -> OK
     end.
 
+-spec maybe_publish_docs(couchbeam_db(), wh_json:objects(), wh_json:objects()) -> 'ok'.
 maybe_publish_docs(#db{name=DbName}=Db, Docs, JObjs) ->
     case couch_mgr:change_notice() of
         'true' ->
             spawn(fun() ->
                           [wh_cache:erase_local(?WH_COUCH_CACHE
-                                                ,{?MODULE, wh_util:to_binary(DbName), doc_id(Doc)})
+                                                ,{?MODULE, wh_util:to_binary(DbName), doc_id(Doc)}
+                                               )
                            || Doc <- Docs
                           ],
                           [publish_doc(Db, Doc, JObj)
-                           || {Doc, JObj} <- lists:zip(Docs, JObjs)
-                                  ,should_publish_doc(Doc)
+                           || {Doc, JObj} <- lists:zip(Docs, JObjs),
+                              should_publish_doc(Doc)
                           ]
-                  end);
+                  end),
+            'ok';
         'false' -> 'ok'
     end.
 
 -spec maybe_publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
-maybe_publish_doc(#db{name=DbName}=Db, Doc, JObj) ->
-    wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, wh_util:to_binary(DbName), doc_id(Doc)}),
+maybe_publish_doc(#db{}=Db, Doc, JObj) ->
     case couch_mgr:change_notice()
         andalso should_publish_doc(Doc)
     of
-        'true' -> spawn(fun() -> publish_doc(Db, Doc, JObj) end);
+        'true' -> spawn(fun() -> publish_doc(Db, Doc, JObj) end), 'ok';
         'false' -> 'ok'
     end.
 
@@ -788,6 +789,7 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
 publish(Action, Db, Doc) ->
     Type = doc_type(Doc),
     Id = doc_id(Doc),
+
     Props =
         [{<<"ID">>, Id}
          ,{<<"Type">>, Type}
