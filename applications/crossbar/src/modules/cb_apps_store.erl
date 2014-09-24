@@ -402,7 +402,11 @@ master_app_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    case wh_json:is_true([<<"value">>, <<"published">>], JObj, 'true') of
+        'false' -> Acc;
+        'true' ->
+            [wh_json:get_value(<<"value">>, JObj)|Acc]
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
