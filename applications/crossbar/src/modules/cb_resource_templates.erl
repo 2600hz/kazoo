@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2013, 2600Hz INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for local resource documents
@@ -62,8 +62,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -177,10 +177,13 @@ forbidden(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request(api_binary(), cb_context:contex()) -> cb_context:context().
+-spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(ResourceId, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(ResourceId, C) end,
-    cb_context:validate_request_data(<<"resources">>, check_template_name(Context), OnSuccess).
+    Context1 =  check_template_name(Context),
+    case cb_context:has_errors(Context1) of
+        'true' -> Context1;
+        'false' -> on_successful_validation(ResourceId,Context1)
+    end.
 
 -spec check_template_name(cb_context:context()) -> cb_context:context().
 check_template_name(Context) ->
