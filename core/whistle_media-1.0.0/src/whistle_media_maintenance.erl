@@ -128,13 +128,14 @@ import_prompt(Path0, Lang0, Contents) ->
                  ]),
 
     case couch_mgr:ensure_saved(?WH_MEDIA_DB, MetaJObj) of
-        {'ok', _MetaJObj1} ->
+        {'ok', MetaJObj1} ->
             io:format("  saved metadata about '~s'~n", [Path]),
             upload_prompt(ID
                           ,<<PromptName/binary, (wh_util:to_binary(Extension))/binary>>
                           ,Contents
                           ,[{'content_type', wh_util:to_list(ContentType)}
                             ,{'content_length', ContentLength}
+                            ,{'rev', wh_json:get_value(<<"_rev">>, MetaJObj1)}
                            ]
                          );
         {'error', E} ->
