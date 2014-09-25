@@ -19,7 +19,7 @@ Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting 
 * `retries`: How many times to retry sending the webhook to `uri`
 * `custom_data`: JSON object of custom data to be sent along with the event data to the `uri`
 
-## Sample curl Requests
+## Sample cURL Requests
 
 ### List webhooks
 
@@ -40,6 +40,18 @@ Webhooks allow Kazoo to send HTTP requests to a third-party webserver, alerting 
 ### Delete a webhook
 
     curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+
+### List Attempts
+
+Webhooks tracks attempts to send the hook payloads to your URIs. You can get a listing of the more recent attempts to help debug what went wrong.
+
+#### Account Attempts Summary
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/summary
+
+#### Hook Attempts Summary
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/summary
 
 ## Hook Payload
 
