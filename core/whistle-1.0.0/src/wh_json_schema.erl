@@ -21,9 +21,9 @@
 -endif.
 
 -spec load(ne_binary()) -> {'ok', wh_json:object()} |
-                                  {'error', term()}.
+                           {'error', term()}.
 load(<<_/binary>> = Schema) ->
-    couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema).
+    couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]).
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.
