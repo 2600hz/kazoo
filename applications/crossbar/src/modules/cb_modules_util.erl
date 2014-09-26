@@ -46,23 +46,8 @@ reconcile_services(Context) ->
         'true' ->
             lager:debug("maybe reconciling services for account ~s"
                        ,[cb_context:account_id(Context)]),
-            reconcile_services(Context, cb_context:req_nouns(Context))
+            _ = wh_services:save_as_dirty(cb_context:account_id(Context))
     end.
-
--spec reconcile_services(cb_context:context(), req_nouns()) -> cb_context:context().
-reconcile_services(Context, [{<<"devices">>, _} | Nouns]) ->
-    lager:debug("reconcile services for devices", []),
-    _ = wh_services:reconcile(cb_context:account_id(Context), <<"devices">>),
-    reconcile_services(Context, Nouns);
-reconcile_services(Context, [{<<"users">>, _} | Nouns]) ->
-    lager:debug("reconcile services for users", []),
-    _ = wh_services:reconcile(cb_context:account_id(Context), <<"users">>),
-    reconcile_services(Context, Nouns);
-reconcile_services(Context, [{<<"limits">>, _} | Nouns]) ->
-    lager:debug("reconcile services for limits", []),
-    _ = wh_services:reconcile(cb_context:account_id(Context), <<"limits">>),
-    reconcile_services(Context, Nouns);
-reconcile_services(Context, _) -> Context.
 
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->

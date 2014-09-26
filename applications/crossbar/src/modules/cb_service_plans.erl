@@ -2,8 +2,6 @@
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
-%%% Listing of all expected v1 callbacks
-%%%
 %%% @end
 %%% @contributors:
 %%%     Peter Defebvre
@@ -159,17 +157,14 @@ post(Context, <<"reconciliation">>) ->
         _ -> cb_context:set_resp_status(Context, 'success')
     catch
         _E:_R ->
-            io:format("failed to reconcile account ~s(~p): ~p~n", [cb_context:account_id(Context), _E, _R]),
+            lager:debug("failed to reconcile account services(~s): ~p", [_E, _R]),
             cb_context:add_system_error('unspecified_fault', Context)
     end;
 post(Context, PlanId) ->
     Routines = [fun(S) -> wh_services:add_service_plan(PlanId, S) end
                 ,fun(S) -> wh_services:save(S) end
                ],
-    Services = lists:foldl(fun(F, S) -> F(S) end
-                           ,wh_services:fetch(cb_context:account_id(Context))
-                           ,Routines
-                          ),
+    Services = lists:foldl(fun apply_fun/2, wh_services:fetch(cb_context:account_id(Context)), Routines),
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
                          ,{fun cb_context:set_resp_status/2, 'success'}
@@ -184,16 +179,17 @@ post(Context, PlanId) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, PlanId) ->
     Routines = [fun(S) -> wh_services:delete_service_plan(PlanId, S) end
-                ,fun(S) -> wh_services:save(S) end
+                ,fun wh_services:save/1
                ],
-    Services = lists:foldl(fun(F, S) -> F(S) end
-                           ,wh_services:fetch(cb_context:account_id(Context))
-                           ,Routines
-                          ),
+    Services = lists:foldl(fun apply_fun/2, wh_services:fetch(cb_context:account_id(Context)), Routines),
     cb_context:setters(Context
                        ,[{fun cb_context:set_resp_data/2, wh_services:service_plan_json(Services)}
                          ,{fun cb_context:set_resp_status/2, 'success'}
                         ]).
+
+-spec apply_fun(fun((wh_services:services()) -> wh_services:services()), wh_services:services()) ->
+                       wh_services:services().
+apply_fun(F, S) -> F(S).
 
 %%--------------------------------------------------------------------
 %% @private
