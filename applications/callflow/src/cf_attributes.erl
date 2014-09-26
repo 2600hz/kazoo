@@ -473,6 +473,7 @@ owned_by_docs(OwnerId, Type, Call) ->
     owned_by_query([{'key', [OwnerId, Type]}, 'include_docs'], Call, <<"doc">>).
 
 -spec owned_by_query(list(), whapps_call:call()) -> api_binaries().
+-spec owned_by_query(list(), whapps_call:call(), ne_binary()) -> api_binaries().
 owned_by_query(ViewOptions, Call) ->
     owned_by_query(ViewOptions, Call, <<"value">>).
 owned_by_query(ViewOptions, Call, ViewKey) ->
