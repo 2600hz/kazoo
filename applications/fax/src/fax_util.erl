@@ -12,6 +12,7 @@
 -export([collect_channel_props/1]).
 -export([save_fax_docs/3, save_fax_attachment/3]).
 -export([content_type_to_extension/1]).
+-export([notify_email_list/3]).
 
 -include("fax.hrl").
 
@@ -141,3 +142,9 @@ save_fax_doc_completed(DocId)->
                     {'error', E}
             end
     end.
+
+-spec notify_email_list(ne_binary(), api_binary(), list()) -> list().
+notify_email_list(From, 'undefined', List) ->
+    lists:usort([From | List]);
+notify_email_list(From, OwnerEmail, List) ->
+    lists:usort([From, OwnerEmail | List]).

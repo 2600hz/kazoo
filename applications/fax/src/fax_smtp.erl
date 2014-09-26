@@ -317,7 +317,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
                                      ,<<"email">>
                                      ,<<"send_to">>
                                      ]
-                                     ,notify_email_list(From, OwnerEmail , FaxBoxEmailNotify)
+                                     ,fax_util:notify_email_list(From, OwnerEmail , FaxBoxEmailNotify)
                                     ,FaxBoxDoc),
     Notify = wh_json:get_value([<<"notifications">>, <<"outbound">>], FaxBoxNotify),
 
@@ -345,12 +345,6 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
                              ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
                             ),
     {'ok', State#state{docs=[Doc | Docs]}}.
-
--spec notify_email_list(ne_binary(), api_binary(), list()) -> list().
-notify_email_list(From, 'undefined', List) ->
-    lists:usort([From | List]);
-notify_email_list(From, OwnerEmail, List) ->
-    lists:usort([From, OwnerEmail | List]).
 
 %% ====================================================================
 %% Internal functions
