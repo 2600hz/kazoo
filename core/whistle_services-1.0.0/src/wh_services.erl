@@ -229,11 +229,12 @@ save_as_dirty(#wh_services{jobj=JObj
             save_as_dirty(Services, BackOff);
         {'error', 'conflict'} ->
             {'ok', Existing} = couch_mgr:open_doc(?WH_SERVICES_DB, AccountId),
-            case from_service_json(Existing) of
-                #wh_services{dirty='true'}=NewServices ->
+            NewServices = from_service_json(Existing),
+            case is_dirty(NewServices) of
+                'true' ->
                     lager:debug("services doc for ~s saved elsewhere", [AccountId]),
                     NewServices;
-                #wh_services{dirty='false'}=NewServices ->
+                'false' ->
                     lager:debug("new services doc for ~s not dirty, marking it as so", [AccountId]),
                     timer:sleep(BackOff + rand:uniform(?BASE_BACKOFF)),
                     save_as_dirty(NewServices, BackOff*2)
