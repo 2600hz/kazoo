@@ -191,7 +191,9 @@ bump_modified(JObj) ->
             %% If we conflict or cant save the doc with a new modified timestamp
             %% then another process is probably handling it, move on
             E;
-        {'ok', NewJObj} ->
+        {'ok', _} ->
+            Services = wh_services:reconcile_only(AccountId),
+            NewJObj = wh_services:to_json(Services),
             %% If we can change the timestamp then (since the view requires the
             %% modified time to be x mins in the past) we have gain exclusive
             %% control for x mins.... good luck!

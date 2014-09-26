@@ -11,6 +11,7 @@
 -export([delete_service_plan/2]).
 -export([service_plan_json/1]).
 -export([public_json/1]).
+-export([to_json/1]).
 
 -export([empty/0]).
 -export([allow_updates/1]).
@@ -478,6 +479,10 @@ public_json(#wh_services{jobj=ServicesJObj
     wh_json:from_list(Props);
 public_json(<<_/binary>> = Account) ->
     public_json(fetch(Account)).
+
+-spec to_json(services()) -> wh_json:object().
+to_json(#wh_services{jobj=ServicesJObj}) ->
+    ServicesJObj.
 
 %%--------------------------------------------------------------------
 %% @public
