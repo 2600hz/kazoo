@@ -43,7 +43,7 @@
                 ,media_name                :: ne_binary()
                 ,call                      :: whapps_call:call()
                 ,record_on_answer          :: boolean()
-                ,store                     :: store_url()
+                ,should_store              :: store_url()
                 ,time_limit                :: pos_integer()
                 ,store_attempted = 'false' :: boolean()
                 ,is_recording = 'false'    :: boolean()
@@ -146,7 +146,7 @@ init([Call, Data]) ->
                   ,call=Call
                   ,time_limit=TimeLimit
                   ,record_on_answer=RecordOnAnswer
-                  ,store=should_store_recording(Url)
+                  ,should_store=should_store_recording(Url)
                  }}.
 
 %%--------------------------------------------------------------------
@@ -189,9 +189,9 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                             ,call=Call
                                             ,media_name=MediaName
                                             ,time_limit=TimeLimit
-                                            ,store={'true', 'other', _}
+                                            ,should_store={'true', 'other', _}
                                            }=State) ->
-    start_recording(Call, MediaName, TimeLimit, <<"self">>),
+    start_recording(Call, MediaName, TimeLimit),
     lager:debug("statred recording shutting down"),
     {'stop', 'normal', State};
 handle_cast('maybe_start_recording', #state{is_recording='false'
@@ -210,9 +210,9 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
                                             ,call=Call
                                             ,media_name=MediaName
                                             ,time_limit=TimeLimit
-                                            ,store={'true', 'other', _}
+                                            ,should_store={'true', 'other', _}
                                            }=State) ->
-    start_recording(Call, MediaName, TimeLimit, <<"self">>),
+    start_recording(Call, MediaName, TimeLimit),
     lager:debug("statred recording on answer shutting down"),
     {'stop', 'normal', State};
 handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
@@ -229,7 +229,7 @@ handle_cast('stop_call', #state{store_attempted='true'}=State) ->
 handle_cast('stop_call', #state{media_name=MediaName
                                 ,format=Format
                                 ,call=Call
-                                ,store=Store
+                                ,should_store=Store
                                }=State) ->
     lager:debug("recv stop_call event"),
     save_recording(Call, MediaName, Format, Store),
@@ -238,7 +238,7 @@ handle_cast('stop_call', #state{media_name=MediaName
 handle_cast('store_recording', #state{media_name=MediaName
                                       ,format=Format
                                       ,call=Call
-                                      ,store=Store
+                                      ,should_store=Store
                                      }=State) ->
     lager:debug("recv store_recording event"),
     save_recording(Call, MediaName, Format, Store),
@@ -534,6 +534,10 @@ append_path(Url, MediaName) ->
     end.
 
 -spec start_recording(whapps_call:call(), ne_binary(), pos_integer(), ne_binary()) -> 'ok'.
+-spec start_recording(whapps_call:call(), ne_binary(), pos_integer()) -> 'ok'.
+start_recording(Call, MediaName, TimeLimit) ->
+    lager:debug("starting recording of ~s", [MediaName]),
+    whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"start">>, TimeLimit, Call).
 start_recording(Call, MediaName, TimeLimit, MediaRecorder) ->
     lager:debug("starting recording of ~s", [MediaName]),
     Call1 = whapps_call:set_custom_channel_var(<<"Media-Recorder">>, MediaRecorder, Call),

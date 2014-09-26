@@ -327,11 +327,11 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             timer:sleep(1000),
             {'noreply', State};
         {<<"RECORD_STOP">>, _} ->
-            _ = case props:get_value(<<"variable_ecallmgr_Media-Recorder">>, Props) of
+            _ = case props:get_value(?GET_CCV(<<"Media-Recorder">>), Props) of
                     <<"wh_media_recording">> ->
                         lager:debug("wh_media_recording is handling call recording publishing record stop"),
                         process_channel_event(Props);
-                     _ ->
+                    _ ->
                         lager:debug("no one is handling call recording storing recording"),
                         spawn(fun() -> store_recording(Props, CallId, Node) end)
                 end,
