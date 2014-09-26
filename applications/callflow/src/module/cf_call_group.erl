@@ -25,13 +25,13 @@ handle(Data, Call) ->
     GroupId = wh_json:get_value(<<"id">>, Data),
     AllEndpointIds = get_endpoint_ids(GroupId, Call),
     Targets = lists:filter(fun (X) -> X =/= whapps_call:authorizing_id(Call) end, AllEndpointIds),
-    Endpoints = make_endpoints(Targets, Call),
-    lager:info("Discovered endpoints: ~p", [Endpoints]),
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
+    Endpoints = make_endpoints(Targets, Timeout, Call),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
-    lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
+    Count = length(Endpoints),
+    lager:info("attempting ring group of ~b members with strategy ~s", [Count, Strategy]),
+    case whapps_call_command:b_bridge(Endpoints, Timeout*Count, Strategy, <<"true">>, Ringback, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the ring group - call finished normally"),
             cf_exe:stop(Call);
@@ -84,9 +84,10 @@ is_group({_, Desc}) ->
 get_ids(List) ->
     lists:foldl(fun ({Id, _}, Acc) -> [Id | Acc] end, [], List).
 
--spec make_endpoints(ne_binaries(), whapps_call:call()) -> wh_json:objects().
-make_endpoints(Targets, Call) ->
-    lists:flatmap(fun (Id) -> case cf_endpoint:build(Id, Call) of
+-spec make_endpoints(ne_binaries(), integer(), whapps_call:call()) -> wh_json:objects().
+make_endpoints(Targets, Timeout, Call) ->
+    Props = wh_json:from_list([{<<"timeout">>, Timeout}]),
+    lists:flatmap(fun (Id) -> case cf_endpoint:build(Id, Props, Call) of
                                   {'ok', EPs} -> EPs;
                                   _ ->
                                       lager:info("Dropping id ~s", [Id]),
