@@ -27,13 +27,15 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile_services(cb_context:context()) -> cb_context:context().
+-spec reconcile_services(cb_context:context(), http_method(), crossbar_status()) ->
+                                cb_context:context().
 reconcile_services(Context) ->
     reconcile_services(Context, cb_context:req_verb(Context), cb_context:resp_status(Context)).
 
 reconcile_services(Context, <<"GET">>, 'success') -> Context;
 reconcile_services(Context, _Verb, 'success') ->
-    lager:debug("successful ~s, reconciling services", [_Verb]),
-    _ = wh_services:reconcile(cb_context:account_id(Context), <<"devices">>),
+    lager:debug("successful ~s, marking services as dirty", [_Verb]),
+    _ = wh_services:save_as_dirty(cb_context:account_id(Context)),
     Context;
 reconcile_services(Context, _Verb, _Status) ->
     Context.
@@ -56,7 +58,8 @@ update_mwi(OwnerId, AccountDb) ->
 get_devices_owned_by(OwnerID, DB) ->
     case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{'key', [OwnerID, <<"device">>]}
                                                                ,'include_docs'
-                                                              ]) of
+                                                              ])
+    of
         {'ok', JObjs} ->
             lager:debug("Found ~b devices owned by ~s", [length(JObjs), OwnerID]),
             [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
@@ -318,7 +321,6 @@ content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
 content_type_to_extension(<<"application/x-pdf">>) -> <<"pdf">>;
 content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>.
-
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
