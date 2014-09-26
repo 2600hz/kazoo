@@ -34,9 +34,7 @@ handle(Data, Call) ->
     cf_exe:continue(Call).
 
 handle(Data, Call, <<"start">>) ->
-    RecordOnAnswer = wh_json:is_true(<<"record_on_answer">>, Data, 'false'),
-    lager:debug("record on answer: ~p", [RecordOnAnswer]),
-    case RecordOnAnswer of
+    case wh_json:is_true(<<"record_on_answer">>, Data, 'false') of
         'true' ->
             start_wh_media_recording(Data, Call);
         'false' ->
@@ -54,10 +52,12 @@ handle(Data, Call, <<"stop">> = Action) ->
     _ = whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], Action, Call),
     lager:debug("send command to stop recording").
 
+-spec start_wh_media_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
 start_wh_media_recording(Data, Call) ->
     'ok' = cf_exe:add_event_listener(Call, {'wh_media_recording', [Data]}),
     lager:debug("started wh_media_recording to handle recording").
 
+-spec record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
 record_call(Data, Call) ->
     Format = wh_media_recording:get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = wh_media_recording:get_media_name(whapps_call:call_id(Call), Format),
@@ -67,8 +67,7 @@ record_call(Data, Call) ->
              ,{<<"Additional-Headers">>, wh_json:get_value(<<"additional_headers">>, Data)}
              ,{<<"Time-Limit">>, wh_json:get_value(<<"time_limit">>, Data)}
             ],
-    Call1 = whapps_call:set_custom_channel_var(<<"Media-Recorder">>, <<"self">>, Call),
-    _ = whapps_call_command:record_call(Props, <<"start">>, Call1),
+    _ = whapps_call_command:record_call(Props, <<"start">>, Call),
     lager:debug("auto handling call recording").
 
 -spec get_action(api_binary()) -> ne_binary().
