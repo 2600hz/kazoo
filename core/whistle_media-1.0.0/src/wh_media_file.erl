@@ -76,19 +76,21 @@ find_attachment(Id) when not is_list(Id) ->
 
 -spec maybe_find_attachment(ne_binary(), ne_binary()) ->
                                    {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
-                                   {'error', 'not_found'}.
+                                   {'error', 'not_found' | 'no_data'}.
 -spec maybe_find_attachment(ne_binary(), ne_binary(), wh_json:object()) ->
                                    {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
-                                   {'error', 'not_found'} |
-                                   {'error', 'no_data'}.
+                                   {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment(?MEDIA_DB = Db, Id) ->
     maybe_find_attachment_in_db(Db, Id);
 maybe_find_attachment(Db, Id) ->
     AccountDb = wh_util:format_account_id(Db, 'encoded'),
     maybe_find_attachment_in_db(AccountDb, Id).
 
+-spec maybe_find_attachment_in_db(ne_binary(), ne_binary()) ->
+                                         {'ok', {ne_binary(), ne_binary(), ne_binary()}} |
+                                         {'error', 'not_found' | 'no_data'}.
 maybe_find_attachment_in_db(Db, Id) ->
-    case couch_mgr:open_doc(Db, Id) of
+    case couch_mgr:open_cache_doc(Db, Id, [{'cache_failures', ['not_found']}]) of
         {'error', _R} ->
             lager:debug("unable to open media doc ~s in ~s: ~p", [Id, Db, _R]),
             {'error', 'not_found'};
@@ -128,7 +130,10 @@ maybe_local_haproxy_uri(JObj, Db, Id, Attachment) ->
                               'false' -> 'direct_playback'
                           end,
             {'ok', <<(wh_media_util:base_url(Host, Port, Permissions))/binary
-                     ,Db/binary, "/", Id/binary, "/", Attachment/binary>>
+                     ,Db/binary
+                     ,"/", Id/binary
+                     ,"/", Attachment/binary
+                   >>
             }
     end.
 
@@ -149,7 +154,11 @@ maybe_media_manager_proxy_uri(JObj, Db, Id, Attachment) ->
                               'true' -> 'proxy_store';
                               'false' -> 'proxy_playback'
                           end,
-            {'ok', <<(wh_media_util:base_url(Host, Port, Permissions))/binary, StreamType/binary
-                     ,"/", Db/binary, "/", Id/binary, "/", Attachment/binary>>
+            {'ok', <<(wh_media_util:base_url(Host, Port, Permissions))/binary
+                     ,StreamType/binary
+                     ,"/", Db/binary
+                     ,"/", Id/binary
+                     ,"/", Attachment/binary
+                   >>
             }
     end.

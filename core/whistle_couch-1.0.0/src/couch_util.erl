@@ -369,7 +369,7 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-            case open_doc(Conn, DbName, DocId, Options) of
+            case open_doc(Conn, DbName, DocId, remove_non_couchbeam_options(Options)) of
                 {'error', _}=E ->
                     maybe_cache_failure(DbName, DocId, Options, E),
                     E;
@@ -378,6 +378,10 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
                     Ok
             end
     end.
+
+-spec remove_non_couchbeam_options(wh_proplist()) -> wh_proplist().
+remove_non_couchbeam_options(Options) ->
+    props:delete_keys(['cache_failures'], Options).
 
 -spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error()) -> 'ok'.
 -spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error(), atoms()) -> 'ok'.
