@@ -18,7 +18,9 @@
 -export([moh_attributes/2, moh_attributes/3]).
 -export([owner_id/1, owner_id/2]).
 -export([presence_id/1, presence_id/2]).
--export([owned_by/2, owned_by/3]).
+-export([owned_by/2, owned_by/3
+         ,owned_by_docs/2, owned_by_docs/3
+        ]).
 -export([owner_ids/2]).
 -export([maybe_get_assigned_number/3]).
 -export([maybe_get_account_default_number/4]).
@@ -446,11 +448,38 @@ owned_by([_|_]=OwnerIds, Type, Call) ->
 owned_by(OwnerId, Type, Call) ->
     owned_by_query([{'key', [OwnerId, Type]}], Call).
 
+-spec owned_by_docs(api_binary(), whapps_call:call()) -> api_objects().
+-spec owned_by_docs(api_binary() | api_binaries(), ne_binary(), whapps_call:call()) -> api_objects().
+
+owned_by_docs('undefined', _) -> [];
+owned_by_docs(OwnerId, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    ViewOptions = [{'startkey', [OwnerId]}
+                   ,{'endkey', [OwnerId, wh_json:new()]}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+        {'ok', JObjs} -> [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
+        {'error', _R} ->
+            lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
+            []
+    end.
+
+owned_by_docs('undefined', _, _) -> [];
+owned_by_docs([_|_]=OwnerIds, Type, Call) ->
+    Keys = [[OwnerId, Type] || OwnerId <- OwnerIds],
+    owned_by_query([{'keys', Keys}, 'include_docs'], Call, <<"doc">>);
+owned_by_docs(OwnerId, Type, Call) ->
+    owned_by_query([{'key', [OwnerId, Type]}, 'include_docs'], Call, <<"doc">>).
+
 -spec owned_by_query(list(), whapps_call:call()) -> api_binaries().
+-spec owned_by_query(list(), whapps_call:call(), ne_binary()) -> api_binaries().
 owned_by_query(ViewOptions, Call) ->
+    owned_by_query(ViewOptions, Call, <<"value">>).
+owned_by_query(ViewOptions, Call, ViewKey) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> [wh_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
+        {'ok', JObjs} -> [wh_json:get_value(ViewKey, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find owned documents (~p) using ~p", [_R, ViewOptions]),
             []
