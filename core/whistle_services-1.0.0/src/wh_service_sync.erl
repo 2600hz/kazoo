@@ -191,13 +191,15 @@ bump_modified(JObj) ->
             %% If we conflict or cant save the doc with a new modified timestamp
             %% then another process is probably handling it, move on
             E;
-        {'ok', NewJObj} ->
+        {'ok', _} ->
+            Services = wh_services:reconcile_only(AccountId),
+            NewJObj = wh_services:to_json(Services),
             %% If we can change the timestamp then (since the view requires the
             %% modified time to be x mins in the past) we have gain exclusive
             %% control for x mins.... good luck!
             [RevNum, _] = binary:split(wh_json:get_value(<<"_rev">>, NewJObj), <<"-">>),
             put('callid', <<AccountId/binary, "-", RevNum/binary>>),
-            lager:debug("start synchronization of services with bookkeepers", []),
+            lager:debug("start synchronization of services with bookkeepers"),
             maybe_follow_billing_id(AccountId, NewJObj)
     end.
 
@@ -227,7 +229,7 @@ follow_billing_id(BillingId, AccountId, ServiceJObj) ->
 maybe_sync_services(AccountId, ServiceJObj) ->
     case wh_service_plans:create_items(ServiceJObj) of
         {'error', 'no_plans'} ->
-            lager:debug("no services plans found", []),
+            lager:debug("no services plans found"),
             _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
             maybe_sync_reseller(AccountId, ServiceJObj);
         {'ok', ServiceItems} ->
@@ -240,7 +242,7 @@ sync_services(AccountId, ServiceJObj, ServiceItems) ->
         'ok' ->
             _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
             io:format("synchronization with bookkeeper complete~n", []),
-            lager:debug("synchronization with bookkeeper complete", []),
+            lager:debug("synchronization with bookkeeper complete"),
             maybe_sync_reseller(AccountId, ServiceJObj)
     catch
         'throw':{Reason, _}=_R ->
