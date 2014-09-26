@@ -468,15 +468,17 @@ owned_by_docs(OwnerId, Call) ->
 owned_by_docs('undefined', _, _) -> [];
 owned_by_docs([_|_]=OwnerIds, Type, Call) ->
     Keys = [[OwnerId, Type] || OwnerId <- OwnerIds],
-    owned_by_query([{'keys', Keys}, 'include_docs'], Call);
+    owned_by_query([{'keys', Keys}, 'include_docs'], Call, <<"doc">>);
 owned_by_docs(OwnerId, Type, Call) ->
-    owned_by_query([{'key', [OwnerId, Type]}, 'include_docs'], Call).
+    owned_by_query([{'key', [OwnerId, Type]}, 'include_docs'], Call, <<"doc">>).
 
 -spec owned_by_query(list(), whapps_call:call()) -> api_binaries().
 owned_by_query(ViewOptions, Call) ->
+    owned_by_query(ViewOptions, Call, <<"value">>).
+owned_by_query(ViewOptions, Call, ViewKey) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
+        {'ok', JObjs} -> [wh_json:get_value(ViewKey, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find owned documents (~p) using ~p", [_R, ViewOptions]),
             []
