@@ -272,7 +272,9 @@ maybe_get_faxbox_owner(FaxNumber, FaxBoxDoc, State) ->
 -spec check_faxbox_permissions(binary(), wh_json:object(), #state{}) ->
                                       {'ok', #state{}} |
                                       {'error', string(), #state{}}.
-check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From,owner_email=OwnerEmail}=State) ->
+check_faxbox_permissions(FaxNumber, FaxBoxDoc, #state{from=From
+                                                      ,owner_email=OwnerEmail
+                                                     }=State) ->
     lager:debug("checking if ~s can send to ~p."
                 ,[From,wh_json:get_value(<<"name">>, FaxBoxDoc)]),
     case wh_json:get_value(<<"smtp_permission_list">>, FaxBoxDoc, []) of
