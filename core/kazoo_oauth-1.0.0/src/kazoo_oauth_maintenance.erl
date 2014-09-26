@@ -7,7 +7,7 @@
 %% API functions
 %% ====================================================================
 -export([register_oauth_app/5]).
-
+-export([register_common_providers/0]).
 
 
 %% ====================================================================
@@ -31,3 +31,7 @@ register_oauth_app(AccountId, OAuthId, EMail, Secret, Provider) ->
         {'error', _} ->
             couch_mgr:save_doc(?OAUTH_DB, Doc)
     end.
+
+-spec register_common_providers() -> 'ok'.
+register_common_providers() ->
+    couch_mgr:load_doc_from_file(?OAUTH_DB, 'kazoo_oauth', <<"google.json">>).
