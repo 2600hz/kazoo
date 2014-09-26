@@ -72,6 +72,8 @@
                   ,dialplan :: api_binary() | '_'
                   ,precedence = 5 :: pos_integer() | '$2' | '_'
                   ,handling_locally = 'false' :: boolean() | '_' %% is this ecallmgr handling the call control?
+                  ,to_tag :: api_binary() | '_'
+                  ,from_tag :: api_binary() | '_'
                  }).
 
 -type channel() :: #channel{}.
@@ -242,6 +244,8 @@
                                ,{<<"conference_member_nospeak_check">>, <<"conference_member_nospeak_check">>}
                                ,{<<"Fax-Doc-ID">>, <<"fax_doc_id">>}
                                ,{<<"Fax-Doc-DB">>, <<"fax_doc_database">>}
+                               ,{<<"default_langauge">>, <<"default_language">>}
+                               ,{<<"Default-Language">>, <<"default_language">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
@@ -286,8 +290,8 @@
                                ,{<<"conference">>, <<"page">>}
                               ]).
 
--define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_DESTROY'
-                    ,'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
+-define(FS_EVENTS, [['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']
+                    , 'CALL_UPDATE', 'DETECTED_TONE', 'CHANNEL_PROGRESS_MEDIA'
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE', 'CHANNEL_EXECUTE_COMPLETE'
                     ,'CHANNEL_DATA', 'CALL_SECURE'
@@ -296,6 +300,7 @@
 -define(FS_CUSTOM_EVENTS, ['whistle::noop', 'whistle::masquerade'
                            ,'sofia::transferor', 'sofia::transferee'
                            ,'sofia::replaced', 'sofia::register'
+                           ,'sofia::intercepted'
                            ,'conference::maintenance'
                            ,'spandsp::txfaxresult'
                            ,'spandsp::rxfaxresult'
@@ -306,6 +311,7 @@
                            ,?CHANNEL_MOVE_RELEASED_EVENT
                            ,?CHANNEL_MOVE_COMPLETE_EVENT
                            ,'KZ::DELIVERY_REPORT'
+                           ,'SMS::DELIVERY_REPORT'
                            ,'KZ::MESSAGE'
                           ]).
 

@@ -80,7 +80,10 @@
                               'numbers' | 'aggregate' | 'system' |
                               'depreciated' | 'undefined'.
 
--export_type([db_create_options/0, couchbeam_errors/0, db_classifications/0]).
+-export_type([db_create_options/0
+              ,couchbeam_errors/0
+              ,db_classifications/0
+             ]).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -363,20 +366,39 @@ do_get_design_info(#db{}=Db, Design) ->
                                   couchbeam_error().
 open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
     case wh_cache:peek_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}) of
+        {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             case open_doc(Conn, DbName, DocId, Options) of
-                {'error', _}=E -> E;
+                {'error', _}=E ->
+                    maybe_cache_failure(DbName, DocId, Options, E),
+                    E;
                 {'ok', JObj}=Ok ->
                     cache_db_doc(DbName, DocId, JObj),
                     Ok
             end
     end.
 
--spec cache_db_doc(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-cache_db_doc(DbName, DocId, JObj) ->
+-spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error()) -> 'ok'.
+-spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error(), atoms()) -> 'ok'.
+maybe_cache_failure(DbName, DocId, Options, Error) ->
+    case props:get_value('cache_failures', Options) of
+        ErrorCodes when is_list(ErrorCodes) ->
+            maybe_cache_failure(DbName, DocId, Options, Error, ErrorCodes);
+        'true' -> cache_db_doc(DbName, DocId, Error);
+        _ -> 'ok'
+    end.
+
+maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
+    case lists:member(ErrorCode, ErrorCodes) of
+        'true' -> cache_db_doc(DbName, DocId, Error);
+        'false' -> 'ok'
+    end.
+
+-spec cache_db_doc(ne_binary(), ne_binary(), wh_json:object() | couchbeam_error()) -> 'ok'.
+cache_db_doc(DbName, DocId, CacheValue) ->
     CacheProps = [{'origin', {'db', DbName, DocId}}],
-    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, JObj, CacheProps).
+    wh_cache:store_local(?WH_COUCH_CACHE, {?MODULE, DbName, DocId}, CacheValue, CacheProps).
 
 -spec flush_cache_doc(server() | 'undefined', ne_binary() | db(), ne_binary(), wh_proplist()) -> 'ok'.
 flush_cache_doc(Server, #db{name=Name}, DocId, Options) ->
@@ -389,7 +411,7 @@ flush_cache_doc(_, DbName, DocId, _Options) ->
 
 flush_cache_docs() -> wh_cache:flush_local(?WH_COUCH_CACHE).
 flush_cache_docs(DbName) ->
-    Filter = fun({?MODULE, DbName1, _}=K, _) when DbName1 =:= DbName ->
+    Filter = fun({?MODULE, DbName1, _DocId}=K, _) when DbName1 =:= DbName ->
                      wh_cache:erase_local(?WH_COUCH_CACHE, K),
                      'true';
                 (_, _) -> 'false'
@@ -520,13 +542,22 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
 -spec do_fetch_rev(couchbeam_db(), ne_binary()) ->
                           ne_binary() |
                           couchbeam_error().
-do_fetch_rev(#db{}=Db, DocId) -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId)).
+do_fetch_rev(#db{}=Db, DocId) ->
+    case wh_util:is_empty(DocId) of
+        'true' -> {'error', 'empty_doc_id'};
+        'false' ->
+            ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId))
+    end.
 
 -spec do_fetch_doc(couchbeam_db(), ne_binary(), wh_proplist()) ->
                           {'ok', wh_json:object()} |
                           couchbeam_error().
 do_fetch_doc(#db{}=Db, DocId, Options) ->
-    ?RETRY_504(couchbeam:open_doc(Db, DocId, Options)).
+    case wh_util:is_empty(DocId) of
+        'true' -> {'error', 'empty_doc_id'};
+        'false' ->
+            ?RETRY_504(couchbeam:open_doc(Db, DocId, Options))
+    end.
 
 -spec do_save_doc(couchbeam_db(), wh_json:object() | wh_json:objects(), wh_proplist()) ->
                          {'ok', wh_json:object()} |
@@ -537,7 +568,6 @@ do_save_doc(#db{}=Db, Doc, Options) ->
     case ?RETRY_504(couchbeam:save_doc(Db, maybe_set_docid(Doc), Options)) of
         {'ok', JObj}=Ok ->
             _ = maybe_publish_doc(Db, Doc, JObj),
-            flush_cache_doc('undefined', Db, wh_json:get_value(<<"_id">>, JObj), []),
             Ok;
         Else -> Else
     end.
@@ -727,29 +757,31 @@ retry504s(Fun, Cnt) ->
         OK -> OK
     end.
 
+-spec maybe_publish_docs(couchbeam_db(), wh_json:objects(), wh_json:objects()) -> 'ok'.
 maybe_publish_docs(#db{name=DbName}=Db, Docs, JObjs) ->
     case couch_mgr:change_notice() of
         'true' ->
             spawn(fun() ->
                           [wh_cache:erase_local(?WH_COUCH_CACHE
-                                                ,{?MODULE, wh_util:to_binary(DbName), doc_id(Doc)})
+                                                ,{?MODULE, wh_util:to_binary(DbName), doc_id(Doc)}
+                                               )
                            || Doc <- Docs
                           ],
                           [publish_doc(Db, Doc, JObj)
-                           || {Doc, JObj} <- lists:zip(Docs, JObjs)
-                                  ,should_publish_doc(Doc)
+                           || {Doc, JObj} <- lists:zip(Docs, JObjs),
+                              should_publish_doc(Doc)
                           ]
-                  end);
+                  end),
+            'ok';
         'false' -> 'ok'
     end.
 
 -spec maybe_publish_doc(couchbeam_db(), wh_json:object(), wh_json:object()) -> 'ok'.
-maybe_publish_doc(#db{name=DbName}=Db, Doc, JObj) ->
-    wh_cache:erase_local(?WH_COUCH_CACHE, {?MODULE, wh_util:to_binary(DbName), doc_id(Doc)}),
+maybe_publish_doc(#db{}=Db, Doc, JObj) ->
     case couch_mgr:change_notice()
         andalso should_publish_doc(Doc)
     of
-        'true' -> spawn(fun() -> publish_doc(Db, Doc, JObj) end);
+        'true' -> spawn(fun() -> publish_doc(Db, Doc, JObj) end), 'ok';
         'false' -> 'ok'
     end.
 
@@ -779,6 +811,7 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
 publish(Action, Db, Doc) ->
     Type = doc_type(Doc),
     Id = doc_id(Doc),
+
     Props =
         [{<<"ID">>, Id}
          ,{<<"Type">>, Type}

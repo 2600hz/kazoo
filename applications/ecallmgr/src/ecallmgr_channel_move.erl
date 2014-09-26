@@ -31,7 +31,7 @@ move(UUID, ONode, NNode) ->
     _ = teardown_sbd(UUID, OriginalNode),
     case wait_for_teardown(UUID, OriginalNode) of
         {'ok', Evt} -> rebuild_channel(UUID, NewNode, Evt);
-        {'error', _} -> 'false'
+        {'error', 'timeout'} -> 'false'
     end.
 
 %% listens for the event from FS with the XML

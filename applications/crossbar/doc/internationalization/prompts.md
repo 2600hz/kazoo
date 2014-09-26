@@ -60,7 +60,7 @@ To do so, use the standard `PUT /media` but include `prompt_id` in the data payl
 
 #### Set the account's language
 
-Currently, a SUP command is required to set the account's language: `sup whapps_account_config {ACCOUNT_ID} media default_language fr-ca`
+Currently, a SUP command is required to set the account's language: `sup whapps_account_config set {ACCOUNT_ID} media default_language fr-ca`
 
 You can test what language will be selected for an account (barring a callflow language action changing it) thusly: `sup wh_media_util prompt_language {ACCOUNT_ID}`
 

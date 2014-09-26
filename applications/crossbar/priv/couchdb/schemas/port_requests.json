@@ -32,11 +32,11 @@
       "name": "Port State",
       "description": "What state the port request is currently in",
       "enum": [
-        "waiting",
-        "ready",
-        "progress",
-        "completion",
-        "rejection"
+        "unconfirmed",
+        "submitted",
+        "scheduled",
+        "completed",
+        "rejected"
       ]
     },
     "transfer_date": {

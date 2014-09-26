@@ -3,6 +3,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_media.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"media_srv">>).
 -define(APP_VERSION, <<"0.2.0">>).

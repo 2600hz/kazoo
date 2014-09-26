@@ -317,7 +317,7 @@ default_sip_settings() ->
      ,{<<"enable-timer">>, <<"false">>}
      ,{<<"rtp-timeout-sec">>, <<"3600">>}
      ,{<<"rtp-hold-timeout-sec">>, <<"3600">>}
-     ,{<<"minimum-session-expires">>, <<"120">>}
+     ,{<<"minimum-session-expires">>, <<"90">>}
      ,{<<"manage-presence">>, <<"true">>}
      ,{<<"send-message-query-on-register">>, <<"false">>}
      ,{<<"watchdog-enabled">>, <<"false">>}

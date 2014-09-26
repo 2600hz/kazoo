@@ -147,6 +147,16 @@ handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #st
             lager:info("processing chatplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
             spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
             {'noreply', State, 'hibernate'};
+        {'chatplan', <<"REQUEST_PARAMS">>, _SubClass, _Context} ->
+            %% TODO: move this to a supervisor somewhere
+            lager:info("processing chatplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
+            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
+            {'noreply', State, 'hibernate'};
+        {'chatplan', <<"MESSAGE">>, _SubClass, _Context} ->
+            %% TODO: move this to a supervisor somewhere
+            lager:info("processing chatplan fetch request ~s (call ~s) from ~s", [FSId, CallId, Node]),
+            spawn(?MODULE, 'process_route_req', [Section, Node, FSId, CallId, init_message_props(FSData)]),
+            {'noreply', State, 'hibernate'};
         {_, _Other, _, _Context} ->
             lager:debug("ignoring ~s event ~s in context ~s from ~s", [Section, _Other, _Context, Node]),
             {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
@@ -362,6 +372,8 @@ route_req(CallId, FetchId, Props, Node) ->
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(route_req_ccvs(FetchId, Props))}
      ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
      ,{<<"Resource-Type">>, props:get_value(<<"Resource-Type">>, Props, <<"audio">>)}
+     ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
+     ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

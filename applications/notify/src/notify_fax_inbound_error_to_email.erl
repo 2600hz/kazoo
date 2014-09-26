@@ -8,17 +8,17 @@
 %%% @contributors
 %%%   James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(notify_fax_outbound_error).
+-module(notify_fax_inbound_error_to_email).
 
 -export([init/0, handle_req/2]).
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, 'notify_fax_outbound_error_text_tmpl').
--define(DEFAULT_HTML_TMPL, 'notify_fax_outbound_error_html_tmpl').
--define(DEFAULT_SUBJ_TMPL, 'notify_fax_outbound_error_subj_tmpl').
+-define(DEFAULT_TEXT_TMPL, 'notify_fax_inbound_error_to_email_text_tmpl').
+-define(DEFAULT_HTML_TMPL, 'notify_fax_inbound_error_to_email_html_tmpl').
+-define(DEFAULT_SUBJ_TMPL, 'notify_fax_inbound_error_to_email_subj_tmpl').
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_outbound_error_to_email">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax_inbound_error_to_email">>).
 
 -spec init() -> 'ok'.
 init() ->
@@ -30,14 +30,12 @@ init() ->
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:fax_outbound_error_v(JObj),
+    'true' = wapi_notifications:fax_inbound_error_v(JObj),
     _ = whapps_util:put_callid(JObj),
-    lager:debug("new outbound fax error left, sending to email if enabled"),
-    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    {'ok', AcctObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-    case is_notice_enabled(AcctObj) of
-        'true' -> send(JObj, AcctObj);
+    lager:debug("new fax error left, sending to email if enabled"),
+    {'ok', Account} = notify_util:get_account_doc(JObj),
+    case is_notice_enabled(Account) of
+        'true' -> send(JObj, Account);
         'false' -> 'ok'
     end.
 
@@ -46,15 +44,15 @@ send(JObj, AcctObj) ->
     Docs = [JObj, AcctObj],
     Props = create_template_props(JObj, Docs, AcctObj),
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>
-                                           ,<<"outbound_fax_error_to_email">>
+                                           ,<<"inbound_fax_error_to_email">>
                                            ,<<"email_text_template">>
                                           ], AcctObj),
     CustomHtmlTemplate = wh_json:get_value([<<"notifications">>
-                                            ,<<"outbound_fax_error_to_email">>
+                                            ,<<"inbound_fax_error_to_email">>
                                             ,<<"email_html_template">>
                                            ], AcctObj),
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>
-                                               ,<<"outbound_fax_error_to_email">>
+                                               ,<<"inbound_fax_error_to_email">>
                                                ,<<"email_subject_template">>
                                               ], AcctObj),
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
@@ -76,9 +74,8 @@ send(JObj, AcctObj) ->
 -spec is_notice_enabled(wh_json:object()) -> boolean().
 is_notice_enabled(JObj) ->
     case  wh_json:get_value([<<"notifications">>,
-                             <<"outbound_fax_error_to_email">>,
-                             <<"enabled">>
-                            ], JObj)
+                             <<"inbound_fax_error_to_email">>,
+                             <<"enabled">>], JObj)
     of
         'undefined' -> is_notice_enabled_default();
         Value -> wh_util:is_true(Value)
@@ -86,7 +83,7 @@ is_notice_enabled(JObj) ->
 
 -spec is_notice_enabled_default() -> boolean().
 is_notice_enabled_default() ->
-    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'true').
+    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'false').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -107,7 +104,7 @@ create_template_props(Event, Docs, Account) ->
     DateCalled = wh_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
+    Timezone = wh_util:to_list(wh_json:find(<<"fax_timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}
@@ -122,7 +119,7 @@ create_template_props(Event, Docs, Account) ->
                    ,{<<"from_realm">>, wh_json:get_value(<<"From-Realm">>, Event)}
                    ,{<<"to_user">>, wnm_util:pretty_print(ToE164)}
                    ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
-                   ,{<<"fax_jobid">>, wh_json:get_value(<<"Fax-JobId">>, Event)}
+                   ,{<<"fax_id">>, wh_json:get_value(<<"Fax-ID">>, Event)}
                    ,{<<"fax_media">>, wh_json:get_value(<<"Fax-Name">>, Event)}
                    ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                    | fax_values(wh_json:get_value(<<"Fax-Info">>, Event))
@@ -145,6 +142,8 @@ fax_values(Event) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> any().
+build_and_send_email(_TxtBody, _HTMLBody, _Subject, 'undefined', _Props) ->
+    lager:debug("no TO email, not sending");
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
@@ -168,4 +167,3 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
               ]
             },
     notify_util:send_email(From, To, Email).
-

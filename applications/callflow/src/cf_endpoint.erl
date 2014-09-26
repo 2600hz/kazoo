@@ -119,6 +119,7 @@ merge_attributes(Endpoint) ->
             ,<<"call_forward">>
             ,<<"dial_plan">>
             ,<<"metaflows">>
+            ,<<"language">>
             ,?CF_ATTR_LOWER_KEY
            ],
     merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
@@ -187,6 +188,8 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
             CallerId = wh_json:set_value([<<"emergency">>, <<"number">>], Number, Merged),
             merge_attributes(Keys, Account, wh_json:set_value(Key, CallerId, Endpoint), Owner)
     end;
+merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
+    merge_value(Keys, Account, Endpoint, Owner);
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
@@ -194,8 +197,15 @@ merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     Merged = wh_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
                                      ,fun(_, V) -> wh_util:is_not_empty(V) end
                                     ),
-
     merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner).
+
+-spec merge_value(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
+                              wh_json:object().
+merge_value([Key|Keys], Account, Endpoint, Owner) ->
+    case wh_json:find(Key, [Owner, Endpoint, Account], 'undefined') of
+        'undefined' -> merge_attributes(Keys, Account, Endpoint, Owner);
+        Value -> merge_attributes(Keys, Account, wh_json:set_value(Key, Value, Endpoint), Owner)
+    end.
 
 -spec caller_id_owner_attr(wh_json:object()) -> wh_json:object().
 caller_id_owner_attr(Owner) ->
@@ -718,8 +728,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          | maybe_get_t38(Endpoint, Call)
         ])).
 
-
--spec maybe_get_t38(wh_json:object(), wh_json:object()) -> wh_proplist().
+-spec maybe_get_t38(wh_json:object(), whapps_call:call()) -> wh_proplist().
 maybe_get_t38(Endpoint, Call) ->
     Opt =
         case cf_endpoint:get(Call) of
@@ -731,11 +740,10 @@ maybe_get_t38(Endpoint, Call) ->
         'false' -> [];
         'true' ->
             whapps_call_command:get_inbound_t38_settings(
-                Opt
-                ,wh_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
-            )
+              Opt
+              ,wh_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
+             )
     end.
-
 
 -spec maybe_build_failover(wh_json:object(), whapps_call:call()) -> api_object().
 maybe_build_failover(Endpoint, Call) ->

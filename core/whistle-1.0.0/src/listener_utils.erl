@@ -53,7 +53,12 @@ is_responder_known(Responders, {Responder,_}=Callback) ->
 maybe_load_responder(Responder) ->
     case erlang:module_loaded(Responder) of
         'true' -> 'ok';
-        'false' -> {'module', Responder} = code:ensure_loaded(Responder)
+        'false' ->
+            case code:ensure_loaded(Responder) of
+                {'module', Responder} -> 'ok';
+                {'error', 'nofile'} ->
+                    error({'error', 'no_responder_module', Responder})
+            end
     end.
 
 -spec maybe_add_mapping(responder(), responders()) -> responders().

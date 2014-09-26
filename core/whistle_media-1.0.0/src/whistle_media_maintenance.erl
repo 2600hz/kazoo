@@ -57,6 +57,7 @@ import_prompts(Path) ->
     import_prompts(Path, wh_media_util:default_prompt_language()).
 
 import_prompts(Path, Lang) ->
+    couch_mgr:db_create(?WH_MEDIA_DB),
     MediaPath = filename:join([Path, "*.{wav,mp3}"]),
     case filelib:wildcard(wh_util:to_list(MediaPath)) of
         [] ->
@@ -84,6 +85,7 @@ import_prompt(Path) ->
     import_prompt(Path, wh_media_util:default_prompt_language()).
 
 import_prompt(Path, Lang) ->
+    couch_mgr:db_create(?WH_MEDIA_DB),
     case file:read_file(Path) of
         {'ok', Contents} ->
             io:format("importing prompt '~s' with language '~s'~n", [Path, Lang]),
@@ -128,13 +130,14 @@ import_prompt(Path0, Lang0, Contents) ->
                  ]),
 
     case couch_mgr:ensure_saved(?WH_MEDIA_DB, MetaJObj) of
-        {'ok', _MetaJObj1} ->
+        {'ok', MetaJObj1} ->
             io:format("  saved metadata about '~s'~n", [Path]),
             upload_prompt(ID
                           ,<<PromptName/binary, (wh_util:to_binary(Extension))/binary>>
                           ,Contents
                           ,[{'content_type', wh_util:to_list(ContentType)}
                             ,{'content_length', ContentLength}
+                            ,{'rev', wh_json:get_value(<<"_rev">>, MetaJObj1)}
                            ]
                          );
         {'error', E} ->

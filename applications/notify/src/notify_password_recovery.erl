@@ -11,15 +11,15 @@
 %%%
 %%% Created : 22 Dec 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(notify_pwd_recovery).
+-module(notify_password_recovery).
 
 -export([init/0, handle_req/2]).
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, notify_pwd_recovery_text_tmpl).
--define(DEFAULT_HTML_TMPL, notify_pwd_recovery_html_tmpl).
--define(DEFAULT_SUBJ_TMPL, notify_pwd_recovery_subj_tmpl).
+-define(DEFAULT_TEXT_TMPL, notify_password_recovery_text_tmpl).
+-define(DEFAULT_HTML_TMPL, notify_password_recovery_html_tmpl).
+-define(DEFAULT_SUBJ_TMPL, notify_password_recovery_subj_tmpl).
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".password_recovery">>).
 

@@ -97,7 +97,7 @@ handle_cast({'omnipresence',{'subscribe_notify', <<"message-summary">>, User, _S
              ,{<<"Realm">>, Realm}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),    
+    wh_amqp_worker:cast(Query, fun wapi_presence:publish_mwi_query/1),
     {'noreply', State};
 handle_cast({'omnipresence',{'resubscribe_notify', <<"message-summary">>, User, _Subscription}}, State) ->
     [Username, Realm] = binary:split(User, <<"@">>),
@@ -126,7 +126,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
 handle_info(_Info, State) ->
     lager:debug("unhandled info: ~p", [_Info]),
     {'noreply', State}.
@@ -174,8 +173,7 @@ code_change(_OldVsn, State, _Extra) ->
 mwi_event(JObj) ->
     handle_update(JObj).
 
-
--spec handle_update(wh_json:object()) -> any().
+-spec handle_update(wh_json:object()) -> 'ok'.
 handle_update(JObj) ->
     To = wh_json:get_value(<<"To">>, JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
@@ -204,7 +202,7 @@ handle_update(JObj) ->
                ]),
     maybe_send_update(To, Update).
 
--spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.   
+-spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
 maybe_send_update(User, Props) ->
     case omnip_subscriptions:get_subscriptions(?MWI_EVENT, User) of
         {'ok', Subs} ->
@@ -228,27 +226,25 @@ send_update(<<"amqp">>, _User, Props, Subscriptions) ->
                               ) || S <- Stalkers];
 send_update(<<"sip">>, User, Props, Subscriptions) ->
     Body = build_body(User, Props),
-    Options = [{body, Body}
-               ,{content_type, <<"application/simple-message-summary">>}
-               ,{subscription_state, active}
-               ],
+    Options = [{'body', Body}
+               ,{'content_type', <<"application/simple-message-summary">>}
+               ,{'subscription_state', 'active'}
+              ],
     [nksip_uac:notify(SubscriptionId,
-                      Options ++ [{contact, Contact},{route, [Proxy]}])
-                    || #omnip_subscription{subscription_id=SubscriptionId
-                                           ,contact=Contact
-                                           ,proxy_route=Proxy} <- Subscriptions
-                                                  , SubscriptionId =/= 'undefined'].
+                      Options ++ [{'contact', Contact}
+                                  ,{'route', [Proxy]}
+                                 ]
+                     )
+     || #omnip_subscription{subscription_id=SubscriptionId
+                            ,contact=Contact
+                            ,proxy_route=Proxy
+                           } <- Subscriptions,
+        SubscriptionId =/= 'undefined'
+    ].
 
-
--spec normalize_variables(wh_proplist()) -> wh_proplist().
-normalize_variables(Props) ->
-    [{wh_json:normalize_key(K), V} || {K, V} <- Props ].
-
-
--spec build_variables(ne_binary(), wh_proplist()) -> ne_binary().
+-spec build_variables(ne_binary(), wh_proplist()) -> wh_proplist().
 build_variables(_User, Props) ->
-    normalize_variables(Props).
-    
+    omnip_util:normalize_variables(Props).
 
 -spec build_body(ne_binary(), wh_proplist()) -> ne_binary().
 build_body(User, Props) ->
@@ -256,11 +252,11 @@ build_body(User, Props) ->
     lager:debug("MSG_SUM Vars ~p", [Variables]),
     {'ok', Text} = sub_package_message_summary:render(Variables),
     Body = wh_util:to_binary(Text),
-    binary:replace(Body, <<"\n">>, <<"\r\n">>, [global]).
+    binary:replace(Body, <<"\n">>, <<"\r\n">>, ['global']).
 
-
+-spec ensure_template() -> {'ok', _}.
 ensure_template() ->
-    BasePath = code:lib_dir(omnipresence, priv),
+    BasePath = code:lib_dir('omnipresence', 'priv'),
     File = lists:concat([BasePath, "/packages/message-summary.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_message_summary">>, 'true'),
     {'ok', _CompileResult} = erlydtl:compile(File, Mod, []).

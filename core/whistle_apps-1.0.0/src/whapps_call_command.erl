@@ -11,7 +11,7 @@
 
 -include("./whapps_call_command.hrl").
 
--export([presence/2, presence/3]).
+-export([presence/2, presence/3, presence/4, presence/5]).
 -export([channel_status/1, channel_status/2
          ,channel_status_command/1, channel_status_command/2
          ,b_channel_status/1
@@ -80,9 +80,9 @@
          ,play_and_collect_digits/6, play_and_collect_digits/7
          ,play_and_collect_digits/8, play_and_collect_digits/9
         ]).
--export([say/2, say/3, say/4, say/5
-         ,say_command/2, say_command/3, say_command/4, say_command/5
-         ,b_say/2, b_say/3, b_say/4, b_say/5
+-export([say/2, say/3, say/4, say/5, say/6
+         ,say_command/2, say_command/3, say_command/4, say_command/5, say_command/6
+         ,b_say/2, b_say/3, b_say/4, b_say/5, b_say/6
         ]).
 
 -export([conference/2, conference/3
@@ -164,6 +164,8 @@
          ,wait_for_fax_detection/2
         ]).
 
+-export([wait_for_unparked_call/1, wait_for_unparked_call/2]).
+
 -export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
 
@@ -214,21 +216,49 @@ default_application_timeout() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec presence(ne_binary(), ne_binary() | whapps_call:call()) -> 'ok'.
--spec presence(ne_binary(), ne_binary() | whapps_call:call(), api_binary() | whapps_call:call()) -> 'ok'.
-presence(State, PresenceId) when is_binary(PresenceId) ->
+-spec presence(ne_binary(), ne_binary(), api_binary() | whapps_call:call()) -> 'ok'.
+-spec presence(ne_binary(), ne_binary() , api_binary() , whapps_call:call() | 'undefined') -> 'ok'.
+-spec presence(ne_binary(), ne_binary() , api_binary() , api_binary(), whapps_call:call() | 'undefined') -> 'ok'.
+presence(State, <<_/binary>> = PresenceId) ->
     presence(State, PresenceId, 'undefined');
 presence(State, Call) ->
     presence(State, whapps_call:from(Call)).
 
-presence(State, PresenceId, CallId) when is_binary(CallId) orelse CallId =:= 'undefined' ->
-    Command = [{<<"Presence-ID">>, PresenceId}
-               ,{<<"State">>, State}
-               ,{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_presence:publish_update(Command);
+presence(State, PresenceId, 'undefined') ->
+    presence(State, PresenceId, 'undefined', 'undefined');
+presence(State, PresenceId, <<_/binary>> = CallId) ->
+    presence(State, PresenceId, CallId, 'undefined');
 presence(State, PresenceId, Call) ->
-    presence(State, PresenceId, whapps_call:call_id(Call)).
+    presence(State, PresenceId, whapps_call:call_id(Call), Call).
+
+presence(State, PresenceId, CallId, Call) ->
+    presence(State, PresenceId, CallId, 'undefined', Call).
+
+presence(State, PresenceId, CallId, TargetURI, 'undefined') ->
+    Command = props:filter_undefined(
+                [{<<"Presence-ID">>, PresenceId}
+                 ,{<<"From">>, TargetURI}
+                 ,{<<"State">>, State}
+                 ,{<<"Call-ID">>, CallId}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    wapi_presence:publish_update(Command);
+presence(State, PresenceId, CallId, TargetURI, Call) ->
+    Command = props:filter_undefined(
+                [{<<"Presence-ID">>, PresenceId}
+                 ,{<<"From">>, TargetURI}
+                 ,{<<"From-Tag">>, whapps_call:from_tag(Call)}
+                 ,{<<"To-Tag">>, whapps_call:to_tag(Call)}
+                 ,{<<"State">>, State}
+                 ,{<<"Call-ID">>, CallId}
+                 | wh_api:default_headers(module_as_app(Call), ?APP_VERSION)
+                ]),
+    wapi_presence:publish_update(Command).
+
+-spec module_as_app( whapps_call:call() ) -> ne_binary().
+module_as_app(Call) ->
+    JObj = whapps_call:kvs_fetch(<<"cf_flow">>, wh_json:new(), Call),
+    wh_json:get_value(<<"module">>, JObj, ?APP_NAME).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1457,11 +1487,13 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 -spec say(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 -spec say(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 -spec say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 
 -spec b_say(ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_say(ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_say(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_say(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
 
 say(Say, Call) ->
     say(Say, <<"name_spelled">>, Call).
@@ -1470,13 +1502,17 @@ say(Say, Type, Call) ->
 say(Say, Type, Method, Call) ->
     say(Say, Type, Method, whapps_call:language(Call), Call).
 say(Say, Type, Method, Language, Call) ->
-    Command = say_command(Say, Type, Method, Language, Call),
+    say(Say, Type, Method, Language, 'undefined', Call).
+say(Say, Type, Method, Language, Gender, Call) ->
+    Command = say_command(Say, Type, Method, Language, Gender, Call),
     send_command(Command, Call).
 
 -spec say_command(ne_binary(), whapps_call:call()) -> wh_json:object().
 -spec say_command(ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
 -spec say_command(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
 -spec say_command(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
+-spec say_command(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) -> wh_json:object().
+
 say_command(Say, Call) ->
     say_command(Say, <<"name_spelled">>, Call).
 say_command(Say, Type, Call) ->
@@ -1484,6 +1520,9 @@ say_command(Say, Type, Call) ->
 say_command(Say, Type, Method, Call) ->
     say_command(Say, Type, Method, whapps_call:language(Call), Call).
 say_command(Say, Type, Method, Language, Call) ->
+    say_command(Say, Type, Method, Language, 'undefined', Call).
+
+say_command(Say, Type, Method, Language, Gender, Call) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"say">>}
@@ -1491,6 +1530,7 @@ say_command(Say, Type, Method, Language, Call) ->
          ,{<<"Type">>, say_type(Type)}
          ,{<<"Method">>, say_method(Method)}
          ,{<<"Language">>, say_language(Language, Call)}
+         ,{<<"Gender">>, say_gender(Gender)}
          ,{<<"Call-ID">>, whapps_call:call_id(Call)}
         ])).
 
@@ -1503,14 +1543,34 @@ say_method(M) -> M.
 say_language('undefined', Call) -> whapps_call:language(Call);
 say_language(L, _Call) -> L.
 
+-spec say_gender(api_binary()) -> api_binary().
+say_gender('undefined') -> 'undefined';
+say_gender(Gender) ->
+    say_gender_validate(wh_util:to_lower_binary(Gender)).
+
+-spec say_gender_validate(ne_binary()) -> ne_binary().
+say_gender_validate(<<"masculine">> = G) -> G;
+say_gender_validate(<<"feminine">> = G) -> G;
+say_gender_validate(<<"neuter">> = G) -> G.
+
 b_say(Say, Call) ->
-    b_say(Say, <<"name_spelled">>, Call).
+    say(Say, Call),
+    wait_for_say(Call).
 b_say(Say, Type, Call) ->
-    b_say(Say, Type, <<"pronounced">>, Call).
+    say(Say, Type, Call),
+    wait_for_say(Call).
 b_say(Say, Type, Method, Call) ->
-    b_say(Say, Type, Method, whapps_call:language(Call), Call).
+    say(Say, Type, Method, Call),
+    wait_for_say(Call).
 b_say(Say, Type, Method, Language, Call) ->
     say(Say, Type, Method, Language, Call),
+    wait_for_say(Call).
+b_say(Say, Type, Method, Language, Gender, Call) ->
+    say(Say, Type, Method, Language, Gender, Call),
+    wait_for_say(Call).
+
+-spec wait_for_say(whapps_call:call()) -> whapps_api_std_return().
+wait_for_say(Call) ->
     wait_for_message(Call, <<"say">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity').
 
 %%--------------------------------------------------------------------
@@ -2435,5 +2495,42 @@ wait_for_fax_detection(Timeout, Call) ->
                 {<<"call_event">>, <<"FAX_DETECTED">>, _ } ->
                     {'ok', wh_json:set_value(<<"Fax-Success">>, 'true', JObj)};
                 _ -> wait_for_fax_detection(wh_util:decr_timeout(Timeout, Start), Call)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Low level function to consume call events, looping until a specific
+%% one occurs.  If the channel is hungup or no call events are recieved
+%% for the optional timeout period then errors are returned.
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_unparked_call(whapps_call:call()) ->
+                              whapps_api_std_return().
+-spec wait_for_unparked_call(whapps_call:call(), wh_timeout()) ->
+                              whapps_api_std_return().
+
+wait_for_unparked_call(Call) ->
+    wait_for_unparked_call(Call, ?DEFAULT_MESSAGE_TIMEOUT).
+wait_for_unparked_call(Call, Timeout) ->
+    Start = os:timestamp(),
+    case receive_event(Timeout) of
+        {'error', 'timeout'}=E -> E;
+        {'ok', JObj} ->
+            case get_event_type(JObj) of
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+                    lager:debug("channel was destroyed while waiting for unparked call"),
+                    {'error', 'channel_destroy'};
+                {<<"call_event">>, <<"CHANNEL_INTERCEPTED">>, _} ->
+                    lager:debug("channel was intercepted while waiting for unparked call"),
+                    {'ok', JObj};
+                {<<"error">>, _, <<"hold">>} ->
+                    lager:debug("channel execution error while waiting for unparked call: ~s", [wh_json:encode(JObj)]),
+                    {'error', JObj};
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"hold">>} ->
+                    {'ok', JObj};
+                _ ->
+                    wait_for_unparked_call(Call, wh_util:decr_timeout(Timeout, Start))
             end
     end.

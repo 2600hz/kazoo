@@ -10,12 +10,13 @@
 
 -export([start_link/0]).
 -export([init/1
-    ,handle_call/3
-    ,handle_cast/2
-    ,handle_info/2
-    ,terminate/2
-    ,code_change/3
-]).
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("camper.hrl").
 -include_lib("rabbitmq_server/plugins-src/rabbitmq-erlang-client/include/amqp_client.hrl").
@@ -143,6 +144,9 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     lager:info("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
+
+handle_event(_JObj, _State) ->
+    {'reply', []}.
 
 %%--------------------------------------------------------------------
 %% @private

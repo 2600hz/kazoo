@@ -1,0 +1,102 @@
+{
+    "_id": "notifications",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "required": true,
+    "name": "Notifications",
+    "description": "Notifications templates",
+    "properties": {
+        "to": {
+            "type": "object",
+            "required": true,
+            "name": "To",
+            "description": "To email field",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Type",
+                    "description": "",
+                    "minLength": 2,
+                    "maxLength": 253,
+                },
+                "email_addresses": {
+                    "type": "string",
+                    "required": true,
+                    "name": "Email Addresses",
+                    "description": "",
+                    "itmes": {
+                        "type": "string",
+                        "format": "email",
+                        "required": false
+                    }
+                }
+            }
+        },
+        "bcc": {
+            "type": "object",
+            "required": false,
+            "name": "Bcc",
+            "description": "Bcc email field",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Type",
+                    "description": "",
+                    "minLength": 2,
+                    "maxLength": 253,
+                },
+                "email_addresses": {
+                    "type": "string",
+                    "required": true,
+                    "name": "Email Addresses",
+                    "description": "",
+                    "itmes": {
+                        "type": "string",
+                        "format": "email",
+                        "required": false
+                    }
+                }
+            }
+        },
+        "from": {
+            "type": "string",
+            "required": true,
+            "name": "From",
+            "description": "From: email address",
+            "format": "email"
+        },
+        "subject": {
+            "type": "string",
+            "required": true,
+            "name": "Subject",
+            "description": "Email subject",
+            "minLength": 1,
+            "maxLength": 78
+        },
+        "enabled": {
+            "type": "boolean",
+            "required": true,
+            "name": "Enabled",
+            "description": "Enable notification",
+            "default": false
+        },
+        "template_charset": {
+            "type": "string",
+            "required": true,
+            "name": "Template charset",
+            "description": "",
+            "default": "utf-8",
+            "minLength": 1
+        },
+        "macros": {
+            "type": "object",
+            "required": false,
+            "name": "Macros",
+            "description": "",
+            "properties": {},
+            "default": {}
+        },
+    }
+}

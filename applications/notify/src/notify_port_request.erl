@@ -55,7 +55,8 @@ handle_req(JObj, _Props) ->
                                                            ,wh_json:get_value(<<"pvt_account_id">>, AccountDoc)
                                                           ]),
 
-    Props = create_template_props(JObj, AccountJObj),
+    Version = wh_json:get_value(<<"Version">>, JObj),
+    Props = create_template_props(Version, JObj, AccountJObj),
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"port_request">>, <<"email_text_template">>], AccountJObj),
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
@@ -85,8 +86,49 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:objects()) -> proplist().
-create_template_props(NotifyJObj, AccountJObj) ->
+-spec create_template_props(api_binary(), wh_json:object(), wh_json:objects()) -> proplist().
+create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
+    Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, NotifyJObj)),
+
+    PortDoc = find_port_info(NotifyJObj),
+    PortData = notify_util:json_to_template_props(wh_doc:public_fields(PortDoc)),
+    [Number|_]=Numbers = find_numbers(PortData, NotifyJObj),
+
+    NumberString =
+        lists:foldl(
+            fun(Num, Acc) ->
+                << Num/binary, " ", Acc/binary>>
+            end
+            ,<<>>
+            ,props:get_keys(Numbers)
+        ),
+
+    Request = [
+        {<<"port">>,
+            [
+                {<<"service_provider">>, wh_json:get_value(<<"carrier">>, PortDoc)}
+                ,{<<"billing_name">>, wh_json:get_value([<<"bill">>, <<"name">>], PortDoc)}
+                ,{<<"billing_account_id">>, wh_json:get_value(<<"pvt_account_id">>, PortDoc)}
+                ,{<<"billing_street_address">>, wh_json:get_value([<<"bill">>, <<"address">>], PortDoc)}
+                ,{<<"billing_locality">>, wh_json:get_value([<<"bill">>, <<"locality">>], PortDoc)}
+                ,{<<"billing_postal_code">>, wh_json:get_value([<<"bill">>, <<"postal_code">>], PortDoc)}
+                ,{<<"billing_telephone_number">>, wh_json:get_value([<<"bill">>, <<"phone_number">>], PortDoc)}
+                ,{<<"requested_port_date">>, wh_json:get_value(<<"transfer_date">>, PortDoc)}
+                ,{<<"requested_port_date">>, wh_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortDoc)}
+            ]
+        }
+        ,{<<"number">>, NumberString}
+    ],
+
+    [{<<"numbers">>, Numbers}
+     ,{<<"number">>, Number}
+     ,{<<"request">>, Request}
+     ,{<<"account">>, notify_util:json_to_template_props(AccountJObj)}
+     ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
+     ,{<<"service">>, notify_util:get_service_props(AccountJObj, ?MOD_CONFIG_CAT)}
+     ,{<<"send_from">>, get_send_from(PortDoc, Admin)}
+    ];
+create_template_props(_, NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, NotifyJObj)),
 
     PortDoc = find_port_info(NotifyJObj),

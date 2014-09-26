@@ -104,7 +104,7 @@ handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
     EventType = wh_json:get_value(<<"Event-Name">>, JObj),
     spawn(fun() -> channel_event(EventType, JObj) end),
     {'noreply', State};
-handle_cast({'omnipresence',{'presence_event', JObj}}, State) ->
+handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
     spawn(fun() -> presence_event(JObj) end),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
@@ -211,32 +211,26 @@ handle_connected_channel(_JObj) ->
 -spec initial_update(ne_binary()) -> any().
 initial_update(User) ->
     Headers = [{<<"From">>, User}
-               ,{<<"To">>, User}              
-               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(User))}
-              ],
-    handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
-
--spec reset_blf(ne_binary()) -> any().
-reset_blf(User) ->
-    Headers = [{<<"From">>, User}
                ,{<<"To">>, User}
-               ,{<<"Flush-Level">>, 1}
-               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(User))}
+               ,{<<"Call-ID">>, wh_util:rand_hex_binary(16)}
               ],
     handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
 
--spec reset_user_blf(ne_binary()) -> any().
-reset_user_blf(User) ->
-    case omnip_subscriptions:find_user_subscriptions(?DIALOG_EVENT, User) of
-        {'ok', Subs} ->
-            [ reset_blf(SubUser) || #omnip_subscription{user=SubUser} <- Subs];
-        _ -> 'ok'
-    end.
-    
 -spec presence_event(wh_json:object()) -> 'ok'.
 presence_event(JObj) ->
     State = wh_json:get_value(<<"State">>, JObj),
-    handle_update(JObj, State).
+    maybe_handle_presence_state(JObj, State).
+
+-spec maybe_handle_presence_state(wh_json:object(), api_binary()) -> 'ok'.
+maybe_handle_presence_state(_JObj, <<"online">>) -> 'ok';
+maybe_handle_presence_state(_JObj, <<"offline">>) -> 'ok';
+maybe_handle_presence_state(JObj, ?PRESENCE_HANGUP=State) ->
+    handle_update(JObj, State, 10);
+maybe_handle_presence_state(JObj, ?PRESENCE_RINGING=State) ->
+    handle_update(JObj, State, 0);
+maybe_handle_presence_state(JObj, State) ->
+    handle_update(JObj, State, 0).
+
 
 -spec handle_update(wh_json:object(), ne_binary()) -> any().
 handle_update(JObj, ?PRESENCE_HANGUP) ->
@@ -247,61 +241,72 @@ handle_update(JObj, ?PRESENCE_ANSWERED) ->
     handle_update(JObj, ?PRESENCE_ANSWERED, 36000);
 handle_update(_JObj, _State) -> 'ok'.
 
--spec handle_update(wh_json:object(), ne_binary(), integer()) -> any().
+-spec handle_update(wh_json:object(), ne_binary(), integer()) -> 'ok'.
 handle_update(JObj, State, Expires) ->
     To = wh_json:get_first_defined([<<"To">>, <<"Presence-ID">>], JObj),
-    From = wh_json:get_value(<<"From">>, JObj),
+    From = wh_json:get_first_defined([<<"From">>, <<"Presence-ID">>], JObj),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
     [FromUsername, FromRealm] = binary:split(From, <<"@">>),
     Direction = wh_json:get_lower_binary(<<"Call-Direction">>, JObj),
+    ToURI = case {State, wh_json:get_value(<<"App-Name">>, JObj)} of
+                {?PRESENCE_RINGING, <<"park">>} ->
+                    <<"sip:", From/binary,";kazoo-pickup=true">>;
+                {_State, _App} ->
+                    <<"sip:", From/binary>>
+            end,
+
     {User, Props} =
         case Direction =:= <<"inbound">> of
             'true' ->
                 {From, props:filter_undefined(
-                   [{<<"From">>, <<"sip:", From/binary>>}
-                    ,{<<"From-User">>, FromUsername}
-                    ,{<<"From-Realm">>, FromRealm}
-                    ,{<<"To">>, <<"sip:", To/binary>>}
-                    ,{<<"To-User">>, ToUsername}
-                    ,{<<"To-Realm">>, ToRealm}
-                    ,{<<"State">>, State}
-                    ,{<<"Expires">>, Expires}
-                    ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
-                    ,{<<"Direction">>, <<"initiator">>}
-                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From))}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Event-Package">>, <<"dialog">>}
-                    ,{<<"destination">>, ToUsername}
-                    ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                    ,{<<"user">>, FromUsername}
-                    ,{<<"realm">>, FromRealm}
-                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ])};
+                         [{<<"From">>, <<"sip:", From/binary>>}
+                          ,{<<"From-User">>, FromUsername}
+                          ,{<<"From-Realm">>, FromRealm}
+                          ,{<<"From-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                          ,{<<"To">>, <<"sip:", To/binary>>}
+                          ,{<<"To-User">>, ToUsername}
+                          ,{<<"To-Realm">>, ToRealm}
+                          ,{<<"To-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                          ,{<<"State">>, State}
+                          ,{<<"Expires">>, Expires}
+                          ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
+                          ,{<<"Direction">>, <<"initiator">>}
+                          ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(From))}
+                          ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                          ,{<<"Event-Package">>, <<"dialog">>}
+                          ,{<<"destination">>, ToUsername}
+                          ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                          ,{<<"user">>, FromUsername}
+                          ,{<<"realm">>, FromRealm}
+                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                         ])};
             'false' ->
                 {To, props:filter_undefined(
-                   [{<<"From">>, <<"sip:", To/binary>>}
-                    ,{<<"From-User">>, ToUsername}
-                    ,{<<"From-Realm">>, ToRealm}
-                    ,{<<"To">>, <<"sip:", From/binary>>}
-                    ,{<<"To-User">>, FromUsername}
-                    ,{<<"To-Realm">>, FromRealm}
-                    ,{<<"To">>, <<"sip:", From/binary>>}
-                    ,{<<"State">>, State}
-                    ,{<<"Expires">>, Expires}
-                    ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
-                    ,{<<"Direction">>, <<"recipient">>}
-                    ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(To))}
-                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                    ,{<<"Event-Package">>, <<"dialog">>}
-                    ,{<<"destination">>, FromUsername}
-                    ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                    ,{<<"user">>, ToUsername}
-                    ,{<<"realm">>, ToRealm}
+                       [{<<"From">>, <<"sip:", To/binary>>}
+                        ,{<<"From-User">>, ToUsername}
+                        ,{<<"From-Realm">>, ToRealm}
+                        ,{<<"From-Tag">>, wh_json:get_value(<<"To-Tag">>, JObj)}
+                        ,{<<"To">>, ToURI}
+                        ,{<<"To-URI">>, ToURI}
+                        ,{<<"To-User">>, FromUsername}
+                        ,{<<"To-Realm">>, FromRealm}
+                        ,{<<"To-Tag">>, wh_json:get_value(<<"From-Tag">>, JObj)}
+                        ,{<<"State">>, State}
+                        ,{<<"Expires">>, Expires}
+                        ,{<<"Flush-Level">>, wh_json:get_value(<<"Flush-Level">>, JObj)}
+                        ,{<<"Direction">>, <<"recipient">>}
+                        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj, ?FAKE_CALLID(To))}
+                        ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                        ,{<<"Event-Package">>, <<"dialog">>}
+                        ,{<<"destination">>, FromUsername}
+                        ,{<<"uuid">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                        ,{<<"user">>, ToUsername}
+                        ,{<<"realm">>, ToRealm}
                         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ])}
-        end,    
+                       ])}
+        end,
     maybe_send_update(User, Props).
-    
+
 -spec maybe_send_update(ne_binary(), wh_proplist()) -> 'ok'.
 maybe_send_update(User, Props) ->
     case omnip_subscriptions:get_subscriptions(?DIALOG_EVENT, User) of
@@ -316,7 +321,7 @@ send_update(User, Props, Subscriptions) ->
     {Amqp, Sip} = lists:partition(fun(#omnip_subscription{version=V})-> V =:= 1 end, Subscriptions),
     send_update(<<"amqp">>, User, Props, Amqp),
     send_update(<<"sip">>, User, Props, Sip).
-    
+
 -spec send_update(ne_binary(), ne_binary(), wh_proplist(), subscriptions()) -> 'ok'.
 send_update(_, _User, _Props, []) -> 'ok';
 send_update(<<"amqp">>, _User, Props, Subscriptions) ->
@@ -326,16 +331,22 @@ send_update(<<"amqp">>, _User, Props, Subscriptions) ->
                               ) || S <- Stalkers];
 send_update(<<"sip">>, User, Props, Subscriptions) ->
     Body = build_body(User, Props),
-    Options = [{body, Body}
-               ,{content_type, <<"application/dialog-info+xml">>}
-               ,{subscription_state, active}
+    Options = [{'body', Body}
+               ,{'content_type', <<"application/dialog-info+xml">>}
+               ,{'subscription_state', 'active'}
                ],
-    [nksip_uac:notify(SubscriptionId,
-                      Options ++ [{contact, Contact},{route, [Proxy]}])
-                    || #omnip_subscription{subscription_id=SubscriptionId
-                                           ,contact=Contact
-                                           ,proxy_route=Proxy} <- Subscriptions
-                                                  , SubscriptionId =/= 'undefined'].
+    [nksip_uac:notify(SubscriptionId
+                      ,[{'contact', Contact}
+                        ,{'route', [Proxy]}
+                        | Options
+                       ]
+                     )
+     || #omnip_subscription{subscription_id=SubscriptionId
+                            ,contact=Contact
+                            ,proxy_route=Proxy
+                           } <- Subscriptions,
+        SubscriptionId =/= 'undefined'
+    ].
 
 -spec get_user_channels(ne_binary()) -> list().
 get_user_channels(User) ->
@@ -370,51 +381,66 @@ map_direction(<<"inbound">>) -> <<"initiator">>;
 map_direction(<<"outbound">>) -> <<"recipient">>;
 map_direction(Other) -> Other.
 
--spec normalize_variables(wh_proplist()) -> wh_proplist().
-normalize_variables(Props) ->
-    [{wh_json:normalize_key(K), V} || {K, V} <- Props ].
-
 -spec props_to_call(wh_proplist()) -> channel() | 'undefined'.
 props_to_call(Props) ->
-    case props:is_defined(<<"uuid">>, Props) of
-        'true' ->
-            #channel{call_id = props:get_value(<<"uuid">>, Props) 
-                  ,direction = map_direction(props:get_value(<<"direction">>, Props))
-                  ,state = map_state(props:get_first_defined([<<"state">>, <<"answered">>], Props))
-                  ,to = props:get_value(<<"destination">>, Props)
-                 };
-        'false' -> 'undefined'
+    case props:get_value(<<"uuid">>, Props) of
+        'undefined' -> 'undefined';
+        UUID ->
+            #channel{call_id = UUID
+                     ,direction = map_direction(props:get_value(<<"direction">>, Props))
+                     ,state = map_state(props:get_first_defined([<<"state">>, <<"answered">>], Props))
+                     ,to = props:get_value(<<"destination">>, Props)
+                    }
     end.
 
 -spec build_channels(ne_binary(), wh_proplist()) -> wh_proplist().
-build_channels(User, Props) ->    
+build_channels(User, Props) ->
     Channels = [props_to_call(Channel) || Channel  <- get_user_channels(User)],
     case props_to_call(Props) of
-        'undefined' ->
-            Channels;
+        'undefined' -> Channels;
         UUID ->
-            [ UUID | [ Channel || Channel  <- Channels, Channel#channel.call_id =/= UUID#channel.call_id] ]
+            [UUID
+             |[Channel
+               || Channel <- Channels,
+                  Channel#channel.call_id =/= UUID#channel.call_id
+              ]
+            ]
     end.
 
-
--spec build_variables(ne_binary(), wh_proplist()) -> ne_binary().
+-spec build_variables(ne_binary(), wh_proplist()) -> wh_proplist().
 build_variables(User, Props) ->
     case build_channels(User, Props) of
-        [] -> normalize_variables(Props);
-        Channels -> normalize_variables(props:set_value(<<"calls">>, Channels, Props))
+        [] -> omnip_util:normalize_variables(Props);
+        Channels -> omnip_util:normalize_variables(props:set_value(<<"calls">>, Channels, Props))
     end.
-    
 
 -spec build_body(ne_binary(), wh_proplist()) -> ne_binary().
 build_body(User, Props) ->
     Variables = build_variables(User, Props),
     {'ok', Text} = sub_package_dialog:render(Variables),
     Body = wh_util:to_binary(Text),
-    binary:replace(Body, <<"\n\n">>, <<"\n">>, [global]).
+    binary:replace(Body, <<"\n\n">>, <<"\n">>, ['global']).
 
-
+-spec ensure_template() -> {'ok', _}.
 ensure_template() ->
-    BasePath = code:lib_dir(omnipresence, priv),
+    BasePath = code:lib_dir('omnipresence', 'priv'),
     File = lists:concat([BasePath, "/packages/dialog.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_dialog">>, 'true'),
-    {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{record_info, [{channel, record_info(fields, channel)}]}]).
+    {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{'record_info', [{'channel', record_info('fields', 'channel')}]}]).
+
+-spec reset_blf(ne_binary()) -> any().
+reset_blf(User) ->
+    Headers = [{<<"From">>, User}
+               ,{<<"To">>, User}
+               ,{<<"Flush-Level">>, 1}
+               ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(User))}
+              ],
+    handle_update(wh_json:from_list(Headers), ?PRESENCE_HANGUP).
+
+-spec reset_user_blf(ne_binary()) -> any().
+reset_user_blf(User) ->
+    case omnip_subscriptions:find_user_subscriptions(?DIALOG_EVENT, User) of
+        {'ok', Subs} ->
+            [ reset_blf(SubUser) || #omnip_subscription{user=SubUser} <- Subs];
+        _ -> 'ok'
+    end.

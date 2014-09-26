@@ -9,15 +9,15 @@
 %%% Peter Defebvre
 %%%
 %%%-------------------------------------------------------------------
--module(notify_vm_full).
+-module(notify_voicemail_full).
 
 -export([init/0, handle_req/2]).
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, 'notify_vm_full_text_tmpl').
--define(DEFAULT_HTML_TMPL, 'notify_vm_full_html_tmpl').
--define(DEFAULT_SUBJ_TMPL, 'notify_vm_full_subj_tmpl').
+-define(DEFAULT_TEXT_TMPL, 'notify_voicemail_full_text_tmpl').
+-define(DEFAULT_HTML_TMPL, 'notify_voicemail_full_html_tmpl').
+-define(DEFAULT_SUBJ_TMPL, 'notify_voicemail_full_subj_tmpl').
 
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_full">>).
 

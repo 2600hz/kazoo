@@ -21,9 +21,11 @@
 
 -include("ecallmgr.hrl").
 
+-type bindings() :: atom() | [atom(),...] | ne_binary() | ne_binaries().
+
 -record(state, {node :: atom()
-                ,name :: atom() | ne_binary()
-                ,subclass :: api_binary()
+                ,bindings :: bindings()
+                ,subclasses :: bindings()
                 ,ip :: inet:ip_address()
                 ,port :: inet:port_number()
                 ,socket :: inet:socket()
@@ -43,9 +45,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(atom(), atom() | ne_binary(), api_binary()) -> startlink_ret().
-start_link(Node, Name, Subclass) ->
-    gen_server:start_link(?MODULE, [Node, Name, Subclass], []).
+-spec start_link(atom(), bindings(), bindings()) -> startlink_ret().
+start_link(Node, Bindings, Subclasses) ->
+    gen_server:start_link(?MODULE, [Node, Bindings, Subclasses], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -62,15 +64,14 @@ start_link(Node, Name, Subclass) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node, Name, Subclass]) ->
-    put('callid', list_to_binary([wh_util:to_binary(Node), $-
-                                  ,wh_util:to_binary(Name), $-
-                                  ,wh_util:to_binary(Subclass)
+init([Node, Bindings, Subclasses]) ->
+    put('callid', list_to_binary([wh_util:to_binary(Node)
+                                  ,<<"-eventstream">>
                                  ])),
     gen_server:cast(self(), 'request_event_stream'),
     {'ok', #state{node=Node
-                  ,name=Name
-                  ,subclass=Subclass
+                  ,bindings=Bindings
+                  ,subclasses=Subclasses
                  }}.
 
 %%--------------------------------------------------------------------
@@ -101,22 +102,26 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast('request_event_stream', #state{node=Node}=State) ->
-    Binding = get_event_binding(State),
-
-    case maybe_bind(Node, Binding) of
+    Bindings = get_event_bindings(State),
+    case maybe_bind(Node, Bindings) of
         {'ok', {IP, Port}} ->
             {'ok', IPAddress} = inet_parse:address(IP),
             gen_server:cast(self(), 'connect'),
-            {'noreply', State#state{ip=IPAddress, port=Port}};
+            put('callid', list_to_binary([wh_util:to_binary(Node)
+                                         ,$-, wh_util:to_binary(IP)
+                                         ,$:, wh_util:to_binary(Port)
+                                         ])),
+            {'noreply', State#state{ip=IPAddress, port=wh_util:to_integer(Port)}};
         {'error', Reason} ->
-            lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Binding, Reason]),
+            lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, Reason]),
             {'stop', Reason, State}
     end;
 handle_cast('connect', #state{ip=IP, port=Port}=State) ->
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}, {'packet', 2}]) of
         {'ok', Socket} ->
             lager:debug("opened event stream socket to ~p:~p for ~p"
-                        ,[IP, Port, get_event_binding(State)]),
+                        ,[IP, Port, get_event_bindings(State)]
+                       ),
             {'noreply', State#state{socket=Socket}};
         {'error', Reason} ->
             {'stop', Reason, State}
@@ -124,21 +129,6 @@ handle_cast('connect', #state{ip=IP, port=Port}=State) ->
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
-
-maybe_bind(Node, Binding) ->
-    maybe_bind(Node, Binding, 0).
-maybe_bind(Node, Binding, 2) ->
-    case gen_server:call({'mod_kazoo', Node}, {'event', Binding}, 2000) of
-        {'ok', {_IP, _Port}}=OK -> OK;
-        {'error', _Reason}=E -> E
-    end;
-maybe_bind(Node, Binding, Attempts) ->
-    case gen_server:call({'mod_kazoo', Node}, {'event', Binding}, 2000) of
-        {'ok', {_IP, _Port}}=OK -> OK;
-        {'error', _Reason} ->
-            lager:debug("failed on attempt ~b to bind: ~p", [Attempts, _Reason]),
-            maybe_bind(Node, Binding, Attempts+1)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -155,7 +145,7 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket, node=Node}=State) ->
     {'noreply', State};
 handle_info({'tcp_closed', Socket}, #state{socket=Socket, node=Node}=State) ->
     lager:info("event stream for ~p on node ~p closed"
-                , [get_event_binding(State), Node]),
+                , [get_event_bindings(State), Node]),
     {'stop', 'normal', State#state{socket='undefined'}};
 handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     lager:warning("event stream tcp error: ~p", [_Reason]),
@@ -179,11 +169,11 @@ handle_info(_Msg, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{socket='undefined', node=Node}=State) ->
     lager:debug("event stream for ~p on node ~p terminating: ~p"
-                ,[get_event_binding(State), Node, _Reason]);
+                ,[get_event_bindings(State), Node, _Reason]);
 terminate(_Reason, #state{socket=Socket, node=Node}=State) ->
     gen_tcp:close(Socket),
     lager:debug("event stream for ~p on node ~p terminating: ~p"
-                ,[get_event_binding(State), Node, _Reason]).
+                ,[get_event_bindings(State), Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -199,14 +189,46 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_event_binding(state()) -> atoms().
-get_event_binding(#state{name=Name, subclass=Subclass}) ->
-    case wh_util:is_empty(Subclass) of
-        'true' -> [wh_util:to_atom(Name, 'true')];
-        'false' ->
-            [wh_util:to_atom(Name, 'true')
-             ,wh_util:to_atom(Subclass, 'true')
-            ]
+-spec get_event_bindings(state()) -> atoms().
+get_event_bindings(State) ->
+    get_event_bindings(State, []).
+
+-spec get_event_bindings(state(), atoms()) -> atoms().
+get_event_bindings(#state{bindings='undefined', subclasses='undefined'}, Acc) -> Acc;
+get_event_bindings(#state{subclasses=Subclasses}=State, Acc) when is_list(Subclasses) ->
+    get_event_bindings(State#state{subclasses='undefined'},
+                       [wh_util:to_atom(Subclass, 'true') || Subclass <- Subclasses] ++ Acc);
+get_event_bindings(#state{subclasses=Subclass}=State, Acc)
+  when is_atom(Subclass), Subclass =/= 'undefined' ->
+    get_event_bindings(State#state{subclasses='undefined'}, [Subclass | Acc]);
+get_event_bindings(#state{subclasses=Subclass}=State, Acc) when is_binary(Subclass) ->
+    get_event_bindings(State#state{subclasses='undefined'}
+                      ,[wh_util:to_atom(Subclass, 'true') | Acc]);
+get_event_bindings(#state{bindings=Bindings}=State, Acc) when is_list(Bindings) ->
+    get_event_bindings(State#state{bindings='undefined'},
+                       [wh_util:to_atom(Binding, 'true') || Binding <- Bindings] ++ Acc);
+get_event_bindings(#state{bindings=Binding}=State, Acc)
+  when is_atom(Binding), Binding =/= 'undefined' ->
+    get_event_bindings(State#state{bindings='undefined'}, [Binding | Acc]);
+get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) ->
+    get_event_bindings(State#state{bindings='undefined'}
+                      ,[wh_util:to_atom(Binding, 'true') | Acc]).
+
+-spec maybe_bind(atom(), atoms()) -> {'ok', {ne_binary(), ne_binary()}} |
+                                     {'error', _}.
+maybe_bind(Node, Bindings) ->
+    maybe_bind(Node, Bindings, 0).
+maybe_bind(Node, Bindings, 2) ->
+    case gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2000) of
+        {'ok', {_IP, _Port}}=OK -> OK;
+        {'error', _Reason}=E -> E
+    end;
+maybe_bind(Node, Bindings, Attempts) ->
+    case gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2000) of
+        {'ok', {_IP, _Port}}=OK -> OK;
+        {'error', _Reason} ->
+            lager:debug("failed on attempt ~b to bind: ~p", [Attempts, _Reason]),
+            maybe_bind(Node, Bindings, Attempts+1)
     end.
 
 -spec process_event(ne_binary(), atom()) -> any().
@@ -249,14 +271,14 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
 
     case {BridgeID, Direction, DialPlan, App, Destination} of
         {'undefined', _, _, _, _} ->
-            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),    
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node);
         {BridgeID, <<"inbound">>, <<"inline">>, <<"intercept">>, 'undefined'} ->
             SwappedProps = ecallmgr_call_events:swap_call_legs(Props),
-            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BridgeID | SwappedProps]}),    
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BridgeID | SwappedProps]}),
             maybe_send_call_event(BridgeID, SwappedProps, Node);
         _Else ->
-            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),    
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node)
     end;
 maybe_send_event(EventName, UUID, Props, Node) ->

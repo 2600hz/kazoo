@@ -16,6 +16,7 @@
 -export([media_path/1, media_path/2]).
 -export([max_recording_time_limit/0]).
 -export([get_prompt/1, get_prompt/2, get_prompt/3
+         ,get_account_prompt/3, get_system_prompt/2
          ,default_prompt_language/0, default_prompt_language/1
          ,prompt_language/1, prompt_language/2
          ,prompt_id/1, prompt_id/2
@@ -33,6 +34,8 @@
 -define(NORMALIZE_EXE, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_executable">>, <<"sox">>)).
 -define(NORMALIZE_SOURCE_ARGS, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_source_args">>, <<>>)).
 -define(NORMALIZE_DEST_ARGS, whapps_config:get_binary(?CONFIG_CAT, <<"normalize_destination_args">>, <<"-r 8000">>)).
+
+-define(USE_ACCOUNT_OVERRIDES, whapps_config:get_is_true(?CONFIG_CAT, <<"support_account_overrides">>, 'true')).
 
 -type normalized_media() :: {'ok', iolist()} |
                             {'error', ne_binary()}.
@@ -216,6 +219,7 @@ prompt_id(PromptId, Lang) ->
                         api_binary().
 -spec get_prompt(ne_binary(), api_binary(), api_binary() | whapps_call:call()) ->
                         api_binary().
+-spec get_prompt(ne_binary(), api_binary(), api_binary(), boolean()) -> api_binary().
 
 get_prompt(Name) ->
     get_prompt(Name, 'undefined').
@@ -232,12 +236,17 @@ get_prompt(Name, Call) ->
 
 get_prompt(<<"/system_media/", Name/binary>>, Lang, Call) ->
     get_prompt(Name, Lang, Call);
-get_prompt(Name, Lang, 'undefined') ->
-    get_system_prompt(Name, Lang);
-get_prompt(Name, 'undefined', Call) ->
-    get_prompt(Name, prompt_language(whapps_call:account_id(Call)), Call);
-get_prompt(Name, Lang, Call) ->
-    get_account_prompt(Name, Lang, Call).
+get_prompt(PromptId, Lang, 'undefined') ->
+    wh_util:join_binary([<<"prompt:/">>, ?WH_MEDIA_DB, PromptId, Lang], <<"/">>);
+get_prompt(PromptId, Lang, <<_/binary>> = AccountId) ->
+    get_prompt(PromptId, Lang, AccountId, ?USE_ACCOUNT_OVERRIDES);
+get_prompt(PromptId, Lang, Call) ->
+    get_prompt(PromptId, Lang, whapps_call:account_id(Call)).
+
+get_prompt(PromptId, Lang, AccountId, 'true') ->
+    wh_util:join_binary([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>);
+get_prompt(PromptId, Lang, _AccountId, 'false') ->
+    wh_util:join_binary([<<"prompt:/">>, ?WH_MEDIA_DB, PromptId, Lang], <<"/">>).
 
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call()) -> api_binary().
 -spec get_account_prompt(ne_binary(), api_binary(), whapps_call:call(), ne_binary()) -> api_binary().
@@ -385,16 +394,18 @@ default_prompt_language(Default) ->
       whapps_config:get(?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
      ).
 
--spec prompt_language(api_binary(), ne_binary()) -> ne_binary().
-prompt_language('undefined') -> default_prompt_language();
-prompt_language(<<_/binary>> = AccountId) ->
-    wh_util:to_lower_binary(
-      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, default_prompt_language())
-     ).
+-spec prompt_language(api_binary()) -> ne_binary().
+prompt_language(AccountId) ->
+    prompt_language(AccountId, default_prompt_language()).
 
+-spec prompt_language(api_binary(), ne_binary()) -> ne_binary().
 prompt_language('undefined', Default) ->
     default_prompt_language(Default);
 prompt_language(<<_/binary>> = AccountId, Default) ->
-    wh_util:to_lower_binary(
-      whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, wh_util:to_lower_binary(Default))
-     ).
+    case ?USE_ACCOUNT_OVERRIDES of
+        'false' -> default_prompt_language();
+        'true' ->
+            wh_util:to_lower_binary(
+              whapps_account_config:get(AccountId, ?WHS_CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, wh_util:to_lower_binary(Default))
+             )
+    end.

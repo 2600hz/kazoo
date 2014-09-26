@@ -19,26 +19,24 @@
                       ecallmgr_util:send_cmd_ret() |
                       [ecallmgr_util:send_cmd_ret(),...].
 exec_cmd(Node, UUID, JObj, ControlPID) ->
-    DestID = wh_json:get_value(<<"Call-ID">>, JObj),
+    exec_cmd(Node, UUID, JObj, ControlPID, wh_json:get_value(<<"Call-ID">>, JObj)).
+exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
-    case DestID =:= UUID of
-        'true' ->
-            case get_fs_app(Node, UUID, JObj, App) of
-                {'error', Msg} -> throw({'msg', Msg});
-                {'return', Result} -> Result;
-                {AppName, 'noop'} ->
-                    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
-                {AppName, AppData} ->
-                    ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
-                {AppName, AppData, NewNode} ->
-                    ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
-                [_|_]=Apps ->
-                    [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
-            end;
-        'false' ->
-            lager:debug("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
-            throw(<<"call command provided with a command for a different call id">>)
-    end.
+    case get_fs_app(Node, UUID, JObj, App) of
+        {'error', Msg} -> throw({'msg', Msg});
+        {'return', Result} -> Result;
+        {AppName, 'noop'} ->
+            ecallmgr_call_control:event_execute_complete(ControlPid, UUID, AppName);
+        {AppName, AppData} ->
+            ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
+        %% {AppName, AppData, NewNode} ->
+        %%     ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
+        [_|_]=Apps ->
+            [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
+    end;
+exec_cmd(_Node, _UUID, JObj, _ControlPid, _DestId) ->
+    lager:debug("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), _DestId]),
+    throw(<<"call command provided with a command for a different call id">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -49,12 +47,11 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %%--------------------------------------------------------------------
 -type fs_app() :: {ne_binary(), ne_binary() | 'noop'} |
                   {ne_binary(), ne_binary(), atom()}.
+-type fs_apps() :: [fs_app(),...].
 -spec get_fs_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
-                        fs_app() |
-                        {'return', 'error'} |
-                        {'return', ne_binary()} |
-                        {'error', ne_binary()} |
-                        [fs_app(),...].
+                        fs_app() | fs_apps() |
+                        {'return', 'error' | ne_binary()} |
+                        {'error', ne_binary()}.
 get_fs_app(Node, UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
         'false' ->
@@ -379,10 +376,12 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
             {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Routines)}
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"park">>) ->
+get_fs_app(Node, UUID, JObj, <<"park">>) ->
     case wapi_dialplan:park_v(JObj) of
         'false' -> {'error', <<"park failed to execute as JObj did not validate">>};
-        'true' -> {<<"park">>, <<>>}
+        'true' ->
+            maybe_set_park_timeout(Node, UUID, JObj),
+            {<<"park">>, <<>>}
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"echo">>) ->
@@ -405,7 +404,9 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
             Type = wh_json:get_value(<<"Type">>, JObj),
             Method = wh_json:get_value(<<"Method">>, JObj),
             Txt = wh_json:get_value(<<"Say-Text">>, JObj),
-            Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
+            Gender = wh_json:get_value(<<"Gender">>, JObj, <<>>),
+
+            Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt, " ", Gender]),
             lager:debug("say command ~s", [Arg]),
             {<<"say">>, Arg}
     end;
@@ -1154,6 +1155,20 @@ set_terminators(Node, UUID, Ts) ->
 say_language('undefined') -> <<"en">>;
 say_language(<<_:2/binary>> = Lang) -> Lang;
 say_language(<<Lang:2/binary, _/binary>>) -> Lang.
+
+-spec maybe_set_park_timeout(atom(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_set_park_timeout(Node, UUID, JObj) ->
+    case wh_json:get_integer_value(<<"Timeout">>, JObj) of
+        'undefined' -> 'ok';
+        Timeout ->
+            ParkTimeout =
+                case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                    'undefined' -> wh_util:to_binary(Timeout);
+                    Cause ->
+                        [wh_util:to_binary(Timeout), ":", Cause]
+                end,
+            ecallmgr_fs_command:set(Node, UUID, [{<<"park_timeout">>, ParkTimeout}])
+    end.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

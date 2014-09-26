@@ -32,22 +32,23 @@
           ,username                             :: api_binary() | '_'
           ,realm                                :: api_binary() | '_'
           ,normalized_user                      :: api_binary() | '_' | '$1'
-          ,normalized_from                      :: api_binary() | '_'
+          ,normalized_from                      :: api_binary() | '_' | '$1'
           ,event                                :: api_binary() | '_'
           ,contact                              :: api_binary() | '_'
           ,call_id                              :: api_binary() | '_'
           ,subscription_id                      :: api_binary() | '_'
           ,proxy_route                          :: api_binary() | '_'
-          ,version = 1                          :: non_neg_integer()
+          ,version = 1                          :: non_neg_integer() | '_'
          }).
+
 -type subscription() :: #omnip_subscription{}.
 -type subscriptions() :: [subscription(),...] | [].
 
 -record(channel, {call_id     :: api_binary()
-               ,direction  :: api_binary()
-               ,state      :: api_binary()
-               ,to         :: api_binary()
-              }).
+                  ,direction  :: api_binary()
+                  ,state      :: api_binary()
+                  ,to         :: api_binary()
+                 }).
 
 -type channel() :: #channel{}.
 -type channels() :: [channel(),...] | [].

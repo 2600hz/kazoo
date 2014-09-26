@@ -17,31 +17,37 @@
 
 -export([start_link/1]).
 -export([init/1
-    ,handle_call/3
-    ,handle_cast/2
-    ,handle_info/2
-    ,terminate/2
-    ,code_change/3
-    ,handle_resource_response/2
-]).
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+         ,handle_resource_response/2
+        ]).
 
 -export([add_request/1]).
 
 -include("camper.hrl").
 
--record(state, {exten :: ne_binary()
+-record(state, {exten :: api_binary()
                 ,stored_call :: whapps_call:call()
-                ,queue :: queue()
+                ,queue :: api_binary()
                 ,n_try :: non_neg_integer()
                 ,max_tries :: non_neg_integer()
                 ,try_after :: non_neg_integer()
-                ,stop_timer :: non_neg_integer()
-                ,parked_call :: ne_binary()
-                ,offnet_ctl_q :: ne_binary()
+                ,stop_timer :: 'undefined' | timer:tref()
+                ,parked_call :: api_binary()
+                ,offnet_ctl_q :: api_binary()
+                ,moh :: api_binary()
                }).
+-type state() :: #state{}.
 
--define(MK_CALL_BINDING(CALLID), [{'callid', CALLID}, {'restrict_to', [<<"CHANNEL_DESTROY">>
-                                                                       ,<<"CHANNEL_ANSWER">>]}]).
+-define(MK_CALL_BINDING(CALLID), [{'callid', CALLID}
+                                  ,{'restrict_to', [<<"CHANNEL_DESTROY">>
+                                                    ,<<"CHANNEL_ANSWER">>
+                                                   ]}
+                                 ]).
 
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_resource_response'}
@@ -68,28 +74,39 @@ start_link(Args) ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], Args).
 
-init(JObj) ->
+-spec init([wh_json:object()]) -> {'ok', state()}.
+init([JObj]) ->
     Exten = wh_json:get_value(<<"Number">>, JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
-    lager:info("Statred offnet handler(~p) for request ~s->~s", [self(), whapps_call:from_user(Call), Exten]),
+    lager:info("Started offnet handler(~p) for request ~s->~s", [self(), whapps_call:from_user(Call), Exten]),
 
-    MaxTriesSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"tries">>, 10),
-    MaxTries = wh_json:get_value(<<"Tries">>, JObj, MaxTriesSystem),
+    MaxTriesSystem = whapps_config:get_integer(?CAMPER_CONFIG_CAT, <<"tries">>, 10),
+    MaxTries = wh_json:get_integer_value(<<"Tries">>, JObj, MaxTriesSystem),
 
-    TryIntervalSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"try_interval">>,3),
+    TryIntervalSystem = whapps_config:get_integer(?CAMPER_CONFIG_CAT, <<"try_interval">>,3),
     TryInterval = timer:minutes(wh_json:get_value(<<"Try-Interval">>, JObj, TryIntervalSystem)),
 
-    StopAfterSystem = whapps_config:get(?CAMPER_CONFIG_CAT, <<"stop_after">>, 31),
-    StopAfter = timer:minutes(wh_json:get_value(<<"Stop-After">>, JObj, StopAfterSystem)),
+    StopAfterSystem = whapps_config:get_integer(?CAMPER_CONFIG_CAT, <<"stop_after">>, 31),
+    StopAfter = timer:minutes(wh_json:get_integer_value(<<"Stop-After">>, JObj, StopAfterSystem)),
 
-    StopTimer = timer:apply_after(StopAfter, 'gen_listener', 'cast', [self(), 'stop_campering']),
+    {'ok', StopTimerRef} = timer:apply_after(StopAfter, 'gen_listener', 'cast', [self(), 'stop_campering']),
+
+    Moh = case couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:account_id(Call)) of
+              {'ok', JObj} ->
+                  wh_media_util:media_path(
+                    wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj)
+                   );
+              _ -> 'undefined'
+          end,
+
     {'ok', #state{exten = Exten
                   ,stored_call = Call
                   ,queue = 'undefined'
                   ,n_try = 0
                   ,max_tries = MaxTries
-                  ,stop_timer = StopTimer
+                  ,stop_timer = StopTimerRef
                   ,try_after = TryInterval
+                  ,moh = Moh
                  }}.
 
 %%--------------------------------------------------------------------
@@ -123,42 +140,56 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{queue = 'undefined'} = S) ->
     gen_listener:cast(self(), 'count'),
     {'noreply', S#state{queue = Q}};
-handle_cast('count', State) ->
+handle_cast('count', #state{n_try=NTry
+                            ,max_tries=MaxTries
+                           }=State) ->
     lager:debug("count"),
-    NTry = State#state.n_try,
-    MaxTries = State#state.max_tries,
+
     case NTry < MaxTries of
         'true' ->
             lager:info("making originate request(~p/~p)", [NTry + 1, MaxTries]),
             gen_listener:cast(self(), 'originate_park'),
-            {'noreply', State#state{n_try = 1 + State#state.n_try}};
+            {'noreply', State#state{n_try = 1 + NTry}};
         'false' ->
             {'stop', 'normal', State}
     end;
-handle_cast('originate_park', State) ->
+handle_cast('originate_park', #state{exten=Exten
+                                     ,stored_call=Call
+                                     ,queue=Q
+                                    }=State) ->
     lager:debug("originate park"),
-    Exten = State#state.exten,
-    Call = State#state.stored_call,
-    Q = State#state.queue,
     originate_park(Exten, Call, Q),
     {'noreply', State};
 handle_cast({'offnet_ctl_queue', CtrlQ}, State) ->
     {'noreply', State#state{offnet_ctl_q = CtrlQ}};
-handle_cast('hangup_parked_call', State) ->
+handle_cast('hangup_parked_call', #state{parked_call='undefined'}=State) ->
+    {'noreply', State};
+handle_cast('hangup_parked_call', #state{parked_call=ParkedCall
+                                         ,queue=Queue
+                                         ,offnet_ctl_q=CtrlQ
+                                        }=State) ->
     lager:debug("hangup park"),
-    ParkedCall = State#state.parked_call,
-    case ParkedCall =:= 'undefined' of
-        'false' ->
-            Hangup = [{<<"Application-Name">>, <<"hangup">>}
-                      ,{<<"Insert-At">>, <<"now">>}
-                      ,{<<"Call-ID">>, ParkedCall}
-                      | wh_api:default_headers(State#state.queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)],
-            wapi_dialplan:publish_command(State#state.offnet_ctl_q, props:filter_undefined(Hangup));
-        'true' -> 'ok'
-    end,
+
+    Hangup = [{<<"Application-Name">>, <<"hangup">>}
+              ,{<<"Insert-At">>, <<"now">>}
+              ,{<<"Call-ID">>, ParkedCall}
+              | wh_api:default_headers(Queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+             ],
+    wapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Hangup)),
     {'noreply', State#state{parked_call = 'undefined'}};
-handle_cast({'parked', CallId}, State) ->
-    Req = build_bridge_request(CallId, State#state.stored_call, State#state.queue),
+handle_cast({'parked', <<_/binary>> = CallId}, #state{moh=MOH
+                                                      ,queue=Queue
+                                                      ,offnet_ctl_q=CtrlQ
+                                                      ,stored_call=Call
+                                                     }=State) ->
+    Hold = [{<<"Application-Name">>, <<"hold">>}
+            ,{<<"Insert-At">>, <<"now">>}
+            ,{<<"Hold-Media">>, MOH}
+            ,{<<"Call-ID">>, CallId}
+            | wh_api:default_headers(Queue, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Hold)),
+    Req = build_bridge_request(CallId, Call, Queue),
     lager:debug("Publishing bridge request"),
     wapi_resource:publish_originate_req(Req),
     {'noreply', State#state{parked_call = CallId}};
@@ -181,7 +212,8 @@ handle_cast(_Msg, State) ->
 add_request(JObj) ->
     Exten = wh_json:get_value(<<"Number">>, JObj),
     lager:info("adding offnet request to ~s", [Exten]),
-    camper_offnet_sup:new(JObj).
+    camper_offnet_sup:new(JObj),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -197,12 +229,16 @@ handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
--spec handle_resource_response(wh_json:object(), proplist()) -> 'ok'.
+handle_event(_JObj, _State) ->
+    {'reply', []}.
+
+-spec handle_resource_response(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_resource_response(JObj, Props) ->
     Srv = props:get_value('server', Props),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     case {wh_json:get_value(<<"Event-Category">>, JObj)
-          ,wh_json:get_value(<<"Event-Name">>, JObj)}
+          ,wh_json:get_value(<<"Event-Name">>, JObj)
+         }
     of
         {<<"resource">>, <<"offnet_resp">>} ->
             ResResp = wh_json:get_value(<<"Resource-Response">>, JObj),
@@ -215,7 +251,8 @@ handle_resource_response(JObj, Props) ->
             gen_listener:cast(Srv, 'wait');
         {<<"resource">>,<<"originate_resp">>} ->
             case {wh_json:get_value(<<"Application-Name">>, JObj)
-                  ,wh_json:get_value(<<"Application-Response">>, JObj)}
+                  ,wh_json:get_value(<<"Application-Response">>, JObj)
+                 }
             of
                 {<<"bridge">>, <<"SUCCESS">>} ->
                     lager:debug("Users bridged"),
@@ -223,12 +260,9 @@ handle_resource_response(JObj, Props) ->
                 _Ev -> lager:info("Unhandled event: ~p", [_Ev])
             end;
         {<<"error">>,<<"originate_resp">>} ->
-            gen_listener:cast(Srv, 'hangup_parked_call'),
-            'ok';
+            gen_listener:cast(Srv, 'hangup_parked_call');
         _Ev -> lager:info("Unhandled event ~p", [_Ev])
-    end,
-    'ok'.
-
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -258,36 +292,41 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec build_bridge_request(wh_json:object(), whapps_call:call(), ne_binary()) -> wh_proplist().
+-spec build_bridge_request(ne_binary(), whapps_call:call(), ne_binary()) -> wh_proplist().
 build_bridge_request(ParkedCallId, Call, Q) ->
     CIDNumber = whapps_call:kvs_fetch('cf_capture_group', Call),
     MsgId = wh_util:rand_hex_binary(6),
     PresenceId = cf_attributes:presence_id(Call),
     AcctId = whapps_call:account_id(Call),
-    {'ok', EP} = cf_endpoint:build(whapps_call:authorizing_id(Call),wh_json:from_list([{<<"can_call_self">>, 'true'}]), Call),
+    {'ok', EP} = cf_endpoint:build(whapps_call:authorizing_id(Call)
+                                   ,wh_json:from_list([{<<"can_call_self">>, 'true'}])
+                                   ,Call
+                                  ),
     props:filter_undefined([{<<"Resource-Type">>, <<"audio">>}
-        ,{<<"Application-Name">>, <<"bridge">>}
-        ,{<<"Existing-Call-ID">>, ParkedCallId}
-        ,{<<"Endpoints">>, EP}
-        ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
-        ,{<<"Originate-Immediate">>, 'false'}
-        ,{<<"Msg-ID">>, MsgId}
-        ,{<<"Presence-ID">>, PresenceId}
-        ,{<<"Account-ID">>, AcctId}
-        ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-        ,{<<"Timeout">>, 10000}
-        ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}
-        | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-    ]).
+                            ,{<<"Application-Name">>, <<"bridge">>}
+                            ,{<<"Existing-Call-ID">>, ParkedCallId}
+                            ,{<<"Endpoints">>, EP}
+                            ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
+                            ,{<<"Originate-Immediate">>, 'false'}
+                            ,{<<"Msg-ID">>, MsgId}
+                            ,{<<"Presence-ID">>, PresenceId}
+                            ,{<<"Account-ID">>, AcctId}
+                            ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
+                            ,{<<"Timeout">>, 10000}
+                            ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}
+                            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                           ]).
 
-originate_park(Exten, Call, Q) ->
+-spec originate_park(ne_binary(), whapps_call:call(), ne_binary()) -> 'ok'.
+originate_park(<<_/binary>> = Exten, Call, <<_/binary>> = Q) ->
     wapi_offnet_resource:publish_req(build_offnet_request(Exten, Call, Q)).
 
--spec handle_originate_ready(wh_json:object(), proplist()) -> 'ok'.
+-spec handle_originate_ready(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_originate_ready(JObj, Props) ->
     Srv = props:get_value('server', Props),
     case {wh_json:get_value(<<"Event-Category">>, JObj)
-          ,wh_json:get_value(<<"Event-Name">>, JObj)}
+          ,wh_json:get_value(<<"Event-Name">>, JObj)
+         }
     of
         {<<"dialplan">>, <<"originate_ready">>} ->
             Q = wh_json:get_value(<<"Server-ID">>, JObj),
@@ -296,15 +335,14 @@ handle_originate_ready(JObj, Props) ->
             Prop = [{<<"Call-ID">>, CallId}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     | wh_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
-            ],
+                   ],
             gen_listener:cast(Srv, {'offnet_ctl_queue', CtrlQ}),
             gen_listener:add_binding(Srv, {'call', ?MK_CALL_BINDING(CallId)}),
             wapi_dialplan:publish_originate_execute(Q, Prop);
         _Ev -> lager:info("unkown event: ~p", [_Ev])
-    end,
-    'ok'.
+    end.
 
--spec build_offnet_request(wh_json:object(), whapps_call:call(), ne_binary()) -> wh_proplist().
+-spec build_offnet_request(ne_binary(), whapps_call:call(), ne_binary()) -> wh_proplist().
 build_offnet_request(Exten, Call, Q) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
@@ -313,19 +351,19 @@ build_offnet_request(Exten, Call, Q) ->
     AcctId = whapps_call:account_id(Call),
     CallId = wh_util:rand_hex_binary(8),
     props:filter_undefined([{<<"Resource-Type">>, <<"originate">>}
-        ,{<<"Application-Name">>, <<"park">>}
-        ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
-        ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-        ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
-        ,{<<"Msg-ID">>, MsgId}
-        ,{<<"Presence-ID">>, PresenceId}
-        ,{<<"Account-ID">>, AcctId}
-        ,{<<"Call-ID">>, CallId}
-        ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-        ,{<<"Timeout">>, 10000}
-        ,{<<"To-DID">>, Exten}
-        ,{<<"Format-From-URI">>, <<"true">>}
-        ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}
-        | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-    ]).
+                            ,{<<"Application-Name">>, <<"park">>}
+                            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
+                            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
+                            ,{<<"Outbound-Caller-ID-Name">>, CIDName}
+                            ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
+                            ,{<<"Msg-ID">>, MsgId}
+                            ,{<<"Presence-ID">>, PresenceId}
+                            ,{<<"Account-ID">>, AcctId}
+                            ,{<<"Call-ID">>, CallId}
+                            ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
+                            ,{<<"Timeout">>, 10000}
+                            ,{<<"To-DID">>, Exten}
+                            ,{<<"Format-From-URI">>, <<"true">>}
+                            ,{<<"From-URI-Realm">>, whapps_call:from_realm(Call)}
+                            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                           ]).

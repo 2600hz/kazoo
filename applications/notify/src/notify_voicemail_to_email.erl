@@ -9,7 +9,7 @@
 %%%   James Aimonetti <james@2600hz.org>
 %%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(notify_vm).
+-module(notify_voicemail_to_email).
 
 -export([init/0
          ,handle_req/2
@@ -17,9 +17,9 @@
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, 'notify_vm_text_tmpl').
--define(DEFAULT_HTML_TMPL, 'notify_vm_html_tmpl').
--define(DEFAULT_SUBJ_TMPL, 'notify_vm_subj_tmpl').
+-define(DEFAULT_TEXT_TMPL, 'notify_voicemail_to_email_text_tmpl').
+-define(DEFAULT_HTML_TMPL, 'notify_voicemail_to_email_html_tmpl').
+-define(DEFAULT_SUBJ_TMPL, 'notify_voicemail_to_email_subj_tmpl').
 
 -define(EMAIL_TXT_TEMPLATE_KEY, [<<"notifications">>, <<"voicemail_to_email">>, <<"email_text_template">>]).
 -define(EMAIL_HTML_TEMPLATE_KEY, [<<"notifications">>, <<"voicemail_to_email">>, <<"email_html_template">>]).
