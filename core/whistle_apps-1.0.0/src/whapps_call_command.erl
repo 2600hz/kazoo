@@ -11,7 +11,7 @@
 
 -include("./whapps_call_command.hrl").
 
--export([presence/2, presence/3, presence/4]).
+-export([presence/2, presence/3, presence/4, presence/5]).
 -export([channel_status/1, channel_status/2
          ,channel_status_command/1, channel_status_command/2
          ,b_channel_status/1
@@ -164,6 +164,8 @@
          ,wait_for_fax_detection/2
         ]).
 
+-export([wait_for_unparked_call/1, wait_for_unparked_call/2]).
+
 -export([get_outbound_t38_settings/1, get_outbound_t38_settings/2]).
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
 
@@ -214,19 +216,25 @@ default_application_timeout() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec presence(ne_binary(), ne_binary() | whapps_call:call()) -> 'ok'.
--spec presence(ne_binary(), ne_binary() | whapps_call:call(), api_binary() | whapps_call:call()) -> 'ok'.
--spec presence(ne_binary(), ne_binary() , api_binary() , api_binary()) -> 'ok'.
-presence(State, PresenceId) when is_binary(PresenceId) ->
+-spec presence(ne_binary(), ne_binary(), api_binary() | whapps_call:call()) -> 'ok'.
+-spec presence(ne_binary(), ne_binary() , api_binary() , whapps_call:call() | 'undefined') -> 'ok'.
+-spec presence(ne_binary(), ne_binary() , api_binary() , api_binary(), whapps_call:call() | 'undefined') -> 'ok'.
+presence(State, <<_/binary>> = PresenceId) ->
     presence(State, PresenceId, 'undefined');
 presence(State, Call) ->
     presence(State, whapps_call:from(Call)).
 
-presence(State, PresenceId, CallId) when is_binary(CallId) orelse CallId =:= 'undefined' ->
+presence(State, PresenceId, 'undefined') ->
+    presence(State, PresenceId, 'undefined', 'undefined');
+presence(State, PresenceId, <<_/binary>> = CallId) ->
     presence(State, PresenceId, CallId, 'undefined');
 presence(State, PresenceId, Call) ->
-    presence(State, PresenceId, whapps_call:call_id(Call)).
+    presence(State, PresenceId, whapps_call:call_id(Call), Call).
 
-presence(State, PresenceId, CallId, TargetURI) ->
+presence(State, PresenceId, CallId, Call) ->
+    presence(State, PresenceId, CallId, 'undefined', Call).
+
+presence(State, PresenceId, CallId, TargetURI, 'undefined') ->
     Command = props:filter_undefined(
                 [{<<"Presence-ID">>, PresenceId}
                  ,{<<"From">>, TargetURI}
@@ -234,7 +242,23 @@ presence(State, PresenceId, CallId, TargetURI) ->
                  ,{<<"Call-ID">>, CallId}
                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
+    wapi_presence:publish_update(Command);
+presence(State, PresenceId, CallId, TargetURI, Call) ->
+    Command = props:filter_undefined(
+                [{<<"Presence-ID">>, PresenceId}
+                 ,{<<"From">>, TargetURI}
+                 ,{<<"From-Tag">>, whapps_call:from_tag(Call)}
+                 ,{<<"To-Tag">>, whapps_call:to_tag(Call)}
+                 ,{<<"State">>, State}
+                 ,{<<"Call-ID">>, CallId}
+                 | wh_api:default_headers(module_as_app(Call), ?APP_VERSION)
+                ]),
     wapi_presence:publish_update(Command).
+
+-spec module_as_app( whapps_call:call() ) -> ne_binary().
+module_as_app(Call) ->
+    JObj = whapps_call:kvs_fetch(<<"cf_flow">>, wh_json:new(), Call),
+    wh_json:get_value(<<"module">>, JObj, ?APP_NAME).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -2471,5 +2495,42 @@ wait_for_fax_detection(Timeout, Call) ->
                 {<<"call_event">>, <<"FAX_DETECTED">>, _ } ->
                     {'ok', wh_json:set_value(<<"Fax-Success">>, 'true', JObj)};
                 _ -> wait_for_fax_detection(wh_util:decr_timeout(Timeout, Start), Call)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Low level function to consume call events, looping until a specific
+%% one occurs.  If the channel is hungup or no call events are recieved
+%% for the optional timeout period then errors are returned.
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_unparked_call(whapps_call:call()) ->
+                              whapps_api_std_return().
+-spec wait_for_unparked_call(whapps_call:call(), wh_timeout()) ->
+                              whapps_api_std_return().
+
+wait_for_unparked_call(Call) ->
+    wait_for_unparked_call(Call, ?DEFAULT_MESSAGE_TIMEOUT).
+wait_for_unparked_call(Call, Timeout) ->
+    Start = os:timestamp(),
+    case receive_event(Timeout) of
+        {'error', 'timeout'}=E -> E;
+        {'ok', JObj} ->
+            case get_event_type(JObj) of
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+                    lager:debug("channel was destroyed while waiting for unparked call"),
+                    {'error', 'channel_destroy'};
+                {<<"call_event">>, <<"CHANNEL_INTERCEPTED">>, _} ->
+                    lager:debug("channel was intercepted while waiting for unparked call"),
+                    {'ok', JObj};
+                {<<"error">>, _, <<"hold">>} ->
+                    lager:debug("channel execution error while waiting for unparked call: ~s", [wh_json:encode(JObj)]),
+                    {'error', JObj};
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"hold">>} ->
+                    {'ok', JObj};
+                _ ->
+                    wait_for_unparked_call(Call, wh_util:decr_timeout(Timeout, Start))
             end
     end.

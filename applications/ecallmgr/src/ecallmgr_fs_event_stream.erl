@@ -23,10 +23,9 @@
 
 -type bindings() :: atom() | [atom(),...] | ne_binary() | ne_binaries().
 
-
 -record(state, {node :: atom()
                 ,bindings :: bindings()
-                ,subclasses :: api_binary()
+                ,subclasses :: bindings()
                 ,ip :: inet:ip_address()
                 ,port :: inet:port_number()
                 ,socket :: inet:socket()
@@ -112,7 +111,7 @@ handle_cast('request_event_stream', #state{node=Node}=State) ->
                                          ,$-, wh_util:to_binary(IP)
                                          ,$:, wh_util:to_binary(Port)
                                          ])),
-            {'noreply', State#state{ip=IPAddress, port=Port}};
+            {'noreply', State#state{ip=IPAddress, port=wh_util:to_integer(Port)}};
         {'error', Reason} ->
             lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, Reason]),
             {'stop', Reason, State}
@@ -121,7 +120,8 @@ handle_cast('connect', #state{ip=IP, port=Port}=State) ->
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}, {'packet', 2}]) of
         {'ok', Socket} ->
             lager:debug("opened event stream socket to ~p:~p for ~p"
-                        ,[IP, Port, get_event_bindings(State)]),
+                        ,[IP, Port, get_event_bindings(State)]
+                       ),
             {'noreply', State#state{socket=Socket}};
         {'error', Reason} ->
             {'stop', Reason, State}
@@ -214,8 +214,8 @@ get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) 
     get_event_bindings(State#state{bindings='undefined'}
                       ,[wh_util:to_atom(Binding, 'true') | Acc]).
 
--spec maybe_bind(atom(), atoms()) -> {'ok', {ne_binary(), ne_binary()}}
-                                         | {'error', _}.
+-spec maybe_bind(atom(), atoms()) -> {'ok', {ne_binary(), ne_binary()}} |
+                                     {'error', _}.
 maybe_bind(Node, Bindings) ->
     maybe_bind(Node, Bindings, 0).
 maybe_bind(Node, Bindings, 2) ->

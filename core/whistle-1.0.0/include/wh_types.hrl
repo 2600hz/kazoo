@@ -180,6 +180,7 @@
                       ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PROGRESS_MEDIA">>
                       ,<<"CHANNEL_TRANSFEREE">>, <<"CHANNEL_TRANSFEROR">>
                       ,<<"CHANNEL_REPLACED">>, <<"CALL_SECURE">>, <<"CHANNEL_FAX_STATUS">>
+                      ,<<"CHANNEL_INTERCEPTED">>
                      ]).
 -type xml_thing() :: xml_el() | xml_text().
 -type xml_things() :: xml_els() | xml_texts().

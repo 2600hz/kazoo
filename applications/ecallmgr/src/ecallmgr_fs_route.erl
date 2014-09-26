@@ -372,6 +372,8 @@ route_req(CallId, FetchId, Props, Node) ->
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(route_req_ccvs(FetchId, Props))}
      ,{<<"Custom-SIP-Headers">>, wh_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
      ,{<<"Resource-Type">>, props:get_value(<<"Resource-Type">>, Props, <<"audio">>)}
+     ,{<<"To-Tag">>, props:get_value(<<"variable_sip_to_tag">>, Props)}
+     ,{<<"From-Tag">>, props:get_value(<<"variable_sip_from_tag">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

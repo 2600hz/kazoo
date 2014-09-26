@@ -207,6 +207,8 @@ to_props(Channel) ->
        ,{<<"other_leg">>, Channel#channel.other_leg}
        ,{<<"handling_locally">>, Channel#channel.handling_locally}
        ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
+       ,{<<"to_tag">>, Channel#channel.to_tag}
+       ,{<<"from_tag">>, Channel#channel.from_tag}
       ]).
 
 -spec to_api_json(channel()) -> wh_json:object().
@@ -241,6 +243,8 @@ to_api_props(Channel) ->
        ,{<<"Dialplan">>, Channel#channel.dialplan}
        ,{<<"Other-Leg-Call-ID">>, Channel#channel.other_leg}
        ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
+       ,{<<"To-Tag">>, Channel#channel.to_tag}
+       ,{<<"From-Tag">>, Channel#channel.from_tag}
       ]).
 
 %%%===================================================================
@@ -517,6 +521,8 @@ props_to_record(Props, Node) ->
              ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
              ,other_leg=get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props)
              ,handling_locally=handling_locally(Props)
+             ,to_tag=props:get_value(<<"variable_sip_to_tag">>, Props)
+             ,from_tag=props:get_value(<<"variable_sip_from_tag">>, Props)
             }.
 
 -spec handling_locally(wh_proplist()) -> boolean().
@@ -561,6 +567,8 @@ props_to_update(Props) ->
                             ,{#channel.profile, props:get_value(<<"variable_sofia_profile_name">>, Props)}
                             ,{#channel.context, props:get_value(<<"Caller-Context">>, Props)}
                             ,{#channel.dialplan, props:get_value(<<"Caller-Dialplan">>, Props)}
+                            ,{#channel.to_tag, props:get_value(<<"variable_sip_to_tag">>, Props)}
+                            ,{#channel.from_tag, props:get_value(<<"variable_sip_from_tag">>, Props)}
                            ]).
 
 get_other_leg(UUID, Props) ->

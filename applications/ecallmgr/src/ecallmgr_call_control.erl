@@ -384,6 +384,9 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
                     lager:info("sofia replaced on our channel but different fetch id~n"),
                     {'noreply', State}
             end;
+        <<"sofia::intercepted">> ->
+            lager:debug("sofia::intercepted not handled in call control"),
+            {'noreply', State};
         <<"CHANNEL_EXECUTE">> when Application =:= <<"redirect">> ->
             gen_listener:cast(self(), {'channel_redirected', JObj}),
             {'stop', 'normal', State};

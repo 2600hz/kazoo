@@ -694,6 +694,9 @@ specific_call_event_props(<<"CHANNEL_FAX_STATUS">>, <<"txfax", Event/binary>>, P
     ,{<<"Application-Event">>, Event}
     ,{<<"Application-Data">>, wh_json:from_list(fax_specific(Prop))}
     ];
+specific_call_event_props(<<"CHANNEL_INTERCEPTED">>, _, Props) ->
+    [{<<"Intercepted-By">>, props:get_value(<<"intercepted_by">>, Props)}
+    ];
 specific_call_event_props(_Evt, Application, Props) ->
     [{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Props)}
@@ -723,7 +726,7 @@ conference_specific(Props) ->
             end
     end.
 
--spec maybe_fax_specific(wh_proplist()) -> wh_proplist().
+-spec maybe_fax_specific(wh_proplist()) -> api_object().
 maybe_fax_specific(Props) ->
     case fax_specific(Props) of
         [] -> 'undefined';
@@ -827,6 +830,7 @@ get_event_name(Props) ->
         <<"sofia::transferee">> -> <<"CHANNEL_TRANSFEREE">>;
         <<"sofia::transferor">> -> <<"CHANNEL_TRANSFEROR">>;
         <<"sofia::replaced">> -> <<"CHANNEL_REPLACED">>;
+        <<"sofia::intercepted">> -> <<"CHANNEL_INTERCEPTED">>;
         <<"spandsp::txfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
         <<"spandsp::rxfax", _/binary>> -> <<"CHANNEL_FAX_STATUS">>;
         _Else ->
@@ -973,7 +977,7 @@ store_recording(Props, CallId, Node) ->
     MediaName = props:get_value(<<"variable_ecallmgr_Media-Name">>, Props),
     Destination = props:get_value(<<"variable_ecallmgr_Media-Transfer-Destination">>, Props),
     %% TODO: if you change this logic be sure it matches wh_media_util as well!
-    Url = wh_util:strip_right_binary(Destination, <<"/">>),
+    Url = wh_util:strip_right_binary(Destination, $/),
     JObj = wh_json:from_list(
              [{<<"Call-ID">>, CallId}
              ,{<<"Msg-ID">>, CallId}
