@@ -143,7 +143,9 @@ save_fax_doc_completed(DocId)->
             end
     end.
 
--spec notify_email_list(api_binary(), api_binary(), list()) -> list().
+-spec notify_email_list(api_binary(), api_binary(), ne_binary() | list()) -> list().
+notify_email_list(From, OwnerEmail, Email) when is_binary(Email) ->
+    notify_email_list(From, OwnerEmail, [Email]);
 notify_email_list('undefined', 'undefined', List) ->
     lists:usort(List);
 notify_email_list(From, 'undefined', List) ->
