@@ -10,17 +10,14 @@
 
 -include("callflow.hrl").
 
--define(RESOURCE_TYPES_HANDLED,[<<"audio">>,<<"video">>]).
-
 -export([handle_req/2]).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
-    Call = maybe_device_redirected(whapps_call:from_route_req(JObj)),
+    Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call))
         andalso callflow_should_respond(Call)
-        andalso callflow_resource_allowed(Call)
     of
         'true' ->
             lager:info("received a request asking if callflows can route this call"),
@@ -58,6 +55,7 @@ maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch) ->
 				        case (erlang:function_exported(ModuleAsAtom, get_ringback, 1)) of
 				        	true -> case (ModuleAsAtom:get_ringback(Call)) of
 								'undefined' -> {Flow,'undefined'};
+								{'undefined',Opaq} -> {Flow,Opaq};
 								{Media,Opaq} -> {wh_json:set_value([<<"ringback">>, <<"early">>], Media, Flow),Opaq};
 								Media -> {wh_json:set_value([<<"ringback">>, <<"early">>], Media, Flow),'undefined'}
 							end;
@@ -100,7 +98,9 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
                                                        ,whapps_call:account_id(Call)
                                                       ]),
+
     {Name, Cost} = bucket_info(Call, Flow),
+
     case kz_buckets:consume_tokens(Name, Cost) of
         'false' ->
             lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
@@ -173,16 +173,6 @@ callflow_should_respond(Call) ->
         'undefined' -> 'true';
         _Else -> 'false'
     end.
-
--spec callflow_resource_allowed(whapps_call:call()) -> boolean().
-callflow_resource_allowed(Call) ->
-    is_resource_allowed(whapps_call:resource_type(Call)).
-
--spec is_resource_allowed(api_binary()) -> boolean().
-is_resource_allowed('undefined') -> 'true';
-is_resource_allowed(ResourceType) ->
-    lists:member(ResourceType, ?RESOURCE_TYPES_HANDLED).
-
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -262,23 +252,4 @@ cache_call(Flow, NoMatch, ControllerQ, Call) ->
                 ,fun(C) -> whapps_call:set_application_name(?APP_NAME, C) end
                 ,fun(C) -> whapps_call:set_application_version(?APP_VERSION, C) end
                ],
-    whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), ?APP_NAME).
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% process
-%% @end
-%%-----------------------------------------------------------------------------
--spec maybe_device_redirected(whapps_call:call()) -> whapps_call:call().
-maybe_device_redirected(Call) ->
-    case whapps_call:custom_channel_var(<<"Redirected-By">>, Call) of
-        'undefined' -> Call;
-        Device ->
-            case cf_util:endpoint_id_by_sip_username(whapps_call:account_db(Call), Device) of
-                {'ok', EndpointId } ->
-                    whapps_call:set_authorization(<<"device">>, EndpointId, Call);
-                {'error', 'not_found'} -> Call
-            end
-    end.
+    whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)).
