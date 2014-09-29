@@ -36,7 +36,10 @@ maybe_welcome_to_conference(Call, Srv, DiscoveryJObj) ->
 welcome_to_conference(Call, Srv, DiscoveryJObj) ->
     case wh_json:get_binary_value(<<"Play-Welcome-Media">>, DiscoveryJObj) of
         'undefined' -> whapps_call_command:prompt(<<"conf-welcome">>, Call);
-        Media -> whapps_call_command:play(Media, Call)
+        Media -> whapps_call_command:play(
+                   wh_media_util:media_path(Media, whapps_call:account_id(Call))
+                   ,Call
+                  )
     end,
     maybe_collect_conference_id(Call, Srv, DiscoveryJObj).
 
