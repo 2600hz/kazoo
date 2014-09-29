@@ -5,7 +5,7 @@
 %%%   "text":"This is what should be said"
 %%%   // optional
 %%%   ,"voice":"male" // or "female"
-%%%   ,"langauge":"en"
+%%%   ,"language":"en"
 %%%   ,"engine":"flite" // or "ispeech if configured
 %%% }
 %%% @end
