@@ -12,6 +12,7 @@
 -include("ecallmgr.hrl").
 
 -export([call_command/3
+         ,unbridge/2
          ,maybe_b_leg_events/3
         ]).
 
@@ -43,6 +44,22 @@ call_command(Node, UUID, JObj) ->
                                           F(DP, Node, UUID, JObj) end
                                   ,[], Routines),
             {<<"xferext">>, XferExt}
+    end.
+
+-spec unbridge(ne_binary(), wh_json:object()) ->
+                      wh_proplist() |
+                      {'error', ne_binary()}.
+unbridge(UUID, JObj) ->
+    case wapi_dialplan:unbridge_v(JObj) of
+        'false' -> {'error', <<"unbridge failed to execute as API did not validate">>};
+        'true' ->
+            Leg =
+                case wh_json:get_value(<<"Leg">>, JObj) of
+                    <<"B">> -> <<"-bleg">>;
+                    <<"Both">> -> <<"-both">>;
+                    _ -> <<>>
+                end,
+            {<<"transfer">>, iolist_to_binary([UUID, " ", Leg, " park: inline"])}
     end.
 
 %%--------------------------------------------------------------------

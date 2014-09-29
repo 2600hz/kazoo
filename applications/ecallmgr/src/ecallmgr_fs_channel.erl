@@ -209,6 +209,7 @@ to_props(Channel) ->
        ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
        ,{<<"to_tag">>, Channel#channel.to_tag}
        ,{<<"from_tag">>, Channel#channel.from_tag}
+       ,{<<"elapsed_s">>, wh_util:elapsed_s(Channel#channel.timestamp)}
       ]).
 
 -spec to_api_json(channel()) -> wh_json:object().
@@ -242,9 +243,10 @@ to_api_props(Channel) ->
        ,{<<"Context">>, Channel#channel.context}
        ,{<<"Dialplan">>, Channel#channel.dialplan}
        ,{<<"Other-Leg-Call-ID">>, Channel#channel.other_leg}
-       ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
        ,{<<"To-Tag">>, Channel#channel.to_tag}
        ,{<<"From-Tag">>, Channel#channel.from_tag}
+       ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
+       ,{<<"Elapsed-Seconds">>, wh_util:elapsed_s(Channel#channel.timestamp)}
       ]).
 
 %%%===================================================================

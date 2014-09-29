@@ -102,7 +102,7 @@ event(FSM, CallId, <<"DTMF">>, JObj) ->
                              ,wh_json:get_value(<<"DTMF-Digit">>, JObj)
                             });
 event(FSM, CallId, Event, JObj) ->
-    gen_fsm:send_all_state_event(FSM, {'event', CallId, Event, JObj}).
+    gen_fsm:send_all_state_event(FSM, ?EVENT(CallId, Event, JObj)).
 
 -spec transfer_to(whapps_call:call(), 'a' | 'b') -> 'ok'.
 transfer_to(Call, Leg) ->
@@ -278,7 +278,7 @@ handle_event({'transfer_to', NewCall, 'b'}, StateName, #state{listen_on=ListenOn
                                           ,b_endpoint_id='undefined'
                                          }};
 
-handle_event({'event', CallId, <<"CHANNEL_BRIDGE">>, JObj}, StateName, State) ->
+handle_event(?EVENT(CallId, <<"CHANNEL_BRIDGE">>, JObj), StateName, State) ->
     lager:debug("channel_bridge recv for ~s", [CallId]),
     {'next_state', StateName
      ,handle_channel_event(CallId
@@ -287,6 +287,10 @@ handle_event({'event', CallId, <<"CHANNEL_BRIDGE">>, JObj}, StateName, State) ->
                            ,State
                           )
     };
+handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{call=Call}=State) ->
+    _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
+    lager:debug("recv metaflow request for ~s, processing in ~p", [CallId, _Pid]),
+    {'next_state', StateName, State};
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
@@ -503,7 +507,9 @@ numbers(Call, JObj) ->
 patterns(Call, JObj) ->
     case wh_json:get_value(<<"Patterns">>, JObj) of
         'undefined' -> konami_config:patterns(whapps_call:account_id(Call));
-        Patterns -> Patterns
+        Patterns ->
+            lager:debug("loading patterns from api: ~p", [Patterns]),
+            Patterns
     end.
 
 -spec digit_timeout(whapps_call:call(), wh_json:object()) -> pos_integer().
@@ -564,8 +570,8 @@ has_number(Collected, Ns) ->
 has_pattern(Collected, Ps) ->
     Regexes = wh_json:get_keys(Ps),
     has_pattern(Collected, Ps, Regexes).
-has_pattern(_Collected, _Ps, []) ->
-    'false';
+
+has_pattern(_Collected, _Ps, []) -> 'false';
 has_pattern(Collected, Ps, [Regex|Regexes]) ->
     case re:run(Collected, Regex, [{'capture', 'all_but_first', 'binary'}]) of
         'nomatch' -> has_pattern(Collected, Ps, Regexes);
@@ -595,8 +601,7 @@ disarm_state(#state{a_digit_timeout_ref=ARef
 maybe_cancel_timer(Ref) when is_reference(Ref) ->
     catch erlang:cancel_timer(Ref),
     'ok';
-maybe_cancel_timer(_) ->
-    'ok'.
+maybe_cancel_timer(_) -> 'ok'.
 
 -spec maybe_start_leg_listeners(whapps_call:call(), 'a' | 'b' | 'ab') -> 'ok'.
 maybe_start_leg_listeners(Call, 'a') ->

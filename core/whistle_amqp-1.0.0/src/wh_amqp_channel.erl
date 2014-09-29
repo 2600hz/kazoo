@@ -204,8 +204,7 @@ command(#wh_amqp_assignment{consumer=Consumer
         ,#'basic.consume'{queue=Queue}=Command) ->
     case wh_amqp_history:is_consuming(Consumer, Queue) of
         'true' ->
-            lager:debug("skipping existing basic consume for queue ~s", [Queue]),
-            'ok';
+            lager:debug("skipping existing basic consume for queue ~s", [Queue]);
         'false' ->
             Result = amqp_channel:subscribe(Channel, Command, Consumer),
             handle_command_result(Result, Command, Assignment)
@@ -221,6 +220,20 @@ command(#wh_amqp_assignment{channel=Channel
                           handle_command_result(Result, Command, Assignment);
                      (_) -> 'ok'
                   end, wh_amqp_history:list_consume(Consumer));
+command(#wh_amqp_assignment{channel=Channel
+                            ,consumer=Consumer
+                           }=Assignment
+        ,#'queue.unbind'{queue=QueueName
+                         ,exchange=Exchange
+                         ,routing_key=RoutingKey
+                        }=Command) ->
+    case wh_amqp_history:is_bound(Consumer, Exchange, QueueName, RoutingKey) of
+        'true' ->
+            lager:debug("unbinding ~s from ~s(~s)", [QueueName, Exchange, RoutingKey]),
+            handle_command_result(amqp_channel:call(Channel, Command), Command, Assignment);
+        'false' ->
+            lager:debug("queue ~s is not bound to ~s(~s)", [QueueName, Exchange, RoutingKey])
+    end;
 command(#wh_amqp_assignment{channel=Channel}=Assignment, Command) ->
     Result = amqp_channel:call(Channel, Command),
     handle_command_result(Result, Command, Assignment).
@@ -254,14 +267,14 @@ handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
     _ = wh_amqp_history:add_command(Assignment, Command#'queue.declare'{queue=Q}),
     {'ok', Ok};
 handle_command_result(#'queue.unbind_ok'{}
-                      ,#'queue.unbind'{exchange=_Exchange
-                                       ,routing_key=_RK
-                                       ,queue=_Q
+                      ,#'queue.unbind'{exchange=Exchange
+                                       ,routing_key=RoutingKey
+                                       ,queue=Queue
                                       }=Command
                       ,#wh_amqp_assignment{channel=Channel}=Assignment) ->
     lager:debug("unbound ~s from ~s exchange (routing key ~s) via channel ~p"
-                ,[_Q, _Exchange, _RK, Channel]),
-    _ = wh_amqp_history:add_command(Assignment, Command),
+                ,[Queue, Exchange, RoutingKey, Channel]),
+    _ = wh_amqp_history:add_command(Assignment, Command, 'sync'),
     'ok';
 handle_command_result(#'queue.bind_ok'{}
                       ,#'queue.bind'{exchange=_Exchange

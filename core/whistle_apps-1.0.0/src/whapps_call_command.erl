@@ -25,7 +25,12 @@
 
 -export([audio_macro/2]).
 -export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
+         ,pickup_command/2, pickup_command/3, pickup_command/4, pickup_command/5, pickup_command/6
          ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
+        ]).
+-export([connect_leg/2, connect_leg/3, connect_leg/4, connect_leg/5, connect_leg/6
+         ,connect_leg_command/2, connect_leg_command/3, connect_leg_command/4, connect_leg_command/5, connect_leg_command/6
+         ,b_connect_leg/2, b_connect_leg/3, b_connect_leg/4, b_connect_leg/5, b_connect_leg/6
         ]).
 -export([redirect/2
          ,redirect/3
@@ -44,12 +49,16 @@
          ,receive_fax/4
          ,b_receive_fax/1
         ]).
--export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
+-export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7
+         ,b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7
+         ,unbridge/1, unbridge/2, unbridge/3
+        ]).
 -export([page/2, page/3, page/4, page/5, page/6]).
 -export([hold/1, hold/2
          ,hold_command/1, hold_command/2
          ,b_hold/1, b_hold/2, b_hold/3
          ,park/1
+         ,park_command/1
         ]).
 -export([play/2, play/3, play/4
          ,play_command/2, play_command/3, play_command/4
@@ -103,7 +112,7 @@
 -export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
 -export([b_echo/1]).
 -export([b_ring/1]).
--export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
+
 -export([b_page/2, b_page/3, b_page/4, b_page/5, b_page/6]).
 
 -export([b_prompt/2, b_prompt/3]).
@@ -436,23 +445,44 @@ response(Code, Cause, Media, Call) ->
 -spec pickup(ne_binary(), api_binary(), boolean(), whapps_call:call()) -> 'ok'.
 -spec pickup(ne_binary(), api_binary(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
 -spec pickup(ne_binary(), api_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+
 pickup(TargetCallId, Call) ->
-    pickup(TargetCallId, <<"tail">>, Call).
-pickup(TargetCallId, Insert, Call) ->
-    pickup(TargetCallId, Insert, 'false', Call).
-pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
-    pickup(TargetCallId, Insert, ContinueOnFail, 'true', Call).
-pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
-    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
-pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
-    Command = [{<<"Application-Name">>, <<"call_pickup">>}
-               ,{<<"Target-Call-ID">>, TargetCallId}
-               ,{<<"Insert-At">>, Insert}
-               ,{<<"Continue-On-Fail">>, ContinueOnFail}
-               ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
-               ,{<<"Park-After-Pickup">>, ParkAfterPickup}
-              ],
+    Command = pickup_command(TargetCallId, Call),
     send_command(Command, Call).
+
+pickup(TargetCallId, Insert, Call) ->
+    Command = pickup_command(TargetCallId, Insert, Call),
+    send_command(Command, Call).
+
+pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
+    Command = pickup_command(TargetCallId, Insert, ContinueOnFail, Call),
+    send_command(Command, Call).
+
+pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    Command = pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
+    send_command(Command, Call).
+
+pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    Command = pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
+    send_command(Command, Call).
+
+pickup_command(TargetCallId, Call) ->
+    pickup_command(TargetCallId, <<"tail">>, Call).
+pickup_command(TargetCallId, Insert, Call) ->
+    pickup_command(TargetCallId, Insert, 'false', Call).
+pickup_command(TargetCallId, Insert, ContinueOnFail, Call) ->
+    pickup_command(TargetCallId, Insert, ContinueOnFail, 'true', Call).
+pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
+pickup_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    [{<<"Application-Name">>, <<"call_pickup">>}
+     ,{<<"Target-Call-ID">>, TargetCallId}
+     ,{<<"Insert-At">>, Insert}
+     ,{<<"Continue-On-Fail">>, ContinueOnFail}
+     ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+     ,{<<"Park-After-Pickup">>, ParkAfterPickup}
+     ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+    ].
 
 -spec b_pickup(ne_binary(), whapps_call:call()) ->
                       {'ok', wh_json:object()}.
@@ -478,6 +508,81 @@ b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     wait_for_channel_unbridge().
 b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
+    wait_for_channel_unbridge().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec connect_leg(ne_binary(), whapps_call:call()) -> 'ok'.
+-spec connect_leg(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+-spec connect_leg(ne_binary(), api_binary(), boolean(), whapps_call:call()) -> 'ok'.
+-spec connect_leg(ne_binary(), api_binary(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+-spec connect_leg(ne_binary(), api_binary(), boolean(), boolean(), boolean(), whapps_call:call()) -> 'ok'.
+
+connect_leg(TargetCallId, Call) ->
+    Command = connect_leg_command(TargetCallId, Call),
+    send_command(Command, Call).
+
+connect_leg(TargetCallId, Insert, Call) ->
+    Command = connect_leg_command(TargetCallId, Insert, Call),
+    send_command(Command, Call).
+
+connect_leg(TargetCallId, Insert, ContinueOnFail, Call) ->
+    Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, Call),
+    send_command(Command, Call).
+
+connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
+    send_command(Command, Call).
+
+connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterConnect_Leg, Call) ->
+    Command = connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterConnect_Leg, Call),
+    send_command(Command, Call).
+
+connect_leg_command(TargetCallId, Call) ->
+    connect_leg_command(TargetCallId, <<"tail">>, Call).
+connect_leg_command(TargetCallId, Insert, Call) ->
+    connect_leg_command(TargetCallId, Insert, 'false', Call).
+connect_leg_command(TargetCallId, Insert, ContinueOnFail, Call) ->
+    connect_leg_command(TargetCallId, Insert, ContinueOnFail, 'true', Call).
+connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, 'false', Call).
+connect_leg_command(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    [{<<"Application-Name">>, <<"connect_leg">>}
+     ,{<<"Target-Call-ID">>, TargetCallId}
+     ,{<<"Insert-At">>, Insert}
+     ,{<<"Continue-On-Fail">>, ContinueOnFail}
+     ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+     ,{<<"Park-After-Pickup">>, ParkAfterPickup}
+     ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+    ].
+
+-spec b_connect_leg(ne_binary(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+-spec b_connect_leg(ne_binary(), ne_binary(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+-spec b_connect_leg(ne_binary(), ne_binary(), boolean(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+-spec b_connect_leg(ne_binary(), ne_binary(), boolean(), boolean(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+-spec b_connect_leg(ne_binary(), ne_binary(), boolean(), boolean(), boolean(), whapps_call:call()) ->
+                      {'ok', wh_json:object()}.
+b_connect_leg(TargetCallId, Call) ->
+    connect_leg(TargetCallId, Call),
+    wait_for_channel_unbridge().
+b_connect_leg(TargetCallId, Insert, Call) ->
+    connect_leg(TargetCallId, Insert, Call),
+    wait_for_channel_unbridge().
+b_connect_leg(TargetCallId, Insert, ContinueOnFail, Call) ->
+    connect_leg(TargetCallId, Insert, ContinueOnFail, Call),
+    wait_for_channel_unbridge().
+b_connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
+    wait_for_channel_unbridge().
+b_connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    connect_leg(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     wait_for_channel_unbridge().
 
 %%--------------------------------------------------------------------
@@ -787,43 +892,97 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
                       whapps_api_bridge_return().
 -spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), whapps_call:call()) ->
                       whapps_api_bridge_return().
--spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call())
-              -> whapps_api_bridge_return().
+-spec b_bridge(wh_json:objects(), integer(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call()) ->
+                      whapps_api_bridge_return().
+
+bridge_command(Endpoints, Call) ->
+    bridge_command(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+bridge_command(Endpoints, Timeout, Call) ->
+    bridge_command(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
+bridge_command(Endpoints, Timeout, Strategy, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, 'true', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
+    bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
+bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
+    [{<<"Application-Name">>, <<"bridge">>}
+     ,{<<"Endpoints">>, Endpoints}
+     ,{<<"Timeout">>, Timeout}
+     ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+     ,{<<"Ringback">>, cf_util:correct_media_path(Ringback, Call)}
+     ,{<<"Dial-Endpoint-Method">>, Strategy}
+     ,{<<"SIP-Headers">>, SIPHeaders}
+    ].
 
 bridge(Endpoints, Call) ->
-    bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+    Command = bridge_command(Endpoints, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Call) ->
-    bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
+    Command = bridge_command(Endpoints, Timeout, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, Call) ->
-    bridge(Endpoints, Timeout, Strategy, <<"true">>, Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
-    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
-    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
+    send_command(Command, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
-    Command = [{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, Endpoints}
-               ,{<<"Timeout">>, Timeout}
-               ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-               ,{<<"Ringback">>, cf_util:correct_media_path(Ringback, Call)}
-               ,{<<"Dial-Endpoint-Method">>, Strategy}
-               ,{<<"SIP-Headers">>, SIPHeaders}
-              ],
+    Command = bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
     send_command(Command, Call).
 
 b_bridge(Endpoints, Call) ->
-    b_bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
+    bridge(Endpoints, Call),
+    b_bridge_wait(?DEFAULT_TIMEOUT_S, Call).
 b_bridge(Endpoints, Timeout, Call) ->
-    b_bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
+    bridge(Endpoints, Timeout, Call),
+    b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, <<"false">>, Call).
+    bridge(Endpoints, Timeout, Strategy, Call),
+    b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, 'undefined', Call).
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call),
+    b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
-    b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, 'undefined', Call).
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
+    b_bridge_wait(Timeout, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
+    b_bridge_wait(Timeout, Call).
+
+-spec b_bridge_wait(pos_integer(), whapps_call:call()) -> whapps_api_bridge_return().
+b_bridge_wait(Timeout, Call) ->
     wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call).
+
+-spec unbridge(whapps_call:call()) -> 'ok'.
+-spec unbridge(whapps_call:call(), ne_binary()) -> 'ok'.
+-spec unbridge(whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+unbridge(Call) ->
+    Command = unbridge_command(Call),
+    send_command(Command, Call).
+unbridge(Call, Leg) ->
+    Command = unbridge_command(Call, Leg),
+    send_command(Command, Call).
+unbridge(Call, Leg, Insert) ->
+    Command = unbridge_command(Call, Leg, Insert),
+    send_command(Command, Call).
+
+-spec unbridge_command(whapps_call:call()) -> wh_proplist().
+-spec unbridge_command(whapps_call:call(), ne_binary()) -> wh_proplist().
+-spec unbridge_command(whapps_call:call(), ne_binary(), ne_binary()) -> wh_proplist().
+unbridge_command(Call) ->
+    unbridge_command(Call, <<"Both">>).
+unbridge_command(Call, Leg) ->
+    unbridge_command(Call, Leg, <<"now">>).
+unbridge_command(Call, Leg, Insert) ->
+    [{<<"Application-Name">>, <<"unbridge">>}
+     ,{<<"Insert-At">>, Insert}
+     ,{<<"Leg">>, Leg}
+     ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -834,9 +993,9 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
 -spec hold(whapps_call:call()) -> 'ok'.
 -spec hold(api_binary(), whapps_call:call()) -> 'ok'.
 
--spec hold_command(whapps_call:call()) ->
+-spec hold_command(whapps_call:call() | ne_binary()) ->
                           wh_json:object().
--spec hold_command(api_binary(), whapps_call:call()) ->
+-spec hold_command(api_binary(), whapps_call:call() | ne_binary()) ->
                           wh_json:object().
 
 -spec b_hold(whapps_call:call()) ->
@@ -853,14 +1012,16 @@ hold(MOH, Call) ->
 
 hold_command(Call) ->
     hold_command('undefined', Call).
-hold_command(MOH, Call) ->
+hold_command(MOH, <<_/binary>> = CallId) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"Application-Name">>, <<"hold">>}
          ,{<<"Insert-At">>, <<"now">>}
-         ,{<<"Hold-Media">>, wh_media_util:media_path(MOH, Call)}
-         ,{<<"Call-ID">>, whapps_call:call_id_direct(Call)}
-        ])).
+         ,{<<"Hold-Media">>, MOH}
+         ,{<<"Call-ID">>, CallId}
+        ]));
+hold_command(MOH, Call) ->
+    hold_command(wh_media_util:media_path(MOH, Call), whapps_call:call_id_direct(Call)).
 
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
 
@@ -874,10 +1035,17 @@ b_hold(Timeout, MOH, Call) ->
 
 -spec park(whapps_call:call()) -> 'ok'.
 park(Call) ->
-    Command = [{<<"Application-Name">>, <<"park">>}
-               ,{<<"Insert-At">>, <<"now">>}
-              ],
+    Command = park_command(Call),
     send_command(Command, Call).
+
+park_command(<<_/binary>> = CallId) ->
+    wh_json:from_list(
+      [{<<"Application-Name">>, <<"park">>}
+       ,{<<"Insert-At">>, <<"now">>}
+       ,{<<"Call-ID">>, CallId}
+      ]);
+park_command(Call) ->
+    park_command(whapps_call:call_id(Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -2304,9 +2472,9 @@ send_command(Command, Call) when is_list(Command) ->
                 Pid when is_pid(Pid) -> _ = wh_amqp_channel:consumer_pid(Pid), 'ok';
                 _Else -> 'ok'
             end,
-            Prop = Command ++ [{<<"Call-ID">>, CallId}
-                               | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
-                              ],
+            Prop =
+                props:insert_value(<<"Call-ID">>, CallId, Command) ++
+                wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion),
             wapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Prop));
         'false' -> 'ok'
     end;

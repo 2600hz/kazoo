@@ -779,7 +779,8 @@ handle_channel_destroy(Props, #state{callid=CallId}=State) ->
 
 -spec remove_leg(wh_proplist(), state()) -> state().
 remove_leg(Props, #state{other_legs=Legs
-                         ,callid=CallId}=State) ->
+                         ,callid=CallId
+                        }=State) ->
     LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
     case lists:member(LegId, Legs) of
         'false' -> State;
@@ -802,7 +803,6 @@ publish_leg_removal(Props) ->
                                               ,'undefined'
                                               ,ecallmgr_call_events:swap_call_legs(Props)),
     ecallmgr_call_events:publish_event(Event).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1009,13 +1009,13 @@ is_post_hangup_command(AppName) ->
 
 -spec get_module(ne_binary(), ne_binary()) -> atom().
 get_module(Category, Name) ->
-        ModuleName = <<"ecallmgr_", Category/binary, "_", Name/binary>>,
-        try wh_util:to_atom(ModuleName) of
-                Module -> Module
-        catch
-                'error':'badarg' ->
-                        wh_util:to_atom(ModuleName,'true')
-        end.
+    ModuleName = <<"ecallmgr_", Category/binary, "_", Name/binary>>,
+    try wh_util:to_atom(ModuleName) of
+        Module -> Module
+    catch
+        'error':'badarg' ->
+            wh_util:to_atom(ModuleName, 'true')
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1026,16 +1026,29 @@ get_module(Category, Name) ->
 -spec execute_control_request(wh_json:object(), state()) -> 'ok'.
 execute_control_request(Cmd, #state{node=Node
                                     ,callid=CallId
+                                    ,other_legs=OtherLegs
                                    }) ->
     put('callid', CallId),
     Srv = self(),
-    try
-        lager:debug("executing call command '~s' ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)
-                                                       ,wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
-                                                      ]),
-        Mod = get_module(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>),
-                                                 wh_json:get_value(<<"Event-Name">>, Cmd, <<>>)),
-        Mod:exec_cmd(Node, CallId, Cmd, self())
+
+    lager:debug("executing call command '~s' ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)
+                                                   ,wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
+                                                  ]),
+    Mod = get_module(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>)
+                     ,wh_json:get_value(<<"Event-Name">>, Cmd, <<>>)
+                    ),
+
+    CmdLeg = wh_json:get_value(<<"Call-ID">>, Cmd),
+    CallLeg =
+        case lists:member(CmdLeg, OtherLegs) of
+            'true' ->
+                lager:debug("executing against ~s instead", [CmdLeg]),
+                CmdLeg;
+            'false' -> CallId
+        end,
+
+    try Mod:exec_cmd(Node, CallLeg, Cmd, self()) of
+        Result -> Result
     catch
         _:{'error', 'nosession'} ->
             lager:debug("unable to execute command, no session"),

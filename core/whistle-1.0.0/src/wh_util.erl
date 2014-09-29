@@ -45,6 +45,7 @@
          ,ucfirst_binary/1, lcfirst_binary/1
          ,strip_binary/1, strip_binary/2
          ,strip_left_binary/2, strip_right_binary/2
+         ,suffix_binary/2
         ]).
 
 -export([uri_encode/1
@@ -111,7 +112,16 @@ log_stacktrace() ->
     log_stacktrace(ST).
 log_stacktrace(ST) ->
     lager:debug("stacktrace:"),
-    _ = [lager:debug("st: ~p", [Line]) || Line <- ST],
+    _ = [log_stacktrace_mfa(M, F, A, Info)
+         || {M, F, A, Info} <- ST
+        ],
+    'ok'.
+
+log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
+    lager:debug("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
+log_stacktrace_mfa(M, F, Args, Info) ->
+    lager:debug("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
+    [lager:debug("args: ~p", [Arg]) || Arg <- Args],
     'ok'.
 
 -define(LOG_LEVELS, ['emergency'
@@ -848,6 +858,15 @@ strip_right_binary(<<C, B/binary>>, C) ->
 strip_right_binary(<<A, B/binary>>, C) -> <<A, (strip_right_binary(B, C))/binary>>;
 strip_right_binary(<<>>, _) -> <<>>.
 
+-spec suffix_binary(binary(), binary()) -> boolean().
+suffix_binary(<<>>, _Bin) -> 'false';
+suffix_binary(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
+    try binary:part(Bin, byte_size(Bin), (byte_size(Suffix) * -1)) =:= Suffix of
+        Bool -> Bool
+    catch
+        _:_ -> 'false'
+    end.
+
 -spec binary_md5(text()) -> ne_binary().
 binary_md5(Text) -> to_hex_binary(erlang:md5(to_binary(Text))).
 
@@ -1166,6 +1185,10 @@ uri_test() ->
     ?assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>])),
     ?assertEqual(<<"http://test.com/path1/path2">>, uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>])).
 
+suffix_binary_test() ->
+    ?assertEqual('true', suffix_binary(<<"34">>, <<"1234">>)),
+    ?assertEqual('false', suffix_binary(<<"34">>, <<"12345">>)),
+    ?assertEqual('false', suffix_binary(<<"1234">>, <<"1">>)).
 
 -spec resolve_uri_test() -> any().
 resolve_uri_test() ->

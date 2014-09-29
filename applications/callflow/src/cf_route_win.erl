@@ -13,9 +13,9 @@
 -define(JSON(L), wh_json:from_list(L)).
 
 -define(DEFAULT_SERVICES, ?JSON([{<<"audio">>, ?JSON([{<<"enabled">>, 'true'}])}
-                           ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
-                           ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
-                          ])).
+                                 ,{<<"video">>,?JSON([{<<"enabled">>, 'true'}])}
+                                 ,{<<"sms">>,  ?JSON([{<<"enabled">>, 'true'}])}
+                                ])).
 
 -export([handle_req/2
          ,maybe_restrict_call/2
@@ -225,6 +225,8 @@ update_ccvs(Call) ->
     whapps_call:set_custom_channel_vars(Props, Call).
 
 -spec maybe_start_metaflow(whapps_call:call()) -> whapps_call:call().
+-spec maybe_start_metaflow(whapps_call:call(), api_binary() | boolean() | wh_json:object()) ->
+                                  whapps_call:call().
 maybe_start_metaflow(Call) ->
     case whapps_call:kvs_fetch('cf_metaflow', Call) of
         'undefined' -> 'ok';
@@ -233,19 +235,6 @@ maybe_start_metaflow(Call) ->
     maybe_start_endpoint_metaflow(Call, whapps_call:authorizing_id(Call)),
     Call.
 
-maybe_start_endpoint_metaflow(_Call, 'undefined') -> lager:debug("no endpoint metaflow");
-maybe_start_endpoint_metaflow(Call, EndpointId) ->
-    lager:debug("looking up endpoint for ~s", [EndpointId]),
-    Params = wh_json:from_list([{<<"can_call_self">>, 'true'}]),
-    case cf_endpoint:build(EndpointId, Params, Call) of
-        {'ok', Endpoints} ->
-            lager:debug("trying to send metaflow for a-leg endpiont ~s", [EndpointId]),
-            cf_util:maybe_start_metaflows(Call, Endpoints);
-        {'error', _E} -> lager:debug("failed to build endpoint ~s: ~p", [EndpointId, _E])
-    end.
-
--spec maybe_start_metaflow(whapps_call:call(), ne_binary() | boolean() | wh_json:object()) ->
-                                  whapps_call:call().
 maybe_start_metaflow(Call, MetaFlow) ->
     case wh_util:is_true(MetaFlow) of
         'true' -> start_metaflow(Call);
@@ -253,12 +242,24 @@ maybe_start_metaflow(Call, MetaFlow) ->
     end,
     Call.
 
+-spec maybe_start_endpoint_metaflow(whapps_call:call(), api_binary()) -> 'ok'.
+maybe_start_endpoint_metaflow(_Call, 'undefined') ->
+    lager:debug("no endpoint metaflow");
+maybe_start_endpoint_metaflow(Call, EndpointId) ->
+    lager:debug("looking up endpoint for ~s", [EndpointId]),
+    Params = wh_json:from_list([{<<"can_call_self">>, 'true'}]),
+    case cf_endpoint:build(EndpointId, Params, Call) of
+        {'ok', Endpoints} ->
+            lager:debug("trying to send metaflow for a-leg endpoint ~s", [EndpointId]),
+            cf_util:maybe_start_metaflows(Call, Endpoints);
+        {'error', _E} -> lager:debug("failed to build endpoint ~s: ~p", [EndpointId, _E])
+    end.
+
 -spec start_metaflow(whapps_call:call()) -> 'ok'.
 -spec start_metaflow(whapps_call:call(), wh_json:object() | ne_binary() | boolean()) -> 'ok'.
 start_metaflow(Call) ->
     start_metaflow(Call, wh_json:new()).
 start_metaflow(Call, MetaFlow) ->
-    lager:debug("metaflow: ~p", [MetaFlow]),
     case wh_json:is_json_object(MetaFlow) of
         'false' -> 'ok';
         'true' ->

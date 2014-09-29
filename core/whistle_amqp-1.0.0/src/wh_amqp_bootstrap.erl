@@ -64,9 +64,7 @@ init([]) ->
     lager:info("waiting for first amqp connection...", []),
     wh_amqp_connections:wait_for_available(),
     timer:sleep(2000),
-
-    wapi_self:declare_exchanges(), %% build targeted exchange for wh_amqp_worker
-
+    amqp_util:targeted_exchange(),
     {'ok', #state{}, 100}.
 
 %%--------------------------------------------------------------------

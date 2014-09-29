@@ -11,14 +11,16 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([add_command/2]).
+-export([add_command/2, add_command/3]).
 -export([update_consumer_tag/3]).
 -export([remove/1]).
 -export([get/1]).
 -export([add_exchange/1]).
 -export([list_exchanges/0]).
 -export([list_consume/1]).
--export([is_consuming/2]).
+-export([is_consuming/2
+         ,is_bound/4
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -56,22 +58,31 @@
 start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -spec add_command(wh_amqp_assignment(), wh_amqp_command()) -> 'ok'.
-add_command(#wh_amqp_assignment{consumer=Consumer}, Command) ->
-    MatchSpec =[{#wh_amqp_history{consumer=Consumer
-                                  ,command=Command
-                                  ,_='_'
-                                 }
-                 ,[]
-                 ,['true']
-                }],
+-spec add_command(wh_amqp_assignment(), wh_amqp_command(), 'sync' | 'async') -> 'ok'.
+add_command(Assignment, Command) ->
+    add_command(Assignment, Command, 'async').
+
+add_command(#wh_amqp_assignment{consumer=Consumer}, Command, Method) ->
+    MatchSpec = [{#wh_amqp_history{consumer=Consumer
+                                   ,command=Command
+                                   ,_='_'
+                                  }
+                  ,[]
+                  ,['true']
+                 }],
     case ets:select_count(?TAB, MatchSpec) =:= 0 of
         'false' ->
             lager:debug("not tracking history for known command ~s from ~p"
                         ,[element(1, Command), Consumer]
                        );
         'true' ->
-            gen_server:cast(?MODULE, {'command', Consumer, Command})
+            send_command(Consumer, Command, Method)
     end.
+
+send_command(Consumer, Command, 'async') ->
+    gen_server:cast(?MODULE, {'command', Consumer, Command});
+send_command(Consumer, Command, 'sync') ->
+    gen_server:call(?MODULE, {'command', Consumer, Command}).
 
 -spec update_consumer_tag(pid(), ne_binary(), ne_binary()) -> 'ok'.
 update_consumer_tag(Consumer, OldTag, NewTag) ->
@@ -106,20 +117,38 @@ list_exchanges() ->
 list_consume(Consumer) ->
     Pattern = #wh_amqp_history{consumer=Consumer
                                ,command=#'basic.consume'{_='_'}
-                               ,_='_'},
+                               ,_='_'
+                              },
     [Command
      || #wh_amqp_history{command=Command} <- ets:match_object(?TAB, Pattern)
     ].
 
 -spec is_consuming(pid(), ne_binary()) -> boolean().
 is_consuming(Consumer, Queue) ->
-    MatchSpec =[{#wh_amqp_history{consumer=Consumer
-                                  ,command=#'basic.consume'{queue=Queue
-                                                            ,_='_'}
-                                 ,_='_'}
-                 ,[]
-                 ,['true']
-                }],
+    MatchSpec = [{#wh_amqp_history{consumer=Consumer
+                                   ,command=#'basic.consume'{queue=Queue
+                                                             ,_='_'
+                                                            }
+                                   ,_='_'
+                                  }
+                  ,[]
+                  ,['true']
+                 }],
+    ets:select_count(?TAB, MatchSpec) =/= 0.
+
+-spec is_bound(pid(), ne_binary(), ne_binary(), ne_binary()) -> boolean().
+is_bound(Consumer, Exchange, Queue, RoutingKey) when is_pid(Consumer) ->
+    MatchSpec = [{#wh_amqp_history{consumer=Consumer
+                                   ,command=#'queue.bind'{queue=Queue
+                                                          ,exchange=Exchange
+                                                          ,routing_key=RoutingKey
+                                                          ,_='_'
+                                                         }
+                                   ,_='_'
+                                  }
+                  ,[]
+                  ,['true']
+                 }],
     ets:select_count(?TAB, MatchSpec) =/= 0.
 
 %%%===================================================================
@@ -138,7 +167,7 @@ is_consuming(Consumer, Queue) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put('callid', ?MODULE),
     _ = ets:new(?TAB, ['named_table'
                        ,{'keypos', #wh_amqp_history.timestamp}
                        ,'protected'
@@ -160,8 +189,12 @@ init([]) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({'command', Consumer, #'queue.unbind'{}=Unbind}, _From, State) ->
+    unbind_queue(Consumer, Unbind),
+    {'reply', 'ok', State};
 handle_call('list_exchanges', {Connection, _}, #state{exchanges=Exchanges
-                                                     ,connections=Connections}=State) ->
+                                                      ,connections=Connections
+                                                     }=State) ->
     _Ref = monitor('process', Connection),
     {'reply', [Exchange || {_, Exchange} <- dict:to_list(Exchanges)]
      ,State#state{connections=sets:add_element(Connection, Connections)}};
@@ -188,20 +221,14 @@ handle_cast({'update_consumer_tag', Consumer, OldTag, NewTag}, State) ->
 handle_cast({'command', Consumer, #'queue.delete'{queue=Queue}}, State) ->
     Pattern = #wh_amqp_history{consumer=Consumer
                                ,command=#'queue.declare'{queue=Queue
-                                                         ,_='_'}
-                               ,_='_'},
+                                                         ,_='_'
+                                                        }
+                               ,_='_'
+                              },
     _ = ets:match_delete(?TAB, Pattern),
     {'noreply', State};
-handle_cast({'command', Consumer, #'queue.unbind'{queue=Queue
-                                                  ,exchange=Exchange
-                                                  ,routing_key=RoutingKey}}, State) ->
-    Pattern = #wh_amqp_history{consumer=Consumer
-                               ,command=#'queue.bind'{queue=Queue
-                                                      ,exchange=Exchange
-                                                      ,routing_key=RoutingKey
-                                                      ,_='_'}
-                               ,_='_'},
-    _ = ets:match_delete(?TAB, Pattern),
+handle_cast({'command', Consumer, #'queue.unbind'{}=Unbind}, State) ->
+    unbind_queue(Consumer, Unbind),
     {'noreply', State};
 handle_cast({'command', Consumer, #'basic.cancel'{consumer_tag=CTag}}, State) ->
     Pattern = #wh_amqp_history{consumer=Consumer
@@ -300,3 +327,19 @@ update_consumer_tag({[#wh_amqp_history{timestamp=Timestamp
     Props = [{#wh_amqp_history.command, Command#'basic.consume'{consumer_tag=NewTag}}],
     _ = ets:update_element(?TAB, Timestamp, Props),
     update_consumer_tag(ets:match_object(Continuation), NewTag).
+
+-spec unbind_queue(pid(), #'queue.unbind'{}) -> 'ok'.
+unbind_queue(Consumer, #'queue.unbind'{queue=Queue
+                                       ,exchange=Exchange
+                                       ,routing_key=RoutingKey
+                                      }) ->
+    Pattern = #wh_amqp_history{consumer=Consumer
+                               ,command=#'queue.bind'{queue=Queue
+                                                      ,exchange=Exchange
+                                                      ,routing_key=RoutingKey
+                                                      ,_='_'
+                                                     }
+                               ,_='_'
+                              },
+    ets:match_delete(?TAB, Pattern),
+    'ok'.
