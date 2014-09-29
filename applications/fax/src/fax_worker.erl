@@ -66,6 +66,9 @@
 -define(DEFAULT_RETRY_COUNT, whapps_config:get_integer(?CONFIG_CAT, <<"default_retry_count">>, 3)).
 -define(DEFAULT_COMPARE_FIELD, whapps_config:get_binary(?CONFIG_CAT, <<"default_compare_field">>, <<"result_cause">>)).
 
+-define(COUNT_PAGES_CMD, <<"echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`">>).
+-define(CONVERT_PDF_CMD, <<"/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s &> /dev/null && echo -n \"success\"">>).
+
 
 %%%===================================================================
 %%% API
@@ -759,8 +762,7 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             R = file:write_file(InputFile, RespContent),
             lager:debug("result of tmp file write: ~s", [R]),
-            DefaultCmd = <<"/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s &> /dev/null && echo -n \"success\"">>,
-            ConvertCmd = whapps_config:get_binary(<<"fax">>, <<"conversion_command">>, DefaultCmd),
+            ConvertCmd = whapps_config:get_binary(<<"fax">>, <<"conversion_command">>, ?CONVERT_PDF_CMD),
             Cmd = io_lib:format(ConvertCmd, [OutputFile, InputFile]),
             lager:debug("attempting to convert pdf: ~s", [Cmd]),
             case os:cmd(Cmd) of
@@ -777,8 +779,10 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
 
 -spec get_sizes(ne_binary()) -> 'ok'.
 get_sizes(OutputFile) ->
-    CmdCount = <<"echo -n `tiffinfo ", OutputFile/binary , " | grep 'Page Number' | grep -c 'P'`">>,
-    NumberOfPages = wh_util:to_integer( os:cmd(wh_util:to_list(CmdCount)) ),
+    CmdCount = whapps_config:get_binary(<<"fax">>, <<"count_pages_command">>, ?COUNT_PAGES_CMD),
+    Cmd = io_lib:format(CmdCount, [OutputFile]),
+    Result = os:cmd(wh_util:to_list(Cmd)),
+    NumberOfPages = wh_util:to_integer( Result ),
     FileSize = filelib:file_size(OutputFile),
     {NumberOfPages, FileSize}.
 
