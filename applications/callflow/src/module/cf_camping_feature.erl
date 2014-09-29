@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz INC
+%%% @copyright (C) 2013-2014, 2600Hz INC
 %%% @doc
 %%% Sends request to start the call to recepient when he's available
 %%%
@@ -151,7 +151,8 @@ handle(Data, Call) ->
             cf_exe:stop(Call)
     end.
 
--spec get_sip_usernames_for_target(ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:object().
+-spec get_sip_usernames_for_target(ne_binary(), ne_binary(), whapps_call:call()) ->
+                                          ne_binaries().
 get_sip_usernames_for_target(TargetId, TargetType, Call) ->
     Targets = case TargetType of
                   <<"user">> -> cf_attributes:owned_by(TargetId, <<"device">>, Call);
@@ -161,14 +162,18 @@ get_sip_usernames_for_target(TargetId, TargetType, Call) ->
                       []
               end,
     AccountDb = whapps_call:account_db(Call),
-    [get_device_sip_username(AccountDb, DeviceId) || DeviceId <- Targets].
+    props:filter_undefined(
+      [get_device_sip_username(AccountDb, DeviceId)
+       || DeviceId <- Targets
+      ]).
 
--spec get_device_sip_username(ne_binary(), ne_binary()) -> ne_binary().
+-spec get_device_sip_username(ne_binary(), ne_binary()) -> api_binary().
 get_device_sip_username(AccountDb, DeviceId) ->
     {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, DeviceId),
     wh_json:get_value([<<"sip">>, <<"username">>], JObj).
 
--spec no_channels(state(), whapps_call:call()) -> 'ok'.
+-spec no_channels(state(), whapps_call:call()) -> maybe('accepted') |
+                                                  maybe('connected').
 no_channels(#state{id = TargetId
                    ,type = TargetType
                    ,is_no_match = 'false'
@@ -180,37 +185,39 @@ no_channels(#state{id = TargetId
     cf_exe:branch(Flow, Call),
     just('connected');
 no_channels(#state{type = <<"offnet">>
-                        ,is_no_match = 'true'
-                        ,number = Number
-                        ,config = CFG
-                        }
+                   ,is_no_match = 'true'
+                   ,number = Number
+                   ,config = CFG
+                  }
             ,Call) ->
-    MsgProps = props:filter_undefined([{<<"Number">>, Number}
-                                       ,{<<"Call">>, whapps_call:to_json(Call)}
-                                       ,{<<"Tries">>, wh_json:get_value(<<"tries">>, CFG)}
-                                       ,{<<"Stop-After">>, wh_json:get_value(<<"stop_after">>, CFG)}
-                                       ,{<<"Try-Interval">>, wh_json:get_value(<<"try_interval">>, CFG)}
-                                      ]),
+    MsgProps = props:filter_undefined(
+                 [{<<"Number">>, Number}
+                  ,{<<"Call">>, whapps_call:to_json(Call)}
+                  ,{<<"Tries">>, wh_json:get_value(<<"tries">>, CFG)}
+                  ,{<<"Stop-After">>, wh_json:get_value(<<"stop_after">>, CFG)}
+                  ,{<<"Try-Interval">>, wh_json:get_value(<<"try_interval">>, CFG)}
+                 ]),
     JObj = wh_json:from_list([{<<"Delegate-Message">>, wh_json:from_list(MsgProps)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
     wapi_delegate:publish_delegate(<<"camper">>, JObj, <<"offnet">>),
     just('accepted').
 
--spec has_channels(state(), whapps_call:call()) -> 'ok'.
+-spec has_channels(state(), whapps_call:call()) -> maybe('accepted').
 has_channels(#state{id = TargetId
-                          ,type = TargetType
-                          ,number = Number
-                          ,config = CFG
-                         }, Call) ->
+                    ,type = TargetType
+                    ,number = Number
+                    ,config = CFG
+                   }, Call) ->
     Targets = get_sip_usernames_for_target(TargetId, TargetType, Call),
-    MsgProps = props:filter_undefined([{<<"Account-DB">>, whapps_call:account_db(Call)}
-                                       ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
-                                       ,{<<"Authorizing-Type">>, whapps_call:authorizing_type(Call)}
-                                       ,{<<"Number">>, Number}
-                                       ,{<<"Targets">>, Targets}
-                                       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, CFG)}
-                                      ]),
+    MsgProps = props:filter_undefined(
+                 [{<<"Account-DB">>, whapps_call:account_db(Call)}
+                  ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+                  ,{<<"Authorizing-Type">>, whapps_call:authorizing_type(Call)}
+                  ,{<<"Number">>, Number}
+                  ,{<<"Targets">>, Targets}
+                  ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, CFG)}
+                 ]),
     JObj = wh_json:from_list([{<<"Delegate-Message">>, wh_json:from_list(MsgProps)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),

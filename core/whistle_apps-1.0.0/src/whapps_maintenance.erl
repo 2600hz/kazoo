@@ -61,7 +61,7 @@
 rebuild_token_auth() ->
     rebuild_token_auth(5000).
 
--spec rebuild_token_auth(text()) -> 'ok'.
+-spec rebuild_token_auth(text() | integer()) -> 'ok'.
 rebuild_token_auth(Pause) ->
     _ = couch_mgr:db_delete(?KZ_TOKEN_DB),
     timer:sleep(wh_util:to_integer(Pause)),
@@ -77,36 +77,35 @@ rebuild_token_auth(Pause) ->
 migrate() ->
     migrate(2000).
 
--spec migrate(text()) -> 'no_return'.
+-spec migrate(text() | integer()) -> 'no_return'.
 migrate(Pause) ->
     {'ok', Databases} = couch_mgr:db_info(),
     Accounts = [wh_util:format_account_id(Db, 'encoded')
-                || Db <- Databases
-                       ,whapps_util:is_account_db(Db)
+                || Db <- Databases,
+                   whapps_util:is_account_db(Db)
                ],
-
-    io:format("updating system dbs...~n", []),
+    io:format("updating system dbs...~n"),
     _ = refresh(?KZ_SYSTEM_DBS, Pause),
 
     %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
     %% that need to be aggregated have been, and the account definition is aggregated
-    io:format("updating views...~n", []),
+    io:format("updating views...~n"),
     _ = refresh([Db || Db <- Databases, (not lists:member(Db, ?KZ_SYSTEM_DBS))], Pause),
 
     %% Remove depreciated dbs
-    io:format("removing depreciated databases...~n", []),
+    io:format("removing depreciated databases...~n"),
     _  = remove_depreciated_databases(Databases),
 
     %% Remove depreciated crossbar modules from the startup list and add new defaults
-    io:format("running crossbar migrations...~n", []),
+    io:format("running crossbar migrations...~n"),
     _ = crossbar_maintenance:migrate(Accounts),
 
     %% Migrate Faxes with private_media to fax
-    io:format("running fax migrations...~n", []),
+    io:format("running fax migrations...~n"),
     _ = fax_maintenance:migrate(Accounts),
 
     %% Migrate settings for whistle_media
-    io:format("running media migrations...~n", []),
+    io:format("running media migrations...~n"),
     _ = whistle_media_maintenance:migrate(),
 
     'no_return'.
@@ -117,10 +116,10 @@ migrate(Pause) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec blocking_refresh() -> 'ok'.
+-spec blocking_refresh() -> 'no_return'.
 blocking_refresh() -> refresh().
 
--spec blocking_refresh(text()) -> 'ok'.
+-spec blocking_refresh(text() | non_neg_integer()) -> 'no_return'.
 blocking_refresh(Pause) ->
     {'ok', Databases} = couch_mgr:db_info(),
     refresh(Databases, Pause).
@@ -131,7 +130,10 @@ blocking_refresh(Pause) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec refresh() -> 'ok'.
+-spec refresh() -> 'no_return'.
+-spec refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
+-spec refresh(ne_binaries(), text() | non_neg_integer()) -> 'no_return'.
+-spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'no_return'.
 refresh() ->
     {'ok', Databases} = couch_mgr:db_info(),
     refresh(Databases, 2000).
@@ -140,7 +142,6 @@ refresh(Databases, Pause) ->
     Total = length(Databases),
     refresh(Databases, wh_util:to_integer(Pause), Total).
 
--spec refresh(ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 refresh([], _, _) -> 'no_return';
 refresh([Database|Databases], Pause, Total) ->
     io:format("refreshing database (~p/~p) '~s'~n"
@@ -152,7 +153,6 @@ refresh([Database|Databases], Pause, Total) ->
         end,
     refresh(Databases, Pause, Total).
 
--spec refresh(ne_binary() | nonempty_string()) -> 'ok' | 'remove'.
 refresh(?WH_OFFNET_DB) ->
     couch_mgr:db_create(?WH_OFFNET_DB),
     stepswitch_maintenance:refresh();

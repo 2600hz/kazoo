@@ -78,7 +78,7 @@
 -record(temporal, {local_sec = 0 :: non_neg_integer()
                    ,local_date = {2011, 1, 1} :: wh_date()
                    ,local_time = {0, 0, 0} :: wh_time()
-                   ,routes = [] :: wh_json:strings()
+                   ,routes = [] :: wh_json:keys()
                    ,timezone = ?TEMPORAL_DEFAULT_TIMEZONE :: ne_binary()
                    ,prompts = #prompts{} :: prompts()
                    ,keys = #keys{} :: keys()
