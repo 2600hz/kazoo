@@ -28,14 +28,14 @@ handle(Data, Call) ->
     %% Data is the "data" object from the JSON payload
     %% Call is the current whapps_call record
 
-    {'ok', _} = whapps_call_command:b_tts(
-                  wh_json:get_value(<<"text">>, Data)
-                  ,wh_json:get_value(<<"voice">>, Data)
-                  ,wh_json:get_Value(<<"language">>, Data)
-                  ,?ANY_DIGIT
-                  ,wh_json:get_value(<<"engine">>, Data)
-                  ,Call
-                 ),
+    _ = whapps_call_command:b_tts(
+          wh_json:get_value(<<"text">>, Data)
+          ,wh_json:get_value(<<"voice">>, Data)
+          ,wh_json:get_value(<<"language">>, Data)
+          ,?ANY_DIGIT
+          ,wh_json:get_value(<<"engine">>, Data)
+          ,Call
+         ),
 
     %% Give control back to cf_exe process
     cf_exe:continue(Call).
