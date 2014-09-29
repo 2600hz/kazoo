@@ -83,7 +83,15 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
                 _Engine ->
                     SayMe = wh_json:get_value(<<"Text">>, JObj),
                     lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
-                    play(Node, UUID, wh_json:set_value(<<"Media-Name">>, <<"tts://", SayMe/binary>>, JObj))
+
+                    TTS = <<"tts://", SayMe/binary>>,
+                    case ecallmgr_util:media_path(TTS, UUID, JObj) of
+                        TTS ->
+                            lager:debug("failed to fetch a playable media, reverting to flite"),
+                            get_fs_app(Node, UUID, wh_json:set_value(<<"Engine">>, <<"flite">>, JObj), <<"tts">>);
+                        MediaPath ->
+                            play(Node, UUID, wh_json:set_value(<<"Media-Name">>, MediaPath, JObj))
+                    end
             end
     end;
 
