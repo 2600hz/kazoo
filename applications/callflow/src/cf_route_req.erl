@@ -15,7 +15,7 @@
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
 -define(DEFAULT_METAFLOWS(AccountId)
-        ,whapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, 'true')
+        ,whapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, 'false')
        ).
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
