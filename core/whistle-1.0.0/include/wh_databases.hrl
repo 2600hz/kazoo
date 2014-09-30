@@ -23,6 +23,8 @@
 
 -define(KZ_PORT_REQUESTS_DB, <<"port_requests">>).
 
+-define(KZ_OAUTH_DB,<<"oauth">>).
+
 -define(KZ_SYSTEM_DBS, [?WH_CONFIG_DB
                         ,?WH_SCHEMA_DB
                         ,?WH_MEDIA_DB
@@ -37,6 +39,7 @@
                         ,?KZ_PORT_REQUESTS_DB
                         ,?WH_DEDICATED_IP_DB
                         ,?KZ_ACDC_DB
+                        ,?KZ_OAUTH_DB
                        ]).
 
 -define(WH_DATABASES_HRL, 'true').
