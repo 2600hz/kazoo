@@ -137,9 +137,17 @@ set_hangup_dtmf(DTMF, Call) -> whapps_call:kvs_store(<<"hangup_dtmf">>, DTMF, Ca
 get_hangup_dtmf(Call) -> whapps_call:kvs_fetch(<<"hangup_dtmf">>, Call).
 
 -spec set_digit_pressed(api_binary(), whapps_call:call()) -> whapps_call:call().
--spec get_digit_pressed(whapps_call:call()) -> api_binary().
+-spec get_digit_pressed(whapps_call:call()) -> api_binary() | wh_json:object().
 set_digit_pressed(DTMF, Call) -> whapps_call:kvs_store(<<"digit_pressed">>, DTMF, Call).
-get_digit_pressed(Call) -> whapps_call:kvs_fetch(<<"digit_pressed">>, Call).
+get_digit_pressed(Call) ->
+    case whapps_call:kvs_fetch(<<"digit_pressed">>, Call) of
+        'undefined' -> get_digits_pressed(Call);
+        D -> D
+    end.
+
+-spec get_digits_pressed(whapps_call:call()) -> api_object().
+get_digits_pressed(Call) ->
+    whapps_call:kvs_fetch(<<"dtmf_collections">>, Call).
 
 -spec set_record_call(boolean(), whapps_call:call()) -> whapps_call:call().
 -spec get_record_call(whapps_call:call()) -> api_boolean().
