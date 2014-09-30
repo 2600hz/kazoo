@@ -25,8 +25,7 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    %% Data is the "data" object from the JSON payload
-    %% Call is the current whapps_call record
+    whapps_call_command:answer(Call),
 
     _ = whapps_call_command:b_tts(
           wh_json:get_value(<<"text">>, Data)
