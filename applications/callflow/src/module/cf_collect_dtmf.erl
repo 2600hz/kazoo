@@ -27,6 +27,8 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
+    whapps_call_command:answer(Call),
+
     _ = case whapps_call_command:collect_digits(max_digits(Data)
                                                 ,collect_timeout(Data)
                                                 ,interdigit(Data)
@@ -36,7 +38,13 @@ handle(Data, Call) ->
                                                )
         of
             {'ok', Ds} ->
-                cf_exe:set_call(whapps_call:kvs_store([<<"dtmf_collections">>, collection_name(Data)], Ds, Call));
+                Collections = whapps_call:kvs_fetch(<<"dtmf_collections">>, wh_json:new(), Call),
+                cf_exe:set_call(
+                  whapps_call:kvs_store(
+                    <<"dtmf_collections">>
+                    ,wh_json:set_value(collection_name(Data), Ds, Collections)
+                    ,Call
+                   ));
             {'error', _E} ->
                 lager:debug("failed to collect DTMF: ~p", [_E])
         end,
