@@ -21,6 +21,7 @@
 
 -export([relay_event/2, relay_event/3
          ,receive_event/1, receive_event/2
+         ,get_event_type/1
         ]).
 
 -export([audio_macro/2]).
