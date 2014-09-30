@@ -101,7 +101,18 @@ refresh(Value) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec start_module(text()) -> 'ok' | {'error', _}.
-start_module(Module) -> crossbar:start_mod(Module).
+start_module(Module) ->
+    try crossbar:start_mod(Module) of
+        _ ->
+            Mods = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, []),
+            whapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, [wh_util:to_binary(Module)
+                                                                            | lists:delete(wh_util:to_binary(Module), Mods)
+                                                                           ]),
+            io:format("started and added ~s to autoloaded modules~n", [Module])
+    catch
+        _E:_R ->
+            io:format("failed to start ~s: ~s: ~p~n", [Module, _E, _R])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -110,7 +121,16 @@ start_module(Module) -> crossbar:start_mod(Module).
 %% @end
 %%--------------------------------------------------------------------
 -spec stop_module(text()) -> 'ok' | {'error', _}.
-stop_module(Module) -> crossbar:stop_mod(Module).
+stop_module(Module) ->
+    try crossbar:stop_mod(Module) of
+        _ ->
+            Mods = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, []),
+            whapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, lists:delete(wh_util:to_binary(Module), Mods)),
+            io:format("stopped and removed ~s from autoloaded modules~n", [Module])
+    catch
+        _E:_R ->
+            io:format("failed to stop ~s: ~s: ~p~n", [Module, _E, _R])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -517,5 +537,3 @@ descendants_count() ->
 
 descendants_count(AccountId) ->
     crossbar_util:descendants_count(AccountId).
-
-

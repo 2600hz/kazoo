@@ -130,7 +130,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
 
-    {ContentType, AttachmentFileName, AttachmentBin} = get_attachment(Props),
+    {ContentType, AttachmentFileName, AttachmentBin} = notify_fax_util:get_attachment(?MOD_CONFIG_CAT, Props),
     [ContentTypeA,ContentTypeB] = binary:split(ContentType,<<"/">>),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
@@ -158,102 +158,3 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
             },
     notify_util:send_email(From, To, Email).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create a friendly file name
-%% @end
-%%--------------------------------------------------------------------
--spec get_file_name(wh_proplist(), string()) -> ne_binary().
-get_file_name(Props, Ext) ->
-    %% CallerID_Date_Time.mp3
-    Fax = props:get_value(<<"fax">>, Props),
-    CallerID = case {props:get_value(<<"caller_id_name">>, Fax), props:get_value(<<"caller_id_number">>, Fax)} of
-                   {'undefined', 'undefined'} -> <<"Unknown">>;
-                   {'undefined', Num} -> wh_util:to_binary(Num);
-                   {Name, _} -> wh_util:to_binary(Name)
-               end,
-    LocalDateTime = props:get_value(<<"date_called">>, Fax, <<"0000-00-00_00-00-00">>),
-    FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
-    re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_attachment(wh_proplist()) ->
-                            {ne_binary(), ne_binary(), ne_binary()} |
-                            {'error', _}.
-get_attachment(Props) ->
-    {'ok', AttachmentBin, ContentType} = raw_attachment_binary(Props),
-    case whapps_config:get_binary(?MOD_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>) of
-        <<"pdf">> -> convert_to_pdf(AttachmentBin, Props, ContentType);
-        _Else -> convert_to_tiff(AttachmentBin, Props, ContentType)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec raw_attachment_binary(wh_proplist()) ->
-                                   {'ok', ne_binary()} |
-                                   {'error', _}.
-raw_attachment_binary(Props) ->
-    Fax = props:get_value(<<"fax">>, Props),
-    FaxId = props:get_value(<<"fax_jobid">>, Fax),
-    {'ok', FaxJObj} = couch_mgr:open_doc(?WH_FAXES, FaxId),
-    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, FaxJObj),
-    ContentType = wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], FaxJObj, <<"image/tiff">>),
-    {'ok', AttachmentBin} = couch_mgr:fetch_attachment(?WH_FAXES, FaxId, AttachmentId),
-    {'ok', AttachmentBin, ContentType}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec convert_to_tiff(ne_binary(), wh_proplist(), ne_binary()) -> {ne_binary(), ne_binary(), ne_binary()}.
-convert_to_tiff(AttachmentBin, Props, _ContentType) ->
-    {<<"image/tiff">>, get_file_name(Props, "tiff"), AttachmentBin}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec convert_to_pdf(ne_binary(), wh_proplist(), ne_binary()) ->
-                            {ne_binary(), ne_binary(), ne_binary()} |
-                            {'error', _}.
-convert_to_pdf(AttachmentBin, Props, <<"application/pdf">>) ->
-    {<<"application/pdf">>, get_file_name(Props, "pdf"), AttachmentBin};
-convert_to_pdf(AttachmentBin, Props, _ContentType) ->
-    TiffFile = tmp_file_name(<<"tiff">>),
-    PDFFile = tmp_file_name(<<"pdf">>),
-    _ = file:write_file(TiffFile, AttachmentBin),
-    Cmd = io_lib:format("tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"", [PDFFile, TiffFile]),
-    _ = os:cmd(Cmd),
-    _ = file:delete(TiffFile),
-    case file:read_file(PDFFile) of
-        {'ok', PDFBin} ->
-            _ = file:delete(PDFFile),
-            {<<"application/pdf">>, get_file_name(Props, "pdf"), PDFBin};
-        {'error', _R}=E ->
-            lager:debug("unable to convert tiff: ~p", [_R]),
-            E
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec tmp_file_name(ne_binary()) -> string().
-tmp_file_name(Ext) ->
-    wh_util:to_list(<<"/tmp/", (wh_util:rand_hex_binary(10))/binary, "_notify_fax.", Ext/binary>>).

@@ -14,6 +14,7 @@
 -export([new/0, put_callid/1]).
 -export([from_route_req/1, from_route_req/2]).
 -export([from_route_win/1, from_route_win/2]).
+-export([from_originate_uuid/1, from_originate_uuid/2]).
 -export([to_json/1, from_json/1, from_json/2]).
 -export([to_proplist/1]).
 -export([is_call/1]).
@@ -42,6 +43,7 @@
 
 -export([set_account_db/2, account_db/1]).
 -export([set_account_id/2, account_id/1]).
+-export([account_realm/1]).
 
 -export([set_switch_nodename/2, switch_nodename/1]).
 -export([set_switch_hostname/2, switch_hostname/1]).
@@ -110,7 +112,7 @@
                       ,callee_id_name :: api_binary()                     %% The callee name
                       ,callee_id_number :: api_binary()                   %% The callee number
                       ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
-                      ,switch_hostname :: ne_binary()                     %% The switch hostname (as reported by the switch)
+                      ,switch_hostname :: api_binary()                     %% The switch hostname (as reported by the switch)
                       ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
                       ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
                       ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
@@ -143,7 +145,7 @@
 -type call() :: #whapps_call{}.
 -export_type([call/0]).
 
--type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()) | 'undefined'.
+-type whapps_helper_function() :: fun((api_binary(), call()) -> api_binary()).
 
 -define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #whapps_call.caller_id_name}
                        ,{<<"Caller-ID-Number">>, #whapps_call.caller_id_number}
@@ -267,6 +269,17 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                      ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, CCVs, OldFetchId)
                      ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, CCVs, OldBridgeId)
                      ,language = wh_media_util:prompt_language(AccountId, OldLanguage)
+                    }.
+
+-spec from_originate_uuid(wh_json:object()) -> call().
+-spec from_originate_uuid(wh_json:object(), call()) -> call().
+from_originate_uuid(JObj) ->
+    from_originate_uuid(JObj, new()).
+
+from_originate_uuid(JObj, #whapps_call{}=Call) ->
+    'true' = wapi_resource:originate_uuid_v(JObj),
+    Call#whapps_call{control_q=wh_json:get_value(<<"Outbound-Call-Control-Queue">>, JObj, control_queue(Call))
+                     ,call_id=wh_json:get_value(<<"Outbound-Call-ID">>, JObj, call_id(Call))
                     }.
 
 %%--------------------------------------------------------------------
@@ -583,7 +596,7 @@ to_realm(#whapps_call{to_realm=ToRealm}) ->
 set_switch_hostname(Srv, #whapps_call{}=Call) ->
     Call#whapps_call{switch_hostname=Srv}.
 
--spec switch_hostname(call()) -> ne_binary().
+-spec switch_hostname(call()) -> api_binary().
 switch_hostname(#whapps_call{switch_hostname=Srv}) ->
     Srv.
 
@@ -636,6 +649,13 @@ set_account_id(AccountId, #whapps_call{}=Call) when is_binary(AccountId) ->
 -spec account_id(call()) -> api_binary().
 account_id(#whapps_call{account_id=AccountId}) ->
     AccountId.
+
+-spec account_realm(call()) -> ne_binary().
+account_realm(#whapps_call{account_id=AccountId
+                           ,account_db=AccountDb
+                          }) ->
+    {'ok', Doc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    wh_json:get_value(<<"realm">>, Doc).
 
 -spec set_authorizing_id(ne_binary(), call()) -> call().
 set_authorizing_id(AuthorizingId, #whapps_call{}=Call) when is_binary(AuthorizingId) ->
@@ -696,7 +716,7 @@ language(#whapps_call{language='undefined', account_id=AccountId}) ->
 language(#whapps_call{language=Language}) -> Language.
 
 -spec set_to_tag(ne_binary(), call()) -> call().
-set_to_tag(ToTag, #whapps_call{}=Call) when is_binary(ToTag) ->    
+set_to_tag(ToTag, #whapps_call{}=Call) when is_binary(ToTag) ->
     Call#whapps_call{to_tag=ToTag}.
 
 -spec to_tag(call()) -> ne_binary().
@@ -704,7 +724,7 @@ to_tag(#whapps_call{to_tag=ToTag}) ->
     ToTag.
 
 -spec set_from_tag(ne_binary(), call()) -> call().
-set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->    
+set_from_tag(FromTag, #whapps_call{}=Call) when is_binary(FromTag) ->
     Call#whapps_call{from_tag=FromTag}.
 
 -spec from_tag(call()) -> ne_binary().

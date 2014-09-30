@@ -34,9 +34,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(start_link() ->
-    {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
+             {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 -spec new(wh_json:object()) -> sup_startchild_ret().
 new(JObj) -> supervisor:start_child(?MODULE, [JObj]).

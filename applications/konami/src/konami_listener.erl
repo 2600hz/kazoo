@@ -28,9 +28,7 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'dialplan', ['metaflow']}
-                   %%,{'call', [{'restrict_to', ['CHANNEL_CREATE']}]}
-                  ]).
+-define(BINDINGS, [{'dialplan', ['metaflow']}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_metaflow'}
                       ,[{<<"call">>, <<"command">>}]
                      }

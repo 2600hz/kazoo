@@ -593,11 +593,13 @@ build_matchspec_ors_fold(Username, Acc) ->
 query_channels(Fields, 'undefined') ->
     query_channels(ets:match_object(?CHANNELS_TBL, #channel{_='_'}, 1)
                    ,Fields
-                   ,wh_json:new());
+                   ,wh_json:new()
+                  );
 query_channels(Fields, CallId) ->
     query_channels(ets:match_object(?CHANNELS_TBL, #channel{uuid=CallId, _='_'}, 1)
                    ,Fields
-                   ,wh_json:new()).
+                   ,wh_json:new()
+                  ).
 
 -spec query_channels({[channel()], ets:continuation()}, ne_binary() | ne_binaries(), wh_json:object()) ->
                             wh_json:object().

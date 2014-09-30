@@ -49,7 +49,7 @@
 -record(media_map, {id :: ne_binary() %% account/prompt-id
                     ,account_id :: ne_binary()
                     ,prompt_id :: ne_binary()
-                    ,languages = wh_json:object() :: wh_json:object() %% {"lang1":"path1", "lang2":"path2"}
+                    ,languages = wh_json:new() :: wh_json:object() %% {"lang1":"path1", "lang2":"path2"}
                    }).
 -type media_map() :: #media_map{}.
 

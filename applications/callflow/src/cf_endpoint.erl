@@ -443,8 +443,8 @@ should_create_endpoint([Routine|Routines], Endpoint, Properties, Call) when is_f
     end.
 
 -spec maybe_owner_called_self(wh_json:object(), wh_json:object(),  whapps_call:call()) ->
-                                           'ok' |
-                                           {'error', 'owner_called_self'}.
+                                     'ok' |
+                                     {'error', 'owner_called_self'}.
 maybe_owner_called_self(Endpoint, Properties, Call) ->
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     EndpointOwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
@@ -461,8 +461,8 @@ maybe_owner_called_self(Endpoint, Properties, Call) ->
     end.
 
 -spec maybe_endpoint_called_self(wh_json:object(), wh_json:object(),  whapps_call:call()) ->
-                                              'ok' |
-                                              {'error', 'endpoint_called_self'}.
+                                        'ok' |
+                                        {'error', 'endpoint_called_self'}.
 maybe_endpoint_called_self(Endpoint, Properties, Call) ->
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     AuthorizingId = whapps_call:authorizing_id(Call),
@@ -728,8 +728,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          | maybe_get_t38(Endpoint, Call)
         ])).
 
-
--spec maybe_get_t38(wh_json:object(), wh_json:object()) -> wh_proplist().
+-spec maybe_get_t38(wh_json:object(), whapps_call:call()) -> wh_proplist().
 maybe_get_t38(Endpoint, Call) ->
     Opt =
         case cf_endpoint:get(Call) of
@@ -741,11 +740,10 @@ maybe_get_t38(Endpoint, Call) ->
         'false' -> [];
         'true' ->
             whapps_call_command:get_inbound_t38_settings(
-                Opt
-                ,wh_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
-            )
+              Opt
+              ,wh_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
+             )
     end.
-
 
 -spec maybe_build_failover(wh_json:object(), whapps_call:call()) -> api_object().
 maybe_build_failover(Endpoint, Call) ->
@@ -798,7 +796,6 @@ create_skype_endpoint(Endpoint, Properties, _Call) ->
          ,{<<"Endpoint-Options">>, wh_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
-
 
 %%--------------------------------------------------------------------
 %% @private

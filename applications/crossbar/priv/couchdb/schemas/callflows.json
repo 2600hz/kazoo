@@ -63,7 +63,7 @@
           "name": "Module Name",
           "description": "The name of the callflow module to excute at this node",
           "minLength": 1,
-          "maxLength": 15
+          "maxLength": 64
         },
         "data": {
           "type": "object",

@@ -9,7 +9,9 @@
 -module(whistle_maintenance).
 
 -export([nodes/0]).
--export([hotload/1]).
+-export([hotload/1
+         ,hotload_app/1
+        ]).
 -export([syslog_level/1
          ,error_level/1
          ,console_level/1
@@ -47,7 +49,7 @@ nodes() ->
 hotload(Module) when is_atom(Module) ->
     _ = code:soft_purge(Module),
     case code:load_file(Module) of
-        {'module', _} -> 'ok';          
+        {'module', _} -> 'ok';
         {'error' , Reason} ->
             io:format("ERROR: unable to hotload ~s: ~s~n", [Module, Reason]),
             'no_return'
@@ -55,6 +57,17 @@ hotload(Module) when is_atom(Module) ->
 hotload(Module) ->
     hotload(wh_util:to_atom(Module, 'true')).
 
+hotload_app(App) when is_atom(App) ->
+    case application:get_key(App, 'modules') of
+        {'ok', Modules} ->
+            io:format("found ~b modules to reload for ~s~n", [length(Modules), App]),
+            [hotload(Module) || Module <- Modules],
+            io:format("app ~s modules reloaded~n", [App]);
+        'undefined' ->
+            io:format("app ~s not found (is it running? typo?)~n", [App])
+    end;
+hotload_app(App) ->
+    hotload_app(wh_util:to_atom(App, 'true')).
 
 gc_all() ->
     gc_pids(processes()).
@@ -84,4 +97,3 @@ ibrowse_cleanup(K, P) ->
         true -> ok;
         false -> ets:delete(ibrowse_stream, K)
     end.
-            

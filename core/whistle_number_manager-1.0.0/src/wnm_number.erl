@@ -155,15 +155,17 @@ get(Number, PublicFields) ->
                         end
                 end
                 ,fun(#number{number_db=Db}=N) ->
-                         case couch_mgr:open_doc(Db, Num) of
+                         case couch_mgr:open_cache_doc(Db, Num, [{'cache_failures', ['not_found']}]) of
                              {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
                              {'error', 'not_found'} ->
                                  lager:debug("unable to find number ~s/~s"
-                                             ,[Db, Num]),
+                                             ,[Db, Num]
+                                            ),
                                  error_number_not_found(N);
                              {'error', Reason} ->
                                  lager:debug("unable to retrieve number ~s/~s: ~p"
-                                             ,[Db, Num, Reason]),
+                                             ,[Db, Num, Reason]
+                                            ),
                                  error_number_database(Reason, N)
                          end
                  end
@@ -818,7 +820,7 @@ delete_number_doc(#number{number_db=Db
                                                     {'ok', wh_json:object()} |
                                                     {'error', _}.
 resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
-    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'error', _R}=E ->
             lager:info("failed to resolve phone numbers conflict in account ~s: ~p", [AccountDb, _R]),
             E;
@@ -1094,7 +1096,7 @@ load_phone_number_doc(Account, 'false') ->
             ,{<<"pvt_type">>, ?WNM_PHONE_NUMBER_DOC}
             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
            ],
-    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {'ok', J} ->
             lager:debug("loaded phone_numbers from ~s", [AccountId]),
             {'ok', wh_json:set_values(PVTs, J)};

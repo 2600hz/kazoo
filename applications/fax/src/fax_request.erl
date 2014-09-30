@@ -299,16 +299,38 @@ maybe_update_fax_settings(#state{call=Call
             maybe_update_fax_settings_from_account(State)
     end;
 maybe_update_fax_settings(#state{call=Call
-                                ,faxbox_id=FaxBoxId}=State) ->
+                                 ,faxbox_id=FaxBoxId
+                                }=State) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, FaxBoxId) of
         {'ok', JObj} ->
             update_fax_settings(Call, JObj),
-            Notify = wh_json:get_value([<<"notifications">>,<<"inbound">>], JObj),
+            Notify = get_faxbox_notify_list(JObj, AccountDb),
             State#state{fax_notify=Notify};
         {'error', _} -> maybe_update_fax_settings_from_account(State)
     end.
 
+-spec get_faxbox_notify_list(wh_json:object(), ne_binary()) -> wh_json:object().
+get_faxbox_notify_list(FaxBoxDoc, AccountDb) ->
+    DefaultNotify = wh_json:get_value([<<"notifications">>,<<"inbound">>], FaxBoxDoc),
+    case wh_json:get_value(<<"owner_id">>, FaxBoxDoc) of
+        'undefined' -> DefaultNotify;
+        OwnerId -> 
+            case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+                {'ok', UserDoc} -> 
+                    List = wh_json:get_value([<<"email">>,<<"send_to">>], DefaultNotify, []),
+                    maybe_add_owner_to_notify_list(List, wh_json:get_value(<<"email">>, UserDoc));
+                _ -> 
+                    DefaultNotify
+            end
+    end.
+
+-spec maybe_add_owner_to_notify_list(list(), api_binary()) -> wh_json:object().
+maybe_add_owner_to_notify_list(List, 'undefined') ->
+    wh_json:set_value([<<"email">>, <<"send_to">>], List, wh_json:new());
+maybe_add_owner_to_notify_list(List, OwnerEmail) ->
+    NotifyList = fax_util:notify_email_list('undefined', OwnerEmail, List),
+    wh_json:set_value([<<"email">>, <<"send_to">>], NotifyList, wh_json:new()).
 
 -spec maybe_update_fax_settings_from_account(state()) -> any().
 maybe_update_fax_settings_from_account(#state{call=Call}=State) ->

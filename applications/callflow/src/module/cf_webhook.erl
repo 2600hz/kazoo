@@ -24,17 +24,16 @@ handle(Data, Call) ->
     spawn(?MODULE, 'handle_webhook', [Data, Call]),
     cf_exe:continue(Call).
 
-
 -spec handle_webhook(wh_json:object(), whapps_call:call()) -> 'ok' | {'error', any()}.
 handle_webhook(Data, Call) ->
     CallJObj = format_call_data(Call),
     Hook = set_hook(Data, CallJObj),
-    JObj = wh_json:from_list([
-                {<<"Hook">>, Hook}
-                ,{<<"Timestamp">>, wh_util:current_tstamp()}
-                ,{<<"Data">>, CallJObj}
-                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ]),
+    JObj = wh_json:from_list(
+             [{<<"Hook">>, Hook}
+              ,{<<"Timestamp">>, wh_util:current_tstamp()}
+              ,{<<"Data">>, CallJObj}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
     whapps_util:amqp_pool_send(JObj, fun wapi_notifications:publish_webhook/1).
 
 -spec format_call_data(whapps_call:call()) -> wh_json:object().
@@ -51,16 +50,13 @@ format_call_data(Call) ->
 set_hook(Data, CallJObj) ->
     Now = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
     wh_json:from_list(
-        props:filter_undefined([
-            {<<"_id">>, wh_util:to_binary(Now)}
-            ,{<<"uri">>, wh_json:get_value(<<"uri">>, Data)}
-            ,{<<"hook">>, <<"callflow">>}
-            ,{<<"http_verb">>, wh_json:get_value(<<"http_verb">>, Data)}
-            ,{<<"retries">>, wh_json:get_value(<<"retries">>, Data)}
-            ,{<<"pvt_account_id">>, wh_json:get_value(<<"account_id">>, CallJObj)}
-            ,{<<"custom_data">>, wh_json:get_value(<<"custom_data">>, Data)}
-        ])
-    ).
-
-
-
+        props:filter_undefined(
+          [{<<"_id">>, wh_util:to_binary(Now)}
+           ,{<<"uri">>, wh_json:get_value(<<"uri">>, Data)}
+           ,{<<"hook">>, <<"callflow">>}
+           ,{<<"http_verb">>, wh_json:get_value(<<"http_verb">>, Data)}
+           ,{<<"retries">>, wh_json:get_value(<<"retries">>, Data)}
+           ,{<<"pvt_account_id">>, wh_json:get_value(<<"account_id">>, CallJObj)}
+           ,{<<"custom_data">>, wh_json:get_value(<<"custom_data">>, Data)}
+          ])
+     ).

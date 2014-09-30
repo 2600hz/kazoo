@@ -238,6 +238,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     OwnerId = wh_json:get_value(<<"ownerId">>, Job),
+    FaxBoxUserEmail = wh_json:get_value(<<"owner_email">>, FaxBoxDoc),
 
     FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>
                                            ,<<"outbound">>
@@ -253,17 +254,17 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                                       ,<<"email">>
                                       ,<<"send_to">>
                                      ]
-                                     ,lists:usort([OwnerId | FaxBoxEmailNotify])
+                                     ,fax_util:notify_email_list(OwnerId, FaxBoxUserEmail, FaxBoxEmailNotify)
                                      ,FaxBoxDoc
                                     ),
 
     Notify = wh_json:get_value([<<"notifications">>,<<"outbound">>],FaxBoxNotify),
     Props = props:filter_undefined(
               [{<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
-               ,{<<"fax_identity_name">>, wh_json:get_value(<<"caller_name">>, FaxBoxDoc)}
                ,{<<"from_number">>,wh_json:get_value(<<"caller_id">>,FaxBoxDoc)}
-               ,{<<"fax_identity_number">>, wh_json:get_value(<<"caller_id">>, FaxBoxDoc)}
-               ,{<<"fax_timezone">>, wh_json:get_value(<<"timezone">>, FaxBoxDoc)}
+               ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_identity_name">>, FaxBoxDoc)}
+               ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity_number">>, FaxBoxDoc)}
+               ,{<<"fax_timezone">>, wh_json:get_value(<<"fax_timezone">>, FaxBoxDoc)}
                ,{<<"to_name">>,FaxNumber}
                ,{<<"to_number">>,FaxNumber}
                ,{<<"retries">>,wh_json:get_value(<<"retries">>,FaxBoxDoc,3)}
@@ -297,9 +298,28 @@ get_faxbox_doc(PrinterId) ->
             case couch_mgr:get_results(?WH_FAXES, <<"faxbox/cloud">>, ViewOptions) of
                 {'ok', JObjs} ->
                     [Doc] = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
-                    wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, Doc),
-                    {'ok', Doc};
+                    FaxBoxDoc = maybe_get_faxbox_owner_email(Doc),
+                    wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc),
+                    {'ok', FaxBoxDoc};
                 {'error', _}=E -> E
+            end
+    end.
+
+-spec maybe_get_faxbox_owner_email(wh_json:object()) -> wh_json:object().
+maybe_get_faxbox_owner_email(FaxBoxDoc) ->
+    case wh_json:get_value(<<"owner_id">>, FaxBoxDoc) of
+        'undefined' -> FaxBoxDoc;
+        OwnerId ->
+            AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
+            AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+            case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
+                {'ok', OwnerDoc} ->
+                    case wh_json:get_value(<<"email">>, OwnerDoc) of
+                        'undefined' -> FaxBoxDoc;
+                        OwnerEmail -> wh_json:set_value(<<"owner_email">>, OwnerEmail, FaxBoxDoc)
+                    end;
+                _ ->
+                    FaxBoxDoc
             end
     end.
 

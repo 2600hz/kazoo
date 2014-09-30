@@ -7,24 +7,33 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
+-ifndef(WAPI_DIALPLAN_HRL).
 -include_lib("whistle/include/wh_api.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
-
--spec terminators_v(api_binaries() | binary()) -> boolean().
--spec terminator_v(ne_binary()) -> boolean().
-terminators_v(Ts) when is_list(Ts) ->
-    lists:all(fun terminator_v/1, Ts);
-terminators_v(<<>>) -> 'true';
-terminators_v(<<"none">>) -> 'true';
-terminators_v(_) -> 'false'.
-
-terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
-
+%% For dialplan messages, what does the Invite-Format param accept as values?
+-define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>
+                              ,[<<"username">>, <<"e164">>
+                                ,<<"npan">>, <<"1npan">>
+                                ,<<"route">>, <<"loopback">>
+                               ]
+                             }).
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
--define(IS_TERMINATOR, fun terminators_v/1).
+-define(IS_TERMINATOR, fun wapi_dialplan:terminators_v/1).
+
+-define(UNBRIDGE_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>]).
+-define(OPTIONAL_UNBRIDGE_REQ_HEADERS, [<<"Insert-At">>
+                                        ,<<"Leg">>
+                                       ]).
+-define(UNBRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"unbridge">>}
+                              ,{<<"Leg">>, [<<"A">>, <<"B">>, <<"Both">>]}
+                              ,?INSERT_AT_TUPLE
+                             ]).
+-define(UNBRIDGE_REQ_TYPES, []).
 
 -define(DIAL_METHOD_SINGLE, <<"single">>).
 -define(DIAL_METHOD_SIMUL, <<"simultaneous">>).
@@ -330,7 +339,7 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 %% Park
 -define(PARK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>, <<"Timeout">>, <<"Hangup-Cause">>]).
 -define(PARK_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"park">>}
@@ -378,6 +387,7 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
                                            ,<<"Other-Leg">>
                                            ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
                                            ,<<"Park-After-Pickup">> %% Will park either leg after cancel
+                                           ,<<"Hangup-After-Pickup">>
                                            ,<<"Move-Channel-If-Necessary">>
                                           ]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
@@ -386,6 +396,26 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
                                  ,?INSERT_AT_TUPLE
                                 ]).
 -define(CALL_PICKUP_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}
+                                ,{<<"Hangup-After-Pickup">>, fun wh_util:is_boolean/1}
+                                ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
+                               ]).
+
+%% Call Pickup
+-define(CONNECT_LEG_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Target-Call-ID">>]).
+-define(OPTIONAL_CONNECT_LEG_REQ_HEADERS, [<<"Insert-At">>, <<"Unbridged-Only">>, <<"Unanswered-Only">>
+                                           ,<<"Other-Leg">>
+                                           ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
+                                           ,<<"Park-After-Pickup">> %% Will park either leg after cancel
+                                           ,<<"Hangup-After-Pickup">>
+                                           ,<<"Move-Channel-If-Necessary">>
+                                          ]).
+-define(CONNECT_LEG_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                                 ,{<<"Event-Name">>, <<"command">>}
+                                 ,{<<"Application-Name">>, <<"connect_leg">>}
+                                 ,?INSERT_AT_TUPLE
+                                ]).
+-define(CONNECT_LEG_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}
+                                ,{<<"Hangup-After-Pickup">>, fun wh_util:is_boolean/1}
                                 ,{<<"Move-Channel-If-Necessary">>, fun wh_util:is_boolean/1}
                                ]).
 
@@ -629,3 +659,6 @@ terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
                                  ,?INSERT_AT_TUPLE
                                 ]).
 -define(FAX_DETECTION_REQ_TYPES, []).
+
+-define(WAPI_DIALPLAN_HRL, 'true').
+-endif.

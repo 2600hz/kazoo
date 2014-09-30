@@ -1,4 +1,4 @@
-/*                                                                                                                                                                                                                                                                                                 
+/*
 Section: Pivot
 Title: Pivot
 Language: en-US

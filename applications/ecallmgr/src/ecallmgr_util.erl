@@ -115,7 +115,8 @@ send_cmd(Node, _UUID, "broadcast", Args) ->
     Resp = freeswitch:api(Node, 'uuid_broadcast', wh_util:to_list(iolist_to_binary(Args))),
     lager:debug("broadcast resulted in: ~p", [Resp]),
     Resp;
-send_cmd(Node, _UUID, "call_pickup", Args) ->
+send_cmd(Node, UUID, "call_pickup", Target) ->
+    Args = iolist_to_binary([UUID, " ", Target]),
     lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
     freeswitch:api(Node, 'uuid_bridge', wh_util:to_list(Args));
 send_cmd(Node, UUID, "hangup", _) ->
@@ -125,6 +126,9 @@ send_cmd(Node, UUID, "conference", Args) ->
     Args1 = iolist_to_binary([UUID, " conference:", Args, ",park inline"]),
     lager:debug("starting conference on ~s: ~s", [Node, Args1]),
     freeswitch:api(Node, 'uuid_transfer', wh_util:to_list(Args1));
+send_cmd(Node, _UUID, "transfer", Args) ->
+    lager:debug("transfering on ~s: ~s", [Node, Args]),
+    freeswitch:api(Node, 'uuid_transfer', wh_util:to_list(Args));
 send_cmd(Node, UUID, AppName, Args) ->
     Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                              ,{"execute-app-name", AppName}
@@ -385,6 +389,7 @@ set(Node, UUID, [{_, _}|_]=Props) ->
                            end, [], Props),
     ecallmgr_fs_command:set(Node, UUID, Multiset).
 
+set_fold(_Node, _UUID, {_Key, 'undefined'}, Acc) -> Acc;
 set_fold(Node, UUID, {<<"Hold-Media">>, Value}, Acc) ->
     Media = media_path(Value, 'extant', UUID, wh_json:new()),
     AppArg = wh_util:to_list(<<"hold_music=", Media/binary>>),
@@ -497,6 +502,7 @@ endpoint_jobjs_to_records([Endpoint|Endpoints], IncludeVars, BridgeEndpoints) ->
                                       ,[{Key, BridgeEndpoint}|BridgeEndpoints])
     end.
 
+-spec endpoint_key(wh_json:object()) -> api_binaries().
 endpoint_key(Endpoint) ->
     [wh_json:get_value(<<"Invite-Format">>, Endpoint)
      ,wh_json:get_value(<<"To-User">>, Endpoint)
@@ -563,6 +569,11 @@ build_bridge_channels(Endpoints) ->
 -spec build_bridge_channels(bridge_endpoints(), build_returns()) -> bridge_channels().
 %% If the Invite-Format is "route" then we have been handed a sip route, do that now
 build_bridge_channels([#bridge_endpoint{invite_format = <<"route">>}=Endpoint|Endpoints], Channels) ->
+    case build_channel(Endpoint) of
+        {'error', _} -> build_bridge_channels(Endpoints, Channels);
+        {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
+    end;
+build_bridge_channels([#bridge_endpoint{invite_format = <<"loopback">>}=Endpoint|Endpoints], Channels) ->
     case build_channel(Endpoint) of
         {'error', _} -> build_bridge_channels(Endpoints, Channels);
         {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
@@ -676,6 +687,8 @@ maybe_failover(Endpoint) ->
 
 -spec get_sip_contact(bridge_endpoint()) -> ne_binary().
 get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) -> Route;
+get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) ->
+    <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
 get_sip_contact(#bridge_endpoint{ip_address='undefined'
                                  ,realm=Realm
                                  ,username=Username
@@ -689,11 +702,15 @@ maybe_clean_contact(<<"sip:", Contact/binary>>, Endpoint) ->
     maybe_clean_contact(Contact, Endpoint);
 maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
+maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
+    Contact;
 maybe_clean_contact(Contact, _) ->
     re:replace(Contact, <<"^.*?[^=]sip:">>, <<>>, [{'return', 'binary'}]).
 
 -spec ensure_username_present(ne_binary(), bridge_endpoint()) -> ne_binary().
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
+    Contact;
+ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
     Contact;
 ensure_username_present(Contact, Endpoint) ->
     case binary:split(Contact, <<"@">>) of

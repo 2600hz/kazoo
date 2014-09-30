@@ -175,6 +175,7 @@
                                ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
                                ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
                                ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
+                               ,{<<"failure_causes">>, <<"failure_causes">>}
                                ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
                                ,{<<"Endpoint-Progress-Timeout">>, <<"leg_progress_timeout">>}
                                ,{<<"Endpoint-Delay">>, <<"leg_delay_start">>}
@@ -234,6 +235,7 @@
                                ,{<<"park_after_pickup">>, <<"park_after_bridge">>}
                                ,{<<"Transfer-After-Pickup">>, <<"transfer_after_bridge">>}
                                ,{<<"Hangup-After-Pickup">>, <<"hangup_after_bridge">>}
+                               ,{<<"hangup_after_pickup">>, <<"hangup_after_bridge">>}
                                ,{<<"continue_on_fail">>, <<"continue_on_fail">>}
                                ,{<<"continue_on_cancel">>, <<"continue_on_cancel">>}
                                ,{<<"Unbridged-Only">>, <<"intercept_unbridged_only">>}
