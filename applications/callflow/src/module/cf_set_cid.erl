@@ -2,6 +2,10 @@
 %%% @copyright (C) 2010-2013, 2600Hz
 %%% @doc
 %%%
+%%% params:
+%%% caller_id_name & caller_id_number
+%%%
+%%% if one of them is empty then module will restore original values
 %%%
 %%% @end
 %%% @contributors
