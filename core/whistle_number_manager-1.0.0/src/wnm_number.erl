@@ -269,10 +269,13 @@ save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
 
 -spec set_locality(wh_json:object(), wnm_number()) -> wh_json:object().
 set_locality(JObj, #number{number=Num}) ->
-    case wh_json:get_value([<<"pvt_module_data">>, Num, <<"locality">>], JObj) of
+    case wh_json:get_first_defined([<<"locality">>
+                                    ,[<<"pvt_module_data">>, <<"locality">>]
+                                    ,[<<"pvt_module_data">>, Num, <<"locality">>]
+                                   ], JObj)
+    of
         'undefined' -> JObj;
-        Loc ->
-            wh_json:set_value(<<"locality">>, Loc, JObj)
+        Loc -> wh_json:set_value(<<"locality">>, Loc, JObj)
     end.
 
 %%--------------------------------------------------------------------
