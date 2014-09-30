@@ -29,6 +29,14 @@
 handle(Data, Call) ->
     whapps_call_command:answer(Call),
 
+    AlreadyCollected =
+        case whapps_call:get_dtmf_collection(Call) of
+            'undefined' -> <<>>;
+            <<_/binary>> = D ->
+                _ = cf_exe:set_call(whapps_call:set_dtmf_collection('undefined', Call)),
+                D
+        end,
+
     _ = case whapps_call_command:collect_digits(max_digits(Data)
                                                 ,collect_timeout(Data)
                                                 ,interdigit(Data)
@@ -38,13 +46,12 @@ handle(Data, Call) ->
                                                )
         of
             {'ok', Ds} ->
-                Collections = whapps_call:kvs_fetch(<<"dtmf_collections">>, wh_json:new(), Call),
+                CollectionName = collection_name(Data),
+                lager:debug("collected ~s~s for ~s", [AlreadyCollected, Ds, CollectionName]),
+
                 cf_exe:set_call(
-                  whapps_call:kvs_store(
-                    <<"dtmf_collections">>
-                    ,wh_json:set_value(collection_name(Data), Ds, Collections)
-                    ,Call
-                   ));
+                  whapps_call:set_dtmf_collection(CollectionName, <<AlreadyCollected/binary, Ds/binary>>, Call)
+                 );
             {'error', _E} ->
                 lager:debug("failed to collect DTMF: ~p", [_E])
         end,
