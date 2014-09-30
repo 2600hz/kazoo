@@ -247,7 +247,7 @@ put(Context) ->
     try create_new_account_db(prepare_context(AccountId, Context)) of
         C ->
             Tree = wh_json:get_value(<<"pvt_tree">>, JObj),
-            _ = spawn('crossbar_util', 'descendants_count', [lists:last(Tree)]),
+            _ = maybe_update_descendants_count(Tree),
             leak_pvt_fields(C)
     catch
         'throw':C ->
@@ -281,9 +281,19 @@ delete(Context, Account) ->
         'true' ->
             Context1 = delete_remove_services(prepare_context(Context, AccountId, AccountDb)),
             Tree = wh_json:get_value(<<"pvt_tree">>, cb_context:doc(Context1)),
-            _ = spawn('crossbar_util', 'descendants_count', [lists:last(Tree)]),
+            _ = maybe_update_descendants_count(Tree),
             Context1
     end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_update_descendants_count(ne_binaries()) -> 'ok'.
+maybe_update_descendants_count([]) -> 'ok';
+maybe_update_descendants_count(Tree) ->
+    _ = spawn('crossbar_util', 'descendants_count', [lists:last(Tree)]),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
