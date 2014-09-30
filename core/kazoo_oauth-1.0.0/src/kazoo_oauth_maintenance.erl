@@ -25,13 +25,13 @@ register_oauth_app(AccountId, OAuthId, EMail, Secret, Provider) ->
           ,{<<"pvt_oauth_provider">>, Provider}
           ,{<<"pvt_type">>, <<"app">>}
           ]),
-    case couch_mgr:open_doc(?OAUTH_DB, OAuthId) of
+    case couch_mgr:open_doc(?KZ_OAUTH_DB, OAuthId) of
         {'ok', _JObj} ->
             {'error', <<"already registered">>};
         {'error', _} ->
-            couch_mgr:save_doc(?OAUTH_DB, Doc)
+            couch_mgr:save_doc(?KZ_OAUTH_DB, Doc)
     end.
 
 -spec register_common_providers() -> 'ok'.
 register_common_providers() ->
-    couch_mgr:load_doc_from_file(?OAUTH_DB, 'kazoo_oauth', <<"google.json">>).
+    couch_mgr:load_doc_from_file(?KZ_OAUTH_DB, 'kazoo_oauth', <<"google.json">>).
