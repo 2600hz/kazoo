@@ -50,7 +50,7 @@ handle(Data, Call) ->
                 lager:debug("collected ~s~s for ~s", [AlreadyCollected, Ds, CollectionName]),
 
                 cf_exe:set_call(
-                  whapps_call:set_dtmf_collection(CollectionName, <<AlreadyCollected/binary, Ds/binary>>, Call)
+                  whapps_call:set_dtmf_collection(<<AlreadyCollected/binary, Ds/binary>>, CollectionName, Call)
                  );
             {'error', _E} ->
                 lager:debug("failed to collect DTMF: ~p", [_E])
