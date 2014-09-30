@@ -215,10 +215,15 @@ refresh(?KZ_TOKEN_DB) ->
     _ = couch_mgr:db_create(?KZ_TOKEN_DB),
     couch_mgr:revise_doc_from_file(?KZ_TOKEN_DB, 'crossbar', "views/token_auth.json"),
     'ok';
+refresh(?KZ_OAUTH_DB) ->
+    couch_mgr:db_create(?KZ_OAUTH_DB),
+    'ok';
 refresh(Database) when is_binary(Database) ->
     case couch_util:db_classification(Database) of
         'account' -> refresh_account_db(Database);
         'modb' -> kazoo_modb:refresh_views(Database);
+        'system' -> couch_mgr:db_create(Database),
+                    'ok';
         _Else -> 'ok'
     end.
 
