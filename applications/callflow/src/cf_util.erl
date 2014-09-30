@@ -856,13 +856,15 @@ sip_user_from_device_id(EndpointId, Call) ->
             wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
     end.
 
--spec wait_for_noop(whapps_call:call(), ne_binary()) -> {'ok', whapps_call:call()}.
+-spec wait_for_noop(whapps_call:call(), ne_binary()) ->
+                           {'ok', whapps_call:call()} |
+                           {'error', 'channel_destroy' | wh_json:object()}.
 wait_for_noop(Call, NoopId) ->
     case whapps_call_command:receive_event(?MILLISECONDS_IN_DAY) of
         {'ok', JObj} ->
             process_event(Call, NoopId, JObj);
         {'error', 'timeout'} ->
-            lager:debug("timed out waiting for tts(~s) to complete", [NoopId]),
+            lager:debug("timed out waiting for noop(~s) to complete", [NoopId]),
             {'ok', Call}
     end.
 
@@ -878,7 +880,7 @@ process_event(Call, NoopId, JObj) ->
             lager:debug("channel execution error while waiting for ~s: ~s", [NoopId, wh_json:encode(JObj)]),
             {'error', JObj};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
-            lager:debug("tts has finished"),
+            lager:debug("noop has returned"),
             {'ok', Call};
         {<<"call_event">>, <<"DTMF">>, _} ->
             DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
