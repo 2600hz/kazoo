@@ -290,7 +290,6 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                             {'ok', wh_json:object()} |
                             {'error', any()}.
 get_faxbox_doc(PrinterId) ->
-    wh_cache:flush_local(?FAX_CACHE),
     case wh_cache:peek_local(?FAX_CACHE, {'faxbox', PrinterId }) of
         {'ok', _Doc}=OK -> OK;
         {'error', _} ->

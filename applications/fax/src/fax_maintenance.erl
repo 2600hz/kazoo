@@ -14,6 +14,7 @@
 %% API functions
 %% ====================================================================
 -export([migrate/0, migrate/1]).
+-export([flush/0]).
 
 -spec migrate() -> 'ok'.
 migrate() ->
@@ -160,3 +161,13 @@ migrate_fax_to_modb(AccountDb, DocId, JObj) ->
         {'ok', _JObj} -> io:format("document ~s moved to ~s~n",[DocId, FaxId]);
         {'error', Error} -> io:format("error ~p moving document ~s to ~s~n",[Error, DocId, FaxId])
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Flush the fax local cache
+%% @end
+%%--------------------------------------------------------------------
+-spec flush() -> 'ok'.
+flush() -> wh_cache:flush_local(?FAX_CACHE).
+
