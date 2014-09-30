@@ -530,7 +530,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
              ,{<<"call_id">>, whapps_call:call_id(Call)}
              ,{<<"cdr_doc_id">>, CdrId}
              ,{<<"_id">>, FaxDocId}
-             ,{<<"rx_results">>,
+             ,{<<"rx_result">>,
                wh_json:from_list(
                  fax_util:fax_properties(
                    wh_json:get_value(<<"Application-Data">>, JObj)))}
