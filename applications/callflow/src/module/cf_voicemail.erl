@@ -1454,6 +1454,7 @@ store_recording(AttachmentName, DocId, Call) ->
     _ = whapps_call_command:b_store(AttachmentName
                                     ,get_new_attachment_url(AttachmentName, DocId, Call)
                                     ,Call),
+    timer:sleep(5000),
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
