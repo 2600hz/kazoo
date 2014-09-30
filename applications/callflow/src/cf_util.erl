@@ -55,6 +55,8 @@
          ,check_value_of_fields/4
         ]).
 
+-export([wait_for_noop/2]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -852,6 +854,40 @@ sip_user_from_device_id(EndpointId, Call) ->
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
             wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
+    end.
+
+-spec wait_for_noop(whapps_call:call(), ne_binary()) ->
+                           {'ok', whapps_call:call()} |
+                           {'error', 'channel_destroy' | wh_json:object()}.
+wait_for_noop(Call, NoopId) ->
+    case whapps_call_command:receive_event(?MILLISECONDS_IN_DAY) of
+        {'ok', JObj} ->
+            process_event(Call, NoopId, JObj);
+        {'error', 'timeout'} ->
+            lager:debug("timed out waiting for noop(~s) to complete", [NoopId]),
+            {'ok', Call}
+    end.
+
+-spec process_event(whapps_call:call(), ne_binary(), wh_json:object()) ->
+                           {'ok', whapps_call:call()} |
+                           {'error', _}.
+process_event(Call, NoopId, JObj) ->
+    case whapps_call_command:get_event_type(JObj) of
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+            lager:debug("channel was destroyed"),
+            {'error', 'channel_destroy'};
+        {<<"error">>, _, <<"noop">>} ->
+            lager:debug("channel execution error while waiting for ~s: ~s", [NoopId, wh_json:encode(JObj)]),
+            {'error', JObj};
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
+            lager:debug("noop has returned"),
+            {'ok', Call};
+        {<<"call_event">>, <<"DTMF">>, _} ->
+            DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
+            lager:debug("recv DTMF ~s, adding to default", [DTMF]),
+            wait_for_noop(whapps_call:add_to_dtmf_collection(DTMF, Call), NoopId);
+        _Ignore ->
+            wait_for_noop(Call, NoopId)
     end.
 
 -ifdef(TEST).

@@ -21,6 +21,7 @@
 
 -export([relay_event/2, relay_event/3
          ,receive_event/1, receive_event/2
+         ,get_event_type/1
         ]).
 
 -export([audio_macro/2]).
@@ -1115,7 +1116,7 @@ play_command(Media, Terminators, Leg, Call) ->
 
 -spec play_terminators(api_binaries()) -> ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
-play_terminators(Ts) -> Ts.
+play_terminators(Ts) -> lists:usort(Ts).
 
 -spec play_leg(api_binary()) -> api_binary().
 play_leg('undefined') -> 'undefined';

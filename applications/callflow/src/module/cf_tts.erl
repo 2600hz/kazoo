@@ -25,17 +25,19 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    %% Data is the "data" object from the JSON payload
-    %% Call is the current whapps_call record
+    whapps_call_command:answer(Call),
 
-    _ = whapps_call_command:b_tts(
-          wh_json:get_value(<<"text">>, Data)
-          ,wh_json:get_value(<<"voice">>, Data)
-          ,wh_json:get_value(<<"language">>, Data)
-          ,?ANY_DIGIT
-          ,wh_json:get_value(<<"engine">>, Data)
-          ,Call
-         ),
+    NoopId = whapps_call_command:tts(
+               wh_json:get_value(<<"text">>, Data)
+               ,wh_json:get_value(<<"voice">>, Data)
+               ,wh_json:get_value(<<"language">>, Data)
+               ,?ANY_DIGIT
+               ,wh_json:get_value(<<"engine">>, Data)
+               ,Call
+              ),
+
+    {'ok', Call1} = cf_util:wait_for_noop(Call, NoopId),
 
     %% Give control back to cf_exe process
-    cf_exe:continue(Call).
+    cf_exe:set_call(Call1),
+    cf_exe:continue(Call1).

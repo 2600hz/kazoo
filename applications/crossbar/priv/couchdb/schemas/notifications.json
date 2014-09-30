@@ -18,7 +18,7 @@
                     "name": "Type",
                     "description": "",
                     "minLength": 2,
-                    "maxLength": 253,
+                    "maxLength": 253
                 },
                 "email_addresses": {
                     "type": "string",
@@ -45,7 +45,7 @@
                     "name": "Type",
                     "description": "",
                     "minLength": 2,
-                    "maxLength": 253,
+                    "maxLength": 253
                 },
                 "email_addresses": {
                     "type": "string",
@@ -97,6 +97,6 @@
             "description": "",
             "properties": {},
             "default": {}
-        },
+        }
     }
 }
