@@ -27,18 +27,19 @@
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-
-    {'ok', Ds} =
-        whapps_call_command:collect_digits(max_digits(Data)
-                                           ,collect_timeout(Data)
-                                           ,interdigit(Data)
-                                           ,'undefined'
-                                           ,terminators(Data)
-                                           ,Call
-                                          ),
-
-    %% Give control back to cf_exe process
-    cf_exe:set_call(whapps_call:kvs_store([<<"dtmf_collections">>, collection_name(Data)], Ds, Call)),
+    _ = case whapps_call_command:collect_digits(max_digits(Data)
+                                                ,collect_timeout(Data)
+                                                ,interdigit(Data)
+                                                ,'undefined'
+                                                ,terminators(Data)
+                                                ,Call
+                                               )
+        of
+            {'ok', Ds} ->
+                cf_exe:set_call(whapps_call:kvs_store([<<"dtmf_collections">>, collection_name(Data)], Ds, Call));
+            {'error', _E} ->
+                lager:debug("failed to collect DTMF: ~p", [_E])
+        end,
     cf_exe:continue(Call).
 
 -spec collection_name(wh_json:object()) -> ne_binary().
@@ -78,5 +79,5 @@ terminators(Data) ->
             [T];
         [_|_] = Ts ->
             'true' = lists:all(fun(T) -> lists:member(T, ?ANY_DIGIT) end, Ts),
-            Ts
+            lists:usort(Ts)
     end.
