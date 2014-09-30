@@ -1116,7 +1116,7 @@ play_command(Media, Terminators, Leg, Call) ->
 
 -spec play_terminators(api_binaries()) -> ne_binaries().
 play_terminators('undefined') -> ?ANY_DIGIT;
-play_terminators(Ts) -> Ts.
+play_terminators(Ts) -> lists:usort(Ts).
 
 -spec play_leg(api_binary()) -> api_binary().
 play_leg('undefined') -> 'undefined';
