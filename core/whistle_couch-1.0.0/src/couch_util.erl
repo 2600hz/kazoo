@@ -124,7 +124,11 @@ db_classification(<<"dedicated_ips">>) -> 'system';
 db_classification(<<"system_config">>) -> 'system';
 db_classification(<<"system_media">>) -> 'system';
 db_classification(<<"system_schemas">>) -> 'system';
-db_classification(_) -> 'undefined'.
+db_classification(Database) ->
+    case lists:member(Database, ?KZ_SYSTEM_DBS) of
+        'true' -> 'system';
+        'false' -> 'undefined'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @public
