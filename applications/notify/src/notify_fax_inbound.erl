@@ -81,7 +81,7 @@ handle_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_template_props(wh_json:object(), wh_json:objects(), wh_json:object()) -> wh_proplist().
-create_template_props(Event, [FaxDoc | _Others]=Docs, Account) ->
+create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
     Now = wh_util:current_tstamp(),
 
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
@@ -93,9 +93,9 @@ create_template_props(Event, [FaxDoc | _Others]=Docs, Account) ->
     DateCalled = wh_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    Timezone = wh_util:to_list(wh_json:find(<<"fax_timezone">>, Docs, <<"UTC">>)),
+    Timezone = wh_util:to_list(wh_json:get_value([<<"rx_result">>,<<"timezone">>], FaxDoc, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
-
+    
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
      ,{<<"fax">>, [{<<"caller_id_number">>, wnm_util:pretty_print(CIDNum)}
