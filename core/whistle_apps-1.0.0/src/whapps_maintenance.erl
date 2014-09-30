@@ -87,9 +87,6 @@ migrate(Pause) ->
     io:format("updating system dbs...~n"),
     _ = refresh(?KZ_SYSTEM_DBS, Pause),
 
-    io:format("updating system dbs...~n", []),
-    _ = refresh(?KZ_SYSTEM_DBS, Pause),
-
     %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
     %% that need to be aggregated have been, and the account definition is aggregated
     io:format("updating views...~n"),
