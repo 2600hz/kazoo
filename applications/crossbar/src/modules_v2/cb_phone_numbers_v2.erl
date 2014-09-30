@@ -688,13 +688,20 @@ update_locality(Context, Numbers) ->
 -spec update_context_locality(cb_context:context(), wh_json:object()) ->
                                      cb_context:context().
 update_context_locality(Context, Localities) ->
-    JObj = wh_json:foldl(fun(Key, Value, J) ->
-                                 wh_json:set_value([<<"numbers">>
-                                                    ,Key
-                                                    ,<<"locality">>
-                                                   ], Value, J)
-                         end, cb_context:resp_data(Context), Localities),
+    JObj = wh_json:foldl(fun update_context_locality_fold/3, cb_context:resp_data(Context), Localities),
     cb_context:set_resp_data(Context, JObj).
+
+-spec update_context_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+update_context_locality_fold(Key, Value, JObj) ->
+    case wh_json:get_value(<<"status">>, Value) of
+        <<"success">> ->
+            Locality = wh_json:delete_key(<<"status">>, Value),
+            wh_json:set_value([<<"numbers">>
+                              ,Key
+                              ,<<"locality">>
+                              ], Locality, JObj);
+        _Else -> JObj
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -710,19 +717,26 @@ update_phone_numbers_locality(Context, Localities) ->
     DocId = wh_json:get_value(<<"_id">>, cb_context:doc(Context), <<"phone_numbers">>),
     case couch_mgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->
-            J = wh_json:foldl(fun(Key, Value, J) ->
-                                      case wh_json:get_value(Key, J) of
-                                          'undefined' -> J;
-                                          _Else ->
-                                              wh_json:set_value([Key
-                                                                 ,<<"locality">>
-                                                                ], Value, J)
-                                      end
-                              end, JObj, Localities),
+            J = wh_json:foldl(fun update_phone_numbers_locality_fold/3, JObj, Localities),
             couch_mgr:save_doc(AccountDb, J);
         {'error', _E}=E ->
             lager:error("failed to update locality for ~s in ~s: ~p", [DocId, AccountDb, _E]),
             E
+    end.
+
+-spec update_phone_numbers_locality_fold(ne_binary(), wh_json:object(), wh_json:object()) -> wh_json:object().
+update_phone_numbers_locality_fold(Key, Value, JObj) ->
+    case wh_json:get_value(<<"status">>, Value) of
+        <<"success">> ->
+            case wh_json:get_value(Key, JObj) of
+                'undefined' -> JObj;
+                _Else ->
+                    Locality = wh_json:delete_key(<<"status">>, Value),
+                    wh_json:set_value([Key
+                                      ,<<"locality">>
+                                      ], Locality, JObj)
+            end;
+        _Else -> JObj
     end.
 
 %%--------------------------------------------------------------------
@@ -742,7 +756,7 @@ get_locality(Numbers, UrlType) ->
             {'error', <<"missing phonebook url">>};
         Url ->
             ReqBody = wh_json:set_value(<<"data">>, Numbers, wh_json:new()),
-            Uri = <<Url/binary, "/location">>,
+            Uri = <<Url/binary, "/locality/metadata">>,
             case ibrowse:send_req(binary:bin_to_list(Uri), [], 'post', wh_json:encode(ReqBody)) of
                 {'error', Reason} ->
                     lager:error("number locality lookup failed: ~p", [Reason]),
