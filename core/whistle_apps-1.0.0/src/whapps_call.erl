@@ -60,6 +60,11 @@
 -export([set_to_tag/2, to_tag/1]).
 -export([set_from_tag/2, from_tag/1]).
 
+-export([set_dtmf_collection/2, set_dtmf_collection/3
+         ,get_dtmf_collection/1, get_dtmf_collection/2
+         ,add_to_dtmf_collection/2, add_to_dtmf_collection/3
+        ]).
+
 -export([set_custom_channel_var/3
          ,set_custom_channel_vars/2
          ,update_custom_channel_vars/2
@@ -858,6 +863,40 @@ kvs_update(Key, Fun, Initial, #whapps_call{kvs=Dict}=Call) ->
 -spec kvs_update_counter(term(), number(), call()) -> call().
 kvs_update_counter(Key, Number, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:update_counter(wh_util:to_binary(Key), Number, Dict)}.
+
+-spec set_dtmf_collection(api_binary(), call()) -> call().
+-spec set_dtmf_collection(api_binary(), ne_binary(), call()) -> call().
+set_dtmf_collection(DTMF, Call) ->
+    set_dtmf_collection(DTMF, <<"default">>, Call).
+set_dtmf_collection('undefined', Collection, Call) ->
+    Collections = kvs_fetch(<<"dtmf_collections">>, wh_json:new(), Call),
+    kvs_store(<<"dtmf_collections">>
+                  ,wh_json:delete_key(Collection, Collections)
+              ,Call
+             );
+set_dtmf_collection(DTMF, Collection, Call) ->
+    Collections = kvs_fetch(<<"dtmf_collections">>, wh_json:new(), Call),
+    kvs_store(<<"dtmf_collections">>
+                  ,wh_json:set_value(Collection, DTMF, Collections)
+              ,Call
+             ).
+
+-spec get_dtmf_collection(call()) -> api_binary().
+-spec get_dtmf_collection(ne_binary(), call()) -> api_binary().
+get_dtmf_collection(Call) ->
+    get_dtmf_collection(<<"default">>, Call).
+get_dtmf_collection(Collection, Call) ->
+    wh_json:get_value(Collection, kvs_fetch(<<"dtmf_collections">>, wh_json:new(), Call)).
+
+-spec add_to_dtmf_collection(ne_binary(), call()) -> call().
+-spec add_to_dtmf_collection(ne_binary(), ne_binary(), call()) -> call().
+add_to_dtmf_collection(DTMF, Call) ->
+    add_to_dtmf_collection(DTMF, <<"default">>, Call).
+add_to_dtmf_collection(DTMF, Collection, Call) ->
+    case get_dtmf_collection(Collection, Call) of
+        'undefined' -> set_dtmf_collection(DTMF, Collection, Call);
+        Collected -> set_dtmf_collection(<<Collected/binary, DTMF/binary>>, Call)
+    end.
 
 -spec flush() -> 'ok'.
 flush() ->
