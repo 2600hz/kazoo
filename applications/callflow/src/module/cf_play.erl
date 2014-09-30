@@ -24,14 +24,18 @@
 handle(Data, Call) ->
     AccountId = whapps_call:account_id(Call),
     Path = wh_json:get_value(<<"id">>, Data),
-    case wh_media_util:media_path(Path, AccountId) of
-        'undefined' -> lager:info("invalid data in the play callflow");
-        Media ->
-            NoopId = play(Data, Call, Media),
-            {'ok', Call1} = cf_util:wait_for_noop(Call, NoopId),
-            cf_exe:set_call(Call1)
+    Call2 =
+        case wh_media_util:media_path(Path, AccountId) of
+            'undefined' ->
+                lager:info("invalid data in the play callflow"),
+                Call;
+            Media ->
+                NoopId = play(Data, Call, Media),
+                {'ok', Call1} = cf_util:wait_for_noop(Call, NoopId),
+                cf_exe:set_call(Call1),
+                Call1
     end,
-    cf_exe:continue(Call).
+    cf_exe:continue(Call2).
 
 -spec play(wh_json:object(), whapps_call:call(), ne_binary()) -> any().
 play(Data, Call, Media) ->
