@@ -165,7 +165,7 @@ play_dialtone(Call) ->
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"350">>, <<"440">>]}
                               ,{<<"Duration-ON">>, <<"10000">>}
                               ,{<<"Duration-OFF">>, <<"0">>}
-                              ]),
+                             ]),
     whapps_call_command:tones([Tone], Call).
 
 %%--------------------------------------------------------------------
@@ -203,7 +203,7 @@ set_caller_id(Call) ->
                       ],
             {'ok', C} = cf_exe:get_call(Call),
             cf_exe:set_call(whapps_call:exec(Updates, C)),
-          'ok';
+            'ok';
         _Else ->
             lager:debug("~s is not associated with any account, ~s", [CIDNum]),
             'ok'

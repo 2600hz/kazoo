@@ -124,6 +124,12 @@ get_hunt_account_id(Data, Call) ->
 
 -spec get_to_did(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_to_did(Data, Call) ->
+    case wh_json:get_value(<<"to_did">>, Data) of
+        'undefined' -> get_request_did(Data, Call);
+        ToDID -> ToDID
+    end.
+
+get_request_did(Data, Call) ->
     case wh_json:is_true(<<"do_not_normalize">>, Data) of
         'true' -> get_original_request_user(Call);
         'false' ->
