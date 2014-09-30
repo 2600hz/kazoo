@@ -2,6 +2,14 @@
 %%% @copyright (C) 2011-2013, 2600Hz INC
 %%% @doc
 %%%
+%%% This module calls an existing group of users/devices/groups much like cf_ring_group module.
+%%% Data parameters:
+%%%
+%%% "id"       - ID of group to be called
+%%% "timeout"  - Ring timeout (seconds)
+%%% "strategy" - Ring strategy - "single" (sequential) or "simultaneous"
+%%% "ringback" - Ringback media ID
+%%%
 %%% @end
 %%% @contributors
 %%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
