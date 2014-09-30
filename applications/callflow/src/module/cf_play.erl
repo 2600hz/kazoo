@@ -26,7 +26,10 @@ handle(Data, Call) ->
     Path = wh_json:get_value(<<"id">>, Data),
     case wh_media_util:media_path(Path, AccountId) of
         'undefined' -> lager:info("invalid data in the play callflow");
-        Media -> play(Data, Call, Media)
+        Media ->
+            NoopId = play(Data, Call, Media),
+            {'ok', Call1} = cf_util:wait_for_noop(Call, NoopId),
+            cf_exe:set_call(Call1)
     end,
     cf_exe:continue(Call).
 
@@ -39,4 +42,4 @@ play(Data, Call, Media) ->
             timer:sleep(?POST_ANSWER_DELAY)
     end,
     lager:info("playing media ~s", [Media]),
-    _ = whapps_call_command:b_play(Media, Call).
+    whapps_call_command:play(Media, Call).
