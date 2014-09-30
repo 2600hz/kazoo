@@ -87,6 +87,7 @@
                           ,'cb_port_requests'
                           ,'cb_resource_templates'
                           ,'cb_ips'
+                          ,'cb_channels'
                          ]).
 
 -record(cb_context, {
