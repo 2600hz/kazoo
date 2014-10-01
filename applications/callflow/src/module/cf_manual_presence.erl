@@ -3,7 +3,7 @@
 %%% @doc
 %%% "data":{
 %%%   "presence_id":"foo" // for "foo@bar.com"
-%%%   ,"status":"idle","ringing","busy"
+%%%   ,"status":"idle" //"idle", "ringing", "busy"
 %%% }
 %%% @end
 %%% @contributors
