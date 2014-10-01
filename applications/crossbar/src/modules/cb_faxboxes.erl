@@ -208,10 +208,9 @@ delete_faxbox(Id, Context) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     Ctx1 = crossbar_doc:load(Id, Context),
-    Doc = cb_context:doc(Ctx1),
-    case Doc of
+    case cb_context:doc(Ctx1) of
         'undefined' -> Ctx1;
-        _ -> cb_context:set_resp_data(Ctx1, wh_doc:public_fields(leak_private_fields(Doc)))
+        Doc -> cb_context:set_resp_data(Ctx1, wh_doc:public_fields(leak_private_fields(Doc)))
     end.
 
 -spec leak_private_fields(wh_json:object()) -> wh_json:object().
