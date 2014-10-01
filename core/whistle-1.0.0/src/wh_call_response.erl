@@ -36,10 +36,8 @@
                         {'error', 'no_response'}.
 
 send(CallId, CtrlQ, Code) ->
-    send(CallId, CtrlQ, Code, <<>>).
+    send(CallId, CtrlQ, Code, 'undefined').
 
-send(CallId, CtrlQ, Code, 'undefined') ->
-    send(CallId, CtrlQ, Code, <<>>);
 send(CallId, CtrlQ, Code, Cause) ->
     send(CallId, CtrlQ, Code, Cause, 'undefined').
 
