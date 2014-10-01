@@ -9,7 +9,9 @@ Version: 3.18
 
 Recording the caller (or caller and callee in a bridged-call scenario) is straightforward to start. What's trickier is how to store the recording.
 
-## Starting recording
+## Recording Caller/Callee situations
+
+### Starting recording
 
     {"module":"record_call"
      ,"data":{
@@ -28,13 +30,61 @@ Note: `url` will be used as the base URL for the resulting PUT. The final URL wi
 
 Note: If `url` is not provided, Kazoo will check the `system_config/media` doc for the `store_recordings` flag. If "false", the recording will not be stored (kinda pointless). If "true", Kazoo will store the recording into the account's database.
 
-## Stop recording
+### Stop recording
 
 If you need to programmatically stop the current recording (vs implicitly when the call ends):
 
     {"module":"record_call"
      ,"data":{
          "action":"stop"
+     }
+    }
+
+### Sample Recording Per User
+
+    {"module":"record_call"
+     ,"data":{
+         "action":"start"
+         ,"format":"mp3"
+         ,"url":"http://my.recording.server/ACCOUNT_ID/USER_ID"
+         ,"time_limit":360
+     }
+     ,"children":{
+         "_":{
+             "module":"user"
+             ,"data":{"id":"USER_ID"}
+             ,"children":{
+                 "_":{
+                     "module":"record_call"
+                     ,"data":{"action":"stop"}
+                     ,"children":{
+                         "module":"voicemail"
+                         ,"data":{"id":"VMBOX_ID"}
+                         ,"children":{}
+                     }
+                 }
+             }
+         }
+     }
+    }
+
+Note: Call recording and Voicemail do not play well together. You will need to stop the recording before voicemail to avoid conflict.
+
+## Recording just the caller
+
+This action is more appropriate for recording just the caller (think voicemail or recording menu prompts).
+
+    {"module":"say"
+     ,"data":{"text":"Please leave your message after the beep"}
+     ,"children":{
+         "_":{
+             "module":"record_caller"
+             ,"data":{
+                 "format":"mp3"
+                 ,"url":"http://my.recording.server/voicemail/ACCOUNT_ID/BOX_ID"
+                 ,"time_limit":360
+             }
+         }
      }
     }
 
@@ -71,33 +121,3 @@ Here is a simple PHP/.htaccess combo for receiving a recording.
 
 
 A file should be created in /tmp/ named "CALL_ID.EXT". You could, of course, store this in MySQL, Postgres, S3, feed it to a transcription service, etc.
-
-## Sample Recording Per User
-
-    {"module":"record_call"
-     ,"data":{
-         "action":"start"
-         ,"format":"mp3"
-         ,"url":"http://my.voicemail.server/ACCOUNT_ID/USER_ID"
-         ,"time_limit":360
-     }
-     ,"children":{
-         "_":{
-             "module":"user"
-             ,"data":{"id":"USER_ID"}
-             ,"children":{
-                 "_":{
-                     "module":"record_call"
-                     ,"data":{"action":"stop"}
-                     ,"children":{
-                         "module":"voicemail"
-                         ,"data":{"id":"VMBOX_ID"}
-                         ,"children":{}
-                     }
-                 }
-             }
-         }
-     }
-    }
-
-Note: Call recording and Voicemail do not play well together. You will need to stop the recording before voicemail to avoid conflict.
