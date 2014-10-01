@@ -250,7 +250,7 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
     ReqResp = wh_amqp_worker:call(route_req(CallId, FetchId, Props, Node)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1
-                                  ,2500
+                                  ,ecallmgr_fs_node:fetch_timeout(Node)
                                  ),
     case ReqResp of
         {'error', _R} ->

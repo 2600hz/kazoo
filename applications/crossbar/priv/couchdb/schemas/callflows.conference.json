@@ -1,0 +1,52 @@
+{
+    "_id": "callflows.conference",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "required": true,
+    "description": "Validator for the Conference callflow element",
+    "properties": {
+        "id": {
+            "type": "string",
+            "required": false,
+            "name": "Conference ID",
+            "description": "Kazoo ID of the conference",
+            "minLength":32,
+            "maxLength":32
+        },
+        "moderator":{
+            "type":"boolean",
+            "required":false,
+            "default":false,
+            "name":"Moderator",
+            "description":"Is the caller entering the conference as a moderator"
+        },
+        "welcome_prompt":{
+            "type":"object",
+            "required":false,
+            "name":"Welcome Prompt",
+            "description":"Describes how the caller is greeted on entering a conference",
+            "properties":{
+                "play":{
+                    "type":"boolean",
+                    "required":false,
+                    "default":true,
+                    "name":"Play Welcome Prompt",
+                    "description":"Should the Welcome Prompt be played"
+                },
+                "media_id":{
+                    "type": "string",
+                    "required": true,
+                    "name": "Media",
+                    "description": "Media to play, either Kazoo media ID or URL"
+                }
+            }
+        },
+        "config":{
+            "type":"object",
+            "$schema":"conferences.json",
+            "required":false,
+            "name":"Ad-Hoc Config",
+            "description":"Build an ad-hoc conference using the conferences JSON schema"
+        }
+    }
+}

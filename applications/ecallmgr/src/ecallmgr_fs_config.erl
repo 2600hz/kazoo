@@ -211,6 +211,7 @@ handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
     XmlResp = case wh_amqp_worker:call(Cmd
                                        ,fun wapi_conference:publish_config_req/1
                                        ,fun wapi_conference:config_resp_v/1
+                                       ,ecallmgr_fs_node:fetch_timeout(Node)
                                       )
               of
                   {'ok', Resp} ->
