@@ -9,11 +9,11 @@ Version: 3.18
 
 Pivot allows you to set custom presence updates (known as manual presence).
 
-## Response
+## Example
 
     {"module":"manual_presence"
      ,"data":{
-       "presence_id":"user"
+       "presence_id":"username"
        ,"status":"ringing"
      }
     }
