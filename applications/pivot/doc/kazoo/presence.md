@@ -1,0 +1,23 @@
+/*
+Section: Pivot
+Title: Presence
+Language: en-US
+Version: 3.18
+*/
+
+# Overview
+
+Pivot allows you to set custom presence updates (known as manual presence).
+
+## Response
+
+    {"module":"manual_presence"
+     ,"data":{
+       "presence_id":"user"
+       ,"status":"ringing"
+     }
+    }
+
+Do note, `presence_id` without an `@realm.com` will be suffixed with the account's realm.
+
+`status` can be one of `idle`, `ringing`, or `busy`.
