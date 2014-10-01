@@ -33,13 +33,13 @@ handle(Data, Call) ->
 
 
 -spec set_cid_name(whapps_call:call(), api_binary()) -> whapps_call:call().
-set_cid_name(Call, 'undefined') ->
+set_cid_name(Call, <<>>) ->
     whapps_call:kvs_erase('rewrite_cid_name', Call);
 set_cid_name(Call, Name) ->
     whapps_call:kvs_store('rewrite_cid_name', Name, Call).
 
 -spec set_cid_number(whapps_call:call(), api_binary()) -> whapps_call:call().
-set_cid_number(Call, 'undefined') ->
+set_cid_number(Call, <<>>) ->
     whapps_call:kvs_erase('rewrite_cid_number', Call);
 set_cid_number(Call, Number) ->
     whapps_call:kvs_store('rewrite_cid_number', Number, Call).
