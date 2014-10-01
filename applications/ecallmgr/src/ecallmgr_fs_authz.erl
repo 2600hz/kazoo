@@ -140,7 +140,7 @@ request_channel_authorization(Props, CallId, Node) ->
     ReqResp = wh_amqp_worker:call(authz_req(Props)
                                   ,fun wapi_authz:publish_authz_req/1
                                   ,fun wapi_authz:authz_resp_v/1
-                                  ,5000
+                                  ,ecallmgr_fs_node:fetch_timeout(Node)
                                  ),
     case ReqResp of
         {'error', _R} ->
