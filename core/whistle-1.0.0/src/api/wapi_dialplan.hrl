@@ -184,7 +184,7 @@
                            ,{<<"Application-Name">>, <<"send_dtmf">>}
                            ,?INSERT_AT_TUPLE
                           ]).
--define(SEND_DTMF_TYPES, []).
+-define(SEND_DTMF_TYPES, [{<<"DTMFs">>, fun is_binary/1}]).
 
 -define(METAFLOW_HEADERS, [<<"Call">>]).
 -define(OPTIONAL_METAFLOW_HEADERS, [<<"Numbers">>, <<"Patterns">>
