@@ -9,7 +9,7 @@
             "type": "string",
             "required": true,
             "name": "Code",
-            "description": "The SIP Hangup code to respond with",
+            "description": "The SIP Hangup code to respond with"
         },
         "message":{
             "type":"string",
