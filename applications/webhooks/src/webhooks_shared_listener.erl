@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2013, 2600Hz
+%%% @copyright (C) 2010-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -30,24 +30,23 @@
 -record(state, {}).
 -type state() :: #state{}.
 
-%% Three main call events
--define(BINDINGS, [%% channel events that toggle presence lights
-                   {'call', [{'restrict_to', ['CHANNEL_CREATE'
-                                               ,'CHANNEL_ANSWER'
-                                               ,'CHANNEL_DESTROY'
-                                               ,'CHANNEL_DISCONNECTED'
-                                              ]}
-                              ,'federate'
-                             ]}
-                   ,{'notifications', [{'restrict_to', ?FAX_NOTIFY_RESTRICT_TO}]}
-                   ,{'notifications', [{'restrict_to', ?WEBHOOKS_NOTIFY_RESTRICT_TO}]}
-                  ]).
-
 -define(FAX_NOTIFY_RESTRICT_TO, ['outbound_fax'
                                  ,'outbound_fax_error'
                                 ]).
 
 -define(WEBHOOKS_NOTIFY_RESTRICT_TO, ['webhook']).
+
+-define(BINDINGS, [%% channel events that toggle presence lights
+                   {'call', [{'restrict_to', ['CHANNEL_CREATE'
+                                              ,'CHANNEL_ANSWER'
+                                              ,'CHANNEL_DESTROY'
+                                              ,'CHANNEL_DISCONNECTED'
+                                             ]}
+                             ,'federate'
+                            ]}
+                   ,{'notifications', [{'restrict_to', ?FAX_NOTIFY_RESTRICT_TO}]}
+                   ,{'notifications', [{'restrict_to', ?WEBHOOKS_NOTIFY_RESTRICT_TO}]}
+                  ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
                       ,[{<<"configuration">>, <<"*">>}]
@@ -67,6 +66,7 @@
 -define(QUEUE_NAME, <<"webhooks_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -80,12 +80,15 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?HOOK_READER}, ?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+    gen_listener:start_link(?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
+                             ]
+                            ,[]
+                           ).
 
 -spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_event(JObj, _Props) ->
@@ -189,7 +192,10 @@ print_summary({[#webhook{uri=URI
                         ,hook_event=Event
                         ,retries=Retries
                         ,account_id=AccountId
-                       }], Continuation}, Count) ->
+                       }]
+               ,Continuation
+              }
+              ,Count) ->
     io:format(?FORMAT_STRING_SUMMARY
               ,[URI, Verb, Event, wh_util:to_binary(Retries), AccountId]
              ),
@@ -212,8 +218,7 @@ print_summary({[#webhook{uri=URI
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    wh_util:put_callid(?HOOK_READER),
-    lager:info("shared listener started"),
+    wh_util:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -246,6 +251,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    lager:debug("starting to consume: ~s", [_IsConsuming]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),

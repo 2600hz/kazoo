@@ -27,7 +27,6 @@
 -record(state, {}).
 -type state() :: #state{}.
 
-%% Three main call events
 -define(BINDINGS, [{'conf', [{'action', <<"*">>}
                              ,{'db', ?KZ_WEBHOOKS_DB}
                              ,{'type', <<"webhook">>}
@@ -35,12 +34,6 @@
                              ,'federate'
                             ]}
                   ]).
-
--define(FAX_NOTIFY_RESTRICT_TO, ['outbound_fax'
-                                 ,'outbound_fax_error'
-                                ]).
-
--define(WEBHOOKS_NOTIFY_RESTRICT_TO, ['webhook']).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_config'}
                       ,[{<<"configuration">>, <<"*">>}]
@@ -62,12 +55,15 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link({'local', ?HOOK_WRITER}, ?MODULE, [{'bindings', ?BINDINGS}
-                                      ,{'responders', ?RESPONDERS}
-                                      ,{'queue_name', ?QUEUE_NAME}
-                                      ,{'queue_options', ?QUEUE_OPTIONS}
-                                      ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+    gen_listener:start_link(?MODULE
+                            ,[{'bindings', ?BINDINGS}
+                              ,{'responders', ?RESPONDERS}
+                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'queue_options', ?QUEUE_OPTIONS}
+                              ,{'consume_options', ?CONSUME_OPTIONS}
+                             ]
+                            ,[]
+                           ).
 
 -spec handle_config(wh_json:object(), wh_proplist()) -> 'ok'.
 -spec handle_config(wh_json:object(), pid(), ne_binary()) -> 'ok'.
@@ -76,6 +72,7 @@ handle_config(JObj, Props) ->
                   ,props:get_value('server', Props)
                   ,wh_json:get_value(<<"Event-Name">>, JObj)
                  ).
+
 handle_config(JObj, Srv, <<"doc_created">>) ->
     case wapi_conf:get_doc(JObj) of
         'undefined' -> find_and_add_hook(JObj, Srv);
@@ -125,9 +122,9 @@ find_and_remove_hook(JObj, Srv) ->
                        {'ok', wh_json:object()} |
                        {'error', _}.
 find_hook(JObj) ->
-    couch_mgr:open_doc(?KZ_WEBHOOKS_DB
-                       ,wapi_conf:get_id(JObj)
-                      ).
+    couch_mgr:open_cache_doc(?KZ_WEBHOOKS_DB
+                             ,wapi_conf:get_id(JObj)
+                            ).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -146,8 +143,7 @@ find_hook(JObj) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    wh_util:put_callid(?HOOK_WRITER),
-    lager:info("listener started"),
+    wh_util:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -192,6 +188,7 @@ handle_cast({'remove_hook', #webhook{id=Id}}, State) ->
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    lager:debug("starting to consume: ~s", [_IsConsuming]),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -207,14 +204,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'ETS-TRANSFER', TblId, _From, _Data}, State) ->
-    lager:info("write access to table '~p' available", [TblId]),
+handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
+    lager:info("write access to table '~p' available", [_TblId]),
     Self = self(),
-    spawn(fun () ->
-              wh_util:put_callid(?HOOK_WRITER),
-              webhooks_util:load_hooks(Self),
-              webhooks_util:init_mods()
-          end),
+    _ = spawn(fun() ->
+                      wh_util:put_callid(?MODULE),
+                      webhooks_util:load_hooks(Self),
+                      webhooks_util:init_mods()
+              end),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
