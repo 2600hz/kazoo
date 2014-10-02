@@ -105,7 +105,9 @@
         ]).
 
 -export([noop/1]).
--export([flush/1, flush_dtmf/1]).
+-export([flush/1, flush_dtmf/1
+         ,send_dtmf/2, send_dtmf/3
+        ]).
 -export([privacy/1
          ,privacy/2
         ]).
@@ -614,6 +616,22 @@ redirect(Contact, Server, Call) ->
 %%--------------------------------------------------------------------
 -spec flush_dtmf(whapps_call:call()) -> ne_binary().
 flush_dtmf(Call) -> play(<<"silence_stream://50">>, Call).
+
+-spec send_dtmf(ne_binary(), whapps_call:call()) -> 'ok'.
+-spec send_dtmf(ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
+send_dtmf(DTMFs, Call) ->
+    send_dtmf(DTMFs, 'undefined', Call).
+send_dtmf(DTMFs, Duration, Call) ->
+    Cmd = send_dtmf_command(DTMFs, Duration),
+    send_command(Cmd, Call).
+
+-spec send_dtmf_command(ne_binary(), api_binary()) -> wh_proplist().
+send_dtmf_command(DTMFs, Duration) ->
+    props:filter_undefined(
+      [{<<"DTMFs">>, DTMFs}
+       ,{<<"Duration">>, Duration}
+       ,{<<"Application-Name">>, <<"send_dtmf">>}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public
