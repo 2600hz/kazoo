@@ -30,7 +30,8 @@
 handle(Data, Call) ->
     handle(Data
            ,set_recording_url(Data, Call)
-           ,get_action(wh_json:get_value(<<"action">>, Data))),
+           ,get_action(wh_json:get_value(<<"action">>, Data))
+          ),
     cf_exe:continue(Call).
 
 handle(Data, Call, <<"start">>) ->

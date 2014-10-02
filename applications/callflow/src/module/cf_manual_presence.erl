@@ -1,7 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
-%%%
+%%% "data":{
+%%%   "presence_id":"foo" // for "foo@bar.com"
+%%%   ,"status":"idle" //"idle", "ringing", "busy"
+%%% }
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -27,13 +30,10 @@ handle(Data, Call) ->
 -spec update_presence(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 update_presence(<<"idle">>, PresenceId, Call) ->
     _ = couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"terminated">>}]),
-    whapps_call_command:presence(<<"terminated">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId))),
-    'ok';
+    whapps_call_command:presence(<<"terminated">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId)));
 update_presence(<<"ringing">>, PresenceId, Call) ->
-    whapps_call_command:presence(<<"early">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId))),
     _ = couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"early">>}]),
-    'ok';
+    whapps_call_command:presence(<<"early">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId)));
 update_presence(<<"busy">>, PresenceId, Call) ->
-    whapps_call_command:presence(<<"confirmed">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId))),
     _ = couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"confirmed">>}]),
-    'ok'.
+    whapps_call_command:presence(<<"confirmed">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId))).

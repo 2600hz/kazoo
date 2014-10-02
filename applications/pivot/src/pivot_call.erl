@@ -569,10 +569,11 @@ store_debug(Call, Doc) ->
                ])
              ,AccountModDb
              ,[{'account_id', whapps_call:account_id(Call)}
-               ,{'type', 'pivot_debug'}
+               ,{'account_db', AccountModDb}
+               ,{'type', <<"pivot_debug">>}
                ,{'now', wh_util:current_tstamp()}
               ]),
-    case couch_mgr:save_doc(AccountModDb, JObj) of
+    case kazoo_modb:save_doc(AccountModDb, JObj) of
         {'ok', _Saved} ->
             lager:debug("saved debug doc: ~p", [_Saved]);
         {'error', _E} ->
