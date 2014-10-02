@@ -124,10 +124,28 @@ maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
                                    {api_binary(), api_binary()}.
 maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
     case whapps_call:kvs_fetch('prepend_cid_name', Call) of
-        'undefined' -> maybe_ensure_cid_valid(Number, Name, Validate, Attribute, Call);
+        'undefined' -> maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call);
         Prefix ->
             Prefixed = <<(wh_util:to_binary(Prefix))/binary, Name/binary>>,
-            maybe_ensure_cid_valid(Number, Prefixed, Validate, Attribute, Call)
+            maybe_rewrite_cid_number(Number, Prefixed, Validate, Attribute, Call)
+    end.
+
+-spec maybe_rewrite_cid_number(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
+                                     {api_binary(), api_binary()}.
+maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call) ->
+    case whapps_call:kvs_fetch('rewrite_cid_number', Call) of
+        'undefined' -> maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call);
+        NewNumber ->
+            maybe_rewrite_cid_name(NewNumber, Name, Validate, Attribute, Call)
+    end.
+
+-spec maybe_rewrite_cid_name(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
+                                   {api_binary(), api_binary()}.
+maybe_rewrite_cid_name(Number, Name, Validate, Attribute, Call) ->
+    case whapps_call:kvs_fetch('rewrite_cid_name', Call) of
+        'undefined' -> maybe_ensure_cid_valid(Number, Name, Validate, Attribute, Call);
+        NewName ->
+            maybe_ensure_cid_valid(Number, NewName, Validate, Attribute, Call)
     end.
 
 -spec maybe_ensure_cid_valid(ne_binary(), ne_binary(), boolean(), ne_binary(), whapps_call:call()) ->
