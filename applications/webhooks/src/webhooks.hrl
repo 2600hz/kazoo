@@ -9,6 +9,9 @@
 -type http_verb() :: 'get' | 'post'.
 -type hook_retries() :: 1..5.
 
+-define(HOOK_WRITER, 'webhooks_writer_process').
+-define(HOOK_READER, 'webhooks_reader_process').
+
 -record(webhook, {
           id :: ne_binary() | '_'
           ,uri :: ne_binary() | '_'
