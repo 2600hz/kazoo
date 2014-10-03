@@ -242,8 +242,8 @@ rate_channel(Props, Node) ->
         {'error', _R} ->
             lager:debug("rate request lookup failed: ~p", [_R]),
             %%  Disconnect only per_minute channels
-            AccountBilling = props:get_binary_value(<<"variable_ecallmgr_Account-Billing">>,Props),
-            ResellerBilling = props:get_binary_value(<<"variable_ecallmgr_Reseller-Billing">>,Props),
+            AccountBilling = props:get_binary_value(?GET_CCV(<<"Account-Billing">>),Props),
+            ResellerBilling = props:get_binary_value(?GET_CCV(<<"Reseller-Billing">>),Props),
             case AccountBilling =:= <<"per_minute">> orelse ResellerBilling =:= <<"per_minute">> of 
                 'true' -> maybe_kill_unrated_channel(Props, Node);
                 _ -> 'ok'
