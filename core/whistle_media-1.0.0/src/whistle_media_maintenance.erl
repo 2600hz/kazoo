@@ -86,7 +86,8 @@ import_prompt(Path) ->
 
 import_prompt(Path, Lang) ->
     couch_mgr:db_create(?WH_MEDIA_DB),
-    case file:read_file(Path) of
+    timer:sleep(250),
+	case file:read_file(Path) of
         {'ok', Contents} ->
             io:format("importing prompt '~s' with language '~s'~n", [Path, Lang]),
             import_prompt(Path, Lang, Contents);
