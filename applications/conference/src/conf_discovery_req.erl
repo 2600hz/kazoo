@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -28,7 +28,7 @@ handle_req(JObj, _Options) ->
 -spec maybe_welcome_to_conference(whapps_call:call(), pid(), wh_json:object()) -> 'ok'.
 maybe_welcome_to_conference(Call, Srv, DiscoveryJObj) ->
     case wh_json:is_true(<<"Play-Welcome">>, DiscoveryJObj, 'true') of
-        'false' -> 'ok';
+        'false' -> maybe_collect_conference_id(Call, Srv, DiscoveryJObj);
         'true' -> welcome_to_conference(Call, Srv, DiscoveryJObj)
     end.
 
