@@ -95,6 +95,7 @@ rate_resp(Rate, JObj) ->
      ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
      ,{<<"Rate-ID">>, wh_json:get_binary_value(<<"rate_id">>, Rate)}
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
+     ,{<<"Rate-NoCharge-Time">>, wh_json:get_binary_value(<<"rate_nocharge_time">>, Rate)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Update-Callee-ID">>, UpdateCalleeId}

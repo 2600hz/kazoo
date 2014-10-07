@@ -18,7 +18,7 @@
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
                     ,<<"Rate-Minimum">>, <<"Surcharge">>
                     ,<<"Rate-Name">>, <<"Base-Cost">>
-                    ,<<"Discount-Percentage">>
+                    ,<<"Discount-Percentage">>, <<"Rate-NoCharge-Time">>
                    ]).
 
 -spec authorize(wh_proplist(), ne_binary(), atom()) -> boolean().
