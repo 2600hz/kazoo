@@ -66,6 +66,14 @@
       "minimum": 10,
       "default": 60
     },
+    "rate_nocharge_time": {
+      "type": "integer",
+      "required": false,
+      "name": "NoCharge Time (seconds)",
+      "description": "If call shorter this time, then it not charged",
+      "minimum": 0,
+      "default": 0
+    },
     "rate_surcharge": {
       "type": "number",
       "required": false,
