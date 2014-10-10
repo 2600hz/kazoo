@@ -404,13 +404,13 @@ normalize_and_send('csv', [], Payload) -> Payload;
 normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
     case cb_context:fetch(Context, 'started_chunk') of
         'true' ->
+            'ok' = cowboy_req:chunk(normalize_cdr_to_csv(JObj, Context), Req),
+            normalize_and_send('csv', JObjs, {Req, Context});
+        _Else ->
             CSV = <<(normalize_cdr_to_csv_header(JObj, Context))/binary
                     ,(normalize_cdr_to_csv(JObj, Context))/binary
                   >>,
             'ok' = cowboy_req:chunk(CSV, Req),
-            normalize_and_send('csv', JObjs, {Req, Context});
-        _Else ->
-            'ok' = cowboy_req:chunk(normalize_cdr_to_csv(JObj, Context), Req),
             normalize_and_send('csv', JObjs, {Req, cb_context:store(Context, 'started_chunk', 'true')})
     end.
 
@@ -480,11 +480,15 @@ normalize_cdr_to_csv(JObj, Context) ->
                               ], <<",">>),
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;
-        'true' ->  <<CSV/binary, ",reseller_cost,reseller_call_type\r">>
+        'true' -> <<CSV/binary
+                    ,(wh_util:to_binary(reseller_cost(JObj)))/binary, ","
+                    ,(wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>))/binary
+                    ,"\r"
+                  >>
     end.
 
 -spec normalize_cdr_to_csv_header(wh_json:object(), cb_context:context()) -> ne_binary().
-normalize_cdr_to_csv_header(JObj, Context) ->
+normalize_cdr_to_csv_header(_JObj, Context) ->
     CSV = <<"id,"
             ,"call_id,"
             ,"caller_id_number,"
@@ -514,11 +518,7 @@ normalize_cdr_to_csv_header(JObj, Context) ->
           >>,
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;
-        'true' -> <<CSV/binary
-                    ,(wh_util:to_binary(reseller_cost(JObj)))/binary, ","
-                    ,(wh_json:get_value([<<"custom_channel_vars">>, <<"reseller_billing">>], JObj, <<>>))/binary
-                    ,"\r"
-                  >>
+        'true' -> <<CSV/binary, ",reseller_cost,reseller_call_type\r">>
     end.
 
 -spec pretty_print_datetime(wh_datetime() | integer()) -> ne_binary().
