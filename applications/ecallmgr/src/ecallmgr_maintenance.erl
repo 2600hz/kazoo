@@ -91,6 +91,7 @@
 
 -export([show_channels/0]).
 -export([show_calls/0]).
+-export([check_sync/2]).
 
 -include("ecallmgr.hrl").
 
@@ -495,6 +496,11 @@ show_channels() ->
 -spec show_calls() -> 'no_return'.
 show_calls() ->
     io:format("This function is depreciated, please use channel_summary or channel_detail~n"),
+    'no_return'.
+
+-spec check_sync(text(), text()) -> 'no_return'.
+check_sync(Username, Realm) ->
+    ecallmgr_fs_notify:check_sync(Username, Realm),
     'no_return'.
 
 -spec add_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', _}.
