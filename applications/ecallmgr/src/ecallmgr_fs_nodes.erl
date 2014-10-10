@@ -742,6 +742,8 @@ print_details([{NodeName, Node}|Nodes],Count) ->
     io:format("~-12s: ~s~n", [<<"Client">>, Node#node.client_version]),
     io:format("~-12s: ~p~n", [<<"Connected">>, Node#node.connected]),
     io:format("~-12s: ~p~n", [<<"Options">>, Node#node.options]),
+    io:format("~-12s: ~s~n", [<<"SIP URL">>, sip_url(Node#node.node)]),
+    io:format("~-12s: ~s~n", [<<"SIP External IP">>, sip_external_ip(Node#node.node)]),
     _ = case ecallmgr_fs_pinger_sup:find_pinger(NodeName) of
             'undefined' -> 'ok';
             PingerPid ->
