@@ -6,6 +6,13 @@
     "name": "User",
     "description": "Schema for a user",
     "properties": {
+        "opaque": {
+            "type": "object",
+            "required": false,
+            "name": "Opaque",
+            "description": "A black box in which other developers can store their custom user properties",
+            "additionalProperties": true
+        },
         "enabled": {
             "type": "boolean",
             "required": false,
