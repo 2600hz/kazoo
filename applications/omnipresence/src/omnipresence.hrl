@@ -10,6 +10,7 @@
 -define(APP_VERSION, <<"1.0.0">>).
 
 -define(CONFIG_CAT, <<"omnipresence">>).
+-define(CACHE_NAME, 'omnipresence_cache').
 
 -define(PRESENCE_HANGUP, <<"terminated">>).
 -define(PRESENCE_RINGING, <<"early">>).
