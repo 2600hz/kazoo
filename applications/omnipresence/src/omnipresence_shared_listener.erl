@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -11,6 +11,7 @@
 
 -export([start_link/0
          ,handle_channel_event/2
+         ,cached_terminated_callids/0
         ]).
 -export([init/1
          ,handle_call/3
@@ -86,10 +87,51 @@ start_link() ->
                                       ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], []).
 
+-define(CACHE_TERMINATED_CALLID, whapps_config:get_integer(?CONFIG_CAT, <<"cache_terminated_callid_s">>, 60)).
+
 -spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_event(JObj, _Props) ->
-    EventType = wh_json:get_value(<<"Event-Name">>, JObj),
-    omnip_subscriptions:handle_channel_event(EventType, JObj).
+    EventName = wh_json:get_value(<<"Event-Name">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+
+    wh_util:put_callid(CallId),
+
+    maybe_handle_event(JObj, CallId, EventName).
+
+-spec maybe_handle_event(wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_handle_event(JObj, CallId, <<"CHANNEL_DESTROY">> = EventName) ->
+    lager:debug("caching CHANNEL_DESTROY for ~s", [CallId]),
+    wh_cache:store_local(?CACHE_NAME
+                         ,terminated_cache_key(CallId)
+                         ,'terminated'
+                         ,[{'expires', ?CACHE_TERMINATED_CALLID}]
+                        ),
+    handle_the_event(JObj, EventName);
+maybe_handle_event(JObj, CallId, <<"CHANNEL_CREATE">> = EventName) ->
+    case wh_cache:fetch_local(?CACHE_NAME, terminated_cache_key(CallId)) of
+        {'error', 'not_found'} -> handle_the_event(JObj, EventName);
+        {'ok', 'terminated'} -> lager:warning("received ~s but call is terminated already, dropping", [EventName])
+    end;
+maybe_handle_event(JObj, CallId, <<"CHANNEL_ANSWER">> = EventName) ->
+    case wh_cache:fetch_local(?CACHE_NAME, terminated_cache_key(CallId)) of
+        'undefined' -> handle_the_event(JObj, EventName);
+        'terminated' -> lager:warning("received ~s but call is terminated already, dropping", [EventName])
+    end;
+maybe_handle_event(JObj, _CallId, EventName) ->
+    handle_the_event(JObj, EventName).
+
+-spec handle_the_event(wh_json:object(), ne_binary()) -> 'ok'.
+handle_the_event(JObj, EventName) ->
+    omnip_subscriptions:handle_channel_event(EventName, JObj).
+
+-spec terminated_cache_key(CallId) -> {'terminated', CallId}.
+terminated_cache_key(CallId) ->
+    {'terminated', CallId}.
+
+-spec cached_terminated_callids() -> ne_binaries().
+cached_terminated_callids() ->
+    [CallId || {'terminated', CallId} <- wh_cache:fetch_keys_local(?CACHE_NAME)].
+
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -177,8 +219,8 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};
-handle_info(?HOOK_EVT(_, EventType, JObj), State) ->
-    _ = spawn('omnip_subscriptions', 'handle_channel_event', [EventType, JObj]),
+handle_info(?HOOK_EVT(_, EventName, JObj), State) ->
+    _ = spawn('omnip_subscriptions', 'handle_channel_event', [EventName, JObj]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
