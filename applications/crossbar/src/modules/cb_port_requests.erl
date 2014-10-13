@@ -608,12 +608,13 @@ on_successful_validation(Id, Context) ->
     on_successful_validation(Id, Context1, can_update_port_request(Context1)).
 
 on_successful_validation(Id, Context, 'true') ->
-    JObj = cb_context:doc(Context),
+    JObj = maybe_update_port_state(Id, cb_context:doc(Context)),
     Numbers = wh_json:get_keys(wh_json:get_value(<<"numbers">>, JObj)),
 
     Context1 = lists:foldl(fun(Number, ContextAcc) ->
                                    check_number_portability(Id, Number, ContextAcc)
                            end, Context, Numbers),
+
     case cb_context:resp_status(Context1) of
         'success' ->
             lager:debug("number(s) checked out for ~s", [Id]),
@@ -626,6 +627,17 @@ on_successful_validation(_Id, Context, 'false') ->
                 ,[PortState]
                ),
     cb_context:add_validation_error(PortState, <<"type">>, <<"Updating port requests not allowed in current port state">>, Context).
+
+-spec maybe_update_port_state(api_binary(), wh_json:object()) -> wh_json:object().
+maybe_update_port_state('undefined', JObj) -> JObj;
+maybe_update_port_state(_Id, JObj) ->
+    CurrentState = wh_json:get_value(?PORT_PVT_STATE, JObj),
+    case wh_json:get_value(?PORT_STATE, JObj, CurrentState) of
+        CurrentState -> JObj;
+        NewState ->
+            lager:debug("updating port state from ~s to ~s", [CurrentState, NewState]),
+            wh_json:set_value(?PORT_PVT_STATE, NewState, JObj)
+    end.
 
 -spec can_update_port_request(cb_context:context()) -> boolean().
 -spec can_update_port_request(cb_context:context(), ne_binary()) -> boolean().
