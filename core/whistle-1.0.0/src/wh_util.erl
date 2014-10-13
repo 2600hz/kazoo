@@ -29,6 +29,7 @@
          ,to_float/1, to_float/2
          ,to_number/1
          ,to_hex/1, to_hex_binary/1, rand_hex_binary/1
+         ,hexencode_binary/1
          ,from_hex_binary/1, from_hex_string/1
          ,to_list/1, to_binary/1
          ,to_atom/1, to_atom/2
@@ -553,6 +554,19 @@ to_hex(S) ->
 to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
+
+hexencode_binary(<<_/binary>> = Bin) ->
+    hexencode_binary(Bin, <<>>);
+hexencode_binary(S) ->
+    hexencode_binary(to_binary(S)).
+
+hexencode_binary(<<>>, Acc) -> Acc;
+hexencode_binary(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
+    io:format("~p ~p ~p ~p~n", [Hi, Lo, Rest, Acc]),
+    hexencode_binary(Rest, <<Acc/binary
+                             ,(binary_to_hex_char(Hi))/binary
+                             ,(binary_to_hex_char(Lo))/binary
+                           >>).
 
 -spec from_hex_binary(binary()) -> binary().
 from_hex_binary(Bin) ->
