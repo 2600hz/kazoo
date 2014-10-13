@@ -264,7 +264,7 @@ call_cost(JObj) ->
     %% on the next re-authorization cycle (to allow for the in-flight time)
     case BillingSecs =< 0 of
         'true' -> 0;
-        'false' when BillingSecs =< RateNoChargeTime -> 
+        'false' when BillingSecs =< RateNoChargeTime ->
             lager:info("billing seconds less then ~ps, no charge",[RateNoChargeTime]),
             0;
         'false' ->
@@ -275,15 +275,15 @@ call_cost(JObj) ->
             Cost = calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
             Discount = (get_integer_value(<<"Discount-Percentage">>, CCVs) * 0.01) * Cost,
             lager:info("rate $~p/~ps, minimum ~ps, surcharge $~p, for ~ps, no charge time ~ps, sub total $~p, discount $~p, total $~p"
-                        ,[units_to_dollars(Rate)
-                          ,RateIncr, RateMin
-                          ,units_to_dollars(Surcharge)
-                          ,BillingSecs
-                          ,RateNoChargeTime
-                          ,units_to_dollars(Cost)
-                          ,units_to_dollars(Discount)
-                          ,units_to_dollars(Cost - Discount)
-                         ]),
+                       ,[units_to_dollars(Rate)
+                         ,RateIncr, RateMin
+                         ,units_to_dollars(Surcharge)
+                         ,BillingSecs
+                         ,RateNoChargeTime
+                         ,units_to_dollars(Cost)
+                         ,units_to_dollars(Discount)
+                         ,units_to_dollars(Cost - Discount)
+                        ]),
             trunc(Cost - Discount)
     end.
 

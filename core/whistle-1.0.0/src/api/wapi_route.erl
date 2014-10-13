@@ -82,7 +82,8 @@
                                             ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
                                             ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
                                             ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
-                                            ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>, <<"Rate-NoCharge-Time">>
+                                            ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>
+                                            ,<<"Surcharge">>, <<"Rate-NoCharge-Time">>
                                             ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                             ,<<"Weight-Cost">>, <<"Weight-Location">>
                                            ]).
