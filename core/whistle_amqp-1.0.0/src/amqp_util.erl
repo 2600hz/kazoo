@@ -105,7 +105,7 @@
 -export([unbind_q_from_exchange/3]).
 -export([new_queue/0, new_queue/1, new_queue/2]).
 -export([basic_consume/1, basic_consume/2]).
--export([basic_publish/3, basic_publish/4]).
+-export([basic_publish/3, basic_publish/4, basic_publish/5]).
 -export([basic_cancel/0]).
 -export([queue_delete/1, queue_delete/2]).
 -export([new_exchange/2, new_exchange/3]).
