@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013, 2600Hz
+%%% @copyright (C) 2013-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -29,7 +29,7 @@
 %% TODO
 %% load / unload package
 %% load default/configured packages
-%% 
+%%
 
 
 %%--------------------------------------------------------------------
@@ -41,7 +41,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
-
 
 %% ===================================================================
 %% Supervisor callbacks

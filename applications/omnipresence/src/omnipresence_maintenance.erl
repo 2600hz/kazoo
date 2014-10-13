@@ -13,6 +13,7 @@
 -export([current_subscriptions/0, current_subscriptions/1, current_subscriptions/2
          ,subscribe/2
          ,send_mwi_update/3
+         ,list_terminated_callids/0
         ]).
 
 -define(SUBSCRIPTION_FORMAT_STR, " ~50.s | ~50.s | ~10.s | ~20.s |~n").
@@ -56,6 +57,7 @@ print_subscription(JObj, Now) ->
                 ,wh_json:get_value(<<"event">>, JObj)
                ]).
 
+-spec subscribe(ne_binary(), ne_binary()) -> 'ok'.
 subscribe(Realm, User) ->
     Prop = [{<<"User">>, <<"sip:", User/binary, "@", Realm/binary>>}
             ,{<<"Expires">>, 1}
@@ -92,3 +94,12 @@ send_mwi_update(User, New, Waiting) ->
               ],
     whapps_util:amqp_pool_send(Command, fun wapi_presence:publish_mwi_update/1),
     'ok'.
+
+-spec list_terminated_callids() -> 'ok'.
+list_terminated_callids() ->
+    io:format("Here are the call IDs currently cached as terminated:~n", []),
+    io:format("~s~n", [wh_util:join_binary(
+                         omnip_subscriptions:cached_terminated_callids()
+                         ,<<", ">>
+                        )
+                      ]).
