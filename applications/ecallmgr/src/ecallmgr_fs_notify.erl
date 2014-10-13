@@ -102,7 +102,7 @@ resp_to_probe(State, User, Realm) ->
     io:format("resp_to_probe: ~p~n", [PresenceUpdate]),
     wh_amqp_worker:cast(PresenceUpdate, fun wapi_presence:publish_update/1).
 
--spec check_sync(text(), text()) -> no_return().
+-spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
 check_sync(Username, Realm) ->
     lager:info("looking up registration information for ~s@~s", [Username, Realm]),
     case ecallmgr_registrar:lookup_contact(Realm, Username) of
@@ -114,6 +114,7 @@ check_sync(Username, Realm) ->
             send_check_sync(Node, Username, Realm, Contact)
     end.
 
+-spec send_check_sync(atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_check_sync(Node, Username, Realm, Contact) ->
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                ,{"contact", Contact}
