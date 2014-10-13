@@ -77,6 +77,7 @@ authz_details([Channel|Channels]) ->
     pretty_print_field(<<"Rate">>, props:get_value(<<"Rate">>, Props)),
     pretty_print_field(<<"Rate Increment">>, props:get_value(<<"Rate-Increment">>, Props)),
     pretty_print_field(<<"Rate Minimum">>, props:get_value(<<"Rate-Minimum">>, Props)),
+    pretty_print_field(<<"Rate No Charge Time">>, props:get_value(<<"Rate-NoCharge-Time">>, Props)),
     pretty_print_field(<<"Discount Percentage">>, props:get_value(<<"Discount-Percentage">>, Props)),
     pretty_print_field(<<"Surcharge">>, props:get_value(<<"Surcharge">>, Props)),
     pretty_print_field(<<"Base Cost">>, props:get_value(<<"Base-Cost">>, Props)),

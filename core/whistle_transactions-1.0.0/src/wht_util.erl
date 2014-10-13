@@ -256,6 +256,7 @@ call_cost(JObj) ->
     CCVs = wh_json:get_first_defined([<<"Custom-Channel-Vars">>
                                       ,<<"custom_channel_vars">>
                                      ], JObj, JObj),
+    RateNoChargeTime = get_integer_value(<<"Rate-NoCharge-Time">>, CCVs),
     BillingSecs = get_integer_value(<<"Billing-Seconds">>, JObj)
         - get_integer_value(<<"Billing-Seconds-Offset">>, CCVs),
     %% if we transition from allotment to per_minute the offset has a slight
@@ -263,6 +264,9 @@ call_cost(JObj) ->
     %% on the next re-authorization cycle (to allow for the in-flight time)
     case BillingSecs =< 0 of
         'true' -> 0;
+        'false' when BillingSecs =< RateNoChargeTime -> 
+            lager:info("billing seconds less then ~ps, no charge",[RateNoChargeTime]),
+            0;
         'false' ->
             Rate = get_integer_value(<<"Rate">>, CCVs),
             RateIncr = get_integer_value(<<"Rate-Increment">>, CCVs, 60),
@@ -270,11 +274,12 @@ call_cost(JObj) ->
             Surcharge = get_integer_value(<<"Surcharge">>, CCVs),
             Cost = calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
             Discount = (get_integer_value(<<"Discount-Percentage">>, CCVs) * 0.01) * Cost,
-            lager:info("rate $~p/~ps, minimum ~ps, surcharge $~p, for ~ps, sub total $~p, discount $~p, total $~p"
+            lager:info("rate $~p/~ps, minimum ~ps, surcharge $~p, for ~ps, no charge time ~ps, sub total $~p, discount $~p, total $~p"
                         ,[units_to_dollars(Rate)
                           ,RateIncr, RateMin
                           ,units_to_dollars(Surcharge)
                           ,BillingSecs
+                          ,RateNoChargeTime
                           ,units_to_dollars(Cost)
                           ,units_to_dollars(Discount)
                           ,units_to_dollars(Cost - Discount)
@@ -300,10 +305,12 @@ get_integer_value(Key, JObj, Default) ->
 -spec per_minute_cost(wh_json:object()) -> integer().
 per_minute_cost(JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+    RateNoChargeTime = get_integer_value(<<"Rate-NoCharge-Time">>, CCVs),
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj)
         - wh_json:get_integer_value(<<"Billing-Seconds-Offset">>, CCVs, 0),
     case BillingSecs =< 0 of
         'true' -> 0;
+        'false' when BillingSecs =< RateNoChargeTime -> 0;
         'false' ->
             RateIncr = wh_json:get_integer_value(<<"Rate-Increment">>, CCVs, 60),
             case wh_json:get_integer_value(<<"Rate">>, CCVs, 0) of
