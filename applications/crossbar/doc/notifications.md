@@ -86,28 +86,34 @@ To see what notification templates an account over-rides, include the account ID
 
 In this case, the account overrides none of the default system templates.
 
-### GET - Fetch a notification's configuration
+#### GET - Fetch a notification's configuration
 
 Using the ID from the system listing above, get the template JSON. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/notifications/voicemail_to_email
-
-#### GET - Fetch notification:
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications
-
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
-
-#### PUT - Add notification:
-
-```
-curl -X PUT -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:application/json" -d '{
-    "data": {
-        "to": {
-            "type": "admins",
-            "email_addresses": ["peter@email.com"]
+    {
+        "auth_token": "{AUTH_TOKEN}",
+        "data": {
+            "id": "voicemail_to_email",
+            ...
         },
-        "from": "peter@email.com",
+        "request_id": "{REQUEST_ID}",
+        "revision": "1-ad99c4dc5353792aed7be6e77b2d9d9a",
+        "status": "success"
+    }
+
+#### PUT - Create a notification template
+
+Now that you've fetched the system default template, modify and PUT it back to the account.
+
+    curl -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type:application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications -d '{
+    "data": {
+        "id":"voicemail_to_email",
+        "to": {
+            "type": "users",
+            "email_addresses": ["user@account.com"]
+        },
+        "from": "reseller@resellerdomain.com",
         "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
         "enabled": true,
         "template_charset": "utf-8",
@@ -120,12 +126,77 @@ curl -X PUT -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:application/json" -d
             "user.last_name": {
                 "i18n_label": "last_name",
                 "friendly_name": "Last Name",
-                "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
+                "description": "If the voicemail box has an owner id, this is the last name of that user.  Not always present"
             }
         }
+    }}'
+    {
+        "auth_token": "{AUTH_TOKEN}",
+        "data": {
+            "enabled": true,
+            "from": "reseller@resellerdomain.com",
+            "id": "voicemail_to_email",
+            "macros": {
+                "user.first_name": {
+                    "description": "If the voicemail box has an owner id, this is the first name of that user. Not always present",
+                    "friendly_name": "First Name",
+                    "i18n_label": "first_name"
+                },
+                "user.last_name": {
+                    "description": "If the voicemail box has an owner id, this is the last name of that user. Not always present",
+                    "friendly_name": "Last Name",
+                    "i18n_label": "last_name"
+                }
+            },
+            "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
+            "template_charset": "utf-8",
+            "to": {
+                "email_addresses": [
+                    "user@account.com"
+                ],
+                "type": "users"
+            }
+        },
+        "request_id": "be8e77c7c3eacf8faafe045d5f3734bf",
+        "revision": "1-2ad8b8ca45e49df830a0ffbbc6d964d0",
+        "status": "success"
     }
-}' http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications
-```
+
+This request will fail if `id` does not already exist in the system defaults. To create a new system notification template, a superduper admin can use the above PUT, but to `/v2/notifications` instead of a specific account.
+
+#### GET - Fetch a specific notification
+
+Now that you've created an account-specific notification, you can fetch it to feed into a WYSIWYG editor or for other purposes:
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/voicemail_to_email
+    {
+        "auth_token": "{AUTH_TOKEN}",
+        "data": {
+            "id": "voicemail_to_email",
+            ...
+        },
+        "request_id": "{REQUEST_ID}",
+        "revision": "1-ad99c4dc5353792aed7be6e77b2d9d9a",
+        "status": "success"
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #### POST - Update notification:
 
