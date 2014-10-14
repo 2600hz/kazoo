@@ -4,7 +4,8 @@ Title: Notifications
 Language: en-US
 */
 
-Allow to manage templates for notifications.
+
+Allow managing templates for notification emails.
 
 ## Structure
 
@@ -36,30 +37,35 @@ Ex:
  }
 ```
 
+In addition to the JSON data, templates in various formats can be uploaded (such as from a WYSIWYG tool). Currently supported are plaintext and HTML documents.
+
 ## Crossbar
 
 Using Crossbar to modify notifications is very simple:
 
 * GET - Gets the current notification(s).
 * PUT - Add a notification.
-* POST - Updates a notification.
+* POST - Updates a notification, or adds/updates a template.
 * DELETE - Removes a notification.
-* GET/(HTM/TEXT) - Get HTML or TEXT template.
-* POST/(HTM/TEXT) - Update HTML or TEXT template.
 
-To modify an account notification. The requester must be a reseller of that account or the master account.
+To modify an account notification, the requester must be a reseller of that account or the master account.
 
 ### Account Temporal Rules Sets URI
 
-`/v1/accounts/{ACCOUNT_ID}/notifications`
-`/v1/notifications`
+* `/v2/accounts/{ACCOUNT_ID}/notifications`: modify an account's template(s)
+* `/v2/notifications`: Modify the system default templates
 
+#### GET - Fetch available notification templates from the system
+
+This is the first request to make to see what templates exist on the system to override
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/notifications
 
 #### GET - Fetch notification:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/notification
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/notification/{id}
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
 #### PUT - Add notification:
 
@@ -87,7 +93,7 @@ curl -X PUT -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:application/json" -d
             }
         }
     }
-}' http://server:8000/v1/accounts/{ACCOUNT_ID}/notification
+}' http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
 #### POST - Update notification:
@@ -117,20 +123,18 @@ curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:application/json" -
             }
         }
     }
-}' http://server:8000/v1/accounts/{ACCOUNT_ID}/notification
+}' http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
 #### DELETE - Remove notification:
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/notification/{ID}
-
+    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
 #### GET - Get notification template:
 
-    curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v1/accounts/{ACCOUNT_ID}/notifications/{ID}/html
+    curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/html
 
-    curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v1/accounts/{ACCOUNT_ID}/notifications/{ID}/text
-
+    curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/text
 
 #### POST - Update notification template:
 
@@ -138,15 +142,10 @@ curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:application/json" -
 curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" -d '
 <div>
   <p>Some Html</p>
-</div>' http://server:8000/v1/accounts/{ACCOUNT_ID}/notifications/{ID}/html
+</div>' http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/html
 ```
 
 ```
-curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" -d '
-some plain text' http://server:8000/v1/accounts/{ACCOUNT_ID}/notifications/{ID}/text
+curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain" -d '
+some plain text' http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/text
 ```
-
-
-
-
-
