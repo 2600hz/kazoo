@@ -108,7 +108,7 @@ allowed_methods(_) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
+resource_exists(_Id) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -326,7 +326,9 @@ create(Context) ->
 maybe_read(Context, Id) ->
     case props:get_value(<<"accept">>, cb_context:req_headers(Context)) of
         'undefined' -> read(Context, Id);
-        Accept -> read_template(read(Context, Id), Id, Accept)
+        <<"application/json">> -> read(Context, Id);
+        <<"application/x-json">> -> read(Context, Id);
+        Accept -> maybe_read_template(read(Context, Id), Id, Accept)
     end.
 
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -346,6 +348,13 @@ read_success(Context) ->
     leak_attachments(
       leak_doc_id(Context)
      ).
+
+-spec read_template(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+maybe_read_template(Context, Id, Accept) ->
+    case cb_context:resp_status(Context) of
+        'success' -> read_template(Context, Id, Accept);
+        _Status -> Context
+    end.
 
 read_template(Context, Id, Accept) ->
     Doc = cb_context:fetch(Context, 'db_doc'),
