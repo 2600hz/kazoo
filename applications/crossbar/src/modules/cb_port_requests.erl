@@ -13,11 +13,11 @@
 %%%   Causes billing to occur
 %%%   Ensure there's at least one attachment of non-0 length
 %%% PUT /port_requests/{id}/scheduled - SDA indicates the port request is being processed
-%%% PUT /port_requests/{id}/completion - SDA can force completion of the port request (populate numbers DBs)
-%%% PUT /port_requests/{id}/rejection - SDA can force rejection of the port request
+%%% PUT /port_requests/{id}/completed - SDA can force completion of the port request (populate numbers DBs)
+%%% PUT /port_requests/{id}/rejected - SDA can force rejection of the port request
 %%%
 %%% POST /port_requests/{id} - update a port request
-%%% DELETE /port_requests/{id} - delete a port request, only if in "waiting" or "rejected"
+%%% DELETE /port_requests/{id} - delete a port request, only if in "unconfirmed" or "rejected"
 %%%
 %%% GET /port_request/{id}/attachments - List attachments on the port request
 %%% PUT /port_request/{id}/attachments - upload a document
@@ -647,8 +647,10 @@ can_update_port_request(Context) ->
 
 can_update_port_request(_Context, ?PORT_WAITING) ->
     'true';
+can_update_port_request(_Context, ?PORT_REJECT) ->
+    'true';
 can_update_port_request(Context, _) ->
-    cb_modules_util:is_superduper_admin(Context).
+    cb_modules_util:is_superduper_admin(cb_context:auth_account_id(Context)).
 
 -spec successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 successful_validation('undefined', Context) ->
