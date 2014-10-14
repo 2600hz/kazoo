@@ -562,10 +562,9 @@ hexencode_binary(S) ->
 
 hexencode_binary(<<>>, Acc) -> Acc;
 hexencode_binary(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
-    io:format("~p ~p ~p ~p~n", [Hi, Lo, Rest, Acc]),
     hexencode_binary(Rest, <<Acc/binary
-                             ,(binary_to_hex_char(Hi))/binary
-                             ,(binary_to_hex_char(Lo))/binary
+                             ,(binary_to_hex_char(Hi))
+                             ,(binary_to_hex_char(Lo))
                            >>).
 
 -spec from_hex_binary(binary()) -> binary().
