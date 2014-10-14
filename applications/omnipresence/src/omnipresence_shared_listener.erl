@@ -109,12 +109,12 @@ maybe_handle_event(JObj, CallId, <<"CHANNEL_DESTROY">> = EventName) ->
 maybe_handle_event(JObj, CallId, <<"CHANNEL_CREATE">> = EventName) ->
     case wh_cache:fetch_local(?CACHE_NAME, terminated_cache_key(CallId)) of
         {'error', 'not_found'} -> handle_the_event(JObj, EventName);
-        {'ok', 'terminated'} -> lager:warning("received ~s but call is terminated already, dropping", [EventName])
+        _Else -> lager:warning("received ~s but call is terminated already, dropping", [EventName])
     end;
 maybe_handle_event(JObj, CallId, <<"CHANNEL_ANSWER">> = EventName) ->
     case wh_cache:fetch_local(?CACHE_NAME, terminated_cache_key(CallId)) of
-        'undefined' -> handle_the_event(JObj, EventName);
-        'terminated' -> lager:warning("received ~s but call is terminated already, dropping", [EventName])
+        {'error', 'not_found'} -> handle_the_event(JObj, EventName);
+        _Else -> lager:warning("received ~s but call is terminated already, dropping", [EventName])
     end;
 maybe_handle_event(JObj, _CallId, EventName) ->
     handle_the_event(JObj, EventName).
