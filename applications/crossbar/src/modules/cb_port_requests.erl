@@ -647,6 +647,8 @@ can_update_port_request(Context) ->
 
 can_update_port_request(_Context, ?PORT_WAITING) ->
     'true';
+can_update_port_request(_Context, ?PORT_REJECT) ->
+    'true';
 can_update_port_request(Context, _) ->
     cb_modules_util:is_superduper_admin(cb_context:account_id(Context)).
 
