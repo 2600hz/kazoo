@@ -95,6 +95,7 @@ Using the ID from the system listing above, get the template JSON. This document
         "auth_token": "{AUTH_TOKEN}",
         "data": {
             "id": "{NOTIFICATION_ID}",
+            "templates",["text/html"]
             ...
         },
         "request_id": "{REQUEST_ID}",
@@ -223,22 +224,23 @@ Creating the configuration documents is all well and good, but it is necessary t
 
 #### GET - Get notification template:
 
-    curl -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+When you GET a notification config (`Accept` of `application/json`), get a `templates` list of `Content-Type` atttributes. Use those to fetch a specific template by setting the `Accept` header:
 
-    curl -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: text/plain" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+    curl -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Accept: text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
-Note that the only difference is the `Content-Type` attribute. This will determine which attachment is returned in the payload.
+    curl -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Accept: text/plain" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+
+Note that the only difference is the `Accept` attribute. This will determine which attachment is returned in the payload. If you specify a non-existent Accept MIME type, expect to receive a `406 Not Acceptable` error.
 
 #### POST - Update notification template:
 
 ```
-curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" -d '
+curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID} -d '
 <div>
   <p>Some Html</p>
-</div>' http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/html
+</div>'
 ```
 
 ```
-curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain" -d '
-some plain text' http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/text
+curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain"  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/text -d 'some plain text template code'
 ```
