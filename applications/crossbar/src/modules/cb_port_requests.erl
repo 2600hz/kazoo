@@ -648,7 +648,7 @@ can_update_port_request(Context) ->
 can_update_port_request(_Context, ?PORT_WAITING) ->
     'true';
 can_update_port_request(Context, _) ->
-    cb_modules_util:is_superduper_admin(Context).
+    cb_modules_util:is_superduper_admin(cb_context:account_id(Context)).
 
 -spec successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 successful_validation('undefined', Context) ->
