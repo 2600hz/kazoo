@@ -63,7 +63,7 @@ This is the first request to make to see what templates exist on the system to o
     {
         "auth_token": "{AUTH_TOKEN},
         "data": [
-            "voicemail_to_email",
+            "{NOTIFICATION_ID}",
             "voicemail_full",
             ...
         ],
@@ -90,11 +90,11 @@ In this case, the account overrides none of the default system templates.
 
 Using the ID from the system listing above, get the template JSON. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/notifications/voicemail_to_email
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/notifications/{NOTIFICATION_ID}
     {
         "auth_token": "{AUTH_TOKEN}",
         "data": {
-            "id": "voicemail_to_email",
+            "id": "{NOTIFICATION_ID}",
             ...
         },
         "request_id": "{REQUEST_ID}",
@@ -108,7 +108,7 @@ Now that you've fetched the system default template, modify and PUT it back to t
 
     curl -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type:application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications -d '{
     "data": {
-        "id":"voicemail_to_email",
+        "id":"{NOTIFICATION_ID}",
         "to": {
             "type": "users",
             "email_addresses": ["user@account.com"]
@@ -135,7 +135,7 @@ Now that you've fetched the system default template, modify and PUT it back to t
         "data": {
             "enabled": true,
             "from": "reseller@resellerdomain.com",
-            "id": "voicemail_to_email",
+            "id": "{NOTIFICATION_ID}",
             "macros": {
                 "user.first_name": {
                     "description": "If the voicemail box has an owner id, this is the first name of that user. Not always present",
@@ -168,11 +168,11 @@ This request will fail if `id` does not already exist in the system defaults. To
 
 Now that you've created an account-specific notification, you can fetch it to feed into a WYSIWYG editor or for other purposes:
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/voicemail_to_email
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
     {
         "auth_token": "{AUTH_TOKEN}",
         "data": {
-            "id": "voicemail_to_email",
+            "id": "{NOTIFICATION_ID}",
             ...
         },
         "request_id": "{REQUEST_ID}",
@@ -180,35 +180,18 @@ Now that you've created an account-specific notification, you can fetch it to fe
         "status": "success"
     }
 
+#### POST - Update a notification's config
 
+Similar to the PUT, POST will update an existing config:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#### POST - Update notification:
-
-```
-curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:application/json" -d '
-{
+    curl -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type:application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID} -d '{
     "data": {
+        "id":"{NOTIFICATION_ID}",
         "to": {
-            "type": "admins",
-            "email_addresses": ["peter@email.com"]
+            "type": "users",
+            "email_addresses": ["user@account.com"]
         },
-        "from": "peter@email.com",
+        "from": "reseller@resellerdomain.com",
         "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
         "enabled": true,
         "template_charset": "utf-8",
@@ -221,22 +204,30 @@ curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:application/json" -
             "user.last_name": {
                 "i18n_label": "last_name",
                 "friendly_name": "Last Name",
-                "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
+                "description": "If the voicemail box has an owner id, this is the last name of that user.  Not always present"
             }
         }
-    }
-}' http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications
-```
+    }}'
 
-#### DELETE - Remove notification:
+Omit `/accounts/{ACCOUNT_ID}` to update the system's version.
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+#### Delete - remove a notification template
+
+    curl -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type:application/json" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+
+Omit the `/accounts/{ACCOUNT_ID}` to remove the system default.
+
+### Template Formats
+
+Creating the configuration documents is all well and good, but it is necessary to be able to attach the templates in their various forms as well. Currently supported formats are `text/html` and `text/plain`.
 
 #### GET - Get notification template:
 
-    curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/html
+    curl -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
-    curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/text
+    curl -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: text/plain" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+
+Note that the only difference is the `Content-Type` attribute. This will determine which attachment is returned in the payload.
 
 #### POST - Update notification template:
 
