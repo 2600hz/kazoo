@@ -328,7 +328,11 @@ summary(Context) ->
     case cb_context:account_db(Context) of
         'undefined' -> summary_available(Context);
         _AccountDb ->
-            crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2)
+            crossbar_doc:load_view(?CB_LIST
+                                   ,[]
+                                   ,Context
+                                   ,fun normalize_view_results/2
+                                  )
     end.
 
 -spec summary_available(cb_context:context()) -> cb_context:context().
@@ -336,8 +340,11 @@ summary_available(Context) ->
     crossbar_doc:load_view(?CB_LIST
                            ,[]
                            ,cb_context:set_account_db(Context, ?KZ_NOTIFICATIONS_DB)
-                           ,fun normalize_view_results/2
+                           ,fun normalize_available/2
                           ).
+
+normalize_available(JObj, Acc) ->
+    [wh_json:get_value(<<"key">>, JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
