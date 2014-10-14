@@ -209,7 +209,7 @@ refresh() ->
 -spec maybe_migrate_system_config(ne_binary()) -> 'ok'.
 maybe_migrate_system_config(ConfigId) ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, ConfigId) of
-        {'ok', JObj} -> migrate_system_config(JObj);
+        {'ok', JObj} -> migrate_system_config(wh_doc:public_fields(JObj));
         {'error', 'not_found'} -> 'ok'
     end.
 
