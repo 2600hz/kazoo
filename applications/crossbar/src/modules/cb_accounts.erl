@@ -642,11 +642,11 @@ leak_pvt_enabled(Context) ->
 leak_reseller_id(Context) ->
     RespJObj = cb_context:resp_data(Context),
     AccountId = cb_context:account_id(Context),
-    ResselerId = wh_services:find_reseller_id(AccountId),
+    ResellerId = wh_services:find_reseller_id(AccountId),
     leak_billing_mode(
         cb_context:set_resp_data(
             Context
-            ,wh_json:set_value(<<"reseller_id">>, ResselerId, RespJObj)
+            ,wh_json:set_value(<<"reseller_id">>, ResellerId, RespJObj)
         )
     ).
 
