@@ -203,7 +203,7 @@ validate_notifications(Context, ?HTTP_PUT) ->
 validate_notification(Context, Id, ?HTTP_GET) ->
     read(Context, Id);
 validate_notification(Context, Id, ?HTTP_POST) ->
-    update(Id, Context);
+    update(Context, Id);
 validate_notification(Context, Id, ?HTTP_DELETE) ->
     read(Context, Id).
 
@@ -273,8 +273,12 @@ put_success(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
-    crossbar_doc:save(Context).
+post(Context, _Id) ->
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> leak_doc_id(Context1);
+        _Status -> Context1
+    end.
 
 %% post(Context, Id, Format) ->
 %%     update_template(Context, fix_id(Id), Format, cb_context:req_files(Context)).
@@ -286,8 +290,12 @@ post(Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _) ->
-    crossbar_doc:delete(Context).
+delete(Context, _Id) ->
+    Context1 = crossbar_doc:delete(Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> leak_doc_id(Context1);
+        _Status -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -329,8 +337,8 @@ read_success(Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Id, Context) ->
+-spec update(cb_context:context(), ne_binary()) -> cb_context:context().
+update(Context, Id) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"notifications">>, Context, OnSuccess).
 
