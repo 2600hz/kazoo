@@ -60,6 +60,37 @@ To modify an account notification, the requester must be a reseller of that acco
 This is the first request to make to see what templates exist on the system to override
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/notifications
+    {
+        "auth_token": "{AUTH_TOKEN},
+        "data": [
+            "voicemail_to_email",
+            "voicemail_full",
+            ...
+        ],
+        "request_id": "{REQUEST_ID}",
+        "revision": "undefined",
+        "status": "success"
+    }
+
+To see what notification templates an account over-rides, include the account ID in the URI:
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications
+    {
+        "auth_token": "{AUTH_TOKEN},
+        "data": [
+        ],
+        "request_id": "{REQUEST_ID}",
+        "revision": "undefined",
+        "status": "success"
+    }
+
+In this case, the account overrides none of the default system templates.
+
+### GET - Fetch a notification's configuration
+
+Using the ID from the system listing above, get the template JSON. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
+
+    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/notifications/voicemail_to_email
 
 #### GET - Fetch notification:
 
