@@ -29,6 +29,9 @@
                          ,<<"sup">>
                         ]).
 
+%% Endpoints performing their own auth
+-define(IGNORE_MODS, [<<"notifications">>]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -48,9 +51,12 @@ authorize(_Context, ?HTTP_GET, [{<<"global_provisioner_templates">>,_}|_]) ->
 authorize(Context, Verb, _Nouns) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     IsSysAdmin = cb_modules_util:is_superduper_admin(AuthAccountId),
-    case (allowed_if_sys_admin_mod(IsSysAdmin, Context)
-          andalso account_is_descendant(IsSysAdmin, Context)
-         ) orelse (Verb =:= ?HTTP_GET andalso cb_context:magic_pathed(Context))
+    case (not should_ignore(Context)
+          andalso (allowed_if_sys_admin_mod(IsSysAdmin, Context)
+                   andalso account_is_descendant(IsSysAdmin, Context)
+                  )
+         )
+        orelse (Verb =:= ?HTTP_GET andalso cb_context:magic_pathed(Context))
     of
         'true' ->
             lager:debug("authorizing the request"),
@@ -59,6 +65,12 @@ authorize(Context, Verb, _Nouns) ->
             lager:debug("the request can not be authorized by this module"),
             'false'
     end.
+
+-spec should_ignore(cb_context:context()) -> boolean().
+should_ignore(Context) ->
+    lists:any(fun({Noun, _}) ->
+                      lists:member(Noun, ?IGNORE_MODS)
+              end, cb_context:req_nouns(Context)).
 
 %%--------------------------------------------------------------------
 %% @private
