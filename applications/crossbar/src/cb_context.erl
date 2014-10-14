@@ -40,6 +40,7 @@
          ,req_id/1, set_req_id/2
          ,req_files/1, set_req_files/2
          ,req_nouns/1, set_req_nouns/2
+         ,req_headers/1, set_req_headers/2
          ,query_string/1, set_query_string/2
          ,client_ip/1
          ,doc/1, set_doc/2
@@ -140,6 +141,7 @@ req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
 req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
+req_headers(#cb_context{req_headers=Hs}) -> Hs.
 query_string(#cb_context{query_json=Q}) -> Q.
 client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
@@ -195,6 +197,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_req_data(context(), wh_json:object() | ne_binary()) -> context().
 -spec set_req_files(context(), req_files()) -> context().
 -spec set_req_nouns(context(), req_nouns()) -> context().
+-spec set_req_headers(context(), cowboy:http_headers()) -> context().
 -spec set_query_string(context(), wh_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
 -spec set_doc(context(), api_object() | wh_json:objects()) -> context().
@@ -236,6 +239,7 @@ set_req_verb(#cb_context{}=Context, ReqVerb) -> Context#cb_context{req_verb=ReqV
 set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqData}.
 set_req_files(#cb_context{}=Context, ReqFiles) -> Context#cb_context{req_files=ReqFiles}.
 set_req_nouns(#cb_context{}=Context, ReqNouns) -> Context#cb_context{req_nouns=ReqNouns}.
+set_req_headers(#cb_context{}=Context, ReqHs) -> Context#cb_context{req_headers=ReqHs}.
 set_query_string(#cb_context{}=Context, Q) -> Context#cb_context{query_json=Q}.
 set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
 set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
