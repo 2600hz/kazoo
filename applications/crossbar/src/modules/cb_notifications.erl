@@ -139,7 +139,6 @@ content_types_provided(Context, Id, ?HTTP_GET) ->
                                           | Acc
                                          ]
                                       end, [], Attachments),
-                    lager:debug("adding binary ~p", [ContentTypes]),
                     cb_context:set_content_types_provided(Context, [{'to_binary', ContentTypes}
                                                                     ,{'to_json', ?JSON_CONTENT_TYPES}
                                                                    ])
@@ -180,23 +179,6 @@ validate(Context) ->
 validate(Context, Id) ->
     validate_notification(Context, db_id(Id), cb_context:req_verb(Context)).
 
-%% validate(Context, Id, ?HTML) ->
-%%     case is_authorized(Context) of
-%%         'true' ->
-%%             lager:debug("uploading hml template to '~s'", [Id]),
-%%             validate_template(Context, fix_id(Id), cb_context:req_verb(Context), cb_context:req_files(Context));
-%%     'false' ->
-%%             cb_context:add_system_error('forbidden', Context)
-%%     end;
-%% validate(Context, Id, ?TXT) ->
-%%     case is_authorized(Context) of
-%%         'true' ->
-%%             lager:debug("uploading txt template data to '~s'", [Id]),
-%%             validate_template(Context, fix_id(Id), cb_context:req_verb(Context), cb_context:req_files(Context));
-%%     'false' ->
-%%             cb_context:add_system_error('forbidden', Context)
-%%     end.
-
 -spec validate_notifications(cb_context:context(), http_method()) -> cb_context:context().
 validate_notifications(Context, ?HTTP_GET) ->
     summary(Context);
@@ -211,47 +193,6 @@ validate_notification(Context, Id, ?HTTP_POST) ->
 validate_notification(Context, Id, ?HTTP_DELETE) ->
     read(Context, Id).
 
-%% -spec validate_template(cb_context:context(), ne_binary(), http_method(), wh_proplist()) -> cb_context:context().
-%% validate_template(Context, Id, ?HTTP_GET, _Files) ->
-%%     lager:debug("fetch template contents for '~s'", [Id]),
-%%     load_template(Id, Context);
-%% validate_template(Context, _Id, ?HTTP_POST, []) ->
-%%     Message = <<"please provide an template file">>,
-%%     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
-%% validate_template(Context, Id, ?HTTP_POST, [{_Filename, File}]) ->
-%%     case test_compile_template(File) of
-%%         'error' ->
-%%             crossbar_util:response('error', <<"Invalid template">>, 400, Context);
-%%         'ok' ->
-%%             Context1 = read(Id, Context),
-%%             case cb_context:resp_status(Context1) of
-%%                 'success' ->
-%%                     lager:debug("loaded media meta for '~s'", [Id]),
-%%                     Context1;
-%%                 _Status -> Context1
-%%             end
-%%     end.
-
-%% -spec test_compile_template(wh_json:object()) -> 'ok' | 'error'.
-%% test_compile_template(File) ->
-%%     Template = wh_json:get_value(<<"contents">>, File),
-%%     % Atom leak !!!!
-%%     {_, _, Now} = erlang:now(),
-%%     Name = wh_util:to_atom(Now, 'true'),
-%%     case erlydtl:compile_template(Template, Name, [{'out_dir', 'false'}]) of
-%%         {'ok', CustomTemplate} ->
-%%             lager:debug("template compiled successfuly, purging now"),
-%%             code:purge(CustomTemplate),
-%%             code:delete(CustomTemplate),
-%%             'ok';
-%%         {'error', _R} ->
-%%             lager:error("fail to compile template: ~p", [_R]),
-%%             'error';
-%%         _E ->
-%%             lager:error("fail to compile template"),
-%%             'error'
-%%     end.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -262,12 +203,9 @@ validate_notification(Context, Id, ?HTTP_DELETE) ->
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
-        'success' -> put_success(Context1);
+        'success' -> leak_doc_id(Context1);
         _Status -> Context1
     end.
-
-put_success(Context) ->
-    leak_doc_id(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -349,23 +287,30 @@ read_success(Context) ->
       leak_doc_id(Context)
      ).
 
--spec read_template(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+-spec maybe_read_template(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 maybe_read_template(Context, Id, Accept) ->
     case cb_context:resp_status(Context) of
         'success' -> read_template(Context, Id, Accept);
         _Status -> Context
     end.
 
+-spec read_template(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 read_template(Context, Id, Accept) ->
     Doc = cb_context:fetch(Context, 'db_doc'),
     AttachmentName = attachment_name_by_accept(Accept),
     case wh_json:get_value([<<"_attachments">>, AttachmentName], Doc) of
         'undefined' ->
-            lager:debug("failed to find attachment ~s for ~s in ~p", [AttachmentName, Accept, Doc]),
+            lager:debug("failed to find attachment ~s in ~s", [AttachmentName, Id]),
             crossbar_util:response_faulty_request(Context);
-        _Props ->
-            lager:debug("found attachment ~s: ~p", [AttachmentName, _Props]),
-            crossbar_doc:load_attachment(Id, AttachmentName, Context)
+        Meta ->
+            lager:debug("found attachment ~s in ~s", [AttachmentName, Id]),
+
+            cb_context:add_resp_headers(
+              crossbar_doc:load_attachment(Id, AttachmentName, Context)
+              ,[{<<"Content-Disposition">>, [<<"attachment; filename=">>, resp_id(Id), $., cb_modules_util:content_type_to_extension(Accept)]}
+                ,{<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Meta)}
+                ,{<<"Content-Length">>, wh_json:get_value(<<"length">>, Meta)}
+               ])
     end.
 
 %%--------------------------------------------------------------------
@@ -375,6 +320,7 @@ read_template(Context, Id, Accept) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_update(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_update(Context, Id) ->
     case cb_context:req_files(Context) of
         [] -> update(Context, Id);
@@ -416,6 +362,7 @@ update_template(Context, Id, FileJObj) ->
 attachment_name_by_content_type(CT) ->
     <<"template.", (cow_qs:urlencode(CT))/binary>>.
 
+-spec attachment_name_by_accept(ne_binary()) -> ne_binary().
 attachment_name_by_accept(CT) ->
     <<"template.", CT/binary>>.
 
@@ -446,6 +393,7 @@ summary_available(Context) ->
                            ,fun normalize_available/2
                           ).
 
+-spec normalize_available(wh_json:object(), ne_binaries()) -> ne_binaries().
 normalize_available(JObj, Acc) ->
     [wh_json:get_value(<<"key">>, JObj) | Acc].
 
@@ -524,49 +472,3 @@ leak_attachments(Context) ->
     cb_context:set_resp_data(Context
                              ,wh_json:set_value(<<"templates">>, Templates, cb_context:resp_data(Context))
                             ).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load the binary attachment of a media doc
-%% @end
-%%--------------------------------------------------------------------
-%% -spec load_template(cb_context:context(), path_token()) -> cb_context:context().
-%% load_template(Id, Context) ->
-%%     Context1 = read(Id, Context),
-%%     case cb_context:resp_status(Context1) of
-%%         'success' ->
-%%             Meta = wh_json:get_value([<<"_attachments">>], cb_context:doc(Context1), []),
-%%             case wh_json:get_keys(Meta) of
-%%                 [] -> crossbar_util:response_bad_identifier(Id, Context);
-%%                 [Attachment|_] ->
-%%                     cb_context:add_resp_headers(
-%%                       crossbar_doc:load_attachment(cb_context:doc(Context1), Attachment, Context1)
-%%                       ,[{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
-%%                         ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], Meta)}
-%%                         ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], Meta)}
-%%                        ])
-%%             end;
-%%         _Status -> Context1
-%%     end.
-
-%% %%--------------------------------------------------------------------
-%% %% @private
-%% %% @doc
-%% %% Update the binary attachment of a media doc
-%% %% @end
-%% %%--------------------------------------------------------------------
-%% -spec update_template(cb_context:context(), path_token(), path_token(), req_files()) ->
-%%                                  cb_context:context().
-%% update_template(Context, Id, Format, [{_, FileObj}|_]) ->
-%%     Contents = wh_json:get_value(<<"contents">>, FileObj),
-%%     CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
-%%     lager:debug("file content type: ~s", [CT]),
-%%     Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
-%%     crossbar_doc:save_attachment(
-%%         Id
-%%         ,<<"template.", Format/binary>>
-%%         ,Contents
-%%         ,Context
-%%         ,Opts
-%%     ).

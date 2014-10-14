@@ -386,7 +386,9 @@ content_type_to_extension(<<"audio/mpeg3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
 content_type_to_extension(<<"application/x-pdf">>) -> <<"pdf">>;
-content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>.
+content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>;
+content_type_to_extension(<<"text/html">>) -> <<"html">>;
+content_type_to_extension(<<"text/plain">>) -> <<"txt">>.
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
