@@ -73,12 +73,13 @@ authorize(_Context, AuthAccountId, [{<<"notifications">>, _Id}
     lager:debug("maybe authz for ~s to modify ~s in ~s", [AuthAccountId, _Id, AccountId]),
     wh_services:is_reseller(AuthAccountId) andalso
         wh_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true');
-authorize(Context, AuthAccountId, [{<<"notifications">>, []}]) ->
+authorize(Context, _AuthAccountId, [{<<"notifications">>, []}]) ->
+    lager:debug("checking authz on system request to /"),
     cb_context:req_verb(Context) =:= ?HTTP_GET
-        orelse AuthAccountId =:= whapps_util:get_master_account_id();
-authorize(_Context, AuthAccountId, [{<<"notifications">>, _Id}]) ->
-    lager:debug("maybe authz ~s for system notification ~s", [AuthAccountId, _Id]),
-    AuthAccountId =:= whapps_util:get_master_account_id();
+        orelse cb_modules_util:is_superduper_admin(Context);
+authorize(Context, _AuthAccountId, [{<<"notifications">>, _Id}]) ->
+    lager:debug("maybe authz for system notification ~s", [_Id]),
+    cb_modules_util:is_superduper_admin(Context);
 authorize(_Context, _AuthAccountId, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -121,10 +122,10 @@ resource_exists(_) -> 'true'.
 -spec content_types_provided(cb_context:context(), path_token(), http_method()) ->
                                     cb_context:context().
 content_types_provided(Context, Id) ->
-    content_types_provided(Context, fix_id(Id), cb_context:req_verb(Context)).
+    content_types_provided(Context, db_id(Id), cb_context:req_verb(Context)).
 
 content_types_provided(Context, Id, ?HTTP_GET) ->
-    Context1 = read(Id, Context),
+    Context1 = read(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
             case wh_json:get_keys(<<"_attachments">>, cb_context:doc(Context1)) of
@@ -173,7 +174,7 @@ validate(Context) ->
     validate_notifications(Context, cb_context:req_verb(Context)).
 
 validate(Context, Id) ->
-    validate_notification(Context, fix_id(Id), cb_context:req_verb(Context)).
+    validate_notification(Context, db_id(Id), cb_context:req_verb(Context)).
 
 %% validate(Context, Id, ?HTML) ->
 %%     case is_authorized(Context) of
@@ -200,11 +201,11 @@ validate_notifications(Context, ?HTTP_PUT) ->
 
 -spec validate_notification(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_notification(Context, Id, ?HTTP_GET) ->
-    read(Id, Context);
+    read(Context, Id);
 validate_notification(Context, Id, ?HTTP_POST) ->
     update(Id, Context);
 validate_notification(Context, Id, ?HTTP_DELETE) ->
-    read(Id, Context).
+    read(Context, Id).
 
 %% -spec validate_template(cb_context:context(), ne_binary(), http_method(), wh_proplist()) -> cb_context:context().
 %% validate_template(Context, Id, ?HTTP_GET, _Files) ->
@@ -255,7 +256,14 @@ validate_notification(Context, Id, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' -> put_success(Context1);
+        _Status -> Context1
+    end.
+
+put_success(Context) ->
+    leak_doc_id(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -298,11 +306,21 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(<<"notify_", ShortId/binary>>=Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context),
-    RespData = cb_context:resp_data(Context1),
-    cb_context:set_resp_data(Context1, wh_json:set_value(<<"id">>, ShortId, RespData)).
+-spec read(cb_context:context(), ne_binary()) -> cb_context:context().
+read(Context, Id) ->
+    Context1 =
+        case cb_context:account_db(Context) of
+            'undefined' -> crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_NOTIFICATIONS_DB));
+            _AccountDb -> crossbar_doc:load(Id, Context)
+        end,
+    case cb_context:resp_status(Context1) of
+        'success' -> read_success(Context1);
+        _Status -> Context1
+    end.
+
+-spec read_success(cb_context:context()) -> cb_context:context().
+read_success(Context) ->
+    leak_doc_id(Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -354,13 +372,31 @@ normalize_available(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Doc = cb_context:doc(Context),
-    Id = fix_id(wh_json:get_value(<<"id">>, Doc)),
-    Doc1 = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
-                               ,{<<"_id">>, Id}
-                             ], Doc),
-    Doc2 = wh_json:delete_key(<<"id">>, Doc1),
-    cb_context:set_doc(Context, Doc2);
+    DocId = db_id(wh_json:get_value(<<"id">>, cb_context:doc(Context))),
+    AccountDb = cb_context:account_db(Context),
+
+    case couch_mgr:open_cache_doc(?KZ_NOTIFICATIONS_DB, DocId) of
+        {'ok', _JObj} ->
+            Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
+                                      ,{<<"_id">>, DocId}
+                                     ], cb_context:doc(Context)),
+            cb_context:set_doc(Context, Doc);
+        {'error', 'not_found'} when AccountDb =/= 'undefined', AccountDb =/= ?KZ_NOTIFICATIONS_DB ->
+            lager:debug("doc ~s does not exist in ~s", [DocId, ?KZ_NOTIFICATIONS_DB]),
+            crossbar_util:response_bad_identifier(resp_id(DocId), Context);
+        {'error', 'not_found'} ->
+            lager:debug("this will create a new template in ~s", [?KZ_NOTIFICATIONS_DB]),
+            Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
+                                      ,{<<"_id">>, DocId}
+                                     ], cb_context:doc(Context)),
+            cb_context:setters(Context
+                               ,[{fun cb_context:set_doc/2, Doc}
+                                 ,{fun cb_context: set_account_db/2, ?KZ_NOTIFICATIONS_DB}
+                                ]);
+        {'error', _E} ->
+            lager:debug("error fetching ~s from ~s: ~p", [DocId, ?KZ_NOTIFICATIONS_DB, _E]),
+            crossbar_util:response_db_fatal(Context)
+    end;
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 
@@ -379,9 +415,19 @@ normalize_view_results(JObj, Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fix_id(ne_binary()) -> ne_binary().
-fix_id(<<"notification.", _/binary>>=Id) -> Id;
-fix_id(Id) -> <<"notification.", Id/binary>>.
+-spec db_id(ne_binary()) -> ne_binary().
+db_id(<<"notification.", _/binary>> = Id) -> Id;
+db_id(Id) -> <<"notification.", Id/binary>>.
+
+-spec resp_id(ne_binary()) -> ne_binary().
+resp_id(<<"notification.", Id/binary>>) -> Id;
+resp_id(Id) -> Id.
+
+-spec leak_doc_id(cb_context:context()) -> cb_context:context().
+leak_doc_id(Context) ->
+    RespData = cb_context:resp_data(Context),
+    DocId = wh_json:get_first_defined([<<"_id">>, <<"id">>], RespData),
+    cb_context:set_resp_data(Context, wh_json:set_value(<<"id">>, resp_id(DocId), RespData)).
 
 %%--------------------------------------------------------------------
 %% @private
