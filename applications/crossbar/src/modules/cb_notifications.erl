@@ -128,14 +128,18 @@ content_types_provided(Context, Id, ?HTTP_GET) ->
     Context1 = read(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
-            case wh_json:get_keys(<<"_attachments">>, cb_context:doc(Context1)) of
-                [] -> Context;
+            case wh_json:get_value(<<"_attachments">>, cb_context:doc(Context1)) of
+                'undefined' -> Context;
                 Attachments ->
-                    ContentTypes = [list_to_tuple(
-                                      binary:split(wh_json:get_value(<<"content_type">>, Attachment), <<"/">>)
-                                     )
-                                    || Attachment <- Attachments
-                                   ],
+                    ContentTypes =
+                        wh_json:foldl(fun(_Name, Attachment, Acc) ->
+                                         [list_to_tuple(
+                                            binary:split(wh_json:get_value(<<"content_type">>, Attachment), <<"/">>)
+                                           )
+                                          | Acc
+                                         ]
+                                      end, [], Attachments),
+                    lager:debug("adding binary ~p", [ContentTypes]),
                     cb_context:set_content_types_provided(Context, [{'to_binary', ContentTypes}
                                                                     ,{'to_json', ?JSON_CONTENT_TYPES}
                                                                    ])
@@ -201,9 +205,9 @@ validate_notifications(Context, ?HTTP_PUT) ->
 
 -spec validate_notification(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_notification(Context, Id, ?HTTP_GET) ->
-    read(Context, Id);
+    maybe_read(Context, Id);
 validate_notification(Context, Id, ?HTTP_POST) ->
-    update(Context, Id);
+    maybe_update(Context, Id);
 validate_notification(Context, Id, ?HTTP_DELETE) ->
     read(Context, Id).
 
@@ -273,15 +277,20 @@ put_success(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _Id) ->
+post(Context, Id) ->
+    case cb_context:req_files(Context) of
+        [] -> do_post(Context);
+        [{_FileName, FileJObj}] ->
+            lager:debug("POST is for an attachment on ~s(~s)", [Id, db_id(Id)]),
+            update_template(Context, db_id(Id), FileJObj)
+    end.
+
+do_post(Context) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' -> leak_doc_id(Context1);
         _Status -> Context1
     end.
-
-%% post(Context, Id, Format) ->
-%%     update_template(Context, fix_id(Id), Format, cb_context:req_files(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -314,6 +323,12 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
+maybe_read(Context, Id) ->
+    case props:get_value(<<"accept">>, cb_context:req_headers(Context)) of
+        'undefined' -> read(Context, Id);
+        Accept -> read_template(read(Context, Id), Id, Accept)
+    end.
+
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 read(Context, Id) ->
     Context1 =
@@ -328,7 +343,21 @@ read(Context, Id) ->
 
 -spec read_success(cb_context:context()) -> cb_context:context().
 read_success(Context) ->
-    leak_doc_id(Context).
+    leak_attachments(
+      leak_doc_id(Context)
+     ).
+
+read_template(Context, Id, Accept) ->
+    Doc = cb_context:fetch(Context, 'db_doc'),
+    AttachmentName = attachment_name_by_accept(Accept),
+    case wh_json:get_value([<<"_attachments">>, AttachmentName], Doc) of
+        'undefined' ->
+            lager:debug("failed to find attachment ~s for ~s in ~p", [AttachmentName, Accept, Doc]),
+            crossbar_util:response_faulty_request(Context);
+        _Props ->
+            lager:debug("found attachment ~s: ~p", [AttachmentName, _Props]),
+            crossbar_doc:load_attachment(Id, AttachmentName, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -337,10 +366,49 @@ read_success(Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
+maybe_update(Context, Id) ->
+    case cb_context:req_files(Context) of
+        [] -> update(Context, Id);
+        [{_FileName, FileJObj}] ->
+            lager:debug("recv template upload of ~s: ~p", [_FileName, FileJObj]),
+            read(Context, Id)
+    end.
+
 -spec update(cb_context:context(), ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"notifications">>, Context, OnSuccess).
+
+-spec update_template(cb_context:context(), path_token(), wh_json:object()) ->
+                             cb_context:context().
+update_template(Context, Id, FileJObj) ->
+    Contents = wh_json:get_value(<<"contents">>, FileJObj),
+    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
+    lager:debug("file content type for ~s: ~s", [Id, CT]),
+    Opts = [{'headers', [{'content_type', wh_util:to_list(CT)}]}],
+
+    Context1 =
+        case cb_context:account_db(Context) of
+            'undefined' -> cb_context:set_account_db(Context, ?KZ_NOTIFICATIONS_DB);
+            _AccountDb -> Context
+        end,
+
+    AttachmentName = attachment_name_by_content_type(CT),
+
+    crossbar_doc:save_attachment(
+      Id
+      ,AttachmentName
+      ,Contents
+      ,Context1
+      ,Opts
+     ).
+
+-spec attachment_name_by_content_type(ne_binary()) -> ne_binary().
+attachment_name_by_content_type(CT) ->
+    <<"template.", (cow_qs:urlencode(CT))/binary>>.
+
+attachment_name_by_accept(CT) ->
+    <<"template.", CT/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -436,6 +504,17 @@ leak_doc_id(Context) ->
     RespData = cb_context:resp_data(Context),
     DocId = wh_json:get_first_defined([<<"_id">>, <<"id">>], RespData),
     cb_context:set_resp_data(Context, wh_json:set_value(<<"id">>, resp_id(DocId), RespData)).
+
+-spec leak_attachments(cb_context:context()) -> cb_context:context().
+leak_attachments(Context) ->
+    Attachments = wh_json:get_value(<<"_attachments">>, cb_context:fetch(Context, 'db_doc'), wh_json:new()),
+    Templates =
+        wh_json:foldl(fun(_Attachment, Props, Acc) ->
+                              [wh_json:get_value(<<"content_type">>, Props) | Acc]
+                      end, [], Attachments),
+    cb_context:set_resp_data(Context
+                             ,wh_json:set_value(<<"templates">>, Templates, cb_context:resp_data(Context))
+                            ).
 
 %%--------------------------------------------------------------------
 %% @private
