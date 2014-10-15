@@ -40,8 +40,6 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = init_db(),
-
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.notifications">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.notifications">>, ?MODULE, 'resource_exists'),
@@ -51,10 +49,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.notifications">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.notifications">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.notifications">>, ?MODULE, 'delete').
-
-init_db() ->
-    _ = couch_mgr:db_create(?KZ_NOTIFICATIONS_DB),
-    couch_mgr:revise_doc_from_file(?KZ_NOTIFICATIONS_DB, 'crossbar', <<"account/notifications.json">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -73,13 +67,15 @@ authorize(_Context, AuthAccountId, [{<<"notifications">>, _Id}
     lager:debug("maybe authz for ~s to modify ~s in ~s", [AuthAccountId, _Id, AccountId]),
     wh_services:is_reseller(AuthAccountId) andalso
         wh_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true');
-authorize(Context, _AuthAccountId, [{<<"notifications">>, []}]) ->
+authorize(Context, AuthAccountId, [{<<"notifications">>, []}]) ->
     lager:debug("checking authz on system request to /"),
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     cb_context:req_verb(Context) =:= ?HTTP_GET
-        orelse cb_modules_util:is_superduper_admin(Context);
-authorize(Context, _AuthAccountId, [{<<"notifications">>, _Id}]) ->
+        orelse AuthAccountId =:= MasterAccountId;
+authorize(_Context, AuthAccountId, [{<<"notifications">>, _Id}]) ->
     lager:debug("maybe authz for system notification ~s", [_Id]),
-    cb_modules_util:is_superduper_admin(Context);
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    AuthAccountId =:= MasterAccountId;
 authorize(_Context, _AuthAccountId, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -273,7 +269,9 @@ maybe_read(Context, Id) ->
 read(Context, Id) ->
     Context1 =
         case cb_context:account_db(Context) of
-            'undefined' -> crossbar_doc:load(Id, cb_context:set_account_db(Context, ?KZ_NOTIFICATIONS_DB));
+            'undefined' ->
+                {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+                crossbar_doc:load(Id, cb_context:set_account_db(Context, MasterAccountDb));
             _AccountDb -> crossbar_doc:load(Id, Context)
         end,
     case cb_context:resp_status(Context1) of
@@ -344,7 +342,9 @@ update_template(Context, Id, FileJObj) ->
 
     Context1 =
         case cb_context:account_db(Context) of
-            'undefined' -> cb_context:set_account_db(Context, ?KZ_NOTIFICATIONS_DB);
+            'undefined' ->
+                {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+                cb_context:set_account_db(Context, MasterAccountDb);
             _AccountDb -> Context
         end,
 
@@ -387,9 +387,10 @@ summary(Context) ->
 
 -spec summary_available(cb_context:context()) -> cb_context:context().
 summary_available(Context) ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
     crossbar_doc:load_view(?CB_LIST
                            ,[]
-                           ,cb_context:set_account_db(Context, ?KZ_NOTIFICATIONS_DB)
+                           ,cb_context:set_account_db(Context, MasterAccountDb)
                            ,fun normalize_available/2
                           ).
 
@@ -408,26 +409,28 @@ on_successful_validation('undefined', Context) ->
     DocId = db_id(wh_json:get_value(<<"id">>, cb_context:doc(Context))),
     AccountDb = cb_context:account_db(Context),
 
-    case couch_mgr:open_cache_doc(?KZ_NOTIFICATIONS_DB, DocId) of
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+
+    case couch_mgr:open_cache_doc(MasterAccountDb, DocId) of
         {'ok', _JObj} ->
             Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
                                       ,{<<"_id">>, DocId}
                                      ], cb_context:doc(Context)),
             cb_context:set_doc(Context, Doc);
-        {'error', 'not_found'} when AccountDb =/= 'undefined', AccountDb =/= ?KZ_NOTIFICATIONS_DB ->
-            lager:debug("doc ~s does not exist in ~s", [DocId, ?KZ_NOTIFICATIONS_DB]),
+        {'error', 'not_found'} when AccountDb =/= 'undefined', AccountDb =/= MasterAccountDb ->
+            lager:debug("doc ~s does not exist in ~s, not letting ~s create it", [DocId, MasterAccountDb, AccountDb]),
             crossbar_util:response_bad_identifier(resp_id(DocId), Context);
         {'error', 'not_found'} ->
-            lager:debug("this will create a new template in ~s", [?KZ_NOTIFICATIONS_DB]),
+            lager:debug("this will create a new template in ~s", [MasterAccountDb]),
             Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
                                       ,{<<"_id">>, DocId}
                                      ], cb_context:doc(Context)),
             cb_context:setters(Context
                                ,[{fun cb_context:set_doc/2, Doc}
-                                 ,{fun cb_context: set_account_db/2, ?KZ_NOTIFICATIONS_DB}
+                                 ,{fun cb_context: set_account_db/2, MasterAccountDb}
                                 ]);
         {'error', _E} ->
-            lager:debug("error fetching ~s from ~s: ~p", [DocId, ?KZ_NOTIFICATIONS_DB, _E]),
+            lager:debug("error fetching ~s from ~s: ~p", [DocId, MasterAccountDb, _E]),
             crossbar_util:response_db_fatal(Context)
     end;
 on_successful_validation(Id, Context) ->
