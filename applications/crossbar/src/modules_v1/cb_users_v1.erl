@@ -313,10 +313,43 @@ validate_patch(UserId, Context) ->
 prepare_username(UserId, Context) ->
     JObj = cb_context:req_data(Context),
     case wh_json:get_ne_value(<<"username">>, JObj) of
-        'undefined' -> check_user_schema(UserId, Context);
+        'undefined' -> check_user_name(UserId, Context);
         Username ->
             JObj1 = wh_json:set_value(<<"username">>, wh_util:to_lower_binary(Username), JObj),
-            check_user_schema(UserId, cb_context:set_req_data(Context, JObj1))
+            check_user_name(UserId, cb_context:set_req_data(Context, JObj1))
+    end.
+
+-spec check_user_name(api_binary(), cb_context:context()) -> cb_context:context().
+check_user_name(UserId, Context) ->
+    JObj = cb_context:req_data(Context),
+    UserName = wh_json:get_ne_value(<<"username">>, JObj),
+    AccountDb = cb_context:account_db(Context),
+    case is_username_unique(AccountDb, UserId, UserName) of
+        'true' ->
+            lager:debug("username ~p is unique", [UserName]),
+            check_user_schema(UserId, Context);
+        'false' ->
+            Context1 =
+                cb_context:add_validation_error(
+                    [<<"username">>]
+                    ,<<"unique">>
+                    ,<<"Username already in use">>
+                    ,Context
+                ),
+            lager:error("username ~p is already used", [UserName]),
+            check_user_schema(UserId, Context1)
+    end.
+
+-spec is_username_unique(api_binary(), ne_binary(), ne_binary()) -> boolean().
+is_username_unique(AccountDb, UserId, UserName) ->
+    ViewOptions = [{'key', UserName}],
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'error', 'not_found'} -> 'true';
+        {'ok', [JObj|_]} -> wh_json:get_value(<<"id">>, JObj) =:= UserId;
+        _Else ->
+            lager:error("error ~p checking view ~p in ~p", [_Else, ?LIST_BY_USERNAME, AccountDb]),
+            'false'
     end.
 
 -spec check_user_schema(api_binary(), cb_context:context()) -> cb_context:context().
