@@ -809,6 +809,7 @@ send_fax(JobId, JObj, Q) ->
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = wh_util:rand_hex_binary(8),
+    ETimeout = wh_util:to_binary(whapps_config:get_integer(?CONFIG_CAT, <<"endpoint_timeout">>, 10)),
     Request = props:filter_undefined(
                 [{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
                  ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
@@ -829,6 +830,7 @@ send_fax(JobId, JObj, Q) ->
                  ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
                  ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
                  ,{<<"Application-Name">>, <<"fax">>}
+                 ,{<<"Timeout">>,ETimeout}
                  ,{<<"Application-Data">>, get_proxy_url(JobId)}
                  ,{<<"Outbound-Call-ID">>, CallId}
                  ,{<<"Bypass-E164">>, wh_json:is_true(<<"bypass_e164">>, JObj)}
