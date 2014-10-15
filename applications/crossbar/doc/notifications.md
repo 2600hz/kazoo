@@ -64,7 +64,6 @@ This is the first request to make to see what templates exist on the system to o
         "auth_token": "{AUTH_TOKEN},
         "data": [
             "{NOTIFICATION_ID}",
-            "voicemail_full",
             ...
         ],
         "request_id": "{REQUEST_ID}",
@@ -158,7 +157,7 @@ Now that you've fetched the system default template, modify and PUT it back to t
                 "type": "users"
             }
         },
-        "request_id": "be8e77c7c3eacf8faafe045d5f3734bf",
+        "request_id": "{REQUEST_ID}",
         "revision": "1-2ad8b8ca45e49df830a0ffbbc6d964d0",
         "status": "success"
     }
