@@ -119,6 +119,9 @@ resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> 'true'.
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
+content_types_provided(Context, ?INCOMING, <<Year:4/binary, Month:2/binary, "-", _/binary>> = FaxId, ?ATTACHMENT) ->
+    Ctx = cb_context:set_account_modb(Context, wh_util:to_integer(Year), wh_util:to_integer(Month)),
+    content_types_provided_for_fax(Ctx, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
     content_types_provided_for_fax(Context, FaxId, cb_context:req_verb(Context));
 content_types_provided(Context, _, _, _) ->
