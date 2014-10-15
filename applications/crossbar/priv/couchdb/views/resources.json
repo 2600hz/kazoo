@@ -1,9 +1,12 @@
 {"_id":"_design/resources"
  ,"language":"javascript"
  ,"views":{
+     "crossbar_listing": {
+         "map": "function(doc) {if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id,'name': doc.name,'enabled': doc.enabled,'weight_cost': doc.weight_cost,'template_name': doc.template_name,'classifiers': doc.classifiers});}"
+     },
      "listing_active_by_weight": {
          "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; emit([parseInt(doc.weight_cost, 10), doc._id], doc.name); }"
-       }
+     }
      ,"listing_by_id": {
          "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, doc.name); }"
      }
