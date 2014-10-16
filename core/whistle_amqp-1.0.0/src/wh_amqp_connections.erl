@@ -20,6 +20,7 @@
 -export([broker_connections/1]).
 -export([broker_available_connections/1]).
 -export([primary_broker/0]).
+-export([arbitrator_broker/0]).
 -export([federated_brokers/0]).
 -export([broker_zone/1]).
 -export([available/1]).
@@ -139,6 +140,20 @@ available(Connection) when is_pid(Connection) ->
 -spec unavailable(pid()) -> 'ok'.
 unavailable(Connection) when is_pid(Connection) ->
     gen_server:cast(?MODULE, {'connection_unavailable', Connection}).
+
+-spec arbitrator_broker() -> api_binary().
+arbitrator_broker() ->
+    MatchSpec = [{#wh_amqp_connections{broker='$1'
+                                       ,available='true'
+                                       ,_='_'
+                                      },
+                  [],
+                  ['$1']}
+                ],
+    case lists:sort(ets:select(?TAB, MatchSpec)) of
+        [] -> 'undefined';
+        [Arbitrator|_] -> Arbitrator
+    end.
 
 -spec broker_connections(ne_binary()) -> non_neg_integer().
 broker_connections(Broker) ->
