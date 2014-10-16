@@ -124,7 +124,7 @@
       "name": "Comments",
       "description": "An array of comments",
       "items": {
-        "type": "string",
+        "type": "object",
         "required": false
       }
     }
