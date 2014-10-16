@@ -267,6 +267,19 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
             lager:debug("transferor ~s bridged to ~s", [Transferor, _CallId]),
             {'next_state', 'attended_answer', State}
     end;
+attended_answer(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
+                ,#state{transferor=Transferor
+                        ,target=Target
+                       }=State
+               ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+        Transferor ->
+            lager:debug("transferor and target are connected"),
+            {'next_state', 'attended_answer', State};
+        _CallId ->
+            lager:debug("target ~s bridged to ~s", [Target, _CallId]),
+            {'next_state', 'attended_answer', State}
+    end;
 attended_answer(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
                 ,#state{transferee=Transferee}=State
                ) ->

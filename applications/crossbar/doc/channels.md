@@ -47,3 +47,11 @@ The Channels API allows queries to find active channels for an account, a user, 
 ### _GET_ - Channel Details
 
         curl -v -X GET -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}'
+
+### _POST - Execute an application against a Channel
+
+     curl -v -X POST -H "Content-Type: application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://localhost:8000/v2/accounts/{ACCOUNT_ID}/channels/{CALL_ID} -d '{"data": {"action": "transfer", "target": "2600", "takeback_dtmf": "*1", "moh": "media_id" }}'
+
+* `action`: What to do to the channel
+  * `transfer`: Transfers the `{CALL_ID}` leg to the `target` extension/DID and places the other leg on hold
+* All other arguments are determined by the `action` value
