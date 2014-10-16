@@ -929,7 +929,7 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
      ,{<<"Endpoints">>, Endpoints}
      ,{<<"Timeout">>, Timeout}
      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-     ,{<<"Ringback">>, cf_util:correct_media_path(Ringback, Call)}
+     ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
      ,{<<"Dial-Endpoint-Method">>, Strategy}
      ,{<<"SIP-Headers">>, SIPHeaders}
     ].

@@ -20,7 +20,6 @@
 
 -define(NON_DIRECT_MODULES, ['cf_ring_group', 'acdc_util']).
 
-
 -define(CF_MOBILE_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".mobile">>).
 -define(DEFAULT_MOBILE_FORMATER, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>).
 -define(DEFAULT_MOBILE_PREFIX, <<"">>).
