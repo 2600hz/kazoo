@@ -168,6 +168,16 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
             lager:debug("transferor ~s bridged to ~s", [Transferor, _CallId]),
             {'next_state', 'attended_answer', State}
     end;
+attended_wait(?EVENT(Target, <<"CHANNEL_CREATE">>, _Evt)
+              ,#state{target=Target}=State
+             ) ->
+    lager:debug("transfer target ~s channel created", [Target]),
+    {'next_state', 'attended_wait', State};
+attended_wait(?EVENT(Target, <<"originate_resp">>, _Evt)
+              ,#state{target=Target}=State
+             ) ->
+    lager:debug("originate has responded for target ~s", [Target]),
+    {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
     lager:debug("attanded_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
     {'next_state', 'attended_wait', State};
@@ -413,11 +423,13 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                        ),
     TargetCallId.
 
+-spec create_call_id() -> ne_binary().
 create_call_id() ->
     TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
     konami_event_listener:add_call_binding(TargetCallId, ['CHANNEL_ANSWER'
                                                           ,'CHANNEL_DESTROY'
                                                           ,'CHANNEL_CREATE'
+                                                          ,'CHANNEL_BRIDGE'
                                                          ]),
     TargetCallId.
 
