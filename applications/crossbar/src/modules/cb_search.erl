@@ -80,12 +80,12 @@ validate_search(Context, <<"accounts">>) ->
     Q = cb_context:req_value(Context, <<"q">>),
     validate_search_accounts(cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB), Q);
 validate_search(Context, _) ->
-    cb_context:add_validation_error(<<"ctx">>, <<"required">>, <<"query needs context">>, Context).
+    cb_context:add_validation_error(<<"c">>, <<"required">>, <<"search needs context">>, Context).
 
 
 -spec validate_search_accounts(cb_context:context(), api_binary()) -> cb_context:context().
 validate_search_accounts(Context, 'undefined') ->
-    cb_context:add_validation_error(<<"ctx">>, <<"required">>, <<"query needs context">>, Context);
+    cb_context:add_validation_error(<<"q">>, <<"required">>, <<"search needs to know what to look for">>, Context);
 validate_search_accounts(Context, Q) ->
     Lines  = binary:split(wh_util:uri_decode(Q), <<"&">>, ['global']),
     Query = lists:map(fun(A) ->
