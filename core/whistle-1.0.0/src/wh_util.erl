@@ -593,9 +593,17 @@ hex_char_to_binary(B) ->
 
 -spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
 rand_hex_binary(Size) when not is_integer(Size) ->
-    rand_hex_binary( wh_util:to_integer(Size));
+    rand_hex_binary(wh_util:to_integer(Size));
 rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
-    to_hex_binary(crypto:rand_bytes(Size)).
+    to_hex_binary(rand_hex(Size)).
+
+-spec rand_hex(pos_integer()) -> ne_binary().
+rand_hex(Size) ->
+    try crypto:strong_rand_bytes(Size) of
+        Bytes -> Bytes
+    catch
+        _:'low_entropy' -> crypto:rand_bytes(Size)
+    end.
 
 -spec binary_to_hex_char(pos_integer()) -> pos_integer().
 binary_to_hex_char(N) when N < 10 -> $0 + N;
