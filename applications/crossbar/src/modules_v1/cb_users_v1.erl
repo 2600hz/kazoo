@@ -345,7 +345,6 @@ is_username_unique(AccountDb, UserId, UserName) ->
     ViewOptions = [{'key', UserName}],
     case couch_mgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
         {'ok', []} -> 'true';
-        {'error', 'not_found'} -> 'true';
         {'ok', [JObj|_]} -> wh_json:get_value(<<"id">>, JObj) =:= UserId;
         _Else ->
             lager:error("error ~p checking view ~p in ~p", [_Else, ?LIST_BY_USERNAME, AccountDb]),
