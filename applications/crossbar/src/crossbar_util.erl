@@ -849,7 +849,7 @@ generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, Range) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec descendants_count() -> 'ok'.
--spec descendants_count(wh_proplists() | ne_binary()) -> 'ok'.
+-spec descendants_count(wh_proplist() | ne_binary()) -> 'ok'.
 descendants_count() ->
     Limit = whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000),
     ViewOptions = [
@@ -859,10 +859,9 @@ descendants_count() ->
     descendants_count(ViewOptions).
 
 descendants_count(Opts) when is_list(Opts) ->
-    ViewOptions = [
-        {'group_level', 1}
-        |props:delete('group_level', Opts)
-    ],
+    ViewOptions = [{'group_level', 1}
+                   | props:delete('group_level', Opts)
+                  ],
     case load_descendants_count(ViewOptions) of
         {'error', 'no_descendants'} ->
             case props:get_value('key', ViewOptions) of
@@ -896,21 +895,19 @@ descendants_count(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_descendants_count(wh_proplists()) -> {'ok', wh_proplists()} | {'error', _}.
+-spec load_descendants_count(wh_proplists()) ->
+                                    {'ok', wh_proplist()} |
+                                    {'error', _}.
 load_descendants_count(ViewOptions) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
         {'error', _E}=Resp -> Resp;
         {'ok', []} -> {'error', 'no_descendants'};
-        {'ok', [JObj|[]]} ->
-            {'ok', [{wh_json:get_value(<<"key">>, JObj)
-                     ,wh_json:get_value(<<"value">>, JObj)}
-                   ]};
         {'ok', JObjs} ->
-            Counts =
-                [{wh_json:get_value(<<"key">>, JObj)
-                 ,wh_json:get_value(<<"value">>, JObj)}
-                 || JObj <- JObjs],
-            {'ok', Counts}
+            {'ok', [{wh_json:get_value(<<"key">>, JObj)
+                     ,wh_json:get_value(<<"value">>, JObj)
+                    }
+                    || JObj <- JObjs
+                   ]}
     end.
 
 %%--------------------------------------------------------------------

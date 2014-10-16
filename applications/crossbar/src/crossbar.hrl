@@ -106,6 +106,7 @@
           ,req_json = wh_json:new() :: req_json()
           ,req_files = [] :: req_files()
           ,req_data :: wh_json:json_term()  % the "data" from the request JSON envelope
+          ,req_headers = [] :: cowboy:http_headers()
           ,query_json = wh_json:new() :: wh_json:object()
           ,account_id :: api_binary()
           ,db_name :: api_binary() | ne_binaries()
