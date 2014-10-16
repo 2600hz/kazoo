@@ -10,10 +10,10 @@
 -module(cb_service_plans).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/1 ,content_types_provided/2
-         ,validate/1, validate/2
+         ,validate/1, validate/2, validate/3
          ,post/2
          ,delete/2
         ]).
@@ -21,6 +21,10 @@
 -include("../crossbar.hrl").
 
 -define(CB_LIST, <<"service_plans/crossbar_listing">>).
+-define(AVAILABLE, <<"available">>).
+-define(CURRENT, <<"current">>).
+-define(SYNCHRONIZATION, <<"synchronization">>).
+-define(RECONCILIATION, <<"reconciliation">>).
 
 %%%===================================================================
 %%% API
@@ -56,6 +60,8 @@ allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+allowed_methods(?AVAILABLE, _) ->
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,6 +76,7 @@ allowed_methods(_) ->
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
+resource_exists(_, _) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -101,7 +108,7 @@ validate(Context) ->
                            ,fun normalize_view_results/2
                           ).
 
-validate(Context, <<"current">>) ->
+validate(Context, ?CURRENT) ->
     case cb_context:req_verb(Context) of
         ?HTTP_GET ->
             cb_context:setters(Context
@@ -113,14 +120,26 @@ validate(Context, <<"current">>) ->
         _Verb ->
             cb_context:add_system_error('bad_identifier', Context)
     end;
-validate(Context, <<"synchronization">>) ->
+validate(Context, ?AVAILABLE) ->
+    case cb_context:req_verb(Context) of
+        ?HTTP_GET ->
+            crossbar_doc:load_view(
+                ?CB_LIST
+                ,[]
+                ,Context
+                ,fun normalize_view_results/2
+            );
+        _Verb ->
+            cb_context:add_system_error('bad_identifier', Context)
+    end;
+validate(Context, ?SYNCHRONIZATION) ->
     case cb_context:req_verb(Context) =:= ?HTTP_POST
         andalso is_reseller(Context)
     of
         {'ok', _} -> cb_context:set_resp_status(Context, 'success');
         'false' -> cb_context:add_system_error('forbidden', Context)
     end;
-validate(Context, <<"reconciliation">>) ->
+validate(Context, ?RECONCILIATION) ->
     case cb_context:req_verb(Context) =:= ?HTTP_POST
         andalso is_reseller(Context)
     of
@@ -129,6 +148,15 @@ validate(Context, <<"reconciliation">>) ->
     end;
 validate(Context, PlanId) ->
     validate_service_plan(Context, PlanId, cb_context:req_verb(Context)).
+
+
+validate(Context, ?AVAILABLE, PlanId) ->
+    case cb_context:req_verb(Context) of
+        ?HTTP_GET ->
+            crossbar_doc:load(PlanId, Context);
+        _Verb ->
+            cb_context:add_system_error('bad_identifier', Context)
+    end.
 
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_service_plan(Context, PlanId, ?HTTP_GET) ->
@@ -149,10 +177,10 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, <<"synchronization">>) ->
+post(Context, ?SYNCHRONIZATION) ->
     wh_service_sync:sync(cb_context:account_id(Context)),
     cb_context:set_resp_status(Context, 'success');
-post(Context, <<"reconciliation">>) ->
+post(Context, ?RECONCILIATION) ->
     try wh_services:reconcile(cb_context:account_id(Context)) of
         _ -> cb_context:set_resp_status(Context, 'success')
     catch
@@ -208,7 +236,7 @@ content_types_provided(Context) ->
            ],
     cb_context:add_content_types_provided(Context, CTPs).
 
-content_types_provided(Context, <<"current">>) ->
+content_types_provided(Context, ?CURRENT) ->
     CTPs = [{'to_json', [{<<"application">>, <<"json">>}]}
             ,{'to_csv', [{<<"application">>, <<"octet-stream">>}
                          ,{<<"text">>, <<"csv">>}
