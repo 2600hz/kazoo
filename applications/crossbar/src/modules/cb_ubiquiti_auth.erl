@@ -170,10 +170,8 @@ auth_response(_Context, _RespHeaders, RespBody) ->
 
     maybe_add_account_information(UUID
                                   ,wh_json:from_list(
-                                     [{<<"sso">>, wh_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}
-                                      ,{<<"reseller_id">>, ?UBIQUITI_PROVIDER_ID}
-                                      ,{<<"is_reseller">>, 'false'}
-                                     ])
+                                     [{<<"sso">>, wh_json:set_value(<<"provider">>, ?SSO_PROVIDER, RespJObj)}]
+                                    )
                                  ).
 
 -spec maybe_add_account_information(api_binary(), wh_json:object()) -> wh_json:object().
@@ -184,8 +182,13 @@ maybe_add_account_information(UUID, AuthResponse) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_sso">>, Options) of
         {'ok', []} -> AuthResponse;
         {'ok', [AccountJObj]} ->
-            wh_json:set_values(<<"account_id">>
-                               ,wh_json:get_value(<<"account_id">>, AccountJObj)
+            AccountId = wh_json:get_value(<<"account_id">>, AccountJObj),
+            lager:debug("found account as ~s", [AccountId]),
+
+            wh_json:set_values([{<<"account_id">>, AccountId}
+                                ,{<<"is_reseller">>, wh_services:is_reseller(AccountId)}
+                                ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
+                               ]
                                ,AuthResponse
                               );
         {'error', _E} ->
