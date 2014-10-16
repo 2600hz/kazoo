@@ -35,6 +35,9 @@
        "listing_by_descendants_count": {
            "map": "function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var t = doc.pvt_tree.slice(0);for (var i in t) {emit(t[i], 1);}}",
            "reduce": "_count"
+       },
+       "search_by_name": {
+           "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; for (i in doc.pvt_tree) { emit([doc.pvt_tree[i], doc.name], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); } }"
        }
     }
 }
