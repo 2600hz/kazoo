@@ -767,7 +767,7 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
     wh_amqp_worker:cast(ControlUsurp
                         ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
                        ),
-    lager:debug("published ~p for ~s", [ControlUsurp, Target]),
+    lager:debug("published control usurp for ~s", [Target]),
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
     ecallmgr_util:export(Node, UUID, Exports),
