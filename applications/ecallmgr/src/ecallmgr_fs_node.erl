@@ -537,7 +537,8 @@ execute_command(Node, Options, ApiCmd0, ApiArg, Acc, ArgFormat) ->
                     process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, ['global']), Acc);
                 {'bgerror', BGApiID, _} when ArgFormat =:= 'binary' ->
                     process_cmd(Node, Options, ApiCmd0, ApiArg, Acc, 'list');
-                {'bgerror', BGApiID, Error} -> [{'error', Error} | Acc]
+                {'bgerror', BGApiID, Error} ->
+                    process_resp(ApiCmd, ApiArg, binary:split(Error, <<"\n">>, ['global']), Acc)
             after 120000 ->
                     [{'timeout', {ApiCmd, ApiArg}} | Acc]
             end;
