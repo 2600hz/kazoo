@@ -136,8 +136,10 @@ search_for_conference(Conference, Call, Srv) ->
 
 -spec handle_search_error(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 handle_search_error(Conference, Call, Srv) ->
-    wh_amqp_channel:remove_consumer_pid(),
+    Arbitrator = wh_amqp_connections:arbitrator_broker(),
     Queue = whapps_conference:id(Conference),
+    wh_amqp_channel:remove_consumer_pid(),
+    wh_amqp_channel:consumer_broker(Arbitrator),
     _ = amqp_util:new_queue(Queue),
     try amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of
         'ok' ->
