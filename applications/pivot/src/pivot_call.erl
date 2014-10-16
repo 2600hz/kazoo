@@ -421,6 +421,8 @@ code_change(_OldVsn, State, _Extra) ->
                       'ok' |
                       {'ok', ibrowse_req_id()} |
                       {'stop', whapps_call:call()}.
+send_req(Call, Uri, 'get', BaseParams, Debug) when is_list(BaseParams) ->
+    send_req(Call, Uri, 'get', wh_json:from_list(BaseParams), Debug);
 send_req(Call, Uri, 'get', BaseParams, Debug) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
@@ -431,7 +433,7 @@ send_req(Call, Uri, 'post', BaseParams, Debug) when is_list(BaseParams) ->
     Params = wh_json:set_values(BaseParams, UserParams),
     UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
     send(UpdatedCall, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params), Debug);
- send_req(Call, Uri, 'post', BaseParams, Debug) ->
+send_req(Call, Uri, 'post', BaseParams, Debug) ->
     send_req(Call, Uri, 'post', wh_json:to_proplist(BaseParams), Debug).
 
 -spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist(), boolean()) ->
