@@ -180,7 +180,7 @@ validate(Context, ?COLLECTION) ->
             validate_collection(Context)
     end;
 validate(Context, ?JOBS) ->
-    validate_jobs(Context, cb_context:req_verb(Context));
+    validate_jobs(maybe_set_account_to_master(Context), cb_context:req_verb(Context));
 validate(Context, Id) ->
     case cb_context:account_id(Context) of
         'undefined' ->
@@ -194,7 +194,19 @@ validate(Context, Id) ->
     end.
 
 validate(Context, ?JOBS, JobId) ->
-    read_job(Context, JobId).
+    read_job(maybe_set_account_to_master(Context), JobId).
+
+-spec maybe_set_account_to_master(cb_context:context()) -> cb_context:context().
+maybe_set_account_to_master(Context) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> set_account_to_master(Context);
+        _AccountId -> Context
+    end.
+
+-spec set_account_to_master(cb_context:context()) -> cb_context:context().
+set_account_to_master(Context) ->
+    {'ok', AccountId} = whapps_util:get_master_account_id(),
+    cb_context:set_account_id(Context, AccountId).
 
 -spec validate_resources(cb_context:context(), http_method()) -> cb_context:context().
 validate_resources(Context, ?HTTP_GET) ->
