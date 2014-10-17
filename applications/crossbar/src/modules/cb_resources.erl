@@ -406,7 +406,6 @@ leak_job_fields(Context) ->
             cb_context:set_resp_data(Context
                                      ,wh_json:set_values([{<<"timestamp">>, wh_json:get_value(<<"pvt_created">>, JObj)}
                                                           ,{<<"status">>, wh_json:get_value(<<"pvt_status">>, JObj)}
-                                                          ,{<<"carrier">>, wh_json:get_value(<<"pvt_carrier">>, JObj)}
                                                          ], cb_context:resp_data(Context))
                                     );
         _Status -> Context
@@ -439,7 +438,6 @@ jobs_summary(Context) ->
                                      ,{'endkey', CreatedTo}
                                      ,{'limit', crossbar_doc:pagination_page_size(Context)}
                                      ,{'databases', databases(Context, CreatedFrom, CreatedTo)}
-                                     ,'descending'
                                     ]
                                    ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
                                    ,fun normalize_view_results/2
@@ -519,7 +517,6 @@ on_successful_job_validation('undefined', Context) ->
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, <<"resource_job">>}
                                             ,{<<"pvt_status">>, <<"pending">>}
-                                            ,{<<"pvt_carrier">>, get_job_carrier(Context)}
                                             ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
                                             ,{<<"pvt_request_id">>, cb_context:req_id(Context)}
                                             ,{<<"_id">>, Id}
@@ -527,23 +524,9 @@ on_successful_job_validation('undefined', Context) ->
                                             ,{<<"successes">>, wh_json:new()}
                                             ,{<<"errors">>, wh_json:new()}
                                            ]
-                                           ,wh_json:delete_keys([<<"carrier">>]
-                                                                ,cb_context:doc(Context)
-                                                               )
+                                           ,cb_context:doc(Context)
                                           )
                       ).
-
--spec get_job_carrier(cb_context:context()) -> ne_binary().
--spec get_job_carrier(api_binary(), boolean()) -> ne_binary().
-get_job_carrier(Context) ->
-    case cb_context:req_value(Context, <<"carrier">>) of
-        <<"local">> -> <<"local">>;
-        Carrier -> get_job_carrier(Carrier, cb_modules_util:is_superduper_admin(Context))
-    end.
-
-get_job_carrier('undefined', 'true') -> <<"other">>;
-get_job_carrier(Carrier, 'true') -> Carrier;
-get_job_carrier(_Carrier, 'false') -> <<"local">>.
 
 -spec reload_acls() -> 'ok'.
 reload_acls() ->
