@@ -717,13 +717,13 @@ activate_account_for_acdc(Context) ->
     case couch_mgr:open_cache_doc(?KZ_ACDC_DB, cb_context:account_id(Context)) of
         {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
-            lager:debug("creating account doc in acdc db"),
-            Doc = wh_doc:update_pvt_parameters(wh_json:new()
+            lager:debug("creating account doc ~s in acdc db", [cb_context:account_id(Context)]),
+            Doc = wh_doc:update_pvt_parameters(wh_json:from_list([{<<"_id">>, cb_context:account_id(Context)}])
                                                ,?KZ_ACDC_DB
                                                ,[{'account_id', cb_context:account_id(Context)}
                                                  ,{'type', <<"acdc_activation">>}
                                                 ]),
-            couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc),
+            {'ok', _} = couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc),
             'ok';
         {'error', _E} ->
             lager:debug("failed to check acdc activation doc: ~p", [_E])
