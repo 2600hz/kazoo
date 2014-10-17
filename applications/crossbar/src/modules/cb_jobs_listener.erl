@@ -172,10 +172,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
                           ,<<"running">>
                          );
         {Failure, JObj} ->
-            lager:debug("failed to create number ~s for account ~s: ~p ~p", [Number, AccountId, Failure, JObj]),
-            update_status(wh_json:set_value([<<"errors">>, Number], JObj, Job)
-                          ,<<"running">>
-                         )
+            update_with_failure(Job, AccountId, Number, Failure, JObj)
     catch
         E:_R ->
             lager:debug("exception creating number ~s for account ~s: ~s: ~p", [Number, AccountId, E, _R]),
@@ -184,6 +181,28 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
                                                                ])
                                             ,Job
                                            )
+                          ,<<"running">>
+                         )
+    end.
+
+-spec update_with_failure(wh_json:object(), ne_binary(), ne_binary(), atom(), wh_json:object()) ->
+                                 wh_json:object().
+update_with_failure(Job, AccountId, Number, Failure, JObj) ->
+    lager:debug("failed to create number ~s for account ~s: ~p ~p", [Number, AccountId, Failure, JObj]),
+    case wh_json:is_json_object(JObj)
+        andalso wh_json:get_values(JObj)
+    of
+        {[V], [K]} ->
+            update_status(wh_json:set_value([<<"errors">>, Number]
+                                            ,wh_json:from_list([{<<"reason">>, K}
+                                                                ,{<<"message">>, V}
+                                                               ])
+                                            ,Job
+                                           )
+                          ,<<"running">>
+                         );
+        _ ->
+            update_status(wh_json:set_value([<<"errors">>, Number], JObj, Job)
                           ,<<"running">>
                          )
     end.
