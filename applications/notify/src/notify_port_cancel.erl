@@ -83,7 +83,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(wh_json:object(), wh_json:objects()) -> proplist().
+-spec create_template_props(wh_json:object(), wh_json:object()) -> wh_proplist().
 create_template_props(NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, NotifyJObj)),
 
@@ -124,7 +124,7 @@ get_default_from() ->
     DefaultFrom = wh_util:to_binary(node()),
     whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom).
 
--spec find_numbers(wh_json:object(), wh_json:object()) -> ne_binaries().
+-spec find_numbers(wh_proplist(), wh_json:object()) -> ne_binaries().
 find_numbers(PortData, NotifyJObj) ->
     case props:get_value(<<"numbers">>, PortData) of
         'undefined' -> find_numbers(NotifyJObj);

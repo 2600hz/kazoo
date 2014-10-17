@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2014, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -9,7 +9,6 @@
 -module(notify_maintenance).
 
 -include("notify.hrl").
--include_lib("whistle/include/wh_databases.hrl").
 
 -export([check_initial_call/1]).
 -export([check_initial_registration/1]).
@@ -19,25 +18,23 @@
 -define(TEMPLATE_PATH, code:lib_dir('notify', 'priv')).
 -define(SYSTEM_CONFIG_DB, <<"system_config">>).
 
--type input_term() :: atom() | string() | ne_binary().
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Returns wether an accounts initial call notification has been sent
+%% Returns whether an account's initial call notification has been sent
 %% @end
 %%--------------------------------------------------------------------
--spec check_initial_call(input_term()) -> 'ok' | 'failed'.
+-spec check_initial_call(text()) -> 'ok'.
 check_initial_call(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
             case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], JObj) of
-                'true' -> 'yes';
-                'false' -> 'no'
+                'true' -> io:format("account ~s has made their first call!~n", [AccountId]);
+                'false' -> io:format("account ~s has yet to make their first call~n", [AccountId])
             end;
         {'error', _R} ->
-            lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
+            io:format("unable to open account doc ~s: ~p", [AccountId, _R])
     end.
 
 %%--------------------------------------------------------------------
@@ -46,17 +43,17 @@ check_initial_call(Account) when is_binary(Account) ->
 %% Returns wether the initial_registration notification has been sent
 %% @end
 %%--------------------------------------------------------------------
--spec check_initial_registration(input_term()) -> 'ok' | 'failed'.
+-spec check_initial_registration(text()) -> 'ok'.
 check_initial_registration(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
             case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of
-                'true' -> 'yes';
-                'false' -> 'no'
+                'true' -> io:format("account ~s has registered successfully~n", [AccountId]);
+                'false' -> io:format("account ~s has yet to register successfully~n", [AccountId])
         end;
         {'error', _R} ->
-            lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
+            io:format("unable to open account doc ~s: ~p", [AccountId, _R])
     end.
 
 %%--------------------------------------------------------------------
@@ -184,7 +181,9 @@ module_exists(Module) ->
 %%--------------------------------------------------------------------
 -spec compare_template_system_config(wh_proplist()) -> 'ok'.
 -spec compare_template_system_config(wh_proplist(), wh_json:object()) -> 'ok'.
--spec compare_template_system_config(api_binary(), api_binary(), api_binary()) -> 'ok'.
+-spec compare_template_system_config(api_binaries(), api_binary(), api_binary()) ->
+                                            'default' | 'file' |
+                                            'doc' | 'ok'.
 
 compare_template_system_config([]) -> 'ok';
 compare_template_system_config([{FileId, Id}|Match]) ->
@@ -198,11 +197,9 @@ compare_template_system_config([{FileId, Id}|Match]) ->
             compare_template_system_config(Match);
         {Props, 'not_found'} ->
             io:format("comparing, failed to open document (does not exist): ~s~n", [Id]),
-            JObj =
-                wh_json:from_list([
-                    {<<"_id">>, Id}
-                    ,{<<"default">>, wh_json:new()}
-                ]),
+            JObj = wh_json:from_list([{<<"_id">>, Id}
+                                      ,{<<"default">>, wh_json:new()}
+                                     ]),
             compare_template_system_config(Props, JObj),
             compare_template_system_config(Match);
         {Props, JObj} ->
@@ -210,7 +207,6 @@ compare_template_system_config([{FileId, Id}|Match]) ->
             compare_template_system_config(Props, JObj),
             compare_template_system_config(Match)
     end.
-
 
 compare_template_system_config([], JObj) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
@@ -227,8 +223,8 @@ compare_template_system_config([{Key, FileTemplate}|Props], JObj) ->
         'undefined' ->
             io:format("key: '~s' not found in jobj adding file template value~n", [BinKey]),
             compare_template_system_config(Props, set_template(BinKey, FileTemplate, JObj));
-        DocTeamplate ->
-            case compare_template_system_config(DefaultTemplates, DocTeamplate, FileTemplate) of
+        DocTemplate ->
+            case compare_template_system_config(DefaultTemplates, DocTemplate, FileTemplate) of
                 'ok' ->
                     io:format("key: '~s' one of the templates is undefined, ignoring...~n", [BinKey]),
                     compare_template_system_config(Props, JObj);
@@ -245,16 +241,16 @@ compare_template_system_config([{Key, FileTemplate}|Props], JObj) ->
     end.
 
 compare_template_system_config('undefined', _, _) ->
-    io:format("default template is undefined~n", []);
+    io:format("default template is undefined~n");
 compare_template_system_config(_, 'undefined', _) ->
-    io:format("doc template is undefined~n", []);
+    io:format("doc template is undefined~n");
 compare_template_system_config(_, _, 'undefined') ->
-    io:format("file template is undefined~n", []);
-compare_template_system_config(DefaultTemplates, DocTeamplate, FileTemplate) ->
-    case DocTeamplate =:= FileTemplate of
+    io:format("file template is undefined~n");
+compare_template_system_config(DefaultTemplates, DocTemplate, FileTemplate) ->
+    case DocTemplate =:= FileTemplate of
         'true' -> 'default';
         'false' ->
-            case lists:member(DocTeamplate, DefaultTemplates) of
+            case lists:member(DocTemplate, DefaultTemplates) of
                 'true' -> 'file';
                 'false' -> 'doc'
             end
@@ -298,6 +294,3 @@ open_system_config(Id) ->
         {'error', 'not_found'} -> 'not_found';
         {'error', _R} -> 'error'
     end.
-
-
-
