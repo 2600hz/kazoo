@@ -19,6 +19,8 @@
 -define(TEMPLATE_PATH, code:lib_dir('notify', 'priv')).
 -define(SYSTEM_CONFIG_DB, <<"system_config">>).
 
+-type input_term() :: atom() | string() | ne_binary().
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -28,11 +30,8 @@
 -spec check_initial_call(input_term()) -> 'ok' | 'failed'.
 check_initial_call(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    %io:format("Checking for first call notification on account ~s", [AccountId]),
-    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
-            AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
             case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>], JObj) of
                 'true' -> 'yes';
                 'false' -> 'no'
@@ -50,12 +49,9 @@ check_initial_call(Account) when is_binary(Account) ->
 -spec check_initial_registration(input_term()) -> 'ok' | 'failed'.
 check_initial_registration(Account) when is_binary(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    %io:format("Checking for first registration notification on account ~s", [AccountId]),
-    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} ->
-            AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-        case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of
+            case wh_json:is_true([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>], JObj) of
                 'true' -> 'yes';
                 'false' -> 'no'
         end;
@@ -297,7 +293,7 @@ open_file(File) ->
 %%--------------------------------------------------------------------
 -spec open_system_config(ne_binary()) -> wh_json:object() | 'error' | 'not_found'.
 open_system_config(Id) ->
-    case couch_mgr:open_doc(?SYSTEM_CONFIG_DB, Id) of
+    case couch_mgr:open_cache_doc(?SYSTEM_CONFIG_DB, Id) of
         {'ok', JObj} -> JObj;
         {'error', 'not_found'} -> 'not_found';
         {'error', _R} -> 'error'
