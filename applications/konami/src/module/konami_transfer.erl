@@ -67,7 +67,9 @@ handle(Data, Call) ->
     lager:debug("unbridge and put transferee ~s into hold", [TransfereeLeg]),
     whapps_call_command:unbridge(Call),
 
-    HoldCommand = whapps_call_command:hold_command(wh_json:get_value(<<"moh">>, Data), TransfereeLeg),
+    MOH = wh_media_util:media_path(wh_json:get_value(<<"moh">>, Data), Call),
+    lager:debug("putting transferee ~s on hold with MOH ~s", [TransfereeLeg, MOH]),
+    HoldCommand = whapps_call_command:hold_command(MOH, TransfereeLeg),
     whapps_call_command:send_command(HoldCommand, Call),
 
     Extension =
