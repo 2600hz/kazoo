@@ -16,7 +16,7 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,billing/1
          ,content_types_accepted/4
-         ,validate/1 ,validate/2, validate/3, validate/4
+         ,validate/1, validate/2, validate/3, validate/4
          ,validate_request/1
          ,authorize/1
          ,authenticate/1
