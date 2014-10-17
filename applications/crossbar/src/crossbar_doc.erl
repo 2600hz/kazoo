@@ -202,30 +202,30 @@ merge(DataJObj, JObj, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context()) ->
-                           cb_context:context().
+                       cb_context:context().
 -spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term() | filter_fun()) ->
-                           cb_context:context().
+                       cb_context:context().
 -spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer()) ->
-                           cb_context:context().
+                       cb_context:context().
 -spec load_view(ne_binary() | 'all_docs', wh_proplist(), cb_context:context(), wh_json:json_term(), pos_integer(), filter_fun() | 'undefined') ->
-                           cb_context:context().
+                       cb_context:context().
 load_view(View, Options, Context) ->
     load_view(View, Options, Context
-                  ,start_key(Options, Context)
-                  ,pagination_page_size(Context)
-                  ,'undefined'
-                 ).
+              ,start_key(Options, Context)
+              ,pagination_page_size(Context)
+              ,'undefined'
+             ).
 
 load_view(View, Options, Context, FilterFun) when is_function(FilterFun, 2) ->
     load_view(View, Options, Context
-                  ,start_key(Options, Context)
-                  ,pagination_page_size(Context)
-                  ,FilterFun
-                 );
+              ,start_key(Options, Context)
+              ,pagination_page_size(Context)
+              ,FilterFun
+             );
 load_view(View, Options, Context, StartKey) ->
     load_view(View, Options, Context, StartKey
-                  ,pagination_page_size(Context)
-                 ).
+              ,pagination_page_size(Context)
+             ).
 
 load_view(View, Options, Context, StartKey, PageSize) ->
     load_view(View, Options, Context, StartKey, PageSize, 'undefined').

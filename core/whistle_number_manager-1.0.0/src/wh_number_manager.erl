@@ -79,15 +79,15 @@ maybe_get_services(AccountId) ->
 %% force leading +
 %% @end
 %%--------------------------------------------------------------------
--spec check(ne_binaries()) -> ne_binaries().
--spec check(ne_binaries(), wh_proplist()) -> ne_binaries().
+-spec check(ne_binaries()) -> wh_json:object().
+-spec check(ne_binaries(), wh_proplist()) -> wh_json:object().
 check(Numbers) ->
     check(Numbers, []).
 
 check(Numbers, Opts) ->
-    FormatedNumbers = [wnm_util:normalize_number(Number) || Number <- Numbers],
-    lager:info("attempting to check ~p ", [FormatedNumbers]),
-    Results = [{Module, catch(Module:check_numbers(FormatedNumbers, Opts))}
+    FormattedNumbers = [wnm_util:normalize_number(Number) || Number <- Numbers],
+    lager:info("attempting to check ~p ", [FormattedNumbers]),
+    Results = [{Module, catch(Module:check_numbers(FormattedNumbers, Opts))}
                || Module <- wnm_util:list_carrier_modules()
               ],
     prepare_check_result(Results).
@@ -1021,14 +1021,13 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found, Opts) -
             prepare_find_results(Numbers, ModuleName, ModuleResults, Found, Opts)
     end.
 
--spec maybe_get_activation_charge(wh_proplist()) -> non_neg_integer().
+-spec maybe_get_activation_charge(wh_proplist()) -> 'undefined' | non_neg_integer().
 maybe_get_activation_charge(Opts) ->
     case props:get_value(<<"services">>, Opts) of
         'undefined' -> 'undefined';
         Services ->
-            Classification = props:get_value(<<"classification">>, Opts),
             wh_services:activation_charges(<<"phone_numbers">>
-                                          ,Classification
-                                          ,Services
+                                           ,props:get_value(<<"classification">>, Opts)
+                                           ,Services
                                           )
     end.
