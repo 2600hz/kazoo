@@ -599,10 +599,12 @@ admin_open_doc(DbName, DocId, Options) ->
         {'error', _}=E -> E
     end.
 
--spec all_docs(text()) -> {'ok', wh_json:objects()} |
-                          couchbeam_error().
--spec all_docs(text(), wh_proplist()) -> {'ok', wh_json:objects()} |
-                                         couchbeam_error().
+-spec all_docs(text()) ->
+                      {'ok', wh_json:objects()} |
+                      couchbeam_error().
+-spec all_docs(text(), wh_proplist()) ->
+                      {'ok', wh_json:objects()} |
+                      couchbeam_error().
 
 all_docs(DbName) ->
     all_docs(DbName, []).
