@@ -99,10 +99,10 @@ create_template_props(JObj) ->
      ,{<<"custom">>, notify_util:json_to_template_props(JObj)}
     ].
 
--spec get_vm_owner_email(wh_json:object()) -> ne_binary() | 'error'.
+-spec get_vm_owner_email(wh_json:object()) -> api_binary().
 get_vm_owner_email(JObj) ->
     case get_vm_doc(JObj) of
-        'error' -> 'error';
+        'error' -> 'undefined';
         VMDoc ->
             AccoundDB = wh_json:get_value(<<"Account-DB">>, JObj),
             OwnerId = wh_json:get_value(<<"owner_id">>, VMDoc),
@@ -111,7 +111,7 @@ get_vm_owner_email(JObj) ->
                     wh_json:get_first_defined([<<"email">>, <<"username">>], UserDoc);
                 {'error', _E} ->
                     lager:info("could not open doc ~p in ~p", [OwnerId, AccoundDB]),
-                    'error'
+                    'undefined'
             end
     end.
 
@@ -155,8 +155,7 @@ get_send_from(Admin) ->
 %%--------------------------------------------------------------------
 -spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), wh_proplist()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
-    'ok';
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"send_from">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
@@ -173,14 +172,14 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
                }
               ]
             },
-    notify_util:send_email(From, To, Email),
-    'ok'.
+    notify_util:send_email(From, To, Email).
 
 -spec is_notice_enabled(wh_json:object()) -> boolean().
 is_notice_enabled(JObj) ->
-    case  wh_json:get_value([<<"notifications">>,
-                             <<"voicemail_full">>,
-                             <<"enabled">>], JObj)
+    case  wh_json:get_value([<<"notifications">>
+                             ,<<"voicemail_full">>
+                             ,<<"enabled">>
+                            ], JObj)
     of
         'undefined' -> is_notice_enabled_default();
         Value -> wh_util:is_true(Value)

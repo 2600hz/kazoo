@@ -34,7 +34,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec send_email(ne_binary(), 'undefined' | binary(), term()) ->
-                              'ok' | {'error', _}.
+                        'ok' | {'error', _}.
 send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
@@ -92,7 +92,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props(api_object()) -> 'undefined' | wh_proplist().
+-spec json_to_template_props(api_object() | wh_json:objects()) -> 'undefined' | wh_proplist().
 json_to_template_props('undefined') -> 'undefined';
 json_to_template_props(JObj) ->
     normalize_proplist(wh_json:recursive_to_proplist(JObj)).
@@ -449,4 +449,3 @@ get_charset_params(Service) ->
                 };
             _ -> {[], <<>>}
         end.
-

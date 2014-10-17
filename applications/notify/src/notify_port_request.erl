@@ -86,7 +86,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(api_binary(), wh_json:object(), wh_json:objects()) -> proplist().
+-spec create_template_props(api_binary(), wh_json:object(), wh_json:object()) -> wh_proplist().
 create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, NotifyJObj)),
 
@@ -94,31 +94,22 @@ create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     PortData = notify_util:json_to_template_props(wh_doc:public_fields(PortDoc)),
     [Number|_]=Numbers = find_numbers(PortData, NotifyJObj),
 
-    NumberString =
-        lists:foldl(
-            fun(Num, Acc) ->
-                << Num/binary, " ", Acc/binary>>
-            end
-            ,<<>>
-            ,props:get_keys(Numbers)
-        ),
+    NumberString = wh_util:join_binary(Numbers, <<" ">>),
 
-    Request = [
-        {<<"port">>,
-            [
-                {<<"service_provider">>, wh_json:get_value(<<"carrier">>, PortDoc)}
-                ,{<<"billing_name">>, wh_json:get_value([<<"bill">>, <<"name">>], PortDoc)}
-                ,{<<"billing_account_id">>, wh_json:get_value(<<"pvt_account_id">>, PortDoc)}
-                ,{<<"billing_street_address">>, wh_json:get_value([<<"bill">>, <<"address">>], PortDoc)}
-                ,{<<"billing_locality">>, wh_json:get_value([<<"bill">>, <<"locality">>], PortDoc)}
-                ,{<<"billing_postal_code">>, wh_json:get_value([<<"bill">>, <<"postal_code">>], PortDoc)}
-                ,{<<"billing_telephone_number">>, wh_json:get_value([<<"bill">>, <<"phone_number">>], PortDoc)}
-                ,{<<"requested_port_date">>, wh_json:get_value(<<"transfer_date">>, PortDoc)}
-                ,{<<"requested_port_date">>, wh_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortDoc)}
-            ]
-        }
-        ,{<<"number">>, NumberString}
-    ],
+    Request = [{<<"port">>
+                ,[{<<"service_provider">>, wh_json:get_value(<<"carrier">>, PortDoc)}
+                  ,{<<"billing_name">>, wh_json:get_value([<<"bill">>, <<"name">>], PortDoc)}
+                  ,{<<"billing_account_id">>, wh_json:get_value(<<"pvt_account_id">>, PortDoc)}
+                  ,{<<"billing_street_address">>, wh_json:get_value([<<"bill">>, <<"address">>], PortDoc)}
+                  ,{<<"billing_locality">>, wh_json:get_value([<<"bill">>, <<"locality">>], PortDoc)}
+                  ,{<<"billing_postal_code">>, wh_json:get_value([<<"bill">>, <<"postal_code">>], PortDoc)}
+                  ,{<<"billing_telephone_number">>, wh_json:get_value([<<"bill">>, <<"phone_number">>], PortDoc)}
+                  ,{<<"requested_port_date">>, wh_json:get_value(<<"transfer_date">>, PortDoc)}
+                  ,{<<"requested_port_date">>, wh_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], PortDoc)}
+                 ]
+               }
+               ,{<<"number">>, NumberString}
+              ],
 
     [{<<"numbers">>, Numbers}
      ,{<<"number">>, Number}
@@ -168,7 +159,7 @@ get_default_from() ->
     DefaultFrom = wh_util:to_binary(node()),
     whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom).
 
--spec find_numbers(wh_json:object(), wh_json:object()) -> ne_binaries().
+-spec find_numbers(wh_proplist(), wh_json:object()) -> ne_binaries().
 find_numbers(PortData, NotifyJObj) ->
     case props:get_value(<<"numbers">>, PortData) of
         'undefined' -> find_numbers(NotifyJObj);
