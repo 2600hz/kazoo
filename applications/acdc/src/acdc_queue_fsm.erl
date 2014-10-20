@@ -71,7 +71,7 @@
          ,agent_ring_timer_ref :: reference() % how long to ring an agent before moving to the next
 
          ,member_call :: whapps_call:call()
-         ,member_call_start :: wh_now()
+         ,member_call_start :: non_neg_integer()
          ,member_call_winner :: api_object() %% who won the call
 
          %% Config options
@@ -258,7 +258,7 @@ ready({'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
 
             {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()
                                                       ,member_call=Call
-                                                      ,member_call_start=erlang:now()
+                                                      ,member_call_start=wh_util:current_tstamp()
                                                       ,connection_timer_ref=start_connection_timer(ConnTimeout)
                                                      }};
         'true' ->
@@ -807,14 +807,14 @@ current_call(Call, QueueTimeLeft, Start) ->
                        ,{<<"wait_time">>, elapsed(Start)}
                       ]).
 
--spec elapsed('undefined' | reference() | wh_timeout()) -> api_integer().
+-spec elapsed('undefined' | reference() | wh_timeout() | integer()) -> api_integer().
 elapsed('undefined') -> 'undefined';
 elapsed(Ref) when is_reference(Ref) ->
     case erlang:read_timer(Ref) of
         'false' -> 'undefined';
         Ms -> Ms div 1000
     end;
-elapsed({_,_,_}=Time) -> wh_util:elapsed_s(Time).
+elapsed(Time) -> wh_util:elapsed_s(Time).
 
 accept_is_for_call(AcceptJObj, Call) ->
     wh_json:get_value(<<"Call-ID">>, AcceptJObj) =:= whapps_call:call_id(Call).
