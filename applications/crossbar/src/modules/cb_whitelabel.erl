@@ -402,7 +402,7 @@ find_whitelabel(Context, Domain) ->
 %%--------------------------------------------------------------------
 -spec load_whitelabel_meta(cb_context:context(), ne_binary()) -> cb_context:context().
 load_whitelabel_meta(Context, WhitelabelId) ->
-    crossbar_doc:load(WhitelabelId, Context,[{'use_cache', 'false'}]).
+    crossbar_doc:load(WhitelabelId, Context).
 
 -spec find_whitelabel_meta(cb_context:context(), ne_binary()) -> cb_context:context().
 find_whitelabel_meta(Context, Domain) ->
