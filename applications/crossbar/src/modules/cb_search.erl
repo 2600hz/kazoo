@@ -18,7 +18,7 @@
 
 -include("../crossbar.hrl").
 
--define(QUERY_ACCOUNTS, <<"accounts/search_by_name">>).
+-define(QUERY_TPL, <<"search/search_by_">>).
 
 %%%===================================================================
 %%% API
@@ -72,27 +72,31 @@ resource_exists() -> 'true'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    Index = cb_context:req_value(Context, <<"c">>),
-    validate_search(Context, Index).
+    Type = cb_context:req_value(Context, <<"t">>),
+    Ctx = case cb_context:account_id(Context) of
+              'undefined' -> cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB);
+              _AccountId -> Context
+          end,
+    validate_search(Ctx, Type).
 
 -spec validate_search(cb_context:context(), api_binary()) -> cb_context:context().
-validate_search(Context, <<"accounts">>) ->
-    Q = cb_context:req_value(Context, <<"q">>),
-    validate_search_accounts(cb_context:set_account_db(Context, ?WH_ACCOUNTS_DB), Q);
-validate_search(Context, _) ->
-    cb_context:add_validation_error(<<"c">>, <<"required">>, <<"search needs context">>, Context).
+validate_search(Context, 'undefined') ->
+    cb_context:add_validation_error(<<"t">>, <<"required">>, <<"search needs to know what to look for">>, Context);
+validate_search(Context, Type) ->
+    validate_search(Context, cb_context:req_value(Context, <<"q">>), Type).
 
 
--spec validate_search_accounts(cb_context:context(), api_binary()) -> cb_context:context().
-validate_search_accounts(Context, 'undefined') ->
+-spec validate_search(cb_context:context(), api_binary(), ne_binary()) -> cb_context:context().
+validate_search(Context, 'undefined', _) ->
     cb_context:add_validation_error(<<"q">>, <<"required">>, <<"search needs to know what to look for">>, Context);
-validate_search_accounts(Context, Q) ->
-    Lines  = binary:split(wh_util:uri_decode(Q), <<"&">>, ['global']),
-    Query = lists:map(fun(A) ->
-                      [Field, Value] = binary:split(A, <<"=">>),
-                      {Field, Value}
-              end, Lines),
-    search(Context, <<"accounts">>, Query).
+validate_search(Context, Q, T) ->
+    validate_search(Context, cb_context:req_value(Context, <<"v">>), Q, T).
+
+-spec validate_search(cb_context:context(), api_binary(), ne_binary(), ne_binary()) -> cb_context:context().
+validate_search(Context, 'undefined', _, _) ->
+    cb_context:add_validation_error(<<"v">>, <<"required">>, <<"search needs to know what to look for">>, Context);
+validate_search(Context, V, Q, T) ->
+    search(Context, V, Q, T).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,18 +105,23 @@ validate_search_accounts(Context, Q) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec search(cb_context:context(), ne_binary(), wh_proplist()) -> cb_context:context().
-search(Context, <<"accounts">>, Query) ->
-    AccountId = cb_context:auth_account_id(Context),
-    Name = props:get_value(<<"name">>, Query),
-    End = get_end_key(Name),
-    ViewOptions = [{'startkey', [AccountId, Name]}
-                   ,{'endkey', [AccountId, End]}
+-spec search(cb_context:context(), api_binary(), ne_binary(), ne_binary()) -> cb_context:context().
+search(Context, Start, Field, Type) ->
+    End = next_binary_key(Start),
+    {StartKey, EndKey} = 
+        case cb_context:account_id(Context) of
+            'undefined' ->
+                AuthId = cb_context:auth_account_id(Context), 
+                {[AuthId, Type, Start], [AuthId, Type, End]};
+             _ ->
+                 {[Type, Start], [Type, End ]}
+        end,
+    ViewName = <<?QUERY_TPL/binary, Field/binary>>,
+    ViewOptions = [{'startkey', StartKey}
+                   ,{'endkey', EndKey}
                    ,{'limit', crossbar_doc:pagination_page_size(Context)}
                   ],
-    crossbar_doc:load_view(?QUERY_ACCOUNTS, ViewOptions, Context, fun normalize_view_results/2);
-search(Context, _Index, _Query) ->
-    Context.
+    crossbar_doc:load_view(ViewName, ViewOptions, Context, fun normalize_view_results/2).
 
 
 %%--------------------------------------------------------------------
@@ -131,9 +140,6 @@ normalize_view_results(JObj, Acc) ->
 %% replaces last character in binary with next character
 %% @end
 %%--------------------------------------------------------------------
--spec get_end_key(binary()) -> binary().
-get_end_key(Bin) ->
-    L = binary:bin_to_list(Bin),
-    C = lists:last(L)+1,
-    B = binary:list_to_bin(lists:sublist(L, 1, length(L) - 1)),
-    <<B/binary, C>>.
+-spec next_binary_key(binary()) -> binary().
+next_binary_key(Bin) ->
+    <<Bin/binary, "\ufff0">>.
