@@ -30,9 +30,14 @@ resolve_method(Method) ->
 -spec handle_rate_req(wh_json:object(), wh_proplist()) -> any().
 handle_rate_req(JObj, _Props) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
+    lager:debug("Handle rate limits request for ~s", [Entity]),
     case whapps_util:get_account_by_realm(kamdb_utils:extract_realm(Entity)) of
-        {'ok', _} -> send_response(JObj);
-        _ -> deny(JObj)
+        {'ok', _} ->
+            lager:debug("Found realm, try to send response"),
+            send_response(JObj);
+        _ ->
+            lager:info("Can't find realm. Deny."),
+            deny(JObj)
     end.
 
 -spec deny(wh_json:object()) -> any().
@@ -79,12 +84,15 @@ send_response(JObj) ->
                  [_] -> get_realm_limits(JObj)
              end,
     Resp = wh_json:merge_jobjs(RespStub, Limits),
+    lager:debug("Limits merged into response"),
     JSysRates = get_sysconfig_rates(Keys, Name, wh_json:get_value(<<"With-Realm">>, JObj)),
+    lager:debug("Adding missed values from sysconfig, if needed"),
     wapi_kamdb:publish_ratelimits_resp(ServerID, wh_json:merge_recursive([JSysRates, Resp])).
 
 -spec get_user_limits(wh_json:object()) -> wh_json:object().
 get_user_limits(JObj) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
+    lager:debug("Looking for ~s`s limits", [Entity]),
     [User, Realm] = binary:split(Entity, <<"@">>),
     Name = resolve_method(wh_json:get_value(<<"Method">>, JObj)),
     {'ok', UserDb} = whapps_util:get_account_by_realm(Realm),
@@ -92,6 +100,7 @@ get_user_limits(JObj) ->
                          ,[?DEVICE_DEFAULT_RATES, Name]
                         ]}],
     {'ok', Results} = couch_mgr:get_results(UserDb, <<"rate_limits/crossbar_listing">>, ViewOpts),
+    lager:debug("Got results, folding into response..."),
     lists:foldl(fun inject_device_rate_limits/2, wh_json:new(), Results).
 
 -spec get_realm_limits(wh_json:object()) -> wh_json:object().
@@ -102,9 +111,11 @@ get_realm_limits(JObj) ->
     ViewOpts = [{'keys',[[Realm, Name]
                          ,[Realm, ?ACCOUNT_FALLBACK]
                         ]}],
+    lager:debug("Looking for ~s`s limits", [Realm]),
     {'ok', Results} = couch_mgr:get_results(<<"accounts">>, <<"rate_limits/crossbar_listing">>, ViewOpts),
     {Rates, MaybeFallback} = lists:partition(fun is_rate_limit/1, Results),
     RespCandidate = lists:foldl(fun (Rate, Acc) -> inject(wh_json:get_value(<<"value">>, Rate), Acc) end, wh_json:new(), Rates),
+    lager:debug("Lokking for ~s`s parents", [Realm]),
     Parents = case MaybeFallback of
                   [Fallback] -> wh_json:get_value([<<"value">>, <<"parents">>], Fallback);
                   [] -> []
@@ -116,21 +127,28 @@ maybe_run_through_fallbacks(JObj, Parents, Name) ->
     case wh_json:get_integer_value([<<"Realm">>, <<"Min">>], JObj) =:= 'undefined'
         orelse wh_json:get_integer_value([<<"Realm">>, <<"Sec">>], JObj) =:= 'undefined'
     of
-        'true' -> run_through_fallbacks(JObj, Parents, Name);
-        _ -> JObj
+        'true' ->
+            lager:debug("Gather limits from parents(~p)", [Parents]),
+            run_through_fallbacks(JObj, Parents, Name);
+        _ ->
+            lager:debug("Has all limits, return JObj"),
+            JObj
     end.
 
 -spec run_through_fallbacks(wh_json:object(), list(), ne_binary()) -> wh_json:object().
 run_through_fallbacks(JObj, Parents, Name) ->
     case lists:dropwhile(fun not_limited/1, Parents) of
         [Limiter | _] ->
+            lager:debug("Try to use limits from ~s", [Limiter]),
             {'ok', JDoc} = couch_mgr:open_cache_doc(<<"accounts">>, Limiter),
             PerMinute = wh_json:get_value([<<"rate_limits">>, ?MINUTE, Name], JDoc),
             PerSecond = wh_json:get_value([<<"rate_limits">>, ?SECOND, Name], JDoc),
             wh_json:set_values([{[<<"Realm">>, <<"Min">>], PerMinute}
                                 ,{[<<"Realm">>, <<"Sec">>], PerSecond}
                                ], JObj);
-        [] -> JObj
+        [] ->
+            lager:debug("Can't find parent with limits"),
+            JObj
     end.
 
 -spec not_limited(ne_binary()) -> boolean().
