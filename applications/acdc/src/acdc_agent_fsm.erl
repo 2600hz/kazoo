@@ -1139,7 +1139,7 @@ outbound({'timeout', CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                          ,acct_id=AcctId
                                                          ,agent_id=AgentId
                                                          ,agent_proc=Srv
-                                                        }=State) when Failures > 3 ->
+                                                        }=State) when Failures > 2 ->
     lager:debug("outbound call status failed ~b times, call is probably down", [Failures]),
     case wrapup_left(State) of
         N when is_integer(N), N > 0 ->

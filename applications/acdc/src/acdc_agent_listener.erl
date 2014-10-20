@@ -1097,8 +1097,8 @@ maybe_start_recording(Call, 'true', Url) ->
         wh_json:from_list(
           [{<<"format">>, recording_format()}
            ,{<<"url">>, Url}
-           ,{<<"record_on_answer">>, 'true'}
           ]),
+    lager:debug("starting recording listener for ~s", [Url]),
     case acdc_recordings_sup:new(Call, RecordingJObj) of
         {'ok', _P} ->
             lager:debug("recording tracked in ~p", [_P]);

@@ -178,7 +178,7 @@ start_queue_call(JObj, Props, Call) ->
             lager:debug("using default moh"),
             whapps_call_command:hold(Call);
         MOH ->
-            lager:debug("using MOH ~s", [MOH]),
+            lager:debug("using MOH ~s (~p)", [MOH, Props]),
             whapps_call_command:hold(MOH, Call)
     end,
 
@@ -742,5 +742,5 @@ maybe_start_queue_workers(QueueSup, AgentCount) ->
 update_properties(QueueJObj, State) ->
     State#state{
       enter_when_empty=wh_json:is_true(<<"enter_when_empty">>, QueueJObj, 'true')
-      ,moh=wh_json:get_value(<<"moh">>, QueueJObj)
+      ,moh=wh_json:get_ne_value(<<"moh">>, QueueJObj)
      }.

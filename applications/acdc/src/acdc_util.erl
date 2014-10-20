@@ -53,6 +53,8 @@ presence_update(AcctId, PresenceId, State, CallId) ->
 -spec send_cdr(ne_binary(), wh_json:object()) -> 'ok'.
 send_cdr(Url, JObj) ->
     send_cdr(Url, JObj, 3).
+send_cdr('undefined', _JObj, _Retries) ->
+    lager:debug("no cdr URI defined");
 send_cdr(Url, _JObj, 0) ->
     lager:debug("trying to send cdr to ~s failed retry count", [Url]);
 send_cdr(Url, JObj, Retries) ->
@@ -99,7 +101,7 @@ bind_to_call_events(Call) ->
 
 -spec bind_to_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
 bind_to_call_events('undefined', _) -> 'ok';
-bind_to_call_events(?NE_BINARY = CallId, Pid) -> 
+bind_to_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:add_binding(Pid, 'call', [{'callid', CallId}]);
 bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
 bind_to_call_events(Call, Pid) -> bind_to_call_events(whapps_call:call_id(Call), Pid).
@@ -110,7 +112,7 @@ unbind_from_call_events(Call) ->
 
 -spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
 unbind_from_call_events('undefined', _) -> 'ok';
-unbind_from_call_events(?NE_BINARY = CallId, Pid) -> 
+unbind_from_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);
 unbind_from_call_events({CallId, _}, Pid) -> unbind_from_call_events(CallId, Pid);
 unbind_from_call_events(Call, Pid) -> unbind_from_call_events(whapps_call:call_id(Call), Pid).
