@@ -16,9 +16,14 @@
 -spec handle_acl_req(wh_json:object(), wh_proplist()) -> any().
 handle_acl_req(JObj, _Props) ->
     Entity = wh_json:get_value(<<"Entity">>, JObj),
+    lager:debug("Handle acl request for ~s", [Entity]),
     case whapps_util:get_account_by_realm(kamdb_utils:extract_realm(Entity)) of
-        {'ok', _} -> send_response(JObj);
-        _ -> deny(JObj)
+        {'ok', _} ->
+            lager:debug("Found realm, try to send response"),
+            send_response(JObj);
+        _ ->
+            lager:info("Can't find realm. Deny."),
+            deny(JObj)
     end.
 
 -spec deny(wh_json:object()) -> any().
@@ -62,11 +67,14 @@ send_response(JObj) ->
                    [JustRealm] -> [{'key', JustRealm}]
                end,
     {'ok', UserDb} = whapps_util:get_account_by_realm(kamdb_utils:extract_realm(Entity)),
+    lager:debug("Looking for ~s's acls in ~s", [Entity, UserDb]),
     {'ok', Results} = couch_mgr:get_results(UserDb, <<"acls/crossbar_listing">>, ViewOpts),
+    lager:debug("Found result, merge into response"),
     {DeviceACLs, RealmACLs} = lists:partition(fun is_device/1, Results),
     Resp = lists:foldl(fun wh_json:merge_jobjs/2, RespStub, [make_section(DeviceACLs, <<"Device">>)
                                                              ,make_section(RealmACLs, <<"Realm">>)
                                                             ]),
+    lager:debug("publishing response"),
     wapi_kamdb:publish_acls_resp(ServerID, Resp).
 
 -spec is_device(wh_json:object()) -> boolean().
