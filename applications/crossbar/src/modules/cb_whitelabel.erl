@@ -568,7 +568,7 @@ attachment_name(Filename, CT) ->
                            case wh_util:is_empty(filename:extension(A)) of
                                'false' -> A;
                                'true' ->
-                                   <<A/binary, ".", (content_type_to_extension(CT))/binary>>
+                                   <<A/binary, ".", (cb_modules_util:content_type_to_extension(CT))/binary>>
                            end
                    end
                  ],
@@ -576,19 +576,6 @@ attachment_name(Filename, CT) ->
 
 attachment_name(AttachType, Filename, CT) ->
     <<AttachType/binary, "-", (attachment_name(Filename, CT))/binary>>.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known whitelabel types to extensions
-%% @end
-%%--------------------------------------------------------------------
--spec content_type_to_extension(ne_binary()) -> ne_binary().
-content_type_to_extension(<<"image/jpg">>) -> <<"jpg">>;
-content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
-content_type_to_extension(<<"image/png">>) -> <<"png">>;
-content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
-content_type_to_extension(<<"text/html">>) -> <<"html">>.
 
 %%--------------------------------------------------------------------
 %% @private
