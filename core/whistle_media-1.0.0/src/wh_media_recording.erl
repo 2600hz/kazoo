@@ -202,6 +202,15 @@ handle_cast('maybe_start_recording', #state{is_recording='false'
                                            }=State) ->
     start_recording(Call, MediaName, TimeLimit, <<"wh_media_recording">>),
     {'noreply', State};
+handle_cast('maybe_start_recording', #state{is_recording='false'
+                                            ,record_on_answer='true'
+                                            ,call=Call
+                                            ,media_name=MediaName
+                                            ,time_limit=TimeLimit
+                                            ,should_store={'true', 'other', _}
+                                           }=State) ->
+    start_recording(Call, MediaName, TimeLimit),
+    {'stop', 'normal', State};
 handle_cast('maybe_start_recording_on_answer', #state{is_recording='true'}=State) ->
     lager:debug("we've already starting a recording for this call"),
     {'noreply', State};
