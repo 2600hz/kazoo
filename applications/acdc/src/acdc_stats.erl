@@ -50,9 +50,9 @@
 -include("acdc_stats.hrl").
 
 %% Public API
-call_waiting(AcctId, QueueId, CallId, CallerIdName, CallerIdNumber) ->
+call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Call-ID">>, CallId}
               ,{<<"Caller-ID-Name">>, CallerIdName}
@@ -62,9 +62,9 @@ call_waiting(AcctId, QueueId, CallId, CallerIdName, CallerIdNumber) ->
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_waiting/1).
 
-call_abandoned(AcctId, QueueId, CallId, Reason) ->
+call_abandoned(AccountId, QueueId, CallId, Reason) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Call-ID">>, CallId}
               ,{<<"Abandon-Reason">>, Reason}
@@ -73,9 +73,9 @@ call_abandoned(AcctId, QueueId, CallId, Reason) ->
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_abandoned/1).
 
-call_handled(AcctId, QueueId, CallId, AgentId) ->
+call_handled(AccountId, QueueId, CallId, AgentId) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Call-ID">>, CallId}
               ,{<<"Agent-ID">>, AgentId}
@@ -84,9 +84,9 @@ call_handled(AcctId, QueueId, CallId, AgentId) ->
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_handled/1).
 
-call_missed(AcctId, QueueId, AgentId, CallId, ErrReason) ->
+call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Call-ID">>, CallId}
               ,{<<"Agent-ID">>, AgentId}
@@ -96,9 +96,9 @@ call_missed(AcctId, QueueId, AgentId, CallId, ErrReason) ->
              ]),
     whapps_util:amqp_pool_send(Prop, fun wapi_acdc_stats:publish_call_missed/1).
 
-call_processed(AcctId, QueueId, AgentId, CallId) ->
+call_processed(AccountId, QueueId, AgentId, CallId) ->
     Prop = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
+             [{<<"Account-ID">>, AccountId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Call-ID">>, CallId}
               ,{<<"Agent-ID">>, AgentId}
@@ -300,17 +300,17 @@ call_build_match_spec(JObj) ->
         'undefined' ->
             {'error', wh_json:from_list([{<<"Account-ID">>, <<"missing but required">>}])};
         AccountId ->
-            AcctMatch = {#call_stat{acct_id='$1', _='_'}
+            AccountMatch = {#call_stat{acct_id='$1', _='_'}
                          ,[{'=:=', '$1', {'const', AccountId}}]
                         },
-            call_build_match_spec(JObj, AcctMatch)
+            call_build_match_spec(JObj, AccountMatch)
     end.
 
 -spec call_build_match_spec(wh_json:object(), {call_stat(), list()}) ->
                                    {'ok', ets:match_spec()} |
                                    {'error', wh_json:object()}.
-call_build_match_spec(JObj, AcctMatch) ->
-    case wh_json:foldl(fun call_match_builder_fold/3, AcctMatch, JObj) of
+call_build_match_spec(JObj, AccountMatch) ->
+    case wh_json:foldl(fun call_match_builder_fold/3, AccountMatch, JObj) of
         {'error', _Errs}=Errors -> Errors;
         {CallStat, Constraints} -> {'ok', [{CallStat, Constraints, ['$_']}]}
     end.
@@ -506,8 +506,8 @@ maybe_archive_call_data(Srv, Match) ->
         Stats ->
             couch_mgr:suppress_change_notice(),
             ToSave = lists:foldl(fun archive_call_fold/2, dict:new(), Stats),
-            [couch_mgr:save_docs(acdc_stats_util:db_name(Acct), Docs)
-             || {Acct, Docs} <- dict:to_list(ToSave)
+            [couch_mgr:save_docs(acdc_stats_util:db_name(Account), Docs)
+             || {Account, Docs} <- dict:to_list(ToSave)
             ],
             [gen_listener:cast(Srv, {'update_call', Id, [{#call_stat.is_archived, 'true'}]})
              || #call_stat{id=Id} <- Stats
@@ -520,14 +520,14 @@ query_call_fold(#call_stat{status=Status}=Stat, Acc) ->
     dict:update(Status, fun(L) -> [Doc | L] end, [Doc], Acc).
 
 -spec archive_call_fold(call_stat(), dict()) -> dict().
-archive_call_fold(#call_stat{acct_id=AcctId}=Stat, Acc) ->
+archive_call_fold(#call_stat{acct_id=AccountId}=Stat, Acc) ->
     Doc = call_stat_to_doc(Stat),
-    dict:update(AcctId, fun(L) -> [Doc | L] end, [Doc], Acc).
+    dict:update(AccountId, fun(L) -> [Doc | L] end, [Doc], Acc).
 
 -spec call_stat_to_doc(call_stat()) -> wh_json:object().
 call_stat_to_doc(#call_stat{id=Id
                             ,call_id=CallId
-                            ,acct_id=AcctId
+                            ,acct_id=AccountId
                             ,queue_id=QueueId
                             ,agent_id=AgentId
                             ,entered_timestamp=EnteredT
@@ -559,15 +559,15 @@ call_stat_to_doc(#call_stat{id=Id
            ,{<<"wait_time">>, wait_time(EnteredT, AbandonedT, HandledT)}
            ,{<<"talk_time">>, talk_time(HandledT, ProcessedT)}
           ]))
-      ,acdc_stats_util:db_name(AcctId)
-      ,[{'account_id', AcctId}
+      ,acdc_stats_util:db_name(AccountId)
+      ,[{'account_id', AccountId}
         ,{'type', <<"call_stat">>}
        ]).
 
 -spec call_stat_to_json(call_stat()) -> wh_json:object().
 call_stat_to_json(#call_stat{id=Id
                              ,call_id=CallId
-                             ,acct_id=AcctId
+                             ,acct_id=AccountId
                              ,queue_id=QueueId
                              ,agent_id=AgentId
                              ,entered_timestamp=EnteredT
@@ -586,7 +586,7 @@ call_stat_to_json(#call_stat{id=Id
          ,{<<"Call-ID">>, CallId}
          ,{<<"Queue-ID">>, QueueId}
          ,{<<"Agent-ID">>, AgentId}
-         ,{<<"Account-ID">>, AcctId}
+         ,{<<"Account-ID">>, AccountId}
          ,{<<"Entered-Timestamp">>, EnteredT}
          ,{<<"Abandoned-Timestamp">>, AbandonedT}
          ,{<<"Handled-Timestamp">>, HandledT}
@@ -613,17 +613,18 @@ misses_to_docs(Misses) -> [miss_to_doc(Miss) || Miss <- Misses].
 miss_to_doc(#agent_miss{agent_id=AgentId
                         ,miss_reason=Reason
                         ,miss_timestamp=T
-                        }) ->
+                       }) ->
     wh_json:from_list([{<<"agent_id">>, AgentId}
                        ,{<<"reason">>, Reason}
                        ,{<<"timestamp">>, T}
                       ]).
 
 -spec init_db(ne_binary()) -> 'ok'.
-init_db(AcctId) ->
-    DbName = acdc_stats_util:db_name(AcctId),
+init_db(AccountId) ->
+    DbName = acdc_stats_util:db_name(AccountId),
     maybe_created_db(DbName, couch_mgr:db_create(DbName)).
 
+-spec maybe_created_db(ne_binary(), boolean()) -> 'ok'.
 maybe_created_db(DbName, 'false') ->
     lager:debug("database ~s already created", [DbName]);
 maybe_created_db(DbName, 'true') ->
@@ -638,6 +639,7 @@ call_stat_id(JObj) ->
            ).
 call_stat_id(CallId, QueueId) -> <<CallId/binary, "::", QueueId/binary>>.
 
+-spec handle_waiting_stat(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_waiting_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_waiting_v(JObj),
 
@@ -652,6 +654,7 @@ handle_waiting_stat(JObj, Props) ->
             update_call_stat(Id, Updates, Props)
     end.
 
+-spec handle_missed_stat(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_missed_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_missed_v(JObj),
 
@@ -671,6 +674,7 @@ create_miss(JObj) ->
        ,miss_timestamp = wh_json:get_value(<<"Miss-Timestamp">>, JObj)
       }.
 
+-spec handle_abandoned_stat(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_abandoned_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_abandoned_v(JObj),
 
@@ -682,6 +686,7 @@ handle_abandoned_stat(JObj, Props) ->
                 ]),
     update_call_stat(Id, Updates, Props).
 
+-spec handle_handled_stat(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_handled_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_handled_v(JObj),
 
@@ -693,6 +698,7 @@ handle_handled_stat(JObj, Props) ->
                 ]),
     update_call_stat(Id, Updates, Props).
 
+-spec handle_processed_stat(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_processed_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_processed_v(JObj),
 
