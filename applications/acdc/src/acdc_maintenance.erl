@@ -12,7 +12,7 @@
          ,current_statuses/1
          ,current_queues/1
          ,current_agents/1
-         ,logout_agent/2
+         ,logout_agents/1, logout_agent/2
          ,agent_presence_id/2
          ,migrate_to_acdc_db/0, migrate/0
          ,refresh/0, refresh_account/1
@@ -21,6 +21,15 @@
 
 -include("acdc.hrl").
 
+-spec logout_agents(ne_binary()) -> 'ok'.
+logout_agents(AccountId) ->
+    io:format("Sending notices to logout agents for ~s~n", [AccountId]),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AgentView} = couch_mgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
+    [logout_agent(AccountId, wh_json:get_value(<<"id">>, Agent)) || Agent <- AgentView],
+    'ok'.
+
+-spec logout_agent(ne_binary(), ne_binary()) -> 'ok'.
 logout_agent(AccountId, AgentId) ->
     io:format("Sending notice to log out agent ~s (~s)~n", [AgentId, AccountId]),
     Update = props:filter_undefined(
