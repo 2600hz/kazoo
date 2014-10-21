@@ -55,7 +55,7 @@
 %%------------------------------------------------------------------------------
 -spec create(ne_binary()) -> create_resp().
 create(Text) ->
-    create(Text, <<"female/en-US">>).
+    create(Text, <<"female/en-us">>).
 
 -spec create(ne_binary(), ne_binary()) -> create_resp().
 create(Text, Voice) ->
@@ -74,51 +74,51 @@ create(Text, Voice, Format, Options) ->
 create('undefined', Text, Voice, Format, Options) ->
     create(Text, Voice, Format, Options);
 create(<<"ispeech">> = Engine, Text, Voice, Format, Options) ->
-    VoiceMappings = [{<<"female/en-US">>, <<"usenglishfemale">>}
-                     ,{<<"male/en-US">>, <<"usenglishmale">>}
-                     ,{<<"female/en-CA">>, <<"caenglishfemale">>}
-                     ,{<<"female/en-AU">>, <<"auenglishfemale">>}
-                     ,{<<"female/en-GB">>, <<"ukenglishfemale">>}
-                     ,{<<"male/en-GB">>, <<"ukenglishmale">>}
-                     ,{<<"female/es-US">>, <<"usspanishfemale">>}
-                     ,{<<"male/es-US">>, <<"usspanishmale">>}
-                     ,{<<"female/us-US">>, <<"usspanishfemale">>}
-                     ,{<<"female/zh-CN">>, <<"chchinesefemale">>}
-                     ,{<<"male/zh-CN">>, <<"chchinesemale">>}
-                     ,{<<"female/zh-HK">>, <<"hkchinesefemale">>}
-                     ,{<<"female/zh-TW">>, <<"twchinesefemale">>}
-                     ,{<<"female/ja-JP">>, <<"jpjapanesefemale">>}
-                     ,{<<"male/ja-JP">>, <<"jpjapanesemale">>}
-                     ,{<<"female/ko-KR">>, <<"krkoreanfemale">>}
-                     ,{<<"male/ko-KR">>, <<"krkoreanmale">>}
-                     ,{<<"female/da-DK">>, <<"eurdanishfemale">>}
-                     ,{<<"female/de-DE">>, <<"eurgermanfemale">>}
-                     ,{<<"male/de-DE">>, <<"eurgermanmale">>}
-                     ,{<<"female/ca-ES">>, <<"eurcatalanfemale">>}
-                     ,{<<"female/es-ES">>, <<"eurspanishfemale">>}
-                     ,{<<"male/es-ES">>, <<"eurspanishmale">>}
-                     ,{<<"female/fi-FI">>, <<"eurfinnishfemale">>}
-                     ,{<<"female/fr-CA">>, <<"cafrenchfemale">>}
-                     ,{<<"male/fr-CA">>, <<"cafrenchmale">>}
-                     ,{<<"female/fr-FR">>, <<"eurfrenchfemale">>}
-                     ,{<<"male/fr-FR">>, <<"eurfrenchmale">>}
-                     ,{<<"female/it-IT">>, <<"euritalianfemale">>}
-                     ,{<<"male/it-IT">>, <<"euritalianmale">>}
-                     ,{<<"female/nb-NO">>, <<"eurnorwegianfemale">>}
-                     ,{<<"female/nl-NL">>, <<"eurdutchfemale">>}
-                     ,{<<"female/pl-PL">>, <<"eurpolishfemale">>}
-                     ,{<<"female/pt-BR">>, <<"brportuguesefemale">>}
-                     ,{<<"female/pt-PT">>, <<"eurportuguesefemale">>}
-                     ,{<<"male/pt-PT">>, <<"eurportuguesemale">>}
-                     ,{<<"female/ru-RU">>, <<"rurussianfemale">>}
-                     ,{<<"male/ru-RU">>, <<"rurussianmale">>}
-                     ,{<<"female/sv-SE">>, <<"swswedishfemale">>}
-                     ,{<<"female/hu-HU">>, <<"huhungarianfemale">>}
-                     ,{<<"female/cs-CZ">>, <<"eurczechfemale">>}
-                     ,{<<"female/tr-TR">>, <<"eurturkishfemale">>}
-                     ,{<<"male/tr-TR">>, <<"eurturkishmale">>}
+    VoiceMappings = [{<<"female/en-us">>, <<"usenglishfemale">>}
+                     ,{<<"male/en-us">>, <<"usenglishmale">>}
+                     ,{<<"female/en-ca">>, <<"caenglishfemale">>}
+                     ,{<<"female/en-au">>, <<"auenglishfemale">>}
+                     ,{<<"female/en-gb">>, <<"ukenglishfemale">>}
+                     ,{<<"male/en-gb">>, <<"ukenglishmale">>}
+                     ,{<<"female/es-us">>, <<"usspanishfemale">>}
+                     ,{<<"male/es-us">>, <<"usspanishmale">>}
+                     ,{<<"female/us-us">>, <<"usspanishfemale">>}
+                     ,{<<"female/zh-cn">>, <<"chchinesefemale">>}
+                     ,{<<"male/zh-cn">>, <<"chchinesemale">>}
+                     ,{<<"female/zh-hk">>, <<"hkchinesefemale">>}
+                     ,{<<"female/zh-tw">>, <<"twchinesefemale">>}
+                     ,{<<"female/ja-jp">>, <<"jpjapanesefemale">>}
+                     ,{<<"male/ja-jp">>, <<"jpjapanesemale">>}
+                     ,{<<"female/ko-kr">>, <<"krkoreanfemale">>}
+                     ,{<<"male/ko-kr">>, <<"krkoreanmale">>}
+                     ,{<<"female/da-dk">>, <<"eurdanishfemale">>}
+                     ,{<<"female/de-de">>, <<"eurgermanfemale">>}
+                     ,{<<"male/de-de">>, <<"eurgermanmale">>}
+                     ,{<<"female/ca-es">>, <<"eurcatalanfemale">>}
+                     ,{<<"female/es-es">>, <<"eurspanishfemale">>}
+                     ,{<<"male/es-es">>, <<"eurspanishmale">>}
+                     ,{<<"female/fi-fi">>, <<"eurfinnishfemale">>}
+                     ,{<<"female/fr-ca">>, <<"cafrenchfemale">>}
+                     ,{<<"male/fr-ca">>, <<"cafrenchmale">>}
+                     ,{<<"female/fr-fr">>, <<"eurfrenchfemale">>}
+                     ,{<<"male/fr-fr">>, <<"eurfrenchmale">>}
+                     ,{<<"female/it-it">>, <<"euritalianfemale">>}
+                     ,{<<"male/it-it">>, <<"euritalianmale">>}
+                     ,{<<"female/nb-no">>, <<"eurnorwegianfemale">>}
+                     ,{<<"female/nl-nl">>, <<"eurdutchfemale">>}
+                     ,{<<"female/pl-pl">>, <<"eurpolishfemale">>}
+                     ,{<<"female/pt-br">>, <<"brportuguesefemale">>}
+                     ,{<<"female/pt-pt">>, <<"eurportuguesefemale">>}
+                     ,{<<"male/pt-pt">>, <<"eurportuguesemale">>}
+                     ,{<<"female/ru-ru">>, <<"rurussianfemale">>}
+                     ,{<<"male/ru-ru">>, <<"rurussianmale">>}
+                     ,{<<"female/sv-se">>, <<"swswedishfemale">>}
+                     ,{<<"female/hu-hu">>, <<"huhungarianfemale">>}
+                     ,{<<"female/cs-cz">>, <<"eurczechfemale">>}
+                     ,{<<"female/tr-tr">>, <<"eurturkishfemale">>}
+                     ,{<<"male/tr-tr">>, <<"eurturkishmale">>}
                     ],
-    case props:get_value(Voice, VoiceMappings) of
+    case props:get_value(wh_util:to_lower_binary(Voice), VoiceMappings) of
         'undefined' ->
             {'error', 'invalid_voice'};
         ISpeechVoice ->
