@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -30,7 +30,7 @@
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
 -define(TIMEOUT_LIFETIME, 600000).
--define(TIMEOUT_MESSAGE, {'$wh_media_tts_cache', tts_timeout}).
+-define(TIMEOUT_MESSAGE, {'$wh_media_tts_cache', 'tts_timeout'}).
 
 -record(state, {
           text :: ne_binary()
@@ -80,7 +80,7 @@ init([Text, JObj]) ->
     put('callid', wh_util:binary_md5(Text)),
 
     Voice = list_to_binary([wh_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
-                            ,wh_json:get_value(<<"Language">>, JObj, <<"en-US">>)
+                            ,get_language(wh_json:get_value(<<"Language">>, JObj, <<"en-us">>))
                            ]),
 
     Format = wh_json:get_value(<<"Format">>, JObj, <<"wav">>),
@@ -99,6 +99,11 @@ init([Text, JObj]) ->
                   ,reqs = []
                   ,timer_ref = start_timer()
                  }}.
+
+-spec get_language(ne_binary()) -> ne_binary().
+get_language(<<"en">>) -> <<"en-us">>;
+get_language(<<L:2/binary>>) -> <<L/binary, "-", L/binary>>;
+get_language(Language) -> Language.
 
 %%--------------------------------------------------------------------
 %% @private
