@@ -297,6 +297,7 @@ handle_config_change(JObj, _Props) ->
 
     handle_change(JObj, wh_json:get_value(<<"Type">>, JObj)).
 
+-spec handle_change(wh_json:object(), ne_binary()) -> 'ok'.
 handle_change(JObj, <<"user">>) ->
     handle_agent_change(wh_json:get_value(<<"Database">>, JObj)
                         ,wh_json:get_value(<<"Account-ID">>, JObj)
@@ -309,7 +310,19 @@ handle_change(JObj, <<"device">>) ->
                          ,wh_json:get_value(<<"ID">>, JObj)
                          ,wh_json:get_value(<<"Rev">>, JObj)
                          ,wh_json:get_value(<<"Event-Name">>, JObj)
-                        ).
+                        );
+handle_change(JObj, <<"undefined">>) ->
+    lager:debug("undefined type for change"),
+    case couch_mgr:open_cache_doc(wh_json:get_value(<<"Database">>, JObj)
+                                  ,wh_json:get_value(<<"ID">>, JObj)
+                                 )
+    of
+        {'ok', Doc} ->
+            lager:debug("found doc of type ~s", [wh_json:get_value(<<"pvt_type">>, Doc)]),
+            handle_change(JObj, wh_json:get_value(<<"pvt_type">>, Doc));
+        {'error', _E} ->
+            lager:debug("failed to find doc")
+    end.
 
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type) ->
     handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type, 0).
