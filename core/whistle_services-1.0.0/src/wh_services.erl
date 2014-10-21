@@ -237,7 +237,7 @@ save_as_dirty(#wh_services{jobj=JObj
                     NewServices;
                 'false' ->
                     lager:debug("new services doc for ~s not dirty, marking it as so", [AccountId]),
-                    timer:sleep(BackOff + rand:uniform(?BASE_BACKOFF)),
+                    timer:sleep(BackOff + random:uniform(?BASE_BACKOFF)),
                     save_as_dirty(NewServices, BackOff*2)
             end
     end.
@@ -282,7 +282,7 @@ save(#wh_services{jobj=JObj
             save(Services, BackOff);
         {'error', 'conflict'} ->
             lager:debug("services for ~s conflicted, merging changes and retrying", [AccountId]),
-            timer:sleep(BackOff + rand:uniform(?BASE_BACKOFF)),
+            timer:sleep(BackOff + random:uniform(?BASE_BACKOFF)),
             {'ok', Existing} = couch_mgr:open_doc(?WH_SERVICES_DB, AccountId),
             save(Services#wh_services{jobj=Existing}, BackOff*2)
     end.
