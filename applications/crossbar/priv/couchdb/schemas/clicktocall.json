@@ -43,6 +43,12 @@
       "required": false,
       "name": "Rate Limit",
       "description": "The rate that this click to call can be invoked"
+    },
+    "caller_id_number": {
+      "type": "string",
+      "required": false,
+      "name": "Keep Original Caller ID?",
+      "description": "Explicitly set caller id number"
     }
   }
 }
