@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2013, 2600Hz
+%%% @copyright (C) 2012-2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -22,5 +22,6 @@ get_uri(<<"tts://", Text/binary>>, JObj) ->
     StreamType = wh_media_util:convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
 
     {'ok', <<(wh_media_util:base_url(Host, Port))/binary, StreamType/binary
-             ,"/tts/", (wh_util:binary_md5(Text))/binary, ".", Format/binary>>
+             ,"/tts/", (wh_util:binary_md5(Text))/binary, ".", Format/binary
+           >>
     }.
