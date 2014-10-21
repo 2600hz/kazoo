@@ -1,15 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
 %%% @end
 %%%
 %%% @contributors
-%%% James Aimonetti <james@2600hz.org>
-%%% Karl Anderson <karl@2600hz.org>
-%%%
-%%% Created : 22 Dec 2011 by Karl Anderson <karl@2600hz.org>
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(notify_low_balance).
 
@@ -122,26 +119,29 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec collect_recipients(ne_binary()) -> api_binary().
+-spec collect_recipients(ne_binary()) -> api_binaries() | ne_binary().
 collect_recipients(AccountId) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     get_email(AccountId, MasterAccountId).
 
--spec get_email(ne_binary(), ne_binary()) -> api_binary().
+-spec get_email(ne_binary(), ne_binary()) -> api_binaries().
 get_email(MasterAccountId, MasterAccountId) ->
     AccountDb = wh_util:format_account_id(MasterAccountId, 'encoded'),
     lager:debug("attempting to email low balance to master account ~s"
-                ,[MasterAccountId]),
+                ,[MasterAccountId]
+               ),
     case couch_mgr:open_doc(AccountDb, MasterAccountId) of
         {'ok', JObj} -> find_billing_email(JObj);
         {'error', _R} ->
             lager:error("could not open account ~s : ~p"
-                        ,[MasterAccountId, _R]),
+                        ,[MasterAccountId, _R]
+                       ),
             'undefined'
     end;
 get_email(AccountId, MasterAccountId) ->
     lager:debug("attempting to email low balance to account ~s"
-                ,[AccountId]),
+                ,[AccountId]
+               ),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} -> get_email(JObj, AccountId, MasterAccountId);
@@ -150,18 +150,19 @@ get_email(AccountId, MasterAccountId) ->
             get_email(MasterAccountId, MasterAccountId)
     end.
 
--spec get_email(wh_json:object(), ne_binary(), ne_binary()) -> ne_binary().
+-spec get_email(wh_json:object(), ne_binary(), ne_binary()) -> api_binaries() | ne_binary().
 get_email(JObj, AccountId, MasterAccountId) ->
     case find_billing_email(JObj) of
         'undefined' ->
             lager:debug("billing contact email not set or low balance disabled for account ~s"
-                        ,[AccountId]),
+                        ,[AccountId]
+                       ),
             ResellerId = wh_services:find_reseller_id(AccountId),
             get_email(ResellerId, MasterAccountId);
         Email -> Email
     end.
 
--spec find_billing_email(wh_json:object()) -> api_binary().
+-spec find_billing_email(wh_json:object()) -> api_binaries() | ne_binary().
 find_billing_email(JObj) ->
     case is_notify_enabled(JObj) of
         'false' -> 'undefined';

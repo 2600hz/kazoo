@@ -81,8 +81,12 @@ rest_init(Req0, Opts) ->
                 {'undefined', _} -> wh_network_utils:iptuple_to_binary(Peer);
                 {ForwardIP, _} -> wh_util:to_binary(ForwardIP)
             end,
+
+    {Headers, _} = cowboy_req:headers(Req7),
+
     Context0 = #cb_context{
                   req_id = ReqId
+                  ,req_headers = Headers
                   ,raw_host = wh_util:to_binary(Host)
                   ,port = wh_util:to_integer(Port)
                   ,raw_path = wh_util:to_binary(Path)

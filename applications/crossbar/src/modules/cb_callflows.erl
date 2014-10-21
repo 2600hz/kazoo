@@ -99,18 +99,33 @@ validate_callflow(Context, DocId, ?HTTP_DELETE) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
-    'ok' = track_assignment('post', Context),
-    maybe_reconcile_numbers(crossbar_doc:save(Context)).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            'ok' = track_assignment('post', Context),
+            maybe_reconcile_numbers(Context1);
+        _Status -> Context1
+    end.
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    'ok' = track_assignment('put', Context),
-    maybe_reconcile_numbers(crossbar_doc:save(Context)).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            'ok' = track_assignment('put', Context),
+            maybe_reconcile_numbers(Context1);
+        _Status -> Context1
+    end.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _DocId) ->
-    'ok' = track_assignment('delete', Context),
-    crossbar_doc:delete(Context).
+    Context1 = crossbar_doc:delete(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            'ok' = track_assignment('delete', Context),
+            Context1;
+        _Status -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -314,10 +329,8 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_reconcile_numbers(cb_context:context()) -> cb_context:context().
 maybe_reconcile_numbers(Context) ->
-    maybe_reconcile_numbers(Context, cb_context:resp_status(Context)).
-
-maybe_reconcile_numbers(Context, 'success') ->
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, 'false') of
         'false' -> Context;
         'true' ->
@@ -333,9 +346,7 @@ maybe_reconcile_numbers(Context, 'success') ->
                  || Number <- sets:to_list(NewNumbers)
                 ],
             Context
-    end;
-maybe_reconcile_numbers(Context, _Status) -> Context.
-
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

@@ -208,13 +208,13 @@ create_view_options(OwnerId, Context) ->
 create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', CreatedTo}
             ,{'endkey', CreatedFrom}
-            ,{'limit', crossbar_doc:pagination_page_size(Context)}
+            ,{'limit', crossbar_doc:pagination_page_size(Context) + 1}
            ,'descending'
            ]};
 create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [OwnerId, CreatedTo]}
             ,{'endkey', [OwnerId, CreatedFrom]}
-            ,{'limit', crossbar_doc:pagination_page_size(Context)}
+            ,{'limit', crossbar_doc:pagination_page_size(Context) + 1}
             ,'descending'
            ]}.
 

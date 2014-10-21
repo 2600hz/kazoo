@@ -28,7 +28,6 @@
          ,send_status_resume/1
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
-         ,get_recording_doc_id/1
          ,call_status_req/1, call_status_req/2
          ,stop/1
          ,fsm_started/2
@@ -466,8 +465,6 @@ handle_cast('bind_to_member_reqs', #state{agent_queues=Qs
     {'noreply', State};
 
 handle_cast({'channel_hungup', CallId}, #state{call=Call
-                                               ,record_calls=ShouldRecord
-                                               ,recording_url=RecordingUrl
                                                ,is_thief=IsThief
                                                ,agent_call_ids=ACallIds
                                                ,agent_id=AgentId
@@ -479,8 +476,6 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
             acdc_util:unbind_from_call_events(Call),
 
             _ = filter_agent_calls(ACallIds, CallId),
-
-            maybe_stop_recording(Call, ShouldRecord, RecordingUrl),
 
             put('callid', AgentId),
             case IsThief of
@@ -1094,93 +1089,24 @@ should_record_endpoints(EPs, _, _) ->
                       wh_json:is_true(<<"record_calls">>, EP, 'false')
               end, EPs).
 
-maybe_stop_recording(_Call, 'false', _) -> 'ok';
-maybe_stop_recording(Call, 'true', Url) ->
-    Format = recording_format(),
-    MediaName = get_media_name(whapps_call:call_id(Call), Format),
-
-    _ = whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"stop">>, Call),
-    lager:debug("recording of ~s stopped", [MediaName]),
-
-    save_recording(Call, MediaName, Format, Url).
-
-maybe_start_recording(_Call, 'false', _) -> lager:debug("not recording this call");
+-spec maybe_start_recording(whapps_call:call(), boolean(), ne_binary()) -> 'ok'.
+maybe_start_recording(_Call, 'false', _) ->
+    lager:debug("not recording this call");
 maybe_start_recording(Call, 'true', Url) ->
-    Format = recording_format(),
-    MediaName = get_media_name(whapps_call:call_id(Call), Format),
-    lager:debug("recording of ~s started", [MediaName]),
-
-    case should_save_recording(Url) of
-        'true' ->
-            StoreUrl = wapi_dialplan:offsite_store_url(Url, MediaName),
-            Props = [{<<"Media-Name">>, MediaName}
-                     ,{<<"Media-Transfer-Destination">>, StoreUrl}
-                    ],
-            whapps_call_command:record_call(Props, <<"start">>, Call);
-        'false' ->
-            whapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"start">>, Call)
+    RecordingJObj =
+        wh_json:from_list(
+          [{<<"format">>, recording_format()}
+           ,{<<"url">>, Url}
+          ]),
+    lager:debug("starting recording listener for ~s", [Url]),
+    case acdc_recordings_sup:new(Call, RecordingJObj) of
+        {'ok', _P} ->
+            lager:debug("recording tracked in ~p", [_P]);
+        _E -> lager:debug("failed to start recording: ~p", [_E])
     end.
 
 recording_format() ->
     whapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
-
-should_save_recording(Url) ->
-    whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') orelse is_binary(Url).
-
-save_recording(Call, MediaName, Format, Url) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
-        'true' ->
-            {'ok', MediaJObj} = store_recording_meta(Call, MediaName, Format),
-            lager:debug("stored meta: ~p", [MediaJObj]),
-
-            StoreUrl = wapi_dialplan:local_store_url(Call, MediaJObj),
-            lager:debug("store url: ~s", [StoreUrl]),
-
-            whapps_call_command:store(MediaName, StoreUrl, Call);
-        'false' when is_binary(Url) ->
-            StoreUrl = wapi_dialplan:offsite_store_url(Url, MediaName),
-            lager:debug("using ~s to maybe store recording", [StoreUrl]),
-
-            whapps_call_command:store(MediaName, StoreUrl, Call);
-        'false' ->
-            lager:debug("no external url to use, not saving recording")
-    end.
-
--spec store_recording_meta(whapps_call:call(), ne_binary(), ne_binary()) ->
-                                  {'ok', wh_json:object()} |
-                                  {'error', any()}.
-store_recording_meta(Call, MediaName, Ext) ->
-    AcctDb = whapps_call:account_db(Call),
-    CallId = whapps_call:call_id(Call),
-
-    MediaDoc = wh_doc:update_pvt_parameters(
-                 wh_json:from_list(
-                   [{<<"name">>, MediaName}
-                    ,{<<"description">>, <<"acdc recording ", MediaName/binary>>}
-                    ,{<<"content_type">>, ext_to_mime(Ext)}
-                    ,{<<"media_type">>, Ext}
-                    ,{<<"media_source">>, <<"recorded">>}
-                    ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
-                    ,{<<"pvt_type">>, <<"private_media">>}
-                    ,{<<"from">>, whapps_call:from(Call)}
-                    ,{<<"to">>, whapps_call:to(Call)}
-                    ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
-                    ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
-                    ,{<<"call_id">>, CallId}
-                    ,{<<"_id">>, get_recording_doc_id(CallId)}
-                   ])
-                 ,AcctDb
-                ),
-    couch_mgr:save_doc(AcctDb, MediaDoc).
-
-ext_to_mime(<<"wav">>) -> <<"audio/x-wav">>;
-ext_to_mime(_) -> <<"audio/mp3">>.
-
-get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
-
--spec get_media_name(ne_binary(), ne_binary()) -> ne_binary().
-get_media_name(CallId, Ext) ->
-    <<(get_recording_doc_id(CallId))/binary, ".", Ext/binary>>.
 
 -spec agent_id(agent()) -> api_binary().
 agent_id(Agent) ->

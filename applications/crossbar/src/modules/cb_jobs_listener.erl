@@ -116,19 +116,31 @@ maybe_start_job(Job, <<"pending">>) ->
     start_job(update_status(Job, <<"running">>)
               ,wh_json:get_value(<<"pvt_account_id">>, Job)
               ,wh_json:get_value(<<"pvt_auth_account_id">>, Job)
-              ,carrier_module(wh_json:get_value(<<"pvt_carrier">>, Job))
+              ,select_carrier_module(Job)
               ,wh_json:get_value(<<"numbers">>, Job)
              );
 maybe_start_job(Job, <<"running">>) ->
     lager:debug("job is running, ~s is in charge", [wh_json:get_value(<<"pvt_node">>, Job)]).
 
--spec start_job(wh_json:object(), ne_binary(), ne_binary(), atom(), ne_binaries()) -> 'ok'.
+-spec start_job(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binaries()) -> 'ok'.
 start_job(Job, _AccountId, _AuthAccountId, _CarrierModule, []) ->
     update_status(Job, <<"complete">>),
     lager:debug("successfully finished job");
 start_job(Job, AccountId, AuthAccountId, CarrierModule, [Number|Numbers]) ->
     Job1 = maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number),
     start_job(Job1, AccountId, AuthAccountId, CarrierModule, Numbers).
+
+-spec select_carrier_module(wh_json:object()) -> ne_binary().
+select_carrier_module(Job) ->
+    ResourceId = wh_json:get_value(<<"resource_id">>, Job),
+    case couch_mgr:open_cache_doc(?WH_OFFNET_DB, ResourceId) of
+        {'ok', _} ->
+            lager:debug("found resource ~s in ~s, using wnm_other", [ResourceId, ?WH_OFFNET_DB]),
+            <<"wnm_other">>;
+        {'error', _E} ->
+            lager:debug("resource ~s is not a system resource(~p), using wnm_local", [ResourceId, _E]),
+            <<"wnm_local">>
+    end.
 
 -spec maybe_create_number(wh_json:object(), ne_binary(), ne_binary(), api_binary(), ne_binary()) ->
                                  wh_json:object().
@@ -149,7 +161,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
     try wh_number_manager:create_number(Number
                                         ,AccountId
                                         ,AuthAccountId
-                                        ,wh_json:new()
+                                        ,build_number_properties(Job)
                                         ,'false'
                                         ,CarrierModule
                                        )
@@ -160,10 +172,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
                           ,<<"running">>
                          );
         {Failure, JObj} ->
-            lager:debug("failed to create number ~s for account ~s: ~p ~p", [Number, AccountId, Failure, JObj]),
-            update_status(wh_json:set_value([<<"errors">>, Number], JObj, Job)
-                          ,<<"running">>
-                         )
+            update_with_failure(Job, AccountId, Number, Failure, JObj)
     catch
         E:_R ->
             lager:debug("exception creating number ~s for account ~s: ~s: ~p", [Number, AccountId, E, _R]),
@@ -176,9 +185,31 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
                          )
     end.
 
--spec carrier_module(api_binary()) -> ne_binary().
-carrier_module('undefined') -> 'undefined';
-carrier_module(Carrier) -> <<"wnm_", Carrier/binary>>.
+-spec update_with_failure(wh_json:object(), ne_binary(), ne_binary(), atom(), wh_json:object()) ->
+                                 wh_json:object().
+update_with_failure(Job, AccountId, Number, Failure, JObj) ->
+    lager:debug("failed to create number ~s for account ~s: ~p ~p", [Number, AccountId, Failure, JObj]),
+    case wh_json:is_json_object(JObj)
+        andalso wh_json:get_values(JObj)
+    of
+        {[V], [K]} ->
+            update_status(wh_json:set_value([<<"errors">>, Number]
+                                            ,wh_json:from_list([{<<"reason">>, K}
+                                                                ,{<<"message">>, V}
+                                                               ])
+                                            ,Job
+                                           )
+                          ,<<"running">>
+                         );
+        _ ->
+            update_status(wh_json:set_value([<<"errors">>, Number], JObj, Job)
+                          ,<<"running">>
+                         )
+    end.
+
+-spec build_number_properties(wh_json:object()) -> wh_json:object().
+build_number_properties(JObj) ->
+    wh_json:from_list([{<<"resource_id">>, wh_json:get_value(<<"resource_id">>, JObj)}]).
 
 -spec update_status(wh_json:object(), ne_binary()) -> wh_json:object().
 update_status(Job, Status) ->
@@ -217,9 +248,10 @@ maybe_recover_account_jobs(Year, Month, AccountId) ->
         {'error', _} -> 'ok'
     end.
 
--spec maybe_recover_incomplete_jobs(wh_json:object()) -> 'ok'.
+-spec maybe_recover_incomplete_jobs(wh_json:objects()) -> 'ok'.
 maybe_recover_incomplete_jobs(IncompleteJobs) ->
-    [maybe_recover_incomplete_job(wh_json:get_value(<<"doc">>, Job)) || Job <- IncompleteJobs].
+    [maybe_recover_incomplete_job(wh_json:get_value(<<"doc">>, Job)) || Job <- IncompleteJobs],
+    'ok'.
 
 -spec maybe_recover_incomplete_job(wh_json:object()) -> 'ok'.
 maybe_recover_incomplete_job(Job) ->

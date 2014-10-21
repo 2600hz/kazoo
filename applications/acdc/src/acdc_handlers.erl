@@ -54,6 +54,7 @@ send_route_response(ReqJObj, Call, AccountId, Id, Type) ->
     _ = whapps_call:cache(Call, ?APP_NAME),
     lager:debug("sent route response to park the call for ~s(~s)", [Id, AccountId]).
 
+-spec handle_route_win(wh_json:object(), wh_proplist()) -> any().
 handle_route_win(JObj, _Props) ->
     'true' = wapi_route:win_v(JObj),
     _ = wh_util:put_callid(JObj),
@@ -66,11 +67,7 @@ handle_route_win(JObj, _Props) ->
 
             try update_acdc_actor(Call1) of
                 {'ok', P} when is_pid(P) -> 'ok';
-                {'ok', _} ->
-                    whapps_call_command:hangup(Call1);
-                {'error', _E} ->
-                    timer:sleep(5000),
-                    lager:debug("update resulted in ~p", [_E]),
+                'ok' ->
                     whapps_call_command:hangup(Call1)
             catch
                 _E:_R ->
@@ -81,9 +78,7 @@ handle_route_win(JObj, _Props) ->
             lager:debug("failed to retrieve cached call: ~p", [_R])
     end.
 
--spec update_acdc_actor(whapps_call:call()) ->
-                               {'ok', _} |
-                               {'error', _}.
+-spec update_acdc_actor(whapps_call:call()) -> any().
 -spec update_acdc_actor(whapps_call:call(), api_binary(), api_binary()) -> any().
 update_acdc_actor(Call) ->
     update_acdc_actor(Call
@@ -110,6 +105,7 @@ update_acdc_actor(Call, AgentId, <<"user">>) ->
             update_acdc_agent(Call, AcctId, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1)
     end.
 
+-spec update_acdc_agent(whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), fun()) -> ne_binary().
 update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
     lager:debug("agent ~s going to new status ~s", [AgentId, Status]),
 
@@ -154,6 +150,8 @@ update_agent_device(Call, AgentId, <<"logout">>) ->
     end;
 update_agent_device(_, _, _) -> {'ok', 'ok'}.
 
+-spec move_agent_device(whapps_call:call(), ne_binary(), wh_json:object()) ->
+                               {'ok', wh_json:object()}.
 move_agent_device(Call, AgentId, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
 
@@ -176,11 +174,14 @@ send_new_status(AcctId, AgentId, PubFun) ->
                ]),
     PubFun(Update).
 
+-spec play_status_prompt(whapps_call:call(), ne_binary()) -> ne_binary().
 play_status_prompt(Call, <<"login">>) ->
     whapps_call_command:prompt(<<"agent-logged_in">>, Call);
 play_status_prompt(Call, <<"logout">>) ->
     whapps_call_command:prompt(<<"agent-logged_out">>, Call);
 play_status_prompt(Call, <<"resume">>) ->
     whapps_call_command:prompt(<<"agent-resume">>, Call).
+
+-spec play_failed_update(whapps_call:call()) -> ne_binary().
 play_failed_update(Call) ->
     whapps_call_command:prompt(<<"agent-invalid_choice">>, Call).

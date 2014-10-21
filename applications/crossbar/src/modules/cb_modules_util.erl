@@ -391,8 +391,8 @@ content_type_to_extension(<<"image/jpg">>) -> <<"jpg">>;
 content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
 content_type_to_extension(<<"image/png">>) -> <<"png">>;
 content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
-content_type_to_extension(<<"text/html">>) -> <<"html">>.
-
+content_type_to_extension(<<"text/html">>) -> <<"html">>;
+content_type_to_extension(<<"text/plain">>) -> <<"txt">>.
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().

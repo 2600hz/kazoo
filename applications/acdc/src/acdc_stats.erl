@@ -704,7 +704,7 @@ handle_processed_stat(JObj, Props) ->
                 ]),
     update_call_stat(Id, Updates, Props).
 
--spec flush_call_stat(wh_json:ojbect(), wh_proplist()) -> 'ok'.
+-spec flush_call_stat(wh_json:object(), wh_proplist()) -> 'ok'.
 flush_call_stat(JObj, Props) ->
     'true' = wapi_acdc_stats:call_flush_v(JObj),
 

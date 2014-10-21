@@ -180,7 +180,7 @@ validate(Context, ?COLLECTION) ->
             validate_collection(Context)
     end;
 validate(Context, ?JOBS) ->
-    validate_jobs(Context, cb_context:req_verb(Context));
+    validate_jobs(maybe_set_account_to_master(Context), cb_context:req_verb(Context));
 validate(Context, Id) ->
     case cb_context:account_id(Context) of
         'undefined' ->
@@ -194,7 +194,19 @@ validate(Context, Id) ->
     end.
 
 validate(Context, ?JOBS, JobId) ->
-    read_job(Context, JobId).
+    read_job(maybe_set_account_to_master(Context), JobId).
+
+-spec maybe_set_account_to_master(cb_context:context()) -> cb_context:context().
+maybe_set_account_to_master(Context) ->
+    case cb_context:account_id(Context) of
+        'undefined' -> set_account_to_master(Context);
+        _AccountId -> Context
+    end.
+
+-spec set_account_to_master(cb_context:context()) -> cb_context:context().
+set_account_to_master(Context) ->
+    {'ok', AccountId} = whapps_util:get_master_account_id(),
+    cb_context:set_account_id(Context, AccountId).
 
 -spec validate_resources(cb_context:context(), http_method()) -> cb_context:context().
 validate_resources(Context, ?HTTP_GET) ->
@@ -394,7 +406,6 @@ leak_job_fields(Context) ->
             cb_context:set_resp_data(Context
                                      ,wh_json:set_values([{<<"timestamp">>, wh_json:get_value(<<"pvt_created">>, JObj)}
                                                           ,{<<"status">>, wh_json:get_value(<<"pvt_status">>, JObj)}
-                                                          ,{<<"carrier">>, wh_json:get_value(<<"pvt_carrier">>, JObj)}
                                                          ], cb_context:resp_data(Context))
                                     );
         _Status -> Context
@@ -427,7 +438,6 @@ jobs_summary(Context) ->
                                      ,{'endkey', CreatedTo}
                                      ,{'limit', crossbar_doc:pagination_page_size(Context)}
                                      ,{'databases', databases(Context, CreatedFrom, CreatedTo)}
-                                     ,'descending'
                                     ]
                                    ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
                                    ,fun normalize_view_results/2
@@ -507,7 +517,6 @@ on_successful_job_validation('undefined', Context) ->
     cb_context:set_doc(Context
                        ,wh_json:set_values([{<<"pvt_type">>, <<"resource_job">>}
                                             ,{<<"pvt_status">>, <<"pending">>}
-                                            ,{<<"pvt_carrier">>, get_job_carrier(Context)}
                                             ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
                                             ,{<<"pvt_request_id">>, cb_context:req_id(Context)}
                                             ,{<<"_id">>, Id}
@@ -515,23 +524,9 @@ on_successful_job_validation('undefined', Context) ->
                                             ,{<<"successes">>, wh_json:new()}
                                             ,{<<"errors">>, wh_json:new()}
                                            ]
-                                           ,wh_json:delete_keys([<<"carrier">>]
-                                                                ,cb_context:doc(Context)
-                                                               )
+                                           ,cb_context:doc(Context)
                                           )
                       ).
-
--spec get_job_carrier(cb_context:context()) -> ne_binary().
--spec get_job_carrier(api_binary(), boolean()) -> ne_binary().
-get_job_carrier(Context) ->
-    case cb_context:req_value(Context, <<"carrier">>) of
-        <<"local">> -> <<"local">>;
-        Carrier -> get_job_carrier(Carrier, cb_modules_util:is_superduper_admin(Context))
-    end.
-
-get_job_carrier('undefined', 'true') -> <<"other">>;
-get_job_carrier(Carrier, 'true') -> Carrier;
-get_job_carrier(_Carrier, 'false') -> <<"local">>.
 
 -spec reload_acls() -> 'ok'.
 reload_acls() ->

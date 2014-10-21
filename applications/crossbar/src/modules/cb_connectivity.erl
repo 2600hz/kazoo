@@ -96,19 +96,34 @@ validate_connectivity_pbx(Context, Id, ?HTTP_DELETE) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
-    'ok' = track_assignment('post', Context),
-    crossbar_doc:save(Context).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            'ok' = track_assignment('post', Context),
+            Context1;
+        _Status -> Context1
+    end.
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    registration_update(Context),
-    crossbar_doc:save(Context).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            registration_update(Context),
+            Context1;
+        _Status -> Context1
+    end.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
-    registration_update(Context),
-    'ok' = track_assignment('delete', Context),
-    crossbar_doc:delete(Context).
+    Context1 = crossbar_doc:delete(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            registration_update(Context),
+            'ok' = track_assignment('delete', Context),
+            Context1;
+        _Status -> Context1
+    end.
 
 %%%===================================================================
 %%% Internal functions

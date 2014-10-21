@@ -138,9 +138,9 @@ init([Call, Data]) ->
     TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
     RecordOnAnswer = wh_json:is_true(<<"record_on_answer">>, Data, 'false'),
 
-    Url = wh_json:get_value(<<"url">>, Data),
+    Url = get_url(Data),
 
-    {'ok', #state{url=get_url(Data)
+    {'ok', #state{url=Url
                   ,format=Format
                   ,media_name=get_media_name(whapps_call:call_id(Call), Format)
                   ,call=Call

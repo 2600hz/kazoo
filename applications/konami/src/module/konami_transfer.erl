@@ -67,7 +67,9 @@ handle(Data, Call) ->
     lager:debug("unbridge and put transferee ~s into hold", [TransfereeLeg]),
     whapps_call_command:unbridge(Call),
 
-    HoldCommand = whapps_call_command:hold_command(wh_json:get_value(<<"moh">>, Data), TransfereeLeg),
+    MOH = wh_media_util:media_path(wh_json:get_value(<<"moh">>, Data), Call),
+    lager:debug("putting transferee ~s on hold with MOH ~s", [TransfereeLeg, MOH]),
+    HoldCommand = whapps_call_command:hold_command(MOH, TransfereeLeg),
     whapps_call_command:send_command(HoldCommand, Call),
 
     Extension =
@@ -168,6 +170,16 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
             lager:debug("transferor ~s bridged to ~s", [Transferor, _CallId]),
             {'next_state', 'attended_answer', State}
     end;
+attended_wait(?EVENT(Target, <<"CHANNEL_CREATE">>, _Evt)
+              ,#state{target=Target}=State
+             ) ->
+    lager:debug("transfer target ~s channel created", [Target]),
+    {'next_state', 'attended_wait', State};
+attended_wait(?EVENT(Target, <<"originate_resp">>, _Evt)
+              ,#state{target=Target}=State
+             ) ->
+    lager:debug("originate has responded for target ~s", [Target]),
+    {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
     lager:debug("attanded_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
     {'next_state', 'attended_wait', State};
@@ -255,6 +267,19 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
             {'stop', 'normal', State};
         _CallId ->
             lager:debug("transferor ~s bridged to ~s", [Transferor, _CallId]),
+            {'next_state', 'attended_answer', State}
+    end;
+attended_answer(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
+                ,#state{transferor=Transferor
+                        ,target=Target
+                       }=State
+               ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+        Transferor ->
+            lager:debug("transferor and target are connected"),
+            {'next_state', 'attended_answer', State};
+        _CallId ->
+            lager:debug("target ~s bridged to ~s", [Target, _CallId]),
             {'next_state', 'attended_answer', State}
     end;
 attended_answer(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
@@ -413,11 +438,13 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                        ),
     TargetCallId.
 
+-spec create_call_id() -> ne_binary().
 create_call_id() ->
     TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
     konami_event_listener:add_call_binding(TargetCallId, ['CHANNEL_ANSWER'
                                                           ,'CHANNEL_DESTROY'
                                                           ,'CHANNEL_CREATE'
+                                                          ,'CHANNEL_BRIDGE'
                                                          ]),
     TargetCallId.
 

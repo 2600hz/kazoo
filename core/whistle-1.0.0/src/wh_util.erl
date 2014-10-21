@@ -29,6 +29,7 @@
          ,to_float/1, to_float/2
          ,to_number/1
          ,to_hex/1, to_hex_binary/1, rand_hex_binary/1
+         ,hexencode_binary/1
          ,from_hex_binary/1, from_hex_string/1
          ,to_list/1, to_binary/1
          ,to_atom/1, to_atom/2
@@ -554,6 +555,18 @@ to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
 
+hexencode_binary(<<_/binary>> = Bin) ->
+    hexencode_binary(Bin, <<>>);
+hexencode_binary(S) ->
+    hexencode_binary(to_binary(S)).
+
+hexencode_binary(<<>>, Acc) -> Acc;
+hexencode_binary(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
+    hexencode_binary(Rest, <<Acc/binary
+                             ,(binary_to_hex_char(Hi))
+                             ,(binary_to_hex_char(Lo))
+                           >>).
+
 -spec from_hex_binary(binary()) -> binary().
 from_hex_binary(Bin) ->
     to_binary(from_hex_string(to_list(Bin))).
@@ -580,9 +593,17 @@ hex_char_to_binary(B) ->
 
 -spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
 rand_hex_binary(Size) when not is_integer(Size) ->
-    rand_hex_binary( wh_util:to_integer(Size));
+    rand_hex_binary(wh_util:to_integer(Size));
 rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
-    to_hex_binary(crypto:rand_bytes(Size)).
+    to_hex_binary(rand_hex(Size)).
+
+-spec rand_hex(pos_integer()) -> ne_binary().
+rand_hex(Size) ->
+    try crypto:strong_rand_bytes(Size) of
+        Bytes -> Bytes
+    catch
+        _:'low_entropy' -> crypto:rand_bytes(Size)
+    end.
 
 -spec binary_to_hex_char(pos_integer()) -> pos_integer().
 binary_to_hex_char(N) when N < 10 -> $0 + N;

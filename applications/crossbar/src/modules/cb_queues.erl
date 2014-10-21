@@ -44,6 +44,7 @@
          ,put/1, put/2, put/3
          ,post/2, post/3
          ,delete/2, delete/3
+         ,delete_account/2
         ]).
 
 -include("../crossbar.hrl").
@@ -98,6 +99,9 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.queues">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.queues">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.queues">>, ?MODULE, 'post'),
+
+    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete_account'),
+
     _ = crossbar_bindings:bind(<<"*.execute.delete.queues">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -424,6 +428,12 @@ delete(Context, Id, ?ROSTER_PATH_TOKEN) ->
     activate_account_for_acdc(Context),
     read(Id, crossbar_doc:save(Context)).
 
+-spec delete_account(cb_context:context(), path_token()) -> cb_context:context().
+delete_account(Context, AccountId) ->
+    lager:debug("account ~s is being deleted, cleaning up ~s", [AccountId, ?KZ_ACDC_DB]),
+    deactivate_account_for_acdc(AccountId),
+    Context.
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -702,17 +712,32 @@ normalize_agents_results(JObj, Acc) ->
 %% Creates an entry in the acdc db of the account's participation in acdc
 %% @end
 %%--------------------------------------------------------------------
+-spec activate_account_for_acdc(cb_context:context()) -> 'ok'.
 activate_account_for_acdc(Context) ->
     case couch_mgr:open_cache_doc(?KZ_ACDC_DB, cb_context:account_id(Context)) of
         {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
-            lager:debug("creating account doc in acdc db"),
-            Doc = wh_doc:update_pvt_parameters(wh_json:new()
+            lager:debug("creating account doc ~s in acdc db", [cb_context:account_id(Context)]),
+            Doc = wh_doc:update_pvt_parameters(wh_json:from_list([{<<"_id">>, cb_context:account_id(Context)}])
                                                ,?KZ_ACDC_DB
                                                ,[{'account_id', cb_context:account_id(Context)}
                                                  ,{'type', <<"acdc_activation">>}
                                                 ]),
-            couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc);
+            {'ok', _} = couch_mgr:ensure_saved(?KZ_ACDC_DB, Doc),
+            'ok';
         {'error', _E} ->
             lager:debug("failed to check acdc activation doc: ~p", [_E])
+    end.
+
+-spec deactivate_account_for_acdc(ne_binary()) -> 'ok'.
+deactivate_account_for_acdc(AccountId) ->
+    case couch_mgr:open_doc(?KZ_ACDC_DB, AccountId) of
+        {'error', _} -> 'ok';
+        {'ok', JObj} ->
+            case couch_mgr:del_doc(?KZ_ACDC_DB, JObj) of
+                {'ok', _} ->
+                    lager:debug("removed ~s from ~s", [AccountId, ?KZ_ACDC_DB]);
+                {'error', _E} ->
+                    lager:debug("failed to remove ~s: ~p", [AccountId, _E])
+            end
     end.
