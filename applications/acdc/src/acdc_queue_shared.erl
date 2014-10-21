@@ -34,7 +34,13 @@
                                                       ,{'exclusive', 'false'}
                                                      ]}
                                  ,{'basic_qos', 1}
-                                 ,{'queue_options', [{'exclusive', 'false'}]}
+                                 ,{'queue_options', [{'exclusive', 'false'}
+                                                     ,{'arguments', [{<<"x-message-ttl">>, ?MILLISECONDS_IN_DAY}
+                                                                     ,{<<"x-max-length">>, 1000}
+                                                                    ]
+                                                      }
+                                                    ]
+                                  }
                                 ]).
 
 -define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{'self', []}]).
