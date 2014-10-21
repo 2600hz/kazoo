@@ -387,6 +387,10 @@ content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
 content_type_to_extension(<<"application/x-pdf">>) -> <<"pdf">>;
 content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>;
+content_type_to_extension(<<"image/jpg">>) -> <<"jpg">>;
+content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
+content_type_to_extension(<<"image/png">>) -> <<"png">>;
+content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
 content_type_to_extension(<<"text/html">>) -> <<"html">>;
 content_type_to_extension(<<"text/plain">>) -> <<"txt">>.
 

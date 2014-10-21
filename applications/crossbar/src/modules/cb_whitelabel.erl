@@ -26,6 +26,7 @@
 -define(WHITELABEL_ID, <<"whitelabel">>).
 -define(LOGO_REQ, <<"logo">>).
 -define(ICON_REQ, <<"icon">>).
+-define(WELCOME_REQ, <<"welcome">>).
 
 -define(WHITELABEL_MIME_TYPES, [{<<"image">>, <<"jpg">>}
                                 ,{<<"image">>, <<"jpeg">>}
@@ -41,6 +42,9 @@
                                      ,{<<"image">>, <<"x-icon">>}
                                      ,{<<"image">>, <<"icon">>}
                                      | ?WHITELABEL_MIME_TYPES
+                                    ]).
+
+-define(WHITELABEL_WELCOME_MIME_TYPES, [{<<"text">>, <<"html">>}
                                     ]).
 
 -define(AGG_VIEW_WHITELABEL_DOMAIN, <<"accounts/list_by_whitelabel_domain">>).
@@ -79,12 +83,16 @@ allowed_methods(?LOGO_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?ICON_REQ) ->
     [?HTTP_GET, ?HTTP_POST];
+allowed_methods(?WELCOME_REQ) ->
+    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_) ->
     [?HTTP_GET].
 
 allowed_methods(_, ?LOGO_REQ) ->
     [?HTTP_GET];
 allowed_methods(_, ?ICON_REQ) ->
+    [?HTTP_GET];
+allowed_methods(_, ?WELCOME_REQ) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -102,9 +110,11 @@ resource_exists() -> 'true'.
 
 resource_exists(?LOGO_REQ) -> 'true';
 resource_exists(?ICON_REQ) -> 'true';
+resource_exists(?WELCOME_REQ) -> 'true';
 resource_exists(_) -> 'true'.
 
 resource_exists(_, ?LOGO_REQ) -> 'true';
+resource_exists(_, ?WELCOME_REQ) -> 'true';
 resource_exists(_, ?ICON_REQ) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -122,6 +132,8 @@ authorize([{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
 authorize([{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
     'true';
 authorize([{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
+    'true';
+authorize([{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
     'true';
 authorize(_Nouns, _Verb) ->
     'false'.
@@ -141,6 +153,8 @@ authenticate([{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
 authenticate([{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
     'true';
 authenticate([{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
+    'true';
+authenticate([{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
     'true';
 authenticate(_Nouns, _Verb) ->
     'false'.
@@ -163,6 +177,8 @@ content_types_provided_for_attachments(Context, ?LOGO_REQ, ?HTTP_GET) ->
     content_types_provided_for_attachments(Context, ?LOGO_REQ);
 content_types_provided_for_attachments(Context, ?ICON_REQ, ?HTTP_GET) ->
     content_types_provided_for_attachments(Context, ?ICON_REQ);
+content_types_provided_for_attachments(Context, ?WELCOME_REQ, ?HTTP_GET) ->
+    content_types_provided_for_attachments(Context, ?WELCOME_REQ);
 content_types_provided_for_attachments(Context, _Type, _Verb) ->
     Context.
 
@@ -186,6 +202,8 @@ content_types_provided_for_domain_attachments(Context, Domain, ?LOGO_REQ, ?HTTP_
     content_types_provided_for_domain_attachments(Context, Domain, ?LOGO_REQ);
 content_types_provided_for_domain_attachments(Context, Domain, ?ICON_REQ, ?HTTP_GET) ->
     content_types_provided_for_domain_attachments(Context, Domain, ?ICON_REQ);
+content_types_provided_for_domain_attachments(Context, Domain, ?WELCOME_REQ, ?HTTP_GET) ->
+    content_types_provided_for_domain_attachments(Context, Domain, ?WELCOME_REQ);
 content_types_provided_for_domain_attachments(Context, _Domain, _AttachType, _Verb) ->
     Context.
 
@@ -214,6 +232,9 @@ content_types_accepted(Context, ?LOGO_REQ, ?HTTP_POST) ->
     cb_context:set_content_types_accepted(Context, CTA);
 content_types_accepted(Context, ?ICON_REQ, ?HTTP_POST) ->
     CTA = [{'from_binary', ?WHITELABEL_ICON_MIME_TYPES}],
+    cb_context:set_content_types_accepted(Context, CTA);
+content_types_accepted(Context, ?WELCOME_REQ, ?HTTP_POST) ->
+    CTA = [{'from_binary', ?WHITELABEL_WELCOME_MIME_TYPES}],
     cb_context:set_content_types_accepted(Context, CTA);
 content_types_accepted(Context, _AttachType, _Verb) ->
     Context.
@@ -247,6 +268,8 @@ validate(Context, ?LOGO_REQ) ->
     validate_attachment(Context, ?LOGO_REQ, cb_context:req_verb(Context));
 validate(Context, ?ICON_REQ) ->
     validate_attachment(Context, ?ICON_REQ, cb_context:req_verb(Context));
+validate(Context, ?WELCOME_REQ) ->
+    validate_attachment(Context, ?WELCOME_REQ, cb_context:req_verb(Context));
 validate(Context, Domain) ->
     validate_domain(Context, Domain, cb_context:req_verb(Context)).
 
@@ -256,6 +279,8 @@ validate_attachment(Context, ?LOGO_REQ, ?HTTP_GET) ->
     load_whitelabel_binary(Context, ?LOGO_REQ);
 validate_attachment(Context, ?ICON_REQ, ?HTTP_GET) ->
     load_whitelabel_binary(Context, ?ICON_REQ);
+validate_attachment(Context, ?WELCOME_REQ, ?HTTP_GET) ->
+    load_whitelabel_binary(Context, ?WELCOME_REQ);
 validate_attachment(Context, AttachType, ?HTTP_POST) ->
     validate_attachment_post(Context, AttachType, cb_context:req_files(Context)).
 
@@ -267,15 +292,23 @@ validate_attachment_post(Context, ?LOGO_REQ, []) ->
 validate_attachment_post(Context, ?ICON_REQ, []) ->
     Message = <<"please provide an image file">>,
     cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
+validate_attachment_post(Context, ?WELCOME_REQ, []) ->
+    Message = <<"please provide an html file">>,
+    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
 validate_attachment_post(Context, ?LOGO_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?ICON_REQ, [{_Filename, FileJObj}]) ->
+    validate_upload(Context, FileJObj);
+validate_attachment_post(Context, ?WELCOME_REQ, [{_Filename, FileJObj}]) ->
     validate_upload(Context, FileJObj);
 validate_attachment_post(Context, ?LOGO_REQ, _Files) ->
     Message = <<"please provide a single image file">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
 validate_attachment_post(Context, ?ICON_REQ, _Files) ->
     Message = <<"please provide a single image file">>,
+    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
+validate_attachment_post(Context, ?WELCOME_REQ, _Files) ->
+    Message = <<"please provide a single html file">>,
     cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 
 -spec validate_upload(cb_context:context(), wh_json:object()) ->
@@ -327,7 +360,9 @@ post(Context) ->
 post(Context, ?LOGO_REQ) ->
     update_whitelabel_binary(?LOGO_REQ, ?WHITELABEL_ID, Context);
 post(Context, ?ICON_REQ) ->
-    update_whitelabel_binary(?ICON_REQ, ?WHITELABEL_ID, Context).
+    update_whitelabel_binary(?ICON_REQ, ?WHITELABEL_ID, Context);
+post(Context, ?WELCOME_REQ) ->
+    update_whitelabel_binary(?WELCOME_REQ, ?WHITELABEL_ID, Context).
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
@@ -427,7 +462,6 @@ whitelabel_attachment_id(JObj, AttachType) ->
 
 -spec filter_attachment_type(ne_binaries(), ne_binary()) -> api_binary().
 filter_attachment_type([], _) -> 'undefined';
-filter_attachment_type([AttachmentId], ?LOGO_REQ) -> AttachmentId;
 filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
     case binary:match(AttachmentId, AttachType) of
         {0, _} -> AttachmentId;
@@ -534,7 +568,7 @@ attachment_name(Filename, CT) ->
                            case wh_util:is_empty(filename:extension(A)) of
                                'false' -> A;
                                'true' ->
-                                   <<A/binary, ".", (content_type_to_extension(CT))/binary>>
+                                   <<A/binary, ".", (cb_modules_util:content_type_to_extension(CT))/binary>>
                            end
                    end
                  ],
@@ -542,18 +576,6 @@ attachment_name(Filename, CT) ->
 
 attachment_name(AttachType, Filename, CT) ->
     <<AttachType/binary, "-", (attachment_name(Filename, CT))/binary>>.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert known whitelabel types to extensions
-%% @end
-%%--------------------------------------------------------------------
--spec content_type_to_extension(ne_binary()) -> ne_binary().
-content_type_to_extension(<<"image/jpg">>) -> <<"jpg">>;
-content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
-content_type_to_extension(<<"image/png">>) -> <<"png">>;
-content_type_to_extension(<<"image/gif">>) -> <<"gif">>.
 
 %%--------------------------------------------------------------------
 %% @private
