@@ -44,12 +44,11 @@
       "name": "Rate Limit",
       "description": "The rate that this click to call can be invoked"
     },
-    "keep_caller_id": {
-      "type": "boolean",
+    "caller_id_number": {
+      "type": "string",
       "required": false,
       "name": "Keep Original Caller ID?",
-      "description": "Determines if the caller id is kept when the outbound leg is called, if not the contact caller id is used",
-      "default": false
+      "description": "Explicitly set caller id number"
     }
   }
 }
