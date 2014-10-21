@@ -337,9 +337,9 @@ originate_call(Contact, JObj, AccountId) ->
                ],
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
-    OutboundNumber = case wh_json:is_true(<<"keep_caller_id">>, JObj, 'true') of
-                         'true' -> Contact;
-                         _ -> wh_json:get_ne_value([<<"caller_id">>,<<"external">>,<<"number">>], AccountDoc)
+    OutboundNumber = case wh_json:get_value(<<"caller_id_number">>, JObj) of
+                         'undefined' -> Contact;
+                         Number -> Number
                      end,
     Request = props:filter_undefined(
                 [{<<"Application-Name">>, <<"transfer">>}
