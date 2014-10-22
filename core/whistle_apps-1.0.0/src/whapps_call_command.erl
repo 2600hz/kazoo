@@ -287,7 +287,9 @@ channel_status('undefined', _) -> {'error', 'no_channel_id'};
 channel_status(CallId, SrvQueue) when is_binary(CallId), is_binary(SrvQueue) ->
     Command = channel_status_command(CallId)
         ++ wh_api:default_headers(SrvQueue, ?APP_NAME, ?APP_VERSION),
-    wapi_call:publish_channel_status_req(CallId, Command).
+    wapi_call:publish_channel_status_req(CallId, Command);
+channel_status(Call, SrvQueue) ->
+    channel_status(whapps_call:call_id(Call), SrvQueue).
 
 -spec channel_status_command(ne_binary() | whapps_call:call()) -> wh_proplist().
 -spec channel_status_command(ne_binary() | whapps_call:call(), api_boolean()) -> wh_proplist().
