@@ -441,6 +441,7 @@ process_event(UUID, Props, Node, Pid) ->
     wh_util:put_callid(UUID),
     wh_amqp_channel:consumer_pid(Pid),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+
     process_specific_event(EventName, UUID, Props, Node).
 
 -spec process_specific_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
@@ -582,6 +583,8 @@ get_other_leg_name(UUID, Props, <<"loopback/", _/binary>>) ->
 get_other_leg_name(UUID, Props, _ChannelName) ->
     get_other_leg(UUID, Props, props:get_first_defined([<<"Other-Leg-Unique-ID">>
                                                         ,<<"Other-Leg-Call-ID">>
+                                                        ,<<"variable_other_loopback_leg_uuid">>
+                                                        ,<<"variable_origination_uuid">>
                                                        ], Props)).
 
 get_other_leg(UUID, Props, 'undefined') ->
