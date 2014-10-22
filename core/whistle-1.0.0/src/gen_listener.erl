@@ -33,6 +33,7 @@
         ]).
 
 -export([queue_name/1
+         ,bindings/1
          ,responders/1
          ,is_consuming/1
         ]).
@@ -201,6 +202,9 @@ is_consuming(Srv) -> gen_server:call(Srv, 'is_consuming').
 
 -spec responders(server_ref()) -> listener_utils:responders().
 responders(Srv) -> gen_server:call(Srv, 'responders').
+
+-spec bindings(server_ref()) -> bindings().
+bindings(Srv) -> gen_server:call(Srv, 'bindings').
 
 -spec ack(server_ref(), basic_deliver()) -> 'ok'.
 ack(Srv, Delivery) -> gen_server:cast(Srv, {'ack', Delivery}).
@@ -394,6 +398,8 @@ handle_call('queue_name', _From, #state{queue=Q}=State) ->
     {'reply', Q, State};
 handle_call('responders', _From, #state{responders=Rs}=State) ->
     {'reply', Rs, State};
+handle_call('bindings', _From, #state{bindings=Bs}=State) ->
+    {'reply', Bs, State};
 handle_call('is_consuming', _From, #state{is_consuming=IsC}=State) ->
     {'reply', IsC, State};
 handle_call(Request, From, State) ->
