@@ -346,7 +346,8 @@ handle_cast(_, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'event', [CallId | Props]}, #state{callid=CallId
-                                                ,fetch_id=FetchId}=State) ->
+                                                ,fetch_id=FetchId
+                                               }=State) ->
     JObj = ecallmgr_call_events:to_json(Props),
     Application = wh_json:get_value(<<"Application-Name">>, JObj),
     case props:get_first_defined([<<"Event-Subclass">>
@@ -720,7 +721,8 @@ add_leg(Props, LegId, #state{other_legs=Legs
 publish_leg_addition(Props) ->
     Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>
                                               ,'undefined'
-                                              ,ecallmgr_call_events:swap_call_legs(Props)),
+                                              ,ecallmgr_call_events:swap_call_legs(Props)
+                                             ),
     ecallmgr_call_events:publish_event(Event).
 
 -spec maybe_add_cleg(wh_proplist(), api_binary(), api_binary(), state()) -> state().

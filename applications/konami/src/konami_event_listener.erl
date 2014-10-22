@@ -16,6 +16,7 @@
          ,handle_originate_event/2
          ,handle_metaflow_req/2
          ,queue_name/0
+         ,bindings/0, bindings/1
         ]).
 
 -export([init/1
@@ -86,6 +87,19 @@ start_link() ->
                              ]
                             ,[]
                            ).
+
+-spec bindings() -> [{ne_binary(), atoms() | ne_binaries()},...] | [].
+-spec bindings(ne_binary()) -> [{ne_binary(), atoms() | ne_binaries()},...] | [].
+bindings() ->
+    [{props:get_value('callid', Props), props:get_value('restrict_to', Props)}
+     || {'call', Props} <- gen_listener:bindings(?MODULE)
+    ].
+
+bindings(CallId) ->
+    [{CallId, props:get_value('restrict_to', Props)}
+     || {'call', Props} <- gen_listener:bindings(?MODULE),
+        props:get_value('callid', Props) =:= CallId
+    ].
 
 -spec add_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
 -spec add_call_binding(api_binary() | whapps_call:call(), ne_binaries() | atoms()) -> 'ok'.

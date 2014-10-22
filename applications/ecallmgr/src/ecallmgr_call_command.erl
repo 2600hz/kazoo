@@ -748,6 +748,7 @@ get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
     ExportsApi = [{<<"Continue-On-Fail">>, <<"true">>}
                   ,{<<"Continue-On-Cancel">>, <<"true">>}
                   ,{<<"Hangup-After-Pickup">>, <<"false">>}
+                  ,{<<"Park-After-Pickup">>, <<"true">>}
                  ],
 
     SetApi = [{<<"Unbridged-Only">>, 'undefined', <<"intercept_unbridged_only">>}
