@@ -249,11 +249,7 @@ delete(Context, DeviceId) ->
 %%%===================================================================
 -spec registration_update(cb_context:context()) -> 'ok'.
 registration_update(Context) ->
-    Device = cb_context:doc(Context),
-    crossbar_util:flush_registration(
-      wh_json:get_value([<<"sip">>, <<"username">>], Device)
-      ,crossbar_util:get_account_realm(Context)
-     ).
+    cb_devices_v1:registration_update(Context).
 
 %%--------------------------------------------------------------------
 %% @private
