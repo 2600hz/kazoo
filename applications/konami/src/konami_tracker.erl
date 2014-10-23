@@ -15,7 +15,7 @@
          ,track/3
          ,update_other_leg/1
          ,untrack/0
-         ,active/0
+         ,active/0, active/1
         ]).
 
 %% gen_server
@@ -62,17 +62,14 @@ update_other_leg(CallId) ->
 untrack() ->
     gen_server:cast(?MODULE, {'untrack', self()}).
 
--spec active() -> {'ok', wh_json:objects() | active_fsms()} |
-                  {'error', _}.
+-spec active() -> {'ok', wh_json:objects() | active_fsms()}.
 active() ->
     active('json').
 active(Format) ->
-    case ets:match_object(table_id(), #active_fsm{_='_'}) of
-        {'error', _}=E -> E;
-        Active ->
-            {'ok', [record_to_format(A, Format) || A <- Active]}
-    end.
+    Active = ets:match_object(table_id(), #active_fsm{_='_'}),
+    {'ok', [record_to_format(A, Format) || A <- Active]}.
 
+-spec record_to_format(active_fsm(), 'json' | 'record') -> active_fsm() | wh_json:object().
 record_to_format(Active, 'json') ->
     record_to_jobj(Active);
 record_to_format(Active, 'record') ->

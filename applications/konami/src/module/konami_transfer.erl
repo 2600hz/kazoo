@@ -432,7 +432,7 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
-init(_) -> 'ok'.
+init(_) -> {'ok', 'attended_wait', #state{}}.
 
 -spec add_transferor_bindings(ne_binary()) -> 'ok'.
 add_transferor_bindings(CallId) ->
@@ -646,17 +646,17 @@ builder_target(JObj) ->
     {'ok', [Target]} = io:fread("What is the target extension/DID to transfer to? ", "~s"),
     builder_takeback_dtmf(JObj, wh_util:to_binary(Target)).
 
--spec builder_takeback_dtmf(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec builder_takeback_dtmf(wh_json:object(), api_binary()) -> wh_json:object().
 builder_takeback_dtmf(JObj, Target) ->
     {'ok', [Takeback]} = io:fread("What is the takeback DTMF ('n' to use the default)? ", "~s"),
     builder_moh(JObj, Target, wh_util:to_binary(Takeback)).
 
--spec builder_moh(wh_json:object(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec builder_moh(wh_json:object(), api_binary(), ne_binary()) -> wh_json:object().
 builder_moh(JObj, Target, Takeback) ->
     {'ok', [MOH]} = io:fread("Any custom music-on-hold ('n' for none, 'h' for help')? ", "~s"),
     metaflow_jobj(JObj, Target, Takeback, wh_util:to_binary(MOH)).
 
--spec metaflow_jobj(wh_json:object(), ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec metaflow_jobj(wh_json:object(), api_binary(), api_binary(), api_binary()) -> wh_json:object().
 metaflow_jobj(JObj, Target, Takeback, <<"h">>) ->
     io:format("To set a system_media file as MOH, enter: /system_media/{MEDIA_ID}~n", []),
     io:format("To set an account's media file as MOH, enter: /{ACCOUNT_ID}/{MEDIA_ID}~n", []),
@@ -667,7 +667,7 @@ metaflow_jobj(JObj, Target, Takeback, MOH) ->
                         ,{<<"data">>, transfer_data(Target, Takeback, MOH)}
                        ], JObj).
 
--spec transfer_data(ne_binary(), ne_binary(), ne_binary()) -> wh_json:object().
+-spec transfer_data(api_binary(), api_binary(), api_binary()) -> wh_json:object().
 transfer_data(Target, Takeback, <<"n">>) ->
     transfer_data(Target, Takeback, 'undefined');
 transfer_data(Target, <<"n">>, MOH) ->
