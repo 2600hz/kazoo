@@ -43,7 +43,7 @@
       "type": "integer",
       "required": false,
       "name": "Transfer Date",
-      "description": "Requested transfer date"
+      "description": "Requested transfer date in gregorain timestamp"
     },
     "notifications": {
       "type": "object",
