@@ -186,7 +186,7 @@
 -callback code_change(term() | {'down', term()}, module_state(), term()) ->
     {'ok', module_state()} | {'error', term()}.
 
-  -spec start_link(atom(), start_params(), list()) -> startlink_ret().
+-spec start_link(atom(), start_params(), list()) -> startlink_ret().
 start_link(Module, Params, InitArgs) ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
 
