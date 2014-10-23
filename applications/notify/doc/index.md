@@ -29,6 +29,15 @@ Example:
 }
 
 ```
+### Sup Commands
+```
+sup notify_maintenance configure_smtp_relay my.relay.com
+sup notify_maintenance configure_smtp_username username
+sup notify_maintenance configure_smtp_password password
+sup notify_maintenance configure_smtp_auth always
+sup notify_maintenance configure_smtp_port 123
+```
+
 ### Update templates
 
     sup notify_maintenance refresh_template

@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   Michael Dunton
 %%%-------------------------------------------------------------------
 -module(notify_maintenance).
 
@@ -14,9 +15,16 @@
 -export([check_initial_registration/1]).
 -export([refresh/0]).
 -export([refresh_template/0]).
+-export([configure_smtp_relay/1
+         ,configure_smtp_username/1
+         ,configure_smtp_password/1
+         ,configure_smtp_auth/1
+         ,configure_smtp_port/1
+        ]).
 
 -define(TEMPLATE_PATH, code:lib_dir('notify', 'priv')).
 -define(SYSTEM_CONFIG_DB, <<"system_config">>).
+-define(SMTP_CLIENT_DOC, <<"smtp_client">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -54,6 +62,79 @@ check_initial_registration(Account) when is_binary(Account) ->
         end;
         {'error', _R} ->
             io:format("unable to open account doc ~s: ~p", [AccountId, _R])
+    end.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Configures the Relay key of the SMTP_Client System Config document.
+%% @end
+%%---------------------------------------------------------------------
+-spec configure_smtp_relay(ne_binary()) -> 'ok' | 'failed'.
+configure_smtp_relay(Value) ->
+    case update_smtp_client_document(<<"relay">>, Value) of
+        {'ok', _} ->
+            'ok';
+        'error' ->
+            'failed'
+    end.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Configures the username key of the SMTP_Client System Config document.
+%% @end
+%%--------------------------------------------------------------------
+-spec configure_smtp_username(ne_binary()) -> 'ok' | 'failed'.
+configure_smtp_username(Value) ->
+    case update_smtp_client_document(<<"username">>, Value) of
+        {'ok', _} ->
+            'ok';
+        'error' ->
+            'failed'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Configures the username key of the SMTP_Client System Config document.
+%% @end
+%%--------------------------------------------------------------------
+-spec configure_smtp_password(ne_binary()) -> 'ok' | 'failed'.
+configure_smtp_password(Value) ->
+    case update_smtp_client_document(<<"password">>, Value) of
+        {'ok', _} ->
+            'ok';
+        'error' ->
+            'failed'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Configures the username key of the SMTP_Client System Config document.
+%% @end
+%%--------------------------------------------------------------------
+-spec configure_smtp_auth(ne_binary()) -> 'ok' | 'failed'.
+configure_smtp_auth(Value) ->
+    case update_smtp_client_document(<<"auth">>, Value) of
+        {'ok', _} ->
+            'ok';
+        'error' ->
+            'failed'
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Configures the username key of the SMTP_Client System Config document.
+%% @end
+%%--------------------------------------------------------------------
+-spec configure_smtp_port(ne_binary()) -> 'ok' | 'failed'.
+configure_smtp_port(Value) ->
+    case update_smtp_client_document(<<"port">>, Value) of
+        {'ok', _} ->
+            'ok';
+        'error' ->
+            'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -294,3 +375,13 @@ open_system_config(Id) ->
         {'error', 'not_found'} -> 'not_found';
         {'error', _R} -> 'error'
     end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+update_smtp_client_document(Key, Value) ->
+    whapps_config:set(?SMTP_CLIENT_DOC, Key, Value).
