@@ -6,6 +6,191 @@ Language: en-US
 
 # Service Plans
 
+## List your reseller service plans
+
+This api allow you to list the service plans that you can subscribe to.
+
+### Retreiving all plans
+
+#### Request
+
+`/v2/accounts/{ACCOUNT_ID}/service_plans`
+
+`curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans`
+
+#### Response
+
+    {
+        "page_size": 1,
+        "data": [{
+            "id": "some_plan_id",
+            "name": "Reseller Test plan",
+            "description": "Some description"
+        }],
+        "status": "success",
+        "auth_token": "{AUTH_TOKEN}"
+    }
+
+### Retreiving your current plan
+
+#### Request
+
+`/v2/accounts/{ACCOUNT_ID}/service_plans/current`
+
+`curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/current`
+
+#### Response
+
+
+    {
+        "data": {
+            "account_quantities": {
+                "number_services": {},
+                "phone_numbers": {
+                    "did_us": 4
+                },
+                "devices": {
+                    "sip_device": 1,
+                    "softphone": 2
+                },
+                "limits": {
+                    "twoway_trunks": 10,
+                    "inbound_trunks": 10
+                },
+                "users": {
+                    "admin": 1,
+                    "user": 1
+                },
+                "ips": {
+                    "dedicated": 0
+                }
+            },
+            "cascade_quantities": {},
+            "plans": {
+                "plan_dedicated_install": {
+                    "account_id": "a0f3b6f2c5c0c95240993acd1bd6e762"
+                }
+            },
+            "billing_id": "1760753c8d022d650418fbbe6a1a10e0",
+            "reseller": false,
+            "reseller_id": "a0f3b6f2c5c0c95240993acd1bd6e762",
+            "dirty": false,
+            "in_good_standing": true,
+            "items": {
+                "number_services": {
+                    "port": {
+                        "category": "number_services",
+                        "item": "port",
+                        "quantity": 0,
+                        "single_discount": false,
+                        "single_discount_rate": 0.0,
+                        "cumulative_discount": 0,
+                        "cumulative_discount_rate": 0.0
+                    },
+                    "outbound_cnam": {
+                        "category": "number_services",
+                        "item": "outbound_cnam",
+                        "quantity": 0,
+                        "rate": 1.0,
+                        "single_discount": false,
+                        "single_discount_rate": 0.0,
+                        "cumulative_discount": 0,
+                        "cumulative_discount_rate": 0.0
+                    },
+                    "inbound_cnam": {
+                        "category": "number_services",
+                        "item": "inbound_cnam",
+                        "quantity": 0,
+                        "rate": 2.0,
+                        "single_discount": false,
+                        "single_discount_rate": 0.0,
+                        "cumulative_discount": 0,
+                        "cumulative_discount_rate": 0.0
+                    },
+                    "e911": {
+                        "category": "number_services",
+                        "item": "e911",
+                        "quantity": 0,
+                        "rate": 2.0,
+                        "single_discount": false,
+                        "single_discount_rate": 5.0,
+                        "cumulative_discount": 0,
+                        "cumulative_discount_rate": 0.0
+                    }
+                },
+                "devices": {
+                    "sip_devices": {
+                        "category": "devices",
+                        "item": "sip_devices",
+                        "quantity": 3,
+                        "rate": 5.0,
+                        "single_discount": true,
+                        "single_discount_rate": 0.0,
+                        "cumulative_discount": 3,
+                        "cumulative_discount_rate": 5.0
+                    }
+                },
+                "phone_numbers": {
+                    "tollfree_us": {
+                        "category": "phone_numbers",
+                        "item": "tollfree_us",
+                        "quantity": 0,
+                        "rate": 4.9900000000000002132,
+                        "single_discount": false,
+                        "single_discount_rate": 0.0,
+                        "cumulative_discount": 0,
+                        "cumulative_discount_rate": 0.0
+                    },
+                    "did_us": {
+                        "category": "phone_numbers",
+                        "item": "did_us",
+                        "quantity": 4,
+                        "rate": 2.0,
+                        "single_discount": true,
+                        "single_discount_rate": 0.0,
+                        "cumulative_discount": 0,
+                        "cumulative_discount_rate": 0.0
+                    }
+                },
+                "users": {
+                    "user": {
+                        "category": "users",
+                        "item": "user",
+                        "quantity": 2,
+                        "rate": 5.0,
+                        "single_discount": true,
+                        "single_discount_rate": 0.0,
+                        "cumulative_discount": 0,
+                        "cumulative_discount_rate": 0.0
+                    }
+                },
+                "limits": {
+                    "twoway_trunks": {
+                        "category": "limits",
+                        "item": "twoway_trunks",
+                        "quantity": 10,
+                        "rate": 29.989999999999998437,
+                        "single_discount": true,
+                        "single_discount_rate": 0.0,
+                        "cumulative_discount": 0,
+                        "cumulative_discount_rate": 0.0
+                    },
+                    "inbound_trunks": {
+                        "category": "limits",
+                        "item": "inbound_trunks",
+                        "quantity": 10,
+                        "rate": 6.9900000000000002132,
+                        "single_discount": true,
+                        "single_discount_rate": 0.0,
+                        "cumulative_discount": 0,
+                        "cumulative_discount_rate": 0.0
+                    }
+                }
+            }
+        },
+        "status": "success",
+        "auth_token": "{AUTH_TOKEN}"
+    }
 
 ## Listing your own Service Plans
 
@@ -15,9 +200,9 @@ You can list all your service plan in your current account by using the api `ser
 
 #### Request
 
-`/v2/accounts/ACCOUNT_ID/service_plans/available`
+`/v2/accounts/{ACCOUNT_ID}/service_plans/available`
 
-`curl -X GET -H "X-Auth-Token:e8b2e8f6eb860a561e817618a6763250"  http://SERVER_IP/v2/accounts/ACCOUNT_ID/service_plans/available`
+`curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/available`
 
 #### Response
 
@@ -28,19 +213,17 @@ You can list all your service plan in your current account by using the api `ser
             "name": "Test plan",
             "description": "Some description"
         }],
-        "revision": "0eba9b78adeb509428d668e13241a95f",
-        "request_id": "3b14483a1436bc4083bd230645551618",
         "status": "success",
-        "auth_token": "e8b2e8f6eb860a561e817618a6763250"
+        "auth_token": "{AUTH_TOKEN}"
     }
 
 ### Retreiving a plan
 
 #### Request
 
-`/v2/accounts/ACCOUNT_ID/service_plans/available/PLAN_ID`
+`/v2/accounts/{ACCOUNT_ID}/service_plans/available/PLAN_ID`
 
-`curl -X GET -H "X-Auth-Token:e8b2e8f6eb860a561e817618a6763250"  http://SERVER_IP/v2/accounts/ACCOUNT_ID/service_plans/available/PLAN_ID`
+`curl -X GET -H "X-Auth-Token:{AUTH_TOKEN}"  http://{SERVER_IP}/v2/accounts/{ACCOUNT_ID}/service_plans/available/PLAN_ID`
 
 #### Response
 
@@ -165,8 +348,6 @@ You can list all your service plan in your current account by using the api `ser
             },
             "id": "some_plan_id"
         },
-        "revision": "1-fa6ff6201171f1f3d6c356eb28fc2644",
-        "request_id": "e7c6f99f835c1713c2889a55fd65f0ba",
         "status": "success",
-        "auth_token": "e8b2e8f6eb860a561e817618a6763250"
+        "auth_token": "{AUTH_TOKEN}"
     }
