@@ -28,6 +28,7 @@
 -export([create_account/1]).
 -export([move_account/2]).
 -export([descendants_count/0, descendants_count/1]).
+-export([migrate_ring_group_callflow/1]).
 
 -include_lib("crossbar.hrl").
 
@@ -70,7 +71,8 @@ migrate_accounts_data([Account|Accounts]) ->
 
 -spec migrate_account_data(ne_binary()) -> 'no_return'.
 migrate_account_data(Account) ->
-    cb_clicktocall:maybe_migrate_history(Account),
+    _ = cb_clicktocall:maybe_migrate_history(Account),
+    _ = migrate_ring_group_callflow(Account),
     'no_return'.
 
 -spec add_missing_modules(atoms(), atoms()) -> 'no_return'.
@@ -537,3 +539,178 @@ descendants_count() ->
 
 descendants_count(AccountId) ->
     crossbar_util:descendants_count(AccountId).
+
+-spec migrate_ring_group_callflow(ne_binary()) -> 'ok'.
+migrate_ring_group_callflow(Account) ->
+    Callflows = get_ring_group_callflows(Account),
+    lists:foreach(fun create_new_ring_group_callflow/1 ,Callflows),
+    'ok'.
+
+-spec get_ring_group_callflows(ne_binary()) -> wh_json:objects().
+get_ring_group_callflows(Account) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
+        {'error', _M} ->
+            io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
+            [];
+        {'ok', JObjs} ->
+            lists:foldl(
+                fun(JObj, Acc) ->
+                    case
+                        {wh_json:get_ne_binary_value([<<"value">>, <<"group_id">>], JObj)
+                         ,wh_json:get_ne_binary_value([<<"value">>, <<"type">>], JObj)}
+                    of
+                        {'undefined', _} -> Acc;
+                        {_, 'undefined'} ->
+                            Id = wh_json:get_value(<<"id">>, JObj),
+                            case couch_mgr:open_doc(AccountDb, Id) of
+                                {'ok', CallflowJObj} -> [CallflowJObj|Acc];
+                                {'error', _M} ->
+                                    io:format("error fetching callflow ~p in ~p ~p~n", [Id, AccountDb, _M]),
+                                    Acc
+                            end;
+                        {_, _} -> Acc
+                    end
+                end
+                ,[]
+                ,JObjs
+            )
+    end.
+
+-spec create_new_ring_group_callflow(wh_json:object()) -> 'ok'.
+create_new_ring_group_callflow(JObj) ->
+    Props =
+        props:filter_undefined([
+            {<<"pvt_vsn">>, <<"1">>}
+            ,{<<"pvt_type">>, <<"callflow">>}
+            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+            ,{<<"pvt_created">>, wh_util:current_tstamp()}
+            ,{<<"pvt_account_db">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+            ,{<<"pvt_account_id">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+            ,{<<"flow">>, wh_json:from_list([
+                    {<<"children">>, wh_json:new()}
+                    ,{<<"module">>, <<"ring_group">>}
+                ])
+             }
+            ,{<<"group_id">>, wh_json:get_value(<<"group_id">>, JObj)}
+            ,{<<"type">>, <<"baseGroup">>}
+        ]),
+    set_data_for_callflow(JObj, wh_json:from_list(Props)).
+
+
+-spec set_data_for_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
+set_data_for_callflow(JObj, NewCallflow) ->
+    Flow = wh_json:get_value(<<"flow">>, NewCallflow),
+    case wh_json:get_value([<<"flow">>, <<"module">>], JObj) of
+        <<"ring_group">> ->
+            Data = wh_json:get_value([<<"flow">>, <<"data">>], JObj),
+            NewFlow = wh_json:set_value(<<"data">>, Data, Flow),
+            set_number_for_callflow(JObj, wh_json:set_value(<<"flow">>, NewFlow, NewCallflow));
+        <<"record_call">> ->
+            Data = wh_json:get_value([<<"flow">>, <<"children">>, <<"_">>, <<"data">>], JObj),
+            NewFlow = wh_json:set_value(<<"data">>, Data, Flow),
+            set_number_for_callflow(JObj, wh_json:set_value(<<"flow">>, NewFlow, NewCallflow));
+        _ ->
+            io:format("unable to find data for ~p aborting...~n", [wh_json:get_value(<<"_id">>, JObj)])
+    end.
+
+-spec set_number_for_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
+set_number_for_callflow(JObj, NewCallflow) ->
+    Number = <<"group_", (wh_util:to_binary(wh_util:now_ms(erlang:now())))/binary>>,
+    Numbers = [Number],
+    set_name_for_callflow(JObj, wh_json:set_value(<<"numbers">>, Numbers, NewCallflow)).
+
+-spec set_name_for_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
+set_name_for_callflow(JObj, NewCallflow) ->
+    Name = wh_json:get_value(<<"name">>, JObj),
+    NewName = binary:replace(Name, <<"Ring Group">>, <<"Base Group">>),
+    set_ui_metadata(JObj, wh_json:set_value(<<"name">>, NewName, NewCallflow)).
+
+-spec set_ui_metadata(wh_json:object(), wh_json:object()) -> 'ok'.
+set_ui_metadata(JObj, NewCallflow) ->
+    MetaData = wh_json:get_value(<<"ui_metadata">>, JObj),
+    NewMetaData = wh_json:set_value(<<"version">>, <<"v3.19">>, MetaData),
+    save_new_ring_group_callflow(JObj, wh_json:set_value(<<"ui_metadata">>, NewMetaData, NewCallflow)).
+
+-spec save_new_ring_group_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
+save_new_ring_group_callflow(JObj, NewCallflow) ->
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    Name = wh_json:get_value(<<"name">>, NewCallflow),
+    case check_if_callflow_exist(AccountDb, Name) of
+        'true' ->
+            io:format("unable to save new callflow ~p in ~p already exist~n", [Name, AccountDb]);
+        'false' ->
+            case couch_mgr:save_doc(AccountDb, NewCallflow) of
+                {'error', _M} ->
+                    io:format("unable to save new callflow (old:~p) in ~p aborting...~n", [wh_json:get_value(<<"_id">>, JObj), AccountDb]);
+                {'ok', NewJObj} -> update_old_ring_group_callflow(JObj, NewJObj)
+            end
+    end.
+
+-spec check_if_callflow_exist(ne_binary(), ne_binary()) -> 'ok'.
+check_if_callflow_exist(Account, Name) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
+        {'error', _M} ->
+            io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
+            'true';
+        {'ok', JObjs} ->
+            lists:foldl(
+                fun(JObj, Acc) ->
+                    case wh_json:get_value([<<"value">>, <<"name">>], JObj) =:= Name of
+                        'true' -> 'true';
+                        'false' -> Acc
+                    end
+                end
+                ,'false'
+                ,JObjs
+            )
+    end.
+
+-spec update_old_ring_group_callflow(wh_json:object(), wh_json:object()) -> 'ok'.
+update_old_ring_group_callflow(JObj, NewCallflow) ->
+    Routines = [
+        fun update_old_ring_group_type/2
+        ,fun update_old_ring_group_metadata/2
+        ,fun update_old_ring_group_flow/2
+        ,fun save_old_ring_group/2
+    ],
+    lists:foldl(fun(F, J) -> F(J, NewCallflow) end, JObj, Routines).
+
+-spec update_old_ring_group_type(wh_json:object(), wh_json:object()) -> wh_json:object().
+update_old_ring_group_type(JObj, _NewCallflow) ->
+    wh_json:set_value(<<"type">>, <<"userGroup">>, JObj).
+
+-spec update_old_ring_group_metadata(wh_json:object(), wh_json:object()) -> wh_json:object().
+update_old_ring_group_metadata(JObj, _NewCallflow) ->
+    MetaData = wh_json:get_value(<<"ui_metadata">>, JObj),
+    NewMetaData = wh_json:set_value(<<"version">>, <<"v3.19">>, MetaData),
+    wh_json:set_value(<<"ui_metadata">>, NewMetaData, JObj).
+
+-spec update_old_ring_group_flow(wh_json:object(), wh_json:object()) -> wh_json:object().
+update_old_ring_group_flow(JObj, NewCallflow) ->
+    Data = wh_json:from_list([{<<"id">>, wh_json:get_value(<<"_id">>, NewCallflow)}]),
+    case wh_json:get_value([<<"flow">>, <<"module">>], JObj) of
+        <<"ring_group">> ->
+            Flow = wh_json:get_value(<<"flow">>, JObj),
+            NewFlow = wh_json:set_values([{<<"data">>, Data}, {<<"module">>, <<"callflow">>}], Flow),
+            wh_json:set_value(<<"flow">>, NewFlow, JObj);
+        <<"record_call">> ->
+            ChFlow = wh_json:get_value([<<"flow">>, <<"children">>, <<"_">>], JObj),
+            ChNewFlow = wh_json:set_values([{<<"data">>, Data}, {<<"module">>, <<"callflow">>}], ChFlow),
+            Children = wh_json:set_value(<<"_">>, ChNewFlow, wh_json:get_value([<<"flow">>, <<"children">>], JObj)),
+            Flow = wh_json:set_value(<<"children">>, Children, wh_json:get_value(<<"flow">>, JObj)),
+            wh_json:set_value(<<"flow">>, Flow, JObj)
+    end.
+
+-spec save_old_ring_group(wh_json:object(), wh_json:object()) -> 'ok'.
+save_old_ring_group(JObj, NewCallflow) ->
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    case couch_mgr:save_doc(AccountDb, JObj) of
+        {'error', _M} ->
+            L = [wh_json:get_value(<<"_id">>, JObj), AccountDb, wh_json:get_value(<<"_id">>, NewCallflow)],
+            io:format("unable to save callflow ~p in ~p, removing new one (~p)~n", L),
+            {'ok', _} = couch_mgr:del_doc(AccountDb, NewCallflow),
+            'ok';
+        {'ok', _} -> 'ok'
+    end.
