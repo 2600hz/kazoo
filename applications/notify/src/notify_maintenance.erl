@@ -74,8 +74,8 @@ configure_smtp_relay(Value) ->
     case update_smtp_client_document(<<"relay">>, Value) of
         {'ok', _} ->
             'ok';
-        'error' ->
-            'failed'
+        _Error ->
+           'failed'
     end.
 %%--------------------------------------------------------------------
 %% @public
@@ -88,8 +88,8 @@ configure_smtp_username(Value) ->
     case update_smtp_client_document(<<"username">>, Value) of
         {'ok', _} ->
             'ok';
-        'error' ->
-            'failed'
+        _Error ->
+           'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -103,8 +103,8 @@ configure_smtp_password(Value) ->
     case update_smtp_client_document(<<"password">>, Value) of
         {'ok', _} ->
             'ok';
-        'error' ->
-            'failed'
+        _Error ->
+           'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -118,7 +118,7 @@ configure_smtp_auth(Value) ->
     case update_smtp_client_document(<<"auth">>, Value) of
         {'ok', _} ->
             'ok';
-        'error' ->
+         _Error ->
             'failed'
     end.
 
@@ -133,8 +133,8 @@ configure_smtp_port(Value) ->
     case update_smtp_client_document(<<"port">>, Value) of
         {'ok', _} ->
             'ok';
-        'error' ->
-            'failed'
+        _Error ->
+           'failed'
     end.
 
 %%--------------------------------------------------------------------
@@ -382,6 +382,6 @@ open_system_config(Id) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec update_smtp_client_document(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {error, _}.
 update_smtp_client_document(Key, Value) ->
     whapps_config:set(?SMTP_CLIENT_DOC, Key, Value).
