@@ -9,6 +9,15 @@ Language: en-US
 ## System_Config
 Update smtp_client document
 
+### Sup Commands
+```
+sup notify_maintenance configure_smtp_relay my.relay.com
+sup notify_maintenance configure_smtp_username username
+sup notify_maintenance configure_smtp_password password
+sup notify_maintenance configure_smtp_auth always
+sup notify_maintenance configure_smtp_port 123
+```
+
 Example:
 ```
 {
@@ -29,15 +38,13 @@ Example:
 }
 
 ```
-### Sup Commands
-```
-sup notify_maintenance configure_smtp_relay my.relay.com
-sup notify_maintenance configure_smtp_username username
-sup notify_maintenance configure_smtp_password password
-sup notify_maintenance configure_smtp_auth always
-sup notify_maintenance configure_smtp_port 123
-```
 
+
+Don't forget to run
+```
+sup whapps_config flush
+```
+after you modify this document to ensure kazoo has the latest config in the cache.
 ### Update templates
 
     sup notify_maintenance refresh_template
