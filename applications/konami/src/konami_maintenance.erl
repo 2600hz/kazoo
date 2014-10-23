@@ -16,9 +16,11 @@
 
 -record(builder_action, {module_fun_name :: atom()
                          ,metaflow_key :: ne_binary()
-                         ,builders :: atoms()
+                         ,builders = [] :: [{pos_integer(), atom()},...] | []
                         }).
+-type builder_action() :: #builder_action{}.
 
+-spec is_running() -> 'ok'.
 is_running() ->
     case lists:keyfind('konami', 1, application:which_applications()) of
         'false' -> io:format("Konami is not currently running on this node~n", []);
@@ -26,6 +28,7 @@ is_running() ->
             io:format("Konami (~s) is running~n", [_Vsn])
     end.
 
+-spec add_default_metaflow() -> 'ok'.
 add_default_metaflow() ->
     Default = whapps_config:get(<<"metaflows">>, <<"default_metaflow">>, wh_json:new()),
     io:format("Welcome to the Default System Metaflow builder~n"),
@@ -33,6 +36,7 @@ add_default_metaflow() ->
                                    whapps_config:set_default(<<"metaflows">>, <<"default_metaflow">>, JObj)
                            end).
 
+-spec add_default_account_metaflow(ne_binary()) -> 'ok'.
 add_default_account_metaflow(AccountId) ->
     Default = whapps_account_config:get(AccountId, <<"metaflows">>, <<"default_metaflow">>, wh_json:new()),
     io:format("Welcome to the Default Account Metaflow builder for ~s~n", [AccountId]),
@@ -40,6 +44,9 @@ add_default_account_metaflow(AccountId) ->
                                    whapps_account_config:set(AccountId, <<"metaflows">>, <<"default_metaflow">>, JObj)
                            end).
 
+-type save_fun() :: fun((wh_json:object()) -> any()).
+
+-spec intro_builder(wh_json:object(), save_fun()) -> 'ok'.
 intro_builder(Default, SaveFun) ->
     wh_util:ensure_started('konami'),
     io:format("The current default metaflow:~n"),
@@ -55,6 +62,7 @@ intro_builder(Default, SaveFun) ->
 
     menu_builder(Default, SaveFun).
 
+-spec menu_builder(wh_json:object(), save_fun()) -> 'ok'.
 menu_builder(Default, SaveFun) ->
     io:format("1. Change Binding Digit~n"
               "2. Change Digit Timeout~n"
@@ -67,6 +75,7 @@ menu_builder(Default, SaveFun) ->
     {'ok', [Option]} = io:fread("Which action: ", "~d"),
     menu_builder_action(Default, SaveFun, Option).
 
+-spec menu_builder_action(wh_json:object(), save_fun(), pos_integer()) -> 'ok'.
 menu_builder_action(Default, SaveFun, 1) ->
     {'ok', [BindingDigit]} = io:fread("New binding digit: ", "~s"),
     menu_builder(wh_json:set_value(<<"binding_digit">>, BindingDigit, Default), SaveFun);
@@ -94,6 +103,7 @@ menu_builder_action(Default, SaveFun, _) ->
     io:format("Action not recognized!~n~n"),
     menu_builder(Default, SaveFun).
 
+-spec number_builder(wh_json:object(), save_fun()) -> 'ok'.
 number_builder(Default, SaveFun) ->
     Ms = builder_modules('number_builder'),
     builder_menu(Default
@@ -104,6 +114,7 @@ number_builder(Default, SaveFun) ->
                                  }
                 ).
 
+-spec pattern_builder(wh_json:object(), save_fun()) -> 'ok'.
 pattern_builder(Default, SaveFun) ->
     Ms = builder_modules('pattern_builder'),
     builder_menu(Default
@@ -114,6 +125,7 @@ pattern_builder(Default, SaveFun) ->
                                  }
                 ).
 
+-spec print_builders(wh_proplist()) -> ['ok',...] | [].
 print_builders(Builders) ->
     [io:format("  ~b. ~s~n", [N, builder_name(M)]) || {N, M} <- Builders].
 
@@ -122,6 +134,7 @@ builder_name(<<"konami_", Name/binary>>) -> wh_util:ucfirst_binary(Name);
 builder_name(<<_/binary>> = Name) -> wh_util:ucfirst_binary(Name);
 builder_name(M) -> builder_name(wh_util:to_binary(M)).
 
+-spec builder_menu(wh_json:object(), save_fun(), builder_action()) -> 'ok'.
 builder_menu(Default, SaveFun, #builder_action{builders=Builders
                                                ,metaflow_key=Key
                                               }=BA) ->
@@ -137,6 +150,7 @@ builder_menu(Default, SaveFun, #builder_action{builders=Builders
                    ,Option
                   ).
 
+-spec builder_action(wh_json:object(), save_fun(), builder_action(), non_neg_integer()) -> 'ok'.
 builder_action(Default, SaveFun, _BA, 0) ->
     menu_builder(Default, SaveFun);
 builder_action(Default, SaveFun, #builder_action{builders=Builders}=BA, N) ->
@@ -147,6 +161,7 @@ builder_action(Default, SaveFun, #builder_action{builders=Builders}=BA, N) ->
             execute_action(Default, SaveFun, BA, Module)
     end.
 
+-spec execute_action(wh_json:object(), save_fun(), builder_action(), atom()) -> 'ok'.
 execute_action(Default, SaveFun, #builder_action{module_fun_name=ModuleFun
                                                  ,metaflow_key=Key
                                                 }=BA, Module) ->
@@ -163,6 +178,7 @@ execute_action(Default, SaveFun, #builder_action{module_fun_name=ModuleFun
             builder_menu(Default, SaveFun, BA)
     end.
 
+-spec invalid_action(wh_json:object(), save_fun(), builder_action()) -> 'ok'.
 invalid_action(Default, SaveFun, BA) ->
     io:format("invalid option selected~n", []),
     builder_menu(Default, SaveFun, BA).
