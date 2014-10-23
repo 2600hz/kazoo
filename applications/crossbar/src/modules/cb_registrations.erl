@@ -54,7 +54,7 @@ allowed_methods() ->
 allowed_methods(?COUNT_PATH_TOKEN) ->
     [?HTTP_GET];
 allowed_methods(_) ->
-    [ ?HTTP_DELETE].
+    [?HTTP_DELETE].
 
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
@@ -90,6 +90,7 @@ authorize_admin(Context, [{<<"registrations">>, [?COUNT_PATH_TOKEN]}]) ->
 validate(Context) ->
     validate_registrations(Context, cb_context:req_verb(Context)).
 
+-spec validate_registrations(cb_context:context(), http_method()) -> cb_context:context().
 validate_registrations(Context, ?HTTP_GET) ->
     crossbar_util:response(lookup_regs(Context), Context);
 validate_registrations(Context, ?HTTP_DELETE) ->
@@ -100,6 +101,7 @@ validate(Context, ?COUNT_PATH_TOKEN) ->
 validate(Context, Username) ->
     validate_sip_username(Context, Username).
 
+-spec validate_count(cb_context:context()) -> cb_context:context().
 validate_count(Context) ->
     crossbar_util:response(
       wh_json:from_list([{<<"count">>, count_registrations(Context)}])
@@ -139,21 +141,19 @@ delete(Context, Username) ->
 
 -spec lookup_regs(cb_context:context()) -> wh_json:objects().
 lookup_regs(Context) ->
-    AccountId = cb_context:account_id(Context),
-    AccountDb = cb_context:account_db(Context),
-    AccountRealm = wh_util:get_account_realm(AccountDb, AccountId),
+    AccountRealm = crossbar_util:get_account_realm(Context),
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, []}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
+
     ReqResp = whapps_util:amqp_pool_collect(Req
                                             ,fun wapi_registration:publish_query_req/1
                                             ,{'ecallmgr', 'true'}
                                            ),
     case ReqResp of
         {'error', _} -> [];
-        {_, JObjs} ->
-            merge_responses(JObjs)
+        {_, JObjs} -> merge_responses(JObjs)
     end.
 
 -spec merge_responses(wh_json:objects()) -> wh_json:objects().
@@ -227,13 +227,9 @@ count_registrations(Context) ->
         {'timeout', _} -> lager:debug("timed out query for counting regs"), 0
     end.
 
+-spec get_realm_for_counting(cb_context:context()) -> ne_binary().
 get_realm_for_counting(Context) ->
-    AccountId = cb_context:account_id(Context),
-    case AccountId =:= 'undefined' of
-        'false' ->
-            AccountDb = cb_context:account_db(Context),
-            wh_util:get_account_realm(AccountDb, AccountId);
-        'true' ->
-            lager:debug("no account id means all regs are counted"),
-            <<"all">>
+    case cb_context:account_id(Context) of
+        'undefined' -> <<"all">>;
+        _AccountId -> crossbar_util:get_account_realm(Context)
     end.
