@@ -15,6 +15,7 @@
 -export([check_initial_registration/1]).
 -export([refresh/0]).
 -export([refresh_template/0]).
+-export([reload_smtp_configs/0]).
 -export([configure_smtp_relay/1
          ,configure_smtp_username/1
          ,configure_smtp_password/1
@@ -95,7 +96,7 @@ configure_smtp_username(Value) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Configures the username key of the SMTP_Client System Config document.
+%% Configures the password key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
 -spec configure_smtp_password(ne_binary()) -> 'ok' | 'failed'.
@@ -125,7 +126,7 @@ configure_smtp_auth(Value) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Configures the username key of the SMTP_Client System Config document.
+%% Configures the port key of the SMTP_Client System Config document.
 %% @end
 %%--------------------------------------------------------------------
 -spec configure_smtp_port(ne_binary()) -> 'ok' | 'failed'.
@@ -165,6 +166,11 @@ refresh_template() ->
     io:format("comparing now~n", []),
     compare_template_system_config(Match).
 
+
+-spec reload_smtp_configs() -> 'ok'.
+reload_smtp_configs() ->
+    whapps_config:flush(<<"smtp_client">>),
+    ok.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

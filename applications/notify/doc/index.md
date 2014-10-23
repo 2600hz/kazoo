@@ -6,10 +6,11 @@ Language: en-US
 
 # Notify *Emails notifications*
 
-## System_Config
-Update smtp_client document
+## Configuration
+You must update the smtp_client document in system_config in order to receive emails from Notify. There are a couple ways to do this.
 
 ### Sup Commands
+Configure the smtp_client via the command line using sup.
 ```
 sup notify_maintenance configure_smtp_relay my.relay.com
 sup notify_maintenance configure_smtp_username username
@@ -18,6 +19,8 @@ sup notify_maintenance configure_smtp_auth always
 sup notify_maintenance configure_smtp_port 123
 ```
 
+### Couch document
+Update your the smtp_client document via couch manually. Should look like this.
 Example:
 ```
 {
@@ -40,11 +43,12 @@ Example:
 ```
 
 
-Don't forget to run
+After you modify this document to ensure kazoo has the latest config in the cache.
 ```
-sup whapps_config flush
+sup notify_maintenance reload_smtp_configs
 ```
-after you modify this document to ensure kazoo has the latest config in the cache.
-### Update templates
 
-    sup notify_maintenance refresh_template
+## Update templates
+```
+sup notify_maintenance refresh_template
+```
