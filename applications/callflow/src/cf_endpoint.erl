@@ -220,7 +220,8 @@ caller_id_owner_attr(Owner) ->
         _Else -> OwnerAttr
     end.
 
--spec merge_call_restrictions(ne_binaries(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec merge_call_restrictions(ne_binaries(), wh_json:object(), wh_json:object(), wh_json:object()) ->
+                                     wh_json:object().
 merge_call_restrictions([], _, Endpoint, _) -> Endpoint;
 merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
     case wh_json:get_value([<<"call_restriction">>, Key, <<"action">>], Account) =:= <<"deny">>
@@ -242,8 +243,6 @@ merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
             %% user inherit or no user, either way use the device restrictions
             merge_call_restrictions(Keys, Account, Endpoint, Owner)
     end.
-
-
 
 -spec get_user(ne_binary(), api_binary() | wh_json:object()) -> wh_json:object().
 get_user(_, 'undefined') -> wh_json:new();

@@ -20,6 +20,7 @@
 -include("acdc.hrl").
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_call_event(ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     'true' = wapi_call:event_v(JObj),
     {Cat, Name} = wh_util:get_event_type(JObj),
@@ -28,8 +29,7 @@ handle_call_event(JObj, Props) ->
 handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, JObj, Props) ->
     case acdc_queue_fsm:cdr_url(props:get_value('fsm_pid', Props)) of
         'undefined' -> 'ok';
-        Url ->
-            acdc_util:send_cdr(Url, JObj)
+        Url -> acdc_util:send_cdr(Url, JObj)
     end,
 
     Srv = props:get_value('server', Props),
@@ -38,25 +38,32 @@ handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, JObj, Props) ->
     acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props)
                               ,Category
                               ,Name
-                              ,JObj);
+                              ,JObj
+                             );
 handle_call_event(Category, Name, JObj, Props) ->
     acdc_queue_fsm:call_event(props:get_value('fsm_pid', Props)
                               ,Category
                               ,Name
-                              ,JObj).
+                              ,JObj
+                             ).
 
+-spec handle_member_call(wh_json:object(), wh_proplist(), delivery()) -> 'ok'.
 handle_member_call(JObj, Props, Delivery) ->
     'true' = wapi_acdc_queue:member_call_v(JObj),
-    acdc_queue_fsm:member_call(props:get_value('fsm_pid', Props), JObj, Delivery).
+    acdc_queue_fsm:member_call(props:get_value('fsm_pid', Props), JObj, Delivery),
+    gen_listener:cast(props:get_value('server', Props), {'delivery', Delivery}).
 
+-spec handle_member_resp(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_member_resp(JObj, Props) ->
     'true' = wapi_acdc_queue:member_connect_resp_v(JObj),
     acdc_queue_fsm:member_connect_resp(props:get_value('fsm_pid', Props), JObj).
 
+-spec handle_member_accepted(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_member_accepted(JObj, Props) ->
     'true' = wapi_acdc_queue:member_connect_accepted_v(JObj),
     acdc_queue_fsm:member_accepted(props:get_value('fsm_pid', Props), JObj).
 
+-spec handle_member_retry(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_member_retry(JObj, Props) ->
     'true' = wapi_acdc_queue:member_connect_retry_v(JObj),
     acdc_queue_fsm:member_connect_retry(props:get_value('fsm_pid', Props), JObj).
@@ -71,6 +78,7 @@ handle_config_change(JObj, _Props) ->
                         ,wh_json:get_value(<<"Event-Name">>, JObj)
                        ).
 
+-spec handle_queue_change(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 handle_queue_change(_, AccountId, QueueId, <<"doc_created">>) ->
     lager:debug("maybe starting new queue for ~s: ~s", [AccountId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AccountId, QueueId) of

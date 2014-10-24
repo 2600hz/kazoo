@@ -214,13 +214,13 @@ nack(Srv, Delivery) -> gen_server:cast(Srv, {'nack', Delivery}).
 
 %% API functions that mirror gen_server:call,cast,reply
 -spec call(server_ref(), term()) -> term().
-call(Name, Request) -> gen_server:call(Name, Request).
+call(Name, Request) -> gen_server:call(Name, {'$client_call', Request}).
 
 -spec call(server_ref(), term(), wh_timeout()) -> term().
-call(Name, Request, Timeout) -> gen_server:call(Name, Request, Timeout).
+call(Name, Request, Timeout) -> gen_server:call(Name, {'$client_call', Request}, Timeout).
 
 -spec cast(server_ref(), term()) -> 'ok'.
-cast(Name, Request) -> gen_server:cast(Name, Request).
+cast(Name, Request) -> gen_server:cast(Name, {'$client_cast', Request}).
 
 -spec delayed_cast(server_ref(), term(), pos_integer()) -> 'ok'.
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
@@ -402,6 +402,8 @@ handle_call('bindings', _From, #state{bindings=Bs}=State) ->
     {'reply', Bs, State};
 handle_call('is_consuming', _From, #state{is_consuming=IsC}=State) ->
     {'reply', IsC, State};
+handle_call({'$client_call', Request}, From, State) ->
+    handle_module_call(Request, From, State);
 handle_call(Request, From, State) ->
     handle_module_call(Request, From, State).
 
@@ -417,10 +419,10 @@ handle_call(Request, From, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(term(), state()) -> handle_cast_return().
 handle_cast({'ack', Delivery}, State) ->
-    amqp_util:basic_ack(Delivery),
+    _A = (catch amqp_util:basic_ack(Delivery)),
     {'noreply', State};
 handle_cast({'nack', Delivery}, State) ->
-    amqp_util:basic_nack(Delivery),
+    _N = (catch amqp_util:basic_nack(Delivery)),
     {'noreply', State};
 handle_cast({'add_queue', QueueName, QueueProps, Bindings}, State) ->
     {_, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
@@ -517,6 +519,8 @@ handle_cast({'$execute', Function}=Msg
          || Federator <- Federators
         ],
     {'noreply', State};
+handle_cast({'$client_cast', Message}, State) ->
+    handle_module_cast(Message, State);
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
 

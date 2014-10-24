@@ -33,6 +33,8 @@
          ,send_sync_req/2
          ,config/1
          ,send_sync_resp/4
+
+         ,delivery/1
         ]).
 
 %% gen_server callbacks
@@ -175,6 +177,9 @@ config(Srv) ->
 send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
     gen_listener:cast(Srv, {'send_sync_resp', Strategy, StrategyState, ReqJObj}).
 
+delivery(Srv) ->
+    gen_listener:call(Srv, 'delivery').
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -224,6 +229,8 @@ init([WorkerSup, MgrPid, AcctId, QueueId]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call('delivery', _From, #state{delivery=D}=State) ->
+    {'reply', D, State};
 handle_call('config', _From, #state{acct_id=AcctId
                                     ,queue_id=QueueId
                                    }=State) ->
