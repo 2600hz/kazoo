@@ -43,7 +43,7 @@ send_email(From, To, Email) ->
     Username = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"username">>, <<"">>)),
     Password = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"password">>, <<"">>)),
     Auth = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>)),
-    Port = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"port">>, <<"25">>)),
+    Port = wh_util:to_integer(whapps_config:get(<<"smtp_client">>, <<"port">>, <<"25">>)),
 
     lager:debug("sending email to ~s from ~s via ~s", [To, From, Relay]),
     ReqId = get('callid'),
