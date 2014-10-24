@@ -521,15 +521,22 @@ shared_queue_name(AcctId, QueueId) ->
 -spec queue_size(ne_binary(), ne_binary()) -> integer() | 'undefined'.
 queue_size(AcctId, QueueId) ->
     Q = shared_queue_name(AcctId, QueueId),
-    try amqp_util:new_queue(Q, [{'return_field', 'message_count'}
-                                 ,{'exclusive', 'false'}
-                                 ,{'passive', 'true'}
-                                ])
+    try amqp_util:new_queue(Q, [{'return_field', 'all'}
+                                ,{'passive', 'true'}
+                               ])
     of
         {'error', {'server_initiated_close', 404, _Msg}} ->
             lager:debug("failed to query queue size: ~s", [_Msg]),
             'undefined';
-        N -> N
+        {QueueId, Messages, Consumers} ->
+            lager:debug("queue has ~p messages and ~p consumers", [Messages, Consumers]),
+            Messages;
+        {QueueName, Messages, Consumers} ->
+            lager:debug("queue ~s (expecting ~s) has ~p messages and ~p consumers", [QueueName, QueueId, Messages, Consumers]),
+            Messages;
+        N when is_integer(N) ->
+            lager:debug("queue size ~p", [N]),
+            N
     catch
         _E:_R ->
             lager:debug("failed to query queue size: ~s: ~p", [_E, _R]),
@@ -628,7 +635,7 @@ publish_shared_member_call(AcctId, QueueId, JObj) ->
     publish_shared_member_call(AcctId, QueueId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_shared_member_call(AcctId, QueueId, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
-    amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType).
+    amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType, [{'mandatory', 'true'}]).
 
 -spec publish_member_call_failure(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_member_call_failure(ne_binary(), api_terms(), ne_binary()) -> 'ok'.

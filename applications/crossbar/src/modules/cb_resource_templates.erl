@@ -179,7 +179,7 @@ forbidden(Context) ->
 %%--------------------------------------------------------------------
 -spec validate_request(api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(ResourceId, Context) ->
-    Context1 =  check_template_name(Context),
+    Context1 = check_template_name(Context),
     case cb_context:has_errors(Context1) of
         'true' -> Context1;
         'false' -> on_successful_validation(ResourceId,Context1)
@@ -193,13 +193,13 @@ check_template_name(Context) ->
                                            ,<<"required">>
                                            ,<<"Template name is required">>
                                            ,Context);
-        _Name -> Context
+        _Name -> cb_context:set_resp_status(Context, 'success')
     end.
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     JObj = wh_json:set_value(<<"pvt_type">>, <<"resource_template">>, cb_context:doc(Context)),
-    cb_context:set_doc(Context, JObj);
+    cb_context:set_resp_status(cb_context:set_doc(Context, JObj), 'success');
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
 

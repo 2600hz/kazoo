@@ -14,6 +14,7 @@
 -export([start_link/3
          ,ack/2
          ,nack/2
+         ,deliveries/1
         ]).
 
 %% gen_server callbacks
@@ -28,7 +29,9 @@
 
 -include("acdc.hrl").
 
--record(state, {fsm_pid :: pid()}).
+-record(state, {fsm_pid :: pid()
+                ,deliveries = [] :: deliveries()
+               }).
 
 -define(SHARED_BINDING_OPTIONS, [{'consume_options', [{'no_ack', 'false'}
                                                       ,{'exclusive', 'false'}
@@ -61,7 +64,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link(pid(), ne_binary(), ne_binary()) -> startlink_ret().
+-spec start_link(server_ref(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(FSMPid, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
                             ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
@@ -72,11 +75,19 @@ start_link(FSMPid, AcctId, QueueId) ->
                             ,[FSMPid]
                            ).
 
--spec ack(pid(), #'basic.deliver'{}) -> 'ok'.
-ack(Srv, Delivery) -> gen_listener:ack(Srv, Delivery).
+-spec ack(server_ref(), delivery()) -> 'ok'.
+ack(Srv, Delivery) ->
+    gen_listener:ack(Srv, Delivery),
+    gen_listener:cast(Srv, {'ack', Delivery}).
 
--spec nack(pid(), #'basic.deliver'{}) -> 'ok'.
-nack(Srv, Delivery) -> gen_listener:nack(Srv, Delivery).
+-spec nack(server_ref(), delivery()) -> 'ok'.
+nack(Srv, Delivery) ->
+    gen_listener:nack(Srv, Delivery),
+    gen_listener:cast(Srv, {'noack', Delivery}).
+
+-spec deliveries(server_ref()) -> deliveries().
+deliveries(Srv) ->
+    gen_listener:call(Srv, 'deliveries').
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -97,9 +108,7 @@ init([FSMPid]) ->
     put('callid', ?LOG_SYSTEM_ID),
 
     lager:debug("shared queue proc started, sending messages to FSM ~p", [FSMPid]),
-    {'ok', #state{
-              fsm_pid=FSMPid
-             }}.
+    {'ok', #state{fsm_pid=FSMPid}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,8 +124,10 @@ init([FSMPid]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call('deliveries', _From, #state{deliveries=Ds}=State) ->
+    {'reply', Ds, State};
 handle_call(_Request, _From, State) ->
-    {'reply', 'ok', State}.
+    {'noreply', State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,6 +139,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'delivery', Delivery}, #state{deliveries=Ds}=State) ->
+    {'noreply', State#state{deliveries=[Delivery|Ds]}};
+handle_cast({'ack', Delivery}, #state{deliveries=Ds}=State) ->
+    {'noreply', State#state{deliveries=lists:delete(Delivery, Ds)}};
+handle_cast({'noack', Delivery}, #state{deliveries=Ds}=State) ->
+    {'noreply', State#state{deliveries=lists:delete(Delivery, Ds)}};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_Q}}, State) ->

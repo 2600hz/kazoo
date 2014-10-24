@@ -19,7 +19,7 @@
          ,handle_member_call_cancel/2
          ,handle_agent_change/2
          ,handle_config_change/2
-         ,should_ignore_member_call/3
+         ,should_ignore_member_call/3, should_ignore_member_call/4
          ,config/1
          ,status/1
          ,current_agents/1
@@ -217,12 +217,21 @@ handle_agent_change(JObj, Prop) ->
             gen_listener:cast(props:get_value('server', Prop), {'agent_unavailable', JObj})
     end.
 
+-spec handle_config_change(server_ref(), wh_json:object()) -> 'ok'.
 handle_config_change(Srv, JObj) ->
     gen_listener:cast(Srv, {'update_queue_config', JObj}).
 
+-spec should_ignore_member_call(server_ref(), whapps_call:call(), wh_json:object()) -> boolean().
+-spec should_ignore_member_call(server_ref(), whapps_call:call(), ne_binary(), ne_binary()) -> boolean().
 should_ignore_member_call(Srv, Call, CallJObj) ->
-    K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, CallJObj)
-                        ,wh_json:get_value(<<"Queue-ID">>, CallJObj)
+    should_ignore_member_call(Srv
+                              ,Call
+                              ,wh_json:get_value(<<"Account-ID">>, CallJObj)
+                              ,wh_json:get_value(<<"Queue-ID">>, CallJObj)
+                             ).
+should_ignore_member_call(Srv, Call, AccountId, QueueId) ->
+    K = make_ignore_key(AccountId
+                        ,QueueId
                         ,whapps_call:call_id(Call)
                        ),
     gen_listener:call(Srv, {'should_ignore_member_call', K}).

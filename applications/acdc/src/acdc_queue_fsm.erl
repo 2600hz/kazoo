@@ -316,64 +316,40 @@ connect_req({'agent_resp', Resp}, #state{connect_resps=CRs}=State) ->
     {'next_state', 'connect_req', State#state{connect_resps=[Resp | CRs]}};
 
 connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
+                                                            ,manager_proc=MgrSrv
+                                                            ,member_call=Call
                                                             ,connect_resps=[]
                                                             ,queue_proc=Srv
+                                                            ,acct_id=AccountId
+                                                            ,queue_id=QueueId
                                                            }=State) ->
-    lager:debug("done waiting, no agents responded, let's ask again"),
-    webseq:note(self(), 'right', <<"no agents responded, trying again">>),
-
-    acdc_queue_listener:member_connect_re_req(Srv),
-
-    {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()}};
+    case acdc_queue_manager:should_ignore_member_call(MgrSrv, Call, AccountId, QueueId) of
+        'true' ->
+            lager:debug("queue mgr said to ignore this call: ~s, not retrying agents", [whapps_call:call_id(Call)]),
+            acdc_queue_listener:finish_member_call(Srv),
+            {'next_state', 'ready', State};
+        'false' ->
+            lager:debug("done waiting, no agents responded, let's ask again"),
+            webseq:note(self(), 'right', <<"no agents responded, trying again">>),
+            acdc_queue_listener:member_connect_re_req(Srv),
+            {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()}}
+    end;
 
 connect_req({'timeout', Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
-                                                            ,connect_resps=CRs
+                                                            ,manager_proc=MgrSrv
                                                             ,queue_proc=Srv
-                                                            ,manager_proc=Mgr
-                                                            ,agent_ring_timeout=RingTimeout
-                                                            ,agent_wrapup_time=AgentWrapup
-                                                            ,caller_exit_key=CallerExitKey
                                                             ,member_call=Call
-                                                            ,cdr_url=CDRUrl
-                                                            ,record_caller=ShouldRecord
-                                                            ,recording_url=RecordUrl
-                                                            ,notifications=Notifications
+                                                            ,acct_id=AccountId
+                                                            ,queue_id=QueueId
                                                            }=State) ->
-    lager:debug("done waiting for agents to respond, picking a winner"),
-
-    case acdc_queue_manager:pick_winner(Mgr, CRs) of
-        {[Winner|_]=Agents, Rest} ->
-            QueueOpts = [{<<"Ring-Timeout">>, RingTimeout}
-                         ,{<<"Wrapup-Timeout">>, AgentWrapup}
-                         ,{<<"Caller-Exit-Key">>, CallerExitKey}
-                         ,{<<"CDR-Url">>, CDRUrl}
-                         ,{<<"Record-Caller">>, ShouldRecord}
-                         ,{<<"Recording-URL">>, RecordUrl}
-                         ,{<<"Notifications">>, Notifications}
-                        ],
-
-            _ = [begin
-                     webseq:evt(self(), webseq:process_pid(Agent), [<<"member call ">>, win_or_monitor(Agent, Winner)]),
-                     acdc_queue_listener:member_connect_win(Srv, update_agent(Agent, Winner), QueueOpts)
-                 end
-                 || Agent <- Agents
-                ],
-
-            lager:debug("sending win to ~s(~s)", [wh_json:get_value(<<"Agent-ID">>, Winner)
-                                                  ,wh_json:get_value(<<"Process-ID">>, Winner)
-                                                 ]),
-            {'next_state', 'connecting', State#state{connect_resps=Rest
-                                                     ,collect_ref='undefined'
-                                                     ,agent_ring_timer_ref=start_agent_ring_timer(RingTimeout)
-                                                     ,member_call_winner=Winner
-                                                    }};
-        'undefined' ->
-            lager:debug("no more responses to choose from"),
-
-            webseq:evt(self(), whapps_call:call_id(Call), <<"member call canceling">>),
-
-            acdc_queue_listener:cancel_member_call(Srv),
-            {'next_state', 'ready', clear_member_call(State), 'hibernate'}
+    case acdc_queue_manager:should_ignore_member_call(MgrSrv, Call, AccountId, QueueId) of
+        'true' ->
+            lager:debug("queue mgr said to ignore this call: ~s, not connecting to agents", [whapps_call:call_id(Call)]),
+            acdc_queue_listener:finish_member_call(Srv),
+            {'next_state', 'ready', State};
+        'false' ->
+            lager:debug("done waiting for agents to respond, picking a winner"),
+            maybe_pick_winner(State)
     end;
 
 connect_req({'accepted', AcceptJObj}=Accept, #state{member_call=Call}=State) ->
@@ -579,8 +555,6 @@ connecting({'member_finished'}, #state{member_call=Call}=State) ->
             lager:debug("member finished, but callid became ~p", [_E])
     end,
     {'next_state', 'ready', clear_member_call(State), 'hibernate'};
-
-
 connecting({'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
                                           ,queue_proc=Srv
                                           ,acct_id=AcctId
@@ -826,4 +800,52 @@ win_or_monitor(A, W) ->
     case wh_json:get_value(<<"Process-ID">>, A) =:= wh_json:get_value(<<"Process-ID">>, W) of
         'true' -> <<"win">>;
         'false' -> <<"monitor">>
+    end.
+
+-spec maybe_pick_winner(queue_fsm_state()) -> {'next_state', atom(), queue_fsm_state()}.
+maybe_pick_winner(#state{connect_resps=CRs
+                         ,queue_proc=Srv
+                         ,manager_proc=Mgr
+                         ,agent_ring_timeout=RingTimeout
+                         ,agent_wrapup_time=AgentWrapup
+                         ,caller_exit_key=CallerExitKey
+                         ,member_call=Call
+                         ,cdr_url=CDRUrl
+                         ,record_caller=ShouldRecord
+                         ,recording_url=RecordUrl
+                         ,notifications=Notifications
+                        }=State) ->
+    case acdc_queue_manager:pick_winner(Mgr, CRs) of
+        {[Winner|_]=Agents, Rest} ->
+            QueueOpts = [{<<"Ring-Timeout">>, RingTimeout}
+                         ,{<<"Wrapup-Timeout">>, AgentWrapup}
+                         ,{<<"Caller-Exit-Key">>, CallerExitKey}
+                         ,{<<"CDR-Url">>, CDRUrl}
+                         ,{<<"Record-Caller">>, ShouldRecord}
+                         ,{<<"Recording-URL">>, RecordUrl}
+                         ,{<<"Notifications">>, Notifications}
+                        ],
+
+            _ = [begin
+                     webseq:evt(self(), webseq:process_pid(Agent), [<<"member call ">>, win_or_monitor(Agent, Winner)]),
+                     acdc_queue_listener:member_connect_win(Srv, update_agent(Agent, Winner), QueueOpts)
+                 end
+                 || Agent <- Agents
+                ],
+
+            lager:debug("sending win to ~s(~s)", [wh_json:get_value(<<"Agent-ID">>, Winner)
+                                                  ,wh_json:get_value(<<"Process-ID">>, Winner)
+                                                 ]),
+            {'next_state', 'connecting', State#state{connect_resps=Rest
+                                                     ,collect_ref='undefined'
+                                                     ,agent_ring_timer_ref=start_agent_ring_timer(RingTimeout)
+                                                     ,member_call_winner=Winner
+                                                    }};
+        'undefined' ->
+            lager:debug("no more responses to choose from"),
+
+            webseq:evt(self(), whapps_call:call_id(Call), <<"member call canceling">>),
+
+            acdc_queue_listener:cancel_member_call(Srv),
+            {'next_state', 'ready', clear_member_call(State), 'hibernate'}
     end.

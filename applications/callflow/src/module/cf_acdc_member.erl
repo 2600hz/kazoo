@@ -89,7 +89,6 @@ wait_for_bridge(#member_call{call=Call}, Timeout, _Start) when Timeout < 0 ->
     end_member_call(Call);
 wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
     Wait = os:timestamp(),
-    lager:debug("timeout: ~p", [Timeout]),
     receive
         {'amqp_msg', JObj} ->
             process_message(MC, Timeout, Start, Wait, JObj, wh_util:get_event_type(JObj))
@@ -147,7 +146,6 @@ process_message(#member_call{call=Call}, _, Start, _Wait, _JObj, {<<"member">>, 
     lager:info("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
 process_message(MC, Timeout, Start, Wait, _JObj, _Type) ->
-    lager:debug("ignoring ~p", [_Type]),
     wait_for_bridge(MC, wh_util:decr_timeout(Timeout, Wait), Start).
 
 %% convert from seconds to milliseconds, or infinity
