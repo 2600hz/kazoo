@@ -32,6 +32,8 @@
 -export([port_out/1]).
 -export([disconnected/1]).
 
+-export([used_by/2]).
+
 -export([error_invalid_state_transition/2]).
 -export([error_unauthorized/1]).
 -export([error_number_exists/1]).
@@ -149,31 +151,53 @@ get(Number) -> get(Number, 'undefined').
 get(Number, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
     Routines = [fun(#number{}=N) ->
-                        case wnm_util:is_reconcilable(Num) of
-                            'false' -> error_not_reconcilable(N);
-                            'true' -> N
-                        end
+                    case wnm_util:is_reconcilable(Num) of
+                        'false' -> error_not_reconcilable(N);
+                        'true' -> N
+                    end
                 end
                 ,fun(#number{number_db=Db}=N) ->
-                         case couch_mgr:open_cache_doc(Db, Num, [{'cache_failures', ['not_found']}]) of
-                             {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
-                             {'error', 'not_found'} ->
-                                 lager:debug("unable to find number ~s/~s"
-                                             ,[Db, Num]
-                                            ),
-                                 error_number_not_found(N);
-                             {'error', Reason} ->
-                                 lager:debug("unable to retrieve number ~s/~s: ~p"
-                                             ,[Db, Num, Reason]
-                                            ),
-                                 error_number_database(Reason, N)
-                         end
-                 end
+                     case couch_mgr:open_cache_doc(Db, Num, [{'cache_failures', ['not_found']}]) of
+                         {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
+                         {'error', 'not_found'} ->
+                             lager:debug("unable to find number ~s/~s"
+                                         ,[Db, Num]
+                                        ),
+                             error_number_not_found(N);
+                         {'error', Reason} ->
+                             lager:debug("unable to retrieve number ~s/~s: ~p"
+                                         ,[Db, Num, Reason]
+                                        ),
+                             error_number_database(Reason, N)
+                     end
+                end
+                ,fun(#number{}=N) -> maybe_correct_used_by(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end
                 ,#number{number=Num, number_db=wnm_util:number_to_db_name(Num)}
                 ,Routines
                ).
+
+
+maybe_correct_used_by(#number{assigned_to=Account, number=Number
+                              ,used_by=UsedBy, number_doc=NumberDoc}=N) ->
+    AccountDb =  wh_util:format_account_id(Account, 'encoded'),
+    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+        {'error', _} ->
+            lager:warning("failed to get phone number doc for correction"),
+            N;
+        {'ok', JObj} ->
+            NewUsedBy = wh_json:get_value([Number, <<"used_by">>], JObj),
+            case NewUsedBy =:= UsedBy of
+                'true' ->
+                    lager:debug("~s used_by field is correct", [Number]),
+                    N;
+                'false' ->
+                    lager:info("correcting used_by field for number ~s", [Number]),
+                    NewNumberDoc = wh_json:set_value(<<"used_by">>, NewUsedBy, NumberDoc),
+                    save_number_doc(N#number{used_by=NewUsedBy, number_doc=NewNumberDoc})
+            end
+    end.
 
 -spec find_port_in_number(wnm_number() | ne_binary()) ->
                                  {'ok', wh_json:object()} |
@@ -682,6 +706,26 @@ port_out(Number) ->
 -spec disconnected(wnm_number()) -> no_return().
 disconnected(Number) ->
     error_invalid_state_transition(<<"disconnected">>, Number).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec used_by(wnm_number(), binary()) -> 'ok'.
+
+used_by(PhoneNumber, UsedBy) ->
+    case wnm_util:is_reconcilable(PhoneNumber) of
+        'false' ->
+            lager:debug("number ~s is not reconcilable, ignoring", [PhoneNumber]);
+        'true' ->
+            Number = ?MODULE:get(PhoneNumber),
+            _ = save(Number#number{used_by=UsedBy}),
+            lager:debug("updating number '~s' used_by from '~s' field to: '~s'", [PhoneNumber, Number#number.used_by, UsedBy])
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private

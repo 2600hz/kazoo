@@ -891,62 +891,15 @@ set_public_fields(Number, PublicFields, AuthBy, DryRun) ->
     lists:foldl(fun(F, J) -> catch F(J) end, wnm_number:get(Number, PublicFields), Routines).
 
 
--spec track_assignment(ne_binary(), wh_proplist()) ->
-                              'ok' | 'error'.
--spec track_assignment(ne_binary(), wh_proplist(), integer()) ->
-                              'ok' | 'error'.
+-spec track_assignment(ne_binary(), wh_proplist()) -> 'ok'.
 track_assignment(Account, Props) ->
-    track_assignment(Account, Props, 5).
-
-track_assignment(Account, Props, Try) when Try > 0 ->
-    AccountDb = wh_util:format_account_id(Account, 'encoded'),
-    case couch_mgr:open_doc(AccountDb, <<"phone_numbers">>) of
-        {'error', _E} ->
-            lager:error("could not open phone_numbers doc in ~p: ~p ", [AccountDb ,_E]),
-            track_assignment(Account, Props, Try-1);
-        {'ok', JObj} ->
-            update_assignment(AccountDb, JObj, Props, Try)
-    end;
-track_assignment(Account, _Props, _) ->
-    lager:error("too many attempt on ~p phone_numbers doc", [Account]),
-    'error'.
-
--spec update_assignment(ne_binary(), wh_json:object(), wh_proplist(), integer()) ->
-                               'ok' | 'error'.
-update_assignment(AccountDb, JObj, Props, Try) ->
-    UpdatedDoc =
-        lists:foldl(
-            fun({Num, Assignment}, {Updated, Acc}) ->
-                case wh_json:get_value(Num, Acc) of
-                    'undefined' -> {Updated, Acc};
-                    NumJobj ->
-                        NumJobj1 = wh_json:set_value(<<"used_by">>, Assignment, NumJobj),
-                        {'true', wh_json:set_value(Num, NumJobj1, Acc)}
-                end
-            end
-            ,{'false', JObj}
-            ,Props
-        ),
-    case UpdatedDoc of
-        {'false', _} ->
-            lager:debug("no need to update phone_numbers in ~p", [AccountDb]),
-            'ok';
-        {'true', Doc} ->
-            save_assignment(AccountDb, Doc, Props, Try)
-    end.
-
--spec save_assignment(ne_binary(), wh_json:object(), wh_proplist(), integer()) ->
-                             'ok' | 'error'.
-save_assignment(AccountDb, Updated, Props, Try) ->
-    case couch_mgr:save_doc(AccountDb, Updated) of
-        {'error', 'conflict'} ->
-            lager:warning("could not save phone_numbers doc in ~p: conflict retrying...", [AccountDb]),
-            track_assignment(AccountDb, Props, Try-1);
-        {'error', _E} ->
-            lager:error("could not save phone_numbers doc in ~p: ~p retrying...", [AccountDb ,_E]),
-            track_assignment(AccountDb, Props, Try-1);
-        {'ok', _R} -> 'ok'
-    end.
+    lager:debug("tracking number assignment for account ~s", [Account]),
+    lists:foreach(
+        fun({Number, Assignment}) ->
+            wnm_number:used_by(Number, Assignment)
+        end
+        ,Props
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
