@@ -290,13 +290,33 @@ get_temporal_route(JObj, Call) ->
         end,
     load_current_time(#temporal{routes = Routes
                                 ,rule_set = IsRuleSet
-                                ,timezone = wh_json:get_value(<<"timezone">>, JObj, ?TEMPORAL_DEFAULT_TIMEZONE)
+                                ,timezone = get_timezone(JObj, Call)
                                 ,interdigit_timeout =
                                     wh_json:get_integer_value(<<"interdigit_timeout">>
                                                               ,JObj
                                                               ,whapps_call_command:default_interdigit_timeout()
                                                              )
                                }).
+
+-spec get_timezone(wh_json:object(), whapps_call:call()) -> ne_binary().
+get_timezone(JObj, Call) ->
+    case wh_json:get_value(<<"timezone">>, JObj) of
+        'undefined' -> get_account_timezone(Call);
+        TZ -> TZ
+    end.
+
+-spec get_account_timezone(api_binary() | whapps_call:call()) -> ne_binary().
+get_account_timezone('undefined') -> get_system_timezone();
+get_account_timezone(<<_/binary>> = TZ) -> TZ;
+get_account_timezone(Call) ->
+    case couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:account_id(Call)) of
+        {'ok', JObj} -> get_account_timezone(wh_json:get_value(<<"timezone">>, JObj));
+        {'error', _E} -> get_system_timezone()
+    end.
+
+-spec get_system_timezone() -> ne_binary().
+get_system_timezone() ->
+    whapps_config:get(<<"callflows.temporal_route">>, <<"timezone">>, ?TEMPORAL_DEFAULT_TIMEZONE).
 
 %%--------------------------------------------------------------------
 %% @private
