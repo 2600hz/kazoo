@@ -150,53 +150,67 @@ get(Number) -> get(Number, 'undefined').
 
 get(Number, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
-    Routines = [fun(#number{}=N) ->
-                    case wnm_util:is_reconcilable(Num) of
-                        'false' -> error_not_reconcilable(N);
-                        'true' -> N
-                    end
-                end
-                ,fun(#number{number_db=Db}=N) ->
-                     case couch_mgr:open_cache_doc(Db, Num, [{'cache_failures', ['not_found']}]) of
-                         {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
-                         {'error', 'not_found'} ->
-                             lager:debug("unable to find number ~s/~s"
-                                         ,[Db, Num]
-                                        ),
-                             error_number_not_found(N);
-                         {'error', Reason} ->
-                             lager:debug("unable to retrieve number ~s/~s: ~p"
-                                         ,[Db, Num, Reason]
-                                        ),
-                             error_number_database(Reason, N)
-                     end
-                end
-                ,fun(#number{}=N) -> maybe_correct_used_by(N) end
+    Routines = [fun check_reconcilable/1
+                ,fun(#number{}=N) -> fetch_number(N, PublicFields) end
+                ,fun maybe_correct_used_by/1
                ],
-    lists:foldl(fun(F, J) -> F(J) end
+    lists:foldl(fun(F, N) -> F(N) end
                 ,#number{number=Num, number_db=wnm_util:number_to_db_name(Num)}
                 ,Routines
                ).
 
+-spec check_reconcilable(wnm_number()) -> wnm_number().
+check_reconcilable(#number{number=Num}=N) ->
+    case wnm_util:is_reconcilable(Num) of
+        'false' -> error_not_reconcilable(N);
+        'true' -> N
+    end.
 
-maybe_correct_used_by(#number{assigned_to=Account, number=Number
-                              ,used_by=UsedBy, number_doc=NumberDoc}=N) ->
-    AccountDb =  wh_util:format_account_id(Account, 'encoded'),
+-spec fetch_number(wnm_number(), wh_json:object()) -> wnm_number().
+fetch_number(#number{number_db=Db
+                     ,number=Num
+                    }=N
+             ,PublicFields
+            ) ->
+    case couch_mgr:open_cache_doc(Db, Num, [{'cache_failures', ['not_found']}]) of
+        {'ok', JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
+        {'error', 'not_found'} ->
+            lager:debug("unable to find number ~s/~s", [Db, Num]),
+            error_number_not_found(N);
+        {'error', Reason} ->
+            lager:debug("unable to retrieve number ~s/~s: ~p", [Db, Num, Reason]),
+            error_number_database(Reason, N)
+    end.
+
+-spec maybe_correct_used_by(wnm_number()) -> wnm_number().
+-spec maybe_correct_used_by(wnm_number(), wh_json:object()) -> wnm_number().
+maybe_correct_used_by(#number{assigned_to=Account
+                             }=N) ->
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {'error', _} ->
-            lager:warning("failed to get phone number doc for correction"),
+        {'error', _E} ->
+            lager:warning("failed to get phone number doc for correction: ~p", [_E]),
             N;
         {'ok', JObj} ->
-            NewUsedBy = wh_json:get_value([Number, <<"used_by">>], JObj),
-            case NewUsedBy =:= UsedBy of
-                'true' ->
-                    lager:debug("~s used_by field is correct", [Number]),
-                    N;
-                'false' ->
-                    lager:info("correcting used_by field for number ~s", [Number]),
-                    NewNumberDoc = wh_json:set_value(<<"used_by">>, NewUsedBy, NumberDoc),
-                    save_number_doc(N#number{used_by=NewUsedBy, number_doc=NewNumberDoc})
-            end
+            maybe_correct_used_by(N, JObj)
+    end.
+
+maybe_correct_used_by(#number{number=Number
+                              ,used_by=UsedBy
+                              ,number_doc=NumberDoc
+                             }=N
+                      ,JObj
+                     ) ->
+    case wh_json:get_value([Number, <<"used_by">>], JObj) of
+        UsedBy ->
+            lager:debug("~s used_by field is correct", [Number]),
+            N;
+        NewUsedBy ->
+            lager:info("correcting used_by field for number ~s from ~s to ~s", [Number, UsedBy, NewUsedBy]),
+            NewNumberDoc = wh_json:set_value(<<"used_by">>, NewUsedBy, NumberDoc),
+            save_number_doc(N#number{used_by=NewUsedBy
+                                     ,number_doc=NewNumberDoc
+                                    })
     end.
 
 -spec find_port_in_number(wnm_number() | ne_binary()) ->
@@ -237,22 +251,37 @@ get_number_in_ports(#number{number=Number}=N) ->
 save(#number{}=Number) ->
     Routines = [fun(#number{}=N) -> exec_providers(N, 'save') end
                 ,fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
-                ,fun(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
-                    (#number{}=N) -> get_updated_phone_number_docs(N)
-                 end
-                ,fun({_, #number{}}=E) -> E;
-                    (#number{dry_run='true'}=N) -> N;
-                    (#number{}=N) -> save_number_doc(N)
-                 end
-                ,fun({_, #number{}}=E) -> E;
-                    (#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
-                    (#number{}=N) -> save_phone_number_docs(N)
-                 end
-                ,fun(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
-                    (#number{}=N) -> update_service_plans(N)
-                 end
+                ,fun maybe_get_updated_phone_number_docs/1
+                ,fun maybe_save_number_doc/1
+                ,fun maybe_save_phone_number_docs/1
+                ,fun maybe_update_service_plans/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
+
+-spec maybe_update_service_plans(wnm_number() | {_, wnm_number()}) ->
+                                        wnm_number() |
+                                        {_, wnm_number()}.
+maybe_update_service_plans(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
+maybe_update_service_plans(#number{}=N) -> update_service_plans(N);
+maybe_update_service_plans(E) -> E.
+
+-spec maybe_save_phone_number_docs(wnm_number() | {_, wnm_number()}) ->
+                                          wnm_number() |
+                                          {_, wnm_number()}.
+maybe_save_phone_number_docs(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
+maybe_save_phone_number_docs(#number{}=N) -> save_phone_number_docs(N);
+maybe_save_phone_number_docs(E) -> E.
+
+-spec maybe_save_number_doc(wnm_number() | {_, wnm_number()}) ->
+                                   wnm_number() |
+                                   {_, wnm_number()}.
+maybe_save_number_doc(#number{dry_run='true'}=N) -> N;
+maybe_save_number_doc(#number{}=N) -> save_number_doc(N);
+maybe_save_number_doc(E) -> E.
+
+-spec maybe_get_updated_phone_number_docs(wnm_number()) -> wnm_number().
+maybe_get_updated_phone_number_docs(#number{state = ?NUMBER_STATE_DISCOVERY}=N) -> N;
+maybe_get_updated_phone_number_docs(#number{}=N) -> get_updated_phone_number_docs(N).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -707,15 +736,13 @@ port_out(Number) ->
 disconnected(Number) ->
     error_invalid_state_transition(<<"disconnected">>, Number).
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec used_by(wnm_number(), binary()) -> 'ok'.
-
+-spec used_by(ne_binary(), api_binary()) -> 'ok'.
 used_by(PhoneNumber, UsedBy) ->
     case wnm_util:is_reconcilable(PhoneNumber) of
         'false' ->
@@ -725,7 +752,6 @@ used_by(PhoneNumber, UsedBy) ->
             _ = save(Number#number{used_by=UsedBy}),
             lager:debug("updating number '~s' used_by from '~s' field to: '~s'", [PhoneNumber, Number#number.used_by, UsedBy])
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1196,6 +1222,7 @@ update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssign
     _ = commit_activations(N),
     N.
 
+-spec commit_activations(wnm_number()) -> wnm_number().
 commit_activations(#number{billing_id='undefined'}=Number) ->
     Number;
 commit_activations(#number{activations=Activations, services=Services}=N) ->

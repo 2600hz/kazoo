@@ -312,7 +312,10 @@ ported(Number) ->
                          {'ok', wh_json:public_fields(JObj)}
                  end
                ],
-    lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number), Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end
+                ,catch wnm_number:get(Number)
+                ,Routines
+               ).
 
 -spec check_ports(wnm_number()) -> operation_return().
 check_ports(#number{number=MaybePortNumber}=Number) ->
@@ -391,35 +394,45 @@ create_number(Number, AssignTo, AuthBy, PublicFields, DryRun, ModuleName) ->
     lists:foldl(fun(F, J) -> catch F(J) end, 'ok', Routines).
 
 -spec create_not_found_number(ne_binary(), api_binary(), 'system' | ne_binary(), wh_json:object(), wnm_number(), api_binary()) ->
-                                     operation_return().
+                                     wnm_number().
 create_not_found_number(Number, AssignTo, AuthBy, PublicFields, N, ModuleName) ->
-    AccountId = wh_util:format_account_id(AuthBy, 'raw'),
-    AccountDb = wh_util:format_account_id(AuthBy, 'encoded'),
-    try
-        {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
-        'true' = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj),
-        lager:debug("number doesnt exist but account ~s is authorized to create it", [AuthBy]),
-        case wnm_number:find_port_in_number(N) of
-            {'ok', _Doc} ->
-                lager:debug("number is being ported in for account ~s"
-                            ,[wh_json:get_value(<<"pvt_account_id">>, _Doc)]
-                           ),
-                wnm_number:error_number_is_porting(N);
-            {'error', 'not_found'} ->
-                lager:debug("number is not in a port request"),
-                NewNumber = N#number{number=Number
-                                     ,assign_to=AssignTo
-                                     ,auth_by=AuthBy
-                                     ,number_doc=PublicFields
-                                     ,module_name=ModuleName
-                                    },
-                wnm_number:create_available(NewNumber)
-        end
-    catch
-        'error':{'badmatch', Error} ->
-            lager:debug("account is not authorized to create a new number: ~p", [Error]),
+    case account_can_create_number(AuthBy) of
+        'true' ->
+            lager:debug("number doesnt exist but account ~s is authorized to create it", [AuthBy]),
+            case is_number_porting(N) of
+                'true' ->
+                    lager:debug("number is being ported in, not creating"),
+                    wnm_number:error_number_is_porting(N);
+                'false' ->
+                    lager:debug("number is not in a port request"),
+                    NewNumber = N#number{number=Number
+                                         ,assign_to=AssignTo
+                                         ,auth_by=AuthBy
+                                         ,number_doc=PublicFields
+                                         ,module_name=ModuleName
+                                        },
+                    wnm_number:create_available(NewNumber)
+            end;
+        'false' ->
+            lager:debug("account is not authorized to create a new number"),
             wnm_number:error_unauthorized(N)
     end.
+
+-spec is_number_porting(wnm_number()) -> boolean().
+is_number_porting(N) ->
+    case wnm_number:find_port_in_number(N) of
+        {'ok', _Doc} -> 'true';
+        {'error', 'not_found'} -> 'false'
+    end.
+
+-spec account_can_create_number(ne_binary() | 'system') -> boolean().
+account_can_create_number('system') -> 'true';
+account_can_create_number(Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    AccountDb = wh_util:format_account_id(Account, 'encoded'),
+
+    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -895,11 +908,11 @@ set_public_fields(Number, PublicFields, AuthBy, DryRun) ->
 track_assignment(Account, Props) ->
     lager:debug("tracking number assignment for account ~s", [Account]),
     lists:foreach(
-        fun({Number, Assignment}) ->
-            wnm_number:used_by(Number, Assignment)
-        end
-        ,Props
-    ).
+      fun({Number, Assignment}) ->
+              wnm_number:used_by(Number, Assignment)
+      end
+      ,Props
+     ).
 
 %%--------------------------------------------------------------------
 %% @private
