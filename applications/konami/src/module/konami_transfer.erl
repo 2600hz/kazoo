@@ -23,8 +23,6 @@
 -export([attended_wait/2, attended_wait/3
          ,partial_wait/2, partial_wait/3
          ,attended_answer/2, attended_answer/3
-         ,transfer/2, transfer/3
-         ,cancel/2, cancel/3
 
          ,init/1
          ,handle_event/3
@@ -49,6 +47,10 @@
 
 -define(DEFAULT_TAKEBACK_DTMF
         ,whapps_config:get(?CONFIG_CAT, [<<"transfer">>, <<"default_takeback_dtmf">>], <<"*1">>)
+       ).
+
+-define(DEFAULT_TARGET_TIMEOUT
+        ,whapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20000)
        ).
 
 -spec handle(wh_json:object(), whapps_call:call()) -> no_return().
@@ -218,9 +220,8 @@ attended_wait(Msg, State) ->
     lager:debug("attended_wait: unhandled msg ~p", [Msg]),
     {'next_state', 'attended_wait', State}.
 
-attended_wait(Msg, From, State) ->
-    lager:debug("attended_wait: unhandled msg from ~p: ~p", [From, Msg]),
-    {'reply', {'error', 'not_implemented'}, 'attended_wait', State}.
+attended_wait(_Msg, _From, State) ->
+    {'next_state', 'attended_wait', State}.
 
 partial_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{transferee=Transferee}=State
@@ -277,9 +278,8 @@ partial_wait(Msg, State) ->
     lager:debug("partial_wait: unhandled msg ~p", [Msg]),
     {'next_state', 'partial_wait', State}.
 
-partial_wait(Msg, From, State) ->
-    lager:debug("partial_wait: unhandled msg from ~p: ~p", [From, Msg]),
-    {'reply', {'error', 'not_implemented'}, 'partial_wait', State}.
+partial_wait(_Msg, _From, State) ->
+    {'next_state', 'partial_wait', State}.
 
 attended_answer(?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
     handle_transferor_dtmf(Evt, 'attended_answer', State);
@@ -378,25 +378,8 @@ attended_answer(Msg, State) ->
     lager:debug("attended_answer: unhandled msg ~p", [Msg]),
     {'next_state', 'attended_answer', State}.
 
-attended_answer(Msg, From, State) ->
-    lager:debug("attended_answer: unhandled msg from ~p: ~p", [From, Msg]),
-    {'reply', {'error', 'not_implemented'}, 'attended_answer', State}.
-
-transfer(Msg, State) ->
-    lager:debug("transfer: unhandled msg ~p", [Msg]),
-    {'next_state', 'transfer', State}.
-
-transfer(Msg, From, State) ->
-    lager:debug("transfer: unhandled msg from ~p: ~p", [From, Msg]),
-    {'reply', {'error', 'not_implemented'}, 'transfer', State}.
-
-cancel(Msg, State) ->
-    lager:debug("cancel: unhandled msg ~p", [Msg]),
-    {'next_state', 'cancel', State}.
-
-cancel(Msg, From, State) ->
-    lager:debug("cancel: unhandled msg from ~p: ~p", [From, Msg]),
-    {'reply', {'error', 'not_implemented'}, 'cancel', State}.
+attended_answer(_Msg, _From, State) ->
+    {'next_state', 'attended_answer', State}.
 
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in ~s: ~p", [StateName, _Event]),
@@ -404,7 +387,7 @@ handle_event(_Event, StateName, State) ->
 
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync_event in ~s: ~p", [StateName, _Event]),
-    {'reply', {'error', 'not_implemented'}, StateName, State}.
+    {'next_state', StateName, State}.
 
 handle_info({'amqp_msg', JObj}, StateName, State) ->
     gen_fsm:send_event(self()
@@ -482,7 +465,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                  ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                  ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
                  ,{<<"Application-Name">>, <<"park">>}
-                 ,{<<"Timeout">>, 20000}
+                 ,{<<"Timeout">>, ?DEFAULT_TARGET_TIMEOUT}
 
                  ,{<<"Outbound-Caller-ID-Name">>, caller_id_name(Call, TransferorLeg)}
                  ,{<<"Outbound-Caller-ID-Number">>, caller_id_number(Call, TransferorLeg)}
@@ -551,7 +534,7 @@ handle_transferor_dtmf(Evt, NextState
                                ,transferor_dtmf=DTMFs
                               }=State
                       ) ->
-        Digit = wh_json:get_value(<<"DTMF-Digit">>, Evt),
+    Digit = wh_json:get_value(<<"DTMF-Digit">>, Evt),
     lager:debug("recv transferor dtmf '~s', adding to '~s'", [Digit, DTMFs]),
 
     Collected = <<DTMFs/binary, Digit/binary>>,
