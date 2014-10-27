@@ -215,6 +215,8 @@ registration_update(Context) ->
 
     maybe_flush_registration_on_password(Context, OldDevice, NewDevice).
 
+-spec maybe_flush_registration_on_password(cb_context:context(), wh_json:object(), wh_json:object()) ->
+                                                  'ok'.
 maybe_flush_registration_on_password(Context, OldDevice, NewDevice) ->
     case kz_device:sip_password(OldDevice) =:= kz_device:sip_password(NewDevice) of
         'true' -> maybe_flush_registration_on_username(Context, OldDevice, NewDevice);
@@ -223,6 +225,8 @@ maybe_flush_registration_on_password(Context, OldDevice, NewDevice) ->
             flush_registration(Context, kz_device:sip_username(OldDevice))
     end.
 
+-spec maybe_flush_registration_on_username(cb_context:context(), wh_json:object(), wh_json:object()) ->
+                                                  'ok'.
 maybe_flush_registration_on_username(Context, OldDevice, NewDevice) ->
     case kz_device:sip_username(OldDevice) =:= kz_device:sip_username(NewDevice) of
         'true' -> 'ok';
