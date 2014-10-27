@@ -336,21 +336,25 @@ get_account_realm(Db, AccountId) ->
             'undefined'
     end.
 
--spec flush_registrations(ne_binary()) -> 'ok'.
-flush_registrations(Realm) ->
+-spec flush_registrations(ne_binary() | cb_context:context()) -> 'ok'.
+flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1).
+    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
+flush_registrations(Context) ->
+    flush_registrations(crossbar_util:get_account_realm(Context)).
 
--spec flush_registration(api_binary(), ne_binary()) -> 'ok'.
+-spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
 flush_registration('undefined', _Realm) -> 'ok';
-flush_registration(Username, Realm) ->
+flush_registration(Username, <<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 ,{<<"Username">>, Username}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1).
+    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
+flush_registration(Username, Context) ->
+    flush_registration(Username, get_account_realm(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
