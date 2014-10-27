@@ -37,6 +37,8 @@
 %  LocalDateTime = DateTime()
 %  DstLocalDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
+utc_to_local(UtcDateTime, <<_/binary>> = Timezone) ->
+    utc_to_local(UtcDateTime, binary_to_list(Timezone));
 utc_to_local(UtcDateTime, Timezone) ->
    case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
       false ->
@@ -61,6 +63,10 @@ utc_to_local(UtcDateTime, Timezone) ->
 %  UtcDateTime = DateTime()
 %  DstUtcDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
+local_to_utc(LocalDateTime, <<_/binary>> = Timezone) ->
+    local_to_utc(LocalDateTime, binary_to_list(Timezone));
+local_to_utc(LocalDateTime, "UTC") ->
+    LocalDateTime;
 local_to_utc(LocalDateTime, Timezone) ->
    case lists:keyfind(get_timezone(Timezone), 1, ?tz_database) of
       false ->
@@ -132,6 +138,8 @@ local_to_local_dst(LocalDateTime, TimezoneFrom, TimezoneTo) ->
 %  DstAbbr = String()
 %  DstName = String()
 %  ErrDesc = atom(), unknown_tz
+tz_name(LocalDateTime, <<_/binary>> = Timezone) ->
+    tz_name(LocalDateTime, binary_to_list(Timezone));
 tz_name(_UtcDateTime, "UTC") ->
    {"UTC", "UTC"};
 tz_name(LocalDateTime, Timezone) ->
@@ -162,6 +170,8 @@ tz_name(LocalDateTime, Timezone) ->
 %  Hours = Minutes = Integer(),
 %  {Shift, DstShift} - returns, when shift is ambiguous
 %  ErrDesc = atom(), unknown_tz
+tz_shift(LocalDateTime, <<_/binary>> = Timezone) ->
+    tz_shift(LocalDateTime, binary_to_list(Timezone));
 tz_shift(_UtcDateTime, "UTC") ->
    0;
 tz_shift(LocalDateTime, Timezone) ->
@@ -234,6 +244,8 @@ tr_char([H|T], From, To, Acc) ->
    end.
 
 -define(SPACE_CHAR, 32).
+get_timezone(<<_/binary>> = Timezone) ->
+    binary_to_list(Timezone);
 get_timezone(TimeZone) ->
    TimeZoneNoSpaces = tr_char(TimeZone, ?SPACE_CHAR, $_),
    case dict:find(TimeZoneNoSpaces, ?tz_index)  of
