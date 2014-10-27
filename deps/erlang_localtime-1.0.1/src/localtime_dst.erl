@@ -23,8 +23,6 @@
       check/2
    ]).
 
--compile([export_all]).
-
 
 % check(DateTime, TimeZone) -> is_in_dst | is_not_in_dst | ambiguous_time | time_not_exists
 %  DateTime = DateTime()
