@@ -1,20 +1,18 @@
-PROJECT = erlang-localtime
+PROJECT = erlang_localtime
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
 DIALYZER = dialyzer
 
 EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
-ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps -I$(ROOT)/deps/erlang-localtime-1.0.0/include $(PA)
+ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps -I$(ROOT)/deps/erlang_localtime-1.0.1/include $(PA)
      # +bin_opt_info
 
 DIRS =  .
 
 .PHONY: all compile clean
 
-all: include/tz_index.hrl
-	make compile
+all: include/tz_index.hrl compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 
@@ -39,7 +37,7 @@ compile-test: test/$(PROJECT).app
 
 test/$(PROJECT).app: src/*.erl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS) -DTEST  -o test/ -pa test/  $?
+	erlc -v $(ERLC_OPTS) -DTEST -o test/ -pa test/ $?
 
 clean:
 	rm -f ebin/*
@@ -47,7 +45,7 @@ clean:
 	rm -f erl_crash.dump
 	rm -f include/tz_index.hrl
 
-test: clean compile-test eunit
+test: clean include/tz_index.hrl compile-test eunit
 
 eunit: compile-test
 	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
