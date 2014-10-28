@@ -65,7 +65,8 @@ rebuild_token_auth() ->
 rebuild_token_auth(Pause) ->
     _ = couch_mgr:db_delete(?KZ_TOKEN_DB),
     timer:sleep(wh_util:to_integer(Pause)),
-    refresh(?KZ_TOKEN_DB).
+    refresh(?KZ_TOKEN_DB),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
