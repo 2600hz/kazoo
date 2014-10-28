@@ -12,11 +12,11 @@ DIRS =  .
 
 .PHONY: all compile clean
 
-all: include/tz_index.hrl compile
+all: compile
 
 MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
 
-compile: ebin/$(PROJECT).app
+compile: include/tz_index.hrl ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
 		| sed 's/{modules, \[\]}/{modules, \[$(MODULES)\]}/' \
 		> ebin/$(PROJECT).app
