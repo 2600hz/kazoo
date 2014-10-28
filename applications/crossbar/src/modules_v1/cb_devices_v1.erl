@@ -25,6 +25,7 @@
          ,is_ip_acl_unique/1
          ,get_all_acl_ips/0
          ,lookup_regs/1
+         ,registration_update/1
         ]).
 
 -include("../crossbar.hrl").
@@ -209,11 +210,35 @@ delete(Context, DeviceId) ->
 %%%===================================================================
 -spec registration_update(cb_context:context()) -> 'ok'.
 registration_update(Context) ->
-    Device = cb_context:doc(Context),
-    crossbar_util:flush_registration(
-      wh_json:get_value([<<"sip">>, <<"username">>], Device)
-      ,crossbar_util:get_account_realm(Context)
-     ).
+    OldDevice = cb_context:fetch(Context, 'db_doc'),
+    NewDevice = cb_context:doc(Context),
+
+    maybe_flush_registration_on_password(Context, OldDevice, NewDevice).
+
+-spec maybe_flush_registration_on_password(cb_context:context(), wh_json:object(), wh_json:object()) ->
+                                                  'ok'.
+maybe_flush_registration_on_password(Context, OldDevice, NewDevice) ->
+    case kz_device:sip_password(OldDevice) =:= kz_device:sip_password(NewDevice) of
+        'true' -> maybe_flush_registration_on_username(Context, OldDevice, NewDevice);
+        'false' ->
+            lager:debug("the SIP password has changed, sending a registration flush"),
+            flush_registration(Context, kz_device:sip_username(OldDevice))
+    end.
+
+-spec maybe_flush_registration_on_username(cb_context:context(), wh_json:object(), wh_json:object()) ->
+                                                  'ok'.
+maybe_flush_registration_on_username(Context, OldDevice, NewDevice) ->
+    case kz_device:sip_username(OldDevice) =:= kz_device:sip_username(NewDevice) of
+        'true' -> 'ok';
+        'false' ->
+            lager:debug("the SIP username has changed, sending a registration flush for both"),
+            flush_registration(Context, kz_device:sip_username(OldDevice)),
+            flush_registration(Context, kz_device:sip_username(NewDevice))
+    end.
+
+-spec flush_registration(cb_context:context(), ne_binary()) -> 'ok'.
+flush_registration(Context, Username) ->
+    crossbar_util:flush_registration(Username, crossbar_util:get_account_realm(Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -483,6 +508,7 @@ is_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
     is_creds_locally_unique(AccountDb, Username, DeviceId)
         andalso is_creds_global_unique(Realm, Username, DeviceId).
 
+-spec is_creds_locally_unique(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_creds_locally_unique(AccountDb, Username, DeviceId) ->
     ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Username)}],
     case couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
@@ -492,6 +518,7 @@ is_creds_locally_unique(AccountDb, Username, DeviceId) ->
         _ -> 'false'
     end.
 
+-spec is_creds_global_unique(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_creds_global_unique(Realm, Username, DeviceId) ->
     ViewOptions = [{<<"key">>, [wh_util:to_lower_binary(Realm)
                                 , wh_util:to_lower_binary(Username)
@@ -510,13 +537,16 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 %% Check if the device sip ip is unique
 %% @end
 %%--------------------------------------------------------------------
+-spec is_ip_unique(ne_binary(), ne_binary()) -> boolean().
 is_ip_unique(IP, DeviceId) ->
     is_ip_acl_unique(IP)
         andalso is_ip_sip_auth_unique(IP, DeviceId).
 
+-spec is_ip_acl_unique(ne_binary()) -> boolean().
 is_ip_acl_unique(IP) ->
     lists:all(fun(CIDR) -> not (wh_network_utils:verify_cidr(IP, CIDR)) end, get_all_acl_ips()).
 
+-spec is_ip_sip_auth_unique(ne_binary(), ne_binary()) -> boolean().
 is_ip_sip_auth_unique(IP, DeviceId) ->
     ViewOptions = [{<<"key">>, IP}],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
