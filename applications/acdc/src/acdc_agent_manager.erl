@@ -150,7 +150,7 @@ handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_CREATE">>, JObj), State) ->
     _ = spawn('acdc_agent_handler', 'handle_new_channel', [JObj, AccountId]),
     {'noreply', State};
 handle_info(?HOOK_EVT(_AccountId, _EventName, _JObj), State) ->
-    lager:debug("ignoring ~s for account ~s", [_EventName, _AccountId]),
+    lager:debug("ignoring ~s for account ~s on call ~s", [_EventName, _AccountId, wh_json:get_value(<<"Call-ID">>, _JObj)]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
