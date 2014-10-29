@@ -77,17 +77,21 @@ start_link() ->
                            ).
 
 -spec prompt_path(ne_binary(), ne_binary(), ne_binary()) -> api_binary().
-prompt_path(AccountId, PromptId, Language) ->
+prompt_path(AccountId, PromptId, L) ->
+    Language = wh_util:to_lower_binary(L),
     #media_map{languages=Langs} = get_map(AccountId, PromptId),
     case wh_json:get_first_defined(language_keys(Language), Langs) of
-        'undefined' -> default_prompt_path(PromptId, Language);
+        'undefined' ->
+            lager:debug("failed to find prompt ~s in ~p", [PromptId, language_keys(Language)]),
+            default_prompt_path(PromptId, Language);
         Path -> Path
     end.
 
 -spec default_prompt_path(ne_binary(), ne_binary()) -> api_binary().
 default_prompt_path(PromptId, Language) ->
     #media_map{languages=Langs} = get_map(PromptId),
-    wh_json:get_first_defined(language_keys(Language), Langs).
+    lager:debug("checking default langs ~p", [default_language_keys(Language)]),
+    wh_json:get_first_defined(default_language_keys(Language), Langs).
 
 -spec handle_media_doc(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_media_doc(JObj, _Props) ->
@@ -315,7 +319,9 @@ maybe_add_prompt(_AccountId, _JObj, 'undefined') ->
     lager:debug("no prompt id, ignoring ~s for ~s", [wh_json:get_value(<<"_id">>, _JObj), _AccountId]);
 maybe_add_prompt(AccountId, JObj, PromptId) ->
     lager:debug("add prompt ~s to ~s", [PromptId, AccountId]),
-    Lang = wh_json:get_value(<<"language">>, JObj, wh_media_util:prompt_language(AccountId)),
+    Lang = wh_util:to_lower_binary(
+             wh_json:get_value(<<"language">>, JObj, wh_media_util:prompt_language(AccountId))
+            ),
 
     #media_map{languages=Langs}=Map = get_map(AccountId, PromptId),
 
@@ -392,8 +398,13 @@ load_account_map(AccountId, PromptId) ->
     end,
     get_map(AccountId, PromptId).
 
+-spec default_language_keys(ne_binary()) -> ne_binaries().
 -spec language_keys(ne_binary()) -> ne_binaries().
 -spec language_keys(ne_binary(), ne_binaries()) -> ne_binaries().
+default_language_keys(Language) ->
+    DefaultLanguage = wh_media_util:default_prompt_language(),
+    language_keys(Language) ++ [DefaultLanguage].
+
 language_keys(Language) ->
     language_keys(Language, []).
 
