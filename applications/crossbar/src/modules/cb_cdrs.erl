@@ -208,15 +208,27 @@ create_view_options(OwnerId, Context) ->
 create_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', CreatedTo}
             ,{'endkey', CreatedFrom}
-            ,{'limit', crossbar_doc:pagination_page_size(Context) + 1}
+            ,{'limit', pagination_page_size(Context)}
            ,'descending'
            ]};
 create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [OwnerId, CreatedTo]}
             ,{'endkey', [OwnerId, CreatedFrom]}
-            ,{'limit', crossbar_doc:pagination_page_size(Context) + 1}
+            ,{'limit', pagination_page_size(Context)}
             ,'descending'
            ]}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec pagination_page_size(cb_context:context()) ->pos_integer().
+pagination_page_size(Context) ->
+    case crossbar_doc:pagination_page_size(Context) of
+        'undefined' -> 'undefined';
+        PageSize -> PageSize + 1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
