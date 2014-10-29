@@ -29,6 +29,7 @@ handle(Metaflow, Call) ->
             handle(find_child_metaflow('undefined', Metaflow), Call1);
         {'stop', _Call1} ->
             lager:debug("finished metaflow konami_~s", [M]);
+        'ok' -> 'ok';
         _Other ->
             lager:debug("finished handling metaflow for konami_~s: ~p", [M, _Other])
     catch

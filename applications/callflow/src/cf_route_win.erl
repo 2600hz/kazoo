@@ -185,8 +185,8 @@ bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                 ,fun update_ccvs/1
                 %% all funs above here return whapps_call:call()
-                ,fun maybe_start_metaflow/1
                 ,fun execute_callflow/1
+                ,fun maybe_start_metaflow/1
                ],
     lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
 
@@ -293,7 +293,8 @@ start_metaflow(Call, MetaFlow) ->
 %% cf_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------
--spec execute_callflow(whapps_call:call()) -> {'ok', pid()}.
+-spec execute_callflow(whapps_call:call()) -> whapps_call:call().
 execute_callflow(Call) ->
     lager:info("call has been setup, beginning to process the call"),
-    cf_exe_sup:new(Call).
+    {'ok', _P} = cf_exe_sup:new(Call),
+    Call.

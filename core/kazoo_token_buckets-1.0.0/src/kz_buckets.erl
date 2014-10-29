@@ -353,6 +353,9 @@ new_bucket(Pid, Name) ->
 start_inactivity_timer() ->
     erlang:send_after(?MILLISECONDS_IN_MINUTE, self(), ?INACTIVITY_MSG).
 
+-spec check_for_inactive_buckets() -> 'ok'.
+-spec check_for_inactive_buckets(wh_now(), pos_integer(), api_binary() | '$end_of_table') -> 'ok'.
+
 check_for_inactive_buckets() ->
     wh_util:put_callid(?MODULE),
     Now = os:timestamp(),
@@ -363,14 +366,23 @@ check_for_inactive_buckets(_Now, _InactivityTimeout, '$end_of_table') -> 'ok';
 check_for_inactive_buckets(Now, InactivityTimeout, Key) ->
     case get_bucket(Key, 'record') of
         'undefined' -> 'ok';
-        #bucket{accessed=Accessed
-                ,srv=Srv
-               } ->
-            case wh_util:elapsed_ms(Accessed, Now) > InactivityTimeout of
-                'false' -> 'ok';
-                'true' ->
-                    lager:debug("bucket ~s(~p) hasn't been accessed recently, stopping", [Key, Srv]),
-                    kz_token_bucket:stop(Srv)
-            end
+        Bucket ->
+            maybe_stop_bucket(Now, InactivityTimeout, Bucket)
     end,
     check_for_inactive_buckets(Now, InactivityTimeout, ets:next(table_id(), Key)).
+
+-spec maybe_stop_bucket(wh_now(), pos_integer(), bucket()) -> 'ok'.
+maybe_stop_bucket(Now
+                  ,InactivityTimeout
+                  ,#bucket{accessed=Accessed
+                           ,srv=Srv
+                           ,key=Key
+                          }
+                 ) ->
+    case wh_util:elapsed_ms(Accessed, Now) > InactivityTimeout of
+        'false' -> 'ok';
+        'true' ->
+            lager:debug("bucket ~s(~p) hasn't been accessed recently, stopping", [Key, Srv]),
+            kz_token_bucket:stop(Srv),
+            'ok'
+    end.

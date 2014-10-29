@@ -414,7 +414,7 @@ is_call(_) -> 'false'.
 
 -spec exec(exec_funs(), call()) -> call().
 exec(Funs, #whapps_call{}=Call) ->
-    lists:foldr(fun exec_fold/2, Call, Funs).
+    lists:foldl(fun exec_fold/2, Call, Funs).
 
 -spec exec_fold(exec_fun(), call()) -> call().
 exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
