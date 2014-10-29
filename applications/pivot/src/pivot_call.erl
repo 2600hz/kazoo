@@ -425,7 +425,7 @@ send_req(Call, Uri, Method, BaseParams, Debug) when not is_list(BaseParams) ->
     send_req(Call, Uri, Method, wh_json:to_proplist(BaseParams), Debug);
 send_req(Call, Uri, 'get', BaseParams, Debug) ->
     UserParams = kzt_translator:get_user_vars(Call),
-    Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
+    Params = wh_json:set_values(BaseParams, UserParams),
     UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
     send(UpdatedCall, uri(Uri, wh_json:to_querystring(Params)), 'get', [], [], Debug);
 send_req(Call, Uri, 'post', BaseParams, Debug) ->
