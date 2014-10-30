@@ -97,7 +97,7 @@ maybe_update_oauth_doc(DocId, JObj, TokenObj, App, AuthObj) ->
     end.
 
 load_profile(#oauth_app{provider=#oauth_provider{profile_url=ProfileURL}}, JObj, TokenObj, AuthDoc) ->
-    TokenType = wh_json:get_value(<<"token_type">>, JObj),
+    TokenType = wh_json:get_value(<<"token_type">>, JObj, <<"Bearer">>),
     AccessToken = wh_json:get_value(<<"access_token">>, JObj),
     Authorization = <<TokenType/binary, " ",AccessToken/binary>>,
     Headers = [{"Authorization",wh_util:to_list(Authorization)}],
