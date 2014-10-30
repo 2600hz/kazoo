@@ -17,7 +17,7 @@
 
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
                     ,<<"Rate-Minimum">>, <<"Surcharge">>
-                    ,<<"Rate-Name">>, <<"Base-Cost">>
+                    ,<<"Rate-Name">>, <<"Base-Cost">>, <<"Pvt-Cost">>
                     ,<<"Discount-Percentage">>, <<"Rate-NoCharge-Time">>
                    ]).
 
