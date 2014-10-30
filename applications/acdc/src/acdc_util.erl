@@ -23,6 +23,15 @@
 
 -include("acdc.hrl").
 
+-define(CALL_EVENT_RESTRICTIONS, ['CHANNEL_CREATE'
+                                  ,'CHANNEL_ANSWER'
+                                  ,'CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE'
+                                  ,'LEG_CREATED', 'LEG_DESTROYED'
+                                  ,'CHANNEL_DESTROY'
+                                  ,'DTMF'
+                                  ,'CHANNEL_EXECUTE_COMPLETE'
+                                 ]).
+
 -spec queue_presence_update(ne_binary(), ne_binary()) -> 'ok'.
 queue_presence_update(AcctId, QueueId) ->
     case wapi_acdc_queue:queue_size(AcctId, QueueId) of
@@ -103,14 +112,7 @@ bind_to_call_events(Call) ->
 bind_to_call_events('undefined', _) -> 'ok';
 bind_to_call_events(?NE_BINARY = CallId, Pid) ->
     gen_listener:add_binding(Pid, 'call', [{'callid', CallId}
-                                           ,{'restrict_to', ['CHANNEL_CREATE'
-                                                             ,'CHANNEL_ANSWER'
-                                                             ,'CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE'
-                                                             ,'LEG_CREATED', 'LEG_DESTROYED'
-                                                             ,'CHANNEL_DESTROY'
-                                                             ,'DTMF'
-                                                             ,'CHANNEL_EXECUTE_COMPLETE'
-                                                            ]}
+                                           ,{'restrict_to', ?CALL_EVENT_RESTRICTIONS}
                                           ]);
 bind_to_call_events({CallId, _}, Pid) -> bind_to_call_events(CallId, Pid);
 bind_to_call_events(Call, Pid) -> bind_to_call_events(whapps_call:call_id(Call), Pid).
@@ -120,9 +122,11 @@ unbind_from_call_events(Call) ->
     unbind_from_call_events(Call, self()).
 
 -spec unbind_from_call_events(api_binary() | {api_binary(), _} | whapps_call:call(), pid()) -> 'ok'.
-unbind_from_call_events('undefined', _) -> 'ok';
+unbind_from_call_events('undefined', _Pid) -> 'ok';
 unbind_from_call_events(?NE_BINARY = CallId, Pid) ->
-    gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}]);
+    gen_listener:rm_binding(Pid, 'call', [{'callid', CallId}
+                                          ,{'restrict_to', ?CALL_EVENT_RESTRICTIONS}
+                                         ]);
 unbind_from_call_events({CallId, _}, Pid) -> unbind_from_call_events(CallId, Pid);
 unbind_from_call_events(Call, Pid) -> unbind_from_call_events(whapps_call:call_id(Call), Pid).
 

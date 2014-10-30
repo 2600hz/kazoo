@@ -193,7 +193,8 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{deliveries=Ds}) ->
+    _ = [catch amqp_util:basic_nack(Delivery) || Delivery <- Ds],
     lager:debug("acdc_queue_shared terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
