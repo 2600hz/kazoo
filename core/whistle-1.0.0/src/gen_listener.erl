@@ -299,7 +299,7 @@ rm_binding(Srv, {Binding, Props}) ->
 
 -spec rm_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 rm_binding(Srv, Binding, Props) ->
-    gen_server:cast(Srv, {'rm_binding', Binding, Props}).
+    gen_server:cast(Srv, {'rm_binding', wh_util:to_binary(Binding), Props}).
 
 -spec federated_event(server_ref(), wh_json:object(), basic_deliver()) -> 'ok'.
 federated_event(Srv, JObj, BasicDeliver) ->
@@ -835,7 +835,7 @@ start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 -spec remove_binding(binding_module(), wh_proplist(), api_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
-
+lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
     try (wh_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
         Return -> Return
     catch

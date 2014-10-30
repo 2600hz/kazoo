@@ -50,7 +50,7 @@
 
 -record(state, {
           ignored_member_calls = dict:new() :: dict()
-          ,acct_id :: api_binary()
+          ,account_id :: api_binary()
           ,queue_id :: api_binary()
           ,supervisor :: pid()
           ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
@@ -237,7 +237,10 @@ should_ignore_member_call(Srv, Call, AccountId, QueueId) ->
     gen_listener:call(Srv, {'should_ignore_member_call', K}).
 
 config(Srv) -> gen_listener:call(Srv, 'config').
+
+-spec current_agents(server_ref()) -> ne_binaries().
 current_agents(Srv) -> gen_listener:call(Srv, 'current_agents').
+
 status(Srv) -> gen_listener:call(Srv, 'status').
 
 refresh(Mgr, QueueJObj) -> gen_listener:cast(Mgr, {'refresh', QueueJObj}).
@@ -295,7 +298,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
     _ = update_strategy_state(self(), Strategy, StrategyState),
 
     lager:debug("queue mgr started for ~s", [QueueId]),
-    {'ok', update_properties(QueueJObj, #state{acct_id=AccountId
+    {'ok', update_properties(QueueJObj, #state{account_id=AccountId
                                                ,queue_id=QueueId
                                                ,supervisor=Super
                                                ,strategy=Strategy
@@ -322,7 +325,7 @@ handle_call({'should_ignore_member_call', K}, _, #state{ignored_member_calls=Dic
         _Res -> {'reply', 'true', State#state{ignored_member_calls=dict:erase(K, Dict)}}
     end;
 
-handle_call('config', _, #state{acct_id=AccountId
+handle_call('config', _, #state{account_id=AccountId
                                 ,queue_id=QueueId
                                }=State) ->
     {'reply', {AccountId, QueueId}, State};
@@ -401,7 +404,7 @@ handle_cast({'monitor_call', Call}, State) ->
                                              ]),
     lager:debug("bound for call events for ~s", [whapps_call:call_id(Call)]),
     {'noreply', State};
-handle_cast({'start_workers'}, #state{acct_id=AccountId
+handle_cast({'start_workers'}, #state{account_id=AccountId
                                       ,queue_id=QueueId
                                       ,supervisor=QueueSup
                                      }=State) ->
@@ -428,7 +431,7 @@ handle_cast({'start_workers'}, #state{acct_id=AccountId
 
 handle_cast({'start_worker'}, State) ->
     handle_cast({'start_worker', 1}, State);
-handle_cast({'start_worker', N}, #state{acct_id=AccountId
+handle_cast({'start_worker', N}, #state{account_id=AccountId
                                         ,queue_id=QueueId
                                         ,supervisor=QueueSup
                                        }=State) ->
@@ -477,7 +480,7 @@ handle_cast({'agent_unavailable', AgentId}, #state{strategy=Strategy
 handle_cast({'agent_unavailable', JObj}, State) ->
     handle_cast({'agent_unavailable', wh_json:get_value(<<"Agent-ID">>, JObj)}, State);
 
-handle_cast({'reject_member_call', Call, JObj}, #state{acct_id=AccountId
+handle_cast({'reject_member_call', Call, JObj}, #state{account_id=AccountId
                                                        ,queue_id=QueueId
                                                       }=State) ->
     Prop = [{<<"Call-ID">>, whapps_call:call_id(Call)}
@@ -490,7 +493,7 @@ handle_cast({'reject_member_call', Call, JObj}, #state{acct_id=AccountId
     catch wapi_acdc_queue:publish_member_call_failure(Q, Prop),
     {'noreply', State};
 
-handle_cast({'sync_with_agent', A}, #state{acct_id=AccountId}=State) ->
+handle_cast({'sync_with_agent', A}, #state{account_id=AccountId}=State) ->
     case acdc_agent_util:most_recent_status(AccountId, A) of
         {'ok', <<"logout">>} -> gen_listener:cast(self(), {'agent_unavailable', A});
         _ -> gen_listener:cast(self(), {'agent_available', A})
