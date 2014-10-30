@@ -113,9 +113,30 @@ attended_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
     lager:debug("transferor and target are on their own"),
     {'stop', 'normal', State};
 attended_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
-              ,#state{transferor=Transferor}=State
+              ,#state{transferor=Transferor
+                      ,target=Target
+                      ,target_call=TargetCall
+                      ,transferee=Transferee
+                      ,target_b_legs=[B]
+                     }=State
              ) ->
-    lager:debug("transferor ~s hungup, going to a partial transfer", [Transferor]),
+    lager:debug("transferor ~s hungup, connecting transferee ~s and target ~s (~s)"
+                ,[Transferor, Transferee, Target, B]
+               ),
+    connect_to_target(Transferee, whapps_call:set_call_id(TargetCall, B)),
+    {'next_state', 'partial_wait', State};
+attended_wait(?EVENT(Transferor, <<"LEG_DESTROYED">>, _Evt)
+              ,#state{transferor=Transferor
+                      ,target=Target
+                      ,target_call=TargetCall
+                      ,transferee=Transferee
+                      ,target_b_legs=[B]
+                     }=State
+             ) ->
+    lager:debug("transferor ~s hungup, connecting transferee ~s and target ~s (~s)"
+                ,[Transferor, Transferee, Target, B]
+               ),
+    connect_to_target(Transferee, whapps_call:set_call_id(TargetCall, B)),
     {'next_state', 'partial_wait', State};
 attended_wait(?EVENT(Target, <<"LEG_CREATED">>, Evt)
               ,#state{target=Target
@@ -169,7 +190,6 @@ attended_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
               ,#state{transferor=Transferor
                       ,target=Target
                       ,target_call=TargetCall
-                      ,target_b_legs=[_B]
                      }=State
              ) ->
     lager:debug("target ~s has answered, connect to transferor ~s", [Target, Transferor]),
@@ -250,30 +270,20 @@ partial_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
     whapps_call_command:hangup(TargetCall),
     {'stop', 'normal', State};
 partial_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
-             ,#state{transferor=Transferor
-                     ,transferee=Transferee
-                     ,target=Target
-                     ,target_call=TargetCall
-                     ,target_b_legs=[B]
-                    }=State
+             ,#state{transferor=Transferor}=State
             ) ->
-    lager:debug("transferor ~s hungup, connected transferee ~s and target ~s (~s)"
-                ,[Transferor, Transferee, Target, B]
-               ),
-    connect_to_target(Transferee, whapps_call:set_call_id(TargetCall, B)),
-    {'next_state', 'finished', State};
+    lager:debug("transferor ~s hungup, still waiting on target and transferee", [Transferor]),
+    {'next_state', 'partial_wait', State};
 partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{target=Target
                      ,target_b_legs=[]
                      ,transferor=_Transferor
                      ,transferee=_Transferee
-                     ,call=Call
                     }=State
             ) ->
-    lager:debug("target ~s hungup, reconnecting transferor ~s to transferee ~s"
+    lager:debug("target ~s hungup, sorry transferee"
                 ,[Target, _Transferor, _Transferee]
                ),
-    connect_to_target(Call),
     {'stop', 'normal', State};
 partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{target=Target
@@ -439,10 +449,13 @@ finished(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
     lager:debug("transferor ~s has hungup", [Transferor]),
     {'next_state', 'finished', State};
 finished(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
-         ,#state{transferee=Transferee}=State
+         ,#state{transferee=Transferee
+                 ,target_call=TargetCall
+                }=State
         ) ->
     lager:debug("transferee ~s has hungup", [Transferee]),
-    {'next_state', 'finished', State};
+    whapps_call_command:hangup(TargetCall),
+    {'next_state', 'finished', State, 5000};
 finished(?EVENT(CallId, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{target_b_legs=[]}=State
         ) ->
