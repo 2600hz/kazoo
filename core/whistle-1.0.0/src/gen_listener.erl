@@ -931,7 +931,7 @@ start_new_listeners(Brokers, Binding, Props, State) ->
 start_new_listener(Broker, Binding, Props, #state{params=Ps}) ->
     FederateParams = create_federated_params({Binding, Props}, Ps),
     {'ok', Pid} = listener_federator:start_link(self(), Broker, FederateParams),
-    lager:debug("started federated listener for ~s: ~p", [Broker, Pid]),
+    lager:debug("started federated listener on broker ~s: ~p", [Broker, Pid]),
     {Broker, Pid}.
 
 -spec update_existing_listeners_bindings(federator_listeners(), binding(), wh_proplist()) -> 'ok'.
@@ -946,10 +946,10 @@ update_existing_listener_bindings({_Broker, Pid}, Binding, Props) ->
     lager:debug("updating listener ~p with ~s", [Pid, Binding]),
     gen_listener:add_binding(Pid, Binding, Props).
 
--spec create_federated_params(wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec create_federated_params({binding(), wh_proplist()}, wh_proplist()) -> wh_proplist().
 create_federated_params(FederateBindings, Params) ->
     [{'responders', []}
-     ,{'bindings', FederateBindings}
+     ,{'bindings', [FederateBindings]}
      ,{'queue_name', federated_queue_name(Params)}
      ,{'queue_options', props:get_value('queue_options', Params, [])}
      ,{'consume_options', props:get_value('consume_options', Params, [])}
