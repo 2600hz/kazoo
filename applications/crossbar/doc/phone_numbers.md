@@ -2,6 +2,7 @@
 Section: Crossbar
 Title: Phone Numbers
 Language: en-US
+Version: 3.18
 */
 
 # Phone Numbers
@@ -20,18 +21,16 @@ This API check if the numbers are still available for purchase.
 - Verb: `POST`
 - Url: `/accounts/ACCOUNT_ID/phone_numbers/check`
 - Payload:
-```
-{
-    "data": {
-        "numbers": [
-            "+14159383408",
-            "+14156715576"
-        ]
-    }
-}
-```
+        {"data": {
+             "numbers": [
+                 "+14159383408",
+                 "+14156715576"
+             ]
+         }
+        }
 
 ### Response
+
 ```
 {
     "data": {
@@ -44,3 +43,7 @@ This API check if the numbers are still available for purchase.
     "auth_token": "7797206dda2166f139b18eee58e64c79"
 }
 ```
+
+### _GET_ Classifier for a number
+
+    curl -X GET -H "Content-Type: application/json" http://crossbar:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONE_NUMBER}
