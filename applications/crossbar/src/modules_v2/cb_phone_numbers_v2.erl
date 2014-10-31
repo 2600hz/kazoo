@@ -314,6 +314,8 @@ validate_collection(Context, ?HTTP_DELETE) ->
 
 validate(Context, ?COLLECTION, ?ACTIVATE) ->
     validate_request(Context);
+validate(Context, ?CLASSIFIERS, Number) ->
+    classify_number(Context, Number);
 validate(Context, _Number, ?ACTIVATE) ->
     case has_tokens(Context) of
         'true' -> validate_request(Context);
@@ -327,6 +329,44 @@ validate(Context, Number, ?PORT_DOCS) ->
     list_attachments(Number, Context);
 validate(Context, Number, ?IDENTIFY) ->
     identify(Context, Number).
+
+-spec classify_number(cb_context:context(), path_token()) -> cb_context:context().
+classify_number(Context, Number) ->
+    case wnm_util:classify_number(Number) of
+        'undefined' ->
+            unclassified_number(Context, Number);
+        Classifier ->
+            classified_number(Context, Number, Classifier)
+    end.
+
+-spec unclassified_number(cb_context:context(), path_token()) -> cb_context:context().
+unclassified_number(Context, Number) ->
+    RespData = base_classified_number(Context, Number),
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_data/2, wh_json:from_list(RespData)}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                        ]).
+
+-spec base_classified_number(cb_context:context(), ne_binary()) -> wh_proplist().
+base_classified_number(_Context, Number) ->
+    Normalized = wnm_util:normalize_number(Number),
+    [{<<"number">>, Number}
+     ,{<<"e164">>, Normalized}
+    ].
+
+-spec classified_number(cb_context:context(), path_token(), api_binary()) -> cb_context:context().
+classified_number(Context, Number, Classifier) ->
+    ClassifierJObj = wh_json:get_value(Classifier, wnm_util:available_classifiers()),
+    BaseData = base_classified_number(Context, Number),
+    RespData = wh_json:set_values([{<<"name">>, Classifier}
+                                   | BaseData
+                                  ]
+                                  ,ClassifierJObj
+                                 ),
+    cb_context:setters(Context
+                       ,[{fun cb_context:set_resp_data/2, RespData}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                        ]).
 
 validate(Context, Number, ?PORT_DOCS, Name) ->
     validate_port_docs(Context, Number, Name, cb_context:req_verb(Context)).

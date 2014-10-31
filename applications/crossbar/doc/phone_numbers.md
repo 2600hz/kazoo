@@ -21,6 +21,7 @@ This API check if the numbers are still available for purchase.
 - Verb: `POST`
 - Url: `/accounts/ACCOUNT_ID/phone_numbers/check`
 - Payload:
+
         {"data": {
              "numbers": [
                  "+14159383408",
@@ -46,4 +47,17 @@ This API check if the numbers are still available for purchase.
 
 ### _GET_ Classifier for a number
 
-    curl -X GET -H "Content-Type: application/json" http://crossbar:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONE_NUMBER}
+    curl -X GET -H "Content-Type: application/json" http://crossbar:8000/v2/phone_numbers/classifiers/4158867900
+    {"auth_token": "{AUTH_TOKEN}"
+     ,"data": {
+         "e164": "+14158867900"
+         ,"friendly_name": "US DID"
+         ,"name": "did_us"
+         ,"number": "4158867900"
+         ,"pretty_print": "SS(###) ### - ####"
+         ,"regex": "^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$"
+     }
+     ,"request_id": {REQUEST_ID}
+     ,"revision": "undefined"
+     ,"status": "success"
+    }
