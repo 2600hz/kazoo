@@ -109,13 +109,13 @@ handle_subscribe(JObj, _Props) ->
     case wh_json:get_value(<<"Node">>, JObj) =:= wh_util:to_binary(node()) of
         'true' -> 'ok';
         'false' ->
-            gen_listener:call(?MODULE, {'subscribe', subscribe_to_record(JObj)})
+            gen_server:call(?MODULE, {'subscribe', subscribe_to_record(JObj)})
     end.
 
 -spec handle_kamailio_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_kamailio_subscribe(JObj, _Props) ->
     'true' = wapi_omnipresence:subscribe_v(JObj),
-    case gen_listener:call(?MODULE, {'subscribe', JObj}) of
+    case gen_server:call(?MODULE, {'subscribe', JObj}) of
         'invalid' -> 'ok';
         {'unsubscribe', _} ->
             distribute_subscribe(JObj);
@@ -229,9 +229,10 @@ handle_call({'subscribe', #omnip_subscription{}=Sub}, _From, State) ->
     {'reply', SubscribeResult, State};
 handle_call({'subscribe', Props}, _From, State) when is_list(Props) ->
     handle_call({'subscribe', wh_json:from_list(Props)}, _From, State);
-handle_call({'subscribe', Props}, _From, State) ->
-    handle_call({'subscribe', subscribe_to_record(Props)}, _From, State);
+handle_call({'subscribe', JObj}, _From, State) ->
+    handle_call({'subscribe', subscribe_to_record(JObj)}, _From, State);
 handle_call(_Request, _From, State) ->
+    lager:debug("omnipresence subscriptions unhandled call : ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
