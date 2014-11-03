@@ -47,7 +47,7 @@ start() {
 
 stop() {
     echo -n $"Stopping $KZ_APP: "
-    pkill -f "\-s ${KZ_APP}"
+    pkill -f "\-name ${KZ_APP}"
     RETVAL=$?
     [ $RETVAL -eq 0 ] && rm ${LOCKFILE}
     echo
