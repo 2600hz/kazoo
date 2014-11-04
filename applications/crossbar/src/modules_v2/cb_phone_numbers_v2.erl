@@ -274,6 +274,8 @@ port_types_accepted(Context,  _Verb) ->
 validate(Context) ->
     validate_phone_numbers(Context, cb_context:req_verb(Context), cb_context:account_id(Context)).
 
+-spec validate_phone_numbers(cb_context:context(), http_method(), api_binary()) ->
+                                    cb_context:context().
 validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
     find_numbers(Context);
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
