@@ -47,6 +47,7 @@
          ,strip_binary/1, strip_binary/2
          ,strip_left_binary/2, strip_right_binary/2
          ,suffix_binary/2
+         ,clean_binary/1, clean_binary/2
         ]).
 
 -export([uri_encode/1
@@ -887,6 +888,14 @@ suffix_binary(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
     catch
         _:_ -> 'false'
     end.
+
+-spec clean_binary(binary()) -> binary().
+-spec clean_binary(binary(), wh_proplist()) -> binary().
+clean_binary(Bin) ->
+    clean_binary(Bin, []).
+
+clean_binary(Bin, _Opts) ->
+    binary:replace(Bin, <<" ">>, <<>>, [global]).
 
 -spec binary_md5(text()) -> ne_binary().
 binary_md5(Text) -> to_hex_binary(erlang:md5(to_binary(Text))).
