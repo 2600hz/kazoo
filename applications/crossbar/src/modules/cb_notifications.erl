@@ -268,6 +268,7 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_read(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_read(Context, Id) ->
     case props:get_value(<<"accept">>, cb_context:req_headers(Context)) of
         'undefined' -> read(Context, Id);
