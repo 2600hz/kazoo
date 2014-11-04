@@ -22,7 +22,7 @@
          ,put/1
          ,post/2
          ,delete/2
-         ,is_ip_acl_unique/1
+         ,is_ip_acl_unique/2
          ,get_all_acl_ips/0
          ,lookup_regs/1
          ,registration_update/1
@@ -545,12 +545,23 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 %%--------------------------------------------------------------------
 -spec is_ip_unique(ne_binary(), ne_binary()) -> boolean().
 is_ip_unique(IP, DeviceId) ->
-    is_ip_acl_unique(IP)
+    is_ip_acl_unique(IP, DeviceId)
         andalso is_ip_sip_auth_unique(IP, DeviceId).
 
--spec is_ip_acl_unique(ne_binary()) -> boolean().
-is_ip_acl_unique(IP) ->
-    lists:all(fun(CIDR) -> not (wh_network_utils:verify_cidr(IP, CIDR)) end, get_all_acl_ips()).
+-spec is_ip_acl_unique(ne_binary(), ne_binary()) -> boolean().
+is_ip_acl_unique(IP, DeviceId) ->
+    lists:all(
+        fun(JObj) ->
+            CIDR = wh_json:get_value(<<"ip">>, JObj),
+            AuthorizingId = wh_json:get_value(<<"authorizing_id">>, JObj),
+            case AuthorizingId =:= DeviceId of
+                'true' -> 'true';
+                'false' ->
+                    not (wh_network_utils:verify_cidr(IP, CIDR))
+            end
+        end
+        ,get_all_acl_ips()
+    ).
 
 -spec is_ip_sip_auth_unique(ne_binary(), ne_binary()) -> boolean().
 is_ip_sip_auth_unique(IP, DeviceId) ->
@@ -636,9 +647,21 @@ get_all_acl_ips() ->
 
 -spec extract_all_ips(wh_json:object()) -> ne_binaries().
 extract_all_ips(JObj) ->
-    lists:foldr(fun(K, IPs) ->
-                        case wh_json:get_value([K, <<"cidr">>], JObj) of
-                            'undefined' -> IPs;
-                            CIDR -> [CIDR|IPs]
-                        end
-                end, [], wh_json:get_keys(JObj)).
+    lists:foldr(
+        fun(Key, IPs) ->
+            case wh_json:get_value([Key, <<"cidr">>], JObj) of
+                'undefined' -> IPs;
+                CIDR ->
+                    [wh_json:from_list([
+                        {<<"ip">>, CIDR}
+                        ,{<<"authorizing_id">>, wh_json:get_value([Key, <<"authorizing_id">>], JObj)}
+                     ])|IPs]
+            end
+        end
+        ,[]
+        ,wh_json:get_keys(JObj)
+    ).
+
+
+
+
