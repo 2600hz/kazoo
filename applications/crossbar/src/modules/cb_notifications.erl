@@ -128,13 +128,7 @@ content_types_provided(Context, Id, ?HTTP_GET) ->
                 'undefined' -> Context;
                 Attachments ->
                     ContentTypes =
-                        wh_json:foldl(fun(_Name, Attachment, Acc) ->
-                                         [list_to_tuple(
-                                            binary:split(wh_json:get_value(<<"content_type">>, Attachment), <<"/">>)
-                                           )
-                                          | Acc
-                                         ]
-                                      end, [], Attachments),
+                        content_types_from_attachments(Attachments),
                     cb_context:set_content_types_provided(Context, [{'to_binary', ContentTypes}
                                                                     ,{'to_json', ?JSON_CONTENT_TYPES}
                                                                    ])
@@ -143,6 +137,23 @@ content_types_provided(Context, Id, ?HTTP_GET) ->
     end;
 content_types_provided(Context, _Id, _Verb) ->
     Context.
+
+-spec content_types_from_attachments(wh_json:object()) -> wh_proplist().
+content_types_from_attachments(Attachments) ->
+    wh_json:foldl(fun content_type_from_attachment/3, [], Attachments).
+
+-spec content_type_from_attachment(wh_json:key(), wh_json:object(), wh_proplist()) ->
+                                          wh_proplist().
+content_type_from_attachment(_Name, Attachment, Acc) ->
+    case wh_json:get_value(<<"content_type">>, Attachment) of
+        'undefined' -> Acc;
+        ContentType ->
+            [list_to_tuple(
+               binary:split(ContentType, <<"/">>)
+              )
+             | Acc
+            ]
+    end.
 
 -spec content_types_accepted_for_upload(cb_context:context(), http_method()) ->
                                                cb_context:context().
@@ -262,7 +273,10 @@ maybe_read(Context, Id) ->
         'undefined' -> read(Context, Id);
         <<"application/json">> -> read(Context, Id);
         <<"application/x-json">> -> read(Context, Id);
-        Accept -> maybe_read_template(read(Context, Id), Id, Accept)
+        <<"*/*">> -> read(Context, Id);
+        Accept ->
+            lager:debug("accepts: ~s", [Accept]),
+            maybe_read_template(read(Context, Id), Id, Accept)
     end.
 
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
