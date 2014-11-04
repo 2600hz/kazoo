@@ -67,6 +67,8 @@
 
 -export([descendants_count/0, descendants_count/1]).
 
+-export([format_emergency_caller_id_number/1]).
+
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE
@@ -889,6 +891,30 @@ descendants_count(Opts) when is_list(Opts) ->
 descendants_count(Account) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     descendants_count([{'key', AccountId}]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec format_emergency_caller_id_number(cb_context:context()) -> cb_context:context().
+format_emergency_caller_id_number(Context) ->
+    case cb_context:req_value(Context, [<<"caller_id">>, <<"emergency">>]) of
+        'undefined' -> Context;
+        Emergency ->
+            case wh_json:get_value(<<"number">>, Emergency) of
+                'undefined' -> Context;
+                Number ->
+                    NEmergency = wh_json:set_value(<<"number">>, wnm_util:to_e164(Number), Emergency),
+                    CallerId = cb_context:req_value(Context, <<"caller_id">>),
+                    NCallerId = wh_json:set_value(<<"emergency">>, NEmergency, CallerId),
+                    cb_context:set_req_data(
+                        Context
+                        ,wh_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
+                    )
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
