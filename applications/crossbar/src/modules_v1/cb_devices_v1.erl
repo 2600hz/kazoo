@@ -331,6 +331,7 @@ prepare_device_realm(DeviceId, Context) ->
             validate_device_creds(Realm, DeviceId, cb_context:store(Context, 'aggregate_device', 'true'))
     end.
 
+
 -spec validate_device_creds(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 validate_device_creds(Realm, DeviceId, Context) ->
     case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
@@ -344,21 +345,21 @@ validate_device_creds(Realm, DeviceId, Context) ->
                                                ,<<"SIP authentication method is invalid">>
                                                ,Context
                                                ),
-            check_device_schema(DeviceId, C)
+            check_emergency_caller_id(DeviceId, C)
     end.
 
 -spec validate_device_password(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 validate_device_password(Realm, DeviceId, Context) ->
     Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
     case is_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
-        'true' -> check_device_schema(DeviceId, Context);
+        'true' -> check_emergency_caller_id(DeviceId, Context);
         'false' ->
             C = cb_context:add_validation_error([<<"sip">>, <<"username">>]
                                                 ,<<"unique">>
                                                 ,<<"SIP credentials already in use">>
                                                 ,Context
                                                ),
-            check_device_schema(DeviceId, C)
+            check_emergency_caller_id(DeviceId, C)
     end.
 
 -spec validate_device_ip(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
@@ -371,20 +372,25 @@ validate_device_ip(IP, DeviceId, Context) ->
                                                 ,<<"Must be a valid IPv4 RFC 791">>
                                                 ,Context
                                                ),
-            check_device_schema(DeviceId, C)
+            check_emergency_caller_id(DeviceId, C)
     end.
 
 validate_device_ip_unique(IP, DeviceId, Context) ->
     case is_ip_unique(IP, DeviceId) of
         'true' ->
-            check_device_schema(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
+            check_emergency_caller_id(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
         'false' ->
             C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
                                                 ,<<"unique">>
                                                 ,<<"SIP IP already in use">>
                                                 ,Context),
-            check_device_schema(DeviceId, C)
+            check_emergency_caller_id(DeviceId, C)
     end.
+
+-spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
+check_emergency_caller_id(DeviceId, Context) ->
+    Context1 = crossbar_util:format_emergency_caller_id_number(Context),
+    check_device_schema(DeviceId, Context1).
 
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,

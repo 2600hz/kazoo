@@ -293,7 +293,7 @@ check_user_name(UserId, Context) ->
     case is_username_unique(AccountDb, UserId, UserName) of
         'true' ->
             lager:debug("username ~p is unique", [UserName]),
-            check_user_schema(UserId, Context);
+            check_emergency_caller_id(UserId, Context);
         'false' ->
             Context1 =
                 cb_context:add_validation_error(
@@ -303,8 +303,13 @@ check_user_name(UserId, Context) ->
                     ,Context
                 ),
             lager:error("username ~p is already used", [UserName]),
-            check_user_schema(UserId, Context1)
+            check_emergency_caller_id(UserId, Context1)
     end.
+
+-spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
+check_emergency_caller_id(UserId, Context) ->
+    Context1 = crossbar_util:format_emergency_caller_id_number(Context),
+    check_user_schema(UserId, Context1).
 
 -spec is_username_unique(api_binary(), ne_binary(), ne_binary()) -> boolean().
 is_username_unique(AccountDb, UserId, UserName) ->
