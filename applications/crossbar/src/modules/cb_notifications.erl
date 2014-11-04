@@ -58,6 +58,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context(), ne_binary(), req_nouns()) -> boolean().
 authorize(Context) ->
     authorize(Context, cb_context:auth_account_id(Context), cb_context:req_nouns(Context)).
 
