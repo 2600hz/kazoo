@@ -596,9 +596,9 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
                              ,services=Services
                              ,activations=ActivationCharges
                             }) ->
-                            {'dry_run', [{'services', Services}
-                                         ,{'activation_charges', ActivationCharges}
-                                        ]};
+                         {'dry_run', [{'services', Services}
+                                      ,{'activation_charges', ActivationCharges}
+                                     ]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("reserve successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
@@ -893,9 +893,9 @@ set_public_fields(Number, PublicFields, AuthBy, DryRun) ->
                              ,services=Services
                              ,activations=ActivationCharges
                             }) ->
-                            {'dry_run', [{'services', Services}
-                                         ,{'activation_charges', ActivationCharges}
-                                        ]};
+                         {'dry_run', [{'services', Services}
+                                      ,{'activation_charges', ActivationCharges}
+                                     ]};
                     (#number{number_doc=JObj}) ->
                          lager:debug("set public fields successfully completed"),
                          {'ok', wh_json:public_fields(JObj)}
