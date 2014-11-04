@@ -39,7 +39,6 @@
 -define(AGG_VIEW_NAME, <<"accounts/listing_by_name">>).
 
 -define(PVT_TYPE, <<"account">>).
--define(CHANNELS, <<"channels">>).
 -define(CHILDREN, <<"children">>).
 -define(DESCENDANTS, <<"descendants">>).
 -define(SIBLINGS, <<"siblings">>).
@@ -93,7 +92,6 @@ allowed_methods(_, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
               ,?SIBLINGS
-              ,?CHANNELS
               ,?API_KEY
              ],
     case lists:member(Path, Paths) of
@@ -119,7 +117,6 @@ resource_exists(_, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
               ,?SIBLINGS
-              ,?CHANNELS
               ,?API_KEY
              ],
     lists:member(Path, Paths).
@@ -169,8 +166,6 @@ validate(Context, AccountId, PathToken) ->
 
 -spec validate_account_path(cb_context:context(), ne_binary(), ne_binary(), http_method()) ->
                                    cb_context:context().
-validate_account_path(Context, AccountId, ?CHANNELS, ?HTTP_GET) ->
-    get_channels(AccountId, Context);
 validate_account_path(Context, AccountId, ?CHILDREN, ?HTTP_GET) ->
     load_children(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
@@ -343,47 +338,6 @@ move_account(Context, AccountId) ->
             load_account(AccountId, prepare_context(AccountId, Context))
     end.
 
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_channels(ne_binary(), cb_context:context()) -> cb_context:context().
-get_channels(AccountId, Context) ->
-    Req = [{<<"Account-ID">>, AccountId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case whapps_util:amqp_pool_collect(Req
-                                       ,fun wapi_call:publish_query_account_channels_req/1
-                                       ,{'ecallmgr', 'true'}
-                                      )
-    of
-        {'error', _R} ->
-            lager:error("could not reach ecallmgr channels: ~p", [_R]),
-            crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context);
-        {_, Resp} ->
-            Channels = merge_user_channels_jobjs(Resp),
-            crossbar_util:response(Channels, Context)
-    end.
-
--spec merge_user_channels_jobjs(wh_json:objects()) -> wh_json:objects().
-merge_user_channels_jobjs(JObjs) ->
-    merge_user_channels_jobjs(JObjs, dict:new()).
-
--spec merge_user_channels_jobjs(wh_json:objects(), dict()) -> wh_json:objects().
-merge_user_channels_jobjs([], Dict) ->
-    [Channel || {_, Channel} <- dict:to_list(Dict)];
-merge_user_channels_jobjs([JObj|JObjs], Dict) ->
-    merge_user_channels_jobjs(JObjs, merge_user_channels_jobj(JObj, Dict)).
-
--spec merge_user_channels_jobj(wh_json:object(), dict()) -> dict().
-merge_user_channels_jobj(JObj, Dict) ->
-    lists:foldl(fun(Channel, D) ->
-                        UUID = wh_json:get_value(<<"uuid">>, Channel),
-                        dict:store(UUID, Channel, D)
-                end, Dict, wh_json:get_value(<<"Channels">>, JObj, [])).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -446,12 +400,9 @@ cleanup_leaky_keys(AccountId, Context) ->
                   ,<<"superduper_admin">>
                   ,<<"billing_mode">>
                  ],
+    ReqData = wh_json:delete_keys(RemoveKeys, cb_context:req_data(Context)),
     validate_realm_is_unique(AccountId
-                             ,cb_context:set_req_data(Context
-                                                      ,wh_json:delete_keys(RemoveKeys
-                                                                           ,cb_context:req_data(Context)
-                                                                          )
-                                                     )
+                             ,cb_context:set_req_data(Context, ReqData)
                             ).
 
 -spec validate_realm_is_unique(api_binary(), cb_context:context()) -> cb_context:context().
@@ -494,6 +445,10 @@ on_successful_validation(AccountId, Context) ->
     Context1 = crossbar_doc:load_merge(AccountId, Context),
     maybe_import_enabled(Context1).
 
+-spec maybe_import_enabled(cb_context:context()) ->
+                                  cb_context:context().
+-spec maybe_import_enabled(cb_context:context(), crossbar_status()) ->
+                                  cb_context:context().
 maybe_import_enabled(Context) ->
     case cb_context:auth_account_id(Context) =:= cb_context:account_id(Context) of
         'true' ->
@@ -560,6 +515,7 @@ load_account(AccountId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec leak_pvt_fields(cb_context:context()) -> cb_context:context().
+-spec leak_pvt_fields(cb_context:context(), crossbar_status()) -> cb_context:context().
 leak_pvt_fields(Context) ->
     leak_pvt_fields(Context, cb_context:resp_status(Context)).
 
@@ -602,7 +558,8 @@ leak_pvt_api_key(Context) ->
             ApiKey = wh_json:get_value(<<"pvt_api_key">>, JObj),
             leak_pvt_created(
               cb_context:set_resp_data(Context
-                                       ,wh_json:set_value(<<"api_key">>, ApiKey, RespJObj))
+                                       ,wh_json:set_value(<<"api_key">>, ApiKey, RespJObj)
+                                      )
              )
     end.
 
@@ -614,7 +571,8 @@ leak_pvt_created(Context) ->
     Created = wh_json:get_value(<<"pvt_created">>, JObj),
     leak_pvt_enabled(
       cb_context:set_resp_data(Context
-                               ,wh_json:set_value(<<"created">>, Created, RespJObj))
+                               ,wh_json:set_value(<<"created">>, Created, RespJObj)
+                              )
      ).
 
 -spec leak_pvt_enabled(cb_context:context()) -> cb_context:context().
