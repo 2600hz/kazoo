@@ -727,19 +727,21 @@ encryption_method_map(JObj, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of
         [] -> encryption_method_map(JObj, Methods);
         Values ->
-            encryption_method_map(wh_json:set_values(Values , JObj), Method)
+            encryption_method_map(wh_json:set_values(Values, JObj), Method)
     end;
 encryption_method_map(JObj, Endpoint) ->
-    encryption_method_map(
-      JObj
-      ,wh_json:get_value([<<"media">>
-                          ,<<"encryption">>
-                          ,<<"methods">>
-                         ], Endpoint, [])).
+    encryption_method_map(JObj
+                          ,wh_json:get_value([<<"media">>
+                                              ,<<"encryption">>
+                                              ,<<"methods">>
+                                             ]
+                                             ,Endpoint
+                                             ,[]
+                                            )
+                         ).
 
 -spec maybe_start_metaflows(whapps_call:call(), wh_json:objects()) -> 'ok'.
 -spec maybe_start_metaflow(whapps_call:call(), wh_json:object()) -> 'ok'.
-
 maybe_start_metaflows(Call, Endpoints) ->
     [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
     'ok'.

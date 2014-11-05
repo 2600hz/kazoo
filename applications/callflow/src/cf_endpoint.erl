@@ -940,78 +940,120 @@ generate_ccvs(Endpoint, Call) ->
     generate_ccvs(Endpoint, Call, 'undefined').
 
 generate_ccvs(Endpoint, Call, CallFwd) ->
-    CCVFuns = [fun(J) ->
-                       case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of
-                           'false' -> J;
-                           'true' ->
-                               lager:info("call forwarding configured to keep the caller id"),
-                               wh_json:set_value(<<"Retain-CID">>, <<"true">>, J)
-                       end
-               end
-               ,fun(J) ->
-                        case wh_json:get_value(<<"_id">>, Endpoint) of
-                            'undefined' -> J;
-                            EndpointId ->
-                                wh_json:set_value(<<"Authorizing-ID">>, EndpointId, J)
-                        end
-                end
-               ,fun(J) ->
-                        case wh_json:get_value(<<"owner_id">>, Endpoint) of
-                            'undefined' -> J;
-                            OwnerId ->
-                                wh_json:set_value(<<"Owner-ID">>, OwnerId, J)
-                        end
-                end
-               ,fun(J) ->
-                        case wh_json:get_value(<<"pvt_account_id">>, Endpoint) of
-                            'undefined' ->
-                                wh_json:set_value(<<"Account-ID">>, whapps_call:account_id(Call), J);
-                            PvtAccountId ->
-                                wh_json:set_value(<<"Account-ID">>, PvtAccountId, J)
-                        end
-                end
-               ,fun(J) ->
-                        case CallFwd of
-                            'undefined' -> J;
-                            _ ->
-                                wh_json:set_values([{<<"Call-Forward">>, <<"true">>}
-                                                    ,{<<"Authorizing-Type">>, <<"device">>}
-                                                   ], J)
-                        end
-                end
-               ,fun(J) ->
-                        case wh_json:is_true(<<"require_keypress">>, CallFwd) of
-                            'false' -> J;
-                            _ ->
-                                lager:info("call forwarding configured to require key press"),
-                                Confirm = [{<<"Confirm-Key">>, <<"1">>}
-                                           ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
-                                           ,{<<"Confirm-File">>, ?CONFIRM_FILE}
-                                          ],
-                                wh_json:merge_jobjs(wh_json:from_list(Confirm), J)
-                        end
-                end
-               ,fun(J) ->
-                        case wh_json:get_value([<<"media">>, <<"fax_option">>], Endpoint) of
-                            <<"auto">> -> wh_json:set_value(<<"Fax-Enabled">>, <<"true">>, J);
-                            _Else -> J
-                        end
-                end
-               ,fun(J) ->
-                        EnforceSecurity = wh_json:is_true([<<"media">>, <<"encryption">>, <<"enforce_security">>], Endpoint,'true'),
-                        wh_json:set_value(<<"Media-Encryption-Enforce-Security">>, EnforceSecurity, J)
-                end
-               ,fun(J) -> cf_util:encryption_method_map(J, Endpoint) end
-               ,fun(J) -> wh_json:set_value(<<"SIP-Invite-Domain">>, whapps_call:request_realm(Call), J) end
-               ,fun(J) ->
-                        case get_ignore_completed_elsewhere(Endpoint) of
-                            'false' -> J;
-                            'true' ->
-                                wh_json:set_value(<<"Ignore-Completed-Elsewhere">>, <<"true">>, J)
-                        end
-                end
+    CCVFuns = [fun maybe_retain_caller_id/1
+               ,fun maybe_set_endpoint_id/1
+               ,fun maybe_set_owner_id/1
+               ,fun maybe_set_account_id/1
+               ,fun maybe_set_call_forward/1
+               ,fun maybe_set_confirm_properties/1
+               ,fun maybe_enable_fax/1
+               ,fun maybe_enforce_security/1
+               ,fun maybe_set_encryption_flags/1
+               ,fun set_sip_invite_domain/1
               ],
-    lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), CCVFuns).
+    Acc0 = {Endpoint, Call, CallFwd, wh_json:new()},
+    lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns).
+
+-type ccv_acc() :: {wh_json:object(), whapps_call:call(), api_object(), wh_json:object()}.
+
+-spec maybe_retain_caller_id(ccv_acc()) -> ccv_acc().
+maybe_retain_caller_id({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
+    Acc;
+maybe_retain_caller_id({Endpoint, Call, CallFwd, JObj}) ->
+    {Endpoint, Call, CallFwd
+     ,case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of
+          'false' -> JObj;
+          'true' ->
+              lager:info("call forwarding configured to keep the caller id"),
+              wh_json:set_value(<<"Retain-CID">>, <<"true">>, JObj)
+      end
+    }.
+
+-spec maybe_set_endpoint_id(ccv_acc()) -> ccv_acc().
+maybe_set_endpoint_id({Endpoint, Call, CallFwd, JObj}) ->
+    {Endpoint, Call, CallFwd
+     ,case wh_json:get_value(<<"_id">>, Endpoint) of
+          'undefined' -> JObj;
+          EndpointId ->
+              wh_json:set_value(<<"Authorizing-ID">>, EndpointId, JObj)
+      end
+    }.
+
+-spec maybe_set_owner_id(ccv_acc()) -> ccv_acc().
+maybe_set_owner_id({Endpoint, Call, CallFwd, JObj}) ->
+    {Endpoint, Call, CallFwd
+     ,case wh_json:get_value(<<"owner_id">>, Endpoint) of
+          'undefined' -> JObj;
+          OwnerId ->
+              wh_json:set_value(<<"Owner-ID">>, OwnerId, JObj)
+      end
+    }.
+
+-spec maybe_set_account_id(ccv_acc()) -> ccv_acc().
+maybe_set_account_id({Endpoint, Call, CallFwd, JObj}) ->
+    {Endpoint, Call, CallFwd
+     ,case wh_json:get_value(<<"pvt_account_id">>, Endpoint) of
+          'undefined' ->
+              wh_json:set_value(<<"Account-ID">>, whapps_call:account_id(Call), JObj);
+          PvtAccountId ->
+              wh_json:set_value(<<"Account-ID">>, PvtAccountId, JObj)
+      end
+    }.
+
+-spec maybe_set_call_forward(ccv_acc()) -> ccv_acc().
+maybe_set_call_forward({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
+    Acc;
+maybe_set_call_forward({Endpoint, Call, CallFwd, JObj}) ->
+    {Endpoint, Call, CallFwd
+     ,wh_json:set_values([{<<"Call-Forward">>, <<"true">>}
+                          ,{<<"Authorizing-Type">>, <<"device">>}
+                         ], JObj)
+    }.
+
+-spec maybe_set_confirm_properties(ccv_acc()) -> ccv_acc().
+maybe_set_confirm_properties({Endpoint, Call, CallFwd, JObj}=Acc) ->
+    case wh_json:is_true(<<"require_keypress">>, CallFwd) of
+        'false' -> Acc;
+        'true' ->
+            lager:info("call forwarding configured to require key press"),
+            Confirm = [{<<"Confirm-Key">>, <<"1">>}
+                       ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
+                       ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
+                      ],
+            {Endpoint, Call, CallFwd
+             ,wh_json:merge_jobjs(wh_json:from_list(Confirm), JObj)
+            }
+    end.
+
+-spec maybe_enable_fax(ccv_acc()) -> ccv_acc().
+maybe_enable_fax({Endpoint, Call, CallFwd, JObj}=Acc) ->
+    case wh_json:get_value([<<"media">>, <<"fax_option">>], Endpoint) of
+        <<"auto">> ->
+            {Endpoint, Call, CallFwd
+             ,wh_json:set_value(<<"Fax-Enabled">>, <<"true">>, JObj)
+            };
+        _Else -> Acc
+    end.
+
+-spec maybe_enforce_security(ccv_acc()) -> ccv_acc().
+maybe_enforce_security({Endpoint, Call, CallFwd, JObj}) ->
+    EnforceSecurity = wh_json:is_true([<<"media">>, <<"encryption">>, <<"enforce_security">>], Endpoint, 'true'),
+    {Endpoint, Call, CallFwd
+     ,wh_json:set_value(<<"Media-Encryption-Enforce-Security">>, EnforceSecurity, JObj)
+    }.
+
+
+-spec maybe_set_encryption_flags(ccv_acc()) -> ccv_acc().
+maybe_set_encryption_flags({Endpoint, Call, CallFwd, JObj}) ->
+    {Endpoint, Call, CallFwd
+     ,cf_util:encryption_method_map(JObj, Endpoint)
+    }.
+
+-spec set_sip_invite_domain(ccv_acc()) -> ccv_acc().
+set_sip_invite_domain({Endpoint, Call, CallFwd, JObj}) ->
+    {Endpoint, Call, CallFwd
+     ,wh_json:set_value(<<"SIP-Invite-Domain">>, whapps_call:request_realm(Call), JObj)
+    }.
 
 -spec get_invite_format(wh_json:object()) -> ne_binary().
 get_invite_format(SIPJObj) ->
@@ -1090,8 +1132,8 @@ get_codecs(JObj) ->
 -spec get_ignore_completed_elsewhere(wh_json:object()) -> boolean().
 get_ignore_completed_elsewhere(JObj) ->
     case wh_json:get_first_defined([[<<"caller_id_options">>, <<"ignore_completed_elsewhere">>]
-                                   ,[<<"sip">>, <<"ignore_completed_elsewhere">>]
-                                   ,<<"ignore_completed_elsewhere">>
+                                    ,[<<"sip">>, <<"ignore_completed_elsewhere">>]
+                                    ,<<"ignore_completed_elsewhere">>
                                    ], JObj)
     of
         'undefined' -> whapps_config:get_is_true(?CF_CONFIG_CAT, <<"default_ignore_completed_elsewhere">>, 'true');
