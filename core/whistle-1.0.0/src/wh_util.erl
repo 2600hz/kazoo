@@ -47,8 +47,10 @@
          ,strip_binary/1, strip_binary/2
          ,strip_left_binary/2, strip_right_binary/2
          ,suffix_binary/2
-         ,clean_binary/1, clean_binary/2
         ]).
+
+
+-export([clean_binary/1, clean_binary/2]).
 
 -export([uri_encode/1
          ,uri_decode/1
@@ -894,8 +896,17 @@ suffix_binary(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
 clean_binary(Bin) ->
     clean_binary(Bin, []).
 
-clean_binary(Bin, _Opts) ->
-    binary:replace(Bin, <<" ">>, <<>>, [global]).
+clean_binary(Bin, Opts) ->
+    Routines = [fun remove_white_spaces/2],
+    lists:foldl(fun(F, B) -> F(B, Opts) end, Bin, Routines).
+
+-spec remove_white_spaces(binary(), wh_proplist()) -> binary().
+remove_white_spaces(Bin, Opts) ->
+    case props:get_value(<<"remove_white_spaces">>, Opts, 'true') of
+        'false' -> Bin;
+        'true' ->
+            binary:replace(Bin, <<" ">>, <<>>, ['global'])
+    end.
 
 -spec binary_md5(text()) -> ne_binary().
 binary_md5(Text) -> to_hex_binary(erlang:md5(to_binary(Text))).
