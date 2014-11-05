@@ -49,7 +49,7 @@ maybe_relay_request(JObj) ->
                         ,fun maybe_blacklisted/2
                         ,fun maybe_transition_port_in/2
                        ],
-            _ = lists:foldl(fun(F, J) ->  F(NumberProps, J) end
+            _ = lists:foldl(fun(F, J) -> F(NumberProps, J) end
                             ,JObj
                             ,Routines
                            ),
@@ -67,7 +67,6 @@ maybe_relay_request(JObj) ->
 set_account_id(NumberProps, JObj) ->
     AccountId = wh_number_properties:account_id(NumberProps),
     wh_json:set_value(?CCV(<<"Account-ID">>), AccountId, JObj).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,11 +104,11 @@ maybe_find_resource(_NumberProps, JObj) ->
         {'error', 'not_found'} -> JObj;
         {'ok', ResourceProps} ->
             Routines = [fun maybe_add_resource_id/2
-                       ,fun maybe_add_t38_settings/2
+                        ,fun maybe_add_t38_settings/2
                        ],
             lists:foldl(fun(F, J) ->  F(J, ResourceProps) end
-                       ,JObj
-                       ,Routines
+                        ,JObj
+                        ,Routines
                        )
     end.
 
@@ -124,17 +123,18 @@ maybe_add_resource_id(JObj, ResourceProps) ->
                              )
     end.
 
+-spec maybe_add_t38_settings(wh_json:object(), wh_proplist()) -> wh_json:object().
 maybe_add_t38_settings(JObj, ResourceProps) ->
     case props:get_value('fax_option', ResourceProps) of
         'true' ->
             wh_json:set_value(?CCV(<<"Resource-Fax-Option">>)
-                             ,props:get_value('fax_option', ResourceProps)
-                             ,JObj
+                              ,props:get_value('fax_option', ResourceProps)
+                              ,JObj
                              );
         <<"auto">> ->
             wh_json:set_value(?CCV(<<"Resource-Fax-Option">>)
-                             ,props:get_value('fax_option', ResourceProps)
-                             ,JObj
+                              ,props:get_value('fax_option', ResourceProps)
+                              ,JObj
                              );
         _ -> JObj
     end.

@@ -62,7 +62,8 @@ handle_audio_req(Number, JObj) ->
 handle_originate_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
     lager:debug("received outbound audio resource request for ~s from account ~s"
-                ,[Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+                ,[Number, wh_json:get_value(<<"Account-ID">>, JObj)]
+               ),
     case wh_json:get_value(<<"Outbound-Call-ID">>, JObj) of
         'undefined' ->
             J = wh_json:set_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), JObj),
@@ -182,7 +183,7 @@ local_sms(Props, JObj) ->
     Number = props:get_value('number', Props),
     NewObj = wh_json:set_values(
                [{<<"Bounce-Back">>, <<"true">>}
-                 ,{<<"Custom-Channel-Vars">>, 
+                 ,{<<"Custom-Channel-Vars">>,
                    wh_json:set_value(<<"Bounce-Realm">>, AccountRealm, CCVs)}
                ], JObj),
     maybe_sms(Number, NewObj).
