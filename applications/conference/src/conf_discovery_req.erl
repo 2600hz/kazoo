@@ -50,7 +50,7 @@ maybe_collect_conference_id(Call, Srv, DiscoveryJObj) ->
         Doc ->
             N = wh_json:get_value(<<"name">>, Doc, wh_util:rand_hex_binary(8)),
             lager:debug("conf doc (~s) set instead of conf id", [N]),
-            Conference = whapps_conference:set_id(N, create_conference(Doc, <<"none">>)),
+            Conference = whapps_conference:set_id(N, create_conference(Doc, <<"none">>, Call)),
             maybe_collect_conference_pin(Conference, Call, Srv)
     end.
 
@@ -234,7 +234,7 @@ validate_conference_id('undefined', Call, Loop) ->
             case couch_mgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
                 {'ok', [JObj]} ->
                     lager:debug("caller has entered a valid conference id, building object"),
-                    {'ok', create_conference(wh_json:get_value(<<"doc">>, JObj), Digits)};
+                    {'ok', create_conference(wh_json:get_value(<<"doc">>, JObj), Digits, Call)};
                 _Else ->
                     lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
                     _ = whapps_call_command:prompt(<<"conf-bad_conf">>, Call),
@@ -246,7 +246,7 @@ validate_conference_id(ConferenceId, Call, Loop) ->
     case couch_mgr:open_doc(AccountDb, ConferenceId) of
         {'ok', JObj} ->
             lager:debug("discovery request contained a valid conference id, building object"),
-            {'ok', create_conference(JObj, <<"none">>)};
+            {'ok', create_conference(JObj, <<"none">>, Call)};
         _Else ->
             lager:debug("could not find conference ~s: ~p", [ConferenceId, _Else]),
             validate_conference_id('undefined', Call, Loop)
@@ -320,9 +320,13 @@ validate_conference_pin(_, Conference, Call, Loop) ->
             end
     end.
 
--spec create_conference(wh_json:object(), binary()) -> whapps_conference:conference().
-create_conference(JObj, Digits) ->
-    Conference = whapps_conference:from_conference_doc(JObj),
+-spec create_conference(wh_json:object(), binary(), whapps_call:call()) ->
+                               whapps_conference:conference().
+create_conference(JObj, Digits, Call) ->
+    Conference = whapps_conference:set_call(whapps_conference:from_conference_doc(JObj)
+                                            ,Call
+                                           ),
+
     ModeratorNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
     MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
     case {lists:member(Digits, MemberNumbers), lists:member(Digits, ModeratorNumbers)} of
