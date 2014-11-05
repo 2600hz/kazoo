@@ -10,7 +10,6 @@
 -behaviour(gen_server).
 
 -export([start_link/3]).
--export([process_event/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -113,10 +112,15 @@ handle_cast('request_event_stream', #state{node=Node}=State) ->
             {'stop', Reason, State}
     end;
 handle_cast('connect', #state{ip=IP, port=Port}=State) ->
-    case gen_tcp:connect(IP, Port, [{'mode', 'binary'}, {'packet', 2}]) of
+    PacketType = ecallmgr_config:get_integer(<<"tcp_packet_type">>, 2),
+    case gen_tcp:connect(IP, Port, [{'mode', 'binary'}
+                                    ,{'packet', PacketType}
+                                   ])
+    of
         {'ok', Socket} ->
             lager:debug("opened event stream socket to ~p:~p for ~p"
-                        ,[IP, Port, get_event_binding(State)]),
+                        ,[IP, Port, get_event_binding(State)]
+                       ),
             {'noreply', State#state{socket=Socket}};
         {'error', Reason} ->
             {'stop', Reason, State}
@@ -125,6 +129,12 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
+-spec maybe_bind(atom(), atoms()) ->
+                        {'ok', {inet:ip_address(), inet:port_number()}} |
+                        {'error', _}.
+-spec maybe_bind(atom(), atoms(), non_neg_integer()) ->
+                        {'ok', {inet:ip_address(), inet:port_number()}} |
+                        {'error', _}.
 maybe_bind(Node, Binding) ->
     maybe_bind(Node, Binding, 0).
 maybe_bind(Node, Binding, 2) ->
@@ -151,11 +161,23 @@ maybe_bind(Node, Binding, Attempts) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'tcp', Socket, Data}, #state{socket=Socket, node=Node}=State) ->
-    _ = spawn(?MODULE, 'process_event', [Data, Node]),
-    {'noreply', State};
+    try binary_to_term(Data) of
+        {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
+            EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+            _ = spawn(fun() -> maybe_send_event(EventName, UUID, Props, Node) end),
+            _ = spawn(fun() -> process_event(EventName, UUID, Props, Node) end),
+            {'noreply', State};
+        _Else ->
+            {'noreply', State}
+    catch
+        'error':'badarg' ->
+            lager:warning("failed to decode packet from ~s(~p b)", [Node, byte_size(Data)]),
+            {'stop', 'decode_error', State}
+    end;
 handle_info({'tcp_closed', Socket}, #state{socket=Socket, node=Node}=State) ->
     lager:info("event stream for ~p on node ~p closed"
-                , [get_event_binding(State), Node]),
+               ,[get_event_binding(State), Node]
+              ),
     {'stop', 'normal', State#state{socket='undefined'}};
 handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     lager:warning("event stream tcp error: ~p", [_Reason]),
@@ -179,11 +201,13 @@ handle_info(_Msg, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{socket='undefined', node=Node}=State) ->
     lager:debug("event stream for ~p on node ~p terminating: ~p"
-                ,[get_event_binding(State), Node, _Reason]);
+                ,[get_event_binding(State), Node, _Reason]
+               );
 terminate(_Reason, #state{socket=Socket, node=Node}=State) ->
     gen_tcp:close(Socket),
     lager:debug("event stream for ~p on node ~p terminating: ~p"
-                ,[get_event_binding(State), Node, _Reason]).
+                ,[get_event_binding(State), Node, _Reason]
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -209,29 +233,19 @@ get_event_binding(#state{name=Name, subclass=Subclass}) ->
             ]
     end.
 
--spec process_event(ne_binary(), atom()) -> any().
-process_event(Data, Node) ->
-    case binary_to_term(Data) of
-        {'event', [UUID | Props]} when is_binary(UUID) orelse UUID =:= 'undefined' ->
-            wh_util:put_callid(UUID),
-
-            EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-            maybe_send_event(EventName, UUID, Props, Node),
-            process_event(EventName, UUID, Props, Node);
-         _Else ->
-            'ok'
-    end.
-
 -spec process_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 process_event(<<"CHANNEL_CREATE">>, UUID, _Props, Node) ->
+    wh_util:put_callid(UUID),
     maybe_start_event_listener(Node, UUID);
 process_event(?CHANNEL_MOVE_RELEASED_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+    wh_util:put_callid(UUID),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
                ,?CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Props)
               );
 process_event(?CHANNEL_MOVE_COMPLETE_EVENT_BIN, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+    wh_util:put_callid(UUID),
     gproc:send({'p', 'l', ?CHANNEL_MOVE_REG(Node, UUID)}
                ,?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Props)
               );
@@ -241,6 +255,7 @@ process_event(_, _, _, _) -> 'ok'.
 
 -spec maybe_send_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
+    wh_util:put_callid(UUID),
     BridgeID = props:get_value(<<"variable_bridge_uuid">>, Props),
     Direction = props:get_value(<<"Call-Direction">>, Props),
     CallerDirection = props:get_value(<<"Caller-Direction">>, Props),
@@ -249,17 +264,18 @@ maybe_send_event(<<"CHANNEL_BRIDGE">>=EventName, UUID, Props, Node) ->
 
     case {BridgeID, Direction, CallerDirection, LogicalDirection, App} of
         {'undefined', _, _, _, _} ->
-            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),    
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node);
         {BridgeID, <<"inbound">>, <<"inbound">>, <<"inbound">>, <<"intercept">>} ->
             SwappedProps = ecallmgr_call_events:swap_call_legs(Props),
-            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BridgeID | SwappedProps]}),    
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [BridgeID | SwappedProps]}),
             maybe_send_call_event(BridgeID, SwappedProps, Node);
         _Else ->
-            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),    
+            gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]}),
             maybe_send_call_event(UUID, Props, Node)
     end;
 maybe_send_event(EventName, UUID, Props, Node) ->
+    wh_util:put_callid(UUID),
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         'true' -> 'ok';
         'false' ->
