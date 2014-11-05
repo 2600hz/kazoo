@@ -1,5 +1,5 @@
 %%%============================================================================
-%%% @copyright (C) 2012 VoIP Inc
+%%% @copyright (C) 2012-2014 2600Hz Inc
 %%% @doc
 %%%
 %%% @end
@@ -40,6 +40,7 @@
 -export([play_entry_tone/1, set_play_entry_tone/2]).
 -export([play_welcome/1, set_play_welcome/2]).
 -export([conference_doc/1, set_conference_doc/2]).
+-export([call/1, set_call/2]).
 
 -export([kvs_append/3
          ,kvs_append_list/3
@@ -67,29 +68,30 @@
 
 -record(whapps_conference, {
           id :: api_binary()                                 %% the conference id
-         ,focus :: api_binary()                              %% the conference focus
-         ,profile = <<"default">> :: api_binary()            %% conference profile (config settings)
-         ,controller_q :: api_binary()                       %% the controller queue, for responses
-         ,bridge_username = ?BRIDGE_USER :: ne_binary()      %% the username used for a conference bridge
-         ,bridge_password = ?BRIDGE_PWD :: ne_binary()       %% the password used for a conference bridge
-         ,member_pins = [] :: ne_binaries()                  %% a list of pins for use by members
-         ,moderator_pins = [] :: ne_binaries()               %% a list of pins for use by the moderators
-         ,moderator :: boolean()                             %% tri-state true/false if the caller is known to be a moderator, otherwise 'undefined'
-         ,member_join_muted = 'false' :: boolean()           %% should the member join muted
-         ,member_join_deaf = 'false' :: boolean()            %% should the member join deaf
-         ,moderator_join_muted = 'false' :: boolean()        %% should the moderator join muted
-         ,moderator_join_deaf = 'false' :: boolean()         %% should the moderator join deaf
-         ,max_participants = 0 :: non_neg_integer()          %% max number of participants
-         ,require_moderator = 'false' :: boolean()           %% does the conference require a moderator
-         ,wait_for_moderator = 'false' :: boolean()          %% can members wait for a moderator
-         ,play_name_on_join = 'false' :: boolean()           %% should participants have their name played on join
-         ,play_entry_prompt = 'true' :: boolean()            %% Play prompt telling caller they're entering the conference
-         ,play_entry_tone = 'true' :: boolean()              %% Play tone telling caller they've entered the conference
-         ,play_welcome = 'true' :: boolean()                 %% Play prompt welcoming caller to the conference
-         ,conference_doc :: wh_json:object()                 %% the complete conference doc used to create the record (when and if)
-         ,app_name = <<"whapps_conference">> :: ne_binary()  %% The application name used during whapps_conference_command
-         ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_conference_command
-         ,kvs = orddict:new() :: orddict:orddict()           %% allows conferences to set values that propogate to children
+          ,focus :: api_binary()                              %% the conference focus
+          ,profile = <<"default">> :: api_binary()            %% conference profile (config settings)
+          ,controller_q :: api_binary()                       %% the controller queue, for responses
+          ,bridge_username = ?BRIDGE_USER :: ne_binary()      %% the username used for a conference bridge
+          ,bridge_password = ?BRIDGE_PWD :: ne_binary()       %% the password used for a conference bridge
+          ,member_pins = [] :: ne_binaries()                  %% a list of pins for use by members
+          ,moderator_pins = [] :: ne_binaries()               %% a list of pins for use by the moderators
+          ,moderator :: boolean()                             %% tri-state true/false if the caller is known to be a moderator, otherwise 'undefined'
+          ,member_join_muted = 'false' :: boolean()           %% should the member join muted
+          ,member_join_deaf = 'false' :: boolean()            %% should the member join deaf
+          ,moderator_join_muted = 'false' :: boolean()        %% should the moderator join muted
+          ,moderator_join_deaf = 'false' :: boolean()         %% should the moderator join deaf
+          ,max_participants = 0 :: non_neg_integer()          %% max number of participants
+          ,require_moderator = 'false' :: boolean()           %% does the conference require a moderator
+          ,wait_for_moderator = 'false' :: boolean()          %% can members wait for a moderator
+          ,play_name_on_join = 'false' :: boolean()           %% should participants have their name played on join
+          ,play_entry_prompt = 'true' :: boolean()            %% Play prompt telling caller they're entering the conference
+          ,play_entry_tone = 'true' :: boolean()              %% Play tone telling caller they've entered the conference
+          ,play_welcome = 'true' :: boolean()                 %% Play prompt welcoming caller to the conference
+          ,conference_doc :: wh_json:object()                 %% the complete conference doc used to create the record (when and if)
+          ,app_name = <<"whapps_conference">> :: ne_binary()  %% The application name used during whapps_conference_command
+          ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_conference_command
+          ,kvs = orddict:new() :: orddict:orddict()           %% allows conferences to set values that propogate to children
+          ,call :: whapps_call:call()
          }).
 
 -opaque conference() :: #whapps_conference{}.
@@ -127,7 +129,15 @@ from_json(JObj, Conference) ->
       ,play_welcome = wh_json:is_true(<<"Play-Welcome">>, JObj, play_welcome(Conference))
       ,conference_doc = wh_json:is_true(<<"Conference-Doc">>, JObj, conference_doc(Conference))
       ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Conference#whapps_conference.kvs, KVS)
+      ,call = load_call(JObj, call(Conference))
      }.
+
+-spec load_call(wh_json:object(), whapps_call:call() | 'undefined') -> whapps_call:call() | 'undefined'.
+load_call(JObj, ConfCall) ->
+    case wh_json:get_value(<<"Call">>, JObj) of
+        'undefined' -> ConfCall;
+        CallJObj -> whapps_call:from_json(CallJObj)
+    end.
 
 -spec to_json(conference()) -> wh_json:object().
 to_json(#whapps_conference{}=Conference) ->
@@ -169,6 +179,7 @@ to_proplist(#whapps_conference{}=Conference) ->
      ,{<<"Play-Welcome">>, play_welcome(Conference)}
      ,{<<"Conference-Doc">>, conference_doc(Conference)}
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Conference)}
+     ,{<<"Call">>, whapps_call:to_json(call(Conference))}
     ].
 
 -spec is_conference(term()) -> boolean().
@@ -288,13 +299,13 @@ moderator_pins(#whapps_conference{moderator_pins=ModeratorPins}) ->
 set_moderator_pins(ModeratorPins, Conference) when is_list(ModeratorPins) ->
     Conference#whapps_conference{moderator_pins=ModeratorPins}.
 
--spec moderator(conference()) -> 'undefined' | boolean().
+-spec moderator(conference()) -> api_boolean().
 moderator(#whapps_conference{moderator=Moderator}) ->
     Moderator.
 
--spec set_moderator('undefined' | boolean(), conference()) -> conference().
-set_moderator(undefined, Conference) ->
-    Conference#whapps_conference{moderator=undefined};
+-spec set_moderator(api_boolean(), conference()) -> conference().
+set_moderator('undefined', Conference) ->
+    Conference#whapps_conference{moderator='undefined'};
 set_moderator(Moderator, Conference) when is_boolean(Moderator) ->
     Conference#whapps_conference{moderator=Moderator}.
 
@@ -382,7 +393,7 @@ play_welcome(#whapps_conference{play_welcome=ShouldPlay}) ->
 set_play_welcome(ShouldPlay, Conference) when is_boolean(ShouldPlay) ->
     Conference#whapps_conference{play_welcome=ShouldPlay}.
 
--spec conference_doc(conference()) -> 'undefined' | wh_json:object().
+-spec conference_doc(conference()) -> api_object().
 conference_doc(#whapps_conference{conference_doc=JObj}) -> JObj.
 
 -spec set_conference_doc(wh_json:object(), conference()) -> conference().
@@ -406,7 +417,7 @@ kvs_fetch(Key, #whapps_conference{kvs=Dict}) ->
     try orddict:fetch(wh_util:to_binary(Key), Dict) of
         Ok -> Ok
     catch
-        error:function_clause -> 'undefined'
+        'error':'function_clause' -> 'undefined'
     end.
 
 -spec kvs_fetch_keys(conference()) -> [term(),...] | [].
@@ -481,3 +492,10 @@ cache(#whapps_conference{id=ConferenceId}=Conference, Expires) ->
                                {'error', 'not_found'}.
 retrieve(ConferenceId) ->
     wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, 'conference', ConferenceId}).
+
+-spec call(conference()) -> whapps_call:call() | 'undefined'.
+call(#whapps_conference{call=Call}) -> Call.
+
+-spec set_call(whapps_call:call(), conference()) -> conference().
+set_call(Call, Conference) ->
+    Conference#whapps_conference{call=Call}.
