@@ -522,7 +522,7 @@ save_attachment(DocId, AName, Contents, Context) ->
 %%--------------------------------------------------------------------
 -spec save_attachment(ne_binary(), ne_binary(), ne_binary(), cb_context:context(), wh_proplist()) ->
                              cb_context:context().
-save_attachment(DocId, AName, Contents, Context, Options) ->
+save_attachment(DocId, Name, Contents, Context, Options) ->
     Opts1 = case props:get_value('rev', Options) of
                 'undefined' ->
                     {'ok', Rev} = couch_mgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
@@ -530,6 +530,8 @@ save_attachment(DocId, AName, Contents, Context, Options) ->
                     [{'rev', Rev} | Options];
                 O -> O
             end,
+
+    AName = wh_util:clean_binary(Name),
 
     case couch_mgr:put_attachment(cb_context:account_db(Context), DocId, AName, Contents, Opts1) of
         {'error', 'conflict'=Error} ->
