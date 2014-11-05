@@ -987,7 +987,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                                 lager:info("call forwarding configured to require key press"),
                                 Confirm = [{<<"Confirm-Key">>, <<"1">>}
                                            ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
-                                           ,{<<"Confirm-File">>, ?CONFIRM_FILE}
+                                           ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
                                           ],
                                 wh_json:merge_jobjs(wh_json:from_list(Confirm), J)
                         end
