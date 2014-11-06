@@ -468,10 +468,11 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
 get_channel_vars(_, Vars) -> Vars.
 
 -spec sip_headers_fold(wh_json:key(), wh_json:json_term(), iolist()) -> iolist().
-sip_headers_fold(K, <<_/binary>> = V, Vars0) ->
-    [ list_to_binary(["sip_h_", K, "=", V]) | Vars0];
 sip_headers_fold(<<"Diversion">> = K, V, Vars0) ->
-    [ list_to_binary(["sip_h_", K, "=", kzsip_diversion:to_binary(V)]) | Vars0].
+    [ list_to_binary(["sip_h_", K, "=", kzsip_diversion:to_binary(V)]) | Vars0];
+sip_headers_fold(K, <<_/binary>> = V, Vars0) ->
+    [ list_to_binary(["sip_h_", K, "=", V]) | Vars0].
+
 
 -spec get_channel_vars_fold(wh_json:key(), wh_json:json_term(), iolist()) -> iolist().
 get_channel_vars_fold(<<"Force-Fax">>, Direction, Acc) ->

@@ -266,7 +266,6 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
        ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
        ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-       ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
        ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"Fax-Identity-Number">>, JObj, CIDNum)}
@@ -497,10 +496,11 @@ bridge_failure(JObj, Request) ->
 
 -spec get_sip_headers(wh_json:object()) -> api_object().
 get_sip_headers(JObj) ->
+    Headers = wh_json:get_value(<<"SIP-Headers">>, JObj, wh_json:new()),
     case get_diversions(JObj) of
-        'undefined' -> 'undefined';
+        'undefined' -> Headers;
         Diversion ->
-            wh_json:from_list([{<<"Diversion">>, Diversion}])
+            wh_json:set_value(<<"Diversions">>, Diversion, Headers)
     end.
 
 -spec get_diversions(wh_json:object()) -> api_object().
