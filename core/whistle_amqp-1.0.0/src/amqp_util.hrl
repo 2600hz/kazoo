@@ -174,5 +174,7 @@
 -type basic_publish() :: #'basic.publish'{}.
 -type amqp_msg() :: #'amqp_msg'{}.
 
+-define(AMQP_HIDDEN_TAG, <<"hidden">>).
+
 -define(AMQP_UTIL_HRL, 'true').
 -endif.
