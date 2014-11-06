@@ -15,9 +15,40 @@
 -spec apply(wh_json:object(), wh_json:object(), direction()) ->
                    wh_json:object().
 apply(JObj, MetaFormatters, Direction) ->
-    JObjKeys = [{wh_util:to_lower_binary(K), K}
-                || K <- wh_json:get_keys(wh_api:remove_defaults(JObj))
-               ],
+    Fs = [fun format_request/3
+          ,fun maybe_format_ccvs/3
+          ,fun maybe_format_sip_headers/3
+         ],
+
+    lists:foldl(fun(F, J) -> F(J, MetaFormatters, Direction) end
+                ,JObj
+                ,Fs
+               ).
+
+-spec maybe_format_ccvs(wh_json:object(), wh_json:object(), direction()) ->
+                               wh_json:object().
+maybe_format_ccvs(JObj, MetaFormatters, Direction) ->
+    maybe_format_sub_object(JObj, MetaFormatters, Direction, <<"Custom-Channel-Vars">>).
+
+-spec maybe_format_sip_headers(wh_json:object(), wh_json:object(), direction()) ->
+                                      wh_json:object().
+maybe_format_sip_headers(JObj, MetaFormatters, Direction) ->
+    maybe_format_sub_object(JObj, MetaFormatters, Direction, <<"SIP-Headers">>).
+
+-spec maybe_format_sub_object(wh_json:object(), wh_json:object(), direction(), wh_json:key()) ->
+                                     wh_json:object().
+maybe_format_sub_object(JObj, MetaFormatters, Direction, SubKey) ->
+    case wh_json:get_value(SubKey, JObj) of
+        'undefined' -> JObj;
+        SubJObj ->
+            Formatted = format_request(SubJObj, MetaFormatters, Direction),
+            wh_json:set_value(SubKey, Formatted, JObj)
+    end.
+
+-spec format_request(wh_json:object(), wh_json:object(), direction()) ->
+                            wh_json:object().
+format_request(JObj, MetaFormatters, Direction) ->
+    JObjKeys = request_keys(JObj),
     wh_json:foldl(fun(MetaKey, Formatters, AccJObj) ->
                           maybe_apply_formatters_fold(AccJObj
                                                       ,JObjKeys
@@ -25,6 +56,12 @@ apply(JObj, MetaFormatters, Direction) ->
                                                       ,filter_formatters_by_direction(Direction, Formatters)
                                                      )
                   end, JObj, MetaFormatters).
+
+-spec request_keys(wh_json:object()) -> wh_proplist().
+request_keys(JObj) ->
+    [{wh_util:to_lower_binary(K), K}
+     || K <- wh_json:get_keys(wh_api:remove_defaults(JObj))
+    ].
 
 -spec filter_formatters_by_direction(direction(), wh_json:object() | wh_json:objects()) -> wh_json:objects().
 filter_formatters_by_direction(Direction, Formatters) when is_list(Formatters) ->
@@ -49,8 +86,7 @@ maybe_apply_formatters_fold(JObj, _JObjKeys, _MetaKey, []) -> JObj;
 maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
     case props:get_value(wh_util:to_lower_binary(MetaKey), JObjKeys) of
         'undefined' -> JObj;
-        JObjKey ->
-            maybe_apply_formatters(JObj, JObjKey, Formatters)
+        JObjKey -> maybe_apply_formatters(JObj, JObjKey, Formatters)
     end.
 
 -spec maybe_apply_formatters(wh_json:object(), ne_binary(), wh_json:objects()) ->
@@ -73,6 +109,18 @@ maybe_apply_formatters(JObj, Key, Formatters) ->
 
 maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
 maybe_apply_formatters(JObj, Key, Value, [Formatter|Formatters]) ->
+    case maybe_strip_key(Formatter) of
+        'false' -> maybe_match(JObj, Key, Value, Formatters);
+        'true' -> wh_json:delete_key(Key, JObj)
+    end.
+
+-spec maybe_strip_key(wh_json:object()) -> boolean().
+maybe_strip_key(Formatter) ->
+    wh_json:is_true(<<"strip">>, Formatter, 'false').
+
+-spec maybe_match(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
+                         wh_json:object().
+maybe_match(JObj, Key, Value, [Formatter|Formatters]) ->
     case maybe_match(wh_json:get_value(<<"regex">>, Formatter), Value) of
         {'match', Captured} -> apply_formatter(JObj, Key, Captured, Formatter);
         'nomatch' -> maybe_apply_formatters(JObj, Key, Value, Formatters)

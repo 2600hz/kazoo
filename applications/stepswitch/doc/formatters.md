@@ -53,15 +53,25 @@ A more full example:
 
     {"_id":"resource_id"
      ,"formatters":{
-         "from":[{
-             "regex":"^\\+?\\1(\\d{10})$"
-             ,"prefix":"+1"
-         }]
-         ,"diversion":[{
-             "match_invite_format":true
-         }]
-     }
-     ,...
+         "from":[
+             {"regex":"^\\+?\\1(\\d{10})$"
+              ,"prefix":"+1"
+              ,"direction":"inbound"
+             }
+             ,{"regex":"\\+?\\1(\\d{10})$"
+               ,"direction":"outbound"
+              }
+          ]
+          ,"diversion":[{
+              "match_invite_format":true
+              ,"direction":"outbound"
+          }]
+      }
+      ,...
     }
 
-This will format the 'From' DID as E164 before republishing the route request, and format the Diversion username to match the invite format of the request on an outbound request.
+This will format the 'From' DID as E164 before republishing the inbound request, formats the From as NPAN on an offnet(outbound) request, and format the Diversion username to match the invite format of the request on an outbound request.
+
+### Custom Channel Vars and SIP Headers
+
+The formatting process will also walk any Custom Channel Variables or SIP Headers defined in the request. You need only include the actual header in the `formatters` object.
