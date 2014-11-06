@@ -457,7 +457,7 @@ export(Node, UUID, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -type bridge_channel() :: ne_binary().
--type bridge_channels() :: [] | [bridge_channel(),...].
+-type bridge_channels() :: ne_binaries().
 -type build_return() :: bridge_channel() | {'worker', pid()}.
 -type build_returns() :: [build_return(),...] | [].
 -type bridge_endpoints() :: [bridge_endpoint(),...] | [].
@@ -591,11 +591,13 @@ build_bridge_channels([Endpoint|Endpoints], Channels) ->
     end;
 %% wait for any registration lookups to complete
 build_bridge_channels([], IntermediateResults) ->
-    lists:foldr(fun({'worker', Pid}, Channels) ->
-                        maybe_collect_worker_channel(Pid, Channels);
-                 (Channel, Channels) ->
-                        [Channel|Channels]
-                end, [], IntermediateResults).
+    lists:foldr(fun intermediate_results_fold/2, [], IntermediateResults).
+
+-spec intermediate_results_fold(build_return(), bridge_channels()) -> bridge_channels().
+intermediate_results_fold({'worker', Pid}, Channels) ->
+    maybe_collect_worker_channel(Pid, Channels);
+intermediate_results_fold(Channel, Channels) ->
+    [Channel|Channels].
 
 -spec maybe_collect_worker_channel(pid(), bridge_channels()) -> bridge_channels().
 maybe_collect_worker_channel(Pid, Channels) ->
@@ -606,6 +608,8 @@ maybe_collect_worker_channel(Pid, Channels) ->
         2000 -> Channels
     end.
 
+-spec build_channel(bridge_endpoint()) -> {'ok', bridge_channel()} |
+                                          {'error', _}.
 build_channel(#bridge_endpoint{endpoint_type = <<"freetdm">>}=Endpoint) ->
     build_freetdm_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"skype">>}=Endpoint) ->
@@ -677,8 +681,8 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
     end.
 
 -spec maybe_failover(wh_json:object()) ->
-                               {'ok', bridge_channel()} |
-                               {'error', _}.
+                            {'ok', bridge_channel()} |
+                            {'error', _}.
 maybe_failover(Endpoint) ->
     case wh_util:is_empty(Endpoint) of
         'true' -> {'error', 'invalid'};
@@ -738,7 +742,12 @@ maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address=Proxy}=Endpoint) -
 -spec maybe_replace_transport(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_replace_transport(Contact, #bridge_endpoint{transport='undefined'}) -> Contact;
 maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
-    case re:replace(Contact, <<";transport=[^;?]*">>, <<";transport=", Transport/binary>>, [{'return', 'binary'}]) of
+    case re:replace(Contact
+                    ,<<";transport=[^;?]*">>
+                    ,<<";transport=", Transport/binary>>
+                    ,[{'return', 'binary'}]
+                   )
+    of
         Contact ->
             %% NOTE: this will be invalid if the channel has headers, see rfc3261 19.1.1
             <<Contact/binary, ";transport=", Transport/binary>>;
@@ -754,7 +763,6 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
                                             ,username=Username
                                            }) when Username =/= 'undefined' ->
     re:replace(Contact, "^[^\@]+", Username, [{'return', 'binary'}]);
-
 maybe_format_user(Contact, #bridge_endpoint{number='undefined'}) -> Contact;
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"e164">>, number=Number}) ->
     re:replace(Contact, "^[^\@]+", wnm_util:to_e164(Number), [{'return', 'binary'}]);
@@ -799,7 +807,8 @@ create_masquerade_event(Application, EventName, Boolean) ->
              end,
     <<Prefix/binary, "Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
       ,",whistle_event_name=", EventName/binary
-      ,",whistle_application_name=", Application/binary>>.
+      ,",whistle_application_name=", Application/binary
+    >>.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -842,12 +851,12 @@ recording_filename(MediaName) ->
     RootName = filename:basename(MediaName, Ext),
     Directory = recording_directory(MediaName),
     RecordingName = filename:join([Directory
-                                   ,<<(amqp_util:encode(RootName))/binary
-                                      ,Ext/binary>>
+                                   ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
                                   ]),
     _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
-                             ,RecordingName),
+                             ,RecordingName
+                            ),
     RecordingName.
 
 recording_directory(<<"/", _/binary>> = FullPath) -> filename:dirname(FullPath);
@@ -871,6 +880,7 @@ recording_extension(MediaName) ->
 get_fs_playback(<<?LOCAL_MEDIA_PATH, _/binary>> = URI) -> URI;
 get_fs_playback(URI) -> maybe_playback_via_vlc(URI).
 
+-spec maybe_playback_via_vlc(ne_binary()) -> ne_binary().
 maybe_playback_via_vlc(URI) ->
     case wh_util:is_true(ecallmgr_config:get(<<"use_vlc">>, 'false')) of
         'false' -> maybe_playback_via_shout(URI);
@@ -879,6 +889,7 @@ maybe_playback_via_vlc(URI) ->
             <<"vlc://", URI/binary>>
     end.
 
+-spec maybe_playback_via_shout(ne_binary()) -> ne_binary().
 maybe_playback_via_shout(URI) ->
     case filename:extension(URI) =:= <<".mp3">>
         andalso wh_util:is_true(ecallmgr_config:get(<<"use_shout">>, 'false'))
@@ -889,6 +900,7 @@ maybe_playback_via_shout(URI) ->
             binary:replace(URI, [<<"http">>, <<"https">>], <<"shout">>)
     end.
 
+-spec maybe_playback_via_http_cache(ne_binary()) -> ne_binary().
 maybe_playback_via_http_cache(URI) ->
     case wh_util:is_true(ecallmgr_config:get(<<"use_http_cache">>, 'true')) of
         'false' -> URI;
@@ -925,7 +937,9 @@ lookup_media(MediaName, CallId, JObj, Type) ->
             request_media_url(MediaName, CallId, JObj, Type)
     end.
 
--spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) -> {'ok', ne_binary()} | {'error', _}.
+-spec request_media_url(ne_binary(), ne_binary(), wh_json:object(), media_types()) ->
+                               {'ok', ne_binary()} |
+                               {'error', _}.
 request_media_url(MediaName, CallId, JObj, Type) ->
     Request = wh_json:set_values(
                 props:filter_undefined(
@@ -942,13 +956,14 @@ request_media_url(MediaName, CallId, JObj, Type) ->
                                  ),
     case ReqResp of
         {'error', _E}=E ->
-             lager:debug("error get media url from amqp ~p", [E]),
-              E;
+            lager:debug("error get media url from amqp ~p", [E]),
+            E;
         {'ok', MediaResp} ->
             MediaUrl = wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>),
             _ = wh_cache:store_local(?ECALLMGR_UTIL_CACHE
                                      ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
-                                     ,MediaUrl),
+                                     ,MediaUrl
+                                    ),
             lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
             {'ok', MediaUrl}
     end.
