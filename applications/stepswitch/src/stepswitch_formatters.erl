@@ -128,6 +128,42 @@ maybe_match(JObj, Key, Value, [Formatter|Formatters]) ->
 
 maybe_apply_formatters(JObj, _Key, _User, _Realm, []) -> JObj;
 maybe_apply_formatters(JObj, Key, User, Realm, [Formatter|Formatters]) ->
+    case maybe_match_invite_format(JObj, Formatter) of
+        'false' -> maybe_match(JObj, Key, User, Realm, Formatters);
+        FormatFun -> match_invite_format(JObj, Key, User, Realm, FormatFun)
+    end.
+
+-type invite_fun() :: fun((ne_binary()) -> ne_binary()).
+-spec maybe_match_invite_format(wh_json:object(), wh_json:object()) ->
+                                       'false' | invite_fun().
+maybe_match_invite_format(JObj, Formatter) ->
+    case wh_json:get_is_true(<<"match_invite_format">>, Formatter, 'false')
+        andalso wh_json:get_value(<<"Invite-Format">>, JObj)
+    of
+        'false' -> 'false';
+        'undefined' -> 'false';
+        <<"loopback">> -> 'false';
+        <<"route">> -> 'false';
+        <<"username">> -> 'false';
+        <<"e164">> -> fun wnm_util:to_e164/1;
+        <<"npan">> -> fun wnm_util:to_npan/1;
+        <<"1npan">> -> fun wnm_util:to_1npan/1
+    end.
+
+-spec match_invite_format(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), invite_fun()) ->
+                                 wh_json:object().
+match_invite_format(JObj, Key, User, Realm, FormatFun) ->
+    wh_json:set_value(Key
+                      ,list_to_binary([FormatFun(User)
+                                       ,"@"
+                                       ,Realm
+                                      ])
+                      ,JObj
+                     ).
+
+-spec maybe_match(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:objects()) ->
+                         wh_json:object().
+maybe_match(JObj, Key, User, Realm, [Formatter|Formatters]) ->
     case maybe_match(wh_json:get_value(<<"regex">>, Formatter), User) of
         {'match', Captured} -> apply_formatter(JObj, Key, Captured, Realm, Formatter);
         'nomatch' -> maybe_apply_formatters(JObj, Key, User, Realm, Formatters)
