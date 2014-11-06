@@ -355,23 +355,10 @@ init([Module, Params, InitArgs]) ->
 -spec init(atom(), wh_proplist(), module_state(), api_reference()) ->
                   {'ok', state()}.
 init(Module, Params, ModuleState, TimeoutRef) ->
-    case props:get_value('broker_tag', Params) of
-        'undefined' ->
-            case props:get_value('broker', Params) of
-                'undefined' -> wh_amqp_channel:requisition();
-                Broker -> wh_amqp_channel:requisition(Broker)
-            end;
-        Tag ->
-            case wh_amqp_connections:broker_with_tag(Tag) of
-                'undefined' -> wh_amqp_channel:requisition();
-                Broker -> wh_amqp_channel:requisition(Broker)
-            end
-    end,
-
+    _ = channel_requisition(Params),
     _ = [add_responder(self(), Mod, Events)
          || {Mod, Events} <- props:get_value('responders', Params, [])
         ],
-
     {'ok', #state{module=Module
                   ,module_state=ModuleState
                   ,module_timeout_ref=TimeoutRef
@@ -997,3 +984,18 @@ start_initial_bindings(State, Params) ->
                 ,State
                 ,props:get_value('bindings', Params, [])
                ).
+
+-spec channel_requisition(wh_proplist()) -> boolean().
+channel_requisition(Params) ->
+    case props:get_value('broker_tag', Params) of
+        'undefined' ->
+            case props:get_value('broker', Params) of
+                'undefined' -> wh_amqp_channel:requisition();
+                Broker -> wh_amqp_channel:requisition(Broker)
+            end;
+        Tag ->
+            case wh_amqp_connections:broker_with_tag(Tag) of
+                'undefined' -> wh_amqp_channel:requisition();
+                Broker -> wh_amqp_channel:requisition(Broker)
+            end
+    end.
