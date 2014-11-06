@@ -1043,7 +1043,6 @@ maybe_enforce_security({Endpoint, Call, CallFwd, JObj}) ->
      ,wh_json:set_value(<<"Media-Encryption-Enforce-Security">>, EnforceSecurity, JObj)
     }.
 
-
 -spec maybe_set_encryption_flags(ccv_acc()) -> ccv_acc().
 maybe_set_encryption_flags({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
