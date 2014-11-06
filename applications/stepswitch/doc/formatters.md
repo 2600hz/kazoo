@@ -54,11 +54,11 @@ A more full example:
     {"_id":"resource_id"
      ,"formatters":{
          "from":[
-             {"regex":"^\\+?\\1?(\\d{10})$"
+             {"regex":"^\\+?1?(\\d{10})$"
               ,"prefix":"+1"
               ,"direction":"inbound"
              }
-             ,{"regex":"\\+?\\1(\\d{10})$"
+             ,{"regex":"\\+?1?(\\d{10})$"
                ,"direction":"outbound"
               }
           ]
