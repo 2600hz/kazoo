@@ -21,7 +21,7 @@
         ]).
 -export([reconcile_number/3]).
 -export([free_numbers/1]).
--export([reserve_number/3, reserve_number/5]).
+-export([reserve_number/3, reserve_number/4, reserve_number/5]).
 -export([assign_number_to_account/3, assign_number_to_account/4, assign_number_to_account/5]).
 -export([release_number/2]).
 -export([list_attachments/2]).
@@ -571,11 +571,16 @@ free_numbers(AccountId) ->
 %%--------------------------------------------------------------------
 -spec reserve_number(ne_binary(), ne_binary(), ne_binary()) ->
                             operation_return().
+-spec reserve_number(ne_binary(), ne_binary(), ne_binary(), api_object()) ->
+                            operation_return().
 -spec reserve_number(ne_binary(), ne_binary(), ne_binary(), api_object(), boolean()) ->
                             operation_return().
 
 reserve_number(Number, AssignTo, AuthBy) ->
     reserve_number(Number, AssignTo, AuthBy, 'undefined', 'false').
+
+reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
+    reserve_number(Number, AssignTo, AuthBy, PublicFields, 'false').
 
 reserve_number(Number, AssignTo, AuthBy, PublicFields, DryRun) ->
     lager:debug("attempting to reserve ~s for account ~s", [Number, AssignTo]),
