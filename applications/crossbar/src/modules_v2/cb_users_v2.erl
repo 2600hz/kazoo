@@ -203,7 +203,7 @@ put_resp('false', Context) ->
 
 -spec dry_run(cb_context:context()) -> wh_json:object().
 dry_run(Context) ->
-    JObj = cb_context:req_data(Context),
+    JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
 
     UserType = wh_json:get_value(<<"priv_level">>, JObj),
