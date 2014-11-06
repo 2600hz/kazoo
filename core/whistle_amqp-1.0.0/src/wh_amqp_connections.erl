@@ -29,9 +29,9 @@
 -export([is_available/0]).
 -export([wait_for_available/0]).
 
--export([brokers_for_zone/1, broker_for_zone/1]).
--export([brokers_with_tag/1, broker_with_tag/1]).
--export([is_zone_available/1, is_tag_available/1]).
+-export([brokers_for_zone/1, brokers_for_zone/2, broker_for_zone/1]).
+-export([brokers_with_tag/1, brokers_with_tag/2,broker_with_tag/1]).
+-export([is_zone_available/1, is_tag_available/1, is_hidden_broker/1]).
 
 -export([start_link/0]).
 
@@ -120,7 +120,7 @@ add(Broker, Zone, Tags) ->
             add(#wh_amqp_connection{broker=Broker
                                     ,params=Params#amqp_params_network{connection_timeout=500}
                                     ,tags=Tags
-                                    ,hidden = lists:member(<<"_hidden">>, Tags)
+                                    ,hidden=is_hidden_broker(Tags)
                                    }
                 ,Zone
                );
@@ -128,7 +128,7 @@ add(Broker, Zone, Tags) ->
             add(#wh_amqp_connection{broker=Broker
                                     ,params=Params
                                     ,tags=Tags
-                                    ,hidden = lists:member(<<"_hidden">>, Tags)
+                                    ,hidden=is_hidden_broker(Tags)
                                    }
                 ,Zone
                )
@@ -219,7 +219,7 @@ federated_brokers() ->
                                       },
                   [{'andalso',
                      {'=/=', '$1', 'local'},
-                     {'=/=', '$3', 'false'}}],
+                     {'=:=', '$3', 'false'}}],
                   ['$2']
                  }
                 ],
@@ -314,7 +314,7 @@ handle_cast({'new_connection', Connection, Broker, Zone, Tags}, State) ->
                                               ,broker=Broker
                                               ,zone=Zone
                                               ,tags=Tags
-                                              ,hidden = lists:member(<<"_hidden">>, Tags)
+                                              ,hidden=is_hidden_broker(Tags)
                                              }),
     {'noreply', State, 'hibernate'};
 handle_cast({'connection_available', Connection}, State) ->
@@ -418,48 +418,59 @@ wait_for_notification(Timeout) ->
         Timeout -> {'error', 'timeout'}
     end.
 
--spec brokers_with_tag(ne_binary()) -> ne_binaries().
-brokers_with_tag(Tag) ->
-      [Broker || #wh_amqp_connections{broker=Broker} 
-           <- ets:filter(?TAB,fun(#wh_amqp_connections{tags=Tags}, Member) -> lists:member(Member, Tags) end , Tag)].
+-spec brokers_with_tag(ne_binary()) -> list().
+-spec brokers_with_tag(ne_binary(), api_boolean()) -> list().
 
--spec broker_with_tag(ne_binary()) -> ne_binary().
+brokers_with_tag(Tag) ->
+    brokers_with_tag(Tag, 'undefined').
+
+brokers_with_tag(Tag, Available) ->
+      [Broker || #wh_amqp_connections{broker=Broker}            
+           <- ets:filter(?TAB
+                         ,fun(#wh_amqp_connections{tags=Tags
+                                                   ,available=BrokerAvailable
+                                                  }, Member) -> 
+                                  lists:member(Member, Tags) andalso
+                                      BrokerAvailable =:= Available orelse
+                                      Available =:= 'undefined'
+                         end , Tag)].
+
+-spec broker_with_tag(ne_binary()) -> api_binary().
 broker_with_tag(Tag) ->
-    List = [Broker || #wh_amqp_connections{broker=Broker} <- 
-                          ets:filter(?TAB,
-                                     fun(#wh_amqp_connections{tags=Tags, available=Available}, Member) when Available =:= 'true' -> lists:member(Member, Tags);
-                                        (_, _) -> 'false' end , Tag)],
-    case List of
+    case brokers_with_tag(Tag, 'true') of
         [] -> 'undefined';
         [Broker|_] -> Broker
     end.
         
 
--spec brokers_for_zone(atom()) -> api_binaries().
+-spec brokers_for_zone(atom()) -> list().
+-spec brokers_for_zone(atom(), api_boolean()) -> list().
+
 brokers_for_zone(Zone) ->
-    Pattern = #wh_amqp_connections{zone=Zone
-                                   ,broker='$1'
-                                   ,_='_'
-                                  },
-    case lists:sort([Broker
-                     || [Broker] <- ets:match(?TAB, Pattern)
-                    ])
-    of
-        [] -> 'undefined';
-        [_Broker|_] = Brokers -> Brokers
-    end.
+    brokers_for_zone(Zone, 'undefined').
+
+brokers_for_zone(Zone, Available) ->
+    MatchSpec = [{#wh_amqp_connections{zone='$1'
+                                       ,broker='$2'
+                                       ,available='$3'
+                                       ,_='_'
+                                      },
+                  [{'andalso',
+                     {'=:=', '$1', {'const', Zone}},
+                     {'orelse',
+                        {'=:=', '$3', {'const', Available}},
+                        {'=:=', {'const', Available}, 'undefined'}
+                     }
+                   }
+                  ],
+                  ['$2']
+                 }
+                ],
+    [Broker || Broker <- ets:select(?TAB, MatchSpec)].
 
 -spec broker_for_zone(atom()) -> api_binary().
 broker_for_zone(Zone) ->
-    Pattern = #wh_amqp_connections{zone=Zone
-                                   ,available='true'
-                                   ,broker='$1'
-                                   ,_='_'
-                                  },
-    case lists:sort([Broker
-                     || [Broker] <- ets:match(?TAB, Pattern)
-                    ])
-    of
+    case brokers_for_zone(Zone, 'true') of
         [] -> 'undefined';
         [Broker|_] -> Broker
     end.
@@ -469,3 +480,6 @@ is_zone_available(Zone) -> broker_for_zone(Zone) =/= 'undefined'.
 
 -spec is_tag_available(ne_binary()) -> boolean().
 is_tag_available(Tag) -> broker_with_tag(Tag) =/= 'undefined'.
+
+-spec is_hidden_broker(list()) -> boolean().
+is_hidden_broker(Tags) -> lists:member(?AMQP_HIDDEN_TAG, Tags).
