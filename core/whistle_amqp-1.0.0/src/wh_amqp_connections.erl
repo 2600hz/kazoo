@@ -15,6 +15,7 @@
         ]).
 -export([add/1
          ,add/2
+         ,add/3
         ]).
 -export([remove/1]).
 -export([broker_connections/1]).
@@ -27,7 +28,13 @@
 -export([unavailable/1]).
 -export([is_available/0]).
 -export([wait_for_available/0]).
+
+-export([brokers_for_zone/1, broker_for_zone/1]).
+-export([brokers_with_tag/1, broker_with_tag/1]).
+-export([is_zone_available/1, is_tag_available/1]).
+
 -export([start_link/0]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -77,13 +84,16 @@ new(Broker, Zone) ->
 -spec add(wh_amqp_connection() | text(), text()) ->
                  wh_amqp_connection() |
                  {'error', _}.
+-spec add(wh_amqp_connection() | text(), text(), list()) ->
+                 wh_amqp_connection() |
+                 {'error', _}.
 
 add(Broker) -> add(Broker, 'local').
 
-add(#wh_amqp_connection{broker=Broker}=Connection, Zone) ->
+add(#wh_amqp_connection{broker=Broker, tags=Tags}=Connection, Zone) ->
     case wh_amqp_connection_sup:add(Connection) of
         {'ok', Pid} ->
-            gen_server:cast(?MODULE, {'new_connection', Pid, Broker, Zone}),
+            gen_server:cast(?MODULE, {'new_connection', Pid, Broker, Zone, Tags}),
             Connection;
         {'error', Reason} ->
             lager:warning("unable to start amqp connection to '~s': ~p"
@@ -96,6 +106,9 @@ add(Broker, Zone) when not is_binary(Broker) ->
 add(Broker, Zone) when not is_atom(Zone) ->
     add(Broker, wh_util:to_atom(Zone, 'true'));
 add(Broker, Zone) ->
+    add(Broker, Zone, []).
+
+add(Broker, Zone, Tags) ->    
     case catch amqp_uri:parse(wh_util:to_list(Broker)) of
         {'EXIT', _R} ->
             lager:error("failed to parse AMQP URI '~s': ~p", [Broker, _R]),
@@ -106,12 +119,16 @@ add(Broker, Zone) ->
         {'ok', #amqp_params_network{}=Params} ->
             add(#wh_amqp_connection{broker=Broker
                                     ,params=Params#amqp_params_network{connection_timeout=500}
+                                    ,tags=Tags
+                                    ,hidden = lists:member(<<"_hidden">>, Tags)
                                    }
                 ,Zone
                );
         {'ok', Params} ->
             add(#wh_amqp_connection{broker=Broker
                                     ,params=Params
+                                    ,tags=Tags
+                                    ,hidden = lists:member(<<"_hidden">>, Tags)
                                    }
                 ,Zone
                )
@@ -145,6 +162,7 @@ unavailable(Connection) when is_pid(Connection) ->
 arbitrator_broker() ->
     MatchSpec = [{#wh_amqp_connections{broker='$1'
                                        ,available='true'
+                                       ,hidden='false'
                                        ,_='_'
                                       },
                   [],
@@ -180,6 +198,7 @@ broker_available_connections(Broker) ->
 primary_broker() ->
     Pattern = #wh_amqp_connections{available='true'
                                    ,zone='local'
+                                   ,hidden='false'
                                    ,broker='$1'
                                    ,_='_'
                                   },
@@ -195,9 +214,12 @@ primary_broker() ->
 federated_brokers() ->
     MatchSpec = [{#wh_amqp_connections{zone='$1'
                                        ,broker='$2'
+                                       ,hidden='$3'
                                        ,_='_'
                                       },
-                  [{'=/=', '$1', 'local'}],
+                  [{'andalso',
+                     {'=/=', '$1', 'local'},
+                     {'=/=', '$3', 'false'}}],
                   ['$2']
                  }
                 ],
@@ -285,12 +307,14 @@ handle_call(_Msg, _From, State) ->
 %%                                  {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'new_connection', Connection, Broker, Zone}, State) ->
+handle_cast({'new_connection', Connection, Broker, Zone, Tags}, State) ->
     Ref = erlang:monitor('process', Connection),
     _ = ets:insert(?TAB, #wh_amqp_connections{connection=Connection
                                               ,connection_ref=Ref
                                               ,broker=Broker
                                               ,zone=Zone
+                                              ,tags=Tags
+                                              ,hidden = lists:member(<<"_hidden">>, Tags)
                                              }),
     {'noreply', State, 'hibernate'};
 handle_cast({'connection_available', Connection}, State) ->
@@ -393,3 +417,55 @@ wait_for_notification(Timeout) ->
     after
         Timeout -> {'error', 'timeout'}
     end.
+
+-spec brokers_with_tag(ne_binary()) -> ne_binaries().
+brokers_with_tag(Tag) ->
+      [Broker || #wh_amqp_connections{broker=Broker} 
+           <- ets:filter(?TAB,fun(#wh_amqp_connections{tags=Tags}, Member) -> lists:member(Member, Tags) end , Tag)].
+
+-spec broker_with_tag(ne_binary()) -> ne_binary().
+broker_with_tag(Tag) ->
+    List = [Broker || #wh_amqp_connections{broker=Broker} <- 
+                          ets:filter(?TAB,
+                                     fun(#wh_amqp_connections{tags=Tags, available=Available}, Member) when Available =:= 'true' -> lists:member(Member, Tags);
+                                        (_, _) -> 'false' end , Tag)],
+    case List of
+        [] -> 'undefined';
+        [Broker|_] -> Broker
+    end.
+        
+
+-spec brokers_for_zone(atom()) -> api_binaries().
+brokers_for_zone(Zone) ->
+    Pattern = #wh_amqp_connections{zone=Zone
+                                   ,broker='$1'
+                                   ,_='_'
+                                  },
+    case lists:sort([Broker
+                     || [Broker] <- ets:match(?TAB, Pattern)
+                    ])
+    of
+        [] -> 'undefined';
+        [_Broker|_] = Brokers -> Brokers
+    end.
+
+-spec broker_for_zone(atom()) -> api_binary().
+broker_for_zone(Zone) ->
+    Pattern = #wh_amqp_connections{zone=Zone
+                                   ,available='true'
+                                   ,broker='$1'
+                                   ,_='_'
+                                  },
+    case lists:sort([Broker
+                     || [Broker] <- ets:match(?TAB, Pattern)
+                    ])
+    of
+        [] -> 'undefined';
+        [Broker|_] -> Broker
+    end.
+
+-spec is_zone_available(atom()) -> boolean().
+is_zone_available(Zone) -> broker_for_zone(Zone) =/= 'undefined'.
+
+-spec is_tag_available(ne_binary()) -> boolean().
+is_tag_available(Tag) -> broker_with_tag(Tag) =/= 'undefined'.
