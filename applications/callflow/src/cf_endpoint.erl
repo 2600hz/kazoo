@@ -952,7 +952,8 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                ,fun set_sip_invite_domain/1
               ],
     Acc0 = {Endpoint, Call, CallFwd, wh_json:new()},
-    lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns).
+    {_Endpoint, _Call, _CallFwd, JObj} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
+    JObj.
 
 -type ccv_acc() :: {wh_json:object(), whapps_call:call(), api_object(), wh_json:object()}.
 
