@@ -5,7 +5,7 @@ Language: en-US
 Version: 3.18
 */
 
-# Inbound Calls
+# Formatting fields
 
 When a call enters Kazoo from a carrier, Stepswitch receives the route request first (since no account information exists to identify the context of the call). Stepswitch will process this request to figure out what account the request is destined for and will replay the route request with the associated information.
 
@@ -31,7 +31,19 @@ Okay, so what goes in the `{...}` portions of the example above? The generic for
     {"regex":"^som(e_r)egex$"
      ,"prefix":"some_prefix"
      ,"suffix":"some_suffix"
+     ,"strip":boolean()
+     ,"match_invite_format":boolean()
+     ,"direction":direction()
     }
+
+### Properties
+
+* `direction`: Can be "inbound", "outbound", or unset. If unset, the formatter will be used on both inbound and outbound requests; otherwise the formatter will only be applied on the relevant request direction
+* `strip`: If set to true, the field will be stripped from the request. Typically used to strip headers from a request before sending to the carrier (for instance, if the carrier doesn't support the Diversion header).
+* `match_invite_format`: Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request.
+* `regex`: Matches against the value, with optional capture group
+* `prefix`: Prepends value against the result of a successful regex match
+* `suffix`: Appends value against the result of a successful regex match
 
 So the regex will be run against the value of the header and if it matches, will take the capture group (or the whole value if no capture group is defined) and prepend the prefix and append the suffix (if applicable).
 
@@ -45,8 +57,11 @@ A more full example:
              "regex":"^\\+?\\1(\\d{10})$"
              ,"prefix":"+1"
          }]
+         ,"diversion":[{
+             "match_invite_format":true
+         }]
      }
      ,...
     }
 
-This will format the 'From' DID as E164 before republishing the route request.
+This will format the 'From' DID as E164 before republishing the route request, and format the Diversion username to match the invite format of the request on an outbound request.
