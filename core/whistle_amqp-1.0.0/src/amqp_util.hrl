@@ -154,6 +154,8 @@
                              ,exchanges_initalized = 'false' :: boolean() | '_'
                              ,prechannels_initalized = 'false' :: boolean() | '_'
                              ,started = os:timestamp() :: wh_now() | '_'
+                             ,tags = [] :: list()
+                             ,hidden = 'false' :: boolean()
                             }).
 -type wh_amqp_connection() :: #wh_amqp_connection{}.
 
@@ -164,6 +166,8 @@
                               ,timestamp=os:timestamp() :: wh_now() | '_'
                               ,zone='local' :: atom() | '$1' | '_'
                               ,manager=self() :: pid() | '_'
+                              ,tags = [] :: list()
+                              ,hidden = 'false' :: boolean()
                              }).
 -type wh_amqp_connections() :: #wh_amqp_connections{}.
 
