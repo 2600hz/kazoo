@@ -8,32 +8,50 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch_formatters).
 
--export([apply/2]).
+-export([apply/3]).
 
 -include("stepswitch.hrl").
 
--spec apply(wh_json:object(), wh_json:object()) ->
+-spec apply(wh_json:object(), wh_json:object(), direction()) ->
                    wh_json:object().
-apply(JObj, MetaFormatters) ->
+apply(JObj, MetaFormatters, Direction) ->
     JObjKeys = [{wh_util:to_lower_binary(K), K}
                 || K <- wh_json:get_keys(wh_api:remove_defaults(JObj))
                ],
     wh_json:foldl(fun(MetaKey, Formatters, AccJObj) ->
-                          maybe_apply_formatters_fold(AccJObj, JObjKeys, MetaKey, Formatters)
+                          maybe_apply_formatters_fold(AccJObj
+                                                      ,JObjKeys
+                                                      ,MetaKey
+                                                      ,filter_formatters_by_direction(Direction, Formatters)
+                                                     )
                   end, JObj, MetaFormatters).
 
--spec maybe_apply_formatters_fold(wh_json:object(), wh_json:keys(), wh_json:key()
-                                  ,wh_json:objects() | wh_json:object()
-                                 ) ->  wh_json:object().
+-spec filter_formatters_by_direction(direction(), wh_json:object() | wh_json:objects()) -> wh_json:objects().
+filter_formatters_by_direction(Direction, Formatters) when is_list(Formatters) ->
+    [Formatter || Formatter <- Formatters,
+                  is_formatter_applicable(Formatter, Direction)
+    ];
+filter_formatters_by_direction(Direction, Formatter) ->
+    'true' = wh_json:is_json_object(Formatter),
+    filter_formatters_by_direction(Direction, [Formatter]).
+
+-spec is_formatter_applicable(wh_json:object(), direction()) -> boolean().
+is_formatter_applicable(Formatter, Direction) ->
+    case wh_json:get_atom_value(<<"direction">>, Formatter) of
+        'undefined' -> 'true';
+        Direction -> 'true';
+        _Direction -> 'false'
+    end.
+
+-spec maybe_apply_formatters_fold(wh_json:object(), wh_json:keys(), wh_json:key(), wh_json:objects()) ->
+                                         wh_json:object().
 maybe_apply_formatters_fold(JObj, _JObjKeys, _MetaKey, []) -> JObj;
 maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
     case props:get_value(wh_util:to_lower_binary(MetaKey), JObjKeys) of
         'undefined' -> JObj;
         JObjKey ->
             maybe_apply_formatters(JObj, JObjKey, Formatters)
-    end;
-maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, Formatter) ->
-    maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [Formatter]).
+    end.
 
 -spec maybe_apply_formatters(wh_json:object(), ne_binary(), wh_json:objects()) ->
                                     wh_json:object().

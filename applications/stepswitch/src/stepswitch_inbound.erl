@@ -147,7 +147,7 @@ maybe_format_destination(_NumberProps, JObj) ->
             case stepswitch_resources:get_props(ResourceId) of
                 'undefined' -> JObj;
                 Resource ->
-                    stepswitch_formatters:apply(JObj, props:get_value(<<"Formatters">>, Resource, wh_json:new()))
+                    stepswitch_formatters:apply(JObj, props:get_value(<<"Formatters">>, Resource, wh_json:new()), 'inbound')
             end
     end.
 
@@ -252,7 +252,7 @@ maybe_transition_port_in(NumberProps, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_blacklisted(wh_json:object()) -> wh_json:object().
+-spec is_blacklisted(wh_json:object()) -> boolean().
 is_blacklisted(JObj) ->
     AccountId = wh_json:get_ne_value(?CCV(<<"Account-ID">>), JObj),
     case get_blacklists(AccountId) of
@@ -272,7 +272,9 @@ is_blacklisted(JObj) ->
             end
     end.
 
--spec get_blacklists(ne_binary()) -> {'error', any()} | {'ok', ne_binaries()}.
+-spec get_blacklists(ne_binary()) ->
+                            {'ok', ne_binaries()} |
+                            {'error', any()}.
 get_blacklists(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of

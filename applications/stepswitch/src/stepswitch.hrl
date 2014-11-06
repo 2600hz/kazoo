@@ -22,5 +22,7 @@
 
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
+-type direction() :: 'inbound' | 'outbound'.
+
 -define(STEPSWITCH_HRL, 'true').
 -endif.
