@@ -11,6 +11,7 @@
 -export([apply/3]).
 
 -include("stepswitch.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -spec apply(wh_json:object(), wh_json:object(), direction()) ->
                    wh_json:object().
@@ -41,8 +42,15 @@ maybe_format_sub_object(JObj, MetaFormatters, Direction, SubKey) ->
     case wh_json:get_value(SubKey, JObj) of
         'undefined' -> JObj;
         SubJObj ->
-            Formatted = format_request(SubJObj, MetaFormatters, Direction),
+            Formatted = format_request(maybe_set_invite_format(JObj, SubJObj), MetaFormatters, Direction),
             wh_json:set_value(SubKey, Formatted, JObj)
+    end.
+
+-spec maybe_set_invite_format(wh_json:object(), wh_json:object()) -> wh_json:object().
+maybe_set_invite_format(JObj, SubJObj) ->
+    case wh_json:get_value(<<"Invite-Format">>, JObj) of
+        'undefined' -> SubJObj;
+        Format -> wh_json:set_value(<<"Invite-Format">>, Format, SubJObj)
     end.
 
 -spec format_request(wh_json:object(), wh_json:object(), direction()) ->
@@ -59,7 +67,7 @@ format_request(JObj, MetaFormatters, Direction) ->
 
 -spec request_keys(wh_json:object()) -> wh_proplist().
 request_keys(JObj) ->
-    [{wh_util:to_lower_binary(K), K}
+    [{wh_json:normalize_key(K), K}
      || K <- wh_json:get_keys(wh_api:remove_defaults(JObj))
     ].
 
@@ -85,8 +93,12 @@ is_formatter_applicable(Formatter, Direction) ->
 maybe_apply_formatters_fold(JObj, _JObjKeys, _MetaKey, []) -> JObj;
 maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
     case props:get_value(wh_util:to_lower_binary(MetaKey), JObjKeys) of
-        'undefined' -> JObj;
-        JObjKey -> maybe_apply_formatters(JObj, JObjKey, Formatters)
+        'undefined' ->
+            ?debugFmt("found no jobj key for meta key ~p~n", [MetaKey]),
+            JObj;
+        JObjKey ->
+            ?debugFmt("applying on jobj key ~p from meta key ~p~n", [JObjKey, MetaKey]),
+            maybe_apply_formatters(JObj, JObjKey, Formatters)
     end.
 
 -spec maybe_apply_formatters(wh_json:object(), ne_binary(), wh_json:objects()) ->
@@ -102,13 +114,13 @@ maybe_apply_formatters(JObj, <<"To">> = ToKey, Formatters) ->
     [ToUser, ToRealm] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
     maybe_apply_formatters(JObj, ToKey, ToUser, ToRealm, Formatters);
 maybe_apply_formatters(JObj, <<"From">> = FromKey, Formatters) ->
-    [FromUser, FromRealm] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+    [FromUser, FromRealm] = binary:split(wh_json:get_value(<<"From">>, JObj), <<"@">>),
     maybe_apply_formatters(JObj, FromKey, FromUser, FromRealm, Formatters);
 maybe_apply_formatters(JObj, Key, Formatters) ->
     maybe_apply_formatters(JObj, Key, wh_json:get_value(Key, JObj), Formatters).
 
 maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
-maybe_apply_formatters(JObj, Key, Value, [Formatter|Formatters]) ->
+maybe_apply_formatters(JObj, Key, Value, [Formatter|_]=Formatters) ->
     case maybe_strip_key(Formatter) of
         'false' -> maybe_match(JObj, Key, Value, Formatters);
         'true' -> wh_json:delete_key(Key, JObj)
@@ -120,14 +132,22 @@ maybe_strip_key(Formatter) ->
 
 -spec maybe_match(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
                          wh_json:object().
-maybe_match(JObj, Key, Value, [Formatter|Formatters]) ->
+maybe_match(JObj, Key, Value, [Formatter|_]=Formatters) ->
     case maybe_match(wh_json:get_value(<<"regex">>, Formatter), Value) of
         {'match', Captured} -> apply_formatter(JObj, Key, Captured, Formatter);
         'nomatch' -> maybe_apply_formatters(JObj, Key, Value, Formatters)
     end.
 
 maybe_apply_formatters(JObj, _Key, _User, _Realm, []) -> JObj;
-maybe_apply_formatters(JObj, Key, User, Realm, [Formatter|Formatters]) ->
+maybe_apply_formatters(JObj, Key, User, Realm, [Formatter|_]=Formatters) ->
+    case maybe_strip_key(Formatter) of
+        'true' -> wh_json:delete_key(Key, JObj);
+        'false' -> maybe_match_invite_format(JObj, Key, User, Realm, Formatters)
+    end.
+
+-spec maybe_match_invite_format(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:objects()) ->
+                                       wh_json:object().
+maybe_match_invite_format(JObj, Key, User, Realm, [Formatter|_]=Formatters) ->
     case maybe_match_invite_format(JObj, Formatter) of
         'false' -> maybe_match(JObj, Key, User, Realm, Formatters);
         FormatFun -> match_invite_format(JObj, Key, User, Realm, FormatFun)
@@ -137,7 +157,7 @@ maybe_apply_formatters(JObj, Key, User, Realm, [Formatter|Formatters]) ->
 -spec maybe_match_invite_format(wh_json:object(), wh_json:object()) ->
                                        'false' | invite_fun().
 maybe_match_invite_format(JObj, Formatter) ->
-    case wh_json:get_is_true(<<"match_invite_format">>, Formatter, 'false')
+    case wh_json:is_true(<<"match_invite_format">>, Formatter, 'false')
         andalso wh_json:get_value(<<"Invite-Format">>, JObj)
     of
         'false' -> 'false';
@@ -204,3 +224,77 @@ apply_formatter(JObj, Key, Captured, Realm, Formatter) ->
                           ]),
     lager:debug("updating ~s user to '~s'@~s", [Key, User, Realm]),
     wh_json:set_value(Key, list_to_binary([User, "@", Realm]), JObj).
+
+-ifdef(TEST).
+
+-define(OFFNET_REQ, wh_json:from_list([])).
+-define(ROUTE_REQ, wh_json:from_list([{<<"To">>, <<"12345556789@2600hz.com">>}
+                                      ,{<<"From">>, <<"4158867900@2600hz.com">>}
+                                      ,{<<"Request">>, <<"+12345556789@2600hz.com">>}
+                                      ,{<<"Caller-ID-Number">>, <<"+14158867900">>}
+                                      ,{<<"Custom-Channel-Vars">>
+                                        ,wh_json:from_list([{<<"Diversion">>, <<"\"4158867900\" <sip:4156687900@192.168.1.254>;reason=unconditional;privacy=off;screen=yes">>}])
+                                       }
+                                     ])).
+
+regex_inbound_test() ->
+    Formatter = wh_json:from_list([{<<"to">>
+                                    ,[wh_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                                         ,{<<"prefix">>, <<"+1">>}
+                                                         ,{<<"direction">>, <<"inbound">>}
+                                                        ])
+                                     ]
+                                   }
+                                   ,{<<"from">>
+                                     ,[wh_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                                          ,{<<"prefix">>, <<"+1">>}
+                                                          ,{<<"direction">>, <<"inbound">>}
+                                                         ])
+                                      ]
+                                    }
+                                   ,{<<"request">>
+                                     ,[wh_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                                          ,{<<"prefix">>, <<"+1">>}
+                                                          ,{<<"direction">>, <<"inbound">>}
+                                                         ])
+                                      ]
+                                    }
+                                   ,{<<"caller_id_number">>
+                                     ,[wh_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                                          ,{<<"direction">>, <<"inbound">>}
+                                                         ])
+                                      ]
+                                    }
+                                  ]),
+
+    Route = ?MODULE:apply(?ROUTE_REQ, Formatter, 'inbound'),
+
+    ?assertEqual(<<"+12345556789@2600hz.com">>, wh_json:get_value(<<"To">>, Route)),
+    ?assertEqual(<<"+12345556789@2600hz.com">>, wh_json:get_value(<<"Request">>, Route)),
+    ?assertEqual(<<"+14158867900@2600hz.com">>, wh_json:get_value(<<"From">>, Route)),
+    ?assertEqual(<<"4158867900">>, wh_json:get_value(<<"Caller-ID-Number">>, Route)).
+
+strip_inbound_test() ->
+Formatter = wh_json:from_list([{<<"to">>
+                                    ,[wh_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                                         ,{<<"prefix">>, <<"+1">>}
+                                                         ,{<<"direction">>, <<"inbound">>}
+                                                         ,{<<"strip">>, 'true'}
+                                                        ])
+                                     ]
+                                   }
+                                   ,{<<"caller_id_number">>
+                                     ,[wh_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                                          ,{<<"direction">>, <<"inbound">>}
+                                                          ,{<<"strip">>, 'true'}
+                                                         ])
+                                      ]
+                                    }
+                                  ]),
+
+    Route = ?MODULE:apply(?ROUTE_REQ, Formatter, 'inbound'),
+
+    ?assertEqual('undefined', wh_json:get_value(<<"To">>, Route)),
+    ?assertEqual('undefined', wh_json:get_value(<<"Caller-ID-Number">>, Route)).
+
+-endif.
