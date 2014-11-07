@@ -84,8 +84,8 @@ handle_sms_req(JObj) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
             maybe_force_outbound_sms([{'account_id', AccountId}
-                                  | Props
-                                 ], JObj);
+                                      | Props
+                                     ], JObj);
         _ -> maybe_sms(Number, JObj)
     end.
 
@@ -97,8 +97,8 @@ handle_sms_req(JObj) ->
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound(Props, JObj) ->
-    case wh_number_properties:should_force_outbound(Props) orelse
-        wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+    case wh_number_properties:should_force_outbound(Props)
+        orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
     of
         'false' -> local_extension(Props, JObj);
         'true' ->
@@ -114,8 +114,8 @@ maybe_force_outbound(Props, JObj) ->
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound_sms(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound_sms(Props, JObj) ->
-    case props:get_is_true('force_outbound', Props) orelse
-        wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+    case props:get_is_true('force_outbound', Props)
+        orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
     of
         'false' -> local_sms(Props, JObj);
         'true' ->
