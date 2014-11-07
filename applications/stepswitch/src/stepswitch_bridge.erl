@@ -509,12 +509,16 @@ get_diversions(JObj) ->
     Diversions = wh_json:get_value(<<"Diversions">>, JObj, []),
     get_diversions(Inception, Diversions).
 
--spec get_diversions(api_binary(), wh_json:object()) -> api_object().
+-spec get_diversions(api_binary(), wh_json:object()) -> 'undefined' | kzsip_diversion:diversion().
 get_diversions('undefined', _) -> 'undefined';
 get_diversions(Inception, Diversions) ->
-    wh_json:from_list([{<<"address">>, <<"sip:", Inception/binary>>}
-                       ,{<<"counter">>, find_diversion_count(Diversions) + 1}
-                      ]).
+    Fs = [{fun kzsip_diversion:set_address/2, <<"sip:", Inception/binary>>}
+          ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversions) + 1}
+         ],
+    lists:foldl(fun({F, V}, D) -> F(D, V) end
+                ,kzsip_diversion:new()
+                ,Fs
+               ).
 
 -spec find_diversion_count(wh_json:objects()) -> non_neg_integer().
 find_diversion_count([]) -> 0;
