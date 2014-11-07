@@ -115,9 +115,11 @@ maybe_apply_formatters(JObj, Key, Formatters) ->
     maybe_apply_formatters(JObj, Key, wh_json:get_value(Key, JObj), Formatters).
 
 maybe_apply_formatters(JObj, Key, Value, [Formatter|_]=Formatters) ->
-    case maybe_strip_key(Formatter) of
+    case should_strip_key(Formatter) of
         'false' -> maybe_match_invite_format(JObj, Key, Value, Formatters);
-        'true' -> wh_json:delete_key(Key, JObj)
+        'true' ->
+            lager:debug("stripping ~s", [Key]),
+            wh_json:delete_key(Key, JObj)
     end.
 
 -spec maybe_match_invite_format(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
@@ -145,8 +147,8 @@ match_invite_format(JObj, Key, Value) ->
     FormatFun = invite_format_fun(JObj),
     wh_json:set_value(Key, FormatFun(Value), JObj).
 
--spec maybe_strip_key(wh_json:object()) -> boolean().
-maybe_strip_key(Formatter) ->
+-spec should_strip_key(wh_json:object()) -> boolean().
+should_strip_key(Formatter) ->
     wh_json:is_true(<<"strip">>, Formatter, 'false').
 
 -spec maybe_match(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
@@ -159,9 +161,11 @@ maybe_match(JObj, Key, Value, [Formatter|_]=Formatters) ->
 
 maybe_apply_formatters(JObj, _Key, _User, _Realm, []) -> JObj;
 maybe_apply_formatters(JObj, Key, User, Realm, [Formatter|_]=Formatters) ->
-    case maybe_strip_key(Formatter) of
-        'true' -> wh_json:delete_key(Key, JObj);
-        'false' -> maybe_match_invite_format(JObj, Key, User, Realm, Formatters)
+    case should_strip_key(Formatter) of
+        'false' -> maybe_match_invite_format(JObj, Key, User, Realm, Formatters);
+        'true' ->
+            lager:debug("stripping ~s", [Key]),
+            wh_json:delete_key(Key, JObj)
     end.
 
 -spec maybe_match_invite_format(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:objects()) ->
