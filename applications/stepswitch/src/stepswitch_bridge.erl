@@ -21,6 +21,7 @@
 
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -record(state, {endpoints = [] :: wh_json:objects()
                 ,resource_req :: wh_json:object()
@@ -127,8 +128,8 @@ handle_cast({'wh_amqp_channel', _}, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=ControlQ}=State) ->
-    'ok' = wapi_dialplan:publish_command(ControlQ, build_bridge(State)),
-    lager:debug("sent bridge command to ~s", [ControlQ]),
+    'ok' = wapi_dialplan:publish_command(ControlQ, _B = build_bridge(State)),
+    lager:debug("sent bridge command to ~s: ~p", [ControlQ, _B]),
     {'noreply', State};
 handle_cast({'bridge_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
@@ -259,7 +260,7 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Outbound-Caller-ID-Name">>, CIDName}
        ,{<<"Caller-ID-Number">>, CIDNum}
        ,{<<"Caller-ID-Name">>, CIDName}
-       ,{<<"Endpoints">>, maybe_endpoints_format_from(Endpoints, CIDNum, JObj)}
+       ,{<<"Endpoints">>, format_endpoints(Endpoints, CIDNum, JObj, AccountId)}
        ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
        ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj, <<"false">>)}
        ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
@@ -272,20 +273,55 @@ build_bridge(#state{endpoints=Endpoints
        ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"Fax-Identity-Name">>, JObj, CIDName)}
        ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
-       ,{<<"SIP-Headers">>, get_sip_headers(JObj)}
        | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec maybe_endpoints_format_from(wh_json:objects(), api_binary(), wh_json:object()) ->
-                                         wh_json:objects().
-maybe_endpoints_format_from(Endpoints, 'undefined', _) -> Endpoints;
-maybe_endpoints_format_from(Endpoints, CIDNum, JObj) ->
+-spec format_endpoints(wh_json:objects(), api_binary(), wh_json:object(), api_binary()) ->
+                              wh_json:objects().
+format_endpoints(Endpoints, CIDNum, JObj, AccountId) ->
+    SIPHeaders = get_sip_headers(JObj),
     DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                               ,<<"Account-Realm">>
                                              ], JObj),
-    [maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm)
+    [format_endpoint(Endpoint, CIDNum, AccountId, SIPHeaders, DefaultRealm)
      || Endpoint <- Endpoints
     ].
+
+-spec format_endpoint(wh_json:object(), api_binary(), api_binary(), api_object(), api_binary()) -> wh_json:object().
+format_endpoint(Endpoint, CIDNum, AccountId, SIPHeaders, DefaultRealm) ->
+    FormattedEndpoint =
+        stepswitch_formatters:apply(maybe_add_sip_headers(Endpoint, SIPHeaders)
+                                    ,props:get_value(<<"Formatters">>
+                                                     ,endpoint_props(Endpoint, AccountId)
+                                                     ,wh_json:new()
+                                                    )
+                                    ,'outbound'
+                                   ),
+    maybe_endpoint_format_from(FormattedEndpoint, CIDNum, DefaultRealm).
+
+-spec maybe_add_sip_headers(wh_json:object(), api_object()) -> wh_json:object().
+maybe_add_sip_headers(Endpoint, 'undefined') -> Endpoint;
+maybe_add_sip_headers(Endpoint, SIPHeaders) ->
+    LocalSIPHeaders = wh_json:get_value(<<"SIP-Headers">>, Endpoint, wh_json:new()),
+
+    case wh_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
+        ?EMPTY_JSON_OBJECT -> Endpoint;
+        MergedHeaders -> wh_json:set_value(<<"SIP-Headers">>, MergedHeaders, Endpoint)
+    end.
+
+-spec endpoint_props(wh_json:object(), api_binary()) -> wh_proplist().
+endpoint_props(Endpoint, AccountId) ->
+    ResourceId = wh_json:get_value(?CCV(<<"Resource-ID">>), Endpoint),
+    case wh_json:is_true(?CCV(<<"Global-Resource">>), Endpoint) of
+        'true' ->
+            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId));
+        'false' ->
+            empty_list_on_undefined(stepswitch_resources:get_props(ResourceId, AccountId))
+    end.
+
+-spec empty_list_on_undefined(wh_proplist() | 'undefined') -> wh_proplist().
+empty_list_on_undefined('undefined') -> [];
+empty_list_on_undefined(L) -> L.
 
 -spec maybe_endpoint_format_from(wh_json:object(), ne_binary(), api_binary()) ->
                                         wh_json:object().
