@@ -170,6 +170,7 @@
                               ,hidden = 'false' :: boolean()
                              }).
 -type wh_amqp_connections() :: #wh_amqp_connections{}.
+-type wh_amqp_connections_list() :: [wh_amqp_connections(), ...].
 
 -type basic_publish() :: #'basic.publish'{}.
 -type amqp_msg() :: #'amqp_msg'{}.

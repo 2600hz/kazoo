@@ -418,10 +418,11 @@ wait_for_notification(Timeout) ->
         Timeout -> {'error', 'timeout'}
     end.
 
--spec brokers_with_tag(ne_binary()) -> list().
--spec brokers_with_tag(ne_binary(), api_boolean()) -> list().
+-spec brokers_with_tag(ne_binary()) -> wh_amqp_connections_list().
+-spec brokers_with_tag(ne_binary(), api_boolean()) -> wh_amqp_connections_list().
 
 brokers_with_tag(Tag) ->
+    %% by default we want all the brokers
     brokers_with_tag(Tag, 'undefined').
 
 brokers_with_tag(Tag, Available) ->
@@ -436,14 +437,12 @@ brokers_with_tag(Tag, Available) ->
                  ,['$_']
                  }
                 ],
-    lists:foldr(fun(A, Acc) -> broker_filter(Tag, Acc, A) end, [], ets:select(?TAB, MatchSpec)).
+    lists:foldr(fun(A, Acc) -> broker_filter(Tag, A, Acc) end, [], ets:select(?TAB, MatchSpec)).
 
--spec broker_filter(ne_binary(), list(), wh_amqp_connections() ) -> list().
-broker_filter(Tag, Acc, #wh_amqp_connections{tags=Tags
-                                             ,broker=Broker
-                                            }) ->
+-spec broker_filter(ne_binary(), wh_amqp_connections(), wh_amqp_connections_list() ) -> wh_amqp_connections_list().
+broker_filter(Tag, #wh_amqp_connections{tags=Tags}=Connection, Acc) ->
     case lists:member(Tag,Tags) of
-        'true' -> [Broker | Acc];
+        'true' -> [Connection | Acc];
         'false' -> Acc
     end.
         
@@ -451,39 +450,39 @@ broker_filter(Tag, Acc, #wh_amqp_connections{tags=Tags
 broker_with_tag(Tag) ->
     case brokers_with_tag(Tag, 'true') of
         [] -> 'undefined';
-        [Broker|_] -> Broker
+        [#wh_amqp_connections{broker=Broker}|_] -> Broker
     end.
 
--spec brokers_for_zone(atom()) -> list().
--spec brokers_for_zone(atom(), api_boolean()) -> list().
+-spec brokers_for_zone(atom()) -> wh_amqp_connections_list().
+-spec brokers_for_zone(atom(), api_boolean()) -> wh_amqp_connections_list().
 
 brokers_for_zone(Zone) ->
+    %% by default we want all the brokers
     brokers_for_zone(Zone, 'undefined').
 
 brokers_for_zone(Zone, Available) ->
     MatchSpec = [{#wh_amqp_connections{zone='$1'
-                                       ,broker='$2'
-                                       ,available='$3'
+                                       ,available='$2'
                                        ,_='_'
                                       },
                   [{'andalso',
                      {'=:=', '$1', {'const', Zone}},
                      {'orelse',
-                        {'=:=', '$3', {'const', Available}},
+                        {'=:=', '$2', {'const', Available}},
                         {'=:=', {'const', Available}, 'undefined'}
                      }
                    }
                   ],
-                  ['$2']
+                  ['$_']
                  }
                 ],
-    [Broker || Broker <- ets:select(?TAB, MatchSpec)].
+    ets:select(?TAB, MatchSpec).
 
 -spec broker_for_zone(atom()) -> api_binary().
 broker_for_zone(Zone) ->
     case brokers_for_zone(Zone, 'true') of
         [] -> 'undefined';
-        [Broker|_] -> Broker
+        [#wh_amqp_connections{broker=Broker}|_] -> Broker
     end.
 
 -spec is_zone_available(atom()) -> boolean().
