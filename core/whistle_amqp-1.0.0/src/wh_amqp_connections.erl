@@ -425,23 +425,34 @@ brokers_with_tag(Tag) ->
     brokers_with_tag(Tag, 'undefined').
 
 brokers_with_tag(Tag, Available) ->
-      [Broker || #wh_amqp_connections{broker=Broker}            
-           <- ets:filter(?TAB
-                         ,fun(#wh_amqp_connections{tags=Tags
-                                                   ,available=BrokerAvailable
-                                                  }, Member) -> 
-                                  lists:member(Member, Tags) andalso
-                                      BrokerAvailable =:= Available orelse
-                                      Available =:= 'undefined'
-                         end , Tag)].
+    MatchSpec = [{#wh_amqp_connections{available='$1'
+                                       ,_='_'
+                                      },
+                  [{'orelse',
+                        {'=:=', '$1', {'const', Available}},
+                        {'=:=', {'const', Available}, 'undefined'}
+                   }
+                  ]
+                 ,['$_']
+                 }
+                ],
+    lists:foldr(fun(A, Acc) -> broker_filter(Tag, Acc, A) end, [], ets:select(?TAB, MatchSpec)).
 
+-spec broker_filter(ne_binary(), list(), wh_amqp_connections() ) -> list().
+broker_filter(Tag, Acc, #wh_amqp_connections{tags=Tags
+                                             ,broker=Broker
+                                            }) ->
+    case lists:member(Tag,Tags) of
+        'true' -> [Broker | Acc];
+        'false' -> Acc
+    end.
+        
 -spec broker_with_tag(ne_binary()) -> api_binary().
 broker_with_tag(Tag) ->
     case brokers_with_tag(Tag, 'true') of
         [] -> 'undefined';
         [Broker|_] -> Broker
     end.
-        
 
 -spec brokers_for_zone(atom()) -> list().
 -spec brokers_for_zone(atom(), api_boolean()) -> list().
