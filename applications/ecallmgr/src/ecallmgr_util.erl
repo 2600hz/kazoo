@@ -238,20 +238,6 @@ custom_channel_vars(Props, Initial) ->
                         [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
                    ({<<"variable_sip_refer_to">>, V}, Acc) ->
                         [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
-                   ({<<"variable_sip_h_Diversion">>, V}, Acc) ->
-                        try kzsip_diversion:from_binary(wh_util:to_binary(mochiweb_util:unquote(V))) of
-                            Diversion ->
-                                Diversions = props:get_value(<<"Diversions">>, Acc, []),
-                                props:set_value(<<"Diversions">>
-                                                ,[Diversion | Diversions]
-                                                ,Acc
-                                               )
-                        catch
-                            _E:_R ->
-                                lager:warning("failed to process diversion header: ~s", [V]),
-                                lager:warning("~s: ~p", [_E, _R]),
-                                Acc
-                        end;
                    (_, Acc) -> Acc
                 end, Initial, Props).
 
@@ -321,6 +307,7 @@ get_fs_kv(Key, Val, _) ->
 get_fs_key_and_value(<<"Hold-Media">>, Media, UUID) ->
     {<<"hold_music">>, media_path(Media, 'extant', UUID, wh_json:new())};
 get_fs_key_and_value(<<"Diversion">>, DiversionJObj, _UUID) ->
+    lager:debug("setting diversion header to ~s", [kzsip_diversion:to_binary(DiversionJObj)]),
     {<<"sip_h_Diversion">>, kzsip_diversion:to_binary(DiversionJObj)};
 get_fs_key_and_value(Key, Val, _UUID) when is_binary(Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
