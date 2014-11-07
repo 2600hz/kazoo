@@ -38,7 +38,7 @@ Okay, so what goes in the `{...}` portions of the example above? The generic for
 
 ### Properties
 
-* `direction`: Can be "inbound", "outbound", or unset. If unset, the formatter will be used on both inbound and outbound requests; otherwise the formatter will only be applied on the relevant request direction
+* `direction`: Can be "inbound", "outbound", "both", or unset. If unset, the default is "both"; otherwise the formatter will only be applied on the relevant request direction
 * `strip`: If set to true, the field will be stripped from the request. Typically used to strip headers from a request before sending to the carrier (for instance, if the carrier doesn't support the Diversion header).
 * `match_invite_format`: Applicable on fields with SIP URIs. Will format the username portion to match the invite format of the outbound request.
 * `regex`: Matches against the value, with optional capture group
@@ -72,6 +72,6 @@ A more full example:
 
 This will format the 'From' DID as E164 before republishing the inbound request, formats the From as NPAN on an offnet(outbound) request, and format the Diversion username to match the invite format of the request on an outbound request.
 
-### Custom Channel Vars and SIP Headers
+### SIP Headers
 
-The formatting process will also walk any Custom Channel Variables or SIP Headers defined in the request. You need only include the actual header in the `formatters` object.
+The formatting process will also walk any SIP Headers defined in the request. You need only include the actual header in the `formatters` object.
