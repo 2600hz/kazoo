@@ -7,11 +7,13 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch_resources).
 
--export([get_props/0, get_props/1]).
+-export([get_props/0, get_props/1, get_props/2]).
 -export([endpoints/2]).
 -export([reverse_lookup/1]).
 
--export([fetch_global_resources/0]).
+-export([fetch_global_resources/0
+         ,fetch_local_resources/1
+        ]).
 
 -include("stepswitch.hrl").
 
@@ -80,6 +82,14 @@ get_props() ->
 -spec get_props(ne_binary()) -> wh_proplist() | 'undefined'.
 get_props(ResourceId) ->
     case get_resource(ResourceId) of
+        'undefined' -> 'undefined';
+        Resource -> resource_to_props(Resource)
+    end.
+
+-spec get_props(ne_binary(), api_binary()) -> wh_proplist() | 'undefined'.
+get_props(_ResourceId, 'undefined') -> 'undefined';
+get_props(ResourceId, AccountId) ->
+    case get_local_resource(ResourceId, AccountId) of
         'undefined' -> 'undefined';
         Resource -> resource_to_props(Resource)
     end.
@@ -458,11 +468,9 @@ get(AccountId) ->
 
 -spec get_resource(ne_binary()) -> resource() | 'undefined'.
 get_resource(ResourceId) ->
-    case wh_cache:fetch_local(?STEPSWITCH_CACHE, 'global_resources') of
-        {'ok', Resources} -> get_resource(ResourceId, Resources);
-        {'error', 'not_found'} ->
-            fetch_global_resources(),
-            get_resource(ResourceId)
+    case get('undefined') of
+        [] -> 'undefined';
+        Resources -> get_resource(ResourceId, Resources)
     end.
 
 get_resource(ResourceId, [#resrc{id=ResourceId}=Resource|_Resources]) ->
@@ -471,6 +479,13 @@ get_resource(ResourceId, [#resrc{}|Resources]) ->
     get_resource(ResourceId, Resources);
 get_resource(_ResourceId, []) ->
     'undefined'.
+
+-spec get_local_resource(ne_binary(), ne_binary()) -> resource() | 'undefined'.
+get_local_resource(ResourceId, AccountId) ->
+    case get(AccountId) of
+        [] -> 'undefined';
+        Resources -> get_resource(ResourceId, Resources)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
