@@ -44,6 +44,11 @@
                                    ,[<<"voicemail">>, <<"max_box_number_length">>]
                                    ,15
                                   )).
+-define(MAILBOX_DEFAULT_EXTERNAL_STORAGE
+        ,whapps_config:get_binary(?CF_CONFIG_CAT
+                                  ,[<<"voicemail">>, <<"external_storage">>]
+                                  ,'undefined'
+                                 )).
 
 -define(DEFAULT_VM_EXTENSION
         ,whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
@@ -991,7 +996,7 @@ collect_pin(Interdigit, Call, NoopId) ->
 new_message(AttachmentName, Length, Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     MediaId = message_media_doc(whapps_call:account_db(Call), Box, AttachmentName),
-    case store_recording(AttachmentName, MediaId, Call) of
+    case store_recording(AttachmentName, MediaId, Call, Box, get_storage_type()) of
         'true' -> update_mailbox(Box, Call, MediaId, Length);
         'false' ->
             lager:warning("failed to store media: ~p", [MediaId]),
@@ -1493,6 +1498,7 @@ review_recording(AttachmentName, AllowOperator
 %% @end
 %%--------------------------------------------------------------------
 -spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> boolean().
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), ne_binary(), atom()) -> boolean().
 store_recording(AttachmentName, DocId, Call) ->
     lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
     _ = whapps_call_command:b_store(AttachmentName
@@ -1515,6 +1521,37 @@ store_recording(AttachmentName, DocId, Call) ->
             lager:info("attachment length is ~B and must be larger than ~B to be stored", [AttachmentLength, MinLength]),
             AttachmentLength > MinLength;
         _Else -> 'false'
+    end.
+
+store_recording(AttachmentName, DocId, Call, _OwnerId, 'internal') ->
+    store_recording(AttachmentName, DocId, Call);
+
+store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, 'external') ->
+    Url = get_media_url(AttachmentName, DocId, Call, OwnerId),
+    lager:debug("storing recording ~s at ~s", [AttachmentName, Url]),
+
+    whapps_call_command:b_store(AttachmentName
+                                ,Url
+                                ,Call),
+    timer:sleep(5000),
+
+    case update_doc(<<"external_media_url">>, Url, DocId, Call) of
+        'ok' -> 'true';
+        {'error', _} -> 'false'
+    end.
+
+-spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), ne_binary()) -> ne_binary().
+get_media_url(AttachmentName, DocId, Call, OwnerId) ->
+    AccountId = whapps_call:account_id(Call),
+    StorageUrl = ?MAILBOX_DEFAULT_EXTERNAL_STORAGE,
+    <<StorageUrl/binary, "/", AccountId/binary, "/", OwnerId/binary, "/"
+      ,DocId/binary, "/", AttachmentName/binary>>.
+
+-spec get_storage_type() -> 'internal' | 'external'.
+get_storage_type() ->
+    case ?MAILBOX_DEFAULT_EXTERNAL_STORAGE of
+        'undefined' -> 'internal';
+        _Else -> 'external'
     end.
 
 %%--------------------------------------------------------------------
@@ -1586,6 +1623,7 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum
              ,{<<"media_filename">>, AttachmentName}
              ,{<<"streamable">>, 'true'}
              ,{<<"utc_seconds">>, UtcSeconds}
+             ,{<<"external_media_url">>, <<"undefined">>}
             ],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"private_media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
