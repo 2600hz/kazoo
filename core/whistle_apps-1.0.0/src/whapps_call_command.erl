@@ -2058,7 +2058,7 @@ handle_collect_digit_event(_JObj, _NoopId, _EventType) ->
 %% @public
 %% @doc
 %% Low level function to consume call events, looping until a specific
-%% one occurs.  If the channel is hungup or no call events are recieved
+%% one occurs.  If the channel is hungup or no call events are received
 %% for the optional timeout period then errors are returned.
 %% @end
 %%--------------------------------------------------------------------
@@ -2691,7 +2691,7 @@ wait_for_fax_detection(Timeout, Call) ->
 %% @public
 %% @doc
 %% Low level function to consume call events, looping until a specific
-%% one occurs.  If the channel is hungup or no call events are recieved
+%% one occurs.  If the channel is hungup or no call events are received
 %% for the optional timeout period then errors are returned.
 %% @end
 %%--------------------------------------------------------------------
