@@ -13,10 +13,10 @@
         ]).
 
 %% Accessors
--export([scheme/1
-         ,user/1
-         ,host/1
-         ,port/1
+-export([scheme/1, set_scheme/2
+         ,user/1, set_user/2
+         ,host/1, set_host/2
+         ,port/1, set_port/2
         ]).
 
 -include("wnm.hrl").
@@ -68,9 +68,20 @@ parse_until(C, Bin) ->
     end.
 
 scheme(#sip_uri{scheme=S}) -> S.
+set_scheme(#sip_uri{}=Sip, S) ->
+    Sip#sip_uri{scheme=S}.
+
 user(#sip_uri{user=U}) -> U.
+set_user(#sip_uri{}=Sip, U) ->
+    Sip#sip_uri{user=U}.
+
 host(#sip_uri{host=H}) -> H.
+set_host(#sip_uri{}=Sip, H) ->
+    Sip#sip_uri{host=H}.
+
 port(#sip_uri{port=P}) -> P.
+set_port(#sip_uri{}=Sip, P) ->
+    Sip#sip_uri{port=P}.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

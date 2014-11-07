@@ -18,7 +18,7 @@
          ,privacy/1
          ,screen/1
          ,extensions/1
-         ,address/1
+         ,address/1, set_address/2
         ]).
 
 -define(PARAM_REASON, <<"reason">>).
@@ -46,6 +46,9 @@
 
 address(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
+set_address(JObj, Address) ->
+    wh_json:set_value(?PARAM_ADDRESS, Address, JObj).
+
 reason(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_REASON, JObj).
 counter(JObj) ->
@@ -215,8 +218,9 @@ parse_param_value(<<"\"", _/binary>> = Param, _Literals) ->
 parse_param_value(<<"'", _/binary>> = Param, _Literals) ->
     parse_quoted_param(Param);
 parse_param_value(Param, [Literal | Literals]) ->
-    case Param of
-        <<Literal, _/binary>> -> Literal;
+    LiteralSize = byte_size(Literal),
+    case binary:longest_common_prefix([Param, Literal]) of
+        LiteralSize -> Literal;
         _ -> parse_param_value(Param, Literals)
     end;
 parse_param_value(Param, []) ->
