@@ -437,14 +437,10 @@ brokers_with_tag(Tag, Available) ->
                  ,['$_']
                  }
                 ],
-    lists:foldr(fun(A, Acc) -> broker_filter(Tag, A, Acc) end, [], ets:select(?TAB, MatchSpec)).
-
--spec broker_filter(ne_binary(), wh_amqp_connections(), wh_amqp_connections_list() ) -> wh_amqp_connections_list().
-broker_filter(Tag, #wh_amqp_connections{tags=Tags}=Connection, Acc) ->
-    case lists:member(Tag,Tags) of
-        'true' -> [Connection | Acc];
-        'false' -> Acc
-    end.
+    [Connection
+        || #wh_amqp_connections{tags=Tags}=Connection <- ets:select(?TAB, MatchSpec),
+           lists:member(Tag, Tags)
+    ].
         
 -spec broker_with_tag(ne_binary()) -> api_binary().
 broker_with_tag(Tag) ->
