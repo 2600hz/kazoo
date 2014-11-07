@@ -17,7 +17,6 @@
                    wh_json:object().
 apply(JObj, MetaFormatters, Direction) ->
     Fs = [fun format_request/3
-          ,fun maybe_format_ccvs/3
           ,fun maybe_format_sip_headers/3
          ],
 
@@ -26,15 +25,15 @@ apply(JObj, MetaFormatters, Direction) ->
                 ,Fs
                ).
 
--spec maybe_format_ccvs(wh_json:object(), wh_json:object(), direction()) ->
-                               wh_json:object().
-maybe_format_ccvs(JObj, MetaFormatters, Direction) ->
-    maybe_format_sub_object(JObj, MetaFormatters, Direction, <<"Custom-Channel-Vars">>).
-
 -spec maybe_format_sip_headers(wh_json:object(), wh_json:object(), direction()) ->
                                       wh_json:object().
 maybe_format_sip_headers(JObj, MetaFormatters, Direction) ->
-    maybe_format_sub_object(JObj, MetaFormatters, Direction, <<"SIP-Headers">>).
+    maybe_format_sub_object(
+      maybe_format_sub_object(JObj, MetaFormatters, Direction, <<"SIP-Headers">>)
+      ,MetaFormatters
+      ,Direction
+      ,<<"Custom-SIP-Headers">>
+     ).
 
 -spec maybe_format_sub_object(wh_json:object(), wh_json:object(), direction(), wh_json:key()) ->
                                      wh_json:object().
@@ -93,12 +92,8 @@ is_formatter_applicable(Formatter, Direction) ->
 maybe_apply_formatters_fold(JObj, _JObjKeys, _MetaKey, []) -> JObj;
 maybe_apply_formatters_fold(JObj, JObjKeys, MetaKey, [_|_]=Formatters) ->
     case props:get_value(wh_util:to_lower_binary(MetaKey), JObjKeys) of
-        'undefined' ->
-            ?debugFmt("found no jobj key for meta key ~p~n", [MetaKey]),
-            JObj;
-        JObjKey ->
-            ?debugFmt("applying on jobj key ~p from meta key ~p~n", [JObjKey, MetaKey]),
-            maybe_apply_formatters(JObj, JObjKey, Formatters)
+        'undefined' -> JObj;
+        JObjKey -> maybe_apply_formatters(JObj, JObjKey, Formatters)
     end.
 
 -spec maybe_apply_formatters(wh_json:object(), ne_binary(), wh_json:objects()) ->
@@ -119,12 +114,36 @@ maybe_apply_formatters(JObj, <<"From">> = FromKey, Formatters) ->
 maybe_apply_formatters(JObj, Key, Formatters) ->
     maybe_apply_formatters(JObj, Key, wh_json:get_value(Key, JObj), Formatters).
 
-maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
 maybe_apply_formatters(JObj, Key, Value, [Formatter|_]=Formatters) ->
     case maybe_strip_key(Formatter) of
-        'false' -> maybe_match(JObj, Key, Value, Formatters);
+        'false' -> maybe_match_invite_format(JObj, Key, Value, Formatters);
         'true' -> wh_json:delete_key(Key, JObj)
     end.
+
+-spec maybe_match_invite_format(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
+                                       wh_json:object().
+maybe_match_invite_format(JObj, Key, Value, [Formatter|_]=Formatters) ->
+    case maybe_match_invite_format(JObj, Formatter) of
+        'false' -> maybe_match(JObj, Key, Value, Formatters);
+        'true' -> match_invite_format(JObj, Key, Value)
+    end.
+
+-spec match_invite_format(wh_json:object(), wh_json:key(), wh_json:json_term()) ->
+                                 wh_json:object().
+match_invite_format(JObj, <<"Diversion">> = Key, Value) ->
+    FormatFun = invite_format_fun(JObj),
+
+    Address = kzsip_diversion:address(Value),
+
+    SIP = wnm_sip:parse(Address),
+    SIP1 = wnm_sip:set_user(SIP, FormatFun(wnm_sip:user(SIP))),
+
+    Address1 =  wnm_sip:encode(SIP1),
+
+    wh_json:set_value(Key, kzsip_diversion:set_address(Value, Address1), JObj);
+match_invite_format(JObj, Key, Value) ->
+    FormatFun = invite_format_fun(JObj),
+    wh_json:set_value(Key, FormatFun(Value), JObj).
 
 -spec maybe_strip_key(wh_json:object()) -> boolean().
 maybe_strip_key(Formatter) ->
@@ -150,12 +169,11 @@ maybe_apply_formatters(JObj, Key, User, Realm, [Formatter|_]=Formatters) ->
 maybe_match_invite_format(JObj, Key, User, Realm, [Formatter|_]=Formatters) ->
     case maybe_match_invite_format(JObj, Formatter) of
         'false' -> maybe_match(JObj, Key, User, Realm, Formatters);
-        FormatFun -> match_invite_format(JObj, Key, User, Realm, FormatFun)
+        'true' -> match_invite_format(JObj, Key, User, Realm)
     end.
 
--type invite_fun() :: fun((ne_binary()) -> ne_binary()).
 -spec maybe_match_invite_format(wh_json:object(), wh_json:object()) ->
-                                       'false' | invite_fun().
+                                       boolean().
 maybe_match_invite_format(JObj, Formatter) ->
     case wh_json:is_true(<<"match_invite_format">>, Formatter, 'false')
         andalso wh_json:get_value(<<"Invite-Format">>, JObj)
@@ -165,14 +183,15 @@ maybe_match_invite_format(JObj, Formatter) ->
         <<"loopback">> -> 'false';
         <<"route">> -> 'false';
         <<"username">> -> 'false';
-        <<"e164">> -> fun wnm_util:to_e164/1;
-        <<"npan">> -> fun wnm_util:to_npan/1;
-        <<"1npan">> -> fun wnm_util:to_1npan/1
+        <<"e164">> -> 'true';
+        <<"npan">> -> 'true';
+        <<"1npan">> -> 'true'
     end.
 
--spec match_invite_format(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), invite_fun()) ->
+-spec match_invite_format(wh_json:object(), wh_json:key(), ne_binary(), ne_binary()) ->
                                  wh_json:object().
-match_invite_format(JObj, Key, User, Realm, FormatFun) ->
+match_invite_format(JObj, Key, User, Realm) ->
+    FormatFun = invite_format_fun(JObj),
     wh_json:set_value(Key
                       ,list_to_binary([FormatFun(User)
                                        ,"@"
@@ -180,6 +199,15 @@ match_invite_format(JObj, Key, User, Realm, FormatFun) ->
                                       ])
                       ,JObj
                      ).
+
+-spec invite_format_fun(wh_json:object()) ->
+                               fun((ne_binary()) -> ne_binary()).
+invite_format_fun(JObj) ->
+    case wh_json:get_value(<<"Invite-Format">>, JObj) of
+        <<"e164">> -> fun wnm_util:to_e164/1;
+        <<"1npan">> -> fun wnm_util:to_1npan/1;
+        <<"npan">> -> fun wnm_util:to_npan/1
+    end.
 
 -spec maybe_match(wh_json:object(), wh_json:key(), ne_binary(), ne_binary(), wh_json:objects()) ->
                          wh_json:object().
@@ -227,13 +255,24 @@ apply_formatter(JObj, Key, Captured, Realm, Formatter) ->
 
 -ifdef(TEST).
 
--define(OFFNET_REQ, wh_json:from_list([])).
+-define(OFFNET_REQ, wh_json:from_list([{<<"SIP-Headers">>
+                                        ,wh_json:from_list([{<<"Diversion">>
+                                                             ,wh_json:from_list([{<<"address">>,<<"sip:+14158867900@1.2.3.4">>}
+                                                                                 ,{<<"counter">>,1}
+                                                                                ])
+                                                            }
+                                                           ])
+                                       }
+                                       ,{<<"Invite-Format">>, <<"npan">>}
+                                      ])).
+
 -define(ROUTE_REQ, wh_json:from_list([{<<"To">>, <<"12345556789@2600hz.com">>}
                                       ,{<<"From">>, <<"4158867900@2600hz.com">>}
                                       ,{<<"Request">>, <<"+12345556789@2600hz.com">>}
+                                      ,{<<"Call-ID">>,<<"352401574@10.26.0.158">>}
                                       ,{<<"Caller-ID-Number">>, <<"+14158867900">>}
-                                      ,{<<"Custom-Channel-Vars">>
-                                        ,wh_json:from_list([{<<"Diversion">>, <<"\"4158867900\" <sip:4156687900@192.168.1.254>;reason=unconditional;privacy=off;screen=yes">>}])
+                                      ,{<<"Custom-SIP-Headers">>
+                                        ,wh_json:from_list([{<<"X-AUTH-IP">>,<<"10.26.0.158">>}])
                                        }
                                      ])).
 
@@ -275,7 +314,7 @@ regex_inbound_test() ->
     ?assertEqual(<<"4158867900">>, wh_json:get_value(<<"Caller-ID-Number">>, Route)).
 
 strip_inbound_test() ->
-Formatter = wh_json:from_list([{<<"to">>
+    Formatter = wh_json:from_list([{<<"to">>
                                     ,[wh_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
                                                          ,{<<"prefix">>, <<"+1">>}
                                                          ,{<<"direction">>, <<"inbound">>}
@@ -296,5 +335,29 @@ Formatter = wh_json:from_list([{<<"to">>
 
     ?assertEqual('undefined', wh_json:get_value(<<"To">>, Route)),
     ?assertEqual('undefined', wh_json:get_value(<<"Caller-ID-Number">>, Route)).
+
+diversion_match_invite_test() ->
+    Formatter = wh_json:from_list([{<<"diversion">>
+                                    ,[wh_json:from_list([{<<"match_invite_format">>, 'true'}])]
+                                   }
+                                  ]),
+    Bridge = ?MODULE:apply(?OFFNET_REQ, Formatter, 'outbound'),
+
+    ?assertEqual(<<"sip:4158867900@1.2.3.4">>
+                 ,kzsip_diversion:address(
+                    wh_json:get_value([<<"SIP-Headers">>, <<"Diversion">>], Bridge)
+                    )
+                ).
+
+diverstion_strip_test() ->
+    Formatter = wh_json:from_list([{<<"diversion">>
+                                    ,[wh_json:from_list([{<<"strip">>, 'true'}])]
+                                   }
+                                  ]),
+    Bridge = ?MODULE:apply(?OFFNET_REQ, Formatter, 'outbound'),
+
+    ?assertEqual('undefined'
+                 ,wh_json:get_value([<<"SIP-Headers">>, <<"Diversion">>], Bridge)
+                ).
 
 -endif.
