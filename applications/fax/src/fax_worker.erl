@@ -416,11 +416,12 @@ attempt_to_acquire_job(Id, Q) ->
         {'ok', JObj} ->
             case wh_json:get_value(<<"pvt_job_status">>, JObj) of
                 <<"pending">> ->
+                    Opts = [{'rev', wh_json:get_first_defined([<<"_rev">>, <<"rev">>], JObj)}],
                     couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
                                                                       ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
                                                                       ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                                                       ,{<<"pvt_queue">>, Q}
-                                                                     ],JObj));
+                                                                     ],JObj), Opts);
                 _Else ->
                     lager:debug("job not in an available status: ~s", [_Else]),
                     {'error', 'job_not_available'}
