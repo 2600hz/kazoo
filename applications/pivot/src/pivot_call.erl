@@ -49,6 +49,7 @@
                 ,response_event_handlers = [] :: pids()
                 ,response_ref :: reference() %% monitor ref for the pid
                 ,debug = 'false' :: boolean()
+                ,requester_queue :: api_binary()
                }).
 -type state() :: #state{}.
 
@@ -152,6 +153,7 @@ init([Call, JObj]) ->
              ,call=Call
              ,request_format=ReqFormat
              ,debug=wh_json:is_true(<<"Debug">>, JObj, 'false')
+             ,requester_queue = whapps_call:controller_queue(Call)
             }
      ,'hibernate'
     }.
@@ -195,19 +197,26 @@ handle_cast({'request', Uri, Method}, #state{call=Call
     handle_cast({'request', Uri, Method, req_params(ReqFormat, Call)}, State);
 handle_cast({'request', Uri, Method, Params}, #state{call=Call
                                                      ,debug=Debug
+                                                     ,requester_queue=Q
                                                     }=State) ->
     Call1 = kzt_util:set_voice_uri(Uri, Call),
 
-    {'ok', ReqId, Call2} = send_req(Call1, Uri, Method, Params, Debug),
-    lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
-    {'noreply', State#state{request_id=ReqId
-                            ,request_params=Params
-                            ,response_content_type = <<>>
-                            ,response_body = <<>>
-                            ,method=Method
-                            ,voice_uri=Uri
-                            ,call=Call2
-                           }};
+    case send_req(Call1, Uri, Method, Params, Debug) of
+        {'ok', ReqId, Call2} ->
+            lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
+            {'noreply', State#state{request_id=ReqId
+                                    ,request_params=Params
+                                    ,response_content_type = <<>>
+                                    ,response_body = <<>>
+                                    ,method=Method
+                                    ,voice_uri=Uri
+                                    ,call=Call2
+                                   }};
+        _ ->
+            wapi_pivot:publish_failed(Q, [{<<"Call-ID">>,whapps_call:call_id(Call)}
+                                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]),
+            {'stop', 'normal', State}
+    end;
 
 handle_cast({'updated_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
@@ -395,10 +404,7 @@ handle_event(_JObj, #state{response_pid=Pid
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(term(), state()) -> 'ok'.
-terminate(_Reason, #state{call=Call
-                          ,response_pid=Pid
-                         }) ->
-    _ = whapps_call_command:hangup(Call),
+terminate(_Reason, #state{response_pid=Pid}) ->
     exit(Pid, 'kill'),
     lager:info("pivot call terminating: ~p", [_Reason]).
 

@@ -19,6 +19,8 @@
 
 -export([handle/2]).
 
+-define(DEFAULT_EVENT_WAIT, 10000).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -48,4 +50,25 @@ handle(Data, Call) ->
              ]),
     wapi_pivot:publish_req(Prop),
     lager:info("published pivot request"),
-    cf_exe:control_usurped(Call).
+    wait_for_pivot(Data, Call).
+
+
+
+-spec wait_for_pivot(wh_json:object(), whapps_call:call()) -> any().
+wait_for_pivot(Data, Call) ->
+    case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
+        {'ok', JObj} ->
+            case wh_util:get_event_type(JObj) of
+                {<<"call_event">>,<<"CHANNEL_DESTROY">>} ->
+                    cf_exe:stop(Call);
+                {<<"pivot">>,<<"failed">>} ->
+                    cf_exe:continue(Call);
+                _ ->
+                    wait_for_pivot(Data, Call)
+            end;
+        _ ->
+            wait_for_pivot(Data, Call)
+    end.
+
+
+
