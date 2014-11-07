@@ -12,13 +12,14 @@
          ,from_binary/1
         ]).
 
--export([reason/1
-         ,counter/1
+-export([reason/1, set_reason/2
+         ,counter/1, set_counter/2
          ,limit/1
          ,privacy/1
          ,screen/1
          ,extensions/1
          ,address/1, set_address/2
+         ,new/0
         ]).
 
 -define(PARAM_REASON, <<"reason">>).
@@ -36,6 +37,9 @@
 -type diversion() :: wh_json:object().
 -export_type([diversion/0]).
 
+-spec new() -> diversion().
+new() -> wh_json:new().
+
 -spec reason(diversion()) -> api_binary().
 -spec counter(diversion()) -> non_neg_integer().
 -spec limit(diversion()) -> api_integer().
@@ -46,9 +50,6 @@
 
 address(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
-set_address(JObj, Address) ->
-    wh_json:set_value(?PARAM_ADDRESS, Address, JObj).
-
 reason(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_REASON, JObj).
 counter(JObj) ->
@@ -72,6 +73,18 @@ extensions_fold({K, ?SOLO_EXTENSION}, Acc) ->
     [K | Acc];
 extensions_fold({_K, _V}=Extention, Acc) ->
     [Extention | Acc].
+
+-spec set_address(diversion(), ne_binary()) -> diversion().
+-spec set_reason(diversion(), ne_binary()) -> diversion().
+-spec set_counter(diversion(), non_neg_integer()) -> diversion().
+
+set_address(JObj, Address) ->
+    wh_json:set_value(?PARAM_ADDRESS, Address, JObj).
+set_reason(JObj, Reason) ->
+    wh_json:set_value(?PARAM_REASON, Reason, JObj).
+set_counter(JObj, Counter) ->
+    wh_json:set_value(?PARAM_COUNTER, Counter, JObj).
+
 
 -spec from_binary(ne_binary()) -> wh_json:object().
 from_binary(<<"Diversion:", Header/binary>>) ->
