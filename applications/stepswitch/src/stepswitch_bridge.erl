@@ -128,8 +128,8 @@ handle_cast({'wh_amqp_channel', _}, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=ControlQ}=State) ->
-    'ok' = wapi_dialplan:publish_command(ControlQ, _B = build_bridge(State)),
-    lager:debug("sent bridge command to ~s: ~p", [ControlQ, _B]),
+    'ok' = wapi_dialplan:publish_command(ControlQ, build_bridge(State)),
+    lager:debug("sent bridge command to ~s", [ControlQ]),
     {'noreply', State};
 handle_cast({'bridge_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
@@ -280,7 +280,7 @@ build_bridge(#state{endpoints=Endpoints
                               wh_json:objects().
 format_endpoints(Endpoints, CIDNum, JObj, AccountId) ->
     SIPHeaders = get_sip_headers(JObj),
-    lager:debug("sip headers: ~p", [SIPHeaders]),
+
     DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                               ,<<"Account-Realm">>
                                              ], JObj),
@@ -534,9 +534,11 @@ bridge_failure(JObj, Request) ->
 -spec get_sip_headers(wh_json:object()) -> api_object().
 get_sip_headers(JObj) ->
     case get_diversions(JObj) of
-        'undefined' -> wh_json:get_value(<<"Custom-SIP-Headers">>, JObj);
+        'undefined' ->
+            wh_json:delete_key(<<"Diversion">>
+                               ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj)
+                              );
         Diversion ->
-            lager:debug("adding diversion ~p", [Diversion]),
             wh_json:set_value(<<"Diversion">>
                               ,Diversion
                               ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj)
@@ -547,7 +549,6 @@ get_sip_headers(JObj) ->
 get_diversions(JObj) ->
     Inception = wh_json:get_value(<<"Inception">>, JObj),
     Diversion = wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], JObj),
-    lager:debug("in: ~p diversion: ~p", [Inception, Diversion]),
     get_diversions(Inception, Diversion).
 
 -spec get_diversions(api_binary(), wh_json:object()) -> 'undefined' | kzsip_diversion:diversion().
