@@ -19,6 +19,7 @@
          ,screen/1
          ,extensions/1
          ,address/1, set_address/2
+         ,user/1, set_user/2
          ,new/0
         ]).
 
@@ -47,7 +48,10 @@ new() -> wh_json:new().
 -spec screen(diversion()) -> api_binary().
 -spec extensions(diversion()) -> api_list().
 -spec address(diversion()) -> api_binary().
+-spec user(diversion()) -> api_binary().
 
+user(JObj) ->
+    wnm_sip:user(wnm_sip:parse(address(JObj))).
 address(JObj) ->
     wh_json:get_ne_binary_value(?PARAM_ADDRESS, JObj).
 reason(JObj) ->
@@ -78,6 +82,10 @@ extensions_fold({_K, _V}=Extention, Acc) ->
 -spec set_reason(diversion(), ne_binary()) -> diversion().
 -spec set_counter(diversion(), non_neg_integer()) -> diversion().
 
+set_user(JObj, User) ->
+    Address = wnm_sip:parse(address(JObj)),
+    Address1 = wnm_sip:set_user(Address, User),
+    set_address(JObj, list_to_binary([<<"<">>, wnm_sip:encode(Address1), <<">">>])).
 set_address(JObj, Address) ->
     wh_json:set_value(?PARAM_ADDRESS, Address, JObj).
 set_reason(JObj, Reason) ->
@@ -387,5 +395,17 @@ to_binary_fix_address_test() ->
     Header = <<"sip:0123456789@1.22.133.4;counter=1 ">>,
     NewHeader = to_binary(from_binary(Header)),
     ?assertEqual(<<"<sip:0123456789@1.22.133.4>;counter=1">>, NewHeader).
+
+user_test() ->
+    Header = <<"<sip:0123456789@1.22.133.4>;counter=1">>,
+    D = from_binary(Header),
+    ?assertEqual(<<"0123456789">>, user(D)).
+
+set_user_test() ->
+    Header = <<"<sip:0123456789@1.22.133.4>;counter=1">>,
+    D = set_user(from_binary(Header), <<"12345556789">>),
+
+    ?assertEqual(<<"12345556789">>, user(D)),
+    ?assertEqual(<<"<sip:12345556789@1.22.133.4>">>, address(D)).
 
 -endif.

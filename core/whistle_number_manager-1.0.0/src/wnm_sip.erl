@@ -32,6 +32,9 @@
 -spec parse(ne_binary()) -> sip_uri().
 parse(Bin) ->
     parse_scheme(Bin, #sip_uri{}).
+
+parse_scheme(<<"<", Bin/binary>>, Uri) ->
+    parse_scheme(Bin, Uri);
 parse_scheme(<<"sip:", Bin/binary>>, Uri) ->
     parse_user(Bin, Uri#sip_uri{scheme='sip'});
 parse_scheme(<<"sips:", Bin/binary>>, Uri) ->
@@ -56,8 +59,16 @@ parse_user(Bin, Uri) ->
 parse_host(Bin, Uri) ->
     case parse_until(<<":">>, Bin) of
         {<<>>, _} -> throw({'invalid_uri_host', Bin});
-        {H, <<>>} -> Uri#sip_uri{host=H, port=5060};
-        {H, P} -> Uri#sip_uri{host=H, port=wh_util:to_integer(P)}
+        {H, <<>>} -> Uri#sip_uri{host=wh_util:strip_right_binary(H, $>), port=5060};
+        {H, <<">">>} -> Uri#sip_uri{host=H, port=5060};
+        {H, P} -> Uri#sip_uri{host=H, port=parse_port(P)}
+    end.
+
+-spec parse_port(binary()) -> pos_integer().
+parse_port(P) ->
+    case parse_until(<<">">>, P) of
+        {<<>>, _} -> throw({'invalid_uri_port', P});
+        {Port, _} -> wh_util:to_integer(Port)
     end.
 
 -spec parse_until(ne_binary(), ne_binary()) -> {binary(), binary()}.
@@ -149,5 +160,19 @@ encode_full_5060_test() ->
     U = <<"sips:username@host.com:5060">>,
     Uri = parse(U),
     ?assertEqual(<<"sips:username@host.com">>, encode(Uri)).
+
+parse_angles_test() ->
+    U = <<"<sips:username@host.com:5060>">>,
+    Uri = parse(U),
+
+    ?assertEqual(<<"username">>, user(Uri)),
+    ?assertEqual(<<"sips:username@host.com">>, encode(Uri)).
+
+parse_angles_2_test() ->
+    U = <<"<sip:username@host.com>">>,
+    Uri = parse(U),
+
+    ?assertEqual(<<"username">>, user(Uri)),
+    ?assertEqual(<<"sip:username@host.com">>, encode(Uri)).
 
 -endif.
