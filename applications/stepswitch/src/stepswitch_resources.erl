@@ -418,7 +418,7 @@ gateway_to_endpoint(Number, Gateway, JObj) ->
          ,{<<"Codecs">>, Gateway#gateway.codecs}
          ,{<<"Auth-User">>, Gateway#gateway.username}
          ,{<<"Auth-Password">>, Gateway#gateway.password}
-         ,{<<"SIP-Headers">>, Gateway#gateway.sip_headers}
+         ,{<<"Custom-SIP-Headers">>, Gateway#gateway.sip_headers}
          ,{<<"SIP-Interface">>, Gateway#gateway.sip_interface}
          ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
          ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}

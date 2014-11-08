@@ -280,6 +280,7 @@ build_bridge(#state{endpoints=Endpoints
                               wh_json:objects().
 format_endpoints(Endpoints, CIDNum, JObj, AccountId) ->
     SIPHeaders = get_sip_headers(JObj),
+    lager:debug("sip headers: ~p", [SIPHeaders]),
     DefaultRealm = wh_json:get_first_defined([<<"From-URI-Realm">>
                                               ,<<"Account-Realm">>
                                              ], JObj),
@@ -302,11 +303,11 @@ format_endpoint(Endpoint, CIDNum, AccountId, SIPHeaders, DefaultRealm) ->
 -spec maybe_add_sip_headers(wh_json:object(), api_object()) -> wh_json:object().
 maybe_add_sip_headers(Endpoint, 'undefined') -> Endpoint;
 maybe_add_sip_headers(Endpoint, SIPHeaders) ->
-    LocalSIPHeaders = wh_json:get_value(<<"SIP-Headers">>, Endpoint, wh_json:new()),
+    LocalSIPHeaders = wh_json:get_value(<<"Custom-SIP-Headers">>, Endpoint, wh_json:new()),
 
     case wh_json:merge_jobjs(SIPHeaders, LocalSIPHeaders) of
         ?EMPTY_JSON_OBJECT -> Endpoint;
-        MergedHeaders -> wh_json:set_value(<<"SIP-Headers">>, MergedHeaders, Endpoint)
+        MergedHeaders -> wh_json:set_value(<<"Custom-SIP-Headers">>, MergedHeaders, Endpoint)
     end.
 
 -spec endpoint_props(wh_json:object(), api_binary()) -> wh_proplist().
@@ -532,24 +533,31 @@ bridge_failure(JObj, Request) ->
 
 -spec get_sip_headers(wh_json:object()) -> api_object().
 get_sip_headers(JObj) ->
-    Headers = wh_json:get_value(<<"SIP-Headers">>, JObj, wh_json:new()),
     case get_diversions(JObj) of
-        'undefined' -> Headers;
+        'undefined' -> wh_json:get_value(<<"Custom-SIP-Headers">>, JObj);
         Diversion ->
-            wh_json:set_value(<<"Diversions">>, Diversion, Headers)
+            lager:debug("adding diversion ~p", [Diversion]),
+            wh_json:set_value(<<"Diversion">>
+                              ,Diversion
+                              ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj)
+                             )
     end.
 
 -spec get_diversions(wh_json:object()) -> api_object().
 get_diversions(JObj) ->
     Inception = wh_json:get_value(<<"Inception">>, JObj),
-    Diversions = wh_json:get_value(<<"Diversions">>, JObj, []),
-    get_diversions(Inception, Diversions).
+    Diversion = wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], JObj),
+    lager:debug("in: ~p diversion: ~p", [Inception, Diversion]),
+    get_diversions(Inception, Diversion).
 
 -spec get_diversions(api_binary(), wh_json:object()) -> 'undefined' | kzsip_diversion:diversion().
-get_diversions('undefined', _) -> 'undefined';
-get_diversions(Inception, Diversions) ->
+get_diversions('undefined', _Diversion) -> 'undefined';
+get_diversions(_Inception, 'undefined') -> 'undefined';
+get_diversions(Inception, <<_/binary>> = Diversion) ->
+    get_diversions(Inception, kzsip_diversion:from_binary(Diversion));
+get_diversions(Inception, Diversion) ->
     Fs = [{fun kzsip_diversion:set_address/2, <<"sip:", Inception/binary>>}
-          ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversions) + 1}
+          ,{fun kzsip_diversion:set_counter/2, find_diversion_count(Diversion) + 1}
          ],
     lists:foldl(fun({F, V}, D) -> F(D, V) end
                 ,kzsip_diversion:new()

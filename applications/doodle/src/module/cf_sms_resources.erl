@@ -70,11 +70,10 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Flags">>, get_flags(Data, Call)}
                             ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Data)}
                             ,{<<"Fax-T38-Enabled">>, get_t38_enabled(Call)}
-                            ,{<<"SIP-Headers">>,get_sip_headers(Data, Call)}
+                            ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
                             ,{<<"To-DID">>, get_to_did(Data, Call)}
                             ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
                             ,{<<"Bypass-E164">>, get_bypass_e164(Data)}
-                            ,{<<"Diversions">>, get_diversions(Call)}
                             ,{<<"Inception">>, get_inception(Call)}
                             ,{<<"Message-ID">>, whapps_call:kvs_fetch(<<"Message-ID">>, Call)}
                             ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
@@ -249,14 +248,6 @@ is_flag_exported(Flag, [{F, 1}|Funs]) ->
         'false' -> is_flag_exported(Flag, Funs)
     end;
 is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
-
--spec get_diversions(whapps_call:call()) -> 'undefined' | wh_json:object().
-get_diversions(Call) ->
-    case wh_json:get_value(<<"Diversions">>, whapps_call:custom_channel_vars(Call)) of
-        'undefined' -> 'undefined';
-        [] -> 'undefined';
-        Diversions ->  Diversions
-    end.
 
 -spec get_inception(whapps_call:call()) -> api_binary().
 get_inception(Call) ->

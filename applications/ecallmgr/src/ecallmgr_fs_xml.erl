@@ -391,7 +391,7 @@ get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
     wh_json:foldl(fun get_channel_vars_fold/3, Vars, JObj);
 
-get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
+get_channel_vars({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
     wh_json:foldl(fun sip_headers_fold/3, Vars, SIPJObj);
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
@@ -468,11 +468,12 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
 get_channel_vars(_, Vars) -> Vars.
 
 -spec sip_headers_fold(wh_json:key(), wh_json:json_term(), iolist()) -> iolist().
+sip_headers_fold(K, <<_/binary>> = V, Vars0) ->
+    [ list_to_binary(["sip_h_", K, "=", V]) | Vars0];
 sip_headers_fold(<<"Diversion">> = K, V, Vars0) ->
     lager:debug("setting diversion to ~s", [kzsip_diversion:to_binary(V)]),
-    [ list_to_binary(["sip_h_", K, "=", kzsip_diversion:to_binary(V)]) | Vars0];
-sip_headers_fold(K, <<_/binary>> = V, Vars0) ->
-    [ list_to_binary(["sip_h_", K, "=", V]) | Vars0].
+    [ list_to_binary(["sip_h_", K, "=", kzsip_diversion:to_binary(V)]) | Vars0].
+
 
 -spec get_channel_vars_fold(wh_json:key(), wh_json:json_term(), iolist()) -> iolist().
 get_channel_vars_fold(<<"Force-Fax">>, Direction, Acc) ->

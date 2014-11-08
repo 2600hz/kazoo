@@ -128,7 +128,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                         ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
                         ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
                         ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
-                        ,{<<"SIP-Headers">>, SIPHeaders}
+                        ,{<<"Custom-SIP-Headers">>, SIPHeaders}
                         ,{<<"Hunt-Account-ID">>, wh_json:get_value(<<"hunt_account_id">>, SrvOptions)}
                         ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AccountId}])}
                         | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)

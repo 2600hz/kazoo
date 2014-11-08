@@ -717,7 +717,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Codecs">>, get_codecs(Endpoint)}
          ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
          ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
-         ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+         ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
          ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
          ,{<<"Flags">>, get_outbound_flags(Endpoint)}
          ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
@@ -825,7 +825,7 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
             ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
             ,{<<"Endpoint-Delay">>, get_delay(Properties)}
             ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
-            ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+            ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
            ],
     wh_json:from_list(props:filter_undefined(Prop)).
@@ -852,7 +852,7 @@ create_mobile_endpoint(Endpoint, Properties, Call) ->
                     ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
                     ,{<<"Endpoint-Delay">>, get_delay(Properties)}
                     ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
-                    ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+                    ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
                     ,{<<"Codecs">>, Codecs}
                     ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, wh_json:new())}
                    ],

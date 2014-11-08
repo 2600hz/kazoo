@@ -73,9 +73,10 @@
          ,custom_channel_vars/1
         ]).
 
--export([set_sip_header/3
-         ,set_sip_headers/2
-         ,sip_headers/1
+-export([set_custom_sip_header/3
+         ,set_custom_sip_headers/2
+         ,custom_sip_header/2, custom_sip_header/3
+         ,custom_sip_headers/1
         ]).
 
 -export([set_custom_publish_function/2, clear_custom_publish_function/1
@@ -411,7 +412,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Fetch-ID">>, fetch_id(Call)}
      ,{<<"Bridge-ID">>, bridge_id(Call)}
      ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
-     ,{<<"Custom-SIP-Headers">>, sip_headers(Call)}
+     ,{<<"Custom-SIP-Headers">>, custom_sip_headers(Call)}
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
      ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
      ,{<<"Resource-Type">>, resource_type(Call)}
@@ -783,16 +784,23 @@ custom_channel_var(Key, #whapps_call{ccvs=CCVs}) ->
 custom_channel_vars(#whapps_call{ccvs=CCVs}) ->
     CCVs.
 
--spec set_sip_header(wh_json:key(), wh_json:json_term(), call()) -> call().
-set_sip_header(Key, Value, #whapps_call{sip_headers=SHs}=Call) ->
+-spec set_custom_sip_header(wh_json:key(), wh_json:json_term(), call()) -> call().
+set_custom_sip_header(Key, Value, #whapps_call{sip_headers=SHs}=Call) ->
     Call#whapps_call{sip_headers=wh_json:set_value(Key, Value, SHs)}.
 
--spec set_sip_headers(wh_proplist(), call()) -> call().
-set_sip_headers(Headers, #whapps_call{sip_headers=SHs}=Call) ->
+-spec custom_sip_header(wh_json:key(), call()) -> wh_json:json_term().
+-spec custom_sip_header(wh_json:key(), wh_json:json_term(), call()) -> wh_json:json_term().
+custom_sip_header(Key, #whapps_call{}=Call) ->
+    custom_sip_header(Key, 'undefined', Call).
+custom_sip_header(Key, Default, #whapps_call{sip_headers=SHs}) ->
+    wh_json:get_value(Key, SHs, Default).
+
+-spec set_custom_sip_headers(wh_proplist(), call()) -> call().
+set_custom_sip_headers(Headers, #whapps_call{sip_headers=SHs}=Call) ->
     Call#whapps_call{sip_headers=wh_json:set_values(Headers, SHs)}.
 
--spec sip_headers(call()) -> wh_json:object().
-sip_headers(#whapps_call{sip_headers=SHs}) -> SHs.
+-spec custom_sip_headers(call()) -> wh_json:object().
+custom_sip_headers(#whapps_call{sip_headers=SHs}) -> SHs.
 
 -spec handle_ccvs_update(wh_json:object(), call()) -> call().
 handle_ccvs_update(CCVs, #whapps_call{}=Call) ->

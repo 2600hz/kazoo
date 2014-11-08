@@ -874,7 +874,7 @@ page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
                ,{<<"Timeout">>, Timeout}
                ,{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}
-               ,{<<"SIP-Headers">>, SIPHeaders}
+               ,{<<"Custom-SIP-Headers">>, SIPHeaders}
               ],
     send_command(Command, Call).
 
@@ -933,7 +933,7 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
      ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
      ,{<<"Dial-Endpoint-Method">>, Strategy}
-     ,{<<"SIP-Headers">>, SIPHeaders}
+     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
     ].
 
 bridge(Endpoints, Call) ->
