@@ -29,7 +29,7 @@ apply(JObj, MetaFormatters, Direction) ->
                                       wh_json:object().
 maybe_format_sip_headers(JObj, MetaFormatters, Direction) ->
     maybe_format_sub_object(
-      maybe_format_sub_object(JObj, MetaFormatters, Direction, <<"SIP-Headers">>)
+      JObj
       ,MetaFormatters
       ,Direction
       ,<<"Custom-SIP-Headers">>
@@ -42,7 +42,7 @@ maybe_format_sub_object(JObj, MetaFormatters, Direction, SubKey) ->
         'undefined' -> JObj;
         SubJObj ->
             Formatted = format_request(maybe_set_invite_format(JObj, SubJObj), MetaFormatters, Direction),
-            wh_json:set_value(SubKey, Formatted, JObj)
+            wh_json:set_value(SubKey, wh_json:delete_key(<<"Invite-Format">>, Formatted), JObj)
     end.
 
 -spec maybe_set_invite_format(wh_json:object(), wh_json:object()) -> wh_json:object().
@@ -114,6 +114,7 @@ maybe_apply_formatters(JObj, <<"From">> = FromKey, Formatters) ->
 maybe_apply_formatters(JObj, Key, Formatters) ->
     maybe_apply_formatters(JObj, Key, wh_json:get_value(Key, JObj), Formatters).
 
+maybe_apply_formatters(JObj, _Key, _Value, []) -> JObj;
 maybe_apply_formatters(JObj, Key, Value, [Formatter|_]=Formatters) ->
     case should_strip_key(Formatter) of
         'false' -> maybe_match_invite_format(JObj, Key, Value, Formatters);
@@ -127,11 +128,15 @@ maybe_apply_formatters(JObj, Key, Value, [Formatter|_]=Formatters) ->
 maybe_match_invite_format(JObj, Key, Value, [Formatter|_]=Formatters) ->
     case maybe_match_invite_format(JObj, Formatter) of
         'false' -> maybe_match(JObj, Key, Value, Formatters);
-        'true' -> match_invite_format(JObj, Key, Value)
+        'true' ->
+            lager:debug("matching ~s value (~p) to invite format", [Key, Value]),
+            match_invite_format(JObj, Key, Value)
     end.
 
 -spec match_invite_format(wh_json:object(), wh_json:key(), wh_json:json_term()) ->
                                  wh_json:object().
+match_invite_format(JObj, <<"Diversion">> = Key, <<_/binary>> = Value) ->
+    match_invite_format(JObj, Key, kzsip_diversion:from_binary(Value));
 match_invite_format(JObj, <<"Diversion">> = Key, Value) ->
     FormatFun = invite_format_fun(JObj),
 
@@ -153,7 +158,20 @@ should_strip_key(Formatter) ->
 
 -spec maybe_match(wh_json:object(), wh_json:key(), wh_json:json_term(), wh_json:objects()) ->
                          wh_json:object().
-maybe_match(JObj, Key, Value, [Formatter|_]=Formatters) ->
+maybe_match(JObj, <<"Diversion">> = Key, <<_/binary>> = Value, Formatters) ->
+    maybe_match(JObj, Key, kzsip_diversion:from_binary(Value), Formatters);
+maybe_match(JObj, <<"Diversion">> = Key, Value, [Formatter|Formatters]) ->
+    case maybe_match(wh_json:get_value(<<"regex">>, Formatter), kzsip_diversion:user(Value)) of
+        {'match', Captured} ->
+            User = apply_formatter(Captured, Formatter),
+            lager:debug("updating ~s user to '~s'", [Key, User]),
+
+            wh_json:set_value(Key, kzsip_diversion:set_user(Value, User), JObj);
+        'nomatch' ->
+            lager:debug("diversion ~s didn't match ~s", [kzsip_diversion:user(Value), wh_json:get_value(<<"regex">>, Formatter)]),
+            maybe_apply_formatters(JObj, Key, Value, Formatters)
+    end;
+maybe_match(JObj, Key, Value, [Formatter|Formatters]) ->
     case maybe_match(wh_json:get_value(<<"regex">>, Formatter), Value) of
         {'match', Captured} -> apply_formatter(JObj, Key, Captured, Formatter);
         'nomatch' -> maybe_apply_formatters(JObj, Key, Value, Formatters)
@@ -173,7 +191,9 @@ maybe_apply_formatters(JObj, Key, User, Realm, [Formatter|_]=Formatters) ->
 maybe_match_invite_format(JObj, Key, User, Realm, [Formatter|_]=Formatters) ->
     case maybe_match_invite_format(JObj, Formatter) of
         'false' -> maybe_match(JObj, Key, User, Realm, Formatters);
-        'true' -> match_invite_format(JObj, Key, User, Realm)
+        'true' ->
+            lager:debug("matching ~s value (~s) to invite format", [Key, User]),
+            match_invite_format(JObj, Key, User, Realm)
     end.
 
 -spec maybe_match_invite_format(wh_json:object(), wh_json:object()) ->
@@ -241,25 +261,25 @@ maybe_match(Regex, Value) ->
                              wh_json:object().
 -spec apply_formatter(wh_json:object(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) ->
                              wh_json:object().
+apply_formatter(Captured, Formatter) ->
+    list_to_binary([wh_json:get_value(<<"prefix">>, Formatter, <<>>)
+                    ,Captured
+                    ,wh_json:get_value(<<"suffix">>, Formatter, <<>>)
+                   ]).
+
 apply_formatter(JObj, Key, Captured, Formatter) ->
-    Value = list_to_binary([wh_json:get_value(<<"prefix">>, Formatter, <<>>)
-                            ,Captured
-                            ,wh_json:get_value(<<"suffix">>, Formatter, <<>>)
-                           ]),
+    Value = apply_formatter(Captured, Formatter),
     lager:debug("updating ~s to '~s'", [Key, Value]),
     wh_json:set_value(Key, Value, JObj).
 
 apply_formatter(JObj, Key, Captured, Realm, Formatter) ->
-    User = list_to_binary([wh_json:get_value(<<"prefix">>, Formatter, <<>>)
-                           ,Captured
-                           ,wh_json:get_value(<<"suffix">>, Formatter, <<>>)
-                          ]),
+    User = apply_formatter(Captured, Formatter),
     lager:debug("updating ~s user to '~s'@~s", [Key, User, Realm]),
     wh_json:set_value(Key, list_to_binary([User, "@", Realm]), JObj).
 
 -ifdef(TEST).
 
--define(OFFNET_REQ, wh_json:from_list([{<<"SIP-Headers">>
+-define(OFFNET_REQ, wh_json:from_list([{<<"Custom-SIP-Headers">>
                                         ,wh_json:from_list([{<<"Diversion">>
                                                              ,wh_json:from_list([{<<"address">>,<<"sip:+14158867900@1.2.3.4">>}
                                                                                  ,{<<"counter">>,1}
@@ -349,7 +369,7 @@ diversion_match_invite_test() ->
 
     ?assertEqual(<<"sip:4158867900@1.2.3.4">>
                  ,kzsip_diversion:address(
-                    wh_json:get_value([<<"SIP-Headers">>, <<"Diversion">>], Bridge)
+                    wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], Bridge)
                     )
                 ).
 
@@ -361,7 +381,7 @@ diverstion_strip_test() ->
     Bridge = ?MODULE:apply(?OFFNET_REQ, Formatter, 'outbound'),
 
     ?assertEqual('undefined'
-                 ,wh_json:get_value([<<"SIP-Headers">>, <<"Diversion">>], Bridge)
+                 ,wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], Bridge)
                 ).
 
 -endif.
