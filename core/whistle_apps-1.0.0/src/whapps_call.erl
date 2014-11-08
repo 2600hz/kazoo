@@ -190,7 +190,6 @@ put_callid(#whapps_call{call_id=CallId}) ->
 
 -spec from_route_req(wh_json:object()) -> call().
 from_route_req(RouteReq) ->
-    lager:debug("route req: ~p", [RouteReq]),
     from_route_req(RouteReq, new()).
 
 -spec from_route_req(wh_json:object(), call()) -> call().
