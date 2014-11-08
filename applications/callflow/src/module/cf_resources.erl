@@ -195,7 +195,6 @@ get_sip_headers(Data, Call) ->
     Headers = wh_json:set_value(<<"Diversion">>, Diversion, CustomHeaders),
 
     JObj = lists:foldl(fun(F, J) -> F(J) end, Headers, Routines),
-    lager:debug("headers: ~p", [JObj]),
     case wh_util:is_empty(JObj) of
         'true' -> 'undefined';
         'false' -> JObj
