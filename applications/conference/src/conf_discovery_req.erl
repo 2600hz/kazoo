@@ -69,31 +69,43 @@ collect_conference_id(Call, Srv) ->
 maybe_collect_conference_pin(Conference, Call, Srv) ->
     case whapps_conference:moderator(Conference) of
         'true' ->
-            case whapps_conference:moderator_pins(Conference) of
-                [] ->
-                    lager:debug("moderator entry requires no pin"),
-                    prepare_whapps_conference(Conference, Call, Srv);
-                _Else ->
-                    collect_conference_pin('true', Conference, Call, Srv)
-            end;
+            maybe_collect_moderator_pin(Conference, Call, Srv);
         'false' ->
-            case whapps_conference:member_pins(Conference) of
-                [] ->
-                    lager:debug("member entry requires no pin"),
-                    prepare_whapps_conference(Conference, Call, Srv);
-                _Else ->
-                    collect_conference_pin('false', Conference, Call, Srv)
-            end;
+            maybe_collect_member_pin(Conference, Call, Srv);
         _Else ->
-            case wh_util:is_empty(whapps_conference:moderator_pins(Conference))
-                andalso wh_util:is_empty(whapps_conference:member_pins(Conference))
-            of
-                'false' ->
-                    collect_conference_pin('undefined', Conference, Call, Srv);
-                'true' ->
-                    C = whapps_conference:set_moderator('false', Conference),
-                    prepare_whapps_conference(C, Call, Srv)
-            end
+            maybe_collect_pin(Conference, Call, Srv)
+    end.
+
+-spec maybe_collect_pin(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+maybe_collect_pin(Conference, Call, Srv) ->
+    case wh_util:is_empty(whapps_conference:moderator_pins(Conference))
+        andalso wh_util:is_empty(whapps_conference:member_pins(Conference))
+    of
+        'false' ->
+            collect_conference_pin('undefined', Conference, Call, Srv);
+        'true' ->
+            C = whapps_conference:set_moderator('false', Conference),
+            prepare_whapps_conference(C, Call, Srv)
+    end.
+
+-spec maybe_collect_moderator_pin(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+maybe_collect_moderator_pin(Conference, Call, Srv) ->
+    case whapps_conference:moderator_pins(Conference) of
+        [] ->
+            lager:debug("moderator entry requires no pin"),
+            prepare_whapps_conference(Conference, Call, Srv);
+        _Else ->
+            collect_conference_pin('true', Conference, Call, Srv)
+    end.
+
+-spec maybe_collect_member_pin(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+maybe_collect_member_pin(Conference, Call, Srv) ->
+    case whapps_conference:member_pins(Conference) of
+        [] ->
+            lager:debug("member entry requires no pin"),
+            prepare_whapps_conference(Conference, Call, Srv);
+        _Else ->
+            collect_conference_pin('false', Conference, Call, Srv)
     end.
 
 -spec collect_conference_pin(api_boolean(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
@@ -107,25 +119,28 @@ collect_conference_pin(Type, Conference, Call, Srv) ->
 
 -spec prepare_whapps_conference(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 prepare_whapps_conference(Conference, Call, Srv) ->
-    Routines = [fun(C) ->
-                        {'ok', JObj} = conf_participant:discovery_event(Srv),
-                        case wh_json:is_true(<<"Moderator">>, JObj, 'false')
-                            orelse wh_json:is_true([<<"Conference-Doc">>, <<"moderator">>], JObj, 'undefined')
-                        of
-                            'undefined' -> C;
-                            'true' ->
-                                lager:debug("discovery request defines participant as moderator, overriding previous value"),
-                                whapps_conference:set_moderator('true', C);
-                            'false' ->
-                                lager:debug("discovery request defines participant as member, overriding previous value"),
-                                whapps_conference:set_moderator('false', C)
-                        end
-                end
-                ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
-                ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
+    Routines = [{fun whapps_conference:set_application_version/2, <<"2.0.0">>}
+                ,{fun whapps_conference:set_application_name/2, <<"conferences">>}
+                ,fun(C) -> maybe_set_as_moderator(C, Srv) end
                ],
     C = whapps_conference:update(Routines, Conference),
     search_for_conference(C, Call, Srv).
+
+-spec maybe_set_as_moderator(whapps_conference:conference(), pid()) ->
+                                    whapps_conference:conference().
+maybe_set_as_moderator(Conference, Srv) ->
+    {'ok', JObj} = conf_participant:discovery_event(Srv),
+    case wh_json:is_true(<<"Moderator">>, JObj, 'false')
+        orelse wh_json:is_true([<<"Conference-Doc">>, <<"moderator">>], JObj, 'undefined')
+    of
+        'undefined' -> Conference;
+        'true' ->
+            lager:debug("discovery request defines participant as moderator, overriding previous value"),
+            whapps_conference:set_moderator('true', Conference);
+        'false' ->
+            lager:debug("discovery request defines participant as member, overriding previous value"),
+            whapps_conference:set_moderator('false', Conference)
+    end.
 
 -spec search_for_conference(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 search_for_conference(Conference, Call, Srv) ->
@@ -160,15 +175,20 @@ handle_resource_locked(Conference, Call, Srv) ->
         {'error', 'timeout'} -> handle_search_error(Conference, Call, Srv)
     end.
 
--spec wait_for_creation(whapps_conference:conference()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.
+-spec wait_for_creation(whapps_conference:conference()) ->
+                               {'ok', wh_json:object()} |
+                               {'error', 'timeout'}.
 wait_for_creation(Conference) ->
     lager:debug("checking if conference ~s has been created", [whapps_conference:id(Conference)]),
     wait_for_creation(Conference, 8000).
 
--spec wait_for_creation(whapps_conference:conference(), non_neg_integer()) -> {'ok', wh_json:object()} | {'error', 'timeout'}.
-wait_for_creation(_, After) when After =< 0 -> {'error', 'timeout'};
+-spec wait_for_creation(whapps_conference:conference(), non_neg_integer()) ->
+                               {'ok', wh_json:object()} |
+                               {'error', 'timeout'}.
+wait_for_creation(_, After) when After =< 0 ->
+    {'error', 'timeout'};
 wait_for_creation(Conference, After) ->
-    Start = erlang:now(),
+    Start = os:timestamp(),
     case whapps_conference_command:search(Conference) of
         {'ok', _}=Ok -> Ok;
         {'error', _} ->
@@ -193,8 +213,10 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
             'false' -> 'ok';
             'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)
         end,
-    lager:debug("participant switch nodename ~p", [whapps_call:switch_hostname(Call)]),
+
     SwitchHostname = whapps_call:switch_hostname(Call),
+    lager:debug("participant switch nodename ~p", [SwitchHostname]),
+
     case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
         SwitchHostname ->
             lager:debug("running conference is on the same switch, joining on ~s", [SwitchHostname]),
@@ -227,19 +249,7 @@ validate_conference_id('undefined', Call, Loop) ->
     case whapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_number">>, 1, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
-            AccountDb = whapps_call:account_db(Call),
-            ViewOptions = [{'key', Digits}
-                           ,'include_docs'
-                          ],
-            case couch_mgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
-                {'ok', [JObj]} ->
-                    lager:debug("caller has entered a valid conference id, building object"),
-                    {'ok', create_conference(wh_json:get_value(<<"doc">>, JObj), Digits, Call)};
-                _Else ->
-                    lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
-                    _ = whapps_call_command:prompt(<<"conf-bad_conf">>, Call),
-                    validate_conference_id('undefined', Call, Loop + 1)
-            end
+            validate_collected_conference_id(Call, Loop, Digits)
     end;
 validate_conference_id(ConferenceId, Call, Loop) ->
     AccountDb = whapps_call:account_db(Call),
@@ -252,7 +262,25 @@ validate_conference_id(ConferenceId, Call, Loop) ->
             validate_conference_id('undefined', Call, Loop)
     end.
 
--spec validate_conference_pin('undefined' | boolean(), whapps_conference:conference(), whapps_call:call(), pos_integer()) ->
+-spec validate_collected_conference_id(whapps_call:call(), non_neg_integer(), binary()) ->
+                                              {'ok', whapps_conference:conference()} |
+                                              {'error', _}.
+validate_collected_conference_id(Call, Loop, Digits) ->
+    AccountDb = whapps_call:account_db(Call),
+    ViewOptions = [{'key', Digits}
+                   ,'include_docs'
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
+        {'ok', [JObj]} ->
+            lager:debug("caller has entered a valid conference id, building object"),
+            {'ok', create_conference(wh_json:get_value(<<"doc">>, JObj), Digits, Call)};
+        _Else ->
+            lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
+            _ = whapps_call_command:prompt(<<"conf-bad_conf">>, Call),
+            validate_conference_id('undefined', Call, Loop + 1)
+    end.
+
+-spec validate_conference_pin(api_boolean(), whapps_conference:conference(), whapps_call:call(), pos_integer()) ->
                                      {'ok', whapps_conference:conference()} |
                                      {'error', term()}.
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
@@ -264,72 +292,96 @@ validate_conference_pin('true', Conference, Call, Loop) ->
     case whapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
-            Pins = whapps_conference:moderator_pins(Conference),
-            case lists:member(Digits, Pins)
-                orelse (Pins =:= [] andalso Digits =:= <<>>)
-            of
-                'true' ->
-                    lager:debug("caller entered a valid moderator pin"),
-                    {'ok', Conference};
-                'false' ->
-                    lager:debug("caller entered an invalid pin"),
-                    _ = whapps_call_command:prompt(<<"conf-bad_pin">>, Call),
-                    validate_conference_pin('true', Conference, Call, Loop + 1)
-            end
+            validate_collected_conference_pin(Conference, Call, Loop, Digits)
     end;
 validate_conference_pin('false', Conference, Call, Loop) ->
     lager:debug("requesting member pin from caller"),
     case whapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
-            Pins = whapps_conference:member_pins(Conference),
-            case lists:member(Digits, Pins)
-                orelse (Pins =:= [] andalso Digits =:= <<>>)
-            of
-                'true' ->
-                    lager:debug("caller entered a valid member pin"),
-                    {'ok', Conference};
-                'false' ->
-                    lager:debug("caller entered an invalid pin"),
-                    _ = whapps_call_command:prompt(<<"conf-bad_pin">>, Call),
-                    validate_conference_pin('false', Conference, Call, Loop + 1)
-            end
+            validate_collected_member_pins(Conference, Call, Loop, Digits)
     end;
 validate_conference_pin(_, Conference, Call, Loop) ->
     lager:debug("requesting conference pin from caller, which will be used to disambiguate member/moderator"),
     case whapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Call) of
         {'error', _}=E -> E;
         {'ok', Digits} ->
-            MemberPins = whapps_conference:member_pins(Conference),
-            ModeratorPins = whapps_conference:moderator_pins(Conference),
-            case {(lists:member(Digits, MemberPins)
-                   orelse (MemberPins =:= [] andalso Digits =:= <<>>))
-                  ,(lists:member(Digits, ModeratorPins)
-                    orelse (MemberPins =:= [] andalso Digits =:= <<>>))}
-            of
-                {'true', _} ->
-                    lager:debug("caller entered a pin belonging to a member"),
-                    {'ok', whapps_conference:set_moderator('false', Conference)};
-                {'false', 'true'} ->
-                    lager:debug("caller entered a pin belonging to a moderator"),
-                    {'ok', whapps_conference:set_moderator('true', Conference)};
-                _Else ->
-                    lager:debug("caller entered an invalid pin"),
-                    _ = whapps_call_command:prompt(<<"conf-bad_pin">>, Call),
-                    validate_conference_pin('undefined', Conference, Call, Loop + 1)
-            end
+            validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits)
+    end.
+
+-spec validate_if_pin_is_for_moderator(whapps_conference:conference(), whapps_call:call(), non_neg_integer(), binary()) ->
+                                              {'ok', whapps_conference:conference()} |
+                                              {'error', _}.
+validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
+    MemberPins = whapps_conference:member_pins(Conference),
+    ModeratorPins = whapps_conference:moderator_pins(Conference),
+    case {(lists:member(Digits, MemberPins)
+           orelse (MemberPins =:= [] andalso Digits =:= <<>>)
+          )
+          ,(lists:member(Digits, ModeratorPins)
+            orelse (MemberPins =:= [] andalso Digits =:= <<>>)
+           )
+         }
+    of
+        {'true', _} ->
+            lager:debug("caller entered a pin belonging to a member"),
+            {'ok', whapps_conference:set_moderator('false', Conference)};
+        {'false', 'true'} ->
+            lager:debug("caller entered a pin belonging to a moderator"),
+            {'ok', whapps_conference:set_moderator('true', Conference)};
+        _Else ->
+            lager:debug("caller entered an invalid pin"),
+            _ = whapps_call_command:prompt(<<"conf-bad_pin">>, Call),
+            validate_conference_pin('undefined', Conference, Call, Loop + 1)
+    end.
+
+-spec validate_collected_member_pins(whapps_conference:conference(), whapps_call:call(), non_neg_integer(), binary()) ->
+                                            {'ok', whapps_conference:conference()} |
+                                            {'error', _}.
+validate_collected_member_pins(Conference, Call, Loop, Digits) ->
+    Pins = whapps_conference:member_pins(Conference),
+    case lists:member(Digits, Pins)
+        orelse (Pins =:= [] andalso Digits =:= <<>>)
+    of
+        'true' ->
+            lager:debug("caller entered a valid member pin"),
+            {'ok', Conference};
+        'false' ->
+            lager:debug("caller entered an invalid pin"),
+            _ = whapps_call_command:prompt(<<"conf-bad_pin">>, Call),
+            validate_conference_pin('false', Conference, Call, Loop + 1)
+    end.
+
+-spec validate_collected_conference_pin(whapps_conference:conference(), whapps_call:call(), pos_integer(), binary()) ->
+                                               {'ok', whapps_conference:conference()} |
+                                               {'error', _}.
+validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
+    Pins = whapps_conference:moderator_pins(Conference),
+    case lists:member(Digits, Pins)
+        orelse (Pins =:= [] andalso Digits =:= <<>>)
+    of
+        'true' ->
+            lager:debug("caller entered a valid moderator pin"),
+            {'ok', Conference};
+        'false' ->
+            lager:debug("caller entered an invalid pin"),
+            _ = whapps_call_command:prompt(<<"conf-bad_pin">>, Call),
+            validate_conference_pin('true', Conference, Call, Loop + 1)
     end.
 
 -spec create_conference(wh_json:object(), binary(), whapps_call:call()) ->
                                whapps_conference:conference().
 create_conference(JObj, Digits, Call) ->
-    Conference = whapps_conference:set_call(whapps_conference:from_conference_doc(JObj)
-                                            ,Call
+    Conference = whapps_conference:set_call(Call
+                                            ,whapps_conference:from_conference_doc(JObj)
                                            ),
 
     ModeratorNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
     MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
-    case {lists:member(Digits, MemberNumbers), lists:member(Digits, ModeratorNumbers)} of
+    case {lists:member(Digits, MemberNumbers)
+          ,lists:member(Digits, ModeratorNumbers)
+         }
+    of
         {'true', 'false'} ->
             lager:debug("the digits used to find the conference where unambiguously a member"),
             whapps_conference:set_moderator('false', Conference);

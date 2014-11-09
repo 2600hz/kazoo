@@ -330,7 +330,7 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
       ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
       ,fetch_id = wh_json:get_ne_value(<<"Fetch-ID">>, JObj, fetch_id(Call))
       ,bridge_id = wh_json:get_ne_value(<<"Bridge-ID">>, JObj, bridge_id(Call))
-      ,language = language(Call)
+      ,language = wh_json:get_ne_value(<<"Language">>, JObj, language(Call))
       ,app_name = wh_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
       ,app_version = wh_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
       ,ccvs = CCVs
