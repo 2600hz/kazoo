@@ -1,0 +1,13 @@
+{application, teletype,
+ [
+  {description, "Teletype - Receive events and send them to interested parties"},
+  {vsn, "0.0.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { teletype_app, []}},
+  {env, []}
+ ]}.
