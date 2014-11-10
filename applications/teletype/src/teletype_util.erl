@@ -10,8 +10,6 @@
 
 -export([template_doc_id/1
          ,init_template/4
-         ,create_template/4
-         ,update_template/2
         ]).
 
 -include("teletype.hrl").
@@ -27,15 +25,14 @@ init_template(Id, Macros, Text, HTML) ->
 
     case couch_mgr:open_cache_doc(MasterAccountDb, DocId) of
         {'ok', TemplateJObj} -> update_template(TemplateJObj, Macros);
-        {'error', 'not_found'} -> create_template(DocId, Macros, Text, HTML);
+        {'error', 'not_found'} -> create_template(MasterAccountDb, DocId, Macros, Text, HTML);
         {'error', _E} -> lager:warning("failed to find template ~s", [DocId])
     end.
 
--spec create_template(ne_binary(), wh_json:object(), binary(), binary()) ->
+-spec create_template(ne_binary(), ne_binary(), wh_json:object(), binary(), binary()) ->
                              'ok' |
                              couch_mgr:couchbeam_error().
-create_template(DocId, Macros, Text, HTML) ->
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+create_template(MasterAccountDb, DocId, Macros, Text, HTML) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
 
     Doc = wh_doc:update_pvt_parameters(
