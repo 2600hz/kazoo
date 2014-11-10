@@ -6,5 +6,7 @@
 -define(APP_NAME, <<"teletype">>).
 -define(APP_VERSION, <<"0.0.1">> ).
 
+-define(PVT_TYPE, <<"notification">>).
+
 -define(TELETYPE_HRL, 'true').
 -endif.
