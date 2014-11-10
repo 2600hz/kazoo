@@ -66,8 +66,8 @@ authorize(_Context, AuthAccountId, [{<<"notifications">>, _Id}
                                     ,{<<"accounts">>, AccountId}
                                    ]) ->
     lager:debug("maybe authz for ~s to modify ~s in ~s", [AuthAccountId, _Id, AccountId]),
-    wh_services:is_reseller(AuthAccountId) andalso
-        wh_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true');
+    wh_services:is_reseller(AuthAccountId)
+        andalso wh_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true');
 authorize(Context, AuthAccountId, [{<<"notifications">>, []}]) ->
     lager:debug("checking authz on system request to /"),
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
@@ -422,7 +422,9 @@ normalize_available(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    DocId = db_id(wh_json:get_value(<<"id">>, cb_context:doc(Context))),
+    ReqTemplate = clean_req_doc(cb_context:doc(Context)),
+
+    DocId = db_id(wh_json:get_value(<<"id">>, ReqTemplate)),
     AccountDb = cb_context:account_db(Context),
 
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
@@ -431,7 +433,7 @@ on_successful_validation('undefined', Context) ->
         {'ok', _JObj} ->
             Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
                                       ,{<<"_id">>, DocId}
-                                     ], cb_context:doc(Context)),
+                                     ], ReqTemplate),
             cb_context:set_doc(Context, Doc);
         {'error', 'not_found'} when AccountDb =/= 'undefined', AccountDb =/= MasterAccountDb ->
             lager:debug("doc ~s does not exist in ~s, not letting ~s create it", [DocId, MasterAccountDb, AccountDb]),
@@ -440,7 +442,7 @@ on_successful_validation('undefined', Context) ->
             lager:debug("this will create a new template in ~s", [MasterAccountDb]),
             Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
                                       ,{<<"_id">>, DocId}
-                                     ], cb_context:doc(Context)),
+                                     ], ReqTemplate),
             cb_context:setters(Context
                                ,[{fun cb_context:set_doc/2, Doc}
                                  ,{fun cb_context: set_account_db/2, MasterAccountDb}
@@ -451,6 +453,10 @@ on_successful_validation('undefined', Context) ->
     end;
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
+
+-spec clean_req_doc(wh_json:object()) -> wh_json:object().
+clean_req_doc(Doc) ->
+    wh_json:delete_keys([<<"macros">>], Doc).
 
 %%--------------------------------------------------------------------
 %% @private
