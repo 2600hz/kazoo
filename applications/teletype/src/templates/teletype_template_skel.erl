@@ -28,12 +28,18 @@
                                                                 ])
                                              }
                                            ])).
+-define(TEMPLATE_TEXT, <<"Hi {{user.first_name}} {{user.last_name}}.\n\nThis is the skeleton template\n">>).
+-define(TEMPLATE_HTML, <<"<p>Hi {{user.first_name}} {{user.last_name}}.</p><p>This is the skeleton template</p>\n">>).
 
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS),
+    teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML),
 
 -spec handle(wh_json:object(), wh_proplist()) -> 'ok'.
 handle(JObj, _Props) ->
+    %% Gather data for template
+    %% Load templates
+    %% Populate templates
+    %% Send email
     'ok'.
