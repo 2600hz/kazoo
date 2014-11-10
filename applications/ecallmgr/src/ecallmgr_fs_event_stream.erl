@@ -28,8 +28,7 @@
                 ,ip :: inet:ip_address()
                 ,port :: inet:port_number()
                 ,socket :: inet:socket()
-                ,idle_alert = 'infinity' :: non_neg_integer() | 'infinity'
-               }).
+                ,idle_alert = 'infinity' :: wh_timeout()
 -type state() :: #state{}.
 
 %%%===================================================================
