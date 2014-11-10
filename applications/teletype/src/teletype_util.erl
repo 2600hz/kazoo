@@ -77,7 +77,7 @@ create_template_attachments(MasterAccountDb, DocId, [{ContentType, Contents} | A
 
 -spec does_attachment_exist(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 does_attachment_exist(MasterAccountDb, DocId, AName) ->
-    case couch_mgr:oepn_doc(MasterAccountDb, DocId) of
+    case couch_mgr:open_doc(MasterAccountDb, DocId) of
         {'ok', JObj} ->
             wh_json:get_value([<<"_attachments">>, AName], JObj) =/= 'undefined';
         {'error', _E} ->
