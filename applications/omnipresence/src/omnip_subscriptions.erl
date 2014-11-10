@@ -446,8 +446,12 @@ subscription_to_json(#omnip_subscription{user=User
 
 -spec subscription_from_json(wh_json:object()) -> subscription().
 subscription_from_json(JObj) ->
-    #omnip_subscription{user=wh_json:get_value(<<"user">>, JObj)
-                        ,from=wh_json:get_value(<<"from">>, JObj)
+    User = wh_json:get_value(<<"user">>, JObj),
+    From = wh_json:get_value(<<"from">>, JObj),
+    #omnip_subscription{user=User
+                        ,from=From
+                        ,normalized_user=wh_util:to_lower_binary(User)
+                        ,normalized_from=wh_util:to_lower_binary(From)
                         ,stalker=wh_json:get_value(<<"stalker">>, JObj)
                         ,expires=wh_json:get_value(<<"expires">>, JObj)
                         ,timestamp=wh_json:get_value(<<"timestamp">>, JObj)
