@@ -5,13 +5,11 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(teletype_listener).
+-module(teletype_shared_listener).
 
 -behaviour(gen_listener).
 
--export([start_link/0
-         ,handle_message/2
-        ]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -25,14 +23,48 @@
 
 -record(state, {}).
 
--define(BINDINGS, [{'self', []}]).
--define(RESPONDERS, [{{?MODULE, 'handle_message'}
-                     ,[{<<"*">>, <<"*">>}]
-                     }
+-define(RESPONDERS, [{'teletype_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
+                     ,{'teletype_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
+                     ,{'teletype_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
+                     ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
+                     ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
+                     ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
+                     ,{'teletype_deregister', [{<<"notification">>, <<"deregister">>}]}
+                     ,{'teletype_password_recovery', [{<<"notification">>, <<"password_recovery">>}]}
+                     ,{'teletype_new_account', [{<<"notification">>, <<"new_account">>}]}
+                     ,{'teletype_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
+                     ,{'teletype_port_request', [{<<"notification">>, <<"port_request">>}]}
+                     ,{'teletype_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
+                     ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
+                     ,{'teletype_low_balance', [{<<"notification">>, <<"low_balance">>}]}
+                     ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
+                     ,{'teletype_system_alert', [{<<"notification">>, <<"system_alert">>}]}
+                     ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
                     ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+
+-define(RESTRICT_TO, ['new_voicemail'
+                      ,'voicemail_full'
+                      ,'inbound_fax'
+                      ,'inbound_fax_error'
+                      ,'outbound_fax'
+                      ,'outbound_fax_error'
+                      ,'deregister'
+                      ,'pwd_recovery'
+                      ,'new_account'
+                      ,'cnam_requests'
+                      ,'port_request'
+                      ,'port_cancel'
+                      ,'low_balance'
+                      ,'transaction'
+                      ,'system_alerts'
+                     ]).
+
+-define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
+                   ,{'self', []}
+                  ]).
+-define(QUEUE_NAME, <<"teletype_listener">>).
+-define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
 %%%===================================================================
 %%% API
@@ -52,11 +84,8 @@ start_link() ->
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                                      %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
-
--spec handle_message(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_message(JObj, _Props) ->
-    lager:debug("recv message ~p", [JObj]).
 
 %%%===================================================================
 %%% gen_server callbacks
