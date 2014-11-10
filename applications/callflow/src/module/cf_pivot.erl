@@ -52,23 +52,35 @@ handle(Data, Call) ->
     lager:info("published pivot request"),
     wait_for_pivot(Data, Call).
 
-
-
 -spec wait_for_pivot(wh_json:object(), whapps_call:call()) -> any().
 wait_for_pivot(Data, Call) ->
+    lager:debug("waiting for events"),
     case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
         {'ok', JObj} ->
             case wh_util:get_event_type(JObj) of
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>} ->
+                    lager:debug("CHANNEL_DESTROY received stoping call"),
                     cf_exe:stop(Call);
                 {<<"pivot">>,<<"failed">>} ->
+                    lager:warning("pivot failed failing back to next callflow action"),
                     cf_exe:continue(Call);
                 _ ->
                     wait_for_pivot(Data, Call)
             end;
-        _ ->
+        {'error', 'timeout'} ->
+            lager:warning("no events received timeout"),
             wait_for_pivot(Data, Call)
     end.
+
+
+
+
+
+
+
+
+
+
 
 
 
