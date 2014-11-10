@@ -2,6 +2,7 @@
 Section: Crossbar
 Title: Notifications
 Language: en-US
+Version: 3.19
 */
 
 
@@ -11,33 +12,35 @@ Allow managing templates for notification emails.
 
 The structure is really simple:
 
-Ex:
-```
- "to": {
-     "type": "admins",
-     "email_addresses": [
-         "peter@email.com"
-     ]
- },
- "from": "peter@email.com",
- "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
- "enabled": true,
- "template_charset": "utf-8",
- "macros": {
-     "user.first_name": {
-         "i18n_label": "first_name",
-         "friendly_name": "First Name",
-         "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
-     },
-     "user.last_name": {
-         "i18n_label": "last_name",
-         "friendly_name": "Last Name",
-         "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
+Example:
+
+    {"to":{
+         "type": "admins"
+         ,"email_addresses": [
+             "peter@email.com"
+         ]
      }
- }
-```
+     ,"from": "peter@email.com"
+     ,"subject": "Hello {{user.first_name}}, you recieved a new voicemail!"
+     ,"enabled": true
+     ,"template_charset": "utf-8"
+     ,"macros": {
+         "user.first_name": {
+             "i18n_label": "first_name"
+              ,"friendly_name": "First Name"
+              ,"description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
+          }
+          ,"user.last_name": {
+              "i18n_label": "last_name"
+              ,"friendly_name": "Last Name"
+              ,"description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
+          }
+      }
+    }
 
 In addition to the JSON data, templates in various formats can be uploaded (such as from a WYSIWYG tool). Currently supported are plaintext and HTML documents.
+
+The `marcos` object is a per-template, system-defined set of macros you can use in your templates. You cannot configure this via the API.
 
 ## Crossbar
 
@@ -116,19 +119,7 @@ Now that you've fetched the system default template, modify and PUT it back to t
         "from": "reseller@resellerdomain.com",
         "subject": "Hello {{user.first_name}}, you recieved a new voicemail!",
         "enabled": true,
-        "template_charset": "utf-8",
-        "macros": {
-            "user.first_name": {
-                "i18n_label": "first_name",
-                "friendly_name": "First Name",
-                "description": "If the voicemail box has an owner id, this is the first name of that user.  Not always present"
-            },
-            "user.last_name": {
-                "i18n_label": "last_name",
-                "friendly_name": "Last Name",
-                "description": "If the voicemail box has an owner id, this is the last name of that user.  Not always present"
-            }
-        }
+        "template_charset": "utf-8"
     }}'
     {
         "auth_token": "{AUTH_TOKEN}",
