@@ -448,11 +448,11 @@ process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
         'false' -> 'ok'
     end;
 process_specific_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
-    _ = maybe_publish_channel_state(Props, Node),
-    ecallmgr_fs_channels:destroy(UUID, Node);
+    _ = ecallmgr_fs_channels:destroy(UUID, Node),
+    maybe_publish_channel_state(Props, Node);
 process_specific_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->
-    _ = maybe_publish_channel_state(Props, Node),
-    ecallmgr_fs_channels:update(UUID, #channel.answered, 'true');
+    _ = ecallmgr_fs_channels:update(UUID, #channel.answered, 'true'),
+    maybe_publish_channel_state(Props, Node);
 process_specific_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
     ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
 process_specific_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
