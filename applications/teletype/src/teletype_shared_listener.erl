@@ -23,7 +23,7 @@
 
 -record(state, {}).
 
--define(RESPONDERS, []).
+-define(RESPONDERS, [{'teletype_template_skel', [{<<"notification">>, <<"skel">>}]}]).
 %% -define(RESPONDERS, [{'teletype_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
 %%                      ,{'teletype_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
 %%                      ,{'teletype_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
@@ -58,6 +58,7 @@
                       ,'low_balance'
                       ,'transaction'
                       ,'system_alerts'
+                      ,'skel'
                      ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
