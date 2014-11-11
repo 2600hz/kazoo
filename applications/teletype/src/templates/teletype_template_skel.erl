@@ -12,7 +12,7 @@
          ,handle/2
         ]).
 
--include("teletype.hrl").
+-include("../teletype.hrl").
 
 -define(TEMPLATE_ID, <<"skel">>).
 -define(TEMPLATE_MACROS, wh_json:from_list([{<<"user.first_name">>
@@ -22,10 +22,16 @@
                                                                 ])
                                             }
                                             ,{<<"user.last_name">>
-                                             ,wh_json:from_list([{<<"i18n_label">>, <<"first_name">>}
-                                                                 ,{<<"friendly_name">>, <<"First Name">>}
-                                                                 ,{<<"description">>, <<"First name of the owner of the voicemail box">>}
-                                                                ])
+                                              ,wh_json:from_list([{<<"i18n_label">>, <<"first_name">>}
+                                                                  ,{<<"friendly_name">>, <<"First Name">>}
+                                                                  ,{<<"description">>, <<"First name of the owner of the voicemail box">>}
+                                                                 ])
+                                             }
+                                            ,{<<"user.email">>
+                                              ,wh_json:from_list([{<<"i18n_label">>, <<"email">>}
+                                                                  ,{<<"friendly_name">>, <<"Email">>}
+                                                                  ,{<<"description">>, <<"Email of the user">>}
+                                                                 ])
                                              }
                                            ])).
 -define(TEMPLATE_TEXT, <<"Hi {{user.first_name}} {{user.last_name}}.\n\nThis is the skeleton template\n">>).
@@ -34,10 +40,10 @@
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML),
+    teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML).
 
 -spec handle(wh_json:object(), wh_proplist()) -> 'ok'.
-handle(JObj, _Props) ->
+handle(_JObj, _Props) ->
     %% Gather data for template
     %% Load templates
     %% Populate templates
