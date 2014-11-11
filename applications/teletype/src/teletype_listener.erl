@@ -27,7 +27,7 @@
 
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_message'}
-                     ,[{<<"*">>, <<"*">>}]
+                      ,[{<<"*">>, <<"*">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<>>).

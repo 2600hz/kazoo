@@ -23,24 +23,25 @@
 
 -record(state, {}).
 
--define(RESPONDERS, [{'teletype_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
-                     ,{'teletype_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
-                     ,{'teletype_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
-                     ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
-                     ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
-                     ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
-                     ,{'teletype_deregister', [{<<"notification">>, <<"deregister">>}]}
-                     ,{'teletype_password_recovery', [{<<"notification">>, <<"password_recovery">>}]}
-                     ,{'teletype_new_account', [{<<"notification">>, <<"new_account">>}]}
-                     ,{'teletype_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
-                     ,{'teletype_port_request', [{<<"notification">>, <<"port_request">>}]}
-                     ,{'teletype_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
-                     ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
-                     ,{'teletype_low_balance', [{<<"notification">>, <<"low_balance">>}]}
-                     ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
-                     ,{'teletype_system_alert', [{<<"notification">>, <<"system_alert">>}]}
-                     ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
-                    ]).
+-define(RESPONDERS, []).
+%% -define(RESPONDERS, [{'teletype_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
+%%                      ,{'teletype_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
+%%                      ,{'teletype_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
+%%                      ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
+%%                      ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
+%%                      ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
+%%                      ,{'teletype_deregister', [{<<"notification">>, <<"deregister">>}]}
+%%                      ,{'teletype_password_recovery', [{<<"notification">>, <<"password_recovery">>}]}
+%%                      ,{'teletype_new_account', [{<<"notification">>, <<"new_account">>}]}
+%%                      ,{'teletype_cnam_request', [{<<"notification">>, <<"cnam_request">>}]}
+%%                      ,{'teletype_port_request', [{<<"notification">>, <<"port_request">>}]}
+%%                      ,{'teletype_port_cancel', [{<<"notification">>, <<"port_cancel">>}]}
+%%                      ,{'teletype_ported', [{<<"notification">>, <<"ported">>}]}
+%%                      ,{'teletype_low_balance', [{<<"notification">>, <<"low_balance">>}]}
+%%                      ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
+%%                      ,{'teletype_system_alert', [{<<"notification">>, <<"system_alert">>}]}
+%%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
+%%                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
                       ,'voicemail_full'
