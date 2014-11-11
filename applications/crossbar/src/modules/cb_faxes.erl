@@ -477,53 +477,23 @@ get_incoming_view_options(Context, 'undefined', SuffixKey) ->
 get_incoming_view_options(Context, PrefixKey, 'undefined') ->
     get_incoming_view_options(Context, PrefixKey, []);
 get_incoming_view_options(Context, PrefixKey, SuffixKey) ->
-    TStamp =  wh_util:current_tstamp(),
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
-    CreatedFrom = created_from(Context, TStamp, MaxRange),
-    CreatedTo = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, CreatedFrom + MaxRange)),
-    Diff = CreatedTo - CreatedFrom,
-
-    case Diff of
-        N when N < 0 ->
-            Message = <<"created_from is prior to created_to">>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
-        N when N > MaxRange ->
-            Message = <<"created_to is more than "
-                        ,(wh_util:to_binary(MaxRange))/binary
-                        ," seconds from created_from"
-                      >>,
-            cb_context:add_validation_error(<<"created_from">>
-                                            ,<<"date_range">>
-                                            ,Message
-                                            ,Context
-                                           );
-        _N when length(PrefixKey) =:= 0 andalso length(SuffixKey) =:= 0 ->
-            {'ok', [{'startkey', CreatedFrom}
-                    ,{'endkey', CreatedTo}
-                    | get_modbs(Context, CreatedFrom, CreatedTo)
-                   ]};
-        _N ->
-            {'ok', [{'startkey', [Key || Key <- PrefixKey ++ [CreatedFrom] ++ SuffixKey] }
-                    ,{'endkey', [Key || Key <- PrefixKey  ++ [CreatedTo]   ++ SuffixKey] }
-                    | get_modbs(Context, CreatedFrom, CreatedTo)
-                   ]}
+    case cb_modules_util:range_view_options(Context, MaxRange) of
+        {CreatedFrom, CreatedTo} ->
+            case length(PrefixKey) =:= 0 andalso length(SuffixKey) =:= 0 of
+                'true' ->
+                    {'ok', [{'startkey', CreatedFrom}
+                            ,{'endkey', CreatedTo}
+                            | get_modbs(Context, CreatedFrom, CreatedTo)
+                           ]};
+                'false' ->
+                     {'ok', [{'startkey', [Key || Key <- PrefixKey ++ [CreatedFrom] ++ SuffixKey] }
+                             ,{'endkey', [Key || Key <- PrefixKey  ++ [CreatedTo]   ++ SuffixKey] }
+                             | get_modbs(Context, CreatedFrom, CreatedTo)
+                            ]}
+            end;
+        Context1 -> Context1
     end.
-
--spec created_from(cb_context:context(), pos_integer(), pos_integer()) -> pos_integer().
-created_from(Context, TStamp, MaxRange) ->
-    created_from(Context, TStamp, MaxRange, crossbar_doc:start_key(Context)).
-
--spec created_from(cb_context:context(), pos_integer(), pos_integer(), api_binary()) -> pos_integer().
-created_from(Context, TStamp, MaxRange, 'undefined') ->
-    lager:debug("building created_from from req value"),
-    wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, TStamp - MaxRange));
-created_from(_Context, _TStamp, _MaxRange, StartKey) ->
-    lager:debug("using startkey ~p as created_from", [StartKey]),
-    wh_util:to_integer(StartKey).
 
 -spec get_modbs(cb_context:context(), pos_integer(), pos_integer()) -> ne_binaries().
 get_modbs(Context, From, To) ->
