@@ -217,7 +217,7 @@ fetch_templates(TemplateId, AccountId) ->
                             ,wh_doc:attachments(TemplateJObj, wh_json:new())
                            );
         {'error', 'not_found'} ->
-            maybe_fetch_parent_templates(TemplateId, AccountId);
+            maybe_fetch_reseller_templates(TemplateId, AccountId);
         {'error', _E} ->
             lager:debug("failed to fetch template ~s from ~s", [TemplateId, AccountId]),
             []
@@ -229,19 +229,11 @@ fetch_templates(TemplateId, AccountDb, Attachments) ->
        || Attachment <- wh_json:to_proplist(Attachments)
       ]).
 
--spec maybe_fetch_parent_templates(ne_binary(), ne_binary()) -> wh_proplist().
-maybe_fetch_parent_templates(TemplateId, AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', AccountJObj} ->
-            ParentAccountId = kz_account:parent_account_id(AccountJObj),
-            lager:debug("failed to find ~s in ~s, checking parent ~s", [TemplateId, AccountId, ParentAccountId]),
-            fetch_templates(TemplateId, ParentAccountId);
-        {'error', _E} ->
-            {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-            lager:debug("failed to open account doc for ~s, using master account: ~p", [AccountId, _E]),
-            fetch_templates(TemplateId, MasterAccountId)
-    end.
+-spec maybe_fetch_reseller_templates(ne_binary(), ne_binary()) -> wh_proplist().
+maybe_fetch_reseller_templates(TemplateId, AccountId) ->
+    ResellerAccountId = wh_services:find_reseller_id(AccountId),
+    lager:debug("failed to find ~s in ~s, checking reseller ~s", [TemplateId, AccountId, ResellerAccountId]),
+    fetch_templates(TemplateId, ResellerAccountId).
 
 -spec fetch_template(ne_binary(), ne_binary(), {wh_json:key(), wh_json:object()}) ->
                             {ne_binary(), binary()} |
