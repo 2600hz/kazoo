@@ -48,7 +48,6 @@
 %%                      ,{'teletype_system_alert', [{<<"notification">>, <<"system_alert">>}]}
 %%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
 %%                      ,{'teletype_template_skel', [{<<"notification">>, <<"skel">>}]}
-
 %%                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
