@@ -206,12 +206,13 @@ extract_defaults(JObj) ->
 
 -spec remove_defaults(api_terms()) -> api_terms().
 remove_defaults(Prop) when is_list(Prop) ->
-    [ KV || {K, _}=KV <- Prop,
-            (not lists:member(K, ?DEFAULT_HEADERS)),
-            (not lists:member(K, ?OPTIONAL_DEFAULT_HEADERS))
-    ];
+    props:delete_keys(?OPTIONAL_DEFAULT_HEADERS
+                      ,props:delete_keys(?DEFAULT_HEADERS, Prop)
+                     );
 remove_defaults(JObj) ->
-    wh_json:from_list(remove_defaults(wh_json:to_proplist(JObj))).
+    wh_json:delete_keys(?OPTIONAL_DEFAULT_HEADERS
+                        ,wh_json:delete_keys(?DEFAULT_HEADERS, JObj)
+                       ).
 
 %%--------------------------------------------------------------------
 %% @doc Format an error event
