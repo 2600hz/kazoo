@@ -725,8 +725,21 @@ maybe_add_rev(Db, DocId, Options) ->
     case props:get_value('rev', Options) =:= 'undefined'
         andalso do_fetch_rev(Db, DocId)
     of
-        ?NE_BINARY = Rev -> [{'rev', Rev} | Options];
-        _Else -> Options
+        <<_/binary>> = Rev ->
+            lager:debug("adding rev ~s to options", [Rev]),
+            [{'rev', Rev} | Options];
+        'false' ->
+            lager:debug("rev is in options list: ~p", [Options]),
+            Options;
+        {'error', 'not_found'} ->
+            lager:debug("failed to find rev of ~s in ~p", [DocId, Db]),
+            Options;
+        {'error', 'empty_doc_id'} ->
+            lager:debug("failed to find doc id ~p", [DocId]),
+            Options;
+        _Else ->
+            lager:debug("unknown rev format for ~p: ~p", [DocId, _Else]),
+            Options
     end.
 
 %%------------------------------------------------------------------------------
