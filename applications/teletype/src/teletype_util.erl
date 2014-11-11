@@ -10,6 +10,7 @@
 
 -export([template_doc_id/1
          ,init_template/4
+         ,fetch_templates/1, fetch_templates/2
         ]).
 
 -include("teletype.hrl").
@@ -109,7 +110,7 @@ does_attachment_exist(MasterAccountDb, DocId, AName) ->
 
 -spec does_attachment_exist(wh_json:object(), ne_binary()) -> boolean().
 does_attachment_exist(JObj, AName) ->
-    wh_json:get_value([<<"_attachments">>, cow_qs:urldecode(AName)], JObj) =/= 'undefined'.
+    wh_doc:attachment(JObj, cow_qs:urldecode(AName)) =/= 'undefined'.
 
 -spec update_template(wh_json:object(), wh_json:object(), wh_proplist()) ->
                                    'ok' | couch_mgr:couchbeam_error().
@@ -170,7 +171,6 @@ maybe_update_attachments(JObj, [{ContentType, Contents}|As]) ->
 
 -spec save_attachment(ne_binary(), ne_binary(), ne_binary(), binary()) -> boolean().
 save_attachment(DocId, AName, ContentType, Contents) ->
-    lager:debug("attachment ~s missing", [AName]),
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
 
     case couch_mgr:put_attachment(MasterAccountDb
@@ -195,4 +195,62 @@ save_attachment(DocId, AName, ContentType, Contents) ->
         {'error', _E} ->
             lager:debug("failed to add attachment ~s to ~s: ~p", [AName, DocId, _E]),
             'false'
+    end.
+
+-spec fetch_templates(api_binary()) -> wh_proplist().
+-spec fetch_templates(api_binary(), ne_binary()) -> wh_proplist().
+-spec fetch_templates(ne_binary(), ne_binary(), wh_json:object()) -> wh_proplist().
+fetch_templates(TemplateId) ->
+    {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+    fetch_templates(TemplateId, MasterAccountId).
+
+fetch_templates(_TemplateId, 'undefined') ->
+    lager:debug("no account id for ~s, no template available", [_TemplateId]),
+    [];
+fetch_templates(TemplateId, AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    DocId = template_doc_id(TemplateId),
+    case couch_mgr:open_cache_doc(AccountDb, DocId) of
+        {'ok', TemplateJObj} ->
+            fetch_templates(DocId
+                            ,AccountDb
+                            ,wh_doc:attachments(TemplateJObj, wh_json:new())
+                           );
+        {'error', 'not_found'} ->
+            maybe_fetch_parent_templates(TemplateId, AccountId);
+        {'error', _E} ->
+            lager:debug("failed to fetch template ~s from ~s", [TemplateId, AccountId]),
+            []
+    end.
+
+fetch_templates(TemplateId, AccountDb, Attachments) ->
+    props:filter_undefined(
+      [fetch_template(TemplateId, AccountDb, Attachment)
+       || Attachment <- wh_json:to_proplist(Attachments)
+      ]).
+
+-spec maybe_fetch_parent_templates(ne_binary(), ne_binary()) -> wh_proplist().
+maybe_fetch_parent_templates(TemplateId, AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {'ok', AccountJObj} ->
+            ParentAccountId = kz_account:parent_account_id(AccountJObj),
+            lager:debug("failed to find ~s in ~s, checking parent ~s", [TemplateId, AccountId, ParentAccountId]),
+            fetch_templates(TemplateId, ParentAccountId);
+        {'error', _E} ->
+            {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
+            lager:debug("failed to open account doc for ~s, using master account: ~p", [AccountId, _E]),
+            fetch_templates(TemplateId, MasterAccountId)
+    end.
+
+-spec fetch_template(ne_binary(), ne_binary(), {wh_json:key(), wh_json:object()}) ->
+                            {ne_binary(), binary()} |
+                            'undefined'.
+fetch_template(TemplateId, AccountDb, {AName, Properties}) ->
+    case couch_mgr:fetch_attachment(AccountDb, TemplateId, AName) of
+        {'ok', Contents} ->
+            {wh_json:get_value(<<"content_type">>, Properties), Contents};
+        {'error', _E} ->
+            lager:debug("failed to load attachment ~s from ~s(~s): ~p", [AName, TemplateId, AccountDb, _E]),
+            'undefined'
     end.
