@@ -265,13 +265,13 @@ format_capability(_, []) -> 'undefined'.
 
 -spec set_capability(atom(), ne_binary(), boolean()) -> 'ok'.
 set_capability(Node, Capability, Toggle) when is_boolean(Toggle) ->
-    gen_listener:call(?MODULE, {'set_capability', Node, Capability, Toggle}).
+    gen_server:call(?MODULE, {'set_capability', Node, Capability, Toggle}).
 
 -spec add_capability(atom(), wh_json:object()) -> 'ok'.
 add_capability(Node, Capability) ->
     case has_capability(Node, Capability) of
         'true' -> 'ok';
-        'false' -> gen_listener:call(?MODULE, {'add_capability', Node, Capability})
+        'false' -> gen_server:call(?MODULE, {'add_capability', Node, Capability})
     end.
 
 capability_to_json(#capability{node=Node
@@ -518,11 +518,11 @@ maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
             Node = create_node(NodeName, Cookie, Options),
             case maybe_connect_to_node(Node) of
                 {'error', _}=E ->
-                    _ = gen_listener:cast(Srv, {'update_node', Node#node{connected='false'}}),
+                    _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
                     _ = maybe_start_node_pinger(Node),
                     E;
                 'ok' ->
-                    gen_listener:cast(Srv, {'update_node', Node#node{connected='true'}}),
+                    gen_server:cast(Srv, {'update_node', Node#node{connected='true'}}),
                     'ok'
             end
     end.
@@ -538,18 +538,18 @@ maybe_rm_fs_node(NodeName, #state{nodes=Nodes}=State) ->
 -spec rm_fs_node(fs_node(), state()) -> 'ok'.
 rm_fs_node(#node{}=Node, #state{self=Srv}) ->
     _ = maybe_disconnect_from_node(Node),
-    gen_listener:cast(Srv, {'remove_node', Node}).
+    gen_server:cast(Srv, {'remove_node', Node}).
 
 -spec handle_nodeup(fs_node(), state()) -> 'ok'.
 handle_nodeup(#node{}=Node, #state{self=Srv}) ->
     NewNode = get_fs_client_version(Node),
     case maybe_connect_to_node(NewNode) of
         {'error', _} ->
-            _ = gen_listener:cast(Srv, {'update_node', Node#node{connected='false'}}),
+            _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
             _ = maybe_start_node_pinger(Node),
             'ok';
         'ok' ->
-            gen_listener:cast(Srv, {'update_node', NewNode#node{connected='true'}})
+            gen_server:cast(Srv, {'update_node', NewNode#node{connected='true'}})
     end.
 
 -spec handle_nodedown(fs_node(), state()) -> 'ok'.
@@ -559,11 +559,11 @@ handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
     gen_server:cast(Srv, {'remove_capabilities', NodeName}),
     case maybe_connect_to_node(Node) of
         {'error', _} ->
-            _ = gen_listener:cast(Srv, {'update_node', Node#node{connected='false'}}),
+            _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
             _ = maybe_start_node_pinger(Node),
             'ok';
         'ok' ->
-            gen_listener:cast(Srv, {'update_node', Node#node{connected='true'}})
+            gen_server:cast(Srv, {'update_node', Node#node{connected='true'}})
     end.
 
 -spec maybe_connect_to_node(fs_node()) -> 'ok' | {'error', _}.
