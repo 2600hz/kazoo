@@ -33,6 +33,7 @@
          ,webhook/1, webhook_v/1
          %% published on completion of notification
          ,notify_update/1, notify_update_v/1
+         ,skel/1, skel_v/1
         ]).
 
 -export([publish_voicemail/1, publish_voicemail/2
@@ -55,6 +56,7 @@
          ,publish_system_alert/1, publish_system_alert/2
          ,publish_webhook/1, publish_webhook/2
          ,publish_notify_update/2, publish_notify_update/3
+         ,publish_skel/1, publish_skel/2
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -80,6 +82,7 @@
 -define(NOTIFY_TRANSACTION, <<"notifications.account.transaction">>).
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
+-define(NOTIFY_SKEL, <<"notifications.skel">>).
 
 %% Notify New Voicemail
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
@@ -301,6 +304,13 @@
                               ]).
 -define(NOTIFY_UPDATE_TYPES, []).
 
+%% Skeleton
+-define(SKEL_HEADERS, [<<"Account-ID">>, <<"User-ID">>]).
+-define(OPTIONAL_SKEL_HEADERS, []).
+-define(SKEL_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                      ,{<<"Event-Name">>, <<"skel">>}
+                     ]).
+-define(SKEL_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -643,6 +653,24 @@ notify_update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?NOTIFY_UPDATE_HEADERS, ?NOTIFY_UPDATE_VALUES, ?NOTIFY_UPDATE_TYPES);
 notify_update_v(JObj) -> notify_update_v(wh_json:to_proplist(JObj)).
 
+%%--------------------------------------------------------------------
+%% @doc webhook notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+skel(Prop) when is_list(Prop) ->
+    case skel_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?SKEL_HEADERS, ?OPTIONAL_SKEL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for skel"}
+    end;
+skel(JObj) -> skel(wh_json:to_proplist(JObj)).
+
+-spec skel_v(api_terms()) -> boolean().
+skel_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SKEL_HEADERS, ?SKEL_VALUES, ?SKEL_TYPES);
+skel_v(JObj) -> skel_v(wh_json:to_proplist(JObj)).
+
+
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
@@ -713,6 +741,9 @@ bind_to_q(Q, ['system_alerts'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['webhook'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_WEBHOOK_CALLFLOW),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['skel'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SKEL),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     'ok'.
@@ -788,6 +819,9 @@ unbind_q_from(Q, ['system_alert'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['webhook'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_WEBHOOK_CALLFLOW),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['skel'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SKEL),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     'ok'.
@@ -940,3 +974,10 @@ publish_notify_update(RespQ, JObj) -> publish_notify_update(RespQ, JObj, ?DEFAUL
 publish_notify_update(RespQ, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?NOTIFY_UPDATE_VALUES, fun ?MODULE:notify_update/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+-spec publish_skel(api_terms()) -> 'ok'.
+-spec publish_skel(api_terms(), ne_binary()) -> 'ok'.
+publish_skel(JObj) -> publish_skel(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_skel(API, ContentType) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(API, ?SKEL_VALUES, fun ?MODULE:skel/1),
+    amqp_util:notifications_publish(?NOTIFY_SKEL, Payload, ContentType).
