@@ -1002,11 +1002,11 @@ error_number_exists(N) ->
            ,N#number{error_jobj=wh_json:from_list([{<<"number_exists">>, Error}])}
           }).
 
--spec error_service_restriction(iolist() | ne_binary(), wnm_number()) -> no_return().
-error_service_restriction(Reason, N) ->
-    lager:debug("number billing restriction: ~s", [Reason]),
+-spec error_service_restriction(wh_proplist(), wnm_number()) -> no_return().
+error_service_restriction(Props, N) when is_list(Props) ->
+    lager:debug("number billing restriction: ~p", [Props]),
     throw({'service_restriction'
-           ,N#number{error_jobj=wh_json:from_list([{<<"credit">>, wh_util:to_binary(Reason)}])}
+           ,N#number{error_jobj=wh_json:from_list(Props)}
           }).
 
 -spec error_provider_fault(wh_json:object(), wnm_number()) -> no_return().
@@ -1262,7 +1262,9 @@ activate_feature(Feature, Units, #number{feature_activation_charges=Charges
         'false' ->
             Reason = io_lib:format("not enough credit to activate feature '~s' for $~p", [Feature, wht_util:units_to_dollars(Units)]),
             lager:debug("~s", [Reason]),
-            error_service_restriction(Reason, N);
+            error_service_restriction([{<<"target">>, wht_util:units_to_dollars(Charge)}
+                                       ,{<<"message">>, <<"not enough credit to activate feature">>}
+                                      ], N);
         'true' ->
             N#number{activations=append_feature_debit(Feature, Units, N)
                      ,features=sets:add_element(Feature, Features)
@@ -1297,7 +1299,9 @@ activate_phone_number(Units, #number{phone_number_activation_charges=Charges
         'false' ->
             Reason = io_lib:format("not enough credit to activate number for $~p", [wht_util:units_to_dollars(Units)]),
             lager:debug("~s", [Reason]),
-            error_service_restriction(Reason, N);
+            error_service_restriction([{<<"target">>, wht_util:units_to_dollars(Charge)}
+                                       ,{<<"message">>, <<"not enough credit to activate number">>}
+                                      ], N);
         'true' ->
             N#number{activations=append_phone_number_debit(Units, N)
                      ,phone_number_activation_charges=Charge

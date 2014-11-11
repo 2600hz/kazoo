@@ -1066,6 +1066,8 @@ set_response({'dry_run', ?COLLECTION, Doc}, _, Context, Fun) ->
         'true' -> Fun();
         'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
+set_response({'error', Data}, _, Context, _) ->
+    crossbar_util:response_400(<<"client error">>, Data, Context);
 set_response({Error, Reason}, _, Context, _) ->
     crossbar_util:response('error', wh_util:to_binary(Error), 500, Reason, Context);
 set_response(_Else, _, Context, _) ->
@@ -1083,8 +1085,11 @@ set_response(_Else, _, Context, _) ->
 dry_run_response([{'services', Services}, {'activation_charges', Charges}]) ->
     wh_services:calculate_charges(Services, Charges).
 
-dry_run_response(?COLLECTION, Data) ->
-    accumulate_resp(wh_json:get_value(<<"charges">>, Data, wh_json:new())).
+dry_run_response(?COLLECTION, JObj) ->
+    case wh_json:get_value(<<"error">>, JObj) of
+        'undefined' -> accumulate_resp(wh_json:get_value(<<"charges">>, JObj, wh_json:new()));
+        _ -> JObj
+    end.
 
 -spec accumulate_resp(wh_json:object()) -> wh_json:object().
 -spec accumulate_resp(wh_json:objects(), {integer(), ne_binaries()}) -> wh_json:object().
@@ -1136,22 +1141,14 @@ accumulate_resp([JObj|JObjs], {AC, D}=Acc) ->
                                 operation_return() |
                                 {'ok', operation_return()}.
 collection_process(Context) ->
-    ReqJObj = cb_context:req_json(Context),
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     Result = collection_process(Context, Numbers, 'undefined'),
-    case (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')) of
-        'true' -> {'dry_run', ?COLLECTION, Result};
-        'false' -> {'ok', Result}
-    end.
+    collection_process_result(Context, Result).
 
 collection_process(Context, ?ACTIVATE) ->
-    ReqJObj = cb_context:req_json(Context),
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     Result = collection_process(Context, Numbers, ?ACTIVATE),
-    case (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')) of
-        'true' -> {'dry_run', ?COLLECTION, Result};
-        'false' -> {'ok', Result}
-    end.
+    collection_process_result(Context, Result).
 
 collection_process(Context, Numbers, Action) ->
     lists:foldl(
@@ -1161,14 +1158,26 @@ collection_process(Context, Numbers, Action) ->
                       wh_json:set_value([<<"success">>, Number], JObj, Acc);
                   {'dry_run', Data} ->
                       wh_json:set_value([<<"charges">>, Number], Data, Acc);
-                  {State, _} ->
-                      JObj = wh_json:set_value(<<"reason">>, State, wh_json:new()),
+                  {State, Error} ->
+                      JObj = wh_json:from_list([{State, Error}]),
                       wh_json:set_value([<<"error">>, Number], JObj, Acc)
               end
       end
       ,wh_json:new()
       ,Numbers
      ).
+
+collection_process_result(Context, JObj) ->
+    ReqJObj = cb_context:req_json(Context),
+    case wh_json:get_value(<<"error">>, JObj) of
+        'undefined' ->
+            case (not wh_json:is_true(<<"accept_charges">>, ReqJObj, 'false')) of
+                'true' -> {'dry_run', ?COLLECTION, JObj};
+                'false' -> {'ok', JObj}
+            end;
+        Error ->
+            {'error', Error}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
