@@ -43,9 +43,55 @@ init() ->
     teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML).
 
 -spec handle(wh_json:object(), wh_proplist()) -> 'ok'.
-handle(_JObj, _Props) ->
+handle(JObj, _Props) ->
+    'true' = wapi_notifications:skel_v(JObj),
+    wh_util:put_callid(JObj),
+
     %% Gather data for template
+    DataJObj = wh_api:remove_defaults(JObj),
+    Macros = build_template_data(DataJObj),
+
     %% Load templates
+    Templates = teletype_util:fetch_templates(?TEMPLATE_ID, wh_json:get_value(<<"Account-ID">>, DataJObj)),
+
     %% Populate templates
+    _RenderedTemplates = [{ContentType, render(Template, Macros)} || {ContentType, Template} <- Templates],
+
+    lager:debug("rendered: ~p", [_RenderedTemplates]),
+
     %% Send email
     'ok'.
+
+-spec render(binary(), wh_proplist()) -> iodata() | 'undefined'.
+render(Template, Macros) ->
+    case teletype_render_farm_sup:render(?TEMPLATE_ID, Template, Macros) of
+        {'ok', IOData} -> IOData;
+        {'error', _E} ->
+            lager:debug("failed to render template: ~p '~s'", [_E, Template]),
+            'undefined'
+    end.
+
+-spec build_template_data(wh_json:object()) -> wh_proplist().
+build_template_data(DataJObj) ->
+    [{<<"user">>, build_user_data(DataJObj)}
+     | wh_json:to_proplist(wh_json:normalize(DataJObj))
+    ].
+
+-spec build_user_data(wh_json:object()) -> wh_proplist().
+-spec build_user_data(wh_json:object(), wh_json:object()) -> wh_proplist().
+build_user_data(DataJObj) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, DataJObj),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    UserId = wh_json:get_value(<<"User-ID">>, DataJObj),
+
+    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+        {'ok', UserJObj} ->
+            build_user_data(DataJObj, UserJObj);
+        {'error', _E} ->
+            lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
+            throw({'error', 'no_user_data'})
+    end.
+
+build_user_data(_DataJObj, UserJObj) ->
+    UserKeys = [<<"first_name">>, <<"last_name">>, <<"email">>],
+    [{Key, wh_json:get_value(Key, UserJObj)} || Key <- UserKeys].
