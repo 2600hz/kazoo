@@ -101,7 +101,6 @@ template_attachment_name(ContentType) ->
 does_attachment_exist(MasterAccountDb, DocId, AName) ->
     case couch_mgr:open_doc(MasterAccountDb, DocId) of
         {'ok', JObj} ->
-            lager:debug("~p", [JObj]),
             does_attachment_exist(JObj, AName);
         {'error', _E} ->
             lager:debug("failed to open ~s to check for ~s: ~p", [DocId, AName, _E]),
@@ -147,6 +146,7 @@ maybe_update_template_fold(MacroKey, MacroValue, {_HU, JObj}=Acc) ->
         _Value -> Acc
     end.
 
+-spec maybe_update_attachments(wh_json:object(), wh_proplist()) -> 'ok'.
 maybe_update_attachments(_JObj, []) ->
     lager:debug("finished checking attachments");
 maybe_update_attachments(JObj, [{_ContentType, <<>>} | As]) ->
@@ -155,35 +155,44 @@ maybe_update_attachments(JObj, [{ContentType, Contents}|As]) ->
     AName = template_attachment_name(ContentType),
 
     case does_attachment_exist(JObj, AName) of
-        'false' ->
-            lager:debug("attachment ~s missing", [AName]),
-            {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-            DocId = wh_json:get_first_defined([<<"id">>,<<"_id">>], JObj),
-            case couch_mgr:put_attachment(MasterAccountDb
-                                          ,DocId
-                                          ,AName
-                                          ,Contents
-                                          ,[{'content_type', wh_util:to_list(ContentType)}]
-                                         )
-            of
-                {'ok', UpdatedJObj} ->
-                    lager:debug("added attachment ~s to ~s", [AName, DocId]),
-                    maybe_update_attachments(UpdatedJObj, As);
-                {'error', 'conflict'} ->
-                    case does_attachment_exist(MasterAccountDb, DocId, AName) of
-                        'true' ->
-                            lager:debug("added attachment ~s to ~s", [AName, DocId]),
-                            maybe_update_attachments(JObj, As);
-                        'false' ->
-                            lager:debug("failed to add attachment ~s to ~s", [AName, DocId]),
-                            maybe_update_attachments(JObj, As)
-                    end;
-                {'error', _E} ->
-                    lager:debug("failed to add attachment ~s to ~s", [AName, DocId]),
-                    maybe_update_attachments(JObj, As)
-            end;
         'true' ->
-            lager:debug("meta: ~p", [wh_json:get_value(<<"_attachments">>, JObj)]),
-            %%TODO: check attachment against Contents
+            maybe_update_attachments(JObj, As);
+        'false' ->
+            DocId = wh_json:get_first_defined([<<"id">>,<<"_id">>], JObj),
+            case save_attachment(DocId, AName, ContentType, Contents) of
+                'true' ->
+                    lager:debug("saved attachment ~s", [AName]);
+                'false' ->
+                    lager:debug("failed to save attachment ~s", [AName])
+            end,
             maybe_update_attachments(JObj, As)
+    end.
+
+-spec save_attachment(ne_binary(), ne_binary(), ne_binary(), binary()) -> boolean().
+save_attachment(DocId, AName, ContentType, Contents) ->
+    lager:debug("attachment ~s missing", [AName]),
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+
+    case couch_mgr:put_attachment(MasterAccountDb
+                                  ,DocId
+                                  ,AName
+                                  ,Contents
+                                  ,[{'content_type', wh_util:to_list(ContentType)}]
+                                 )
+    of
+        {'ok', _UpdatedJObj} ->
+            lager:debug("added attachment ~s to ~s", [AName, DocId]),
+            'true';
+        {'error', 'conflict'} ->
+            case does_attachment_exist(MasterAccountDb, DocId, AName) of
+                'true' ->
+                    lager:debug("added attachment ~s to ~s", [AName, DocId]),
+                    'true';
+                'false' ->
+                    lager:debug("failed to add attachment ~s to ~s", [AName, DocId]),
+                    'false'
+            end;
+        {'error', _E} ->
+            lager:debug("failed to add attachment ~s to ~s: ~p", [AName, DocId, _E]),
+            'false'
     end.
