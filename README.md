@@ -1,6 +1,4 @@
 
-**[Join us for the second annual KazooCon, this October 6th, 7th!](http://kazoocon.com/)**
-
 ````
     ... ........                                                
     ......+OO=..                                                
