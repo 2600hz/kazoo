@@ -748,9 +748,14 @@ used_by(PhoneNumber, UsedBy) ->
         'false' ->
             lager:debug("number ~s is not reconcilable, ignoring", [PhoneNumber]);
         'true' ->
-            Number = ?MODULE:get(PhoneNumber),
-            _ = save(Number#number{used_by=UsedBy}),
-            lager:debug("updating number '~s' used_by from '~s' field to: '~s'", [PhoneNumber, Number#number.used_by, UsedBy])
+            case ?MODULE:get(PhoneNumber) of
+                {Error, _} ->
+                    lager:warning("error getting '~s' : ~p", [PhoneNumber, Error]);
+                Number ->
+                    _ = save(Number#number{used_by=UsedBy}),
+                    lager:debug("updating number '~s' used_by from '~s' field to: '~s'"
+                                ,[PhoneNumber, Number#number.used_by, UsedBy])
+            end
     end.
 
 %%--------------------------------------------------------------------
