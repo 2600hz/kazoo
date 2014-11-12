@@ -477,7 +477,7 @@ get_incoming_view_options(Context, 'undefined', SuffixKey) ->
 get_incoming_view_options(Context, PrefixKey, 'undefined') ->
     get_incoming_view_options(Context, PrefixKey, []);
 get_incoming_view_options(Context, PrefixKey, SuffixKey) ->
-    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)),
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
             case length(PrefixKey) =:= 0 andalso length(SuffixKey) =:= 0 of
