@@ -195,7 +195,7 @@ load_cdr_summary(Context, _Nouns) ->
                                  {'ok', wh_proplist()} |
                                  cb_context:context().
 create_view_options(OwnerId, Context) ->
-    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31)),
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)),
 
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
