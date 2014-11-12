@@ -58,6 +58,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context(), ne_binary(), req_nouns()) -> boolean().
 authorize(Context) ->
     authorize(Context, cb_context:auth_account_id(Context), cb_context:req_nouns(Context)).
 
@@ -65,8 +66,8 @@ authorize(_Context, AuthAccountId, [{<<"notifications">>, _Id}
                                     ,{<<"accounts">>, AccountId}
                                    ]) ->
     lager:debug("maybe authz for ~s to modify ~s in ~s", [AuthAccountId, _Id, AccountId]),
-    wh_services:is_reseller(AuthAccountId) andalso
-        wh_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true');
+    wh_services:is_reseller(AuthAccountId)
+        andalso wh_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true');
 authorize(Context, AuthAccountId, [{<<"notifications">>, []}]) ->
     lager:debug("checking authz on system request to /"),
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
@@ -128,13 +129,7 @@ content_types_provided(Context, Id, ?HTTP_GET) ->
                 'undefined' -> Context;
                 Attachments ->
                     ContentTypes =
-                        wh_json:foldl(fun(_Name, Attachment, Acc) ->
-                                         [list_to_tuple(
-                                            binary:split(wh_json:get_value(<<"content_type">>, Attachment), <<"/">>)
-                                           )
-                                          | Acc
-                                         ]
-                                      end, [], Attachments),
+                        content_types_from_attachments(Attachments),
                     cb_context:set_content_types_provided(Context, [{'to_binary', ContentTypes}
                                                                     ,{'to_json', ?JSON_CONTENT_TYPES}
                                                                    ])
@@ -143,6 +138,23 @@ content_types_provided(Context, Id, ?HTTP_GET) ->
     end;
 content_types_provided(Context, _Id, _Verb) ->
     Context.
+
+-spec content_types_from_attachments(wh_json:object()) -> wh_proplist().
+content_types_from_attachments(Attachments) ->
+    wh_json:foldl(fun content_type_from_attachment/3, [], Attachments).
+
+-spec content_type_from_attachment(wh_json:key(), wh_json:object(), wh_proplist()) ->
+                                          wh_proplist().
+content_type_from_attachment(_Name, Attachment, Acc) ->
+    case wh_json:get_value(<<"content_type">>, Attachment) of
+        'undefined' -> Acc;
+        ContentType ->
+            [list_to_tuple(
+               binary:split(ContentType, <<"/">>)
+              )
+             | Acc
+            ]
+    end.
 
 -spec content_types_accepted_for_upload(cb_context:context(), http_method()) ->
                                                cb_context:context().
@@ -257,12 +269,16 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_read(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_read(Context, Id) ->
     case props:get_value(<<"accept">>, cb_context:req_headers(Context)) of
         'undefined' -> read(Context, Id);
         <<"application/json">> -> read(Context, Id);
         <<"application/x-json">> -> read(Context, Id);
-        Accept -> maybe_read_template(read(Context, Id), Id, Accept)
+        <<"*/*">> -> read(Context, Id);
+        Accept ->
+            lager:debug("accepts: ~s", [Accept]),
+            maybe_read_template(read(Context, Id), Id, Accept)
     end.
 
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -406,7 +422,9 @@ normalize_available(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    DocId = db_id(wh_json:get_value(<<"id">>, cb_context:doc(Context))),
+    ReqTemplate = clean_req_doc(cb_context:doc(Context)),
+
+    DocId = db_id(wh_json:get_value(<<"id">>, ReqTemplate)),
     AccountDb = cb_context:account_db(Context),
 
     {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
@@ -415,7 +433,7 @@ on_successful_validation('undefined', Context) ->
         {'ok', _JObj} ->
             Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
                                       ,{<<"_id">>, DocId}
-                                     ], cb_context:doc(Context)),
+                                     ], ReqTemplate),
             cb_context:set_doc(Context, Doc);
         {'error', 'not_found'} when AccountDb =/= 'undefined', AccountDb =/= MasterAccountDb ->
             lager:debug("doc ~s does not exist in ~s, not letting ~s create it", [DocId, MasterAccountDb, AccountDb]),
@@ -424,7 +442,7 @@ on_successful_validation('undefined', Context) ->
             lager:debug("this will create a new template in ~s", [MasterAccountDb]),
             Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
                                       ,{<<"_id">>, DocId}
-                                     ], cb_context:doc(Context)),
+                                     ], ReqTemplate),
             cb_context:setters(Context
                                ,[{fun cb_context:set_doc/2, Doc}
                                  ,{fun cb_context: set_account_db/2, MasterAccountDb}
@@ -435,6 +453,10 @@ on_successful_validation('undefined', Context) ->
     end;
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
+
+-spec clean_req_doc(wh_json:object()) -> wh_json:object().
+clean_req_doc(Doc) ->
+    wh_json:delete_keys([<<"macros">>], Doc).
 
 %%--------------------------------------------------------------------
 %% @private
