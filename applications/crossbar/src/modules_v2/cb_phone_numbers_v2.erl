@@ -1136,10 +1136,10 @@ accumulate_resp([JObj|JObjs], {AC, D}=Acc) ->
 %%--------------------------------------------------------------------
 -spec collection_process(cb_context:context()) ->
                                 operation_return() |
-                                {'ok', operation_return()}.
+                                {'dry_run', ne_binary(), wh_json:object()}.
 -spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) ->
                                 operation_return() |
-                                {'ok', operation_return()}.
+                                {'dry_run', ne_binary(), wh_json:object()}.
 collection_process(Context) ->
     Numbers = wh_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     Result = collection_process(Context, Numbers, 'undefined'),
@@ -1167,6 +1167,9 @@ collection_process(Context, Numbers, Action) ->
       ,Numbers
      ).
 
+-spec collection_process_result(cb_context:context(), wh_json:object()) ->
+                                operation_return() |
+                                {'dry_run', ne_binary(), wh_json:object()}.
 collection_process_result(Context, JObj) ->
     ReqJObj = cb_context:req_json(Context),
     case wh_json:get_value(<<"error">>, JObj) of
