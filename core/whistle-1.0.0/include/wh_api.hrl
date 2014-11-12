@@ -8,9 +8,6 @@
 -type api_formatter_return() :: {'ok', iolist()} | {'error', string()}.
 -type api_headers() :: [ne_binary(),...] | [].
 
-%% For dialplan messages, what does the Invite-Format param accept as values?
--define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}).
-
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTHN_REQ, AUTHN_RESP, etc, for *) to be considered valid.
 %%%

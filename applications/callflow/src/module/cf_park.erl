@@ -396,6 +396,8 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                     whapps_call_command:presence(<<"early">>, PresenceId, CallId, ParkedCallURI, Call),
                     {'ok', SlotNumber, UpdatedSlot};
                 {'error', 'conflict'} ->
+                    AccountDb = whapps_call:account_db(Call),
+                    wh_cache:erase_local(?CALLFLOW_CACHE, ?PARKED_CALLS_KEY(AccountDb)),
                     update_call_id(Replaces, get_parked_calls(Call), Call);
                 {'error', _R} ->
                     lager:info("failed to update parking slot with call id ~s: ~p", [Replaces, _R]),

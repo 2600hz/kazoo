@@ -18,7 +18,7 @@
 -include("konami.hrl").
 
 -define(DEFAULT_BINDING_DIGIT, <<"*">>).
--define(DEFAULT_DIGIT_TIMEOUT, 3000).
+-define(DEFAULT_DIGIT_TIMEOUT, 800).
 
 -define(META_SAY_HI, wh_json:from_list([{<<"module">>, <<"say">>}
                                         ,{<<"data">>, wh_json:from_list([{<<"text">>, <<"hi">>}])}

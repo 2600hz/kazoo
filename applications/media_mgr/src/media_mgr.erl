@@ -61,6 +61,8 @@ start_deps() ->
                                                 ,'lager'
                                                 ,'whistle_amqp'
                                                 ,'whistle_couch'
+                                                ,'cowlib'
+                                                ,'cowboy'
                                                ]],
     'ok'.
 

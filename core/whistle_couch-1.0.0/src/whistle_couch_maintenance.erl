@@ -86,12 +86,11 @@ test_admin_connection() ->
 -spec change_api_url(ne_binary(), ne_binary()) -> 'ignore'.
 -spec change_api_url(ne_binary(), ne_binary(), ne_binary()) -> 'ignore'.
 change_api_url(AppName, ApiUrl) ->
-    {'ok', Accounts} = whapps_util:get_all_accounts(),
     _ = [begin
              change_api_url(AppName, ApiUrl, Account),
              timer:sleep(100)
          end
-         || Account <- Accounts
+         || Account <- whapps_util:get_all_accounts()
         ],
     'ignore'.
 

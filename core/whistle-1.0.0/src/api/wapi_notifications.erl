@@ -289,10 +289,9 @@
 -define(WEBHOOK_HEADERS, [<<"Hook">>, <<"Data">>]).
 -define(OPTIONAL_WEBHOOK_HEADERS, [<<"Timestamp">>]).
 -define(WEBHOOK_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                              ,{<<"Event-Name">>, <<"webhook">>}
-                             ]).
+                         ,{<<"Event-Name">>, <<"webhook">>}
+                        ]).
 -define(WEBHOOK_TYPES, []).
-
 
 -define(NOTIFY_UPDATE_HEADERS, [<<"Status">>]).
 -define(OPTIONAL_NOTIFY_UPDATE_HEADERS, [<<"Failure-Message">>]).
@@ -941,5 +940,3 @@ publish_notify_update(RespQ, JObj) -> publish_notify_update(RespQ, JObj, ?DEFAUL
 publish_notify_update(RespQ, API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?NOTIFY_UPDATE_VALUES, fun ?MODULE:notify_update/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
-
-

@@ -49,6 +49,7 @@
                 ,response_event_handlers = [] :: pids()
                 ,response_ref :: reference() %% monitor ref for the pid
                 ,debug = 'false' :: boolean()
+                ,requester_queue :: api_binary()
                }).
 -type state() :: #state{}.
 
@@ -152,6 +153,7 @@ init([Call, JObj]) ->
              ,call=Call
              ,request_format=ReqFormat
              ,debug=wh_json:is_true(<<"Debug">>, JObj, 'false')
+             ,requester_queue = whapps_call:controller_queue(Call)
             }
      ,'hibernate'
     }.
@@ -195,19 +197,26 @@ handle_cast({'request', Uri, Method}, #state{call=Call
     handle_cast({'request', Uri, Method, req_params(ReqFormat, Call)}, State);
 handle_cast({'request', Uri, Method, Params}, #state{call=Call
                                                      ,debug=Debug
+                                                     ,requester_queue=Q
                                                     }=State) ->
     Call1 = kzt_util:set_voice_uri(Uri, Call),
 
-    {'ok', ReqId, Call2} = send_req(Call1, Uri, Method, Params, Debug),
-    lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
-    {'noreply', State#state{request_id=ReqId
-                            ,request_params=Params
-                            ,response_content_type = <<>>
-                            ,response_body = <<>>
-                            ,method=Method
-                            ,voice_uri=Uri
-                            ,call=Call2
-                           }};
+    case send_req(Call1, Uri, Method, Params, Debug) of
+        {'ok', ReqId, Call2} ->
+            lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
+            {'noreply', State#state{request_id=ReqId
+                                    ,request_params=Params
+                                    ,response_content_type = <<>>
+                                    ,response_body = <<>>
+                                    ,method=Method
+                                    ,voice_uri=Uri
+                                    ,call=Call2
+                                   }};
+        _ ->
+            wapi_pivot:publish_failed(Q, [{<<"Call-ID">>,whapps_call:call_id(Call)}
+                                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]),
+            {'stop', 'normal', State}
+    end;
 
 handle_cast({'updated_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
@@ -395,10 +404,7 @@ handle_event(_JObj, #state{response_pid=Pid
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(term(), state()) -> 'ok'.
-terminate(_Reason, #state{call=Call
-                          ,response_pid=Pid
-                         }) ->
-    _ = whapps_call_command:hangup(Call),
+terminate(_Reason, #state{response_pid=Pid}) ->
     exit(Pid, 'kill'),
     lager:info("pivot call terminating: ~p", [_Reason]).
 
@@ -421,18 +427,18 @@ code_change(_OldVsn, State, _Extra) ->
                       'ok' |
                       {'ok', ibrowse_req_id()} |
                       {'stop', whapps_call:call()}.
+send_req(Call, Uri, Method, BaseParams, Debug) when not is_list(BaseParams) ->
+    send_req(Call, Uri, Method, wh_json:to_proplist(BaseParams), Debug);
 send_req(Call, Uri, 'get', BaseParams, Debug) ->
-    UserParams = kzt_translator:get_user_vars(Call),
-    Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
-    UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
-    send(UpdatedCall, uri(Uri, wh_json:to_querystring(Params)), 'get', [], [], Debug);
-send_req(Call, Uri, 'post', BaseParams, Debug) when is_list(BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(BaseParams, UserParams),
     UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
-    send(UpdatedCall, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params), Debug);
- send_req(Call, Uri, 'post', BaseParams, Debug) ->
-    send_req(Call, Uri, 'post', wh_json:to_proplist(BaseParams), Debug).
+    send(UpdatedCall, uri(Uri, wh_json:to_querystring(Params)), 'get', [], [], Debug);
+send_req(Call, Uri, 'post', BaseParams, Debug) ->
+    UserParams = kzt_translator:get_user_vars(Call),
+    Params = wh_json:set_values(BaseParams, UserParams),
+    UpdatedCall = whapps_call:kvs_erase(<<"digits_collected">>, Call),
+    send(UpdatedCall, Uri, 'post', [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params), Debug).
 
 -spec send(whapps_call:call(), iolist(), atom(), wh_proplist(), iolist(), boolean()) ->
                   'ok' |
@@ -569,10 +575,11 @@ store_debug(Call, Doc) ->
                ])
              ,AccountModDb
              ,[{'account_id', whapps_call:account_id(Call)}
-               ,{'type', 'pivot_debug'}
+               ,{'account_db', AccountModDb}
+               ,{'type', <<"pivot_debug">>}
                ,{'now', wh_util:current_tstamp()}
               ]),
-    case couch_mgr:save_doc(AccountModDb, JObj) of
+    case kazoo_modb:save_doc(AccountModDb, JObj) of
         {'ok', _Saved} ->
             lager:debug("saved debug doc: ~p", [_Saved]);
         {'error', _E} ->

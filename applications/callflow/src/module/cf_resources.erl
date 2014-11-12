@@ -1,7 +1,23 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
-%%%
+%%% "data":{
+%%%   "to_did":"+14155550987" // statically dial DID
+%%%   ,"media":"media_id"
+%%%   ,"ringback":"ringback_id"
+%%%   ,"format_from_did":boolean()
+%%%   ,"timeout":integer()
+%%%   ,"do_not_normalize":boolean()
+%%%   ,"bypass_e164":boolean()
+%%%   ,"from_uri_realm":"realm.com"
+%%%   ,"caller_id_type":"external" // can use custom caller id properties on endpoints
+%%%   ,"use_local_resources":boolean()
+%%%   ,"hunt_account_id":"account_3" // use account_3's local carriers instead of current account
+%%%   ,"emit_account_id":boolean() // puts account id in SIP header X-Account-ID
+%%%   ,"custom_sip_headers:{"header":"value",...}
+%%%   ,"ignore_early_media":boolean()
+%%%   ,"outbound_flags":["flag_1","flag_2"] // used to match flags on carrier docs
+%%% }
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -62,7 +78,7 @@ build_offnet_request(Data, Call) ->
                             ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
                             ,{<<"Account-ID">>, whapps_call:account_id(Call)}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-                            ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
+                            ,{<<"Media">>, wh_json:get_first_defined([<<"media">>, <<"Media">>], Data)}
                             ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
                             ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
                             ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data)}
@@ -123,6 +139,13 @@ get_hunt_account_id(Data, Call) ->
 
 -spec get_to_did(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_to_did(Data, Call) ->
+    case wh_json:get_value(<<"to_did">>, Data) of
+        'undefined' -> get_request_did(Data, Call);
+        ToDID -> ToDID
+    end.
+
+-spec get_request_did(wh_json:object(), whapps_call:call()) -> ne_binary().
+get_request_did(Data, Call) ->
     case wh_json:is_true(<<"do_not_normalize">>, Data) of
         'true' -> get_original_request_user(Call);
         'false' ->
@@ -175,16 +198,16 @@ get_sip_headers(Data, Call) ->
 
 -spec get_ignore_early_media(wh_json:object()) -> api_binary().
 get_ignore_early_media(Data) ->
-    wh_util:to_binary(wh_json:is_true(<<"ignore_early_media">>, Data, <<"false">>)).
+    wh_util:to_binary(wh_json:is_true(<<"ignore_early_media">>, Data, 'false')).
 
--spec get_t38_enabled(whapps_call:call()) -> 'undefined' | boolean().
+-spec get_t38_enabled(whapps_call:call()) -> api_boolean().
 get_t38_enabled(Call) ->
     case cf_endpoint:get(Call) of
         {'ok', JObj} -> wh_json:is_true([<<"media">>, <<"fax_option">>], JObj);
         {'error', _} -> 'undefined'
     end.
 
--spec get_flags(wh_json:object(), whapps_call:call()) -> 'undefined' | ne_binaries().
+-spec get_flags(wh_json:object(), whapps_call:call()) -> api_binaries().
 get_flags(Data, Call) ->
     Routines = [fun get_endpoint_flags/3
                 ,fun get_flow_flags/3
@@ -262,7 +285,7 @@ is_flag_exported(Flag, [{F, 1}|Funs]) ->
     end;
 is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
 
--spec get_diversions(whapps_call:call()) -> 'undefined' | wh_json:object().
+-spec get_diversions(whapps_call:call()) -> api_object().
 get_diversions(Call) ->
     case wh_json:get_value(<<"Diversions">>, whapps_call:custom_channel_vars(Call)) of
         'undefined' -> 'undefined';

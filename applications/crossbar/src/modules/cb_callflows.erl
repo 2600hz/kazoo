@@ -99,18 +99,33 @@ validate_callflow(Context, DocId, ?HTTP_DELETE) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _DocId) ->
-    'ok' = track_assignment('post', Context),
-    maybe_reconcile_numbers(crossbar_doc:save(Context)).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            'ok' = track_assignment('post', Context),
+            maybe_reconcile_numbers(Context1);
+        _Status -> Context1
+    end.
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    'ok' = track_assignment('put', Context),
-    maybe_reconcile_numbers(crossbar_doc:save(Context)).
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            'ok' = track_assignment('put', Context),
+            maybe_reconcile_numbers(Context1);
+        _Status -> Context1
+    end.
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _DocId) ->
-    'ok' = track_assignment('delete', Context),
-    crossbar_doc:delete(Context).
+    Context1 = crossbar_doc:delete(Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            'ok' = track_assignment('delete', Context),
+            Context1;
+        _Status -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -226,6 +241,8 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(CallflowId, Context) ->
     crossbar_doc:load_merge(CallflowId, Context).
 
+-spec validate_callflow_elements(cb_context:context()) -> cb_context:context().
+-spec validate_callflow_elements(cb_context:context(), wh_json:object()) -> cb_context:context().
 validate_callflow_elements(Context) ->
     Flow = wh_json:get_value(<<"flow">>, cb_context:doc(Context)),
     validate_callflow_elements(Context, Flow).
@@ -248,17 +265,20 @@ validate_callflow_elements(Context, Flow) ->
 -spec validate_callflow_element_schema(cb_context:context(), ne_binary(), wh_json:object()) ->
                                               cb_context:context().
 validate_callflow_element_schema(Context, Module, Data) ->
-    lager:debug("validating callflow el ~s", [Module]),
+    lager:debug("validating callflow el: ~s", [Module]),
     cb_context:validate_request_data(<<"callflows.", Module/binary>>
                                      ,cb_context:set_req_data(Context, Data)
                                      ,fun(_C) -> Context end
                                      ,fun(C) -> cb_context:set_doc(C, cb_context:doc(Context)) end
                                     ).
 
+-spec validate_callflow_element(cb_context:context(), ne_binary(), wh_json:object()) ->
+                                       cb_context:context().
 validate_callflow_element(Context, <<"record_call">>, Data) ->
     Max = wh_media_util:max_recording_time_limit(),
     try wh_json:get_value(<<"action">>, Data) =:= <<"start">> andalso
-        wh_json:get_integer_value(<<"time_limit">>, Data) > Max of
+        wh_json:get_integer_value(<<"time_limit">>, Data) > Max
+    of
         'true' ->
             lager:debug("the requested time limit is too damn high"),
             cb_context:add_validation_error(<<"time_limit">>
@@ -275,7 +295,6 @@ validate_callflow_element(Context, <<"record_call">>, Data) ->
                                             ,<<"Must be an integer">>
                                             ,Context
                                            )
-
     end;
 validate_callflow_element(Context, _Module, _Data) ->
     Context.
@@ -290,7 +309,7 @@ validate_callflow_children(Context, Children) ->
 -spec validate_callflow_child(ne_binary(), wh_json:object(), cb_context:context()) ->
                                      cb_context:context().
 validate_callflow_child(_Key, Branch, Context) ->
-    lager:debug("validating branch ~s", [_Key]),
+    lager:debug("validating branch: ~s", [_Key]),
     validate_callflow_elements(Context, Branch).
 
 %%--------------------------------------------------------------------
@@ -310,10 +329,8 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_reconcile_numbers(cb_context:context()) -> cb_context:context().
 maybe_reconcile_numbers(Context) ->
-    maybe_reconcile_numbers(Context, cb_context:resp_status(Context)).
-
-maybe_reconcile_numbers(Context, 'success') ->
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, 'false') of
         'false' -> Context;
         'true' ->
@@ -329,9 +346,7 @@ maybe_reconcile_numbers(Context, 'success') ->
                  || Number <- sets:to_list(NewNumbers)
                 ],
             Context
-    end;
-maybe_reconcile_numbers(Context, _Status) -> Context.
-
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

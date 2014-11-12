@@ -67,6 +67,8 @@
 
 -export([descendants_count/0, descendants_count/1]).
 
+-export([format_emergency_caller_id_number/1]).
+
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE
@@ -336,21 +338,25 @@ get_account_realm(Db, AccountId) ->
             'undefined'
     end.
 
--spec flush_registrations(ne_binary()) -> 'ok'.
-flush_registrations(Realm) ->
+-spec flush_registrations(ne_binary() | cb_context:context()) -> 'ok'.
+flush_registrations(<<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1).
+    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
+flush_registrations(Context) ->
+    flush_registrations(crossbar_util:get_account_realm(Context)).
 
--spec flush_registration(api_binary(), ne_binary()) -> 'ok'.
+-spec flush_registration(api_binary(), ne_binary() | cb_context:context()) -> 'ok'.
 flush_registration('undefined', _Realm) -> 'ok';
-flush_registration(Username, Realm) ->
+flush_registration(Username, <<_/binary>> = Realm) ->
     FlushCmd = [{<<"Realm">>, Realm}
                 ,{<<"Username">>, Username}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1).
+    whapps_util:amqp_pool_send(FlushCmd, fun wapi_registration:publish_flush/1);
+flush_registration(Username, Context) ->
+    flush_registration(Username, get_account_realm(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -849,7 +855,7 @@ generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, Range) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec descendants_count() -> 'ok'.
--spec descendants_count(wh_proplists() | ne_binary()) -> 'ok'.
+-spec descendants_count(wh_proplist() | ne_binary()) -> 'ok'.
 descendants_count() ->
     Limit = whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000),
     ViewOptions = [
@@ -859,10 +865,9 @@ descendants_count() ->
     descendants_count(ViewOptions).
 
 descendants_count(Opts) when is_list(Opts) ->
-    ViewOptions = [
-        {'group_level', 1}
-        |props:delete('group_level', Opts)
-    ],
+    ViewOptions = [{'group_level', 1}
+                   | props:delete('group_level', Opts)
+                  ],
     case load_descendants_count(ViewOptions) of
         {'error', 'no_descendants'} ->
             case props:get_value('key', ViewOptions) of
@@ -891,26 +896,48 @@ descendants_count(Account) ->
     descendants_count([{'key', AccountId}]).
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec format_emergency_caller_id_number(cb_context:context()) -> cb_context:context().
+format_emergency_caller_id_number(Context) ->
+    case cb_context:req_value(Context, [<<"caller_id">>, <<"emergency">>]) of
+        'undefined' -> Context;
+        Emergency ->
+            case wh_json:get_value(<<"number">>, Emergency) of
+                'undefined' -> Context;
+                Number ->
+                    NEmergency = wh_json:set_value(<<"number">>, wnm_util:to_e164(Number), Emergency),
+                    CallerId = cb_context:req_value(Context, <<"caller_id">>),
+                    NCallerId = wh_json:set_value(<<"emergency">>, NEmergency, CallerId),
+                    cb_context:set_req_data(
+                        Context
+                        ,wh_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
+                    )
+            end
+    end.
+
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_descendants_count(wh_proplists()) -> {'ok', wh_proplists()} | {'error', _}.
+-spec load_descendants_count(wh_proplists()) ->
+                                    {'ok', wh_proplist()} |
+                                    {'error', _}.
 load_descendants_count(ViewOptions) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
         {'error', _E}=Resp -> Resp;
         {'ok', []} -> {'error', 'no_descendants'};
-        {'ok', [JObj|[]]} ->
-            {'ok', [{wh_json:get_value(<<"key">>, JObj)
-                     ,wh_json:get_value(<<"value">>, JObj)}
-                   ]};
         {'ok', JObjs} ->
-            Counts =
-                [{wh_json:get_value(<<"key">>, JObj)
-                 ,wh_json:get_value(<<"value">>, JObj)}
-                 || JObj <- JObjs],
-            {'ok', Counts}
+            {'ok', [{wh_json:get_value(<<"key">>, JObj)
+                     ,wh_json:get_value(<<"value">>, JObj)
+                    }
+                    || JObj <- JObjs
+                   ]}
     end.
 
 %%--------------------------------------------------------------------

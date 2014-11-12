@@ -1,0 +1,42 @@
+{
+    "_id": "callflows.record_call",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "required": true,
+    "description": "Validator for the Record Call callflow action",
+    "properties": {
+        "action": {
+            "type": "string",
+            "required": true,
+            "name": "Action",
+            "description": "Toggle whether to start or stop a recording",
+            "enum":["start", "stop"]
+        },
+        "time_limit":{
+            "type":"integer",
+            "required":false,
+            "name":"Time Limit",
+            "description":"Limit, in seconds, of how long to record the call",
+            "minimum":1
+        },
+        "format":{
+            "type": "string",
+            "required": false,
+            "name": "Format",
+            "description": "Disk Format to write the recording",
+            "enum":["mp3", "wav"]
+        },
+        "url":{
+            "type":"string",
+            "required":false,
+            "name":"URL",
+            "description":"What URL to use as a base for where to send the recording after it finishes"
+        },
+        "record_on_answer":{
+            "type":"boolean",
+            "required":false,
+            "name":"Record on Answer",
+            "description":"Whether to delay starting the recording until the call is answered"
+        }
+    }
+}

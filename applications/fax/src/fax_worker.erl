@@ -66,6 +66,9 @@
 -define(DEFAULT_RETRY_COUNT, whapps_config:get_integer(?CONFIG_CAT, <<"default_retry_count">>, 3)).
 -define(DEFAULT_COMPARE_FIELD, whapps_config:get_binary(?CONFIG_CAT, <<"default_compare_field">>, <<"result_cause">>)).
 
+-define(COUNT_PAGES_CMD, <<"echo -n `tiffinfo ~s | grep 'Page Number' | grep -c 'P'`">>).
+-define(CONVERT_PDF_CMD, <<"/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s &> /dev/null && echo -n \"success\"">>).
+
 
 %%%===================================================================
 %%% API
@@ -413,11 +416,12 @@ attempt_to_acquire_job(Id, Q) ->
         {'ok', JObj} ->
             case wh_json:get_value(<<"pvt_job_status">>, JObj) of
                 <<"pending">> ->
+                    Opts = [{'rev', wh_json:get_first_defined([<<"_rev">>, <<"rev">>], JObj)}],
                     couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
                                                                       ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
                                                                       ,{<<"pvt_modified">>, wh_util:current_tstamp()}
                                                                       ,{<<"pvt_queue">>, Q}
-                                                                     ],JObj));
+                                                                     ],JObj), Opts);
                 _Else ->
                     lager:debug("job not in an available status: ~s", [_Else]),
                     {'error', 'job_not_available'}
@@ -759,8 +763,7 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             R = file:write_file(InputFile, RespContent),
             lager:debug("result of tmp file write: ~s", [R]),
-            DefaultCmd = <<"/usr/bin/gs -q -r204x98 -g1728x1078 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=~s -- ~s &> /dev/null && echo -n \"success\"">>,
-            ConvertCmd = whapps_config:get_binary(<<"fax">>, <<"conversion_command">>, DefaultCmd),
+            ConvertCmd = whapps_config:get_binary(<<"fax">>, <<"conversion_command">>, ?CONVERT_PDF_CMD),
             Cmd = io_lib:format(ConvertCmd, [OutputFile, InputFile]),
             lager:debug("attempting to convert pdf: ~s", [Cmd]),
             case os:cmd(Cmd) of
@@ -777,8 +780,10 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
 
 -spec get_sizes(ne_binary()) -> 'ok'.
 get_sizes(OutputFile) ->
-    CmdCount = <<"echo -n `tiffinfo ", OutputFile/binary , " | grep 'Page Number' | grep -c 'P'`">>,
-    NumberOfPages = wh_util:to_integer( os:cmd(wh_util:to_list(CmdCount)) ),
+    CmdCount = whapps_config:get_binary(<<"fax">>, <<"count_pages_command">>, ?COUNT_PAGES_CMD),
+    Cmd = io_lib:format(CmdCount, [OutputFile]),
+    Result = os:cmd(wh_util:to_list(Cmd)),
+    NumberOfPages = wh_util:to_integer( Result ),
     FileSize = filelib:file_size(OutputFile),
     {NumberOfPages, FileSize}.
 
@@ -805,6 +810,7 @@ send_fax(JobId, JObj, Q) ->
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = wh_util:rand_hex_binary(8),
+    ETimeout = wh_util:to_binary(whapps_config:get_integer(?CONFIG_CAT, <<"endpoint_timeout">>, 10)),
     Request = props:filter_undefined(
                 [{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
                  ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
@@ -825,6 +831,7 @@ send_fax(JobId, JObj, Q) ->
                  ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
                  ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
                  ,{<<"Application-Name">>, <<"fax">>}
+                 ,{<<"Timeout">>,ETimeout}
                  ,{<<"Application-Data">>, get_proxy_url(JobId)}
                  ,{<<"Outbound-Call-ID">>, CallId}
                  ,{<<"Bypass-E164">>, wh_json:is_true(<<"bypass_e164">>, JObj)}

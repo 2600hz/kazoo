@@ -18,12 +18,13 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('webhooks_cache')
-                   ,?WORKER_ARGS('kazoo_etsmgr_srv', [[{'table_id', webhooks_listener:table_id()}
+                   ,?WORKER_ARGS('kazoo_etsmgr_srv', [[{'table_id', webhooks_util:table_id()}
                                                        ,{'find_me_function', fun webhooks_sup:listener/0}
-                                                       ,{'table_options', webhooks_listener:table_options()}
-                                                       ,{'gift_data', webhooks_listener:gift_data()}
+                                                       ,{'table_options', webhooks_util:table_options()}
+                                                       ,{'gift_data', webhooks_util:gift_data()}
                                                       ]])
                    ,?WORKER('webhooks_listener')
+                   ,?WORKER('webhooks_shared_listener')
                   ]).
 
 %% ===================================================================

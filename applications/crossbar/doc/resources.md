@@ -188,13 +188,15 @@ It is helpful to be able to upload a list of numbers to a specific account, vers
             "failures": false,
             "id": "201408-394de70ecf6f8252",
             "status": "pending",
-            "timestamp": 63575950041
+            "timestamp": 63575950041,
+            "resource_id":{RESOURCE_ID}
         },
         {
             "failures": false,
             "id": "201408-70766ed00a24",
             "status": "pending",
-            "timestamp": 63575878379
+            "timestamp": 63575878379,
+            "resource_id":{RESOURCE_ID}
         }
        ]
      "page_size": 2,
@@ -208,11 +210,12 @@ Do note you can use the `created_from` and `created_to` flags to change to time 
 
 #### _PUT_ - Create a new job to add a list of numbers
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs' -d '{"data":{"numbers":["+12223334444", "+23334445555"], "carrier":"local"}}'
+    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs' -d '{"data":{"numbers":["+12223334444", "+23334445555"], "resource_id":"{RESOURCE_ID}"}}'
     {"auth_token": "{AUTH_TOKEN}",
      "data": {
         "errors": {},
         "id": "201408-39512771f9d2d499",
+        "resource_id":"{RESOURCE_ID}",
         "numbers": [
             "+12223334444"
         ],
@@ -228,7 +231,7 @@ Do note you can use the `created_from` and `created_to` flags to change to time 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}'
     {"auth_token": "{AUTH_TOKEN}",
      "data": {
-        "carrier": "other",
+        "resource_id": "{RESOURCE_ID}",
         "errors": {},
         "id": "201408-394de70ecf6f8252",
         "numbers": [

@@ -15,8 +15,39 @@
         ]).
 -export([find_webhooks/2]).
 -export([fire_hooks/2]).
+-export([init_mods/0
+         ,jobj_to_rec/1
+         ,hook_event_lowered/1
+         ,hook_event/1
+         ,load_hooks/1
+         ,load_hook/2
+        ]).
+
+%% ETS Management
+-export([table_id/0
+         ,table_options/0
+         ,find_me/0
+         ,gift_data/0
+        ]).
 
 -define(TABLE, 'webhooks_listener').
+
+-spec table_id() -> ?TABLE.
+table_id() -> ?TABLE.
+
+-spec table_options() -> list().
+table_options() -> ['set'
+                    ,'protected'
+                    ,{'keypos', #webhook.id}
+                    ,'named_table'
+                   ].
+
+-spec find_me() -> api_pid().
+find_me() -> whereis(?MODULE).
+
+-spec gift_data() -> 'ok'.
+gift_data() -> 'ok'.
+
 
 -spec from_json(wh_json:object()) -> webhook().
 from_json(Hook) ->
@@ -57,7 +88,7 @@ find_webhooks(HookEvent, AccountId) ->
                     }]
                   ,['$_']
                  }],
-    ets:select(?TABLE, MatchSpec).
+    ets:select(table_id(), MatchSpec).
 
 -spec fire_hooks(wh_json:object(), webhooks()) -> 'ok'.
 fire_hooks(_, []) -> 'ok';
@@ -248,3 +279,91 @@ hook_event_lowered(Bin) -> Bin.
 retries(N) when N > 0, N < 5 -> N;
 retries(N) when N < 1 -> 1;
 retries(_) -> 5.
+
+-spec load_hooks(pid()) -> 'ok'.
+load_hooks(Srv) ->
+    lager:debug("loading hooks into memory"),
+    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+                               ,<<"webhooks/crossbar_listing">>
+                               ,['include_docs']
+                              )
+    of
+        {'ok', []} ->
+            lager:debug("no configured webhooks");
+        {'ok', WebHooks} ->
+            load_hooks(Srv, WebHooks);
+        {'error', 'not_found'} ->
+            lager:debug("db or view not found, initing"),
+            init_webhooks(),
+            load_hooks(Srv);
+        {'error', _E} ->
+            lager:debug("failed to load webhooks: ~p", [_E])
+    end.
+
+-spec init_webhooks() -> 'ok'.
+init_webhooks() ->
+    _ = couch_mgr:db_create(?KZ_WEBHOOKS_DB),
+    _ = couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
+    _ = couch_mgr:revise_doc_from_file(?WH_SCHEMA_DB, 'crossbar', <<"schemas/webhooks.json">>),
+    'ok'.
+
+-spec load_hooks(pid(), wh_json:objects()) -> 'ok'.
+load_hooks(Srv, WebHooks) ->
+    [load_hook(Srv, wh_json:get_value(<<"doc">>, Hook)) || Hook <- WebHooks],
+    lager:debug("sent hooks into server ~p", [Srv]).
+
+-spec load_hook(pid(), wh_json:object()) -> 'ok'.
+load_hook(Srv, WebHook) ->
+    try jobj_to_rec(WebHook) of
+        Hook -> gen_listener:cast(Srv, {'add_hook', Hook})
+    catch
+        'throw':{'bad_hook', HookEvent} ->
+            lager:debug("failed to load hook ~s.~s: bad_hook: ~s"
+                        ,[wh_json:get_value(<<"pvt_account_id">>, WebHook)
+                          ,wh_json:get_value(<<"_id">>, WebHook)
+                          ,HookEvent
+                         ])
+    end.
+
+-spec jobj_to_rec(wh_json:object()) -> webhook().
+jobj_to_rec(Hook) ->
+    #webhook{id = hook_id(Hook)
+             ,uri = wh_json:get_value(<<"uri">>, Hook)
+             ,http_verb = http_verb(wh_json:get_value(<<"http_verb">>, Hook))
+             ,hook_event = hook_event(wh_json:get_value(<<"hook">>, Hook))
+             ,hook_id = wh_json:get_first_defined([<<"_id">>, <<"ID">>], Hook)
+             ,retries = retries(wh_json:get_integer_value(<<"retries">>, Hook, 3))
+             ,account_id = wh_json:get_value(<<"pvt_account_id">>, Hook)
+             ,custom_data = wh_json:get_ne_value(<<"custom_data">>, Hook)
+            }.
+
+-spec init_mods() -> 'ok'.
+-spec init_mods(wh_json:objects()) -> 'ok'.
+init_mods() ->
+    case couch_mgr:get_results(?KZ_WEBHOOKS_DB
+                               ,<<"webhooks/accounts_listing">>
+                               ,[{'group_level', 1}]
+                              )
+    of
+        {'ok', []} ->
+            lager:debug("no accounts to load views into the MODs");
+        {'ok', Accts} ->
+            init_mods(Accts);
+        {'error', _E} ->
+            lager:debug("failed to load accounts_listing: ~p", [_E])
+    end.
+
+init_mods(Accts) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
+    init_mods(Accts, Year, Month).
+init_mods([], _, _) -> 'ok';
+init_mods([Acct|Accts], Year, Month) ->
+    init_mod(Acct, Year, Month),
+    init_mods(Accts, Year, Month).
+
+-spec init_mod(wh_json:object(), wh_year(), wh_month()) -> 'ok'.
+init_mod(Acct, Year, Month) ->
+    Db = wh_util:format_account_id(wh_json:get_value(<<"key">>, Acct), Year, Month),
+    kazoo_modb:create(Db),
+    lager:debug("updated account_mod ~s", [Db]).
+

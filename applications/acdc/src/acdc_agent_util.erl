@@ -72,7 +72,8 @@ most_recent_ets_status(AccountId, AgentId) ->
             {'ok', wh_json:get_value(<<"status">>, StatusJObj)}
     end.
 
--spec most_recent_db_status(ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
+-spec most_recent_db_status(ne_binary(), ne_binary()) ->
+                                   {'ok', ne_binary()}.
 most_recent_db_status(AccountId, AgentId) ->
     Opts = [{'startkey', [AgentId, wh_util:current_tstamp()]}
             ,{'limit', 1}
@@ -83,7 +84,8 @@ most_recent_db_status(AccountId, AgentId) ->
         {'ok', []} -> {'ok', <<"unknown">>};
         {'error', 'not_found'} ->
             acdc_maintenance:refresh_account(AccountId),
-            most_recent_status(AccountId, AgentId);
+            timer:sleep(150),
+            most_recent_db_status(AccountId, AgentId);
         {'error', _E} ->
             lager:debug("error querying view: ~p", [_E]),
             {'ok', <<"unknown">>}
@@ -397,5 +399,3 @@ changed([F|From], To, Add, Rm) ->
         'true' -> changed(From, lists:delete(F, To), Add, Rm);
         'false' -> changed(From, To, Add, [F|Rm])
     end.
-
-

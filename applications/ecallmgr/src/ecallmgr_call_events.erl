@@ -327,10 +327,14 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             timer:sleep(1000),
             {'noreply', State};
         {<<"RECORD_STOP">>, _} ->
-            _ = case props:get_value(<<"variable_current_application_data">>, Props) of
-                    'undefined' -> spawn(fun() -> store_recording(Props, CallId, Node) end);
-                    _ -> process_channel_event(Props)
+            _ = case props:get_value(?GET_CCV(<<"Media-Recorder">>), Props) of
+                    <<"wh_media_recording">> ->
+                        lager:debug("wh_media_recording is handling call recording publishing record stop");
+                    _ ->
+                        lager:debug("no one is handling call recording storing recording"),
+                        spawn(fun() -> store_recording(Props, CallId, Node) end)
                 end,
+            process_channel_event(Props),
             {'noreply', State};
         {_A, _B} ->
             process_channel_event(Props),
@@ -974,20 +978,20 @@ usurp_other_publishers(#state{node=Node
                              ecallmgr_util:send_cmd_ret() |
                              [ecallmgr_util:send_cmd_ret(),...].
 store_recording(Props, CallId, Node) ->
-    MediaName = props:get_value(<<"variable_ecallmgr_Media-Name">>, Props),
-    Destination = props:get_value(<<"variable_ecallmgr_Media-Transfer-Destination">>, Props),
+    MediaName = props:get_value(?GET_CCV(<<"Media-Name">>), Props),
+    Destination = props:get_value(?GET_CCV(<<"Media-Transfer-Destination">>), Props),
     %% TODO: if you change this logic be sure it matches wh_media_util as well!
     Url = wh_util:strip_right_binary(Destination, $/),
     JObj = wh_json:from_list(
              [{<<"Call-ID">>, CallId}
-             ,{<<"Msg-ID">>, CallId}
-             ,{<<"Media-Name">>, MediaName}
-             ,{<<"Media-Transfer-Destination">>, <<Url/binary, "/", MediaName/binary>>}
-             ,{<<"Insert-At">>, props:get_value(<<"variable_ecallmgr_Insert-At">>, Props, <<"now">>)}
-             ,{<<"Media-Transfer-Method">>, props:get_value(<<"variable_ecallmgr_Media-Transfer-Method">>, Props, <<"put">>)}
-             ,{<<"Application-Name">>, <<"store">>}
-             ,{<<"Event-Category">>, <<"call">>}
-             ,{<<"Event-Name">>, <<"command">>}
+              ,{<<"Msg-ID">>, CallId}
+              ,{<<"Media-Name">>, MediaName}
+              ,{<<"Media-Transfer-Destination">>, <<Url/binary, "/", MediaName/binary>>}
+              ,{<<"Insert-At">>, props:get_value(?GET_CCV(<<"Insert-At">>), Props, <<"now">>)}
+              ,{<<"Media-Transfer-Method">>, props:get_value(?GET_CCV(<<"Media-Transfer-Method">>), Props, <<"put">>)}
+              ,{<<"Application-Name">>, <<"store">>}
+              ,{<<"Event-Category">>, <<"call">>}
+              ,{<<"Event-Name">>, <<"command">>}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     ecallmgr_call_command:exec_cmd(Node, CallId, JObj, 'undefined').

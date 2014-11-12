@@ -29,6 +29,7 @@
          ,to_float/1, to_float/2
          ,to_number/1
          ,to_hex/1, to_hex_binary/1, rand_hex_binary/1
+         ,hexencode_binary/1
          ,from_hex_binary/1, from_hex_string/1
          ,to_list/1, to_binary/1
          ,to_atom/1, to_atom/2
@@ -45,7 +46,11 @@
          ,ucfirst_binary/1, lcfirst_binary/1
          ,strip_binary/1, strip_binary/2
          ,strip_left_binary/2, strip_right_binary/2
+         ,suffix_binary/2
         ]).
+
+
+-export([clean_binary/1, clean_binary/2]).
 
 -export([uri_encode/1
          ,uri_decode/1
@@ -111,7 +116,16 @@ log_stacktrace() ->
     log_stacktrace(ST).
 log_stacktrace(ST) ->
     lager:debug("stacktrace:"),
-    _ = [lager:debug("st: ~p", [Line]) || Line <- ST],
+    _ = [log_stacktrace_mfa(M, F, A, Info)
+         || {M, F, A, Info} <- ST
+        ],
+    'ok'.
+
+log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
+    lager:debug("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
+log_stacktrace_mfa(M, F, Args, Info) ->
+    lager:debug("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
+    [lager:debug("args: ~p", [Arg]) || Arg <- Args],
     'ok'.
 
 -define(LOG_LEVELS, ['emergency'
@@ -544,6 +558,18 @@ to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
 
+hexencode_binary(<<_/binary>> = Bin) ->
+    hexencode_binary(Bin, <<>>);
+hexencode_binary(S) ->
+    hexencode_binary(to_binary(S)).
+
+hexencode_binary(<<>>, Acc) -> Acc;
+hexencode_binary(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
+    hexencode_binary(Rest, <<Acc/binary
+                             ,(binary_to_hex_char(Hi))
+                             ,(binary_to_hex_char(Lo))
+                           >>).
+
 -spec from_hex_binary(binary()) -> binary().
 from_hex_binary(Bin) ->
     to_binary(from_hex_string(to_list(Bin))).
@@ -570,9 +596,17 @@ hex_char_to_binary(B) ->
 
 -spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
 rand_hex_binary(Size) when not is_integer(Size) ->
-    rand_hex_binary( wh_util:to_integer(Size));
+    rand_hex_binary(wh_util:to_integer(Size));
 rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
-    to_hex_binary(crypto:rand_bytes(Size)).
+    to_hex_binary(rand_hex(Size)).
+
+-spec rand_hex(pos_integer()) -> ne_binary().
+rand_hex(Size) ->
+    try crypto:strong_rand_bytes(Size) of
+        Bytes -> Bytes
+    catch
+        _:'low_entropy' -> crypto:rand_bytes(Size)
+    end.
 
 -spec binary_to_hex_char(pos_integer()) -> pos_integer().
 binary_to_hex_char(N) when N < 10 -> $0 + N;
@@ -847,6 +881,32 @@ strip_right_binary(<<C, B/binary>>, C) ->
     end;
 strip_right_binary(<<A, B/binary>>, C) -> <<A, (strip_right_binary(B, C))/binary>>;
 strip_right_binary(<<>>, _) -> <<>>.
+
+-spec suffix_binary(binary(), binary()) -> boolean().
+suffix_binary(<<>>, _Bin) -> 'false';
+suffix_binary(<<_/binary>> = Suffix, <<_/binary>> = Bin) ->
+    try binary:part(Bin, byte_size(Bin), (byte_size(Suffix) * -1)) =:= Suffix of
+        Bool -> Bool
+    catch
+        _:_ -> 'false'
+    end.
+
+-spec clean_binary(binary()) -> binary().
+-spec clean_binary(binary(), wh_proplist()) -> binary().
+clean_binary(Bin) ->
+    clean_binary(Bin, []).
+
+clean_binary(Bin, Opts) ->
+    Routines = [fun remove_white_spaces/2],
+    lists:foldl(fun(F, B) -> F(B, Opts) end, Bin, Routines).
+
+-spec remove_white_spaces(binary(), wh_proplist()) -> binary().
+remove_white_spaces(Bin, Opts) ->
+    case props:get_value(<<"remove_white_spaces">>, Opts, 'true') of
+        'false' -> Bin;
+        'true' ->
+            binary:replace(Bin, <<" ">>, <<>>, ['global'])
+    end.
 
 -spec binary_md5(text()) -> ne_binary().
 binary_md5(Text) -> to_hex_binary(erlang:md5(to_binary(Text))).
@@ -1166,6 +1226,10 @@ uri_test() ->
     ?assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>])),
     ?assertEqual(<<"http://test.com/path1/path2">>, uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>])).
 
+suffix_binary_test() ->
+    ?assertEqual('true', suffix_binary(<<"34">>, <<"1234">>)),
+    ?assertEqual('false', suffix_binary(<<"34">>, <<"12345">>)),
+    ?assertEqual('false', suffix_binary(<<"1234">>, <<"1">>)).
 
 -spec resolve_uri_test() -> any().
 resolve_uri_test() ->

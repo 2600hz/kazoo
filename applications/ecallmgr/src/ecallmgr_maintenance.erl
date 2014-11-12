@@ -91,6 +91,7 @@
 
 -export([show_channels/0]).
 -export([show_calls/0]).
+-export([check_sync/2]).
 
 -include("ecallmgr.hrl").
 
@@ -496,6 +497,12 @@ show_channels() ->
 show_calls() ->
     io:format("This function is depreciated, please use channel_summary or channel_detail~n"),
     'no_return'.
+
+-spec check_sync(text(), text()) -> 'ok'.
+check_sync(Username, Realm) ->
+    ecallmgr_fs_notify:check_sync(wh_util:to_binary(Username)
+                                  ,wh_util:to_binary(Realm)
+                                 ).
 
 -spec add_fs_node(text(), ne_binaries(), function()) -> 'ok' | {'error', _}.
 add_fs_node(FSNode, FSNodes, ConfigFun) when not is_binary(FSNode) ->

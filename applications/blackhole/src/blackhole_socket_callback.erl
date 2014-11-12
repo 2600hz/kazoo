@@ -18,7 +18,7 @@
 open(SessionPid, SessionId, _Opts) ->
     lager:debug("opening socket ~p", [SessionId]),
     {'ok', bh_context:new(SessionPid, SessionId)}.
- 
+
 recv(SessionPid, SessionId, {message, <<>>, Message}, State) ->
     lager:debug("received message ~p on socket ~p", [Message, SessionId]),
     blackhole_resource:handle_message(Message, SessionId, SessionPid),
@@ -56,7 +56,7 @@ close(SessionPid, SessionId, _Context) ->
                                               case not (bh_context:websocket_pid(BindingContext) =:= SessionPid) of
                                                   'true' -> 'true';
                                                   'false' ->
-                                                      spawn('blackhole_util', 'remove_bindings', [Binding, BindingContext]),
+                                                      spawn('blackhole_util', 'remove_binding', [Binding, BindingContext]),
                                                       'false'
                                               end
                                       end

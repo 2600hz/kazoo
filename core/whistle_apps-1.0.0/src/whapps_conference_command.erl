@@ -114,7 +114,7 @@ mute_participant(ParticipantId, Conference) ->
 prompt(Media, Conference) ->
     prompt(Media, 'undefined', Conference).
 prompt(Media, ParticipantId, Conference) ->
-    play(wh_media_util:get_prompt(Media, 'undefined'), ParticipantId, Conference).
+    play(wh_media_util:get_prompt(Media, whapps_conference:call(Conference)), ParticipantId, Conference).
 
 -spec play(ne_binary(), whapps_conference:conference()) -> 'ok'.
 -spec play(ne_binary(), non_neg_integer() | 'undefined', whapps_conference:conference()) -> 'ok'.

@@ -238,7 +238,7 @@ to_proplist(?JSON_WRAPPER(Prop)) -> Prop.
 %% convert everything starting at a specific key
 to_proplist(Key, JObj) -> to_proplist(get_json_value(Key, JObj, new())).
 
--spec recursive_to_proplist(object() | wh_proplist()) -> wh_proplist().
+-spec recursive_to_proplist(object() | objects() | wh_proplist()) -> wh_proplist().
 recursive_to_proplist(?JSON_WRAPPER(Props)) ->
     [{K, recursive_to_proplist(V)} || {K, V} <- Props];
 recursive_to_proplist(Props) when is_list(Props) ->

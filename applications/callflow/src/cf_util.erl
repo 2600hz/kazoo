@@ -55,6 +55,8 @@
          ,check_value_of_fields/4
         ]).
 
+-export([wait_for_noop/2]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -725,19 +727,21 @@ encryption_method_map(JObj, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of
         [] -> encryption_method_map(JObj, Methods);
         Values ->
-            encryption_method_map(wh_json:set_values(Values , JObj), Method)
+            encryption_method_map(wh_json:set_values(Values, JObj), Method)
     end;
 encryption_method_map(JObj, Endpoint) ->
-    encryption_method_map(
-      JObj
-      ,wh_json:get_value([<<"media">>
-                          ,<<"encryption">>
-                          ,<<"methods">>
-                         ], Endpoint, [])).
+    encryption_method_map(JObj
+                          ,wh_json:get_value([<<"media">>
+                                              ,<<"encryption">>
+                                              ,<<"methods">>
+                                             ]
+                                             ,Endpoint
+                                             ,[]
+                                            )
+                         ).
 
 -spec maybe_start_metaflows(whapps_call:call(), wh_json:objects()) -> 'ok'.
 -spec maybe_start_metaflow(whapps_call:call(), wh_json:object()) -> 'ok'.
-
 maybe_start_metaflows(Call, Endpoints) ->
     [maybe_start_metaflow(Call, Endpoint) || Endpoint <- Endpoints],
     'ok'.
@@ -749,7 +753,10 @@ maybe_start_metaflow(Call, Endpoint) ->
         JObj ->
             API = props:filter_undefined(
                     [{<<"Endpoint-ID">>, wh_json:get_value(<<"Endpoint-ID">>, Endpoint)}
-                     ,{<<"Call">>, whapps_call:to_json(Call)}
+                     ,{<<"Call">>, whapps_call:to_json(
+                                     set_callee(Call, Endpoint)
+                                    )
+                      }
                      ,{<<"Numbers">>, wh_json:get_value(<<"numbers">>, JObj)}
                      ,{<<"Patterns">>, wh_json:get_value(<<"patterns">>, JObj)}
                      ,{<<"Binding-Digit">>, wh_json:get_value(<<"binding_digit">>, JObj)}
@@ -757,9 +764,19 @@ maybe_start_metaflow(Call, Endpoint) ->
                      ,{<<"Listen-On">>, wh_json:get_value(<<"listen_on">>, JObj, <<"self">>)}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
-            lager:debug("sending metaflow for endpoint: ~s: ~p", [wh_json:get_value(<<"Endpoint-ID">>, Endpoint), wh_json:get_value(<<"listen_on">>, JObj)]),
+            lager:debug("sending metaflow for endpoint: ~s: ~s"
+                        ,[wh_json:get_value(<<"Endpoint-ID">>, Endpoint), wh_json:get_value(<<"listen_on">>, JObj)]
+                       ),
             whapps_util:amqp_pool_send(API, fun wapi_dialplan:publish_metaflow/1)
     end.
+
+-spec set_callee(whapps_call:call(), wh_json:object()) -> whapps_call:call().
+set_callee(Call, Endpoint) ->
+    whapps_call:exec([{fun whapps_call:set_callee_id_name/2, wh_json:get_value(<<"Callee-ID-Name">>, Endpoint)}
+                      ,{fun whapps_call:set_callee_id_number/2, wh_json:get_value(<<"Callee-ID-Number">>, Endpoint)}
+                     ]
+                     ,Call
+                    ).
 
 -spec caller_belongs_to_group(ne_binary(), whapps_call:call()) -> boolean().
 caller_belongs_to_group(GroupId, Call) ->
@@ -850,6 +867,40 @@ sip_user_from_device_id(EndpointId, Call) ->
         {'error', _} -> 'undefined';
         {'ok', Endpoint} ->
             wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)
+    end.
+
+-spec wait_for_noop(whapps_call:call(), ne_binary()) ->
+                           {'ok', whapps_call:call()} |
+                           {'error', 'channel_destroy' | wh_json:object()}.
+wait_for_noop(Call, NoopId) ->
+    case whapps_call_command:receive_event(?MILLISECONDS_IN_DAY) of
+        {'ok', JObj} ->
+            process_event(Call, NoopId, JObj);
+        {'error', 'timeout'} ->
+            lager:debug("timed out waiting for noop(~s) to complete", [NoopId]),
+            {'ok', Call}
+    end.
+
+-spec process_event(whapps_call:call(), ne_binary(), wh_json:object()) ->
+                           {'ok', whapps_call:call()} |
+                           {'error', _}.
+process_event(Call, NoopId, JObj) ->
+    case whapps_call_command:get_event_type(JObj) of
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+            lager:debug("channel was destroyed"),
+            {'error', 'channel_destroy'};
+        {<<"error">>, _, <<"noop">>} ->
+            lager:debug("channel execution error while waiting for ~s: ~s", [NoopId, wh_json:encode(JObj)]),
+            {'error', JObj};
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>} ->
+            lager:debug("noop has returned"),
+            {'ok', Call};
+        {<<"call_event">>, <<"DTMF">>, _} ->
+            DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
+            lager:debug("recv DTMF ~s, adding to default", [DTMF]),
+            wait_for_noop(whapps_call:add_to_dtmf_collection(DTMF, Call), NoopId);
+        _Ignore ->
+            wait_for_noop(Call, NoopId)
     end.
 
 -ifdef(TEST).

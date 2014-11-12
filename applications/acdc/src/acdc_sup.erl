@@ -19,6 +19,7 @@
 -include("acdc.hrl").
 
 -define(CHILDREN, [?CACHE(?ACDC_CACHE)
+                   ,?SUPER('acdc_recordings_sup')
                    ,?SUPER('acdc_agents_sup')
                    ,?SUPER('acdc_queues_sup')
                    ,?SUPER('acdc_stats_sup')

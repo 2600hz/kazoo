@@ -48,5 +48,5 @@ get_query_limit(JObj) ->
     end.
 
 -spec db_name(ne_binary()) -> ne_binary().
-db_name(Acct) ->
-    wh_util:format_account_mod_id(Acct).
+db_name(Account) ->
+    wh_util:format_account_mod_id(Account).

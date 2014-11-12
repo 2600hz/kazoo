@@ -17,6 +17,11 @@
          ,publish_req/1, publish_req/2
         ]).
 
+
+-export([failed/1, failed_v/1
+         ,publish_failed/2
+        ]).
+
 -define(KEY_PIVOT_REQ, <<"pivot.req">>).
 
 -define(PIVOT_REQ_HEADERS, [<<"Call">>, <<"Voice-URI">>]).
@@ -31,6 +36,13 @@
 -define(PIVOT_REQ_TYPES, [{<<"Call">>, fun wh_json:is_json_object/1}
                           ,{<<"Debug">>, fun wh_util:is_boolean/1}
                          ]).
+
+-define(PIVOT_FAILED_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_PIVOT_FAILED_HEADERS, []).
+-define(PIVOT_FAILED_VALUES, [{<<"Event-Category">>,<<"pivot">>}
+                              ,{<<"Event-Name">>, <<"failed">>}
+                             ]).
+-define(PIVOT_FAILED_TYPES, []).
 
 -spec req(api_terms()) -> {'ok', iolist()} |
                           {'error', string()}.
@@ -47,6 +59,22 @@ req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PIVOT_REQ_HEADERS, ?PIVOT_REQ_VALUES, ?PIVOT_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
+
+-spec failed(api_terms()) -> {'ok', iolist()} |
+                          {'error', string()}.
+failed(Prop) when is_list(Prop) ->
+    case failed_v(Prop) of
+        'false' -> {'error', "Proplist failed validation for pivot_failed"};
+        'true' -> wh_api:build_message(Prop, ?PIVOT_FAILED_HEADERS, ?OPTIONAL_PIVOT_FAILED_HEADERS)
+    end;
+failed(JObj) ->
+    failed(wh_json:to_proplist(JObj)).
+
+-spec failed_v(api_terms()) -> boolean().
+failed_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PIVOT_FAILED_HEADERS, ?PIVOT_FAILED_VALUES, ?PIVOT_FAILED_TYPES);
+failed_v(JObj) ->
+    failed_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
@@ -79,6 +107,12 @@ publish_req(JObj) ->
 publish_req(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?PIVOT_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, get_pivot_req_routing(Req)).
+
+
+-spec publish_failed(ne_binary(), ne_binary()) -> 'ok'.
+publish_failed(Target, JObj) ->
+    {'ok', Payload} = wh_api:prepare_api_payload(JObj, ?PIVOT_FAILED_VALUES, fun failed/1),
+    amqp_util:targeted_publish(Target, Payload).
 
 -spec get_from_realm(api_terms()) -> ne_binary().
 get_from_realm(Prop) when is_list(Prop) ->

@@ -29,6 +29,7 @@
          ,search_for_subscriptions/3
          ,subscription_to_json/1
          ,subscriptions_to_json/1
+         ,cached_terminated_callids/0
         ]).
 -export([init/1
          ,handle_call/3
@@ -108,13 +109,13 @@ handle_subscribe(JObj, _Props) ->
     case wh_json:get_value(<<"Node">>, JObj) =:= wh_util:to_binary(node()) of
         'true' -> 'ok';
         'false' ->
-            gen_listener:call(?MODULE, {'subscribe', subscribe_to_record(JObj)})
+            gen_server:call(?MODULE, {'subscribe', subscribe_to_record(JObj)})
     end.
 
 -spec handle_kamailio_subscribe(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_kamailio_subscribe(JObj, _Props) ->
     'true' = wapi_omnipresence:subscribe_v(JObj),
-    case gen_listener:call(?MODULE, {'subscribe', JObj}) of
+    case gen_server:call(?MODULE, {'subscribe', JObj}) of
         'invalid' -> 'ok';
         {'unsubscribe', _} ->
             distribute_subscribe(JObj);
@@ -136,9 +137,50 @@ handle_presence_update(JObj, _Props) ->
     'true' = wapi_presence:update_v(JObj),
     gen_server:cast(?MODULE, {'presence_update', JObj}).
 
+-define(CACHE_TERMINATED_CALLID, whapps_config:get_integer(?CONFIG_CAT, <<"cache_terminated_callid_s">>, 60)).
+
 -spec handle_channel_event(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_channel_event(JObj, _Props) ->
+    EventName = wh_json:get_value(<<"Event-Name">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+
+    wh_util:put_callid(CallId),
+
+    maybe_handle_event(JObj, CallId, EventName).
+
+-spec maybe_handle_event(wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_handle_event(JObj, CallId, <<"CHANNEL_DESTROY">>) ->
+    lager:debug("caching CHANNEL_DESTROY for ~s", [CallId]),
+    wh_cache:store_local(?CACHE_NAME
+                         ,terminated_cache_key(CallId)
+                         ,'terminated'
+                         ,[{'expires', ?CACHE_TERMINATED_CALLID}]
+                        ),
+    handle_the_event(JObj);
+maybe_handle_event(JObj, CallId, <<"CHANNEL_CREATE">> = _EventName) ->
+    case wh_cache:fetch_local(?CACHE_NAME, terminated_cache_key(CallId)) of
+        {'error', 'not_found'} -> handle_the_event(JObj);
+        _Else -> lager:warning("received ~s but call is terminated already, dropping", [_EventName])
+    end;
+maybe_handle_event(JObj, CallId, <<"CHANNEL_ANSWER">> = _EventName) ->
+    case wh_cache:fetch_local(?CACHE_NAME, terminated_cache_key(CallId)) of
+        {'error', 'not_found'} -> handle_the_event(JObj);
+        _Else -> lager:warning("received ~s but call is terminated already, dropping", [_EventName])
+    end;
+maybe_handle_event(JObj, _CallId, _EventName) ->
+    handle_the_event(JObj).
+
+-spec handle_the_event(wh_json:object()) -> 'ok'.
+handle_the_event(JObj) ->
     gen_server:cast(?MODULE, {'channel_event', JObj}).
+
+-spec terminated_cache_key(CallId) -> {'terminated', CallId}.
+terminated_cache_key(CallId) ->
+    {'terminated', CallId}.
+
+-spec cached_terminated_callids() -> ne_binaries().
+cached_terminated_callids() ->
+    [CallId || {'terminated', CallId} <- wh_cache:fetch_keys_local(?CACHE_NAME)].
 
 -spec table_id() -> 'omnipresence_subscriptions'.
 table_id() -> 'omnipresence_subscriptions'.
@@ -187,9 +229,10 @@ handle_call({'subscribe', #omnip_subscription{}=Sub}, _From, State) ->
     {'reply', SubscribeResult, State};
 handle_call({'subscribe', Props}, _From, State) when is_list(Props) ->
     handle_call({'subscribe', wh_json:from_list(Props)}, _From, State);
-handle_call({'subscribe', Props}, _From, State) ->
-    handle_call({'subscribe', subscribe_to_record(Props)}, _From, State);
+handle_call({'subscribe', JObj}, _From, State) ->
+    handle_call({'subscribe', subscribe_to_record(JObj)}, _From, State);
 handle_call(_Request, _From, State) ->
+    lager:debug("omnipresence subscriptions unhandled call : ~p", [_Request]),
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%--------------------------------------------------------------------
@@ -295,7 +338,6 @@ notify_packages(Msg) ->
             Pid =/= 'restarting'
         ],
     'ok'.
-
 
 -spec resubscribe_notify(subscription()) -> 'ok'.
 resubscribe_notify(#omnip_subscription{event=Package
@@ -404,8 +446,12 @@ subscription_to_json(#omnip_subscription{user=User
 
 -spec subscription_from_json(wh_json:object()) -> subscription().
 subscription_from_json(JObj) ->
-    #omnip_subscription{user=wh_json:get_value(<<"user">>, JObj)
-                        ,from=wh_json:get_value(<<"from">>, JObj)
+    User = wh_json:get_value(<<"user">>, JObj),
+    From = wh_json:get_value(<<"from">>, JObj),
+    #omnip_subscription{user=User
+                        ,from=From
+                        ,normalized_user=wh_util:to_lower_binary(User)
+                        ,normalized_from=wh_util:to_lower_binary(From)
                         ,stalker=wh_json:get_value(<<"stalker">>, JObj)
                         ,expires=wh_json:get_value(<<"expires">>, JObj)
                         ,timestamp=wh_json:get_value(<<"timestamp">>, JObj)

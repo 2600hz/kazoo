@@ -18,6 +18,7 @@
 -export([optional_bridge_req_endpoint_headers/0]).
 
 -export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1
+         ,unbridge/1, unbridge_v/1
          ,page/1, page_v/1
          ,store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
          ,store_http_resp/1, store_http_resp_v/1
@@ -41,6 +42,7 @@
          ,park/1, park_v/1
          ,play_and_collect_digits/1, play_and_collect_digits_v/1
          ,call_pickup/1, call_pickup_v/1
+         ,connect_leg/1, connect_leg_v/1
          ,eavesdrop/1, eavesdrop_v/1
          ,hangup/1, hangup_v/1
          ,say/1, say_v/1
@@ -65,7 +67,7 @@
 %% API Helpers
 -export([dial_method_single/0
          ,dial_method_simultaneous/0
-         ,terminators/1
+         ,terminators/1, terminators_v/1
          ,local_store_url/2, offsite_store_url/2
         ]).
 
@@ -146,6 +148,26 @@ bridge_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?BRIDGE_REQ_HEADERS, ?BRIDGE_REQ_VALUES, ?BRIDGE_REQ_TYPES);
 bridge_v(JObj) ->
     bridge_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Unbridge a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec unbridge(api_terms()) -> api_formatter_return().
+unbridge(Prop) when is_list(Prop) ->
+    case unbridge_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?UNBRIDGE_REQ_HEADERS, ?OPTIONAL_UNBRIDGE_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for unbridge_req"}
+    end;
+unbridge(JObj) ->
+    unbridge(wh_json:to_proplist(JObj)).
+
+-spec unbridge_v(api_terms()) -> boolean().
+unbridge_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?UNBRIDGE_REQ_HEADERS, ?UNBRIDGE_REQ_VALUES, ?UNBRIDGE_REQ_TYPES);
+unbridge_v(JObj) ->
+    unbridge_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Endpoints for bridging a call - see wiki
@@ -741,6 +763,26 @@ call_pickup_v(JObj) ->
     call_pickup_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Connect a leg to the current leg - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec connect_leg(api_terms()) -> api_formatter_return().
+connect_leg(Prop) when is_list(Prop) ->
+    case connect_leg_v(Prop) of
+        'true' -> wh_api:build_message(Prop, ?CONNECT_LEG_REQ_HEADERS, ?OPTIONAL_CONNECT_LEG_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for connect_leg_req"}
+    end;
+connect_leg(JObj) ->
+    connect_leg(wh_json:to_proplist(JObj)).
+
+-spec connect_leg_v(api_terms()) -> boolean().
+connect_leg_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CONNECT_LEG_REQ_HEADERS, ?CONNECT_LEG_REQ_VALUES, ?CONNECT_LEG_REQ_TYPES);
+connect_leg_v(JObj) ->
+    connect_leg_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Eavesdrop - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1090,6 +1132,16 @@ declare_exchanges() ->
 terminators(Bin) when is_binary(Bin) ->
     [<<B>> || <<B>> <= Bin, lists:member(<<B>>, ?ANY_DIGIT)];
 terminators('undefined') -> ?ANY_DIGIT.
+
+-spec terminators_v(api_binaries() | binary()) -> boolean().
+-spec terminator_v(ne_binary()) -> boolean().
+terminators_v(Ts) when is_list(Ts) ->
+    lists:all(fun terminator_v/1, Ts);
+terminators_v(<<>>) -> 'true';
+terminators_v(<<"none">>) -> 'true';
+terminators_v(_) -> 'false'.
+
+terminator_v(T) -> lists:member(T, ?ANY_DIGIT).
 
 -spec local_store_url(whapps_call:call(), wh_json:object()) -> ne_binary().
 local_store_url(Call, JObj) ->

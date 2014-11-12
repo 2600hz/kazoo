@@ -124,7 +124,11 @@ db_classification(<<"dedicated_ips">>) -> 'system';
 db_classification(<<"system_config">>) -> 'system';
 db_classification(<<"system_media">>) -> 'system';
 db_classification(<<"system_schemas">>) -> 'system';
-db_classification(_) -> 'undefined'.
+db_classification(Database) ->
+    case lists:member(Database, ?KZ_SYSTEM_DBS) of
+        'true' -> 'system';
+        'false' -> 'undefined'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -338,6 +342,15 @@ format_error({'failure', 400}) -> 'client_error';
 format_error({'http_error', {'status', 504}}) -> 'gateway_timeout';
 format_error({'conn_failed', {'error', 'timeout'}}) -> 'connection_timeout';
 format_error({'conn_failed', {'error', 'enetunreach'}}) -> 'network_unreachable';
+format_error({'ok', "500", _Headers, Body}) ->
+    JObj = wh_json:decode(Body),
+    case wh_json:get_value(<<"error">>, JObj) of
+        <<"timeout">> ->
+            'server_timeout';
+        _Error ->
+            lager:debug("server error: ~s", [Body]),
+            'server_error'
+    end;
 format_error(E) ->
     lager:debug("unformatted error: ~p", [E]),
     E.
@@ -369,7 +382,7 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-            case open_doc(Conn, DbName, DocId, Options) of
+            case open_doc(Conn, DbName, DocId, remove_non_couchbeam_options(Options)) of
                 {'error', _}=E ->
                     maybe_cache_failure(DbName, DocId, Options, E),
                     E;
@@ -378,6 +391,10 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
                     Ok
             end
     end.
+
+-spec remove_non_couchbeam_options(wh_proplist()) -> wh_proplist().
+remove_non_couchbeam_options(Options) ->
+    props:delete_keys(['cache_failures'], Options).
 
 -spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error()) -> 'ok'.
 -spec maybe_cache_failure(ne_binary(), ne_binary(), wh_proplist(), couchbeam_error(), atoms()) -> 'ok'.

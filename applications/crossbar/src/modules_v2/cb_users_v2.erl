@@ -14,12 +14,12 @@
 
 -export([create_user/1]).
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/3
          ,billing/1
          ,authenticate/1
          ,authorize/1
-         ,validate/1, validate/2, validate/3, validate/4
+         ,validate/1, validate/2, validate/4
          ,put/1
          ,post/2
          ,delete/2
@@ -31,7 +31,6 @@
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
--define(CHANNELS, <<"channels">>).
 -define(QUICKCALL, <<"quickcall">>).
 
 %%%===================================================================
@@ -79,9 +78,6 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
-allowed_methods(_, ?CHANNELS) ->
-    [?HTTP_GET].
-
 allowed_methods(_, ?QUICKCALL, _) ->
     [?HTTP_GET].
 
@@ -99,7 +95,6 @@ allowed_methods(_, ?QUICKCALL, _) ->
 
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, ?CHANNELS) -> 'true'.
 resource_exists(_, ?QUICKCALL, _) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -178,17 +173,6 @@ validate_user(Context, UserId, ?HTTP_DELETE) ->
 validate_user(Context, UserId, ?HTTP_PATCH) ->
     validate_patch(UserId, Context).
 
-validate(Context, UserId, ?CHANNELS) ->
-    Options = [{'key', [UserId, <<"device">>]}
-               ,'include_docs'
-              ],
-    %% TODO: Using the cf_attributes from crossbar isn't exactly kosher
-    Context1 = crossbar_doc:load_view(<<"cf_attributes/owned">>, Options, Context),
-    case cb_context:has_errors(Context1) of
-        'true' -> Context1;
-        'false' -> get_channels(Context1)
-    end.
-
 validate(Context, UserId, ?QUICKCALL, _) ->
     Context1 = maybe_validate_quickcall(load_user(UserId, Context)),
     case cb_context:has_errors(Context1) of
@@ -219,7 +203,7 @@ put_resp('false', Context) ->
 
 -spec dry_run(cb_context:context()) -> wh_json:object().
 dry_run(Context) ->
-    JObj = cb_context:req_data(Context),
+    JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
 
     UserType = wh_json:get_value(<<"priv_level">>, JObj),
@@ -246,58 +230,6 @@ delete(Context, _Id) ->
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
     crossbar_doc:save(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_channels(cb_context:context()) -> cb_context:context().
-get_channels(Context) ->
-    Realm = crossbar_util:get_account_realm(cb_context:account_id(Context)),
-    Usernames = [Username
-                 || JObj <- cb_context:doc(Context),
-                    (Username = wh_json:get_value([<<"doc">>
-                                                   ,<<"sip">>
-                                                   ,<<"username">>
-                                                  ], JObj))
-                        =/= 'undefined'
-                ],
-    Req = [{<<"Realm">>, Realm}
-           ,{<<"Usernames">>, Usernames}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case whapps_util:amqp_pool_collect(Req
-                                       ,fun wapi_call:publish_query_user_channels_req/1
-                                       ,{'ecallmgr', 'true'}
-                                      )
-    of
-        {'error', _R} ->
-            lager:error("could not reach ecallmgr channels: ~p", [_R]),
-            crossbar_util:response('error', <<"could not reach ecallmgr channels">>, Context);
-        {_, Resp} ->
-            Channels = merge_user_channels_jobjs(Resp),
-            crossbar_util:response(Channels, Context)
-    end.
-
--spec merge_user_channels_jobjs(wh_json:objects()) -> wh_json:objects().
-merge_user_channels_jobjs(JObjs) ->
-    merge_user_channels_jobjs(JObjs, dict:new()).
-
--spec merge_user_channels_jobjs(wh_json:objects(), dict()) -> wh_json:objects().
-merge_user_channels_jobjs([], Dict) ->
-    [Channel || {_, Channel} <- dict:to_list(Dict)];
-merge_user_channels_jobjs([JObj|JObjs], Dict) ->
-    merge_user_channels_jobjs(JObjs, merge_user_channels_jobj(JObj, Dict)).
-
--spec merge_user_channels_jobj(wh_json:object(), dict()) -> dict().
-merge_user_channels_jobj(JObj, Dict) ->
-    lists:foldl(fun merge_user_channels_fold/2, Dict, wh_json:get_value(<<"Channels">>, JObj, [])).
-
--spec merge_user_channels_fold(wh_json:object(), dict()) -> dict().
-merge_user_channels_fold(Channel, D) ->
-    UUID = wh_json:get_value(<<"uuid">>, Channel),
-    dict:store(UUID, Channel, D).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -347,10 +279,47 @@ validate_patch(UserId, Context) ->
 prepare_username(UserId, Context) ->
     JObj = cb_context:req_data(Context),
     case wh_json:get_ne_value(<<"username">>, JObj) of
-        'undefined' -> check_user_schema(UserId, Context);
+        'undefined' -> check_user_name(UserId, Context);
         Username ->
             JObj1 = wh_json:set_value(<<"username">>, wh_util:to_lower_binary(Username), JObj),
-            check_user_schema(UserId, cb_context:set_req_data(Context, JObj1))
+            check_user_name(UserId, cb_context:set_req_data(Context, JObj1))
+    end.
+
+-spec check_user_name(api_binary(), cb_context:context()) -> cb_context:context().
+check_user_name(UserId, Context) ->
+    JObj = cb_context:req_data(Context),
+    UserName = wh_json:get_ne_value(<<"username">>, JObj),
+    AccountDb = cb_context:account_db(Context),
+    case is_username_unique(AccountDb, UserId, UserName) of
+        'true' ->
+            lager:debug("username ~p is unique", [UserName]),
+            check_emergency_caller_id(UserId, Context);
+        'false' ->
+            Context1 =
+                cb_context:add_validation_error(
+                    [<<"username">>]
+                    ,<<"unique">>
+                    ,<<"Username already in use">>
+                    ,Context
+                ),
+            lager:error("username ~p is already used", [UserName]),
+            check_emergency_caller_id(UserId, Context1)
+    end.
+
+-spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
+check_emergency_caller_id(UserId, Context) ->
+    Context1 = crossbar_util:format_emergency_caller_id_number(Context),
+    check_user_schema(UserId, Context1).
+
+-spec is_username_unique(api_binary(), ne_binary(), ne_binary()) -> boolean().
+is_username_unique(AccountDb, UserId, UserName) ->
+    ViewOptions = [{'key', UserName}],
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj|_]} -> wh_json:get_value(<<"id">>, JObj) =:= UserId;
+        _Else ->
+            lager:error("error ~p checking view ~p in ~p", [_Else, ?LIST_BY_USERNAME, AccountDb]),
+            'false'
     end.
 
 -spec check_user_schema(api_binary(), cb_context:context()) -> cb_context:context().

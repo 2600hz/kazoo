@@ -247,11 +247,13 @@ handle_cast('hungup', #participant{conference=Conference
     _ = whapps_call_command:hangup(Call),
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
-                                                                 ,call=Call}=P) ->
+                                                                 ,call=Call
+                                                                }=P) ->
     {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)}};
 
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference=Conference
-                                                                 ,call=Call}=P) ->
+                                                                 ,call=Call
+                                                                }=P) ->
     {'noreply', P#participant{call=whapps_call:set_controller_queue(Q, Call)
                               ,conference=whapps_conference:set_controller_queue(Q, Conference)
                              }};
@@ -288,7 +290,8 @@ handle_cast({'join_remote', JObj}, #participant{call=Call
                                                }=Participant) ->
     Route = binary:replace(wh_json:get_value(<<"Switch-URL">>, JObj)
                            ,<<"mod_sofia">>
-                           ,<<"conference">>),
+                           ,<<"conference">>
+                          ),
     bridge_to_conference(Route, Conference, Call),
     {'noreply', Participant};
 handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->

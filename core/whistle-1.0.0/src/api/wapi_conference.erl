@@ -363,7 +363,7 @@ focus_queue_name(Focus) -> <<(wh_util:to_binary(Focus))/binary, "_conference">>.
 -define(CONF_SAY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                               ,{<<"Application-Name">>, [<<"say">>, <<"tts">>]}
                               | props:delete_keys([<<"Event-Category">>
-                                                       ,<<"Application-Name">>
+                                                   ,<<"Application-Name">>
                                                   ], ?TONES_REQ_VALUES)
                              ]).
 -spec say(api_terms()) -> api_formatter_return() .

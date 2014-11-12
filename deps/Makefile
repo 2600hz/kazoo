@@ -24,6 +24,7 @@ clean: $(MAKEDIRS)
 	rm -rf cowboy-0.9.0
 	rm -rf cowlib-0.4.0
 	rm -rf ranch-0.9.0
+	rm -rf erlang-localtime-1.0.0
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)

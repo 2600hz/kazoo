@@ -221,7 +221,9 @@ handle_call_event(JObj, Props) ->
             end
     end.
 
-handle_call_event(_, <<"CHANNEL_DESTROY">>, _, JObj, Props) ->
+-spec handle_call_event(ne_binary(), ne_binary(), server_ref(), wh_json:object(), wh_proplist()) ->
+                               any().
+handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, FSM, JObj, Props) ->
     Urls = props:get_value('cdr_urls', Props),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     case catch dict:fetch(CallId, Urls) of
@@ -229,6 +231,7 @@ handle_call_event(_, <<"CHANNEL_DESTROY">>, _, JObj, Props) ->
         Url -> acdc_util:send_cdr(Url, JObj)
     end,
     Srv = props:get_value('server', Props),
+    acdc_agent_fsm:call_event(FSM, Category, Name, JObj),
     _ = acdc_agent_listener:remove_cdr_urls(Srv, CallId),
     acdc_util:unbind_from_call_events(CallId, Srv);
 handle_call_event(Category, Name, FSM, JObj, _) ->
@@ -297,6 +300,7 @@ handle_config_change(JObj, _Props) ->
 
     handle_change(JObj, wh_json:get_value(<<"Type">>, JObj)).
 
+-spec handle_change(wh_json:object(), ne_binary()) -> 'ok'.
 handle_change(JObj, <<"user">>) ->
     handle_agent_change(wh_json:get_value(<<"Database">>, JObj)
                         ,wh_json:get_value(<<"Account-ID">>, JObj)
@@ -309,7 +313,19 @@ handle_change(JObj, <<"device">>) ->
                          ,wh_json:get_value(<<"ID">>, JObj)
                          ,wh_json:get_value(<<"Rev">>, JObj)
                          ,wh_json:get_value(<<"Event-Name">>, JObj)
-                        ).
+                        );
+handle_change(JObj, <<"undefined">>) ->
+    lager:debug("undefined type for change"),
+    case couch_mgr:open_cache_doc(wh_json:get_value(<<"Database">>, JObj)
+                                  ,wh_json:get_value(<<"ID">>, JObj)
+                                 )
+    of
+        {'ok', Doc} ->
+            lager:debug("found doc of type ~s", [wh_json:get_value(<<"pvt_type">>, Doc)]),
+            handle_change(JObj, wh_json:get_value(<<"pvt_type">>, Doc));
+        {'error', _E} ->
+            lager:debug("failed to find doc")
+    end.
 
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type) ->
     handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type, 0).

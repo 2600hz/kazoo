@@ -337,6 +337,10 @@ originate_call(Contact, JObj, AccountId) ->
                ],
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
+    OutboundNumber = case wh_json:get_value(<<"caller_id_number">>, JObj) of
+                         'undefined' -> Contact;
+                         Number -> Number
+                     end,
     Request = props:filter_undefined(
                 [{<<"Application-Name">>, <<"transfer">>}
                  ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
@@ -350,7 +354,7 @@ originate_call(Contact, JObj, AccountId) ->
                  ,{<<"Outbound-Callee-ID-Name">>, Exten}
                  ,{<<"Outbound-Callee-ID-Number">>, Exten}
                  ,{<<"Outbound-Caller-ID-Name">>, FriendlyName}
-                 ,{<<"Outbound-Caller-ID-Number">>, Contact}
+                 ,{<<"Outbound-Caller-ID-Number">>, OutboundNumber}
                  ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                  ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                  ,{<<"Continue-On-Fail">>, 'true'}

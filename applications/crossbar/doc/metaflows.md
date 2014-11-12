@@ -155,3 +155,13 @@ Here, `{THINGS}` would be "callflows", "users", "devices", etc, and `{THING_ID}`
 #### _DELETE_ - Remove device metaflows:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/metaflows
+
+## Configuration
+
+Metaflows can be configured to be started without needing to attach them to a device, user, etc. You can configure default metaflows on an account or across the system.
+
+To start a metaflow handler for an account: `sup whapps_account_config set {ACCOUNT_ID} metaflows default_metaflow true`
+
+To start a metaflow for all accounts: `sup whapps_config set_default metaflows default_metaflow true`
+
+Now, this in and of itself isn't too useful

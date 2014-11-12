@@ -18,14 +18,15 @@
                     "name": "Type",
                     "description": "",
                     "minLength": 2,
-                    "maxLength": 253,
+                    "maxLength": 253
                 },
                 "email_addresses": {
-                    "type": "string",
+                    "type": "array",
                     "required": true,
                     "name": "Email Addresses",
                     "description": "",
-                    "itmes": {
+                    "minItems":1,
+                    "items": {
                         "type": "string",
                         "format": "email",
                         "required": false
@@ -45,7 +46,7 @@
                     "name": "Type",
                     "description": "",
                     "minLength": 2,
-                    "maxLength": 253,
+                    "maxLength": 253
                 },
                 "email_addresses": {
                     "type": "string",
@@ -97,6 +98,6 @@
             "description": "",
             "properties": {},
             "default": {}
-        },
+        }
     }
 }

@@ -24,11 +24,10 @@
                 ,"description":"The number to import"
             }
         }
-        ,"carrier":{
+        ,"resource_id":{
             "type":"string"
-            ,"description":"The Carrier module to import the numbers under"
-            ,"default":"local"
-            ,"required":false
+            ,"description":"The Resource ID the numbers are coming from"
+            ,"required":true
         }
     }
 }

@@ -22,8 +22,6 @@
          ,put/1
          ,post/2
          ,delete/2
-         ,is_ip_acl_unique/1
-         ,get_all_acl_ips/0
          ,lookup_regs/1
         ]).
 
@@ -213,7 +211,7 @@ put_resp('false', Context) ->
 
 -spec dry_run(cb_context:context()) -> wh_json:object().
 dry_run(Context) ->
-    JObj = cb_context:req_data(Context),
+    JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
 
     DeviceType = wh_json:get_value(<<"device_type">>, JObj),
@@ -249,11 +247,7 @@ delete(Context, DeviceId) ->
 %%%===================================================================
 -spec registration_update(cb_context:context()) -> 'ok'.
 registration_update(Context) ->
-    Device = cb_context:doc(Context),
-    crossbar_util:flush_registration(
-      wh_json:get_value([<<"sip">>, <<"username">>], Device)
-      ,crossbar_util:get_account_realm(Context)
-     ).
+    cb_devices_v1:registration_update(Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -359,21 +353,21 @@ validate_device_creds(Realm, DeviceId, Context) ->
                                                ,<<"SIP authentication method is invalid">>
                                                ,Context
                                                ),
-            check_device_schema(DeviceId, C)
+            check_emergency_caller_id(DeviceId, C)
     end.
 
 -spec validate_device_password(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
 validate_device_password(Realm, DeviceId, Context) ->
     Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
     case is_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
-        'true' -> check_device_schema(DeviceId, Context);
+        'true' -> check_emergency_caller_id(DeviceId, Context);
         'false' ->
             C = cb_context:add_validation_error([<<"sip">>, <<"username">>]
                                                 ,<<"unique">>
                                                 ,<<"SIP credentials already in use">>
                                                 ,Context
                                                ),
-            check_device_schema(DeviceId, C)
+            check_emergency_caller_id(DeviceId, C)
     end.
 
 -spec validate_device_ip(ne_binary(), api_binary(), cb_context:context()) -> cb_context:context().
@@ -386,20 +380,25 @@ validate_device_ip(IP, DeviceId, Context) ->
                                                 ,<<"Must be a valid IPv4 RFC 791">>
                                                 ,Context
                                                ),
-            check_device_schema(DeviceId, C)
+            check_emergency_caller_id(DeviceId, C)
     end.
 
 validate_device_ip_unique(IP, DeviceId, Context) ->
-    case is_ip_unique(IP, DeviceId) of
+    case cb_devices_utils:is_ip_unique(IP, DeviceId) of
         'true' ->
-            check_device_schema(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
+            check_emergency_caller_id(DeviceId, cb_context:store(Context, 'aggregate_device', 'true'));
         'false' ->
             C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
                                                 ,<<"unique">>
                                                 ,<<"SIP IP already in use">>
                                                 ,Context),
-            check_device_schema(DeviceId, C)
+            check_emergency_caller_id(DeviceId, C)
     end.
+
+-spec check_emergency_caller_id(api_binary(), cb_context:context()) -> cb_context:context().
+check_emergency_caller_id(DeviceId, Context) ->
+    Context1 = crossbar_util:format_emergency_caller_id_number(Context),
+    check_device_schema(DeviceId, Context1).
 
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
@@ -547,28 +546,6 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Check if the device sip ip is unique
-%% @end
-%%--------------------------------------------------------------------
-is_ip_unique(IP, DeviceId) ->
-    is_ip_acl_unique(IP)
-        andalso is_ip_sip_auth_unique(IP, DeviceId).
-
-is_ip_acl_unique(IP) ->
-    lists:all(fun(CIDR) -> not (wh_network_utils:verify_cidr(IP, CIDR)) end, get_all_acl_ips()).
-
-is_ip_sip_auth_unique(IP, DeviceId) ->
-    ViewOptions = [{<<"key">>, IP}],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= DeviceId;
-        {'error', 'not_found'} -> 'true';
-        _ -> 'false'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -612,37 +589,3 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_all_acl_ips() -> ne_binaries().
-get_all_acl_ips() ->
-    Req = [{<<"Category">>, <<"ecallmgr">>}
-           ,{<<"Key">>, <<"acls">>}
-           ,{<<"Node">>, <<"all">>}
-           ,{<<"Default">>, wh_json:new()}
-           ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    Resp = whapps_util:amqp_pool_request(
-             props:filter_undefined(Req)
-             ,fun wapi_sysconf:publish_get_req/1
-             ,fun wapi_sysconf:get_resp_v/1
-            ),
-    case Resp of
-        {'error', _} -> [];
-        {'ok', JObj} ->
-            extract_all_ips(wh_json:get_value(<<"Value">>, JObj, wh_json:new()))
-    end.
-
--spec extract_all_ips(wh_json:object()) -> ne_binaries().
-extract_all_ips(JObj) ->
-    lists:foldr(fun(K, IPs) ->
-                        case wh_json:get_value([K, <<"cidr">>], JObj) of
-                            'undefined' -> IPs;
-                            CIDR -> [CIDR|IPs]
-                        end
-                end, [], wh_json:get_keys(JObj)).

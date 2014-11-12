@@ -12,7 +12,7 @@
          ,current_statuses/1
          ,current_queues/1
          ,current_agents/1
-         ,logout_agent/2
+         ,logout_agents/1, logout_agent/2
          ,agent_presence_id/2
          ,migrate_to_acdc_db/0, migrate/0
          ,refresh/0, refresh_account/1
@@ -21,6 +21,15 @@
 
 -include("acdc.hrl").
 
+-spec logout_agents(ne_binary()) -> 'ok'.
+logout_agents(AccountId) ->
+    io:format("Sending notices to logout agents for ~s~n", [AccountId]),
+    AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    {'ok', AgentView} = couch_mgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
+    [logout_agent(AccountId, wh_json:get_value(<<"id">>, Agent)) || Agent <- AgentView],
+    'ok'.
+
+-spec logout_agent(ne_binary(), ne_binary()) -> 'ok'.
 logout_agent(AccountId, AgentId) ->
     io:format("Sending notice to log out agent ~s (~s)~n", [AgentId, AccountId]),
     Update = props:filter_undefined(
@@ -184,8 +193,24 @@ refresh_account(MoDB, 'false') ->
 migrate() ->
     migrate_to_acdc_db().
 migrate_to_acdc_db() ->
+    {'ok', Accounts} = couch_mgr:all_docs(?KZ_ACDC_DB),
+    [maybe_remove_acdc_account(wh_json:get_value(<<"id">>, Account)) || Account <- Accounts],
+    io:format("removed any missing accounts from ~s~n", [?KZ_ACDC_DB]),
+
     [migrate_to_acdc_db(Acct) || Acct <- whapps_util:get_all_accounts('raw')],
-    'ok'.
+
+    io:format("migration complete~n").
+
+-spec maybe_remove_acdc_account(ne_binary()) -> 'ok'.
+maybe_remove_acdc_account(<<"_design/", _/binary>>) -> 'ok';
+maybe_remove_acdc_account(AccountId) ->
+    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', _} -> 'ok';
+        {'error', 'not_found'} ->
+            {'ok', JObj} = couch_mgr:open_cache_doc(?KZ_ACDC_DB, AccountId),
+            {'ok', _Del} = couch_mgr:del_doc(?KZ_ACDC_DB, JObj),
+            io:format("account ~p not found in ~s, removing from ~s~n", [AccountId, ?WH_ACCOUNTS_DB, ?KZ_ACDC_DB])
+    end.
 
 -spec migrate_to_acdc_db(ne_binary()) -> 'ok'.
 -spec migrate_to_acdc_db(ne_binary(), non_neg_integer()) -> 'ok'.
@@ -202,15 +227,14 @@ migrate_to_acdc_db(AccountId, Retries) ->
     of
         {'ok', []} ->
             maybe_migrate(AccountId);
-        {'ok', [_|_]} ->
-            io:format("account ~s already in acdc db~n", [AccountId]);
+        {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
-            io:format("acdc db not found (or view is missing, restoring then trying again~n", []),
+            io:format("acdc db not found (or view is missing, restoring then trying again)~n", []),
             acdc_init:init_db(),
             timer:sleep(250),
             migrate_to_acdc_db(AccountId, Retries-1);
         {'error', _E} ->
-            io:format("failed to check acdc db for account: ~p~n", [_E]),
+            io:format("failed to check acdc db for account ~s: ~p~n", [AccountId, _E]),
             timer:sleep(250),
             migrate_to_acdc_db(AccountId, Retries-1)
     end.
@@ -219,11 +243,10 @@ migrate_to_acdc_db(AccountId, Retries) ->
 maybe_migrate(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [{'limit', 1}]) of
-        {'ok', []} ->
-            io:format("account ~s has no queues, skipping~n", [AccountId]);
+        {'ok', []} -> 'ok';
         {'ok', [_|_]} ->
             io:format("account ~s has queues, adding to acdc db~n", [AccountId]),
-            Doc = wh_doc:update_pvt_parameters(wh_json:new()
+            Doc = wh_doc:update_pvt_parameters(wh_json:from_list([{<<"_id">>, AccountId}])
                                                ,?KZ_ACDC_DB
                                                ,[{'account_id', AccountId}
                                                  ,{'type', <<"acdc_activation">>}
@@ -255,4 +278,3 @@ flush_call_stat(CallId) ->
                                      ),
             io:format("setting call to 'abandoned'~n", [])
     end.
-

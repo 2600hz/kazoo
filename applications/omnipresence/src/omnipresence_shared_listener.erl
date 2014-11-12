@@ -9,8 +9,7 @@
 
 -behaviour(gen_listener).
 
--export([start_link/0
-        ]).
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -170,8 +169,8 @@ handle_info({'DOWN', Ref, 'process', Pid, _R}, #state{subs_pid=Pid
     {'noreply', State#state{subs_pid='undefined'
                             ,subs_ref='undefined'
                            }};
-handle_info(?HOOK_EVT(_, EventType, JObj), State) ->
-    _ = spawn('omnip_subscriptions', 'handle_channel_event', [EventType, JObj]),
+handle_info(?HOOK_EVT(_, EventName, JObj), State) ->
+    _ = spawn('omnip_subscriptions', 'handle_channel_event', [EventName, JObj]),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

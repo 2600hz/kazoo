@@ -209,6 +209,7 @@ to_props(Channel) ->
        ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
        ,{<<"to_tag">>, Channel#channel.to_tag}
        ,{<<"from_tag">>, Channel#channel.from_tag}
+       ,{<<"elapsed_s">>, wh_util:elapsed_s(Channel#channel.timestamp)}
       ]).
 
 -spec to_api_json(channel()) -> wh_json:object().
@@ -242,9 +243,10 @@ to_api_props(Channel) ->
        ,{<<"Context">>, Channel#channel.context}
        ,{<<"Dialplan">>, Channel#channel.dialplan}
        ,{<<"Other-Leg-Call-ID">>, Channel#channel.other_leg}
-       ,{<<"switch_url">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
        ,{<<"To-Tag">>, Channel#channel.to_tag}
        ,{<<"From-Tag">>, Channel#channel.from_tag}
+       ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
+       ,{<<"Elapsed-Seconds">>, wh_util:elapsed_s(Channel#channel.timestamp)}
       ]).
 
 %%%===================================================================
@@ -439,6 +441,7 @@ process_event(UUID, Props, Node, Pid) ->
     wh_util:put_callid(UUID),
     wh_amqp_channel:consumer_pid(Pid),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+
     process_specific_event(EventName, UUID, Props, Node).
 
 -spec process_specific_event(ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
@@ -452,11 +455,11 @@ process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
         'false' -> 'ok'
     end;
 process_specific_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
-    _ = maybe_publish_channel_state(Props, Node),
-    ecallmgr_fs_channels:destroy(UUID, Node);
+    _ = ecallmgr_fs_channels:destroy(UUID, Node),
+    maybe_publish_channel_state(Props, Node);
 process_specific_event(<<"CHANNEL_ANSWER">>, UUID, Props, Node) ->
-    _ = maybe_publish_channel_state(Props, Node),
-    ecallmgr_fs_channels:update(UUID, #channel.answered, 'true');
+    _ = ecallmgr_fs_channels:update(UUID, #channel.answered, 'true'),
+    maybe_publish_channel_state(Props, Node);
 process_specific_event(<<"CHANNEL_DATA">>, UUID, Props, _) ->
     ecallmgr_fs_channels:updates(UUID, props_to_update(Props));
 process_specific_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
@@ -475,7 +478,7 @@ maybe_publish_channel_state(Props, _Node) ->
     %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
     %%   becomes disconnected any calls it previsouly controlled will not produce
     %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
-    case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'true') of
+    case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'false') of
         'false' -> ecallmgr_call_events:process_channel_event(Props);
         'true' -> maybe_publish_restricted(Props)
     end.
@@ -571,17 +574,21 @@ props_to_update(Props) ->
                             ,{#channel.from_tag, props:get_value(<<"variable_sip_from_tag">>, Props)}
                            ]).
 
+-spec get_other_leg(ne_binary(), wh_proplist()) -> api_binary().
 get_other_leg(UUID, Props) ->
     get_other_leg_name(UUID, Props, props:get_value(<<"Other-Leg-Channel-Name">>, Props)).
 
+-spec get_other_leg_name(ne_binary(), wh_proplist(), ne_binary()) -> api_binary().
 get_other_leg_name(UUID, Props, <<"loopback/", _/binary>>) ->
     %% loopback channel, use channel var BridgeId
     get_other_leg(UUID, Props, props:get_value(?GET_CCV(<<"Bridge-ID">>), Props));
 get_other_leg_name(UUID, Props, _ChannelName) ->
     get_other_leg(UUID, Props, props:get_first_defined([<<"Other-Leg-Unique-ID">>
                                                         ,<<"Other-Leg-Call-ID">>
+                                                        ,<<"variable_origination_uuid">>
                                                        ], Props)).
 
+-spec get_other_leg(ne_binary(), wh_proplist(), api_binary()) -> api_binary().
 get_other_leg(UUID, Props, 'undefined') ->
     maybe_other_bridge_leg(UUID
                            ,Props
@@ -590,6 +597,7 @@ get_other_leg(UUID, Props, 'undefined') ->
                           );
 get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
 
+-spec maybe_other_bridge_leg(ne_binary(), wh_proplist(), ne_binary(), ne_binary()) -> api_binary().
 maybe_other_bridge_leg(UUID, _Props, UUID, OtherLeg) -> OtherLeg;
 maybe_other_bridge_leg(UUID, _Props, OtherLeg, UUID) -> OtherLeg;
 maybe_other_bridge_leg(UUID, Props, _, _) ->

@@ -83,7 +83,15 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
                 _Engine ->
                     SayMe = wh_json:get_value(<<"Text">>, JObj),
                     lager:debug("using engine ~s to say: ~s", [_Engine, SayMe]),
-                    play(Node, UUID, wh_json:set_value(<<"Media-Name">>, <<"tts://", SayMe/binary>>, JObj))
+
+                    TTS = <<"tts://", SayMe/binary>>,
+                    case ecallmgr_util:media_path(TTS, UUID, JObj) of
+                        TTS ->
+                            lager:debug("failed to fetch a playable media, reverting to flite"),
+                            get_fs_app(Node, UUID, wh_json:set_value(<<"Engine">>, <<"flite">>, JObj), <<"tts">>);
+                        MediaPath ->
+                            play(Node, UUID, wh_json:set_value(<<"Media-Name">>, MediaPath, JObj))
+                    end
             end
     end;
 
@@ -414,10 +422,18 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
 get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
     ecallmgr_fs_bridge:call_command(Node, UUID, JObj);
 
+get_fs_app(_Node, UUID, JObj, <<"unbridge">>) ->
+    ecallmgr_fs_bridge:unbridge(UUID, JObj);
+
 get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
     case wapi_dialplan:call_pickup_v(JObj) of
         'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
         'true' -> call_pickup(Node, UUID, JObj)
+    end;
+get_fs_app(Node, UUID, JObj, <<"connect_leg">>) ->
+    case wapi_dialplan:connect_leg_v(JObj) of
+        'false' -> {'error', <<"intercept failed to execute as JObj did not validate">>};
+        'true' -> connect_leg(Node, UUID, JObj)
     end;
 
 get_fs_app(Node, UUID, JObj, <<"eavesdrop">>) ->
@@ -507,7 +523,8 @@ get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
         'true' ->
             Code = wh_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE),
             Response = <<Code/binary ," "
-                         ,(wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
+                         ,(wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary
+                       >>,
             {<<"respond">>, Response}
     end;
 
@@ -587,7 +604,19 @@ eavesdrop(Node, UUID, JObj) ->
 call_pickup(Node, UUID, JObj) ->
     case prepare_app(Node, UUID, JObj) of
         {'execute', AppNode, AppUUID, AppJObj, AppTarget} ->
-            get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget);
+            get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget, <<"intercept">>);
+        Other ->
+            Other
+    end.
+
+-spec connect_leg(atom(), ne_binary(), wh_json:object()) ->
+                         {ne_binary(), ne_binary()} |
+                         {'return', ne_binary()} |
+                         {'error', ne_binary()}.
+connect_leg(Node, UUID, JObj) ->
+    case prepare_app(Node, UUID, JObj) of
+        {'execute', AppNode, AppUUID, AppJObj, AppTarget} ->
+            get_call_pickup_app(AppNode, AppUUID, AppJObj, AppTarget, <<"call_pickup">>);
         Other ->
             Other
     end.
@@ -713,16 +742,19 @@ prepare_app_usurpers(Node, UUID) ->
                         ,fun(C) -> wapi_call:publish_usurp_publisher(UUID, C) end
                        ).
 
--spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
+-spec get_call_pickup_app(atom(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.
-get_call_pickup_app(Node, UUID, JObj, Target) ->
-    ExportsApi = [{<<"Park-After-Pickup">>, <<"false">>}
-                  ,{<<"Continue-On-Fail">>, <<"true">>}
+get_call_pickup_app(Node, UUID, JObj, Target, Command) ->
+    ExportsApi = [{<<"Continue-On-Fail">>, <<"true">>}
                   ,{<<"Continue-On-Cancel">>, <<"true">>}
+                  ,{<<"Hangup-After-Pickup">>, <<"false">>}
+                  ,{<<"Park-After-Pickup">>, <<"true">>}
                  ],
 
     SetApi = [{<<"Unbridged-Only">>, 'undefined', <<"intercept_unbridged_only">>}
               ,{<<"Unanswered-Only">>, 'undefined', <<"intercept_unanswered_only">>}
+              ,{<<"Park-After-Pickup">>, 'undefined'}
+              ,{<<"Hangup-After-Pickup">>, 'undefined'}
              ],
 
     Exports = [{<<"failure_causes">>, <<"NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>}
@@ -737,11 +769,11 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
     wh_amqp_worker:cast(ControlUsurp
                         ,fun(C) -> wapi_call:publish_usurp_control(Target, C) end
                        ),
-    lager:debug("published ~p for ~s", [ControlUsurp, Target]),
+    lager:debug("published control usurp for ~s", [Target]),
 
     ecallmgr_util:set(Node, UUID, build_set_args(SetApi, JObj)),
     ecallmgr_util:export(Node, UUID, Exports),
-    {<<"intercept">>, Target}.
+    {Command, Target}.
 
 -spec get_eavesdrop_app(atom(), ne_binary(), wh_json:object(), ne_binary()) ->
                                  {ne_binary(), ne_binary()}.

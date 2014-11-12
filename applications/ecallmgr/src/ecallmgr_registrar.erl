@@ -55,7 +55,7 @@
                       }
                     ]).
 -define(BINDINGS, [{'registration', [{'restrict_to', ['reg_success'
-                                              	      ,'reg_query'
+                                                      ,'reg_query'
                                                       ,'reg_flush'
                                                      ]}
                                      ,'federate'
@@ -294,7 +294,9 @@ count() -> ets:info(?MODULE, 'size').
 -spec handle_reg_success(atom(), wh_proplist()) -> 'ok'.
 handle_reg_success(Node, Props) ->
     put('callid', props:get_first_defined([<<"Call-ID">>, <<"call-id">>], Props, 'reg_success')),
-    Req = lists:foldl(fun(K, Acc) ->
+    Req = lists:foldl(fun(<<"Contact">>=K, Acc) ->
+                             [{K, get_fs_contact(Props)} | Acc];
+                          (K, Acc) ->
                               case props:get_first_defined([wh_util:to_lower_binary(K), K], Props) of
                                   'undefined' -> Acc;
                                   V -> [{K, V} | Acc]
@@ -309,6 +311,12 @@ handle_reg_success(Node, Props) ->
                 ,[props:get_value(<<"Username">>, Req), props:get_value(<<"Realm">>, Req)]
                ),
     wh_amqp_worker:cast(Req, fun wapi_registration:publish_success/1).
+
+-spec get_fs_contact(wh_proplist()) -> ne_binary().
+get_fs_contact(Props) ->
+    Contact = props:get_first_defined([<<"Contact">>, <<"contact">>], Props),
+    [User, AfterAt] = binary:split(Contact, <<"@">>), % only one @ allowed
+    <<User/binary, "@", (wh_util:to_binary(mochiweb_util:unquote(AfterAt)))/binary>>.
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -717,9 +725,7 @@ create_registration(JObj) ->
 
 -spec fix_contact(ne_binary()) -> ne_binary().
 fix_contact(Contact) ->
-    [User, AfterAt] = binary:split(Contact, <<"@">>), % only one @ allowed
-    AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
-    binary:replace(<<User/binary, "@", AfterUnquoted/binary>>
+    binary:replace(Contact
                    ,[<<"<">>, <<">">>]
                    ,<<>>
                    ,['global']).

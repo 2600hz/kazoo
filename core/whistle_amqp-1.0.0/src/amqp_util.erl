@@ -17,7 +17,7 @@
 -export([delete_targeted_queue/1]).
 -export([bind_q_to_targeted/1, bind_q_to_targeted/2]).
 -export([unbind_q_from_targeted/1]).
--export([targeted_publish/2, targeted_publish/3]).
+-export([targeted_publish/2, targeted_publish/3, targeted_publish/4]).
 
 -export([nodes_exchange/0]).
 -export([new_nodes_queue/0, new_nodes_queue/1]).
@@ -105,7 +105,7 @@
 -export([unbind_q_from_exchange/3]).
 -export([new_queue/0, new_queue/1, new_queue/2]).
 -export([basic_consume/1, basic_consume/2]).
--export([basic_publish/3, basic_publish/4]).
+-export([basic_publish/3, basic_publish/4, basic_publish/5]).
 -export([basic_cancel/0]).
 -export([queue_delete/1, queue_delete/2]).
 -export([new_exchange/2, new_exchange/3]).
@@ -136,10 +136,13 @@
 %%------------------------------------------------------------------------------
 -spec targeted_publish(ne_binary(), amqp_payload()) -> 'ok'.
 -spec targeted_publish(ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec targeted_publish(ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
 targeted_publish(Queue, Payload) ->
     targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).
 targeted_publish(?NE_BINARY = Queue, Payload, ContentType) ->
-    basic_publish(?EXCHANGE_TARGETED, Queue, Payload, ContentType).
+    targeted_publish(Queue, Payload, ContentType, []).
+targeted_publish(?NE_BINARY = Queue, Payload, ContentType, Options) ->
+    basic_publish(?EXCHANGE_TARGETED, Queue, Payload, ContentType, Options).
 
 -spec nodes_publish(amqp_payload()) -> 'ok'.
 -spec nodes_publish(amqp_payload(), ne_binary()) -> 'ok'.

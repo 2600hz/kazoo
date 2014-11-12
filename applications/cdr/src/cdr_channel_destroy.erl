@@ -25,6 +25,7 @@ handle_req(JObj, _Props) ->
 prepare_and_save(AccountId, Timestamp, JObj) ->
     Routines = [fun normalize/3
                 ,fun update_pvt_parameters/3
+                ,fun update_ccvs/3
                 ,fun set_doc_id/3
                 ,fun set_recording_url/3
                 ,fun save_cdr/3
@@ -50,6 +51,27 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
              ,{'account_id', AccountId}
             ],
     wh_doc:update_pvt_parameters(JObj, AccountMODb, Props).
+
+-spec update_ccvs(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
+update_ccvs(_, _, JObj) ->
+    CCVs = wh_json:get_value(<<"custom_channel_vars">>, JObj, wh_json:new()),
+    {UpdatedJobj, UpdatedCCVs} =
+        wh_json:foldl(
+            fun update_ccvs_foldl/3
+            ,{JObj, CCVs}
+            ,CCVs
+        ),
+    wh_json:set_value(<<"custom_channel_vars">>, UpdatedCCVs, UpdatedJobj).
+
+-spec update_ccvs_foldl(ne_binary(), any(), {wh_json:object(), wh_json:object()}) -> {wh_json:object(), wh_json:object()}.
+update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
+    case wh_json:is_private_key(Key) of
+        'false' -> Acc;
+        'true' ->
+            {wh_json:set_value(Key, Value, JObj)
+             ,wh_json:delete_key(Key, CCVs)}
+    end.
+
 
 -spec set_doc_id(api_binary(), pos_integer(), wh_json:object()) -> wh_json:object().
 set_doc_id(_, Timestamp, JObj) ->

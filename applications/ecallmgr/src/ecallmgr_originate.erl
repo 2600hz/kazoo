@@ -432,16 +432,7 @@ get_originate_action(<<"fax">>, JObj) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
     <<"&txfax(${http_get(", Data/binary, ")})">>;
 get_originate_action(<<"transfer">>, JObj) ->
-    lager:debug("got originate with action transfer"),
-    case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
-        'undefined' -> <<"error">>;
-        Route ->
-            Context = ?DEFAULT_FREESWITCH_CONTEXT,
-            list_to_binary(["'m:^:", get_unset_vars(JObj)
-                            ,"transfer:", Route
-                            ," XML ", Context, "' inline"
-                           ])
-    end;
+    get_transfer_action(JObj, wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj));
 get_originate_action(<<"bridge">>, JObj) ->
     lager:debug("got originate with action bridge"),
     CallId = wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj),
@@ -460,6 +451,15 @@ get_originate_action(<<"eavesdrop">>, JObj) ->
 get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
+
+-spec get_transfer_action(wh_json:object(), api_binary()) -> ne_binary().
+get_transfer_action(_JObj, 'undefined') -> <<"error">>;
+get_transfer_action(JObj, Route) ->
+    Context = ?DEFAULT_FREESWITCH_CONTEXT,
+    list_to_binary(["'m:^:", get_unset_vars(JObj)
+                    ,"transfer:", Route
+                    ," XML ", Context, "' inline"
+                   ]).
 
 -spec intercept_unbridged_only(ne_binary() | 'undefined', wh_json:object()) -> ne_binary().
 intercept_unbridged_only('undefined', JObj) ->
@@ -513,7 +513,7 @@ build_originate_args(Action, #state{uuid=UUID}=State, JObj, FetchId) ->
             'undefined';
         [Endpoint] ->
             lager:debug("only one endpoint, don't create per-endpoint UUIDs"),
-            maybe_start_call_handlers(UUID, State#state{control_pid='undefined'}),
+            maybe_start_call_handlers(UUID, State),
             build_originate_args_from_endpoints(Action, [update_endpoint(Endpoint, UUID)], JObj, FetchId);
         Endpoints ->
             lager:debug("multiple endpoints defined, assigning uuids to each"),
@@ -532,7 +532,7 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
     J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
                             ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
-                            ,{<<"Loopback-Bowout">>, <<"true">>}
+                            ,{<<"Loopback-Bowout">>, <<"false">>}
                            ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
@@ -779,17 +779,26 @@ maybe_start_call_handlers(UUID, State) ->
 start_abandon_timer() ->
     erlang:send_after(?REPLY_TIMEOUT, self(), {'abandon_originate'}).
 
--spec update_endpoint(wh_json:object(), state() | created_uuid()) -> wh_json:object().
 update_endpoint(Endpoint, #state{node=Node
                                  ,originate_req=JObj
                                 }=State) ->
-    {_, Id} = UUID = create_uuid(Endpoint, JObj, Node),
+    {_, Id} = UUID =
+        case wh_json:get_value(<<"Outbound-Call-ID">>, Endpoint) of
+            'undefined' -> create_uuid(Endpoint, JObj, Node);
+            OutboundCallId -> {'api', OutboundCallId}
+        end,
     maybe_start_call_handlers(UUID, State#state{uuid=UUID
                                                 ,control_pid='undefined'
                                                }),
     fix_hold_media(wh_json:set_value(<<"origination_uuid">>, Id, Endpoint), State);
-update_endpoint(Endpoint, {_, ID}=State) ->
-    fix_hold_media(wh_json:set_value(<<"origination_uuid">>, ID, Endpoint), State).
+update_endpoint(Endpoint, {_, BuiltId}=State) ->
+    Id =
+        case wh_json:get_value(<<"Outbound-Call-ID">>, Endpoint) of
+            'undefined' -> BuiltId;
+            OutboundCallId -> OutboundCallId
+        end,
+
+    fix_hold_media(wh_json:set_value(<<"origination_uuid">>, Id, Endpoint), State).
 
 -spec fix_hold_media(wh_json:object(), _) -> wh_json:object().
 fix_hold_media(Endpoint, _State) ->

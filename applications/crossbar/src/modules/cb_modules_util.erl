@@ -100,23 +100,8 @@ reconcile_services(Context) ->
         'true' ->
             lager:debug("maybe reconciling services for account ~s"
                        ,[cb_context:account_id(Context)]),
-            reconcile_services(Context, cb_context:req_nouns(Context))
+            _ = wh_services:save_as_dirty(cb_context:account_id(Context))
     end.
-
--spec reconcile_services(cb_context:context(), req_nouns()) -> cb_context:context().
-reconcile_services(Context, [{<<"devices">>, _} | Nouns]) ->
-    lager:debug("reconcile services for devices", []),
-    _ = wh_services:reconcile(cb_context:account_id(Context), <<"devices">>),
-    reconcile_services(Context, Nouns);
-reconcile_services(Context, [{<<"users">>, _} | Nouns]) ->
-    lager:debug("reconcile services for users", []),
-    _ = wh_services:reconcile(cb_context:account_id(Context), <<"users">>),
-    reconcile_services(Context, Nouns);
-reconcile_services(Context, [{<<"limits">>, _} | Nouns]) ->
-    lager:debug("reconcile services for limits", []),
-    _ = wh_services:reconcile(cb_context:account_id(Context), <<"limits">>),
-    reconcile_services(Context, Nouns);
-reconcile_services(Context, _) -> Context.
 
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
@@ -401,7 +386,13 @@ content_type_to_extension(<<"audio/mpeg3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>;
 content_type_to_extension(<<"application/x-pdf">>) -> <<"pdf">>;
-content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>.
+content_type_to_extension(<<"application/pdf">>) -> <<"pdf">>;
+content_type_to_extension(<<"image/jpg">>) -> <<"jpg">>;
+content_type_to_extension(<<"image/jpeg">>) -> <<"jpg">>;
+content_type_to_extension(<<"image/png">>) -> <<"png">>;
+content_type_to_extension(<<"image/gif">>) -> <<"gif">>;
+content_type_to_extension(<<"text/html">>) -> <<"html">>;
+content_type_to_extension(<<"text/plain">>) -> <<"txt">>.
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
