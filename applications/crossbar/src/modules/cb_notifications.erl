@@ -197,15 +197,17 @@ validate(Context, Id) ->
     validate_notification(Context, db_id(Id), cb_context:req_verb(Context)).
 
 validate(Context, Id, ?PREVIEW) ->
-    read(Context, Id).
+    update(Context, Id).
 
--spec validate_notifications(cb_context:context(), http_method()) -> cb_context:context().
+-spec validate_notifications(cb_context:context(), http_method()) ->
+                                    cb_context:context().
 validate_notifications(Context, ?HTTP_GET) ->
     summary(Context);
 validate_notifications(Context, ?HTTP_PUT) ->
     create(Context).
 
--spec validate_notification(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+-spec validate_notification(cb_context:context(), path_token(), http_method()) ->
+                                   cb_context:context().
 validate_notification(Context, Id, ?HTTP_GET) ->
     maybe_read(Context, Id);
 validate_notification(Context, Id, ?HTTP_POST) ->
@@ -244,6 +246,7 @@ post(Context, Id) ->
             update_template(Context, db_id(Id), FileJObj)
     end.
 
+-spec do_post(cb_context:context()) -> cb_context:context().
 do_post(Context) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
@@ -252,9 +255,39 @@ do_post(Context) ->
     end.
 
 post(Context, Id, ?PREVIEW) ->
-    ReqData = cb_context:req_data(Context),
-    lager:debug("sending API command to preview ~s", [Id]),
-    Context.
+    Notification = cb_context:doc(Context),
+
+    Preview = [{<<"To">>, wh_json:get_value(<<"to">>, Notification)}
+               ,{<<"From">>, wh_json:get_value(<<"from">>, Notification)}
+               ,{<<"BCC">>, wh_json:get_value(<<"bcc">>, Notification)}
+               ,{<<"Subject">>, wh_json:get_value(<<"subject">>, Notification)}
+               ,{<<"HTML">>, wh_json:get_value(<<"html">>, Notification)}
+               ,{<<"Text">>, wh_json:get_value(<<"text">>, Notification)}
+               ,{<<"Account-ID">>, cb_context:account_id(Context)}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    API = lists:foldl(fun preview_fold/2, Preview, wapi_notifications:headers(Id)),
+
+    case wh_amqp_worker:cast(Preview, publish_fun(Id)) of
+        'ok' ->
+            lager:debug("sent API command to preview ~s: ~p", [Id, API]),
+            crossbar_util:response_202(<<"Notification processing">>, Context);
+        {'error', _E} ->
+            lager:debug("failed to publish preview for ~s: ~p", [Id, _E]),
+            crossbar_util:response('error', <<"Failed to process notification preview">>, Context)
+    end.
+
+-spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
+publish_fun(<<"voicemail">>) ->
+    fun wapi_notifications:publish_voicemail/1;
+publish_fun(<<"voicemail_full">>) ->
+    fun wapi_notifications:publish_voicemail_full/1;
+publish_fun(<<"skel">>) ->
+    fun wapi_notifications:publish_skel/1.
+
+-spec preview_fold(ne_binary(), wh_proplist()) -> wh_proplist().
+preview_fold(Header, Props) ->
+    props:insert_value(Header, Header, Props).
 
 %%--------------------------------------------------------------------
 %% @public

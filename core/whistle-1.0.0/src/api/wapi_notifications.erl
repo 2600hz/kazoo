@@ -34,6 +34,8 @@
          %% published on completion of notification
          ,notify_update/1, notify_update_v/1
          ,skel/1, skel_v/1
+
+         ,headers/1
         ]).
 
 -export([publish_voicemail/1, publish_voicemail/2
@@ -103,7 +105,7 @@
                                      | ?DEFAULT_OPTIONAL_HEADERS
                                     ]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                           ,{<<"Event-Name">>, <<"new_voicemail">>}
+                           ,{<<"Event-Name">>, <<"voicemail">>}
                           ]).
 -define(VOICEMAIL_TYPES, []).
 
@@ -340,6 +342,19 @@
                       ,{<<"Event-Name">>, <<"skel">>}
                      ]).
 -define(SKEL_TYPES, []).
+
+-spec headers(ne_binary()) -> ne_binaries().
+headers(<<"voicemail">>) ->
+    ?VOICEMAIL_HEADERS ++ ?OPTIONAL_VOICEMAIL_HEADERS;
+headers(<<"voicemail_full">>) ->
+    ?VOICEMAIL_FULL_HEADERS ++ ?OPTIONAL_VOICEMAIL_FULL_HEADERS;
+headers(<<"fax_inbound">>) ->
+    ?FAX_INBOUND_HEADERS ++ ?OPTIONAL_FAX_INBOUND_HEADERS;
+headers(<<"skel">>) ->
+    ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
+headers(_Notification) ->
+    lager:debug("no notification headers for ~s", [_Notification]),
+    [].
 
 %%--------------------------------------------------------------------
 %% @doc
