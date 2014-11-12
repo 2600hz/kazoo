@@ -874,7 +874,7 @@ page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
                ,{<<"Timeout">>, Timeout}
                ,{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}
-               ,{<<"SIP-Headers">>, SIPHeaders}
+               ,{<<"Custom-SIP-Headers">>, SIPHeaders}
               ],
     send_command(Command, Call).
 
@@ -933,7 +933,7 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
      ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
      ,{<<"Ringback">>, wh_media_util:media_path(Ringback, Call)}
      ,{<<"Dial-Endpoint-Method">>, Strategy}
-     ,{<<"SIP-Headers">>, SIPHeaders}
+     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
     ].
 
 bridge(Endpoints, Call) ->
@@ -2058,7 +2058,7 @@ handle_collect_digit_event(_JObj, _NoopId, _EventType) ->
 %% @public
 %% @doc
 %% Low level function to consume call events, looping until a specific
-%% one occurs.  If the channel is hungup or no call events are recieved
+%% one occurs.  If the channel is hungup or no call events are received
 %% for the optional timeout period then errors are returned.
 %% @end
 %%--------------------------------------------------------------------
@@ -2691,7 +2691,7 @@ wait_for_fax_detection(Timeout, Call) ->
 %% @public
 %% @doc
 %% Low level function to consume call events, looping until a specific
-%% one occurs.  If the channel is hungup or no call events are recieved
+%% one occurs.  If the channel is hungup or no call events are received
 %% for the optional timeout period then errors are returned.
 %% @end
 %%--------------------------------------------------------------------

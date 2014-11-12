@@ -73,6 +73,12 @@
          ,custom_channel_vars/1
         ]).
 
+-export([set_custom_sip_header/3
+         ,set_custom_sip_headers/2
+         ,custom_sip_header/2, custom_sip_header/3
+         ,custom_sip_headers/1
+        ]).
+
 -export([set_custom_publish_function/2, clear_custom_publish_function/1
          ,custom_publish_function/1
         ]).
@@ -140,6 +146,7 @@
                       ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
                       ,custom_publish_fun :: whapps_custom_publish() | 'undefined'     %% A custom command used to publish whapps_call_command
                       ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that where provided with the route request
+                      ,sip_headers = wh_json:new() :: wh_json:object()                   %% Custom SIP Headers
                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       ,other_leg_callid :: api_binary()
                       ,resource_type :: api_binary()                      %% from route_req
@@ -188,6 +195,7 @@ from_route_req(RouteReq) ->
 -spec from_route_req(wh_json:object(), call()) -> call().
 from_route_req(RouteReq, #whapps_call{call_id=OldCallId
                                       ,ccvs=OldCCVs
+                                      ,sip_headers=OldSHs
                                       ,request=OldRequest
                                       ,from=OldFrom
                                       ,to=OldTo
@@ -196,6 +204,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
     put('callid', CallId),
 
     CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteReq, wh_json:new())),
+    SHs = wh_json:merge_recursive(OldSHs, wh_json:get_value(<<"Custom-SIP-Headers">>, RouteReq, wh_json:new())),
 
     Request = wh_json:get_value(<<"Request">>, RouteReq, OldRequest),
     From = wh_json:get_value(<<"From">>, RouteReq, OldFrom),
@@ -232,6 +241,7 @@ from_route_req(RouteReq, #whapps_call{call_id=OldCallId
                      ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
                      ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
                      ,ccvs = CCVs
+                     ,sip_headers = SHs
                      ,resource_type = wh_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
                      ,to_tag = wh_json:get_value(<<"To-Tag">>, RouteReq, to_tag(Call))
                      ,from_tag = wh_json:get_value(<<"From-Tag">>, RouteReq, from_tag(Call))
@@ -244,6 +254,7 @@ from_route_win(RouteWin) ->
 -spec from_route_win(wh_json:object(), call()) -> call().
 from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                       ,ccvs=OldCCVs
+                                      ,sip_headers=OldSHs
                                       ,inception=OldInception
                                       ,account_id=OldAccountId
                                       ,account_db=OldAccountDb
@@ -257,6 +268,7 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
     CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
     put('callid', CallId),
     CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteWin, wh_json:new())),
+    SHs = wh_json:merge_recursive(OldSHs, wh_json:get_value(<<"Custom-SIP-Headers">>, RouteWin, wh_json:new())),
     AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, OldAccountId),
     AccountDb = case is_binary(AccountId) of
                     'false' -> OldAccountDb;
@@ -266,6 +278,7 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                      ,account_id=AccountId
                      ,account_db=AccountDb
                      ,ccvs=CCVs
+                     ,sip_headers=SHs
                      ,control_q = wh_json:get_value(<<"Control-Queue">>, RouteWin)
                      ,inception = wh_json:get_value(<<"Inception">>, CCVs, OldInception)
                      ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
@@ -300,8 +313,11 @@ from_originate_uuid(JObj, #whapps_call{}=Call) ->
 from_json(JObj) ->
     from_json(JObj, new()).
 
-from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
+from_json(JObj, #whapps_call{ccvs=OldCCVs
+                             ,sip_headers=OldSHs
+                            }=Call) ->
     CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+    SHs = wh_json:merge_recursive(OldSHs, wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new())),
     KVS = orddict:from_list(wh_json:to_proplist(wh_json:get_value(<<"Key-Value-Store">>, JObj, wh_json:new()))),
     Call#whapps_call{
       call_id = wh_json:get_ne_value(<<"Call-ID">>, JObj, call_id_direct(Call))
@@ -334,6 +350,7 @@ from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
       ,app_name = wh_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
       ,app_version = wh_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
       ,ccvs = CCVs
+      ,sip_headers = SHs
       ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Call#whapps_call.kvs, KVS)
       ,other_leg_callid = wh_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
       ,resource_type = wh_json:get_ne_value(<<"Resource-Type">>, JObj, resource_type(Call))
@@ -394,6 +411,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Fetch-ID">>, fetch_id(Call)}
      ,{<<"Bridge-ID">>, bridge_id(Call)}
      ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
+     ,{<<"Custom-SIP-Headers">>, custom_sip_headers(Call)}
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
      ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
      ,{<<"Resource-Type">>, resource_type(Call)}
@@ -764,6 +782,24 @@ custom_channel_var(Key, #whapps_call{ccvs=CCVs}) ->
 -spec custom_channel_vars(call()) -> wh_json:object().
 custom_channel_vars(#whapps_call{ccvs=CCVs}) ->
     CCVs.
+
+-spec set_custom_sip_header(wh_json:key(), wh_json:json_term(), call()) -> call().
+set_custom_sip_header(Key, Value, #whapps_call{sip_headers=SHs}=Call) ->
+    Call#whapps_call{sip_headers=wh_json:set_value(Key, Value, SHs)}.
+
+-spec custom_sip_header(wh_json:key(), call()) -> wh_json:json_term().
+-spec custom_sip_header(wh_json:key(), wh_json:json_term(), call()) -> wh_json:json_term().
+custom_sip_header(Key, #whapps_call{}=Call) ->
+    custom_sip_header(Key, 'undefined', Call).
+custom_sip_header(Key, Default, #whapps_call{sip_headers=SHs}) ->
+    wh_json:get_value(Key, SHs, Default).
+
+-spec set_custom_sip_headers(wh_proplist(), call()) -> call().
+set_custom_sip_headers(Headers, #whapps_call{sip_headers=SHs}=Call) ->
+    Call#whapps_call{sip_headers=wh_json:set_values(Headers, SHs)}.
+
+-spec custom_sip_headers(call()) -> wh_json:object().
+custom_sip_headers(#whapps_call{sip_headers=SHs}) -> SHs.
 
 -spec handle_ccvs_update(wh_json:object(), call()) -> call().
 handle_ccvs_update(CCVs, #whapps_call{}=Call) ->

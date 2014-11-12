@@ -28,7 +28,7 @@
           ,<<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
           ,<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>
           ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
-          ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+          ,<<"Ringback">>, <<"Custom-SIP-Headers">>, <<"Custom-Channel-Vars">>
           ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
           ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
           ,<<"Account-ID">>, <<"Outbound-Call-ID">>, <<"Hunt-Account-ID">>
@@ -38,7 +38,7 @@
           ,<<"Enable-T38-Fax">>, <<"Enable-T38-Fax-Request">>
           ,<<"Enable-T38-Passthrough">>, <<"Force-Fax">>, <<"Enable-T38-Gateway">>
           ,<<"Format-From-URI">>, <<"From-URI-Realm">>, <<"Bypass-E164">>
-          ,<<"Hunt-Account-ID">>, <<"Diversions">>, <<"Inception">>
+          ,<<"Hunt-Account-ID">>, <<"Inception">>
           ,<<"Message-ID">>, <<"Body">>
          ]).
 -define(OFFNET_RESOURCE_REQ_VALUES
@@ -60,7 +60,7 @@
           ,{<<"Account-ID">>, fun is_binary/1}
           ,{<<"Control-Queue">>, fun is_binary/1}
           ,{<<"To-DID">>, fun is_binary/1}
-          ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+          ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
           ,{<<"Flags">>, fun is_list/1}
           ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}

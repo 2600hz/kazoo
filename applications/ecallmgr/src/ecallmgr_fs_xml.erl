@@ -389,28 +389,25 @@ get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
 -spec get_channel_vars({binary(), binary() | wh_json:object()}, ne_binaries()) -> iolist().
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
-    lists:foldl(fun get_channel_vars_fold/2, Vars, wh_json:to_proplist(JObj));
+    wh_json:foldl(fun get_channel_vars_fold/3, Vars, JObj);
 
-get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
-    SIPHeaders = wh_json:to_proplist(SIPJObj),
-    lists:foldl(fun({K,V}, Vars0) when is_binary(V) ->
-                        [ list_to_binary(["sip_h_", K, "=", V]) | Vars0];
-                   ({<<"Diversion">> = K, V}, Vars0) ->
-                        [ list_to_binary(["sip_h_", K, "=", kzsip_diversion:to_binary(V)]) | Vars0]
-                end, Vars, SIPHeaders);
+get_channel_vars({<<"Custom-SIP-Headers">>, SIPJObj}, Vars) ->
+    wh_json:foldl(fun sip_headers_fold/3, Vars, SIPJObj);
 get_channel_vars({<<"To-User">>, Username}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
-                     ,"='", wh_util:to_list(Username), "'"])
+                     ,"='", wh_util:to_list(Username), "'"
+                    ])
      | Vars
     ];
 get_channel_vars({<<"To-Realm">>, Realm}, Vars) ->
     [list_to_binary([?CHANNEL_VAR_PREFIX, "Realm"
-                     ,"='", wh_util:to_list(Realm), "'"])
+                     ,"='", wh_util:to_list(Realm), "'"
+                    ])
      | Vars
     ];
 get_channel_vars({<<"To-URI">>, ToURI}, Vars) ->
     [<<"sip_invite_to_uri=<", ToURI/binary, ">">>
-     | Vars
+         | Vars
     ];
 
 get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
@@ -433,8 +430,8 @@ get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     Codecs = [wh_util:to_list(codec_mappings(C))
-               || C <- Cs
-                      ,not wh_util:is_empty(C)
+              || C <- Cs,
+                 not wh_util:is_empty(C)
              ],
     CodecStr = string:join(Codecs, ":"),
     [list_to_binary(["absolute_codec_string='^^:", CodecStr, "'"])
@@ -470,9 +467,18 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     end;
 get_channel_vars(_, Vars) -> Vars.
 
-get_channel_vars_fold({<<"Force-Fax">>, Direction}, Acc) ->
+-spec sip_headers_fold(wh_json:key(), wh_json:json_term(), iolist()) -> iolist().
+sip_headers_fold(K, <<_/binary>> = V, Vars0) ->
+    [ list_to_binary(["sip_h_", K, "=", V]) | Vars0];
+sip_headers_fold(<<"Diversion">> = K, V, Vars0) ->
+    lager:debug("setting diversion to ~s", [kzsip_diversion:to_binary(V)]),
+    [ list_to_binary(["sip_h_", K, "=", kzsip_diversion:to_binary(V)]) | Vars0].
+
+
+-spec get_channel_vars_fold(wh_json:key(), wh_json:json_term(), iolist()) -> iolist().
+get_channel_vars_fold(<<"Force-Fax">>, Direction, Acc) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
-get_channel_vars_fold({K, V}, Acc) ->
+get_channel_vars_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->
             [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K)

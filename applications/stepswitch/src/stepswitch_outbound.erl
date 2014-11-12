@@ -42,7 +42,7 @@ handle_req(JObj, _Props) ->
 -spec handle_audio_req(ne_binary(), wh_json:object()) -> any().
 handle_audio_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
-    lager:debug("received outbound audio resource request for ~s", [Number]),
+    lager:debug("received outbound audio resource request for ~s: ~p", [Number, JObj]),
     handle_audio_req(Number, JObj).
 
 handle_audio_req(Number, JObj) ->
@@ -62,7 +62,8 @@ handle_audio_req(Number, JObj) ->
 handle_originate_req(JObj) ->
     Number = stepswitch_util:get_outbound_destination(JObj),
     lager:debug("received outbound audio resource request for ~s from account ~s"
-                ,[Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+                ,[Number, wh_json:get_value(<<"Account-ID">>, JObj)]
+               ),
     case wh_json:get_value(<<"Outbound-Call-ID">>, JObj) of
         'undefined' ->
             J = wh_json:set_value(<<"Outbound-Call-ID">>, wh_util:rand_hex_binary(8), JObj),
@@ -83,8 +84,8 @@ handle_sms_req(JObj) ->
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
             maybe_force_outbound_sms([{'account_id', AccountId}
-                                  | Props
-                                 ], JObj);
+                                      | Props
+                                     ], JObj);
         _ -> maybe_sms(Number, JObj)
     end.
 
@@ -96,8 +97,8 @@ handle_sms_req(JObj) ->
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound(Props, JObj) ->
-    case wh_number_properties:should_force_outbound(Props) orelse
-        wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+    case wh_number_properties:should_force_outbound(Props)
+        orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
     of
         'false' -> local_extension(Props, JObj);
         'true' ->
@@ -113,8 +114,8 @@ maybe_force_outbound(Props, JObj) ->
 %%--------------------------------------------------------------------
 -spec maybe_force_outbound_sms(wh_proplist(), wh_json:object()) -> any().
 maybe_force_outbound_sms(Props, JObj) ->
-    case props:get_is_true('force_outbound', Props) orelse
-        wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
+    case props:get_is_true('force_outbound', Props)
+        orelse wh_json:is_true(<<"Force-Outbound">>, JObj, 'false')
     of
         'false' -> local_sms(Props, JObj);
         'true' ->
@@ -182,7 +183,7 @@ local_sms(Props, JObj) ->
     Number = props:get_value('number', Props),
     NewObj = wh_json:set_values(
                [{<<"Bounce-Back">>, <<"true">>}
-                 ,{<<"Custom-Channel-Vars">>, 
+                 ,{<<"Custom-Channel-Vars">>,
                    wh_json:set_value(<<"Bounce-Realm">>, AccountRealm, CCVs)}
                ], JObj),
     maybe_sms(Number, NewObj).

@@ -223,8 +223,8 @@ handle_message_delivery(JObj, Props) ->
 
 -spec build_sms(state()) -> wh_proplist().
 build_sms(#state{endpoints=Endpoints
-                    ,resource_req=JObj
-                   }) ->
+                 ,resource_req=JObj
+                }) ->
     {CIDNum, CIDName} = bridge_caller_id(Endpoints, JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
@@ -247,12 +247,11 @@ build_sms(#state{endpoints=Endpoints
        ,{<<"Caller-ID-Name">>, CIDName}
        ,{<<"Endpoints">>, maybe_endpoints_format_from(Endpoints, CIDNum, JObj) }
        ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
-       ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
        ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, CCVs)}
+       ,{<<"Custom-SIP-Headers">>, get_sip_headers(JObj)}
        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
        ,{<<"Outbound-Callee-ID-Number">>, wh_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj)}
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
-       ,{<<"SIP-Headers">>, get_sip_headers(JObj)}
        ,{<<"Message-ID">>, wh_json:get_value(<<"Message-ID">>, JObj)}
        ,{<<"Body">>, wh_json:get_value(<<"Body">>, JObj)}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -489,7 +488,7 @@ get_sip_headers(JObj) ->
 -spec get_diversions(wh_json:object()) -> 'undefined' | wh_json:object().
 get_diversions(JObj) ->
     Inception = wh_json:get_value(<<"Inception">>, JObj),
-    Diversions = wh_json:get_value(<<"Diversions">>, JObj, []),
+    Diversions = wh_json:get_value([<<"Custom-SIP-Headers">>, <<"Diversion">>], JObj, []),
     get_diversions(Inception, Diversions).
 
 -spec get_diversions(api_binary(), wh_json:object()) -> 'undefined' | wh_json:object().

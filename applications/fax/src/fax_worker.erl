@@ -828,7 +828,7 @@ send_fax(JobId, JObj, Q) ->
                  ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
                                                                  ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
                                                                 ])}
-                 ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
+                 ,{<<"Custom-SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, JObj)}
                  ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
                  ,{<<"Application-Name">>, <<"fax">>}
                  ,{<<"Timeout">>,ETimeout}

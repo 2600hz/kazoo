@@ -11,7 +11,6 @@
 
 -compile({'no_auto_import', [error/1]}).
 
-%% Accessors
 -export([v/1]).
 
 -export([optional_bridge_req_headers/0]).
