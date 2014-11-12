@@ -11,13 +11,13 @@
 
 -export([init/0
          ,authorize/1
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
          ,content_types_provided/2
          ,content_types_accepted/2
-         ,validate/1, validate/2
+         ,validate/1, validate/2, validate/3
          ,put/1
-         ,post/2
+         ,post/2, post/3
          ,delete/2
         ]).
 
@@ -27,6 +27,7 @@
                                   ,{<<"text">>, <<"plain">>}
                                  ]).
 -define(CB_LIST, <<"notifications/crossbar_listing">>).
+-define(PREVIEW, <<"preview">>).
 
 %%%===================================================================
 %%% API
@@ -88,10 +89,13 @@ authorize(_Context, _AuthAccountId, _Nouns) -> 'false'.
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+allowed_methods(_, ?PREVIEW) ->
+    [?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -104,8 +108,10 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
 resource_exists(_Id) -> 'true'.
+resource_exists(_Id, ?PREVIEW) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -130,8 +136,10 @@ content_types_provided(Context, Id, ?HTTP_GET) ->
                 Attachments ->
                     ContentTypes =
                         content_types_from_attachments(Attachments),
-                    cb_context:set_content_types_provided(Context, [{'to_binary', ContentTypes}
-                                                                    ,{'to_json', ?JSON_CONTENT_TYPES}
+                    lager:debug("setting content types for attachments: ~p", [ContentTypes]),
+
+                    cb_context:set_content_types_provided(Context, [{'to_json', ?JSON_CONTENT_TYPES}
+                                                                    ,{'to_binary', ContentTypes}
                                                                    ])
             end;
         _Status -> Context1
@@ -181,11 +189,15 @@ content_types_accepted_for_upload(Context, _Verb) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_notifications(Context, cb_context:req_verb(Context)).
 
 validate(Context, Id) ->
     validate_notification(Context, db_id(Id), cb_context:req_verb(Context)).
+
+validate(Context, Id, ?PREVIEW) ->
+    read(Context, Id).
 
 -spec validate_notifications(cb_context:context(), http_method()) -> cb_context:context().
 validate_notifications(Context, ?HTTP_GET) ->
@@ -223,6 +235,7 @@ put(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, Id) ->
     case cb_context:req_files(Context) of
         [] -> do_post(Context);
@@ -237,6 +250,11 @@ do_post(Context) ->
         'success' -> leak_doc_id(Context1);
         _Status -> Context1
     end.
+
+post(Context, Id, ?PREVIEW) ->
+    ReqData = cb_context:req_data(Context),
+    lager:debug("sending API command to preview ~s", [Id]),
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -275,9 +293,11 @@ maybe_read(Context, Id) ->
         'undefined' -> read(Context, Id);
         <<"application/json">> -> read(Context, Id);
         <<"application/x-json">> -> read(Context, Id);
-        <<"*/*">> -> read(Context, Id);
+        <<"*/*">> ->
+            lager:debug("catch-all accept header, assuming JSON is requested"),
+            read(Context, Id);
         Accept ->
-            lager:debug("accepts: ~s", [Accept]),
+            lager:debug("accept header: ~s", [Accept]),
             maybe_read_template(read(Context, Id), Id, Accept)
     end.
 
