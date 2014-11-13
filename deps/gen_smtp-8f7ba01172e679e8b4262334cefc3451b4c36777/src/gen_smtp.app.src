@@ -4,17 +4,7 @@
  [
   {description, "An erlang SMTP server/client framework"},
   {vsn, "0.9.0"},
-  {modules,
-   [
-    binstr,
-    gen_smtp_client,
-    gen_smtp_server,
-    gen_smtp_server_session,
-    mimemail,
-    smtp_util,
-    socket,
-    smtp_server_example
-   ]
+  {modules, []},
   },
   {applications, [
                   kernel,
