@@ -66,7 +66,6 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
              ,service_content_type_params(ServiceData)
              ,[Body]
             },
-
     relay_email(To, From, Email).
 
 -spec email_parameters(wh_proplist(), wh_proplist()) -> wh_proplist().
