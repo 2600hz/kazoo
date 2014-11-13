@@ -61,7 +61,6 @@ handle_req(JObj, _Props) ->
     RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
                          || {ContentType, Template} <- Templates
                         ],
-    lager:debug("rendered: ~p", [RenderedTemplates]),
 
     {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"Account-ID">>, JObj)),
 
@@ -69,7 +68,6 @@ handle_req(JObj, _Props) ->
                 wh_json:find(<<"subject">>, [JObj, TemplateMetaJObj])
                 ,Macros
                ),
-    lager:debug("subject: ~s", [Subject]),
 
     %% Send email
     teletype_util:send_email(?TEMPLATE_ID, DataJObj, ServiceData, Subject, RenderedTemplates).
