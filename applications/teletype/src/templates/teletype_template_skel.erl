@@ -9,10 +9,12 @@
 -module(teletype_template_skel).
 
 -export([init/0
-         ,handle/2
+         ,handle_req/2
         ]).
 
 -include("../teletype.hrl").
+
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_to_email">>).
 
 -define(TEMPLATE_ID, <<"skel">>).
 -define(TEMPLATE_MACROS, wh_json:from_list([{<<"user.first_name">>
@@ -42,34 +44,35 @@ init() ->
     wh_util:put_callid(?MODULE),
     teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML).
 
--spec handle(wh_json:object(), wh_proplist()) -> 'ok'.
-handle(JObj, _Props) ->
+-spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_req(JObj, _Props) ->
     'true' = wapi_notifications:skel_v(JObj),
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_api:remove_defaults(JObj),
-    Macros = build_template_data(DataJObj),
+    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
+    Macros = [{<<"service">>, ServiceData} | build_template_data(DataJObj)],
 
     %% Load templates
-    Templates = teletype_util:fetch_templates(?TEMPLATE_ID, wh_json:get_value(<<"Account-ID">>, DataJObj)),
+    Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
 
     %% Populate templates
-    _RenderedTemplates = [{ContentType, render(Template, Macros)} || {ContentType, Template} <- Templates],
+    RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
+                         || {ContentType, Template} <- Templates
+                        ],
+    lager:debug("rendered: ~p", [RenderedTemplates]),
 
-    lager:debug("rendered: ~p", [_RenderedTemplates]),
+    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"Account-ID">>, JObj)),
+
+    Subject = teletype_util:render_subject(
+                wh_json:find(<<"subject">>, [JObj, TemplateMetaJObj])
+                ,Macros
+               ),
+    lager:debug("subject: ~s", [Subject]),
 
     %% Send email
-    'ok'.
-
--spec render(binary(), wh_proplist()) -> iodata() | 'undefined'.
-render(Template, Macros) ->
-    case teletype_render_farm_sup:render(?TEMPLATE_ID, Template, Macros) of
-        {'ok', IOData} -> IOData;
-        {'error', _E} ->
-            lager:debug("failed to render template: ~p '~s'", [_E, Template]),
-            'undefined'
-    end.
+    teletype_util:send_email(?TEMPLATE_ID, DataJObj, ServiceData, Subject, RenderedTemplates).
 
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
@@ -80,16 +83,19 @@ build_template_data(DataJObj) ->
 -spec build_user_data(wh_json:object()) -> wh_proplist().
 -spec build_user_data(wh_json:object(), wh_json:object()) -> wh_proplist().
 build_user_data(DataJObj) ->
-    AccountId = wh_json:get_value(<<"Account-ID">>, DataJObj),
+    AccountId = wh_json:get_value(<<"account_id">>, DataJObj),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    UserId = wh_json:get_value(<<"User-ID">>, DataJObj),
+    UserId = wh_json:get_value(<<"user_id">>, DataJObj),
 
     case couch_mgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} ->
             build_user_data(DataJObj, UserJObj);
         {'error', _E} ->
             lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
-            throw({'error', 'no_user_data'})
+            [{<<"first_name">>, <<"First">>}
+             ,{<<"last_name">>, <<"Last">>}
+             ,{<<"email">>, <<"Email">>}
+            ]
     end.
 
 build_user_data(_DataJObj, UserJObj) ->
