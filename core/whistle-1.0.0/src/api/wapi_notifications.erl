@@ -64,7 +64,8 @@
 -include_lib("whistle/include/wh_api.hrl").
 
 %% supports preview mode
--define(DEFAULT_OPTIONAL_HEADERS, [<<"To">>, <<"From">>, <<"BCC">>
+-define(DEFAULT_OPTIONAL_HEADERS, [<<"To">>, <<"Cc">>, <<"Bcc">>
+                                   ,<<"From">>, <<"Reply-To">>
                                    ,<<"Subject">>, <<"HTML">>, <<"Text">>
                                    ,<<"Account-ID">>
                                   ]).
