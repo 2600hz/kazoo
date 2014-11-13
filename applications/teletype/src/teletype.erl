@@ -69,4 +69,6 @@ start_deps() ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
+    _ = wapi_notifications:declare_exchanges(),
+    _ = wapi_registration:declare_exchanges(),
     wapi_self:declare_exchanges().
