@@ -8,5 +8,7 @@
 
 -define(PVT_TYPE, <<"notification">>).
 
+-define(NOTIFY_CONFIG_CAT, <<"notify">>).
+
 -define(TELETYPE_HRL, 'true').
 -endif.
