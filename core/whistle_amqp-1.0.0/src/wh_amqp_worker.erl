@@ -241,7 +241,7 @@ cast(Req, PubFun) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
         W when is_pid(W) ->
             poolboy:checkin(Pool, W),
-            gen_listener:cast(W, {'publish', Prop, PubFun});
+            gen_listener:call(W, {'publish', Prop, PubFun});
         'full' ->
             lager:critical("failed to checkout worker: full"),
             {'error', 'pool_full'}
@@ -409,6 +409,32 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
             lager:debug("failed to send request: ~p", [Err]),
             {'reply', {'error', Err}, reset(State), 'hibernate'}
     end;
+handle_call({'publish', ReqProp, _}, _From, #state{queue='undefined'}=State) ->
+    lager:debug("unable to publish message prior to queue creation: ~p", [ReqProp]),
+    {'reply', {'error', 'not_ready'}, reset(State), 'hibernate'};
+handle_call({'publish', ReqProp, PublishFun}, _From, State) ->
+    Resp =
+        try PublishFun(ReqProp) of
+            'ok' -> 'ok';
+            Other ->
+                lager:debug("publisher fun returned ~p instead of 'ok'", [Other]),
+                {'error', Other}
+        catch
+            'error':'badarg' ->
+                ST = erlang:get_stacktrace(),
+                lager:debug("badarg error when publishing:"),
+                wh_util:log_stacktrace(ST),
+                {'error', 'badarg'};
+            'error':'function_clause' ->
+                ST = erlang:get_stacktrace(),
+                lager:debug("function clause error when publishing:"),
+                wh_util:log_stacktrace(ST),
+                {'error', 'function_clause'};
+            _E:R ->
+                lager:debug("failed to publish request: ~s:~p", [_E, R]),
+                {'error', R}
+        end,
+    {'reply', Resp, reset(State)};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State, 'hibernate'}.
 
@@ -497,26 +523,6 @@ handle_cast({'event', _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
     _ = wh_util:put_callid(JObj),
     lager:debug("received unexpected message with old/expired message id: ~s, waiting for ~s", [_MsgId, _CurrMsgId]),
     {'noreply', State};
-handle_cast({'publish', ReqProp, _}, #state{queue='undefined'}=State) ->
-    lager:debug("unable to publish message prior to queue creation: ~p", [ReqProp]),
-    {'noreply', reset(State), 'hibernate'};
-handle_cast({'publish', ReqProp, PublishFun}, State) ->
-    try PublishFun(ReqProp) of
-        'ok' -> 'ok';
-        _Other ->
-            lager:debug("publisher fun returned ~p instead of 'ok'", [_Other])
-    catch
-        'error':'badarg' ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("badarg error when publishing:"),
-            wh_util:log_stacktrace(ST);
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("function clause error when publishing:"),
-            wh_util:log_stacktrace(ST);
-        _E:_R -> lager:debug("failed to publish request: ~s:~p", [_E, _R])
-    end,
-    {'noreply', reset(State)};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
