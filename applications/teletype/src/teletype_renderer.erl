@@ -45,7 +45,7 @@ template_module(TemplateId) ->
 
 handle_call({'render', Template, TemplateData}, _From, TemplateModule) ->
     lager:debug("trying to compile template for ~p", [_From]),
-    try erlydtl:compile_template(Template, TemplateModule) of
+    try erlydtl:compile_template(Template, TemplateModule, [{'out_dir', 'false'}]) of
         {'ok', TemplateModule} ->
             Resp = render_template(TemplateModule, TemplateData),
             {'reply', Resp, TemplateModule};
