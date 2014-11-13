@@ -30,30 +30,45 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
     From = wh_json:find(<<"from">>, L),
     Bcc = wh_json:find([<<"bcc">>, <<"email_addresses">>], L),
 
-    Body = [{<<"multipart">>, <<"alternative">>
-             ,[] %% Headers
-             ,[] %% ContentTypeParams
-             ,add_rendered_templates_to_email(RenderedTemplates, ServiceData)
-            }
-            | add_attachments(Attachments)
-           ],
+    Body = {<<"multipart">>, <<"alternative">>
+            ,[] %% Headers
+            ,[] %% ContentTypeParams
+            ,add_rendered_templates_to_email(RenderedTemplates, ServiceData)
+            ++ add_attachments(Attachments)
+           },
 
-    Email = {<<"mutlipart">>, <<"mixed">>
-             ,[{<<"From">>, From}
-               ,{<<"To">>, To}
-               ,{<<"Bcc">>, Bcc}
-               ,{<<"Subject">>, Subject}
-               ,{<<"X-Call-ID">>, wh_json:get_value(<<"Call-ID">>, DataJObj)}
-              ]
+    lager:debug("body: ~p", [Body]),
+
+    Email = {<<"multipart">>
+             ,<<"mixed">>
+             ,props:filter_empty(
+                [{<<"From">>, From}
+                 ,{<<"To">>, To}
+                 ,{<<"Bcc">>, Bcc}
+                 ,{<<"Subject">>, Subject}
+                 ,{<<"X-Call-ID">>, wh_json:get_value(<<"Call-ID">>, DataJObj)}
+                ])
              ,service_content_type_params(ServiceData)
-             ,Body
+             ,[Body]
             },
     relay_email(To, From, Bcc, Email).
 
 -spec relay_email(ne_binaries(), ne_binary(), ne_binaries(), mimemail:mimetuple()) -> 'ok'.
-relay_email(To, From, _Bcc, Email) ->
-    Encoded = momemail:encode(Email),
+relay_email(To, From, Bcc, Email) ->
+    lager:debug("encoding ~p", [Email]),
 
+    try mimemail:encode(Email) of
+        Encoded -> relay_encoded_email(To, From, Bcc, Encoded)
+    catch
+        _E:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("failed to encode email: ~s: ~p", [_E, _R]),
+            wh_util:log_stacktrace(ST),
+            throw({'error', 'email_encoding_failed'})
+    end.
+
+-spec relay_encoded_email(ne_binaries(), ne_binary(), ne_binaries(), iolist()) -> 'ok'.
+relay_encoded_email(To, From, _Bcc, Encoded) ->
     Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
     Username = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"username">>, <<>>)),
     Password = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"password">>, <<>>)),
@@ -65,7 +80,7 @@ relay_email(To, From, _Bcc, Email) ->
 
     Self = self(),
 
-    gen_smtp_client:send({From, To, Encoded}
+    gen_smtp_client:send({From, tos_to_list(To), Encoded}
                          ,[{'relay', Relay}
                            ,{'username', Username}
                            ,{'password', Password}
@@ -80,11 +95,20 @@ relay_email(To, From, _Bcc, Email) ->
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
-        {'relay_response', {'ok', _Msg}} -> 'ok';
-        {'relay_response', {'error', _Type, Message}} -> {'error', Message};
-        {'relay_response', {'exit', Reason}} -> {'error', Reason}
-    after 10000 -> {'error', 'timeout'}
+        {'relay_response', {'ok', _Msg}} -> lager:debug("relayed message: ~p", [_Msg]);
+        {'relay_response', {'error', _Type, Message}} ->
+            lager:debug("error relyaing message: ~p: ~p", [_Type, Message]),
+            {'error', Message};
+        {'relay_response', {'exit', Reason}} ->
+            lager:debug("exit relaying message: ~p", [Reason]),
+            {'error', Reason}
+    after 10000 ->
+            lager:debug("timed out waiting for relay response"),
+            {'error', 'timeout'}
     end.
+
+tos_to_list(Tos) ->
+    [wh_util:to_list(To) || To <- Tos].
 
 
 -type mime_tuples() :: [mimemail:mimetuple(),...] | [].
@@ -98,20 +122,20 @@ add_attachments(Attachments) ->
     add_attachments(Attachments, []).
 add_attachments([], Acc) -> Acc;
 add_attachments([{ContentType, Filename, Content}|As], Acc) ->
-    [Type, SubType] = binary:split(ContentType, <<"@">>),
-    add_attachments(
-      As
-      ,[{Type
-         ,SubType
-         ,[{<<"Content-Disposition">>, <<"attachment; filename=\"", Filename/binary, "\"">>}
-           ,{<<"Content-Type">>, <<ContentType/binary, "; name=\"", Filename/binary, "\"">>}
-           ,{<<"Content-Tranfer-Encoding">>, <<"base64">>}
-          ]
-         ,[]
-         ,Content
-        }
-        | Acc
-       ]).
+    [Type, SubType] = binary:split(ContentType, <<"/">>),
+
+    Attachment = {Type
+                  ,SubType
+                  ,[{<<"Content-Disposition">>, <<"attachment; filename=\"", Filename/binary, "\"">>}
+                    ,{<<"Content-Type">>, <<ContentType/binary, "; name=\"", Filename/binary, "\"">>}
+                    ,{<<"Content-Tranfer-Encoding">>, <<"base64">>}
+                   ]
+                  ,[]
+                  ,Content
+                 },
+
+    lager:debug("adding attachment ~p", [Attachment]),
+    add_attachments(As, [Attachment | Acc]).
 
 -spec add_rendered_templates_to_email(wh_proplist(), wh_proplist()) -> mime_tuples().
 add_rendered_templates_to_email(RenderedTemplates, ServiceData) ->
@@ -120,21 +144,21 @@ add_rendered_templates_to_email(RenderedTemplates, ServiceData) ->
 -spec add_rendered_templates_to_email(wh_proplist(), binary(), mime_tuples()) -> mime_tuples().
 add_rendered_templates_to_email([], _Charset, Acc) -> Acc;
 add_rendered_templates_to_email([{ContentType, Content}|Rs], Charset, Acc) ->
-    [Type, SubType] = binary:split(ContentType, <<"@">>),
+    lager:debug("content type: ~s", [ContentType]),
+    [Type, SubType] = binary:split(ContentType, <<"/">>),
     CTEncoding = whapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, <<SubType/binary, "_content_transfer_encoding">>),
 
-    add_rendered_templates_to_email(
-      Rs, Charset
-      ,[{Type
-         ,SubType
-         ,props:filter_undefined(
-            [{<<"Content-Type">>, iolist_to_binary([ContentType, Charset])}
-             ,{<<"Content-Transfer-Encoding">>, CTEncoding}
-            ])
-         ,[]
-         ,Content
-        } | Acc
-       ]).
+    Template = {Type
+                ,SubType
+                ,props:filter_undefined(
+                   [{<<"Content-Type">>, iolist_to_binary([ContentType, Charset])}
+                    ,{<<"Content-Transfer-Encoding">>, CTEncoding}
+                   ])
+                ,[]
+                ,Content
+               },
+    lager:debug("adding template: ~p", [Template]),
+    add_rendered_templates_to_email(Rs, Charset, [Template | Acc]).
 
 -spec service_content_type_params(wh_proplist()) -> wh_proplist().
 service_content_type_params(ServiceData) ->
@@ -164,7 +188,7 @@ service_params(APIJObj, ConfigCat, AccountId) ->
 
     NotificationJObj = find_notification_settings(
                          binary:split(ConfigCat, <<".">>)
-                         ,kz_account:parent_account_Id(AccountJObj)
+                         ,kz_account:parent_account_id(AccountJObj)
                         ),
     [{<<"url">>, wh_json:get_value(<<"service_url">>, NotificationJObj, default_service_url(APIJObj, ConfigCat))}
      ,{<<"name">>, wh_json:get_value(<<"service_name">>, NotificationJObj, default_service_name(APIJObj, ConfigCat))}
