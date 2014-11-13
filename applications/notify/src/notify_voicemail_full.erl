@@ -88,8 +88,10 @@ send(JObj, Account) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(wh_json:object()) -> wh_proplist().
 create_template_props(JObj) ->
-    Admin = notify_util:find_admin(wh_json:get_value(<<"Account-DB">>, JObj)),
-    [{<<"send_from">>, get_send_from(Admin)}
+    AccountDb = wh_json:get_value(<<"Account-DB">>, JObj),
+    {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, wh_util:format_account_id(AccountDb, 'raw')),
+
+    [{<<"service">>, notify_util:get_service_props(JObj, AccountJObj, ?MOD_CONFIG_CAT)}
      ,{<<"voicemail">>, [{<<"name">>, get_vm_name(JObj)}
                          ,{<<"box">>, wh_json:get_value(<<"Voicemail-Box">>, JObj)}
                          ,{<<"number">>, wh_json:get_value(<<"Voicemail-Number">>, JObj)}
@@ -136,20 +138,6 @@ get_vm_doc(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_send_from(wh_json:object()) -> ne_binary().
-get_send_from(Admin) ->
-    DefaultFrom = wh_util:to_binary(node()),
-    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"send_from_admin_email">>, 'true') of
-        'false' -> DefaultFrom;
-        'true' -> wh_json:get_ne_value(<<"email">>, Admin, DefaultFrom)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
@@ -157,7 +145,10 @@ get_send_from(Admin) ->
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
-    From = props:get_value(<<"send_from">>, Props),
+    Service = props:get_value(<<"service">>, Props),
+
+    From = props:get_value(<<"send_from">>, Service),
+
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}
