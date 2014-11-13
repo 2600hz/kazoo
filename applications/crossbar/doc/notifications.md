@@ -234,3 +234,12 @@ curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://s
 ```
 curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/plain"  http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/text -d 'some plain text template code'
 ```
+
+#### _POST_ - Preview a new template
+
+It can be helpful to preview the resulting email when modifying templates, but before actually saving the template.
+
+    curl -H "Content-Type:application/json" -H "X-Auth-Token: {AUTH_TOKEN}" 'http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/preview' -d '{"data":{"to":{"email_addresses":["me@2600hz.com"]},"from":"kazoo@2600hz.com","subject":"Testing NOTIFICATION","html":"SSUyNTIwJTI1dTI2NjElMjUyMFVuaWNvZGUlMjUyMQ==","plain":"You just recieved an email! It was sent to {{user.email}}","enabled":true}}'
+
+* `html` is the base64 encoded HTML template
+* `plain` is the plain-text template
