@@ -197,7 +197,7 @@ validate(Context, Id) ->
     validate_notification(Context, db_id(Id), cb_context:req_verb(Context)).
 
 validate(Context, Id, ?PREVIEW) ->
-    update(Context, Id).
+    update(Context, db_id(Id)).
 
 -spec validate_notifications(cb_context:context(), http_method()) ->
                                     cb_context:context().
@@ -257,18 +257,20 @@ do_post(Context) ->
 post(Context, Id, ?PREVIEW) ->
     Notification = cb_context:doc(Context),
 
-    Preview = [{<<"To">>, wh_json:get_value(<<"to">>, Notification)}
-               ,{<<"From">>, wh_json:get_value(<<"from">>, Notification)}
-               ,{<<"BCC">>, wh_json:get_value(<<"bcc">>, Notification)}
-               ,{<<"Subject">>, wh_json:get_value(<<"subject">>, Notification)}
-               ,{<<"HTML">>, wh_json:get_value(<<"html">>, Notification)}
-               ,{<<"Text">>, wh_json:get_value(<<"text">>, Notification)}
-               ,{<<"Account-ID">>, cb_context:account_id(Context)}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
+    Preview =
+        props:filter_undefined(
+          [{<<"To">>, wh_json:get_value(<<"to">>, Notification)}
+           ,{<<"From">>, wh_json:get_value(<<"from">>, Notification)}
+           ,{<<"BCC">>, wh_json:get_value(<<"bcc">>, Notification)}
+           ,{<<"Subject">>, wh_json:get_value(<<"subject">>, Notification)}
+           ,{<<"HTML">>, wh_json:get_value(<<"html">>, Notification)}
+           ,{<<"Text">>, wh_json:get_value(<<"plain">>, Notification)}
+           ,{<<"Account-ID">>, cb_context:account_id(Context)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ]),
     API = lists:foldl(fun preview_fold/2, Preview, wapi_notifications:headers(Id)),
 
-    case wh_amqp_worker:cast(Preview, publish_fun(Id)) of
+    case wh_amqp_worker:cast(API, publish_fun(Id)) of
         'ok' ->
             lager:debug("sent API command to preview ~s: ~p", [Id, API]),
             crossbar_util:response_202(<<"Notification processing">>, Context);
