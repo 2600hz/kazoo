@@ -684,7 +684,7 @@ do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
 do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
     case ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)) of
         {'ok', JObj}=Ok ->
-            maybe_publish_doc(Db, wh_json:from_list([{<<"_id">>, DocId}]), JObj),
+            maybe_publish_doc(Db, wh_json:from_list([{<<"_id">>, DocId}]), maybe_add_pvt_type(Db, DocId, JObj)),
             Ok;
         Else -> Else
     end.
@@ -696,7 +696,7 @@ do_del_attachment(#db{}=Db, DocId, AName, Options) ->
     Doc = wh_util:to_binary(http_uri:encode(wh_util:to_list(DocId))),
     case ?RETRY_504(couchbeam:delete_attachment(Db, Doc, AName, Options)) of
         {'ok', JObj}=Ok ->
-            maybe_publish_doc(Db, wh_json:from_list([{<<"_id">>, DocId}]), JObj),
+            maybe_publish_doc(Db, wh_json:from_list([{<<"_id">>, DocId}]), maybe_add_pvt_type(Db, DocId, JObj)),
             Ok;
         Else -> Else
     end.
@@ -727,6 +727,27 @@ maybe_add_rev(Db, DocId, Options) ->
     of
         ?NE_BINARY = Rev -> [{'rev', Rev} | Options];
         _Else -> Options
+    end.
+
+%%------------------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_add_pvt_type(couchbeam_db(), ne_binary(), wh_json:object()) -> wh_json:object().
+maybe_add_pvt_type(Db, DocId, JObj) ->
+    case wh_json:get_value(<<"pvt_type">>, JObj) =:= 'undefined'
+        andalso couchbeam:open_doc(Db, DocId)
+    of
+        {'error', R} ->
+            lager:error("failed to open doc ~p in ~p : ~p", [DocId, Db, R]),
+            JObj;
+        {'ok', Doc} ->
+            PvtType = wh_json:get_value(<<"pvt_type">>, Doc),
+            wh_json:set_value(<<"pvt_type">>, PvtType, JObj);
+        _Else ->
+            JObj
     end.
 
 %%------------------------------------------------------------------------------
