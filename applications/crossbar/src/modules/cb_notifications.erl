@@ -266,6 +266,7 @@ post(Context, Id, ?PREVIEW) ->
            ,{<<"HTML">>, wh_json:get_value(<<"html">>, Notification)}
            ,{<<"Text">>, wh_json:get_value(<<"plain">>, Notification)}
            ,{<<"Account-ID">>, cb_context:account_id(Context)}
+           ,{<<"Msg-ID">>, cb_context:req_id(Context)}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ]),
     API = lists:foldl(fun preview_fold/2, Preview, wapi_notifications:headers(Id)),
