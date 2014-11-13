@@ -1,21 +1,13 @@
 PROJECT = gen_smtp
 ROOT = ../..
-REBAR = $(ROOT)/utils/rebar/rebar
-DIALYZER = dialyzer
 
-EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(ROOT)/deps -maxdepth 2 -name ebin -print)
-PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
-
-ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/core -I$(ROOT)/deps $(PA)
-     # +bin_opt_info
-
-DIRS =  .
+ERLC_OPTS = -Werror +debug_info +warn_export_all +warn_unused_vars +warn_unused_import +warn_exported_vars
 
 .PHONY: all compile clean
 
 all: compile
 
-MODULES = $(shell ls src/*.erl | sed 's/src\///;s/\.erl/,/' | sed '$$s/.$$//')
+MODULES = $(shell ls src/*.[e,y]rl | sed 's/src\///;s/\.[e,y]rl/,/' | sed '$$s/.$$//')
 
 compile: ebin/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -23,7 +15,11 @@ compile: ebin/$(PROJECT).app
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-ebin/$(PROJECT).app: src/*.erl
+ebin/$(PROJECT).app: src/*.yrl
+	erlc -v $(ERLC_OPTS) -o src/ -pa ebin/ $?
+	-@$(MAKE) ebin/beam
+
+ebin/beam: src/*.erl
 	@mkdir -p ebin/
 	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
@@ -33,9 +29,9 @@ compile-test: test/$(PROJECT).app
 		> test/$(PROJECT).app
 	-@$(MAKE) test/$(PROJECT).app
 
-test/$(PROJECT).app: src/*.erl
+test/$(PROJECT).app: src/*.yrl
 	@mkdir -p test/
-	erlc -v $(ERLC_OPTS)  -o test/ -pa test/  $?
+	erlc -v $(ERLC_OPTS) -o src/ -pa test/ $?
 
 clean:
 	rm -f ebin/*
@@ -46,8 +42,3 @@ test: clean compile-test eunit
 
 eunit: compile-test
 	erl -noshell -pa test -eval "eunit:test([$(MODULES)], [verbose])" -s init stop
-
-dialyze:
-	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
-		--plt $(ROOT)/.platform_dialyzer.plt --no_native \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
