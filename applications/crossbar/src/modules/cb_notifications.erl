@@ -261,7 +261,9 @@ post(Context, Id, ?PREVIEW) ->
         props:filter_undefined(
           [{<<"To">>, wh_json:get_value(<<"to">>, Notification)}
            ,{<<"From">>, wh_json:get_value(<<"from">>, Notification)}
-           ,{<<"BCC">>, wh_json:get_value(<<"bcc">>, Notification)}
+           ,{<<"Cc">>, wh_json:get_value(<<"cc">>, Notification)}
+           ,{<<"Bcc">>, wh_json:get_value(<<"bcc">>, Notification)}
+           ,{<<"Reply-To">>, wh_json:get_value(<<"reply_to">>, Notification)}
            ,{<<"Subject">>, wh_json:get_value(<<"subject">>, Notification)}
            ,{<<"HTML">>, wh_json:get_value(<<"html">>, Notification)}
            ,{<<"Text">>, wh_json:get_value(<<"plain">>, Notification)}
