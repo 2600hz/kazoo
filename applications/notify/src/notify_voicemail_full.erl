@@ -88,7 +88,7 @@ send(JObj, Account) ->
 %%--------------------------------------------------------------------
 -spec create_template_props(wh_json:object()) -> wh_proplist().
 create_template_props(JObj) ->
-    Admin = notify_util:find_admin(wh_json:get_value(<<"Authorized-By">>, JObj)),
+    Admin = notify_util:find_admin(wh_json:get_value(<<"Account-DB">>, JObj)),
     [{<<"send_from">>, get_send_from(Admin)}
      ,{<<"voicemail">>, [{<<"name">>, get_vm_name(JObj)}
                          ,{<<"box">>, wh_json:get_value(<<"Voicemail-Box">>, JObj)}
