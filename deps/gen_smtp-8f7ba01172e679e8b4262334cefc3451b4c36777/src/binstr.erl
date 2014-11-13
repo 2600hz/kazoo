@@ -47,27 +47,12 @@
 
 -spec strchr(Bin :: binary(), C :: char()) -> non_neg_integer().
 strchr(Bin, C) when is_binary(Bin) ->
-	% try to use the R14B binary module
-	try binary:match(Bin, <<C>>) of
-		{Index, _Length} ->
-			Index + 1;
-		nomatch ->
-			0
-	catch
-		_:_ ->
-			strchr(Bin, C, 0)
-	end.
-
-strchr(Bin, C, I) ->
-	case Bin of
-		<<_X:I/binary>> ->
-			0;
-		<<_X:I/binary, C, _Rest/binary>> ->
-			I+1;
-		_ ->
-			strchr(Bin, C, I+1)
-	end.
-
+    case binary:match(Bin, <<C>>) of
+        {Index, _Length} ->
+            Index + 1;
+        nomatch ->
+            0
+    end.
 
 -spec strrchr(Bin :: binary(), C :: char()) -> non_neg_integer().
 strrchr(Bin, C) ->
@@ -88,28 +73,12 @@ strrchr(Bin, C, I) ->
 strpos(Bin, C) when is_binary(Bin), is_list(C) ->
 	strpos(Bin, list_to_binary(C));
 strpos(Bin, C) when is_binary(Bin) ->
-	% try to use the R14B binary module
-	try binary:match(Bin, C) of
+    case  binary:match(Bin, C) of
 			{Index, _Length} ->
 				Index+1;
 			nomatch ->
 				0
-	catch
-		_:_ ->
-			strpos(Bin, C, 0, byte_size(C))
-	end.
-
-
-strpos(Bin, C, I, S) ->
-	case Bin of
-		<<_X:I/binary>> ->
-			0;
-		<<_X:I/binary, C:S/binary, _Rest/binary>> ->
-			I+1;
-		_ ->
-			strpos(Bin, C, I+1, S)
-	end.
-
+    end.
 
 -spec strrpos(Bin :: binary(), C :: binary() | list()) -> non_neg_integer().
 strrpos(Bin, C) ->
@@ -177,8 +146,7 @@ split_(Bin, Separator, SplitCount, Acc) ->
 
 -spec split(Bin :: binary(), Separator :: binary()) -> [binary()].
 split(Bin, Separator) ->
-	% try to use the R14B binary module
-	try binary:split(Bin, Separator, [global]) of
+	case binary:split(Bin, Separator, [global]) of
 		Result ->
 			case lists:last(Result) of
 				<<>> ->
@@ -186,56 +154,19 @@ split(Bin, Separator) ->
 				_ ->
 					Result
 			end
-	catch
-		_:_ ->
-			split_(Bin, Separator, [])
-	end.
-
-split_(<<>>, _Separator, Acc) ->
-	lists:reverse(Acc);
-split_(Bin, <<>>, Acc) ->
-	split_(substr(Bin, 2), <<>>, [substr(Bin, 1, 1) | Acc]);
-split_(Bin, Separator, Acc) ->
-	case strpos(Bin, Separator) of
-		0 ->
-			lists:reverse([Bin | Acc]);
-		Index ->
-			split_(substr(Bin, Index + byte_size(Separator)), Separator, [substr(Bin, 1, Index - 1) | Acc])
-	end.
-
+    end.
 
 -spec chomp(Bin :: binary()) -> binary().
 chomp(Bin) ->
 	L = byte_size(Bin),
-	try [binary:at(Bin, L-2), binary:at(Bin, L-1)] of
+	case [binary:at(Bin, L-2), binary:at(Bin, L-1)] of
 		"\r\n" ->
 			binary:part(Bin, 0, L-2);
 		[_, X] when X == $\r; X == $\n ->
 			binary:part(Bin, 0, L-1);
 		_ ->
 			Bin
-	catch
-		_:_ ->
-			io:format("fallback, yay~n"),
-			L2 = L - 1,
-			case strrpos(Bin, <<"\r\n">>) of
-				L2 ->
-					substr(Bin, 1,  L2 - 1);
-				_ ->
-					case strrchr(Bin, $\n) of
-						L ->
-							substr(Bin, 1, L - 1);
-						_ ->
-							case strrchr(Bin, $\r) of
-								L ->
-									substr(Bin, 1, L - 1);
-								_ ->
-									Bin
-							end
-					end
-			end
-	end.
-
+    end.
 
 -spec strip(Bin :: binary()) -> binary().
 strip(Bin) ->
@@ -256,20 +187,12 @@ strip(Bin, left, _C) ->
 	Bin;
 strip(Bin, right, C) ->
 	L = byte_size(Bin),
-	try binary:at(Bin, L-1) of
+	case binary:at(Bin, L-1) of
 		C ->
 			strip(binary:part(Bin, 0, L-1), right, C);
 		_ ->
 			Bin
-	catch
-		_:_ ->
-			case strrchr(Bin, C) of
-				L ->
-					strip(substr(Bin, 1, L - 1), right, C);
-				_ ->
-					Bin
-			end
-	end.
+    end.
 
 -spec to_lower(Bin :: binary()) -> binary().
 to_lower(Bin) ->
@@ -326,4 +249,6 @@ join(Binaries, Glue) ->
 join([H], _Glue, Acc) ->
 	list_to_binary(lists:reverse([H | Acc]));
 join([H|T], Glue, Acc) ->
-	join(T, Glue, [Glue, H | Acc]).
+	join(T, Glue, [Glue, H | Acc]);
+join([], _Glue, _Acc) ->
+	<<"">>.

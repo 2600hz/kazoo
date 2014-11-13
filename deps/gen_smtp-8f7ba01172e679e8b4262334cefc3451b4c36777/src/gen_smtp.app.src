@@ -3,7 +3,7 @@
 {application, gen_smtp,
  [
   {description, "An erlang SMTP server/client framework"},
-  {vsn, "0.1"},
+  {vsn, "0.9.0"},
   {modules,
    [
     binstr,
@@ -16,7 +16,14 @@
     smtp_server_example
    ]
   },
-  {applications, [kernel, stdlib]},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  crypto,
+                  asn1,
+                  public_key,
+                  ssl
+                 ]},
   {registered, []}
  ]
 }.

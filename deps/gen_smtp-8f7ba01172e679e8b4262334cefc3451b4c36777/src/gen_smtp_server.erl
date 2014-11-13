@@ -28,8 +28,6 @@
 
 -define(PORT, 2525).
 
--compile([{'parse_transform', 'lager_transform'}]).
-
 %% External API
 -export([start_link/3, start_link/2, start_link/1,
     start/3, start/2, start/1,
@@ -122,40 +120,43 @@ sessions(Pid) ->
 %% @see gen_smtp_server_session
 -spec(init/1 :: (Args :: list()) -> {'ok', #state{}} | {'stop', any()}).
 init([Module, Configurations]) ->
+	process_flag(trap_exit, true),
 	DefaultConfig = [{domain, smtp_util:guess_FQDN()}, {address, {0,0,0,0}},
 		{port, ?PORT}, {protocol, tcp}, {family, inet}],
-	try
-		case Configurations of
-			[FirstConfig|_] when is_list(FirstConfig) -> ok;
-			_ -> exit({init,"Please start gen_smtp_server with an options argument formatted as a list of proplists"})
-		end,
-		Listeners = [
-			begin
-					NewConfig = lists:ukeymerge(1, lists:sort(Config), lists:sort(DefaultConfig)),
-					Port = proplists:get_value(port, NewConfig),
-					IP = proplists:get_value(address, NewConfig),
-					Family = proplists:get_value(family, NewConfig),
-					Hostname = proplists:get_value(domain, NewConfig),
-					Protocol = proplists:get_value(protocol, NewConfig),
-					SessionOptions = proplists:get_value(sessionoptions, NewConfig, []),
-					error_logger:info_msg("~p starting at ~p~n", [?MODULE, node()]),
-					error_logger:info_msg("~p listening on ~p:~p via ~p~n", [?MODULE, IP, Port, Protocol]),
-					process_flag(trap_exit, true),
-					ListenOptions = [binary, {ip, IP}, Family],
-					case socket:listen(Protocol, Port, ListenOptions) of
-						{ok, ListenSocket} -> %%Create first accepting process
-							socket:begin_inet_async(ListenSocket),
-							#listener{port = socket:extract_port_from_socket(ListenSocket),
-								hostname = Hostname, sessionoptions = SessionOptions,
-								socket = ListenSocket, listenoptions = ListenOptions};
-						{error, Reason} ->
-							exit({init, Reason})
-					end
-			end || Config <- Configurations],
-		{ok, #state{listeners = Listeners, module = Module}}
-	catch exit:Why ->
-		{stop, Why}
-  end.
+    case Configurations of
+        [FirstConfig|_] when is_list(FirstConfig) ->
+            error_logger:info_msg("~p starting at ~p~n", [?MODULE, node()]),
+            Listeners = [extract_listener(Config, DefaultConfig) || Config <- Configurations],
+            case lists:dropwhile(fun(R) -> element(1, R) =/= error end, Listeners) of
+                [] ->
+                    {ok, #state{listeners = Listeners, module = Module}};
+                _Else ->
+                    {stop, {init, hd(Listeners)}}
+            end;
+        _ ->
+            {stop, {init, "Please start gen_smtp_server with an options argument formatted as a list of proplists"}}
+    end.
+
+extract_listener(Config, DefaultConfig) ->
+    NewConfig = lists:ukeymerge(1, lists:sort(Config), lists:sort(DefaultConfig)),
+    Port = proplists:get_value(port, NewConfig),
+    IP = proplists:get_value(address, NewConfig),
+    Family = proplists:get_value(family, NewConfig),
+    Hostname = proplists:get_value(domain, NewConfig),
+    Protocol = proplists:get_value(protocol, NewConfig),
+    SessionOptions = proplists:get_value(sessionoptions, NewConfig, []),
+    ListenOptions = [binary, {ip, IP}, Family],
+    case socket:listen(Protocol, Port, ListenOptions) of
+        {ok, ListenSocket} -> %%Create first accepting process
+            error_logger:info_msg("~p listening on ~p:~p via ~p~n", [?MODULE, IP, Port, Protocol]),
+            socket:begin_inet_async(ListenSocket),
+            #listener{port = socket:extract_port_from_socket(ListenSocket),
+                      hostname = Hostname, sessionoptions = SessionOptions,
+                      socket = ListenSocket, listenoptions = ListenOptions};
+        {error, Reason} = Error ->
+            error_logger:error_msg("~p could not listen on ~p:~p via ~p. Error: ~p~n", [?MODULE, IP, Port, Protocol, Reason]),
+            Error
+    end.
 
 %% @hidden
 -spec handle_call(Message :: any(), From :: {pid(), reference()}, State :: #state{}) -> {'stop', 'normal', 'ok', #state{}} | {'reply', any(), #state{}}.
@@ -185,25 +186,13 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 				end || L <- Listeners]),
 		{ok, ClientSocket} = socket:handle_inet_async(Listener#listener.socket, ClientAcceptSocket, Listener#listener.listenoptions),
 		%% New client connected
-		Sessions = case gen_smtp_server_session:start(ClientSocket, Module, [{hostname, Listener#listener.hostname}, {sessioncount, length(CurSessions) } | Listener#listener.sessionoptions]) of
+		% io:format("new client connection.~n", []),
+		Sessions = case gen_smtp_server_session:start(ClientSocket, Module, [{hostname, Listener#listener.hostname}, {sessioncount, length(CurSessions) + 1} | Listener#listener.sessionoptions]) of
 			{ok, Pid} ->
 				link(Pid),
-				case socket:controlling_process(ClientSocket, Pid) of
-                    'ok' ->
-                        lager:debug("new smtp session on ~s : current sessions ~p", [Module , length(CurSessions) + 1]),
-                        CurSessions ++[Pid];
-                    {'error', closed} ->
-                        Pid ! {tcp_closed, ClientSocket},
-                        CurSessions;
-                    {'error', E} ->
-                        lager:debug("error [~p] setting controlling process ~s : ~p", [E, Module, Pid]),
-                        Pid ! {tcp_closed, ClientSocket},
-                        CurSessions
-                end;				
-            ignore ->
-                CurSessions;                       
+				socket:controlling_process(ClientSocket, Pid),
+				CurSessions ++[Pid];
 			_Other ->
-                lager:debug("Session Start Error ~p",[_Other]),
 				CurSessions
 		end,
 		{noreply, State#state{sessions = Sessions}}
@@ -211,34 +200,28 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 		error_logger:error_msg("Error in socket acceptor: ~p.~n", [Error]),
 		{noreply, State}
 	end;
-handle_info({'EXIT', From, _Reason}, #state{module = Module, sessions = CurSessions} = State) ->
+handle_info({'EXIT', From, Reason}, State) ->
 	case lists:member(From, State#state.sessions) of
 		true ->
-            lager:debug("smtp session closed on module ~s. current sessions ~p",[Module, length(CurSessions) - 1]),
 			{noreply, State#state{sessions = lists:delete(From, State#state.sessions)}};
 		false ->
+			io:format("process ~p exited with reason ~p~n", [From, Reason]),
 			{noreply, State}
 	end;
 handle_info({inet_async, ListenSocket, _, {error, econnaborted}}, State) ->
-	lager:debug("Client terminated connection with econnaborted~n"),
+	io:format("Client terminated connection with econnaborted~n"),
 	socket:begin_inet_async(ListenSocket),
 	{noreply, State};
 handle_info({inet_async, _ListenSocket,_, Error}, State) ->
 	error_logger:error_msg("Error in socket acceptor: ~p.~n", [Error]),
 	{stop, Error, State};
-
-handle_info({tcp_closed, _Socket}, #state{module = Module, sessions = CurSessions} = State) ->
-    lager:debug("tcp_closed ~p on smtp_server module ~s. sessions = ~p",[_Socket, Module, length(CurSessions)]),
-    {noreply, State};
-    
-handle_info(_Info, #state{module = Module, sessions = CurSessions} = State) ->
-    lager:debug("unhandled info ~p on smtp_server module ~s. sessions = ~p",[_Info, Module, length(CurSessions) ]),
+handle_info(_Info, State) ->
 	{noreply, State}.
 
 %% @hidden
 -spec terminate(Reason :: any(), State :: #state{}) -> 'ok'.
 terminate(Reason, State) ->
-	lager:debug("Terminating due to ~p~n", [Reason]),
+	io:format("Terminating due to ~p~n", [Reason]),
 	lists:foreach(fun(#listener{socket=S}) -> catch socket:close(S) end, State#state.listeners),
 	ok.
 

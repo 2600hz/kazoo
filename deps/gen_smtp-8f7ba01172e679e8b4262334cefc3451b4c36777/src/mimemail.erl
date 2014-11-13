@@ -45,7 +45,7 @@
 %% For a simple email, the body will usually be a binary consisting of the message body, In the
 %% case of a multipart email, its a list of these 5-tuple MIME structures. The third possibility,
 %% in the case of a message/rfc822 attachment, body can be a single 5-tuple MIME structure.
-%% 
+%%
 %% You should see the relevant RFCs (2045, 2046, 2047, etc.) for more information.
 -module(mimemail).
 
@@ -53,7 +53,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([encode/1, decode/2, decode/1, get_header_value/2, get_header_value/3, parse_headers/1]).
+-export([encode/1, encode/2, decode/2, decode/1, get_header_value/2, get_header_value/3, parse_headers/1]).
 
 -define(DEFAULT_OPTIONS, [
 		{encoding, get_default_encoding()}, % default encoding is utf-8 if we can find the iconv module
@@ -61,6 +61,8 @@
 	]).
 
 -type(mimetuple() :: {binary(), binary(), [{binary(), binary()}], [{binary(), binary()}], binary() | [{binary(), binary(), [{binary(), binary()}], [{binary(), binary()}], binary() | [tuple()]}] | tuple()}).
+
+-export_type([mimetuple/0]).
 
 -type(options() :: [{'encoding', binary()} | {'decode_attachment', boolean()}]).
 
@@ -79,13 +81,6 @@ decode(All, Options) when is_binary(All), is_list(Options) ->
 decode(OrigHeaders, Body, Options) ->
 	%io:format("headers: ~p~n", [Headers]),
 	Encoding = proplists:get_value(encoding, Options, none),
-	case whereis(iconv) of
-		undefined when Encoding =/= none ->
-			{ok, _Pid} = iconv:start();
-		_ ->
-			ok
-	end,
-
 	%FixedHeaders = fix_headers(Headers),
 	Headers = decode_headers(OrigHeaders, [], Encoding),
 	case parse_with_comments(get_header_value(<<"MIME-Version">>, Headers)) of
@@ -106,19 +101,25 @@ decode(OrigHeaders, Body, Options) ->
 	end.
 
 -spec(encode/1 :: (MimeMail :: mimetuple()) -> binary()).
+encode(MimeMail) ->
+	encode(MimeMail, []).
+
 %% @doc Encode a MIME tuple to a binary.
-encode({Type, Subtype, Headers, ContentTypeParams, Parts}) ->
+encode({Type, Subtype, Headers, ContentTypeParams, Parts}, Options) ->
 	{FixedParams, FixedHeaders} = ensure_content_headers(Type, Subtype, ContentTypeParams, Headers, Parts, true),
-	FixedHeaders2 = check_headers(FixedHeaders),
-	list_to_binary([binstr:join(
-				encode_headers(
-					FixedHeaders2
-					),
-				"\r\n"),
-			"\r\n\r\n",
-		binstr:join(encode_component(Type, Subtype, FixedHeaders2, FixedParams, Parts),
-			"\r\n")]);
-encode(_) ->
+	CheckedHeaders = check_headers(FixedHeaders),
+	EncodedBody = binstr:join(
+					encode_component(Type, Subtype, CheckedHeaders, FixedParams, Parts),
+					"\r\n"),
+	EncodedHeaders = encode_headers(CheckedHeaders),
+	SignedHeaders = case proplists:get_value(dkim, Options) of
+						undefined -> EncodedHeaders;
+						DKIM -> dkim_sign_email(EncodedHeaders, EncodedBody, DKIM)
+					end,
+	list_to_binary([binstr:join(SignedHeaders, "\r\n"),
+					"\r\n\r\n",
+					EncodedBody]);
+encode(_, _) ->
 	io:format("Not a mime-decoded DATA~n"),
 	erlang:error(non_mime).
 
@@ -131,29 +132,51 @@ decode_headers([{Key, Value} | Headers], Acc, Charset) ->
 	decode_headers(Headers, [{Key, decode_header(Value, Charset)} | Acc], Charset).
 
 decode_header(Value, Charset) ->
+	RTokens = tokenize_header(Value, []),
+	Tokens = lists:reverse(RTokens),
+	Decoded = try decode_header_tokens_strict(Tokens, Charset)
+			  catch Type:Reason ->
+					  case decode_header_tokens_permissive(Tokens, Charset, []) of
+						  {ok, Dec} -> Dec;
+						  error ->
+							  % re-throw original error
+							  % may also use erlang:raise/3 to preserve original traceback
+							  erlang:Type(Reason)
+					  end
+			  end,
+	iolist_to_binary(Decoded).
+
+-type hdr_token() :: binary() | {Encoding::binary(), Data::binary()}.
+-spec tokenize_header(binary(), [hdr_token()]) -> [hdr_token()].
+tokenize_header(<<>>, Acc) ->
+    Acc;
+tokenize_header(Value, Acc) ->
+	%% maybe replace "?([^\s]+)\\?" with "?([^\s]*)\\?"?
+	%% see msg lvuvmm593b8s7pqqfhu7cdtqd4g4najh
+	%% Subject: =?utf-8?Q??=
+	%%	=?utf-8?Q?=D0=9F=D0=BE=D0=B4=D1=82=D0=B2=D0=B5=D1=80=D0=B4=D0=B8=D1=82=D0=B5=20?=
+	%%	=?utf-8?Q?=D1=80=D0=B5=D0=B3=D0=B8=D1=81=D1=82=D1=80=D0=B0=D1=86=D0=B8=D1=8E=20?=
+	%%	=?utf-8?Q?=D0=B2=20Moy-Rebenok.ru?=
+
 	case re:run(Value, "=\\?([-A-Za-z0-9_]+)\\?([qQbB])\\?([^\s]+)\\?=", [ungreedy]) of
 		nomatch ->
-			Value;
+			[Value | Acc];
 		{match,[{AllStart, AllLen},{EncodingStart, EncodingLen},{TypeStart, _},{DataStart, DataLen}]} ->
+			%% RFC 2047 #2 (encoded-word)
 			Encoding = binstr:substr(Value, EncodingStart+1, EncodingLen),
 			Type = binstr:to_lower(binstr:substr(Value, TypeStart+1, 1)),
 			Data = binstr:substr(Value, DataStart+1, DataLen),
 
-			CD = case iconv:open(Charset, fix_encoding(Encoding)) of
-				{ok, Res} -> Res;
-				{error, einval} -> throw({bad_charset, fix_encoding(Encoding)})
-			end,
+			EncodedData =
+				case Type of
+					<<"q">> ->
+						%% RFC 2047 #5. (3)
+						decode_quoted_printable(re:replace(Data, "_", " ", [{return, binary}, global]));
+					<<"b">> ->
+						decode_base64(re:replace(Data, "_", " ", [{return, binary}, global]))
+				end,
 
-			DecodedData = case Type of
-				<<"q">> ->
-					{ok, S} = iconv:conv(CD, decode_quoted_printable(re:replace(Data, "_", " ", [{return, binary}, global]))),
-					S;
-				<<"b">> ->
-					{ok, S} = iconv:conv(CD, decode_base64(re:replace(Data, "_", " ", [{return, binary}, global]))),
-					S
-			end,
-
-			iconv:close(CD),
+			%% iconv:close(CD),
 
 
 			Offset = case re:run(binstr:substr(Value, AllStart + AllLen + 1), "^([\s\t\n\r]+)=\\?[-A-Za-z0-9_]+\\?[^\s]\\?[^\s]+\\?=", [ungreedy]) of
@@ -164,10 +187,58 @@ decode_header(Value, Charset) ->
 					1+ WhiteSpaceLen
 			end,
 
-
-			NewValue = list_to_binary([binstr:substr(Value, 1, AllStart), DecodedData, binstr:substr(Value, AllStart + AllLen + Offset)]),
-			decode_header(NewValue, Charset)
+			NewAcc = case binstr:substr(Value, 1, AllStart) of
+						 <<>> -> [{fix_encoding(Encoding), EncodedData} | Acc];
+						 Other -> [{fix_encoding(Encoding), EncodedData}, Other | Acc]
+					 end,
+			tokenize_header(binstr:substr(Value, AllStart + AllLen + Offset), NewAcc)
 	end.
+
+
+decode_header_tokens_strict([], _) ->
+	[];
+decode_header_tokens_strict([{Encoding, Data} | Tokens], Charset) ->
+	{ok, S} = convert(Charset, Encoding, Data),
+	[S | decode_header_tokens_strict(Tokens, Charset)];
+decode_header_tokens_strict([Data | Tokens], Charset) ->
+	[Data | decode_header_tokens_strict(Tokens, Charset)].
+
+%% this decoder can handle folded not-by-RFC UTF headers, when somebody split
+%% multibyte string not by characters, but by bytes. It first join folded
+%% string and only then decode it with iconv.
+decode_header_tokens_permissive([], _, [Result]) when is_binary(Result) ->
+	{ok, Result};
+decode_header_tokens_permissive([], _, Stack) ->
+	case lists:all(fun erlang:is_binary/1, Stack) of
+		true -> {ok, lists:reverse(Stack)};
+		false  -> error
+	end;
+decode_header_tokens_permissive([{Enc, Data} | Tokens], Charset, [{Enc, PrevData} | Stack]) ->
+	NewData = iolist_to_binary([PrevData, Data]),
+	case convert(Charset, Enc, NewData) of
+		{ok, S} ->
+			decode_header_tokens_permissive(Tokens, Charset, [S | Stack]);
+		_ ->
+			decode_header_tokens_permissive(Tokens, Charset, [{Enc, NewData} | Stack])
+	end;
+decode_header_tokens_permissive([NextToken | _] = Tokens, Charset, [{_, _} | Stack])
+  when is_binary(NextToken) orelse is_tuple(NextToken) ->
+	%% practicaly very rare case "=?utf-8?Q?BROKEN?=\r\n\t=?windows-1251?Q?maybe-broken?="
+	%% or "=?utf-8?Q?BROKEN?= raw-ascii-string"
+	%% drop broken value from stack
+	decode_header_tokens_permissive(Tokens, Charset, Stack);
+decode_header_tokens_permissive([Data | Tokens], Charset, Stack) ->
+	decode_header_tokens_permissive(Tokens, Charset, [Data | Stack]).
+
+
+convert(To, From, Data) ->
+	CD = case iconv:open(To, From) of
+			 {ok, Res} -> Res;
+			 {error, einval} -> throw({bad_charset, From})
+		 end,
+	Converted = iconv:conv(CD, Data),
+	iconv:close(CD),
+	Converted.
 
 
 decode_component(Headers, Body, MimeVsn, Options) when MimeVsn =:= <<"1.0">> ->
@@ -313,21 +384,23 @@ split_body_by_boundary(Body, Boundary, MimeVsn, Options) ->
 		[Start, End] ->
 			NewBody = binstr:substr(Body, Start + byte_size(Boundary), End - Start),
 			% from now on, we can be sure that each boundary is preceeded by a CRLF
-			Parts = split_body_by_boundary_(NewBody, list_to_binary(["\r\n", Boundary]), []),
+			Parts = split_body_by_boundary_(NewBody, list_to_binary(["\r\n", Boundary]), [], Options),
 			[decode_component(Headers, Body2, MimeVsn, Options) || {Headers, Body2} <- [V || {_, Body3} = V <- Parts, byte_size(Body3) =/= 0]]
 		end.
 
-split_body_by_boundary_(<<>>, _Boundary, Acc) ->
+split_body_by_boundary_(<<>>, _Boundary, Acc, _Options) ->
 	lists:reverse(Acc);
-split_body_by_boundary_(Body, Boundary, Acc) ->
+split_body_by_boundary_(Body, Boundary, Acc, Options) ->
 	% trim the incomplete first line
 	TrimmedBody = binstr:substr(Body, binstr:strpos(Body, "\r\n") + 2),
 	case binstr:strpos(TrimmedBody, Boundary) of
 		0 ->
 			lists:reverse([{[], TrimmedBody} | Acc]);
 		Index ->
+			{ParsedHdrs, BodyRest} = parse_headers(binstr:substr(TrimmedBody, 1, Index - 1)),
+			DecodedHdrs = decode_headers(ParsedHdrs, [], proplists:get_value(encoding, Options, none)),
 			split_body_by_boundary_(binstr:substr(TrimmedBody, Index + byte_size(Boundary)), Boundary,
-				[parse_headers(binstr:substr(TrimmedBody, 1, Index - 1)) | Acc])
+									[{DecodedHdrs, BodyRest} | Acc], Options)
 	end.
 
 -spec(parse_headers/1 :: (Body :: binary()) -> {[{binary(), binary()}], binary()}).
@@ -402,16 +475,12 @@ decode_body(Type, Body, undefined, _OutEncoding) ->
 	decode_body(Type, << <<X/integer>> || <<X>> <= Body, X < 128 >>);
 decode_body(Type, Body, InEncoding, OutEncoding) ->
 	NewBody = decode_body(Type, Body),
-	CD = case iconv:open(OutEncoding, fix_encoding(InEncoding)) of
+	InEncodingFixed = fix_encoding(InEncoding),
+	CD = case iconv:open(OutEncoding, InEncodingFixed) of
 		{ok, Res} -> Res;
-		{error, einval} -> throw({bad_charset, fix_encoding(InEncoding)})
+		{error, einval} -> throw({bad_charset, InEncodingFixed})
 	end,
-	{ok, Result} = try iconv:conv_chunked(CD, NewBody) of
-		{ok, _} = Res2 -> Res2
-	catch
-		_:_ ->
-			iconv:conv(CD, NewBody)
-	end,
+	{ok, Result} = iconv:conv(CD, NewBody),
 	iconv:close(CD),
 	Result.
 
@@ -662,31 +731,35 @@ escape_tspecial(<<C, Rest/binary>>, _IsSpecial, Acc)
 escape_tspecial(<<C, Rest/binary>>, IsSpecial, Acc) ->
 	escape_tspecial(Rest, IsSpecial, <<Acc/binary, C>>).
 
-encode_headers(Headers) ->
-	encode_headers(Headers, []).
+encode_headers([]) ->
+	[];
+encode_headers([{Key, Value}|T] = _Headers) ->
+    EncodedHeader = encode_folded_header(list_to_binary([Key,": ",encode_header_value(Key, Value)]), <<>>),
+	[EncodedHeader | encode_headers(T)].
 
-encode_headers([], EncodedHeaders) ->
-	EncodedHeaders;
-encode_headers([{Key, Value}|T] = _Headers, EncodedHeaders) ->
-	encode_headers(T, encode_folded_header(list_to_binary([Key,": ",Value]),
-			EncodedHeaders)).
-
-encode_folded_header(Header, HeaderLines) ->
-	case binstr:strchr(Header, $;) of
-		0 ->
-			HeaderLines ++ [Header];
-		Index ->
-			Remainder = binstr:substr(Header, Index+1),
-			TabbedRemainder = case Remainder of
+encode_folded_header(Rest, Acc) ->
+	case binstr:split(Rest, <<$;>>, 2) of
+		[_] ->
+			<<Acc/binary, Rest/binary>>;
+		[Before, After] ->
+			NewPart = case After of
 				<<$\t,_Rest/binary>> ->
-					Remainder;
+					<<Before/binary, ";\r\n">>;
 				_ ->
-					list_to_binary(["\t", Remainder])
+					<<Before/binary, ";\r\n\t">>
 			end,
-			% TODO - not tail recursive
-			HeaderLines ++ [ binstr:substr(Header, 1, Index) ] ++
-				encode_folded_header(TabbedRemainder, [])
+            encode_folded_header(After, <<Acc/binary, NewPart/binary>>)
 	end.
+
+encode_header_value(H, Value) when H =:= <<"To">>; H =:= <<"Cc">>; H =:= <<"Bcc">>;
+								   H =:= <<"Reply-To">>; H =:= <<"From">> ->
+	{ok, Addresses} = smtp_util:parse_rfc822_addresses(Value),
+	{Names, Emails} = lists:unzip(Addresses),
+	NewNames = lists:map(fun rfc2047_utf8_encode/1, Names),
+	smtp_util:combine_rfc822_addresses(lists:zip(NewNames, Emails));
+
+encode_header_value(_, Value) ->
+	rfc2047_utf8_encode(Value).
 
 encode_component(_Type, _SubType, Headers, Params, Body) ->
 	if
@@ -812,18 +885,232 @@ encode_quoted_printable(<<H, T/binary>>, Acc, L) ->
 	encode_quoted_printable(T, [B, A, $= | Acc], L+3).
 
 get_default_encoding() ->
-	case code:ensure_loaded(iconv) of
-		{error, _} ->
-			none;
-		{module, iconv} ->
-			<<"utf-8//IGNORE">>
-	end.
+	<<"utf-8//IGNORE">>.
 
 % convert some common invalid character names into the correct ones
 fix_encoding(Encoding) when Encoding == <<"utf8">>; Encoding == <<"UTF8">> ->
 	<<"UTF-8">>;
 fix_encoding(Encoding) ->
 	Encoding.
+
+
+%% @doc Encode a binary or list according to RFC 2047. Input is
+%% assumed to be in UTF-8 encoding.
+rfc2047_utf8_encode(undefined) -> undefined;
+rfc2047_utf8_encode(B) when is_binary(B) ->
+	rfc2047_utf8_encode(binary_to_list(B));
+rfc2047_utf8_encode([]) ->
+	[];
+rfc2047_utf8_encode(Text) ->
+    rfc2047_utf8_encode(Text, Text).
+
+%% Don't escape when all characters are ASCII printable
+rfc2047_utf8_encode([], Text) ->
+    Text;
+rfc2047_utf8_encode([H|T], Text) when H >= 32 andalso H =< 126 ->
+    rfc2047_utf8_encode(T, Text);
+rfc2047_utf8_encode(_, Text) ->
+    "=?UTF-8?Q?" ++ rfc2047_utf8_encode(Text, [], 0) ++ "?=".
+
+rfc2047_utf8_encode([], Acc, _WordLen) ->
+    lists:reverse(Acc);
+rfc2047_utf8_encode(T, Acc, WordLen) when WordLen >= 55 ->
+    %% Make sure that the individual encoded words are not longer than 76 chars (including charset etc)
+    rfc2047_utf8_encode(T, [$?,$Q,$?,$8,$-,$F,$T,$U,$?,$=,$\ ,$\n,$\r,$=,$?|Acc], 0);
+rfc2047_utf8_encode([C|T], Acc, WordLen) when C > 32 andalso C < 127 andalso C /= 32
+    andalso C /= $? andalso C /= $_ andalso C /= $= andalso C /= $. ->
+    rfc2047_utf8_encode(T, [C|Acc], WordLen+1);
+rfc2047_utf8_encode([C|T], Acc, WordLen) ->
+    rfc2047_utf8_encode(T, [hex(C rem 16), hex(C div 16), $= | Acc], WordLen+3).
+
+hex(N) when N >= 10 -> N + $A - 10;
+hex(N) -> N + $0.
+
+
+%% @doc
+%% DKIM sign functions
+%% RFC 6376
+%% `h' - list of headers to sign (lowercased binary)
+%% `c' - {Headers, Body} canonicalization type. Only {simple, simple} and
+%% {relaxed, simple} supported for now.
+%% `s' `d' - if s = <<"foo.bar">> and d = <<"example.com">>, public key should
+%% be located in "foo.bar._domainkey.example.com" (see RFC-6376 #3.6.2.1).
+%% `t' - signature timestamp: 'now' or UTC {Date, Time}
+%% `x' - signatue expiration time: UTC {Date, Time}
+%% `private_key' - private key, to sign emails. May be of 2 types: encrypted and
+%% plain in PEM format:
+%% `{pem_plain, KeyBinary}' - generated by <code>openssl genrsa -out <out-file.pem> 1024<code>
+%% `{pem_encrypted, KeyBinary, Password}' - generated by, eg
+%%   <code>openssl genrsa -des3 -out <out-file.pem> 1024<code>. 3'rd paramerter is
+%%   password to decrypt the key.
+-spec dkim_sign_email([binary()], binary(), Options) -> binary()
+																 when
+	  Options:: [{h, [binary()]}
+				 | {d, binary()}
+				 | {s, binary()}
+				 | {t, now | calendar:datetime()}
+				 | {x, calendar:datetime()}
+				 | {c, {simple|relaxed, simple|relaxed}}
+				 | {private_key, PrivateKey}],
+	  PrivateKey :: {pem_plain, binary()}
+					| {pem_encrypted, Key::binary(), Passwd::string()}.
+dkim_sign_email(Headers, Body, Opts) ->
+	HeadersToSign = proplists:get_value(h, Opts, [<<"from">>, <<"to">>, <<"subject">>, <<"date">>]),
+	SDID = proplists:get_value(d, Opts),
+	Selector = proplists:get_value(s, Opts),
+	%% BodyLength = proplists:get_value(l, Opts),
+	OptionalTags = lists:foldl(fun(Key, Acc) ->
+									   case proplists:get_value(Key, Opts) of
+										   undefined -> Acc;
+										   Value -> [{Key, Value} | Acc]
+									   end
+							   end, [], [t, x]),
+	{HdrsCanT, BodyCanT} = Can = proplists:get_value(c, Opts, {relaxed, simple}),
+	PrivateKey = proplists:get_value(private_key, Opts),
+
+	%% hash body
+	CanBody = dkim_canonicalize_body(Body, BodyCanT),
+	BodyHash = dkim_hash_body(CanBody),
+	Tags = [%% {b, <<>>},
+			{v, 1}, {a, <<"rsa-sha256">>}, {bh, BodyHash}, {c, Can},
+			{d, SDID}, {h, HeadersToSign}, {s, Selector} | OptionalTags],
+	%% hash headers
+	Headers1 = dkim_filter_headers(Headers, HeadersToSign),
+	CanHeaders = dkim_canonicalize_headers(Headers1, HdrsCanT),
+	[DkimHeaderNoB] = dkim_canonicalize_headers([dkim_make_header([{b, undefined} | Tags])], HdrsCanT),
+	DataHash = dkim_hash_data(CanHeaders, DkimHeaderNoB),
+	%% io:format("~s~n~n", [base64:encode(DataHash)]),
+	%% sign
+	Signature = dkim_sign(DataHash, PrivateKey),
+	DkimHeader = dkim_make_header([{b, Signature} | Tags]),
+	[DkimHeader | Headers].
+
+dkim_filter_headers(Headers, HeadersToSign) ->
+	KeyedHeaders = [begin
+						[Name, _] = binary:split(Hdr, <<":">>),
+						{binstr:strip(binstr:to_lower(Name)), Hdr}
+					end || Hdr <- Headers],
+	WithUndef = [get_header_value(binstr:to_lower(Name), KeyedHeaders) || Name <- HeadersToSign],
+	[Hdr || Hdr <- WithUndef, Hdr =/= undefined].
+
+dkim_canonicalize_headers(Headers, simple) ->
+	Headers;
+dkim_canonicalize_headers(Headers, relaxed) ->
+	dkim_canonic_hdrs_relaxed(Headers).
+
+dkim_canonic_hdrs_relaxed([Hdr | Rest]) ->
+	[Name, Value] = binary:split(Hdr, <<":">>),
+	LowStripName = binstr:to_lower(binstr:strip(Name)),
+
+	UnfoldedHdrValue = binary:replace(Value, <<"\r\n">>, <<>>, [global]),
+	SingleWSValue = re:replace(UnfoldedHdrValue, "[\t ]+", " ", [global, {return, binary}]),
+	StrippedWithName = <<LowStripName/binary, ":", (binstr:strip(SingleWSValue))/binary>>,
+	[StrippedWithName | dkim_canonic_hdrs_relaxed(Rest)];
+dkim_canonic_hdrs_relaxed([]) -> [].
+
+
+dkim_canonicalize_body(<<>>, simple) ->
+	<<"\r\n">>;
+dkim_canonicalize_body(Body, simple) ->
+	re:replace(Body, "(\r\n)*$", "\r\n", [{return, binary}]);
+dkim_canonicalize_body(_Body, relaxed) ->
+	throw({not_supported, dkim_body_relaxed}).
+
+dkim_hash_body(CanonicBody) ->
+	crypto:hash(sha256, CanonicBody).
+	%% crypto:sha256(CanonicBody).
+
+%% RFC 5.5 & 3.7
+dkim_hash_data(CanonicHeaders, DkimHeader) ->
+	JoinedHeaders = << <<Hdr/binary, "\r\n">> || Hdr <- CanonicHeaders>>,
+	crypto:hash(sha256, <<JoinedHeaders/binary, DkimHeader/binary>>).
+
+dkim_sign(DataHash, {pem_plain, PrivBin}) ->
+	[PrivEntry] = public_key:pem_decode(PrivBin),
+	Key = public_key:pem_entry_decode(PrivEntry),
+	public_key:sign({digest, DataHash}, sha256, Key);
+dkim_sign(DataHash, {pem_encrypted, EncPrivBin, Passwd}) ->
+	[EncPrivEntry] = public_key:pem_decode(EncPrivBin),
+	Key = public_key:pem_entry_decode(EncPrivEntry, Passwd),
+	public_key:sign({digest, DataHash}, sha256, Key).
+
+
+dkim_make_header(Tags) ->
+	RevTags = lists:reverse(Tags),				%so {b, ...} became last tag
+	EncodedTags = binstr:join([dkim_encode_tag(K, V) || {K, V} <- RevTags], <<"; ">>),
+	binstr:join(encode_headers([{<<"DKIM-Signature">>, EncodedTags}]), <<"\r\n">>).
+
+%% RFC #3.5
+dkim_encode_tag(v, 1) ->
+	%% version
+	<<"v=1">>;
+dkim_encode_tag(a, <<"rsa-sha256">>) ->
+	%% algorithm
+	<<"a=rsa-sha256">>;
+dkim_encode_tag(b, undefined) ->
+	%% signature (when hashing with no digest)
+	<<"b=">>;
+dkim_encode_tag(b, V) ->
+	%% signature
+	B64Sign = base64:encode(V),
+	<<"b=", B64Sign/binary>>;
+dkim_encode_tag(bh, V) ->
+	%% body hash
+	B64Sign = base64:encode(V),
+	<<"bh=", B64Sign/binary>>;
+dkim_encode_tag(c, {Hdrs, simple}) ->	  % 'relaxed' for body not supported yet
+	%% canonicalization type
+	<<"c=", (atom_to_binary(Hdrs, utf8))/binary, "/simple">>;
+dkim_encode_tag(d, Domain) ->
+	%% SDID (domain)
+	<<"d=", Domain/binary>>;
+dkim_encode_tag(h, Hdrs) ->
+	%% headers fields (case-insensitive, ":" separated)
+	Joined = binstr:join([binstr:to_lower(H) || H <- Hdrs], <<":">>),
+	<<"h=", Joined/binary>>;
+dkim_encode_tag(i, V) ->
+	%% AUID
+	[QPValue] = dkim_qp_tag_value(V),
+	<<"i=", QPValue/binary>>;
+dkim_encode_tag(l, IntVal) ->
+	%% body length count
+	BinVal = list_to_binary(integer_to_list(IntVal)),
+	<<"l=", (BinVal)/binary>>;
+dkim_encode_tag(q, [<<"dns/txt">>]) ->
+	%% query methods (':' separated)
+	<<"q=dns/txt">>;
+dkim_encode_tag(s, Selector) ->
+	%% selector
+	<<"s=", Selector/binary>>;
+dkim_encode_tag(t, now) ->
+	dkim_encode_tag(t, calendar:universal_time());
+dkim_encode_tag(t, DateTime) ->
+	%% timestamp
+	BinTs = datetime_to_bin_timestamp(DateTime),
+	<<"t=", BinTs/binary>>;
+dkim_encode_tag(x, DateTime) ->
+	%% signature expiration
+	BinTs = datetime_to_bin_timestamp(DateTime),
+	<<"x=", BinTs/binary>>;
+%% dkim_encode_tag(z, Hdrs) ->
+%%	   %% copied header fields
+%%	   Joined = dkim_qp_tag_value(binstr:join([(H) || H <- Hdrs], <<"|">>)),
+%%	   <<"z=", Joined/binary>>;
+dkim_encode_tag(K, V) when is_binary(K), is_binary(V) ->
+	<<K/binary, V/binary>>.
+
+dkim_qp_tag_value(Value) ->
+    %% XXX: this not fully satisfy #2.11
+    [QPValue] = encode_quoted_printable(Value),
+    binary:replace(QPValue, <<";">>, <<"=3B">>).
+
+datetime_to_bin_timestamp(DateTime) ->
+    EpochStart = 62167219200, % calendar:datetime_to_gregorian_seconds({{1970,1,1}, {0,0,0}})
+    UnixTimestamp = calendar:datetime_to_gregorian_seconds(DateTime) - EpochStart,
+    list_to_binary(integer_to_list(UnixTimestamp)).
+
+%% /DKIM
+
 
 -ifdef(TEST).
 
@@ -883,7 +1170,7 @@ parse_with_comments_test_() ->
 			end
 		}
 	].
-	
+
 parse_content_type_test_() ->
 	[
 		{"parsing content types",
@@ -931,10 +1218,10 @@ various_parsing_test_() ->
 	[
 		{"split_body_by_boundary test",
 			fun() ->
-					?assertEqual([{[], <<"foo bar baz">>}], split_body_by_boundary_(<<"stuff\r\nfoo bar baz">>, <<"--bleh">>, [])),
-					?assertEqual([{[], <<"foo\r\n">>}, {[], <<>>}, {[], <<>>}, {[], <<"bar baz">>}], split_body_by_boundary_(<<"stuff\r\nfoo\r\n--bleh\r\n--bleh\r\n--bleh-- stuff\r\nbar baz">>, <<"--bleh">>, [])),
-					%?assertEqual([{[], []}, {[], []}, {[], "bar baz"}], split_body_by_boundary_("\r\n--bleh\r\n--bleh\r\n", "--bleh", [])),
-					%?assertMatch([{"text", "plain", [], _,"foo\r\n"}], split_body_by_boundary("stuff\r\nfoo\r\n--bleh\r\n--bleh\r\n--bleh-- stuff\r\nbar baz", "--bleh", "1.0"))
+					?assertEqual([{[], <<"foo bar baz">>}], split_body_by_boundary_(<<"stuff\r\nfoo bar baz">>, <<"--bleh">>, [], [])),
+					?assertEqual([{[], <<"foo\r\n">>}, {[], <<>>}, {[], <<>>}, {[], <<"bar baz">>}], split_body_by_boundary_(<<"stuff\r\nfoo\r\n--bleh\r\n--bleh\r\n--bleh-- stuff\r\nbar baz">>, <<"--bleh">>, [], [])),
+					%?assertEqual([{[], []}, {[], []}, {[], "bar baz"}], split_body_by_boundary_("\r\n--bleh\r\n--bleh\r\n", "--bleh", [], [])),
+					%?assertMatch([{"text", "plain", [], _,"foo\r\n"}], split_body_by_boundary("stuff\r\nfoo\r\n--bleh\r\n--bleh\r\n--bleh-- stuff\r\nbar baz", "--bleh", "1.0", []))
 					?assertEqual({[], <<"foo: bar\r\n">>}, parse_headers(<<"\r\nfoo: bar\r\n">>)),
 					?assertEqual({[{<<"foo">>, <<"barbaz">>}], <<>>}, parse_headers(<<"foo: bar\r\n baz\r\n">>)),
 					?assertEqual({[], <<" foo bar baz\r\nbam">>}, parse_headers(<<"\sfoo bar baz\r\nbam">>)),
@@ -1105,12 +1392,12 @@ parse_example_mails_test_() ->
 				?assertMatch({<<"message">>, <<"rfc822">>, _, _, _}, Message),
 				Submessage = element(5, Message),
 				?assertMatch({<<"text">>, <<"plain">>, _, _, <<"This message contains only plain text.\r\n">>}, Submessage),
-				
+
 				?assertMatch({<<"text">>, <<"rtf">>, _, _, _}, Rtf),
 				?assertEqual(<<"{\\rtf1\\ansi\\ansicpg1252\\cocoartf949\\cocoasubrtf460\r\n{\\fonttbl\\f0\\fswiss\\fcharset0 Helvetica;}\r\n{\\colortbl;\\red255\\green255\\blue255;}\r\n\\margl1440\\margr1440\\vieww9000\\viewh8400\\viewkind0\r\n\\pard\\tx720\\tx1440\\tx2160\\tx2880\\tx3600\\tx4320\\tx5040\\tx5760\\tx6480\\tx7200\\tx7920\\tx8640\\ql\\qnatural\\pardirnatural\r\n\r\n\\f0\\fs24 \\cf0 This is a basic rtf file.}">>, element(5, Rtf)),
-				
+
 				?assertMatch({<<"image">>, <<"jpeg">>, _, _, _}, Image),
-				?assertEqual(?IMAGE_MD5, erlang:md5(element(5, Image)))				
+				?assertEqual(?IMAGE_MD5, erlang:md5(element(5, Image)))
 			end
 		},
 		{"Outlook 2007 with leading tabs in quoted-printable.",
@@ -1147,17 +1434,17 @@ parse_example_mails_test_() ->
 				[Html, Messagewithin, _Brhtml, _Message, _Brhtml, Image, _Brhtml, Rtf, _Brhtml] = element(5, Topmultipart),
 				?assertMatch({<<"text">>, <<"html">>, _, _, _}, Html),
 				?assertEqual(<<"<html><body style=\"word-wrap: break-word; -webkit-nbsp-mode: space; -webkit-line-break: after-white-space; \"><b>This</b> is <i>rich</i> text.<div><br></div><div>The list is html.</div><div><br></div><div>Attchments:</div><div><ul class=\"MailOutline\"><li>an email containing an attachment of an email.</li><li>an email of only plain text.</li><li>an image</li><li>an rtf file.</li></ul></div><div></div></body></html>">>, element(5, Html)),
-				
+
 				?assertMatch({<<"message">>, <<"rfc822">>, _, _, _}, Messagewithin),
 				%?assertEqual(1, length(element(5, Messagewithin))),
 				?assertMatch({<<"multipart">>, <<"mixed">>, _, _, [{<<"message">>, <<"rfc822">>, _, _, {<<"text">>, <<"plain">>, _, _, <<"This message contains only plain text.\r\n">>}}]}, element(5, Messagewithin)),
-				
+
 				?assertMatch({<<"image">>, <<"jpeg">>, _, _, _}, Image),
 				?assertEqual(?IMAGE_MD5, erlang:md5(element(5, Image))),
-				
+
 				?assertMatch({<<"text">>, <<"rtf">>, _, _, _}, Rtf),
 				?assertEqual(<<"{\\rtf1\\ansi\\ansicpg1252\\cocoartf949\\cocoasubrtf460\r\n{\\fonttbl\\f0\\fswiss\\fcharset0 Helvetica;}\r\n{\\colortbl;\\red255\\green255\\blue255;}\r\n\\margl1440\\margr1440\\vieww9000\\viewh8400\\viewkind0\r\n\\pard\\tx720\\tx1440\\tx2160\\tx2880\\tx3600\\tx4320\\tx5040\\tx5760\\tx6480\\tx7200\\tx7920\\tx8640\\ql\\qnatural\\pardirnatural\r\n\r\n\\f0\\fs24 \\cf0 This is a basic rtf file.}">>, element(5, Rtf))
-				
+
 			end
 		},
 		{"Plain text and 2 identical attachments",
@@ -1176,6 +1463,36 @@ parse_example_mails_test_() ->
 				{ok, Bin} = file:read_file("../testdata/html.eml"),
 				Decoded = decode(Bin),
 				?assertEqual(2, length(element(5, Decoded)))
+			end
+		},
+		{"permissive malformed folded multibyte header decoder",
+			fun() ->
+				{_, _, Headers, _, Body} = Getmail("malformed-folded-multibyte-header.eml"),
+				?assertEqual(<<"Hello world\n">>, Body),
+				Subject = <<78,79,68,51,50,32,83,109,97,114,116,32,83,101,99,117, 114,105,116,121,32,45,32,208,177,208,181,209,129,208,
+							191,208,187,208,176,209,130,208,189,208,176,209,143,32, 208,187,208,184,209,134,208,181,208,189,208,183,208,184,209,143>>,
+				?assertEqual(Subject, proplists:get_value(<<"Subject">>, Headers))
+			end
+		},
+		{"decode headers of multipart messages",
+			fun() ->
+				{<<"multipart">>, _, _, _, [Inline, Attachment]} = Getmail("utf-attachment-name.eml"),
+				{<<"text">>, _, _, _, InlineBody} = Inline,
+				{<<"text">>, _, _, ContentHeaders, _AttachmentBody} = Attachment,
+				ContentTypeName = proplists:get_value(
+									<<"name">>, proplists:get_value(
+												  <<"content-type-params">>, ContentHeaders)),
+				DispositionName = proplists:get_value(
+									<<"filename">>, proplists:get_value(
+													  <<"disposition-params">>, ContentHeaders)),
+
+				?assertEqual(<<"Hello\r\n">>, InlineBody),
+				?assert(ContentTypeName == DispositionName),
+				% Take the filename as a literal, to prevent character set issues with Erlang
+				% In utf-8 the filename is:"тестовый файл.txt"
+				Filename = <<209,130,208,181,209,129,209,130,208,190,208,178,209,139,208,185,32,209,132,208,176,208,185,208,187,46,116,120,116>>,
+				?assertEqual(Filename, ContentTypeName),
+				?assertEqual(Filename, DispositionName)
 			end
 		},
 		{"testcase1",
@@ -1466,6 +1783,12 @@ rfc2047_decode_test_() ->
 			fun() ->
 					?assertEqual(<<"Jacek Złydach <jacek.zlydach@erlang-solutions.com>, chak de planet óóóó <jz@erlang-solutions.com>, Jacek Złydach <jacek.zlydach@erlang-solutions.com>, chak de planet óóóó <jz@erlang-solutions.com>">>, decode_header(<<"=?UTF-8?B?SmFjZWsgWsWCeWRhY2g=?= <jacek.zlydach@erlang-solutions.com>, =?UTF-8?B?Y2hhayBkZSBwbGFuZXQgw7PDs8Ozw7M=?= <jz@erlang-solutions.com>, =?UTF-8?B?SmFjZWsgWsWCeWRhY2g=?= <jacek.zlydach@erlang-solutions.com>, =?UTF-8?B?Y2hhayBkZSBwbGFuZXQgw7PDs8Ozw7M=?= <jz@erlang-solutions.com>">>, "utf-8"))
 			end
+		},
+		{"decode something I encoded myself",
+			fun() ->
+				A = <<"Jacek Złydach <jacek.zlydach@erlang-solutions.com>">>,
+				?assertEqual(A, decode_header(list_to_binary(rfc2047_utf8_encode(A)), "utf-8"))
+			end
 		}
 	].
 
@@ -1485,6 +1808,23 @@ encoding_test_() ->
 								{<<"disposition">>,<<"inline">>}}],
 						<<"This is a plain message">>},
 					Result = <<"From: me@example.com\r\nTo: you@example.com\r\nSubject: This is a test\r\nMessage-ID: <abcd@example.com>\r\nMIME-Version: 1.0\r\nDate: Sun, 01 Nov 2009 14:44:47 +0200\r\n\r\nThis is a plain message">>,
+					?assertEqual(Result, encode(Email))
+			end
+		},
+		{"Email with UTF-8 characters",
+			fun() ->
+					Email = {<<"text">>, <<"plain">>, [
+							{<<"Subject">>, <<"Fræderik Hølljen">>},
+							{<<"From">>, <<"Fræderik Hølljen <me@example.com>">>},
+							{<<"To">>, <<"you@example.com">>},
+							{<<"Message-ID">>, <<"<abcd@example.com>">>},
+							{<<"MIME-Version">>, <<"1.0">>},
+							{<<"Date">>, <<"Sun, 01 Nov 2009 14:44:47 +0200">>}],
+						[{<<"content-type-params">>,
+								[{<<"charset">>,<<"US-ASCII">>}],
+								{<<"disposition">>,<<"inline">>}}],
+						<<"This is a plain message">>},
+					Result = <<"Subject: =?UTF-8?Q?Fr=C3=A6derik=20H=C3=B8lljen?=\r\nFrom: =?UTF-8?Q?Fr=C3=A6derik=20H=C3=B8lljen?= <me@example.com>\r\nTo: you@example.com\r\nMessage-ID: <abcd@example.com>\r\nMIME-Version: 1.0\r\nDate: Sun, 01 Nov 2009 14:44:47 +0200\r\n\r\nThis is a plain message">>,
 					?assertEqual(Result, encode(Email))
 			end
 		},
@@ -1813,6 +2153,94 @@ roundtrip_test_() ->
 		}
 	].
 
+dkim_canonicalization_test_() ->
+	%% * canonicalization from #3.4.5
+    Hdrs = [<<"A : X\r\n">>,
+            <<"B : Y\t\r\n\tZ  \r\n">>],
+    Body = <<" C \r\nD \t E\r\n\r\n\r\n">>,
+	[{"Simple body canonicalization",
+      fun() ->
+              ?assertEqual(<<" C \r\nD \t E\r\n">>, dkim_canonicalize_body(Body, simple)),
+              ?assertEqual(<<"\r\n">>, dkim_canonicalize_body(<<>>, simple)),
+              ?assertEqual(<<"\r\n">>, dkim_canonicalize_body(<<"\r\n\r\n\r\n">>, simple)),
+              ?assertEqual(<<"A\r\n\r\nB\r\n">>, dkim_canonicalize_body(<<"A\r\n\r\nB\r\n\r\n">>, simple))
+      end},
+	{"Simple headers canonicalization",
+	fun() ->
+			?assertEqual([<<"A : X\r\n">>,
+						  <<"B : Y\t\r\n\tZ  \r\n">>],
+						 dkim_canonicalize_headers(Hdrs, simple))
+	end},
+	{"Relaxed headers canonicalization",
+	 fun() ->
+			 ?assertEqual([<<"a:X">>,	  % \r\n's are stripped by current impl.
+						   <<"b:Y Z">>],
+						  dkim_canonicalize_headers(Hdrs, relaxed))
+	 end}].
+
+dkim_sign_test_() ->
+	%% * sign using testdata/dkim*.pem
+	{ok, PrivKey} = file:read_file("../testdata/dkim-rsa-private.pem"),
+	[{"Sign simple",
+	  fun() ->
+			  Email = {<<"text">>, <<"plain">>,
+					   [{<<"From">>, <<"me@example.com">>},
+						{<<"Subject">>, <<"Hello world!">>},
+						{<<"Date">>, <<"Thu, 28 Nov 2013 04:15:44 +0400">>},
+						{<<"Message-ID">>, <<"the-id">>},
+						{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}],
+					   [],
+					   <<"123">>},
+			  Options = [{dkim, [{s, <<"foo.bar">>},
+								 {d, <<"example.com">>},
+								 {c, {simple, simple}},
+								 {t, {{2014, 2, 4}, {23, 15, 00}}},
+								 {x, {{2114, 2, 4}, {23, 15, 00}}},
+								 {private_key, {pem_plain, PrivKey}}]}],
+
+			  Enc = encode(Email, Options),
+			  %% This `Enc' value can be verified, for example, by Python script
+			  %% https://launchpad.net/dkimpy like:
+			  %% >>> pubkey = ''.join(open("../testdata/dkim-rsa-public.pem").read().splitlines()[1:-1])
+			  %% >>> dns_mock = lambda *args: 'v=DKIM1; g=*; k=rsa; p=' + pubkey
+			  %% >>> import dkim
+			  %% >>> d = dkim.DKIM(mime_message) % pass `Enc' value as 1'st argument
+			  %% >>> d.verify(dnsfunc=dns_mock)
+			  %% True
+			  {_, _, [{DkimHdrName, DkimHdrVal} | _], _, _} = decode(Enc),
+			  ?assertEqual(<<"DKIM-Signature">>, DkimHdrName),
+			  ?assertEqual(<<"t=1391555700; x=4547229300; s=foo.bar; h=from:to:subject:date; d=example.com; c=simple/simple; "
+							 "bh=Afm/S7SaxS19en1h955RwsupTF914DQUPqYU8Nh7kpw=; a=rsa-sha256; v=1; "
+							 "b=Mtja7WpVvtOFT8rfzOS/2fRZ492jrgsHgD5YUl5zmPQ/NEEMjVhVX0JCkfZxWpxiKe"
+							 "qwl7nTJy3xecdg12feGT1rGC+rV0vAX8LVc+AJ4T4A50hE8L4hpJ1Tv5rt2O2t0Xu1Wx"
+							 "yH6Cmrhhh56istjL+ba+U1EHhV7uZXGpWXGa4=">>, DkimHdrVal)
+	  end},
+	 {"Sign relaxed headers, simple body",
+	  fun() ->
+			  Email = {<<"text">>, <<"plain">>,
+					   [{<<"From">>, <<"me@example.com">>},
+						{<<"Subject">>, <<"Hello world!">>},
+						{<<"Date">>, <<"Thu, 28 Nov 2013 04:15:44 +0400">>},
+						{<<"Message-ID">>, <<"the-id-relaxed">>},
+						{<<"Content-Type">>, <<"text/plain; charset=utf-8">>}],
+					   [],
+					   <<"123">>},
+			  Options = [{dkim, [{s, <<"foo.bar">>},
+								 {d, <<"example.com">>},
+								 {c, {relaxed, simple}},
+								 {private_key, {pem_plain, PrivKey}}]}],
+
+			  Enc = encode(Email, Options),
+			  file:write_file("/home/seriy/relaxed-signed.eml", Enc),
+			  {_, _, [{DkimHdrName, DkimHdrVal} | _], _, _} = decode(Enc),
+			  %% io:format(user, "~p", [DkimHdrVal]),
+			  ?assertEqual(<<"DKIM-Signature">>, DkimHdrName),
+			  ?assertEqual(
+				 <<"s=foo.bar; h=from:to:subject:date; d=example.com; c=relaxed/simple; "
+				   "bh=Afm/S7SaxS19en1h955RwsupTF914DQUPqYU8Nh7kpw=; a=rsa-sha256; v=1; "
+				   "b=dXxKq6A7m4A3AoS90feuLP+IxOyXFTPIibja52E2JCAyOsxvIGlI51xR1LvmEaelv9"
+				   "jJTH9iGyAC7RzTKxrWV1QXayvr05bsTy3vDw7P4vfZ1gmspuP/3Icw+J8KEn+p6+CRrf"
+				   "T97QadH42PT6XmO2v01q5nhMgNE4yQyf9DBJs=">>, DkimHdrVal)
+	  end}].
 
 -endif.
-

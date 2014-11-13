@@ -33,9 +33,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--compile([{'parse_transform', 'lager_transform'}]).
-
-
 -define(MAXIMUMSIZE, 10485760). %10mb
 -define(BUILTIN_EXTENSIONS, [{"SIZE", "10485670"}, {"8BITMIME", true}, {"PIPELINING", true}]).
 -define(TIMEOUT, 180000). % 3 minutes
@@ -46,8 +43,6 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
 		code_change/3]).
-
--export([behaviour_info/1]).
 
 -record(envelope,
 	{
@@ -74,24 +69,31 @@
 	}
 ).
 
-%% @hidden
--spec behaviour_info(atom()) -> [{atom(), non_neg_integer()}] | 'undefined'.
-behaviour_info(callbacks) ->
-	[{init,4},
-	  {terminate,2},
-	  {code_change,3},
-	  {handle_HELO,2},
-	  {handle_EHLO,3},
-	  {handle_MAIL,2},
-	  {handle_MAIL_extension,2},
-	  {handle_RCPT,2},
-	  {handle_RCPT_extension,2},
-	  {handle_DATA,4},
-	  {handle_RSET,1},
-	  {handle_VRFY,2},
-	  {handle_other,3}];
-behaviour_info(_Other) ->
-	undefined.
+-type(state() :: any()).
+-type(error_message() :: {'error', string(), state()}).
+
+-callback code_change(OldVsn :: any(), State :: state(), Extra :: any()) ->  {'ok', state()}.
+-callback handle_HELO(Hostname :: binary(), State :: state()) ->
+    {'ok', pos_integer(), state()} | {'ok', state()} | error_message().
+-callback handle_EHLO(Hostname :: binary(), Extensions :: list(), State :: state()) ->
+    {'ok', list(), state()} | error_message().
+-callback handle_MAIL(From :: binary(), State :: state()) ->
+    {'ok', state()} | {'error', string(), state()}.
+-callback handle_MAIL_extension(Extension :: binary(), State :: state()) ->
+    {'ok', state()} | 'error'.
+-callback handle_RCPT(To :: binary(), State :: state()) ->
+    {'ok', state()} | {'error', string(), state()}.
+-callback handle_RCPT_extension(Extension :: binary(), State :: state()) ->
+    {'ok', state()} | 'error'.
+-callback handle_DATA(From :: binary(), To :: [binary(),...], Data :: binary(), State :: state()) ->
+    {'ok', string(), state()} | {'error', string(), state()}.
+-callback handle_RSET(State :: state()) -> state().
+-callback handle_VRFY(Address :: binary(), State :: state()) ->
+    {'ok', string(), state()} | {'error', string(), state()}.
+-callback handle_other(Verb :: binary(), Args :: binary(), state()) ->
+                          {string(), state()}.
+
+
 
 %% @doc Start a SMTP session linked to the calling process.
 %% @see start/3
@@ -111,29 +113,20 @@ start(Socket, Module, Options) ->
 %% @private
 -spec(init/1 :: (Args :: list()) -> {'ok', #state{}, ?TIMEOUT} | {'stop', any()} | 'ignore').
 init([Socket, Module, Options]) ->
-	case socket:peername(Socket) of
-        {ok, {PeerName, _Port}} ->
-            case Module:init(proplists:get_value(hostname, Options, smtp_util:guess_FQDN()), proplists:get_value(sessioncount, Options, 0), PeerName, proplists:get_value(callbackoptions, Options, [])) of
-                {ok, Banner, CallbackState} ->
-                    socket:send(Socket, ["220 ", Banner, "\r\n"]),
-                    socket:active_once(Socket),
-                    {ok, #state{socket = Socket, module = Module, options = Options, callbackstate = CallbackState}, ?TIMEOUT};
-                {stop, Reason, Message} ->
-                    socket:send(Socket, [Message, "\r\n"]),
-                    socket:close(Socket),
-                    {stop, Reason};
-                ignore ->
-                    socket:close(Socket),
-                    ignore
-            end;
-        {error,enotconn} ->
-            socket:close(Socket),
-            ignore;
-        Other ->
-          lager:debug("socket:peername ~p.~n", [Other]),
-          socket:close(Socket),
-          ignore
-    end.
+	{ok, {PeerName, _Port}} = socket:peername(Socket),
+	case Module:init(proplists:get_value(hostname, Options, smtp_util:guess_FQDN()), proplists:get_value(sessioncount, Options, 0), PeerName, proplists:get_value(callbackoptions, Options, [])) of
+		{ok, Banner, CallbackState} ->
+			socket:send(Socket, ["220 ", Banner, "\r\n"]),
+			socket:active_once(Socket),
+			{ok, #state{socket = Socket, module = Module, options = Options, callbackstate = CallbackState}, ?TIMEOUT};
+		{stop, Reason, Message} ->
+			socket:send(Socket, [Message, "\r\n"]),
+			socket:close(Socket),
+			{stop, Reason};
+		ignore ->
+			socket:close(Socket),
+			ignore
+	end.
 
 %% @hidden
 -spec handle_call(Message :: any(), From :: {pid(), reference()}, #state{}) -> {'stop', 'normal', 'ok', #state{}} | {'reply', {'unknown_call', any()}, #state{}}.
@@ -156,7 +149,7 @@ handle_info({receive_data, {error, size_exceeded}}, #state{socket = Socket, read
 	{noreply, State#state{readmessage = false, envelope = #envelope{}}, ?TIMEOUT};
 handle_info({receive_data, {error, bare_newline}}, #state{socket = Socket, readmessage = true} = State) ->
 	socket:send(Socket, "451 Bare newline detected\r\n"),
-	lager:debug("bare newline detected: ~p~n", [self()]),
+	io:format("bare newline detected: ~p~n", [self()]),
 	socket:active_once(Socket),
 	{noreply, State#state{readmessage = false, envelope = #envelope{}}, ?TIMEOUT};
 handle_info({receive_data, Body, Rest}, #state{socket = Socket, readmessage = true, envelope = Env, module=Module,
@@ -167,7 +160,9 @@ handle_info({receive_data, Body, Rest}, #state{socket = Socket, readmessage = tr
 		_ -> self() ! {socket:get_proto(Socket), Socket, Rest}
 	end,
 	socket:setopts(Socket, [{packet, line}]),
-	Envelope = Env#envelope{data = Body},% size = length(Body)},
+	%% Unescape periods at start of line (rfc5321 4.5.2)
+	UnescapedBody = re:replace(Body, <<"^\\\.">>, <<>>, [global, multiline, {return, binary}]),
+	Envelope = Env#envelope{data = UnescapedBody},% size = length(Body)},
 	Valid = case has_extension(Extensions, "SIZE") of
 		{true, Value} ->
 			case byte_size(Envelope#envelope.data) > list_to_integer(Value) of
@@ -228,7 +223,7 @@ handle_info(timeout, #state{socket = Socket} = State) ->
 	socket:close(Socket),
 	{stop, normal, State};
 handle_info(Info, State) ->
-	lager:debug("smtp server session unhandled info message ~p", [Info]),
+	io:format("unhandled info message ~p~n", [Info]),
 	{noreply, State}.
 
 %% @hidden
@@ -250,11 +245,10 @@ code_change(OldVsn, #state{module = Module} = State, Extra) ->
 
 -spec(parse_request/1 :: (Packet :: binary()) -> {binary(), binary()}).
 parse_request(Packet) ->
-    lager:debug("PARSE REQUEST ~p",[Packet]),
 	Request = binstr:strip(binstr:strip(binstr:strip(binstr:strip(Packet, right, $\n), right, $\r), right, $\s), left, $\s),
 	case binstr:strchr(Request, $\s) of
 		0 ->
-			lager:debug("got a ~s request", [Request]),
+			% io:format("got a ~s request~n", [Request]),
 			case binstr:to_upper(Request) of
 				<<"QUIT">> = Res -> {Res, <<>>};
 				<<"DATA">> = Res -> {Res, <<>>};
@@ -264,7 +258,7 @@ parse_request(Packet) ->
 		Index ->
 			Verb = binstr:substr(Request, 1, Index - 1),
 			Parameters = binstr:strip(binstr:substr(Request, Index + 1), left, $\s),
-			lager:debug("got a ~s request with parameters ~s", [Verb, Parameters]),
+			%io:format("got a ~s request with parameters ~s~n", [Verb, Parameters]),
 			{binstr:to_upper(Verb), Parameters}
 	end.
 
@@ -432,7 +426,7 @@ handle_request({<<"MAIL">>, Args}, #state{socket = Socket, module = Module, enve
 							socket:send(Socket, "501 Bad sender address syntax\r\n"),
 							{ok, State};
 						{ParsedAddress, <<>>} ->
-							lager:debug("From address ~s (parsed as ~s)~n", [Address, ParsedAddress]),
+							%io:format("From address ~s (parsed as ~s)~n", [Address, ParsedAddress]),
 							case Module:handle_MAIL(ParsedAddress, OldCallbackState) of
 								{ok, CallbackState} ->
 									socket:send(Socket, "250 sender Ok\r\n"),
@@ -442,9 +436,9 @@ handle_request({<<"MAIL">>, Args}, #state{socket = Socket, module = Module, enve
 									{ok, State#state{callbackstate = CallbackState}}
 							end;
 						{ParsedAddress, ExtraInfo} ->
-							lager:debug("From address ~s (parsed as ~s) with extra info ~s~n", [Address, ParsedAddress, ExtraInfo]),
+							%io:format("From address ~s (parsed as ~s) with extra info ~s~n", [Address, ParsedAddress, ExtraInfo]),
 							Options = [binstr:to_upper(X) || X <- binstr:split(ExtraInfo, <<" ">>)],
-							lager:debug("options are ~p~n", [Options]),
+							%io:format("options are ~p~n", [Options]),
 							 F = fun(_, {error, Message}) ->
 									 {error, Message};
 								 (<<"SIZE=", Size/binary>>, InnerState) ->
@@ -476,11 +470,11 @@ handle_request({<<"MAIL">>, Args}, #state{socket = Socket, module = Module, enve
 							end,
 							case lists:foldl(F, State, Options) of
 								{error, Message} ->
-									lager:debug("error: ~s~n", [Message]),
+									%io:format("error: ~s~n", [Message]),
 									socket:send(Socket, Message),
 									{ok, State};
 								NewState ->
-									lager:debug("OK~n"),
+									%io:format("OK~n"),
 									case Module:handle_MAIL(ParsedAddress, State#state.callbackstate) of
 										{ok, CallbackState} ->
 											socket:send(Socket, "250 sender Ok\r\n"),
@@ -515,7 +509,7 @@ handle_request({<<"RCPT">>, Args}, #state{socket = Socket, envelope = Envelope, 
 					socket:send(Socket, "501 Bad recipient address syntax\r\n"),
 					{ok, State};
 				{ParsedAddress, <<>>} ->
-					lager:debug("To address ~s (parsed as ~s)~n", [Address, ParsedAddress]),
+					%io:format("To address ~s (parsed as ~s)~n", [Address, ParsedAddress]),
 					case Module:handle_RCPT(ParsedAddress, OldCallbackState) of
 						{ok, CallbackState} ->
 							socket:send(Socket, "250 recipient Ok\r\n"),
@@ -526,7 +520,7 @@ handle_request({<<"RCPT">>, Args}, #state{socket = Socket, envelope = Envelope, 
 					end;
 				{ParsedAddress, ExtraInfo} ->
 					% TODO - are there even any RCPT extensions?
-					lager:debug("To address ~s (parsed as ~s) with extra info ~s~n", [Address, ParsedAddress, ExtraInfo]),
+					io:format("To address ~s (parsed as ~s) with extra info ~s~n", [Address, ParsedAddress, ExtraInfo]),
 					socket:send(Socket, ["555 Unsupported option: ", ExtraInfo, "\r\n"]),
 					{ok, State}
 			end;
@@ -547,7 +541,7 @@ handle_request({<<"DATA">>, <<>>}, #state{socket = Socket, envelope = Envelope} 
 			{ok, State};
 		_Else ->
 			socket:send(Socket, "354 enter mail, end with line containing only '.'\r\n"),
-			lager:debug("switching to data read mode~n", []),
+			%io:format("switching to data read mode~n", []),
 
 			{ok, State#state{readmessage = true}}
 	end;
@@ -584,9 +578,6 @@ handle_request({<<"STARTTLS">>, <<>>}, #state{socket = Socket, module = Module, 
 	case has_extension(Extensions, "STARTTLS") of
 		{true, _} ->
 			socket:send(Socket, "220 OK\r\n"),
-			crypto:start(),
-			application:start(public_key),
-			application:start(ssl),
 			Options1 = case proplists:get_value(certfile, Options) of
 				undefined ->
 					[];
@@ -602,12 +593,12 @@ handle_request({<<"STARTTLS">>, <<>>}, #state{socket = Socket, module = Module, 
 			% TODO: certfile and keyfile should be at configurable locations
 			case socket:to_ssl_server(Socket, Options2, 5000) of
 				{ok, NewSocket} ->
-					lager:debug("SSL negotiation sucessful~n"),
+					%io:format("SSL negotiation sucessful~n"),
 					{ok, State#state{socket = NewSocket, envelope=undefined,
 							authdata=undefined, waitingauth=false, readmessage=false,
 							tls=true, callbackstate = Module:handle_STARTTLS(OldCallbackState)}};
 				{error, Reason} ->
-					lager:debug("SSL handshake failed : ~p~n", [Reason]),
+					io:format("SSL handshake failed : ~p~n", [Reason]),
 					socket:send(Socket, "454 TLS negotiation failed\r\n"),
 					{ok, State}
 			end;
@@ -622,12 +613,9 @@ handle_request({<<"STARTTLS">>, _Args}, #state{socket = Socket} = State) ->
 	socket:send(Socket, "501 Syntax error (no parameters allowed)\r\n"),
 	{ok, State};
 handle_request({Verb, Args}, #state{socket = Socket, module = Module, callbackstate = OldCallbackState} = State) ->
-    case Module:handle_other(Verb, Args, OldCallbackState) of
-        {Message, CallbackState} ->
-            socket:send(Socket, [Message, "\r\n"]);
-        {CallbackState} -> ok
-    end,
-    {ok, State#state{callbackstate = CallbackState}}.
+	{Message, CallbackState} = Module:handle_other(Verb, Args, OldCallbackState),
+	socket:send(Socket, [Message, "\r\n"]),
+	{ok, State#state{callbackstate = CallbackState}}.
 
 -spec(parse_encoded_address/1 :: (Address :: binary()) -> {binary(), binary()} | 'error').
 parse_encoded_address(<<>>) ->
@@ -690,7 +678,7 @@ parse_encoded_address(<<H, Tail/binary>>, Acc, Quotes) ->
 has_extension(Exts, Ext) ->
 	Extension = string:to_upper(Ext),
 	Extensions = [{string:to_upper(X), Y} || {X, Y} <- Exts],
-	lager:debug("extensions ~p~n", [Extensions]),
+	%io:format("extensions ~p~n", [Extensions]),
 	case proplists:get_value(Extension, Extensions) of
 		undefined ->
 			false;
@@ -715,7 +703,7 @@ try_auth(AuthType, Username, Credential, #state{module = Module, socket = Socket
 					{ok, NewState}
 				end;
 		false ->
-			lager:debug("Please define handle_AUTH/4 in your server module or remove AUTH from your module extensions~n"),
+			io:format("Please define handle_AUTH/4 in your server module or remove AUTH from your module extensions~n"),
 			socket:send(Socket, "535 authentication failed (#5.7.1)\r\n"),
 			{ok, NewState}
 	end.
@@ -728,7 +716,7 @@ try_auth(AuthType, Username, Credential, #state{module = Module, socket = Socket
 
 %% @doc a tight loop to receive the message body
 receive_data(_Acc, _Socket, _, Size, MaxSize, Session, _Options) when MaxSize > 0, Size > MaxSize ->
-	lager:debug("message body size ~B exceeded maximum allowed ~B~n", [Size, MaxSize]),
+	io:format("message body size ~B exceeded maximum allowed ~B~n", [Size, MaxSize]),
 	Session ! {receive_data, {error, size_exceeded}};
 receive_data(Acc, Socket, RecvSize, Size, MaxSize, Session, Options) ->
 	case socket:recv(Socket, RecvSize, 1000) of
@@ -739,15 +727,15 @@ receive_data(Acc, Socket, RecvSize, Size, MaxSize, Session, Options) ->
 				FixedPacket ->
 					case binstr:strpos(FixedPacket, "\r\n.\r\n") of
 						0 ->
-							lager:debug("received ~B bytes; size is now ~p~n", [RecvSize, Size + size(Packet)]),
-							lager:debug("memory usage: ~p~n", [erlang:process_info(self(), memory)]),
+							%io:format("received ~B bytes; size is now ~p~n", [RecvSize, Size + size(Packet)]),
+							%io:format("memory usage: ~p~n", [erlang:process_info(self(), memory)]),
 							receive_data([FixedPacket | Acc], Socket, RecvSize, Size + byte_size(FixedPacket), MaxSize, Session, Options);
 						Index ->
 							String = binstr:substr(FixedPacket, 1, Index - 1),
 							Rest = binstr:substr(FixedPacket, Index+5),
-							lager:debug("memory usage before flattening: ~p~n", [erlang:process_info(self(), memory)]),
+							%io:format("memory usage before flattening: ~p~n", [erlang:process_info(self(), memory)]),
 							Result = list_to_binary(lists:reverse([String | Acc])),
-							lager:debug("memory usage after flattening: ~p~n", [erlang:process_info(self(), memory)]),
+							%io:format("memory usage after flattening: ~p~n", [erlang:process_info(self(), memory)]),
 							Session ! {receive_data, Result, Rest}
 					end
 			end;
@@ -759,15 +747,15 @@ receive_data(Acc, Socket, RecvSize, Size, MaxSize, Session, Options) ->
 				FixedPacket ->
 					case binstr:strpos(FixedPacket, "\r\n.\r\n") of
 						0 ->
-							lager:debug("received ~B bytes; size is now ~p~n", [RecvSize, Size + size(Packet)]),
-							lager:debug("memory usage: ~p~n", [erlang:process_info(self(), memory)]),
+							%io:format("received ~B bytes; size is now ~p~n", [RecvSize, Size + size(Packet)]),
+							%io:format("memory usage: ~p~n", [erlang:process_info(self(), memory)]),
 							receive_data([FixedPacket | Acc], Socket, RecvSize, Size + byte_size(FixedPacket), MaxSize, Session, Options);
 						Index ->
 							String = binstr:substr(FixedPacket, 1, Index - 1),
 							Rest = binstr:substr(FixedPacket, Index+5),
-							lager:debug("memory usage before flattening: ~p~n", [erlang:process_info(self(), memory)]),
+							%io:format("memory usage before flattening: ~p~n", [erlang:process_info(self(), memory)]),
 							Result = list_to_binary(lists:reverse([String | Acc])),
-							lager:debug("memory usage after flattening: ~p~n", [erlang:process_info(self(), memory)]),
+							%io:format("memory usage after flattening: ~p~n", [erlang:process_info(self(), memory)]),
 							Session ! {receive_data, Result, Rest}
 					end
 			end;
@@ -778,21 +766,21 @@ receive_data(Acc, Socket, RecvSize, Size, MaxSize, Session, Options) ->
 			case binstr:strpos(Packet, "\r\n.\r\n") of
 				0 ->
 					% uh-oh
-					lager:debug("no data on socket, and no DATA terminator, retrying ~p~n", [Session]),
+					%io:format("no data on socket, and no DATA terminator, retrying ~p~n", [Session]),
 					% eventually we'll either get data or a different error, just keep retrying
 					receive_data(Acc, Socket, 0, Size, MaxSize, Session, Options);
 				Index ->
 					String = binstr:substr(Packet, 1, Index - 1),
 					Rest = binstr:substr(Packet, Index+5),
-					lager:debug("memory usage before flattening: ~p~n", [erlang:process_info(self(), memory)]),
+					%io:format("memory usage before flattening: ~p~n", [erlang:process_info(self(), memory)]),
 					Result = list_to_binary(lists:reverse([String | Acc2])),
-					lager:debug("memory usage after flattening: ~p~n", [erlang:process_info(self(), memory)]),
+					%io:format("memory usage after flattening: ~p~n", [erlang:process_info(self(), memory)]),
 					Session ! {receive_data, Result, Rest}
 			end;
 		{error, timeout} ->
 			receive_data(Acc, Socket, 0, Size, MaxSize, Session, Options);
 		{error, Reason} ->
-			lager:debug("receive error: ~p~n", [Reason]),
+			io:format("receive error: ~p~n", [Reason]),
 			exit(receive_error)
 	end.
 
@@ -896,9 +884,9 @@ parse_encoded_address_test_() ->
 					?assertEqual(error, parse_encoded_address(<<"God@heaven.af.mil>">>))
 			end
 		},
-		{"Address longer than 129 character should fail",
+		{"Address longer than 320 characters should fail",
 			fun() ->
-					MegaAddress = list_to_binary(lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ "@" ++ lists:seq(97, 122) ++ lists:seq(97, 122)),
+					MegaAddress = list_to_binary(lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ "@" ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122) ++ lists:seq(97, 122)),
 					?assertEqual(error, parse_encoded_address(MegaAddress))
 			end
 		},
@@ -1767,9 +1755,7 @@ smtp_session_tls_test_() ->
 	{foreach,
 		local,
 		fun() ->
-				crypto:start(),
-				application:start(public_key),
-				application:start(ssl),
+				gen_smtp_application:ensure_all_started(gen_smtp),
 				Self = self(),
 				spawn(fun() ->
 							{ok, ListenSock} = socket:listen(tcp, 9876, [binary]),
