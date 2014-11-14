@@ -15,6 +15,7 @@
          ,send_email/5, send_email/6
          ,render_subject/2, render/3
          ,service_params/2, service_params/3
+         ,send_update/2, send_update/3
         ]).
 
 -include("teletype.hrl").
@@ -602,3 +603,26 @@ fetch_template(TemplateId, AccountDb, {AName, Properties}) ->
             lager:debug("failed to load attachment ~s from ~s(~s): ~p", [AName, TemplateId, AccountDb, _E]),
             'undefined'
     end.
+
+-spec send_update(wh_json:object(), ne_binary()) -> 'ok'.
+-spec send_update(wh_json:object(), ne_binary(), api_binary()) -> 'ok'.
+-spec send_update(api_binary(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+send_update(DataJObj, Status) ->
+    send_update(DataJObj, Status, 'undefined').
+send_update(DataJObj, Status, Message) ->
+    send_update(wh_json:get_value(<<"server_id">>, DataJObj)
+                ,wh_json:get_value(<<"msg_id">>, DataJObj)
+                ,Status
+                ,Message
+               ).
+
+send_update('undefined', _, _, _) -> 'ok';
+send_update(RespQ, MsgId, Status, Msg) ->
+    Prop = props:filter_undefined(
+             [{<<"Status">>, Status}
+              ,{<<"Failure-Message">>, Msg}
+              ,{<<"Msg-ID">>, MsgId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
+    wapi_notifications:publish_notify_update(RespQ, Prop).
