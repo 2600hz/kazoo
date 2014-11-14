@@ -23,8 +23,10 @@
 
 -record(state, {}).
 
--define(RESPONDERS, [{'teletype_template_skel', [{<<"notification">>, <<"skel">>}]}]).
-%% -define(RESPONDERS, [{'teletype_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
+-define(RESPONDERS, [{'teletype_template_skel', [{<<"notification">>, <<"skel">>}]}
+                     ,{'teletype_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
+                    ]).
+%% -define(RESPONDERS, []}
 %%                      ,{'teletype_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
 %%                      ,{'teletype_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
 %%                      ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
