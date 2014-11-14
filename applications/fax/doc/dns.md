@@ -31,7 +31,7 @@ would have to add the following DNS entry:
 
 ```
 $ORIGIN mydomain.tld.
-myfax           CNAME   kazoo.io.
+myfax       CNAME   kazoo.io.
 ```
 
 if user has many faxboxes he can also add wildcards
