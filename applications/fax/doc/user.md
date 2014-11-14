@@ -5,13 +5,13 @@ Language: en-US
 */
 
 # Internet fax for Office 2010
-create a fax.reg file with the contents below and save. 
-replace xxx.fax.kazoo.io with the smtp address of faxbox.
-double click to merge into registry.
-open winword, text a bit, File | Save & Send | Send as Internet Fax
+* Create a fax.reg file with the contents below replacing xxx.fax.kazoo.io with the smtp address of faxbox. 
+* double click to merge into registry.
+* open winword, text a bit
+* File | Save & Send | Send as Internet Fax
 
 this may work on other office versions, try by changing the version 14.0   
-
+```
 Windows Registry Editor Version 5.00
 
 [HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Common\Services\Fax]
@@ -24,5 +24,5 @@ Windows Registry Editor Version 5.00
 "DoNotConvertMailBody"=dword:00000000
 "UseCoverSheet"=dword:00000000
 
-
+```
 
