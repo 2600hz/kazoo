@@ -67,10 +67,8 @@ policyd-spf  unix  -       n       n       -       0       spawn
 
 # update postfix from kazoo
 to get kazoo faxboxes configuration into postfix, we use the following statements
- 
-. curl -s http://bigcouch:15984/faxes/_design/faxbox/_view/email_address | awk -F"[,:}]" '{for(i=1;i<=NF;i++){if($i~/\042'key'\042/){print $(i+1) " OK"}}}' | tr -d '"' | sed -n ${num}p /etc/postfix/kz_smtp_domains
-. curl -s http://bigcouch:15984/faxes/_design/faxbox/_view/email_permissions?group=true | awk -F"[,:}]" '{for(i=1;i<=NF;i++){if($i~/\042'key'\042/){print "/" $(i+1) "/ OK"}}}' | tr -d '"' | sed -e 's/\./\\\./g' | sed -n ${num}p > /etc/postfix/kz_allowed_senders
 
+edit domains and permitteed users from kazoo  
 . postconf /etc/postfix/kz_smtp_domains
 . postconf /etc/postfix/kz_allowed_senders
 . postfix reload
