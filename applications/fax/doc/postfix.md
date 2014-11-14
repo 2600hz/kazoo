@@ -5,26 +5,25 @@ Language: en-US
 */
 
 # Postfix role in smtp-to-fax
-postfix should be used to filter email spam before delivering to kazoo
+although yoo can expose fax on port 25 or use haproxy, we recommend to use postfix to filter email spam before delivering to haproxy/kazoo
 
 # Simple Postfix setup
-yum -y install curl postfix
-yum -y install python python-dns python-pydns
-yum -y install python-pyspf pypolicyd-spf postgrey
+## inistall postfix, python & curl
+* `yum -y install curl postfix`
+* `yum -y install python python-dns python-pydns`
+* `yum -y install python-pyspf pypolicyd-spf postgrey`
 
+## edit etc/sysconfig/postgrey with
+`OPTIONS="--unix=/var/spool/postfix/postgrey/socket --delay=60"`
 
-edit etc/sysconfig/postgrey with
-OPTIONS="--unix=/var/spool/postfix/postgrey/socket --delay=60"
+## start services
+* `service postgrey start`
+* `service postfix reload`
+* `chkconfig --levels 345 postgrey on`
 
-start services
+## edit /etc/postfix/main.cf and add the following lines at the end
 
-service postgrey start
-service postfix reload
-chkconfig --levels 345 postgrey on 
-
-
-edit /etc/postfix/main.cf and add the following lines at the end
-
+```
 relay_domains = hash:/etc/postfix/kz_smtp_domains
 # relayhost should be the IP:PORT of haproxy-smtp-listener or kazoo fax whapp 
 relayhost = 127.0.0.1:2525
@@ -58,25 +57,23 @@ smtpd_recipient_restrictions =
    reject_rbl_client bl.spamcop.net,
    check_policy_service unix:postgrey/socket,
    reject
+```
 
-
-edit /etc/postfix/master.cf and add the following line at the end 
-
+## edit /etc/postfix/master.cf and add the following line at the end 
+```
 policyd-spf  unix  -       n       n       -       0       spawn
    user=nobody argv=/usr/libexec/postfix/policyd-spf
+```
 
-# update postfix from kazoo
-to get kazoo faxboxes configuration into postfix, we use the following statements
-
-edit domains and permitteed users from kazoo  
-. postconf /etc/postfix/kz_smtp_domains
-. postconf /etc/postfix/kz_allowed_senders
-. postfix reload
-
-* Note
-put into a bash script
-add it to a cron table
-handle 304 Not Modified responses
+## Todo
+* use couchdb views to get kazoo faxboxes configuration into postfix
+* edit domains and permitteed users from kazoo  
+* `postconf /etc/postfix/kz_smtp_domains`
+* `postconf /etc/postfix/kz_allowed_senders`
+* `postfix reload`
+* put into a bash script
+* add it to a cron table
+* handle 304 Not Modified responses
 
 
 
