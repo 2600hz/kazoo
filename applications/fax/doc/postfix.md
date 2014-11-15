@@ -5,7 +5,7 @@ Language: en-US
 */
 
 # Postfix role in smtp-to-fax
-although yoo can expose fax on port 25 or use haproxy, we recommend to use postfix to filter email spam before delivering to haproxy/kazoo
+although you can expose kazoo fax on port 25 or use haproxy, we recommend to use postfix to filter email spam before delivering to haproxy/kazoo
 
 # Simple Postfix setup
 ## inistall postfix, python & curl
