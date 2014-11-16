@@ -501,4 +501,6 @@ get_modbs(Context, From, To) ->
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
     Range = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, []),
-    [{'databases', [ wh_util:format_account_mod_id(AccountId, Year, Month) || {Year, Month} <- Range]}].
+    FiilterFunc = fun(Db) -> couch_mgr:db_exists(Db) end,
+    [{'databases', lists:filter(FiilterFunc, [wh_util:format_account_mod_id(AccountId, Year, Month) || {Year, Month} <- Range])}].
+
