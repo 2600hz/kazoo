@@ -1,0 +1,13 @@
+{application, cccp,
+ [
+  {description, "CCCP - Calling Card Callback Platform"},
+  {vsn, "0.0.1"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { cccp_app, []}},
+  {env, []}
+ ]}.
