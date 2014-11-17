@@ -388,11 +388,11 @@ register_body(ResellerId, FaxboxId, Boundary) ->
                           [code:priv_dir('fax'), "cloud/register.props"])
                        ]),
     OverrideFields = whapps_account_config:get(ResellerId, <<"fax">>, <<"cloud_properties">>, []),
-    Fields = lists:foldl(fun({<<"tag">>, V}=P, Acc) ->
+    Fields = lists:foldl(fun({<<"tag">>, _}=P, Acc) ->
                                  [P | Acc];
                             ({K, V}, Acc) ->
                                  case lists:member(K, ?CLOUD_PROPERTIES) of
-                                     'true' -> props::set_value(K, V, props:delete(K, Acc));
+                                     'true' -> props:set_value(K, V, props:delete(K, Acc));
                                      'false' -> Acc
                                  end
                          end, DefaultFields, OverrideFields),
