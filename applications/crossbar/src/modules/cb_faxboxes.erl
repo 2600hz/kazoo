@@ -20,6 +20,7 @@
         ]).
 
 -include("../crossbar.hrl").
+-include_lib("kazoo_oauth/include/kazoo_oauth_types.hrl").
 
 -define(CB_LIST, <<"faxbox/crossbar_listing">>).
 
@@ -219,7 +220,7 @@ read(Id, Context) ->
     Ctx1 = crossbar_doc:load(Id, Context),
     case cb_context:doc(Ctx1) of
         'undefined' -> Ctx1;
-        Doc -> cb_context:set_resp_data(Ctx1, wh_doc:public_fields(leak_private_fields(Doc)))
+        Doc -> maybe_oauth_req(Doc, cb_context:req_value(Context, <<"oauth">>), Ctx1)
     end.
 
 -spec leak_private_fields(wh_json:object()) -> wh_json:object().
@@ -320,10 +321,9 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
 
 -spec maybe_register_cloud_printer(cb_context:context()) -> cb_context:context().
 maybe_register_cloud_printer(Context) ->
-    ResellerId =  cb_context:reseller_id(Context),    
+    ResellerId =  cb_context:reseller_id(Context),
     case whapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false') of
-        'true' ->
-            maybe_register_cloud_printer(ResellerId, cb_context:doc(Context));
+        'true' -> maybe_register_cloud_printer(Context, cb_context:doc(Context));
         'false' -> Context
     end.
 
@@ -337,8 +337,9 @@ maybe_register_cloud_printer(Context, JObj) ->
         _PrinterId -> Context
     end.
 
--spec register_cloud_printer(ne_binary(), ne_binary()) -> wh_proplist().
-register_cloud_printer(ResellerId, FaxboxId) ->
+-spec register_cloud_printer(cb_context:context(), ne_binary()) -> wh_proplist().
+register_cloud_printer(Context, FaxboxId) ->
+    ResellerId =  cb_context:reseller_id(Context),
     Boundary = <<"------", (wh_util:rand_hex_binary(16))/binary>>,
     Body = register_body(ResellerId, FaxboxId, Boundary),
     ContentType = wh_util:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
@@ -456,3 +457,21 @@ build_file_parts(Boundary, Files, Acc0) ->
 -spec join_formdata_fold(ne_binary(), binary()) -> iolist().
 join_formdata_fold(Bin, Acc) ->
     string:join([binary_to_list(Bin), Acc], "\r\n").
+
+-spec maybe_oauth_req(wh_json:object(), api_binary(), cb_context:context()) -> cb_context:context().
+maybe_oauth_req(Doc, 'undefined', Context) ->
+    cb_context:set_resp_data(Context, wh_doc:public_fields(leak_private_fields(Doc)));
+maybe_oauth_req(Doc, _, Context) ->
+    oauth_req(Doc, wh_json:get_value(<<"pvt_cloud_refresh_token">>, Doc), Context).
+
+-spec oauth_req(wh_json:object(), api_binary(), cb_context:context()) -> cb_context:context().
+oauth_req(Doc, 'undefined', Context) ->
+    cb_context:set_resp_data(Context, wh_doc:public_fields(leak_private_fields(Doc)));
+oauth_req(JObj, OAuthRefresh, Context) ->
+    {'ok',App} = kazoo_oauth_util:get_oauth_app(wh_json:get_value(<<"pvt_cloud_oauth_app">>, JObj)),
+    RefreshToken = #oauth_refresh_token{token = OAuthRefresh},
+    {'ok', #oauth_token{expires=Expires}=Token} = kazoo_oauth_util:token(App, RefreshToken),
+    TokenString = kazoo_oauth_util:authorization_header(Token),
+    cb_context:set_resp_data(Context, wh_json:set_values([{<<"expires">>, Expires}
+                                                          ,{<<"token">>, TokenString}
+                                                         ], wh_json:new())).
