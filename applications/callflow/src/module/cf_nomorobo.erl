@@ -188,7 +188,7 @@ nomorobo_branch_test() ->
                    ,{ 9, <<"6">>}
                    ,{10, <<"10">>}
                   ],
-    Keys = nomorobo_branches([<<"0">>, <<"10">>, <<"3">>, <<"6">>]),
+    Keys = nomorobo_branches({'branch_keys', [<<"0">>, <<"10">>, <<"3">>, <<"6">>]}),
 
     [?assertEqual(Branch, nomorobo_branch(Score, Keys))
      || {Score, Branch} <- ScoreBranch
