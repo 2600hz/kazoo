@@ -14,6 +14,7 @@
         ,handle_faxbox_deleted/2
         ,maybe_process_job/2
         ,check_registration/3
+        ,get_printer_oauth_credentials/1
         ]).
 
 -include("fax_cloud.hrl").
@@ -101,7 +102,7 @@ maybe_process_job([JObj | JObjs], Authorization) ->
     FileURL = wh_json:get_value(<<"fileUrl">>, JObj),
     case wh_json:get_value(<<"Fax-Number">>, NumberObj) of
         'undefined' ->
-            lager:debug("no fax number in job ticket"),
+            lager:debug("no fax number in job ticket ~s for printer ~s", [JobId, PrinterId]),
             update_job_status(PrinterId, JobId, <<"ABORTED">>);
         FaxNumber ->
             maybe_save_fax_document(JObj, JobId, PrinterId, FaxNumber, FileURL )
@@ -350,7 +351,7 @@ handle_faxbox_created(JObj, _Props) ->
     ID = wh_json:get_value(<<"ID">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id", JObj)
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
     AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
     spawn(?MODULE, check_registration, [AppId, State, Doc]).
 
