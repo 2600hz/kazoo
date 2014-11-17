@@ -306,6 +306,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
     FaxBoxId = wh_json:get_value(<<"_id">>, FaxBoxDoc),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
 
     FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>
                                           ,<<"outbound">>
@@ -341,6 +342,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
                               ,{<<"attempts">>, 0}
                               ,{<<"pvt_account_id">>, AccountId}
                               ,{<<"pvt_account_db">>, AccountDb}
+                              ,{<<"pvt_reseller_id">>, ResellerId}
                              ]
                              ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
                             ),

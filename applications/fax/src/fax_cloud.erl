@@ -237,6 +237,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
 
     AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
     OwnerId = wh_json:get_value(<<"ownerId">>, Job),
     FaxBoxUserEmail = wh_json:get_value(<<"owner_email">>, FaxBoxDoc),
 
@@ -281,6 +282,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                               ,{<<"attempts">>, 0}
                               ,{<<"pvt_account_id">>, AccountId}
                               ,{<<"pvt_account_db">>, AccountDb}
+                              ,{<<"pvt_reseller_id">>, ResellerId}
                              ]
                              ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
                             ),
@@ -347,7 +349,8 @@ handle_faxbox_created(JObj, _Props) ->
     ID = wh_json:get_value(<<"ID">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
-    AppId = whapps_config:get_binary(?CONFIG_CAT, <<"cloud_oauth_app">>),
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id", JObj)
+    AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
     spawn(?MODULE, check_registration, [AppId, State, Doc]).
 
 -spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
