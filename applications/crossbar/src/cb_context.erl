@@ -30,6 +30,7 @@
          ,account_db/1, set_account_db/2
          ,account_modb/1, account_modb/2, account_modb/3
          ,set_account_modb/3, set_account_modb/4
+         ,reseller_id/1, set_reseller_id/2
          ,account_realm/1
          ,account_doc/1
          ,auth_token/1, set_auth_token/2
@@ -114,6 +115,7 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 -spec account_doc(context()) -> api_object().
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
+reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
 
 account_modb(Context) ->
@@ -227,6 +229,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_validation_errors(context(), wh_json:object()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
+set_reseller_id(#cb_context{}=Context, AcctId) -> Context#cb_context{reseller_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
 set_account_modb(#cb_context{}=Context, Year, Month) ->
     Context#cb_context{db_name=kazoo_modb:get_modb(account_id(Context), Year, Month)}.
