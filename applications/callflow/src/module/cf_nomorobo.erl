@@ -32,11 +32,13 @@
 %%%-------------------------------------------------------------------
 -module(cf_nomorobo).
 
--export([handle/2]).
+-export([handle/2
+         ,nomorobo_req/2
+        ]).
 
 -include("../callflow.hrl").
 
--define(URL, <<"https://api.nomorobo.com/v1/check?From={FROM}&To={TO}">>).
+-define(URL, <<"http://api.nomorobo.com/v1/check?From={FROM}&To={TO}">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -48,37 +50,19 @@
 handle(Data, Call) ->
     case nomorobo_score(Data, Call) of
         'undefined' ->
-            lager:debug("unable to determine score, branching to 0/_"),
             continue_to_default(Call);
         Score ->
-            lager:debug("nomorobo score: ~p", [Score]),
             continue_to_score(Call, Score)
     end.
 
 -spec nomorobo_score(wh_json:object(), whapps_call:call()) ->
                             api_integer().
 nomorobo_score(Data, Call) ->
-    Username = wh_json:get_value(<<"username">>, Data),
-    Password = wh_json:get_value(<<"password">>, Data),
+    URI = nomorobo_uri(Call),
 
-    URI =
-        lists:foldl(fun({S, R}, U) ->
-                            binary:replace(U, S, R)
-                    end
-                    ,?URL
-                    ,[{<<"{TO}">>, wnm_util:to_npan(whapps_call:request_user(Call))}
-                      ,{<<"{FROM}">>, wnm_util:to_npan(whapps_call:caller_id_number(Call))}
-                     ]),
+    lager:info("sending request to nomorobo: ~s", [URI]),
 
-    lager:debug("sending request to nomorobo: ~s", [URI]),
-
-    case ibrowse:send_req(wh_util:to_list(URI)
-                          ,[]
-                          ,'get'
-                          ,[]
-                          ,[{'basic_auth', {Username, Password}}]
-                         )
-    of
+    try nomorobo_req(URI, Data) of
         {'ok', "200", _Headers, Body} ->
             nomorobo_score_from_resp(Body);
         {'ok', _Status, _Headers, _Body} ->
@@ -87,7 +71,42 @@ nomorobo_score(Data, Call) ->
         {'error', _E} ->
             lager:debug("error querying: ~p", [_E]),
             'undefined'
+    catch
+        _E:_R ->
+            lager:debug("crashed querying nomorobo: ~s: ~p", [_E, _R]),
+            'undefined'
     end.
+
+-spec nomorobo_req(ne_binary(), wh_json:object()) -> ibrowse_ret().
+nomorobo_req(URI, Data) ->
+    ibrowse:send_req(wh_util:to_list(URI)
+                     ,[]
+                     ,'get'
+                     ,[]
+                     ,nomorobo_req_options(Data)
+                    ).
+
+-spec nomorobo_req_options(wh_json:object()) -> list().
+nomorobo_req_options(Data) ->
+    Username = wh_json:get_string_value(<<"username">>, Data),
+    Password = wh_json:get_string_value(<<"password">>, Data),
+
+    [{'basic_auth', {Username, Password}}
+     ,{'ssl_options', [{'verify', 'verify_none'}
+                      ]}
+     ,{'response_format', 'binary'}
+    ].
+
+-spec nomorobo_uri(whapps_call:call()) -> ne_binary().
+nomorobo_uri(Call) ->
+    lists:foldl(fun uri_replace/2
+                ,?URL
+                ,[{<<"{TO}">>, wnm_util:to_npan(whapps_call:request_user(Call))}
+                  ,{<<"{FROM}">>, wnm_util:to_npan(whapps_call:caller_id_number(Call))}
+                 ]).
+
+-spec uri_replace({ne_binary(), ne_binary()}, ne_binary()) -> ne_binary().
+uri_replace({S, R}, U) -> binary:replace(U, S, R).
 
 -spec nomorobo_score_from_resp(binary()) -> api_integer().
 nomorobo_score_from_resp(Body) ->
@@ -100,13 +119,12 @@ nomorobo_score_from_resp(Body) ->
             'undefined'
     end.
 
--spec continue_to_score(whapps_call:call(), integer()) ->
-                               {'attempt_resp', _}.
+-spec continue_to_score(whapps_call:call(), integer()) -> 'ok'.
 continue_to_score(Call, Score) ->
     Keys = nomorobo_branches(cf_exe:get_all_branch_keys(Call)),
     Branch = nomorobo_branch(Score, Keys),
-    lager:info("attempting to branch to ~s from score ~p", [Branch, Score]),
-    cf_exe:attempt(Branch, Call).
+    lager:info("attempting to branch to '~s' from score '~p'", [Branch, Score]),
+    cf_exe:continue(Branch, Call).
 
 -spec nomorobo_branch(integer(), integers()) -> ne_binary().
 nomorobo_branch(Score, [Lo|Keys]) ->
@@ -122,14 +140,15 @@ nomorobo_branch(Score, _Lo, [K|Ks]) when K =< Score ->
 nomorobo_branch(Score, Lo, [_K|Ks]) ->
     nomorobo_branch(Score, Lo, Ks).
 
--spec continue_to_default(whapps_call:call()) ->
-                                 'ok' |
-                                 {'attempt_resp', 'ok'} |
-                                 {'attempt_resp', {'error', _}}.
+-spec continue_to_default(whapps_call:call()) -> 'ok'.
 continue_to_default(Call) ->
     case nomorobo_branches(cf_exe:get_all_branch_keys(Call)) of
-        [-1|_] -> cf_exe:continue(Call);
-        [0|_] -> cf_exe:attempt(<<"0">>, Call);
+        [-1|_] ->
+            lager:info("branching to default child"),
+            cf_exe:continue(Call);
+        [0|_] ->
+            lager:info("branching to '0' child"),
+            cf_exe:continue(<<"0">>, Call);
         _ ->
             lager:info("no default branch, done with the call"),
             cf_exe:stop(Call)
