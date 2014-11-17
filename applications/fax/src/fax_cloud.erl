@@ -19,6 +19,7 @@
 -include("fax_cloud.hrl").
 
 -define(JSON(L), wh_json:from_list(L)).
+-define(DEFAULT_CLOUD_REG_SLEEP, 5000).
 
 %%%===================================================================
 %%% API
@@ -420,9 +421,10 @@ process_registration_result('false', AppId, JObj, _Result) ->
                 ,wh_json:delete_keys(Keys, JObj)
                ));
         _ ->
-            lager:debug("Printer ~s not claimed at ~s. sleeping for 30 seconds, Elapsed/Duration (~p/~p)."
-                        ,[PrinterId,InviteUrl,Elapsed, TokenDuration]),
-            timer:sleep(30000),
+            SleepTime = whapps_config:get_integer(?CONFIG_CAT, <<"cloud_registration_pool_interval">>, ?DEFAULT_CLOUD_REG_SLEEP),
+            lager:debug("Printer ~s not claimed at ~s. sleeping for ~p seconds, Elapsed/Duration (~p/~p)."
+                        ,[PrinterId,InviteUrl,SleepTime, Elapsed, TokenDuration]),
+            timer:sleep(SleepTime),
             check_registration(AppId, <<"registered">>, JObj)
     end.
 
