@@ -35,6 +35,15 @@
                         ,<<"pvt_cloud_connector_claim_url">>
                        ]).
 
+-define(CLOUD_PROPERTIES, [<<"printer">>
+                           ,<<"default_display_name">>
+                           ,<<"manufacturer">>
+                           ,<<"model">>
+                           ,<<"setup_url">>
+                           ,<<"support_url">>
+                           ,<<"update_url">>
+                          ]).
+
 -type fax_field_name() :: ne_binary().
 -type fax_file_name() :: ne_binary().
 -type fax_file_content() :: binary() | iolist().
@@ -262,8 +271,9 @@ on_faxbox_successful_validation('undefined', Context) ->
                        ,wh_json:set_values([{<<"pvt_type">>, <<"faxbox">>}
                                             ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
                                             ,{<<"pvt_account_db">>, cb_context:account_db(Context)}
+                                            ,{<<"pvt_reseller_id">>, cb_context:reseller_id(Context)}
                                             ,{<<"_id">>, wh_util:rand_hex_binary(16)}
-                                            ,{<<"pvt_smtp_email_address">>, generate_email_address()}
+                                            ,{<<"pvt_smtp_email_address">>, generate_email_address(Context)}
                                            ]
                                            ,cb_context:doc(Context)
                                           )
@@ -271,9 +281,10 @@ on_faxbox_successful_validation('undefined', Context) ->
 on_faxbox_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context).
 
--spec generate_email_address() -> ne_binary().
-generate_email_address() ->
-    Domain = whapps_config:get_binary(<<"fax">>, <<"default_smtp_domain">>, ?DEFAULT_FAX_SMTP_DOMAIN),
+-spec generate_email_address(cb_context:context()) -> ne_binary().
+generate_email_address(Context) ->
+    ResellerId =  cb_context:reseller_id(Context),
+    Domain = whapps_account_config:get(ResellerId, <<"fax">>, <<"default_smtp_domain">>, ?DEFAULT_FAX_SMTP_DOMAIN),
     New = wh_util:rand_hex_binary(4),
     <<New/binary, ".", Domain/binary>>.
 
@@ -309,9 +320,10 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
 
 -spec maybe_register_cloud_printer(cb_context:context()) -> cb_context:context().
 maybe_register_cloud_printer(Context) ->
-    case whapps_config:get_is_true(<<"fax">>, <<"enable_cloud_connector">>, 'true') of
+    ResellerId =  cb_context:reseller_id(Context),    
+    case whapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false') of
         'true' ->
-            maybe_register_cloud_printer(Context, cb_context:doc(Context));
+            maybe_register_cloud_printer(ResellerId, cb_context:doc(Context));
         'false' -> Context
     end.
 
@@ -320,15 +332,15 @@ maybe_register_cloud_printer(Context, JObj) ->
     case wh_json:get_value(<<"pvt_cloud_printer_id">>, JObj) of
         'undefined' ->
             DocId = wh_json:get_value(<<"_id">>, JObj),
-            NewDoc = wh_json:set_values(register_cloud_printer(DocId), JObj),
+            NewDoc = wh_json:set_values(register_cloud_printer(Context, DocId), JObj),
             cb_context:set_doc(Context, NewDoc);
         _PrinterId -> Context
     end.
 
--spec register_cloud_printer(ne_binary()) -> wh_proplist().
-register_cloud_printer(FaxboxId) ->
+-spec register_cloud_printer(ne_binary(), ne_binary()) -> wh_proplist().
+register_cloud_printer(ResellerId, FaxboxId) ->
     Boundary = <<"------", (wh_util:rand_hex_binary(16))/binary>>,
-    Body = register_body(FaxboxId, Boundary),
+    Body = register_body(ResellerId, FaxboxId, Boundary),
     ContentType = wh_util:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
     ContentLength = length(Body),
     Options = [{'content_type', ContentType}
@@ -369,12 +381,21 @@ get_cloud_registered_properties(JObj) ->
      ,{<<"pvt_cloud_oauth_scope">>, wh_json:get_value(<<"oauth_scope">>, JObj)}
     ].
 
--spec register_body(ne_binary(), ne_binary()) -> iolist().
-register_body(FaxboxId, Boundary) ->
-    {'ok', Fields} = file:consult(
+-spec register_body(ne_binary(), ne_binary(), ne_binary()) -> iolist().
+register_body(ResellerId, FaxboxId, Boundary) ->
+    {'ok', DefaultFields} = file:consult(
                        [filename:join(
                           [code:priv_dir('fax'), "cloud/register.props"])
                        ]),
+    OverrideFields = whapps_account_config:get(ResellerId, <<"fax">>, <<"cloud_properties">>, []),
+    Fields = lists:foldl(fun({<<"tag">>, V}=P, Acc) ->
+                                 [P | Acc];
+                            ({K, V}, Acc) ->
+                                 case lists:member(K, ?CLOUD_PROPERTIES) of
+                                     'true' -> props::set_value(K, V, props:delete(K, Acc));
+                                     'false' -> Acc
+                                 end
+                         end, DefaultFields, OverrideFields),
     {'ok', PrinterDef} = file:read_file(
                            [filename:join(
                               [code:priv_dir('fax'), "cloud/printer.json"])
