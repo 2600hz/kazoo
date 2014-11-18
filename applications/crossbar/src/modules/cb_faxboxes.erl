@@ -467,8 +467,8 @@ maybe_oauth_req(Doc, _, Context) ->
 -spec oauth_req(wh_json:object(), api_binary(), cb_context:context()) -> cb_context:context().
 oauth_req(Doc, 'undefined', Context) ->
     cb_context:set_resp_data(Context, wh_doc:public_fields(leak_private_fields(Doc)));
-oauth_req(JObj, OAuthRefresh, Context) ->
-    {'ok',App} = kazoo_oauth_util:get_oauth_app(wh_json:get_value(<<"pvt_cloud_oauth_app">>, JObj)),
+oauth_req(Doc, OAuthRefresh, Context) ->
+    {'ok',App} = kazoo_oauth_util:get_oauth_app(wh_json:get_value(<<"pvt_cloud_oauth_app">>, Doc)),
     RefreshToken = #oauth_refresh_token{token = OAuthRefresh},
     {'ok', #oauth_token{expires=Expires}=Token} = kazoo_oauth_util:token(App, RefreshToken),
     TokenString = kazoo_oauth_util:authorization_header(Token),
