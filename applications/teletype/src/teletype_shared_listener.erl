@@ -23,8 +23,9 @@
 
 -record(state, {}).
 
--define(RESPONDERS, [{'teletype_template_skel', [{<<"notification">>, <<"skel">>}]}
-                     ,{'teletype_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
+-define(RESPONDERS, [{{'teletype_voicemail_to_email', 'handle_new_voicemail'}
+                      ,[{<<"notification">>, <<"voicemail_new">>}]
+                     }
                     ]).
 %% -define(RESPONDERS, []}
 %%                      ,{'teletype_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
@@ -43,30 +44,32 @@
 %%                      ,{'teletype_transaction', [{<<"notification">>, <<"transaction">>}]}
 %%                      ,{'teletype_system_alert', [{<<"notification">>, <<"system_alert">>}]}
 %%                      ,{'teletype_topup', [{<<"notification">>, <<"topup">>}]}
+%%                      ,{'teletype_template_skel', [{<<"notification">>, <<"skel">>}]}
+
 %%                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
-                      ,'voicemail_full'
-                      ,'inbound_fax'
-                      ,'inbound_fax_error'
-                      ,'outbound_fax'
-                      ,'outbound_fax_error'
-                      ,'deregister'
-                      ,'pwd_recovery'
-                      ,'new_account'
-                      ,'cnam_requests'
-                      ,'port_request'
-                      ,'port_cancel'
-                      ,'low_balance'
-                      ,'transaction'
-                      ,'system_alerts'
-                      ,'skel'
+                      %% ,'voicemail_full'
+                      %% ,'inbound_fax'
+                      %% ,'inbound_fax_error'
+                      %% ,'outbound_fax'
+                      %% ,'outbound_fax_error'
+                      %% ,'deregister'
+                      %% ,'pwd_recovery'
+                      %% ,'new_account'
+                      %% ,'cnam_requests'
+                      %% ,'port_request'
+                      %% ,'port_cancel'
+                      %% ,'low_balance'
+                      %% ,'transaction'
+                      %% ,'system_alerts'
+                      %% ,'skel'
                      ]).
 
 -define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO}]}
                    ,{'self', []}
                   ]).
--define(QUEUE_NAME, <<"teletype_listener">>).
+-define(QUEUE_NAME, <<"teletype_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
@@ -82,13 +85,11 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {'bindings', ?BINDINGS}
+    gen_listener:start_link(?MODULE, [{'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include
                                       ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
                                       ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                      %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 
 %%%===================================================================
