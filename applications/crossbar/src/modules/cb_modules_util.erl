@@ -164,24 +164,34 @@ create_call_from_context(Context) ->
     lists:foldl(fun(F, C) -> F(C) end, whapps_call:new(), Routines).
 
 -spec request_specific_extraction_funs(cb_context:context()) -> [function(),...] | [].
--spec request_specific_extraction_funs_from_nouns(req_nouns()) -> [function(),...] | [].
+-spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) -> [function(),...] | [].
 request_specific_extraction_funs(Context) ->
-    request_specific_extraction_funs_from_nouns(cb_context:req_nouns(Context)).
+    request_specific_extraction_funs_from_nouns(Context, cb_context:req_nouns(Context)).
 
-request_specific_extraction_funs_from_nouns(?DEVICES_QCALL_NOUNS) ->
+request_specific_extraction_funs_from_nouns(Context, ?DEVICES_QCALL_NOUNS) ->
     [fun(C) -> whapps_call:set_authorizing_id(_DeviceId, C) end
      ,fun(C) -> whapps_call:set_authorizing_type(<<"device">>, C) end
-     ,fun(C) -> whapps_call:set_request(<<_Number/binary, "@devicequickcall">>, C) end
-     ,fun(C) -> whapps_call:set_to(<<_Number/binary, "@devicequickcall">>, C) end
+     ,fun(C) -> set_request(C, Context, _Number) end
+     ,fun(C) -> set_to(C, Context, _Number) end
     ];
-request_specific_extraction_funs_from_nouns(?USERS_QCALL_NOUNS) ->
+request_specific_extraction_funs_from_nouns(Context, ?USERS_QCALL_NOUNS) ->
     [fun(C) -> whapps_call:set_authorizing_id(_UserId, C) end
      ,fun(C) -> whapps_call:set_authorizing_type(<<"user">>, C) end
-     ,fun(C) -> whapps_call:set_request(<<_Number/binary, "@userquickcall">>, C) end
-     ,fun(C) -> whapps_call:set_to(<<_Number/binary, "@userquickcall">>, C) end
+     ,fun(C) -> set_request(C, Context, _Number) end
+     ,fun(C) -> set_to(C, Context, _Number) end
     ];
-request_specific_extraction_funs_from_nouns(_ReqNouns) ->
+request_specific_extraction_funs_from_nouns(_, _ReqNouns) ->
     [].
+
+-spec set_request(whapps_call:call(), cb_context:context(), ne_binary()) -> whapps_call:call().
+set_request(Call, Context, Number) ->
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    whapps_call:set_request(<<Number/binary, "@", Realm/binary>>, Call).
+
+-spec set_to(whapps_call:call(), cb_context:context(), Number) -> whapps_call:call().
+set_to(Call, Context, Number) ->
+    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
+    whapps_call:set_to(<<Number/binary, "@", Realm/binary>>, Call).
 
 -spec get_endpoints(whapps_call:call(), cb_context:context()) -> wh_json:objects().
 -spec get_endpoints(whapps_call:call(), cb_context:context(), req_nouns()) -> wh_json:objects().
