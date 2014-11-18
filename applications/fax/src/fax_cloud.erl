@@ -14,11 +14,13 @@
         ,handle_faxbox_deleted/2
         ,maybe_process_job/2
         ,check_registration/3
+        ,get_printer_oauth_credentials/1
         ]).
 
 -include("fax_cloud.hrl").
 
 -define(JSON(L), wh_json:from_list(L)).
+-define(DEFAULT_CLOUD_REG_SLEEP, 5000).
 
 %%%===================================================================
 %%% API
@@ -100,7 +102,7 @@ maybe_process_job([JObj | JObjs], Authorization) ->
     FileURL = wh_json:get_value(<<"fileUrl">>, JObj),
     case wh_json:get_value(<<"Fax-Number">>, NumberObj) of
         'undefined' ->
-            lager:debug("no fax number in job ticket"),
+            lager:debug("no fax number in job ticket ~s for printer ~s", [JobId, PrinterId]),
             update_job_status(PrinterId, JobId, <<"ABORTED">>);
         FaxNumber ->
             maybe_save_fax_document(JObj, JobId, PrinterId, FaxNumber, FileURL )
@@ -237,6 +239,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
 
     AccountId = wh_json:get_value(<<"pvt_account_id">>,FaxBoxDoc),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
     OwnerId = wh_json:get_value(<<"ownerId">>, Job),
     FaxBoxUserEmail = wh_json:get_value(<<"owner_email">>, FaxBoxDoc),
 
@@ -281,6 +284,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                               ,{<<"attempts">>, 0}
                               ,{<<"pvt_account_id">>, AccountId}
                               ,{<<"pvt_account_db">>, AccountDb}
+                              ,{<<"pvt_reseller_id">>, ResellerId}
                              ]
                              ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
                             ),
@@ -347,7 +351,8 @@ handle_faxbox_created(JObj, _Props) ->
     ID = wh_json:get_value(<<"ID">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
-    AppId = whapps_config:get_binary(?CONFIG_CAT, <<"cloud_oauth_app">>),
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
+    AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
     spawn(?MODULE, check_registration, [AppId, State, Doc]).
 
 -spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
@@ -417,9 +422,10 @@ process_registration_result('false', AppId, JObj, _Result) ->
                 ,wh_json:delete_keys(Keys, JObj)
                ));
         _ ->
-            lager:debug("Printer ~s not claimed at ~s. sleeping for 30 seconds, Elapsed/Duration (~p/~p)."
-                        ,[PrinterId,InviteUrl,Elapsed, TokenDuration]),
-            timer:sleep(30000),
+            SleepTime = whapps_config:get_integer(?CONFIG_CAT, <<"cloud_registration_pool_interval">>, ?DEFAULT_CLOUD_REG_SLEEP),
+            lager:debug("Printer ~s not claimed at ~s. sleeping for ~p seconds, Elapsed/Duration (~p/~p)."
+                        ,[PrinterId,InviteUrl,SleepTime, Elapsed, TokenDuration]),
+            timer:sleep(SleepTime),
             check_registration(AppId, <<"registered">>, JObj)
     end.
 
