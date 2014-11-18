@@ -151,70 +151,64 @@ maybe_originate_quickcall(Context) ->
 
 -spec create_call_from_context(cb_context:context()) -> whapps_call:call().
 create_call_from_context(Context) ->
-    Routines = [fun(C) -> whapps_call:set_account_db(cb_context:account_db(Context), C) end
-                ,fun(C) -> whapps_call:set_account_id(cb_context:account_id(Context), C) end
-                ,fun(C) ->
-                         case wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context)) of
-                             'undefined' -> C;
-                             OwnerId -> whapps_call:set_owner_id(OwnerId, C)
-                         end
-                 end
-                | request_specific_extraction_funs(Context)
-               ],
-    lists:foldl(fun(F, C) -> F(C) end, whapps_call:new(), Routines).
+    Routines =
+        props:filter_undefined(
+          [{fun whapps_call:set_account_db/2, cb_context:account_db(Context)}
+           ,{fun whapps_call:set_account_id/2, cb_context:account_id(Context)}
+           ,{fun whapps_call:set_owner_id/2, wh_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
+           | request_specific_extraction_funs(Context)
+          ]),
+    whapps_call:exec(Routines, whapps_call:new()).
 
--spec request_specific_extraction_funs(cb_context:context()) -> [function(),...] | [].
--spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) -> [function(),...] | [].
+-spec request_specific_extraction_funs(cb_context:context()) -> functions().
+-spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) -> functions().
 request_specific_extraction_funs(Context) ->
     request_specific_extraction_funs_from_nouns(Context, cb_context:req_nouns(Context)).
 
-request_specific_extraction_funs_from_nouns(Context, ?DEVICES_QCALL_NOUNS) ->
-    [fun(C) -> whapps_call:set_authorizing_id(_DeviceId, C) end
-     ,fun(C) -> whapps_call:set_authorizing_type(<<"device">>, C) end
-     ,fun(C) -> set_request(C, Context, _Number) end
-     ,fun(C) -> set_to(C, Context, _Number) end
+request_specific_extraction_funs_from_nouns(Context, ?DEVICES_QCALL_NOUNS(DeviceId, Number)) ->
+    NumberURI = build_number_uri(Context, Number),
+    [{fun whapps_call:set_authorizing_id/2, DeviceId}
+     ,{fun whapps_call:set_authorizing_type/2, <<"device">>}
+     ,{fun whapps_call:set_request/2, NumberURI}
+     ,{fun whapps_call:set_to/2, NumberURI}
     ];
-request_specific_extraction_funs_from_nouns(Context, ?USERS_QCALL_NOUNS) ->
-    [fun(C) -> whapps_call:set_authorizing_id(_UserId, C) end
-     ,fun(C) -> whapps_call:set_authorizing_type(<<"user">>, C) end
-     ,fun(C) -> set_request(C, Context, _Number) end
-     ,fun(C) -> set_to(C, Context, _Number) end
+request_specific_extraction_funs_from_nouns(Context, ?USERS_QCALL_NOUNS(UserId, Number)) ->
+    NumberURI = build_number_uri(Context, Number),
+    [{fun whapps_call:set_authorizing_id/2, UserId}
+     ,{fun whapps_call:set_authorizing_type/2, <<"user">>}
+     ,{fun whapps_call:set_request/2, NumberURI}
+     ,{fun whapps_call:set_to/2, NumberURI}
     ];
-request_specific_extraction_funs_from_nouns(_, _ReqNouns) ->
+request_specific_extraction_funs_from_nouns(_Context, _ReqNouns) ->
     [].
 
--spec set_request(whapps_call:call(), cb_context:context(), ne_binary()) -> whapps_call:call().
-set_request(Call, Context, Number) ->
+-spec build_number_uri(cb_context:context(), ne_binary()) -> ne_binary().
+build_number_uri(Context, Number) ->
     Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
-    whapps_call:set_request(<<Number/binary, "@", Realm/binary>>, Call).
-
--spec set_to(whapps_call:call(), cb_context:context(), Number) -> whapps_call:call().
-set_to(Call, Context, Number) ->
-    Realm = wh_util:get_account_realm(cb_context:account_id(Context)),
-    whapps_call:set_to(<<Number/binary, "@", Realm/binary>>, Call).
+    <<Number/binary, "@", Realm/binary>>.
 
 -spec get_endpoints(whapps_call:call(), cb_context:context()) -> wh_json:objects().
 -spec get_endpoints(whapps_call:call(), cb_context:context(), req_nouns()) -> wh_json:objects().
 get_endpoints(Call, Context) ->
     get_endpoints(Call, Context, cb_context:req_nouns(Context)).
 
-get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS) ->
+get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
     Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
                                     ,{<<"source">>, 'cb_devices'}
                                    ]),
-    case cf_endpoint:build(cb_context:doc(Context), Properties, aleg_cid(_Number, Call)) of
+    case cf_endpoint:build(cb_context:doc(Context), Properties, aleg_cid(Number, Call)) of
         {'error', _} -> [];
         {'ok', []} -> [];
         {'ok', Endpoints} -> Endpoints
     end;
-get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS) ->
+get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS(_UserId, Number)) ->
     Properties = wh_json:from_list([{<<"can_call_self">>, 'true'}
                                     ,{<<"suppress_clid">>, 'true'}
                                     ,{<<"source">>, 'cb_users'}
                                    ]),
     lists:foldr(fun(EndpointId, Acc) ->
-                        case cf_endpoint:build(EndpointId, Properties, aleg_cid(_Number, Call)) of
+                        case cf_endpoint:build(EndpointId, Properties, aleg_cid(Number, Call)) of
                             {'ok', Endpoint} -> Endpoint ++ Acc;
                             {'error', _E} -> Acc
                         end
@@ -283,10 +277,10 @@ maybe_auto_answer(Endpoints) ->
 get_application_data(Context) ->
     get_application_data_from_nouns(cb_context:req_nouns(Context)).
 
-get_application_data_from_nouns(?DEVICES_QCALL_NOUNS) ->
-    wh_json:from_list([{<<"Route">>, _Number}]);
-get_application_data_from_nouns(?USERS_QCALL_NOUNS) ->
-    wh_json:from_list([{<<"Route">>, _Number}]);
+get_application_data_from_nouns(?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
+    wh_json:from_list([{<<"Route">>, Number}]);
+get_application_data_from_nouns(?USERS_QCALL_NOUNS(_UserId, Number)) ->
+    wh_json:from_list([{<<"Route">>, Number}]);
 get_application_data_from_nouns(_Nouns) ->
     wh_json:from_list([{<<"Route">>, <<"0">>}]).
 
