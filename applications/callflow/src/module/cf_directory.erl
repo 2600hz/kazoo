@@ -147,7 +147,7 @@ directory_start(Call, State, CurrUsers) ->
     end.
 
 maybe_match(Call, State, CurrUsers) ->
-    case filter_users(CurrUsers, dtmf_collected(State)) of
+    case filter_users(CurrUsers, dtmf_collected(State), sort_by(State)) of
         [] ->
             lager:info("no users left matching DTMF string"),
             _ = play_no_users_found(Call),
@@ -353,14 +353,41 @@ get_directory_user(U, CallflowId) ->
       }.
 
 
-filter_users(Users, DTMFs) ->
+-spec filter_users(directory_users(), ne_binary(), 'last' | 'first') -> directory_users().
+filter_users(Users, DTMFs, 'last') ->
     lager:info("filtering users by ~s", [DTMFs]),
     Size = byte_size(DTMFs),
-
-    [U || U <- Users,
-          maybe_dtmf_matches(DTMFs, Size, first_last_dtmfs(U)) orelse
-              maybe_dtmf_matches(DTMFs, Size, last_first_dtmfs(U))
-    ].
+    queue:to_list(
+        lists:foldl(
+          fun(U, Q) ->
+                  case maybe_dtmf_matches(DTMFs, Size, last_first_dtmfs(U)) of
+                      'true' -> queue:in_r(U, Q);
+                      'false' ->
+                          case maybe_dtmf_matches(DTMFs, Size, first_last_dtmfs(U)) of
+                              'true' -> queue:in(U, Q);
+                              'false' -> Q
+                          end
+                  end
+          end, queue:new(), Users
+         )
+     );
+filter_users(Users, DTMFs, 'first') ->
+    lager:info("filtering users by ~s", [DTMFs]),
+    Size = byte_size(DTMFs),
+    queue:to_list(
+        lists:foldl(
+          fun(U, Q) ->
+                  case maybe_dtmf_matches(DTMFs, Size, first_last_dtmfs(U)) of
+                      'true' -> queue:in_r(U, Q);
+                      'false' ->
+                          case maybe_dtmf_matches(DTMFs, Size, last_first_dtmfs(U)) of
+                              'true' -> queue:in(U, Q);
+                              'false' -> Q
+                          end
+                  end
+          end, queue:new(), Users
+         )
+     ).
 
 -spec maybe_dtmf_matches(ne_binary(), pos_integer(), ne_binary()) -> boolean().
 maybe_dtmf_matches(_, 0, _) -> 'false';
