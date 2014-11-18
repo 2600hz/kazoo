@@ -9,7 +9,7 @@
 -module(teletype_voicemail_to_email).
 
 -export([init/0
-         ,handle_req/2
+         ,handle_new_voicemail/2
         ]).
 
 -include("../teletype.hrl").
@@ -78,37 +78,55 @@
                                                                   ,{<<"description">>, <<"Call ID of the caller">>}
                                                                  ])
                                              }
+                                            ,{<<"owner.first_name">>
+                                              ,wh_json:from_list([{<<"i18n_label">>, <<"first_name">>}
+                                                                  ,{<<"friendly_name">>, <<"First Name">>}
+                                                                  ,{<<"description">>, <<"First name of the owner of the voicemail box">>}
+                                                                 ])
+                                             }
+                                            ,{<<"owner.last_name">>
+                                              ,wh_json:from_list([{<<"i18n_label">>, <<"last_name">>}
+                                                                  ,{<<"friendly_name">>, <<"Last Name">>}
+                                                                  ,{<<"description">>, <<"Last name of the owner of the voicemail box">>}
+                                                                 ])
+                                             }
                                            ])).
 
--define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{voicemail.caller_id_number}}\nCaller Name: {{voicemail.caller_id_name}}\n\nCalled To: {{voicemail.to_user}}   (Originally dialed number)\nCalled On: {{voicemail.date_called|date:\"l, F j, Y \\a\\t H:i\"}}\n\nTranscription: {{voicemail.transcription|default:\"Not Enabled\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{voicemail.caller_id_name}} ({{voicemail.caller_id_number}})</td></tr><tr><td>Callee ID</td><td>{{voicemail.to_user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{voicemail.date_called|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions using your phone or voicemail, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{voicemail.call_id}}</p><p>Transcription: {{voicemail.transcription|default:\"Not Enabled\"}}</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"New voicemail from {{voicemail.caller_id_name}} ({{voicemail.caller_id_number}})">>).
+-define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to_user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\nTranscription: {{voicemail.transcription|default:\"Not Enabled\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
+-define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to_user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions using your phone or voicemail, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p><p>Transcription: {{voicemail.transcription|default:\"Not Enabled\"}}</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>).
 
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
     teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML).
 
--spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_req(JObj, _Props) ->
-    'true' = wapi_notifications:skel_v(JObj),
+-spec handle_new_voicemail(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_new_voicemail(JObj, _Props) ->
+    'true' = wapi_notifications:voicemail_v(JObj),
     wh_util:put_callid(JObj),
 
     %% Gather data for template
     DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
 
     AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
-    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"voicemail_box">>, JObj)),
+
+    {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"voicemail_box">>, DataJObj)),
+
     {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"owner_id">>, VMBox)),
 
     case (Email = wh_json:get_ne_value(<<"email">>, UserJObj)) =/= 'undefined'
         andalso wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)
     of
         'false' ->
-            lager:debug("sending voicemail to email not configured for ~s"
+            lager:debug("sending voicemail to email not configured for owner ~s"
                         ,[wh_json:get_value(<<"owner_id">>, VMBox)]
                        );
         'true' ->
+            lager:debug("voicemail->email enabled for owner ~s"
+                        ,[wh_json:get_value(<<"owner_id">>, VMBox)]
+                       ),
+
             {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb
                                                            ,wh_util:format_account_id(AccountDb, 'raw')
                                                           ),
@@ -116,7 +134,7 @@ handle_req(JObj, _Props) ->
               wh_json:set_values([{<<"voicemail">>, VMBox}
                                   ,{<<"owner">>, UserJObj}
                                   ,{<<"account">>, AccountJObj}
-                                  ,{<<"email_address">>, Email}
+                                  ,{[<<"to">>, <<"email_addresses">>], [Email]}
                                  ]
                                  ,DataJObj
                                 )
@@ -150,7 +168,10 @@ process_req(DataJObj) ->
                ),
 
     %% Send email
-    teletype_util:send_email(?TEMPLATE_ID, DataJObj, ServiceData, Subject, RenderedTemplates).
+    case teletype_util:send_email(?TEMPLATE_ID, DataJObj, ServiceData, Subject, RenderedTemplates) of
+        'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
+        {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+    end.
 
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
