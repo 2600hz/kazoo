@@ -198,7 +198,7 @@ check_template_name(Context) ->
 
 -spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    JObj = wh_json:set_value(<<"pvt_type">>, <<"resource_template">>, cb_context:doc(Context)),
+    JObj = wh_json:set_value(<<"pvt_type">>, <<"resource_template">>, cb_context:req_data(Context)),
     cb_context:set_resp_status(cb_context:set_doc(Context, JObj), 'success');
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context).
