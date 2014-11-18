@@ -9,7 +9,10 @@
 %%%-------------------------------------------------------------------
 -module(reg_authn_req).
 
--export([init/0, handle_req/2]).
+-export([init/0
+	, handle_req/2
+	, lookup_account_by_ip/1
+]).
 
 -include("reg.hrl").
 
@@ -248,6 +251,53 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
             lager:debug("~s@~s found in account db: ~s", [Username, Realm, AccountDB]),
             {'ok', User}
     end.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% lookup auth by IP in cache/database and return the result
+%% @end
+%%-----------------------------------------------------------------------------
+-spec lookup_account_by_ip(ne_binary()) -> {'ok', iolist()} | {'error', any()}.
+lookup_account_by_ip(IP) ->
+    lager:debug("looking up IP: ~s in db ~s", [IP, ?WH_SIP_DB]),
+    case wh_cache:peek_local(?REG_CACHE, {'auth_ip', IP}) of
+        {'ok', _AccCCVs}=Ok ->
+	    lager:debug("Found cached IP: ~s auth doc: ~p", [IP, _AccCCVs]),
+	    Ok;
+        {'error', 'not_found'} ->
+	    try couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, [{'key', IP}]) of
+		{'ok', []} -> 
+		    lager:debug("no entry in ~s for IP: ~s", [?WH_SIP_DB, IP]),
+		    {'error', 'not_found'};
+		{'ok', [Doc|_]} ->
+		    lager:debug("Found IP: ~s auth doc: ~p", [IP, Doc]),
+		    {_, AccCCVs} = add_account_info_from_ip_auth(Doc, IP),
+		    wh_cache:store_local(?REG_CACHE, {'auth_ip', IP}, AccCCVs),
+		    {'ok', AccCCVs};
+		{'error', _E} = _R -> 
+		    lager:debug("error looking up by IP: ~s: ~p", [IP, _E]),
+		    _R
+	    catch
+		Other ->
+		    lager:error("Unhandled db error while looking up IP: ~s in ~s. Error: ~p", [IP, ?WH_SIP_DB, Other]),
+		    {'error', Other}
+	    end
+    end.
+
+-spec add_account_info_from_ip_auth(wh_json:object(), ne_binary()) -> wh_proplist().
+add_account_info_from_ip_auth(Doc, IP) ->
+    AccountID = wh_json:get_value([<<"value">>,  <<"account_id">>], Doc),
+    OwnerID = wh_json:get_value([<<"value">>, <<"owner_id">>], Doc),
+    AuthType = wh_json:get_value([<<"value">>, <<"authorizing_type">>], Doc, <<"anonymous">>),
+    lager:debug("Auth-by-IP for IP: ~s found Account-ID: ~s and owner ~s", [IP, AccountID, OwnerID]),
+    {'ok', props:filter_undefined(
+        [{<<"Account-ID">>, AccountID}
+	 ,{<<"Owner-ID">>, OwnerID}
+	 ,{<<"Authorizing-ID">>, wh_json:get_value(<<"id">>, Doc)}
+	 ,{<<"Inception">>, <<"on-net">>}
+	 ,{<<"Authorizing-Type">>, AuthType}
+        ])}.
 
 %%-----------------------------------------------------------------------------
 %% @private

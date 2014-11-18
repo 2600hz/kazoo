@@ -14,7 +14,9 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?WORKER('registrar_shared_listener')]).
+-define(CHILDREN, [?CACHE(?REG_CACHE)
+                   ,?WORKER('registrar_shared_listener')
+                  ]).
 
 %% ===================================================================
 %% API functions
