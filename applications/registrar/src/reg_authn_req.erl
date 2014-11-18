@@ -10,12 +10,13 @@
 -module(reg_authn_req).
 
 -export([init/0
-	, handle_req/2
-	, lookup_account_by_ip/1
-]).
+         ,handle_req/2
+         ,lookup_account_by_ip/1
+        ]).
 
 -include("reg.hrl").
 
+-spec init() -> 'ok'.
 init() -> 'ok'.
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -258,46 +259,51 @@ get_auth_user_in_account(Username, Realm, AccountDB) ->
 %% lookup auth by IP in cache/database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_account_by_ip(ne_binary()) -> {'ok', iolist()} | {'error', any()}.
+-spec lookup_account_by_ip(ne_binary()) ->
+                                  {'ok', wh_proplist()} |
+                                  couch_mgr:couchbeam_error().
 lookup_account_by_ip(IP) ->
     lager:debug("looking up IP: ~s in db ~s", [IP, ?WH_SIP_DB]),
-    case wh_cache:peek_local(?REG_CACHE, {'auth_ip', IP}) of
-        {'ok', _AccCCVs}=Ok ->
-	    lager:debug("Found cached IP: ~s auth doc: ~p", [IP, _AccCCVs]),
-	    Ok;
-        {'error', 'not_found'} ->
-	    try couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, [{'key', IP}]) of
-		{'ok', []} -> 
-		    lager:debug("no entry in ~s for IP: ~s", [?WH_SIP_DB, IP]),
-		    {'error', 'not_found'};
-		{'ok', [Doc|_]} ->
-		    lager:debug("Found IP: ~s auth doc: ~p", [IP, Doc]),
-		    {_, AccCCVs} = add_account_info_from_ip_auth(Doc, IP),
-		    wh_cache:store_local(?REG_CACHE, {'auth_ip', IP}, AccCCVs),
-		    {'ok', AccCCVs};
-		{'error', _E} = _R -> 
-		    lager:debug("error looking up by IP: ~s: ~p", [IP, _E]),
-		    _R
-	    catch
-		Other ->
-		    lager:error("Unhandled db error while looking up IP: ~s in ~s. Error: ~p", [IP, ?WH_SIP_DB, Other]),
-		    {'error', Other}
-	    end
+    case wh_cache:peek_local(?REG_CACHE, ip_cache_key(IP)) of
+        {'ok', _AccountCCVs}=OK -> OK;
+        {'error', 'not_found'} -> fetch_account_by_ip(IP)
     end.
 
--spec add_account_info_from_ip_auth(wh_json:object(), ne_binary()) -> wh_proplist().
-add_account_info_from_ip_auth(Doc, IP) ->
-    AccountID = wh_json:get_value([<<"value">>,  <<"account_id">>], Doc),
+-spec fetch_account_by_ip(ne_binary()) ->
+                                 {'ok', wh_proplist()} |
+                                 couch_mgr:couchbeam_error().
+fetch_account_by_ip(IP) ->
+    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_ip">>, [{'key', IP}]) of
+        {'ok', []} ->
+            lager:debug("no entry in ~s for IP: ~s", [?WH_SIP_DB, IP]),
+            {'error', 'not_found'};
+        {'ok', [Doc|_]} ->
+            lager:debug("found IP ~s in db ~s (~s)", [IP, ?WH_SIP_DB, wh_json:get_value(<<"id">>, Doc)]),
+            AccountCCVs = account_ccvs_from_ip_auth(Doc),
+            wh_cache:store_local(?REG_CACHE, ip_cache_key(IP), AccountCCVs),
+            {'ok', AccountCCVs};
+        {'error', _E} = Error ->
+            lager:debug("error looking up by IP: ~s: ~p", [IP, _E]),
+            Error
+    end.
+
+-spec ip_cache_key(ne_binary()) -> {'auth_ip', ne_binary()}.
+ip_cache_key(IP) ->
+    {'auth_ip', IP}.
+
+-spec account_ccvs_from_ip_auth(wh_json:object()) -> wh_proplist().
+account_ccvs_from_ip_auth(Doc) ->
+    AccountID = wh_json:get_value([<<"value">>, <<"account_id">>], Doc),
     OwnerID = wh_json:get_value([<<"value">>, <<"owner_id">>], Doc),
     AuthType = wh_json:get_value([<<"value">>, <<"authorizing_type">>], Doc, <<"anonymous">>),
-    lager:debug("Auth-by-IP for IP: ~s found Account-ID: ~s and owner ~s", [IP, AccountID, OwnerID]),
-    {'ok', props:filter_undefined(
-        [{<<"Account-ID">>, AccountID}
-	 ,{<<"Owner-ID">>, OwnerID}
-	 ,{<<"Authorizing-ID">>, wh_json:get_value(<<"id">>, Doc)}
-	 ,{<<"Inception">>, <<"on-net">>}
-	 ,{<<"Authorizing-Type">>, AuthType}
-        ])}.
+
+    props:filter_undefined(
+      [{<<"Account-ID">>, AccountID}
+       ,{<<"Owner-ID">>, OwnerID}
+       ,{<<"Authorizing-ID">>, wh_json:get_value(<<"id">>, Doc)}
+       ,{<<"Inception">>, <<"on-net">>}
+       ,{<<"Authorizing-Type">>, AuthType}
+      ]).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -429,7 +435,6 @@ get_auth_method(JObj) ->
                               ,JObj
                               ,<<"password">>
                              ).
-
 
 -spec maybe_auth_method(auth_user(), wh_json:object(), wh_json:object(), ne_binary()) ->
                                {'ok', auth_user()} |
