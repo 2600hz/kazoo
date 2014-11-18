@@ -36,12 +36,14 @@
                           ,?HTTP_OPTIONS
                          ]).
 
--define(USERS_QCALL_NOUNS, [{<<"users">>, [_UserId, <<"quickcall">>, _Number]}
-                            ,{?WH_ACCOUNTS_DB, [_]}
-                           ]).
--define(DEVICES_QCALL_NOUNS, [{<<"devices">>, [_DeviceId, <<"quickcall">>, _Number]}
-                              ,{?WH_ACCOUNTS_DB, [_]}
-                             ]).
+-define(DEVICES_QCALL_NOUNS(DeviceId, Number)
+        ,[{<<"devices">>, [DeviceId, <<"quickcall">>, Number]}
+          ,{?WH_ACCOUNTS_DB, [_]}
+         ]).
+-define(USERS_QCALL_NOUNS(UserId, Number)
+        ,[{<<"users">>, [UserId, <<"quickcall">>, Number]}
+          ,{?WH_ACCOUNTS_DB, [_]}
+         ]).
 
 -define(DEFAULT_MODULES, ['cb_about'
                           ,'cb_accounts'
