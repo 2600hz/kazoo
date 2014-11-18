@@ -31,8 +31,8 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
     Cc = wh_json:find([<<"cc">>, <<"email_addresses">>], L),
     Bcc = wh_json:find([<<"bcc">>, <<"email_addresses">>], L),
 
-    From = wh_json:find(<<"from">>, L),
-    ReplyTo = wh_json:find(<<"reply_to">>, L),
+    From = wh_json:find(<<"from">>, [wh_json:from_list(ServiceData) | L]),
+    ReplyTo = wh_json:find(<<"reply_to">>, [wh_json:from_list(ServiceData) | L]),
 
     Body = {<<"multipart">>, <<"alternative">>
             ,[] %% Headers
@@ -50,13 +50,14 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
                 ]
                 ,[{<<"From">>, From}
                   ,{<<"Reply-To">>, ReplyTo}
-                  ,{<<"Subject">>, Subject}
+                  ,{<<"Subject">>, iolist_to_binary(Subject)}
                   ,{<<"X-Call-ID">>, wh_json:get_value(<<"Call-ID">>, DataJObj)}
                  ]
                )
              ,service_content_type_params(ServiceData)
              ,[Body]
             },
+
     relay_email(To, From, Email).
 
 -spec email_parameters(wh_proplist(), wh_proplist()) -> wh_proplist().
@@ -184,7 +185,7 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Charset, Acc) ->
                     ,{<<"Content-Transfer-Encoding">>, CTEncoding}
                    ])
                 ,[]
-                ,Content
+                ,iolist_to_binary(Content)
                },
     add_rendered_templates_to_email(Rs, Charset, [Template | Acc]).
 
@@ -223,7 +224,7 @@ service_params(APIJObj, ConfigCat, AccountId) ->
      ,{<<"provider">>, wh_json:get_value(<<"service_provider">>, NotificationJObj, default_service_provider(APIJObj, ConfigCat))}
      ,{<<"support_number">>, wh_json:get_value(<<"support_number">>, NotificationJObj, default_support_number(APIJObj, ConfigCat))}
      ,{<<"support_email">>, wh_json:get_value(<<"support_email">>, NotificationJObj, default_support_email(APIJObj, ConfigCat))}
-     ,{<<"send_from">>, wh_json:get_value(<<"send_from">>, NotificationJObj, default_from_address(APIJObj, ConfigCat))}
+     ,{<<"from">>, wh_json:get_value(<<"send_from">>, NotificationJObj, default_from_address(APIJObj, ConfigCat))}
      ,{<<"template_charset">>, wh_json:get_value(<<"template_charset">>, NotificationJObj, default_charset(APIJObj, ConfigCat))}
      ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
     ].
@@ -563,8 +564,7 @@ fetch_templates(TemplateId, DataJObj) ->
            ])
     of
         [] ->
-            {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-            fetch_templates(TemplateId, wh_json:get_value(<<"account_id">>, DataJObj), MasterAccountId);
+            fetch_templates(TemplateId, wh_json:get_value(<<"account_id">>, DataJObj));
         Templates -> Templates
     end.
 
