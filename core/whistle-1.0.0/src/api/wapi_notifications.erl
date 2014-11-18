@@ -106,7 +106,7 @@
                                      | ?DEFAULT_OPTIONAL_HEADERS
                                     ]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                           ,{<<"Event-Name">>, <<"voicemail">>}
+                           ,{<<"Event-Name">>, <<"voicemail_new">>}
                           ]).
 -define(VOICEMAIL_TYPES, []).
 

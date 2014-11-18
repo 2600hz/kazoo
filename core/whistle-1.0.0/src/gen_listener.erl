@@ -689,6 +689,7 @@ distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
 client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
     _ = wh_util:put_callid(JObj),
     _ = wh_amqp_channel:consumer_pid(ConsumerKey),
+
     case erlang:function_exported(Module, Fun, 3) of
         'true' -> Module:Fun(JObj, Props, BasicDeliver);
         'false' -> Module:Fun(JObj, Props)
