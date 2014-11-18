@@ -495,11 +495,10 @@ get_incoming_view_options(Context, PrefixKey, SuffixKey) ->
         Context1 -> Context1
     end.
 
--spec get_modbs(cb_context:context(), pos_integer(), pos_integer()) -> ne_binaries().
+-spec get_modbs(cb_context:context(), pos_integer(), pos_integer()) -> [{'databases', ne_binaries()}].
 get_modbs(Context, From, To) ->
     AccountId = cb_context:account_id(Context),
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{ToYear, ToMonth, _}, _} = calendar:gregorian_seconds_to_datetime(To),
     Range = crossbar_util:generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, []),
     [{'databases', [ wh_util:format_account_mod_id(AccountId, Year, Month) || {Year, Month} <- Range]}].
-
