@@ -799,6 +799,42 @@ does_resource_exist(Context, [{Mod, Params}|_]) ->
 does_resource_exist(_Context, _ReqNouns) ->
     'false'.
 
+
+
+% only validate last resource Module
+validate_data(Context, [{Mod, Params}|_]) ->
+    Event = api_util:create_event_name(Context, <<"validate.", Mod/binary>>),
+    Payload = [cb_context:set_resp_status(Context, 'fatal') | Params],
+    cb_context:import_errors(crossbar_bindings:fold(Event, Payload)).
+
+validate_resource(Context, ReqNouns) ->
+    cb_context:import_errors(
+        lists:foldr(fun({Mod, Params}, ContextAcc) ->
+            Event = api_util:create_event_name(Context, <<"resource_valid.", Mod/binary>>),
+            Payload = [cb_context:set_resp_status(ContextAcc, 'fatal') | Params],
+            crossbar_bindings:fold(Event, Payload)
+        end
+        ,Context
+        ,ReqNouns
+    )).
+
+
+% for each Resource, resource_valid 
+% for LAST Resource, validate (validate the data)
+% import errors and continue
+validate(Context) -> % TODO - clean up
+    validate(Context, cb_context:req_nouns(Context)).
+
+validate(Context, ReqNouns) ->
+    Context1 = validate_resource(Context, ReqNouns),
+    Context2 = validate_data(Context1, ReqNouns),
+    case succeeded(Context2) of
+        'true' -> process_billing(Context2);
+        'false' -> Context2
+    end.
+
+
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -806,22 +842,22 @@ does_resource_exist(_Context, _ReqNouns) ->
 %% it is valid and returns the status, and any errors
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) -> cb_context:context().
-validate(Context0) ->
-    Context1 =
-        cb_context:import_errors(
-          lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                              Event = api_util:create_event_name(Context0, <<"validate.", Mod/binary>>),
-                              Payload = [cb_context:set_resp_status(ContextAcc, 'fatal') | Params],
-                              crossbar_bindings:fold(Event, Payload)
-                      end
-                      ,Context0
-                      ,cb_context:req_nouns(Context0)
-                     )),
-    case succeeded(Context1) of
-        'true' -> process_billing(Context1);
-        'false' -> Context1
-    end.
+% -spec validate(cb_context:context()) -> cb_context:context().
+% validate(Context0) ->
+%     Context1 =
+%         cb_context:import_errors(
+%           lists:foldr(fun({Mod, Params}, ContextAcc) ->
+%                               Event = api_util:create_event_name(Context0, <<"validate.", Mod/binary>>),
+%                               Payload = [cb_context:set_resp_status(ContextAcc, 'fatal') | Params],
+%                               crossbar_bindings:fold(Event, Payload)
+%                       end
+%                       ,Context0
+%                       ,cb_context:req_nouns(Context0)
+%                      )),
+%     case succeeded(Context1) of
+%         'true' -> process_billing(Context1);
+%         'false' -> Context1
+%     end.
 
 %%--------------------------------------------------------------------
 %% @private
