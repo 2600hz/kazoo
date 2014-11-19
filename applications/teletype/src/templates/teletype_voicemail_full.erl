@@ -89,6 +89,7 @@ handle_full_voicemail(JObj, _Props) ->
     case is_notice_enabled_on_account(AccountJObj) of
         'false' -> lager:debug("notification not enabled for account ~s", [wh_util:format_account_id(AccountDb, 'raw')]);
         'true' ->
+            lager:debug("notification enabled for account"),
             {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"voicemail_box">>, DataJObj)),
 
             {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"owner_id">>, VMBox)),
@@ -97,7 +98,6 @@ handle_full_voicemail(JObj, _Props) ->
               wh_json:set_values([{<<"voicemail">>, VMBox}
                                   ,{<<"owner">>, UserJObj}
                                   ,{<<"account">>, AccountJObj}
-                                  ,{[<<"to">>, <<"email_addresses">>], teletype_util:find_account_rep_email(AccountId)}
                                  ]
                                  ,DataJObj
                                 )
@@ -105,25 +105,33 @@ handle_full_voicemail(JObj, _Props) ->
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
+-spec process_req(wh_json:object(), list()) -> 'ok'.
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
 
+    %% Load templates
+    process_req(DataJObj, teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj)).
+
+process_req(_DataJObj, []) ->
+    lager:debug("no templates to render for ~s", [?TEMPLATE_ID]);
+process_req(DataJObj, Templates) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
+
     Macros = [{<<"service">>, ServiceData}
               ,{<<"account">>, wh_json:to_proplist(wh_json:get_value(<<"account">>, DataJObj))}
               ,{<<"owner">>, wh_json:to_proplist(wh_json:get_value(<<"owner">>, DataJObj))}
               | build_template_data(DataJObj)
              ],
 
-    %% Load templates
-    Templates = teletype_util:fetch_templates(?TEMPLATE_ID, DataJObj),
-
     %% Populate templates
     RenderedTemplates = [{ContentType, teletype_util:render(?TEMPLATE_ID, Template, Macros)}
                          || {ContentType, Template} <- Templates
                         ],
 
-    {'ok', TemplateMetaJObj} = teletype_util:fetch_template_meta(?TEMPLATE_ID, wh_json:get_value(<<"account_Id">>, DataJObj)),
+    {'ok', TemplateMetaJObj} =
+        teletype_util:fetch_template_meta(?TEMPLATE_ID
+                                          ,teletype_util:find_account_id(DataJObj)
+                                         ),
 
     Subject = teletype_util:render_subject(
                 wh_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
@@ -131,7 +139,13 @@ process_req(DataJObj) ->
                ),
 
     %% Send email
-    case teletype_util:send_email(?TEMPLATE_ID, DataJObj, ServiceData, Subject, RenderedTemplates) of
+    case teletype_util:send_email(?TEMPLATE_ID
+                                  ,wh_json:set_value([<<"to">>, <<"email_addresses">>], to_email_addresses(DataJObj), DataJObj)
+                                  ,ServiceData
+                                  ,Subject
+                                  ,RenderedTemplates
+                                 )
+    of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
@@ -139,11 +153,10 @@ process_req(DataJObj) ->
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
     props:filter_undefined(
-      [{<<"voicemail">>, build_voicemail_data(DataJObj)}
-       ,{[<<"to">>, <<"email_addresses">>], to_email_addresses(DataJObj)}
-      ]).
+      [{<<"voicemail">>, build_voicemail_data(DataJObj)}]
+     ).
 
--spec to_email_addresses(wh_json:object()) -> api_binary().
+-spec to_email_addresses(wh_json:object()) -> api_binaries().
 to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
                        ,wh_json:get_first_defined([[<<"owner">>, <<"email">>]
@@ -152,11 +165,19 @@ to_email_addresses(DataJObj) ->
                                                   ,DataJObj
                                                  )
                       ).
-to_email_addresses(DataJObj, 'undefined') ->
+
+to_email_addresses(_DataJObj, <<_/binary>> = Email) ->
+    [Email];
+to_email_addresses(_DataJObj, [_|_] = Emails) ->
+    Emails;
+to_email_addresses(DataJObj, _) ->
     case teletype_util:find_account_rep_email(wh_json:get_value(<<"account">>, DataJObj)) of
         'undefined' ->
+            lager:debug("failed to find account rep email, using defaults"),
             default_to_addresses();
-        Emails -> Emails
+        Emails ->
+            lager:debug("using ~p for To", [Emails]),
+            Emails
     end.
 
 -spec default_to_addresses() -> api_binaries().
@@ -171,10 +192,10 @@ default_to_addresses() ->
 build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"box">>, wh_json:get_value(<<"voicemail_box">>, DataJObj)}
-       ,{<<"name">>, wh_json:get_value(<<"voicemail_name">>, DataJObj)}
        ,{<<"number">>, wh_json:get_value(<<"voicemail_number">>, DataJObj)}
        ,{<<"max_messages">>, wh_json:get_binary_value(<<"max_message_count">>, DataJObj)}
        ,{<<"message_count">>, wh_json:get_binary_value(<<"message_count">>, DataJObj)}
+       | wh_json:to_proplist(wh_json:public_fields(wh_json:get_value(<<"voicemail">>, DataJObj)))
       ]).
 
 -spec is_notice_enabled_on_account(wh_json:object()) -> boolean().

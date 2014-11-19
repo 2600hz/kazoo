@@ -18,6 +18,7 @@
          ,send_update/2, send_update/3
          ,find_account_rep_email/1
          ,find_account_admin_email/1
+         ,find_account_id/1
         ]).
 
 -include("teletype.hrl").
