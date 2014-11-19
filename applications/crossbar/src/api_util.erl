@@ -789,26 +789,44 @@ does_resource_exist(_Context, _ReqNouns) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function gives each noun a chance to determine if
+%% This function gives each {Mod, Params} pair a chance to determine if
 %% it is valid and returns the status, and any errors
+%%
+%% validate_resource for each {Mod, Params} pair
+%% validate for LAST {Mod, Params} pair
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(Context0) ->
-    Context1 =
-        cb_context:import_errors(
-          lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                              Event = api_util:create_event_name(Context0, <<"validate.", Mod/binary>>),
-                              Payload = [cb_context:set_resp_status(ContextAcc, 'fatal') | Params],
-                              crossbar_bindings:fold(Event, Payload)
-                      end
-                      ,Context0
-                      ,cb_context:req_nouns(Context0)
-                     )),
-    case succeeded(Context1) of
-        'true' -> process_billing(Context1);
-        'false' -> Context1
+-spec validate(cb_context:context(), list()) -> cb_context:context().
+validate(Context) ->
+    validate(Context, cb_context:req_nouns(Context)).
+
+validate(Context, ReqNouns) ->
+    Context1 = validate_resources(Context, ReqNouns),
+    Context2 = validate_data(Context1, ReqNouns),
+    case succeeded(Context2) of
+        'true' -> process_billing(Context2);
+        'false' -> Context2
     end.
+
+-spec validate_data(cb_context:context(), list()) -> cb_context:context().
+validate_data(Context, [{Mod, Params}|_]) ->
+    Event = api_util:create_event_name(Context, <<"validate.", Mod/binary>>),
+    Payload = [cb_context:set_resp_status(Context, 'fatal') | Params],
+    cb_context:import_errors(crossbar_bindings:fold(Event, Payload)).
+
+-spec validate_data(cb_context:context(), list()) -> cb_context:context().
+validate_resources(Context, ReqNouns) ->
+    cb_context:import_errors(
+        lists:foldr(fun({Mod, Params}, ContextAcc) ->
+            Event = api_util:create_event_name(Context, <<"validate_resource.", Mod/binary>>),
+            Payload = [cb_context:set_resp_status(ContextAcc, 'fatal') | Params],
+            crossbar_bindings:fold(Event, Payload)
+        end
+        ,Context
+        ,ReqNouns
+    )).
 
 %%--------------------------------------------------------------------
 %% @private
