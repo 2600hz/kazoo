@@ -9,7 +9,7 @@
 -module(teletype_voicemail_full).
 
 -export([init/0
-         ,handle_new_voicemail/2
+         ,handle_full_voicemail/2
         ]).
 
 -include("../teletype.hrl").
@@ -73,8 +73,8 @@ init() ->
     wh_util:put_callid(?MODULE),
     teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML).
 
--spec handle_new_voicemail(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_new_voicemail(JObj, _Props) ->
+-spec handle_full_voicemail(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_full_voicemail(JObj, _Props) ->
     'true' = wapi_notifications:voicemail_full_v(JObj),
     wh_util:put_callid(JObj),
 

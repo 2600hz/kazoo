@@ -26,9 +26,12 @@
 -define(RESPONDERS, [{{'teletype_voicemail_to_email', 'handle_new_voicemail'}
                       ,[{<<"notification">>, <<"voicemail_new">>}]
                      }
+                     ,{{'teletype_voicemail_full', 'handle_full_voicemail'}
+                       ,[{<<"notification">>, <<"voicemail_full">>}]
+                      }
                     ]).
 %% -define(RESPONDERS, []}
-%%                      ,{'teletype_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
+
 %%                      ,{'teletype_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
 %%                      ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
 %%                      ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
