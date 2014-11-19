@@ -656,7 +656,7 @@ find_account_rep_email(AccountId, 'undefined') ->
 find_account_rep_email(AccountId, ResellerId) ->
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     ViewOptions = ['include_docs', {'key', AccountId}],
-    case couch_mgr:open_cache_doc(ResellerDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
+    case couch_mgr:get_results(ResellerDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
         {'ok', [View|_]} ->
             find_account_rep_email(AccountId, ResellerId, View);
         {'ok', []} ->
