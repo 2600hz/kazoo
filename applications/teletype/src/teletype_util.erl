@@ -235,8 +235,8 @@ service_params(APIJObj, ConfigCat, AccountId) ->
      ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
     ].
 
-find_notification_settings(_, 'undefined') ->
-    wh_json:new();
+-spec find_notification_settings(ne_binaries(), api_binary()) -> wh_json:object().
+find_notification_settings(_, 'undefined') -> wh_json:new();
 find_notification_settings([_, Module], AccountId) ->
     case couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
                                   ,AccountId
