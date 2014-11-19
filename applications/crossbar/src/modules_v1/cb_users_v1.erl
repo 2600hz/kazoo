@@ -16,6 +16,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,resource_valid/1, resource_valid/2, resource_valid/3, resource_valid/4
          ,authenticate/1
          ,authorize/1
          ,billing/1
@@ -50,6 +51,7 @@ create_user(Context) ->
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_valid.users">>, ?MODULE, 'resource_valid'),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, 'billing'),
@@ -101,6 +103,36 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 resource_exists(_, ?CHANNELS) -> 'true'.
 resource_exists(_, ?QUICKCALL, _) -> 'true'.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%% If valid, updates Context with userId
+%%
+%% Failure here returns 404
+%% @end
+%%--------------------------------------------------------------------
+-spec resource_valid(cb_context:context()) -> cb_context:context().
+-spec resource_valid(cb_context:context(), path_token()) -> cb_context:context().
+-spec resource_valid(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec resource_valid(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+resource_valid(Context) -> Context.
+resource_valid(Context, UserId) -> load_user_id(UserId, Context).
+resource_valid(Context, UserId, _) -> load_user_id(UserId, Context).
+resource_valid(Context, UserId, _, _) -> load_user_id(UserId, Context).
+
+-spec load_user_id(api_binary(), cb_context:context()) -> cb_context:context().
+load_user_id(UserId, Context) ->
+    % use the view to make sure valid UserId, or couch_mgr:open_cache_doc ?
+    % couch_mgr:open_cache_doc(cb_context:account_db(Context), UserId, [])
+    Opts = [{'keys', [UserId]}, {'include_docs', 'false'}],
+    case couch_mgr:all_docs(cb_context:account_db(Context), Opts) of
+        {'error', _Error} -> cb_context:set_resp_status(Context, 'error'); % TODO: more descriptive err msg
+        {'ok', _} -> cb_context:set_user_id(Context, UserId)
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @public

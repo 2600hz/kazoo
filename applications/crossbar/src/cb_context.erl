@@ -28,6 +28,7 @@
 
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
+         ,user_id/1, set_user_id/2
          ,account_modb/1, account_modb/2, account_modb/3
          ,set_account_modb/3, set_account_modb/4
          ,reseller_id/1, set_reseller_id/2
@@ -108,6 +109,7 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 %% Accessors
 -spec account_id(context()) -> api_binary().
 -spec account_db(context()) -> api_binary().
+-spec user_id(context()) -> api_binary() | 'undefined'.
 -spec account_modb(context()) -> api_binary().
 -spec account_modb(context(), wh_now() | wh_timeout()) -> api_binary().
 -spec account_modb(context(), wh_year(), wh_month()) -> api_binary().
@@ -115,6 +117,7 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 -spec account_doc(context()) -> api_object().
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
+user_id(#cb_context{user_id=UserId}) -> UserId.
 reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
 
@@ -192,6 +195,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_account_db(context(), ne_binary()) -> context().
+-spec set_user_id(context(), ne_binary()) -> context().
 -spec set_auth_token(context(), ne_binary()) -> context().
 -spec set_auth_doc(context(), wh_json:object()) -> context().
 -spec set_auth_account_id(context(), ne_binary()) -> context().
@@ -229,6 +233,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_validation_errors(context(), wh_json:object()) -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
+set_user_id(#cb_context{}=Context, UserId) -> Context#cb_context{user_id=UserId}.
 set_reseller_id(#cb_context{}=Context, AcctId) -> Context#cb_context{reseller_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
 set_account_modb(#cb_context{}=Context, Year, Month) ->
