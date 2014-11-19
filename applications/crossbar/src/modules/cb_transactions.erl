@@ -20,11 +20,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
-%% 1 month
--define(FETCH_DEFAULT, 60*60*24*30).
-%% 1 month
--define(FETCH_MAX, 60*60*24*31).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -86,22 +81,15 @@ validate(Context) ->
     validate_transactions(Context, cb_context:req_verb(Context)).
 
 validate_transactions(Context, ?HTTP_GET) ->
-    From = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, 0)),
-    To = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, 0)),
-    case validate_date(From, To) of
-        {'true', VFrom, VTo} ->
-            Options = [{'from', VFrom}
-                       ,{'to', VTo}
+    case cb_modules_util:range_view_options(Context) of
+        {CreatedFrom, CreatedTo} ->
+            Options = [{'from', CreatedFrom}
+                       ,{'to', CreatedTo}
                        ,{'prorated', 'true'}
                        ,{'reason', cb_context:req_value(Context, <<"reason">>)}
                       ],
             fetch(Context, Options);
-        {'false', R} ->
-            cb_context:add_validation_error(<<"created_from/created_to">>
-                                            ,<<"date_range">>
-                                            ,R
-                                            ,Context
-                                           )
+        Context1 -> Context1
     end.
 
 validate(Context, PathToken) ->
@@ -115,21 +103,15 @@ validate_transaction(Context, <<"current_balance">>, ?HTTP_GET) ->
                          ,{fun cb_context:set_resp_data/2, JObj}
                         ]);
 validate_transaction(Context, <<"monthly_recurring">>, ?HTTP_GET) ->
-    From = wh_util:to_integer(cb_context:req_value(Context, <<"created_from">>, 0)),
-    To = wh_util:to_integer(cb_context:req_value(Context, <<"created_to">>, 0)),
-    case validate_date(From, To) of
-        {'true', VFrom, VTo} ->
-            Options = [{'from', VFrom}
-                       ,{'to', VTo}
+    case cb_modules_util:range_view_options(Context) of
+        {CreatedFrom, CreatedTo} ->
+            Options = [{'from', CreatedFrom}
+                       ,{'to', CreatedTo}
                        ,{'prorated', 'false'}
+                       ,{'reason', cb_context:req_value(Context, <<"reason">>)}
                       ],
             fetch_monthly_recurring(Context, Options);
-        {'false', R} ->
-            cb_context:add_validation_error(<<"created_from/created_to">>
-                                            ,<<"date_range">>
-                                            ,R
-                                            ,Context
-                                           )
+        Context1 -> Context1
     end;
 validate_transaction(Context, <<"subscriptions">>, ?HTTP_GET) ->
     fetch_braintree_subscriptions(Context);
@@ -470,53 +452,3 @@ timestamp_to_braintree(Timestamp) ->
       ,(wh_util:to_binary(D))/binary, "/"
       ,(wh_util:to_binary(Y))/binary
     >>.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec validate_date(any(), any()) -> {'true', pos_integer(), pos_integer()} |
-                                     {'false', ne_binary()}.
-validate_date(0, 0) ->
-    validate_date(wh_util:current_tstamp() - ?FETCH_DEFAULT, wh_util:current_tstamp());
-validate_date(0, To) ->
-    validate_date(To - ?FETCH_DEFAULT, To);
-validate_date(From, 0) ->
-    validate_date(From, From + ?FETCH_DEFAULT);
-validate_date(From, To) when is_integer(From) andalso is_integer(To) ->
-    Diff = To - From,
-    case {Diff < 0, Diff > ?FETCH_MAX} of
-        {'true', _} ->
-            {'false', <<"created_from is gretter than created_to">>};
-        {_, 'true'} ->
-            {'false', <<"Max range is 1 month">>};
-        {'false', 'false'} ->
-            {'true', From, To}
-    end;
-validate_date(From, To) ->
-    try {wh_util:to_integer(From), wh_util:to_integer(To)} of
-        {From1, To1} ->
-            validate_date(From1, To1)
-    catch
-        _:_ ->
-            {'false', <<"created_from or created_to filter is not a timestamp">>}
-    end.
-
--ifdef(TEST).
-
-validate_date_test() ->
-    Tstamp = wh_util:current_tstamp(),
-    MaxFrom = Tstamp - ?FETCH_DEFAULT,
-    MaxTo = Tstamp + ?FETCH_DEFAULT,
-    ?assertMatch({'true', _, _}, validate_date(0, 0)),
-    ?assertMatch({'true', MaxFrom, Tstamp}, validate_date(0, Tstamp)),
-    ?assertMatch({'true', Tstamp, MaxTo}, validate_date(Tstamp, 0)),
-    T1 = Tstamp + 10,
-    ?assertMatch({'true', Tstamp, T1}, validate_date(Tstamp, T1)),
-    ?assertMatch({'false', _}, validate_date(T1, Tstamp)),
-    T2 = Tstamp + ?FETCH_MAX + 1,
-    ?assertMatch({'false', _}, validate_date(Tstamp, T2)).
-
--endif.

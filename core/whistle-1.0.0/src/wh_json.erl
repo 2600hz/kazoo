@@ -34,7 +34,7 @@
          ,foldl/3
          ,find/2, find/3
          ,foreach/2
-         ,all/2
+         ,all/2, any/2
         ]).
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3
@@ -325,6 +325,10 @@ foreach(F, ?JSON_WRAPPER(Prop)) when is_function(F, 1) -> lists:foreach(F, Prop)
 -spec all(fun(({json_key(), json_term()}) -> boolean()), object()) -> boolean().
 all(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     lists:all(Pred, Prop).
+
+-spec any(fun(({json_key(), json_term()}) -> boolean()), object()) -> boolean().
+any(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
+    lists:any(Pred, Prop).
 
 -spec foldl(fun((key(), json_term(), any()) -> any()), any(), object()) -> any().
 foldl(F, Acc0, ?JSON_WRAPPER([])) when is_function(F, 3) -> Acc0;

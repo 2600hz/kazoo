@@ -603,7 +603,7 @@ leak_reseller_id(Context) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     leak_billing_mode(
         cb_context:set_resp_data(
-            Context
+            cb_context:set_reseller_id(Context, ResellerId)
             ,wh_json:set_value(<<"reseller_id">>, ResellerId, RespJObj)
         )
     ).

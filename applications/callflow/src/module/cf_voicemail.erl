@@ -1019,8 +1019,8 @@ update_mailbox(#mailbox{mailbox_id=Id
             {'ok', JObjs} ->
                 JObj = get_completed_msg(JObjs),
                 maybe_save_meta(Length, Box, Call, MediaId, JObj);
-            {'error', _E} ->
-                lager:debug("notification error: ~p", [_E]),
+            _Else ->
+                lager:debug("notification error: ~p", [_Else]),
                 save_meta(Length, Box, Call, MediaId)
         end,
     timer:sleep(2500),

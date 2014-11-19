@@ -237,7 +237,7 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                 ,start_key=StartKey
                                 ,page_size=PageSize
                                 ,filter_fun=FilterFun
-                                ,dbs=props:get_value('databases', Options, [cb_context:account_db(Context)])
+                                ,dbs=lists:filter(fun couch_mgr:db_exists/1, props:get_value('databases', Options, [cb_context:account_db(Context)]))
                                }).
 
 load_view(#load_view_params{dbs=[]

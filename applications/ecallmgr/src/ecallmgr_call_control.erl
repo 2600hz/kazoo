@@ -310,9 +310,20 @@ handle_cast({'event_execute_complete', _, _, _}, State) ->
 handle_cast({'gen_listener', {'created_queue', _}}
             ,#state{controller_q='undefined'}=State
            ) ->
+    lager:debug("call control got created_queue but controller is undefined"),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{control_q=Q}};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
+            ,#state{controller_q='undefined'}=State
+           ) ->
+    lager:debug("call control got is_consuming but controller is undefined"),
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}
+            ,#state{control_q='undefined'}=State
+           ) ->
+    lager:debug("call control got is_consuming but control_q is undefined"),
+    {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     call_control_ready(State),
     {'noreply', State};
