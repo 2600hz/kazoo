@@ -52,7 +52,7 @@
 %%                     ]).
 
 -define(RESTRICT_TO, ['new_voicemail'
-                      %% ,'voicemail_full'
+                      ,'voicemail_full'
                       %% ,'inbound_fax'
                       %% ,'inbound_fax_error'
                       %% ,'outbound_fax'
