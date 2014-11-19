@@ -300,12 +300,12 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
                           }, _, Call) when Count >= MaxCount andalso MaxCount > 0 ->
     lager:debug("voicemail box is full, cannot hold more messages, sending notification"),
     Props = [{<<"Account-DB">>, whapps_call:account_db(Call)}
-            ,{<<"Voicemail-Box">>, VMBId}
-            ,{<<"Voicemail-Number">>, VMBN}
-            ,{<<"Max-Message-Count">>, MaxCount}
-            ,{<<"Message-Count">>, Count}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
+             ,{<<"Voicemail-Box">>, VMBId}
+             ,{<<"Voicemail-Number">>, VMBN}
+             ,{<<"Max-Message-Count">>, MaxCount}
+             ,{<<"Message-Count">>, Count}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
     _ = whapps_util:amqp_pool_request(Props
                                       ,fun wapi_notifications:publish_voicemail_full/1
                                       ,fun wapi_notifications:voicemail_full_v/1
