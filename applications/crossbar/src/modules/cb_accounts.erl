@@ -15,6 +15,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate_resource/1, validate_resource/2, validate_resource/3
          ,validate/1, validate/2, validate/3
          ,put/1, put/2
          ,post/2, post/3
@@ -51,6 +52,7 @@
 init() ->
     Bindings = [{<<"*.allowed_methods.accounts">>, 'allowed_methods'}
                 ,{<<"*.resource_exists.accounts">>, 'resource_exists'}
+                ,{<<"*.validate_resource.accounts">>, 'validate_resource'}
                 ,{<<"*.validate.accounts">>, 'validate'}
                 ,{<<"*.execute.put.accounts">>, 'put'}
                 ,{<<"*.execute.post.accounts">>, 'post'}
@@ -112,14 +114,32 @@ allowed_methods(_, Path) ->
 -spec resource_exists(path_token(), ne_binary()) -> boolean().
 resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
-resource_exists(_, ?MOVE) -> 'true';
 resource_exists(_, Path) ->
     Paths =  [?CHILDREN
               ,?DESCENDANTS
               ,?SIBLINGS
               ,?API_KEY
+              ,?MOVE
              ],
     lists:member(Path, Paths).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%% If valid, updates Context with account data
+%%
+%% Failure here returns 404
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_resource(cb_context:context()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
+validate_resource(Context) -> Context.
+validate_resource(Context, AccountId) -> load_account_db(AccountId, Context).
+validate_resource(Context, AccountId, _Path) -> load_account_db(AccountId, Context).
+
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -138,28 +158,24 @@ resource_exists(_, Path) ->
                       cb_context:context().
 
 validate(Context) ->
-    validate_accounts(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    validate_accounts(Context, cb_context:req_verb(Context)).
 
--spec validate_accounts(cb_context:context(), http_method(), req_nouns()) ->
-                               cb_context:context().
-validate_accounts(Context, ?HTTP_PUT, [{?WH_ACCOUNTS_DB, _}]) ->
+-spec validate_accounts(cb_context:context(), http_method()) -> cb_context:context().
+validate_accounts(Context, ?HTTP_PUT) ->
     validate_request('undefined', prepare_context('undefined', Context)).
 
 validate(Context, AccountId) ->
-    validate_account(Context, AccountId, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    validate_account(Context, AccountId, cb_context:req_verb(Context)).
 
--spec validate_account(cb_context:context(), ne_binary(), http_method(), req_nouns()) ->
-                              cb_context:context().
-validate_account(Context, AccountId, ?HTTP_GET, [{?WH_ACCOUNTS_DB, _}]) ->
+-spec validate_account(cb_context:context(), ne_binary(), http_method()) -> cb_context:context().
+validate_account(Context, AccountId, ?HTTP_GET) ->
     load_account(AccountId, prepare_context(AccountId, Context));
-validate_account(Context, _AccountId, ?HTTP_PUT, [{?WH_ACCOUNTS_DB, _}]) ->
+validate_account(Context, _AccountId, ?HTTP_PUT) ->
     validate_request('undefined', prepare_context('undefined', Context));
-validate_account(Context, AccountId, ?HTTP_POST, [{?WH_ACCOUNTS_DB, _}]) ->
+validate_account(Context, AccountId, ?HTTP_POST) ->
     validate_request(AccountId, prepare_context(AccountId, Context));
-validate_account(Context, AccountId, ?HTTP_DELETE, [{?WH_ACCOUNTS_DB, _}]) ->
-    validate_delete_request(AccountId, prepare_context(AccountId, Context));
-validate_account(Context, AccountId, _Verb, _Nouns) ->
-    load_account_db(AccountId, Context).
+validate_account(Context, AccountId, ?HTTP_DELETE) ->
+    validate_delete_request(AccountId, prepare_context(AccountId, Context)).
 
 validate(Context, AccountId, PathToken) ->
     validate_account_path(Context, AccountId, PathToken, cb_context:req_verb(Context)).
@@ -930,9 +946,8 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                                  ,{fun cb_context:set_account_db/2, AccountDb}
                                  ,{fun cb_context:set_account_id/2, AccountId}
                                 ]);
-        {'error', _R} ->
-            lager:debug("unable to open account definition ~s/~s: ~p", [AccountDb, AccountId, _R]),
-            cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context)
+       {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
+       {'error', _R} -> crossbar_util:response_db_fatal(Context)   
     end.
 
 %%--------------------------------------------------------------------
