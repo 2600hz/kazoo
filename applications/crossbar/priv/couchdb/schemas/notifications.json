@@ -143,7 +143,7 @@
         "friendly_name":{
             "type":"string",
             "required":false,
-            "description":"Category of the template, for grouping purposes",
+            "description":"Friendly name of the template",
             "minLength":1
         }
     }
