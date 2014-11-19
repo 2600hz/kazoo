@@ -217,7 +217,8 @@ service_charset(ServiceData) ->
 -spec service_params(wh_json:object(), ne_binary()) -> wh_proplist().
 -spec service_params(wh_json:object(), ne_binary(), api_binary()) -> wh_proplist().
 service_params(APIJObj, ConfigCat) ->
-    service_params(APIJObj, ConfigCat, wh_json:get_value(<<"account_id">>, APIJObj)).
+    service_params(APIJObj, ConfigCat, find_account_id(APIJObj)).
+
 service_params(APIJObj, ConfigCat, AccountId) ->
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded')
                                                    ,AccountId
@@ -571,8 +572,7 @@ fetch_templates(TemplateId, DataJObj) ->
             ,{<<"text/plain">>, wh_json:get_value(<<"text">>, DataJObj)}
            ])
     of
-        [] ->
-            fetch_templates(TemplateId, wh_json:get_value(<<"account_id">>, DataJObj));
+        [] -> fetch_templates(TemplateId, find_account_id(DataJObj));
         Templates -> Templates
     end.
 
@@ -641,7 +641,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
 find_account_rep_email('undefined') -> 'undefined';
 find_account_rep_email(<<_/binary>> = AccountId) ->
     case wh_services:find_reseller_id(AccountId) of
-        'undefined' -> 'undefined';
+        AccountId -> 'undefined';
         ResellerId -> find_account_rep_email(AccountId, ResellerId)
     end;
 find_account_rep_email(AccountJObj) ->
@@ -652,22 +652,31 @@ find_account_rep_email(AccountJObj) ->
      ).
 
 find_account_rep_email(AccountId, 'undefined') ->
+    lager:debug("no reseller id for ~s, finding admin email", [AccountId]),
+    find_account_admin_email(AccountId);
+find_account_rep_email(AccountId, AccountId) ->
+    lager:debug("account is own reseller, checking for admins"),
     find_account_admin_email(AccountId);
 find_account_rep_email(AccountId, ResellerId) ->
+    lager:debug("checking reseller ~s for rep for ~s", [ResellerId, AccountId]),
     ResellerDb = wh_util:format_account_id(ResellerId, 'encoded'),
     ViewOptions = ['include_docs', {'key', AccountId}],
     case couch_mgr:get_results(ResellerDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
         {'ok', [View|_]} ->
             find_account_rep_email(AccountId, ResellerId, View);
         {'ok', []} ->
+            lager:debug("no rep for ~s, checking for rep of reseller", [AccountId]),
             find_account_rep_email(ResellerId, wh_services:find_reseller_id(ResellerId));
-        {'error', _} ->
+        {'error', _E} ->
+            lager:debug("querying view failed: ~p", [_E]),
             find_account_rep_email(ResellerId, wh_services:find_reseller_id(ResellerId))
     end.
 
 find_account_rep_email(_AccountId, ResellerId, View) ->
+    lager:debug("found rep for ~s in ~s: ~p", [_AccountId, ResellerId, View]),
     case wh_json:get_value([<<"doc">>, <<"email">>], View) of
         'undefined' ->
+            lager:debug("rep has no email, looking for admin email for ~s", [ResellerId]),
             find_account_admin_email(ResellerId);
         Email -> [Email]
     end.
@@ -676,29 +685,48 @@ find_account_rep_email(_AccountId, ResellerId, View) ->
 -spec find_account_admin_email(ne_binary(), wh_json:objects()) -> api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
+    find_account_admin_email(AccountId, wh_services:find_reseller_id(AccountId)).
+
+find_account_admin_email(AccountId, AccountId) ->
+    case query_account_for_admin_emails(AccountId) of
+        [] -> 'undefined';
+        Emails -> Emails
+    end;
+find_account_admin_email(AccountId, ResellerId) ->
+    case query_account_for_admin_emails(AccountId) of
+        [] -> find_account_admin_email(ResellerId, wh_services:find_reseller_id(ResellerId));
+        Emails -> Emails
+    end.
+
+-spec query_account_for_admin_emails(ne_binary()) -> ne_binaries().
+query_account_for_admin_emails(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                    ,'include_docs'
                   ],
     case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {'ok', []} -> [];
         {'ok', Users} ->
-            find_account_admin_email(AccountId, Users);
+            [Email
+             || Admin <- filter_for_admins(Users),
+                (Email = wh_json:get_ne_value([<<"doc">>, <<"email">>], Admin)) =/= 'undefined'
+            ];
         {'error', _E} ->
-            find_account_admin_email(wh_services:find_reseller_id(AccountId))
-    end.
-
-find_account_admin_email(AccountId, Users) ->
-    case filter_for_admins(Users) of
-        [] ->
-            find_account_admin_email(wh_services:find_reseller_id(AccountId));
-        Admins ->
-            [wh_json:get_value([<<"doc">>, <<"email">>], Admin) || Admin <- Admins]
+            lager:debug("failed to find users in ~s: ~p", [AccountId, _E]),
+            []
     end.
 
 -spec filter_for_admins(wh_json:objects()) -> wh_json:objects().
 filter_for_admins(Users) ->
     [User
      || User <- Users,
-        wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>,
-        wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= 'undefined'
+        wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
     ].
+
+-spec find_account_id(wh_jsoon:object()) -> api_binary().
+find_account_id(JObj) ->
+    wh_json:get_first_defined([<<"account_id">>
+                               ,[<<"account">>, <<"_id">>]
+                              ]
+                              ,JObj
+                             ).
