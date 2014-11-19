@@ -17,7 +17,7 @@
          ,public_fields/1
          ,private_fields/1
          ,attachments/1, attachments/2
-         ,attachment/2, attachment/3
+         ,attachment/1, attachment/2, attachment/3
         ]).
 -export([update_pvt_modified/1]).
 
@@ -155,8 +155,16 @@ attachments(JObj) ->
 attachments(JObj, Default) ->
     wh_json:get_value(<<"_attachments">>, JObj, Default).
 
+-spec attachment(wh_json:object()) -> api_object().
 -spec attachment(wh_json:object(), wh_json:key()) -> api_object().
 -spec attachment(wh_json:object(), wh_json:key(), Default) -> wh_json:object() | Default.
+attachment(JObj) ->
+    case wh_json:get_values(attachments(JObj, wh_json:new())) of
+        {[], []} -> 'undefined';
+        {[Attachment|_], [AttachmentName|_]} ->
+                wh_json:from_list([{AttachmentName, Attachment}])
+        end.
+
 attachment(JObj, AName) ->
     attachment(JObj, AName, 'undefined').
 attachment(JObj, AName, Default) ->
