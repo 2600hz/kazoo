@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2011-2014, 2600Hz INC
 %%% @doc
 %%% Conferences module
 %%%
@@ -29,12 +29,12 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.conferences">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.conferences">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"*.validate.conferences">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"*.execute.put.conferences">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"*.execute.post.conferences">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"*.execute.delete.conferences">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.conferences">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.conferences">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.conferences">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.conferences">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.conferences">>, ?MODULE, 'post'),
+    crossbar_bindings:bind(<<"*.execute.delete.conferences">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -62,11 +62,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
-resource_exists() ->
-    true.
-resource_exists(_) ->
-    true.
-
+resource_exists() -> 'true'.
+resource_exists(_) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -77,29 +74,35 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate(#cb_context{}) -> #cb_context{}.
--spec validate(#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = ?HTTP_GET}=Context) ->
+-spec validate(cb_context:context()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context) ->
+    validate_conferences(Context, cb_context:req_verb(Context)).
+
+validate_conferences(Context, ?HTTP_GET) ->
     load_conference_summary(Context);
-validate(#cb_context{req_verb = ?HTTP_PUT}=Context) ->
+validate_conferences(Context, ?HTTP_PUT) ->
     create_conference(Context).
 
-validate(#cb_context{req_verb = ?HTTP_GET}=Context, Id) ->
+validate(Context, Id) ->
+    validate_conference(Context, Id, cb_context:req_verb(Context)).
+
+validate_conference(Context, Id, ?HTTP_GET) ->
     load_conference(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_POST}=Context, Id) ->
+validate_conference(Context, Id, ?HTTP_POST) ->
     update_conference(Id, Context);
-validate(#cb_context{req_verb = ?HTTP_DELETE}=Context, Id) ->
+validate_conference(Context, Id, ?HTTP_DELETE) ->
     load_conference(Id, Context).
 
--spec post(#cb_context{}, path_token()) -> #cb_context{}.
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     crossbar_doc:save(Context).
 
--spec put(#cb_context{}) -> #cb_context{}.
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
 
--spec delete(#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
@@ -114,9 +117,9 @@ delete(Context, _) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_conference_summary(#cb_context{}) -> #cb_context{}.
-load_conference_summary(#cb_context{req_nouns=Nouns}=Context) ->
-    case lists:nth(2, Nouns) of
+-spec load_conference_summary(cb_context:context()) -> cb_context:context().
+load_conference_summary(Context) ->
+    case lists:nth(2, cb_context:req_nouns(Context)) of
         {<<"users">>, [UserId]} ->
             Filter = fun(J, A) ->
                              normalize_users_results(J, A, UserId)
@@ -125,7 +128,7 @@ load_conference_summary(#cb_context{req_nouns=Nouns}=Context) ->
         {?WH_ACCOUNTS_DB, _} ->
             crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
         _ ->
-            cb_context:add_system_error(faulty_request, Context)
+            cb_context:add_system_error('faulty_request', Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -134,9 +137,9 @@ load_conference_summary(#cb_context{req_nouns=Nouns}=Context) ->
 %% Create a new conference document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_conference(#cb_context{}) -> #cb_context{}.
-create_conference(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+-spec create_conference(cb_context:context()) -> cb_context:context().
+create_conference(Context) ->
+    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
     cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -145,7 +148,7 @@ create_conference(#cb_context{}=Context) ->
 %% Load a conference document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_conference(ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 load_conference(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -156,21 +159,23 @@ load_conference(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_conference(ne_binary(), #cb_context{}) -> #cb_context{}.
-update_conference(DocId, #cb_context{}=Context) ->
+-spec update_conference(ne_binary(), cb_context:context()) -> cb_context:context().
+update_conference(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
     cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec on_successful_validation('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
-on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
-    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)};
-on_successful_validation(DocId, #cb_context{}=Context) ->
+-spec on_successful_validation(api_binary(), cb_context:context()) -> cb_context:context().
+on_successful_validation('undefined', Context) ->
+    cb_context:set_doc(Context
+                       ,wh_json:set_value(<<"pvt_type">>, <<"conference">>, cb_context:doc(Context))
+                      );
+on_successful_validation(DocId, Context) ->
     crossbar_doc:load_merge(DocId, Context).
 
 %%--------------------------------------------------------------------
@@ -184,10 +189,10 @@ normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 -spec normalize_users_results(wh_json:object(), wh_json:objects(), ne_binary()) ->
-                                          ['undefined' | wh_json:object(),...] | [].
+                                     api_objects().
 normalize_users_results(JObj, Acc, UserId) ->
     case wh_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
-        undefined -> normalize_view_results(JObj, Acc);
+        'undefined' -> normalize_view_results(JObj, Acc);
         UserId -> normalize_view_results(JObj, Acc);
-        _ -> [undefined|Acc]
+        _ -> Acc
     end.
