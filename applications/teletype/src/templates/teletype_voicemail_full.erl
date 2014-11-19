@@ -105,7 +105,7 @@ handle_full_voicemail(JObj, _Props) ->
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
--spec process_req(wh_json:object(), list()) -> 'ok'.
+-spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
 
@@ -118,8 +118,8 @@ process_req(DataJObj, Templates) ->
     ServiceData = teletype_util:service_params(DataJObj, ?MOD_CONFIG_CAT),
 
     Macros = [{<<"service">>, ServiceData}
-              ,{<<"account">>, wh_json:to_proplist(wh_json:get_value(<<"account">>, DataJObj))}
-              ,{<<"owner">>, wh_json:to_proplist(wh_json:get_value(<<"owner">>, DataJObj))}
+              ,{<<"account">>, public_proplist(<<"account">>, DataJObj)}
+              ,{<<"owner">>, public_proplist(<<"owner">>, DataJObj)}
               | build_template_data(DataJObj)
              ],
 
@@ -195,7 +195,7 @@ build_voicemail_data(DataJObj) ->
        ,{<<"number">>, wh_json:get_value(<<"voicemail_number">>, DataJObj)}
        ,{<<"max_messages">>, wh_json:get_binary_value(<<"max_message_count">>, DataJObj)}
        ,{<<"message_count">>, wh_json:get_binary_value(<<"message_count">>, DataJObj)}
-       | wh_json:to_proplist(wh_json:public_fields(wh_json:get_value(<<"voicemail">>, DataJObj)))
+       | public_proplist(<<"voicemail">>, DataJObj)
       ]).
 
 -spec is_notice_enabled_on_account(wh_json:object()) -> boolean().
@@ -212,3 +212,11 @@ is_notice_enabled_on_account(JObj) ->
 -spec is_notice_enabled_default() -> boolean().
 is_notice_enabled_default() ->
     whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'false').
+
+-spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
+public_proplist(Key, JObj) ->
+    wh_json:to_proplist(
+      wh_json:public_fields(
+        wh_json:get_value(Key, JObj, wh_json:new())
+       )
+     ).

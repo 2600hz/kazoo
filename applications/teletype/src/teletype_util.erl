@@ -77,7 +77,9 @@ email_parameters([{_Key, 'undefined'}|T], Params) ->
 email_parameters([{Key, Vs}|T], Params) ->
     email_parameters(T, [{Key, V} || V <- Vs] ++ Params).
 
--spec relay_email(ne_binaries(), ne_binary(), mimemail:mimetuple()) -> 'ok'.
+-spec relay_email(ne_binaries(), ne_binary(), mimemail:mimetuple()) ->
+                         'ok' |
+                         {'error', _}.
 relay_email(To, From, Email) ->
     try mimemail:encode(Email) of
         Encoded -> relay_encoded_email(To, From, Encoded)
@@ -89,7 +91,9 @@ relay_email(To, From, Email) ->
             throw({'error', 'email_encoding_failed'})
     end.
 
--spec relay_encoded_email(ne_binaries(), ne_binary(), iolist()) -> 'ok'.
+-spec relay_encoded_email(ne_binaries(), ne_binary(), iolist()) ->
+                                 'ok' |
+                                 {'error', _}.
 relay_encoded_email(To, From, Encoded) ->
     ReqId = get('callid'),
     Self = self(),
@@ -324,7 +328,7 @@ default_service_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
 render_subject('undefined', _Macros) -> <<"Default Subject">>;
 render_subject(Template, Macros) -> render(<<"subject">>, Template, Macros).
 
--spec render(ne_binary(), binary(), wh_proplist()) -> iodata() | 'undefined'.
+-spec render(ne_binary(), binary(), wh_proplist()) -> iolist() | 'undefined'.
 render(TemplateId, Template, Macros) ->
     case teletype_render_farm_sup:render(TemplateId, Template, Macros) of
         {'ok', IOData} -> IOData;
@@ -724,7 +728,7 @@ filter_for_admins(Users) ->
         wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
     ].
 
--spec find_account_id(wh_jsoon:object()) -> api_binary().
+-spec find_account_id(wh_json:object()) -> api_binary().
 find_account_id(JObj) ->
     wh_json:get_first_defined([<<"account_id">>
                                ,[<<"account">>, <<"_id">>]
