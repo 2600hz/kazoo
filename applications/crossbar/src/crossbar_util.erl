@@ -91,9 +91,9 @@
 response(JTerm, Context) ->
     create_response('success', 'undefined', 'undefined', JTerm, Context).
 
--spec response_202(wh_json:json_string(), cb_context:context()) ->
+-spec response_202(wh_json:key(), cb_context:context()) ->
                           cb_context:context().
--spec response_202(wh_json:json_string(), wh_json:json_term(), cb_context:context()) ->
+-spec response_202(wh_json:key(), wh_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_202(Msg, Context) ->
     response_202(Msg, Msg, Context).
@@ -117,7 +117,7 @@ response_402(Data, Context) ->
 %% fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), wh_json:json_string(), cb_context:context()) ->
+-spec response(fails(), wh_json:key(), cb_context:context()) ->
                       cb_context:context().
 response('error', Msg, Context) ->
     create_response('error', Msg, 500, wh_json:new(), Context);
@@ -131,7 +131,7 @@ response('fatal', Msg, Context) ->
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), wh_json:json_string(), api_integer(), cb_context:context()) ->
+-spec response(fails(), wh_json:key(), api_integer(), cb_context:context()) ->
                       cb_context:context().
 response('error', Msg, Code, Context) ->
     create_response('error', Msg, Code, wh_json:new(), Context);
@@ -145,7 +145,7 @@ response('fatal', Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), wh_json:json_string(), api_integer(), wh_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response(fails(), wh_json:key(), api_integer(), wh_json:json_term(), cb_context:context()) -> cb_context:context().
 response('error', Msg, Code, JTerm, Context) ->
     create_response('error', Msg, Code, JTerm, Context);
 response('fatal', Msg, Code, JTerm, Context) ->
@@ -159,7 +159,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response(crossbar_status(), wh_json:json_string(), api_integer()
+-spec create_response(crossbar_status(), wh_json:key(), api_integer()
                       ,wh_json:json_term(), cb_context:context()
                      ) -> cb_context:context().
 create_response(Status, Msg, Code, JTerm, Context) ->

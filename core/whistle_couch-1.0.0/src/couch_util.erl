@@ -931,7 +931,7 @@ copy_doc(#server{}=Conn, CopySpec, Options) ->
         Error -> Error
     end.
 
--spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:json_strings()}) ->
+-spec copy_attachments(server(), copy_doc(), {wh_json:json_terms(), wh_json:keys()}) ->
                               {'ok', ne_binary()} |
                               {'error', any()}.
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->
