@@ -20,6 +20,12 @@
 
 -include("teletype.hrl").
 
+-spec send_email(ne_binary(), wh_json:object(), wh_proplist(), iolist(), wh_proplist()) ->
+                        'ok' |
+                        {'error', _}.
+-spec send_email(ne_binary(), wh_json:object(), wh_proplist(), iolist(), wh_proplist(), attachments()) ->
+                        'ok' |
+                        {'error', _}.
 send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates) ->
     send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, []).
 send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attachments) ->
