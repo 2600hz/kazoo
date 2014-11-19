@@ -61,6 +61,7 @@
 -type binaries() :: [binary(),...] | [].
 
 -type strings() :: [string(),...] | [].
+-type integers() :: [integer(),...] | [].
 
 -type functions() :: [function(),...] | [].
 
