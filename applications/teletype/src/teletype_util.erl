@@ -32,7 +32,7 @@
 send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates) ->
     send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, []).
 send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attachments) ->
-    {'ok', TemplateJObj} = fetch_template_meta(TemplateId, wh_json:get_value(<<"Account-ID">>, DataJObj)),
+    {'ok', TemplateJObj} = fetch_template_meta(TemplateId, find_account_id(DataJObj)),
 
     L = [DataJObj, TemplateJObj],
 
@@ -576,6 +576,14 @@ fetch_templates(TemplateId, DataJObj) ->
         Templates -> Templates
     end.
 
+-spec find_account_id(wh_json:object()) -> api_binary().
+find_account_id(JObj) ->
+    wh_json:get_first_defined([<<"account_id">>
+                               ,[<<"account">>, <<"_id">>]
+                              ]
+                              ,JObj
+                             ).
+
 -spec maybe_decode_html(api_binary()) -> api_binary().
 maybe_decode_html('undefined') -> 'undefined';
 maybe_decode_html(HTML) ->
@@ -722,11 +730,3 @@ filter_for_admins(Users) ->
      || User <- Users,
         wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
     ].
-
--spec find_account_id(wh_json:object()) -> api_binary().
-find_account_id(JObj) ->
-    wh_json:get_first_defined([<<"account_id">>
-                               ,[<<"account">>, <<"_id">>]
-                              ]
-                              ,JObj
-                             ).
