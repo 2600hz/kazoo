@@ -173,15 +173,15 @@ process_req(DataJObj) ->
                                   ,ServiceData
                                   ,Subject
                                   ,RenderedTemplates
-                                  ,email_attachments(DataJObj)
+                                  ,email_attachments(DataJObj, Macros)
                                  )
     of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec email_attachments(wh_json:object()) -> attachments().
-email_attachments(DataJObj) ->
+-spec email_attachments(wh_json:object(), wh_proplist()) -> attachments().
+email_attachments(DataJObj, Macros) ->
     VMId = wh_json:get_value(<<"voicemail_name">>, DataJObj),
     AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
     {'ok', VMJObj} = couch_mgr:open_cache_doc(AccountDb, VMId),
@@ -189,16 +189,16 @@ email_attachments(DataJObj) ->
     {'ok', AttachmentBin} = couch_mgr:fetch_attachment(AccountDb, VMId, AttachmentId),
 
     [{wh_json:get_value(<<"content_type">>, AttachmentMeta)
-      ,get_file_name(VMJObj, DataJObj)
+      ,get_file_name(VMJObj, Macros)
       ,AttachmentBin
      }].
 
--spec get_file_name(wh_json:object(), wh_json:object()) -> ne_binary().
-get_file_name(MediaJObj, DataJObj) ->
+-spec get_file_name(wh_json:object(), wh_proplist()) -> ne_binary().
+get_file_name(MediaJObj, Macros) ->
     %% CallerID_Date_Time.mp3
     CallerID =
-        case {wh_json:get_value([<<"caller_id">>, <<"name">>], DataJObj)
-              ,wh_json:get_value([<<"caller_id">>, <<"number">>], DataJObj)
+        case {props:get_value([<<"caller_id">>, <<"name">>], Macros)
+              ,props:get_value([<<"caller_id">>, <<"number">>], Macros)
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;
@@ -206,8 +206,7 @@ get_file_name(MediaJObj, DataJObj) ->
             {Name, _} -> wnm_util:pretty_print(wh_util:to_binary(Name))
         end,
 
-    lager:debug("called: ~p", [wh_json:get_value(<<"date_called">>, DataJObj)]),
-    LocalDateTime = wh_json:get_value([<<"date_called">>, <<"local">>], DataJObj, os:timestamp()),
+    LocalDateTime = props:get_value([<<"date_called">>, <<"local">>], Macros),
 
     Extension = get_extension(MediaJObj),
     FileName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Extension]),
