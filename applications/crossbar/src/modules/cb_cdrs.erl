@@ -463,6 +463,7 @@ normalize_cdr(JObj, Context) ->
                          ,{<<"call_type">>, wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)}
                          ,{<<"rate">>, wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))}
                          ,{<<"rate_name">>, wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)}
+                         ,{<<"bridge_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>)}
                         ])
       ,Context
      ).
@@ -496,6 +497,7 @@ normalize_cdr_to_csv(JObj, Context) ->
                                ,wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj, <<>>)
                                ,wh_util:to_binary(wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0)))
                                ,wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)
+                               ,wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>)
                               ], <<",">>),
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;
@@ -534,6 +536,7 @@ normalize_cdr_to_csv_header(_JObj, Context) ->
             ,"call_type,"
             ,"rate,"
             ,"rate_name"
+            ,"bridge_id"
           >>,
     case cb_context:fetch(Context, 'is_reseller') of
         'false' -> <<CSV/binary, "\r">>;
