@@ -38,6 +38,11 @@
          ,fax_result :: api_object()
          ,fax_notify = 'undefined' :: api_binaries()
          ,fax_store_count = 0 :: integer()
+         ,fax_id = 'undefined' :: api_binary()
+         ,account_id = 'undefined' :: api_binary()
+         ,fax_status :: api_object()
+         ,page   ::integer()
+         ,status :: binary()
          }).
 -type state() :: #state{}.
 
@@ -112,6 +117,7 @@ init([Call, JObj]) ->
                  ,owner_id = wh_json:get_value(<<"Owner-ID">>, JObj)
                  ,faxbox_id = wh_json:get_value(<<"FaxBox-ID">>, JObj)
                  ,fax_option = wh_json:get_value(<<"Fax-T38-Option">>, JObj, 'false')
+                 ,account_id = whapps_call:account_id(Call)
              }}.
 
 %%--------------------------------------------------------------------
@@ -149,21 +155,22 @@ handle_cast('start_action', #state{call=_Call
     lager:debug("receiving a fax for ~p/~p", [OwnerId,FaxBoxId]),
     {'noreply', State};
 handle_cast({'fax_status', <<"negociateresult">>, JObj}, State) ->
-    TransferRate = wh_json:get_integer_value([<<"Application-Data">>,<<"Fax-Transfer-Rate">>], JObj, 1),
-    lager:debug("inbound fax status - negociate result - ~p",[TransferRate]),
-    %% TODO update stats/websockets/job
-    %%      maybe setup timer to cancel job bassed on transmission rate
-    {'noreply', State};
-handle_cast({'fax_status', <<"pageresult">>, JObj}, State) ->
-    TransferredPages = wh_json:get_value([<<"Application-Data">>, <<"Fax-Transferred-Pages">>], JObj),
-    lager:debug("inbound fax status - page result - ~p : ~p"
-                ,[TransferredPages, wh_util:current_tstamp()]),
-    %% TODO update stats/websockets/job
-    {'noreply', State};
+    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
+    TransferRate = wh_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
+    lager:debug("fax status - negociate result - ~s : ~p",[State#state.fax_id, TransferRate]),
+    Status = list_to_binary(["Fax negotiated at ", TransferRate]),
+    send_status(State, Status, Data),
+    {'noreply', State#state{status=Status, page=1, fax_status=Data}};
+handle_cast({'fax_status', <<"pageresult">>, JObj}, #state{page=Page, fax_id=JobId}=State) ->
+    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
+    TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, Data),
+    lager:debug("fax status - page result - ~s : ~p : ~p"
+                ,[JobId, TransferredPages, wh_util:current_tstamp()]),
+    Status = list_to_binary(["Received  Page ", wh_util:to_list(Page + 1)]),
+    send_status(State, Status, Data),
+    {'noreply', State#state{page=Page + 1, status=Status, fax_status=Data}};
 handle_cast({'fax_status', <<"result">>, JObj}, State) ->
-    %% TODO update stats/websockets/job
     end_receive_fax(JObj, State);
-%    {'stop', 'normal', State};
 handle_cast({'fax_status', Event, _JObj}, State) ->
     lager:debug("fax status not handled - ~s",[Event]),
     %% TODO update stats/websockets/job
@@ -252,9 +259,13 @@ start_receive_fax(#state{call=Call
              ,{<<"Fax-Doc-DB">>, Storage#fax_storage.db}
             ],
     NewCall = whapps_call:kvs_store_proplist(Props, Call),
-    NewState = maybe_update_fax_settings(State#state{storage=Storage, call=NewCall}),
+    NewState = maybe_update_fax_settings(State#state{storage=Storage
+                                                     ,fax_id=Storage#fax_storage.id
+                                                     ,call=NewCall
+                                                    }),
     ResourceFlag = whapps_call:custom_channel_var(<<"Resource-Fax-Option">>, Call),
     LocalFile = get_fs_filename(NewState),
+    send_status(NewState, list_to_binary(["New Fax from ", whapps_call:caller_id_number(Call)]), ?FAX_START, 'undefined'),
     whapps_call_command:answer(Call),
     whapps_call_command:receive_fax(ResourceFlag, ReceiveFlag, LocalFile, Call),
     {'noreply', NewState}.
@@ -599,7 +610,10 @@ notify_failure(JObj, Reason, #state{call=Call
                                    ,faxbox_id=FaxBoxId
                                    ,fax_notify=Notify
                                    ,storage=#fax_storage{id=FaxId}
-                                   }) ->
+                                   }=State) ->
+    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
+    Status = list_to_binary(["Error receiving fax : ", Reason]),
+    send_error_status(State, Status, Data),
     Message = props:filter_undefined(
                  notify_fields(Call, JObj) ++
                      [{<<"Fax-ID">>, FaxId}
@@ -616,7 +630,11 @@ notify_success(JObj, #state{call=Call
                            ,faxbox_id=FaxBoxId
                            ,fax_notify=Notify
                            ,storage=#fax_storage{id=FaxId}
-                           }) ->
+                           }=State) ->
+    Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
+    Status = <<"Fax Successfuly received">>,
+    send_status(State, Status, ?FAX_END, Data),
+    
     Message = props:filter_undefined(
                 notify_fields(Call, JObj) ++
                     [{<<"Fax-ID">>, FaxId}
@@ -625,3 +643,35 @@ notify_success(JObj, #state{call=Call
                     ,{<<"Fax-Notifications">>, Notify}
                     ]),
     wapi_notifications:publish_fax_inbound(Message).
+
+
+%% -spec send_status(state(), ne_binary()) -> any().
+%% send_status(State, Status) ->
+%%     send_status(State, Status, <<"receive">>, 'undefined').
+%% 
+%% -spec send_error_status(state(), ne_binary()) -> any().
+%% send_error_status(State, Status) ->
+%%     send_status(State, Status, <<"error">>, 'undefined').
+
+-spec send_error_status(state(), ne_binary(), api_object()) -> any().
+send_error_status(State, Status, FaxInfo) ->
+    send_status(State, Status, ?FAX_ERROR, FaxInfo).
+
+-spec send_status(state(), ne_binary(), api_object()) -> any().
+send_status(State, Status, FaxInfo) ->
+    send_status(State, Status, ?FAX_RECEIVE, FaxInfo).
+
+-spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> any().
+send_status(State, Status, FaxState, FaxInfo) ->
+    #state{account_id=AccountId, fax_id=JobId, faxbox_id=FaxboxId} = State,
+    Payload = props:filter_undefined(
+                [{<<"Job-ID">>, JobId}
+                 ,{<<"FaxBox-ID">>, FaxboxId}
+                 ,{<<"Account-ID">>, AccountId}
+                 ,{<<"Status">>, Status}
+                 ,{<<"Fax-State">>, FaxState}
+                 ,{<<"Fax-Info">>, FaxInfo}
+                 ,{<<"Direction">>, ?FAX_INCOMING}
+                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    wapi_fax:publish_status(Payload).
