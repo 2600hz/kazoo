@@ -173,7 +173,6 @@ handle_cast({'fax_status', <<"result">>, JObj}, State) ->
     end_receive_fax(JObj, State);
 handle_cast({'fax_status', Event, _JObj}, State) ->
     lager:debug("fax status not handled - ~s",[Event]),
-    %% TODO update stats/websockets/job
     {'noreply', State};
 handle_cast({'exec_completed', <<"store_fax">>, Status, JObj}, State) ->
     check_retry_storage(Status, JObj, State);
@@ -644,15 +643,6 @@ notify_success(JObj, #state{call=Call
                     ]),
     wapi_notifications:publish_fax_inbound(Message).
 
-
-%% -spec send_status(state(), ne_binary()) -> any().
-%% send_status(State, Status) ->
-%%     send_status(State, Status, <<"receive">>, 'undefined').
-%% 
-%% -spec send_error_status(state(), ne_binary()) -> any().
-%% send_error_status(State, Status) ->
-%%     send_status(State, Status, <<"error">>, 'undefined').
-
 -spec send_error_status(state(), ne_binary(), api_object()) -> any().
 send_error_status(State, Status, FaxInfo) ->
     send_status(State, Status, ?FAX_ERROR, FaxInfo).
@@ -663,7 +653,7 @@ send_status(State, Status, FaxInfo) ->
 
 -spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> any().
 send_status(State, Status, FaxState, FaxInfo) ->
-    #state{account_id=AccountId, fax_id=JobId, faxbox_id=FaxboxId} = State,
+    #state{account_id=AccountId, page=Page, fax_id=JobId, faxbox_id=FaxboxId} = State,
     Payload = props:filter_undefined(
                 [{<<"Job-ID">>, JobId}
                  ,{<<"FaxBox-ID">>, FaxboxId}
@@ -672,6 +662,7 @@ send_status(State, Status, FaxState, FaxInfo) ->
                  ,{<<"Fax-State">>, FaxState}
                  ,{<<"Fax-Info">>, FaxInfo}
                  ,{<<"Direction">>, ?FAX_INCOMING}
+                 ,{<<"Page">>, Page}
                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     wapi_fax:publish_status(Payload).
