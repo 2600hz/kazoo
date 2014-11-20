@@ -270,7 +270,7 @@ malformed_request(Req, Context, ?HTTP_OPTIONS) ->
 malformed_request(Req, Context, _ReqVerb) ->
     case props:get_value(<<"accounts">>, cb_context:req_nouns(Context)) of
         [AccountId] ->
-            Context1 = cb_accounts:validate_request(Context, AccountId),
+            Context1 = cb_accounts:validate_resource(Context, AccountId),
             case cb_context:resp_status(Context1) of
                 'success' ->
                     {'false', Req, Context1};
