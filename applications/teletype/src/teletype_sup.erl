@@ -9,14 +9,27 @@
 
 -behaviour(supervisor).
 
--export([start_link/0]).
+-export([start_link/0
+         ,render_farm_name/0
+        ]).
 -export([init/1]).
 
 -include("teletype.hrl").
 
+-define(POOL_NAME, 'teletype_render_farm').
+-define(POOL_SIZE, whapps_config:get_integer(?APP_NAME, <<"render_farm_workers">>, 20)).
+-define(POOL_OVERFLOW, 0).
+
+-define(POOL_ARGS, [[{'worker_module', 'teletype_renderer'}
+                     ,{'name', {'local', ?POOL_NAME}}
+                     ,{'size', ?POOL_SIZE}
+                     ,{'max_overflow', ?POOL_OVERFLOW}
+                     ,{'neg_resp_threshold', 1}
+                    ]]).
+
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE('teletype_cache')
-                   ,?SUPER('teletype_render_farm_sup')
+                   ,?WORKER_NAME_ARGS('poolboy', ?POOL_NAME, ?POOL_ARGS)
                    ,?WORKER('teletype_listener')
                    ,?WORKER('teletype_shared_listener')
                   ]).
@@ -34,6 +47,10 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
+
+-spec render_farm_name() -> ?POOL_NAME.
+render_farm_name() ->
+    ?POOL_NAME.
 
 %% ===================================================================
 %% Supervisor callbacks

@@ -37,17 +37,24 @@ start_link() ->
                     'ok' |
                     {'error', _}.
 render(TemplateId, Template, TemplateData) ->
-    {'ok', Renderer} = renderer(TemplateId),
+    {'ok', Renderer} = renderer(),
     lager:debug("found renderer for '~s': ~p", [TemplateId, Renderer]),
     teletype_renderer:render(Renderer, Template, TemplateData).
 
--spec renderer(ne_binary()) -> {'ok', pid()}.
-renderer(TemplateId) ->
-    RenderId = render_id(TemplateId),
-    case whereis(RenderId) of
-        'undefined' -> start_renderer(RenderId, TemplateId);
-        Pid -> {'ok', Pid}
+-spec renderer() -> {'ok', api_pid()}.
+renderer() ->
+    try poolboy:checkout(teletype_sup:render_farm_name(), 'false', 2000) of
+        'full' ->
+            lager:critical("render farm pool is full!"),
+            timer:sleep(1000),
+            renderer();
+        P -> {'ok', P}
+    catch
+        _E:_R ->
+            lager:warning("failed to checkout: ~s: ~p", [_E, _R]),
+            {'ok', 'undefined'}
     end.
+
 
 -spec start_renderer(atom(), ne_binary()) -> sup_startchild_ret().
 start_renderer(RenderId, TemplateId) ->
