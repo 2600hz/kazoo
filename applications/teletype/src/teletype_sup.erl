@@ -24,7 +24,6 @@
                      ,{'name', {'local', ?POOL_NAME}}
                      ,{'size', ?POOL_SIZE}
                      ,{'max_overflow', ?POOL_OVERFLOW}
-                     ,{'neg_resp_threshold', 1}
                     ]]).
 
 %% Helper macro for declaring children of supervisor
