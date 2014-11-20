@@ -10,5 +10,11 @@
 
 -define(NOTIFY_CONFIG_CAT, <<"notify">>).
 
+-type mime_tuples() :: [mimemail:mimetuple(),...] | [].
+
+%% {ContentType, Filename, Content}
+-type attachment() :: {ne_binary(), ne_binary(), binary()}.
+-type attachments() :: [attachment(),...] | [].
+
 -define(TELETYPE_HRL, 'true').
 -endif.

@@ -157,11 +157,6 @@ smtp_tls_option(<<"if_available">>) -> 'if_available';
 smtp_tls_option(<<"always">>) -> 'always';
 smtp_tls_option(_) -> 'never'.
 
--type mime_tuples() :: [mimemail:mimetuple(),...] | [].
-
--type attachment() :: {ne_binary(), ne_binary(), binary()}.
--type attachments() :: [attachment(),...] | [].
-
 -spec add_attachments(attachments()) -> mime_tuples().
 -spec add_attachments(attachments(), mime_tuples()) -> mime_tuples().
 add_attachments(Attachments) ->

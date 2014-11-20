@@ -168,14 +168,82 @@ process_req(DataJObj) ->
                ),
 
     %% Send email
-    case teletype_util:send_email(?TEMPLATE_ID, DataJObj, ServiceData, Subject, RenderedTemplates) of
+    case teletype_util:send_email(?TEMPLATE_ID
+                                  ,DataJObj
+                                  ,ServiceData
+                                  ,Subject
+                                  ,RenderedTemplates
+                                  ,email_attachments(DataJObj)
+                                 )
+    of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
+-spec email_attachments(wh_json:object()) -> attachments().
+email_attachments(DataJObj) ->
+    VMId = wh_json:get_value(<<"voicemail_name">>, DataJObj),
+    AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
+    {'ok', VMJObj} = couch_mgr:open_cache_doc(AccountDb, VMId),
+    {[AttachmentMeta], [AttachmentId]} = wh_json:get_values(wh_doc:attachments(VMJObj)),
+    {'ok', AttachmentBin} = couch_mgr:fetch_attachment(AccountDb, VMId, AttachmentId),
+
+    [{wh_json:get_value(<<"content_type">>, AttachmentMeta)
+      ,get_file_name(VMJObj, DataJObj)
+      ,AttachmentBin
+     }].
+
+-spec get_file_name(wh_json:object(), wh_json:object()) -> ne_binary().
+get_file_name(MediaJObj, DataJObj) ->
+    %% CallerID_Date_Time.mp3
+    CallerID =
+        case {wh_json:get_value([<<"caller_id">>, <<"name">>], DataJObj)
+              ,wh_json:get_value([<<"caller_id">>, <<"number">>], DataJObj)
+             }
+        of
+            {'undefined', 'undefined'} -> <<"Unknown">>;
+            {'undefined', Num} -> wnm_util:pretty_print(wh_util:to_binary(Num));
+            {Name, _} -> wnm_util:pretty_print(wh_util:to_binary(Name))
+        end,
+
+    LocalDateTime = wh_json:get_value([<<"date_called">>, <<"local">>], DataJObj, <<>>),
+
+    Extension = get_extension(MediaJObj),
+    FileName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Extension]),
+
+    cow_qs:urlencode(
+      binary:replace(wh_util:to_lower_binary(FileName), <<" ">>, <<"_">>)
+     ).
+
+-spec get_extension(wh_json:object()) -> ne_binary().
+get_extension(MediaJObj) ->
+    case wh_json:get_value(<<"media_type">>, MediaJObj) of
+        'undefined' ->
+            lager:debug("getting extension from attachment mime"),
+            attachment_to_extension(wh_json:get_value(<<"_attachments">>, MediaJObj));
+        MediaType -> MediaType
+    end.
+
+-spec attachment_to_extension(wh_json:object()) -> ne_binary().
+attachment_to_extension(AttachmentsJObj) ->
+    wh_json:get_value(<<"extension">>
+                      ,wh_json:map(fun attachment_to_extension/2, AttachmentsJObj)
+                      ,whapps_config:get(<<"callflow">>, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
+                     ).
+
+-spec attachment_to_extension(ne_binary(), wh_json:object()) -> {ne_binary(), ne_binary()}.
+attachment_to_extension(_Id, Meta) ->
+    CT = wh_json:get_value(<<"content_type">>, Meta),
+    Ext = mime_to_extension(CT),
+    {<<"extension">>, Ext}.
+
+-spec mime_to_extension(ne_binary()) -> ne_binary().
+mime_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
+mime_to_extension(_) -> <<"wav">>.
+
 -spec build_template_data(wh_json:object()) -> wh_proplist().
 build_template_data(DataJObj) ->
-    props:filter_undefined(
+    props:filter_empty(
       [{<<"caller_id">>, build_caller_id_data(DataJObj)}
        ,{<<"date_called">>, build_date_called_data(DataJObj)}
        ,{<<"voicemail">>, build_voicemail_data(DataJObj)}
