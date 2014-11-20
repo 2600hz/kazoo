@@ -816,7 +816,7 @@ validate_data(Context, [{Mod, Params}|_]) ->
     Payload = [cb_context:set_resp_status(Context, 'fatal') | Params],
     cb_context:import_errors(crossbar_bindings:fold(Event, Payload)).
 
--spec validate_data(cb_context:context(), list()) -> cb_context:context().
+-spec validate_resources(cb_context:context(), list()) -> cb_context:context().
 validate_resources(Context, ReqNouns) ->
     cb_context:import_errors(
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
