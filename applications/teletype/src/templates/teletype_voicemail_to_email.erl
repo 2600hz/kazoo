@@ -206,7 +206,8 @@ get_file_name(MediaJObj, DataJObj) ->
             {Name, _} -> wnm_util:pretty_print(wh_util:to_binary(Name))
         end,
 
-    LocalDateTime = wh_json:get_value([<<"date_called">>, <<"local">>], DataJObj, <<>>),
+    lager:debug("called: ~p", [wh_json:get_value(<<"date_called">>, DataJObj)]),
+    LocalDateTime = wh_json:get_value([<<"date_called">>, <<"local">>], DataJObj, os:timestamp()),
 
     Extension = get_extension(MediaJObj),
     FileName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Extension]),
@@ -272,6 +273,8 @@ build_date_called_data(DataJObj) ->
                                          ,<<"UTC">>
                                         ),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+
+    lager:debug("using tz ~s (system ~s) for ~p", [Timezone, ClockTimezone, DateTime]),
 
     props:filter_undefined(
       [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
