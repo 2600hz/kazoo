@@ -47,7 +47,6 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
             ,[] %% Headers
             ,[] %% ContentTypeParams
             ,add_rendered_templates_to_email(RenderedTemplates, ServiceData)
-            ++ add_attachments(Attachments)
            },
 
     Email = {<<"multipart">>
@@ -60,11 +59,11 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
                 ,[{<<"From">>, From}
                   ,{<<"Reply-To">>, ReplyTo}
                   ,{<<"Subject">>, iolist_to_binary(Subject)}
-                  ,{<<"X-Call-ID">>, wh_json:get_value(<<"Call-ID">>, DataJObj)}
+                  ,{<<"X-Call-ID">>, wh_json:get_value(<<"call_id">>, DataJObj)}
                  ]
                )
              ,service_content_type_params(ServiceData)
-             ,[Body]
+             ,[Body | add_attachments(Attachments)]
             },
 
     relay_email(To, From, Email).
@@ -169,11 +168,12 @@ add_attachments([{ContentType, Filename, Content}|As], Acc) ->
                   ,SubType
                   ,[{<<"Content-Disposition">>, <<"attachment; filename=\"", Filename/binary, "\"">>}
                     ,{<<"Content-Type">>, <<ContentType/binary, "; name=\"", Filename/binary, "\"">>}
-                    ,{<<"Content-Tranfer-Encoding">>, <<"base64">>}
+                    ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
                    ]
                   ,[]
                   ,Content
                  },
+    lager:debug("adding attachment ~s (~s)", [Filename, ContentType]),
     add_attachments(As, [Attachment | Acc]).
 
 -spec add_rendered_templates_to_email(wh_proplist(), wh_proplist()) -> mime_tuples().
@@ -195,6 +195,7 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Charset, Acc) ->
                 ,[]
                 ,iolist_to_binary(Content)
                },
+    lager:debug("adding template ~s (~s)", [ContentType, CTEncoding]),
     add_rendered_templates_to_email(Rs, Charset, [Template | Acc]).
 
 -spec service_content_type_params(wh_proplist()) -> wh_proplist().
