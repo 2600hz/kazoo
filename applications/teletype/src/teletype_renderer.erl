@@ -31,9 +31,19 @@ start_link() ->
                     {'ok', iolist()} |
                     {'error', _}.
 render(TemplateId, Template, TemplateData) ->
-    gen_server:call(next_renderer()
-                    ,{'render', TemplateId, Template, TemplateData}
-                   ).
+    Renderer = next_renderer(),
+    try gen_server:call(Renderer
+                        ,{'render', TemplateId, Template, TemplateData}
+                       )
+    of
+        Resp -> Resp
+    catch
+        _E:_R ->
+            lager:debug("rendering failed: ~s: ~p", [_E, _R]),
+            {'error', 'render_failed'}
+    after
+        poolboy:checkin(teletype_sup:render_farm_name(), Renderer)
+    end.
 
 -spec next_renderer() -> pid().
 next_renderer() ->
