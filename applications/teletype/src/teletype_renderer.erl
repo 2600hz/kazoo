@@ -11,7 +11,7 @@
 
 -include("teletype.hrl").
 
--export([start_link/0
+-export([start_link/1
          ,render/3
         ]).
 
@@ -23,9 +23,9 @@
          ,code_change/3
         ]).
 
--spec start_link() -> startlink_ret().
-start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+-spec start_link(term()) -> startlink_ret().
+start_link(Args) ->
+    gen_server:start_link(?MODULE, [], [Args]).
 
 -spec render(ne_binary(), binary(), wh_proplist()) ->
                     {'ok', iolist()} |
@@ -59,8 +59,8 @@ next_renderer() ->
             throw({'error', 'no_worker'})
     end.
 
--spec init([]) -> {'ok', atom()}.
-init([]) ->
+-spec init(list()) -> {'ok', atom()}.
+init(_) ->
     Self = pid_to_list(self()),
 
     Module = wh_util:to_atom(
@@ -77,6 +77,7 @@ handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModu
     try erlydtl:compile_template(Template, TemplateModule, [{'out_dir', 'false'}]) of
         {'ok', TemplateModule} ->
             Resp = render_template(TemplateModule, TemplateData),
+            lager:debug("rendered as ~p", [Resp]),
             {'reply', Resp, TemplateModule};
         {'ok', TemplateModule, Warnings} ->
             lager:debug("compiling template produced warnings: ~p", [Warnings]),
@@ -121,5 +122,7 @@ render_template(TemplateModule, TemplateData) ->
             lager:debug("failed to render template: ~p", [_E]),
             E
     catch
-        _E:R -> {'error', R}
+        _E:R ->
+            lager:debug("crashed rendering template ~s: ~s: ~p", [TemplateModule, _E, R]),
+            {'error', R}
     end.
