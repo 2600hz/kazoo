@@ -27,11 +27,27 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
--spec render(pid(), binary(), wh_proplist()) ->
+-spec render(ne_binary(), binary(), wh_proplist()) ->
                     {'ok', iolist()} |
                     {'error', _}.
-render(RenderId, Template, TemplateData) ->
-    gen_server:call(RenderId, {'render', Template, TemplateData}).
+render(TemplateId, Template, TemplateData) ->
+    gen_server:call(next_renderer()
+                    ,{'render', TemplateId, Template, TemplateData}
+                   ).
+
+-spec next_renderer() -> pid().
+next_renderer() ->
+    try poolboy:checkout(teletype_sup:render_farm_name(), 'false', 2000) of
+        'full' ->
+            lager:critical("render farm pool is full!"),
+            timer:sleep(1000),
+            next_renderer();
+        P -> P
+    catch
+        _E:_R ->
+            lager:warning("failed to checkout: ~s: ~p", [_E, _R]),
+            throw({'error', 'no_worker'})
+    end.
 
 -spec init([]) -> {'ok', atom()}.
 init([]) ->
@@ -46,7 +62,7 @@ init([]) ->
 
     {'ok', Module}.
 
-handle_call({'render', Template, TemplateData}, _From, TemplateModule) ->
+handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModule) ->
     lager:debug("trying to compile template for ~p", [_From]),
     try erlydtl:compile_template(Template, TemplateModule, [{'out_dir', 'false'}]) of
         {'ok', TemplateModule} ->
