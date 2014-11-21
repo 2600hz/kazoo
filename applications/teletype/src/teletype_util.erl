@@ -43,11 +43,7 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
     From = wh_json:find(<<"from">>, [wh_json:from_list(ServiceData) | L]),
     ReplyTo = wh_json:find(<<"reply_to">>, [wh_json:from_list(ServiceData) | L]),
 
-    Body = {<<"multipart">>, <<"alternative">>
-            ,[] %% Headers
-            ,[] %% ContentTypeParams
-            ,add_rendered_templates_to_email(RenderedTemplates, ServiceData)
-           },
+    Body = email_body(RenderedTemplates, ServiceData),
 
     Email = {<<"multipart">>
              ,<<"mixed">>
@@ -67,6 +63,15 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
             },
 
     relay_email(To, From, Email).
+
+-spec email_body(wh_proplist(), wh_proplist()) -> mimemail:mimetuple().
+email_body(RenderedTemplates, ServiceData) ->
+    {<<"multipart">>
+     ,<<"alternative">>
+     ,[] %% Headers
+     ,[] %% ContentTypeParams
+     ,add_rendered_templates_to_email(RenderedTemplates, ServiceData)
+    }.
 
 -spec email_parameters(wh_proplist(), wh_proplist()) -> wh_proplist().
 email_parameters([], Params) ->
