@@ -373,44 +373,22 @@ create_template(MasterAccountDb, DocId, Macros, Attachments) ->
     case couch_mgr:save_doc(MasterAccountDb, Doc) of
         {'ok', _UpdatedDoc} ->
             lager:debug("created template ~s", [DocId]),
-            create_template_attachments(MasterAccountDb
-                                        ,DocId
-                                        ,Attachments
-                                       );
+            create_template_attachments(DocId, Attachments);
         {'error', _E}=E ->
             lager:debug("failed to create template ~s: ~p", [DocId, _E]),
             E
     end.
 
-create_template_attachments(_MasterAccountDb, _DocId, []) -> 'ok';
-create_template_attachments(MasterAccountDb, DocId, [{_ContentType, <<>>} | As]) ->
-    create_template_attachments(MasterAccountDb, DocId, As);
-create_template_attachments(MasterAccountDb, DocId, [{ContentType, Contents} | As]) ->
+-spec create_template_attachments(ne_binary(), wh_proplist()) -> 'ok'.
+create_template_attachments(_DocId, []) -> 'ok';
+create_template_attachments(DocId, [{_ContentType, <<>>} | As]) ->
+    create_template_attachments(DocId, As);
+create_template_attachments(DocId, [{ContentType, Contents} | As]) ->
     AName = template_attachment_name(ContentType),
 
-    case couch_mgr:put_attachment(MasterAccountDb
-                                  ,DocId
-                                  ,AName
-                                  ,Contents
-                                  ,[{'content_type', wh_util:to_list(ContentType)}]
-                                 )
-    of
-        {'ok', _Doc} ->
-            lager:debug("saved attachment ~s for ~s", [AName, DocId]),
-            create_template_attachments(MasterAccountDb, DocId, As);
-        {'error', 'conflict'} ->
-            case does_attachment_exist(MasterAccountDb, DocId, AName) of
-                'true' ->
-                    lager:debug("template attachment ~s exists", [AName]),
-                    create_template_attachments(MasterAccountDb, DocId, As);
-                'false' ->
-                    lager:debug("uploading ~s appears to have failed for ~s", [AName, DocId]),
-                    create_template_attachments(MasterAccountDb, DocId, As)
-            end;
-        {'error', _E} ->
-            lager:debug("uploading ~s appears to have failed for ~s: ~p", [AName, DocId, _E]),
-            create_template_attachments(MasterAccountDb, DocId, As)
-    end.
+    save_attachment(DocId, AName, ContentType, Contents)
+        andalso lager:debug("saved attachment ~s for ~s", [AName, DocId]),
+    create_template_attachments(DocId, As).
 
 -spec template_attachment_name(ne_binary()) -> ne_binary().
 template_attachment_name(ContentType) ->
@@ -431,7 +409,7 @@ does_attachment_exist(JObj, AName) ->
     wh_doc:attachment(JObj, cow_qs:urldecode(AName)) =/= 'undefined'.
 
 -spec update_template(wh_json:object(), wh_json:object(), wh_proplist()) ->
-                                   'ok' | couch_mgr:couchbeam_error().
+                             'ok' | couch_mgr:couchbeam_error().
 update_template(TemplateJObj, MacroJObj, Attachments) ->
     {HasUpdates, JObj} =
         wh_json:foldl(fun maybe_update_template_fold/3
@@ -455,8 +433,9 @@ maybe_update_template_with_changes(JObj, 'true', Attachments) ->
         {'error', _E}=E -> E
     end.
 
--spec maybe_update_template_fold(wh_json:key(), wh_json:json_term(), {boolean(), wh_json:object()}) ->
-                                        {boolean(), wh_json:object()}.
+-type utf_acc() :: {boolean(), wh_json:object()}.
+-spec maybe_update_template_fold(wh_json:key(), wh_json:json_term(), utf_acc()) ->
+                                        utf_acc().
 maybe_update_template_fold(MacroKey, MacroValue, {_HU, JObj}=Acc) ->
     case wh_json:get_value([<<"macros">>, MacroKey], JObj) of
         'undefined' ->
@@ -478,12 +457,9 @@ maybe_update_attachments(JObj, [{ContentType, Contents}|As]) ->
             maybe_update_attachments(JObj, As);
         'false' ->
             DocId = wh_json:get_first_defined([<<"id">>,<<"_id">>], JObj),
-            case save_attachment(DocId, AName, ContentType, Contents) of
-                'true' ->
-                    lager:debug("saved attachment ~s", [AName]);
-                'false' ->
-                    lager:debug("failed to save attachment ~s", [AName])
-            end,
+            save_attachment(DocId, AName, ContentType, Contents)
+                andalso lager:debug("saved attachment ~s", [AName]),
+
             maybe_update_attachments(JObj, As)
     end.
 
@@ -577,6 +553,12 @@ fetch_templates(TemplateId, DataJObj) ->
         Templates -> Templates
     end.
 
+fetch_templates(TemplateId, AccountDb, Attachments) ->
+    props:filter_undefined(
+      [fetch_template(TemplateId, AccountDb, Attachment)
+       || Attachment <- wh_json:to_proplist(Attachments)
+      ]).
+
 -spec find_account_id(wh_json:object()) -> api_binary().
 find_account_id(JObj) ->
     wh_json:get_first_defined([<<"account_id">>
@@ -596,12 +578,6 @@ maybe_decode_html(HTML) ->
             lager:debug("failed to decode HTML ~s: ~p", [_E, _R]),
             'undefined'
     end.
-
-fetch_templates(TemplateId, AccountDb, Attachments) ->
-    props:filter_undefined(
-      [fetch_template(TemplateId, AccountDb, Attachment)
-       || Attachment <- wh_json:to_proplist(Attachments)
-      ]).
 
 -spec maybe_fetch_reseller_templates(ne_binary(), ne_binary()) -> wh_proplist().
 maybe_fetch_reseller_templates(TemplateId, AccountId) ->
