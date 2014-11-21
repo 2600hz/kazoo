@@ -17,9 +17,9 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [
-                   ?WORKER('cccp_listener')
-                   ,?SUPER('cccp_platform_sup')
+                    ?SUPER('cccp_platform_sup')
                    ,?SUPER('cccp_callback_sup')
+                   ,?WORKER('cccp_listener')
                   ]).
 
 %% ===================================================================

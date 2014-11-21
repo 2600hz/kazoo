@@ -6,11 +6,13 @@
 %%% @contributors
 %%%   OnNet (Kirill Sysoev github.com/onnet)
 %%%-------------------------------------------------------------------
--module(cccp_platform_handler).
+-module(cccp_platform_listener).
 
 -behaviour(gen_listener).
 
--export([start_link/1]).
+-export([start_link/1
+         ,process_call_to_platform/1
+]).
 
 -export([init/1
          ,handle_call/3
@@ -19,9 +21,6 @@
          ,handle_event/2
          ,terminate/2
          ,code_change/3
-        ]).
-
--export([process_call_to_platform/1
         ]).
 
 -include("cccp.hrl").
@@ -40,6 +39,14 @@
 -define(BINDINGS, [{'self', []}]).
 
 -define(RESPONDERS, []).
+
+%%
+%% Moving responders from handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{call=Call}=State)
+%% to the start (over here) broke functionality. 
+%%
+%%-define(RESPONDERS, [{{'cccp_util', 'handle_callinfo'}, [{<<"call_event">>, <<"*">>}]}
+%%                    ,{{'cccp_util', 'handle_disconnect'}, [{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}]} 
+%%                    ]).
 
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -201,34 +208,36 @@ process_call_to_platform(Call) ->
 
 -spec dial(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 dial(AccountId, OutboundCID, AuthDocId, Call) ->
-    put_auth_doc_id(AuthDocId, whapps_call:call_id(Call)),
-    {'num_to_dial', Number} = cccp_util:get_number(Call),
-    _ = spawn('cccp_util', 'store_last_dialed', [Number, AuthDocId]),
-    [EP|_] = stepswitch_resources:endpoints(Number, wh_json:new()),
-    Call1 = whapps_call:set_account_id(AccountId, Call),
-    Call2 = whapps_call:set_caller_id_number(OutboundCID, Call1),
-    whapps_call_command:bridge([EP], Call2).
+    CallId = whapps_call:call_id(Call),
+    put_auth_doc_id(AuthDocId, CallId),
+    {'num_to_dial', ToDID} = cccp_util:get_number(Call),
+    _ = spawn('cccp_util', 'store_last_dialed', [ToDID, AuthDocId]),
+    Req = cccp_util:build_bridge_request(CallId, ToDID, <<>>, whapps_call:control_queue(Call), AccountId, OutboundCID),
+    wapi_offnet_resource:publish_req(Req).
 
 -spec pin_collect(whapps_call:call()) -> 'ok'.
 pin_collect(Call) ->
+    pin_collect(Call, 3).
+pin_collect(Call, 0) ->
+    whapps_call_command:hangup(Call);
+pin_collect(Call, Retries) ->
     case whapps_call_command:b_prompt_and_collect_digits(9,12,<<"disa-enter_pin">>,3,Call) of
        {ok,<<>>} ->
            whapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
-           whapps_call_command:hangup(Call);
+           pin_collect(Call, Retries - 1);
        {ok, EnteredPin} ->
-           lager:info("Pin entered."),
            case cccp_util:authorize(EnteredPin, <<"cccps/pin_listing">>) of
                [AccountId, OutboundCID, AuthDocId] ->
                    dial(AccountId, OutboundCID, AuthDocId, Call);
                _ ->
                    lager:info("Wrong Pin entered."),
                    whapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
-                   whapps_call_command:hangup(Call)
+                   pin_collect(Call, Retries - 1)
            end;
        _ ->
            lager:info("No pin entered."),
            whapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
-           whapps_call_command:hangup(Call)
+           pin_collect(Call, Retries - 1)
      end.
 
 -spec put_auth_doc_id(ne_binary(), ne_binary()) -> 'ok'.

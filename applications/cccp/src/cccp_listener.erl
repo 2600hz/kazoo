@@ -73,7 +73,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    maybe_create_sysconfig_doc(),
+    validate_sysconfig(),
     {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
@@ -163,8 +163,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec maybe_create_sysconfig_doc() -> 'ok'.
-maybe_create_sysconfig_doc() ->
-    _ = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>, <<"">>)),
-    _ = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>, <<"">>)),
-    'ok'.
+-spec validate_sysconfig() -> 'ok'.
+validate_sysconfig() ->
+    validate_sysconfig(<<"cccp_cb_number">>),
+    validate_sysconfig(<<"cccp_cc_number">>).
+
+-spec validate_sysconfig(ne_binary()) -> 'ok'.
+validate_sysconfig(Key) ->
+    case whapps_config:get(?CCCP_CONFIG_CAT, Key) of
+        'undefined' -> lager:warning("cccp hasn't been configured with ~s in system_config/~s; this is necessary", [Key, ?CCCP_CONFIG_CAT]);
+        Value -> lager:debug("cccp using ~s for ~s", [wnm_util:normalize_number(Value), Key])
+    end.
+
