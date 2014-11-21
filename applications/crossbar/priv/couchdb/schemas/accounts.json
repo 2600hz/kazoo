@@ -227,7 +227,7 @@
       "description": "The device metaflow parameters",
       "properties": {
         "numbers": {
-          "type": "array",
+          "type": "object",
           "required": false,
           "name": "Numbers",
           "description": "The metaflow numbers",
@@ -237,7 +237,7 @@
           }
         },
         "patterns": {
-          "type": "array",
+          "type": "object",
           "required": false,
           "name": "Patterns",
           "description": "The metaflow patterns",
