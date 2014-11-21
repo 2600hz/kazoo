@@ -325,8 +325,8 @@ default_service_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
         Value -> Value
     end.
 
--spec render_subject(api_binary(), wh_proplist()) -> api_binary().
-render_subject('undefined', _Macros) -> <<"Default Subject">>;
+-spec render_subject(ne_binary(), wh_proplist()) ->
+                            iolist() | 'undefined'.
 render_subject(Template, Macros) -> render(<<"subject">>, Template, Macros).
 
 -spec render(ne_binary(), binary(), wh_proplist()) -> iolist() | 'undefined'.
