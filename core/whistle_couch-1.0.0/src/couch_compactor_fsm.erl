@@ -644,7 +644,7 @@ compact({'compact', N, D}, #state{conn=Conn
                                   ,dbs=[]
                                   ,current_job_heuristic=Heur
                                  }=State) ->
-    lager:debug("checking if should compact ~s on ~s", [D, N]),
+    lager:debug("checking if we should compact ~s on ~s", [D, N]),
 
     Encoded = encode_db(D),
     case couch_util:db_exists(Conn, Encoded) andalso
@@ -669,7 +669,7 @@ compact({'compact', N, D}, #state{conn=Conn
                                   ,dbs=[Db|Dbs]
                                   ,current_job_heuristic=Heur
                                  }=State) ->
-    lager:debug("checking if should compact ~s on ~s", [D, N]),
+    lager:debug("checking if we should compact ~s on ~s", [D, N]),
 
     Encoded = encode_db(D),
     case couch_util:db_exists(Conn, Encoded)
@@ -703,7 +703,7 @@ compact({'compact_db', N, D}, #state{conn=Conn
                                      ,current_job_ref=Ref
                                      ,current_job_heuristic=Heur
                                     }=State) ->
-    lager:debug("checking if should compact ~s on ~s", [D, N]),
+    lager:debug("checking if we should compact ~s on ~s", [D, N]),
     Encoded = encode_db(D),
     case couch_util:db_exists(Conn, Encoded) andalso
         should_compact(Conn, Encoded, Heur)
@@ -740,7 +740,7 @@ compact({'compact_db', N, D}, #state{conn=Conn
                                      ,nodes=[Node|Ns]
                                      ,current_job_heuristic=Heur
                                     }=State) ->
-    lager:debug("checking if should compact ~s on ~s", [D, N]),
+    lager:debug("checking if we should compact ~s on ~s", [D, N]),
 
     Encoded = encode_db(D),
     case couch_util:db_exists(Conn, Encoded) andalso
