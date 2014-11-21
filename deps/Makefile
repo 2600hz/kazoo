@@ -5,6 +5,7 @@ MAKEDIRS = rabbitmq_server-*/Makefile \
 	ibrowse-*/Makefile \
 	cowlib-*/Makefile \
 	wsock-*/Makefile \
+	merl-*/Makefile \
 	*/Makefile
 
 .PHONY: all compile clean $(MAKEDIRS)
