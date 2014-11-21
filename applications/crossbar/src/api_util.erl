@@ -639,14 +639,27 @@ is_authentic(Req0, Context0, _ReqVerb) ->
         [] ->
             lager:debug("failed to authenticate"),
             ?MODULE:halt(Req0, cb_context:add_system_error('invalid_credentials', Context0));
-        ['true'|_] ->
-            {'true', Req1, Context1};
+        ['true'|T] ->
+            prefer_new_context(T, Req1, Context1);
         [{'true', Context2}|_] ->
             {'true', Req1, Context2};
         [{'halt', Context2}|_] ->
             lager:debug("authn halted"),
             ?MODULE:halt(Req1, Context2)
     end.
+
+-spec prefer_new_context(wh_proplist(), cowboy_req:req(), cb_context:context()) ->
+                        {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
+                        halt_return().
+prefer_new_context([], Req, Context) ->
+    {'true', Req, Context};
+prefer_new_context([{'true', Context1}|_], Req, _) ->
+    {'true', Req, Context1};
+prefer_new_context(['true'|T], Req, Context) ->
+    prefer_new_context(T, Req, Context);
+prefer_new_context([{'halt', Context1}|_], Req, _) ->
+    lager:debug("authn halted"),
+    ?MODULE:halt(Req, Context1).
 
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) ->
                             {cowboy_req:req(), cb_context:context()}.
