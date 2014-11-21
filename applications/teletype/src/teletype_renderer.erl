@@ -61,10 +61,10 @@ next_renderer() ->
 
 -spec init(list()) -> {'ok', atom()}.
 init(_) ->
-    Self = pid_to_list(self()),
+    Self = wh_util:to_hex_binary(list_to_binary(pid_to_list(self()))),
 
     Module = wh_util:to_atom(
-               list_to_binary([Self, "_", wh_util:rand_hex_binary(4)])
+               list_to_binary(["teletype_", Self, "_", wh_util:rand_hex_binary(4)])
                ,'true'
               ),
     wh_util:put_callid(Module),
