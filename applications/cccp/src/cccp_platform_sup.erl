@@ -20,7 +20,7 @@
 
 -include("cccp.hrl").
 
--define(CHILDREN, [?WORKER_TYPE('cccp_platform_handler', 'temporary')]).
+-define(CHILDREN, [?WORKER_TYPE('cccp_platform_listener', 'temporary')]).
 
 %%%===================================================================
 %%% API functions

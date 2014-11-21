@@ -20,25 +20,26 @@ handle_route_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
 
     Call = whapps_call:from_route_req(JObj),
-
-    ReqNum = wnm_util:normalize_number(whapps_call:request_user(Call)),
     CB_Number = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>)),
     CC_Number = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>)),
 
-    case lists:member(ReqNum, [CB_Number, CC_Number]) of 
-      true ->
-          Q = props:get_value('queue', Props),
-          Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                                         ,{<<"Method">>, <<"park">>}
-                                         | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-                                        ]),
-          ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
-          Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
-          whapps_util:amqp_pool_send(Resp, Publisher),
-          whapps_call:cache(Call, ?APP_NAME);
-       _ ->
-          'ok'
+    case wnm_util:normalize_number(whapps_call:request_user(Call)) of
+        CB_Number -> park_call(JObj, Props, Call);
+        CC_Number -> park_call(JObj, Props, Call);
+        _ -> 'ok'
     end.
+
+-spec park_call(wh_json:object(), wh_proplist(), whapps_call:call()) -> 'ok'.
+park_call(JObj, Props, Call) ->
+    Q = props:get_value('queue', Props),
+    Resp = props:filter_undefined([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                                  ,{<<"Method">>, <<"park">>}
+                                   | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                                  ]),
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    Publisher = fun(P) -> wapi_route:publish_resp(ServerId, P) end,
+    whapps_util:amqp_pool_send(Resp, Publisher),
+    whapps_call:cache(Call, ?APP_NAME).
 
 -spec handle_route_win(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_route_win(JObj, Props) ->
@@ -66,10 +67,9 @@ handle_config_change(_JObj, _Props) ->
 -spec handle_cccp_call(whapps_call:call()) -> 'ok'.
 handle_cccp_call(Call) ->
     CID = wnm_util:normalize_number(whapps_call:caller_id_number(Call)),
-    ReqNum = wnm_util:normalize_number(whapps_call:request_user(Call)),
     CB_Number = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>)),
     CC_Number = wnm_util:normalize_number(whapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>)),
-    case ReqNum of
+    case wnm_util:normalize_number(whapps_call:request_user(Call)) of
         CB_Number ->
             handle_callback(CID, Call);
         CC_Number ->
@@ -87,7 +87,7 @@ handle_callback(CallerNumber, Call) ->
                     ,{<<"Auth-Doc-Id">>, AuthDocId}
                    ]},
             timer:sleep(2000),
-            cccp_callback_handler:add_request(JObj);
+            cccp_callback_listener:add_request(JObj);
         E ->
             lager:info("No caller information found for ~p. Won't call it back. (~p)", [CallerNumber, E]),
             'ok'

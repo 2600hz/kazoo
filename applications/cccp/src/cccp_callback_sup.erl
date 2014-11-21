@@ -20,7 +20,7 @@
 
 -include("cccp.hrl").
 
--define(CHILDREN, [?WORKER_TYPE('cccp_callback_handler', 'temporary')]).
+-define(CHILDREN, [?WORKER_TYPE('cccp_callback_listener', 'temporary')]).
 
 %%%===================================================================
 %%% API functions
