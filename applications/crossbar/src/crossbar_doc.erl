@@ -335,7 +335,7 @@ limit_by_page_size(Context, PageSize) ->
 maybe_disable_page_size(Context, PageSize) ->
     case has_qs_filter(Context) of
         'true' ->
-            lager:debug("request has a query string fitler, disabling pagination"),
+            lager:debug("request has a query string filter, disabling pagination"),
             'undefined';
         'false' ->
             lager:debug("no query string filter, getting page size from ~p", [PageSize]),
