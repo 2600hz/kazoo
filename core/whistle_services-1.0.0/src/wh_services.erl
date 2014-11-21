@@ -481,8 +481,13 @@ public_json(<<_/binary>> = Account) ->
     public_json(fetch(Account)).
 
 -spec to_json(services()) -> wh_json:object().
-to_json(#wh_services{jobj=ServicesJObj}) ->
-    ServicesJObj.
+to_json(#wh_services{jobj=JObj
+                    ,updates=UpdatedQuantities
+                    }
+       ) ->
+    CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
+    Props = [{?QUANTITIES, wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}],
+    wh_json:set_values(props:filter_undefined(Props), JObj).
 
 %%--------------------------------------------------------------------
 %% @public
