@@ -185,15 +185,16 @@ maybe_sync_service() ->
 -spec bump_modified(wh_json:object()) -> wh_std_return().
 bump_modified(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    UpdatedJObj = wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj),
+    Services = wh_services:reconcile_only(AccountId),
+    UpdatedJObj = wh_json:set_values([{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                     ,{<<"_rev">>, wh_json:get_value(<<"_rev">>, JObj)}
+                                     ], wh_services:to_json(Services)),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {'error', _}=E ->
             %% If we conflict or cant save the doc with a new modified timestamp
             %% then another process is probably handling it, move on
             E;
-        {'ok', _} ->
-            Services = wh_services:reconcile_only(AccountId),
-            NewJObj = wh_services:to_json(Services),
+        {'ok', NewJObj} ->
             %% If we can change the timestamp then (since the view requires the
             %% modified time to be x mins in the past) we have gain exclusive
             %% control for x mins.... good luck!
