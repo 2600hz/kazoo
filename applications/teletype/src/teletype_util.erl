@@ -130,7 +130,7 @@ smtp_options() ->
     Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
     Username = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"username">>)),
     Password = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"password">>)),
-    Auth = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>)),
+    Auth = whapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>),
     Port = whapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
     Retries = whapps_config:get_integer(<<"smtp_client">>, <<"retries">>, 1),
     NoMxLookups = whapps_config:get_is_true(<<"smtp_client">>, <<"no_mx_lookups">>, 'true'),
