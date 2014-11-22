@@ -467,7 +467,6 @@ find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
 
 -spec get_token_cost(wh_json:object(), non_neg_integer(), ne_binaries()) -> non_neg_integer().
 get_token_cost(JObj, Default, Keys) ->
-    lager:debug("looking for ~p in ~p", [Keys, JObj]),
     case wh_json:get_first_defined(Keys, JObj) of
         'undefined' -> Default;
         V -> wh_util:to_integer(V)
