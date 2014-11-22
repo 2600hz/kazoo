@@ -416,36 +416,59 @@ bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
 
 -spec token_cost(cb_context:context()) -> non_neg_integer().
--spec token_cost(cb_context:context(), non_neg_integer()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer() | wh_json:key()| wh_json:keys()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer(), wh_json:keys()) -> non_neg_integer().
 
--spec token_cost(wh_proplist(), non_neg_integer(), req_nouns(), http_method()) -> non_neg_integer().
--spec token_cost(wh_proplist(), non_neg_integer(), req_nouns(), http_method(), api_binary()) -> non_neg_integer().
 token_cost(Context) ->
     token_cost(Context, 1).
 
+token_cost(Context, <<_/binary>> = Suffix) ->
+    token_cost(Context, 1, [Suffix]);
+token_cost(Context, [_|_]=Suffix) ->
+    token_cost(Context, 1, Suffix);
 token_cost(Context, Default) ->
-    KVs = whapps_config:get_all_kvs(?CONFIG_CAT),
-    token_cost(KVs, Default, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+    token_cost(Context, Default, []).
 
-token_cost(KVs, Default, ReqNouns, ReqVerb) ->
-    token_cost(KVs, Default, ReqNouns, ReqVerb, props:get_value(<<"accounts">>, ReqNouns)).
+token_cost(Context, Default, Suffix) ->
+    Costs = whapps_config:get(?CONFIG_CAT, <<"token_costs">>),
+    find_token_cost(Costs
+                    ,Default
+                    ,Suffix
+                    ,cb_context:req_nouns(Context)
+                    ,cb_context:req_verb(Context)
+                    ,cb_context:account_id(Context)
+                   ).
 
-token_cost(KVs, Default, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
-    Keys = [[<<"token_costs">>, Endpoint, ReqVerb]
-            ,[<<"token_costs">>, Endpoint]
+-spec find_token_cost(wh_json:object() | non_neg_integer()
+                      ,non_neg_integer()
+                      ,wh_json:keys()
+                      ,req_nouns()
+                      ,http_method()
+                      ,api_binary()
+                     ) ->
+                             non_neg_integer().
+
+find_token_cost(N, _Default, _Suffix, _Nouns, _ReqVerb, _AccountId) when is_integer(N) ->
+    lager:debug("flat token cost of ~p configured", [N]),
+    N;
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
+    Keys = [[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
            ],
-    get_token_cost(KVs, Default, Keys);
-token_cost(KVs, Default, [{Endpoint, _}|_], ReqVerb, AccountId) ->
-    Keys = [[<<"token_costs">>, AccountId, Endpoint, ReqVerb]
-            ,[<<"token_costs">>, AccountId, Endpoint]
-            ,[<<"token_costs">>, Endpoint, ReqVerb]
-            ,[<<"token_costs">>, Endpoint]
+    get_token_cost(JObj, Default, Keys);
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
+    Keys = [[AccountId, Endpoint, ReqVerb | Suffix]
+            ,[AccountId, Endpoint | Suffix]
+            ,[AccountId | Suffix]
+            ,[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
            ],
-    get_token_cost(KVs, Default, Keys).
+    get_token_cost(JObj, Default, Keys).
 
--spec get_token_cost(wh_proplist(), non_neg_integer(), ne_binaries()) -> non_neg_integer().
-get_token_cost(KVs, Default, Keys) ->
-    case props:get_first_defined(Keys, KVs) of
+-spec get_token_cost(wh_json:object(), non_neg_integer(), ne_binaries()) -> non_neg_integer().
+get_token_cost(JObj, Default, Keys) ->
+    lager:debug("looking for ~p in ~p", [Keys, JObj]),
+    case wh_json:get_first_defined(Keys, JObj) of
         'undefined' -> Default;
         V -> wh_util:to_integer(V)
     end.
