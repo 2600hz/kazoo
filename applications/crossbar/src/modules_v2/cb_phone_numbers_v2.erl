@@ -1247,7 +1247,7 @@ number_action(Context, Number, ?HTTP_DELETE) ->
 has_tokens(Context) -> has_tokens(Context, 1).
 has_tokens(Context, Count) ->
     Name = <<(cb_context:account_id(Context))/binary, "/", ?PHONE_NUMBERS_CONFIG_CAT/binary>>,
-    case kz_buckets:consume_tokens(Name, Count) of
+    case kz_buckets:consume_tokens(Name, cb_modules_util:token_cost(Context, Count)) of
         'true' -> 'true';
         'false' ->
             lager:warning("rate limiting activation limit reached, rejecting"),
