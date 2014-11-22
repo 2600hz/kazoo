@@ -117,3 +117,31 @@ To configure the token buckets themselves, look in the `system_config/token_buck
 * `tokens_fill_time`: What time period to wait before adding `token_fill_rate` tokens, defaults to "second". Could also be "minute", "hour", or "day".
 
 So the default bucket will have a maximum of 100 tokens, refilling at 10 tokens per second.
+
+## Special Cases
+
+There are some APIs that have extra rate limiting options for administrators to tweak.
+
+### Quickcall
+
+Administrators can increase the cost of the quickcall API to keep call volume low from this endpoint.
+
+Given a `GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{NUMBER}`
+
+1. Check `{ACCOUNT_ID}."devices"."GET"."quickcall"`
+2. Check `{ACCOUNT_ID}."devices"."quickcall"`
+3. Check `{ACCOUNT_ID}."quickcall"`
+4. Check `"devices"."GET"."quickcall"`
+5. Check `"devices"."quickcall"`
+
+So a configuration to make all quickcall requests cost 20 tokens would look like:
+
+        {"_id":"crossbar"
+         ,"default":{
+             "token_costs":{
+                 "devices":{
+                     "quickcall":20
+                 }
+             }
+         }
+        }
