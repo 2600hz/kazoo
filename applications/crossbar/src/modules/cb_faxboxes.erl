@@ -322,7 +322,8 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
 -spec maybe_register_cloud_printer(cb_context:context()) -> cb_context:context().
 maybe_register_cloud_printer(Context) ->
     ResellerId =  cb_context:reseller_id(Context),
-    case whapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false') of
+    CloudConnectorEnable = whapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false'), 
+    case wh_util:is_true(CloudConnectorEnable) of
         'true' -> maybe_register_cloud_printer(Context, cb_context:doc(Context));
         'false' -> Context
     end.
