@@ -174,11 +174,16 @@ wait_for_key(Key) -> wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
 wait_for_key(Key, Timeout) -> wait_for_key_local(?SERVER, Key, Timeout).
 
 %% Local cache API
--spec store_local(atom(), term(), term()) -> 'ok'.
--spec store_local(atom(), term(), term(), wh_proplist()) -> 'ok'.
+-spec store_local(server_ref(), term(), term()) -> 'ok'.
+-spec store_local(server_ref(), term(), term(), wh_proplist()) -> 'ok'.
 
 store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
+store_local(Srv, K, V, Props) when is_atom(Srv) ->
+    case whereis(Srv) of
+        'undefined' -> throw({'error', 'unknown_cache'});
+        Pid -> store_local(Pid, K, V, Props)
+    end;
 store_local(Srv, K, V, Props) ->
     gen_server:cast(Srv, {'store', #cache_obj{key=K
                                               ,value=V
