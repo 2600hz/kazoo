@@ -40,14 +40,6 @@
 
 -define(RESPONDERS, []).
 
-%%
-%% Moving responders from handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{call=Call}=State)
-%% to the start (over here) broke functionality. 
-%%
-%%-define(RESPONDERS, [{{'cccp_util', 'handle_callinfo'}, [{<<"call_event">>, <<"*">>}]}
-%%                    ,{{'cccp_util', 'handle_disconnect'}, [{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}]} 
-%%                    ]).
-
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).

@@ -87,7 +87,7 @@ handle_callback(CallerNumber, Call) ->
                     ,{<<"Auth-Doc-Id">>, AuthDocId}
                    ]},
             timer:sleep(2000),
-            cccp_callback_listener:add_request(JObj);
+            cccp_callback_sup:new(JObj);
         E ->
             lager:info("No caller information found for ~p. Won't call it back. (~p)", [CallerNumber, E]),
             'ok'

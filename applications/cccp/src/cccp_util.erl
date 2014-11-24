@@ -71,7 +71,7 @@ handle_disconnect_cause(JObj) ->
             whapps_call_command:queued_hangup(Call)
     end.
 
--spec authorize(ne_binary(), ne_binary()) -> {ok, list()} | 'empty' | 'error'.
+-spec authorize(ne_binary(), ne_binary()) -> {ok, ne_binaries()} | 'empty' | 'error'.
 authorize(Value, View) ->
     ViewOptions = [{'key', Value}],
     case couch_mgr:get_results(?CCCPS_DB, View, ViewOptions) of
@@ -112,7 +112,7 @@ ensure_valid_caller_id(OutboundCID, AccountId) ->
 -spec get_number(whapps_call:call()) -> {'num_to_dial', ne_binary()} | 'ok'.
 get_number(Call) ->
     RedialCode = whapps_config:get(?CCCP_CONFIG_CAT, <<"last_number_redial_code">>, <<"*0">>), 
-    case whapps_call_command:b_prompt_and_collect_digits(2, 12, <<"cf-enter_number">>, 3, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(2, 13, <<"cf-enter_number">>, 3, Call) of
        {ok, RedialCode} ->
            get_last_dialed_number(Call);
        {ok, EnteredNumber} ->
@@ -125,8 +125,8 @@ get_number(Call) ->
 
 -spec verify_entered_number(ne_binary(), whapps_call:call()) -> 'ok'.
 verify_entered_number(EnteredNumber, Call) ->
-    CleanedNumber = re:replace(EnteredNumber, "[^0-9]", "", [global, {return, 'binary'}]),
-    Number = re:replace(wnm_util:to_e164(CleanedNumber), "[^0-9]", "", [global, {return, 'binary'}]),
+    CleanedNumber = re:replace(EnteredNumber, "[^0-9]", "", ['global', {'return', 'binary'}]),
+    Number = re:replace(wnm_util:to_e164(CleanedNumber), "[^0-9]", "", ['global', {'return', 'binary'}]),
     case wnm_util:is_reconcilable(Number) of
         'true' ->
             check_restrictions(Number, Call);
@@ -163,31 +163,37 @@ check_restrictions(Number, Call) ->
     {'ok', Doc} = couch_mgr:open_doc(<<"cccps">>, DocId),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Doc),
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Doc),
-    case check_doc_for_restriction(Number, AccountId, AccountDb) of
+    case is_number_restricted(Number, AccountId, AccountDb) of
        'true' ->
             lager:debug("Number ~p is restricted", [Number]),
-            whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
-            whapps_call_command:queued_hangup(Call);
+            hangup_unauthorized_call(Call);
        'false' ->
-            UserId = wh_json:get_value(<<"user_id">>, Doc),
-            case check_doc_for_restriction(Number, UserId, AccountDb) of
-                'true' ->
-                    lager:debug("Number ~p is restricted", [Number]),
-                    whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
-                    whapps_call_command:queued_hangup(Call);
-                'false' ->
-                    {'num_to_dial', Number}
-            end
+            is_user_restricted(Number, wh_json:get_value(<<"user_id">>, Doc), AccountDb, Call)
     end.
 
--spec check_doc_for_restriction(ne_binary(), ne_binary(), ne_binary()) -> boolean().
-check_doc_for_restriction(Number, DocId, AccountDb) ->
+-spec is_number_restricted(ne_binary(), ne_binary(), ne_binary()) -> boolean().
+is_number_restricted(Number, DocId, AccountDb) ->
     case couch_mgr:open_cache_doc(AccountDb, DocId) of
         {'error', _} -> 'false';
         {'ok', JObj} ->
             Classification = wnm_util:classify_number(Number),
             wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
+
+-spec is_user_restricted(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> {'num_to_dial', ne_binary()} | 'ok'.
+is_user_restricted(Number, UserId, AccountDb, Call) ->
+    case is_number_restricted(Number, UserId, AccountDb) of
+        'true' ->
+            lager:debug("Number ~p is restricted", [Number]),
+            hangup_unauthorized_call(Call);
+        'false' ->
+            {'num_to_dial', Number}
+    end.
+
+-spec hangup_unauthorized_call(whapps_call:call()) -> 'ok'.
+hangup_unauthorized_call(Call) ->
+    whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
+    whapps_call_command:queued_hangup(Call).
 
 -spec build_bridge_request(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
 build_bridge_request(CallId, ToDID, Q, CtrlQ, AccountId, OutboundCID) ->
