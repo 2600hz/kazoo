@@ -615,11 +615,10 @@ leak_pvt_enabled(Context) ->
 -spec leak_reseller_id(cb_context:context()) -> cb_context:context().
 leak_reseller_id(Context) ->
     RespJObj = cb_context:resp_data(Context),
-    AccountId = cb_context:account_id(Context),
-    ResellerId = wh_services:find_reseller_id(AccountId),
+    ResellerId = cb_context:reseller_id(Context),
     leak_billing_mode(
         cb_context:set_resp_data(
-            cb_context:set_reseller_id(Context, ResellerId)
+            Context
             ,wh_json:set_value(<<"reseller_id">>, ResellerId, RespJObj)
         )
     ).
@@ -631,7 +630,7 @@ leak_billing_mode(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     RespJObj = cb_context:resp_data(Context),
 
-    case wh_services:find_reseller_id(cb_context:account_id(Context)) of
+    case cb_context:reseller_id(Context) of
         AuthAccountId ->
             cb_context:set_resp_data(Context
                                      ,wh_json:set_value(<<"billing_mode">>, <<"limits_only">>, RespJObj)
@@ -939,12 +938,14 @@ load_account_db([AccountId|_], Context) ->
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {'ok', _} ->
+        {'ok', JObj} ->
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
+            ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj, wh_services:find_reseller_id(AccountId)),
             cb_context:setters(Context
                                ,[{fun cb_context:set_resp_status/2, 'success'}
                                  ,{fun cb_context:set_account_db/2, AccountDb}
                                  ,{fun cb_context:set_account_id/2, AccountId}
+                                 ,{fun cb_context:set_reseller_id/2, ResellerId}
                                 ]);
        {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context);
        {'error', _R} -> crossbar_util:response_db_fatal(Context)   

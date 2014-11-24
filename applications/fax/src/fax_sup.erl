@@ -25,8 +25,11 @@
                                                  ]]}
                    ,'permanent', 5000, 'worker', ['poolboy']}).
 
+-define(ORIGIN_BINDINGS, [[{'db', ?WH_FAXES}, {'type', <<"faxbox">>}]]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
 -define(CHILDREN, [?POOL('fax_worker_pool')
-                   ,?CACHE('fax_cache')
+                   ,?CACHE_ARGS(?FAX_CACHE, ?CACHE_PROPS)
                    ,?WORKER('fax_jobs')
                    ,?SUPER('fax_requests_sup')
                    ,?SUPER('fax_xmpp_sup')

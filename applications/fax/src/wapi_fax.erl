@@ -39,9 +39,17 @@
 -define(FAX_QUERY_TYPES, []).
 
 -define(FAX_STATUS_HEADERS, [<<"Job-ID">>]).
--define(OPTIONAL_FAX_STATUS_HEADERS, [<<"Status">>, <<"FaxBox-ID">>, <<"Account-ID">>, <<"Fax-Info">>]).
+-define(OPTIONAL_FAX_STATUS_HEADERS, [<<"Status">>, <<"FaxBox-ID">>
+                                      ,<<"Account-ID">>, <<"Fax-Info">>
+                                      ,<<"Cloud-Job-ID">>, <<"Cloud-Printer-ID">>
+                                      ,<<"Fax-State">>, <<"Direction">>, <<"Page">>
+                                      ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
+                                      ,<<"Callee-ID-Number">>, <<"Callee-ID-Name">>
+                                     ]).
 -define(FAX_STATUS_VALUES, [{<<"Event-Category">>,<<"fax">>}
                             ,{<<"Event-Name">>, <<"status">>}
+                            ,{<<"Fax-State">>, ?FAX_STATE_LIST}
+                            ,{<<"Direction">>, [?FAX_INCOMING, ?FAX_OUTGOING]} 
                            ]).
 -define(FAX_STATUS_TYPES, []).
 
@@ -92,43 +100,43 @@ status_v(JObj) ->
 
 -spec bind_q(ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    AccountId = props:get_value('account_id', Props, <<"*">>),
     FaxId = props:get_value('fax_id', Props, <<"*">>),
-    bind_q(Queue, AccountId, FaxId, props:get_value('restrict_to', Props)).
+    bind_q(Queue, FaxId, props:get_value('restrict_to', Props)).
 
-bind_q(Queue, AccountId, FaxId, 'undefined') ->
+-spec bind_q(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+bind_q(Queue, FaxId, 'undefined') ->
     amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
-    amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE);
-bind_q(Queue, AccountId, FaxId, ['status'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
-    bind_q(Queue, AccountId, FaxId, Restrict);
-bind_q(Queue, AccountId, FaxId, ['query_status'|Restrict]) ->
+    amqp_util:bind_q_to_exchange(Queue, status_routing_key(FaxId), ?FAX_EXCHANGE);
+bind_q(Queue, FaxId, ['status'|Restrict]) ->
+    amqp_util:bind_q_to_exchange(Queue, status_routing_key(FaxId), ?FAX_EXCHANGE),
+    bind_q(Queue, FaxId, Restrict);
+bind_q(Queue, FaxId, ['query_status'|Restrict]) ->
     amqp_util:bind_q_to_targeted(Queue),
-    bind_q(Queue, AccountId, FaxId, Restrict);
-bind_q(Queue, AccountId, FaxId, ['req'|Restrict]) ->
+    bind_q(Queue, FaxId, Restrict);
+bind_q(Queue, FaxId, ['req'|Restrict]) ->
     amqp_util:bind_q_to_callmgr(Queue, fax_routing_key()),
-    bind_q(Queue, AccountId, FaxId, Restrict);
-bind_q(_, _, _, []) -> 'ok'.
+    bind_q(Queue, FaxId, Restrict);
+bind_q(_, _, []) -> 'ok'.
 
 -spec unbind_q(ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    AccountId = props:get_value('account_id', Props, <<"*">>),
     FaxId = props:get_value('fax_id', Props, <<"*">>),
-    unbind_q(Queue, AccountId, FaxId, props:get_value('restrict_to', Props)).
+    unbind_q(Queue, FaxId, props:get_value('restrict_to', Props)).
 
-unbind_q(Queue, AccountId, FaxId, 'undefined') ->
+-spec unbind_q(ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+unbind_q(Queue, FaxId, 'undefined') ->
     amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
-    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE);
-unbind_q(Queue, AccountId, FaxId, ['status'|Restrict]) ->
-    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(AccountId, FaxId), ?FAX_EXCHANGE),
-    unbind_q(Queue, AccountId, FaxId, Restrict);
-unbind_q(Queue, AccountId, FaxId, ['query_status'|Restrict]) ->
+    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(FaxId), ?FAX_EXCHANGE);
+unbind_q(Queue, FaxId, ['status'|Restrict]) ->
+    amqp_util:unbind_q_from_exchange(Queue, status_routing_key(FaxId), ?FAX_EXCHANGE),
+    unbind_q(Queue, FaxId, Restrict);
+unbind_q(Queue, FaxId, ['query_status'|Restrict]) ->
     amqp_util:unbind_q_from_targeted(Queue),
-    unbind_q(Queue, AccountId, FaxId, Restrict);
-unbind_q(Queue, AccountId, FaxId, ['req'|Restrict]) ->
+    unbind_q(Queue, FaxId, Restrict);
+unbind_q(Queue, FaxId, ['req'|Restrict]) ->
     amqp_util:unbind_q_from_callmgr(Queue, fax_routing_key()),
-    unbind_q(Queue, AccountId, FaxId, Restrict);
-unbind_q(_, _, _, []) -> 'ok'.
+    unbind_q(Queue, FaxId, Restrict);
+unbind_q(_, _, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -164,8 +172,7 @@ publish_status(API) ->
 publish_status(API, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(API, ?FAX_STATUS_VALUES, fun status/1),
     FaxId = props:get_first_defined([<<"Fax-ID">>,<<"Job-ID">>], API,<<"*">>),
-    AccountId = props:get_value(<<"Account-ID">>, API, <<"*">>),
-    amqp_util:basic_publish(?FAX_EXCHANGE, status_routing_key(AccountId, FaxId), Payload, ContentType).
+    amqp_util:basic_publish(?FAX_EXCHANGE, status_routing_key(FaxId), Payload, ContentType).
 
 -spec publish_targeted_status(ne_binary(), wh_json:object()) -> 'ok'.
 publish_targeted_status(Q, JObj) ->
@@ -177,5 +184,5 @@ publish_targeted_status(Q, Api, ContentType) ->
 
 fax_routing_key() ->
     <<"fax.req">>.
-status_routing_key(AccountId, FaxId) ->
-    list_to_binary(["fax.status.", amqp_util:encode(AccountId), ".", amqp_util:encode(FaxId) ]).
+status_routing_key(FaxId) ->
+    list_to_binary(["fax.status.", amqp_util:encode(FaxId) ]).
