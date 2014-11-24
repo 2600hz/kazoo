@@ -35,7 +35,7 @@
                 ,status :: binary()
                 ,fax_status :: api_object()
                 ,pages  :: integer()
-                ,page   ::integer()
+                ,page = 0  ::integer()
                 ,file :: api_binary()
                }).
 -type state() :: #state{}.
@@ -191,27 +191,23 @@ handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
 handle_cast({'channel_destroy', JobId2, _JObj}, #state{job_id=JobId}=State) ->
     lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
-handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, #state{pages=Pages
-                                                                      }=State) ->
+handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
     TransferRate = wh_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
     lager:debug("fax status - negociate result - ~s : ~p",[JobId, TransferRate]),
-    Status = list_to_binary(["sending Page 1 of ", wh_util:to_list(Pages)]),
+    Status = list_to_binary(["Fax negotiated at ", wh_util:to_list(TransferRate)]),
     send_status(State, Status, Data),
-    {'noreply', State#state{status=Status, page=1, fax_status=Data}};
+    {'noreply', State#state{status=Status, fax_status=Data}};
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
-           , #state{pages=Pages, page=Page}=State) ->
+           , #state{pages=Pages}=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
-    TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, Data),
+%    TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, Data),
+    Page = wh_json:get_integer_value(<<"Fax-Transferred-Pages">>, Data, 0),
     lager:debug("fax status - page result - ~s : ~p : ~p"
-                ,[JobId, TransferredPages, wh_util:current_tstamp()]),
-    Status = case Pages =:= Page of
-                 'true' -> list_to_binary(["sent Page ", wh_util:to_list(Page), " of ", wh_util:to_list(Pages)]);
-                 'false' -> list_to_binary(["sending Page ", wh_util:to_list(Page + 1), " of ", wh_util:to_list(Pages)])
-             end,
-    send_status(State, Status, Data),
-
-    {'noreply', State#state{page=Page + 1, status=Status, fax_status=Data}};
+                ,[JobId, Page, wh_util:current_tstamp()]),
+    Status = list_to_binary(["Sent Page ", wh_util:to_list(Page), " of ", wh_util:to_list(Pages)]),
+    send_status(State#state{page=Page}, Status, Data),
+    {'noreply', State#state{page=Page, status=Status, fax_status=Data}};
 handle_cast({'fax_status', <<"result">>, JobId, JObj}
            , #state{job_id=JobId,job=Job,pool=Pid}=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
@@ -252,17 +248,19 @@ handle_cast({'attempt_transmission', Pid, Job}, #state{queue_name=Q}=State) ->
     case attempt_to_acquire_job(JobId, Q) of
         {'ok', JObj} ->
             lager:debug("acquired job ~s", [JobId]),
-            send_status(State, <<"job acquired">>, ?FAX_START, 'undefined'),
             AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
             Status = <<"preparing">>,
-            gen_server:cast(self(), 'prepare_job'),
-            {'noreply', State#state{job_id=JobId
+            NewState = State#state{job_id=JobId
                                     ,pool=Pid
                                     ,job=JObj
                                     ,account_id=AccountId
                                     ,status=Status
+                                    ,page=0
                                     ,fax_status=wh_json:new()
-                                   }};
+                                   },
+            send_status(NewState, <<"job acquired">>, ?FAX_START, 'undefined'),
+            gen_server:cast(self(), 'prepare_job'),
+            {'noreply', NewState};
         {'error', _Reason} ->
             lager:debug("failed to acquire job ~s: ~p", [JobId, _Reason]),
             gen_server:cast(Pid, {'job_complete', self()}),
@@ -817,6 +815,7 @@ reset(State) ->
     State#state{job_id='undefined'
                 ,job='undefined'
                 ,pool='undefined'
+                ,page=0
                }.
 
 -spec send_status(state(), ne_binary()) -> any().

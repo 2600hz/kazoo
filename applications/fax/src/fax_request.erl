@@ -41,7 +41,7 @@
          ,fax_id = 'undefined' :: api_binary()
          ,account_id = 'undefined' :: api_binary()
          ,fax_status :: api_object()
-         ,page   ::integer()
+         ,page = 0  ::integer()
          ,status :: binary()
          }).
 -type state() :: #state{}.
@@ -158,17 +158,18 @@ handle_cast({'fax_status', <<"negociateresult">>, JObj}, State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
     TransferRate = wh_json:get_integer_value(<<"Fax-Transfer-Rate">>, Data, 1),
     lager:debug("fax status - negociate result - ~s : ~p",[State#state.fax_id, TransferRate]),
-    Status = list_to_binary(["Fax negotiated at ", TransferRate]),
+    Status = list_to_binary(["Fax negotiated at ", wh_util:to_list(TransferRate)]),
     send_status(State, Status, Data),
     {'noreply', State#state{status=Status, page=1, fax_status=Data}};
 handle_cast({'fax_status', <<"pageresult">>, JObj}, #state{page=Page, fax_id=JobId}=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
-    TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, Data),
+%    TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, Data),
+    TransferredPages = wh_json:get_integer_value(<<"Fax-Transferred-Pages">>, Data, 0),
     lager:debug("fax status - page result - ~s : ~p : ~p"
                 ,[JobId, TransferredPages, wh_util:current_tstamp()]),
-    Status = list_to_binary(["Received  Page ", wh_util:to_list(Page + 1)]),
+    Status = list_to_binary(["Received  Page ", wh_util:to_list(Page)]),
     send_status(State, Status, Data),
-    {'noreply', State#state{page=Page + 1, status=Status, fax_status=Data}};
+    {'noreply', State#state{page=TransferredPages, status=Status, fax_status=Data}};
 handle_cast({'fax_status', <<"result">>, JObj}, State) ->
     end_receive_fax(JObj, State);
 handle_cast({'fax_status', Event, _JObj}, State) ->
@@ -371,7 +372,7 @@ update_fax_settings(Call, JObj) ->
 -spec build_fax_settings(whapps_call:call(), wh_json:object()) -> wh_proplist().
 build_fax_settings(Call, JObj) ->
     props:filter_undefined(
-      [case wh_json:is_true(<<"override_fax_identity">>, JObj, 'false') of
+      [case wh_json:is_true(<<"override_fax_identity">>, JObj, 'true') of
            'false' ->
                {<<"Fax-Identity-Number">>, whapps_call:to_user(Call)};
            'true' ->
@@ -604,6 +605,9 @@ notify_fields(Call, JObj) ->
 notify_failure(JObj, State) ->
     Reason = wh_json:get_value([<<"Application-Data">>,<<"Fax-Result">>], JObj),
     notify_failure(JObj, Reason, State).
+-spec notify_failure(wh_json:object(), api_binary(), state()) -> any().
+notify_failure(JObj, 'undefined', State) ->
+    notify_failure(JObj, <<"unknown error">>, State);    
 notify_failure(JObj, Reason, #state{call=Call
                                    ,owner_id=OwnerId
                                    ,faxbox_id=FaxBoxId
@@ -653,7 +657,7 @@ send_status(State, Status, FaxInfo) ->
 
 -spec send_status(state(), ne_binary(), ne_binary(), api_object()) -> any().
 send_status(State, Status, FaxState, FaxInfo) ->
-    #state{account_id=AccountId, page=Page, fax_id=JobId, faxbox_id=FaxboxId} = State,
+    #state{call=Call, account_id=AccountId, page=Page, fax_id=JobId, faxbox_id=FaxboxId} = State,
     Payload = props:filter_undefined(
                 [{<<"Job-ID">>, JobId}
                  ,{<<"FaxBox-ID">>, FaxboxId}
@@ -663,6 +667,10 @@ send_status(State, Status, FaxState, FaxInfo) ->
                  ,{<<"Fax-Info">>, FaxInfo}
                  ,{<<"Direction">>, ?FAX_INCOMING}
                  ,{<<"Page">>, Page}
+                 ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+                 ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+                 ,{<<"Callee-ID-Number">>, whapps_call:callee_id_number(Call)}
+                 ,{<<"Callee-ID-Name">>, whapps_call:callee_id_name(Call)}
                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     wapi_fax:publish_status(Payload).
