@@ -13,6 +13,7 @@
 -export([save_fax_docs/3, save_fax_attachment/3]).
 -export([content_type_to_extension/1]).
 -export([notify_email_list/3]).
+-export([filter_numbers/1]).
 
 -include("fax.hrl").
 
@@ -154,3 +155,11 @@ notify_email_list('undefined', OwnerEmail, List) ->
     lists:usort([OwnerEmail | List]);
 notify_email_list(From, OwnerEmail, List) ->
     lists:usort([From, OwnerEmail | List]).
+
+-spec filter_numbers(binary()) -> binary().
+filter_numbers(Number) ->
+    NumberList = wh_util:to_list(Number),
+    Out = lists:filter(fun(X) -> lists:member(X, "1234567890") end, NumberList),
+    wh_util:to_binary(Out).
+    
+    
