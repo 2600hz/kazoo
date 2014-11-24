@@ -201,7 +201,6 @@ handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, State) ->
 handle_cast({'fax_status', <<"pageresult">>, JobId, JObj}
            , #state{pages=Pages}=State) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj, wh_json:new()),
-%    TransferredPages = wh_json:get_value(<<"Fax-Transferred-Pages">>, Data),
     Page = wh_json:get_integer_value(<<"Fax-Transferred-Pages">>, Data, 0),
     lager:debug("fax status - page result - ~s : ~p : ~p"
                 ,[JobId, Page, wh_util:current_tstamp()]),
