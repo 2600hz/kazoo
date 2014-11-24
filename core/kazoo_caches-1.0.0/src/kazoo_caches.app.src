@@ -1,0 +1,13 @@
+{application, kazoo_caches,
+ [
+  {description, "Various low-level caches to be started"},
+  {vsn, "1.0.0"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { skel_app, []}},
+  {env, []}
+ ]}.
