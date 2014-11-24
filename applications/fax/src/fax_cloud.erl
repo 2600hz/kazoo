@@ -355,14 +355,12 @@ handle_faxbox_edited(JObj, Props) ->
 
 -spec handle_faxbox_created(wh_json:object(), wh_proplist()) -> pid().
 handle_faxbox_created(JObj, _Props) ->
-    lager:debug("WAPI_CONF ~p", [JObj]),
     'true' = wapi_conf:doc_update_v(JObj),
     ID = wh_json:get_value(<<"ID">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, Doc),
     AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
-    lager:debug(<<"CLOUD APP ~p , ~p, ~p, ~p">>, [ID, ResellerId, AppId, Doc]),
     spawn(?MODULE, check_registration, [AppId, State, Doc]).
 
 -spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
