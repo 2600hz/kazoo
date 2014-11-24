@@ -158,6 +158,7 @@ notify_email_list(From, OwnerEmail, List) ->
 
 -spec filter_numbers(binary()) -> binary().
 filter_numbers(Number) ->
-    NumberList = wh_util:to_list(Number),
-    Out = lists:filter(fun(X) -> lists:member(X, "1234567890") end, NumberList),
-    wh_util:to_binary(Out).
+    << <<X>> || <<X>> <= Number, is_digit(X)>>.
+
+-spec is_digit(binary()) -> boolean().
+is_digit(N) -> N >= $0 andalso N =< $9.
