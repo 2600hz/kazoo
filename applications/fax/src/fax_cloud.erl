@@ -10,8 +10,7 @@
 
 -export([handle_job_notify/2
         ,handle_push/2
-        ,handle_faxbox_created/2
-        ,handle_faxbox_deleted/2
+        ,handle_faxbox_created/2, handle_faxbox_edited/2, handle_faxbox_deleted/2
         ,maybe_process_job/2
         ,check_registration/3
         ,get_printer_oauth_credentials/1
@@ -113,8 +112,11 @@ maybe_process_job([JObj | JObjs], Authorization) ->
 maybe_fax_number(A, B) ->
     case wh_json:get_value(<<"id">>, A) of
         <<"fax_number">> ->
-            Number = wh_json:get_value(<<"value">>, A),
-            wh_json:set_value(<<"Fax-Number">>, Number, B);
+            Number = fax_util:filter_numbers(wh_json:get_value(<<"value">>, A)), 
+            case wh_util:is_empty(Number) of
+                'true' -> lager:debug("fax number is empty");
+                'false' -> wh_json:set_value(<<"Fax-Number">>, Number, B)
+            end;
         _Other -> B
     end.
 
@@ -265,8 +267,8 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     Props = props:filter_undefined(
               [{<<"from_name">>,wh_json:get_value(<<"caller_name">>,FaxBoxDoc)}
                ,{<<"from_number">>,wh_json:get_value(<<"caller_id">>,FaxBoxDoc)}
-               ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_identity_name">>, FaxBoxDoc)}
-               ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity_number">>, FaxBoxDoc)}
+               ,{<<"fax_identity_name">>, wh_json:get_value(<<"fax_header">>, FaxBoxDoc)}
+               ,{<<"fax_identity_number">>, wh_json:get_value(<<"fax_identity">>, FaxBoxDoc)}
                ,{<<"fax_timezone">>, wh_json:get_value(<<"fax_timezone">>, FaxBoxDoc)}
                ,{<<"to_name">>,FaxNumber}
                ,{<<"to_number">>,FaxNumber}
@@ -302,7 +304,9 @@ get_faxbox_doc(PrinterId) ->
                 {'ok', JObjs} ->
                     [Doc] = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
                     FaxBoxDoc = maybe_get_faxbox_owner_email(Doc),
-                    wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc),
+                    Id = wh_json:get_first_defined([<<"_id">>, <<"id">>], Doc),
+                    CacheProps = [{'origin', [{'db', ?WH_FAXES, Id}] }],
+                    wh_cache:store_local(?FAX_CACHE, {'faxbox', PrinterId }, FaxBoxDoc, CacheProps),
                     {'ok', FaxBoxDoc};
                 {'error', _}=E -> E
             end
@@ -345,14 +349,20 @@ get_printer_oauth_credentials(PrinterId) ->
             end
     end.
 
+-spec handle_faxbox_edited(wh_json:object(), wh_proplist()) -> pid().
+handle_faxbox_edited(JObj, Props) ->
+    handle_faxbox_created(JObj, Props).
+
 -spec handle_faxbox_created(wh_json:object(), wh_proplist()) -> pid().
 handle_faxbox_created(JObj, _Props) ->
+    lager:debug("WAPI_CONF ~p", [JObj]),
     'true' = wapi_conf:doc_update_v(JObj),
     ID = wh_json:get_value(<<"ID">>, JObj),
     {'ok', Doc } = couch_mgr:open_doc(?WH_FAXES, ID),
     State = wh_json:get_value(<<"pvt_cloud_state">>, Doc),
-    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, Doc),
     AppId = whapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
+    lager:debug(<<"CLOUD APP ~p , ~p, ~p, ~p">>, [ID, ResellerId, AppId, Doc]),
     spawn(?MODULE, check_registration, [AppId, State, Doc]).
 
 -spec check_registration(ne_binary(), ne_binary(), wh_json:object() ) -> 'ok'.
@@ -370,7 +380,8 @@ check_registration(AppId, <<"registered">>, JObj) ->
             process_registration_result(Result, AppId, JObj,JObjPool );
         _A ->
             lager:debug("unexpected result checking registration of printer ~s: ~p", [PrinterId, _A])
-    end.
+    end;
+check_registration(_, _, _JObj) -> 'ok'.
 
 -spec process_registration_result(boolean(), ne_binary(), wh_json:object(), wh_json:object() ) -> any().
 process_registration_result('true', AppId, JObj, Result) ->
