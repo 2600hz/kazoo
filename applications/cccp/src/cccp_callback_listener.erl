@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright 
+%%% @copyright
 %%% @doc
 %%%
 %%% @end
@@ -13,7 +13,7 @@
 -export([start_link/1
          ,handle_resource_response/2
          ,add_request/1
-]).
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -21,7 +21,7 @@
          ,handle_event/2
          ,terminate/2
          ,code_change/3
-]).
+        ]).
 
 -include("cccp.hrl").
 
@@ -37,11 +37,13 @@
 
 -type state() :: #state{}.
 
--define(MK_CALL_BINDING(CallId), [{'callid', CallId}, {'restrict_to', [<<"CHANNEL_DESTROY">>
-                                                                       ,<<"CHANNEL_ANSWER">>]}]).
+-define(MK_CALL_BINDING(CallId), [{'callid', CallId}
+                                  ,{'restrict_to', [<<"CHANNEL_DESTROY">>
+                                                    ,<<"CHANNEL_ANSWER">>
+                                                   ]}
+                                 ]).
 
--define(BINDINGS, [{'self', []}
-                  ]).
+-define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_resource_response'}
                       ,[{<<"*">>, <<"*">>}]
                      }
@@ -282,4 +284,3 @@ handle_originate_ready(JObj, Props) ->
         _ -> 'ok'
     end,
     'ok'.
-
