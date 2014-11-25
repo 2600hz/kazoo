@@ -22,112 +22,255 @@
 -module(nksip_call_uas).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([timer/3, terminate_request/2, transaction_id/1, app_call/4, app_cast/4]).
--export_type([status/0, id/0]).
+-export([request/2, reply/3, do_reply/3]).
+-export_type([status/0, incoming/0]).
 
 -import(nksip_call_lib, [update/2]).
-
 -include("nksip.hrl").
 -include("nksip_call.hrl").
 
 
--type status() ::  authorize | route | ack |
-                   invite_proceeding | invite_accepted | invite_completed | 
-                   invite_confirmed | 
-                   trying | proceeding | completed | finished.
+%% ===================================================================
+%% Types
+%% ===================================================================
 
--type id() :: integer().
+
+-type status() ::  
+    invite_proceeding | invite_accepted | invite_completed | invite_confirmed | 
+    trying | proceeding | completed | 
+    ack | finished.
+
+-type incoming() :: 
+    nksip:sipreply() | {nksip:response(), nksip:optslist()}.
 
 
 %% ===================================================================
-%% Timers
+%% Private
 %% ===================================================================
 
-%% @private
--spec timer(nksip_call_lib:timer(), nksip_call:trans(), nksip_call:call()) ->
+%% @doc Called when a new request is received.
+-spec request(nksip:request(), nksip_call:call()) ->
     nksip_call:call().
 
-timer(timer_c, #trans{id=Id, method=Method}=UAS, Call) ->
-    ?call_notice("UAS ~p ~p Timer C fired", [Id, Method]),
-    reply({timeout, <<"Timer C Timeout">>}, UAS, Call);
+request(Req, Call) -> 
+    case is_trans_ack(Req, Call) of
+        {true, InvUAS} -> 
+            process_trans_ack(InvUAS, Call);
+        false ->
+            case is_retrans(Req, Call) of
+                {true, UAS} ->
+                    process_retrans(UAS, Call);
+                {false, ReqTransId} ->
+                    case is_own_ack(Req) of
+                        true ->
+                            Call;
+                        false ->
+                            process_request(Req, ReqTransId, Call)
+                    end
+            end
+    end.
 
-timer(noinvite, #trans{id=Id, method=Method}=UAS, Call) ->
-    ?call_notice("UAS ~p ~p No-INVITE timer fired", [Id, Method]),
-    reply({timeout, <<"No-INVITE Timeout">>}, UAS, Call);
 
-% INVITE 3456xx retrans
-timer(timer_g, #trans{id=Id, response=Resp}=UAS, Call) ->
-    #sipmsg{class={resp, Code, _Reason}} = Resp,
-    UAS2 = case nksip_transport_uas:resend_response(Resp, []) of
-        {ok, _} ->
-            ?call_info("UAS ~p retransmitting 'INVITE' ~p response", [Id, Code]),
-            nksip_call_lib:retrans_timer(timer_g, UAS, Call);
-        error -> 
-            ?call_notice("UAS ~p could not retransmit 'INVITE' ~p response", [Id, Code]),
-            UAS1 = UAS#trans{status=finished},
-            nksip_call_lib:timeout_timer(cancel, UAS1, Call)
+%% @private Checks if `Req' is an ACK matching an existing transaction
+%% (for a non 2xx responses, ACK is in the same transaction as the INVITE)
+-spec is_trans_ack(nksip:request(), nksip_call:call()) ->
+    {true, nksip_call:trans()} | false.
+
+is_trans_ack(#sipmsg{class={req, 'ACK'}}=Req, #call{trans=Trans}) ->
+    TransReq = Req#sipmsg{class={req, 'INVITE'}},
+    ReqTransId = nksip_call_lib:uas_transaction_id(TransReq),
+    case lists:keyfind(ReqTransId, #trans.trans_id, Trans) of
+        #trans{class=uas}=InvUAS -> 
+            {true, InvUAS};
+        false when ReqTransId < 0 ->
+            % Pre-RFC3261 style
+            case lists:keyfind(ReqTransId, #trans.ack_trans_id, Trans) of
+                #trans{}=InvUAS -> 
+                    {true, InvUAS};
+                false -> 
+                    false
+            end;
+        false ->
+            false
+    end;
+
+is_trans_ack(_, _) ->
+    false.
+
+
+%% @private
+-spec process_trans_ack(nksip_call:trans(), nksip_call:call()) ->
+    nksip_call:call().
+
+process_trans_ack(InvUAS, Call) ->
+    #trans{id=Id, status=Status, proto=Proto} = InvUAS,
+    case Status of
+        invite_completed ->
+            InvUAS1 = InvUAS#trans{response=undefined},
+            InvUAS2 = nksip_call_lib:retrans_timer(cancel, InvUAS1, Call),
+            InvUAS4 = case Proto of 
+                udp -> 
+                    InvUAS3 = InvUAS2#trans{status=invite_confirmed},
+                    nksip_call_lib:timeout_timer(timer_i, InvUAS3, Call);
+                _ ->
+                    InvUAS3 = InvUAS2#trans{status=finished},
+                    nksip_call_lib:timeout_timer(cancel, InvUAS3, Call)
+            end,
+            ?call_debug("InvUAS ~p received in-transaction ACK", [Id]),
+            update(InvUAS4, Call);
+        invite_confirmed ->
+            ?call_debug("InvUAS ~p received non 2xx ACK in ~p", [Id, Status]),
+            Call;
+        _ ->
+            ?call_notice("InvUAS ~p received non 2xx ACK in ~p", [Id, Status]),
+            Call
+    end.
+
+
+%% @private Checks if request is a retransmission
+-spec is_retrans(nksip:request(), nksip_call:call()) ->
+    {true, nksip_call:trans()} | {false, integer()}.
+
+is_retrans(Req, #call{trans=Trans}) ->
+    ReqTransId = nksip_call_lib:uas_transaction_id(Req),
+    case lists:keyfind(ReqTransId, #trans.trans_id, Trans) of
+        #trans{class=uas}=UAS -> 
+            {true, UAS};
+        _ -> 
+            {false, ReqTransId}
+    end.
+
+
+%% @private
+-spec process_retrans(nksip_call:trans(), nksip_call:call()) ->
+    nksip_call:call().
+
+process_retrans(UAS, Call) ->
+    #trans{id=Id, status=Status, method=Method, response=Resp} = UAS,
+    case 
+        Status==invite_proceeding orelse Status==invite_completed
+        orelse Status==proceeding orelse Status==completed
+    of
+        true when is_record(Resp, sipmsg) ->
+            #sipmsg{class={resp, Code, _Reason}} = Resp,
+            case nksip_call_uas_transp:resend_response(Resp, []) of
+                {ok, _} ->
+                    ?call_info("UAS ~p ~p (~p) sending ~p retransmission", 
+                               [Id, Method, Status, Code]);
+                error ->
+                    ?call_notice("UAS ~p ~p (~p) could not send ~p retransmission", 
+                                  [Id, Method, Status, Code])
+            end;
+        _ ->
+            ?call_info("UAS ~p ~p received retransmission in ~p", 
+                       [Id, Method, Status])
     end,
-    update(UAS2, Call);
+    Call.
 
-% INVITE accepted finished
-timer(timer_l, #trans{id=Id}=UAS, Call) ->
-    ?call_debug("UAS ~p 'INVITE' Timer L fired", [Id]),
-    UAS1 = UAS#trans{status=finished},
-    UAS2 = nksip_call_lib:timeout_timer(cancel, UAS1, Call),
-    update(UAS2, Call);
 
-% INVITE confirmed finished
-timer(timer_i, #trans{id=Id}=UAS, Call) ->
-    ?call_debug("UAS ~p 'INVITE' Timer I fired", [Id]),
-    UAS1 = UAS#trans{status=finished},
-    UAS2 = nksip_call_lib:timeout_timer(cancel, UAS1, Call),
-    update(UAS2, Call);
+%% @doc Returns true if the request is an ACK to a [3456]xx response generated
+%% automatically by NkSIP
+-spec is_own_ack(nksip:request()) ->
+    boolean().
 
-% NoINVITE completed finished
-timer(timer_j, #trans{id=Id, method=Method}=UAS, Call) ->
-    ?call_debug("UAS ~p ~p Timer J fired", [Id, Method]),
-    UAS1 = UAS#trans{status=finished},
-    UAS2 = nksip_call_lib:timeout_timer(cancel, UAS1, Call),
-    update(UAS2, Call);
+is_own_ack(#sipmsg{class={req, 'ACK'}}=Req) ->
+    #sipmsg{
+        to = {_, ToTag},
+        vias = [#via{opts=ViaOpts}|_]
+    } = Req,
+    Branch = nksip_lib:get_binary(<<"branch">>, ViaOpts),
+    GlobalId = nksip_config_cache:global_id(),
+    nksip_lib:hash({GlobalId, Branch}) == ToTag;
 
-% INVITE completed timeout
-timer(timer_h, #trans{id=Id}=UAS, Call) ->
-    ?call_notice("UAS ~p 'INVITE' timeout (Timer H) fired, no ACK received", [Id]),
-    UAS1 = UAS#trans{status=finished},
-    UAS2 = nksip_call_lib:timeout_timer(cancel, UAS1, Call),
-    UAS3 = nksip_call_lib:retrans_timer(cancel, UAS2, Call),
-    update(UAS3, Call);
+is_own_ack(_) ->
+    false.
 
-timer(expire, #trans{id=Id, method=Method, status=Status}=UAS, Call) ->
-    ?call_debug("UAS ~p ~p (~p) Timer Expire fired: sending 487",[Id, Method, Status]),
-    terminate_request(UAS, Call);
 
-% Reliable response retrans
-timer(prack_retrans, #trans{id=Id, response=Resp}=UAS, Call) ->
-    #sipmsg{class={resp, Code, _Reason}} = Resp,
-    UAS2 = case nksip_transport_uas:resend_response(Resp, []) of
-        {ok, _} ->
-            ?call_info("UAS ~p retransmitting 'INVITE' ~p reliable response", 
-                       [Id, Code]),
-            nksip_call_lib:retrans_timer(prack_retrans, UAS, Call);
-        error -> 
-            ?call_notice("UAS ~p could not retransmit 'INVITE' ~p reliable response", 
-                         [Id, Code]),
-            UAS1 = UAS#trans{status=finished},
-            nksip_call_lib:timeout_timer(cancel, UAS1, Call)
+%% @private
+-spec process_request(nksip:request(), nksip_call:trans_id(), nksip_call:call()) ->
+    nksip_call:call().
+
+process_request(Req, UASTransId, Call) ->
+    Req1 = preprocess(Req),
+    #sipmsg{
+        class = {req, Method}, 
+        id = MsgId, 
+        ruri = RUri, 
+        transport = Transp, 
+        to = {_, ToTag}
+    } = Req1,
+    #call{
+        trans = Trans, 
+        next = NextId, 
+        msgs = Msgs
+    } = Call,
+    ?call_debug("UAS ~p started for ~p (~s)", [NextId, Method, MsgId]),
+    LoopId = loop_id(Req1),
+    DialogId = nksip_dialog_lib:make_id(uas, Req1),
+    Status = case Method of
+        'INVITE' -> invite_proceeding;
+        'ACK' -> ack;
+        _ -> trying
     end,
-    update(UAS2, Call);
+    UAS = #trans{
+        id = NextId,
+        class = uas,
+        status = Status,
+        start = nksip_lib:timestamp(),
+        from = undefined,
+        opts = [],
+        trans_id = UASTransId, 
+        request = Req1#sipmsg{dialog_id=DialogId},
+        method = Method,
+        ruri = RUri,
+        proto = Transp#transport.proto,
+        response = undefined,
+        code = 0,
+        to_tags = [],
+        stateless = true,
+        iter = 1,
+        cancel = undefined,
+        loop_id = LoopId,
+        timeout_timer = undefined,
+        retrans_timer = undefined,
+        next_retrans = undefined,
+        expire_timer = undefined,
+        ack_trans_id = undefined,
+        meta = []
+    },
+     UAS1 = case Method of
+        'INVITE' -> 
+            nksip_call_lib:timeout_timer(timer_c, UAS, Call);
+        'ACK' -> 
+            UAS;
+        _ -> 
+            nksip_call_lib:timeout_timer(noinvite, UAS, Call)
+    end,
+    Msg = {MsgId, NextId, DialogId},
+    Call1 = Call#call{trans=[UAS1|Trans], next=NextId+1, msgs=[Msg|Msgs]},
+    case ToTag==(<<>>) andalso lists:keymember(LoopId, #trans.loop_id, Trans) of
+        true -> 
+            do_reply(loop_detected, UAS1, Call1);
+        false -> 
+            nksip_call_uas_route:launch(UAS1, Call1)
+    end.
 
-timer(prack_timeout, #trans{id=Id, method=Method}=UAS, Call) ->
-    ?call_notice("UAS ~p ~p reliable provisional response timeout", [Id, Method]),
-    reply({internal_error, <<"Reliable Provisional Response Timeout">>}, UAS, Call);
 
-timer({callback, Fun}, #trans{id=Id, method=Method}=UAS, Call) ->
-    ?call_notice("UAS ~p ~p timeout, no SipApp response calling ~p", 
-                 [Id, Method, Fun]),
-    Msg = {internal_error, <<"No SipApp Response">>},
-    UAS1 = nksip_call_lib:callback_timer(cancel, UAS, Call),
-    reply(Msg, UAS1, update(UAS1, Call)).
+%% @doc Sends a transaction reply
+-spec reply(incoming(), nksip_call:trans(), nksip_call:call()) ->
+    {ok | {error, term()}, nksip_call:call()}.
+
+reply(Reply, Trans, Call) ->
+    nksip_call_uas_reply:reply(Reply, Trans, Call).
+
+
+%% @doc Sends a transaction reply
+-spec do_reply(incoming(), nksip_call:trans(), nksip_call:call()) ->
+    nksip_call:call().
+
+do_reply(Reply, Trans, Call) ->
+    {_, Call1} = nksip_call_uas_reply:reply(Reply, Trans, Call),
+    Call1.
 
 
 
@@ -135,106 +278,113 @@ timer({callback, Fun}, #trans{id=Id, method=Method}=UAS, Call) ->
 %% Utils
 %% ===================================================================
 
-
-%% @private Sends a transaction reply
--spec reply(nksip:sipreply() | {nksip:response(), nksip_lib:optslist()}, 
-            nksip_call:trans(), nksip_call:call()) ->
-    nksip_call:call().
-
-reply(Reply, UAS, Call) ->
-    {_, Call1} = nksip_call_uas_reply:reply(Reply, UAS, Call),
-    Call1.
-
 %% @private
--spec terminate_request(nksip_call:trans(), nksip_call:call()) ->
-    nksip_call:call().
-
-terminate_request(#trans{status=Status}=UAS, Call)
-                  when Status==authorize; Status==route ->
-    UAS1 = UAS#trans{cancel=cancelled},
-    Call1 = update(UAS1, Call),
-    reply(request_terminated, UAS1, Call1);
-
-terminate_request(#trans{status=invite_proceeding, from=From}=UAS, Call) ->
-    case From of
-        {fork, ForkId} -> 
-            nksip_call_fork:cancel(ForkId, Call);
-        _ ->  
-            UAS1 = UAS#trans{cancel=cancelled},
-            Call1 = update(UAS1, Call),
-            reply(request_terminated, UAS1, Call1)
-    end;
-
-terminate_request(_, Call) ->
-    Call.
-    
-
-%% @private
--spec app_call(atom(), list(), nksip_call:trans(), nksip_call:call()) ->
-    {reply, term()} | nksip_call:call() | not_exported.
-
-app_call(Fun, Args, UAS, Call) ->
-    #trans{id=Id, method=Method, status=Status, request=Req} = UAS,
-    #call{app_id=AppId} = Call,
-    ?call_debug("UAS ~p ~p (~p) calling SipApp's ~p ~p", 
-                [Id, Method, Status, Fun, Args]),
-    From = {'fun', nksip_call, app_reply, [Fun, Id, self()]},
-    Args1 = [Req | Args],
-    Args2 = [nksip_sipmsg:get_id(Req) | Args],
-    case 
-        nksip_sipapp_srv:sipapp_call(AppId, Fun, Args1, Args2, From)
-    of
-        {reply, Reply} ->
-            {reply, Reply};
-        async -> 
-            UAS1 = nksip_call_lib:callback_timer(Fun, UAS, Call),
-            update(UAS1, Call);
-        not_exported ->
-            not_exported;
-        error ->
-            reply({internal_error, <<"Error calling callback">>}, UAS, Call)
-    end.
-
-
-%% @private
--spec app_cast(atom(), list(), nksip_call:trans(), nksip_call:call()) ->
-    nksip_call:call().
-
-app_cast(Fun, Args, UAS, Call) ->
-    #trans{id=Id, method=Method, status=Status, request=Req} = UAS,
-    #call{app_id=AppId} = Call,
-    ?call_debug("UAS ~p ~p (~p) casting SipApp's ~p", [Id, Method, Status, Fun]),
-    Args1 = [Req | Args],
-    Args2 = [nksip_sipmsg:get_id(Req) | Args],
-    nksip_sipapp_srv:sipapp_cast(AppId, Fun, Args1, Args2),
-    Call.
-
-
-%% @private
--spec transaction_id(nksip:request()) ->
+-spec loop_id(nksip:request()) ->
     integer().
     
-transaction_id(Req) ->
-        #sipmsg{
-            class = {req, Method},
-            ruri = RUri, 
-            from = {_, FromTag}, 
-            to = {_, ToTag}, 
-            vias = [Via|_], 
-            cseq = {CSeq, _}
-        } = Req,
-    {_Transp, ViaIp, ViaPort} = nksip_parse:transport(Via),
-    case nksip_lib:get_value(<<"branch">>, Via#via.opts) of
-        <<"z9hG4bK", Branch/binary>> when byte_size(Branch) > 0 ->
-            erlang:phash2({Method, ViaIp, ViaPort, Branch});
-        _ ->
-            % pre-RFC3261 style
-            {_, UriIp, UriPort} = nksip_parse:transport(RUri),
-            -erlang:phash2({UriIp, UriPort, FromTag, ToTag, CSeq, 
-                            Method, ViaIp, ViaPort})
+loop_id(#sipmsg{from={_, FromTag}, cseq={CSeq, Method}}) ->
+    erlang:phash2({FromTag, CSeq, Method}).
+
+
+%% @doc Preprocess an incoming request.
+%%  - Adds rport, received and transport options to Via.
+%%  - Generates a To Tag candidate.
+%%  - Performs strict routing processing.
+%%  - Updates the request if maddr is present.
+%%  - Removes first route if it is poiting to us.
+-spec preprocess(nksip:request()) ->
+    nksip:request().
+
+preprocess(Req) ->
+    #sipmsg{
+        to = {_, ToTag},
+        transport = #transport{proto=Proto, remote_ip=Ip, remote_port=Port}, 
+        vias = [Via|ViaR]
+    } = Req,
+    Received = nksip_lib:to_host(Ip, false), 
+    ViaOpts1 = [{<<"received">>, Received}|Via#via.opts],
+    % For UDP, we honor the rport option
+    % For connection transports, we force inclusion of remote port 
+    % to reuse the same connection
+    ViaOpts2 = case lists:member(<<"rport">>, ViaOpts1) of
+        false when Proto==udp -> 
+            ViaOpts1;
+        _ -> 
+            [{<<"rport">>, nksip_lib:to_binary(Port)} | ViaOpts1 -- [<<"rport">>]]
+    end,
+    Via1 = Via#via{opts=ViaOpts2},
+    Branch = nksip_lib:get_binary(<<"branch">>, ViaOpts2),
+    GlobalId = nksip_config_cache:global_id(),
+    ToTag1 = case ToTag of
+        <<>> -> 
+            nksip_lib:hash({GlobalId, Branch});
+        _ -> 
+            ToTag
+    end,
+    Req1 = Req#sipmsg{
+        vias = [Via1|ViaR], 
+        to_tag_candidate = ToTag1
+    },
+    Req2 = strict_router(Req1),
+    ruri_has_maddr(Req2).
+
+
+%% @private If the Request-URI has a value we have placed on a Record-Route header, 
+%% change it to the last Route header and remove it. This gets back the original 
+%% RUri "stored" at the end of the Route header when proxing through a strict router
+%% This could happen if
+%% - in a previous request, we added a Record-Route header with our ip
+%% - the response generated a dialog
+%% - a new in-dialog request has arrived from a strict router, that copied our Record-Route
+%%   in the ruri
+%%
+%% TODO: Is this working?
+strict_router(#sipmsg{app_id=AppId, ruri=RUri, routes=Routes}=Request) ->
+    case 
+        nksip_lib:get_value(<<"nksip">>, RUri#uri.opts) /= undefined 
+        andalso nksip_transport:is_local(AppId, RUri) of
+    true ->
+        case lists:reverse(Routes) of
+            [] ->
+                Request;
+            [RUri1|RestRoutes] ->
+                ?call_notice("recovering RURI from strict router request", []),
+                Request#sipmsg{ruri=RUri1, routes=lists:reverse(RestRoutes)}
+        end;
+    false ->
+        Request
+    end.    
+
+
+%% @private If RUri has a maddr address that corresponds to a local ip and has the 
+% same transport class and local port than the transport, change the Ruri to
+% this address, default port and no transport parameter
+ruri_has_maddr(Request) ->
+    #sipmsg{
+        app_id = AppId, 
+        ruri = RUri, 
+        transport=#transport{proto=Proto, local_port=LPort}
+    } = Request,
+    case nksip_lib:get_binary(<<"maddr">>, RUri#uri.opts) of
+        <<>> ->
+            Request;
+        MAddr -> 
+            case nksip_transport:is_local(AppId, RUri#uri{domain=MAddr}) of
+                true ->
+                    case nksip_parse:transport(RUri) of
+                        {Proto, _, LPort} ->
+                            RUri1 = RUri#uri{
+                                port = 0,
+                                opts = nksip_lib:delete(RUri#uri.opts, 
+                                                        [<<"maddr">>, <<"transport">>])
+                            },
+                            Request#sipmsg{ruri=RUri1};
+                        _ ->
+                            Request
+                    end;
+                false ->
+                    Request
+            end
     end.
-
-
-
 
 

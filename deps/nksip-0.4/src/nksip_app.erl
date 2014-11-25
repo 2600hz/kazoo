@@ -40,7 +40,7 @@
     ok | {error, Reason::term()}.
 
 start() ->
-    case ensure_all_started(?APP, permanent) of
+    case nksip_lib:ensure_all_started(?APP, permanent) of
         {ok, _Started} ->
             ok;
         Error ->
@@ -57,6 +57,7 @@ start(_Type, _Args) ->
         _ ->
             ok
     end,
+    ok = nksip_config:make_cache(),
     {ok, Pid} = nksip_sup:start_link(),
     MainIp = nksip_config:get(main_ip),
     MainIp6 = nksip_config:get(main_ip6),
@@ -82,31 +83,3 @@ profile_output() ->
     eprof:log("nksip.profile"),
     eprof:analyze(total).
 
-
-%% @doc Ensure that an application and all of its transitive
-%% dependencies are started.
-ensure_all_started(Application, Type) ->
-    case ensure_all_started(Application, Type, []) of
-        {ok, Started} ->
-            {ok, lists:reverse(Started)};
-        {error, Reason, Started} ->
-            [ application:stop(App) || App <- Started ],
-            {error, Reason}
-    end.
-
-ensure_all_started(Application, Type, Started) ->
-    case application:start(Application, Type) of
-        ok ->
-            {ok, [Application | Started]};
-        {error, {already_started, Application}} ->
-            {ok, Started};
-        {error, {not_started, Dependency}} ->
-            case ensure_all_started(Dependency, Type, Started) of
-                {ok, NewStarted} ->
-                    ensure_all_started(Application, Type, NewStarted);
-                Error ->
-                    Error
-            end;
-        {error, Reason} ->
-            {error, Reason, Started}
-    end.

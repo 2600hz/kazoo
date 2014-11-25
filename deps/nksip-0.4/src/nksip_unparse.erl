@@ -46,7 +46,7 @@ uri(#uri{}=Uri) ->
     list_to_binary(raw_uri(Uri)).
 
 
-%% @doc Serializes an `uri()' as a R-URI (without < and >)
+%% @doc Serializes an `uri()' as a R-URI (without `<' and `>')
 -spec ruri(nksip:uri()) ->
     binary().
 
@@ -60,8 +60,8 @@ ruri(#uri{}=Uri) ->
 -spec uri2proplist(nksip:uri()) -> [Opts] when
     Opts :: {scheme, nksip:scheme()} | {user, binary()} | {domain, binary()} | 
             {disp, binary()} | {pass, binary()} | {port, inet:port_number()} |
-            {opts, nksip_lib:optslist()} | {headers, [binary()|nksip:header()]} |
-            {ext_opts, nksip_lib:optslist()} | {ext_headers, [binary()|nksip:header()]}.
+            {opts, nksip:optslist()} | {headers, [binary()|nksip:header()]} |
+            {ext_opts, nksip:optslist()} | {ext_headers, [binary()|nksip:header()]}.
 
 uri2proplist(#uri{
                 disp = Disp, 
@@ -191,7 +191,7 @@ packet(#sipmsg{class={req, Method}, ruri=RUri}=Request)  ->
 
 
 %% @doc Generates an error response
--spec response([{binary(), term()}], nksip:response_code(), binary()) -> 
+-spec response([{binary(), term()}], nksip:sip_code(), binary()) -> 
     binary().
 
 response(Headers, Code, Reason) ->
@@ -406,7 +406,7 @@ join([A], Acc) ->
 
 
 %% @private
--spec response_phrase(nksip:response_code()) -> 
+-spec response_phrase(nksip:sip_code()) -> 
     binary().
 
 response_phrase(Code) ->

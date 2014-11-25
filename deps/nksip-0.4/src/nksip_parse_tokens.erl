@@ -55,8 +55,8 @@ tokens(_) ->
 %% @private
 tokens(String, Acc) ->
     case name(strip(String), []) of
-        {error, Type, Line} -> 
-            lager:debug("Error parsing token ~s: ~p (~p)", [String, Type, Line]),
+        {error, _Type, _Line} -> 
+            % lager:debug("Error parsing token ~s: ~p (~p)", [String, _Type, _Line]),
             error;
         {Name, Opts, []} when Acc==[]-> 
             [{Name, Opts}];

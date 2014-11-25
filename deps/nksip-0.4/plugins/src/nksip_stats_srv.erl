@@ -18,52 +18,14 @@
 %%
 %% -------------------------------------------------------------------
 
-%% @doc NkSIP (very basic yet) stats management.
-%% Calculates periodically some statistics about UAS response times.
-
--module(nksip_stats).
--author('Carlos Gonzalez <carlosj.gf@gmail.com>').
-
+-module(nksip_stats_srv).
 -behaviour(gen_server).
 
--export([info/0, get_uas_avg/0]).
--export([uas_response/1]).
+-author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([start_link/0, init/1, terminate/2, code_change/3, handle_call/3, 
          handle_cast/2, handle_info/2]).
 
--include("nksip.hrl").
-
--define(PERIOD, 5).
-
-
-%% ===================================================================
-%% Public
-%% ===================================================================
-
-%% @doc Gets some statistics about current number of calls, dialogs, queues, etc.
--spec info() ->
-    nksip_lib:optslist().
-
-info() ->
-    [
-        {calls, nksip_counters:value(nksip_calls)},
-        {dialogs, nksip_counters:value(nksip_dialogs)},
-        {routers_queue, nksip_call_router:pending_msgs()},
-        {routers_pending, nksip_call_router:pending_work()},
-        {tcp_connections, nksip_counters:value(nksip_transport_tcp)},
-        {counters_queue, nksip_counters:pending_msgs()},
-        {core_queues, nksip_sipapp_srv:pending_msgs()},
-        {uas_response, nksip_stats:get_uas_avg()}
-    ].
-
-
-%% @doc Gets the call statistics for the current period.
--spec get_uas_avg() ->
-    {Min::integer(), Max::integer(), Avg::integer(), Std::integer()}.
-
-get_uas_avg() ->
-    gen_server:call(?MODULE, get_uas_avg).
-
+-include("../include/nksip.hrl").
 
 
 %% ===================================================================
@@ -73,7 +35,8 @@ get_uas_avg() ->
 -record(state, {
     last_uas :: {Min::integer(), Max::integer(), Avg::integer(), Std::integer()},
     avg_uas_values :: [integer()],
-    last_check :: nksip_lib:timestamp()
+    last_check :: nksip_lib:timestamp(),
+    period :: integer()
 }).
 
 
@@ -88,7 +51,13 @@ start_link() ->
 
 init([]) ->
     Now = nksip_lib:timestamp(),
-    {ok, #state{last_uas={0,0,0,0}, avg_uas_values=[], last_check=Now}}.
+    State = #state{
+        last_uas = {0,0,0,0}, 
+        avg_uas_values = [], 
+        last_check = Now,
+        period = nksip_config:get(nksip_stats_period, 5)
+    },
+    {ok, State}.
 
 
 %% @private
@@ -107,7 +76,7 @@ handle_call(Msg, _From, State) ->
 -spec handle_cast(term(), #state{}) ->
     gen_server_cast(#state{}).
 
-handle_cast({uas_response, Time}, #state{avg_uas_values=Values}=State) ->
+handle_cast({response_time, Time}, #state{avg_uas_values=Values}=State) ->
     State1 = State#state{avg_uas_values=[Time|Values]},
     {noreply, State1, timeout(State1)};
 
@@ -120,11 +89,11 @@ handle_cast(Msg, State) ->
 -spec handle_info(term(), #state{}) ->
     gen_server_info(#state{}).
 
-handle_info(timeout, #state{avg_uas_values=Values}=State) ->
+handle_info(timeout, #state{avg_uas_values=Values, period=Period}=State) ->
     LastUas = calculate(Values),
     Now = nksip_lib:timestamp(),
     State1 = State#state{last_uas=LastUas, avg_uas_values=[], last_check=Now}, 
-    {noreply, State1, 1000*?PERIOD};
+    {noreply, State1, 1000*Period};
 
 handle_info(Info, State) -> 
     lager:warning("Module ~p received unexpected info: ~p", [?MODULE, Info]),
@@ -147,19 +116,15 @@ terminate(_Reason, _State) ->
     ok.
 
 
-%% ===================================================================
-%% Internal
-%% ===================================================================
 
-
-%% @private Informs the module about the last response time
-uas_response(Time) when is_number(Time) ->
-    gen_server:cast(?MODULE, {uas_response, Time}).
+%% ===================================================================
+%% Private
+%% ===================================================================
 
 
 %% @private
-timeout(#state{last_check=Last}) ->
-    case (Last+?PERIOD) - nksip_lib:timestamp() of
+timeout(#state{last_check=Last, period=Period}) ->
+    case (Last+Period) - nksip_lib:timestamp() of
         Time when Time > 0 -> 1000*Time;
         _ -> 0
     end.
