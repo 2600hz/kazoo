@@ -23,7 +23,7 @@
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -behaviour(gen_server).
 
--export([get_listener/3, connect/3]).
+-export([get_listener/3, connect/2]).
 -export([start_link/3, init/1, terminate/2, code_change/3, handle_call/3,   
          handle_cast/2, handle_info/2]).
 
@@ -39,7 +39,7 @@
 %% ===================================================================
 
 %% @private Starts a new listening server
--spec get_listener(nksip:app_id(), nksip:transport(), nksip_lib:optslist()) ->
+-spec get_listener(nksip:app_id(), nksip:transport(), nksip:optslist()) ->
     term().
 
 get_listener(AppId, Transp, Opts) ->
@@ -55,15 +55,20 @@ get_listener(AppId, Transp, Opts) ->
     
 
 %% @private Starts a new connection to a remote server
--spec connect(pid(), nksip:transport(), nksip_lib:optslist()) ->
+-spec connect(pid(), nksip:transport()) ->
     {ok, pid(), nksip_transport:transport()} | {error, term()}.
 
-connect(Pid, Transp, _Opts) ->
+connect(Pid, Transp) ->
     #transport{remote_ip=Ip, remote_port=Port} = Transp,
-    case catch gen_server:call(Pid, {connect, Ip, Port}, 60000) of
-        {ok, Pid1, Transp1} -> {ok, Pid1, Transp1};
-        {error, Error} -> {error, Error}
+    case catch gen_server:call(Pid, {connect, Ip, Port}, 30000) of
+        {ok, Pid1, Transp1} -> 
+            {ok, Pid1, Transp1};
+        {error, Error} -> 
+            {error, Error};
+        {'EXIT', Error} ->
+            {error, Error}
     end.
+
 
 
 %% ===================================================================
@@ -107,7 +112,7 @@ init([AppId, Transp, Opts]) ->
             ok = gen_sctp:listen(Socket, true),
             nksip_proc:put(nksip_transports, {AppId, Transp1}),
             nksip_proc:put({nksip_listen, AppId}, Transp1),
-            State = #state{
+            State = #state{ 
                 app_id = AppId, 
                 transport = Transp1, 
                 socket = Socket,
@@ -139,7 +144,7 @@ handle_call({connect, Ip, Port}, From, State) ->
     {noreply, State#state{pending=[{{Ip, Port}, From}|Pending]}};
 
 handle_call(Msg, _From, State) ->
-    lager:warning("Module ~p received unexpected call: ~p", [?MODULE, Msg]),
+    lager:error("Module ~p received unexpected call: ~p", [?MODULE, Msg]),
     {noreply, State}.
 
 
@@ -156,7 +161,7 @@ handle_cast(stop, State) ->
     {stop, normal, State};
 
 handle_cast(Msg, State) ->
-    lager:warning("Module ~p received unexpected cast: ~p", [?MODULE, Msg]),
+    lager:error("Module ~p received unexpected cast: ~p", [?MODULE, Msg]),
     {noreply, State}.
 
 
@@ -168,13 +173,17 @@ handle_info({sctp, Socket, Ip, Port, {Anc, SAC}}, State) ->
     #state{app_id=AppId, socket=Socket} = State,
     State1 = case SAC of
         #sctp_assoc_change{state=comm_up, assoc_id=AssocId} ->
-            {Pid, Transp1} = do_connect(Ip, Port, AssocId, State),
+            Reply = do_connect(Ip, Port, AssocId, State),
             #state{pending=Pending} = State,
             case lists:keytake({Ip, Port}, 1, Pending) of
                 {value, {_, From}, Pending1} -> 
-                    gen_server:reply(From, {ok, Pid, Transp1}),
+                    gen_server:reply(From, Reply),
                     State#state{pending=Pending1};
-                false -> 
+                false when element(1, Reply)==error -> 
+                    ?notice(AppId, <<>>, "Error ~p on SCTP connection up", 
+                            [element(2, Reply)]),
+                    State;
+                false ->
                     State
             end;
         #sctp_assoc_change{state=shutdown_comp, assoc_id=AssocId} ->
@@ -193,8 +202,12 @@ handle_info({sctp, Socket, Ip, Port, {Anc, SAC}}, State) ->
             State; 
         Data when is_binary(Data) ->
             [#sctp_sndrcvinfo{assoc_id=AssocId}] = Anc,
-            {Pid, _Transp1} = do_connect(Ip, Port, AssocId, State),
-            nksip_connection:incoming(Pid, Data),
+            case do_connect(Ip, Port, AssocId, State) of
+                {ok, Pid, _Transp1} ->
+                    nksip_connection:incoming(Pid, Data);
+                {error, Error} ->
+                    ?notice(AppId, <<>>, "Error ~p on SCTP connection up", [Error])
+            end,
             State;
         Other ->
             ?notice(AppId, <<>>, "SCTP unknown data from ~p, ~p: ~p", [Ip, Port, Other]),
@@ -236,12 +249,17 @@ do_connect(Ip, Port, AssocId, State) ->
     #state{app_id=AppId} = State,
     case nksip_transport:get_connected(AppId, sctp, Ip, Port, <<>>) of
         [{Transp, Pid}|_] -> 
-            {Pid, Transp};
+            {ok, Pid, Transp};
         [] -> 
-            #state{socket=Socket, transport=Transp, timeout=Timeout} = State,
-            Transp1 = Transp#transport{remote_ip=Ip, remote_port=Port, sctp_id=AssocId},
-            {ok, Pid} = nksip_connection:start_link(AppId, Transp1, Socket, Timeout),
-            {Pid, Transp1}
+            case nksip_connection:is_max(AppId) of
+                false ->
+                    #state{socket=Socket, transport=Transp, timeout=Timeout} = State,
+                    Transp1 = Transp#transport{remote_ip=Ip, remote_port=Port, sctp_id=AssocId},
+                    {ok, Pid} = nksip_connection:start_link(AppId, Transp1, Socket, Timeout),
+                    {ok, Pid, Transp1};
+                true ->
+                    {error, max_connections}
+            end
     end.
         
 

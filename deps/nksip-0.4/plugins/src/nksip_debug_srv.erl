@@ -18,46 +18,21 @@
 %%
 %% -------------------------------------------------------------------
 
-%% @private Outbound transport controller
--module(nksip_transport_srv).
--author('Carlos Gonzalez <carlosj.gf@gmail.com>').
+-module(nksip_debug_srv).
 -behaviour(gen_server).
 
--include("nksip.hrl").
+-author('Carlos Gonzalez <carlosj.gf@gmail.com>').
+-export([start_link/0, init/1, terminate/2, code_change/3, handle_call/3, 
+         handle_cast/2, handle_info/2]).
 
--export([connect/6]).
--export([start_link/0, init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2,
-         handle_info/2]).
-
-
-%% ===================================================================
-%% Public
-%% ===================================================================
-
-
-%% @doc Starts a new outbound connection.
--spec connect(nksip:app_id(), nksip:protocol(),
-                       inet:ip_address(), inet:port_number(), binary(),
-                       nksip_lib:optslist()) ->
-    {ok, pid(), nksip_transport:transport()} | {error, term()}.
-
-connect(AppId, udp, Ip, Port, Res, Opts) ->
-    nksip_connection:connect(AppId, udp, Ip, Port, Res, Opts);
-
-connect(AppId, Proto, Ip, Port, Res, Opts)
-                    when Proto==tcp; Proto==tls; Proto==sctp; Proto==ws; Proto==wss ->
-    ConnId = {AppId, Proto, Ip, Port, Res},
-    gen_server:call(?MODULE, {new, ConnId, Opts}, infinity).
+-include("../include/nksip.hrl").
 
 
 %% ===================================================================
 %% gen_server
 %% ===================================================================
 
--record(state, {
-    pending :: dict()
-}).
-
+-record(state, {}).
 
 %% @private
 start_link() ->
@@ -69,25 +44,13 @@ start_link() ->
     gen_server_init(#state{}).
 
 init([]) ->
-    {ok, #state{pending=dict:new()}}.
+    ets:new(nksip_debug_msgs, [named_table, public, bag, {write_concurrency, true}]),
+    {ok, #state{}}.
 
 
 %% @private
 -spec handle_call(term(), from(), #state{}) ->
     gen_server_call(#state{}).
-
-handle_call({new, ConnId, Opts}, From, #state{pending=Pending}=State) ->
-    case dict:is_key(ConnId, Pending) of
-        true ->
-            Pending1 = dict:append(ConnId, From, Pending),
-            {noreply, State#state{pending=Pending1}};
-        false ->
-            Pending1 = dict:store(ConnId, [From], Pending),
-            Self = self(),
-            spawn_link(fun() -> connect(ConnId, Opts, Self) end),
-            {noreply, State#state{pending=Pending1}}
-    end;
-
 
 handle_call(Msg, _From, State) -> 
     lager:error("Module ~p received unexpected call ~p", [?MODULE, Msg]),
@@ -97,12 +60,6 @@ handle_call(Msg, _From, State) ->
 %% @private
 -spec handle_cast(term(), #state{}) ->
     gen_server_cast(#state{}).
-
-handle_cast({conn, ConnId, Result}, #state{pending=Pending}=State) ->
-    {ok, Values} = dict:find(ConnId, Pending),
-    lists:foreach(fun(From) -> gen_server:reply(From, Result) end, Values),
-    Pending1 = dict:erase(ConnId, Pending),
-    {noreply, State#state{pending=Pending1}};
 
 handle_cast(Msg, State) -> 
     lager:error("Module ~p received unexpected cast ~p", [?MODULE, Msg]),
@@ -134,22 +91,7 @@ terminate(_Reason, _State) ->
     ok.
 
 
-
 %% ===================================================================
-%% Internal
+%% Private
 %% ===================================================================
-
-
-connect({AppId, Proto, Ip, Port, Res}=Key, Opts, Pid) ->
-    Result = nksip_connection:connect(AppId, Proto, Ip, Port, Res, Opts),
-    gen_server:cast(Pid, {conn, Key, Result}).
-
-
-
-
-
-
-
-
-
 

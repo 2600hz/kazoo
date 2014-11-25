@@ -33,7 +33,7 @@
 
 % -behaviour(cowboy_websocket_handler).
 
--export([get_listener/3]).
+-export([get_listener/3, connect/3]).
 -export([start_link/4, init/1, terminate/2, code_change/3, handle_call/3, handle_cast/2, 
          handle_info/2]).
 -export([init/3, websocket_init/3, websocket_handle/3, websocket_info/3, 
@@ -42,9 +42,7 @@
 -include("nksip.hrl").
 -include("nksip_call.hrl").
 -include_lib("wsock/include/wsock.hrl").
-% -include("../deps/wsock/include/wsock.hrl").
 
--compile([export_all]).
 
 %% ===================================================================
 %% Private
@@ -52,7 +50,7 @@
 
 
 %% @private Starts a new listening server
--spec get_listener(nksip:app_id(), nksip:transport(), nksip_lib:optslist()) ->
+-spec get_listener(nksip:app_id(), nksip:transport(), nksip:optslist()) ->
     term().
 
 get_listener(AppId, Transp, Opts) ->
@@ -77,18 +75,22 @@ get_listener(AppId, Transp, Opts) ->
 
 
 %% @private Starts a new connection to a remote server
--spec connect(nksip:app_id(), nksip:transport(), nksip_lib:optslist()) ->
+-spec connect(nksip:app_id(), nksip:transport(), nksip:optslist()) ->
     {ok, term()} | {error, term()}.
          
 connect(AppId, Transp, Opts) ->
-    #transport{proto=Proto, remote_ip=Ip, remote_port=Port, resource=Res} = Transp,
-    {InetMod, TranspMod} = case Proto of
-        ws -> {inet, gen_tcp};
-        wss -> {ssl, ssl}
-    end,
-    Res1 = case Res of <<>> -> <<"/">>; _ -> Res end,
-    SocketOpts = outbound_opts(Proto, Opts),
     try
+        case nksip_connection:is_max(AppId) of
+            false -> ok;
+            true -> throw(max_connections)
+        end,
+        #transport{proto=Proto, remote_ip=Ip, remote_port=Port, resource=Res} = Transp,
+        {InetMod, TranspMod} = case Proto of
+            ws -> {inet, gen_tcp};
+            wss -> {ssl, ssl}
+        end,
+        Res1 = case Res of <<>> -> <<"/">>; _ -> Res end,
+        SocketOpts = outbound_opts(Proto, AppId),
         Socket = case TranspMod:connect(Ip, Port, SocketOpts) of
             {ok, Socket0} -> Socket0;
             {error, Error1} -> throw(Error1) 
@@ -98,8 +100,7 @@ connect(AppId, Transp, Opts) ->
             ok -> ok;
             {error, Error2} -> throw(Error2)
         end,
-        ?debug(AppId, <<>>, "Sent ws hanshake: ~s", [print_headers(Data1)]),
-        case TranspMod:recv(Socket, 0, 5000) of
+        case recv(TranspMod, Socket, <<>>) of
             {ok, Data2} ->
                 ?debug(AppId, <<>>, "received ws reply: ~s", [print_headers(Data2)]),
                 case handshake_resp(AppId, Data2, HandshakeReq) of
@@ -117,7 +118,7 @@ connect(AppId, Transp, Opts) ->
             remote_port = Port,
             resource = Res1
         },
-        Timeout = 1000*nksip_lib:get_value(ws_timeout, Opts),
+        Timeout = 1000 * nksip_sipapp_srv:config(AppId, ws_timeout),
         Spec = {
             {AppId, Proto, Ip, Port, make_ref()},
             {nksip_connection, start_link, 
@@ -134,6 +135,22 @@ connect(AppId, Transp, Opts) ->
         {ok, Pid, Transp1}
     catch
         throw:TError -> {error, TError}
+    end.
+
+
+%% @private
+recv(Mod, Socket, Buff) ->
+    case Mod:recv(Socket, 0, 5000) of
+        {ok, Data} ->
+            Data1 = <<Buff/binary, Data/binary>>,
+            case binary:match(Data, <<"\r\n\r\n">>) of
+                nomatch -> 
+                    recv(Mod, Socket, Data1);
+                _ ->
+                    {ok, Data1}
+            end;
+        {error, Error} ->
+            {error, Error}
     end.
 
 
@@ -207,7 +224,7 @@ handle_info({'DOWN', MRef, process, _Pid, _Reason}, #state{webserver=MRef}=State
     {noreply, State};
     
 handle_info(Msg, State) -> 
-    lager:error("Module ~p received unexpected info ~p", [?MODULE, Msg]),
+    lager:warning("Module ~p received unexpected info ~p", [?MODULE, Msg]),
     {noreply, State}.
 
 
@@ -227,9 +244,9 @@ terminate(_Reason, _State) ->
     ok.
 
 
-%% ===================================================================
-%% Cowboy's callbacks
-%% ===================================================================
+% %% ===================================================================
+% %% Cowboy's callbacks
+% %% ===================================================================
 
 -record(ws_state, {
     conn_pid :: pid()
@@ -334,13 +351,13 @@ dispatch(List, Args) ->
 
 
 %% @private Gets socket options for outbound connections
--spec outbound_opts(nksip:protocol(), nksip_lib:optslist()) ->
-    nksip_lib:optslist().
+-spec outbound_opts(nksip:protocol(), nksip:app_id()) ->
+    nksip:optslist().
 
-outbound_opts(ws, _Opts) ->
+outbound_opts(ws, _AppId) ->
     [binary, {active, false}, {nodelay, true}, {keepalive, true}, {packet, raw}];
 
-outbound_opts(wss, Opts) ->
+outbound_opts(wss, AppId) ->
     case code:priv_dir(nksip) of
         PrivDir when is_list(PrivDir) ->
             DefCert = filename:join(PrivDir, "cert.pem"),
@@ -349,23 +366,27 @@ outbound_opts(wss, Opts) ->
             DefCert = "",
             DefKey = ""
     end,
-    Cert = nksip_lib:get_value(certfile, Opts, DefCert),
-    Key = nksip_lib:get_value(keyfile, Opts, DefKey),
+    Config = nksip_sipapp_srv:config(AppId),
+    Cert = nksip_lib:get_value(certfile, Config, DefCert),
+    Key = nksip_lib:get_value(keyfile, Config, DefKey),
     lists:flatten([
-        outbound_opts(ws, Opts),
+        binary, {active, false}, {nodelay, true}, {keepalive, true}, {packet, raw},
         case Cert of "" -> []; _ -> {certfile, Cert} end,
         case Key of "" -> []; _ -> {keyfile, Key} end
     ]).
 
+
 %% @private
 -spec handshake_req(inet:ip_address(), inet:port_number(), binary(), 
-                    nksip_lib:optslist()) ->
+                    nksip:optslist()) ->
     {binary(), #handshake{}}.
 
 handshake_req(Ip, Port, Res, Opts) ->
     Host = case nksip_lib:get_value(transport_uri, Opts) of
-        #uri{domain=Domain} -> binary_to_list(Domain);
-        undefined -> binary_to_list(nksip_lib:to_host(Ip))
+        #uri{domain=Domain} -> 
+            binary_to_list(Domain);
+        undefined -> 
+            binary_to_list(nksip_lib:to_host(Ip))
     end,
     Res1 = nksip_lib:to_list(Res),
     {ok, #handshake{message=Msg1}=HS1} = wsock_handshake:open(Res1, Host, Port),
@@ -388,11 +409,16 @@ handshake_resp(AppId, Data, Req) ->
                     case nksip_lib:get_value("Sec-Websocket-Protocol", Headers) of
                         "sip" -> 
                             ok;
-                        Other ->
-                            ?warning(AppId, <<>>, 
-                                     "websocket server did not send protocol: ~p", 
-                                     [Other]),
-                            ok
+                        _ ->
+                            %% R15 sends it in lowercase (?)
+                            case nksip_lib:get_value("sec-websocket-protocol", Headers) of
+                                "sip" -> 
+                                    ok;
+                                _ ->
+                                    ?warning(AppId, <<>>, 
+                                        "websocket server did not send protocol: ~p", 
+                                        [Headers])
+                            end
                     end;
                 {error, Error1} -> 
                     {error, Error1}
@@ -406,6 +432,10 @@ handshake_resp(AppId, Data, Req) ->
 
 
 %% private 
+print_headers(List) when is_list(List)->
+    Lines = [[<<"        ">>, Line]  || Line <- List],
+    list_to_binary(io_lib:format("\r\n\r\n~s\r\n", [list_to_binary(Lines)]));
+
 print_headers(Binary) ->
     Lines = [
         [<<"        ">>, Line, <<"\n">>]
