@@ -573,7 +573,7 @@ apply_reschedule_logic(JObj) ->
             JObj2
     end.
 
--spec apply_reschedule_rules({wh_json:json_terms(), wh_json:json_strings()}, wh_json:object()) ->
+-spec apply_reschedule_rules({wh_json:json_terms(), wh_json:keys()}, wh_json:object()) ->
           {'ok', wh_json:object()} | {'no_rules', wh_json:object()}.
 apply_reschedule_rules({[], _}, JObj) -> {'no_rules', JObj};
 apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->

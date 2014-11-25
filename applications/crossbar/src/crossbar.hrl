@@ -118,7 +118,7 @@
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
           ,resp_etag :: 'automatic' | string() | api_binary()
           ,resp_status = 'error' :: crossbar_status()
-          ,resp_error_msg :: wh_json:json_string()
+          ,resp_error_msg :: wh_json:key()
           ,resp_error_code :: pos_integer()
           ,resp_data :: resp_data()
           ,resp_headers = [] :: wh_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)

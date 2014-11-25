@@ -124,55 +124,81 @@ default_timeout() -> 2000.
                   request_return().
 -spec call(api_terms(), publish_fun(), validate_fun(), wh_timeout()) ->
                   request_return().
+-spec call(api_terms(), publish_fun(), validate_fun(), wh_timeout(), pid()) ->
+                  request_return().
 call(Req, PubFun, VFun) ->
     call(Req, PubFun, VFun, default_timeout()).
 
 call(Req, PubFun, VFun, Timeout) ->
-    Pool = wh_amqp_sup:pool_name(),
+    case next_worker() of
+        {'error', _}=E -> E;
+        Worker -> call(Req, PubFun, VFun, Timeout, Worker)
+    end.
+
+call(Req, PubFun, VFun, Timeout, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
+    try gen_listener:call(Worker
+                          ,{'request', Prop, PubFun, VFun, Timeout}
+                          ,fudge_timeout(Timeout)
+                         )
+    of
+        Reply -> Reply
+    catch
+        _E:R ->
+            lager:warning("request failed: ~s: ~p", [_E, R]),
+            {'error', R}
+    after
+        checkin_worker(Worker)
+    end.
+
+-spec next_worker() -> pid() |
+                       {'error', _}.
+next_worker() ->
+    Pool = wh_amqp_sup:pool_name(),
     try poolboy:checkout(Pool, 'false', default_timeout()) of
-        W when is_pid(W) ->
-            Reply = gen_listener:call(W
-                                      ,{'request', Prop, PubFun, VFun, Timeout}
-                                      ,fudge_timeout(Timeout)
-                                     ),
-            poolboy:checkin(Pool, W),
-            Reply;
-        'full' ->
-            lager:critical("failed to checkout worker: full"),
-            {'error', 'pool_full'}
+        'full' -> {'error', 'pool_full'};
+        Worker -> Worker
     catch
         _E:_R ->
             lager:warning("poolboy exception: ~s: ~p", [_E, _R]),
             {'error', 'poolboy_fault'}
     end.
 
+-spec checkin_worker(pid()) -> 'ok'.
+checkin_worker(Worker) ->
+    Pool = wh_amqp_sup:pool_name(),
+    poolboy:checkin(Pool, Worker).
+
 -spec call_custom(api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
                          request_return().
 -spec call_custom(api_terms(), publish_fun(), validate_fun(), wh_timeout(), gen_listener:binding()) ->
                          request_return().
+-spec call_custom(api_terms(), publish_fun(), validate_fun(), wh_timeout(), gen_listener:binding(), pid()) ->
+                         request_return().
 call_custom(Req, PubFun, VFun, Bind) ->
     call_custom(Req, PubFun, VFun, default_timeout(), Bind).
 call_custom(Req, PubFun, VFun, Timeout, Bind) ->
-    Pool = wh_amqp_sup:pool_name(),
+    case next_worker() of
+        {'error', _}=E -> E;
+        Worker -> call_custom(Req, PubFun, VFun, Timeout, Bind, Worker)
+    end.
+
+call_custom(Req, PubFun, VFun, Timeout, Bind, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
-    try poolboy:checkout(Pool, 'false', default_timeout()) of
-        W when is_pid(W) ->
-            gen_listener:add_binding(W, Bind),
-            Reply = gen_listener:call(W
-                                      ,{'request', Prop, PubFun, VFun, Timeout}
-                                      ,fudge_timeout(Timeout)
-                                     ),
-            gen_listener:rm_binding(W, Bind),
-            poolboy:checkin(Pool, W),
-            Reply;
-        'full' ->
-            lager:critical("failed to checkout worker: full"),
-            {'error', 'pool_full'}
+    gen_listener:add_binding(Worker, Bind),
+    try gen_listener:call(Worker
+                          ,{'request', Prop, PubFun, VFun, Timeout}
+                          ,fudge_timeout(Timeout)
+                         )
+    of
+        Reply -> Reply
     catch
-        _E:_R ->
-            lager:warning("poolboy error: ~s:~p", [_E, _R]),
-            {'error', 'poolboy_fault'}
+        _E:R ->
+            lager:debug("request failed: ~s: ~p", [_E, R]),
+            {'error', R}
+    after
+        gen_listener:rm_binding(Worker, Bind),
+        checkin_worker(Worker)
     end.
 
 -spec call_collect(api_terms(), publish_fun()) ->
@@ -180,6 +206,8 @@ call_custom(Req, PubFun, VFun, Timeout, Bind) ->
 -spec call_collect(api_terms(), publish_fun(), timeout_or_until()) ->
                           request_return().
 -spec call_collect(api_terms(), publish_fun(), collect_until(), wh_timeout()) ->
+                          request_return().
+-spec call_collect(api_terms(), publish_fun(), collect_until(), wh_timeout(), pid()) ->
                           request_return().
 call_collect(Req, PubFun) ->
     call_collect(Req, PubFun, default_timeout()).
@@ -216,39 +244,45 @@ call_collect(Req, PubFun, Whapp, Timeout)
     call_collect(Req, PubFun, collect_from_whapp(Whapp), Timeout);
 call_collect(Req, PubFun, UntilFun, Timeout)
   when is_integer(Timeout), Timeout >= 0 ->
-    Pool = wh_amqp_sup:pool_name(),
+    case next_worker() of
+        {'error', _}=E -> E;
+        Worker -> call_collect(Req, PubFun, UntilFun, Timeout, Worker)
+    end.
+
+call_collect(Req, PubFun, UntilFun, Timeout, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
-    try poolboy:checkout(Pool, 'false', default_timeout()) of
-        W when is_pid(W) ->
-            Reply = gen_listener:call(W, {'call_collect', Prop, PubFun, UntilFun, Timeout}
-                                      ,fudge_timeout(Timeout)
-                                     ),
-            poolboy:checkin(Pool, W),
-            Reply;
-        'full' ->
-            lager:critical("failed to checkout worker: full"),
-            {'error', 'pool_full'}
+    try gen_listener:call(Worker
+                          ,{'call_collect', Prop, PubFun, UntilFun, Timeout}
+                          ,fudge_timeout(Timeout)
+                         )
+    of
+        Reply -> Reply
     catch
-        _E:_R ->
-            lager:warning("poolboy error: ~s:~p", [_E, _R]),
-            {'error', 'poolboy_fault'}
+        _E:R ->
+            lager:debug("request failed: ~s: ~p", [_E, R]),
+            {'error', R}
+    after
+        checkin_worker(Worker)
     end.
 
 -spec cast(api_terms(), publish_fun()) -> 'ok' | {'error', _}.
+-spec cast(api_terms(), publish_fun(), pid()) -> 'ok' | {'error', _}.
 cast(Req, PubFun) ->
-    Pool = wh_amqp_sup:pool_name(),
+    case next_worker() of
+        {'error', _}=E -> E;
+        Worker -> cast(Req, PubFun, Worker)
+    end.
+
+cast(Req, PubFun, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
-    try poolboy:checkout(Pool, 'false', default_timeout()) of
-        W when is_pid(W) ->
-            poolboy:checkin(Pool, W),
-            gen_listener:cast(W, {'publish', Prop, PubFun});
-        'full' ->
-            lager:critical("failed to checkout worker: full"),
-            {'error', 'pool_full'}
+    try gen_listener:call(Worker, {'publish', Prop, PubFun}) of
+        Reply -> Reply
     catch
-        _E:_R ->
-            lager:warning("poolboy error: ~s:~p", [_E, _R]),
-            {'error', 'poolboy_fault'}
+        _E:R ->
+            lager:debug("request failed: ~s: ~p", [_E, R]),
+            {'error', R}
+    after
+        checkin_worker(Worker)
     end.
 
 -spec collect_until_timeout() -> collect_until_fun().
@@ -409,6 +443,32 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout}
             lager:debug("failed to send request: ~p", [Err]),
             {'reply', {'error', Err}, reset(State), 'hibernate'}
     end;
+handle_call({'publish', ReqProp, _}, _From, #state{queue='undefined'}=State) ->
+    lager:debug("unable to publish message prior to queue creation: ~p", [ReqProp]),
+    {'reply', {'error', 'not_ready'}, reset(State), 'hibernate'};
+handle_call({'publish', ReqProp, PublishFun}, _From, State) ->
+    Resp =
+        try PublishFun(ReqProp) of
+            'ok' -> 'ok';
+            Other ->
+                lager:debug("publisher fun returned ~p instead of 'ok'", [Other]),
+                {'error', Other}
+        catch
+            'error':'badarg' ->
+                ST = erlang:get_stacktrace(),
+                lager:debug("badarg error when publishing:"),
+                wh_util:log_stacktrace(ST),
+                {'error', 'badarg'};
+            'error':'function_clause' ->
+                ST = erlang:get_stacktrace(),
+                lager:debug("function clause error when publishing:"),
+                wh_util:log_stacktrace(ST),
+                {'error', 'function_clause'};
+            _E:R ->
+                lager:debug("failed to publish request: ~s:~p", [_E, R]),
+                {'error', R}
+        end,
+    {'reply', Resp, reset(State)};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State, 'hibernate'}.
 
@@ -497,26 +557,6 @@ handle_cast({'event', _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
     _ = wh_util:put_callid(JObj),
     lager:debug("received unexpected message with old/expired message id: ~s, waiting for ~s", [_MsgId, _CurrMsgId]),
     {'noreply', State};
-handle_cast({'publish', ReqProp, _}, #state{queue='undefined'}=State) ->
-    lager:debug("unable to publish message prior to queue creation: ~p", [ReqProp]),
-    {'noreply', reset(State), 'hibernate'};
-handle_cast({'publish', ReqProp, PublishFun}, State) ->
-    try PublishFun(ReqProp) of
-        'ok' -> 'ok';
-        _Other ->
-            lager:debug("publisher fun returned ~p instead of 'ok'", [_Other])
-    catch
-        'error':'badarg' ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("badarg error when publishing:"),
-            wh_util:log_stacktrace(ST);
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("function clause error when publishing:"),
-            wh_util:log_stacktrace(ST);
-        _E:_R -> lager:debug("failed to publish request: ~s:~p", [_E, _R])
-    end,
-    {'noreply', reset(State)};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->

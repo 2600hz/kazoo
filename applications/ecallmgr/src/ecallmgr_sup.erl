@@ -14,9 +14,6 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(POOL_SIZE, 100).
--define(OVERFLOW_POOL_SIZE, 100).
-
 -define(CHILDREN, [?WORKER('ecallmgr_init')
                    ,?SUPER('ecallmgr_auxiliary_sup')
                    ,?SUPER('ecallmgr_call_sup')

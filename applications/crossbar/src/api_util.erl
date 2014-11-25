@@ -536,7 +536,7 @@ get_http_verb(Method, Context) ->
 parse_path_tokens(Context, Tokens) ->
     parse_path_tokens(Context, Tokens, []).
 
--spec parse_path_tokens(cb_context:context(), wh_json:json_strings(), cb_mods_with_tokens()) ->
+-spec parse_path_tokens(cb_context:context(), wh_json:keys(), cb_mods_with_tokens()) ->
                                cb_mods_with_tokens().
 parse_path_tokens(_, [], Events) -> Events;
 parse_path_tokens(_, [<<>>], Events) -> Events;
