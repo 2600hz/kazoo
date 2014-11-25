@@ -110,26 +110,30 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({'gen_listener', {'created_queue', Q}}, #state{queue = 'undefined'} = S) ->
+handle_cast({'gen_listener', {'created_queue', Q}}, #state{queue='undefined'}=S) ->
     gen_listener:cast(self(), 'originate_park'),
     {'noreply', S#state{queue = Q}};
 handle_cast('originate_park', State) ->
     originate_park(State),
     {'noreply', State};
 handle_cast({'offnet_ctl_queue', CtrlQ}, State) ->
-    {'noreply', State#state{offnet_ctl_q = CtrlQ}};
+    {'noreply', State#state{offnet_ctl_q=CtrlQ}};
 handle_cast({'hangup_parked_call', _ErrMsg}, #state{parked_call_id='undefined'}=State) ->
     {'noreply', State};
-handle_cast({'hangup_parked_call', _ErrMsg}, #state{parked_call_id=ParkedCallId ,queue=Q ,offnet_ctl_q=CtrlQ}=State) ->
+handle_cast({'hangup_parked_call', _ErrMsg}, #state{parked_call_id=ParkedCallId
+                                                    ,queue=Q
+                                                    ,offnet_ctl_q=CtrlQ
+                                                   }=State) ->
     hangup_parked_call(ParkedCallId, Q, CtrlQ),
-    {'noreply', State#state{parked_call_id = 'undefined'}};
+    {'noreply', State#state{parked_call_id='undefined'}};
 handle_cast({'set_auth_doc_id', CallId}, #state{auth_doc_id=AuthDocId}=State) ->
     {'ok', Call} = whapps_call:retrieve(CallId, ?APP_NAME),
     CallUpdate = whapps_call:kvs_store('auth_doc_id', AuthDocId, Call),
     whapps_call:cache(CallUpdate, ?APP_NAME),
     {'noreply', State};
 handle_cast({'parked', CallId, ToDID}, State) ->
-    bridge_to_final_destination(CallId, ToDID, State),
+    _P = bridge_to_final_destination(CallId, ToDID, State),
+    lager:debug("bridging to ~s (via ~s) in ~p", [ToDID, CallId, _P]),
     {'noreply', State#state{parked_call_id = CallId}};
 handle_cast('stop_callback', State) ->
     {'stop', 'normal', State};
@@ -160,7 +164,6 @@ handle_info(_Info, State) ->
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
-
 -spec handle_resource_response(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_resource_response(JObj, Props) ->
     Srv = props:get_value('server', Props),
@@ -183,17 +186,22 @@ handle_resource_response(JObj, Props) ->
         {<<"call_event">>,<<"CHANNEL_EXECUTE_COMPLETE">>} ->
             cccp_util:handle_disconnect(JObj, Props);
         {<<"resource">>,<<"originate_resp">>} ->
-            case {wh_json:get_value(<<"Application-Name">>, JObj)
-                  ,wh_json:get_value(<<"Application-Response">>, JObj)}
-            of
-                {<<"bridge">>, <<"SUCCESS">>} ->
-                    gen_listener:cast(Srv, 'stop_callback');
-                {<<"park">>, <<"SUCCESS">>} ->
-                    gen_listener:cast(Srv, {'set_auth_doc_id', CallId});
-                _ -> 'ok'
-            end;
+            handle_originate_response(JObj, Srv, CallId);
         {<<"error">>,<<"originate_resp">>} ->
             gen_listener:cast(Srv, {'hangup_parked_call', wh_json:get_value(<<"Error-Message">>, JObj)});
+        _ -> 'ok'
+    end.
+
+-spec handle_originate_response(wh_json:object(), server_ref(), ne_binary()) -> 'ok'.
+handle_originate_response(JObj, Srv, CallId) ->
+    case {wh_json:get_value(<<"Application-Name">>, JObj)
+          ,wh_json:get_value(<<"Application-Response">>, JObj)
+         }
+    of
+        {<<"bridge">>, <<"SUCCESS">>} ->
+            gen_listener:cast(Srv, 'stop_callback');
+        {<<"park">>, <<"SUCCESS">>} ->
+            gen_listener:cast(Srv, {'set_auth_doc_id', CallId});
         _ -> 'ok'
     end.
 
@@ -231,19 +239,22 @@ originate_park(State) ->
     wapi_offnet_resource:publish_req(create_request(State)).
 
 -spec create_request(state()) -> wh_proplist().
-create_request(#state{account_id=AccountId, customer_number=ToDID, account_cid=AccountCID, queue=Q}) ->
+create_request(#state{account_id=AccountId
+                      ,customer_number=ToDID
+                      ,account_cid=AccountCID
+                      ,queue=Q
+                     }) ->
     CCVs = [{<<"Account-ID">>, AccountId}],
-    Request = [{<<"Application-Name">>, <<"park">>}
-               ,{<<"Resource-Type">>, <<"originate">>}
-               ,{<<"Originate-Immediate">>, 'true'}
-               ,{<<"To-DID">>, ToDID}
-               ,{<<"Outbound-Caller-ID-Number">>, AccountCID}
-               ,{<<"Progress-Timeout">>, 12}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-               ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    Request.
+    [{<<"Application-Name">>, <<"park">>}
+     ,{<<"Resource-Type">>, <<"originate">>}
+     ,{<<"Originate-Immediate">>, 'true'}
+     ,{<<"To-DID">>, ToDID}
+     ,{<<"Outbound-Caller-ID-Number">>, AccountCID}
+     ,{<<"Progress-Timeout">>, 12}
+     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+     ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
+     | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+    ].
 
 -spec handle_originate_ready(wh_json:object(), proplist()) -> 'ok'.
 handle_originate_ready(JObj, Props) ->
@@ -258,7 +269,7 @@ handle_originate_ready(JObj, Props) ->
             Prop = [{<<"Call-ID">>, CallId}
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     | wh_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
-            ],
+                   ],
             gen_listener:cast(Srv, {'offnet_ctl_queue', CtrlQ}),
             gen_listener:add_binding(Srv, {'call', ?MK_CALL_BINDING(CallId)}),
             wapi_dialplan:publish_originate_execute(Q, Prop);
@@ -268,13 +279,19 @@ handle_originate_ready(JObj, Props) ->
 -spec hangup_parked_call(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 hangup_parked_call(ParkedCallId, Q, CtrlQ) ->
     Hangup = [{<<"Application-Name">>, <<"hangup">>}
-             ,{<<"Insert-At">>, <<"now">>}
-             ,{<<"Call-ID">>, ParkedCallId}
-             | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)],
+              ,{<<"Insert-At">>, <<"now">>}
+              ,{<<"Call-ID">>, ParkedCallId}
+              | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+             ],
     wapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Hangup)).
 
--spec bridge_to_final_destination(ne_binary(), ne_binary(), state()) -> 'ok'.
-bridge_to_final_destination(CallId, ToDID, #state{queue=Q, offnet_ctl_q=CtrlQ, account_id=AccountId, account_cid=AccountCID, auth_doc_id=AccountDocId}) ->
+-spec bridge_to_final_destination(ne_binary(), ne_binary(), state()) -> pid().
+bridge_to_final_destination(CallId, ToDID, #state{queue=Q
+                                                  ,offnet_ctl_q=CtrlQ
+                                                  ,account_id=AccountId
+                                                  ,account_cid=AccountCID
+                                                  ,auth_doc_id=AccountDocId
+                                                 }) ->
     Req = cccp_util:build_bridge_request(CallId, ToDID, Q, CtrlQ, AccountId, AccountCID),
     wapi_offnet_resource:publish_req(Req),
-    _ = spawn('cccp_util', 'store_last_dialed', [ToDID, AccountDocId]).
+    spawn('cccp_util', 'store_last_dialed', [ToDID, AccountDocId]).
