@@ -113,20 +113,29 @@ start(Socket, Module, Options) ->
 %% @private
 -spec(init/1 :: (Args :: list()) -> {'ok', #state{}, ?TIMEOUT} | {'stop', any()} | 'ignore').
 init([Socket, Module, Options]) ->
-	{ok, {PeerName, _Port}} = socket:peername(Socket),
-	case Module:init(proplists:get_value(hostname, Options, smtp_util:guess_FQDN()), proplists:get_value(sessioncount, Options, 0), PeerName, proplists:get_value(callbackoptions, Options, [])) of
-		{ok, Banner, CallbackState} ->
-			socket:send(Socket, ["220 ", Banner, "\r\n"]),
-			socket:active_once(Socket),
-			{ok, #state{socket = Socket, module = Module, options = Options, callbackstate = CallbackState}, ?TIMEOUT};
-		{stop, Reason, Message} ->
-			socket:send(Socket, [Message, "\r\n"]),
-			socket:close(Socket),
-			{stop, Reason};
-		ignore ->
-			socket:close(Socket),
-			ignore
-	end.
+    case socket:peername(Socket) of
+        {ok, {PeerName, _Port}} ->    
+            case Module:init(proplists:get_value(hostname, Options, smtp_util:guess_FQDN()), proplists:get_value(sessioncount, Options, 0), PeerName, proplists:get_value(callbackoptions, Options, [])) of
+                {ok, Banner, CallbackState} ->
+                    socket:send(Socket, ["220 ", Banner, "\r\n"]),
+                    socket:active_once(Socket),
+                    {ok, #state{socket = Socket, module = Module, options = Options, callbackstate = CallbackState}, ?TIMEOUT};
+                {stop, Reason, Message} ->
+                    socket:send(Socket, [Message, "\r\n"]),
+                    socket:close(Socket),
+                    {stop, Reason};
+                ignore ->
+                    socket:close(Socket),
+                    ignore
+            end;
+        {error,enotconn} ->
+            socket:close(Socket),
+            ignore;
+        Other ->
+            io:format("socket peername error : ~p.~n", [Other]),
+            socket:close(Socket),
+            ignore
+    end.
 
 %% @hidden
 -spec handle_call(Message :: any(), From :: {pid(), reference()}, #state{}) -> {'stop', 'normal', 'ok', #state{}} | {'reply', {'unknown_call', any()}, #state{}}.
@@ -612,10 +621,15 @@ handle_request({<<"STARTTLS">>, <<>>}, #state{socket = Socket} = State) ->
 handle_request({<<"STARTTLS">>, _Args}, #state{socket = Socket} = State) ->
 	socket:send(Socket, "501 Syntax error (no parameters allowed)\r\n"),
 	{ok, State};
+handle_request({<<"PROXY">>, _Args}, State) ->
+    {ok, State};
 handle_request({Verb, Args}, #state{socket = Socket, module = Module, callbackstate = OldCallbackState} = State) ->
-	{Message, CallbackState} = Module:handle_other(Verb, Args, OldCallbackState),
-	socket:send(Socket, [Message, "\r\n"]),
-	{ok, State#state{callbackstate = CallbackState}}.
+    case Module:handle_other(Verb, Args, OldCallbackState) of
+        {Message, CallbackState} ->
+            socket:send(Socket, [Message, "\r\n"]);
+        {CallbackState} -> ok
+    end,
+    {ok, State#state{callbackstate = CallbackState}}.
 
 -spec(parse_encoded_address/1 :: (Address :: binary()) -> {binary(), binary()} | 'error').
 parse_encoded_address(<<>>) ->

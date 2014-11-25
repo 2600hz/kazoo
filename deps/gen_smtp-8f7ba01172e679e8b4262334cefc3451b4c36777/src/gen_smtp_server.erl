@@ -190,8 +190,18 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 		Sessions = case gen_smtp_server_session:start(ClientSocket, Module, [{hostname, Listener#listener.hostname}, {sessioncount, length(CurSessions) + 1} | Listener#listener.sessionoptions]) of
 			{ok, Pid} ->
 				link(Pid),
-				socket:controlling_process(ClientSocket, Pid),
-				CurSessions ++[Pid];
+                case socket:controlling_process(ClientSocket, Pid) of
+                    'ok' ->
+                        io:format("new smtp session on ~s : current sessions ~p~n", [Module , length(CurSessions) + 1]),
+                        CurSessions ++[Pid];
+                    {'error', closed} ->
+                        Pid ! {tcp_closed, ClientSocket},
+                        CurSessions;
+                    {'error', E} ->
+                        io:format("error [~p] setting controlling process ~s : ~p~n", [E, Module, Pid]),
+                        Pid ! {tcp_closed, ClientSocket},
+                        CurSessions
+                end;                
 			_Other ->
 				CurSessions
 		end,
@@ -215,6 +225,9 @@ handle_info({inet_async, ListenSocket, _, {error, econnaborted}}, State) ->
 handle_info({inet_async, _ListenSocket,_, Error}, State) ->
 	error_logger:error_msg("Error in socket acceptor: ~p.~n", [Error]),
 	{stop, Error, State};
+handle_info({tcp_closed, _Socket}, #state{module = Module, sessions = CurSessions} = State) ->
+    io:format("tcp_closed ~p on smtp_server module ~s. sessions = ~p~n",[_Socket, Module, length(CurSessions)]),
+    {noreply, State};
 handle_info(_Info, State) ->
 	{noreply, State}.
 
