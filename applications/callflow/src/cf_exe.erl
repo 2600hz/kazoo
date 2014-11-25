@@ -179,7 +179,8 @@ get_branch_keys(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     get_branch_keys(Srv).
 
--spec get_all_branch_keys(whapps_call:call() | pid()) -> {'branch_keys', wh_json:keys()}.
+-spec get_all_branch_keys(whapps_call:call() | pid()) ->
+                                 {'branch_keys', wh_json:keys()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'get_branch_keys', 'all'});
 get_all_branch_keys(Call) ->
