@@ -940,7 +940,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
-            ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj, wh_services:find_reseller_id(AccountId)),
+            ResellerId = wh_services:find_reseller_id(AccountId),
             cb_context:setters(Context
                                ,[{fun cb_context:set_resp_status/2, 'success'}
                                  ,{fun cb_context:set_account_db/2, AccountDb}
