@@ -8,28 +8,21 @@
 %%%-------------------------------------------------------------------
 -module(cccp_util).
 
--export([handle_callinfo/2
-        ,relay_amqp/2
-        ,authorize/2
-        ,handle_disconnect/2
-        ,get_number/1
-        ,store_last_dialed/2
-        ,build_bridge_request/6
+-export([relay_amqp/2
+         ,authorize/2
+         ,handle_disconnect/2
+         ,get_number/1
+         ,store_last_dialed/2
+         ,build_bridge_request/6
         ]).
 
 -include("cccp.hrl").
 
--spec handle_callinfo(wh_json:object(), wh_proplist()) -> 'ok'.
-handle_callinfo(JObj, Props) ->
-    relay_amqp(JObj, Props).
-
 -spec relay_amqp(wh_json:object(), wh_proplist()) -> 'ok'.
 relay_amqp(JObj, _Props) ->
     case whapps_call:retrieve(wh_json:get_value(<<"Call-ID">>, JObj), ?APP_NAME) of
-        {'ok', Call} ->
-            relay_event(JObj, Call);
-        _ ->
-            'ok'
+        {'ok', Call} -> relay_event(JObj, Call);
+        _ -> 'ok'
     end.
 
 -spec relay_event(wh_json:object(), wh_proplist()) -> 'ok'.
@@ -42,18 +35,17 @@ relay_event(JObj, Call) ->
 -spec handle_disconnect(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_disconnect(JObj, _Props) ->
     case (<<"CHANNEL_EXECUTE_COMPLETE">> =:= wh_json:get_value(<<"Event-Name">>, JObj))
-         andalso
-         is_binary(wh_json:get_value(<<"Hangup-Code">>, JObj)) of
-            'true' -> handle_disconnect_cause(JObj);
-            'false' -> 'ok'
+        andalso is_binary(wh_json:get_value(<<"Hangup-Code">>, JObj))
+    of
+        'true' -> handle_disconnect_cause(JObj);
+        'false' -> 'ok'
     end.
 
 -spec handle_disconnect_cause(wh_json:object()) -> 'ok'.
 handle_disconnect_cause(JObj) ->
     {'ok', Call} = whapps_call:retrieve(wh_json:get_value(<<"Call-ID">>, JObj), ?APP_NAME),
     case wh_json:get_value(<<"Disposition">>, JObj) of
-        'undefined' ->
-            'ok';
+        'undefined' -> 'ok';
         <<"UNALLOCATED_NUMBER">> ->
             whapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),  %%% don't feel if it is needed
             whapps_call_command:queued_hangup(Call);                        %%% we can setup different prompt
@@ -71,22 +63,25 @@ handle_disconnect_cause(JObj) ->
             whapps_call_command:queued_hangup(Call)
     end.
 
--spec authorize(ne_binary(), ne_binary()) -> {ok, ne_binaries()} | 'empty' | 'error'.
+-spec authorize(ne_binary(), ne_binary()) ->
+                       {'ok', ne_binaries()} |
+                       'empty' |
+                       'error'.
 authorize(Value, View) ->
     ViewOptions = [{'key', Value}],
     case couch_mgr:get_results(?CCCPS_DB, View, ViewOptions) of
-        {ok,[]} ->
+        {'ok',[]} ->
             lager:info("Auth by ~p failed for: ~p. No such value in Db.", [Value, View]),
             'empty';   %%% don't change. used in cb_cccps.erl
-        {ok, [JObj]} ->
+        {'ok', [JObj]} ->
             AccountId = wh_json:get_value([<<"value">>,<<"account_id">>], JObj),
             OutboundCID = wh_json:get_value([<<"value">>,<<"outbound_cid">>], JObj),
             [AccountId
              ,legalize_outbound_cid(OutboundCID, AccountId)
              ,wh_json:get_value([<<"value">>,<<"id">>], JObj)
             ];
-        E ->
-            lager:info("Auth failed for ~p. Error occurred: ~p.", [Value, E]),
+        _E ->
+            lager:info("Auth failed for ~p. Error occurred: ~p.", [Value, _E]),
             'error'
     end.
 
@@ -99,8 +94,12 @@ legalize_outbound_cid(OutboundCID, AccountId) ->
 
 -spec ensure_valid_caller_id(ne_binary(), ne_binary()) -> ne_binary().
 ensure_valid_caller_id(OutboundCID, AccountId) ->
-    {ok, AccountPhoneNumbersList} = couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"phone_numbers">>),
-    case lists:member(wnm_util:normalize_number(OutboundCID), wh_json:get_keys(AccountPhoneNumbersList)) of
+    {'ok', AccountPhoneNumbersList} =
+        couch_mgr:open_cache_doc(wh_util:format_account_id(AccountId, 'encoded'), <<"phone_numbers">>),
+    case lists:member(wnm_util:normalize_number(OutboundCID)
+                      ,wh_json:get_keys(AccountPhoneNumbersList)
+                     )
+    of
         'true' ->
             OutboundCID;
         'false' ->
@@ -109,18 +108,20 @@ ensure_valid_caller_id(OutboundCID, AccountId) ->
             DefaultCID
     end.
 
--spec get_number(whapps_call:call()) -> {'num_to_dial', ne_binary()} | 'ok'.
+-spec get_number(whapps_call:call()) ->
+                        {'num_to_dial', ne_binary()} |
+                        'ok'.
 get_number(Call) ->
     RedialCode = whapps_config:get(?CCCP_CONFIG_CAT, <<"last_number_redial_code">>, <<"*0">>),
     case whapps_call_command:b_prompt_and_collect_digits(2, 13, <<"cf-enter_number">>, 3, Call) of
-       {ok, RedialCode} ->
-           get_last_dialed_number(Call);
-       {ok, EnteredNumber} ->
-           verify_entered_number(EnteredNumber, Call);
-       Err ->
-           lager:info("No Phone number obtained: ~p", [Err]),
-           whapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
-           whapps_call_command:queued_hangup(Call)
+        {'ok', RedialCode} ->
+            get_last_dialed_number(Call);
+        {'ok', EnteredNumber} ->
+            verify_entered_number(EnteredNumber, Call);
+        _Err ->
+            lager:info("No Phone number obtained: ~p", [_Err]),
+            whapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
+            whapps_call_command:queued_hangup(Call)
     end.
 
 -spec verify_entered_number(ne_binary(), whapps_call:call()) -> 'ok'.
@@ -136,7 +137,9 @@ verify_entered_number(EnteredNumber, Call) ->
             whapps_call_command:queued_hangup(Call)
     end.
 
--spec get_last_dialed_number(whapps_call:call()) -> {'num_to_dial', ne_binary()} | 'ok'.
+-spec get_last_dialed_number(whapps_call:call()) ->
+                                    {'num_to_dial', ne_binary()} |
+                                    'ok'.
 get_last_dialed_number(Call) ->
     {'ok', CachedCall} = whapps_call:retrieve(whapps_call:call_id(Call), ?APP_NAME),
     DocId = whapps_call:kvs_fetch('auth_doc_id', CachedCall),
@@ -156,7 +159,9 @@ store_last_dialed(Number, DocId) ->
     _ = couch_mgr:update_doc(wh_json:get_value(<<"pvt_account_db">>, Doc), DocId, [{<<"pvt_last_dialed">>, Number}]),
     'ok'.
 
--spec check_restrictions(ne_binary(), whapps_call:call()) -> {'num_to_dial', ne_binary()} | 'ok'.
+-spec check_restrictions(ne_binary(), whapps_call:call()) ->
+                                {'num_to_dial', ne_binary()} |
+                                'ok'.
 check_restrictions(Number, Call) ->
     {'ok', CachedCall} = whapps_call:retrieve(whapps_call:call_id(Call), ?APP_NAME),
     DocId = whapps_call:kvs_fetch('auth_doc_id', CachedCall),
@@ -180,7 +185,9 @@ is_number_restricted(Number, DocId, AccountDb) ->
             wh_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
 
--spec is_user_restricted(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> {'num_to_dial', ne_binary()} | 'ok'.
+-spec is_user_restricted(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) ->
+                                {'num_to_dial', ne_binary()} |
+                                'ok'.
 is_user_restricted(Number, UserId, AccountDb, Call) ->
     case is_number_restricted(Number, UserId, AccountDb) of
         'true' ->
@@ -195,18 +202,20 @@ hangup_unauthorized_call(Call) ->
     whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
     whapps_call_command:queued_hangup(Call).
 
--spec build_bridge_request(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> wh_proplist().
+-spec build_bridge_request(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                                  wh_proplist().
 build_bridge_request(CallId, ToDID, Q, CtrlQ, AccountId, OutboundCID) ->
-    props:filter_undefined([{<<"Resource-Type">>, <<"audio">>}
-        ,{<<"Application-Name">>, <<"bridge">>}
-        ,{<<"Existing-Call-ID">>, CallId}
-        ,{<<"Call-ID">>, CallId}
-        ,{<<"Control-Queue">>, CtrlQ}
-        ,{<<"To-DID">>, ToDID}
-        ,{<<"Resource-Type">>, <<"originate">>}
-        ,{<<"Outbound-Caller-ID-Number">>, OutboundCID}
-        ,{<<"Originate-Immediate">>, 'true'}
-        ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-        ,{<<"Account-ID">>, AccountId}
-        | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-    ]).
+    props:filter_undefined(
+      [{<<"Resource-Type">>, <<"audio">>}
+       ,{<<"Application-Name">>, <<"bridge">>}
+       ,{<<"Existing-Call-ID">>, CallId}
+       ,{<<"Call-ID">>, CallId}
+       ,{<<"Control-Queue">>, CtrlQ}
+       ,{<<"To-DID">>, ToDID}
+       ,{<<"Resource-Type">>, <<"originate">>}
+       ,{<<"Outbound-Caller-ID-Number">>, OutboundCID}
+       ,{<<"Originate-Immediate">>, 'true'}
+       ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
+       ,{<<"Account-ID">>, AccountId}
+       | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+      ]).
