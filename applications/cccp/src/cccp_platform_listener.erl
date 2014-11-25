@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright 
+%%% @copyright
 %%% @doc
 %%%
 %%% @end
@@ -39,14 +39,6 @@
 -define(BINDINGS, [{'self', []}]).
 
 -define(RESPONDERS, []).
-
-%%
-%% Moving responders from handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{call=Call}=State)
-%% to the start (over here) broke functionality. 
-%%
-%%-define(RESPONDERS, [{{'cccp_util', 'handle_callinfo'}, [{<<"call_event">>, <<"*">>}]}
-%%                    ,{{'cccp_util', 'handle_disconnect'}, [{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}]} 
-%%                    ]).
 
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -245,4 +237,3 @@ put_auth_doc_id(AuthDocId, CallId) ->
     {'ok', CachedCall} = whapps_call:retrieve(CallId, ?APP_NAME),
     CallUpdate = whapps_call:kvs_store('auth_doc_id', AuthDocId, CachedCall),
     whapps_call:cache(CallUpdate, ?APP_NAME).
-

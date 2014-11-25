@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright 
+%%% @copyright
 %%% @doc
 %%%
 %%% @end
@@ -59,7 +59,7 @@ handle_route_win(JObj, Props) ->
 -spec handle_config_change(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_config_change(_JObj, _Props) ->
     'ok'.
-    
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -87,9 +87,8 @@ handle_callback(CallerNumber, Call) ->
                     ,{<<"Auth-Doc-Id">>, AuthDocId}
                    ]},
             timer:sleep(2000),
-            cccp_callback_listener:add_request(JObj);
+            cccp_callback_sup:new(JObj);
         E ->
             lager:info("No caller information found for ~p. Won't call it back. (~p)", [CallerNumber, E]),
             'ok'
     end.
-
