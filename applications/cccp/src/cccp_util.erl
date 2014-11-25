@@ -25,7 +25,7 @@ relay_amqp(JObj, _Props) ->
         _ -> 'ok'
     end.
 
--spec relay_event(wh_json:object(), wh_proplist()) -> 'ok'.
+-spec relay_event(wh_json:object(), whapps_call:call()) -> 'ok'.
 relay_event(JObj, Call) ->
     case whapps_call:kvs_fetch('consumer_pid', Call) of
         Pid when is_pid(Pid) -> whapps_call_command:relay_event(Pid, JObj);
@@ -202,7 +202,7 @@ hangup_unauthorized_call(Call) ->
     whapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
     whapps_call_command:queued_hangup(Call).
 
--spec build_bridge_request(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec build_bridge_request(ne_binary(), ne_binary(), binary(), ne_binary(), ne_binary(), ne_binary()) ->
                                   wh_proplist().
 build_bridge_request(CallId, ToDID, Q, CtrlQ, AccountId, OutboundCID) ->
     props:filter_undefined(

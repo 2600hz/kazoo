@@ -224,6 +224,7 @@ pin_collect(Call, Retries) ->
             pin_collect(Call, Retries - 1)
     end.
 
+-spec handle_entered_pin(whapps_call:call(), integer(), ne_binary()) -> 'ok'.
 handle_entered_pin(Call, Retries, EnteredPin) ->
     case cccp_util:authorize(EnteredPin, <<"cccps/pin_listing">>) of
         [AccountId, OutboundCID, AuthDocId] ->
