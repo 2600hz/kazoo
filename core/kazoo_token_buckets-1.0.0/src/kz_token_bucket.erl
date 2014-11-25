@@ -26,6 +26,7 @@
          ,credit/2
          ,tokens/1
          ,set_name/2
+         ,default_fill_time/0
         ]).
 
 %% gen_server callbacks
@@ -39,6 +40,7 @@
 
 -include("kz_buckets.hrl").
 
+-define(FILL_TIME, whapps_config:get_integer(<<"token_buckets">>, <<"tokens_fill_time">>, <<"second">>)).
 -define(TOKEN_FILL_TIME, 'fill_er_up').
 
 -type fill_rate_time() :: 'second' | 'minute' | 'hour' | 'day'.
@@ -68,7 +70,7 @@
 -spec start_link(pos_integer(), pos_integer(), boolean()) -> startlink_ret().
 start_link(Max, FillRate) -> start_link(Max, FillRate, 'true').
 start_link(Max, FillRate, FillBlock) ->
-    start_link(Max, FillRate, FillBlock, 'second').
+    start_link(Max, FillRate, FillBlock, default_fill_time()).
 start_link(Max, FillRate, FillBlock, FillTime) when is_integer(FillRate), FillRate > 0,
                                                     is_integer(Max), Max > 0,
                                                     is_boolean(FillBlock),
@@ -105,6 +107,17 @@ tokens(Srv) -> gen_server:call(Srv, {'tokens'}).
 
 -spec set_name(pid(), ne_binary()) -> 'ok'.
 set_name(Srv, Name) -> gen_server:cast(Srv, {'name', Name}).
+
+-spec default_fill_time() -> fill_rate_time().
+-spec default_fill_time(api_binary()) -> fill_rate_time().
+default_fill_time() ->
+    default_fill_time(?FILL_TIME).
+
+default_fill_time(<<"day">>) -> 'day';
+default_fill_time(<<"hour">>) -> 'hour';
+default_fill_time(<<"minute">>) -> 'minute';
+default_fill_time(_) -> 'second'.
+
 
 %%%===================================================================
 %%% gen_server callbacks

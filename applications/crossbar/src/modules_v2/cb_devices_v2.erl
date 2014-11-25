@@ -419,8 +419,18 @@ on_successful_validation(DeviceId, Context) ->
 maybe_validate_quickcall(Context) ->
     maybe_validate_quickcall(Context, cb_context:resp_status(Context)).
 maybe_validate_quickcall(Context, 'success') ->
+    case kz_buckets:consume_tokens(cb_modules_util:bucket_name(Context)
+                                   ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
+                                  )
+        of
+        'true' -> maybe_allow_quickcalls(Context);
+        'false' -> cb_context:add_system_error('too_many_requests', Context)
+    end.
+
+-spec maybe_allow_quickcalls(cb_context:context()) -> cb_context:context().
+maybe_allow_quickcalls(Context) ->
     case (not wh_util:is_empty(cb_context:auth_token(Context)))
-        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anoymous_quickcalls">>))
+        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anonymous_quickcalls">>))
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context

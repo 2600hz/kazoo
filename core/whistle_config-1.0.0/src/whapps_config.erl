@@ -436,7 +436,10 @@ get_category(Category) ->
                ],
     lists:foldl(fun(_, {'ok', _}=Acc) -> Acc;
                    (F, _) -> F(Category)
-                end, {'error', 'not_found'}, Routines).
+                end
+                ,{'error', 'not_found'}
+                ,Routines
+               ).
 
 -spec get_config_cache(ne_binary()) -> fetch_ret().
 get_config_cache(Category) ->
@@ -468,7 +471,8 @@ cache_jobj(Category, JObj) ->
     wh_cache:store_local(?WHAPPS_CONFIG_CACHE
                          ,category_key(Category)
                          ,JObj
-                         ,CacheProps),
+                         ,CacheProps
+                        ),
     {'ok', JObj}.
 
 %%-----------------------------------------------------------------------------

@@ -164,7 +164,7 @@ start_bucket(Name) ->
 start_bucket(Name, MaxTokens) ->
     start_bucket(Name, MaxTokens, ?FILL_RATE).
 start_bucket(Name, MaxTokens, FillRate) ->
-    start_bucket(Name, MaxTokens, FillRate, 'second').
+    start_bucket(Name, MaxTokens, FillRate, kz_token_bucket:default_fill_time()).
 start_bucket(Name, MaxTokens, FillRate, FillTime) ->
     case exists(Name) of
         'true' ->

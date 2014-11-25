@@ -18,6 +18,7 @@
          ,content_type_to_extension/1
 
          ,bucket_name/1
+         ,token_cost/1, token_cost/2
          ,reconcile_services/1
          ,bind/2
 
@@ -413,3 +414,61 @@ bucket_name('undefined', AccountId) ->
     <<"no_ip/", AccountId/binary>>;
 bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
+
+-spec token_cost(cb_context:context()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer() | wh_json:key() | wh_json:keys()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer(), wh_json:keys()) -> non_neg_integer().
+
+token_cost(Context) ->
+    token_cost(Context, 1).
+
+token_cost(Context, <<_/binary>> = Suffix) ->
+    token_cost(Context, 1, [Suffix]);
+token_cost(Context, [_|_]=Suffix) ->
+    token_cost(Context, 1, Suffix);
+token_cost(Context, Default) ->
+    token_cost(Context, Default, []).
+
+token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
+    Costs = whapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
+    find_token_cost(Costs
+                    ,Default
+                    ,Suffix
+                    ,cb_context:req_nouns(Context)
+                    ,cb_context:req_verb(Context)
+                    ,cb_context:account_id(Context)
+                   ).
+
+-spec find_token_cost(wh_json:object() | non_neg_integer()
+                      ,non_neg_integer()
+                      ,wh_json:keys()
+                      ,req_nouns()
+                      ,http_method()
+                      ,api_binary()
+                     ) ->
+                             non_neg_integer().
+
+find_token_cost(N, _Default, _Suffix, _Nouns, _ReqVerb, _AccountId) when is_integer(N) ->
+    lager:debug("flat token cost of ~p configured", [N]),
+    N;
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _} | _], ReqVerb, 'undefined') ->
+    Keys = [[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
+           ],
+    get_token_cost(JObj, Default, Keys);
+find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
+    Keys = [[AccountId, Endpoint, ReqVerb | Suffix]
+            ,[AccountId, Endpoint | Suffix]
+            ,[AccountId | Suffix]
+            ,[Endpoint, ReqVerb | Suffix]
+            ,[Endpoint | Suffix]
+           ],
+    get_token_cost(JObj, Default, Keys).
+
+-spec get_token_cost(wh_json:object(), non_neg_integer(), wh_json:keys()) ->
+                            non_neg_integer().
+get_token_cost(JObj, Default, Keys) ->
+    case wh_json:get_first_defined(Keys, JObj) of
+        'undefined' -> Default;
+        V -> wh_util:to_integer(V)
+    end.

@@ -95,9 +95,9 @@ all(Res) when is_list(Res) ->
 -spec succeeded(map_results()) -> map_results().
 succeeded(Res) when is_list(Res) ->
     Successes = kazoo_bindings:succeeded(Res, fun filter_out_failed/1),
-    case lists:keyfind('halt', 1, Successes) of
-        'false' -> Successes;
-        {'value', HaltTuple} -> [HaltTuple]
+    case props:get_value('halt', Successes) of
+        'undefined' -> Successes;
+        HaltContext -> [{'halt', HaltContext}]
     end.
 
 -spec failed(map_results()) -> map_results().

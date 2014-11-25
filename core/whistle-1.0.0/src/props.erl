@@ -83,12 +83,21 @@ filter_undefined(Props) ->
            end
     ].
 
--spec get_value(wh_proplist_key(), wh_proplist()) -> term().
--spec get_value(wh_proplist_key(), wh_proplist(), Default) -> Default | term().
+-spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist()) ->
+                       term().
+-spec get_value(wh_proplist_key() | wh_proplist_keys(), wh_proplist(), Default) ->
+                       Default | term().
 get_value(Key, Props) ->
     get_value(Key, Props, 'undefined').
 
-get_value(_Key, [], Def) -> Def;
+get_value(_Key, [], Default) -> Default;
+get_value([Key], Props, Default) ->
+    get_value(Key, Props, Default);
+get_value([Key|Keys], Props, Default) ->
+    case get_value(Key, Props) of
+        'undefined' -> Default;
+        SubProps -> get_value(Keys, SubProps, Default)
+    end;
 get_value(Key, Props, Default) when is_list(Props) ->
     case lists:keyfind(Key, 1, Props) of
         'false' ->
