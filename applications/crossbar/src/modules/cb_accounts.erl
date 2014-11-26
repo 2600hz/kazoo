@@ -673,21 +673,15 @@ load_children_v1(AccountId, Context) ->
 
 -spec load_paginated_children(ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_children(AccountId, Context) ->
-    StartKey = crossbar_doc:start_key(Context),
+    StartKey = start_key(Context),
     fix_envelope(
       crossbar_doc:load_view(?AGG_VIEW_CHILDREN
-                             ,[{'startkey', start_key(AccountId, StartKey)}
-                               ,{'endkey', [wh_json:new(), AccountId]}
+                             ,[{'startkey', [AccountId, StartKey]}
+                               ,{'endkey', [AccountId, wh_json:new()]}
                               ]
                              ,Context
                              ,fun normalize_view_results/2
                             )).
-
--spec start_key(ne_binary(), api_binary()) -> ne_binaries().
-start_key(AccountId, 'undefined') ->
-    [<<>>, AccountId];
-start_key(AccountId, StartKey) ->
-    [StartKey, AccountId].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -712,12 +706,12 @@ load_descendants_v1(AccountId, Context) ->
 
 -spec load_paginated_descendants(ne_binary(), cb_context:context()) -> cb_context:context().
 load_paginated_descendants(AccountId, Context) ->
-    StartKey = crossbar_doc:start_key(Context),
+    StartKey = start_key(Context),
     lager:debug("account ~s startkey ~s", [AccountId, StartKey]),
     fix_envelope(
       crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                             ,[{'startkey', start_key(AccountId, StartKey)}
-                               ,{'endkey', [AccountId, wh_json:new()]}
+                             ,[{'startkey', [AccountId, StartKey]}
+                               ,{'endkey',  [AccountId, wh_json:new()]}
                               ]
                              ,Context
                              ,fun normalize_view_results/2
@@ -775,6 +769,14 @@ load_siblings_results(_AccountId, Context, [JObj|_]) ->
 load_siblings_results(AccountId, Context, _) ->
     cb_context:add_system_error('bad_identifier', [{'details', AccountId}],  Context).
 
+
+-spec start_key(cb_context:context()) -> binary().
+start_key(Context) ->
+    case crossbar_doc:start_key(Context) of
+        'undefined' -> <<>>;
+        Key -> Key
+    end.
+
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
     cb_context:set_resp_envelope(
@@ -795,7 +797,7 @@ fix_start_key('undefined') -> 'undefined';
 fix_start_key(<<_/binary>> = StartKey) -> StartKey;
 fix_start_key([StartKey]) -> StartKey;
 fix_start_key([_AccountId, [_|_]=Keys]) -> lists:last(Keys);
-fix_start_key([StartKey, _AccountId]) -> StartKey;
+fix_start_key([_AccountId, StartKey]) -> StartKey;
 fix_start_key([StartKey|_T]) -> StartKey.
 
 %%--------------------------------------------------------------------
