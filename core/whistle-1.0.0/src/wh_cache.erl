@@ -181,7 +181,8 @@ store_local(Srv, K, V) -> store_local(Srv, K, V, []).
 
 store_local(Srv, K, V, Props) when is_atom(Srv) ->
     case whereis(Srv) of
-        'undefined' -> throw({'error', 'unknown_cache'});
+        'undefined' ->
+            throw({'error', 'unknown_cache', Srv});
         Pid -> store_local(Pid, K, V, Props)
     end;
 store_local(Srv, K, V, Props) ->

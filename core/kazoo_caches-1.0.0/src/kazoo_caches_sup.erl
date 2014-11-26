@@ -1,33 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz, INC
+%%% @copyright (C) 2014, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(whistle_couch_sup).
+-module(kazoo_caches_sup).
 
 -behaviour(supervisor).
 
--include_lib("wh_couch.hrl").
+-export([start_link/0]).
+-export([init/1]).
 
--export([start_link/0
-         ,init/1
-         ,compactor_pid/0
-        ]).
+-include("kz_caches.hrl").
 
--define(ORIGIN_BINDINGS, [[]]).
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-                      ,'new_node_flush'
-                      ,'channel_reconnect_flush'
-                     ]).
+-define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
+                          ,[{'db', ?WH_CONFIG_DB}]
+                         ]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
--define(CHILDREN, [?CACHE_ARGS(?WH_COUCH_CACHE, ?CACHE_PROPS)
-                   ,?SUPER('wh_couch_connection_sup')
-                   ,?SUPER('wh_change_handler_sup')
-                   ,?WORKER('wh_couch_connections')
-                   ,?WORKER('wh_couch_bootstrap')
-                   ,?WORKER('couch_compactor_fsm')
+%% Helper macro for declaring children of supervisor
+-define(CHILDREN, [?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
+                   ,?CACHE_ARGS(?WHAPPS_CALL_CACHE, ?CACHE_PROPS)
                   ]).
 
 %% ===================================================================
@@ -41,14 +35,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
-start_link() -> supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
-
--spec compactor_pid() -> pid() | 'undefined'.
-compactor_pid() ->
-    case [P || {'couch_compactor_fsm', P, 'worker', _} <- supervisor:which_children('whistle_couch_sup')] of
-        [Pid] -> Pid;
-        [] -> 'undefined'
-    end.
+start_link() ->
+    supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
