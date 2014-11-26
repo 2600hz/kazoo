@@ -4,6 +4,9 @@ REBAR = $(ROOT)/utils/rebar/rebar
 
 FILES = $(shell ls ebin/*.beam | grep -v smtp_rfc822_parse)
 
+all:
+	@./rebar compile
+
 compile:
 	@./rebar compile
 
