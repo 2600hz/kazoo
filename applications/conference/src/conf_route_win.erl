@@ -30,9 +30,9 @@ start_participant(Conference, Call) ->
     end.
 
 join_local(Participant, Conference, Call) ->
-    Routines = [fun(C) -> whapps_conference:set_moderator('false', C) end
-                ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
-                ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
+    Routines = [{fun whapps_conference:set_moderator/2, 'false'}
+                ,{fun whapps_conference:set_application_version/2, <<"2.0.0">>}
+                ,{fun whapps_conference:set_application_name/2, <<"conferences">>}
                ],
     C = whapps_conference:update(Routines, Conference),
     conf_participant:set_conference(C, Participant),
