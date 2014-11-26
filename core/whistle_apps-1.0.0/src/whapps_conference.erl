@@ -226,7 +226,7 @@ update(Updaters, Conference) ->
 
 -spec update_fold(updater_1() | updater_2(), whapps_conference:conference()) ->
                          whapps_conference:conference().
-update_fold({Value, Fun}, Conference) when is_function(Fun, 2) ->
+update_fold({Fun, Value}, Conference) when is_function(Fun, 2) ->
     Fun(Value, Conference);
 update_fold(Fun, Conference) when is_function(Fun, 1) ->
     Fun(Conference).
