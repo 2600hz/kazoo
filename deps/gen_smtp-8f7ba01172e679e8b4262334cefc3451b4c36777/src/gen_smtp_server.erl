@@ -210,12 +210,11 @@ handle_info({inet_async, ListenPort,_, {ok, ClientAcceptSocket}},
 		error_logger:error_msg("Error in socket acceptor: ~p.~n", [Error]),
 		{noreply, State}
 	end;
-handle_info({'EXIT', From, Reason}, State) ->
+handle_info({'EXIT', From, _Reason}, State) ->
 	case lists:member(From, State#state.sessions) of
 		true ->
 			{noreply, State#state{sessions = lists:delete(From, State#state.sessions)}};
 		false ->
-			io:format("process ~p exited with reason ~p~n", [From, Reason]),
 			{noreply, State}
 	end;
 handle_info({inet_async, ListenSocket, _, {error, econnaborted}}, State) ->
