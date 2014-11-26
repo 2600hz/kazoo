@@ -1,31 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2014, 2600Hz INC
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(whistle_apps_sup).
+-module(kazoo_caches_sup).
 
 -behaviour(supervisor).
 
--export([start_link/0
-         ,initialize_whapps/1
-         ,init/1
-         ,start_child/1
-        ]).
+-export([start_link/0]).
+-export([init/1]).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_databases.hrl").
--include("whapps_call_command.hrl").
--include("whistle_apps.hrl").
+-include("kz_caches.hrl").
 
--define(CHILDREN, [?WORKER('wh_nodes')
-                   ,?WORKER('wh_hooks_listener')
-                   ,?WORKER('wh_cache')
-                   ,?WORKER('whistle_apps_init')
-                   ,?WORKER('whapps_controller')
-                   ,?SUPER('whistle_services_sup')
+-define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
+                          ,[{'db', ?WH_CONFIG_DB}]
+                         ]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
+
+%% Helper macro for declaring children of supervisor
+-define(CHILDREN, [?CACHE_ARGS(?WHAPPS_CONFIG_CACHE, ?CACHE_PROPS)
+                   ,?CACHE_ARGS(?WHAPPS_CALL_CACHE, ?CACHE_PROPS)
                   ]).
 
 %% ===================================================================
@@ -41,15 +37,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?MODULE}, ?MODULE, []).
-
--spec initialize_whapps(atoms()) -> {'error', term()} |
-                                    {'ok','undefined' | pid()} |
-                                    {'ok','undefined' | pid(), term()}.
-initialize_whapps(Whapps) ->
-    supervisor:start_child(?MODULE, ?SUPER_ARGS('whapps_sup', Whapps)).
-
-start_child(Spec) ->
-    supervisor:start_child(?MODULE, Spec).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -67,8 +54,9 @@ start_child(Spec) ->
 -spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = 'one_for_one',
-    MaxRestarts = 25,
-    MaxSecondsBetweenRestarts = 1,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+
     {'ok', {SupFlags, ?CHILDREN}}.

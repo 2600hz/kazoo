@@ -1,13 +1,13 @@
 {application, kazoo_caches,
  [
-  {description, "Various low-level caches to be started"},
-  {vsn, "1.0.0"},
+  {description, "Caches - Make sure system caches are available for system processes"},
+  {vsn, "0.0.1"},
   {modules, []},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, { skel_app, []}},
+  {mod, { kazoo_caches_app, []}},
   {env, []}
  ]}.

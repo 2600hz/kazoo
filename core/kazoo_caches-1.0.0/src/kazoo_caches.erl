@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014 2600Hz, INC
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(whistle_apps).
+-module(kazoo_caches).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -23,7 +23,8 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _ = start_deps(),
-    whistle_apps_sup:start_link().
+    _ = declare_exchanges(),
+    kazoo_caches_sup:start_link().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -42,9 +43,7 @@ start() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop() -> 'ok'.
-stop() ->
-    exit(whereis('whistle_apps_sup'), 'shutdown'),
-    'ok'.
+stop() -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -54,18 +53,20 @@ stop() ->
 %%--------------------------------------------------------------------
 -spec start_deps() -> 'ok'.
 start_deps() ->
-    whistle_apps_deps:ensure(),
-    case application:get_env('reloader') of
-        {'ok', 'true'} -> reloader:start();
-        _ -> 'ok'
-    end,
-    [wh_util:ensure_started(A) || A <- ['sasl'
-                                        ,'crypto'
-                                        ,'gproc'
-                                        ,'lager'
-                                        ,'kazoo_caches'
-                                        ,'kazoo_token_buckets'
-                                        ,'whistle_amqp'
-                                        ,'whistle_couch'
-                                       ]],
+    whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
+    _ = [wh_util:ensure_started(App) || App <- ['crypto'
+                                                ,'lager'
+                                                ,'whistle_amqp'
+                                                ,'whistle_couch'
+                                               ]],
     'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all exchanges used are declared
+%% @end
+%%--------------------------------------------------------------------
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    wapi_self:declare_exchanges().
