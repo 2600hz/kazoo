@@ -32,6 +32,7 @@
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
+-define(LIST_BY_LASTNAME_FIRSTNAME, <<"users/list_by_lastname_firstname">>).
 -define(QUICKCALL, <<"quickcall">>).
 
 %%%===================================================================
@@ -268,7 +269,7 @@ patch(Context, _Id) ->
 %%--------------------------------------------------------------------
 -spec load_user_summary(cb_context:context()) -> cb_context:context().
 load_user_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?LIST_BY_LASTNAME_FIRSTNAME, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
