@@ -780,17 +780,19 @@ start_key(Context) ->
 -spec fix_envelope(cb_context:context()) -> cb_context:context().
 fix_envelope(Context) ->
     cb_context:set_resp_envelope(
-      Context
-      ,lists:foldl(fun(Key, Env) ->
-                       lager:debug("maybe fixing ~s: ~p", [Key, wh_json:get_value(Key, Env)]),
-                       case fix_start_key(wh_json:get_value(Key, Env)) of
-                           'undefined' -> wh_json:delete_key(Key, Env);
-                           V -> wh_json:set_value(Key, V, Env)
-                       end
-                   end
-                   ,cb_context:resp_envelope(Context)
-                   ,[<<"start_key">>, <<"next_start_key">>]
-                  )).
+        cb_context:set_resp_data(Context, lists:reverse(cb_context:resp_data(Context)))
+        ,lists:foldl(
+            fun(Key, Env) ->
+                lager:debug("maybe fixing ~s: ~p", [Key, wh_json:get_value(Key, Env)]),
+                case fix_start_key(wh_json:get_value(Key, Env)) of
+                    'undefined' -> wh_json:delete_key(Key, Env);
+                    V -> wh_json:set_value(Key, V, Env)
+                end
+            end
+            ,cb_context:resp_envelope(Context)
+            ,[<<"start_key">>, <<"next_start_key">>]
+        )
+    ).
 
 -spec fix_start_key(api_binary() | list()) -> api_binary().
 fix_start_key('undefined') -> 'undefined';
