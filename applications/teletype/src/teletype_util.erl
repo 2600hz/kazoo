@@ -325,14 +325,13 @@ default_service_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
         Value -> Value
     end.
 
--spec render_subject(ne_binary(), wh_proplist()) ->
-                            iolist() | 'undefined'.
+-spec render_subject(ne_binary(), wh_proplist()) -> api_binary().
 render_subject(Template, Macros) -> render(<<"subject">>, Template, Macros).
 
--spec render(ne_binary(), binary(), wh_proplist()) -> iolist() | 'undefined'.
+-spec render(ne_binary(), binary(), wh_proplist()) -> api_binary().
 render(TemplateId, Template, Macros) ->
     case teletype_renderer:render(TemplateId, Template, Macros) of
-        {'ok', IOData} ->  binary_to_list(iolist_to_binary(IOData));
+        {'ok', IOData} ->  iolist_to_binary(IOData);
         {'error', _E} ->
             lager:debug("failed to render template: ~p '~s'", [_E, Template]),
             'undefined'
