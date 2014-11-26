@@ -172,10 +172,19 @@ get_default_template(Category, Key) ->
 -spec render_template(api_binary(), atom(), wh_proplist()) ->
                                    {'ok', iolist()} |
                                    {'error', term()}.
-render_template('undefined', DefaultTemplate, Props) ->
+render_template(Template, DefaultTemplate, Props) ->
+    case do_render_template(Template, DefaultTemplate, Props) of
+        {'ok', R} -> {'ok', binary_to_list(iolist_to_binary(R))};
+        Else -> Else
+    end.
+
+-spec do_render_template(api_binary(), atom(), wh_proplist()) ->
+                                   {'ok', iolist()} |
+                                   {'error', term()}.
+do_render_template('undefined', DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
     DefaultTemplate:render(Props);
-render_template(Template, DefaultTemplate, Props) ->
+do_render_template(Template, DefaultTemplate, Props) ->
     try
         CustomTemplate = wh_util:to_atom(list_to_binary([couch_mgr:get_uuid(), "_"
                                                         ,wh_util:to_binary(DefaultTemplate)
@@ -193,7 +202,7 @@ render_template(Template, DefaultTemplate, Props) ->
     catch
         _:_E ->
             lager:debug("error compiling custom ~s template: ~p", [DefaultTemplate, _E]),
-            render_template('undefined', DefaultTemplate, Props)
+            do_render_template('undefined', DefaultTemplate, Props)
     end.
 
 %%--------------------------------------------------------------------

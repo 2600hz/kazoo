@@ -171,7 +171,7 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
             {'noreply', State#state{status = <<"negotiating">>}};
         _Else ->
             lager:debug("received failed attempt to tx fax, releasing job: ~s", [_Else]),
-            send_error_status(Job, wh_json:get_value(<<"Error-Message">>, JObj)),
+            send_error_status(State, wh_json:get_value(<<"Error-Message">>, JObj)),
             release_failed_job('tx_resp', JObj, Job),
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)}
@@ -184,7 +184,7 @@ handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
                                                     ,pool=Pid
                                             }=State) ->
     lager:debug("received channel destroy for ~s",[JobId]),
-    send_error_status(Job, wh_json:get_value(<<"Hangup-Cause">>, JObj)),
+    send_error_status(State, wh_json:get_value(<<"Hangup-Cause">>, JObj)),
     release_failed_job('channel_destroy', JObj, Job),
     gen_server:cast(Pid, {'job_complete', self()}),
     {'noreply', reset(State)};
@@ -275,7 +275,7 @@ handle_cast('prepare_job', #state{job_id=JobId
             send_status(State, <<"preparing document to send">>, ?FAX_PREPARE, 'undefined'),
             case prepare_contents(JobId, RespHeaders, RespContent) of
                 {'error', Cause} ->
-                    send_error_status(JObj, Cause),
+                    send_error_status(State, Cause),
                     release_failed_job('bad_file', Cause, JObj),
                     gen_server:cast(Pid, {'job_complete', self()}),
                     {'noreply', reset(State)};
@@ -285,13 +285,13 @@ handle_cast('prepare_job', #state{job_id=JobId
             end;
         {'ok', Status, _, _} ->
             lager:debug("failed to fetch file for job: http response ~p", [Status]),
-            send_error_status(JObj, Status),
+            send_error_status(State, Status),
             release_failed_job('fetch_failed', Status, JObj),
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)};
         {'error', Reason} ->
             lager:debug("failed to fetch file for job: ~p", [Reason]),
-            send_error_status(JObj, <<"failed to fetch file for job">>),
+            send_error_status(State, <<"failed to fetch file for job">>),
             release_failed_job('fetch_error', Reason, JObj),
             gen_server:cast(Pid, {'job_complete', self()}),
             {'noreply', reset(State)}
@@ -312,6 +312,11 @@ handle_cast('send', #state{job_id=JobId
     send_status(State, <<"ready to send">>, ?FAX_SEND, 'undefined'),
     send_fax(JobId, JObj, Q),
     {'noreply', State};
+handle_cast({'error', 'invalid_number', Number}, #state{job=JObj, pool=Pid}=State) ->
+    send_error_status(State, <<"invalid fax number">>),
+    release_failed_job('invalid_number', Number, JObj),
+    gen_server:cast(Pid, {'job_complete', self()}),
+     {'noreply', reset(State)};
 handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
     lager:debug("worker discovered queue name ~s", [QueueName]),
     {'noreply', State#state{queue_name=QueueName}};
@@ -404,6 +409,7 @@ attempt_to_acquire_job(Id, Q) ->
                         ('job_timeout', 'undefined', wh_json:object()) -> 'failure';
                         ('fetch_error', {atom(), _}, wh_json:object()) -> 'failure';
                         ('tx_resp', wh_json:object(), wh_json:object()) -> 'failure';
+                        ('invalid_number', api_binary(), wh_json:object()) -> 'failure';
                         ('exception', _, wh_json:object()) -> 'failure';
                         ('timeout', _, wh_json:object()) -> 'failure'.
 release_failed_job('fetch_failed', Status, JObj) ->
@@ -444,7 +450,7 @@ release_failed_job('fetch_error', {'conn_failed', _}, JObj) ->
              ],
     release_job(Result, JObj);
 release_failed_job('fetch_error', {Cause, _}, JObj) ->
-    Msg = wh_util:to_binary(io_lib:format("could not connect to document URL: ~s", [Cause])),
+    Msg = wh_util:to_binary(io_lib:format("could not connect to document URL: ~s", [Cause])),    
     Result = [{<<"success">>, 'false'}
               ,{<<"result_code">>, 0}
               ,{<<"result_text">>, Msg}
@@ -466,6 +472,15 @@ release_failed_job('tx_resp', Resp, JObj) ->
               ,{<<"time_elapsed">>, elapsed_time(JObj)}
              ],
     release_job(Result, JObj, Resp);
+release_failed_job('invalid_number', Number, JObj) ->
+    Msg = wh_util:to_binary(io_lib:format("invalid fax number: ~s", [Number])),    
+    Result = [{<<"success">>, 'false'}
+              ,{<<"result_code">>, 500}
+              ,{<<"result_text">>, Msg}
+              ,{<<"pages_sent">>, 0}
+              ,{<<"time_elapsed">>, elapsed_time(JObj)}
+             ],
+    release_job(Result, JObj);
 release_failed_job('channel_destroy', Resp, JObj) ->
     Result = [{<<"success">>, 'false'}
                | fax_util:collect_channel_props(Resp)],
@@ -632,7 +647,8 @@ notify_fields(JObj, Resp) ->
 
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
-    Notify = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], JObj),
+    NotifyTmp = wh_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], JObj, []),
+    Notify = lists:filter(fun wh_util:is_not_empty/1, NotifyTmp),
     props:filter_empty(
       [{<<"Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
       ,{<<"Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
@@ -673,11 +689,11 @@ fetch_document(JObj) ->
                                             {'error', term()}.
 fetch_document_from_attachment(JObj, Attachments) ->
     JobId = wh_json:get_value(<<"_id">>, JObj),
-
     [AttachmentName|_] = wh_json:get_keys(Attachments),
-
-    CT = wh_json:get_value([AttachmentName, <<"content_type">>], Attachments),
-    Props = [{"Content-Type",CT}],
+    Extension = filename:extension(AttachmentName),
+    DefaultContentType = fax_util:extension_to_content_type(Extension),
+    CT = wh_json:get_value([AttachmentName, <<"content_type">>], Attachments, DefaultContentType),
+    Props = [{"Content-Type", CT}],
     {'ok', Contents} = couch_mgr:fetch_attachment(?WH_FAXES, JobId, AttachmentName),
     {'ok', "200", Props, Contents}.
 
@@ -759,6 +775,14 @@ normalize_content_type(CT) ->
 
 -spec send_fax(ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
+    send_fax(JobId, JObj, Q, get_did(JObj)).
+
+-spec send_fax(ne_binary(), wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
+send_fax(_JobId, _JObj, _Q, 'undefined') ->
+    gen_server:cast(self(), {'error', 'invalid_number', <<"(undefined)">>});
+send_fax(_JobId, _JObj, _Q, <<>>) ->
+    gen_server:cast(self(), {'error', 'invalid_number', <<"(empty)">>});
+send_fax(JobId, JObj, Q, ToDID) ->
     IgnoreEarlyMedia = wh_util:to_binary(whapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
     ToNumber = wh_util:to_binary(wh_json:get_value(<<"to_number">>, JObj)),
     ToName = wh_util:to_binary(wh_json:get_value(<<"to_name">>, JObj, ToNumber)),
@@ -770,7 +794,7 @@ send_fax(JobId, JObj, Q) ->
                  ,{<<"Outbound-Callee-ID-Number">>, ToNumber}
                  ,{<<"Outbound-Callee-ID-Name">>, ToName }
                  ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-                 ,{<<"To-DID">>, get_did(JObj)}
+                 ,{<<"To-DID">>, ToDID}
                  ,{<<"Fax-Identity-Number">>, wh_json:get_value(<<"fax_identity_number">>, JObj)}
                  ,{<<"Fax-Identity-Name">>, wh_json:get_value(<<"fax_identity_name">>, JObj)}
                  ,{<<"Fax-Timezone">>, wh_json:get_value(<<"fax_timezone">>, JObj)}
