@@ -677,7 +677,7 @@ load_paginated_children(AccountId, Context) ->
     fix_envelope(
       crossbar_doc:load_view(?AGG_VIEW_CHILDREN
                              ,[{'startkey', start_key(AccountId, StartKey)}
-                               ,{'endkey', [AccountId, wh_json:new()]}
+                               ,{'endkey', [wh_json:new(), AccountId]}
                               ]
                              ,Context
                              ,fun normalize_view_results/2
@@ -685,11 +685,9 @@ load_paginated_children(AccountId, Context) ->
 
 -spec start_key(ne_binary(), api_binary()) -> ne_binaries().
 start_key(AccountId, 'undefined') ->
-    [AccountId];
-start_key(AccountId, AccountId) ->
-    [AccountId];
+    [<<>>, AccountId];
 start_key(AccountId, StartKey) ->
-    [AccountId, StartKey].
+    [StartKey, AccountId].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -782,11 +780,11 @@ fix_envelope(Context) ->
     cb_context:set_resp_envelope(
       Context
       ,lists:foldl(fun(Key, Env) ->
-                           lager:debug("maybe fixing ~s: ~p", [Key, wh_json:get_value(Key, Env)]),
-                           case fix_start_key(wh_json:get_value(Key, Env)) of
-                               'undefined' -> wh_json:delete_key(Key, Env);
-                               V -> wh_json:set_value(Key, V, Env)
-                           end
+                       lager:debug("maybe fixing ~s: ~p", [Key, wh_json:get_value(Key, Env)]),
+                       case fix_start_key(wh_json:get_value(Key, Env)) of
+                           'undefined' -> wh_json:delete_key(Key, Env);
+                           V -> wh_json:set_value(Key, V, Env)
+                       end
                    end
                    ,cb_context:resp_envelope(Context)
                    ,[<<"start_key">>, <<"next_start_key">>]
@@ -797,7 +795,7 @@ fix_start_key('undefined') -> 'undefined';
 fix_start_key(<<_/binary>> = StartKey) -> StartKey;
 fix_start_key([StartKey]) -> StartKey;
 fix_start_key([_AccountId, [_|_]=Keys]) -> lists:last(Keys);
-fix_start_key([_AccountId, StartKey]) -> StartKey;
+fix_start_key([StartKey, _AccountId]) -> StartKey;
 fix_start_key([StartKey|_T]) -> StartKey.
 
 %%--------------------------------------------------------------------
