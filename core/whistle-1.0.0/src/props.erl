@@ -91,9 +91,9 @@ get_value(Key, Props) ->
     get_value(Key, Props, 'undefined').
 
 get_value(_Key, [], Default) -> Default;
-get_value([Key], Props, Default) ->
+get_value([Key], Props, Default) when is_binary(Key) orelse is_atom(Key) ->
     get_value(Key, Props, Default);
-get_value([Key|Keys], Props, Default) ->
+get_value([Key|Keys], Props, Default) when is_binary(Key) orelse is_atom(Key) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
         SubProps -> get_value(Keys, SubProps, Default)
