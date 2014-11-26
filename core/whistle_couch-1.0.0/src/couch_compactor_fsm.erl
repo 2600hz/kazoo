@@ -1570,8 +1570,8 @@ maybe_send_update(_,_,_) -> 'ok'.
 
 -spec maybe_start_auto_compaction_job() -> 'ok'.
 maybe_start_auto_compaction_job() ->
-    case compact_automatically() andalso
-        (catch wh_couch_connections:test_admin_conn())
+    case compact_automatically()
+        andalso (catch wh_couch_connections:test_admin_conn())
     of
         {'ok', _} ->
             lager:debug("sending compact after timeout"),
