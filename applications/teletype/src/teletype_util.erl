@@ -332,7 +332,7 @@ render_subject(Template, Macros) -> render(<<"subject">>, Template, Macros).
 -spec render(ne_binary(), binary(), wh_proplist()) -> iolist() | 'undefined'.
 render(TemplateId, Template, Macros) ->
     case teletype_renderer:render(TemplateId, Template, Macros) of
-        {'ok', IOData} -> IOData;
+        {'ok', IOData} ->  binary_to_list(iolist_to_binary(IOData));
         {'error', _E} ->
             lager:debug("failed to render template: ~p '~s'", [_E, Template]),
             'undefined'
