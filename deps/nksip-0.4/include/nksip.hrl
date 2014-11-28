@@ -27,65 +27,65 @@
 %% ===================================================================
 
 -define(VERSION, "0.4.0").
--define(SUPPORTED, [<<"100rel">>, <<"timer">>, <<"path">>, <<"outbound">>, <<"gruu">>]).
--define(ACCEPT, [{<<"*/*">>, []}]).
--define(ALLOW, <<"INVITE,ACK,CANCEL,BYE,OPTIONS,INFO,PRACK,UPDATE,"
-                 "SUBSCRIBE,NOTIFY,REFER,MESSAGE,PUBLISH">>).
 
--define(MSG_ROUTERS, 8).
--define(SRV_TIMEOUT, 45000).
--define(DEFAULT_TCP_KEEPALIVE, 120).
--define(DEFAULT_UDP_KEEPALIVE, 25).
--define(DEFAULT_EVENT_EXPIRES, 60).
--define(DEFAULT_PUBLISH_EXPIRES, 60).
+-define(
+    DO_LOG(Level, App, CallId, Text, Opts),
+    case CallId of
+        <<>> ->
+            lager:Level([{app, App}], "~p "++Text, [App|Opts]);
+        _ -> 
+            lager:Level([{app, App}, {call_id, CallId}], "~p (~s) "++Text, [App, CallId|Opts])
+    end).
 
-
-
-% Maximum transaction time (15min)
--define(MAX_TRANS_TIME, 15*60).
-
-% Maximum time in dialogs between updates (30min)
--define(MAX_DIALOG_TIME, 30*60).
-
-
-
-
--define(DO_LOG(Level, App, CallId, Text, Opts),
-    lager:Level([{app, App}, {call_id, CallId}], "~p (~s) "++Text, [App, CallId|Opts])).
-
+-define(DO_DEBUG(AppId, CallId, Level, Text, List),
+    case AppId:config_debug() of
+        false -> ok;
+        _ -> AppId:nkcb_debug(AppId, CallId, {Level, Text, List})
+    end).
 
 
 -define(debug(AppId, CallId, Text, List), 
+    ?DO_DEBUG(AppId, CallId, debug, Text, List),
     case AppId:config_log_level() >= 8 of
         true -> ?DO_LOG(debug, AppId:name(), CallId, Text, List);
         false -> ok
     end).
 
 -define(info(AppId, CallId, Text, List), 
+    ?DO_DEBUG(AppId, CallId, info, Text, List),
     case AppId:config_log_level() >= 7 of
         true -> ?DO_LOG(info, AppId:name(), CallId, Text, List);
         false -> ok
     end).
 
 -define(notice(AppId, CallId, Text, List), 
+    ?DO_DEBUG(AppId, CallId, notice, Text, List),
     case AppId:config_log_level() >= 6 of
         true -> ?DO_LOG(notice, AppId:name(), CallId, Text, List);
         false -> ok
     end).
 
 -define(warning(AppId, CallId, Text, List), 
+    ?DO_DEBUG(AppId, CallId, warning, Text, List),
     case AppId:config_log_level() >= 5 of
         true -> ?DO_LOG(warning, AppId:name(), CallId, Text, List);
         false -> ok
     end).
 
 -define(error(AppId, CallId, Text, List), 
+    ?DO_DEBUG(AppId, CallId, error, Text, List),
     case AppId:config_log_level() >= 4 of
         true -> ?DO_LOG(error, AppId:name(), CallId, Text, List);
         false -> ok
     end).
 
 
+-define(N(T), lager:notice(T)).
+-define(N(T,P), lager:notice(T,P)).
+-define(W(T), lager:warning(T)).
+-define(W(T,P), lager:warning(T,P)).
+-define(E(T), lager:error(T)).
+-define(E(T,P), lager:error(T,P)).
 
 -include_lib("kernel/include/inet_sctp.hrl").
 
@@ -126,6 +126,14 @@
 %% ===================================================================
 
 
+-record(sipapp_srv, {
+    app_id :: nksip:app_id(),
+    args :: term(),
+    sipapp_state :: term(),
+    meta :: list()
+}).
+
+
 -record(transport, {
     proto = udp :: nksip:protocol(),
     local_ip :: inet:ip_address(),
@@ -141,9 +149,9 @@
 
 -record(sipmsg, {
     id :: nksip_sipmsg:id(),
-    class :: {req, nksip:method()} | {resp, nksip:response_code(), binary()},
+    class :: {req, nksip:method()} | {resp, nksip:sip_code(), binary()},
     app_id :: nksip:app_id(),
-    dialog_id :: nksip_dialog:id(),
+    dialog_id :: nksip_dialog_lib:id(),
     ruri :: nksip:uri(),
     vias = [] :: [nksip:via()],
     from :: {nksip:uri(), FromTag::binary()},
@@ -156,22 +164,22 @@
     content_type :: nksip:token() | undefined,
     require = [] :: [binary()],
     supported = [] :: [binary()],
-    expires :: non_neg_integer(),
+    expires :: non_neg_integer() | undefined,
     event :: nksip:token() | undefined,
     headers = [] :: [nksip:header()],
     body = <<>> :: nksip:body(),
     to_tag_candidate = <<>> :: nksip:tag(),
     transport :: nksip_transport:transport(),
     start :: nksip_lib:l_timestamp(),
-    meta = [] :: nksip_lib:optslist()   % No current use
+    meta = [] :: nksip:optslist()   % No current use
 }).
 
 
 -record(reqreply, {
-    code = 200 :: nksip:response_code(),
+    code = 200 :: nksip:sip_code(),
     headers = [] :: [nksip:header()],
     body = <<>> :: nksip:body(),
-    opts = [] :: nksip_lib:optslist()
+    opts = [] :: nksip:optslist()
 }).
 
 -record(uri, {
@@ -182,9 +190,9 @@
     domain = <<"invalid.invalid">> :: binary(), 
     port = 0 :: inet:port_number(),             % 0 means "no port in message"
     path = <<>> :: binary(),
-    opts = [] :: nksip_lib:optslist(),
+    opts = [] :: nksip:optslist(),
     headers = [] :: [binary()|nksip:header()],
-    ext_opts = [] :: nksip_lib:optslist(),
+    ext_opts = [] :: nksip:optslist(),
     ext_headers = [] :: [binary()|nksip:header()]
 }).
 
@@ -192,35 +200,7 @@
     proto = udp :: nksip:protocol(),
     domain = <<"invalid.invalid">> :: binary(),
     port = 0 :: inet:port_number(),
-    opts = [] :: nksip_lib:optslist()
-}).
-
-
-%% Meta current uses:
-%% - {nksip_min_se, MinSE}
-
--record(dialog, {
-    id :: nksip_dialog:id(),
-    app_id :: nksip:app_id(),
-    call_id :: nksip:call_id(),
-    created :: nksip_lib:timestamp(),
-    updated :: nksip_lib:timestamp(),
-    local_seq :: 0 | nksip:cseq(),
-    remote_seq :: 0 | nksip:cseq(),
-    local_uri :: nksip:uri(),
-    remote_uri :: nksip:uri(),
-    local_target :: nksip:uri(),        % Only for use in proxy
-    remote_target :: nksip:uri(),
-    route_set :: [nksip:uri()],
-    blocked_route_set :: boolean(),
-    early :: boolean(),
-    secure :: boolean(),
-    caller_tag :: nksip:tag(),
-    invite :: nksip:invite(),
-    subscriptions = [] :: [nksip:subscription()],
-    supported = [] :: [nksip:token()],
-    allowed = [] :: [nksip:method()],
-    meta = [] :: nksip_lib:optslist()
+    opts = [] :: nksip:optslist()
 }).
 
 
@@ -238,15 +218,12 @@
     sdp_answer :: nksip_call_dialog:sdp_offer(),
     timeout_timer :: reference(),
     retrans_timer :: reference(),
-    next_retrans :: integer(),
-    session_expires :: integer(),
-    refresh_timer :: reference(),
-    meta = [] :: nksip_lib:optslist()   % No current use
+    next_retrans :: integer()
 }).
 
 
 -record(subscription, {
-    id :: nksip_subscription:id(),
+    id :: nksip_subscription_lib:id(),
     event :: nksip:token(),
     expires :: pos_integer(),
     status :: nksip_subscription:status(),
@@ -255,9 +232,36 @@
     timer_n :: reference(),
     timer_expire :: reference(),
     timer_middle :: reference(),
-    last_notify_cseq :: nksip:cseq(),
-    meta = [] :: nksip_lib:optslist()   % No current use
+    last_notify_cseq :: nksip:cseq()
 }).
+
+
+%% Meta current uses:
+%% - {nksip_min_se, MinSE}
+
+-record(dialog, {
+    id :: nksip_dialog_lib:id(),
+    app_id :: nksip:app_id(),
+    call_id :: nksip:call_id(),
+    created :: nksip_lib:timestamp(),
+    updated :: nksip_lib:timestamp(),
+    local_seq :: 0 | nksip:cseq(),
+    remote_seq :: 0 | nksip:cseq(),
+    local_uri :: nksip:uri(),
+    remote_uri :: nksip:uri(),
+    local_target :: nksip:uri(),        % Only for use in proxy
+    remote_target :: nksip:uri(),
+    route_set :: [nksip:uri()],
+    blocked_route_set :: boolean(),
+    early :: boolean(),
+    secure :: boolean(),
+    caller_tag :: nksip:tag(),
+    invite :: nksip:invite(),
+    subscriptions = [] :: [#subscription{}],
+    supported = [] :: [nksip:token()],
+    meta = [] :: nksip:optslist()
+}).
+
 
 
 -record(sdp_m, {
@@ -291,30 +295,6 @@
     key :: binary(),
     attributes = [] :: [nksip_sdp:sdp_a()],
     medias = [] :: [nksip_sdp:sdp_m()]
-}).
-
-
--record(reg_contact, {
-    index :: nksip_registrar:index(),
-    contact :: nksip:uri(), 
-    updated :: nksip_lib:l_timestamp(),
-    expire :: nksip_lib:timestamp(),
-    q :: float(),  
-    call_id :: nksip:call_id(),
-    cseq :: nksip:cseq(),
-    transport :: nksip_transport:transport(),
-    path :: [nksip:uri()],
-    instance_id :: binary(),
-    reg_id :: binary(),
-    min_tmp_pos :: integer(),
-    next_tmp_pos :: integer(),
-    meta = [] :: nksip_lib:optslist()  % No current use
-}).
-
-
--record(reg_publish, {
-    data :: nksip:body(),
-    meta = [] :: nksip_lib:optslist()   % No current use
 }).
 
 

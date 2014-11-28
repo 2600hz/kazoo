@@ -19,12 +19,11 @@
 %% -------------------------------------------------------------------
 
 %% @doc NkSIP Erlang code parser and hot loader utilities
-
 -module(nksip_code_util).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
 -export([expression/1, getter/2, fun_expr/4, call_expr/4, callback_expr/3]).
--export([case_expr/5, compile/2]).
+-export([case_expr/5, compile/2, write/2]).
 -export([get_funs/1]).
 
 
@@ -62,7 +61,7 @@ getter(Fun, Value) ->
 
 %% @doc Generates a function expression (fun(A1,B1,..) -> Value)
 %% Vers represents the suffix to use in the variable names
--spec fun_expr(atom(), pos_integer(), pos_integer(), term()) ->
+-spec fun_expr(atom(), integer(), integer(), term()) ->
     erl_syntax:syntaxTree().
 
 fun_expr(Fun, Arity, Vers, Value) ->
@@ -73,7 +72,7 @@ fun_expr(Fun, Arity, Vers, Value) ->
 
 %% @doc Generates a call expression (mod:fun(A1,B1,..))
 %% Vers represents the suffix to use in the variable names.
--spec call_expr(atom(), atom(), pos_integer(), pos_integer()) ->
+-spec call_expr(atom(), atom(), integer(), integer()) ->
     erl_syntax:syntaxTree().
 
 call_expr(Mod, Fun, Arity, Vers) ->
@@ -84,7 +83,7 @@ call_expr(Mod, Fun, Arity, Vers) ->
 
 
 %% @doc Generates a call expression (fun(A0,B0...) -> mod:fun(A0,B0,..))
--spec callback_expr(atom(), atom(), pos_integer()) ->
+-spec callback_expr(atom(), atom(), integer()) ->
     erl_syntax:syntaxTree().
 
 callback_expr(Mod, Fun, Arity) ->
@@ -98,7 +97,7 @@ callback_expr(Mod, Fun, Arity) ->
 %%     Other -> Other
 %% end
 %% Vers represents the suffix to use in the variable names.
--spec case_expr(atom(), atom(), pos_integer(), pos_integer(), 
+-spec case_expr(atom(), atom(), integer(), integer(), 
                [erl_syntax:syntaxTree()]) ->
     erl_syntax:syntaxTree().
 
@@ -157,17 +156,31 @@ compile(Mod, Tree) ->
             code:purge(Mod),
             File = atom_to_list(Mod)++".erl",
             case code:load_binary(Mod, File, Bin) of
-                {module, Mod} -> ok;
-                Error -> {error, Error}
+                {module, Mod} -> 
+                    {ok, Tree1};
+                Error -> 
+                    {error, Error}
             end;
         Error ->
             {error, Error}
     end.
 
 
+%% @doc Writes a generated tree as a standard erlang file
+-spec write(atom(), [erl_syntax:syntaxTree()]) ->
+    ok | {error, term()}.
+
+write(Mod, Tree) ->
+    BasePath = nksip_config_cache:local_data_path(),
+    Path = filename:join(BasePath, atom_to_list(Mod)++".erl"),
+    Content = list_to_binary(
+        [io_lib:format("~s\n\n", [erl_prettypr:format(S)]) || S <-Tree]),
+    file:write_file(Path, Content).
+
+
 %% @doc Gets the list of exported functions of a module
 -spec get_funs(atom()) ->
-    [{atom(), pos_integer()}] | error.
+    [{atom(), integer()}] | error.
 
 get_funs(Mod) ->
     case catch Mod:module_info() of

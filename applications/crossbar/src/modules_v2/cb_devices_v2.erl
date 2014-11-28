@@ -122,7 +122,7 @@ billing(Context, _ReqVerb, _Nouns) -> Context.
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authenticate(?HTTP_GET, ?DEVICES_QCALL_NOUNS) ->
+authenticate(?HTTP_GET, ?DEVICES_QCALL_NOUNS(_DeviceId, _Number)) ->
     lager:debug("authenticating request"),
     'true';
 authenticate(_Verb, _Nouns) ->
@@ -132,7 +132,7 @@ authenticate(_Verb, _Nouns) ->
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authorize(?HTTP_GET, ?DEVICES_QCALL_NOUNS) ->
+authorize(?HTTP_GET, ?DEVICES_QCALL_NOUNS(_DeviceId, _Number)) ->
     lager:debug("authorizing request"),
     'true';
 authorize(_Verb, _Nouns) ->
@@ -419,8 +419,18 @@ on_successful_validation(DeviceId, Context) ->
 maybe_validate_quickcall(Context) ->
     maybe_validate_quickcall(Context, cb_context:resp_status(Context)).
 maybe_validate_quickcall(Context, 'success') ->
+    case kz_buckets:consume_tokens(cb_modules_util:bucket_name(Context)
+                                   ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
+                                  )
+        of
+        'true' -> maybe_allow_quickcalls(Context);
+        'false' -> cb_context:add_system_error('too_many_requests', Context)
+    end.
+
+-spec maybe_allow_quickcalls(cb_context:context()) -> cb_context:context().
+maybe_allow_quickcalls(Context) ->
     case (not wh_util:is_empty(cb_context:auth_token(Context)))
-        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anoymous_quickcalls">>))
+        orelse wh_util:is_true(cb_context:req_value(Context, <<"allow_anonymous_quickcalls">>))
     of
         'false' -> cb_context:add_system_error('invalid_credentials', Context);
         'true' -> Context
@@ -588,4 +598,3 @@ maybe_remove_aggregate(DeviceId, _Context, 'success') ->
         {'error', 'not_found'} -> 'false'
     end;
 maybe_remove_aggregate(_, _, _) -> 'false'.
-

@@ -61,6 +61,9 @@
 -type binaries() :: [binary(),...] | [].
 
 -type strings() :: [string(),...] | [].
+-type integers() :: [integer(),...] | [].
+
+-type functions() :: [function(),...] | [].
 
 %% when using gen_smtp to send emails, it takes a 5-tuple for a message-body part
 -type mail_message_body() :: {ne_binary(), ne_binary(), proplist(), proplist(), ne_binary() | iolist()}.

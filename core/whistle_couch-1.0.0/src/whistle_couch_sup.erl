@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012-2014, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -21,17 +21,13 @@
                       ,'new_node_flush'
                       ,'channel_reconnect_flush'
                      ]).
--define(CHILD(Name, Type), fun(N, 'cache') -> {N, {'wh_cache', 'start_link', [N, ?CACHE_PROPS]}
-                                               ,'permanent', 5000, 'worker', ['wh_cache']};
-                              (N, 'supervisor'=T) -> {N, {N, 'start_link', []}, 'permanent', 'infinity', T, [N]};
-                              (N, T) -> {N, {N, 'start_link', []}, 'permanent', 5000, T, [N]} end(Name, Type)).
 
--define(CHILDREN, [{?WH_COUCH_CACHE, 'cache'}
-                   ,{'wh_couch_connection_sup', 'supervisor'}
-                   ,{'wh_change_handler_sup', 'supervisor'}
-                   ,{'wh_couch_connections', 'worker'}
-                   ,{'wh_couch_bootstrap', 'worker'}
-                   ,{'couch_compactor_fsm', 'worker'}
+-define(CHILDREN, [?CACHE_ARGS(?WH_COUCH_CACHE, ?CACHE_PROPS)
+                   ,?SUPER('wh_couch_connection_sup')
+                   ,?SUPER('wh_change_handler_sup')
+                   ,?WORKER('wh_couch_connections')
+                   ,?WORKER('wh_couch_bootstrap')
+                   ,?WORKER('couch_compactor_fsm')
                   ]).
 
 %% ===================================================================
@@ -74,6 +70,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

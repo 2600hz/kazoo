@@ -16,6 +16,7 @@
 -module(cf_voicemail).
 
 -include("../callflow.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -export([handle/2]).
 
@@ -299,12 +300,12 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
                           }, _, Call) when Count >= MaxCount andalso MaxCount > 0 ->
     lager:debug("voicemail box is full, cannot hold more messages, sending notification"),
     Props = [{<<"Account-DB">>, whapps_call:account_db(Call)}
-            ,{<<"Voicemail-Box">>, VMBId}
-            ,{<<"Voicemail-Number">>, VMBN}
-            ,{<<"Max-Message-Count">>, MaxCount}
-            ,{<<"Message-Count">>, Count}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
+             ,{<<"Voicemail-Box">>, VMBId}
+             ,{<<"Voicemail-Number">>, VMBN}
+             ,{<<"Max-Message-Count">>, MaxCount}
+             ,{<<"Message-Count">>, Count}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
     _ = whapps_util:amqp_pool_request(Props
                                       ,fun wapi_notifications:publish_voicemail_full/1
                                       ,fun wapi_notifications:voicemail_full_v/1
@@ -1014,11 +1015,20 @@ update_mailbox(#mailbox{mailbox_id=Id
     _ = case whapps_util:amqp_pool_collect(Prop
                                            ,fun wapi_notifications:publish_voicemail/1
                                            ,fun collecting/1
-                                           ,30000)
+                                           ,30000
+                                          )
         of
             {'ok', JObjs} ->
                 JObj = get_completed_msg(JObjs),
                 maybe_save_meta(Length, Box, Call, MediaId, JObj);
+            {'timeout', JObjs} ->
+                case get_completed_msg(JObjs) of
+                    ?EMPTY_JSON_OBJECT ->
+                        lager:info("timed out waiting for resp"),
+                        save_meta(Length, Box, Call, MediaId);
+                    JObj ->
+                        maybe_save_meta(Length, Box, Call, MediaId, JObj)
+                end;
             {'error', _E} ->
                 lager:debug("notification error: ~p", [_E]),
                 save_meta(Length, Box, Call, MediaId)
@@ -1029,7 +1039,9 @@ update_mailbox(#mailbox{mailbox_id=Id
 
 -spec collecting(wh_json:objects()) -> boolean().
 collecting([JObj|_]) ->
-    case wapi_notifications:notify_update_v(JObj) andalso wh_json:get_value(<<"Status">>, JObj) of
+    case wapi_notifications:notify_update_v(JObj)
+        andalso wh_json:get_value(<<"Status">>, JObj)
+    of
         <<"completed">> -> 'true';
         <<"failed">> -> 'true';
         _ -> 'false'
@@ -1068,13 +1080,14 @@ maybe_save_meta(Length, #mailbox{delete_after_notify='false'}=Box, Call, MediaId
 maybe_save_meta(Length, #mailbox{delete_after_notify='true'}=Box, Call, MediaId, UpdateJObj) ->
     case wh_json:get_value(<<"Status">>, UpdateJObj) of
         <<"completed">> ->
-            lager:debug("attachment was sent out via notification, deleting media file"),
-            couch_mgr:del_doc(whapps_call:account_db(Call), MediaId);
+            {'ok', _} = couch_mgr:del_doc(whapps_call:account_db(Call), MediaId),
+            lager:debug("attachment was sent out via notification, deleted media file");
         <<"failed">> ->
             lager:debug("attachment failed to send out via notification: ~s", [wh_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
             save_meta(Length, Box, Call, MediaId)
     end.
 
+-spec save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary()) -> 'ok'.
 save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
     Metadata = wh_json:from_list(
                  [{<<"timestamp">>, new_timestamp()}

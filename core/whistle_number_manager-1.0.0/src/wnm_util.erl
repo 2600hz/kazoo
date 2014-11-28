@@ -168,7 +168,7 @@ maybe_use_us_default(_) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec available_classifiers() -> api_binaries().
+-spec available_classifiers() -> wh_json:object().
 available_classifiers() ->
     Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
     Classifiers = whapps_config:get(?WNM_CONFIG_CAT, <<"classifiers">>, Default),

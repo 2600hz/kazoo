@@ -19,8 +19,6 @@
 %% -------------------------------------------------------------------
 
 %% @doc General SIP header processing functions.
-
-
 -module(nksip_headers).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 

@@ -323,6 +323,7 @@ update(Id, Context) ->
 on_successful_validation('undefined', Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
+    ResellerId = cb_context:reseller_id(Context),
     AuthDoc = cb_context:auth_doc(Context),
     OwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
     Timezone = crossbar_util:get_user_timezone(AccountId, OwnerId),
@@ -333,6 +334,7 @@ on_successful_validation('undefined', Context) ->
                                             ,{<<"attempts">>, 0}
                                             ,{<<"pvt_account_id">>, AccountId}
                                             ,{<<"pvt_account_db">>, AccountDb}
+                                            ,{<<"pvt_reseller_id">>, ResellerId}
                                             ,{<<"fax_timezone">>, Timezone}
                                            ]
                                            ,cb_context:doc(Context)
@@ -495,7 +497,7 @@ get_incoming_view_options(Context, PrefixKey, SuffixKey) ->
         Context1 -> Context1
     end.
 
--spec get_modbs(cb_context:context(), pos_integer(), pos_integer()) -> ne_binaries().
+-spec get_modbs(cb_context:context(), pos_integer(), pos_integer()) -> [{'databases', ne_binaries()}].
 get_modbs(Context, From, To) ->
     AccountId = cb_context:account_id(Context),
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),

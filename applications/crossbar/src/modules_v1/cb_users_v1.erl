@@ -16,6 +16,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,validate_resource/1, validate_resource/2, validate_resource/3, validate_resource/4
          ,authenticate/1
          ,authorize/1
          ,billing/1
@@ -50,6 +51,7 @@ create_user(Context) ->
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate_resource.users">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, 'billing'),
@@ -102,6 +104,33 @@ resource_exists(_) -> 'true'.
 resource_exists(_, ?CHANNELS) -> 'true'.
 resource_exists(_, ?QUICKCALL, _) -> 'true'.
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function determines if the provided list of Nouns and Resource Ids are valid.
+%% If valid, updates Context with userId
+%%
+%% Failure here returns 404
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_resource(cb_context:context()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+validate_resource(Context) -> Context.
+validate_resource(Context, UserId) -> validate_user_id(UserId, Context).
+validate_resource(Context, UserId, _) -> validate_user_id(UserId, Context).
+validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
+
+-spec validate_user_id(api_binary(), cb_context:context()) -> cb_context:context().
+validate_user_id(UserId, Context) ->
+    case couch_mgr:open_cache_doc(cb_context:account_db(Context), UserId) of
+       {'ok', _} -> cb_context:set_user_id(Context, UserId);
+       {'error', 'not_found'} -> cb_context:add_system_error('bad_identifier', [{'details', UserId}],  Context);
+       {'error', _R} -> crossbar_util:response_db_fatal(Context)
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -132,7 +161,7 @@ process_billing(Context, _Nouns, _Verb) -> Context.
 authenticate(Context) ->
     authenticate_users(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
-authenticate_users(?USERS_QCALL_NOUNS, ?HTTP_GET) ->
+authenticate_users(?USERS_QCALL_NOUNS(_UserId, _Number), ?HTTP_GET) ->
     lager:debug("authenticating request"),
     'true';
 authenticate_users(_Nouns, _Verb) -> 'false'.
@@ -141,7 +170,7 @@ authenticate_users(_Nouns, _Verb) -> 'false'.
 authorize(Context) ->
     authorize_users(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
-authorize_users(?USERS_QCALL_NOUNS, ?HTTP_GET) ->
+authorize_users(?USERS_QCALL_NOUNS(_UserId, _Number), ?HTTP_GET) ->
     lager:debug("authorizing request"),
     'true';
 authorize_users(_Nouns, _Verb) -> 'false'.

@@ -231,9 +231,19 @@ terminate(Reason, State) ->
                           {'error', string(), #state{}}.
 check_faxbox(To, State) ->
     [FaxNumber, Domain] = binary:split(wh_util:to_lower_binary(To), <<"@">>),
-    ViewOptions = [{'key', Domain}
-                   ,'include_docs'
-                  ],
+    Number = fax_util:filter_numbers(FaxNumber), 
+    case wh_util:is_empty(Number) of
+        'true' -> lager:debug("fax number is empty"),
+                  {'error', "Not Found", State};
+        'false' -> check_faxbox_doc(Number, Domain, State)
+    end.
+
+-spec check_faxbox_doc(binary(), binary(), #state{}) ->
+                          {'ok', #state{}} |
+                          {'error', string(), #state{}}.
+check_faxbox_doc(FaxNumber, Domain, State) ->
+    
+    ViewOptions = [{'key', Domain}, 'include_docs'],
     case couch_mgr:get_results(?WH_FAXES, <<"faxbox/email_address">>, ViewOptions) of
         {'ok', []} -> {'error', "Not Found", State};
         {'ok', [JObj]} -> maybe_get_faxbox_owner(FaxNumber, wh_json:get_value(<<"doc">>,JObj), State);
@@ -306,6 +316,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
     FaxBoxId = wh_json:get_value(<<"_id">>, FaxBoxDoc),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, FaxBoxDoc),
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, FaxBoxDoc, wh_services:find_reseller_id(AccountId)),
 
     FaxBoxEmailNotify = wh_json:get_value([<<"notifications">>
                                           ,<<"outbound">>
@@ -341,6 +352,7 @@ add_fax_document(FaxNumber, FaxBoxDoc, #state{docs=Docs
                               ,{<<"attempts">>, 0}
                               ,{<<"pvt_account_id">>, AccountId}
                               ,{<<"pvt_account_db">>, AccountDb}
+                              ,{<<"pvt_reseller_id">>, ResellerId}
                              ]
                              ,wh_json_schema:add_defaults(wh_json:from_list(Props), <<"faxes">>)
                             ),

@@ -122,7 +122,7 @@ new() ->
     new(<<"auto.nksip">>, Medias).
 
 
-%% @doc Generates an empty SDP record, using host `"local.nksip"' (see {@link new/2}).
+%% @doc Generates an empty SDP record, using host `"auto.nksip"' (see {@link new/2}).
 -spec empty() ->
     sdp().
 
@@ -146,6 +146,8 @@ increment(#sdp{vsn=Vsn}=SDP) ->
 update(#sdp{medias=M}=SDP, State) ->
     increment(SDP#sdp{medias=update_state(M, State, [])}).
 
+
+%% @private
 update_state([], _State, Acc) ->
     lists:reverse(Acc);
 

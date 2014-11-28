@@ -49,6 +49,9 @@
                      ,{{'fax_cloud', 'handle_faxbox_created'}
                        ,[{<<"configuration">>, <<"doc_created">>}]
                       }
+                     ,{{'fax_cloud', 'handle_faxbox_edited'}
+                       ,[{<<"configuration">>, <<"doc_edited">>}]
+                      }
                      ,{{'fax_cloud', 'handle_faxbox_deleted'}
                        ,[{<<"configuration">>, <<"doc_deleted">>}]
                       }

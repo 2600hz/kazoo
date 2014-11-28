@@ -1319,7 +1319,7 @@ activate_phone_number(Units, #number{phone_number_activation_charges=Charges
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec append_feature_debit(wh_json:json_string(), integer(), wnm_number()) -> wh_json:objects().
+-spec append_feature_debit(wh_json:key(), integer(), wnm_number()) -> wh_json:objects().
 append_feature_debit(Feature, Units, #number{billing_id=Ledger
                                              ,assigned_to=AccountId
                                              ,activations=Activations

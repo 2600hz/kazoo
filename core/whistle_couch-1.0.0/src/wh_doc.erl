@@ -16,6 +16,8 @@
 -export([update_pvt_parameters/2, update_pvt_parameters/3
          ,public_fields/1
          ,private_fields/1
+         ,attachments/1, attachments/2
+         ,attachment/1, attachment/2, attachment/3
         ]).
 -export([update_pvt_modified/1]).
 
@@ -145,3 +147,25 @@ is_private_key(_) -> 'false'.
                             wh_json:object() | wh_json:objects().
 private_fields(JObjs) when is_list(JObjs) -> [public_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) -> wh_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
+
+-spec attachments(wh_json:object()) -> api_object().
+-spec attachments(wh_json:object(), Default) -> wh_json:object() | Default.
+attachments(JObj) ->
+    attachments(JObj, 'undefined').
+attachments(JObj, Default) ->
+    wh_json:get_value(<<"_attachments">>, JObj, Default).
+
+-spec attachment(wh_json:object()) -> api_object().
+-spec attachment(wh_json:object(), wh_json:key()) -> api_object().
+-spec attachment(wh_json:object(), wh_json:key(), Default) -> wh_json:object() | Default.
+attachment(JObj) ->
+    case wh_json:get_values(attachments(JObj, wh_json:new())) of
+        {[], []} -> 'undefined';
+        {[Attachment|_], [AttachmentName|_]} ->
+                wh_json:from_list([{AttachmentName, Attachment}])
+        end.
+
+attachment(JObj, AName) ->
+    attachment(JObj, AName, 'undefined').
+attachment(JObj, AName, Default) ->
+    wh_json:get_value(AName, attachments(JObj, wh_json:new()), Default).

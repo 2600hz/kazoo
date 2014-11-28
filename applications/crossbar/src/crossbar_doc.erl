@@ -237,7 +237,7 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                 ,start_key=StartKey
                                 ,page_size=PageSize
                                 ,filter_fun=FilterFun
-                                ,dbs=props:get_value('databases', Options, [cb_context:account_db(Context)])
+                                ,dbs=lists:filter(fun couch_mgr:db_exists/1, props:get_value('databases', Options, [cb_context:account_db(Context)]))
                                }).
 
 load_view(#load_view_params{dbs=[]
@@ -335,7 +335,7 @@ limit_by_page_size(Context, PageSize) ->
 maybe_disable_page_size(Context, PageSize) ->
     case has_qs_filter(Context) of
         'true' ->
-            lager:debug("request has a query string fitler, disabling pagination"),
+            lager:debug("request has a query string filter, disabling pagination"),
             'undefined';
         'false' ->
             lager:debug("no query string filter, getting page size from ~p", [PageSize]),

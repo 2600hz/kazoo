@@ -905,7 +905,7 @@ remove_white_spaces(Bin, Opts) ->
     case props:get_value(<<"remove_white_spaces">>, Opts, 'true') of
         'false' -> Bin;
         'true' ->
-            binary:replace(Bin, <<" ">>, <<>>, ['global'])
+            << <<X>> || <<X>> <= Bin, X =/= $ >> %"$ " is 32
     end.
 
 -spec binary_md5(text()) -> ne_binary().

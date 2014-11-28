@@ -18,11 +18,11 @@
 %%
 %% -------------------------------------------------------------------
 
-%% @doc NkSIP Config Cache
+%% @private NkSIP Config Cache
 %%
 %%
-%% This module is hot compiled in run-time, after NkSIP application has started
-%% It maintains a number of functions to cache some parts of the configuration
+%% This module is hot compiled in run-time, after NkSIP application has started.
+%% It maintains a number of functions to cache some parts of the configuration.
 
 -module(nksip_config_cache).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
@@ -36,15 +36,25 @@ global_id() -> nksip_config:get(global_id).
 
 local_ips() -> nksip_config:get(local_ips).
 
-max_connections() -> nksip_config:get(max_connections).
-
 main_ip() -> nksip_config:get(main_ip).
 
 main_ip6() -> nksip_config:get(main_ip6).
 
+sync_call_time() -> nksip_config:get(sync_call_time). 
+
+msg_routers() -> nksip_config:get(msg_routers). 
+
+dns_cache_ttl() -> nksip_config:get(dns_cache_ttl).
+
+local_data_path() -> nksip_config:get(local_data_path).
+
+global_max_connections() -> nksip_config:get(global_max_connections).
+
+global_max_calls() -> nksip_config:get(global_max_calls).
+
 app_config() -> nksip_config:get(app_config).
 
+re_call_id() -> nksip_config:get(re_call_id). 
 
-
-
+re_content_length() -> nksip_config:get(re_content_length). 
 

@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{'notify_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
+-define(RESPONDERS, [{'notify_voicemail_to_email', [{<<"notification">>, <<"voicemail_new">>}]}
                      ,{'notify_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
                      ,{'notify_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
                      ,{'notify_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}

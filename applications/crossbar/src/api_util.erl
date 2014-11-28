@@ -536,7 +536,7 @@ get_http_verb(Method, Context) ->
 parse_path_tokens(Context, Tokens) ->
     parse_path_tokens(Context, Tokens, []).
 
--spec parse_path_tokens(cb_context:context(), wh_json:json_strings(), cb_mods_with_tokens()) ->
+-spec parse_path_tokens(cb_context:context(), wh_json:keys(), cb_mods_with_tokens()) ->
                                cb_mods_with_tokens().
 parse_path_tokens(_, [], Events) -> Events;
 parse_path_tokens(_, [<<>>], Events) -> Events;
@@ -639,14 +639,27 @@ is_authentic(Req0, Context0, _ReqVerb) ->
         [] ->
             lager:debug("failed to authenticate"),
             ?MODULE:halt(Req0, cb_context:add_system_error('invalid_credentials', Context0));
-        ['true'|_] ->
-            {'true', Req1, Context1};
+        ['true'|T] ->
+            prefer_new_context(T, Req1, Context1);
         [{'true', Context2}|_] ->
             {'true', Req1, Context2};
         [{'halt', Context2}|_] ->
             lager:debug("authn halted"),
             ?MODULE:halt(Req1, Context2)
     end.
+
+-spec prefer_new_context(wh_proplist(), cowboy_req:req(), cb_context:context()) ->
+                        {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
+                        halt_return().
+prefer_new_context([], Req, Context) ->
+    {'true', Req, Context};
+prefer_new_context([{'true', Context1}|_], Req, _) ->
+    {'true', Req, Context1};
+prefer_new_context(['true'|T], Req, Context) ->
+    prefer_new_context(T, Req, Context);
+prefer_new_context([{'halt', Context1}|_], Req, _) ->
+    lager:debug("authn halted"),
+    ?MODULE:halt(Req, Context1).
 
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) ->
                             {cowboy_req:req(), cb_context:context()}.
@@ -802,26 +815,44 @@ does_resource_exist(_Context, _ReqNouns) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function gives each noun a chance to determine if
+%% This function gives each {Mod, Params} pair a chance to determine if
 %% it is valid and returns the status, and any errors
+%%
+%% validate_resource for each {Mod, Params} pair
+%% validate for LAST {Mod, Params} pair
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
-validate(Context0) ->
-    Context1 =
-        cb_context:import_errors(
-          lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                              Event = api_util:create_event_name(Context0, <<"validate.", Mod/binary>>),
-                              Payload = [cb_context:set_resp_status(ContextAcc, 'fatal') | Params],
-                              crossbar_bindings:fold(Event, Payload)
-                      end
-                      ,Context0
-                      ,cb_context:req_nouns(Context0)
-                     )),
-    case succeeded(Context1) of
-        'true' -> process_billing(Context1);
-        'false' -> Context1
+-spec validate(cb_context:context(), list()) -> cb_context:context().
+validate(Context) ->
+    validate(Context, cb_context:req_nouns(Context)).
+
+validate(Context, ReqNouns) ->
+    Context1 = validate_resources(Context, ReqNouns),
+    Context2 = validate_data(Context1, ReqNouns),
+    case succeeded(Context2) of
+        'true' -> process_billing(Context2);
+        'false' -> Context2
     end.
+
+-spec validate_data(cb_context:context(), list()) -> cb_context:context().
+validate_data(Context, [{Mod, Params}|_]) ->
+    Event = api_util:create_event_name(Context, <<"validate.", Mod/binary>>),
+    Payload = [cb_context:set_resp_status(Context, 'fatal') | Params],
+    cb_context:import_errors(crossbar_bindings:fold(Event, Payload)).
+
+-spec validate_resources(cb_context:context(), list()) -> cb_context:context().
+validate_resources(Context, ReqNouns) ->
+    cb_context:import_errors(
+        lists:foldr(fun({Mod, Params}, ContextAcc) ->
+            Event = api_util:create_event_name(Context, <<"validate_resource.", Mod/binary>>),
+            Payload = [cb_context:set_resp_status(ContextAcc, 'fatal') | Params],
+            crossbar_bindings:fold(Event, Payload)
+        end
+        ,Context
+        ,ReqNouns
+    )).
 
 %%--------------------------------------------------------------------
 %% @private

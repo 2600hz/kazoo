@@ -19,379 +19,130 @@
 %% -------------------------------------------------------------------
 
 %% @doc User Request Management Functions.
-
 -module(nksip_request).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
--export([field/2, fields/2, header/2]).
--export([body/1, method/1, dialog_id/1, call_id/1, get_request/1]).
--export([is_local_route/1, reply/2]).
--export_type([field/0]).
+-export([get_handle/1, app_id/1, app_name/1, method/1, body/1, call_id/1]).
+-export([meta/2, metas/2, header/2, reply/2, is_local_ruri/1]).
 
 -include("nksip.hrl").
-
-
-
-%% ===================================================================
-%% Types
-%% ===================================================================
-
--type field() ::  app_id | method | call_id | vias | parsed_vias | 
-                  ruri | ruri_scheme | ruri_user | ruri_domain | parsed_ruri | aor |
-                  from | from_scheme | from_user | from_domain | parsed_from | 
-                  to | to_scheme | to_user | to_domain | parsed_to | 
-                  cseq | parsed_cseq | cseq_num | cseq_method | forwards |
-                  routes | parsed_routes | contacts | parsed_contacts | 
-                  content_type | parsed_content_type | 
-                  require | parsed_require | 
-                  supported | parsed_supported | 
-                  expires | parsed_expires | event | parsed_event |
-                  all_headers | body | dialog_id | local | remote |
-                  binary().
-
+-include("nksip_call.hrl").
 
 
 %% ===================================================================
 %% Public
 %% ===================================================================
 
-%% @doc Gets specific information from the `Request'. 
-%% The available fields are:
-%%  
-%% <table border="1">
-%%      <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-%%      <tr>
-%%          <td>`app_id'</td>
-%%          <td>{@link nksip:app_id()}</td>
-%%          <td>SipApp this request belongs to</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`method'</td>
-%%          <td>{@link nksip:method()}</td>
-%%          <td>Method</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`ruri'</td>
-%%          <td>`binary()'</td>
-%%          <td>Request-Uri</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`ruri_scheme'</td>
-%%          <td>`nksip:scheme()'</td>
-%%          <td>Request-Uri Scheme</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`ruri_user'</td>
-%%          <td>`binary()'</td>
-%%          <td>Request-Uri User</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`ruri_domain'</td>
-%%          <td>`binary()'</td>
-%%          <td>Request-Uri Domain</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_ruri'</td>
-%%          <td>{@link nksip:uri()}</td>
-%%          <td>Request-Uri</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`aor'</td>
-%%          <td>{@link nksip:aor()}</td>
-%%          <td>Address-Of-Record of the Request-Uri</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`call_id'</td>
-%%          <td>{@link nksip:call_id()}</td>
-%%          <td>Call-ID Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`vias'</td>
-%%          <td>`[binary()]'</td>
-%%          <td>Via Headers</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_vias'</td>
-%%          <td>`['{@link nksip:via()}`]'</td>
-%%          <td>Via Headers</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`from'</td>
-%%          <td>`binary()'</td>
-%%          <td>From Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`from_scheme'</td>
-%%          <td>`nksip:scheme()'</td>
-%%          <td>From Scheme</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`from_user'</td>
-%%          <td>`binary()'</td>
-%%          <td>From User</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`from_domain'</td>
-%%          <td>`binary()'</td>
-%%          <td>From Domain</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_from'</td>
-%%          <td>{@link nksip:uri()}</td>
-%%          <td>From Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`to'</td>
-%%          <td>`binary()'</td>
-%%          <td>To Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`to_scheme'</td>
-%%          <td>`nksip:scheme()'</td>
-%%          <td>To Scheme</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`to_user'</td>
-%%          <td>`binary()'</td>
-%%          <td>To User</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`to_domain'</td>
-%%          <td>`binary()'</td>
-%%          <td>To Domain</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_to'</td>
-%%          <td>{@link nksip:uri()}</td>
-%%          <td>To Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`cseq'</td>
-%%          <td>`binary()'</td>
-%%          <td>CSeq Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_cseq'</td>
-%%          <td>`{integer(), '{@link nksip:method()}`}'</td>
-%%          <td>CSeq Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`forwards'</td>
-%%          <td>`integer()'</td>
-%%          <td>Forwards</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`routes'</td>
-%%          <td>`[binary()]'</td>
-%%          <td>Route Headers</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_routes'</td>
-%%          <td>`['{@link nksip:uri()}`]'</td>
-%%          <td>Route Headers</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`contacts'</td>
-%%          <td>`[binary()]'</td>
-%%          <td>Contact Headers</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_contacts'</td>
-%%          <td>`['{@link nksip:uri()}`]'</td>
-%%          <td>Contact Headers</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`content_type'</td>
-%%          <td>`binary()'</td>
-%%          <td>Content-Type Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_content_type'</td>
-%%          <td>`['{@link nksip:token()}`]'</td>
-%%          <td>Content-Type Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`require'</td>
-%%          <td>`binary()'</td>
-%%          <td>Require Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_require'</td>
-%%          <td>`['{@link nksip:token()}`]'</td>
-%%          <td>Require Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`expires'</td>
-%%          <td>`binary()'</td>
-%%          <td>Expires Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_expires'</td>
-%%          <td>`undefined | integer()'</td>
-%%          <td>Expires Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`supported'</td>
-%%          <td>`binary()'</td>
-%%          <td>Supported Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_supported'</td>
-%%          <td>`['{@link nksip:token()}`]'</td>
-%%          <td>Supported Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`event</td>
-%%          <td>`undefined | binary()'</td>
-%%          <td>Event Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`parsed_event'</td>
-%%          <td><code>undefined | {@link nksip:token()}'</code></td>
-%%          <td>Event Header</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`all_headers'</td>
-%%          <td>`[{binary(), binary()}]'</td>
-%%          <td>All headers in the request</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`body'</td>
-%%          <td>{@link nksip:body()}</td>
-%%          <td>Parsed Body</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`dialog_id'</td>
-%%          <td>{@link nksip_dialog:id()}</td>
-%%          <td>Dialog's Id (if the request has To Tag)</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`local'</td>
-%%          <td>`{'{@link nksip:protocol()}, {@link inet:ip_address()}, 
-%%                  {@link inet:port_number()}`}'</td>
-%%          <td>Local transport protocol, ip and port of a request</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`remote'</td>
-%%          <td>`{'{@link nksip:protocol()}, {@link inet:ip_address()}, 
-%%                  {@link inet:port_number()}`}'</td>
-%%          <td>Remote transport protocol, ip and port of a request</td>
-%%      </tr>
-%%      <tr>
-%%          <td>`binary()'</td>
-%%          <td>`{binary(), [binary()]}'</td>
-%%          <td>If you use a binary as a field name, NkSIP will return all the values
-%%              of this header, or `[]' if it is not present</td>
-%%      </tr>
-%% </table>
--spec field(nksip:id(), field()) ->
-    term() | error.
+%% @doc Gets request's id
+-spec get_handle(nksip:request()|nksip:handle()) ->
+    {ok, nksip:handle()}.
 
-field(Id, Field) -> 
-    case fields(Id, [Field]) of
-        [{Field, Value}] -> Value;
-        error -> error
+get_handle(Term) ->
+    case nksip_sipmsg:get_handle(Term) of
+        <<"R_", _/binary>> = Handle -> {ok, Handle};
+        _ -> error(invalid_request)
     end.
 
 
-%% @doc Gets some fields from a request.
--spec fields(nksip:id(), [field()]) ->
-    [{atom(), term()}] | error.
+%% @doc Gets internal app's id
+-spec app_id(nksip:request()|nksip:handle()) -> 
+    {ok, nksip:app_id()}.
 
-fields(<<"R_", _/binary>>=Id, Fields) -> 
-    Fun = fun(Req) -> {ok, lists:zip(Fields, nksip_sipmsg:fields(Req, Fields))} end,
-    case nksip_call_router:apply_sipmsg(Id, Fun) of
-        {ok, Values} -> Values;
-        _ -> error
+app_id(#sipmsg{class={req, _}, app_id=AppId}) ->
+    {ok, AppId};
+app_id(Handle) ->
+    case nksip_sipmsg:parse_handle(Handle) of
+        {req, AppId, _Id, _CallId} -> {ok, AppId};
+        _ -> error(invalid_request)
     end.
 
 
-%% @doc Gets values for a header in a request.
--spec header(nksip:id(), binary()) ->
-    [binary()] | error.
+%% @doc Gets app's name
+-spec app_name(nksip:request()|nksip:handle()) -> 
+    {ok, nksip:app_name()}.
 
-header(<<"R_", _/binary>>=Id, Name) -> 
-    Fun = fun(Req) -> {ok, nksip_sipmsg:header(Req, Name)} end,
-    case nksip_call_router:apply_sipmsg(Id, Fun) of
-        {ok, Values} -> Values;
-        _ -> error
-    end.
-
-
-%% @doc Gets the <i>method</i> of a request.
--spec method(nksip:id()) ->
-    nksip:method() | error.
-
-method(Id) -> 
-    field(Id, method).
-
-
-%% @doc Gets the <i>body</i> of a request.
--spec body(nksip:id()) ->
-    nksip:body() | error.
-
-body(Id) -> 
-    field(Id, body).
-
-
-%% @doc Gets the <i>dialog_id</i> of a request.
--spec dialog_id(nksip:id()) ->
-    nksip_dialog:id() | error.
-
-dialog_id(Id) -> 
-    field(Id, dialog_id).
-
-
-%% @private
--spec get_request(nksip:id()) ->
-    nksip:request() | error.
-
-get_request(<<"R_", _/binary>>=Id) ->
-    Fun = fun(Req) -> {ok, Req} end,
-    case nksip_call_router:apply_sipmsg(Id, Fun) of
-        {ok, SipMsg} -> SipMsg;
-        _ -> error
-    end.
+app_name(Req) -> 
+    {ok, AppId} = app_id(Req),
+    {ok, AppId:name()}.
 
 
 %% @doc Gets the calls's id of a request id
--spec call_id(nksip:id()) ->
-    nksip:call_id().
+-spec call_id(nksip:request()|nksip:handle()) ->
+    {ok, nksip:call_id()}.
 
-call_id(Id) ->
-    {req, _AppId, _MsgId, CallId} = nksip_sipmsg:parse_id(Id),
-    CallId.
-   
-
-%% @doc Sends a reply to a request.
--spec reply(nksip:id()|nksip:request(), nksip:sipreply()) -> 
-    ok | {error, Error}
-    when Error :: invalid_call | unknown_call | sipapp_not_found.
-
-reply(<<"R_", _/binary>>=Id, SipReply) ->
-    nksip_call:send_reply(Id, SipReply);
-
-reply(#sipmsg{class={req, _}}=Req, SipReply) ->
-    reply(nksip_sipmsg:get_id(Req), SipReply).
+call_id(#sipmsg{class={req, _}, call_id=CallId}) ->
+    {ok, CallId};
+call_id(Handle) ->
+    case nksip_sipmsg:parse_handle(Handle) of
+        {req, _AppId, _Id, CallId} -> {ok, CallId};
+        _ -> error(invalid_request)
+    end.
 
 
-%% @doc Checks if this request would be sent to a local address in case of beeing proxied.
-%% It will return `true' if the first <i>Route</i> header points to a local address
-%% or the <i>Request-Uri</i> if there is no <i>Route</i> headers.
--spec is_local_route(nksip:id()|nksip:request()) -> 
+%% @doc Gets the method of the request
+-spec method(nksip:request()|nksip:handle()) ->
+    {ok, nksip:method()} | {error, term()}.
+
+method(#sipmsg{class={req, Method}}) ->
+    {ok, Method};
+method(Handle) ->
+    meta(method, Handle).
+
+
+%% @doc Gets the body of the request
+-spec body(nksip:request()|nksip:handle()) ->
+    {ok, nksip:body()} | {error, term()}.
+
+body(#sipmsg{class={req, _}, body=Body}) -> 
+    {ok, Body};
+body(Handle) ->
+    meta(body, Handle).
+
+
+%% @doc Get a specific metadata
+-spec meta(nksip_sipmsg:field(), nksip:request()|nksip:handle()) ->
+    {ok, term()} | {error, term()}.
+
+meta(Field, #sipmsg{class={req, _}}=Req) -> 
+    {ok, nksip_sipmsg:meta(Field, Req)};
+meta(Field, Handle) ->
+    nksip_sipmsg:remote_meta(Field, Handle).
+
+
+%% @doc Get a group of specific metadata
+-spec metas([nksip_sipmsg:field()], nksip:request()|nksip:handle()) ->
+    {ok, [{nksip_sipmsg:field(), term()}]} | {error, term()}.
+
+metas(Fields, #sipmsg{class={req, _}}=Req) when is_list(Fields) ->
+    {ok, nksip_sipmsg:metas(Fields, Req)};
+metas(Fields, Handle) when is_list(Fields) ->
+    nksip_sipmsg:remote_metas(Fields, Handle).
+
+
+%% @doc Gets values for a header in a request.
+-spec header(string()|binary(), nksip:request()|nksip:handle()) -> 
+    {ok, [binary()]} | {error, term()}.
+
+header(Name, #sipmsg{class={req, _}}=Req) -> 
+    {ok, nksip_sipmsg:header(Name, Req)};
+header(Name, Handle) when is_binary(Handle) ->
+    meta(nksip_lib:to_binary(Name), Handle).
+
+
+%% @doc Sends a reply to a request. Must get the request's id before, and
+%% be called outside of the callback function.
+-spec reply(nksip:sipreply(), nksip:handle()) -> 
+    ok | {error, term()}.
+
+reply(SipReply, Handle) ->
+    {req, AppId, ReqId, CallId} = nksip_sipmsg:parse_handle(Handle),
+    nksip_call:send_reply(AppId, CallId, ReqId, SipReply).
+
+
+%% @doc Checks if this R-URI of this request points to a local address
+-spec is_local_ruri(nksip:request()) -> 
     boolean().
 
-is_local_route(<<"R_", _/binary>>=Id) ->
-    {req, AppId, _MsgId, _CallId} = nksip_sipmsg:parse_id(Id),
-    case fields(Id, [parsed_ruri, parsed_routes]) of
-        [{_, RUri}, {_, []}] -> nksip_transport:is_local(AppId, RUri);
-        [{_, _RUri}, {_, [Route|_]}] -> nksip_transport:is_local(AppId, Route);
-        error -> false
-    end;
-
-is_local_route(#sipmsg{class={req, _}, app_id=AppId, ruri=RUri, routes=Routes}) ->
-    case Routes of
-        [] -> nksip_transport:is_local(AppId, RUri);
-        [Route|_] -> nksip_transport:is_local(AppId, Route)
-    end.
+is_local_ruri(#sipmsg{class={req, _}, app_id=AppId, ruri=RUri}) ->
+    nksip_transport:is_local(AppId, RUri).
 

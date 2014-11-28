@@ -44,7 +44,7 @@
                    cb_context:context() |
                    {cb_context:context(), wh_proplist()} | % v1_resource:rest_init/2
                    {'error', _} | % v1_util:execute_request/2
-                   {wh_json:json_strings(), cb_context:context(), path_tokens()} |
+                   {wh_json:keys(), cb_context:context(), path_tokens()} |
                    {wh_datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
                    {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
 
@@ -95,9 +95,9 @@ all(Res) when is_list(Res) ->
 -spec succeeded(map_results()) -> map_results().
 succeeded(Res) when is_list(Res) ->
     Successes = kazoo_bindings:succeeded(Res, fun filter_out_failed/1),
-    case lists:keyfind('halt', 1, Successes) of
-        'false' -> Successes;
-        {'value', HaltTuple} -> [HaltTuple]
+    case props:get_value('halt', Successes) of
+        'undefined' -> Successes;
+        HaltContext -> [{'halt', HaltContext}]
     end.
 
 -spec failed(map_results()) -> map_results().

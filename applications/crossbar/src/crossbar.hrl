@@ -36,12 +36,14 @@
                           ,?HTTP_OPTIONS
                          ]).
 
--define(USERS_QCALL_NOUNS, [{<<"users">>, [_UserId, <<"quickcall">>, _Number]}
-                            ,{?WH_ACCOUNTS_DB, [_]}
-                           ]).
--define(DEVICES_QCALL_NOUNS, [{<<"devices">>, [_DeviceId, <<"quickcall">>, _Number]}
-                              ,{?WH_ACCOUNTS_DB, [_]}
-                             ]).
+-define(DEVICES_QCALL_NOUNS(DeviceId, Number)
+        ,[{<<"devices">>, [DeviceId, <<"quickcall">>, Number]}
+          ,{?WH_ACCOUNTS_DB, [_]}
+         ]).
+-define(USERS_QCALL_NOUNS(UserId, Number)
+        ,[{<<"users">>, [UserId, <<"quickcall">>, Number]}
+          ,{?WH_ACCOUNTS_DB, [_]}
+         ]).
 
 -define(DEFAULT_MODULES, ['cb_about'
                           ,'cb_accounts'
@@ -109,12 +111,14 @@
           ,req_headers = [] :: cowboy:http_headers()
           ,query_json = wh_json:new() :: wh_json:object()
           ,account_id :: api_binary()
+          ,user_id :: api_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
+          ,reseller_id :: api_binary()
           ,db_name :: api_binary() | ne_binaries()
           ,doc :: api_object() | wh_json:objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
           ,resp_etag :: 'automatic' | string() | api_binary()
           ,resp_status = 'error' :: crossbar_status()
-          ,resp_error_msg :: wh_json:json_string()
+          ,resp_error_msg :: wh_json:key()
           ,resp_error_code :: pos_integer()
           ,resp_data :: resp_data()
           ,resp_headers = [] :: wh_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)

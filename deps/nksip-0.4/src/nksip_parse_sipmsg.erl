@@ -18,7 +18,7 @@
 %%
 %% -------------------------------------------------------------------
 
-%% @doc SIP message parsing functions
+%% @private SIP message parsing functions
 %%
 %% This module implements several functions to parse sip requests, responses
 %% headers, uris, vias, etc.
@@ -28,11 +28,32 @@
 
 -include("nksip.hrl").
 
--export([parse/2]).
+-export([parse/2, parse/1]).
 
 %% ===================================================================
 %% Public
 %% ===================================================================
+
+%% @doc Parses a SIP packet. Message MUST have a \r\n\r\n.
+-spec parse(binary()) ->
+    {ok, Class, [nksip:header()], binary()} | error
+    when Class :: {req, nksip:method(), binary()} | {resp, string(), binary()}.
+
+parse(Bin) ->
+    try
+        Class = case first(Bin) of
+            {req, Method, Uri, Rest1} -> {req, Method, Uri};
+            {resp, Code, Reason, Rest1} -> {resp, Code, Reason}
+        end,
+        {Headers, Rest2} = headers(Rest1, []),
+        {ok, Class, Headers, Rest2}
+    catch
+        throw:{line, _Line} -> 
+            % lager:error("LINE: ~p", [_Line]),
+            error
+    end.
+
+
 
 
 %% @doc Parses a SIP packet. Message MUST have a \r\n\r\n.
@@ -78,6 +99,9 @@ parse(Proto, Bin) ->
     catch
         throw:{line, _} -> error
     end.
+
+
+
 
 
 %% ===================================================================

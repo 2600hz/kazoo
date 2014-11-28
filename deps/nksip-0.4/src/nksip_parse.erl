@@ -33,12 +33,12 @@
 -export([tokens/1, integers/1, dates/1]).
 -export([uri_method/2]).
 -export([transport/1]).
--export([packet/3]).
+-export([packet/4, packet/3]).
 
 -export_type([msg_class/0]).
 
 -type msg_class() :: {req, nksip:method(), binary()} | 
-                     {resp, nksip:response_code(), binary()}.
+                     {resp, nksip:sip_code(), binary()}.
 
 
 
@@ -85,7 +85,7 @@ aors(Term) ->
 
 
 %% @doc Parses all URIs found in `Term'.
--spec ruris(Term :: nksip:user_uri() | [nksip:user_uri()]) -> 
+-spec uris(Term :: nksip:user_uri() | [nksip:user_uri()]) -> 
     [nksip:uri()] | error.
                 
 uris(#uri{}=Uri) -> [Uri];
@@ -97,7 +97,7 @@ uris(Term) -> uris([Term]).
 
 
 %% @doc Parses all URIs found in `Term'.
--spec uris(Term :: nksip:user_uri() | [nksip:user_uri()]) -> 
+-spec ruris(Term :: nksip:user_uri() | [nksip:user_uri()]) -> 
     [nksip:uri()] | error.
                 
 ruris(RUris) -> 
@@ -200,6 +200,62 @@ transport(#via{proto=Proto, domain=Host, port=Port}) ->
 %% ===================================================================
 %% Internal
 %% ===================================================================
+
+%% @private First-stage SIP message parser
+%% 50K/sec on i7
+-spec packet(nksip:app_id(), nksip:call_id(), nksip_transport:transport(), binary()) ->
+    {ok, #sipmsg{}} | {error, term()} | {reply_error, term(), binary()}.
+
+packet(AppId, CallId, Transp, Packet) ->
+    Start = nksip_lib:l_timestamp(),
+    case nksip_parse_sipmsg:parse(Packet) of
+        {ok, Class, Headers, Body} ->
+            try 
+                MsgClass = case Class of
+                    {req, Method, RUri} ->
+                        case uris(RUri) of
+                            [RUri1] -> 
+                                [RUri1];
+                            _ -> RUri1 = 
+                                throw({invalid, <<"Request-URI">>})
+                        end,
+                        {req, Method};
+                    {resp, Code, Reason} ->
+                        case catch list_to_integer(Code) of
+                            Code1 when is_integer(Code1), Code1>=100, Code1<700 -> 
+                                ok;
+                            _ -> 
+                                Code1 = throw({invalid, <<"Code">>})
+                        end,
+                        RUri1 = undefined,
+                        {resp, Code1, Reason}
+                end,
+                Req0 = #sipmsg{
+                    id = nksip_lib:uid(),
+                    class = MsgClass,
+                    app_id = AppId,
+                    ruri = RUri1,
+                    call_id = CallId,
+                    body = Body,
+                    transport = Transp,
+                    start = Start
+                },
+                {ok, parse_sipmsg(Req0, Headers)}
+            catch
+                throw:{invalid, InvHeader} ->
+                    case Class of
+                        {req, _, _} ->
+                            Msg = <<"Invalid ", InvHeader/binary>>,
+                            Resp = nksip_unparse:response(Headers, 400, Msg),
+                            {reply_error, {invalid, InvHeader}, Resp};
+                        _ ->
+                            {error, {invalid, InvHeader}}
+                    end
+            end;
+        error ->
+            {error, invalid_message}
+    end.
+
 
 
 %% @private First-stage SIP message parser
