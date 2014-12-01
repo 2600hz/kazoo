@@ -5,7 +5,6 @@ EBINS = $(shell find $(ROOT)/core -maxdepth 2 -name ebin -print) $(shell find $(
 PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
 
 ERLC_OPTS = +debug_info +warn_export_all -I$(ROOT)/deps -Iinclude/ $(PA)
-     # +bin_opt_info
 
 .PHONY: all compile clean
 
@@ -19,11 +18,13 @@ compile: ebin/$(PROJECT).app
 		> ebin/$(PROJECT).app
 	-@$(MAKE) ebin/$(PROJECT).app
 
-COMPILE_FIRST = 
+ebin/$(PROJECT).app: src/*.yrl
+	erlc -o src/ $?
+	-@$(MAKE) ebin/beam
 
-ebin/$(PROJECT).app: src/*.erl
+ebin/beam: src/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(COMPILE_FIRST) $?
+	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \
@@ -37,6 +38,7 @@ test/$(PROJECT).app: src/*.erl
 
 clean:
 	rm -f ebin/*
+	rm -f src/erlydtl_parser.erl
 	rm -f test/*.beam test/$(PROJECT).app
 	rm -f erl_crash.dump
 
