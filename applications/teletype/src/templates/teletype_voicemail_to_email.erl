@@ -18,79 +18,22 @@
 
 -define(TEMPLATE_ID, <<"voicemail_to_email">>).
 
--define(TEMPLATE_MACROS, wh_json:from_list([{<<"caller_id.number">>
-                                             ,wh_json:from_list([{<<"i18n_label">>, <<"caller_id_number">>}
-                                                                 ,{<<"friendly_name">>, <<"Caller ID Number">>}
-                                                                 ,{<<"description">>, <<"Caller ID Number">>}
-                                                                ])
-                                            }
-                                            ,{<<"caller_id.name">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"caller_id_name">>}
-                                                                  ,{<<"friendly_name">>, <<"Caller ID Name">>}
-                                                                  ,{<<"description">>, <<"Caller ID Name">>}
-                                                                 ])
-                                             }
-                                            ,{<<"date_called.utc">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"date_called_utc">>}
-                                                                  ,{<<"friendly_name">>, <<"Date (UTC)">>}
-                                                                  ,{<<"description">>, <<"When was the voicemail left (UTC)">>}
-                                                                 ])
-                                             }
-                                            ,{<<"date_called.local">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"date_called_local">>}
-                                                                  ,{<<"friendly_name">>, <<"Date">>}
-                                                                  ,{<<"description">>, <<"When was the voicemail left (Local time)">>}
-                                                                 ])
-                                             }
-                                            ,{<<"from_user">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"from_user">>}
-                                                                  ,{<<"friendly_name">>, <<"From">>}
-                                                                  ,{<<"description">>, <<"SIP From address">>}
-                                                                 ])
-                                             }
-                                            ,{<<"to_user">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"to_user">>}
-                                                                  ,{<<"friendly_name">>, <<"To">>}
-                                                                  ,{<<"description">>, <<"SIP To address">>}
-                                                                 ])
-                                             }
-                                            ,{<<"voicemail.box">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"voicemail_box">>}
-                                                                  ,{<<"friendly_name">>, <<"Voicemail Box">>}
-                                                                  ,{<<"description">>, <<"Which voicemail box was the message left in">>}
-                                                                 ])
-                                             }
-                                            ,{<<"voicemail.name">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"voicemail_name">>}
-                                                                  ,{<<"friendly_name">>, <<"Voicemail Name">>}
-                                                                  ,{<<"description">>, <<"Name of the voicemail file">>}
-                                                                 ])
-                                             }
-                                            ,{<<"voicemail.length">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"voicemail_name">>}
-                                                                  ,{<<"friendly_name">>, <<"Voicemail Name">>}
-                                                                  ,{<<"description">>, <<"Name of the voicemail file">>}
-                                                                 ])
-                                             }
-                                            ,{<<"call_id">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"call_id">>}
-                                                                  ,{<<"friendly_name">>, <<"Call ID">>}
-                                                                  ,{<<"description">>, <<"Call ID of the caller">>}
-                                                                 ])
-                                             }
-                                            ,{<<"owner.first_name">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"first_name">>}
-                                                                  ,{<<"friendly_name">>, <<"First Name">>}
-                                                                  ,{<<"description">>, <<"First name of the owner of the voicemail box">>}
-                                                                 ])
-                                             }
-                                            ,{<<"owner.last_name">>
-                                              ,wh_json:from_list([{<<"i18n_label">>, <<"last_name">>}
-                                                                  ,{<<"friendly_name">>, <<"Last Name">>}
-                                                                  ,{<<"description">>, <<"Last name of the owner of the voicemail box">>}
-                                                                 ])
-                                             }
-                                           ])).
+-define(TEMPLATE_MACROS
+        ,wh_json:from_list(
+           [?MACRO_VALUE(<<"caller_id.number">>, <<"caller_id_number">>, <<"Caller ID Number">>, <<"Caller ID Number">>)
+            ,?MACRO_VALUE(<<"caller_id.name">>, <<"caller_id_name">>, <<"Caller ID Name">>, <<"Caller ID Name">>)
+            ,?MACRO_VALUE(<<"date_called.utc">>, <<"date_called_utc">>, <<"Date (UTC)">>, <<"When was the voicemail left (UTC)">>)
+            ,?MACRO_VALUE(<<"date_called.local">>, <<"date_called_local">>, <<"Date">>, <<"When was the voicemail left (Local time)">>)
+            ,?MACRO_VALUE(<<"from_user">>, <<"from_user">>, <<"From">>, <<"SIP From address">>)
+            ,?MACRO_VALUE(<<"to_user">>, <<"to_user">>, <<"To">>, <<"SIP To address">>)
+            ,?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
+            ,?MACRO_VALUE(<<"voicemail.name">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
+            ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
+            ,?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
+            ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
+            ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
+           ])
+       ).
 
 -define(TEMPLATE_TEXT, <<"New Voicemail Message\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to_user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\nTranscription: {{voicemail.transcription|default:\"Not Enabled\"}}\n\n\nFor help or questions using your phone or voicemail, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
 -define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to_user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions using your phone or voicemail, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p><p>Transcription: {{voicemail.transcription|default:\"Not Enabled\"}}</p></body></html>">>).

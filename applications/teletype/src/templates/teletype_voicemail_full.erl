@@ -19,49 +19,15 @@
 -define(TEMPLATE_ID, <<"voicemail_full">>).
 
 -define(TEMPLATE_MACROS
-        ,wh_json:from_list([{<<"voicemail.box">>
-                             ,wh_json:from_list([{<<"i18n_label">>, <<"voicemail_box">>}
-                                                 ,{<<"friendly_name">>, <<"Voicemail Box">>}
-                                                 ,{<<"description">>, <<"Which voicemail box was the message left in">>}
-                                                ])
-                            }
-                            ,{<<"voicemail.name">>
-                              ,wh_json:from_list([{<<"i18n_label">>, <<"voicemail_name">>}
-                                                  ,{<<"friendly_name">>, <<"Voicemail Name">>}
-                                                  ,{<<"description">>, <<"Name of the voicemail file">>}
-                                                 ])
-                             }
-                            ,{<<"voicemail.number">>
-                              ,wh_json:from_list([{<<"i18n_label">>, <<"voicemail_number">>}
-                                                  ,{<<"friendly_name">>, <<"Voicemail Number">>}
-                                                  ,{<<"description">>, <<"Number of the voicemail box">>}
-                                                 ])
-                             }
-                            ,{<<"owner.first_name">>
-                              ,wh_json:from_list([{<<"i18n_label">>, <<"first_name">>}
-                                                  ,{<<"friendly_name">>, <<"First Name">>}
-                                                  ,{<<"description">>, <<"First name of the owner of the voicemail box">>}
-                                                 ])
-                             }
-                            ,{<<"owner.last_name">>
-                              ,wh_json:from_list([{<<"i18n_label">>, <<"last_name">>}
-                                                  ,{<<"friendly_name">>, <<"Last Name">>}
-                                                  ,{<<"description">>, <<"Last name of the owner of the voicemail box">>}
-                                                 ])
-                             }
-                            ,{<<"voicemail.max_messages">>
-                              ,wh_json:from_list([{<<"i18n_label">>, <<"max_messages">>}
-                                                  ,{<<"friendly_name">>, <<"Maximum Messages">>}
-                                                  ,{<<"description">>, <<"The maximum number of messages this box can hold">>}
-                                                 ])
-                             }
-                            ,{<<"voicemail.message_count">>
-                              ,wh_json:from_list([{<<"i18n_label">>, <<"message_count">>}
-                                                  ,{<<"friendly_name">>, <<"Message Count">>}
-                                                  ,{<<"description">>, <<"The current number of messages in the voicemail box">>}
-                                                 ])
-                             }
-                           ])
+        ,wh_json:from_list(
+           [?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
+            ,?MACRO_VALUE(<<"voicemail.name">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
+            ,?MACRO_VALUE(<<"voicemail.number">>, <<"voicemail_number">>, <<"Voicemail Number">>, <<"Number of the voicemail box">>)
+            ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
+            ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
+            ,?MACRO_VALUE(<<"voicemail.max_messages">>, <<"max_messages">>, <<"Maximum Messages">>, <<"The maximum number of messages this box can hold">>)
+            ,?MACRO_VALUE(<<"voicemail.message_count">>, <<"message_count">>, <<"Message Count">>, <<"The current number of messages in the voicemail box">>)
+           ])
        ).
 
 -define(TEMPLATE_TEXT, <<"Your voicemail box '{{voicemail.name}}' is full.">>).
