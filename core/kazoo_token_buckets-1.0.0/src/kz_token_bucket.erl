@@ -69,18 +69,18 @@
 -spec start_link(pos_integer(), pos_integer()) -> startlink_ret().
 -spec start_link(pos_integer(), pos_integer(), boolean()) -> startlink_ret().
 start_link(Max, FillRate) -> start_link(Max, FillRate, 'true').
-start_link(Max, FillRate, FillBlock) ->
-    start_link(Max, FillRate, FillBlock, default_fill_time()).
-start_link(Max, FillRate, FillBlock, FillTime) when is_integer(FillRate), FillRate > 0,
+start_link(Max, FillRate, FillAsBlock) ->
+    start_link(Max, FillRate, FillAsBlock, default_fill_time()).
+start_link(Max, FillRate, FillAsBlock, FillTime) when is_integer(FillRate), FillRate > 0,
                                                     is_integer(Max), Max > 0,
-                                                    is_boolean(FillBlock),
+                                                    is_boolean(FillAsBlock),
                                                     (FillTime =:= 'second'
                                                      orelse FillTime =:= 'minute'
                                                      orelse FillTime =:= 'hour'
                                                      orelse FillTime =:= 'day'
                                                     )
                                                     ->
-    gen_server:start_link(?MODULE, [Max, FillRate, FillBlock, FillTime], []).
+    gen_server:start_link(?MODULE, [Max, FillRate, FillAsBlock, FillTime], []).
 
 -spec stop(pid()) -> 'ok'.
 stop(Srv) ->
@@ -118,7 +118,6 @@ default_fill_time(<<"hour">>) -> 'hour';
 default_fill_time(<<"minute">>) -> 'minute';
 default_fill_time(_) -> 'second'.
 
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -134,16 +133,16 @@ default_fill_time(_) -> 'second'.
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Max, FillRate, FillBlock, FillTime]) ->
+init([Max, FillRate, FillAsBlock, FillTime]) ->
     wh_util:put_callid(?MODULE),
     lager:debug("starting token bucket with ~b max, filling at ~b/~s, in a block: ~s"
-                ,[Max, FillRate,FillTime, FillBlock]
+                ,[Max, FillRate,FillTime, FillAsBlock]
                ),
     {'ok', #state{max_tokens=Max
                   ,fill_rate=FillRate
                   ,fill_rate_time=FillTime
-                  ,fill_ref=start_fill_timer(FillRate, FillBlock, FillTime)
-                  ,fill_as_block=FillBlock
+                  ,fill_ref=start_fill_timer(FillRate, FillAsBlock, FillTime)
+                  ,fill_as_block=FillAsBlock
                   ,tokens=Max
                  }
      ,?INACTIVITY_TIMEOUT_MS
@@ -237,11 +236,11 @@ handle_info({'timeout', Ref, ?TOKEN_FILL_TIME}, #state{max_tokens=Max
                                                        ,fill_rate=FillRate
                                                        ,fill_rate_time=FillTime
                                                        ,fill_ref=Ref
-                                                       ,fill_as_block=FillBlock
+                                                       ,fill_as_block=FillAsBlock
                                                      }=State) ->
     {'noreply'
-     ,State#state{tokens=add_tokens(Max, Current, FillRate, FillBlock, FillTime)
-                  ,fill_ref=start_fill_timer(FillRate, FillBlock, FillTime)
+     ,State#state{tokens=add_tokens(Max, Current, FillRate, FillAsBlock, FillTime)
+                  ,fill_ref=start_fill_timer(FillRate, FillAsBlock, FillTime)
                  }
      ,?INACTIVITY_TIMEOUT_MS
     };
@@ -286,7 +285,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%   Maxes out at 1ms
 
 -spec fill_time_in_ms(fill_rate_time() | pos_integer()) -> pos_integer().
-fill_time_in_ms('second') -> 1000;
+fill_time_in_ms('second') -> ?MILLISECONDS_IN_SECOND;
 fill_time_in_ms('minute') -> ?MILLISECONDS_IN_MINUTE;
 fill_time_in_ms('hour') -> ?MILLISECONDS_IN_HOUR;
 fill_time_in_ms('day') -> ?MILLISECONDS_IN_DAY;
