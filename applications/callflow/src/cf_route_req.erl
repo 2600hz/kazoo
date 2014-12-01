@@ -87,7 +87,7 @@ maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
                                                        ,whapps_call:account_id(Call)
                                                       ]),
     {Name, Cost} = bucket_info(Call, Flow),
-    case kz_buckets:consume_tokens(Name, Cost) of
+    case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
         'false' ->
             lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
         'true' ->
