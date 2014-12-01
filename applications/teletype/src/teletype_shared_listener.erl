@@ -29,10 +29,12 @@
                      ,{{'teletype_voicemail_full', 'handle_full_voicemail'}
                        ,[{<<"notification">>, <<"voicemail_full">>}]
                       }
+                     ,{{'teletype_fax_inbound_to_email', 'handle_fax_inbound'}
+                       ,[{<<"notification">>, <<"inbound_fax">>}]
+                      }
                     ]).
 %% -define(RESPONDERS, []}
 
-%%                      ,{'teletype_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
 %%                      ,{'teletype_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
 %%                      ,{'teletype_fax_inbound_error_to_email', [{<<"notification">>, <<"inbound_fax_error">>}]}
 %%                      ,{'teletype_fax_outbound_error_to_email', [{<<"notification">>, <<"outbound_fax_error">>}]}
@@ -52,7 +54,7 @@
 
 -define(RESTRICT_TO, ['new_voicemail'
                       ,'voicemail_full'
-                      %% ,'inbound_fax'
+                      ,'inbound_fax'
                       %% ,'inbound_fax_error'
                       %% ,'outbound_fax'
                       %% ,'outbound_fax_error'
