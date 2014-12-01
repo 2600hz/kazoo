@@ -38,8 +38,8 @@
 
 -include("kz_buckets.hrl").
 
--define(MAX_TOKENS, whapps_config:get_integer(<<"token_buckets">>, <<"max_bucket_tokens">>, 100)).
--define(FILL_RATE, whapps_config:get_integer(<<"token_buckets">>, <<"tokens_fill_rate">>, 10)).
+-define(MAX_TOKENS, whapps_config:get_integer(?APP_NAME, <<"max_bucket_tokens">>, 100)).
+-define(FILL_RATE, whapps_config:get_integer(?APP_NAME, <<"tokens_fill_rate">>, 10)).
 
 -record(state, {table_id :: ets:tid()
                 ,inactivity_timer_ref :: reference()

@@ -40,7 +40,7 @@
 
 -include("kz_buckets.hrl").
 
--define(FILL_TIME, whapps_config:get_binary(<<"token_buckets">>, <<"tokens_fill_time">>, <<"second">>)).
+-define(FILL_TIME, whapps_config:get_binary(?APP_NAME, <<"tokens_fill_time">>, <<"second">>)).
 -define(TOKEN_FILL_TIME, 'fill_er_up').
 
 -type fill_rate_time() :: 'second' | 'minute' | 'hour' | 'day'.
