@@ -26,7 +26,7 @@
          ,credit/2
          ,tokens/1
          ,set_name/2
-         ,default_fill_time/0
+         ,default_fill_time/0, default_fill_time/1
         ]).
 
 %% gen_server callbacks
@@ -41,6 +41,7 @@
 -include("kz_buckets.hrl").
 
 -define(FILL_TIME, whapps_config:get_binary(?APP_NAME, <<"tokens_fill_time">>, <<"second">>)).
+-define(FILL_TIME(App), whapps_config:get(?APP_NAME, [App, <<"tokens_fill_time">>], ?FILL_TIME)).
 -define(TOKEN_FILL_TIME, 'fill_er_up').
 
 -type fill_rate_time() :: 'second' | 'minute' | 'hour' | 'day'.
@@ -105,18 +106,21 @@ credit(Srv, Tokens) when is_integer(Tokens) andalso Tokens > 0 ->
 -spec tokens(pid()) -> non_neg_integer().
 tokens(Srv) -> gen_server:call(Srv, {'tokens'}).
 
--spec set_name(pid(), ne_binary()) -> 'ok'.
+-spec set_name(pid(), {ne_binary(), ne_binary()}) -> 'ok'.
 set_name(Srv, Name) -> gen_server:cast(Srv, {'name', Name}).
 
 -spec default_fill_time() -> fill_rate_time().
--spec default_fill_time(api_binary()) -> fill_rate_time().
+-spec default_fill_time(ne_binary()) -> fill_rate_time().
 default_fill_time() ->
-    default_fill_time(?FILL_TIME).
+    default_fill_time(?DEFAULT_APP).
+default_fill_time(App) ->
+    normalize_fill_time(?FILL_TIME(App)).
 
-default_fill_time(<<"day">>) -> 'day';
-default_fill_time(<<"hour">>) -> 'hour';
-default_fill_time(<<"minute">>) -> 'minute';
-default_fill_time(_) -> 'second'.
+-spec normalize_fill_time(ne_binary()) -> fill_rate_time().
+normalize_fill_time(<<"day">>) -> 'day';
+normalize_fill_time(<<"hour">>) -> 'hour';
+normalize_fill_time(<<"minute">>) -> 'minute';
+normalize_fill_time(_) -> 'second'.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -209,7 +213,7 @@ handle_cast({'credit', Req}, #state{tokens=Current
     end;
 handle_cast({'name', Name}, State) ->
     wh_util:put_callid(Name),
-    lager:debug("updated name to ~s", [Name]),
+    lager:debug("updated name to ~p", [Name]),
     {'noreply', State, ?INACTIVITY_TIMEOUT_MS};
 handle_cast('stop', State) ->
     lager:debug("asked to stop"),

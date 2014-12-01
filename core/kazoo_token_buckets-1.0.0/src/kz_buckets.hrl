@@ -4,6 +4,7 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"token_buckets">>).
+-define(DEFAULT_APP, <<"default">>).
 
 -define(INACTIVITY_TIMEOUT_MS
         ,whapps_config:get_integer(?APP_NAME, <<"inactivity_timeout_s">>, ?SECONDS_IN_MINUTE * 10)
