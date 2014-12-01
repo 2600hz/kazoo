@@ -42,6 +42,13 @@
        ).
 -define(CONFIGURED_EMAILS(Type), wh_json:from_list([{<<"type">>, Type}])).
 
+-define(MACRO_VALUE(Key, Label, Name, Description)
+        ,{Key
+          ,wh_json:from_list([{<<"i18n_label">>, Label}
+                              ,{<<"friendly_name">>, Name}
+                              ,{<<"description">>, Description}
+                             ])
+         }).
 
 -define(TELETYPE_HRL, 'true').
 -endif.
