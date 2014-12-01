@@ -621,6 +621,7 @@ queue_arguments(Arguments) ->
 max_length(Args, Acc) ->
     case props:get_value(<<"x-max-length">>, Args) of
         'undefined' -> [{<<"x-max-length">>, 'short', 100}|Acc];
+        'infinity' -> props:delete(<<"x-max-length">>, Acc);
         Value ->
             Acc1 = props:delete(<<"x-max-length">>, Acc),
             [{<<"x-max-length">>, 'short', Value}|Acc1]
@@ -630,6 +631,7 @@ max_length(Args, Acc) ->
 message_ttl(Args, Acc) ->
     case props:get_value(<<"x-message-ttl">>, Args) of
         'undefined' -> [{<<"x-message-ttl">>, 'signedint', 60000}|Acc];
+        'infinity' -> props:delete(<<"x-message-ttl">>, Acc);
         Value ->
             Acc1 = props:delete(<<"x-message-ttl">>, Acc),
             [{<<"x-message-ttl">>, 'signedint', Value}|Acc1]
