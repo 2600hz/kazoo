@@ -203,11 +203,26 @@ mime_to_extension(_) -> <<"wav">>.
 build_template_data(DataJObj) ->
     props:filter_empty(
       [{<<"caller_id">>, build_caller_id_data(DataJObj)}
+       ,{<<"callee_id">>, build_callee_id_data(DataJObj)}
        ,{<<"date_called">>, build_date_called_data(DataJObj)}
        ,{<<"voicemail">>, build_voicemail_data(DataJObj)}
        ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
-       ,{<<"from_user">>, wh_json:get_value(<<"from_user">>, DataJObj)}
-       ,{<<"to_user">>, wh_json:get_value(<<"to_user">>, DataJObj)}
+       ,{<<"from">>, build_from_data(DataJObj)}
+       ,{<<"to">>, build_to_data(DataJObj)}
+      ]).
+
+-spec build_from_data(wh_json:object()) -> wh_proplist().
+build_from_data(DataJObj) ->
+    props:filter_undefined(
+      [{<<"user">>, wh_json:get_value(<<"from_user">>, DataJObj)}
+       ,{<<"realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
+      ]).
+
+-spec build_to_data(wh_json:object()) -> wh_proplist().
+build_to_data(DataJObj) ->
+    props:filter_undefined(
+      [{<<"user">>, wh_json:get_value(<<"to_user">>, DataJObj)}
+       ,{<<"realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
       ]).
 
 -spec build_caller_id_data(wh_json:object()) -> wh_proplist().
@@ -215,6 +230,13 @@ build_caller_id_data(DataJObj) ->
     props:filter_undefined(
       [{<<"number">>, wnm_util:pretty_print(wh_json:get_value(<<"caller_id_number">>, DataJObj))}
        ,{<<"name">>, wnm_util:pretty_print(wh_json:get_value(<<"caller_id_name">>, DataJObj))}
+      ]).
+
+-spec build_callee_id_data(wh_json:object()) -> wh_proplist().
+build_callee_id_data(DataJObj) ->
+    props:filter_undefined(
+      [{<<"number">>, wnm_util:pretty_print(wh_json:get_value(<<"callee_id_number">>, DataJObj))}
+       ,{<<"name">>, wnm_util:pretty_print(wh_json:get_value(<<"callee_id_name">>, DataJObj))}
       ]).
 
 -spec build_date_called_data(wh_json:object()) -> wh_proplist().
