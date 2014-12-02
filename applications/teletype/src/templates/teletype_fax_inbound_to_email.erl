@@ -120,6 +120,7 @@ callee_id_data(DataJObj) ->
        ,{<<"number">>, wh_json:get_value(<<"callee_id_number">>, DataJObj)}
       ]).
 
+-spec date_called_data(wh_json:object()) -> wh_proplist().
 date_called_data(DataJObj) ->
     DateCalled = wh_json:get_integer_value(<<"fax_timestamp">>, DataJObj, wh_util:current_tstamp()),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
@@ -131,6 +132,7 @@ date_called_data(DataJObj) ->
        ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
       ]).
 
+-spec from_data(wh_json:object()) -> wh_proplist().
 from_data(DataJObj) ->
     FromE164 = wh_json:get_value(<<"from_user">>, DataJObj),
 
@@ -139,6 +141,7 @@ from_data(DataJObj) ->
        ,{<<"from_realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
       ]).
 
+-spec to_data(wh_json:object()) -> wh_proplist().
 to_data(DataJObj) ->
     ToE164 = wh_json:get_value(<<"to_user">>, DataJObj),
     props:filter_undefined(
@@ -146,12 +149,14 @@ to_data(DataJObj) ->
        ,{<<"to_realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
       ]).
 
+-spec build_fax_template_data(wh_json:object()) -> wh_proplist().
 build_fax_template_data(DataJObj) ->
-    [{<<"id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
-     ,{<<"media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
-     ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
-     | fax_values(wh_json:get_value(<<"fax_info">>, DataJObj, wh_json:new()))
-    ].
+    props:filter_undefined(
+      [{<<"id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
+       ,{<<"media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
+       ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
+       | fax_values(wh_json:get_value(<<"fax_info">>, DataJObj, wh_json:new()))
+      ]).
 
 -spec fax_values(wh_json:object()) -> wh_proplist().
 fax_values(DataJObj) ->
