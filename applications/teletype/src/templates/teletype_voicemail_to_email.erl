@@ -20,18 +20,13 @@
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
-           [?MACRO_VALUE(<<"caller_id.number">>, <<"caller_id_number">>, <<"Caller ID Number">>, <<"Caller ID Number">>)
-            ,?MACRO_VALUE(<<"caller_id.name">>, <<"caller_id_name">>, <<"Caller ID Name">>, <<"Caller ID Name">>)
-            ,?MACRO_VALUE(<<"date_called.utc">>, <<"date_called_utc">>, <<"Date (UTC)">>, <<"When was the voicemail left (UTC)">>)
-            ,?MACRO_VALUE(<<"date_called.local">>, <<"date_called_local">>, <<"Date">>, <<"When was the voicemail left (Local time)">>)
-            ,?MACRO_VALUE(<<"from_user">>, <<"from_user">>, <<"From">>, <<"SIP From address">>)
-            ,?MACRO_VALUE(<<"to_user">>, <<"to_user">>, <<"To">>, <<"SIP To address">>)
-            ,?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
+           [?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
             ,?MACRO_VALUE(<<"voicemail.name">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
             ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
             ,?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
             ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
             ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
+            | ?DEFAULT_CALL_MACROS
            ])
        ).
 

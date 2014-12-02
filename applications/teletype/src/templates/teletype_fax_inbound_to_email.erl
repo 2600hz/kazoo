@@ -18,10 +18,6 @@
 
 -define(TEMPLATE_ID, <<"fax_inbound_to_email">>).
 
-    %%  ,{<<"from_user">>, wnm_util:pretty_print(FromE164)}
-    %%  ,{<<"from_realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
-    %%  ,{<<"to_user">>, wnm_util:pretty_print(ToE164)}
-    %%  ,{<<"to_realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
     %%  ,{<<"fax_id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
     %%  ,{<<"fax_media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
     %%  ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
@@ -30,19 +26,23 @@
 
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
-           [?MACRO_VALUE(<<"caller_id.number">>, <<"caller_id_number">>, <<"Caller ID Number">>, <<"Number of the caller">>)
-            ,?MACRO_VALUE(<<"caller_id.name">>, <<"caller_id_name">>, <<"Caller ID Name">>, <<"Name of the caller">>)
-            ,?MACRO_VALUE(<<"callee_id.number">>, <<"callee_id_number">>, <<"Callee ID Number">>, <<"Number of the callee">>)
-            ,?MACRO_VALUE(<<"callee_id.name">>, <<"callee_id_name">>, <<"Callee ID Name">>, <<"Name of the callee">>)
-            ,?MACRO_VALUE(<<"date_called.utc">>, <<"date_called_utc">>, <<"Date (UTC)">>, <<"When was the voicemail left (UTC)">>)
-            ,?MACRO_VALUE(<<"date_called.local">>, <<"date_called_local">>, <<"Date">>, <<"When was the voicemail left (Local time)">>)
-            ,?MACRO_VALUE(<<"from.user">>, <<"from_user">>, <<"From User">>, <<"SIP From Username">>)
+           [?MACRO_VALUE(<<"fax.total_pages">>, <<"fax_total_pages">>, <<"Total Pages">>, <<"Total number of pages received">>)
+            ,?MACRO_VALUE(<<"fax.call_id">>, <<"fax_call_id">>, <<"Call ID">>, <<"Call ID of the fax transmission">>)
+            ,?MACRO_VALUE(<<"fax.id">>, <<"fax_id">>, <<"Fax ID">>, <<"Crossbar ID of the fax transmission">>)
+            ,?MACRO_VALUE(<<"fax.media">>, <<"fax_media">>, <<"Fax Name">>, <<"Name of the fax transmission">>)
+            ,?MACRO_VALUE(<<"fax.success">>, <<"fax_success">>, <<"Fax Success">>, <<"Was the fax successful">>)
+            ,?MACRO_VALUE(<<"fax.ecm_used">>, <<"fax_ecm_used">>, <<"ECM Used">>, <<"Was ECM used">>)
+            ,?MACRO_VALUE(<<"fax.result_text">>, <<"fax_result_text">>, <<"Fax Result Text">>, <<"Result text from transmission">>)
+            ,?MACRO_VALUE(<<"fax.transferred_pages">>, <<"fax_transferred_pages">>, <<"Transferred Pages">>, <<"How many pages were transferred">>)
+            ,?MACRO_VALUE(<<"fax.bad_rows">>, <<"fax_bad_rows">>, <<"Bad Rows">>, <<"How many bad rows">>)
+            ,?MACRO_VALUE(<<"fax.transfer_rate">>, <<"fax_transfer_rate">>, <<"Transfer Rate">>, <<"Transfer Rate">>)
+            | ?DEFAULT_CALL_MACROS
            ]
           )).
 
--define(TEMPLATE_TEXT, <<"New Fax ({{fax.total_pages}} Pages)\n\nCaller ID: {{fax.caller_id_number}}\nCaller Name: {{fax.caller_id_name}}\n\nCalled To: {{fax.to_user}}   (Originally dialed number)\nCalled On: {{fax.date_called|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions about receiving faxes, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
--define(TEMPLATE_HTML, <<"<html><body><h3>New Fax ({{fax.total_pages}} Pages)</h3><table><tr><td>Caller ID</td><td>{{fax.caller_id_name}} ({{fax.caller_id_number}})</td></tr><tr><td>Callee ID</td><td>{{fax.to_user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{fax.date_called|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions about receiving faxes, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{fax.call_id}}</p></body></html>">>).
--define(TEMPLATE_SUBJECT, <<"New fax from {{fax.caller_id_name}} ({{fax.caller_id_number}})">>).
+-define(TEMPLATE_TEXT, <<"New Fax ({{fax.total_pages}} Pages)\n\nCaller ID: {{caller_id.number}}\nCaller Name: {{caller_id.name}}\n\nCalled To: {{to.user}}   (Originally dialed number)\nCalled On: {{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}\n\n\nFor help or questions about receiving faxes, please contact support at {{service.support_number}} or email {{service.support_email}}.">>).
+-define(TEMPLATE_HTML, <<"<html><body><h3>New Fax ({{fax.total_pages}} Pages)</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions about receiving faxes, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{fax.call_id}}</p></body></html>">>).
+-define(TEMPLATE_SUBJECT, <<"New fax from {{caller_id.name}} ({{caller_id.number}})">>).
 
 -spec init() -> 'ok'.
 init() ->
@@ -102,6 +102,8 @@ build_template_data(DataJObj) ->
      ,{<<"caller_id">>, caller_id_data(DataJObj)}
      ,{<<"callee_id">>, callee_id_data(DataJObj)}
      ,{<<"date_called">>, date_called_data(DataJObj)}
+     ,{<<"from">>, from_data(DataJObj)}
+     ,{<<"to">>, to_data(DataJObj)}
     ].
 
 -spec caller_id_data(wh_json:object()) -> wh_proplist().
@@ -125,20 +127,28 @@ date_called_data(DataJObj) ->
     ClockTimezone = whapps_config:get(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     props:filter_undefined(
-      [{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-       ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+      [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
+       ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+      ]).
+
+from_data(DataJObj) ->
+    FromE164 = wh_json:get_value(<<"from_user">>, DataJObj),
+
+    props:filter_undefined(
+      [{<<"from_user">>, wnm_util:pretty_print(FromE164)}
+       ,{<<"from_realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
+      ]).
+
+to_data(DataJObj) ->
+    ToE164 = wh_json:get_value(<<"to_user">>, DataJObj),
+    props:filter_undefined(
+      [{<<"to_user">>, wnm_util:pretty_print(ToE164)}
+       ,{<<"to_realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
       ]).
 
 build_fax_template_data(DataJObj) ->
-    ToE164 = wh_json:get_value(<<"to_user">>, DataJObj),
-    FromE164 = wh_json:get_value(<<"from_user">>, DataJObj),
-
-    [{<<"from_user">>, wnm_util:pretty_print(FromE164)}
-     ,{<<"from_realm">>, wh_json:get_value(<<"from_realm">>, DataJObj)}
-     ,{<<"to_user">>, wnm_util:pretty_print(ToE164)}
-     ,{<<"to_realm">>, wh_json:get_value(<<"to_realm">>, DataJObj)}
-     ,{<<"fax_id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
-     ,{<<"fax_media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
+    [{<<"id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
+     ,{<<"media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
      ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
      | fax_values(wh_json:get_value(<<"fax_info">>, DataJObj, wh_json:new()))
     ].
