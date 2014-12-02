@@ -32,7 +32,6 @@
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_USERNAME, <<"users/list_by_username">>).
--define(LIST_BY_LASTNAME_FIRSTNAME, <<"users/list_by_lastname_firstname">>).
 -define(QUICKCALL, <<"quickcall">>).
 
 %%%===================================================================
@@ -271,7 +270,7 @@ patch(Context, _Id) ->
 load_user_summary(Context) ->
     fix_envelope(
         crossbar_doc:load_view(
-            ?LIST_BY_LASTNAME_FIRSTNAME
+            ?CB_LIST
             ,[]
             ,Context
             ,fun normalize_view_results/2
