@@ -108,10 +108,10 @@ validate_search(Context, V, Q, T) ->
 -spec search(cb_context:context(), api_binary(), ne_binary(), ne_binary()) -> cb_context:context().
 search(Context, Start, Field, Type) ->
     End = next_binary_key(Start),
-    {StartKey, EndKey} = 
+    {StartKey, EndKey} =
         case cb_context:account_id(Context) of
             'undefined' ->
-                AuthId = cb_context:auth_account_id(Context), 
+                AuthId = cb_context:auth_account_id(Context),
                 {[AuthId, Type, Start], [AuthId, Type, End]};
              _ ->
                  {[Type, Start], [Type, End ]}
