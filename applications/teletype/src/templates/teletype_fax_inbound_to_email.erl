@@ -18,16 +18,10 @@
 
 -define(TEMPLATE_ID, <<"fax_inbound_to_email">>).
 
-    %%  ,{<<"fax_id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
-    %%  ,{<<"fax_media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
-    %%  ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
-    %%  | fax_values(wh_json:get_value(<<"fax_info">>, DataJObj, wh_json:new()))
-
-
 -define(TEMPLATE_MACROS
         ,wh_json:from_list(
-           [?MACRO_VALUE(<<"fax.total_pages">>, <<"fax_total_pages">>, <<"Total Pages">>, <<"Total number of pages received">>)
-            ,?MACRO_VALUE(<<"fax.call_id">>, <<"fax_call_id">>, <<"Call ID">>, <<"Call ID of the fax transmission">>)
+           [?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the fax transmission">>)
+            ,?MACRO_VALUE(<<"fax.total_pages">>, <<"fax_total_pages">>, <<"Total Pages">>, <<"Total number of pages received">>)
             ,?MACRO_VALUE(<<"fax.id">>, <<"fax_id">>, <<"Fax ID">>, <<"Crossbar ID of the fax transmission">>)
             ,?MACRO_VALUE(<<"fax.media">>, <<"fax_media">>, <<"Fax Name">>, <<"Name of the fax transmission">>)
             ,?MACRO_VALUE(<<"fax.success">>, <<"fax_success">>, <<"Fax Success">>, <<"Was the fax successful">>)
@@ -36,6 +30,8 @@
             ,?MACRO_VALUE(<<"fax.transferred_pages">>, <<"fax_transferred_pages">>, <<"Transferred Pages">>, <<"How many pages were transferred">>)
             ,?MACRO_VALUE(<<"fax.bad_rows">>, <<"fax_bad_rows">>, <<"Bad Rows">>, <<"How many bad rows">>)
             ,?MACRO_VALUE(<<"fax.transfer_rate">>, <<"fax_transfer_rate">>, <<"Transfer Rate">>, <<"Transfer Rate">>)
+            ,?MACRO_VALUE(<<"fax.encoding">>, <<"fax_encoding">>, <<"Fax Encoding">>, <<"Encoding of the fax">>)
+            ,?MACRO_VALUE(<<"fax.doc_id">>, <<"fax_doc_id">>, <<"Document ID">>, <<"Crossbar ID of the Fax document">>)
             | ?DEFAULT_CALL_MACROS
            ]
           )).
@@ -104,6 +100,7 @@ build_template_data(DataJObj) ->
      ,{<<"date_called">>, date_called_data(DataJObj)}
      ,{<<"from">>, from_data(DataJObj)}
      ,{<<"to">>, to_data(DataJObj)}
+     ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
     ].
 
 -spec caller_id_data(wh_json:object()) -> wh_proplist().
@@ -154,7 +151,6 @@ build_fax_template_data(DataJObj) ->
     props:filter_undefined(
       [{<<"id">>, wh_json:get_value(<<"fax_id">>, DataJObj)}
        ,{<<"media">>, wh_json:get_value(<<"fax_name">>, DataJObj)}
-       ,{<<"call_id">>, wh_json:get_value(<<"call_id">>, DataJObj)}
        | fax_values(wh_json:get_value(<<"fax_info">>, DataJObj, wh_json:new()))
       ]).
 
