@@ -283,7 +283,7 @@ fetch_all_account_views() ->
     ,whapps_util:get_view_json('conference', <<"views/conference.json">>)
      |whapps_util:get_views_json('crossbar', "account")
      ++ whapps_util:get_views_json('callflow', "views")
-     ++ whapps_util:get_views_json('kamdb', <<"views/account">>)
+     ++ whapps_util:get_views_json('kamdb', "views/account")
     ].
 
 %%--------------------------------------------------------------------
