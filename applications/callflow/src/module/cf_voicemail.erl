@@ -297,7 +297,9 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
                            ,message_count=Count
                            ,mailbox_id=VMBId
                            ,mailbox_number=VMBN
-                          }, _, Call) when Count >= MaxCount andalso MaxCount > 0 ->
+                           ,keys=#keys{login=Login}
+                          }=Box, _, Call) when Count >= MaxCount
+                                               andalso MaxCount > 0 ->
     lager:debug("voicemail box is full, cannot hold more messages, sending notification"),
     Props = [{<<"Account-DB">>, whapps_call:account_db(Call)}
              ,{<<"Voicemail-Box">>, VMBId}
@@ -311,7 +313,15 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
                                       ,fun wapi_notifications:voicemail_full_v/1
                                      ),
     _ = whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
-    'ok';
+    _NoopId = whapps_call_command:noop(Call),
+
+    case whapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 5 * ?MILLISECONDS_IN_MINUTE) of
+        {'dtmf', Login} ->
+            lager:info("caller wishes to login to mailbox"),
+            check_mailbox(Box, Call);
+        _Else ->
+            lager:debug("finished with call")
+    end;
 compose_voicemail(#mailbox{keys=#keys{login=Login
                                       ,operator=Operator
                                      }
