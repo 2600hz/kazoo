@@ -291,6 +291,23 @@ handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{cal
     _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
     lager:debug("recv metaflow request for ~s, processing in ~p", [CallId, _Pid]),
     {'next_state', StateName, State};
+handle_event(?EVENT(CallId, <<"LEG_DESTROYED">>, Event)
+             ,StateName
+             ,#state{call_id=CallId
+                     ,other_leg=OtherLeg
+                    }=State
+             ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Event) of
+        OtherLeg ->
+            lager:debug("b-leg ~s destroyed", [OtherLeg]),
+            handle_channel_destroy(OtherLeg
+                                   ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Event)
+                                   ,State
+                                  );
+        _CallId ->
+            lager:debug("call id ~s destroyed", [_CallId])
+    end,
+    {'next_state', StateName, State};
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
