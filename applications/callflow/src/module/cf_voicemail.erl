@@ -312,7 +312,7 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
                                       ,fun wapi_notifications:publish_voicemail_full/1
                                       ,fun wapi_notifications:voicemail_full_v/1
                                      ),
-    _ = whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
+    _ = whapps_call_command:prompt(<<"vm-mailbox_full">>, Call),
     _NoopId = whapps_call_command:noop(Call),
 
     case whapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 5 * ?MILLISECONDS_IN_MINUTE) of
