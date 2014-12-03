@@ -916,7 +916,10 @@ handle_module_call(Request, From, #state{module=Module
             {'stop', Reason, Reply, State#state{module_state=ModuleState1}}
     catch
         _E:R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("handle_call exception: ~s: ~p", [_E, R]),
+            wh_util:log_stacktrace(ST),
+
             {'stop', R, State}
     end.
 
@@ -940,6 +943,9 @@ handle_module_cast(Msg, #state{module=Module
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
         _E:R ->
+            ST = erlang:get_stacktrace(),
             lager:debug("handle_cast exception: ~s: ~p", [_E, R]),
+            wh_util:log_stacktrace(ST),
+
             {'stop', R, State}
     end.
