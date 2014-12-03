@@ -643,11 +643,5 @@ stop_leg_listeners(Call) ->
 
 -spec start_b_leg_listener(whapps_call:call()) -> 'ok'.
 start_b_leg_listener(Call) ->
-    API = [{<<"Application-Name">>, <<"noop">>}
-           ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
-           ,{<<"Insert-At">>, <<"now">>}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    lager:debug("sending noop for b leg events"),
-    whapps_call_command:send_command(API, Call),
+    konami_util:listen_on_other_leg(Call, [<<"DTMF">>]),
     konami_event_listener:add_call_binding(whapps_call:other_leg_call_id(Call)).
