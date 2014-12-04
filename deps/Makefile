@@ -27,6 +27,7 @@ clean: $(MAKEDIRS)
 	rm -rf ranch-0.9.0
 	rm -rf erlang-localtime-1.0.0
 	rm -rf gen_smtp-0.0.1
+	rm -rf erlydtl-0.9.0
 
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)

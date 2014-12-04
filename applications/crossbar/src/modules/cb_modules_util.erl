@@ -27,7 +27,11 @@
 
 -include("../crossbar.hrl").
 
--define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
+-define(MAX_RANGE, whapps_config:get_integer(?CONFIG_CAT
+                                             ,<<"maximum_range">>
+                                             ,(?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)
+                                            )
+       ).
 
 -spec range_view_options(cb_context:context()) ->
                                 {pos_integer(), pos_integer()} |
