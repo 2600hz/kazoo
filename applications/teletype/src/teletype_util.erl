@@ -23,10 +23,10 @@
 
 -include("teletype.hrl").
 
--spec send_email(ne_binary(), wh_json:object(), wh_proplist(), iolist(), wh_proplist()) ->
+-spec send_email(ne_binary(), wh_json:object(), wh_proplist(), ne_binary(), wh_proplist()) ->
                         'ok' |
                         {'error', _}.
--spec send_email(ne_binary(), wh_json:object(), wh_proplist(), iolist(), wh_proplist(), attachments()) ->
+-spec send_email(ne_binary(), wh_json:object(), wh_proplist(), ne_binary(), wh_proplist(), attachments()) ->
                         'ok' |
                         {'error', _}.
 send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates) ->
@@ -54,7 +54,7 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
                 ]
                 ,[{<<"From">>, From}
                   ,{<<"Reply-To">>, ReplyTo}
-                  ,{<<"Subject">>, iolist_to_binary(Subject)}
+                  ,{<<"Subject">>, Subject}
                   ,{<<"X-Call-ID">>, wh_json:get_value(<<"call_id">>, DataJObj)}
                  ]
                )
@@ -62,7 +62,7 @@ send_email(TemplateId, DataJObj, ServiceData, Subject, RenderedTemplates, Attach
              ,[Body | add_attachments(Attachments)]
             },
 
-    relay_email(To, From, Email).
+    relay_email(To, From, Email, Bcc).
 
 -spec email_body(wh_proplist(), wh_proplist()) -> mimemail:mimetuple().
 email_body(RenderedTemplates, ServiceData) ->
@@ -81,12 +81,15 @@ email_parameters([{_Key, 'undefined'}|T], Params) ->
 email_parameters([{Key, Vs}|T], Params) ->
     email_parameters(T, [{Key, V} || V <- Vs] ++ Params).
 
--spec relay_email(ne_binaries(), ne_binary(), mimemail:mimetuple()) ->
+-spec relay_email(ne_binaries(), ne_binary(), mimemail:mimetuple(), ne_binaries()) ->
                          'ok' |
                          {'error', _}.
-relay_email(To, From, Email) ->
+relay_email(To, From, Email, Bcc) ->
     try mimemail:encode(Email) of
-        Encoded -> relay_encoded_email(To, From, Encoded)
+        Encoded ->
+            RelayResult = relay_encoded_email(To, From, Encoded),
+            maybe_relay_to_bcc(From, Encoded, Bcc),
+            RelayResult
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
@@ -95,21 +98,40 @@ relay_email(To, From, Email) ->
             throw({'error', 'email_encoding_failed'})
     end.
 
--spec relay_encoded_email(ne_binaries(), ne_binary(), iolist()) ->
+-spec maybe_relay_to_bcc(ne_binary(), ne_binary(), api_binaries()) ->
+                                'ok' |
+                                {'error', _}.
+maybe_relay_to_bcc(_From, _Encoded, 'undefined') -> 'ok';
+maybe_relay_to_bcc(_From, _Encoded, []) -> 'ok';
+maybe_relay_to_bcc(From, Encoded, Bcc) ->
+    case whapps_config:get_is_true(?APP_NAME, <<"iterate_over_bcc">>, 'true') of
+        'true' -> relay_to_bcc(From, Encoded, Bcc);
+        'false' -> 'ok'
+    end.
+
+-spec relay_to_bcc(ne_binary(), ne_binary(), ne_binaries()) ->
+                          'ok' |
+                          {'error', _}.
+relay_to_bcc(From, Encoded, Bcc) ->
+    lists:foldl(fun(To, _Acc) ->
+                        relay_encoded_email(To, From, Encoded)
+                end, 'ok', Bcc).
+
+-spec relay_encoded_email(ne_binaries(), ne_binary(), ne_binary()) ->
                                  'ok' |
                                  {'error', _}.
 relay_encoded_email(To, From, Encoded) ->
     ReqId = get('callid'),
     Self = self(),
 
-    lager:debug("encoded: ~s", [Encoded]),
     gen_smtp_client:send({From, To, Encoded}
                          ,smtp_options()
                          ,fun(X) ->
                                   put('callid', ReqId),
                                   lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
                                   Self ! {'relay_response', X}
-                          end),
+                          end
+                        ),
     %% The callback will receive either `{ok, Receipt}' where Receipt is the SMTP server's receipt
     %% identifier,  `{error, Type, Message}' or `{exit, ExitReason}', as the single argument.
     receive
