@@ -169,7 +169,8 @@ validate_by_api_key(Context, ApiKey, Doc) ->
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
-    case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
+    case kz_buckets:consume_tokens_until(?APP_NAME
+                                         ,cb_modules_util:bucket_name(Context)
                                          ,?API_AUTH_TOKENS
                                         )
     of

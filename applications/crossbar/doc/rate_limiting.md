@@ -118,6 +118,25 @@ To configure the token buckets themselves, look in the `system_config/token_buck
 
 So the default bucket will have a maximum of 100 tokens, refilling at 10 tokens per second.
 
+### Per-Application configuration
+
+An administrator can change the above parameters on a per-application basis. This would allow larger token limits for Crossbar-related buckets, and smaller limits for Callflow-related (for instance). Configure these per-application settings in the `token_buckets` document by creating an object with the application name as the key, and the parameters above as sub keys.
+
+    {"_id":"token_buckets"
+     ,"default":{
+         "crossbar":{
+             "max_bucket_tokens":250
+             ,"tokens_fill_rate":10
+             ,"tokens_fill_time":"minute"
+         }
+         ,"callflow":{
+             "max_bucket_tokens":50
+             ,"tokens_fill_rate":5
+             ,"tokens_fill_time":"hour"
+         }
+     }
+    }
+
 ## Special Cases
 
 There are some APIs that have extra rate limiting options for administrators to tweak.
