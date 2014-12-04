@@ -825,7 +825,6 @@ dry_run_update([{Category, Classification, Quantity}|Updates], Services) ->
     NewServices = wh_services:update(Category, Classification, Quantity, Services),
     dry_run_update(Updates, NewServices).
 
-
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================

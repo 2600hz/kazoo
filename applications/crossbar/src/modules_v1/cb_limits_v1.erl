@@ -116,6 +116,7 @@ authd_account_allowed_updates(AccountId, AuthAccountId) ->
 validate(Context) ->
     validate_limits(Context, cb_context:req_verb(Context)).
 
+-spec validate_limits(cb_context:context(), http_method()) -> cb_context:context().
 validate_limits(Context, ?HTTP_GET) ->
     load_limit(Context);
 validate_limits(Context, ?HTTP_POST) ->

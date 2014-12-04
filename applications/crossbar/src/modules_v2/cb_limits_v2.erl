@@ -116,6 +116,7 @@ authd_account_allowed_updates(AccountId, AuthAccountId) ->
 validate(Context) ->
     validate_limits(Context, cb_context:req_verb(Context)).
 
+-spec validate_limits(cb_context:context(), http_method()) -> cb_context:context().
 validate_limits(Context, ?HTTP_GET) ->
     load_limit(Context);
 validate_limits(Context, ?HTTP_POST) ->
@@ -185,18 +186,19 @@ maybe_handle_load_failure(Context, _RespCode) -> Context.
 %%--------------------------------------------------------------------
 -spec maybe_update_limits(cb_context:context()) -> cb_context:context().
 maybe_update_limits(Context) ->
-    ReqJson = cb_context:req_json(Context),
-    DryRun = not(wh_json:is_true(<<"accept_charges">>, ReqJson)),
-    case DryRun of
+    case not(wh_json:is_true(<<"accept_charges">>, cb_context:req_json(Context))) of
         'false' -> update_limits(Context);
+        'true' -> maybe_dry_run(Context)
+    end.
+
+-spec maybe_dry_run(cb_context:context()) -> cb_context:context().
+maybe_dry_run(Context) ->
+    RespJObj = dry_run(Context),
+    case wh_json:is_empty(RespJObj) of
+        'false' -> crossbar_util:response_402(RespJObj, Context);
         'true' ->
-            RespJObj = dry_run(Context),
-            case wh_json:is_empty(RespJObj) of
-                'false' -> crossbar_util:response_402(RespJObj, Context);
-                'true' ->
-                    NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, cb_context:req_json(Context)),
-                    maybe_update_limits(cb_context:set_req_json(Context, NewReqJObj))
-            end
+            NewReqJObj = wh_json:set_value(<<"accept_charges">>, <<"true">>, cb_context:req_json(Context)),
+            maybe_update_limits(cb_context:set_req_json(Context, NewReqJObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -219,9 +221,8 @@ update_limits(Context) ->
 dry_run(Context) ->
     ReqData = cb_context:req_data(Context),
     AccountId = cb_context:account_id(Context),
-    Updates = [
-        {<<"limits">>, <<"twoway_trunks">>, wh_json:get_integer_value(<<"twoway_trunks">>, ReqData, 0)}
-        ,{<<"limits">>, <<"inbound_trunks">>, wh_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0)}
-        ,{<<"limits">>, <<"outbound_trunks">>, wh_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0)}
-    ],
+    Updates = [{<<"limits">>, <<"twoway_trunks">>, wh_json:get_integer_value(<<"twoway_trunks">>, ReqData, 0)}
+               ,{<<"limits">>, <<"inbound_trunks">>, wh_json:get_integer_value(<<"inbound_trunks">>, ReqData, 0)}
+               ,{<<"limits">>, <<"outbound_trunks">>, wh_json:get_integer_value(<<"outbound_trunks">>, ReqData, 0)}
+              ],
     wh_services:dry_run(AccountId, Updates).
