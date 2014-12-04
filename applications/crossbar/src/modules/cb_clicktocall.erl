@@ -67,7 +67,7 @@ allowed_methods() ->
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 allowed_methods(_, ?CONNECT_CALL) ->
-    [?HTTP_POST];
+    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_, ?HISTORY) ->
     [?HTTP_GET].
 
