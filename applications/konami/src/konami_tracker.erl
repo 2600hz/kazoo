@@ -111,9 +111,10 @@ init([]) ->
 handle_call(_Request, _From, State) ->
     {'reply', 'not_implemented', State}.
 
-handle_cast({'track', Active}, State) ->
-    lager:debug("tracking ~p", [Active]),
+handle_cast({'track', #active_fsm{pid=Client}=Active}, State) ->
+    lager:debug("tracking ~p", [Client]),
     ets:insert_new(table_id(), Active),
+    erlang:monitor('process', Client),
     {'noreply', State};
 handle_cast({'untrack', Key}, State) ->
     lager:debug("untracking ~p", [Key]),
@@ -127,6 +128,9 @@ handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
+handle_info({'DOWN', _Ref, 'process', Client, _Reason}, State) ->
+    gen_server:cast(self(), {'untrack', Client}),
+    {'noreply', State};
 handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     lager:debug("control received of the ETS table"),
     {'noreply', State};

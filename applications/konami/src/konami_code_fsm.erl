@@ -319,10 +319,15 @@ handle_sync_event(_Event, _From, StateName, State) ->
 handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, State) ->
     AuthorizingId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Evt),
     CallId = wh_json:get_value(<<"Call-ID">>, Evt),
-    OtherLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt),
-    lager:debug("answer: ~s (~s) endpoint id: ~s", [CallId, OtherLeg, AuthorizingId]),
 
-    {'next_state', StateName, handle_channel_event(CallId, OtherLeg, AuthorizingId, State)};
+    State1 =
+        case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+            CallId -> State;
+            OtherLeg ->
+                lager:debug("answer: ~s (~s) endpoint id: ~s", [CallId, OtherLeg, AuthorizingId]),
+                handle_channel_event(CallId, OtherLeg, AuthorizingId, State)
+        end,
+    {'next_state', StateName, State1};
 handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, State) ->
     handle_channel_destroy(wh_json:get_value(<<"Call-ID">>, Evt)
                            ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Evt)
