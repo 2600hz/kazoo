@@ -105,10 +105,9 @@ bindings(CallId) ->
 -spec add_call_binding(api_binary() | whapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
 add_call_binding('undefined') -> 'ok';
 add_call_binding(CallId) when is_binary(CallId) ->
-    Events = ?TRACKED_CALL_EVENTS,
-    lager:debug("add fsm binding for call ~s: ~p", [CallId, Events]),
+    lager:debug("add fsm binding for call ~s: ~p", [CallId, ?TRACKED_CALL_EVENTS]),
     gproc:reg(?KONAMI_REG({'fsm', CallId})),
-    gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
+    gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, ?TRACKED_CALL_EVENTS)),
     gen_listener:add_binding(?MODULE, ?META_BINDINGS(CallId));
 add_call_binding(Call) ->
     add_call_binding(whapps_call:call_id_direct(Call)).
@@ -138,11 +137,13 @@ rm_call_binding(Call, Events) ->
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> any().
 handle_call_event(JObj, Props) ->
     'true' = wapi_call:event_v(JObj),
+    wh_util:put_callid(JObj),
     handle_call_event(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
-handle_call_event(JObj, _Props, <<"CHANNEL_DESTROY">>) ->
+handle_call_event(JObj, _Props, <<"CHANNEL_DESTROY">> = Event) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     rm_call_binding(CallId),
-    relay_to_pids(CallId, JObj);
+    relay_to_pids(CallId, JObj),
+    relay_to_fsms(CallId, Event, JObj);
 handle_call_event(JObj, _Props, Event) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     relay_to_fsms(CallId, Event, JObj),
@@ -169,6 +170,7 @@ queue_name() -> gen_listener:queue_name(?MODULE).
 
 -spec relay_to_fsms(ne_binary(), ne_binary(), wh_json:object()) -> any().
 relay_to_fsms(CallId, Event, JObj) ->
+    lager:debug("relaying ~s to fsms: ~p", [Event, gproc:lookup_pids(?KONAMI_REG({'fsm', CallId}))]),
     [konami_code_fsm:event(FSM, CallId, Event, JObj)
      || FSM <- gproc:lookup_pids(?KONAMI_REG({'fsm', CallId}))
     ].
@@ -176,10 +178,14 @@ relay_to_fsms(CallId, Event, JObj) ->
 -spec relay_to_fsm(ne_binary(), ne_binary(), wh_json:object()) -> any().
 relay_to_fsm(CallId, Event, JObj) ->
     [FSM | _] = gproc:lookup_pids(?KONAMI_REG({'fsm', CallId})),
+    lager:debug("relaying ~s to fsm: ~p", [Event, FSM]),
     konami_code_fsm:event(FSM, CallId, Event, JObj).
 
 -spec relay_to_pids(ne_binary(), wh_json:object()) -> any().
 relay_to_pids(CallId, JObj) ->
+    lager:debug("relaying ~s to pids: ~p", [wh_json:get_value(<<"Event-Name">>, JObj)
+                                            ,gproc:lookup_pids(?KONAMI_REG({'pid', CallId}))
+                                           ]),
     [whapps_call_command:relay_event(Pid, JObj)
      || Pid <- gproc:lookup_pids(?KONAMI_REG({'pid', CallId}))
     ].
