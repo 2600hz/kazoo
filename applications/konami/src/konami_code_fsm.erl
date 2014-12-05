@@ -486,8 +486,16 @@ handle_channel_bridged(#state{other_leg=_OL}, _JObj, _OtherLeg) ->
 -spec handle_channel_answered(ne_binary(), wh_json:object(), state()) -> state().
 handle_channel_answered(_OtherLeg, _Evt, #state{listen_on='a'}=State) ->
     State;
+handle_channel_answered(CallId, Evt, #state{call_id='undefined'
+                                             ,other_leg=OtherLeg
+                                            }=State) ->
+    OL = wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt),
+    lager:debug("no a-leg call-id"),
+    lager:debug("call id: ~s other leg: ~s evt other: ~s", [CallId, OtherLeg, OL]),
+    State;
 handle_channel_answered(CallId, _Evt, #state{call_id=CallId}=State) ->
     State;
+
 handle_channel_answered(OtherLeg, Evt, #state{b_endpoint_id=EndpointId
                                               ,call=Call
                                              }=State) ->
