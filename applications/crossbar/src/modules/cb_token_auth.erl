@@ -143,7 +143,8 @@ clean_expired() ->
                           {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
-    case kz_buckets:consume_tokens(cb_modules_util:bucket_name(Context)
+    case kz_buckets:consume_tokens(?APP_NAME
+                                   ,cb_modules_util:bucket_name(Context)
                                    ,cb_modules_util:token_cost(Context)
                                   )
     of

@@ -8,7 +8,7 @@
 %%% @end
 %%% @contributors
 %%%   Kozlov Yakov
-%%%   SIPLABS LLC (Maksim Krzhemenevskiy)
+%%%   SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%%----------------------------------------------------------------------------
 -module(cb_lists).
 
@@ -261,7 +261,7 @@ put(Context) ->
     crossbar_doc:save(Context).
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, _ListId) ->
-    crossbar_doc:save(Context).
+    handle_entry_success(Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _ListId) ->

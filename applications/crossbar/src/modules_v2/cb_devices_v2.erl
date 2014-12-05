@@ -419,10 +419,11 @@ on_successful_validation(DeviceId, Context) ->
 maybe_validate_quickcall(Context) ->
     maybe_validate_quickcall(Context, cb_context:resp_status(Context)).
 maybe_validate_quickcall(Context, 'success') ->
-    case kz_buckets:consume_tokens(cb_modules_util:bucket_name(Context)
+    case kz_buckets:consume_tokens(?APP_NAME
+                                   ,cb_modules_util:bucket_name(Context)
                                    ,cb_modules_util:token_cost(Context, 1, [?QUICKCALL_PATH_TOKEN])
                                   )
-        of
+    of
         'true' -> maybe_allow_quickcalls(Context);
         'false' -> cb_context:add_system_error('too_many_requests', Context)
     end.

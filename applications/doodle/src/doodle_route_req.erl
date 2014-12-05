@@ -14,14 +14,14 @@
 
 -define(RESOURCE_TYPES_HANDLED,[<<"sms">>]).
 
-
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     'true' = wapi_route:req_v(JObj),
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call))
-             andalso resource_allowed(Call)
-        of
+        andalso resource_allowed(Call)
+    of
+        'false' -> 'ok';
         'true' ->
             lager:info("received a request asking if doodle can route this message"),
             AllowNoMatch = allow_no_match(Call),
@@ -34,10 +34,7 @@ handle_req(JObj, Props) ->
                     lager:info("only available callflow is a nomatch for a unauthorized call", []);
                 {'error', R} ->
                     lager:info("unable to find callflow ~p", [R])
-            end;
-
-        'false' ->
-            'ok'
+            end
     end.
 
 -spec resource_allowed(whapps_call:call()) -> boolean().
@@ -63,14 +60,15 @@ allow_no_match_type(Call) ->
         _ -> 'true'
     end.
 
-
+-spec maybe_reply_to_req(wh_json:object(), wh_proplist(), whapps_call:call(), wh_json:object(), boolean()) ->
+                                'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
                                                        ,whapps_call:account_id(Call)
                                                       ]),
     {Name, Cost} = bucket_info(Call, Flow),
 
-    case kz_buckets:consume_tokens(Name, Cost) of
+    case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
         'false' ->
             lager:debug("bucket ~s doesn't have enough tokens(~b needed) for this call", [Name, Cost]);
         'true' ->

@@ -219,7 +219,7 @@ save_as_dirty(#wh_services{jobj=JObj
         {'ok', SavedJObj} ->
             lager:debug("marked services as dirty for account ~s", [AccountId]),
             Services#wh_services{jobj=JObj
-                                 ,status=wh_json:get_ne_value(<<"pvt_status">>, SavedJObj, <<"good_stainding">>)
+                                 ,status=wh_json:get_ne_value(<<"pvt_status">>, SavedJObj, <<"good_standing">>)
                                  ,deleted=wh_json:is_true(<<"pvt_deleted">>, SavedJObj)
                                  ,dirty='true'
                                 };

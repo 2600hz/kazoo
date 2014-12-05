@@ -414,7 +414,8 @@ find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
 
 -spec consume_tokens(cb_context:context()) -> cb_context:context().
 consume_tokens(Context) ->
-    case kz_buckets:consume_tokens_until(cb_modules_util:bucket_name(Context)
+    case kz_buckets:consume_tokens_until(?APP_NAME
+                                         ,cb_modules_util:bucket_name(Context)
                                          ,cb_modules_util:token_cost(Context, ?USER_AUTH_TOKENS)
                                         )
     of
