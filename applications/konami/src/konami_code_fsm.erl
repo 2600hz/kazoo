@@ -462,11 +462,11 @@ add_bleg_dtmf(#state{b_collected_dtmf=Collected
                }.
 
 -spec handle_channel_bridged(state(), wh_json:object()) -> state().
+-spec handle_channel_bridged(state(), wh_json:object(), ne_binary()) -> state().
 handle_channel_bridged(#state{listen_on=ListenOn}=State, JObj)
   when ListenOn =:= 'ab'; ListenOn =:= 'b' ->
     handle_channel_bridged(State, JObj, wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj));
 handle_channel_bridged(State, _JObj) ->
-    lager:debug("ignoring channel_bridge since not listening for b-leg"),
     State.
 
 handle_channel_bridged(#state{call=Call
@@ -475,20 +475,18 @@ handle_channel_bridged(#state{call=Call
                        ,_JObj
                        ,OtherLeg
                       ) ->
-    lager:debug("recv bridge to b leg ~s, adding bindings", [OtherLeg]),
-
+    maybe_add_call_event_bindings(OtherLeg),
     State#state{other_leg=OtherLeg
                 ,call=whapps_call:set_other_leg_call_id(OtherLeg, Call)
                };
-handle_channel_bridged(#state{other_leg=_OL}=State, _JObj, _OtherLeg) ->
-    lager:debug("ignoring channel_bridge for ~s (waiting for ~s)", [_OtherLeg, _OL]),
-    State.
+handle_channel_bridged(#state{other_leg=_OL}, _JObj, _OtherLeg) ->
+    lager:debug("channel_bridge for ~s (waiting for ~s), good bye cruel world", [_OtherLeg, _OL]),
+    exit('normal').
 
 -spec handle_channel_answered(ne_binary(), wh_json:object(), state()) -> state().
 handle_channel_answered(_OtherLeg, _Evt, #state{listen_on='a'}=State) ->
     State;
 handle_channel_answered(CallId, _Evt, #state{call_id=CallId}=State) ->
-    lager:debug("a leg answered"),
     State;
 handle_channel_answered(OtherLeg, Evt, #state{b_endpoint_id=EndpointId
                                               ,call=Call
@@ -496,15 +494,10 @@ handle_channel_answered(OtherLeg, Evt, #state{b_endpoint_id=EndpointId
     case authorizing_id(Evt) of
         EndpointId ->
             lager:debug("b leg ~s answered", [OtherLeg]),
-
-            maybe_add_call_event_bindings(OtherLeg),
-
             State#state{other_leg=OtherLeg
                         ,call=whapps_call:set_other_leg_call_id(OtherLeg, Call)
                        };
-        _EID ->
-            lager:debug("answer was for another endpoint ~s", [_EID]),
-            State
+        _EID -> State
     end.
 
 -spec maybe_add_call_event_bindings(api_binary()) -> 'ok'.

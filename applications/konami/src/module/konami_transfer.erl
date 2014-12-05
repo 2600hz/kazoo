@@ -277,6 +277,23 @@ attended_wait(Msg, State) ->
 attended_wait(_Msg, _From, State) ->
     {'next_state', 'attended_wait', State}.
 
+partial_wait(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
+             ,#state{transferee=Transferee
+                     ,target=Target
+                     ,target_b_legs=[B|_Bs]
+                    }=State
+            ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+        Target ->
+            lager:debug("transfreee has bridged to target ~s", [Target]),
+            {'next_state', 'finished', State};
+        B ->
+            lager:debug("transferee has bridged to target b ~s", [B]),
+            {'next_state', 'finished', State};
+        _OID ->
+            lager:debug("transferee has bridged to unknown ~s (~p)", [_OID, _Bs]),
+            {'stop', 'normal', State}
+    end;
 partial_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{transferee=Transferee
                      ,target_call=TargetCall
@@ -297,9 +314,9 @@ partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
                      ,transferee=_Transferee
                     }=State
             ) ->
-    lager:info("target ~s hungup, sorry transferee"
-                ,[Target, _Transferor, _Transferee]
-               ),
+    lager:info("target ~s hungup, sorry transferee ~s"
+               ,[Target, _Transferee]
+              ),
     {'stop', 'normal', State};
 partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
              ,#state{target=Target
@@ -451,7 +468,7 @@ finished(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, _Evt)
          ,#state{transferee=Transferee}=State
         ) ->
     lager:debug("transferee bridged to ~s", [wh_json:get_value(<<"Other-Leg-Call-ID">>, _Evt)]),
-    {'stop', 'normal', State};
+    {'next_state', 'finished', State};
 finished(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{target=Target
                  ,target_b_legs=[]
@@ -462,13 +479,15 @@ finished(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
 finished(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{target=Target
                  ,transferee=_Transferee
-                 ,target_b_legs=[B|_Bs]
+                 ,target_b_legs=[B|Bs]
                  ,call=Call
                 }=State
         ) ->
     lager:debug("target ~s down, b ~s is up, connecting to transferee ~s", [Target, B, _Transferee]),
     connect_transferee_to_target(B, Call),
-    {'stop', 'normal', State};
+    {'stop', 'normal', State#state{target=B
+                                   ,target_b_legs=Bs
+                                  }};
 finished(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferor=Transferor}=State
         ) ->
@@ -653,6 +672,7 @@ connect_transferee_to_target(Target, Call) ->
              ,{<<"Continue-On-Fail">>, 'false'}
              ,{<<"Continue-On-Cancel">>, 'false'}
              ,{<<"Park-After-Pickup">>, 'false'}
+             ,{<<"Hangup-After-Pickup">>, 'true'}
             ],
     konami_util:listen_on_other_leg(Call, [<<"DTMF">>]),
     connect(Flags, Call).

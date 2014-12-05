@@ -107,23 +107,23 @@ bindings(CallId) ->
 add_call_binding('undefined') -> 'ok';
 add_call_binding(CallId) when is_binary(CallId) ->
     lager:debug("add fsm binding for call ~s: ~p", [CallId, ?TRACKED_CALL_EVENTS]),
-    gproc:reg(?KONAMI_REG({'fsm', CallId})),
+    catch gproc:reg(?KONAMI_REG({'fsm', CallId})),
     gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, ?TRACKED_CALL_EVENTS)),
     gen_listener:add_binding(?MODULE, ?META_BINDINGS(CallId));
 add_call_binding(Call) ->
     gen_listener:cast(?MODULE, {'add_account_events', whapps_call:account_id(Call)}),
-    gproc:reg(?KONAMI_REG({'fsm', whapps_call:account_id(Call)})),
+    catch gproc:reg(?KONAMI_REG({'fsm', whapps_call:account_id(Call)})),
     add_call_binding(whapps_call:call_id_direct(Call)).
 
 add_call_binding('undefined', _) -> 'ok';
 add_call_binding(CallId, Events) when is_binary(CallId) ->
     lager:debug("add pid binding for call ~s: ~p", [CallId, Events]),
-    gproc:reg(?KONAMI_REG({'pid', CallId})),
+    catch gproc:reg(?KONAMI_REG({'pid', CallId})),
     gen_listener:add_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
     gen_listener:add_binding(?MODULE, ?META_BINDINGS(CallId));
 add_call_binding(Call, Events) ->
     gen_listener:cast(?MODULE, {'add_account_events', whapps_call:account_id(Call)}),
-    gproc:reg(?KONAMI_REG({'fsm', whapps_call:account_id(Call)})),
+    catch gproc:reg(?KONAMI_REG({'fsm', whapps_call:account_id(Call)})),
     add_call_binding(whapps_call:call_id_direct(Call), Events).
 
 -spec rm_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
