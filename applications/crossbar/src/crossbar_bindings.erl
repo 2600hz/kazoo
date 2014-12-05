@@ -179,6 +179,7 @@ modules_loaded() ->
               is_cb_module(Mod)
       ]).
 
+-spec is_cb_module(ne_binary() | atom()) -> boolean().
 is_cb_module(<<"cb_", _/binary>>) -> 'true';
 is_cb_module(<<"crossbar_", _binary>>) -> 'true';
 is_cb_module(<<_/binary>>) -> 'false';
@@ -194,23 +195,28 @@ init() ->
     ],
     'ok'.
 
-maybe_init_mod(ModBin) ->
-    try (wh_util:to_atom(ModBin, 'true')):init() of
+-spec maybe_init_mod(ne_binary() | atom()) -> 'ok'.
+maybe_init_mod(Mod) ->
+    try (wh_util:to_atom(Mod, 'true')):init() of
         _ -> 'ok'
     catch
         _E:_R ->
-            lager:notice("failed to initialize ~s: ~p, ~p. Trying other versions...", [ModBin, _E, _R]),
-            maybe_init_mod_versions(?VERSION_SUPPORTED, ModBin)
+            lager:notice("failed to initialize ~s: ~p (trying other versions)", [Mod, _R]),
+            maybe_init_mod_versions(?VERSION_SUPPORTED, Mod)
     end.
 
+-spec maybe_init_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
 maybe_init_mod_versions([], _) -> 'ok';
-maybe_init_mod_versions([Version|Versions], ModBin) ->
-    Module = <<(wh_util:to_binary(ModBin))/binary
-               , "_", (wh_util:to_binary(Version))/binary>>,
+maybe_init_mod_versions([Version|Versions], Mod) ->
+    Module = <<(wh_util:to_binary(Mod))/binary
+               , "_", (wh_util:to_binary(Version))/binary
+             >>,
     try (wh_util:to_atom(Module, 'true')):init() of
-        _ -> maybe_init_mod_versions(Versions, ModBin)
+        _ ->
+            lager:notice("module ~s version ~s successfully loaded", [Mod, Version]),
+            maybe_init_mod_versions(Versions, Mod)
     catch
         _E:_R ->
-            lager:notice("failed to initialize ~s: ~p, ~p", [Module, _E, _R]),
-            maybe_init_mod_versions(Versions, ModBin)
+            lager:warning("failed to initialize module ~s version ~s: ~p", [Mod, Version, _R]),
+            maybe_init_mod_versions(Versions, Mod)
     end.
