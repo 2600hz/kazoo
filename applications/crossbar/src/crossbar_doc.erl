@@ -686,11 +686,12 @@ update_pagination_envelope_params(Context, StartKey, PageSize) ->
 -spec update_pagination_envelope_params(cb_context:context(), term(), non_neg_integer() | 'undefined', api_binary()) ->
                                                cb_context:context().
 update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
+    CurrentPageSize = wh_json:get_value(<<"page_size">>, cb_context:resp_envelope(Context), 0),
     cb_context:set_resp_envelope(Context
                                  ,wh_json:set_values(
                                     props:filter_undefined(
                                       [{<<"start_key">>, StartKey}
-                                       ,{<<"page_size">>, PageSize}
+                                       ,{<<"page_size">>, PageSize + CurrentPageSize}
                                        ,{<<"next_start_key">>, NextStartKey}
                                       ])
                                     ,cb_context:resp_envelope(Context)
