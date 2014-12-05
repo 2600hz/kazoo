@@ -55,7 +55,7 @@
                       }
                     ]).
 -define(BINDINGS, [{'registration', [{'restrict_to', ['reg_success'
-                                              	      ,'reg_query'
+                                                      ,'reg_query'
                                                       ,'reg_flush'
                                                      ]}
                                      ,'federate'
@@ -593,7 +593,7 @@ expire_object({[#registration{id=Id
     _ = ets:delete(?MODULE, Id),
     _ = spawn(fun() ->
                       put('callid', CallId),
-                      case oldest_registrar(Username, Realm) of
+                      case maybe_oldest_registrar(Username, Realm) of
                           'false' -> 'ok';
                           'true' ->
                               lager:debug("sending deregister notice for ~s@~s", [Username, Realm]),
@@ -880,7 +880,7 @@ update_cache(#registration{authorizing_id=AuthorizingId
 maybe_send_register_notice(#registration{username=Username
                                          ,realm=Realm
                                         }=Reg) ->
-    case oldest_registrar(Username, Realm) of
+    case maybe_oldest_registrar(Username, Realm) of
         'false' -> 'ok';
         'true' ->
             lager:debug("sending register notice for ~s@~s", [Username, Realm]),
@@ -931,6 +931,13 @@ filter(Fields, JObj) ->
     wh_json:from_list(lists:foldl(fun(F, Acc) ->
                                           [{F, wh_json:get_value(F, JObj)} | Acc]
                                   end, [], Fields)).
+
+-spec maybe_oldest_registrar(ne_binary(), ne_binary()) -> boolean().
+maybe_oldest_registrar(Username, Realm) ->
+    case ecallmgr_config:get_boolean(<<"send_registrar_notifications">>, 'true') of
+        'true' -> oldest_registrar(Username, Realm);
+        'false' -> 'false'
+    end.
 
 -spec oldest_registrar(ne_binary(), ne_binary()) -> boolean().
 oldest_registrar(Username, Realm) ->
