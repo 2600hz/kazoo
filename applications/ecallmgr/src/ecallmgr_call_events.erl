@@ -259,8 +259,8 @@ handle_cast({'graceful_shutdown', _CallId}, #state{}=State) ->
 handle_cast('shutdown', #state{node=Node}=State) ->
     lager:debug("call event listener on node ~s received shutdown request", [Node]),
     {'stop', 'normal', State};
-handle_cast({'transferer', _}, State) ->
-    lager:debug("call control has been transfered."),
+handle_cast({'transferer', _Props}, State) ->
+    lager:debug("call control has been transfered"),
     {'stop', 'normal', State};
 handle_cast({'b_leg_events', Events}, State) ->
     lager:debug("tracking b_leg events: ~p", [Events]),
@@ -274,6 +274,14 @@ handle_cast({'other_leg', OtherLeg}, #state{other_leg_events=_Events
     lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, _Events]),
     'true' = register_for_events(Node, OtherLeg),
     {'noreply', State#state{other_leg=OtherLeg}};
+handle_cast({'other_leg', OtherLeg, ChannelBridgeProps}
+            ,#state{other_leg_events=Events
+                    ,node=Node
+                   }=State) ->
+    lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, Events]),
+    'true' = register_for_events(Node, OtherLeg),
+    maybe_publish_other_leg_bridge(OtherLeg, ChannelBridgeProps, lists:member(<<"CHANNEL_BRIDGE">>, Events)),
+    {'noreply', State#state{other_leg=OtherLeg}};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
@@ -281,6 +289,11 @@ handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
+
+maybe_publish_other_leg_bridge(_OtherLeg, _Props, 'false') -> 'ok';
+maybe_publish_other_leg_bridge(OtherLeg, Props, 'true') ->
+    OtherProps = props:set_value(<<"Call-ID">>, OtherLeg, swap_call_legs(Props)),
+    wapi_call:publish_event(OtherProps).
 
 -spec register_for_events(atom(), ne_binary()) -> 'true'.
 register_for_events(Node, CallId) ->
@@ -599,7 +612,7 @@ publish_event(Props) ->
                        );
         {<<>>, <<"channel_bridge">>} ->
             OtherLeg = get_other_leg(Props),
-            gen_listener:cast(self(), {'other_leg', OtherLeg}),
+            gen_listener:cast(self(), {'other_leg', OtherLeg, Props}),
             lager:debug("publishing channel_bridge to other leg ~s", [OtherLeg]);
         {<<>>, _Event} ->
             lager:debug("publishing call event ~s", [_Event]);
@@ -945,11 +958,13 @@ get_hangup_cause(Props) ->
         <<"bridge">> ->
             props:get_first_defined([<<"variable_bridge_hangup_cause">>
                                      ,<<"variable_hangup_cause">>
-                                     ,<<"Hangup-Cause">>], Props);
+                                     ,<<"Hangup-Cause">>
+                                    ], Props);
         _Else ->
             props:get_first_defined([<<"variable_hangup_cause">>
                                      ,<<"variable_bridge_hangup_cause">>
-                                     ,<<"Hangup-Cause">>], Props)
+                                     ,<<"Hangup-Cause">>
+                                    ], Props)
     end.
 
 -spec get_disposition(wh_proplist()) -> api_binary().
@@ -971,6 +986,8 @@ swap_call_legs(Props) when is_list(Props) -> swap_call_legs(Props, []);
 swap_call_legs(JObj) -> swap_call_legs(wh_json:to_proplist(JObj)).
 
 swap_call_legs([], Swap) -> Swap;
+swap_call_legs([{<<"Call-ID">>, Value}|T], Swap) ->
+    swap_call_legs(T, [{<<"Other-Leg-Call-ID">>, Value}|Swap]);
 swap_call_legs([{<<"Caller-", Key/binary>>, Value}|T], Swap) ->
     swap_call_legs(T, [{<<"Other-Leg-", Key/binary>>, Value}|Swap]);
 swap_call_legs([{<<"Other-Leg-", Key/binary>>, Value}|T], Swap) ->
