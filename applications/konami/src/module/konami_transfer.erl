@@ -668,6 +668,7 @@ caller_id_number(Call, CallerLeg) ->
 
 -spec connect_transferee_to_target(ne_binary(), whapps_call:call()) -> 'ok'.
 connect_transferee_to_target(Target, Call) ->
+    issue_transferee_event(Target, Call),
     Flags = [{<<"Target-Call-ID">>, Target}
              ,{<<"Continue-On-Fail">>, 'false'}
              ,{<<"Continue-On-Cancel">>, 'false'}
@@ -869,3 +870,22 @@ find_moh(Call) ->
                                             ,whapps_call:account_id(Call)
                                            ),
     wh_json:get_value([<<"music_on_hold">>, <<"media_id">>], JObj).
+
+-spec issue_transferee_event(ne_binary(), whapps_call:call()) -> 'ok'.
+issue_transferee_event(Target, Call) ->
+    API =
+        [{<<"Event-Name">>, <<"CHANNEL_TRANSFEREE">>}
+         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+         ,{<<"DISPOSITION">>, <<"SUCCESS">>}
+         ,{<<"Raw-Application-Name">>,<<"sofia::transferee">>}
+         %%,{<<"Direction">>, whapps_call:direction(Call)}
+         ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+         ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+         ,{<<"Callee-ID-Name">>, whapps_call:callee_id_name(Call)}
+         ,{<<"Callee-ID-Number">>, whapps_call:callee_id_number(Call)}
+         ,{<<"Other-Leg-Call-ID">>, whapps_call:other_leg_call_id(Call)}
+         ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
+         ,{<<"Target-Call-ID">>, Target}
+         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+        ],
+    wapi_call:publish_event(API).
