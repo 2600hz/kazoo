@@ -143,14 +143,10 @@ set_realm(JObj) ->
 set_owner(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
-    Owner =
-        case get_owner(OwnerId, AccountId) of
-            {'ok', Doc} -> Doc;
-            {'error', _R} ->
-                lager:debug("unable to open user definition ~s/~s: ~p", [AccountId, OwnerId, _R]),
-                wh_json:new()
-        end,
-    wh_json:merge_recursive(Owner, JObj).
+    case get_owner(OwnerId, AccountId) of
+        {'ok', Doc} -> wh_json:merge_recursive(Doc, JObj);
+        {'error', _R} -> JObj
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -159,14 +155,21 @@ set_owner(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_set_timezone(wh_json:object()) -> wh_json:object().
+-spec maybe_set_timezone(wh_json:object(), wh_json:object()) -> wh_json:object().
 maybe_set_timezone(JObj) ->
     case wh_json:get_value(<<"timezone">>, JObj) of
         'undefined' ->
             case get_account(JObj) of
-                {'ok', Doc} -> set_timezone(JObj, Doc);
+                {'ok', Doc} -> maybe_set_timezone(JObj, Doc);
                 {'error', _R} -> JObj
             end;
         _TZ -> JObj
+    end.
+
+maybe_set_timezone(JObj, AccountDoc) ->
+    case wh_json:get_value(<<"timezone">>, AccountDoc) of
+        'undefined' -> JObj;
+        TZ -> set_timezone(JObj, TZ)
     end.
 
 %%--------------------------------------------------------------------
@@ -175,13 +178,9 @@ maybe_set_timezone(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_timezone(wh_json:object(), wh_json:object()) -> wh_json:object().
-set_timezone(JObj, AccountDoc) ->
-    case wh_json:get_value(<<"timezone">>, AccountDoc) of
-        'undefined' -> JObj;
-        TZ -> wh_json:set_value(<<"timezone">>, TZ, JObj)
-    end.
-
+-spec set_timezone(wh_json:object(), ne_binary()) -> wh_json:object().
+set_timezone(JObj, TZ) ->
+    wh_json:set_value(<<"timezone">>, TZ, JObj).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
