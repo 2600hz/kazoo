@@ -31,11 +31,7 @@
 %%--------------------------------------------------------------------
 -spec put(ne_binary(), wh_json:object()) -> 'ok'.
 put(JObj, AuthToken) ->
-    Routines = [fun(J) -> set_account(J) end
-                ,fun(J) -> set_owner(J) end
-                ,fun(J) -> device_settings(J) end
-               ],
-    Data = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
+    Data = provision_data(JObj),
     MACAddress = wh_json:get_value(<<"mac_address">>, JObj),
     _ = send_req('devices_put'
                  ,Data
@@ -52,11 +48,7 @@ put(JObj, AuthToken) ->
 %%--------------------------------------------------------------------
 -spec post(ne_binary(), wh_json:object()) -> 'ok'.
 post(JObj, AuthToken) ->
-    Routines = [fun(J) -> set_account(J) end
-                ,fun(J) -> set_owner(J) end
-                ,fun(J) -> device_settings(J) end
-               ],
-    Data = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
+    Data = provision_data(JObj),
     MACAddress = wh_json:get_value(<<"mac_address">>, JObj),
     _ = send_req('devices_post'
                  ,Data
@@ -106,21 +98,37 @@ update_account(AccountId, JObj, AuthToken) ->
              ,AuthToken
              ,AccountId
              ,'none').
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_account(wh_json:object()) -> wh_json:object().
-set_account(JObj) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+-spec provision_data(wh_json:object()) -> wh_json:object().
+provision_data(JObj) ->
+    Routines = [
+        fun set_realm/1
+        ,fun set_owner/1
+        ,fun maybe_set_timezone/1
+        ,fun create_provision_settings/1
+    ],
+    lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_realm(wh_json:object()) -> wh_json:object().
+set_realm(JObj) ->
+    case get_account(JObj) of
         {'ok', Doc} ->
             Realm = wh_json:get_value(<<"realm">>, Doc),
             wh_json:set_value(<<"realm">>, Realm, JObj);
         {'error', _R} ->
+            AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
             lager:warning("failed to get account definition for ~s: ~p", [AccountId, _R]),
             JObj
     end.
@@ -135,20 +143,68 @@ set_account(JObj) ->
 set_owner(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, JObj),
-    Owner = get_owner(OwnerId, AccountId),
-    wh_json:merge_recursive(JObj, Owner).
+    Owner =
+        case get_owner(OwnerId, AccountId) of
+            {'ok', Doc} -> Doc;
+            {'error', _R} ->
+                lager:debug("unable to open user definition ~s/~s: ~p", [AccountId, OwnerId, _R]),
+                wh_json:new()
+        end,
+    wh_json:merge_recursive(Owner, JObj).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_set_timezone(wh_json:object()) -> wh_json:object().
+maybe_set_timezone(JObj) ->
+    case wh_json:get_value(<<"timezone">>, JObj) of
+        'undefined' ->
+            case get_account(JObj) of
+                {'ok', Doc} -> set_timezone(JObj, Doc);
+                {'error', _R} -> JObj
+            end;
+        _TZ -> JObj
+    end.
 
--spec get_owner(api_binary(), ne_binary()) -> wh_json:object().
-get_owner('undefined', _) -> wh_json:new();
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_timezone(wh_json:object(), wh_json:object()) -> wh_json:object().
+set_timezone(JObj, AccountDoc) ->
+    case wh_json:get_value(<<"timezone">>, AccountDoc) of
+        'undefined' -> JObj;
+        TZ -> wh_json:set_value(<<"timezone">>, TZ, JObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_owner(api_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', any()}.
+get_owner('undefined', _) -> {'error', 'undefined'};
 get_owner(OwnerId, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
-    case couch_mgr:open_cache_doc(AccountDb, OwnerId) of
-        {'ok', Owner} -> Owner;
-        {'error', _R} ->
-            lager:debug("unable to open user definition ~s/~s: ~p", [AccountDb, OwnerId, _R]),
-            wh_json:new()
-    end.
+    couch_mgr:open_cache_doc(AccountDb, OwnerId).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account(wh_json:object()) -> {'ok', wh_json:object()} | {'error', any()}.
+get_account(JObj) ->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, JObj),
+    couch_mgr:open_cache_doc(AccountDb, AccountId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -158,17 +214,17 @@ get_owner(OwnerId, AccountId) ->
 %%--------------------------------------------------------------------
 -spec account_settings(ne_binary(), wh_json:object()) -> wh_json:object().
 account_settings(AccountId, JObj) ->
-    Settings = wh_json:set_values([
-        {<<"lines">>, [set_realm(JObj)]}
-    ], wh_json:new()),
+    Settings = wh_json:from_list([
+        {<<"lines">>, [set_line_realm(JObj)]}
+    ]),
 
-    wh_json:set_values([
+    wh_json:from_list([
         {<<"provider_id">>, wh_services:find_reseller_id(AccountId)}
         ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
         ,{<<"settings">>, Settings}
-    ], wh_json:new()).
+    ]).
 
-set_realm(JObj) ->
+set_line_realm(JObj) ->
     wh_json:set_value(
         <<"sip">>
         ,wh_json:set_value(
@@ -183,20 +239,20 @@ set_realm(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec device_settings(wh_json:object()) -> wh_json:object().
-device_settings(JObj) ->
-    Settings = wh_json:set_values([
+-spec create_provision_settings(wh_json:object()) -> wh_json:object().
+create_provision_settings(JObj) ->
+    Settings = wh_json:from_list([
         {<<"lines">>, [set_line(JObj)]}
         ,{<<"codecs">>, [set_codecs(JObj)]}
-    ], wh_json:new()),
-
-    wh_json:set_values([
+        ,{<<"timezone">>, wh_json:get_value(<<"timezone">>, JObj)}
+    ]),
+    wh_json:from_list([
         {<<"brand">>, wh_json:get_value([<<"provision">>, <<"endpoint_brand">>], JObj)}
         ,{<<"family">>, wh_json:get_value([<<"provision">>, <<"endpoint_family">>], JObj)}
         ,{<<"model">>, wh_json:get_value([<<"provision">>, <<"endpoint_model">>], JObj)}
         ,{<<"name">>, wh_json:get_value(<<"name">>, JObj)}
         ,{<<"settings">>, Settings}
-    ], wh_json:new()).
+    ]).
 
 %%--------------------------------------------------------------------
 %% @private
