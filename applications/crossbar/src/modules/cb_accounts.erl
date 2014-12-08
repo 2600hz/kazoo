@@ -44,6 +44,7 @@
 -define(DESCENDANTS, <<"descendants">>).
 -define(SIBLINGS, <<"siblings">>).
 -define(API_KEY, <<"api_key">>).
+-define(TREE, <<"tree">>).
 
 -define(REMOVE_SPACES, [<<"realm">>]).
 -define(MOVE, <<"move">>).
@@ -95,6 +96,7 @@ allowed_methods(_, Path) ->
               ,?DESCENDANTS
               ,?SIBLINGS
               ,?API_KEY
+              ,?TREE
              ],
     case lists:member(Path, Paths) of
         'true' -> [?HTTP_GET];
@@ -120,6 +122,7 @@ resource_exists(_, Path) ->
               ,?SIBLINGS
               ,?API_KEY
               ,?MOVE
+              ,?TREE
              ],
     lists:member(Path, Paths).
 
@@ -213,6 +216,12 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
                 'true' -> cb_context:set_resp_status(Context, 'success');
                 'false' -> cb_context:add_system_error('forbidden', [], Context)
             end
+    end;
+validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
+    Context1 = crossbar_doc:load(AccountId, prepare_context('undefined', Context)),
+    case cb_context:resp_status(Context1) of
+        'success' -> load_account_tree(Context1);
+        _Else -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -802,6 +811,36 @@ fix_start_key([StartKey]) -> StartKey;
 fix_start_key([_AccountId, [_|_]=Keys]) -> lists:last(Keys);
 fix_start_key([_AccountId, StartKey]) -> StartKey;
 fix_start_key([StartKey|_T]) -> StartKey.
+
+-spec load_account_tree(cb_context:context()) -> cb_context:context().
+load_account_tree(Context) ->
+    Tree = get_authorized_account_tree(Context),
+    Options = [{'keys', Tree}, 'include_docs'],
+    case couch_mgr:all_docs(?WH_ACCOUNTS_DB, Options) of
+        {'error', R} -> crossbar_doc:handle_couch_mgr_errors(R, ?WH_ACCOUNTS_DB, Context);
+        {'ok', JObjs} -> format_account_tree_results(Context, JObjs)
+    end.
+
+-spec get_authorized_account_tree(cb_context:context()) -> ne_binaries().
+get_authorized_account_tree(Context) ->
+    Doc = cb_context:doc(Context),
+    Tree = wh_json:get_value(<<"pvt_tree">>, Doc, []),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    AuthorizedTree =
+        lists:dropwhile(
+            fun(E) -> E =/= AuthAccountId end
+            ,Tree
+        ),
+    AuthorizedTree.
+
+-spec format_account_tree_results(cb_context:context(), wh_json:objects()) -> cb_context:context().
+format_account_tree_results(Context, JObjs) ->
+    RespData =
+        [wh_json:from_list([
+          {<<"id">>, wh_json:get_value(<<"id">>, JObj)}
+          ,{<<"name">>, wh_json:get_value([<<"doc">>, <<"name">>], JObj)}
+         ]) || JObj <- JObjs],
+    cb_context:set_resp_data(Context, RespData).
 
 %%--------------------------------------------------------------------
 %% @private
