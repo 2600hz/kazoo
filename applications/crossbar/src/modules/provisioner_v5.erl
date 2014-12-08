@@ -187,7 +187,7 @@ set_realm(JObj) ->
 device_settings(JObj) ->
     Settings = wh_json:set_values([
         {<<"lines">>, [set_line(JObj)]}
-        ,{<<"codecs">>, set_codecs(JObj)}
+        ,{<<"codecs">>, [set_codecs(JObj)]}
     ], wh_json:new()),
 
     wh_json:set_values([
