@@ -826,8 +826,8 @@ get_authorized_account_tree(Context) ->
     Doc = cb_context:doc(Context),
     Tree = wh_json:get_value(<<"pvt_tree">>, Doc, []),
     AuthAccountId = cb_context:auth_account_id(Context),
-    {_, AuthorizedTree} =
-        lists:splitwith(
+    AuthorizedTree =
+        lists:dropwhile(
             fun(E) -> E =/= AuthAccountId end
             ,Tree
         ),
