@@ -41,5 +41,4 @@ $ORIGIN fax.mydomain.tld.
 *           CNAME   kazoo.io.
 ```
 
-* Important
-the user should add SPF policy to dns to prevent email address spoofing
+* Important : add SPF policy to dns to prevent email address spoofing
