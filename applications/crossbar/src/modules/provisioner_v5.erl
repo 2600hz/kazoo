@@ -37,7 +37,6 @@ put(JObj, AuthToken) ->
                ],
     Data = lists:foldl(fun(F, J) -> F(J) end, JObj, Routines),
     MACAddress = wh_json:get_value(<<"mac_address">>, JObj),
-    io:format("MARKER:provisioner_v5.erl:40 ~p~n", [Data]),
     _ = send_req('devices_put'
                  ,Data
                  ,AuthToken
