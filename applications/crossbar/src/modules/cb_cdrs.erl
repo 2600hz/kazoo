@@ -139,7 +139,7 @@ content_types_provided(Context) ->
     cb_context:add_content_types_provided(Context, CTPs).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
