@@ -90,6 +90,10 @@
          ,change_syslog_log_level/1
         ]).
 
+-export([format_date/0, format_date/1]).
+-export([format_time/0, format_time/1]).
+-export([format_datetime/0, format_datetime/1]).
+
 -include_lib("kernel/include/inet.hrl").
 
 -ifdef(TEST).
@@ -1049,6 +1053,33 @@ now_us({MegaSecs,Secs,MicroSecs}) ->
     unix_seconds_to_gregorian_seconds((MegaSecs*1000000 + Secs)*1000000 + MicroSecs).
 now_ms({_,_,_}=Now) -> now_us(Now) div 1000.
 now_s({_,_,_}=Now) -> now_us(Now) div 1000000.
+
+-spec format_date() -> binary().
+-spec format_date(wh_now()) -> binary().
+-spec format_time() -> binary().
+-spec format_time(wh_now()) -> binary().
+-spec format_datetime() -> binary().
+-spec format_datetime(wh_now()) -> binary().
+
+format_date() ->
+    format_date(wh_util:current_tstamp()).
+
+format_date(Timestamp) ->
+    {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
+    list_to_binary([wh_util:to_binary(Y), "-", wh_util:to_binary(M), "-", wh_util:to_binary(D)]).
+
+format_time() ->
+    format_time(wh_util:current_tstamp()).
+
+format_time(Timestamp) ->
+    { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    list_to_binary([wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)]).
+
+format_datetime() ->
+    format_datetime(wh_util:current_tstamp()).
+
+format_datetime(Timestamp) ->
+    list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
 
 -ifdef(TEST).
 
