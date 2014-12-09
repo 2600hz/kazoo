@@ -28,13 +28,14 @@
          ,handle_event/2
          ,terminate/2
          ,code_change/3
+
+         ,cleanup_bindings/1
         ]).
 
 -include("konami.hrl").
 -include_lib("whistle_apps/include/wh_hooks.hrl").
 
-%% {callid, [event,...]}
--record(state, {}).
+-record(state, {cleanup_ref :: reference()}).
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}]).
@@ -209,25 +210,28 @@ queue_name() -> gen_listener:queue_name(?MODULE).
 
 -spec relay_to_fsms(ne_binary(), ne_binary(), wh_json:object()) -> any().
 relay_to_fsms(CallId, Event, JObj) ->
-    lager:debug("relaying ~s to fsms: ~p", [Event, gproc:lookup_pids(?KONAMI_REG({'fsm', CallId}))]),
     [konami_code_fsm:event(FSM, CallId, Event, JObj)
-     || FSM <- gproc:lookup_pids(?KONAMI_REG({'fsm', CallId}))
+     || FSM <- fsms_for_callid(CallId)
     ].
+
+-spec fsms_for_callid(ne_binary()) -> pids().
+fsms_for_callid(CallId) ->
+    gproc:lookup_pids(?KONAMI_REG({'fsm', CallId})).
 
 -spec relay_to_fsm(ne_binary(), ne_binary(), wh_json:object()) -> any().
 relay_to_fsm(CallId, Event, JObj) ->
-    [FSM | _] = gproc:lookup_pids(?KONAMI_REG({'fsm', CallId})),
-    lager:debug("relaying ~s to fsm: ~p", [Event, FSM]),
+    [FSM | _] = fsms_for_callid(CallId),
     konami_code_fsm:event(FSM, CallId, Event, JObj).
 
 -spec relay_to_pids(ne_binary(), wh_json:object()) -> any().
 relay_to_pids(CallId, JObj) ->
-    lager:debug("relaying ~s to pids: ~p", [wh_json:get_value(<<"Event-Name">>, JObj)
-                                            ,gproc:lookup_pids(?KONAMI_REG({'pid', CallId}))
-                                           ]),
     [whapps_call_command:relay_event(Pid, JObj)
-     || Pid <- gproc:lookup_pids(?KONAMI_REG({'pid', CallId}))
+     || Pid <- pids_for_callid(CallId)
     ].
+
+-spec pids_for_callid(ne_binary()) -> pids().
+pids_for_callid(CallId) ->
+    gproc:lookup_pids(?KONAMI_REG({'pid', CallId})).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -245,7 +249,11 @@ relay_to_pids(CallId, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {'ok', #state{}}.
+    {'ok', #state{cleanup_ref=cleanup_timer()}}.
+
+cleanup_timer() ->
+    CleanupTimeout = whapps_config:get_integer(?APP_NAME, <<"event_cleanup_timeout_ms">>, ?MILLISECONDS_IN_MINUTE),
+    erlang:start_timer(CleanupTimeout, self(), 'ok').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -299,6 +307,10 @@ handle_cast(_Msg, State) ->
 handle_info(?HOOK_EVT(AccountId, EventName, Event), State) ->
     relay_to_fsms(AccountId, EventName, Event),
     {'noreply', State};
+handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
+    _P = spawn(?MODULE, 'cleanup_bindings', [self()]),
+    lager:debug("cleaning up bindings in ~p", [_P]),
+    {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -341,3 +353,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec cleanup_bindings(server_ref()) -> 'ok'.
+-spec cleanup_bindings(server_ref(), gen_listener:bindings()) -> 'ok'.
+cleanup_bindings(Srv) ->
+    wh_util:put_callid(?MODULE),
+    cleanup_bindings(Srv, gen_listener:bindings(Srv)).
+
+cleanup_bindings(_Srv, []) ->
+    lager:debug("finished cleanup for ~p", [_Srv]);
+cleanup_bindings(Srv, [{Binding, Props}|Bindings]) ->
+    maybe_remove_binding(Srv, Binding, Props, props:get_value('callid', Props)),
+    cleanup_bindings(Srv, Bindings).
+
+-spec maybe_remove_binding(server_ref(), atom(), wh_proplist(), api_binary()) -> 'ok'.
+maybe_remove_binding(_Srv, _Binding, _Props, 'undefined') ->
+    lager:debug("skipping binding '~s' with no call-id", [_Binding]);
+maybe_remove_binding(Srv, Binding, Props, CallId) ->
+    case {fsms_for_callid(CallId), pids_for_callid(CallId)} of
+        {[], []} ->
+            lager:debug("~p: no pids for call-id '~s', removing binding '~s'", [Srv, CallId, Binding]),
+            gen_listener:rm_binding(Srv, Binding, Props);
+        {_, _} ->
+            lager:debug("~p: still pids for call-id '~s', keeping binding '~s'", [Srv, CallId, Binding])
+    end.
