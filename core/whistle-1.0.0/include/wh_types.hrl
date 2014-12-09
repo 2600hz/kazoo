@@ -102,6 +102,8 @@
 -type wh_time() :: calendar:time(). %%{wh_hour(), wh_minute(), wh_second()}.
 -type wh_datetime() :: calendar:datetime(). %%{wh_date(), wh_time()}.
 -type wh_iso_week() :: calendar:yearweeknum(). %%{wh_year(), wh_weeknum()}.
+-type gregorian_seconds() :: pos_integer().
+-type unix_seconds() :: pos_integer().
 
 -type wh_timeout() :: non_neg_integer() | 'infinity'.
 
