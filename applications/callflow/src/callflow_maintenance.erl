@@ -20,11 +20,11 @@
         ]).
 -export([show_calls/0]).
 -export([flush/0]).
--export([account_set_classifier_allow/2
+-export([account_set_classifier_inherit/2
          ,account_set_classifier_deny/2
-         ,all_accounts_set_classifier_allow/1
+         ,all_accounts_set_classifier_inherit/1
          ,all_accounts_set_classifier_deny/1
-         ,device_classifier_allow/2
+         ,device_classifier_inherit/2
          ,device_classifier_inherit/2
          ,device_classifier_deny/2
          ,list_account_restrictions/1
@@ -269,26 +269,26 @@ update_doc(Key, Value, Id, Db) ->
 %% @public
 %% @doc
 %%        Set call_restriction flag on account level
-%%        Usage: sup callflow_maintenance account_set_classifier_allow international accountname
+%%        Usage: sup callflow_maintenance account_set_classifier_inherit international accountname
 %%        Usage: sup callflow_maintenance account_set_classifier_deny international accountname
-%%        Usage: sup callflow_maintenance all_accounts_set_classifier_allow international
+%%        Usage: sup callflow_maintenance all_accounts_set_classifier_inherit international
 %%        Usage: sup callflow_maintenance all_accounts_set_classifier_deny international
 %% @end
 %%--------------------------------------------------------------------
 
--spec account_set_classifier_allow(ne_binary(), ne_binary()) -> 'ok'.
-account_set_classifier_allow(Classifier, Account) ->
+-spec account_set_classifier_inherit(ne_binary(), ne_binary()) -> 'ok'.
+account_set_classifier_inherit(Classifier, Account) ->
     {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
-    set_account_classifier_action(<<"allow">>, Classifier, AccountDb).
+    set_account_classifier_action(<<"inherit">>, Classifier, AccountDb).
 
 -spec account_set_classifier_deny(ne_binary(), ne_binary()) -> 'ok'.
 account_set_classifier_deny(Classifier, Account) ->
     {'ok', AccountDb} = whapps_util:get_accounts_by_name(normalize_account_name(Account)),
     set_account_classifier_action(<<"deny">>, Classifier, AccountDb).
 
--spec all_accounts_set_classifier_allow(ne_binary()) -> 'ok'.
-all_accounts_set_classifier_allow(Classifier) ->
-    all_accounts_set_classifier(<<"allow">>, Classifier).
+-spec all_accounts_set_classifier_inherit(ne_binary()) -> 'ok'.
+all_accounts_set_classifier_inherit(Classifier) ->
+    all_accounts_set_classifier(<<"inherit">>, Classifier).
 
 -spec all_accounts_set_classifier_deny(ne_binary()) -> 'ok'.
 all_accounts_set_classifier_deny(Classifier) ->
@@ -336,15 +336,10 @@ get_account_name_by_db(AccountDb) ->
 %% @public
 %% @doc
 %%        Set call_restriction flag on device level
-%%        Usage: sup callflow_maintenance device_classifier_allow international  username@realm.tld
 %%        Usage: sup callflow_maintenance device_classifier_inherit international  username@realm.tld
 %%        Usage: sup callflow_maintenance device_classifier_deny international username@realm.tld
 %% @end
 %%--------------------------------------------------------------------
-
--spec device_classifier_allow(ne_binary(), ne_binary()) -> 'ok'.
-device_classifier_allow(Classifier, Uri) ->
-    set_device_classifier_action(<<"allow">>, Classifier, Uri).
 
 -spec device_classifier_inherit(ne_binary(), ne_binary()) -> 'ok'.
 device_classifier_inherit(Classifier, Uri) ->
