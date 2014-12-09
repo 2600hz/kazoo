@@ -385,7 +385,6 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
                         ,target_call=TargetCall
                        }=State
                ) ->
-    lager:info("transferor ~s bridged: ~p", [Transferor, Evt]),
     case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
         Target ->
             lager:info("transferor and target are connected"),
@@ -915,7 +914,7 @@ issue_internal_transferee(Call, Transferor, Transferee, Target) ->
         [{<<"Target">>, Target}
          ,{<<"Transferee">>, Transferee}
          ,{<<"Transferor">>, Transferor}
-         ,{<<"Control-Queue">>, whapps_call:control_queue(Call)}
+         ,{<<"Call">>, whapps_call:to_json(Call)}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_konami:publish_transferred(Target, API).

@@ -18,8 +18,8 @@
 
 -include("konami.hrl").
 
--define(TRANSFERRED_HEADERS, [<<"Transferee">>, <<"Target">>, <<"Control-Queue">>]).
--define(OPTIONAL_TRANSFERRED_HEADERS, [<<"Transferee">>]).
+-define(TRANSFERRED_HEADERS, [<<"Transferee">>, <<"Target">>, <<"Call">>]).
+-define(OPTIONAL_TRANSFERRED_HEADERS, [<<"Transferor">>]).
 -define(TRANSFERRED_VALUES, [{<<"Event-Category">>, ?APP_NAME}
                              ,{<<"Event-Name">>, <<"transferred">>}
                             ]).

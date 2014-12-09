@@ -252,19 +252,15 @@ handle_event(?EVENT(Target, <<"transferred">>, Evt)
              ,StateName
              ,#state{call_id='undefined'
                      ,other_leg=Target
+                     ,listen_on=ListenOn
                     }=State
             ) ->
     lager:debug("other leg ~s transferred, updating to new control", [Target]),
     Transferee = wh_json:get_value(<<"Transferee">>, Evt),
-    Control = wh_json:get_value(<<"Control-Queue">>, Evt),
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, Evt)),
+    maybe_add_call_event_bindings(Call, ListenOn),
 
-    Call = whapps_call:from_json([{<<"Call-ID">>, Transferee}
-                                  ,{<<"Control-Queue">>, Control}
-                                  ,{<<"Other-Leg-Call-ID">>, Target}
-                                 ]),
-    maybe_add_call_event_bindings(Call),
-
-    {'next_state', StateName, State#state{call=Call
+    {'next_state', StateName, State#state{call=whapps_call:set_other_leg_call_id(Target, Call)
                                           ,call_id=Transferee
                                          }};
 handle_event(_Event, StateName, #state{call_id=_CallId
