@@ -1,18 +1,5 @@
-%% Copyright (C) 07/01/2010 Dmitry S. Melnikov (dmitryme@gmail.com)
-%%
-%% This program is free software; you can redistribute it and/or
-%% modify it under the terms of the GNU General Public License
-%% as published by the Free Software Foundation; either version 2
-%% of the License, or (at your option) any later version.
-%%
-%% This program is distributed in the hope that it will be useful,
-%% but WITHOUT ANY WARRANTY; without even the implied warranty of
-%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-%% GNU General Public License for more details.
-%%
-%% You should have received a copy of the GNU General Public License
-%% along with this program; if not, write to the Free Software
-%% Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+%% @author  Dmitry S. Melnikov (dmitryme@gmail.com)
+%% @copyright 2010 Dmitry S. Melnikov
 
 -author("Dmitry Melnikov <dmitryme@gmail.com>").
 
@@ -491,7 +478,7 @@
       {"Europe/Isle_of_Man",{"GMT","GMT"},{"BST","BST"},0,60,{last,sun,mar},{1,0},{last,sun,oct},{2,0}},
       {"Europe/Istanbul",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
       {"Europe/Jersey",{"GMT","GMT"},{"BST","BST"},0,60,{last,sun,mar},{1,0},{last,sun,oct},{2,0}},
-      {"Europe/Kaliningrad",{"FET","FET"},undef,180,0,undef,{0,0},undef,{0,0}},
+      {"Europe/Kaliningrad",{"FET","FET"},undef,120,0,undef,{0,0},undef,{0,0}},
       {"Europe/Kiev",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
       {"Europe/Lisbon",{"WET","WET"},{"WEST","WEST"},0,60,{last,sun,mar},{1,0},{last,sun,oct},{2,0}},
       {"Europe/Ljubljana",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
@@ -502,7 +489,7 @@
       {"Europe/Mariehamn",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
       {"Europe/Minsk",{"FET","FET"},undef,180,0,undef,{0,0},undef,{0,0}},
       {"Europe/Monaco",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
-      {"Europe/Moscow",{"MSK","MSK"},undef,240,0,undef,{0,0},undef,{0,0}},
+      {"Europe/Moscow",{"MSK","MSK"},undef,180,0,undef,{0,0},undef,{0,0}},
       {"Europe/Nicosia",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
       {"Europe/Oslo",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
       {"Europe/Paris",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
@@ -525,7 +512,7 @@
       {"Europe/Vatican",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
       {"Europe/Vienna",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
       {"Europe/Vilnius",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
-      {"Europe/Volgograd",{"VOLT","VOLT"},undef,240,0,undef,{0,0},undef,{0,0}},
+      {"Europe/Volgograd",{"VOLT","VOLT"},undef,180,0,undef,{0,0},undef,{0,0}},
       {"Europe/Warsaw",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
       {"Europe/Zagreb",{"CET","CET"},{"CEST","CEST"},60,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
       {"Europe/Zaporozhye",{"EET","EET"},{"EEST","EEST"},120,60,{last,sun,mar},{3,0},{last,sun,oct},{4,0}},
