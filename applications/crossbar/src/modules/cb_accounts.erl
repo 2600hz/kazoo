@@ -625,12 +625,29 @@ leak_pvt_enabled(Context) ->
 leak_reseller_id(Context) ->
     RespJObj = cb_context:resp_data(Context),
     ResellerId = cb_context:reseller_id(Context),
-    leak_billing_mode(
+    leak_is_reseller(
         cb_context:set_resp_data(
             Context
             ,wh_json:set_value(<<"reseller_id">>, ResellerId, RespJObj)
         )
     ).
+
+-spec leak_is_reseller(cb_context:context()) -> cb_context:context().
+leak_is_reseller(Context) ->
+    AuthAccountId = cb_context:auth_account_id(Context),
+    case wh_util:is_system_admin(AuthAccountId) of
+        'false' -> leak_billing_mode(Context);
+        'true' ->
+            RespJObj = cb_context:resp_data(Context),
+            AccountId = cb_context:account_id(Context),
+            IsReseller = wh_services:is_reseller(AccountId),
+            leak_billing_mode(
+                cb_context:set_resp_data(
+                    Context
+                    ,wh_json:set_value(<<"is_reseller">>, IsReseller, RespJObj)
+                )
+            )
+    end.
 
 -spec leak_billing_mode(cb_context:context()) -> cb_context:context().
 leak_billing_mode(Context) ->
