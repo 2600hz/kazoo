@@ -55,19 +55,19 @@
 -define(TIMEOUT_DTMF, 2000).
 -define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT_S).
 
--define(PROMPT_ENTER_PERSON_LASTNAME, <<"system_media/dir-enter_person_lastname">>). %% Please enter the first few letters of the person's lastname
--define(PROMPT_ENTER_PERSON_FIRSTNAME, <<"system_media/dir-enter_person_firstname">>). %% Please enter the first few letters of the person's firstname
--define(PROMPT_FIRSTNAME, <<"system_media/dir-first_name">>). %% first name
--define(PROMPT_LASTNAME, <<"system_media/dir-last_name">>). %% last name
--define(PROMPT_SPECIFY_MINIMUM, <<"system_media/dir-specify_minimum">>). %% You need to specify a minimum of two digits
--define(PROMPT_LETTERS_OF_NAME, <<"system_media/dir-letters_of_person_name">>). %% letters of the person's name
--define(PROMPT_NO_RESULTS_FOUND, <<"system_media/dir-no_results_found">>). %% No match found
--define(PROMPT_NO_MORE_RESULTS, <<"system_media/dir-no_more_results">>). %% no more results
--define(PROMPT_CONFIRM_MENU, <<"system_media/dir-confirm_menu">>). %% press 1. to start over press 3
--define(PROMPT_FOUND, <<"system_media/dir-found">>). %% One match found. To connect to
--define(PROMPT_INVALID_KEY, <<"system_media/dir-invalid_key">>). %% invalid key pressed
--define(PROMPT_RESULT_NUMBER, <<"system_media/dir-result_number">>). %% To call
--define(PROMPT_RESULT_MENU, <<"system_media/dir-result_menu">>). %% press one. For the next result press two. To start over press three
+-define(PROMPT_ENTER_PERSON_LASTNAME, <<"dir-enter_person_lastname">>). %% Please enter the first few letters of the person's lastname
+-define(PROMPT_ENTER_PERSON_FIRSTNAME, <<"dir-enter_person_firstname">>). %% Please enter the first few letters of the person's firstname
+-define(PROMPT_FIRSTNAME, <<"dir-first_name">>). %% first name
+-define(PROMPT_LASTNAME, <<"dir-last_name">>). %% last name
+-define(PROMPT_SPECIFY_MINIMUM, <<"dir-specify_minimum">>). %% You need to specify a minimum of two digits
+-define(PROMPT_LETTERS_OF_NAME, <<"dir-letters_of_person_name">>). %% letters of the person's name
+-define(PROMPT_NO_RESULTS_FOUND, <<"dir-no_results_found">>). %% No match found
+-define(PROMPT_NO_MORE_RESULTS, <<"dir-no_more_results">>). %% no more results
+-define(PROMPT_CONFIRM_MENU, <<"dir-confirm_menu">>). %% press 1. to start over press 3
+-define(PROMPT_FOUND, <<"dir-found">>). %% One match found. To connect to
+-define(PROMPT_INVALID_KEY, <<"dir-invalid_key">>). %% invalid key pressed
+-define(PROMPT_RESULT_NUMBER, <<"dir-result_number">>). %% To call
+-define(PROMPT_RESULT_MENU, <<"dir-result_menu">>). %% press one. For the next result press two. To start over press three
 
 %%------------------------------------------------------------------------------
 %% Records
@@ -140,7 +140,7 @@ directory_start(Call, State, CurrUsers) ->
             lager:error("failed to collect digits: ~p", [_E]),
             cf_exe:stop(Call);
         {'ok', <<>>} ->
-            whapps_call_command:audio_macro([{'play', ?PROMPT_SPECIFY_MINIMUM}], Call),
+            whapps_call_command:audio_macro([{'prompt', ?PROMPT_SPECIFY_MINIMUM}], Call),
             directory_start(Call, State, CurrUsers);
         {'ok', DTMFS} ->
             maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
@@ -196,7 +196,7 @@ maybe_match_user(Call, U, MatchNum) ->
     UserName = case media_name(U) of
                    'undefined' -> {'tts', <<39, (full_name(U))/binary, 39>>}; % 39 is ascii '
                    MediaID ->
-                       {'play', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
+                       {'prompt', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
                end,
     lager:info("playing username with: ~p", [UserName]),
 
@@ -233,41 +233,41 @@ route_to_match(Call, Callflow) ->
 %% Audio Prompts
 %%------------------------------------------------------------------------------
 play_user(Call, UsernameTuple, _MatchNum) ->
-    play_and_collect(Call, [{'play', ?PROMPT_RESULT_NUMBER}
+    play_and_collect(Call, [{'prompt', ?PROMPT_RESULT_NUMBER}
                             ,UsernameTuple
-                            ,{'play', ?PROMPT_RESULT_MENU}
+                            ,{'prompt', ?PROMPT_RESULT_MENU}
                            ]).
 
 play_invalid(Call) ->
-    whapps_call_command:audio_macro([{'play', ?PROMPT_INVALID_KEY}], Call).
+    whapps_call_command:audio_macro([{'prompt', ?PROMPT_INVALID_KEY}], Call).
 
 play_confirm_match(Call, User) ->
     UserName =
         case media_name(User) of
             'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; %% 39 is ascii '
-            MediaID -> {'play', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
+            MediaID -> {'prompt', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
         end,
     lager:info("playing confirm_match with username: ~p", [UserName]),
 
-    play_and_collect(Call, [{'play', ?PROMPT_FOUND}
+    play_and_collect(Call, [{'prompt', ?PROMPT_FOUND}
                             ,UserName
-                            ,{'play', ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
+                            ,{'prompt', ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
                            ]).
 
 -spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) ->
                                          {'ok', binary()}.
 play_directory_instructions(Call, 'first') ->
-    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
+    play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
 play_directory_instructions(Call, 'last') ->
-    play_and_collect(Call, [{'play', ?PROMPT_ENTER_PERSON_LASTNAME}]).
+    play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_LASTNAME}]).
 
 -spec play_no_users(whapps_call:call()) -> ne_binary(). % noop id
 play_no_users(Call) ->
-    whapps_call_command:audio_macro([{'play', ?PROMPT_NO_MORE_RESULTS}], Call).
+    whapps_call_command:audio_macro([{'prompt', ?PROMPT_NO_MORE_RESULTS}], Call).
 
 -spec play_no_users_found(whapps_call:call()) -> ne_binary(). % noop id
 play_no_users_found(Call) ->
-    whapps_call_command:audio_macro([{'play', ?PROMPT_NO_RESULTS_FOUND}], Call).
+    whapps_call_command:audio_macro([{'prompt', ?PROMPT_NO_RESULTS_FOUND}], Call).
 
 -spec play_and_collect(whapps_call:call(), whapps_call_command:audio_macro_prompts()) ->
                               {'ok', binary()}.
