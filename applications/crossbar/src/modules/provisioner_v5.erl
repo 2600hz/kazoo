@@ -158,11 +158,7 @@ set_owner(JObj) ->
 -spec maybe_set_timezone(wh_json:object(), wh_json:object()) -> wh_json:object().
 maybe_set_timezone(JObj) ->
     case wh_json:get_value(<<"timezone">>, JObj) of
-        'undefined' ->
-            case get_account(JObj) of
-                {'ok', Doc} -> maybe_set_timezone(JObj, Doc);
-                {'error', _R} -> JObj
-            end;
+        'undefined' -> maybe_set_account_timezone(JObj);
         _TZ -> JObj
     end.
 
@@ -170,6 +166,19 @@ maybe_set_timezone(JObj, AccountDoc) ->
     case wh_json:get_value(<<"timezone">>, AccountDoc) of
         'undefined' -> JObj;
         TZ -> set_timezone(JObj, TZ)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_set_account_timezone(wh_json:object()) -> wh_json:object().
+maybe_set_account_timezone(JObj) ->
+    case get_account(JObj) of
+        {'ok', Doc} -> maybe_set_timezone(JObj, Doc);
+        {'error', _R} -> JObj
     end.
 
 %%--------------------------------------------------------------------
