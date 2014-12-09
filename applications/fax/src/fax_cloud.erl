@@ -210,7 +210,7 @@ maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
         {'ok', JObj} ->
             maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL );
         {'error', 'conflict'} ->
-            lager:debug("got conflict saving fax job ~s", [JobId]);
+            lager:debug("cloud job ~s already exists, skipping", [JobId]);
         {'error', _E} ->
             lager:debug("got error saving fax job ~s : ~p", [JobId, _E])
     end.
@@ -279,6 +279,7 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
                ,{<<"cloud_printer_id">>, PrinterId}
                ,{<<"cloud_job_id">>, JobId}
                ,{<<"cloud_job">>, Job}
+               ,{<<"_id">>, JobId}
               ]),
     Doc = wh_json:set_values([{<<"pvt_type">>, <<"fax">>}
                               ,{<<"pvt_job_status">>, <<"queued">>}
