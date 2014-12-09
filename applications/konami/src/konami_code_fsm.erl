@@ -59,10 +59,9 @@
 
 -spec start_fsm(whapps_call:call(), wh_json:object()) -> any().
 start_fsm(Call, JObj) ->
-
     ListenOn = listen_on(Call, JObj),
 
-    maybe_add_call_event_bindings(Call),
+    maybe_add_call_event_bindings(Call, ListenOn),
 
     lager:debug("starting Konami FSM, listening on '~s'", [ListenOn]),
 
@@ -249,6 +248,25 @@ handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{cal
     _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
     lager:debug("recv metaflow request for ~s, processing in ~p", [CallId, _Pid]),
     {'next_state', StateName, State};
+handle_event(?EVENT(Target, <<"transferred">>, Evt)
+             ,StateName
+             ,#state{call_id='undefined'
+                     ,other_leg=Target
+                    }=State
+            ) ->
+    lager:debug("other leg ~s transferred, updating to new control", [Target]),
+    Transferee = wh_json:get_value(<<"Transferee">>, Evt),
+    Control = wh_json:get_value(<<"Control-Queue">>, Evt),
+
+    Call = whapps_call:from_json([{<<"Call-ID">>, Transferee}
+                                  ,{<<"Control-Queue">>, Control}
+                                  ,{<<"Other-Leg-Call-ID">>, Target}
+                                 ]),
+    maybe_add_call_event_bindings(Call),
+
+    {'next_state', StateName, State#state{call=Call
+                                          ,call_id=Transferee
+                                         }};
 handle_event(_Event, StateName, #state{call_id=_CallId
                                        ,other_leg=_OtherLeg
                                        ,listen_on=_LO
@@ -270,6 +288,8 @@ terminate(_Reason, _StateName, #state{call_id=CallId
                                      }) ->
     konami_event_listener:rm_call_binding(CallId),
     konami_event_listener:rm_call_binding(OtherLeg),
+    konami_event_listener:rm_konami_binding(CallId),
+    konami_event_listener:rm_konami_binding(OtherLeg),
     lager:debug("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
 code_change(_OldVsn, StateName, State, _Extra) ->
@@ -516,12 +536,14 @@ handle_channel_bridged(#state{call=Call
                       ) ->
     lager:debug("recv channel_bridge to ~s", [OtherLeg]),
     maybe_add_call_event_bindings(OtherLeg),
+    konami_event_listener:add_konami_binding(OtherLeg),
+    lager:debug("bound for call and konami events"),
     State#state{other_leg=OtherLeg
                 ,call=whapps_call:set_other_leg_call_id(OtherLeg, Call)
                };
-handle_channel_bridged(#state{other_leg=_OL}, _JObj, _OtherLeg) ->
-    lager:debug("channel_bridge for ~s (waiting for ~s), good bye cruel world", [_OtherLeg, _OL]),
-    exit('normal').
+handle_channel_bridged(#state{other_leg=_OL, call_id=_CallId}=State, _JObj, _OtherLeg) ->
+    lager:debug("channel_bridge for ~s and ~s (waiting for ~s), ignoring", [_OtherLeg, _CallId, _OL]),
+    State.
 
 -spec handle_channel_answered(ne_binary(), wh_json:object(), state()) -> state().
 handle_channel_answered(CallId, _Evt, #state{call_id=CallId}=State) ->
@@ -553,6 +575,7 @@ handle_channel_answered(OtherLeg, Evt, #state{b_endpoint_id=EndpointId
             State
     end.
 
+-spec handle_channel_transferee(wh_json:object(), state()) -> state().
 handle_channel_transferee(Evt, #state{other_leg=OtherLeg}=State) ->
     case {wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt)
           ,wh_json:get_value(<<"Target-Call-ID">>, Evt)
@@ -564,25 +587,40 @@ handle_channel_transferee(Evt, #state{other_leg=OtherLeg}=State) ->
         {'undefined', TargetLeg} ->
             lager:debug("transferring to ~s", [TargetLeg]),
             maybe_add_call_event_bindings(TargetLeg),
+            konami_event_listener:add_konami_binding(TargetLeg),
             State#state{other_leg=TargetLeg};
         {OtherLeg, TargetLeg} ->
             lager:debug("transferring from ~s to ~s", [OtherLeg, TargetLeg]),
             maybe_add_call_event_bindings(TargetLeg),
             maybe_remove_call_event_bindings(OtherLeg),
+            konami_event_listener:add_konami_binding(TargetLeg),
             State#state{other_leg=TargetLeg};
         {_OL, _TL} ->
             lager:debug("unknown other leg ~s (target ~s)", [_OL, _TL]),
             State
     end.
 
--spec maybe_add_call_event_bindings(api_binary()) -> 'ok'.
+-spec maybe_add_call_event_bindings(api_binary() | whapps_call:call()) -> 'ok'.
+-spec maybe_add_call_event_bindings(whapps_call:call(), listen_on()) -> 'ok'.
 maybe_add_call_event_bindings('undefined') -> 'ok';
 maybe_add_call_event_bindings(<<_/binary>> = Leg) -> konami_event_listener:add_call_binding(Leg);
 maybe_add_call_event_bindings(Call) -> konami_event_listener:add_call_binding(Call).
 
+maybe_add_call_event_bindings(Call, 'a') ->
+    konami_event_listener:add_konami_binding(whapps_call:call_id(Call)),
+    maybe_add_call_event_bindings(Call);
+maybe_add_call_event_bindings(Call, 'b') ->
+    konami_event_listener:add_konami_binding(whapps_call:other_leg_call_id(Call)),
+    maybe_add_call_event_bindings(Call);
+maybe_add_call_event_bindings(Call, 'ab') ->
+    konami_event_listener:add_konami_binding(whapps_call:call_id(Call)),
+    konami_event_listener:add_konami_binding(whapps_call:other_leg_call_id(Call)),
+    maybe_add_call_event_bindings(Call).
+
 -spec maybe_remove_call_event_bindings(api_binary()) -> 'ok'.
 maybe_remove_call_event_bindings('undefined') -> 'ok';
-maybe_remove_call_event_bindings(Leg) -> konami_event_listener:rm_call_binding(Leg).
+maybe_remove_call_event_bindings(Leg) ->
+    konami_event_listener:rm_call_binding(Leg).
 
 -spec b_endpoint_id(wh_json:object(), listen_on()) -> api_binary().
 b_endpoint_id(_JObj, 'a') -> 'undefined';

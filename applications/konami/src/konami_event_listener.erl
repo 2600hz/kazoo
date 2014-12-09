@@ -12,9 +12,11 @@
 -export([start_link/0
          ,add_call_binding/1, add_call_binding/2
          ,rm_call_binding/1, rm_call_binding/2
+         ,add_konami_binding/1, rm_konami_binding/1
          ,handle_call_event/2
          ,handle_originate_event/2
          ,handle_metaflow_req/2
+         ,handle_konami/2
          ,queue_name/0
          ,bindings/0, bindings/1
         ]).
@@ -47,6 +49,9 @@
                      ,{{?MODULE, 'handle_metaflow_req'}
                        ,[{<<"metaflow">>, <<"req">>}]
                       }
+                     ,{{?MODULE, 'handle_konami'}
+                       ,[{?APP_NAME, <<"*">>}]
+                      }
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -59,14 +64,20 @@
 
 -define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ?TRACKED_CALL_EVENTS}
                                         ,{'callid', CallId}
-                                       ]}).
+                                       ]
+                              }).
 -define(DYN_BINDINGS(CallId, Events), {'call', [{'restrict_to', Events}
                                                 ,{'callid', CallId}
-                                               ]}).
+                                               ]
+                                      }).
 -define(META_BINDINGS(CallId), {'metaflow', [{'callid', CallId}
                                              ,{'action', <<"*">>}
-                                            ]}).
-
+                                            ]
+                               }).
+-define(KONAMI_BINDINGS(CallId), {'konami', [{'callid', CallId}
+                                             ,{'restrict_to', ['transferred']}
+                                            ]
+                                 }).
 -define(KONAMI_REG(CallId), {'p', 'l', {'event', CallId}}).
 
 %%%===================================================================
@@ -104,6 +115,16 @@ bindings(CallId) ->
      || {'call', Props} <- gen_listener:bindings(?MODULE),
         props:get_value('callid', Props) =:= CallId
     ].
+
+-spec add_konami_binding(api_binary()) -> 'ok'.
+add_konami_binding('undefined') -> 'ok';
+add_konami_binding(CallId) ->
+    gen_listener:add_binding(?MODULE, ?KONAMI_BINDINGS(CallId)).
+
+-spec rm_konami_binding(api_binary()) -> 'ok'.
+rm_konami_binding('undefined') -> 'ok';
+rm_konami_binding(<<_/binary>> = CallId) ->
+    gen_listener:rm_binding(?MODULE, ?KONAMI_BINDINGS(CallId)).
 
 -spec add_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
 -spec add_call_binding(api_binary() | whapps_call:call(), ne_binaries() | atoms()) -> 'ok'.
@@ -172,6 +193,16 @@ handle_metaflow_req(JObj, _Props) ->
              ,{<<"data">>, wh_json:set_value(<<"dtmf_leg">>, CallId, wh_json:get_value(<<"Data">>, JObj))}
             ]),
     relay_to_fsm(CallId, <<"metaflow_exe">>, Evt).
+
+-spec handle_konami(wh_json:object(), wh_proplist()) -> 'ok'.
+handle_konami(JObj, _Props) ->
+    handle_konami_api(JObj, wh_json:get_value(<<"Event-Name">>, JObj)).
+
+-spec handle_konami_api(wh_json:object(), ne_binary()) -> 'ok'.
+handle_konami_api(JObj, <<"transferred">> = Event) ->
+    'true' = wapi_konami:transferred_v(JObj),
+    Target = wh_json:get_value(<<"Target">>, JObj),
+    relay_to_fsm(Target, Event, JObj).
 
 -spec queue_name() -> ne_binary().
 queue_name() -> gen_listener:queue_name(?MODULE).
