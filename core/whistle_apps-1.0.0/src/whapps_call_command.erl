@@ -182,7 +182,7 @@
 -export([get_inbound_t38_settings/1, get_inbound_t38_settings/2]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
-                              {'prompt', binary()} | {'prompt', binary(), binary()} |
+                              {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} |
                               {'say', binary(), binary(), binary(), binary()} |
@@ -191,7 +191,9 @@
                               {'tts', ne_binary(), ne_binary()} |
                               {'tts', ne_binary(), ne_binary(), ne_binary()}.
 -type audio_macro_prompts() :: [audio_macro_prompt(),...] | [].
--export_type([audio_macro_prompt/0]).
+-export_type([audio_macro_prompt/0
+              ,audio_macro_prompts/0
+             ]).
 
 -define(CONFIG_CAT, <<"call_command">>).
 

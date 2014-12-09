@@ -74,24 +74,24 @@
 %%------------------------------------------------------------------------------
 -record(directory_user, {
           first_name :: ne_binary()
-         ,last_name :: ne_binary()
-         ,full_name :: ne_binary()
-         ,first_last_keys :: ne_binary() % DTMF-version of first, last
-         ,last_first_keys :: ne_binary() % DTMF-version of last, first
-         ,callflow_id :: ne_binary() % what callflow to use on match
-         ,name_audio_id :: api_binary() % pre-recorded audio of user's name
+          ,last_name :: ne_binary()
+          ,full_name :: ne_binary()
+          ,first_last_keys :: ne_binary() % DTMF-version of first, last
+          ,last_first_keys :: ne_binary() % DTMF-version of last, first
+          ,callflow_id :: ne_binary() % what callflow to use on match
+          ,name_audio_id :: api_binary() % pre-recorded audio of user's name
          }).
 -type directory_user() :: #directory_user{}.
 -type directory_users() :: [directory_user(),...] | [].
 
 -record(directory, {
-          sort_by :: 'first' | 'last'
-         ,min_dtmf :: pos_integer()
-         ,max_dtmf :: non_neg_integer()
-         ,confirm_match :: boolean()
-         ,digits_collected :: binary()
-         ,users :: directory_users()
-         ,curr_users = [] :: directory_users()
+          sort_by = 'last' :: 'first' | 'last'
+          ,min_dtmf :: pos_integer()
+          ,max_dtmf :: non_neg_integer()
+          ,confirm_match = 'false' :: boolean()
+          ,digits_collected = <<>> :: binary()
+          ,users = [] :: directory_users()
+          ,curr_users = [] :: directory_users()
          }).
 -type directory() :: #directory{}.
 
@@ -113,13 +113,13 @@ handle(Data, Call) ->
     case get_directory_listing(whapps_call:account_db(Call), wh_json:get_value(<<"_id">>, DirJObj)) of
         {'ok', Users} ->
             State = #directory{
-              sort_by = get_sort_by(wh_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>))
-              ,min_dtmf = wh_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3)
-              ,max_dtmf = wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0)
-              ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, 'false')
-              ,digits_collected = <<>>
-              ,users = Users
-             },
+                       sort_by = get_sort_by(wh_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>))
+                       ,min_dtmf = wh_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3)
+                       ,max_dtmf = wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0)
+                       ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, 'false')
+                       ,digits_collected = <<>>
+                       ,users = Users
+                      },
             _ = log(Users),
             directory_start(Call, State, Users);
         {'error', 'no_users_in_directory'} ->
@@ -146,6 +146,7 @@ directory_start(Call, State, CurrUsers) ->
             maybe_match(Call, add_dtmf(add_dtmf(State, DTMF), DTMFS), CurrUsers)
     end.
 
+-spec maybe_match(whapps_call:call(), directory(), directory_users()) -> 'ok'.
 maybe_match(Call, State, CurrUsers) ->
     case filter_users(CurrUsers, dtmf_collected(State), sort_by(State)) of
         [] ->
@@ -171,6 +172,7 @@ maybe_match(Call, State, CurrUsers) ->
 matches_menu(Call, State, Users) ->
     maybe_match_users(Call, save_current_users(State, Users), Users, 1).
 
+-spec maybe_match_users(whapps_call:call(), directory(), directory_users(), pos_integer()) -> 'ok'.
 maybe_match_users(Call, State, [], _) ->
     lager:info("failed to match any users, back to the beginning"),
     _ = play_no_users(Call),
@@ -193,11 +195,7 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
 
 -spec maybe_match_user(whapps_call:call(), directory_user(), pos_integer()) -> dtmf_action().
 maybe_match_user(Call, U, MatchNum) ->
-    UserName = case media_name(U) of
-                   'undefined' -> {'tts', <<39, (full_name(U))/binary, 39>>}; % 39 is ascii '
-                   MediaID ->
-                       {'prompt', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
-               end,
+    UserName = username_audio_macro(Call, U),
     lager:info("playing username with: ~p", [UserName]),
 
     case play_user(Call, UserName, MatchNum) of
@@ -225,6 +223,7 @@ maybe_confirm_match(Call, User, 'true') ->
         _ -> 'false'
     end.
 
+-spec route_to_match(whapps_call:call(), 'fail' | wh_json:object()) -> 'ok'.
 route_to_match(Call, 'fail') -> cf_exe:continue(Call);
 route_to_match(Call, Callflow) ->
     cf_exe:branch(wh_json:get_value(<<"flow">>, Callflow), Call).
@@ -232,27 +231,35 @@ route_to_match(Call, Callflow) ->
 %%------------------------------------------------------------------------------
 %% Audio Prompts
 %%------------------------------------------------------------------------------
+-spec play_user(whapps_call:call(), whapps_call_command:audio_macro_prompt(), _) ->
+                       {'ok', binary()}.
 play_user(Call, UsernameTuple, _MatchNum) ->
     play_and_collect(Call, [{'prompt', ?PROMPT_RESULT_NUMBER}
                             ,UsernameTuple
                             ,{'prompt', ?PROMPT_RESULT_MENU}
                            ]).
 
+-spec play_invalid(whapps_call:call()) -> ne_binary().
 play_invalid(Call) ->
     whapps_call_command:audio_macro([{'prompt', ?PROMPT_INVALID_KEY}], Call).
 
+-spec play_confirm_match(whapps_call:call(), directory_user()) -> {'ok', binary()}.
 play_confirm_match(Call, User) ->
-    UserName =
-        case media_name(User) of
-            'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; %% 39 is ascii '
-            MediaID -> {'prompt', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
-        end,
+    UserName = username_audio_macro(Call, User),
     lager:info("playing confirm_match with username: ~p", [UserName]),
 
     play_and_collect(Call, [{'prompt', ?PROMPT_FOUND}
                             ,UserName
                             ,{'prompt', ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
                            ]).
+
+-spec username_audio_macro(whapps_call:call(), directory_user()) -> whapps_call_command:audio_macro_prompt().
+username_audio_macro(Call, User) ->
+    case media_name(User) of
+        'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; % 39 is ascii '
+        MediaID ->
+            {'prompt', <<$/, (whapps_call:account_db(Call))/binary, $/, MediaID/binary>>}
+    end.
 
 -spec play_directory_instructions(whapps_call:call(), 'first' | 'last' | ne_binary()) ->
                                          {'ok', binary()}.
