@@ -25,7 +25,6 @@
          ,all_accounts_set_classifier_inherit/1
          ,all_accounts_set_classifier_deny/1
          ,device_classifier_inherit/2
-         ,device_classifier_inherit/2
          ,device_classifier_deny/2
          ,list_account_restrictions/1
         ]).
