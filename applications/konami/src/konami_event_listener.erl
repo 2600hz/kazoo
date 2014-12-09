@@ -37,6 +37,10 @@
 
 -record(state, {cleanup_ref :: reference()}).
 
+-define(CLEANUP_TIMEOUT
+        ,whapps_config:get_integer(?APP_NAME, <<"event_cleanup_timeout_ms">>, ?MILLISECONDS_IN_HOUR)
+       ).
+
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}]).
 -define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
@@ -252,8 +256,7 @@ init([]) ->
     {'ok', #state{cleanup_ref=cleanup_timer()}}.
 
 cleanup_timer() ->
-    CleanupTimeout = whapps_config:get_integer(?APP_NAME, <<"event_cleanup_timeout_ms">>, ?MILLISECONDS_IN_MINUTE),
-    erlang:start_timer(CleanupTimeout, self(), 'ok').
+    erlang:start_timer(?CLEANUP_TIMEOUT, self(), 'ok').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -309,7 +312,6 @@ handle_info(?HOOK_EVT(AccountId, EventName, Event), State) ->
     {'noreply', State};
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
     _P = spawn(?MODULE, 'cleanup_bindings', [self()]),
-    lager:debug("cleaning up bindings in ~p", [_P]),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -359,20 +361,17 @@ cleanup_bindings(Srv) ->
     wh_util:put_callid(?MODULE),
     cleanup_bindings(Srv, gen_listener:bindings(Srv)).
 
-cleanup_bindings(_Srv, []) ->
-    lager:debug("finished cleanup for ~p", [_Srv]);
+cleanup_bindings(_Srv, []) -> 'ok';
 cleanup_bindings(Srv, [{Binding, Props}|Bindings]) ->
     maybe_remove_binding(Srv, Binding, Props, props:get_value('callid', Props)),
     cleanup_bindings(Srv, Bindings).
 
 -spec maybe_remove_binding(server_ref(), atom(), wh_proplist(), api_binary()) -> 'ok'.
-maybe_remove_binding(_Srv, _Binding, _Props, 'undefined') ->
-    lager:debug("skipping binding '~s' with no call-id", [_Binding]);
+maybe_remove_binding(_Srv, _Binding, _Props, 'undefined') -> 'ok';
 maybe_remove_binding(Srv, Binding, Props, CallId) ->
     case {fsms_for_callid(CallId), pids_for_callid(CallId)} of
         {[], []} ->
             lager:debug("~p: no pids for call-id '~s', removing binding '~s'", [Srv, CallId, Binding]),
             gen_listener:rm_binding(Srv, Binding, Props);
-        {_, _} ->
-            lager:debug("~p: still pids for call-id '~s', keeping binding '~s'", [Srv, CallId, Binding])
+        {_, _} -> 'ok'
     end.
