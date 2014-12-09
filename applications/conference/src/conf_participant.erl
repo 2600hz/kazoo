@@ -241,7 +241,7 @@ handle_cast('hungup', #participant{conference=Conference
                                   }=Participant) ->
     _ = case InConference of
             'true' ->
-                whapps_conference_command:play(<<"tone_stream://%(500,0,300,200,100,50,25)">>, Conference);
+                whapps_conference_command:play(<<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)">>, Conference);
             'false' -> 'ok'
         end,
     _ = whapps_call_command:hangup(Call),
@@ -298,13 +298,13 @@ handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->
     {'noreply', sync_participant(JObj, Call, Participant)};
 handle_cast('play_member_entry', #participant{conference=Conference}=Participant) ->
     _ = whapps_conference:play_entry_tone(Conference) andalso
-        whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
+        whapps_conference_command:play(<<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>, Conference),
     {'noreply', Participant};
 handle_cast('play_moderator_entry', #participant{conference=Conference}=Participant) ->
     _ = case whapps_conference:play_entry_tone(Conference) of
             'false' -> 'ok';
             'true' ->
-                whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference)
+                whapps_conference_command:play(<<"tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)">>, Conference)
         end,
     {'noreply', Participant};
 handle_cast({'dtmf', Digit}, #participant{last_dtmf = <<"*">>}=Participant) ->
