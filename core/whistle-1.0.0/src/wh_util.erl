@@ -248,7 +248,7 @@ format_account_id(Account, Year, Month) when is_integer(Year), is_integer(Month)
     >>.
 
 -spec format_account_mod_id(ne_binary()) -> ne_binary().
--spec format_account_mod_id(ne_binary(), pos_integer() | wh_now()) -> ne_binary().
+-spec format_account_mod_id(ne_binary(), gregorian_seconds() | wh_now()) -> ne_binary().
 -spec format_account_mod_id(ne_binary(), wh_year(), wh_month()) -> ne_binary().
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
@@ -940,10 +940,11 @@ ceiling(X) ->
     end.
 
 %% returns current seconds
--spec current_tstamp() -> non_neg_integer().
+-spec current_tstamp() -> gregorian_seconds().
 current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
+-spec current_unix_tstamp() -> unix_seconds().
 current_unix_tstamp() ->
     gregorian_seconds_to_unix_seconds(current_tstamp()).
 
@@ -1048,35 +1049,35 @@ elapsed_us(Start, Now) when is_integer(Start), is_integer(Now) -> (Now - Start) 
 
 -spec now_s(wh_now()) -> integer().
 -spec now_ms(wh_now()) -> integer().
--spec now_us(wh_now()) -> integer().
+-spec now_us(wh_now()) -> gregorian_seconds().
 now_us({MegaSecs,Secs,MicroSecs}) ->
     unix_seconds_to_gregorian_seconds((MegaSecs*1000000 + Secs)*1000000 + MicroSecs).
 now_ms({_,_,_}=Now) -> now_us(Now) div 1000.
 now_s({_,_,_}=Now) -> now_us(Now) div 1000000.
 
 -spec format_date() -> binary().
--spec format_date(wh_now()) -> binary().
+-spec format_date(gregorian_seconds()) -> binary().
 -spec format_time() -> binary().
--spec format_time(wh_now()) -> binary().
+-spec format_time(gregorian_seconds()) -> binary().
 -spec format_datetime() -> binary().
--spec format_datetime(wh_now()) -> binary().
+-spec format_datetime(gregorian_seconds()) -> binary().
 
 format_date() ->
-    format_date(wh_util:current_tstamp()).
+    format_date(current_tstamp()).
 
 format_date(Timestamp) ->
     {{Y,M,D}, _ } = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([wh_util:to_binary(Y), "-", wh_util:to_binary(M), "-", wh_util:to_binary(D)]).
 
 format_time() ->
-    format_time(wh_util:current_tstamp()).
+    format_time(current_tstamp()).
 
 format_time(Timestamp) ->
     { _, {H,I,S}} = calendar:gregorian_seconds_to_datetime(Timestamp),
     list_to_binary([wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)]).
 
 format_datetime() ->
-    format_datetime(wh_util:current_tstamp()).
+    format_datetime(current_tstamp()).
 
 format_datetime(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
