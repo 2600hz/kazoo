@@ -260,7 +260,7 @@ handle_cast('shutdown', #state{node=Node}=State) ->
     lager:debug("call event listener on node ~s received shutdown request", [Node]),
     {'stop', 'normal', State};
 handle_cast({'transferer', _Props}, State) ->
-    lager:debug("call control has been transfered"),
+    lager:debug("call control has been transferred"),
     {'stop', 'normal', State};
 handle_cast({'b_leg_events', Events}, State) ->
     lager:debug("tracking b_leg events: ~p", [Events]),
