@@ -198,35 +198,43 @@ handle_event(?EVENT(CallId, <<"CHANNEL_TRANSFEREE">>, Evt)
     lager:debug("~s has been transferred", [CallId]),
     {'next_state', StateName, handle_channel_transferee(Evt, State)};
 
-handle_event(?EVENT(CallId, <<"CHANNEL_DESTROY">>, _Evt)
+handle_event(?EVENT(CallId, EventName, _Evt)
              ,_StateName
              ,#state{call_id=CallId
                      ,listen_on='a'
                     }=State
-            ) ->
+            )
+  when EventName =:= <<"CHANNEL_DESTROY">>;
+       EventName =:= <<"LEG_DESTROYED">> ->
     lager:debug("a leg destroyed, finished here"),
     {'stop', 'normal', State};
-handle_event(?EVENT(CallId, <<"CHANNEL_DESTROY">>, _Evt)
+handle_event(?EVENT(CallId, EventName, _Evt)
              ,_StateName
              ,#state{call_id=CallId
                      ,other_leg='undefined'
                     }=State
-            ) ->
+            )
+  when EventName =:= <<"CHANNEL_DESTROY">>;
+       EventName =:= <<"LEG_DESTROYED">> ->
     lager:debug("a leg destroyed, other leg down too, finished here"),
     {'stop', 'normal', State};
-handle_event(?EVENT(CallId, <<"CHANNEL_DESTROY">>, _Evt)
+handle_event(?EVENT(CallId, EventName, _Evt)
              ,StateName
              ,#state{call_id=CallId}=State
-            ) ->
+            )
+  when EventName =:= <<"CHANNEL_DESTROY">>;
+       EventName =:= <<"LEG_DESTROYED">> ->
     lager:debug("a leg destroyed but we're not interested, ignoring"),
     {'next_state', StateName, State#state{call_id='undefined'}};
 
-handle_event(?EVENT(OtherLeg, <<"CHANNEL_DESTROY">>, _Evt)
+handle_event(?EVENT(OtherLeg, EventName, _Evt)
              ,_StateName
              ,#state{other_leg=OtherLeg
                      ,listen_on='b'
                     }=State
-            ) ->
+            )
+  when EventName =:= <<"CHANNEL_DESTROY">>;
+       EventName =:= <<"LEG_DESTROYED">> ->
     lager:debug("b leg destroyed, finished here"),
     {'stop', 'normal', State};
 handle_event(?EVENT(OtherLeg, <<"CHANNEL_DESTROY">>, _Evt)
@@ -238,10 +246,12 @@ handle_event(?EVENT(OtherLeg, <<"CHANNEL_DESTROY">>, _Evt)
             ) ->
     lager:debug("b leg destroyed, a leg is down too, finished here"),
     {'stop', 'normal', State};
-handle_event(?EVENT(OtherLeg, <<"CHANNEL_DESTROY">>, _Evt)
+handle_event(?EVENT(OtherLeg, EventName, _Evt)
              ,StateName
              ,#state{other_leg=OtherLeg}=State
-            ) ->
+            )
+  when EventName =:= <<"CHANNEL_DESTROY">>;
+       EventName =:= <<"LEG_DESTROYED">> ->
     lager:debug("b leg destroyed but we're not interested, ignoring"),
     {'next_state', StateName, State#state{other_leg='undefined'}};
 handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{call=Call}=State) ->
