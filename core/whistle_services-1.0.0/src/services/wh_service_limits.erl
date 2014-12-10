@@ -4,6 +4,7 @@
 %%%
 %%% @end
 %%% @contributors
+%%% VCCS Telecom
 %%%-------------------------------------------------------------------
 -module(wh_service_limits).
 
@@ -33,6 +34,10 @@ reconcile(Services) ->
                         ,fun(S) ->
                                  Quantity = wh_json:get_integer_value(<<"inbound_trunks">>, JObj, 0),
                                  wh_services:update(<<"limits">>, <<"inbound_trunks">>, Quantity, S)
+                         end
+                         ,fun(S) ->
+                        	 Quantity = wh_json:get_integer_value(<<"outbound_trunks">>, JObj, 0),
+                                 wh_services:update(<<"limits">>, <<"outbound_trunks">>, Quantity, S)
                          end
                        ],
             lists:foldl(fun(F, S) -> F(S) end, wh_services:reset_category(<<"limits">>, Services), Routines)
