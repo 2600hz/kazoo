@@ -32,7 +32,11 @@ handle(Data, Call) ->
            ,set_recording_url(Data, Call)
            ,get_action(wh_json:get_value(<<"action">>, Data))
           ),
-    cf_exe:continue(Call).
+    case wh_json:is_true(<<"spawned">>, Data) of
+        'true' -> 'ok';
+        'false' ->
+            cf_exe:continue(Call)
+    end.
 
 handle(Data, Call, <<"start">>) ->
     case wh_json:is_true(<<"record_on_answer">>, Data, 'false') of
