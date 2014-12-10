@@ -153,22 +153,6 @@ attended_wait(?EVENT(Target, <<"LEG_CREATED">>, Evt)
             target_b_leg_sets(TargetCall, BLeg),
             {'next_state', 'attended_wait', State#state{target_b_legs=[BLeg | Bs]}}
     end;
-attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
-              ,#state{target=Target
-                      ,call=Call
-                      ,target_b_legs=[]
-                     }=State
-             ) ->
-    lager:debug("target ~s didn't answer, reconnecting transferor and transferee", [Target]),
-    connect_to_target(Call),
-    {'stop', 'normal', State};
-attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
-              ,#state{target=Target
-                      ,target_b_legs=Bs
-                     }=State
-             ) ->
-    lager:debug("target ~s hungup, still have b-legs ~p", [Target, Bs]),
-    {'next_state', 'attended_wait', State};
 attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
               ,#state{transferor=Transferor
                       ,transferee=Transferee
@@ -251,6 +235,36 @@ attended_wait(?EVENT(Target, <<"originate_resp">>, _Evt)
              ) ->
     lager:debug("originate has responded for target ~s", [Target]),
     {'next_state', 'attended_wait', State};
+attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
+              ,#state{target=Target
+                      ,call=Call
+                      ,target_b_legs=[]
+                     }=State
+             ) ->
+    lager:debug("target ~s didn't answer, reconnecting transferor and transferee", [Target]),
+    connect_to_target(Call),
+    {'stop', 'normal', State};
+attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
+              ,#state{target=Target
+                      ,target_b_legs=Bs
+                     }=State
+             ) ->
+    lager:debug("target ~s hungup, still have b-legs ~p", [Target, Bs]),
+    {'next_state', 'attended_wait', State#state{target='undefined'}};
+attended_wait(?EVENT(CallId, <<"CHANNEL_DESTROY">>, _Evt)
+              ,#state{target_b_legs=[CallId]
+                      ,target='undefined'
+                      ,call=Call
+                     }=State
+             ) ->
+    lager:debug("target b-leg ~s finished and no target, reconnecting transferor and transferee", [CallId]),
+    connect_to_target(Call),
+    {'stop', 'normal', State};
+attended_wait(?EVENT(CallId, <<"CHANNEL_DESTROY">>, _Evt)
+              ,#state{target_b_legs=[CallId]}=State
+             ) ->
+    lager:debug("target b-leg ~s finished", [CallId]),
+    {'next_state', 'attended_wait', State#state{target_b_legs=[]}};
 attended_wait(?EVENT(_CallId, _EventName, _Evt), State) ->
     lager:debug("attanded_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
     {'next_state', 'attended_wait', State};

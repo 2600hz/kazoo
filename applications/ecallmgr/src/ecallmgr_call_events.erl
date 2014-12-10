@@ -226,9 +226,8 @@ handle_cast('init', #state{node=Node
     erlang:monitor_node(Node, 'true'),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
     'true' = gproc:reg({'p', 'l', 'call_events_processes'}),
-    'true' = gproc:reg({'p', 'l', {'call_events_process', Node, CallId}}),
-    'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, CallId)}),
     'true' = gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
+    register_for_events(Node, CallId),
     _ = usurp_other_publishers(State),
     {'noreply', State#state{sanity_check_tref=TRef}};
 handle_cast({'update_node', Node}, #state{node=Node}=State) ->
@@ -238,8 +237,7 @@ handle_cast({'update_node', Node}, #state{node=OldNode
                                          }=State) ->
     lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
     erlang:monitor_node(OldNode, 'false'),
-    _ = gproc:unreg({'p', 'l', {'call_events_process', OldNode, CallId}}),
-    _ = gproc:unreg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(OldNode, CallId)}),
+    unregister_for_events(OldNode, CallId),
     _ = gproc:unreg({'p', 'l', ?FS_EVENT_REG_MSG(OldNode, ?CHANNEL_MOVE_RELEASED_EVENT_BIN)}),
     {'noreply', State#state{node=Node}, 0};
 handle_cast({'passive'}, State) ->
@@ -273,9 +271,8 @@ handle_cast({'other_leg', _OtherLeg}, #state{other_leg_events=[]}=State) ->
 handle_cast({'other_leg', OtherLeg}, #state{other_leg_events=_Events
                                             ,node=Node
                                            }=State) ->
-    lager:debug("tracking other leg events for ~s", [OtherLeg]),
-    'true' = gproc:reg({'p', 'l', {'call_events_process', Node, OtherLeg}}),
-    'true' = gproc:reg({'p', 'l', ?FS_CALL_EVENT_REG_MSG(Node, OtherLeg)}),
+    lager:debug("tracking other leg events for ~s: ~p", [OtherLeg, _Events]),
+    'true' = register_for_events(Node, OtherLeg),
     {'noreply', State#state{other_leg=OtherLeg}};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
@@ -284,6 +281,22 @@ handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
+
+-spec register_for_events(atom(), ne_binary()) -> 'true'.
+register_for_events(Node, CallId) ->
+    update_events(Node, CallId, fun gproc:reg/1).
+
+-spec unregister_for_events(atom(), ne_binary()) -> 'true'.
+unregister_for_events(Node, CallId) ->
+    update_events(Node, CallId, fun gproc:unreg/1).
+
+-spec update_events(atom(), ne_binary(), function()) -> 'true'.
+update_events(Node, CallId, Fun) ->
+    Regs = [{'call_events_process', Node, CallId}
+            ,?FS_CALL_EVENT_REG_MSG(Node, CallId)
+           ],
+    [catch Fun({'p', 'l', Reg}) || Reg <- Regs],
+    'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -337,6 +350,7 @@ handle_info({'event', [CallId | Props]}, #state{node=Node
             process_channel_event(Props),
             {'noreply', State};
         {_A, _B} ->
+            lager:debug("processing ~s/~s", [_A, _B]),
             process_channel_event(Props),
             {'noreply', State}
     end;
@@ -352,7 +366,7 @@ handle_info({'event', [CallId | Props]}, #state{other_leg=CallId
             process_channel_event(Props),
             {'noreply', State};
         'false' ->
-            lager:debug("ignoring b-leg event ~s", [Event]),
+            lager:debug("ignoring b-leg event ~s (not in ~p)", [Event, Events]),
             {'noreply', State}
     end;
 handle_info({'nodedown', _}, #state{node=Node
@@ -489,7 +503,8 @@ maybe_process_channel_destroy(Node, CallId, Props) ->
         {'error', _} -> gen_server:cast(self(), {'graceful_shutdown', CallId});
         {'ok', _NewNode} ->
             lager:debug("channel is on ~s, not ~s: publishing channel move"
-                        ,[CallId, _NewNode, Node]),
+                        ,[CallId, _NewNode, Node]
+                       ),
             Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
             publish_event(Event)
     end.
@@ -504,7 +519,8 @@ process_channel_event(Props) ->
         'false' ->
             Action = props:get_value(<<"Action">>, Props),
             lager:debug("not publishing ~s(~s): ~s"
-                               ,[EventName, ApplicationName, Action]);
+                        ,[EventName, ApplicationName, Action]
+                       );
         'true' ->
             Event = create_event(EventName, ApplicationName, Props),
             publish_event(Event)
@@ -578,8 +594,9 @@ publish_event(Props) ->
     ApplicationName = wh_util:to_lower_binary(props:get_value(<<"Application-Name">>, Props, <<>>)),
     case {ApplicationName, EventName} of
         {_, <<"dtmf">>} ->
-            Pressed = props:get_value(<<"DTMF-Digit">>, Props),
-            lager:debug("publishing received DTMF digit ~s", [Pressed]);
+            lager:debug("publishing received DTMF digit ~s"
+                        ,[props:get_value(<<"DTMF-Digit">>, Props)]
+                       );
         {<<>>, <<"channel_bridge">>} ->
             OtherLeg = get_other_leg(Props),
             gen_listener:cast(self(), {'other_leg', OtherLeg}),
