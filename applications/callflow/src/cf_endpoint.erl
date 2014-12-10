@@ -125,6 +125,7 @@ merge_attributes(Endpoint, Type) ->
             ,<<"dial_plan">>
             ,<<"metaflows">>
             ,<<"language">>
+            ,<<"record_call">>
             ,?CF_ATTR_LOWER_KEY
            ],
     merge_attributes(Endpoint, Type, Keys).
@@ -202,6 +203,12 @@ merge_attributes([<<"caller_id">> = Key|Keys], Account, Endpoint, Owner) ->
     end;
 merge_attributes([<<"language">>|_]=Keys, Account, Endpoint, Owner) ->
     merge_value(Keys, Account, Endpoint, Owner);
+merge_attributes([<<"record_call">> = Key|Keys], Account, Endpoint, Owner) ->
+    EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
+    AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
+    OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
+    Merged = wh_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
+    merge_attributes(Keys, Account, wh_json:set_value(Key, Merged, Endpoint), Owner);
 merge_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
@@ -698,11 +705,43 @@ get_clid(Endpoint, Properties, Call) ->
                  }
     end.
 
+-spec maybe_record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
+maybe_record_call(Endpoint, Call) ->
+    case is_call_recording(Call) of
+        'true' -> 'ok';
+        'false' -> start_call_recording(wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()), Call)
+    end.
+
+-spec is_call_recording(whapps_call:call()) -> boolean().
+is_call_recording(Call) ->
+    case wh_cache:peek_local(?CALLFLOW_CACHE, call_recording_cache_key(Call)) of
+        {'ok', _} -> 'true';
+        {'error', 'not_found'} -> 'false'
+    end.
+
+-spec call_recording_cache_key(whapps_call:call()) ->
+                                      {?MODULE, 'recording', ne_binary()}.
+call_recording_cache_key(Call) ->
+    {?MODULE, 'recording', whapps_call:call_id(Call)}.
+
+-spec start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
+start_call_recording(RecordCall, Call) ->
+    wh_cache:store_local(
+      ?CALLFLOW_CACHE
+      ,call_recording_cache_key(Call)
+      ,'true'
+      ,[{'expires', 60}]
+     ),
+    Data = wh_json:set_value(<<"spawned">>, 'true', RecordCall),
+    _ = spawn('cf_record_call', 'handle', [Data, Call]),
+    'ok'.
+
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  wh_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
     Clid = get_clid(Endpoint, Properties, Call),
     SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
+    _ = maybe_record_call(Endpoint, Call),
     wh_json:from_list(
       props:filter_empty(
         [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
