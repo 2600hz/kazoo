@@ -534,7 +534,7 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
           props:filter_undefined(
             [{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
              ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
-             ,{<<"Loopback-Bowout">>, wh_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj, <<"false">>)}
+             ,{<<"Loopback-Bowout">>, wh_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj)}
             ])
           ,JObj
          ),
