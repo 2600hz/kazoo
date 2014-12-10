@@ -1,0 +1,32 @@
+{
+    "_id": "sms",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "required": true,
+    "name": "sms",
+    "description": "sms document",
+    "properties": {
+        "from": {
+            "type": "string",
+            "required": false,
+            "name": "From",
+            "description": "caller-id-number, taken from user if absent",
+            "format": "email"
+        },
+        "to": {
+            "type": "string",
+            "required": true,
+            "name": "To",
+            "description": "callee-id-number",
+            "format": "email"
+        },
+        "body": {
+            "type": "string",
+            "required": true,
+            "name": "body",
+            "description": "text message",
+            "minLength": 1,
+            "maxLength": 700
+        },
+    }
+}
