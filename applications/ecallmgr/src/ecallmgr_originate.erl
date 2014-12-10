@@ -530,10 +530,14 @@ build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
                         _Else -> <<"|">>
                     end,
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
-    J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
-                            ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
-                            ,{<<"Loopback-Bowout">>, <<"false">>}
-                           ], JObj),
+    J = wh_json:set_values(
+          props:filter_undefined(
+            [{[<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], FetchId}
+             ,{[<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], wh_util:to_binary(node())}
+             ,{<<"Loopback-Bowout">>, wh_json:get_binary_boolean(<<"Simplify-Loopback">>, JObj, <<"false">>)}
+            ])
+          ,JObj
+         ),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
 -spec originate_execute(atom(), ne_binary(), pos_integer()) ->
