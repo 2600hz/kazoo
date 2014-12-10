@@ -732,6 +732,7 @@ connect(Flags, Call) ->
 handle_transferor_dtmf(Evt, NextState
                        ,#state{call=Call
                                ,target_call=TargetCall
+                               ,target_b_legs=Bs
                                ,takeback_dtmf=TakebackDTMF
                                ,transferor_dtmf=DTMFs
                               }=State
@@ -745,7 +746,7 @@ handle_transferor_dtmf(Evt, NextState
         'true' ->
             lager:info("takeback dtmf sequence (~s) engaged!", [TakebackDTMF]),
             connect_to_transferee(Call),
-            whapps_call_command:hangup(TargetCall),
+            hangup_target(TargetCall, Bs),
             {'stop', 'normal', State};
         'false' ->
             {'next_state', NextState, State#state{transferor_dtmf=Collected}}
@@ -920,3 +921,14 @@ issue_internal_transferee(Call, Transferor, Transferee, Target) ->
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_konami:publish_transferred(Target, API).
+
+-spec hangup_target(whapps_call:call(), ne_binaries()) -> 'ok'.
+hangup_target(Call, []) ->
+    whapps_call_command:hangup(Call);
+hangup_target(Call, [B|Bs]) ->
+    Hangup = [{<<"Call-ID">>, B}
+              ,{<<"Application-Name">>, <<"hangup">>}
+              ,{<<"Insert-At">>, <<"now">>}
+             ],
+    whapps_call_command:send_command(Hangup, Call),
+    hangup_target(Call, Bs).
