@@ -11,7 +11,7 @@
 
 -export([start_link/0
          ,add_call_binding/1, add_call_binding/2
-         ,rm_call_binding/1, rm_call_binding/2
+         ,rm_call_binding/1
          ,add_konami_binding/1, rm_konami_binding/1
          ,handle_call_event/2
          ,handle_originate_event/2
@@ -19,6 +19,7 @@
          ,handle_konami/2
          ,queue_name/0
          ,bindings/0, bindings/1
+         ,originate/1
         ]).
 
 -export([init/1
@@ -158,15 +159,23 @@ add_call_binding(Call, Events) ->
 -spec rm_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
 rm_call_binding('undefined') -> 'ok';
 rm_call_binding(CallId) ->
+    Self = self(),
+    case {fsms_for_callid(CallId), pids_for_callid(CallId)} of
+        {[], []} ->
+            really_remove_call_bindings(CallId);
+        {[Self], []} ->
+            really_remove_call_bindings(CallId);
+        {[], [Self]} ->
+            really_remove_call_bindings(CallId);
+        {[Self], [Self]} ->
+            really_remove_call_bindings(CallId);
+        _ -> 'ok'
+    end.
+
+-spec really_remove_call_bindings(ne_binary()) -> 'ok'.
+really_remove_call_bindings(CallId) ->
     gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, ?TRACKED_CALL_EVENTS)),
     gen_listener:rm_binding(?MODULE, ?META_BINDINGS(CallId)).
-
-rm_call_binding('undefined', _) -> 'ok';
-rm_call_binding(CallId, Events) when is_binary(CallId) ->
-    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
-    gen_listener:rm_binding(?MODULE, ?META_BINDINGS(CallId));
-rm_call_binding(Call, Events) ->
-    rm_call_binding(whapps_call:call_id_direct(Call), Events).
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> any().
 handle_call_event(JObj, Props) ->
@@ -237,6 +246,9 @@ relay_to_pids(CallId, JObj) ->
 pids_for_callid(CallId) ->
     gproc:lookup_pids(?KONAMI_REG({'pid', CallId})).
 
+-spec originate(api_terms()) -> 'ok'.
+originate(Req) ->
+    gen_listener:cast(?MODULE, {'originate', Req}).
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -285,6 +297,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({'originate', Req}, State) ->
+    catch wapi_resource:publish_originate_req(Req),
+    {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
