@@ -38,6 +38,7 @@
          ,auth_token/1, set_auth_token/2
          ,auth_doc/1, set_auth_doc/2
          ,auth_account_id/1, set_auth_account_id/2
+         ,auth_user_id/1
          ,req_verb/1, set_req_verb/2
          ,req_data/1, set_req_data/2
          ,req_id/1, set_req_id/2
@@ -145,6 +146,8 @@ account_doc(Context) ->
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
+auth_user_id(#cb_context{auth_doc='undefined'}) -> 'undefined';
+auth_user_id(#cb_context{auth_doc=JObj}) -> wh_json:get_value(<<"owner_id">>, JObj).
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
