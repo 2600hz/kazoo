@@ -65,29 +65,28 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
 
 -spec maybe_have_endpoint(wh_json:object(), ne_binary(), ne_binary()) ->  wh_jobj_return().
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
-    EndpointType = wh_json:get_value(<<"pvt_type">>, JObj),
-    case EndpointType of
-        <<"device">> ->
+    case wh_json:get_value(<<"pvt_type">>, JObj) of
+        <<"device">> = EndpointType ->
             Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
             CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
             wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
             {'ok', Endpoint};
-        <<"user">> ->
+        <<"user">> = EndpointType ->
             Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
             CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
             wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
             {'ok', Endpoint};
         _Else ->
             lager:info("endpoint module does not manage document type ~s", [_Else]),
-            {'error', 'not_device_or_user'}
+            {'error', 'not_device_nor_user'}
     end.
 
 -spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) ->  list().
 cache_origin(JObj, EndpointId, AccountDb) ->
-    Routines = [fun(P) -> [{'db', AccountDb, EndpointId}|P] end
+    Routines = [fun(P) -> [{'db', AccountDb, EndpointId} | P] end
                 ,fun(P) ->
                          [{'db', AccountDb, wh_util:format_account_id(AccountDb, 'raw')}
-                          |P
+                          | P
                          ]
                  end
                 ,fun(P) -> maybe_cached_owner_id(P, JObj, AccountDb) end
@@ -113,6 +112,7 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
     end.
 
 -spec merge_attributes(wh_json:object(), ne_binary()) -> wh_json:object().
+-spec merge_attributes(wh_json:object(), ne_binary(), ne_binaries()) -> wh_json:object().
 merge_attributes(Endpoint, Type) ->
     Keys = [<<"name">>
             ,<<"call_restriction">>
@@ -127,13 +127,14 @@ merge_attributes(Endpoint, Type) ->
             ,<<"language">>
             ,?CF_ATTR_LOWER_KEY
            ],
-    case Type of
-        <<"user">> -> merge_attributes(Keys, 'undefined', 'undefined', Endpoint);
-        _ -> merge_attributes(Keys, 'undefined', Endpoint, 'undefined')
-    end.
+    merge_attributes(Endpoint, Type, Keys).
 
+merge_attributes(Endpoint, <<"user">>, Keys) ->
+    merge_attributes(Keys, 'undefined', 'undefined', Endpoint);
+merge_attributes(Endpoint, _Type, Keys) ->
+    merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
 
--spec merge_attributes(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
+-spec merge_attributes(ne_binaries(), api_object(), api_object(), api_object()) ->
                               wh_json:object().
 merge_attributes([], _AccountDoc, Endpoint, _OwnerDoc) -> Endpoint;
 merge_attributes(Keys, Account, Endpoint, 'undefined') ->
