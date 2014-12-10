@@ -34,8 +34,7 @@ handle(Data, Call) ->
           ),
     case wh_json:is_true(<<"spawned">>, Data) of
         'true' -> 'ok';
-        'false' ->
-            cf_exe:continue(Call)
+        'false' -> cf_exe:continue(Call)
     end.
 
 handle(Data, Call, <<"start">>) ->

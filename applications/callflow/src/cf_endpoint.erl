@@ -707,27 +707,34 @@ get_clid(Endpoint, Properties, Call) ->
 
 -spec maybe_record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
 maybe_record_call(Endpoint, Call) ->
-    RecordCall = wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()),
-    Recording =
-        case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, 'recording', whapps_call:call_id(Call)}) of
-            {'ok', _} -> 'true';
-            {'error', 'not_found'} -> 'false'
-        end,
-    case Recording of
+    case is_call_recording(Call) of
         'true' -> 'ok';
-        'false' -> record_call(RecordCall, Call)
+        'false' -> start_call_recording(wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()), Call)
     end.
 
--spec record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
-record_call(RecordCall, Call) ->
+-spec is_call_recording(whapps_call:call()) -> boolean().
+is_call_recording(Call) ->
+    case wh_cache:peek_local(?CALLFLOW_CACHE, call_recording_cache_key(Call)) of
+        {'ok', _} -> 'true';
+        {'error', 'not_found'} -> 'false'
+    end.
+
+-spec call_recording_cache_key(whapps_call:call()) ->
+                                      {?MODULE, 'recording', ne_binary()}.
+call_recording_cache_key(Call) ->
+    {?MODULE, 'recording', whapps_call:call_id(Call)}.
+
+-spec start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
+start_call_recording(RecordCall, Call) ->
     wh_cache:store_local(
-        ?CALLFLOW_CACHE
-        ,{?MODULE, 'recording', whapps_call:call_id(Call)}
-        ,'true'
-        ,[{'expires', 60}]
-    ),
+      ?CALLFLOW_CACHE
+      ,call_recording_cache_key(Call)
+      ,'true'
+      ,[{'expires', 60}]
+     ),
     Data = wh_json:set_value(<<"spawned">>, 'true', RecordCall),
-    spawn('cf_record_call', 'handle', [Data, Call]).
+    _ = spawn('cf_record_call', 'handle', [Data, Call]),
+    'ok'.
 
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  wh_json:object().
