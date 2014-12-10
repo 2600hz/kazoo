@@ -179,6 +179,7 @@ get_sip_to(Props, _) ->
 
 %% retrieves the sip address for the 'from' field
 -spec get_sip_from(wh_proplist()) -> ne_binary().
+-spec get_sip_from(wh_proplist(), api_binary()) -> ne_binary().
 get_sip_from(Props) ->
     get_sip_from(Props, props:get_value(<<"Call-Direction">>, Props)).
 
@@ -189,8 +190,10 @@ get_sip_from(Props, <<"outbound">>) ->
             Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
                                              ,<<"variable_sip_auth_realm">>
                                             ], Props, ?DEFAULT_REALM),
-            props:get_value(<<"variable_sip_from_uri">>, Props,
-                            <<Number/binary, "@", Realm/binary>>);
+            props:get_value(<<"variable_sip_from_uri">>
+                            ,Props
+                            ,<<Number/binary, "@", Realm/binary>>
+                           );
         OtherChannel ->
             lists:last(binary:split(OtherChannel, <<"/">>, ['global']))
     end;
