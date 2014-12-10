@@ -260,19 +260,23 @@ handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{cal
     {'next_state', StateName, State};
 handle_event(?EVENT(Target, <<"transferred">>, Evt)
              ,StateName
-             ,#state{call_id='undefined'
+             ,#state{call_id=_OldCall
                      ,other_leg=Target
                      ,listen_on=ListenOn
                     }=State
             ) ->
-    lager:debug("other leg ~s transferred, updating to new control", [Target]),
     Transferee = wh_json:get_value(<<"Transferee">>, Evt),
+    wh_util:put_callid(Transferee),
+
+    lager:debug("other leg ~s transferred to ~s from ~s, updating to new control", [Target, Transferee, _OldCall]),
+
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, Evt)),
     maybe_add_call_event_bindings(Call, ListenOn),
 
     {'next_state', StateName, State#state{call=whapps_call:set_other_leg_call_id(Target, Call)
                                           ,call_id=Transferee
                                          }};
+
 handle_event(_Event, StateName, #state{call_id=_CallId
                                        ,other_leg=_OtherLeg
                                        ,listen_on=_LO
