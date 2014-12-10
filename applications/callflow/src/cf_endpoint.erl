@@ -65,15 +65,21 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
 
 -spec maybe_have_endpoint(wh_json:object(), ne_binary(), ne_binary()) ->  wh_jobj_return().
 maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
-    case wh_json:get_value(<<"pvt_type">>, JObj) of
+    EndpointType = wh_json:get_value(<<"pvt_type">>, JObj),
+    case EndpointType of
         <<"device">> ->
-            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj)),
+            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
+            CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
+            wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+            {'ok', Endpoint};
+        <<"user">> ->
+            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
             CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
             wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
             {'ok', Endpoint};
         _Else ->
             lager:info("endpoint module does not manage document type ~s", [_Else]),
-            {'error', 'not_device'}
+            {'error', 'not_device_or_user'}
     end.
 
 -spec cache_origin(wh_json:object(), ne_binary(), ne_binary()) ->  list().
@@ -106,8 +112,8 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
                         end, Props, OwnerIds)
     end.
 
--spec merge_attributes(wh_json:object()) -> wh_json:object().
-merge_attributes(Endpoint) ->
+-spec merge_attributes(wh_json:object(), ne_binary()) -> wh_json:object().
+merge_attributes(Endpoint, Type) ->
     Keys = [<<"name">>
             ,<<"call_restriction">>
             ,<<"music_on_hold">>
@@ -121,7 +127,11 @@ merge_attributes(Endpoint) ->
             ,<<"language">>
             ,?CF_ATTR_LOWER_KEY
            ],
-    merge_attributes(Keys, 'undefined', Endpoint, 'undefined').
+    case Type of
+        <<"user">> -> merge_attributes(Keys, 'undefined', 'undefined', Endpoint);
+        _ -> merge_attributes(Keys, 'undefined', Endpoint, 'undefined')
+    end.
+
 
 -spec merge_attributes(ne_binaries(), api_object(), wh_json:object(), api_object()) ->
                               wh_json:object().
@@ -134,6 +144,8 @@ merge_attributes(Keys, Account, Endpoint, 'undefined') ->
                      ,Account
                      ,wh_json:set_value(<<"owner_id">>, Id, Endpoint)
                      ,JObj);
+merge_attributes(Keys, Account, 'undefined', Owner) ->
+    merge_attributes(Keys, Account, wh_json:new(), Owner);
 merge_attributes(Keys, 'undefined', Endpoint, Owner) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Endpoint),
