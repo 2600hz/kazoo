@@ -2242,48 +2242,47 @@ wait_for_bridge(Timeout, _, _) when Timeout < 0 ->
     {'error', 'timeout'};
 wait_for_bridge(Timeout, Fun, Call) ->
     Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
-            Disposition = wh_json:get_value(<<"Disposition">>, JObj),
-            Cause = wh_json:get_first_defined([<<"Application-Response">>
-                                               ,<<"Hangup-Cause">>
-                                              ], JObj, <<"UNSPECIFIED">>),
-            Result = case Disposition =:= <<"SUCCESS">>
-                         orelse Cause =:= <<"SUCCESS">>
-                     of
-                         'true' -> 'ok';
-                         'false' -> 'fail'
-                     end,
-            case get_event_type(JObj) of
-                {<<"error">>, _, <<"bridge">>} ->
-                    lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
-                    {'error', JObj};
-                {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
-                    CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
-                    lager:debug("channel bridged to ~s", [CallId]),
-                    case is_function(Fun, 1) of
-                        'false' -> 'ok';
-                        'true' -> Fun(JObj)
-                    end,
-                    wait_for_bridge('infinity', Fun, Call);
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    %% TODO: reduce log level if no issue is found with
-                    %%    basing the Result on Disposition
-                    lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
-                    {Result, JObj};
-                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    %% TODO: reduce log level if no issue is found with
-                    %%    basing the Result on Disposition
-                    lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
-                    {Result, JObj};
-                _ ->
-                    wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
-            end;
-        %% dont let the mailbox grow unbounded if
-        %%   this process hangs around...
-        _ -> wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
-    after
-        Timeout -> {'error', 'timeout'}
+
+    lager:debug("waiting for bridge for ~p ms", [Timeout]),
+    wait_for_bridge(Timeout, Fun, Call, Start, receive_event(Timeout)).
+
+wait_for_bridge(_Timeout, _Fun, _Call, _Start, {'error', 'timeout'}=E) -> E;
+wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
+    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
+    Cause = wh_json:get_first_defined([<<"Application-Response">>
+                                       ,<<"Hangup-Cause">>
+                                      ], JObj, <<"UNSPECIFIED">>),
+    Result = case Disposition =:= <<"SUCCESS">>
+                 orelse Cause =:= <<"SUCCESS">>
+             of
+                 'true' -> 'ok';
+                 'false' -> 'fail'
+             end,
+    case get_event_type(JObj) of
+        {<<"error">>, _, <<"bridge">>} ->
+            lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
+            {'error', JObj};
+        {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
+            CallId = wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
+            lager:debug("channel bridged to ~s", [CallId]),
+            case is_function(Fun, 1) of
+                'false' -> 'ok';
+                'true' -> Fun(JObj)
+            end,
+            wait_for_bridge('infinity', Fun, Call);
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+            %% TODO: reduce log level if no issue is found with
+            %%    basing the Result on Disposition
+            lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
+            {Result, JObj};
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
+            %% TODO: reduce log level if no issue is found with
+            %%    basing the Result on Disposition
+            lager:info("bridge completed with result ~s(~s)", [Disposition, Result]),
+            {Result, JObj};
+        _E ->
+            lager:debug("unhandled event type: ~p", [_E]),
+            wait_for_bridge(wh_util:decr_timeout(Timeout, Start), Fun, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -2330,8 +2329,8 @@ wait_for_channel_unbridge() ->
 %%--------------------------------------------------------------------
 -spec wait_for_channel_bridge() -> {'ok', wh_json:object()}.
 wait_for_channel_bridge() ->
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event('infinity') of
+        {'ok', JObj} ->
             case whapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>} -> {'ok', JObj};
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};

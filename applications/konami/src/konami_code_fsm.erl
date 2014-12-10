@@ -319,10 +319,15 @@ handle_sync_event(_Event, _From, StateName, State) ->
 handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_ANSWER">>, Evt), StateName, State) ->
     AuthorizingId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Evt),
     CallId = wh_json:get_value(<<"Call-ID">>, Evt),
-    OtherLeg = wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt),
-    lager:debug("answer: ~s (~s) endpoint id: ~s", [CallId, OtherLeg, AuthorizingId]),
 
-    {'next_state', StateName, handle_channel_event(CallId, OtherLeg, AuthorizingId, State)};
+    State1 =
+        case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+            CallId -> State;
+            OtherLeg ->
+                lager:debug("answer: ~s (~s) endpoint id: ~s", [CallId, OtherLeg, AuthorizingId]),
+                handle_channel_event(CallId, OtherLeg, AuthorizingId, State)
+        end,
+    {'next_state', StateName, State1};
 handle_info(?HOOK_EVT(_AccountId, <<"CHANNEL_DESTROY">>, Evt), StateName, State) ->
     handle_channel_destroy(wh_json:get_value(<<"Call-ID">>, Evt)
                            ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Evt)
@@ -643,11 +648,5 @@ stop_leg_listeners(Call) ->
 
 -spec start_b_leg_listener(whapps_call:call()) -> 'ok'.
 start_b_leg_listener(Call) ->
-    API = [{<<"Application-Name">>, <<"noop">>}
-           ,{<<"B-Leg-Events">>, [<<"DTMF">>]}
-           ,{<<"Insert-At">>, <<"now">>}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    lager:debug("sending noop for b leg events"),
-    whapps_call_command:send_command(API, Call),
+    konami_util:listen_on_other_leg(Call, [<<"DTMF">>]),
     konami_event_listener:add_call_binding(whapps_call:other_leg_call_id(Call)).
