@@ -18,9 +18,12 @@
 
 -include("amqp_util.hrl").
 
+-define(DEFAULT_POOL_SIZE, 150).
+-define(DEFAULT_POOL_OVERFLOW, 100).
+
 -define(POOL_NAME, 'wh_amqp_pool').
--define(POOL_SIZE, 150).
--define(POOL_OVERFLOW, 100).
+-define(POOL_SIZE, wh_config:get_integer('amqp', 'pool_size', ?DEFAULT_POOL_SIZE)).
+-define(POOL_OVERFLOW, wh_config:get_integer('amqp', 'pool_size', ?DEFAULT_POOL_OVERFLOW)).
 
 -define(POOL_ARGS, [[{'worker_module', 'wh_amqp_worker'}
                      ,{'name', {'local', ?POOL_NAME}}
