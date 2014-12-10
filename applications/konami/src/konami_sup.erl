@@ -15,13 +15,7 @@
 -include("konami.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER_ARGS('kazoo_etsmgr_srv', [[{'table_id', konami_tracker:table_id()}
-                                                      ,{'table_options', konami_tracker:table_options()}
-                                                      ,{'find_me_function', fun konami_tracker:find_me_function/0}
-                                                      ,{'gift_data', 'ok'}
-                                                     ]])
-                   ,?WORKER('konami_tracker')
-                   ,?WORKER('konami_listener')
+-define(CHILDREN, [?WORKER('konami_listener')
                    ,?WORKER('konami_event_listener')
                    ,?WORKER('konami_init')
                   ]).

@@ -132,7 +132,7 @@
 start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
-    %% then transfered to A->D, but the route landed in a different
+    %% then transferred to A->D, but the route landed in a different
     %% ecallmgr.  Since our call_events will get a bad session if we
     %% try to handlecall more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
@@ -383,10 +383,10 @@ handle_info({'event', [CallId | Props]}, #state{callid=CallId
         <<"sofia::transferee">> ->
             case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
                 FetchId ->
-                    lager:info("we have been transfered, terminate immediately"),
+                    lager:info("we have been transferred, terminate immediately"),
                     {'stop', 'normal', State};
                 _Else ->
-                    lager:info("we were a different instance of this transfered call"),
+                    lager:info("we were a different instance of this transferred call"),
                     {'noreply', State}
             end;
         <<"sofia::replaced">> ->

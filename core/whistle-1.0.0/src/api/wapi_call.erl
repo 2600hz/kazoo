@@ -76,6 +76,7 @@
                                       ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
                                       ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
                                       ,<<"Other-Leg-Call-ID">> %% BRIDGE
+                                      ,<<"Target-Call-ID">> %% TRANSFEREE
                                       ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
                                       ,<<"Terminator">>, <<"Disposition">>
                                       ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup

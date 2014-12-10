@@ -107,7 +107,7 @@
           ],
           "required": false,
           "name": "Transfer Media",
-          "description": "When a call is transfered from the menu, either after all retries exhausted or a successful hunt, this media can be played",
+          "description": "When a call is transferred from the menu, either after all retries exhausted or a successful hunt, this media can be played",
           "minLength": 32,
           "maxLength": 32
         },
@@ -118,7 +118,7 @@
           ],
           "required": false,
           "name": "Exit Media",
-          "description": "When a call is transfered from the menu after all retries exhausted this media can be played (prior to transfer if enabled)",
+          "description": "When a call is transferred from the menu after all retries exhausted this media can be played (prior to transfer if enabled)",
           "minLength": 32,
           "maxLength": 32
         },

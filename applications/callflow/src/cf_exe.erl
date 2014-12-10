@@ -521,7 +521,7 @@ get_pid(_) -> 'undefined'.
 %% @end
 %%--------------------------------------------------------------------
 terminate({'shutdown', 'transfer'}, _) ->
-    lager:info("callflow execution has been transfered");
+    lager:info("callflow execution has been transferred");
 terminate({'shutdown', 'control_usurped'}, _) ->
     lager:info("the call has been usurped by an external process");
 terminate(_Reason, #state{call=Call

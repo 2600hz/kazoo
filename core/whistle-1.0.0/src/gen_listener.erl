@@ -272,7 +272,7 @@ rm_responder(Srv, Responder, Keys) ->
 -spec add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) when is_list(Props)
                                         ,(is_atom(Binding) orelse is_binary(Binding)) ->
-    gen_server:cast(Srv, {'add_binding', Binding, Props});
+    gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), Props});
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', wh_util:to_binary(Binding), []}).
 
@@ -443,11 +443,7 @@ handle_cast({'add_binding', Binding, Props}, State) ->
 handle_cast({'rm_binding', Binding, Props}, #state{queue=Q
                                                    ,bindings=Bs
                                                   }=State) ->
-    KeepBs = lists:filter(fun({B, P}) when B =:= Binding, P =:= Props ->
-                                  remove_binding(B, P, Q),
-                                  'false';
-                             ({_B, _P}) -> 'true'
-                          end, Bs),
+    KeepBs = lists:filter(fun(BP) -> maybe_remove_binding(BP, Binding, Props, Q) end, Bs),
     {'noreply', State#state{bindings=KeepBs}, 'hibernate'};
 handle_cast({'wh_amqp_assignment', {'new_channel', 'true'}}, State) ->
     lager:debug("channel reconnecting"),
@@ -494,6 +490,13 @@ handle_cast({'$client_cast', Message}, State) ->
     handle_module_cast(Message, State);
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
+
+-spec maybe_remove_binding(binding(), binding_module(), wh_proplist(), ne_binary()) -> boolean().
+maybe_remove_binding({B, P}, B, P, Q) ->
+    lager:debug("removing ~s: ~p", [B, P]),
+    remove_binding(B, P, Q),
+    'false';
+maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -760,7 +763,7 @@ start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 -spec remove_binding(binding_module(), wh_proplist(), api_binary()) -> any().
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
-lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
+    lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
     try (wh_util:to_atom(Wapi, 'true')):unbind_q(Q, Props) of
         Return -> Return
     catch
