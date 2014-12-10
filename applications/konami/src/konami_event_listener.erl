@@ -11,7 +11,7 @@
 
 -export([start_link/0
          ,add_call_binding/1, add_call_binding/2
-         ,rm_call_binding/1
+         ,rm_call_binding/1, rm_call_binding/2
          ,add_konami_binding/1, rm_konami_binding/1
          ,handle_call_event/2
          ,handle_originate_event/2
@@ -63,9 +63,9 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(TRACKED_CALL_EVENTS, ['DTMF'
-                              ,'CHANNEL_BRIDGE', 'CHANNEL_DESTROY'
-                              ,'CHANNEL_TRANSFEREE'
+-define(TRACKED_CALL_EVENTS, [<<"DTMF">>
+                              ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_DESTROY">>
+                              ,<<"CHANNEL_TRANSFEREE">>
                              ]).
 
 -define(DYN_BINDINGS(CallId), {'call', [{'restrict_to', ?TRACKED_CALL_EVENTS}
@@ -159,22 +159,37 @@ add_call_binding(Call, Events) ->
 -spec rm_call_binding(api_binary() | whapps_call:call()) -> 'ok'.
 rm_call_binding('undefined') -> 'ok';
 rm_call_binding(CallId) ->
+    case call_has_listeners(CallId) of
+        'true' -> 'ok';
+        'false' -> really_remove_call_bindings(CallId)
+    end.
+
+-spec rm_call_binding(api_binary(), ne_binaries()) -> 'ok'.
+rm_call_binding('undefined', _Evts) -> 'ok';
+rm_call_binding(CallId, Events) ->
+    case call_has_listeners(CallId) of
+        'true' -> 'ok';
+        'false' -> really_remove_call_bindings(CallId, Events)
+    end.
+
+-spec call_has_listeners(ne_binary()) -> boolean().
+call_has_listeners(CallId) ->
     Self = self(),
     case {fsms_for_callid(CallId), pids_for_callid(CallId)} of
-        {[], []} ->
-            really_remove_call_bindings(CallId);
-        {[Self], []} ->
-            really_remove_call_bindings(CallId);
-        {[], [Self]} ->
-            really_remove_call_bindings(CallId);
-        {[Self], [Self]} ->
-            really_remove_call_bindings(CallId);
-        _ -> 'ok'
+        {[], []} -> 'false';
+        {[Self], []} -> 'false';
+        {[], [Self]} -> 'false';
+        {[Self], [Self]} -> 'false';
+        _ -> 'true'
     end.
 
 -spec really_remove_call_bindings(ne_binary()) -> 'ok'.
+-spec really_remove_call_bindings(ne_binary(), ne_binaries()) -> 'ok'.
 really_remove_call_bindings(CallId) ->
-    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, ?TRACKED_CALL_EVENTS)),
+    really_remove_call_bindings(CallId, ?TRACKED_CALL_EVENTS).
+
+really_remove_call_bindings(CallId, Events) ->
+    gen_listener:rm_binding(?MODULE, ?DYN_BINDINGS(CallId, Events)),
     gen_listener:rm_binding(?MODULE, ?META_BINDINGS(CallId)).
 
 -spec handle_call_event(wh_json:object(), wh_proplist()) -> any().

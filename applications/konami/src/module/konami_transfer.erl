@@ -54,6 +54,22 @@
         ,whapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20000)
        ).
 
+-define(TRANSFEROR_CALL_EVENTS, [<<"CHANNEL_BRIDGE">>
+                                 ,<<"DTMF">>
+                                 ,<<"LEG_CREATED">>
+                                 ,<<"CHANNEL_DESTROY">>, <<"LEG_DESTROYED">>
+                                ]).
+
+-define(TRANSFEREE_CALL_EVENTS, [<<"CHANNEL_BRIDGE">>
+                                 ,<<"LEG_CREATED">>
+                                 ,<<"CHANNEL_DESTROY">>, <<"LEG_DESTROYED">>
+                                ]).
+-define(TARGET_CALL_EVENTS, [<<"CHANNEL_ANSWER">>
+                             ,<<"CHANNEL_CREATE">>, <<"LEG_CREATED">>
+                             ,<<"CHANNEL_BRIDGE">>
+                             ,<<"CHANNEL_DESTROY">>, <<"LEG_DESTROYED">>
+                            ]).
+
 -spec handle(wh_json:object(), whapps_call:call()) -> no_return().
 handle(Data, Call) ->
     TransferorLeg = wh_json:get_value(<<"dtmf_leg">>, Data),
@@ -118,7 +134,7 @@ attended_wait(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
                       ,transferee=Transferee
                      }=State
              ) ->
-    lager:info("transferor ~s hungup, connecting transferee ~s and target ~s"
+    lager:info("transferor ~s hungup, connecting transferee ~s and target ~s once target answers"
                ,[Transferor, Transferee, Target]
               ),
     {'next_state', 'partial_wait', State};
@@ -489,6 +505,19 @@ finished(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, _Evt)
         ) ->
     lager:debug("transferee bridged to ~s", [wh_json:get_value(<<"Other-Leg-Call-ID">>, _Evt)]),
     {'next_state', 'finished', State};
+finished(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
+         ,#state{target=Target
+                 ,transferee=Transferee
+                }=State
+         ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+        Transferee ->
+            lager:debug("target ~s bridged to transferee ~s", [Target, Transferee]),
+            {'stop', 'normal', State};
+        _CallId ->
+            lager:debug("target ~s bridged to ~s", [Target, _CallId]),
+            {'next_state', 'finished', State}
+    end;
 finished(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{target=Target
                  ,target_b_legs=[]
@@ -577,9 +606,9 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
                                       ,transferee=Transferee
                                       ,target=Target
                                      }) ->
-    konami_event_listener:rm_call_binding(Transferor),
-    konami_event_listener:rm_call_binding(Transferee),
-    konami_event_listener:rm_call_binding(Target),
+    konami_event_listener:rm_call_binding(Transferor, ?TRANSFEROR_CALL_EVENTS),
+    konami_event_listener:rm_call_binding(Transferee, ?TRANSFEREE_CALL_EVENTS),
+    konami_event_listener:rm_call_binding(Target, ?TARGET_CALL_EVENTS),
     lager:info("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
 code_change(_OldVsn, StateName, State, _Extra) ->
@@ -589,22 +618,13 @@ init(_) -> {'ok', 'attended_wait', #state{}}.
 
 -spec add_transferor_bindings(ne_binary()) -> 'ok'.
 add_transferor_bindings(CallId) ->
-    konami_event_listener:add_call_binding(CallId, [<<"CHANNEL_DESTROY">>
-                                                    ,<<"CHANNEL_BRIDGE">>
-                                                    ,<<"DTMF">>
-                                                    ,<<"LEG_CREATED">>
-                                                    ,<<"LEG_DESTROYED">>
-                                                   ]).
+    konami_event_listener:add_call_binding(CallId, ?TRANSFEROR_CALL_EVENTS).
 
 -spec add_transferee_bindings(ne_binary()) -> 'ok'.
 add_transferee_bindings(CallId) ->
-    konami_event_listener:add_call_binding(CallId, [<<"CHANNEL_DESTROY">>
-                                                    ,<<"CHANNEL_BRIDGE">>
-                                                    ,<<"LEG_CREATED">>
-                                                    ,<<"LEG_DESTROYED">>
-                                                   ]).
+    konami_event_listener:add_call_binding(CallId, ?TRANSFEREE_CALL_EVENTS).
 
--spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec originate_to_extension(ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
 originate_to_extension(Extension, TransferorLeg, Call) ->
     MsgId = wh_util:rand_hex_binary(4),
 
@@ -663,13 +683,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
 -spec create_call_id() -> ne_binary().
 create_call_id() ->
     TargetCallId = <<"konami-transfer-", (wh_util:rand_hex_binary(4))/binary>>,
-    konami_event_listener:add_call_binding(TargetCallId, [<<"CHANNEL_ANSWER">>
-                                                          ,<<"CHANNEL_DESTROY">>
-                                                          ,<<"CHANNEL_CREATE">>
-                                                          ,<<"CHANNEL_BRIDGE">>
-                                                          ,<<"LEG_CREATED">>
-                                                          ,<<"LEG_DESTROYED">>
-                                                         ]),
+    konami_event_listener:add_call_binding(TargetCallId, ?TARGET_CALL_EVENTS),
     TargetCallId.
 
 -spec caller_id_name(whapps_call:call(), ne_binary()) -> ne_binary().
