@@ -237,13 +237,15 @@ handle_event(?EVENT(OtherLeg, EventName, _Evt)
        EventName =:= <<"LEG_DESTROYED">> ->
     lager:debug("b leg destroyed, finished here"),
     {'stop', 'normal', State};
-handle_event(?EVENT(OtherLeg, <<"CHANNEL_DESTROY">>, _Evt)
+handle_event(?EVENT(OtherLeg, EventName, _Evt)
              ,_StateName
              ,#state{other_leg=OtherLeg
                      ,call_id='undefined'
                      ,listen_on='ab'
                     }=State
-            ) ->
+            )
+  when EventName =:= <<"CHANNEL_DESTROY">>;
+       EventName =:= <<"LEG_DESTROYED">> ->
     lager:debug("b leg destroyed, a leg is down too, finished here"),
     {'stop', 'normal', State};
 handle_event(?EVENT(OtherLeg, EventName, _Evt)
