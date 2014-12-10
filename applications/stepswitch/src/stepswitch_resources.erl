@@ -51,6 +51,8 @@
           ,flags = [] :: list()
           ,rules = [] :: list()
           ,raw_rules = [] :: list()
+          ,cid_rules = [] :: list()
+          ,cid_raw_rules = [] :: list()
           ,gateways = [] :: list()
           ,is_emergency = 'false' :: boolean()
           ,require_flags = 'false' :: boolean()
@@ -112,6 +114,7 @@ resource_to_props(#resrc{}=Resource) ->
        ,{<<"Flags">>, Resource#resrc.flags}
        ,{<<"Codecs">>, Resource#resrc.codecs}
        ,{<<"Rules">>, Resource#resrc.raw_rules}
+       ,{<<"CIDRules">>, Resource#resrc.cid_raw_rules}
        ,{<<"Formatters">>, Resource#resrc.formatters}
       ]).
 
@@ -338,6 +341,7 @@ resources_to_endpoints([Resource|Resources], Number, JObj, Endpoints) ->
 maybe_resource_to_endpoints(#resrc{id=Id
                                    ,name=Name
                                    ,rules=Rules
+                                   ,cid_rules=CIDRules
                                    ,gateways=Gateways
                                    ,global=Global
                                    ,weight=Weight
@@ -348,18 +352,27 @@ maybe_resource_to_endpoints(#resrc{id=Id
             lager:debug("resource ~s does not match request, skipping", [Id]),
             Endpoints;
         {'ok', Match} ->
-            lager:debug("building resource ~s endpoints with regex match: ~s"
-                        ,[Id, Match]),
-            Updates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
-                       ,{<<"Resource-ID">>, Id}
-                      ],
-            [wh_json:set_values([{<<"Name">>, Name}
-                                 ,{<<"Weight">>, Weight}
-                                ]
-                                ,update_ccvs(Endpoint, Updates)
-                               )
-             || Endpoint <- gateways_to_endpoints(Match, Gateways, JObj, [])
-            ] ++ Endpoints
+            CallerIdNumber = wh_json:get_value(<<"Outbound-Caller-ID-Number">>,JObj),
+            case evaluate_cid_rules(CIDRules, CallerIdNumber) of
+                {'ok', CIDMatch} -> 
+                    case CIDMatch of
+                        'no_match' -> lager:debug("building resource ~s endpoints with regex match: ~s", [Id, Match]);
+                        _ -> lager:debug("building resource ~s endpoints with regex match: ~s and caller id number match: ~s", [Id, Match, CallerIdNumber])
+                    end,
+                    Updates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
+                               ,{<<"Resource-ID">>, Id}
+                              ],
+                    [wh_json:set_values([{<<"Name">>, Name}
+                                         ,{<<"Weight">>, Weight}
+                                        ]
+                                        ,update_ccvs(Endpoint, Updates)
+                                       )
+                     || Endpoint <- gateways_to_endpoints(Match, Gateways, JObj, [])
+                    ] ++ Endpoints;
+                {'error', 'no_match'} ->
+                    lager:debug("resource ~s does not match caller id number ~s, skipping", [Id,CallerIdNumber]),
+                    Endpoints
+            end
     end.
 
 -spec update_ccvs(wh_json:object(), wh_proplist()) -> wh_json:object().
@@ -382,6 +395,14 @@ evaluate_rules([Rule|Rules], Number) ->
             {'ok', binary:part(Number, Start, End)};
         _ -> evaluate_rules(Rules, Number)
     end.
+
+-spec evaluate_cid_rules(re:mp(), ne_binary()) ->
+                            {'ok', ne_binary()} |
+                            {'ok', 'no_match'} | %% empty rules, allow any number
+                            {'error', 'no_match'}.
+evaluate_cid_rules([], _) -> {'ok','no_match'};
+evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -614,6 +635,8 @@ resource_from_jobj(JObj) ->
                       ,fax_option=wh_json:is_true([<<"media">>, <<"fax_option">>], JObj)
                       ,raw_rules=wh_json:get_value(<<"rules">>, JObj, [])
                       ,rules=resource_rules(JObj)
+                      ,cid_raw_rules=wh_json:get_value(<<"cid_rules">>, JObj, [])
+                      ,cid_rules=resource_cid_rules(JObj)
                       ,weight=resource_weight(JObj)
                       ,grace_period=resource_grace_period(JObj)
                       ,is_emergency=resource_is_emergency(JObj)
@@ -665,6 +688,15 @@ resource_rules([Rule|Rules], CompiledRules) ->
             lager:warning("bad rule '~s': ~p", [Rule, _R]),
             resource_rules(Rules, CompiledRules)
     end.
+
+-spec resource_cid_rules(wh_json:object()) -> rules().
+resource_cid_rules(JObj) ->
+    lager:info("compiling resource rules for ~s / ~s"
+               ,[wh_json:get_value(<<"pvt_account_db">>, JObj, <<"offnet">>)
+                 ,wh_json:get_value(<<"_id">>, JObj)
+                ]),
+    Rules = wh_json:get_value(<<"cid_rules">>, JObj, []),
+    resource_rules(Rules, []).
 
 -spec resource_grace_period(wh_json:object() | integer()) -> 0..100.
 resource_grace_period(JObj) when not is_integer(JObj) ->
