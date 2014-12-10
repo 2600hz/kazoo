@@ -150,7 +150,7 @@ attended_wait(?EVENT(Transferor, <<"LEG_DESTROYED">>, _Evt)
     {'next_state', 'partial_wait', State};
 attended_wait(?EVENT(Target, <<"LEG_CREATED">>, Evt)
               ,#state{target=Target
-                      ,target_call=TargetCall
+                      ,target_call=_TargetCall
                       ,target_b_legs=Bs
                      }=State
              ) ->
@@ -160,7 +160,6 @@ attended_wait(?EVENT(Target, <<"LEG_CREATED">>, Evt)
         'false' ->
             lager:info("new leg on target ~s: ~s", [Target, BLeg]),
             add_transferor_bindings(BLeg),
-            target_b_leg_sets(TargetCall, BLeg),
             {'next_state', 'attended_wait', State#state{target_b_legs=[BLeg | Bs]}}
     end;
 attended_wait(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
@@ -262,11 +261,17 @@ attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
 attended_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target=Target
                       ,target_b_legs=[B|Bs]
+                      ,target_call=TargetCall
+                      ,transferor=Transferor
                      }=State
              ) ->
-    lager:info("target ~s hungup, still have b-leg ~p (~p)", [Target, B, Bs]),
+    lager:info("target ~s hungup, still have b-leg ~s (~p)", [Target, B, Bs]),
+    TargetCall1 = whapps_call:set_call_id(B, TargetCall),
+    connect_transferor_to_target(Transferor, TargetCall1),
+    lager:debug("connecting transferor ~s to target ~s", [Transferor, B]),
     {'next_state', 'attended_wait', State#state{target=B
                                                 ,target_b_legs=Bs
+                                                ,target_call=TargetCall1
                                                }};
 attended_wait(?EVENT(CallId, <<"CHANNEL_DESTROY">>, _Evt)
               ,#state{target_b_legs=[CallId]
@@ -287,7 +292,7 @@ attended_wait(?EVENT(_CallId, _EventName, _Evt)
                       ,transferee=_Transferee
                       ,target=_Target
                      }=State) ->
-    lager:info("attanded_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
+    lager:info("attended_wait: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
     lager:debug("transferor: ~s transferee: ~s target: ~s", [_Transferor, _Transferee, _Target]),
     {'next_state', 'attended_wait', State};
 attended_wait(Msg, State) ->
@@ -355,7 +360,7 @@ partial_wait(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
             ) ->
     lager:info("target ~s hungup (but ~s is still up)", [Target, B]),
 
-    connect_transferee_to_target(B, Call),
+    connect_transferee_to_target(B, Call, 'true'),
     issue_internal_transferee(Call, Transferor, Transferee, B),
 
     {'next_state', 'partial_wait', State#state{target=B
@@ -369,7 +374,7 @@ partial_wait(?EVENT(Target, <<"CHANNEL_ANSWER">>, _Evt)
                     }=State
             ) ->
     lager:info("target ~s has answered, connect to transferee ~s", [Target, Transferee]),
-    connect_transferee_to_target(Target, Call),
+    connect_transferee_to_target(Target, Call, 'false'),
     issue_internal_transferee(Call, Transferor, Transferee, Target),
     {'next_state', 'finished', State};
 partial_wait(?EVENT(Target, <<"originate_uuid">>, Evt)
@@ -445,7 +450,7 @@ attended_answer(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
     lager:info("transferor ~s hungup, connecting transferee ~s and target ~s"
                ,[Transferor, Transferee, Target]
               ),
-    connect_transferee_to_target(Target, Call),
+    connect_transferee_to_target(Target, Call, 'false'),
     issue_internal_transferee(Call, Transferor, Transferee, Target),
     {'next_state', 'finished', State};
 attended_answer(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
@@ -491,7 +496,7 @@ attended_answer(?EVENT(CallId, <<"CHANNEL_DESTROY">>, _Evt)
             {'next_state', 'attended_answer', State}
     end;
 attended_answer(?EVENT(_CallId, _EventName, _Evt), State) ->
-    lager:info("attanded_answer: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
+    lager:info("attended_answer: unhandled event ~s for ~s: ~p", [_EventName, _CallId, _Evt]),
     {'next_state', 'attended_answer', State};
 attended_answer(Msg, State) ->
     lager:info("attended_answer: unhandled msg ~p", [Msg]),
@@ -518,6 +523,21 @@ finished(?EVENT(Target, <<"CHANNEL_BRIDGE">>, Evt)
             lager:debug("target ~s bridged to ~s", [Target, _CallId]),
             {'next_state', 'finished', State}
     end;
+finished(?EVENT(TargetBLeg, <<"CHANNEL_BRIDGE">>, Evt)
+         ,#state{target_b_legs=[TargetBLeg|_Bs]
+                 ,target=Target
+                 ,transferee=Transferee
+                }=State
+        ) ->
+    case wh_json:get_value(<<"Other-Leg-Call-ID">>, Evt) of
+        Target ->
+            lager:debug("target ~s has bridged to target b ~s", [Target, TargetBLeg]);
+        Transferee ->
+            lager:debug("target b ~s has bridged to transferee ~s", [TargetBLeg, Transferee]);
+        _CallId ->
+            lager:debug("target b ~s has bridged to unknown ~s", [TargetBLeg, _CallId])
+    end,
+    {'next_state', 'finished', State};
 finished(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{target=Target
                  ,target_b_legs=[]
@@ -534,11 +554,11 @@ finished(?EVENT(Target, <<"CHANNEL_DESTROY">>, _Evt)
                 }=State
         ) ->
     lager:debug("target ~s down, b ~s is up, connecting to transferee ~s", [Target, B, Transferee]),
-    connect_transferee_to_target(B, Call),
+    connect_transferee_to_target(B, Call, 'true'),
     issue_internal_transferee(Call, Transferor, Transferee, B),
-    {'stop', 'normal', State#state{target=B
-                                   ,target_b_legs=Bs
-                                  }};
+    {'next_state', 'finished', State#state{target=B
+                                           ,target_b_legs=Bs
+                                          }};
 finished(?EVENT(Transferor, <<"CHANNEL_DESTROY">>, _Evt)
          ,#state{transferor=Transferor}=State
         ) ->
@@ -674,6 +694,7 @@ originate_to_extension(Extension, TransferorLeg, Call) ->
                  ,{<<"Existing-Call-ID">>, TransferorLeg}
                  ,{<<"Resource-Type">>, <<"originate">>}
                  ,{<<"Originate-Immediate">>, 'true'}
+                 ,{<<"Simplify-Loopback">>, 'true'}
                  | wh_api:default_headers(konami_event_listener:queue_name(), ?APP_NAME, ?APP_VERSION)
                 ]),
 
@@ -700,14 +721,14 @@ caller_id_number(Call, CallerLeg) ->
         _CalleeLeg -> whapps_call:callee_id_number(Call)
     end.
 
--spec connect_transferee_to_target(ne_binary(), whapps_call:call()) -> 'ok'.
-connect_transferee_to_target(Target, Call) ->
+-spec connect_transferee_to_target(ne_binary(), whapps_call:call(), boolean()) -> 'ok'.
+connect_transferee_to_target(Target, Call, Hangup) ->
     issue_transferee_event(Target, Call),
     Flags = [{<<"Target-Call-ID">>, Target}
-             ,{<<"Continue-On-Fail">>, 'false'}
-             ,{<<"Continue-On-Cancel">>, 'false'}
-             ,{<<"Park-After-Pickup">>, 'false'}
-             ,{<<"Hangup-After-Pickup">>, 'true'}
+             ,{<<"Continue-On-Fail">>, not Hangup}
+             ,{<<"Continue-On-Cancel">>, not Hangup}
+             ,{<<"Park-After-Pickup">>, not Hangup}
+             ,{<<"Hangup-After-Pickup">>, Hangup}
             ],
     konami_util:listen_on_other_leg(Call, [<<"DTMF">>]),
     connect(Flags, Call).
@@ -738,6 +759,7 @@ connect(Flags, Call) ->
                ,{<<"Insert-At">>, <<"now">>}
                | Flags
               ],
+    [lager:debug("cmd: ~p", [KV]) || KV <- Command],
     whapps_call_command:send_command(Command, Call).
 
 -spec handle_transferor_dtmf(wh_json:object(), NextState, state()) ->
@@ -879,19 +901,6 @@ transfer_data(Target, Takeback, MOH) ->
          ,{<<"takeback_dtmf">>, Takeback}
          ,{<<"moh">>, MOH}
         ])).
-
--spec target_b_leg_sets(whapps_call:call(), ne_binary()) -> 'ok'.
-target_b_leg_sets(TargetCall, B) ->
-    whapps_call_command:set(
-      wh_json:from_list(
-        [{<<"Continue-On-Fail">>, <<"true">>}
-         ,{<<"Continue-On-Cancel">>, <<"true">>}
-         ,{<<"Hangup-After-Pickup">>, <<"false">>}
-         ,{<<"Park-After-Pickup">>, <<"true">>}
-        ])
-      ,'undefined'
-      ,whapps_call:set_call_id(B, TargetCall)
-     ).
 
 -spec find_moh(wh_json:object(), whapps_call:call()) -> api_binary().
 -spec find_moh(whapps_call:call()) -> api_binary().
