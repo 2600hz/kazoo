@@ -167,23 +167,83 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
+    JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_modb(Context),
     ResellerId = cb_context:reseller_id(Context),
-    AuthDoc = cb_context:auth_doc(Context),
-    OwnerId = wh_json:get_value(<<"owner_id">>, AuthDoc),
+    Realm = wh_util:get_account_realm(AccountId),
+    
+    {AuthorizationType, Authorization, OwnerId} = 
+        case { cb_context:user_id(Context), cb_context:auth_user_id(Context) } 
+        of
+            {'undefined', 'undefined'} ->
+                {<<"api">>, cb_context:auth_token(Context), 'undefined'};
+            {UserId, 'undefined'} ->
+                {<<"user">>, UserId, UserId};
+            {'undefined', UserAuth} ->
+                {<<"user">>, UserAuth, UserAuth}
+        end,
+    
+    ToUser = wh_json:get_value(<<"to">>, JObj),
+    To = <<ToUser/binary, "@", Realm/binary>>,
+    
+    FromUser = wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId)),
+    From = <<FromUser/binary, "@", Realm/binary>>,
+    
+    {Year, Month, _} = erlang:date(),    
+    SmsDocId = wh_util:to_binary(
+                 io_lib:format("~B~s-~s",
+                           [Year
+                            ,wh_util:pad_month(Month)
+                            , wh_util:rand_hex_binary(16)
+                           ])),
 
     cb_context:set_doc(cb_context:set_account_db(Context, AccountDb)
-                       ,wh_json:set_values([{<<"pvt_type">>, <<"sms">>}
-                                            ,{<<"pvt_job_status">>, <<"queued">>}
-                                            ,{<<"pvt_account_id">>, AccountId}
-                                            ,{<<"pvt_account_db">>, AccountDb}
-                                            ,{<<"pvt_reseller_id">>, ResellerId}
-                                            ,{<<"pvt_owner_id">>, OwnerId}
-                                           ]
-                                           ,cb_context:doc(Context)
-                                          )
-                       ).
+                       ,wh_json:set_values(
+                         props:filter_undefined(
+                           [{<<"pvt_type">>, <<"sms">>}
+                            ,{<<"pvt_status">>, <<"queued">>}
+                            ,{<<"pvt_account_id">>, AccountId}
+                            ,{<<"pvt_account_db">>, AccountDb}
+                            ,{<<"pvt_reseller_id">>, ResellerId}
+                            ,{<<"pvt_owner_id">>, OwnerId}
+                            ,{<<"pvt_authorization_type">>, AuthorizationType}
+                            ,{<<"authorization_type">>, AuthorizationType}
+                            ,{<<"pvt_authorization">>, Authorization}
+                            ,{<<"authorization">>, Authorization}
+                            ,{<<"request">>, To}
+                            ,{<<"request_user">>, ToUser}
+                            ,{<<"request_realm">>, Realm}
+                            ,{<<"to">>, To}
+                            ,{<<"to_user">>, ToUser}
+                            ,{<<"to_realm">>, Realm}
+                            ,{<<"from">>, From}
+                            ,{<<"from_user">>, FromUser}
+                            ,{<<"from_realm">>, Realm}
+                            ,{<<"_id">>, SmsDocId}
+                           ]) ,cb_context:doc(Context))).
+
+-define(CALLER_ID_INTERNAL, [<<"caller_id">>, <<"internal">>, <<"number">>]).
+-define(CALLER_ID_EXTERNAL, [<<"caller_id">>, <<"external">>, <<"number">>]).
+
+-spec get_default_caller_id(cb_context:context(), api_binary()) -> api_binary().
+get_default_caller_id(Context, 'undefined') ->
+    AccountId = cb_context:account_id(Context),
+    AccountDb = cb_context:account_db(Context),
+    {'ok', JObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    wh_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL], JObj, <<"anonymous">>);
+    
+get_default_caller_id(Context, OwnerId) ->
+    AccountId = cb_context:account_id(Context),
+    AccountDb = cb_context:account_db(Context),
+    {'ok', JObj1} = couch_mgr:open_cache_doc(AccountDb, AccountId),
+    {'ok', JObj2} = couch_mgr:open_cache_doc(AccountDb, OwnerId),
+    wh_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
+                              ,wh_json:merge_recursive(JObj1, JObj2)
+                             ,<<"anonymous">>).
+
+                                              
+  
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

@@ -10,15 +10,13 @@
             "type": "string",
             "required": false,
             "name": "From",
-            "description": "caller-id-number, taken from user if absent",
-            "format": "email"
+            "description": "caller-id-number, taken from user if absent"
         },
         "to": {
             "type": "string",
             "required": true,
             "name": "To",
-            "description": "callee-id-number",
-            "format": "email"
+            "description": "callee-id-number"
         },
         "body": {
             "type": "string",
@@ -27,6 +25,6 @@
             "description": "text message",
             "minLength": 1,
             "maxLength": 700
-        },
+        }
     }
 }
