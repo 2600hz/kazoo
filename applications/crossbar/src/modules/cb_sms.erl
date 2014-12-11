@@ -105,7 +105,7 @@ validate(Context) ->
 validate(Context, Path) ->
     validate(Context, Path, cb_context:req_verb(Context)).
 
-validate(Context, ?ROOT, ?HTTP_GET) ->
+validate_root(Context, ?ROOT, ?HTTP_GET) ->
     summary(Context);
 validate(Context, ?ROOT, ?HTTP_PUT) ->
     create(Context);
@@ -190,13 +190,7 @@ on_successful_validation(Context) ->
     FromUser = wh_json:get_value(<<"from">>, JObj, get_default_caller_id(Context, OwnerId)),
     From = <<FromUser/binary, "@", Realm/binary>>,
     
-    {Year, Month, _} = erlang:date(),    
-    SmsDocId = wh_util:to_binary(
-                 io_lib:format("~B~s-~s",
-                           [Year
-                            ,wh_util:pad_month(Month)
-                            , wh_util:rand_hex_binary(16)
-                           ])),
+    SmsDocId = create_sms_doc_id(),
 
     cb_context:set_doc(cb_context:set_account_db(Context, AccountDb)
                        ,wh_json:set_values(
@@ -221,7 +215,7 @@ on_successful_validation(Context) ->
                             ,{<<"from_user">>, FromUser}
                             ,{<<"from_realm">>, Realm}
                             ,{<<"_id">>, SmsDocId}
-                           ]) ,cb_context:doc(Context))).
+                           ]) ,JObj)).
 
 -define(CALLER_ID_INTERNAL, [<<"caller_id">>, <<"internal">>, <<"number">>]).
 -define(CALLER_ID_EXTERNAL, [<<"caller_id">>, <<"external">>, <<"number">>]).
@@ -242,7 +236,15 @@ get_default_caller_id(Context, OwnerId) ->
                               ,wh_json:merge_recursive(JObj1, JObj2)
                              ,<<"anonymous">>).
 
-                                              
+-spec create_sms_doc_id() -> binary().
+create_sms_doc_id() ->
+    {Year, Month, _} = erlang:date(),    
+    SmsDocId = wh_util:to_binary(
+                 io_lib:format("~B~s-~s",
+                           [Year
+                            ,wh_util:pad_month(Month)
+                            , wh_util:rand_hex_binary(16)
+                           ])).
   
 %%--------------------------------------------------------------------
 %% @private
@@ -268,7 +270,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:public_fields(wh_json:get_value(<<"value">>, JObj))|Acc].
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 -spec get_view_and_filter(cb_context:context()) ->
           {ne_binary(), api_binaries(), api_binaries()}.
@@ -292,7 +294,7 @@ get_view_options(Context, PrefixKey, SuffixKey) ->
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)),
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
-            case length(PrefixKey) =:= 0 andalso length(SuffixKey) =:= 0 of
+            case PrefixKey) =:= [] andalso SuffixKey =:= [] of
                 'true' ->
                     {'ok', [{'startkey', CreatedFrom}
                             ,{'endkey', CreatedTo}
