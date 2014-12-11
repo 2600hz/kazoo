@@ -105,7 +105,7 @@ validate(Context) ->
 validate(Context, Path) ->
     validate(Context, Path, cb_context:req_verb(Context)).
 
-validate_root(Context, ?ROOT, ?HTTP_GET) ->
+validate(Context, ?ROOT, ?HTTP_GET) ->
     summary(Context);
 validate(Context, ?ROOT, ?HTTP_PUT) ->
     create(Context);
@@ -239,12 +239,11 @@ get_default_caller_id(Context, OwnerId) ->
 -spec create_sms_doc_id() -> binary().
 create_sms_doc_id() ->
     {Year, Month, _} = erlang:date(),    
-    SmsDocId = wh_util:to_binary(
-                 io_lib:format("~B~s-~s",
-                           [Year
-                            ,wh_util:pad_month(Month)
-                            , wh_util:rand_hex_binary(16)
-                           ])).
+    wh_util:to_binary(
+      io_lib:format("~B~s-~s",[Year
+                               ,wh_util:pad_month(Month)
+                               ,wh_util:rand_hex_binary(16)
+                              ])).
   
 %%--------------------------------------------------------------------
 %% @private
@@ -294,7 +293,7 @@ get_view_options(Context, PrefixKey, SuffixKey) ->
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR)),
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
-            case PrefixKey) =:= [] andalso SuffixKey =:= [] of
+            case PrefixKey =:= [] andalso SuffixKey =:= [] of
                 'true' ->
                     {'ok', [{'startkey', CreatedFrom}
                             ,{'endkey', CreatedTo}
