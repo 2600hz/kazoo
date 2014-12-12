@@ -502,15 +502,25 @@ summary_account(Context, AccountAvailable) ->
     Context1 = summary_available(Context),
     Available = cb_context:doc(Context1),
 
-    merge_available(Context, AccountAvailable, Available).
+    crossbar_doc:handle_json_success(
+      merge_available(AccountAvailable, Available)
+      ,Context
+     ).
 
--spec merge_available(cb_context:context(), wh_json:objects(), wh_json:objects()) ->
-                             cb_context:context().
-merge_available(Context, [], Available) ->
-    crossbar_doc:handle_json_success(Available, Context);
-merge_available(Context, _AccountAvailable, _Available) ->
-    Context.
+-spec merge_available(wh_json:objects(), wh_json:objects()) ->
+                             wh_json:objects().
+merge_available([], Available) ->
+    lager:debug("account has not overridden any, using system notifications"),
+    Available;
+merge_available(AccountAvailable, Available) ->
+    lists:foldl(fun merge_fold/2, Available, AccountAvailable).
 
+-spec merge_fold(wh_json:object(), wh_json:objects()) -> wh_json:objects().
+merge_fold(Overridden, Acc) ->
+    Id = wh_json:get_value(<<"id">>, Overridden),
+    [Overridden
+     | [JObj || JObj <- Acc, wh_json:get_value(<<"id">>, JObj) =/= Id]
+    ].
 
 -spec normalize_available(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_available(JObj, Acc) ->
@@ -593,3 +603,18 @@ leak_attachments_fold(_Attachment, Props, Acc) ->
                       ,wh_json:from_list([{<<"length">>, wh_json:get_integer_value(<<"length">>, Props)}])
                       ,Acc
                      ).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+merge_available_test() ->
+    Available = wh_json:decode(<<"[{\"id\":\"o1\",\"k1\":\"v1\"},{\"id\":\"o2\",\"k2\":\"v2\"},{\"id\":\"o3\",\"k3\":\"v3\"}]">>),
+    AccountAvailable = wh_json:decode(<<"[{\"id\":\"o1\",\"k1\":\"a1\"},{\"id\":\"o2\",\"k2\":\"a2\"}]">>),
+
+    Merged = merge_available(AccountAvailable, Available),
+
+    ?assertEqual(<<"a1">>, wh_json:get_value([2,<<"k1">>], Merged)),
+    ?assertEqual(<<"a2">>, wh_json:get_value([1,<<"k2">>], Merged)),
+    ?assertEqual(<<"v3">>, wh_json:get_value([3,<<"k3">>], Merged)).
+
+-endif.
