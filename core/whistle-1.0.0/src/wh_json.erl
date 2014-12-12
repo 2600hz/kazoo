@@ -33,6 +33,7 @@
          ,map/2
          ,foldl/3
          ,find/2, find/3
+         ,find_value/3, find_value/4
          ,foreach/2
          ,all/2, any/2
         ]).
@@ -504,6 +505,25 @@ find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
     case get_value(Key, JObj) of
         'undefined' -> find(Key, JObjs, Default);
         V -> V
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find first json object that has a Value for Key.
+%% Returns the json object or 'undefined'
+%% @end
+%%--------------------------------------------------------------------
+-spec find_value(key(), json_term(), objects()) -> api_object().
+-spec find_value(key(), json_term(), objects(), Default) -> object() | Default.
+find_value(Key, Value, JObjs) ->
+    find_value(Key, Value, JObjs, 'undefined').
+
+find_value(_Key, _Value, [], Default) -> Default;
+find_value(Key, Value, [JObj|JObjs], Default) ->
+    case get_value(Key, JObj) of
+        Value -> JObj;
+        _Value -> find_value(Key, Value, JObjs, Default)
     end.
 
 -spec get_first_defined(keys(), object()) -> 'undefined' | json_term().
@@ -1221,9 +1241,10 @@ to_querystring_test() ->
 get_values_test() ->
     ?assertEqual('true', are_all_there(?D1, [<<"d1v1">>, d1v2, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
 
+-define(K3_JOBJ, ?JSON_WRAPPER([{<<"k3.1">>, <<"v3.1">>}])).
 -define(CODEC_JOBJ, ?JSON_WRAPPER([{<<"k1">>, <<"v1">>}
                                    ,{<<"k2">>, ?EMPTY_JSON_OBJECT}
-                                   ,{<<"k3">>, ?JSON_WRAPPER([{<<"k3.1">>, <<"v3.1">>}])}
+                                   ,{<<"k3">>, ?K3_JOBJ}
                                    ,{<<"k4">>, [1,2,3]}
                                   ])).
 codec_test() ->
@@ -1233,5 +1254,11 @@ are_all_there(JObj, Vs, Ks) ->
     {Values, Keys} = get_values(JObj),
     lists:all(fun(K) -> lists:member(K, Keys) end, Ks) andalso
         lists:all(fun(V) -> lists:member(V, Values) end, Vs).
+
+find_value_test() ->
+    JObjs = decode(<<"[{\"k1\":\"v1\"},{\"k1\":\"v2\"}]">>),
+    ?assertEqual(<<"{\"k1\":\"v1\"}">>, encode(find_value(<<"k1">>, <<"v1">>, JObjs))),
+    ?assertEqual(<<"{\"k1\":\"v2\"}">>, encode(find_value(<<"k1">>, <<"v2">>, JObjs))),
+    ?assertEqual('undefined', find_value(<<"k1">>, <<"v3">>, JObjs)).
 
 -endif.
