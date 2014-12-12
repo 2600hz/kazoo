@@ -27,7 +27,7 @@
 
          ,call_custom/4, call_custom/5
 
-         ,cast/2
+         ,cast/2, cast/3
 
          ,default_timeout/0
          ,collect_until_timeout/0
@@ -35,6 +35,8 @@
          ,collect_from_whapp_or_validate/2
          ,handle_resp/2
          ,send_request/4
+         ,checkout_worker/0, checkout_worker/1
+         ,checkin_worker/1, checkin_worker/2
         ]).
 
 %% gen_listener callbacks
@@ -111,7 +113,15 @@ start_link(Args) ->
                                       ,{'queue_name', ?QUEUE_NAME}
                                       ,{'queue_options', ?QUEUE_OPTIONS}
                                       ,{'consume_options', ?CONSUME_OPTIONS}
+                                      | maybe_broker(Args)
                                      ], [Args]).
+
+-spec maybe_broker(wh_proplist()) -> wh_proplist().
+maybe_broker(Args) ->
+    case props:get_value('amqp_broker', Args) of
+        'undefined' -> [];
+        Broker -> [{'broker', Broker}]
+    end.
 
 -spec default_timeout() -> 2000.
 default_timeout() -> 2000.
@@ -151,10 +161,12 @@ call(Req, PubFun, VFun, Timeout, Worker) ->
         checkin_worker(Worker)
     end.
 
--spec next_worker() -> pid() |
-                       {'error', _}.
+-spec next_worker() -> pid() | {'error', any()}.
 next_worker() ->
-    Pool = wh_amqp_sup:pool_name(),
+    next_worker(wh_amqp_sup:pool_name()).
+    
+-spec next_worker(atom()) -> pid() | {'error', any()}.
+next_worker(Pool) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
         'full' -> {'error', 'pool_full'};
         Worker -> Worker
@@ -164,9 +176,27 @@ next_worker() ->
             {'error', 'poolboy_fault'}
     end.
 
+-spec checkout_worker() -> {'ok', pid()} | {'error', any()}.
+checkout_worker() ->
+    checkout_worker(wh_amqp_sup:pool_name()).
+
+-spec checkout_worker(atom()) -> {'ok', pid()} | {'error', any()}.
+checkout_worker(Pool) ->
+    try poolboy:checkout(Pool, 'false', default_timeout()) of
+        'full' -> {'error', 'pool_full'};
+        Worker -> {'ok', Worker}
+    catch
+        _E:_R ->
+            lager:warning("poolboy exception: ~s: ~p", [_E, _R]),
+            {'error', 'poolboy_fault'}
+    end.
+
 -spec checkin_worker(pid()) -> 'ok'.
 checkin_worker(Worker) ->
-    Pool = wh_amqp_sup:pool_name(),
+    checkin_worker(Worker, wh_amqp_sup:pool_name()).
+
+-spec checkin_worker(pid(), atom()) -> 'ok'.
+checkin_worker(Worker, Pool) ->
     poolboy:checkin(Pool, Worker).
 
 -spec call_custom(api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
@@ -266,13 +296,18 @@ call_collect(Req, PubFun, UntilFun, Timeout, Worker) ->
     end.
 
 -spec cast(api_terms(), publish_fun()) -> 'ok' | {'error', _}.
--spec cast(api_terms(), publish_fun(), pid()) -> 'ok' | {'error', _}.
+-spec cast(api_terms(), publish_fun(), pid() | atom()) -> 'ok' | {'error', _}.
 cast(Req, PubFun) ->
     case next_worker() of
         {'error', _}=E -> E;
         Worker -> cast(Req, PubFun, Worker)
     end.
 
+cast(Req, PubFun, Pool) when is_atom(Pool) ->
+    case next_worker(Pool) of
+        {'error', _}=E -> E;
+        Worker -> cast(Req, PubFun, Worker)
+    end;
 cast(Req, PubFun, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
     try gen_listener:call(Worker, {'publish', Prop, PubFun}) of
