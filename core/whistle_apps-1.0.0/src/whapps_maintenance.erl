@@ -160,7 +160,8 @@ refresh([Database|Databases], Pause, Total) ->
 refresh(?WH_CONFIG_DB) ->
     couch_mgr:db_create(?WH_CONFIG_DB);
 refresh(?KZ_OAUTH_DB) ->
-    couch_mgr:db_create(?KZ_OAUTH_DB);
+    couch_mgr:db_create(?KZ_OAUTH_DB),
+    kazoo_oauth_maintenance:register_common_providers();
 refresh(?KZ_WEBHOOKS_DB) ->
     couch_mgr:db_create(?KZ_WEBHOOKS_DB),
     couch_mgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>);
