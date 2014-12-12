@@ -269,7 +269,7 @@ For clients that do not support setting the `Accept` header, a querystring param
 ```
 curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID} -d '
 <div>
-  <p>Some Html</p>
+  <p>Some Html and {{macro.key}} replaced on render</p>
 </div>'
 ```
 
