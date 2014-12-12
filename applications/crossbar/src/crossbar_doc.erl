@@ -840,6 +840,7 @@ handle_couch_mgr_success([], Context) ->
                   ,{fun cb_context:set_resp_status/2, 'success'}
                   ,{fun cb_context:set_resp_data/2, []}
                   ,{fun cb_context:set_resp_etag/2, 'undefined'}
+                  | version_specific_success([], Context)
                  ]);
 handle_couch_mgr_success([JObj|_]=JObjs, Context) ->
     case wh_json:is_json_object(JObj) of
@@ -914,12 +915,16 @@ handle_json_success(JObj, Context, _Verb) ->
                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                         ]).
 
+-spec version_specific_success(wh_json:objects(), cb_context:context()) -> list().
 version_specific_success(JObjs, Context) ->
     version_specific_success(JObjs, Context, cb_context:api_version(Context)).
 version_specific_success(_JObjs, _Context, ?VERSION_1) ->
     [];
-version_specific_success(_JObjs, _Context, _Version) ->
-    [].
+version_specific_success(JObjs, Context, _Version) ->
+    [{fun cb_context:set_resp_envelope/2
+      ,wh_json:set_value(<<"page_size">>, length(JObjs), cb_context:resp_envelope(Context))
+     }
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
