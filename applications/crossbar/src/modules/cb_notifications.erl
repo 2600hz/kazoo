@@ -133,22 +133,26 @@ content_types_provided(Context, Id) ->
 content_types_provided(Context, Id, ?HTTP_GET) ->
     Context1 = read(Context, Id),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            case wh_json:get_value(<<"_attachments">>, cb_context:doc(Context1)) of
-                'undefined' -> Context;
-                Attachments ->
-                    ContentTypes =
-                        content_types_from_attachments(Attachments),
-                    lager:debug("setting content types for attachments: ~p", [ContentTypes]),
-
-                    cb_context:set_content_types_provided(Context, [{'to_json', ?JSON_CONTENT_TYPES}
-                                                                    ,{'to_binary', ContentTypes}
-                                                                   ])
-            end;
+        'success' -> maybe_set_content_types(Context1);
         _Status -> Context1
     end;
 content_types_provided(Context, _Id, _Verb) ->
     Context.
+
+-spec maybe_set_content_types(cb_context:context()) -> cb_context:context().
+maybe_set_content_types(Context) ->
+    case wh_json:get_value(<<"_attachments">>, cb_context:doc(Context)) of
+        'undefined' -> Context;
+        Attachments -> set_content_types(Context, Attachments)
+    end.
+
+-spec set_content_types(cb_context:context(), wh_json:object()) -> cb_context:context().
+set_content_types(Context, Attachments) ->
+    ContentTypes = content_types_from_attachments(Attachments),
+    lager:debug("setting content types for attachments: ~p", [ContentTypes]),
+    cb_context:set_content_types_provided(Context, [{'to_json', ?JSON_CONTENT_TYPES}
+                                                    ,{'to_binary', ContentTypes}
+                                                   ]).
 
 -spec content_types_from_attachments(wh_json:object()) -> wh_proplist().
 content_types_from_attachments(Attachments) ->
