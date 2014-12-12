@@ -548,10 +548,11 @@ leak_doc_id(Context) ->
 -spec leak_attachments(cb_context:context()) -> cb_context:context().
 leak_attachments(Context) ->
     Attachments = wh_json:get_value(<<"_attachments">>, cb_context:fetch(Context, 'db_doc'), wh_json:new()),
-    Templates =
-        wh_json:foldl(fun(_Attachment, Props, Acc) ->
-                              [wh_json:get_value(<<"content_type">>, Props) | Acc]
-                      end, [], Attachments),
+    Templates = wh_json:foldl(leak_attachments_fold/3, [], Attachments),
     cb_context:set_resp_data(Context
                              ,wh_json:set_value(<<"templates">>, Templates, cb_context:resp_data(Context))
                             ).
+
+-spec leak_attachments_fold(wh_json:key(), wh_json:json_term(), ne_binaries()) -> ne_binaries().
+leak_attachments_fold(_Attachment, Props, Acc) ->
+    [wh_json:get_value(<<"content_type">>, Props) | Acc].
