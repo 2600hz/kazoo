@@ -453,24 +453,65 @@ attachment_name_by_accept(CT) ->
 summary(Context) ->
     case cb_context:account_db(Context) of
         'undefined' -> summary_available(Context);
-        _AccountDb ->
-            crossbar_doc:load_view(?CB_LIST
-                                   ,[]
-                                   ,Context
-                                   ,fun normalize_view_results/2
-                                  )
+        _AccountDb -> summary_account(Context)
     end.
 
 -spec summary_available(cb_context:context()) -> cb_context:context().
 summary_available(Context) ->
-    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-    crossbar_doc:load_view(?CB_LIST
-                           ,[]
-                           ,cb_context:set_account_db(Context, MasterAccountDb)
-                           ,fun normalize_available/2
-                          ).
+    case fetch_available() of
+        {'ok', Available} ->
+            crossbar_doc:handle_json_success(Available, Context);
+        {'error', 'not_found'} ->
+            fetch_summary_available(Context)
+    end.
 
--spec normalize_available(wh_json:object(), ne_binaries()) -> ne_binaries().
+-spec fetch_summary_available(cb_context:context()) -> cb_context:context().
+fetch_summary_available(Context) ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    Context1 =
+        crossbar_doc:load_view(?CB_LIST
+                               ,[]
+                               ,cb_context:set_account_db(Context, MasterAccountDb)
+                               ,fun normalize_available/2
+                              ),
+    cache_available(Context1),
+    Context1.
+
+-spec cache_available(cb_context:context()) -> 'ok'.
+cache_available(Context) ->
+    wh_cache:store_local(?CROSSBAR_CACHE, {?MODULE, 'available'}, cb_context:doc(Context)).
+
+-spec fetch_available() -> {'ok', wh_json:objects()} |
+                           {'error', 'not_found'}.
+fetch_available() ->
+    wh_cache:fetch_local(?CROSSBAR_CACHE, {?MODULE, 'available'}).
+
+-spec summary_account(cb_context:context()) -> cb_context:context().
+-spec summary_account(cb_context:context(), wh_json:objects()) -> cb_context:context().
+summary_account(Context) ->
+    Context1 =
+        crossbar_doc:load_view(?CB_LIST
+                               ,[]
+                               ,Context
+                               ,fun normalize_available/2
+                              ),
+    summary_account(Context1, cb_context:doc(Context1)).
+
+summary_account(Context, AccountAvailable) ->
+    Context1 = summary_available(Context),
+    Available = cb_context:doc(Context1),
+
+    merge_available(Context, AccountAvailable, Available).
+
+-spec merge_available(cb_context:context(), wh_json:objects(), wh_json:objects()) ->
+                             cb_context:context().
+merge_available(Context, [], Available) ->
+    crossbar_doc:handle_json_success(Available, Context);
+merge_available(Context, _AccountAvailable, _Available) ->
+    Context.
+
+
+-spec normalize_available(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_available(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj) | Acc].
 
@@ -521,16 +562,6 @@ clean_req_doc(Doc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results(wh_json:object(), wh_json:objects()) -> wh_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec db_id(ne_binary()) -> ne_binary().
@@ -550,11 +581,14 @@ leak_doc_id(Context) ->
 -spec leak_attachments(cb_context:context()) -> cb_context:context().
 leak_attachments(Context) ->
     Attachments = wh_json:get_value(<<"_attachments">>, cb_context:fetch(Context, 'db_doc'), wh_json:new()),
-    Templates = wh_json:foldl(fun leak_attachments_fold/3, [], Attachments),
+    Templates = wh_json:foldl(fun leak_attachments_fold/3, wh_json:new(), Attachments),
     cb_context:set_resp_data(Context
                              ,wh_json:set_value(<<"templates">>, Templates, cb_context:resp_data(Context))
                             ).
 
--spec leak_attachments_fold(wh_json:key(), wh_json:json_term(), ne_binaries()) -> ne_binaries().
+-spec leak_attachments_fold(wh_json:key(), wh_json:json_term(), wh_json:object()) -> wh_json:object().
 leak_attachments_fold(_Attachment, Props, Acc) ->
-    [wh_json:get_value(<<"content_type">>, Props) | Acc].
+    wh_json:set_value(wh_json:get_value(<<"content_type">>, Props)
+                      ,wh_json:from_list([{<<"length">>, wh_json:get_integer_value(<<"length">>, Props)}])
+                      ,Acc
+                     ).
