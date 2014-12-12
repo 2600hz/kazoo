@@ -197,7 +197,7 @@ delete(Context, _DocID, ?MESSAGES_RESOURCE, _MediaID) ->
     C = crossbar_doc:save(Context),
     update_mwi(C).
 
--spec patch(cb_context:context(), path_token()) -> cb_context().
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _Id) ->
     crossbar_doc:save(Context).
 
