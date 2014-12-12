@@ -66,9 +66,23 @@ This is the first request to make to see what templates exist on the system to o
     {
         "auth_token": "{AUTH_TOKEN},
         "data": [
-            "{NOTIFICATION_ID}",
-            ...
-        ],
+            {"id": "voicemail_to_email"
+             ,"macros": {
+                 "call_id": {
+                     "description": "Call ID of the caller"
+                     ,"friendly_name": "Call ID"
+                     ,"i18n_label": "call_id"
+                     }
+                 ,"caller_id.name": {
+                     "description": "Caller ID Name"
+                     ,"friendly_name": "Caller ID Name"
+                     ,"i18n_label": "caller_id_name"
+                 }
+                 ,...
+             }
+            }
+            ,{...}
+        ]
         "request_id": "{REQUEST_ID}",
         "revision": "undefined",
         "status": "success"
