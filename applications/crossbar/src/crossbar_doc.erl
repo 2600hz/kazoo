@@ -933,7 +933,7 @@ version_specific_success(JObjs, Context, _Version) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_couch_mgr_errors(couch_util:couchbeam_errors(), api_binary() | api_binaries(), cb_context:context()) ->
-                                           cb_context:context().
+                                     cb_context:context().
 handle_couch_mgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),
     cb_context:add_system_error('datastore_missing', [{'details', cb_context:account_db(Context)}], Context);
