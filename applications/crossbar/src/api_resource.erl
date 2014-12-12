@@ -653,7 +653,7 @@ to_json(Req, Context, Accept) ->
     end.
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
-                       {binary(), cowboy_req:req(), cb_context:context()}.
+                       {binary() | 'halt', cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context) ->
     to_binary(Req, Context, accept_override(Context)).
 
@@ -669,7 +669,7 @@ to_binary(Req, Context, Accept) ->
         'to_binary' -> to_binary(Req, Context, 'undefined');
         Fun ->
             lager:debug("calling ~s instead of to_binary to render response", [Fun]),
-            Fun(Req, Context)
+            apply(?MODULE, Fun, [Req, Context])
     end.
 
 -spec to_fun(cb_context:context(), ne_binary(), atom()) -> atom().
