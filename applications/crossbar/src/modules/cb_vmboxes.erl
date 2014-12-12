@@ -19,6 +19,7 @@
          ,content_types_provided/5
          ,put/1
          ,post/2, post/4
+         ,patch/2
          ,delete/2, delete/4
          ,cleanup_heard_voicemail/1
         ]).
@@ -41,6 +42,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.vmboxes">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.vmboxes">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(crossbar_cleanup:binding_account(), ?MODULE, 'cleanup_heard_voicemail').
 
@@ -62,7 +64,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_VMBoxID) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE) ->
     [?HTTP_GET].
 allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID) ->
@@ -135,6 +137,8 @@ validate_vmbox(Context, DocId, ?HTTP_GET) ->
     load_vmbox(DocId, Context);
 validate_vmbox(Context, DocId, ?HTTP_POST) ->
     validate_request(DocId, Context);
+validate_vmbox(Context, DocId, ?HTTP_PATCH) ->
+    validate_patch(load_vmbox(DocId, Context), DocId);
 validate_vmbox(Context, DocId, ?HTTP_DELETE) ->
     load_vmbox(DocId, Context).
 
@@ -193,6 +197,10 @@ delete(Context, _DocID, ?MESSAGES_RESOURCE, _MediaID) ->
     C = crossbar_doc:save(Context),
     update_mwi(C).
 
+-spec patch(cb_context:context(), path_token()) -> cb_context().
+patch(Context, _Id) ->
+    crossbar_doc:save(Context).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -240,6 +248,24 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, wh_json:set_values(Props, cb_context:doc(Context)));
 on_successful_validation(VMBoxId, Context) ->
     crossbar_doc:load_merge(VMBoxId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%  Support PATCH - merge vmbox document with request data
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_patch(cb_context:context(), ne_binary()) -> cb_context:context().
+validate_patch(Context, DocId)->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            PatchJObj = wh_doc:public_fields(cb_context:req_data(Context)),
+            VmJObj = wh_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
+            OnValidateReqDataSuccess = fun(C) -> crossbar_doc:load_merge(DocId, C) end,
+            cb_context:validate_request_data(<<"vmboxes">>, cb_context:set_req_data(Context, VmJObj), OnValidateReqDataSuccess);
+
+        _Status -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
