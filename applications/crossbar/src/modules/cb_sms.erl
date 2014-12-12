@@ -19,10 +19,6 @@
 
 -include("../crossbar.hrl").
 
--define(OUTGOING, <<"outgoing">>).
--define(INCOMING, <<"incoming">>).
--define(ROOT, <<"/">>).
-
 
 -define(CB_LIST_ALL, <<"sms/crossbar_listing">>).
 -define(CB_LIST_BY_DEVICE, <<"sms/listing_by_device">>).
@@ -61,10 +57,6 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
-allowed_methods(?INCOMING) ->
-    [?HTTP_GET];
-allowed_methods(?OUTGOING) ->
-    [?HTTP_GET];
 allowed_methods(_Id) ->
     [?HTTP_GET, ?HTTP_DELETE].
 
@@ -100,18 +92,21 @@ resource_exists(_) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 
 validate(Context) ->
-    validate(Context, ?ROOT, cb_context:req_verb(Context)).
+    validate_request(Context, cb_context:req_verb(Context)).
 
-validate(Context, Path) ->
-    validate(Context, Path, cb_context:req_verb(Context)).
+validate(Context, Id) ->
+    validate_sms(Context, Id, cb_context:req_verb(Context)).
 
-validate(Context, ?ROOT, ?HTTP_GET) ->
-    summary(Context);
-validate(Context, ?ROOT, ?HTTP_PUT) ->
-    create(Context);
-validate(Context, Id, ?HTTP_GET) ->
+-spec validate_request(cb_context:context(), http_method()) -> cb_context:context().
+validate_request(Context, ?HTTP_GET) ->
+    summary(Context);    
+validate_request(Context, ?HTTP_PUT) ->
+    create(Context).
+
+-spec validate_sms(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_sms(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
-validate(Context, Id, ?HTTP_DELETE) ->
+validate_sms(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 %%--------------------------------------------------------------------
