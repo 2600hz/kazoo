@@ -204,7 +204,7 @@ find_allowed_methods(Req0, Context) ->
     Event = api_util:create_event_name(Context, <<"allowed_methods">>),
     Responses = crossbar_bindings:map(<<Event/binary, ".", Mod/binary>>, Params),
     {Method, Req1} = cowboy_req:method(Req0),
-    AllowMethods = api_util:allow_methods([lists:flatten(Responses)]
+    AllowMethods = api_util:allow_methods(Responses
                                           ,cb_context:allowed_methods(Context)
                                           ,cb_context:req_verb(Context)
                                           ,wh_util:to_binary(Method)

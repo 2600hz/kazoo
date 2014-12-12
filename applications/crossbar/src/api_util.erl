@@ -584,7 +584,7 @@ allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
         [] -> [];
         Succeeded ->
             AllowedSet = lists:foldr(fun(Response, Acc) ->
-                                             sets:intersection(Acc, sets:from_list(uppercase_all(Response)))
+                                             sets:union(Acc, sets:from_list(uppercase_all(Response)))
                                      end, sets:from_list(Available), Succeeded),
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
