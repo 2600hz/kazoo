@@ -117,7 +117,7 @@ To see what notification templates an account over-rides, include the account ID
         "status": "success"
     }
 
-The key `account_override` will exist on any templates that are account-specific.
+The key `account_overridden` will exist on any templates that are account-specific.
 
 #### GET - Fetch a notification's configuration
 
