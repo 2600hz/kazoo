@@ -76,10 +76,11 @@ authorize(Context, AuthAccountId, [{<<"notifications">>, []}]) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
     cb_context:req_verb(Context) =:= ?HTTP_GET
         orelse AuthAccountId =:= MasterAccountId;
-authorize(_Context, AuthAccountId, [{<<"notifications">>, _Id}]) ->
+authorize(Context, AuthAccountId, [{<<"notifications">>, _Id}]) ->
     lager:debug("maybe authz for system notification ~s", [_Id]),
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
-    AuthAccountId =:= MasterAccountId;
+    cb_context:req_verb(Context) =:= ?HTTP_GET
+        orelse AuthAccountId =:= MasterAccountId;
 authorize(_Context, _AuthAccountId, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
