@@ -1165,9 +1165,6 @@ elapsed_test() ->
     ?assertEqual(elapsed_ms(StartTimestamp, NowTimestamp), 2000),
     ?assertEqual(elapsed_us(StartTimestamp, NowTimestamp), 2000000).
 
-no_whistle_version_test() ->
-    ?assertEqual(<<"not available">>, whistle_version(<<"/path/to/nonexistent/file">>)).
-
 join_binary_test() ->
     ?assertEqual(<<"foo">>, join_binary([<<"foo">>], <<", ">>)),
     ?assertEqual(<<"foo, bar">>, join_binary([<<"foo">>, <<"bar">>], <<", ">>)),
