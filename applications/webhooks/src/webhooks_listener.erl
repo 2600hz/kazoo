@@ -229,6 +229,8 @@ format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
 base_hook_event(JObj, AccountId) ->
     base_hook_event(JObj, AccountId, []).
 base_hook_event(JObj, AccountId, Acc) ->
+    WasGlobal = wh_util:is_true(ccv(JObj, <<"Global-Resource">>)),
+
     wh_json:from_list(
       props:filter_undefined(
         [{<<"call_direction">>, wh_json:get_value(<<"Call-Direction">>, JObj)}
@@ -244,8 +246,23 @@ base_hook_event(JObj, AccountId, Acc) ->
          ,{<<"caller_id_number">>, wh_json:get_value(<<"Caller-ID-Number">>, JObj)}
          ,{<<"callee_id_name">>, wh_json:get_value(<<"Callee-ID-Name">>, JObj)}
          ,{<<"callee_id_number">>, wh_json:get_value(<<"Callee-ID-Number">>, JObj)}
+         ,{<<"owner_id">>, ccv(JObj, <<"Owner-ID">>)}
+         ,{<<"reseller_id">>, wh_services:find_reseller_id(AccountId)}
+         ,{<<"authorizing_id">>, ccv(JObj, <<"Authorizing-ID">>)}
+         ,{<<"authorizing_type">>, ccv(JObj, <<"Authorizing-Type">>)}
+         ,{<<"local_resource_used">>, (not WasGlobal)}
+         ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
+         ,{<<"emergency_resource_used">>, wh_util:is_true(ccv(JObj, <<"Emergency-Resource">>))}
          | Acc
         ])).
+
+-spec resource_used(boolean(), wh_json:object()) -> api_binary().
+resource_used('true', _JObj) -> 'undefined';
+resource_used('false', JObj) -> ccv(JObj, <<"Resource-ID">>).
+
+-spec ccv(wh_json:object(), wh_json:key()) -> api_binary().
+ccv(JObj, Key) ->
+    wh_json:get_value([<<"Custom-Channel-Vars">>, Key], JObj).
 
 -spec hooks_configured() -> 'ok'.
 -spec hooks_configured(ne_binary()) -> 'ok'.
