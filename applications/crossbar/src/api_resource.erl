@@ -625,34 +625,79 @@ from_form(Req0, Context0) ->
 
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
                      {iolist() | ne_binary() | 'halt', cowboy_req:req(), cb_context:context()}.
-to_json(Req0, Context0) ->
+to_json(Req, Context) ->
+    to_json(Req, Context, accept_override(Context)).
+
+to_json(Req0, Context0, 'undefined') ->
     lager:debug("run: to_json"),
-    case is_csv_request(Context0) of
-        'true' ->
-            lager:debug("overriding JSON, sending as CSV"),
-            to_csv(Req0, Context0);
-        'false' ->
-            [{Mod, _Params}|_] = cb_context:req_nouns(Context0),
-            Verb = cb_context:req_verb(Context0),
-            Event = api_util:create_event_name(Context0, [<<"to_json">>
-                                                ,wh_util:to_lower_binary(Verb)
-                                                ,Mod
-                                               ]),
-            {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-            case cb_context:fetch(Context1, 'is_chunked') of
-                'true' -> {'halt', Req1, Context1};
-                _ -> api_util:create_pull_response(Req1, Context1)
-            end
+    [{Mod, _Params}|_] = cb_context:req_nouns(Context0),
+    Verb = cb_context:req_verb(Context0),
+    Event = api_util:create_event_name(Context0, [<<"to_json">>
+                                                      ,wh_util:to_lower_binary(Verb)
+                                                  ,Mod
+                                                 ]),
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+    case cb_context:fetch(Context1, 'is_chunked') of
+        'true' -> {'halt', Req1, Context1};
+        _ -> api_util:create_pull_response(Req1, Context1)
+    end;
+to_json(Req, Context, <<"csv">>) ->
+    lager:debug("overridding json with csv builder"),
+    to_csv(Req, Context);
+to_json(Req, Context, Accept) ->
+    case to_fun(Context, Accept, 'to_json') of
+        'to_json' -> to_json(Req, Context, 'undefined');
+        Fun ->
+            lager:debug("calling ~s instead of to_json to render response", [Fun]),
+            apply(?MODULE, Fun, [Req, Context])
     end.
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
                        {binary(), cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context) ->
+    to_binary(Req, Context, accept_override(Context)).
+
+to_binary(Req, Context, 'undefined') ->
     lager:debug("run: to_binary"),
     RespData = cb_context:resp_data(Context),
     Event = api_util:create_event_name(Context, <<"to_binary">>),
     _ = crossbar_bindings:map(Event, {Req, Context}),
-    {RespData, api_util:set_resp_headers(Req, Context), Context}.
+    {RespData, api_util:set_resp_headers(Req, Context), Context};
+to_binary(Req, Context, Accept) ->
+    lager:debug("request has overridden accept header: ~s", [Accept]),
+    case to_fun(Context, Accept, 'to_binary') of
+        'to_binary' -> to_binary(Req, Context, 'undefined');
+        Fun ->
+            lager:debug("calling ~s instead of to_binary to render response", [Fun]),
+            Fun(Req, Context)
+    end.
+
+-spec to_fun(cb_context:context(), ne_binary(), atom()) -> atom().
+-spec to_fun(cb_context:context(), ne_binary(), ne_binary(), atom()) -> atom().
+to_fun(Context, Accept, Default) ->
+    case binary:split(Accept, <<"/">>) of
+        [Major, Minor] -> to_fun(Context, Major, Minor, Default);
+        _ -> Default
+    end.
+
+to_fun(Context, Major, Minor, Default) ->
+    case [F || {F, CTPs} <- cb_context:content_types_provided(Context),
+               accept_matches_provided(Major, Minor, CTPs)
+         ]
+    of
+        [] -> Default;
+        [F|_] -> F
+    end.
+
+-spec accept_matches_provided(ne_binary(), ne_binary(), wh_proplist()) -> boolean().
+accept_matches_provided(Major, Minor, CTPs) ->
+    lists:any(fun({Pri, Sec}) ->
+                      Pri =:= Major
+                          andalso ((Sec =:= Minor)
+                                   orelse (Minor =:= <<"*">>)
+                                  )
+              end, CTPs
+             ).
 
 -spec to_csv(cowboy_req:req(), cb_context:context()) ->
                     {iolist(), cowboy_req:req(), cb_context:context()}.
@@ -680,9 +725,9 @@ to_csv(Req, Context) ->
             }
     end.
 
--spec is_csv_request(cb_context:context()) -> boolean().
-is_csv_request(Context) ->
-    cb_context:req_value(Context, <<"accept">>) =:= <<"csv">>.
+-spec accept_override(cb_context:context()) -> api_binary().
+accept_override(Context) ->
+    cb_context:req_value(Context, <<"accept">>).
 
 -spec maybe_flatten_jobj(cb_context:context()) -> iolist().
 maybe_flatten_jobj(Context) ->
