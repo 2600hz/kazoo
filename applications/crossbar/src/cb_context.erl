@@ -922,7 +922,7 @@ add_depreciated_validation_error(Property, Code, Message, #cb_context{validation
 
 -spec build_error_message(ne_binary(), ne_binary(), ne_binary() | integer()) ->
                                  ne_binary() | wh_json:object().
-build_error_message(<<"v1">>, V1Msg, _V2Target) ->
+build_error_message(?VERSION_1, V1Msg, _V2Target) ->
     V1Msg;
 build_error_message(_Version, V1Msg, V2Target) ->
     wh_json:from_list([{<<"message">>, V1Msg}

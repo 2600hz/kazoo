@@ -113,7 +113,7 @@ find_version(Path, Req) ->
 find_version(Path) ->
     lager:debug("find version in ~s", [Path]),
     case binary:split(Path, <<"/">>, ['global']) of
-        [Path] -> <<"v1">>;
+        [Path] -> ?VERSION_1;
         [<<>>, Ver | _] -> to_version(Ver);
         [Ver | _] -> to_version(Ver)
     end.
@@ -122,9 +122,9 @@ to_version(<<"v", Int/binary>>=Version) ->
     try wh_util:to_integer(Int) of
         _ -> Version
     catch
-        _:_ -> <<"v1">>
+        _:_ -> ?VERSION_1
     end;
-to_version(_) -> <<"v1">>.
+to_version(_) -> ?VERSION_1.
 
 find_path(Req, Opts) ->
     case props:get_value('magic_path', Opts) of

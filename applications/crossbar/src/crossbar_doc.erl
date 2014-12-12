@@ -67,7 +67,7 @@ pagination_page_size() ->
 pagination_page_size(Context) ->
     pagination_page_size(Context, cb_context:api_version(Context)).
 
-pagination_page_size(_Context, <<"v1">>) -> 'undefined';
+pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
 pagination_page_size(Context, _Version) ->
     case cb_context:req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();
@@ -238,7 +238,9 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                 ,start_key=StartKey
                                 ,page_size=PageSize
                                 ,filter_fun=FilterFun
-                                ,dbs=lists:filter(fun couch_mgr:db_exists/1, props:get_value('databases', Options, [cb_context:account_db(Context)]))
+                                ,dbs=lists:filter(fun couch_mgr:db_exists/1
+                                                  ,props:get_value('databases', Options, [cb_context:account_db(Context)])
+                                                 )
                                }).
 
 load_view(#load_view_params{dbs=[]
@@ -311,7 +313,7 @@ limit_by_page_size(N) when is_integer(N) -> N+1;
 limit_by_page_size(<<_/binary>> = B) -> limit_by_page_size(wh_util:to_integer(B)).
 
 limit_by_page_size(Context, PageSize) ->
-    case cb_context:api_version(Context) =/= <<"v1">>
+    case cb_context:api_version(Context) =/= ?VERSION_1
         andalso cb_context:req_value(Context, <<"paginate">>)
     of
         'undefined' ->
@@ -702,7 +704,7 @@ update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey) ->
                                                  cb_context:context().
 handle_couch_mgr_pagination_success(JObjs
                                     ,_PageSize
-                                    ,<<"v1">>
+                                    ,?VERSION_1
                                     ,#load_view_params{context=Context
                                                        ,filter_fun=FilterFun
                                                       }=LVPs
@@ -859,8 +861,14 @@ handle_thing_success(Thing, Context) ->
                          ,{fun cb_context:set_resp_etag/2, 'undefined'}
                         ]).
 
--spec handle_json_success(wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
-handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
+-spec handle_json_success(wh_json:object() | wh_json:objects(), cb_context:context()) ->
+                                 cb_context:context().
+-spec handle_json_success(wh_json:object() | wh_json:objects(), cb_context:context(), http_method()) ->
+                                 cb_context:context().
+handle_json_success(JObj, Context) ->
+    handle_json_success(JObj, Context, cb_context:req_verb(Context)).
+
+handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
     RespData = [wh_json:public_fields(JObj)
                 || JObj <- JObjs,
                    wh_json:is_false(<<"pvt_deleted">>, JObj, 'true')
@@ -875,7 +883,7 @@ handle_json_success([_|_]=JObjs, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
                          ,{fun cb_context:set_resp_headers/2, RespHeaders}
                         ]);
-handle_json_success([_|_]=JObjs, Context) ->
+handle_json_success([_|_]=JObjs, Context, _Verb) ->
     RespData = [wh_json:public_fields(JObj)
                 || JObj <- JObjs,
                    wh_json:is_false(<<"pvt_deleted">>, JObj, 'true')
@@ -885,8 +893,9 @@ handle_json_success([_|_]=JObjs, Context) ->
                          ,{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, RespData}
                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
+                         | version_specific_success(JObjs, Context)
                         ]);
-handle_json_success(JObj, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
+handle_json_success(JObj, Context, ?HTTP_PUT) ->
     RespHeaders = [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)}
                    | cb_context:resp_headers(Context)
                   ],
@@ -897,13 +906,20 @@ handle_json_success(JObj, #cb_context{req_verb = ?HTTP_PUT}=Context) ->
                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                          ,{fun cb_context:set_resp_headers/2, RespHeaders}
                         ]);
-handle_json_success(JObj, Context) ->
+handle_json_success(JObj, Context, _Verb) ->
     cb_context:setters(Context
                        ,[{fun cb_context:set_doc/2, JObj}
                          ,{fun cb_context:set_resp_status/2, 'success'}
                          ,{fun cb_context:set_resp_data/2, wh_json:public_fields(JObj)}
                          ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                         ]).
+
+version_specific_success(JObjs, Context) ->
+    version_specific_success(JObjs, Context, cb_context:api_version(Context)).
+version_specific_success(_JObjs, _Context, ?VERSION_1) ->
+    [];
+version_specific_success(_JObjs, _Context, _Version) ->
+    [].
 
 %%--------------------------------------------------------------------
 %% @private

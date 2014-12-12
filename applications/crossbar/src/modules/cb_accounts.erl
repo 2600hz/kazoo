@@ -682,7 +682,7 @@ load_children(AccountId, Context) ->
     load_children(AccountId, Context, cb_context:api_version(Context)).
 
 -spec load_children(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
-load_children(AccountId, Context, <<"v1">>) ->
+load_children(AccountId, Context, ?VERSION_1) ->
     load_children_v1(AccountId, Context);
 load_children(AccountId, Context, _Version) ->
     load_paginated_children(AccountId, Context).
@@ -719,7 +719,7 @@ load_paginated_children(AccountId, Context) ->
 load_descendants(AccountId, Context) ->
     load_descendants(AccountId, Context, cb_context:api_version(Context)).
 
-load_descendants(AccountId, Context, <<"v1">>) ->
+load_descendants(AccountId, Context, ?VERSION_1) ->
     load_descendants_v1(AccountId, Context);
 load_descendants(AccountId, Context, _Version) ->
     load_paginated_descendants(AccountId, Context).
@@ -754,7 +754,7 @@ load_siblings(AccountId, Context) ->
     load_siblings(AccountId, Context, cb_context:api_version(Context)).
 
 -spec load_siblings(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
-load_siblings(AccountId, Context, <<"v1">>) ->
+load_siblings(AccountId, Context, ?VERSION_1) ->
     load_siblings_v1(AccountId, Context);
 load_siblings(AccountId, Context, _Version) ->
     load_paginated_siblings(AccountId, Context).

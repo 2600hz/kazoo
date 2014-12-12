@@ -9,13 +9,17 @@
 
 -define(CONFIG_CAT, <<"crossbar">>).
 
+-define(CROSSBAR_CACHE, 'crossbar_cache').
+
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VERSION, <<"0.8.0">>).
 
--define(VERSION_SUPPORTED, [<<"v1">>, <<"v2">>]).
+-define(VERSION_1, <<"v1">>).
+-define(VERSION_2, <<"v2">>).
+-define(VERSION_SUPPORTED, [?VERSION_1, ?VERSION_2]).
 
 -define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
 
@@ -136,7 +140,7 @@
           ,client_ip = <<"127.0.0.1">> :: api_binary()
           ,load_merge_bypass :: api_object()
           ,profile_id :: api_binary()
-          ,api_version = <<"v1">> :: binary()
+          ,api_version = ?VERSION_1 :: ne_binary()
           ,magic_pathed = 'false' :: boolean()
          }).
 
