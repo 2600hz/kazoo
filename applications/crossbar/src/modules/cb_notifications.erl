@@ -470,7 +470,7 @@ summary_available(Context) ->
 
 -spec normalize_available(wh_json:object(), ne_binaries()) -> ne_binaries().
 normalize_available(JObj, Acc) ->
-    [wh_json:get_value(<<"key">>, JObj) | Acc].
+    [wh_json:get_value(<<"value">>, JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
