@@ -298,10 +298,7 @@ call_collect(Req, PubFun, UntilFun, Timeout, Worker) ->
 -spec cast(api_terms(), publish_fun()) -> 'ok' | {'error', _}.
 -spec cast(api_terms(), publish_fun(), pid() | atom()) -> 'ok' | {'error', _}.
 cast(Req, PubFun) ->
-    case next_worker() of
-        {'error', _}=E -> E;
-        Worker -> cast(Req, PubFun, Worker)
-    end.
+    cast(Req, PubFun, wh_amqp_sup:pool_name()).
 
 cast(Req, PubFun, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
