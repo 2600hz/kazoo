@@ -171,11 +171,12 @@ content_type_from_attachment(_Name, Attachment, Acc) ->
             ]
     end.
 
--spec content_types_accepted_for_upload(cb_context:context(), http_method()) ->
-                                               cb_context:context().
+-spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
 content_types_accepted(Context, _Id) ->
     content_types_accepted_for_upload(Context, cb_context:req_verb(Context)).
 
+-spec content_types_accepted_for_upload(cb_context:context(), http_method()) ->
+                                               cb_context:context().
 content_types_accepted_for_upload(Context, ?HTTP_POST) ->
     CTA = [{'from_binary', ?NOTIFICATION_MIME_TYPES}
            ,{'from_json', ?JSON_CONTENT_TYPES}
