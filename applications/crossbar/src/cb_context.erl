@@ -29,6 +29,7 @@
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
          ,user_id/1, set_user_id/2
+         ,device_id/1, set_device_id/2
          ,account_modb/1, account_modb/2, account_modb/3
          ,set_account_modb/3, set_account_modb/4
          ,reseller_id/1, set_reseller_id/2
@@ -37,6 +38,7 @@
          ,auth_token/1, set_auth_token/2
          ,auth_doc/1, set_auth_doc/2
          ,auth_account_id/1, set_auth_account_id/2
+         ,auth_user_id/1
          ,req_verb/1, set_req_verb/2
          ,req_data/1, set_req_data/2
          ,req_id/1, set_req_id/2
@@ -110,6 +112,7 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 -spec account_id(context()) -> api_binary().
 -spec account_db(context()) -> api_binary().
 -spec user_id(context()) -> api_binary().
+-spec device_id(context()) -> api_binary().
 -spec account_modb(context()) -> api_binary().
 -spec account_modb(context(), wh_now() | wh_timeout()) -> api_binary().
 -spec account_modb(context(), wh_year(), wh_month()) -> api_binary().
@@ -118,6 +121,7 @@ req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 user_id(#cb_context{user_id=UserId}) -> UserId.
+device_id(#cb_context{device_id=DeviceId}) -> DeviceId.
 reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
 account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
 
@@ -142,6 +146,8 @@ account_doc(Context) ->
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
+auth_user_id(#cb_context{auth_doc='undefined'}) -> 'undefined';
+auth_user_id(#cb_context{auth_doc=JObj}) -> wh_json:get_value(<<"owner_id">>, JObj).
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
@@ -196,6 +202,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_account_db(context(), ne_binary()) -> context().
 -spec set_user_id(context(), ne_binary()) -> context().
+-spec set_device_id(context(), ne_binary()) -> context().
 -spec set_auth_token(context(), ne_binary()) -> context().
 -spec set_auth_doc(context(), wh_json:object()) -> context().
 -spec set_auth_account_id(context(), ne_binary()) -> context().
@@ -234,6 +241,7 @@ setters_fold({F, K, V}, C) -> F(C, K, V).
 
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
 set_user_id(#cb_context{}=Context, UserId) -> Context#cb_context{user_id=UserId}.
+set_device_id(#cb_context{}=Context, DeviceId) -> Context#cb_context{device_id=DeviceId}.
 set_reseller_id(#cb_context{}=Context, AcctId) -> Context#cb_context{reseller_id=AcctId}.
 set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
 set_account_modb(#cb_context{}=Context, Year, Month) ->
