@@ -40,7 +40,7 @@ Example:
 
 In addition to the JSON data, templates in various formats can be uploaded (such as from a WYSIWYG tool). Currently supported are plaintext and HTML documents.
 
-The `marcos` object is a per-template, system-defined set of macros you can use in your templates. You cannot configure this via the API.
+The `macros` object is a per-template, system-defined set of macros you can use in your templates. You cannot configure this via the API.
 
 ## Crossbar
 
