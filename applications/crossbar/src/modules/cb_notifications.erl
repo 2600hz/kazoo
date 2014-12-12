@@ -330,14 +330,23 @@ create(Context) ->
 %%--------------------------------------------------------------------
 -spec maybe_read(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_read(Context, Id) ->
-    case props:get_value(<<"accept">>, cb_context:req_headers(Context)) of
-        'undefined' -> read(Context, Id);
-        <<"application/json">> -> read(Context, Id);
-        <<"application/x-json">> -> read(Context, Id);
-        <<"*/*">> ->
-            lager:debug("catch-all accept header, assuming JSON is requested"),
+    case {props:get_value(<<"accept">>, cb_context:req_headers(Context))
+          ,cb_context:req_value(Context, <<"accept">>)
+         }
+    of
+        {'undefined', 'undefined'} -> read(Context, Id);
+        {'undefined', Accept} ->
+            lager:debug("no request accept header, but accept ~s on request", [Accept]),
+            maybe_read_template(read(Context, Id), Id, Accept);
+        {<<"application/json">>, _} -> read(Context, Id);
+        {<<"application/x-json">>, _} -> read(Context, Id);
+        {<<"*/*">>, 'undefined'} ->
+            lager:debug("catch-all accept header, assuming JSON"),
             read(Context, Id);
-        Accept ->
+        {<<"*/*">>, Accept} ->
+            lager:debug("catch-all accept header, but accept ~s on request", [Accept]),
+            maybe_read_template(read(Context, Id), Id, Accept);
+        {Accept, _} ->
             lager:debug("accept header: ~s", [Accept]),
             maybe_read_template(read(Context, Id), Id, Accept)
     end.
@@ -346,15 +355,34 @@ maybe_read(Context, Id) ->
 read(Context, Id) ->
     Context1 =
         case cb_context:account_db(Context) of
-            'undefined' ->
-                {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
-                crossbar_doc:load(Id, cb_context:set_account_db(Context, MasterAccountDb));
-            _AccountDb -> crossbar_doc:load(Id, Context)
+            'undefined' -> read_system(Context, Id);
+            _AccountDb -> read_account(Context, Id)
         end,
     case cb_context:resp_status(Context1) of
         'success' -> read_success(Context1);
         _Status -> Context1
     end.
+
+-spec read_system(cb_context:context(), ne_binary()) -> cb_context:context().
+read_system(Context, Id) ->
+    {'ok', MasterAccountDb} = whapps_util:get_master_account_db(),
+    crossbar_doc:load(Id, cb_context:set_account_db(Context, MasterAccountDb)).
+
+-spec read_account(cb_context:context(), ne_binary()) -> cb_context:context().
+read_account(Context, Id) ->
+    Context1 = crossbar_doc:load(Id, Context),
+    case cb_context:resp_error_code(Context1) of
+        404 -> read_system(Context, Id);
+        200 ->
+            cb_context:set_resp_data(Context1
+                                     ,note_account_override(cb_context:resp_data(Context1))
+                                    );
+        _Code -> Context1
+    end.
+
+-spec note_account_override(wh_json:object()) -> wh_json:object().
+note_account_override(JObj) ->
+    wh_json:set_value(<<"account_overridden">>, 'true', JObj).
 
 -spec read_success(cb_context:context()) -> cb_context:context().
 read_success(Context) ->
@@ -363,6 +391,8 @@ read_success(Context) ->
      ).
 
 -spec maybe_read_template(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+maybe_read_template(Context, _Id, <<"application/json">>) -> Context;
+maybe_read_template(Context, _Id, <<"application/x-json">>) -> Context;
 maybe_read_template(Context, Id, Accept) ->
     case cb_context:resp_status(Context) of
         'success' -> read_template(Context, Id, Accept);
@@ -518,7 +548,7 @@ merge_available(AccountAvailable, Available) ->
 -spec merge_fold(wh_json:object(), wh_json:objects()) -> wh_json:objects().
 merge_fold(Overridden, Acc) ->
     Id = wh_json:get_value(<<"id">>, Overridden),
-    [Overridden
+    [note_account_override(Overridden)
      | [JObj || JObj <- Acc, wh_json:get_value(<<"id">>, JObj) =/= Id]
     ].
 
