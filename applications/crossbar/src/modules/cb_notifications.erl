@@ -66,7 +66,7 @@ authorize(Context) ->
     authorize(Context, cb_context:auth_account_id(Context), cb_context:req_nouns(Context)).
 
 authorize(_Context, AuthAccountId, [{<<"notifications">>, _Id}
-                                    ,{<<"accounts">>, AccountId}
+                                    ,{<<"accounts">>, [AccountId]}
                                    ]) ->
     lager:debug("maybe authz for ~s to modify ~s in ~s", [AuthAccountId, _Id, AccountId]),
     wh_services:is_reseller(AuthAccountId)
