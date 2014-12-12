@@ -114,7 +114,7 @@ resource_to_props(#resrc{}=Resource) ->
        ,{<<"Flags">>, Resource#resrc.flags}
        ,{<<"Codecs">>, Resource#resrc.codecs}
        ,{<<"Rules">>, Resource#resrc.raw_rules}
-       ,{<<"CIDRules">>, Resource#resrc.cid_raw_rules}
+       ,{<<"Caller-ID-Rules">>, Resource#resrc.cid_raw_rules}
        ,{<<"Formatters">>, Resource#resrc.formatters}
       ]).
 
@@ -341,37 +341,46 @@ resources_to_endpoints([Resource|Resources], Number, JObj, Endpoints) ->
 maybe_resource_to_endpoints(#resrc{id=Id
                                    ,name=Name
                                    ,rules=Rules
-                                   ,cid_rules=CIDRules
+                                   ,cid_rules=CallerIdRules
                                    ,gateways=Gateways
                                    ,global=Global
                                    ,weight=Weight
                                   }
                             ,Number, JObj, Endpoints) ->
+    CallerIdNumber = wh_json:get_value(<<"Outbound-Caller-ID-Number">>,JObj),
+    case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
+        {'ok', Number_Match} -> 
+            lager:debug("building resource ~s endpoints", [Id]),
+            Updates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
+                       ,{<<"Resource-ID">>, Id}
+                      ],
+            [wh_json:set_values([{<<"Name">>, Name}
+                                 ,{<<"Weight">>, Weight}
+                                ]
+                                ,update_ccvs(Endpoint, Updates)
+                               )
+             || Endpoint <- gateways_to_endpoints(Number_Match, Gateways, JObj, [])
+            ] ++ Endpoints;
+        {'error','no_match'} -> Endpoints
+    end.
+
+
+filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
     case evaluate_rules(Rules, Number) of
         {'error', 'no_match'} ->
             lager:debug("resource ~s does not match request, skipping", [Id]),
-            Endpoints;
+            {'error','no_match'};
         {'ok', Match} ->
-            CallerIdNumber = wh_json:get_value(<<"Outbound-Caller-ID-Number">>,JObj),
-            case evaluate_cid_rules(CIDRules, CallerIdNumber) of
+            case evaluate_cid_rules(CallerIdRules, CallerIdNumber) of
+                {'ok', 'empty_rules'} -> 
+                    lager:debug("resource ~s match number: ~s with regex match: ~s, and dont have any caller id rules", [Id, Number, Match]),
+                    {'ok', Match};
                 {'ok', CIDMatch} -> 
-                    case CIDMatch of
-                        'no_match' -> lager:debug("building resource ~s endpoints with regex match: ~s", [Id, Match]);
-                        _ -> lager:debug("building resource ~s endpoints with regex match: ~s and caller id number match: ~s", [Id, Match, CallerIdNumber])
-                    end,
-                    Updates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
-                               ,{<<"Resource-ID">>, Id}
-                              ],
-                    [wh_json:set_values([{<<"Name">>, Name}
-                                         ,{<<"Weight">>, Weight}
-                                        ]
-                                        ,update_ccvs(Endpoint, Updates)
-                                       )
-                     || Endpoint <- gateways_to_endpoints(Match, Gateways, JObj, [])
-                    ] ++ Endpoints;
+                    lager:debug("resource ~s match number: ~s with regex match: ~s, and match caller id number rules: ~s", [Id, Number, Match, CIDMatch]),
+                    {'ok', Match};
                 {'error', 'no_match'} ->
-                    lager:debug("resource ~s does not match caller id number ~s, skipping", [Id,CallerIdNumber]),
-                    Endpoints
+                    lager:debug("resource ~s does not match caller id number: ~s, skipping", [Id, CallerIdNumber]),
+                    {'error','no_match'}
             end
     end.
 
@@ -398,9 +407,9 @@ evaluate_rules([Rule|Rules], Number) ->
 
 -spec evaluate_cid_rules(re:mp(), ne_binary()) ->
                             {'ok', ne_binary()} |
-                            {'ok', 'no_match'} | %% empty rules, allow any number
+                            {'ok', 'empty_rules'} | %% empty rules, it`s ok, allow any number
                             {'error', 'no_match'}.
-evaluate_cid_rules([], _) -> {'ok','no_match'};
+evaluate_cid_rules([], _) -> {'ok','empty_rules'};
 evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 
 
