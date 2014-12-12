@@ -197,9 +197,8 @@ on_successful_validation(Context) ->
                             ,{<<"pvt_reseller_id">>, ResellerId}
                             ,{<<"pvt_owner_id">>, OwnerId}
                             ,{<<"pvt_authorization_type">>, AuthorizationType}
-                            ,{<<"authorization_type">>, AuthorizationType}
                             ,{<<"pvt_authorization">>, Authorization}
-                            ,{<<"authorization">>, Authorization}
+                            ,{<<"pvt_origin">>, <<"api">>}
                             ,{<<"request">>, To}
                             ,{<<"request_user">>, ToUser}
                             ,{<<"request_realm">>, Realm}
