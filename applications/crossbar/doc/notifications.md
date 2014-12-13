@@ -40,7 +40,7 @@ Example:
 
 In addition to the JSON data, templates in various formats can be uploaded (such as from a WYSIWYG tool). Currently supported are plaintext and HTML documents.
 
-The `marcos` object is a per-template, system-defined set of macros you can use in your templates. You cannot configure this via the API.
+The `macros` object is a per-template, system-defined set of macros you can use in your templates. You cannot configure this via the API.
 
 ## Crossbar
 
@@ -66,9 +66,23 @@ This is the first request to make to see what templates exist on the system to o
     {
         "auth_token": "{AUTH_TOKEN},
         "data": [
-            "{NOTIFICATION_ID}",
-            ...
-        ],
+            {"id": "voicemail_to_email"
+             ,"macros": {
+                 "call_id": {
+                     "description": "Call ID of the caller"
+                     ,"friendly_name": "Call ID"
+                     ,"i18n_label": "call_id"
+                     }
+                 ,"caller_id.name": {
+                     "description": "Caller ID Name"
+                     ,"friendly_name": "Caller ID Name"
+                     ,"i18n_label": "caller_id_name"
+                 }
+                 ,...
+             }
+            }
+            ,{...}
+        ]
         "request_id": "{REQUEST_ID}",
         "revision": "undefined",
         "status": "success"
@@ -80,13 +94,30 @@ To see what notification templates an account over-rides, include the account ID
     {
         "auth_token": "{AUTH_TOKEN},
         "data": [
+            {"id": "voicemail_to_email"
+             ,"macros": {
+                 "call_id": {
+                     "description": "Call ID of the caller"
+                     ,"friendly_name": "Call ID"
+                     ,"i18n_label": "call_id"
+                     }
+                 ,"caller_id.name": {
+                     "description": "Caller ID Name"
+                     ,"friendly_name": "Caller ID Name"
+                     ,"i18n_label": "caller_id_name"
+                 }
+                 ,...
+             }
+             ,"account_overridden":true
+            }
+            ,{...}
         ],
         "request_id": "{REQUEST_ID}",
         "revision": "undefined",
         "status": "success"
     }
 
-In this case, the account overrides none of the default system templates.
+The key `account_overridden` will exist on any templates that are account-specific.
 
 #### GET - Fetch a notification's configuration
 
@@ -96,14 +127,23 @@ Using the ID from the system listing above, get the template JSON. This document
     {
         "auth_token": "{AUTH_TOKEN}",
         "data": {
-            "id": "{NOTIFICATION_ID}",
-            "templates",["text/html"]
-            ...
+            "id": "{NOTIFICATION_ID}"
+            ,"macros":{...}
+            ,"templates": {
+                "text/html": {
+                    "length": 600
+                }
+                ,"text/plain": {
+                    "length": 408
+                }
+            }
         },
         "request_id": "{REQUEST_ID}",
         "revision": "1-ad99c4dc5353792aed7be6e77b2d9d9a",
         "status": "success"
     }
+
+Performing a GET with an account ID will return the notification object, again with the `account_overridden` flag added if it is account-specific; lack of the key indicates it is the system default notification.
 
 #### PUT - Create a notification template
 
@@ -222,12 +262,14 @@ When you GET a notification config (`Accept` of `application/json`), get a `temp
 
 Note that the only difference is the `Accept` attribute. This will determine which attachment is returned in the payload. If you specify a non-existent Accept MIME type, expect to receive a `406 Not Acceptable` error.
 
+For clients that do not support setting the `Accept` header, a querystring parameter can be included (eg `http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template.
+
 #### POST - Update notification template:
 
 ```
 curl -X POST -H "X-Auth-Token:{AUTH_TOKEN}" -H "Content-Type:text/html" http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID} -d '
 <div>
-  <p>Some Html</p>
+  <p>Some Html and {{macro.key}} replaced on render</p>
 </div>'
 ```
 
