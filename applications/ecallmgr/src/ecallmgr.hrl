@@ -66,7 +66,7 @@
                   ,other_leg :: api_binary() | '$2' | '_'
                   ,node :: atom() | '$1' | '$2' | '$3' | '_'
                   ,former_node :: atom() | '$2' | '_'
-                  ,timestamp :: pos_integer() | '_'
+                  ,timestamp :: gregorian_seconds() | '$3' | '_'
                   ,profile :: api_binary() | '_'
                   ,context :: api_binary() | '_'
                   ,dialplan :: api_binary() | '_'

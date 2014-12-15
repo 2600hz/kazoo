@@ -783,20 +783,18 @@ maybe_cleanup_old_channels() ->
 cleanup_old_channels() ->
     cleanup_old_channels(max_channel_uptime()).
 cleanup_old_channels(MaxAge) ->
-    NoOlderThan = (Now = wh_util:current_tstamp()) - MaxAge,
+    NoOlderThan = wh_util:current_tstamp() - MaxAge,
 
-    lager:debug("now ~p max: ~p then: ~p", [Now, MaxAge, NoOlderThan]),
-
-    MatchSpec = [{#channel{timestamp='$1'
+    MatchSpec = [{#channel{uuid='$1'
+                           ,node='$2'
+                           ,timestamp='$3'
                            ,_ = '_'
                           }
-                  ,[{'<', '$1', NoOlderThan}]
-                  ,['$_']
+                  ,[{'<', '$3', NoOlderThan}]
+                  ,[['$1', '$2', '$3']]
                  }],
     case ets:select(?CHANNELS_TBL, MatchSpec) of
-        [] ->
-            lager:debug("no channels over ~p seconds old", [MaxAge]),
-            0;
+        [] -> 0;
         OldChannels ->
             N = length(OldChannels),
             lager:debug("~p channels over ~p seconds old", [N, MaxAge]),
@@ -804,16 +802,16 @@ cleanup_old_channels(MaxAge) ->
             N
     end.
 
--spec hangup_old_channels(channels()) -> 'ok'.
+-type old_channel() :: [ne_binary() | atom() | gregorian_seconds()].
+-type old_channels() :: [old_channel(),...].
+
+-spec hangup_old_channels(old_channels()) -> 'ok'.
 hangup_old_channels(OldChannels) ->
     [hangup_old_channel(C) || C <- OldChannels],
     'ok'.
 
--spec hangup_old_channel(channel()) -> 'ok'.
-hangup_old_channel(#channel{uuid=UUID
-                            ,node=Node
-                            ,timestamp=Started
-                           }) ->
+-spec hangup_old_channel(old_channel()) -> 'ok'.
+hangup_old_channel([UUID, Node, Started]) ->
     lager:debug("killing channel ~s on ~s, started ~s"
                 ,[UUID, Node, wh_util:pretty_print_datetime(Started)]
                ),
