@@ -349,7 +349,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
                             ,Number, JObj, Endpoints) ->
     CallerIdNumber = wh_json:get_value(<<"Outbound-Caller-ID-Number">>,JObj),
     case filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) of
-        {'ok', Number_Match} -> 
+        {'ok', Number_Match} ->
             lager:debug("building resource ~s endpoints", [Id]),
             Updates = [{<<"Global-Resource">>, wh_util:to_binary(Global)}
                        ,{<<"Resource-ID">>, Id}
@@ -375,10 +375,10 @@ filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
             {'error','no_match'};
         {'ok', Match} ->
             case evaluate_cid_rules(CallerIdRules, CallerIdNumber) of
-                {'ok', 'empty_rules'} -> 
+                {'ok', 'empty_rules'} ->
                     lager:debug("resource ~s match number: ~s with regex match: ~s, and dont have any caller id rules", [Id, Number, Match]),
                     {'ok', Match};
-                {'ok', CIDMatch} -> 
+                {'ok', CIDMatch} ->
                     lager:debug("resource ~s match number: ~s with regex match: ~s, and match caller id number rules: ~s", [Id, Number, Match, CIDMatch]),
                     {'ok', Match};
                 {'error', 'no_match'} ->
@@ -599,7 +599,7 @@ create_resource(JObj, Resources) ->
     case wh_json:get_value(<<"classifiers">>, JObj) of
         'undefined' -> [resource_from_jobj(JObj) | Resources];
         ResourceClassifiers ->
-            ConfigClassifiers = wh_json:to_proplist(whapps_config:get_value(?CONFIG_CAT, <<"classifiers">>)),
+            ConfigClassifiers = wh_json:to_proplist(whapps_config:get(?CONFIG_CAT, <<"classifiers">>)),
             create_resource(wh_json:to_proplist(ResourceClassifiers), ConfigClassifiers, JObj, Resources)
     end.
 
