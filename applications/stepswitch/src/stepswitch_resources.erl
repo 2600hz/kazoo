@@ -365,6 +365,9 @@ maybe_resource_to_endpoints(#resrc{id=Id
     end.
 
 
+-spec filter_resource_by_rules(ne_binary(), ne_binary(), re:mp(), ne_binary(), re:mp()) ->
+                            {'ok', ne_binary()} |
+                            {'error', 'no_match'}.
 filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
     case evaluate_rules(Rules, Number) of
         {'error', 'no_match'} ->
