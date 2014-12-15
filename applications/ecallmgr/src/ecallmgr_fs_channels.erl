@@ -25,6 +25,9 @@
 -export([destroy/2]).
 -export([update/3
          ,updates/2
+         ,cleanup_old_channels/0, cleanup_old_channels/1
+         ,max_channel_uptime/0
+         ,set_max_channel_uptime/1, set_max_channel_uptime/2
         ]).
 -export([match_presence/1]).
 -export([count/0]).
@@ -70,7 +73,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--record(state, {}).
+-record(state, {max_channel_cleanup_ref :: reference()}).
 -type state() :: #state{}.
 
 %%%===================================================================
@@ -333,7 +336,15 @@ init([]) ->
                                 ,'named_table'
                                 ,{'keypos', #channel.uuid}
                                ]),
-    {'ok', #state{}}.
+    {'ok', #state{max_channel_cleanup_ref=start_cleanup_ref()}}.
+
+-define(CLEANUP_TIMEOUT
+        ,ecallmgr_config:get_integer(<<"max_channel_cleanup_timeout_ms">>, ?MILLISECONDS_IN_MINUTE)
+       ).
+
+-spec start_cleanup_ref() -> reference().
+start_cleanup_ref() ->
+    erlang:start_timer(?CLEANUP_TIMEOUT, self(), 'ok').
 
 %%--------------------------------------------------------------------
 %% @private
@@ -451,6 +462,9 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'timeout', Ref, _Msg}, #state{max_channel_cleanup_ref=Ref}=State) ->
+    maybe_cleanup_old_channels(),
+    {'noreply', State#state{max_channel_cleanup_ref=start_cleanup_ref()}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -738,3 +752,69 @@ connection_ccvs(#channel{account_id=AccountId
          ,{<<"Bridge-ID">>, BridgeId}
          ,{<<"Owner-ID">>, OwnerId}
         ])).
+
+-define(MAX_CHANNEL_UPTIME_KEY, <<"max_channel_uptime_s">>).
+
+-spec max_channel_uptime() -> non_neg_integer().
+max_channel_uptime() ->
+    ecallmgr_config:get_integer(?MAX_CHANNEL_UPTIME_KEY, 0).
+
+-spec set_max_channel_uptime(non_neg_integer()) -> 'ok'.
+-spec set_max_channel_uptime(non_neg_integer(), boolean()) -> 'ok'.
+set_max_channel_uptime(MaxAge) ->
+    set_max_channel_uptime(MaxAge, 'true').
+
+set_max_channel_uptime(MaxAge, 'true') ->
+    ecallmgr_config:set_default(?MAX_CHANNEL_UPTIME_KEY, wh_util:to_integer(MaxAge));
+set_max_channel_uptime(MaxAge, 'false') ->
+    ecallmgr_config:set(?MAX_CHANNEL_UPTIME_KEY, wh_util:to_integer(MaxAge)).
+
+-spec maybe_cleanup_old_channels() -> 'ok'.
+maybe_cleanup_old_channels() ->
+    case max_channel_uptime() of
+        N when N =< 0 -> 'ok';
+        MaxAge ->
+            _P = spawn(?MODULE, 'cleanup_old_channels', [MaxAge]),
+            'ok'
+    end.
+
+-spec cleanup_old_channels() -> non_neg_integer().
+-spec cleanup_old_channels(non_neg_integer()) -> non_neg_integer().
+cleanup_old_channels() ->
+    cleanup_old_channels(max_channel_uptime()).
+cleanup_old_channels(MaxAge) ->
+    NoOlderThan = (Now = wh_util:current_tstamp()) - MaxAge,
+
+    lager:debug("now ~p max: ~p then: ~p", [Now, MaxAge, NoOlderThan]),
+
+    MatchSpec = [{#channel{timestamp='$1'
+                           ,_ = '_'
+                          }
+                  ,[{'<', '$1', NoOlderThan}]
+                  ,['$_']
+                 }],
+    case ets:select(?CHANNELS_TBL, MatchSpec) of
+        [] ->
+            lager:debug("no channels over ~p seconds old", [MaxAge]),
+            0;
+        OldChannels ->
+            N = length(OldChannels),
+            lager:debug("~p channels over ~p seconds old", [N, MaxAge]),
+            hangup_old_channels(OldChannels),
+            N
+    end.
+
+-spec hangup_old_channels(channels()) -> 'ok'.
+hangup_old_channels(OldChannels) ->
+    [hangup_old_channel(C) || C <- OldChannels],
+    'ok'.
+
+-spec hangup_old_channel(channel()) -> 'ok'.
+hangup_old_channel(#channel{uuid=UUID
+                            ,node=Node
+                            ,timestamp=Started
+                           }) ->
+    lager:debug("killing channel ~s on ~s, started ~s"
+                ,[UUID, Node, wh_util:pretty_print_datetime(Started)]
+               ),
+    freeswitch:api(Node, 'uuid_kill', UUID).
