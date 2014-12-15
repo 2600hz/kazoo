@@ -788,6 +788,7 @@ cleanup_old_channels(MaxAge) ->
     MatchSpec = [{#channel{uuid='$1'
                            ,node='$2'
                            ,timestamp='$3'
+                           ,handling_locally='true'
                            ,_ = '_'
                           }
                   ,[{'<', '$3', NoOlderThan}]
