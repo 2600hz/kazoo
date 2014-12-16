@@ -254,12 +254,6 @@
       "required": false,
       "name": "Application Name",
       "description": "The Kazoo application that issued the CDR"
-    },
-    "recording_url": {
-      "type": "string",
-      "required": false,
-      "name": "Recording URL",
-      "description": "URL to recorded mp3/wav file."
     }
   }
 }
