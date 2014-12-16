@@ -464,6 +464,7 @@ normalize_cdr(JObj, Context) ->
                          ,{<<"rate">>, wht_util:units_to_dollars(wh_json:get_value([<<"custom_channel_vars">>, <<"rate">>], JObj, 0))}
                          ,{<<"rate_name">>, wh_json:get_value([<<"custom_channel_vars">>, <<"rate_name">>], JObj, <<>>)}
                          ,{<<"bridge_id">>, wh_json:get_value([<<"custom_channel_vars">>, <<"bridge_id">>], JObj, <<>>)}
+                         ,{<<"recording_url">>, wh_json:get_value([<<"custom_channel_vars">>, <<"recording_url">>], JObj, <<>>)}
                         ])
       ,Context
      ).
