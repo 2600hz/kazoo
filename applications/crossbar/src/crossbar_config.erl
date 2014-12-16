@@ -20,7 +20,7 @@ autoload_modules() ->
     autoload_modules([]).
 
 autoload_modules(Default) ->
-    whapps_confing:get(?CONFIG_CAT, <<"autoload_modules">>, Default).
+    whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, Default).
 
 -spec set_autoload_modules(ne_binaries() | atoms()) -> {'ok', wh_json:object()}.
 set_autoload_modules(Modules) ->
