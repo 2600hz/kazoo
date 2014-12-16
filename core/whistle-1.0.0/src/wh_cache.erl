@@ -48,7 +48,7 @@
 -include("../include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
--define(EXPIRES, 3600). %% an hour
+-define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour
 -define(EXPIRE_PERIOD, 10000).
 -define(DEFAULT_WAIT_TIMEOUT, 5).
 
@@ -63,12 +63,15 @@
 -define(CONSUME_OPTIONS, []).
 
 -type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
--type origin_tuple() :: {'db' | 'type', ne_binary(), ne_binary()} | {'db' | 'type', ne_binary()}.
+-type origin_tuple() :: {'db', ne_binary(), ne_binary()} | %% {db, Database, PvtType or Id}
+                        {'type', ne_binary(), ne_binary()} | %% {type, PvtType, Id}
+                        {'db', ne_binary()} | %% {db, Database}
+                        {'type', ne_binary()}. %% {type, PvtType}
 -type origin_tuples() :: [origin_tuple(),...] | [].
 -record(cache_obj, {key :: term() | '_' | '$1'
                     ,value :: term() | '_' | '$1' | '$2'
-                    ,expires :: pos_integer() | 'infinity' | '_' | '$3'
-                    ,timestamp = wh_util:current_tstamp() :: pos_integer() | '_' | '$4'
+                    ,expires :: wh_timeout() | '_' | '$3'
+                    ,timestamp = wh_util:current_tstamp() :: gregorian_seconds() | '_' | '$4'
                     ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
                     ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
                     ,type = 'normal' :: 'normal' | 'monitor' | 'pointer' | '_'

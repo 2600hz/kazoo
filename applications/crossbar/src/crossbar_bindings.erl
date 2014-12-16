@@ -191,7 +191,7 @@ init() ->
 
     put('callid', ?LOG_SYSTEM_ID),
     _ = [maybe_init_mod(Mod)
-         || Mod <- whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES)
+         || Mod <- crossbar_config:autoload_modules(?DEFAULT_MODULES)
     ],
     'ok'.
 

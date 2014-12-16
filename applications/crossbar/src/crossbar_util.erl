@@ -864,42 +864,48 @@ generate_year_month_sequence({FromYear, FromMonth}, {ToYear, ToMonth}, Range) ->
 -spec descendants_count(wh_proplist() | ne_binary()) -> 'ok'.
 descendants_count() ->
     Limit = whapps_config:get_integer(<<"whistle_couch">>, <<"default_chunk_size">>, 1000),
-    ViewOptions = [
-        {'limit', Limit}
-        ,{'skip', 0}
-    ],
+    ViewOptions = [{'limit', Limit}
+                   ,{'skip', 0}
+                  ],
     descendants_count(ViewOptions).
 
-descendants_count(Opts) when is_list(Opts) ->
+descendants_count(<<_/binary>> = Account) ->
+    AccountId = wh_util:format_account_id(Account, 'raw'),
+    descendants_count([{'key', AccountId}]);
+descendants_count(Opts) ->
     ViewOptions = [{'group_level', 1}
                    | props:delete('group_level', Opts)
                   ],
+
     case load_descendants_count(ViewOptions) of
         {'error', 'no_descendants'} ->
-            case props:get_value('key', ViewOptions) of
-                'undefined' -> 'ok';
-                AccountId ->
-                    maybe_update_descendants_count(AccountId, 0)
-            end;
+            handle_no_descendants(ViewOptions);
         {'error', _E} ->
             io:format("could not load view listing_by_descendants_count: ~p~n", [_E]);
         {'ok', Counts} ->
-            lists:foreach(
-                fun({AccountId, Count}) ->
-                    maybe_update_descendants_count(AccountId, Count)
-                end
-                ,Counts
-            ),
-            case props:get_value('skip', ViewOptions) of
-                'undefined' -> 'ok';
-                Skip ->
-                    Limit = props:get_value('limit', ViewOptions),
-                    descendants_count(props:set_value('skip', Skip+Limit, ViewOptions))
-            end
-    end;
-descendants_count(Account) ->
-    AccountId = wh_util:format_account_id(Account, 'raw'),
-    descendants_count([{'key', AccountId}]).
+            handle_descendant_counts(ViewOptions, Counts)
+    end.
+
+-spec handle_descendant_counts(wh_proplist(), wh_proplist()) -> 'ok'.
+handle_descendant_counts(ViewOptions, Counts) ->
+    _ = [maybe_update_descendants_count(AccountId, Count)
+         || {AccountId, Count} <- Counts
+        ],
+
+    case props:get_value('skip', ViewOptions) of
+        'undefined' -> 'ok';
+        Skip ->
+            Limit = props:get_value('limit', ViewOptions),
+            descendants_count(props:set_value('skip', Skip+Limit, ViewOptions))
+    end.
+
+-spec handle_no_descendants(wh_proplist()) -> 'ok'.
+handle_no_descendants(ViewOptions) ->
+    case props:get_value('key', ViewOptions) of
+        'undefined' -> 'ok';
+        AccountId ->
+            maybe_update_descendants_count(AccountId, 0)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -931,7 +937,7 @@ format_emergency_caller_id_number(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec load_descendants_count(wh_proplists()) ->
+-spec load_descendants_count(wh_proplist()) ->
                                     {'ok', wh_proplist()} |
                                     {'error', _}.
 load_descendants_count(ViewOptions) ->

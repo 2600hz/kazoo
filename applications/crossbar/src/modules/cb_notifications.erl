@@ -30,6 +30,7 @@
 -define(PREVIEW, <<"preview">>).
 
 -define(MACROS, <<"macros">>).
+-define(PVT_TYPE, <<"notification">>).
 
 %%%===================================================================
 %%% API
@@ -515,7 +516,11 @@ fetch_summary_available(Context) ->
 
 -spec cache_available(cb_context:context()) -> 'ok'.
 cache_available(Context) ->
-    wh_cache:store_local(?CROSSBAR_CACHE, {?MODULE, 'available'}, cb_context:doc(Context)).
+    wh_cache:store_local(?CROSSBAR_CACHE
+                         ,{?MODULE, 'available'}
+                         ,cb_context:doc(Context)
+                         ,[{'origin', [{'db', cb_context:account_db(Context), ?PVT_TYPE}]}]
+                        ).
 
 -spec fetch_available() -> {'ok', wh_json:objects()} |
                            {'error', 'not_found'}.
@@ -578,7 +583,7 @@ on_successful_validation('undefined', Context) ->
 
     case couch_mgr:open_cache_doc(MasterAccountDb, DocId) of
         {'ok', _JObj} ->
-            Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
+            Doc = wh_json:set_values([{<<"pvt_type">>, ?PVT_TYPE}
                                       ,{<<"_id">>, DocId}
                                      ], ReqTemplate),
             cb_context:set_doc(Context, Doc);
@@ -587,7 +592,7 @@ on_successful_validation('undefined', Context) ->
             crossbar_util:response_bad_identifier(resp_id(DocId), Context);
         {'error', 'not_found'} ->
             lager:debug("this will create a new template in ~s", [MasterAccountDb]),
-            Doc = wh_json:set_values([{<<"pvt_type">>, <<"notification">>}
+            Doc = wh_json:set_values([{<<"pvt_type">>, ?PVT_TYPE}
                                       ,{<<"_id">>, DocId}
                                      ], ReqTemplate),
             cb_context:setters(Context

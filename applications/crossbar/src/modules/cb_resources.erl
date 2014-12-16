@@ -161,35 +161,32 @@ resource_exists(?JOBS, _ID) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("validating global resources"),
+    case is_global_resource_request(Context) of
+        'true' ->
             validate_resources(cb_context:set_account_db(Context, ?WH_OFFNET_DB)
                                ,cb_context:req_verb(Context)
                               );
-        _AccountId ->
+        'false' ->
             validate_resources(Context, cb_context:req_verb(Context))
     end.
 
 validate(Context, ?COLLECTION) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("validating global resources collection"),
+    case is_global_resource_request(Context) of
+        'true' ->
             validate_collection(cb_context:set_account_db(Context, ?WH_OFFNET_DB));
-        _AccountId ->
+        'false' ->
             validate_collection(Context)
     end;
 validate(Context, ?JOBS) ->
     validate_jobs(maybe_set_account_to_master(Context), cb_context:req_verb(Context));
 validate(Context, Id) ->
-    case cb_context:account_id(Context) of
-        'undefined' ->
-            lager:debug("validating global resource ~s", [Id]),
+    case is_global_resource_request(Context) of
+        'true' ->
             validate_resource(cb_context:set_account_db(Context, ?WH_OFFNET_DB)
                               ,Id
                               ,cb_context:req_verb(Context)
                              );
-        _AccountId ->
+        'false' ->
             validate_resource(Context, Id, cb_context:req_verb(Context))
     end.
 
@@ -236,7 +233,7 @@ validate_collection(Context) ->
                                       ,{fun cb_context:set_resp_status/2, 'success'}
                                      ]
                                    )
-                    ,cb_context:req_data(Context)
+                ,cb_context:req_data(Context)
                ).
 
 -type collection_fold_acc() :: cb_context:context().
@@ -554,3 +551,18 @@ collection_process(Context, Successes) ->
             summary(Context1);
         _Status -> 'ok'
     end.
+
+-spec is_global_resource_request(cb_context:context()) -> boolean().
+-spec is_global_resource_request(req_nouns(), api_binary()) -> boolean().
+is_global_resource_request(Context) ->
+    is_global_resource_request(cb_context:req_nouns(Context), cb_context:account_id(Context)).
+
+is_global_resource_request(_ReqNouns, 'undefined') ->
+    lager:debug("request is for global resources"),
+    'true';
+is_global_resource_request([{<<"global_resources">>, _}|_], _AccountId) ->
+    lager:debug("request is for global resources"),
+    'true';
+is_global_resource_request(_ReqNouns, _AccountId) ->
+    lager:debug("request is for local resources for account ~s", [_AccountId]),
+    'false'.

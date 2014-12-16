@@ -203,7 +203,7 @@ get_keys(Props) -> [K || {K,_} <- Props].
 get_all_values(Key, Props) -> get_values(Key, Props).
 get_values(Key, Props) -> [V || {K, V} <- Props, K =:= Key].
 
--spec delete(ne_binary() | atom(), wh_proplist()) -> wh_proplist().
+-spec delete(wh_proplist_key(), wh_proplist()) -> wh_proplist().
 delete(K, Props) ->
     case lists:keyfind(K, 1, Props) of
         {K, _} -> lists:keydelete(K, 1, Props);
