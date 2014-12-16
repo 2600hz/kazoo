@@ -10,9 +10,14 @@
 
 -export([autoload_modules/0, autoload_modules/1
          ,set_autoload_modules/1, set_default_autoload_modules/1
+
+         ,flush/0
         ]).
 
 -include("crossbar.hrl").
+
+-spec flush() -> 'ok'.
+flush() -> whapps_config:flush(?CONFIG_CAT).
 
 -spec autoload_modules() -> ne_binaries().
 -spec autoload_modules(ne_binaries() | atoms()) -> ne_binaries().

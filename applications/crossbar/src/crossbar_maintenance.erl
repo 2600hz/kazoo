@@ -17,7 +17,9 @@
 -export([start_module/1]).
 -export([stop_module/1]).
 -export([running_modules/0]).
--export([refresh/0, refresh/1]).
+-export([refresh/0, refresh/1
+         ,flush/0
+        ]).
 -export([find_account_by_number/1]).
 -export([find_account_by_name/1]).
 -export([find_account_by_realm/1]).
@@ -109,6 +111,11 @@ refresh() ->
 
 refresh(Value) ->
     io:format("please use whapps_maintenance:refresh(~p).", [Value]).
+
+-spec flush() -> 'ok'.
+flush() ->
+    crossbar_config:flush(),
+    wh_cache:flush_local(?CROSSBAR_CACHE).
 
 %%--------------------------------------------------------------------
 %% @public
