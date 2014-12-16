@@ -33,7 +33,7 @@
         ]).
 
 -export([start_listener/2]).
-  
+
 -export([queue_name/1
          ,bindings/1
          ,responders/1
@@ -500,10 +500,8 @@ handle_cast({'start_listener', Params}, #state{queue='undefined'
            ,module_state=ModuleState
            ,module_timeout_ref=TimeoutRef
           } = State,
-    case init(Module, Params, ModuleState, TimeoutRef) of
-        {'ok', #state{}=N} -> {'noreply', N};
-        _Else -> {'noreply', State}
-    end;
+    {'ok', #state{}=N} = init(Module, Params, ModuleState, TimeoutRef),
+    {'noreply', N};
 handle_cast({'start_listener', _Params}, State) ->
     lager:debug("gen listener asked to start listener but it is already initialized"),
     {'noreply', State};
@@ -1029,6 +1027,6 @@ channel_requisition(Params) ->
             end
     end.
 
--spec start_listener(pid(), wh_proplist()) -> boolean().
+-spec start_listener(pid(), wh_proplist()) -> 'ok'.
 start_listener(Srv, Params) ->
     gen_server:cast(Srv, {'start_listener', Params}).
