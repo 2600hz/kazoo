@@ -46,18 +46,31 @@ migrate() ->
 
 -spec migrate(ne_binaries()) -> 'no_return'.
 migrate(Accounts) ->
-    io:format("updating default crossbar modules~n", []),
     _ = migrate_accounts_data(Accounts),
-    Modules =
+
+    CurrentModules =
         [wh_util:to_atom(Module, 'true')
-         || Module <- whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])
+         || Module <- crossbar_config:autoload_modules()
         ],
+
+    UpdatedModules = remove_deprecated_modules(CurrentModules, ?DEPRECATED_MODULES),
+
     add_missing_modules(
-      Modules,
-      [Module
-       || Module <- ?DEFAULT_MODULES
-              ,(not lists:member(Module, Modules))
-      ]).
+      UpdatedModules
+      ,[Module
+        || Module <- ?DEFAULT_MODULES,
+           (not lists:member(Module, CurrentModules))
+       ]).
+
+-spec remove_deprecated_modules(atoms(), atoms()) -> atoms().
+remove_deprecated_modules(Modules, Deprecated) ->
+    case lists:foldl(fun lists:delete/2, Modules, Deprecated) of
+        Modules -> Modules;
+        Ms ->
+            io:format(" removed deprecated modules from autoloaded modules: ~p~n", [Deprecated]),
+            crossbar_config:set_autoload_modules(Ms),
+            Ms
+    end.
 
 -spec migrate_accounts_data() -> 'no_return'.
 migrate_accounts_data() ->
@@ -78,7 +91,8 @@ migrate_account_data(Account) ->
 -spec add_missing_modules(atoms(), atoms()) -> 'no_return'.
 add_missing_modules(_, []) -> 'no_return';
 add_missing_modules(Modules, MissingModules) ->
-    _ = whapps_config:set(<<"crossbar">>, <<"autoload_modules">>, Modules ++ MissingModules),
+    io:format("  saving autoload_modules with missing modules added: ~p~n", [MissingModules]),
+    crossbar_config:set_autoload_modules(lists:sort(Modules ++ MissingModules)),
     'no_return'.
 
 %%--------------------------------------------------------------------
@@ -106,10 +120,10 @@ refresh(Value) ->
 start_module(Module) ->
     try crossbar:start_mod(Module) of
         _ ->
-            Mods = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, []),
-            whapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, [wh_util:to_binary(Module)
-                                                                            | lists:delete(wh_util:to_binary(Module), Mods)
-                                                                           ]),
+            Mods = crossbar_config:autoload_modules(),
+            crossbar_config:set_default_autoload_modules([wh_util:to_binary(Module)
+                                                          | lists:delete(wh_util:to_binary(Module), Mods)
+                                                         ]),
             io:format("started and added ~s to autoloaded modules~n", [Module])
     catch
         _E:_R ->
@@ -126,8 +140,8 @@ start_module(Module) ->
 stop_module(Module) ->
     try crossbar:stop_mod(Module) of
         _ ->
-            Mods = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, []),
-            whapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, lists:delete(wh_util:to_binary(Module), Mods)),
+            Mods = crossbar_config:autoload_modules(),
+            crossbar_config:set_default_autoload_modules(lists:delete(wh_util:to_binary(Module), Mods)),
             io:format("stopped and removed ~s from autoloaded modules~n", [Module])
     catch
         _E:_R ->
@@ -510,18 +524,18 @@ print_account_info(AccountDb, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec move_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec move_account(ne_binary(), ne_binary()) -> 'ok'.
 move_account(Account, ToAccount) ->
     AccountId = wh_util:format_account_id(Account, 'raw'),
     ToAccountId = wh_util:format_account_id(ToAccount, 'raw'),
     maybe_move_account(AccountId, ToAccountId).
 
--spec maybe_move_account(ne_binary(), ne_binary()) -> {'ok', wh_json:object()} | {'error', _}.
+-spec maybe_move_account(ne_binary(), ne_binary()) -> 'ok'.
 maybe_move_account(AccountId, AccountId) ->
-    io:format("can not move to the same account~n", []);
+    io:format("can not move to the same account~n");
 maybe_move_account(AccountId, ToAccountId) ->
     case crossbar_util:move_account(AccountId, ToAccountId) of
-        {'ok', _} -> io:format("move complete!~n", []);
+        {'ok', _} -> io:format("move complete!~n");
         {'error', Reason} ->
             io:format("unable to complete move: ~p~n", [Reason])
     end.
@@ -647,7 +661,7 @@ save_new_ring_group_callflow(JObj, NewCallflow) ->
             end
     end.
 
--spec check_if_callflow_exist(ne_binary(), ne_binary()) -> 'ok'.
+-spec check_if_callflow_exist(ne_binary(), ne_binary()) -> boolean().
 check_if_callflow_exist(Account, Name) ->
     AccountDb = wh_util:format_account_id(Account, 'encoded'),
     case couch_mgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
