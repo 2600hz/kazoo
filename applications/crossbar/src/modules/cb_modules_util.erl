@@ -111,8 +111,8 @@ reconcile_services(Context) ->
 -spec pass_hashes(ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
     Creds = list_to_binary([Username, ":", Password]),
-    SHA1 = wh_util:to_hex_binary(crypto:sha(Creds)),
-    MD5 = wh_util:to_hex_binary(erlang:md5(Creds)),
+    SHA1 = wh_util:to_hex_binary(crypto:hash(sha, Creds)),
+    MD5 = wh_util:to_hex_binary(erlang:phash(md5, Creds)),
     {MD5, SHA1}.
 
 -spec update_mwi(api_binary(), ne_binary()) -> pid().
