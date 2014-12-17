@@ -112,8 +112,6 @@ get_vm_box(AccountDb, JObj) ->
         {'error', _E} ->
             lager:debug("failed to load vm box ~s from ~s", [VMBoxId, AccountDb]),
             wh_json:new()
-            %% send_failed_update(JObj, <<"voicemail_box does not exist in account">>),
-            %% throw({'error', 'no_vm_box'})
     end.
 
 -spec get_vm_box_owner(ne_binary(), wh_json:object()) -> wh_json:object().
@@ -124,10 +122,6 @@ get_vm_box_owner(AccountDb, VMBox) ->
             lager:debug("failed to lookup owner, assuming none"),
             wh_json:new()
     end.
-
-%% -spec send_failed_update(wh_json:object(), ne_binary()) -> 'ok'.
-%% send_failed_update(JObj, Msg) ->
-%%     teletype_util:send_update(JObj, <<"failed">>, Msg).
 
 -spec process_req(wh_json:object()) -> 'ok'.
 -spec process_req(wh_json:object(), wh_proplist()) -> 'ok'.
