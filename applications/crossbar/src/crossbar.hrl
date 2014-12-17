@@ -62,6 +62,7 @@
                           ,'cb_ip_auth', 'cb_ips'
                           ,'cb_limits'
                           ,'cb_media', 'cb_menus', 'cb_metaflows'
+                          ,'cb_notifications'
                           ,'cb_phone_numbers', 'cb_port_requests'
                           ,'cb_rates', 'cb_registrations', 'cb_resource_templates'
                           ,'cb_resources'
