@@ -124,6 +124,7 @@ relay_encoded_email(To, From, Encoded) ->
     ReqId = get('callid'),
     Self = self(),
 
+    lager:debug("relaying from ~s to ~p", [From, To]),
     gen_smtp_client:send({From, To, Encoded}
                          ,smtp_options()
                          ,fun(X) ->
@@ -222,7 +223,7 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Charset, Acc) ->
                 ,[]
                 ,iolist_to_binary(Content)
                },
-    lager:debug("adding template ~s (~s)", [ContentType, CTEncoding]),
+    lager:debug("adding template ~s (encoding ~s)", [ContentType, CTEncoding]),
     add_rendered_templates_to_email(Rs, Charset, [Template | Acc]).
 
 -spec service_content_type_params(wh_proplist()) -> wh_proplist().
@@ -635,7 +636,8 @@ send_update(DataJObj, Status, Message) ->
                 ,Message
                ).
 
-send_update('undefined', _, _, _) -> 'ok';
+send_update('undefined', _, _, _) ->
+    lager:debug("no response queue available, not publishing update");
 send_update(RespQ, MsgId, Status, Msg) ->
     Prop = props:filter_undefined(
              [{<<"Status">>, Status}
