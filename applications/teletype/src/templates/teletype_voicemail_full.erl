@@ -176,6 +176,7 @@ build_template_data(DataJObj) ->
      ).
 
 -spec to_email_addresses(wh_json:object()) -> api_binaries().
+-spec to_email_addresses(wh_json:object(), api_binaries() | ne_binary()) -> api_binaries().
 to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
                        ,wh_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
