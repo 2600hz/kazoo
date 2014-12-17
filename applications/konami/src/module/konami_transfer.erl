@@ -277,7 +277,7 @@ attended_wait(?EVENT(Target, EventName, _Evt)
     connect_transferor_to_target(Transferor, TargetCall1),
     lager:debug("connecting transferor ~s to target ~s", [Transferor, B]),
     {'next_state', 'attended_wait', State#state{target=B
-                                                ,target_b_legs=Bs
+                                                ,target_b_legs=delete_all(Target, Bs)
                                                 ,target_call=TargetCall1
                                                }};
 attended_wait(?EVENT(CallId, EventName, _Evt)
