@@ -359,28 +359,69 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_read(cb_context:context(), ne_binary()) -> cb_context:context().
-maybe_read(Context, Id) ->
-    case {props:get_value(<<"accept">>, cb_context:req_headers(Context))
-          ,cb_context:req_value(Context, <<"accept">>)
-         }
-    of
-        {'undefined', 'undefined'} -> read(Context, Id);
-        {'undefined', Accept} ->
-            lager:debug("no request accept header, but accept ~s on request", [Accept]),
-            maybe_read_template(read(Context, Id), Id, Accept);
-        {<<"application/json">>, _} -> read(Context, Id);
-        {<<"application/x-json">>, _} -> read(Context, Id);
-        {<<"*/*">>, 'undefined'} ->
-            lager:debug("catch-all accept header, assuming JSON"),
-            read(Context, Id);
-        {<<"*/*">>, Accept} ->
-            lager:debug("catch-all accept header, but accept ~s on request", [Accept]),
-            maybe_read_template(read(Context, Id), Id, Accept);
-        {Accept, _} ->
-            lager:debug("accept header: ~s", [Accept]),
-            maybe_read_template(read(Context, Id), Id, Accept)
+
+-type accept_value() :: {{ne_binary(), ne_binary(), list()}, non_neg_integer(),list()}.
+-type accept_values() :: [accept_value(),...] | [].
+
+-spec accept_values(cb_context:context()) -> accept_values().
+-spec accept_values(api_binary(), api_binary()) -> accept_values().
+accept_values(Context) ->
+    AcceptValue = props:get_value(<<"accept">>, cb_context:req_headers(Context)),
+    Tunneled = cb_context:req_value(Context, <<"accept">>),
+
+    accept_values(AcceptValue, Tunneled).
+
+accept_values('undefined', 'undefined') ->
+    lager:debug("no accept headers, assuming JSON"),
+    [{{<<"application">>, <<"json">>, []},1000,[]}];
+accept_values(AcceptValue, 'undefined') ->
+    case cowboy_http:nonempty_list(AcceptValue, fun cowboy_http:media_range/2) of
+        {'error', 'badarg'} -> accept_values('undefined', 'undefined');
+        AcceptValues -> lists:reverse(lists:keysort(2, AcceptValues))
+    end;
+accept_values(AcceptValue, Tunneled) ->
+    case cowboy_http:nonempty_list(Tunneled, fun cowboy_http:media_range/2) of
+        {'error', 'badarg'} -> accept_values(AcceptValue, 'undefined');
+        TunneledValues ->
+            lager:debug("using tunneled accept value ~s", [Tunneled]),
+            lists:reverse(lists:keysort(2, TunneledValues))
     end.
+
+-spec acceptable_content_types(cb_context:context()) -> wh_proplist().
+acceptable_content_types(Context) ->
+    props:get_value('to_binary', cb_context:content_types_provided(Context), []).
+
+-spec maybe_read(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec maybe_read(cb_context:context(), ne_binary(), wh_proplist(), accept_values()) -> cb_context:context().
+maybe_read(Context, Id) ->
+    Acceptable = acceptable_content_types(Context),
+    maybe_read(Context, Id, Acceptable, accept_values(Context)).
+
+maybe_read(Context, Id, _Acceptable, [{{<<"application">>, <<"json">>, _},_,_}|_Accepts]) ->
+    read(Context, Id);
+maybe_read(Context, Id, _Acceptable, [{{<<"application">>, <<"x-json">>, _},_,_}|_Accepts]) ->
+    read(Context, Id);
+maybe_read(Context, Id, _Acceptable, [{{<<"*">>, <<"*">>, _},_,_}|_Accepts]) ->
+    lager:debug("catch-all accept header, using json"),
+    read(Context, Id);
+maybe_read(Context, Id, Acceptable, [{{Type, SubType, _},_,_}|Accepts]) ->
+    case is_acceptable_accept(Acceptable, Type, SubType) of
+        'false' ->
+            lager:debug("unknown accept header: ~s/~s", [Type, SubType]),
+            maybe_read(Context, Id, Acceptable, Accepts);
+        'true' ->
+            lager:debug("accept header: ~s/~s", [Type, SubType]),
+            maybe_read_template(read(Context, Id), Id, <<Type/binary, "/", SubType/binary>>)
+    end;
+maybe_read(Context, Id, _Acceptable, []) ->
+    lager:debug("no accept headers, using json"),
+    read(Context, Id).
+
+-spec is_acceptable_accept(wh_proplist(), ne_binary(), ne_binary()) -> boolean().
+is_acceptable_accept(Acceptable, Type, SubType) ->
+    lists:any(fun({T, S}) ->
+                      T =:= Type andalso S =:= SubType
+              end, Acceptable).
 
 -spec read(cb_context:context(), ne_binary()) -> cb_context:context().
 read(Context, Id) ->
