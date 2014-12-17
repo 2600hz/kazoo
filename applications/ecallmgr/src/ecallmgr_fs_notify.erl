@@ -96,7 +96,7 @@ resp_to_probe(State, User, Realm) ->
     PresenceId = <<User/binary, "@", Realm/binary>>,
     PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
                       ,{<<"State">>, State}
-                      ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
+                      ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, PresenceId))}
                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ],
     io:format("resp_to_probe: ~p~n", [PresenceUpdate]),

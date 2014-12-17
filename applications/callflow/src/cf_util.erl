@@ -150,7 +150,7 @@ manual_presence_resp(Username, Realm, JObj) ->
         State ->
             PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
                               ,{<<"State">>, State}
-                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
+                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:hash(md5, PresenceId))}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
             whapps_util:amqp_pool_send(PresenceUpdate, fun wapi_presence:publish_update/1)

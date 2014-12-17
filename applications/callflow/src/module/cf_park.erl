@@ -33,7 +33,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
     ParkedCalls = get_parked_calls(AccountDb, AccountId),
     {State, ParkingId, ParkedURI2} = 
         case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
-            'undefined' -> {<<"terminated">>, wh_util:to_hex_binary(crypto:md5(PresenceId)), 'undefined'};
+            'undefined' -> {<<"terminated">>, wh_util:to_hex_binary(crypto:hash(md5, PresenceId)), 'undefined'};
             ParkedCallId ->
                 ParkedURI = wh_json:get_value([<<"slots">>, SlotNumber, <<"CID-URI">>], ParkedCalls),
                 case whapps_call_command:b_channel_status(ParkedCallId) of

@@ -834,7 +834,7 @@ generate_etag(Req0, Context0) ->
     case cb_context:resp_etag(Context1) of
         'automatic' ->
             {Content, _} = api_util:create_resp_content(Req1, Context1),
-            Tag = wh_util:to_hex_binary(crypto:md5(Content)),
+            Tag = wh_util:to_hex_binary(crypto:hash(md5, Content)),
             {list_to_binary([$", Tag, $"]), Req1, cb_context:set_resp_etag(Context1, Tag)};
         'undefined' ->
             {'undefined', Req1, cb_context:set_resp_etag(Context1, 'undefined')};
