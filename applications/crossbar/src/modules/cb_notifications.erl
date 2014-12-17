@@ -279,7 +279,7 @@ post(Context, Id, ?PREVIEW) ->
            ,{<<"Account-ID">>, cb_context:account_id(Context)}
            ,{<<"Account-DB">>, cb_context:account_db(Context)}
            ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-           ,{<<"Enabled">>, 'true'}
+           ,{<<"Preview">>, 'true'}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ]),
     {API, _} = lists:foldl(fun preview_fold/2

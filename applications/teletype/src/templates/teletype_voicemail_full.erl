@@ -221,26 +221,7 @@ build_voicemail_data(DataJObj) ->
 
 -spec is_notice_enabled_on_account(wh_json:object(), wh_json:object()) -> boolean().
 is_notice_enabled_on_account(AccountJObj, ApiJObj) ->
-    case {wh_json:get_value([<<"notifications">>
-                             ,<<"voicemail_full">>
-                             ,<<"enabled">>
-                            ], AccountJObj)
-          ,wh_json:is_true(<<"Enabled">>, ApiJObj, 'false')
-         }
-    of
-        {_Account, 'true'} ->
-            lager:debug("enabled via API message"),
-            'true';
-        {'undefined', 'false'} ->
-            lager:debug("account is mute, checking system config"),
-            is_notice_enabled_default();
-        {Value, 'false'} ->
-            wh_util:is_true(Value)
-    end.
-
--spec is_notice_enabled_default() -> boolean().
-is_notice_enabled_default() ->
-    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'false').
+    teletype_util:is_notice_enabled(AccountJObj, ApiJObj, <<"voicemail_full">>).
 
 -spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
 public_proplist(Key, JObj) ->

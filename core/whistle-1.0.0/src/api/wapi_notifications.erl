@@ -68,7 +68,7 @@
                                    ,<<"From">>, <<"Reply-To">>
                                    ,<<"Subject">>, <<"HTML">>, <<"Text">>
                                    ,<<"Account-ID">>, <<"Account-DB">>
-                                   ,<<"Enabled">>
+                                   ,<<"Preview">>
                                   ]).
 
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).

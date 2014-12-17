@@ -19,6 +19,7 @@
          ,find_account_rep_email/1
          ,find_account_admin_email/1
          ,find_account_id/1
+         ,is_notice_enabled/3
         ]).
 
 -include("teletype.hrl").
@@ -735,3 +736,26 @@ filter_for_admins(Users) ->
      || User <- Users,
         wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
     ].
+
+-define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
+
+-spec is_notice_enabled(wh_json:object(), wh_json:object(), ne_binary()) -> boolean().
+is_notice_enabled(AccountJObj, ApiJObj, NoticeKey) ->
+    case {wh_json:get_value([<<"notifications">>
+                             ,NoticeKey
+                             ,<<"enabled">>
+                            ], AccountJObj)
+          ,wh_json:is_true(<<"Preview">>, ApiJObj, 'false')
+         }
+    of
+        {_Account, 'true'} -> 'true';
+        {'undefined', 'false'} ->
+            lager:debug("account is mute, checking system config"),
+            is_notice_enabled_default(NoticeKey);
+        {Value, 'false'} ->
+            wh_util:is_true(Value)
+    end.
+
+-spec is_notice_enabled_default(ne_binary()) -> boolean().
+is_notice_enabled_default(Key) ->
+    whapps_config:get_is_true(?MOD_CONFIG_CAT(Key), <<"default_enabled">>, 'false').
