@@ -695,7 +695,7 @@ find_account_rep_email(_AccountId, ResellerId, View) ->
     end.
 
 -spec find_account_admin_email(api_binary()) -> api_binaries().
--spec find_account_admin_email(ne_binary(), wh_json:objects()) -> api_binaries().
+-spec find_account_admin_email(ne_binary(), api_binary()) -> api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
     find_account_admin_email(AccountId, wh_services:find_reseller_id(AccountId)).
