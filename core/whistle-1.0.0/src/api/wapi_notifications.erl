@@ -67,7 +67,8 @@
 -define(DEFAULT_OPTIONAL_HEADERS, [<<"To">>, <<"Cc">>, <<"Bcc">>
                                    ,<<"From">>, <<"Reply-To">>
                                    ,<<"Subject">>, <<"HTML">>, <<"Text">>
-                                   ,<<"Account-ID">>
+                                   ,<<"Account-ID">>, <<"Account-DB">>
+                                   ,<<"Enabled">>
                                   ]).
 
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
