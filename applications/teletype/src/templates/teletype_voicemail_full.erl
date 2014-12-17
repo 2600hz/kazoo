@@ -79,29 +79,48 @@ handle_full_voicemail(JObj, _Props) ->
     wh_util:put_callid(JObj),
 
     %% Gather data for template
-    DataJObj = wh_json:normalize(wh_api:remove_defaults(JObj)),
+    DataJObj = wh_json:normalize(JObj),
 
     AccountDb = wh_json:get_value(<<"account_db">>, DataJObj),
     AccountId = wh_util:format_account_id(AccountDb, 'raw'),
 
     {'ok', AccountJObj} = couch_mgr:open_cache_doc(AccountDb, AccountId),
 
-    case is_notice_enabled_on_account(AccountJObj) of
+    case is_notice_enabled_on_account(AccountJObj, JObj) of
         'false' -> lager:debug("notification not enabled for account ~s", [wh_util:format_account_id(AccountDb, 'raw')]);
         'true' ->
-            lager:debug("notification enabled for account"),
-            {'ok', VMBox} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"voicemail_box">>, DataJObj)),
+            lager:debug("notification enabled for account ~s (~s)", [AccountId, AccountDb]),
 
-            {'ok', UserJObj} = couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"owner_id">>, VMBox)),
+            VMBox = get_vm_box(AccountDb, DataJObj),
+            User = get_vm_box_owner(AccountDb, VMBox),
 
             process_req(
               wh_json:set_values([{<<"voicemail">>, VMBox}
-                                  ,{<<"owner">>, UserJObj}
+                                  ,{<<"owner">>, User}
                                   ,{<<"account">>, AccountJObj}
                                  ]
                                  ,DataJObj
                                 )
              )
+    end.
+
+-spec get_vm_box(ne_binary(), wh_json:object()) -> wh_json:object().
+get_vm_box(AccountDb, JObj) ->
+    VMBoxId = wh_json:get_value(<<"voicemail_box">>, JObj),
+    case couch_mgr:open_cache_doc(AccountDb, VMBoxId) of
+        {'ok', VMBox} -> VMBox;
+        {'error', _E} ->
+            lager:debug("failed to load vm box ~s from ~s", [VMBoxId, AccountDb]),
+            wh_json:new()
+    end.
+
+-spec get_vm_box_owner(ne_binary(), wh_json:object()) -> wh_json:object().
+get_vm_box_owner(AccountDb, VMBox) ->
+    case couch_mgr:open_cache_doc(AccountDb, wh_json:get_value(<<"owner_id">>, VMBox)) of
+        {'ok', UserJObj} -> UserJObj;
+        {'error', _E} ->
+            lager:debug("failed to lookup owner, assuming none"),
+            wh_json:new()
     end.
 
 -spec process_req(wh_json:object()) -> 'ok'.
@@ -157,9 +176,11 @@ build_template_data(DataJObj) ->
      ).
 
 -spec to_email_addresses(wh_json:object()) -> api_binaries().
+-spec to_email_addresses(wh_json:object(), api_binaries() | ne_binary()) -> api_binaries().
 to_email_addresses(DataJObj) ->
     to_email_addresses(DataJObj
-                       ,wh_json:get_first_defined([[<<"owner">>, <<"email">>]
+                       ,wh_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
+                                                   ,[<<"owner">>, <<"email">>]
                                                    ,[<<"owner">>, <<"username">>]
                                                   ]
                                                   ,DataJObj
@@ -195,23 +216,12 @@ build_voicemail_data(DataJObj) ->
        ,{<<"number">>, wh_json:get_value(<<"voicemail_number">>, DataJObj)}
        ,{<<"max_messages">>, wh_json:get_binary_value(<<"max_message_count">>, DataJObj)}
        ,{<<"message_count">>, wh_json:get_binary_value(<<"message_count">>, DataJObj)}
-       | public_proplist(<<"voicemail">>, DataJObj)
+       | props:delete(<<"pin">>, public_proplist(<<"voicemail">>, DataJObj))
       ]).
 
--spec is_notice_enabled_on_account(wh_json:object()) -> boolean().
-is_notice_enabled_on_account(JObj) ->
-    case  wh_json:get_value([<<"notifications">>
-                             ,<<"voicemail_full">>
-                             ,<<"enabled">>
-                            ], JObj)
-    of
-        'undefined' -> is_notice_enabled_default();
-        Value -> wh_util:is_true(Value)
-    end.
-
--spec is_notice_enabled_default() -> boolean().
-is_notice_enabled_default() ->
-    whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_enabled">>, 'false').
+-spec is_notice_enabled_on_account(wh_json:object(), wh_json:object()) -> boolean().
+is_notice_enabled_on_account(AccountJObj, ApiJObj) ->
+    teletype_util:is_notice_enabled(AccountJObj, ApiJObj, <<"voicemail_full">>).
 
 -spec public_proplist(wh_json:key(), wh_json:object()) -> wh_proplist().
 public_proplist(Key, JObj) ->

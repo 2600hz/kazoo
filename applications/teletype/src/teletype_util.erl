@@ -19,6 +19,7 @@
          ,find_account_rep_email/1
          ,find_account_admin_email/1
          ,find_account_id/1
+         ,is_notice_enabled/3
         ]).
 
 -include("teletype.hrl").
@@ -124,6 +125,7 @@ relay_encoded_email(To, From, Encoded) ->
     ReqId = get('callid'),
     Self = self(),
 
+    lager:debug("relaying from ~s to ~p", [From, To]),
     gen_smtp_client:send({From, To, Encoded}
                          ,smtp_options()
                          ,fun(X) ->
@@ -222,7 +224,7 @@ add_rendered_templates_to_email([{ContentType, Content}|Rs], Charset, Acc) ->
                 ,[]
                 ,iolist_to_binary(Content)
                },
-    lager:debug("adding template ~s (~s)", [ContentType, CTEncoding]),
+    lager:debug("adding template ~s (encoding ~s)", [ContentType, CTEncoding]),
     add_rendered_templates_to_email(Rs, Charset, [Template | Acc]).
 
 -spec service_content_type_params(wh_proplist()) -> wh_proplist().
@@ -635,7 +637,8 @@ send_update(DataJObj, Status, Message) ->
                 ,Message
                ).
 
-send_update('undefined', _, _, _) -> 'ok';
+send_update('undefined', _, _, _) ->
+    lager:debug("no response queue available, not publishing update");
 send_update(RespQ, MsgId, Status, Msg) ->
     Prop = props:filter_undefined(
              [{<<"Status">>, Status}
@@ -693,7 +696,7 @@ find_account_rep_email(_AccountId, ResellerId, View) ->
     end.
 
 -spec find_account_admin_email(api_binary()) -> api_binaries().
--spec find_account_admin_email(ne_binary(), wh_json:objects()) -> api_binaries().
+-spec find_account_admin_email(ne_binary(), api_binary()) -> api_binaries().
 find_account_admin_email('undefined') -> 'undefined';
 find_account_admin_email(AccountId) ->
     find_account_admin_email(AccountId, wh_services:find_reseller_id(AccountId)).
@@ -733,3 +736,26 @@ filter_for_admins(Users) ->
      || User <- Users,
         wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
     ].
+
+-define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
+
+-spec is_notice_enabled(wh_json:object(), wh_json:object(), ne_binary()) -> boolean().
+is_notice_enabled(AccountJObj, ApiJObj, NoticeKey) ->
+    case {wh_json:get_value([<<"notifications">>
+                             ,NoticeKey
+                             ,<<"enabled">>
+                            ], AccountJObj)
+          ,wh_json:is_true(<<"Preview">>, ApiJObj, 'false')
+         }
+    of
+        {_Account, 'true'} -> 'true';
+        {'undefined', 'false'} ->
+            lager:debug("account is mute, checking system config"),
+            is_notice_enabled_default(NoticeKey);
+        {Value, 'false'} ->
+            wh_util:is_true(Value)
+    end.
+
+-spec is_notice_enabled_default(ne_binary()) -> boolean().
+is_notice_enabled_default(Key) ->
+    whapps_config:get_is_true(?MOD_CONFIG_CAT(Key), <<"default_enabled">>, 'false').
