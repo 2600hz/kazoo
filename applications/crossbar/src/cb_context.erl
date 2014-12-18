@@ -45,6 +45,7 @@
          ,req_files/1, set_req_files/2
          ,req_nouns/1, set_req_nouns/2
          ,req_headers/1, set_req_headers/2
+         ,req_header/2
          ,query_string/1, set_query_string/2
          ,client_ip/1
          ,doc/1, set_doc/2
@@ -84,16 +85,19 @@
 -include("./crossbar.hrl").
 
 -type context() :: #cb_context{}.
+-type setter_fun_1() :: fun((context()) -> context()).
 -type setter_fun_2() :: fun((context(), term()) -> context()).
 -type setter_fun_3() :: fun((context(), term(), term()) -> context()).
--type setter_fun() :: setter_fun_2() | setter_fun_3().
+-type setter_fun() :: setter_fun_1() | setter_fun_2() | setter_fun_3().
 -export_type([context/0
               ,setter_fun/0
+              ,setter_fun_1/0
               ,setter_fun_2/0
               ,setter_fun_3/0
              ]).
 
--type setter_kv() :: {setter_fun_2(), term()} |
+-type setter_kv() :: setter_fun_1() |
+                     {setter_fun_2(), term()} |
                      {setter_fun_3(), term(), term()}.
 -type setters() :: [setter_kv(),...] | [].
 
@@ -153,6 +157,7 @@ req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
 req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
 req_headers(#cb_context{req_headers=Hs}) -> Hs.
+req_header(#cb_context{req_headers=Hs}, K) -> props:get_value(K, Hs).
 query_string(#cb_context{query_json=Q}) -> Q.
 client_ip(#cb_context{client_ip=IP}) -> IP.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
@@ -197,7 +202,8 @@ setters(#cb_context{}=Context, [_|_]=Setters) ->
 
 -spec setters_fold(setter_kv(), context()) -> context().
 setters_fold({F, V}, C) -> F(C, V);
-setters_fold({F, K, V}, C) -> F(C, K, V).
+setters_fold({F, K, V}, C) -> F(C, K, V);
+setters_fold(F, C) when is_function(F, 1) -> F(C).
 
 -spec set_account_id(context(), ne_binary()) -> context().
 -spec set_account_db(context(), ne_binary()) -> context().
