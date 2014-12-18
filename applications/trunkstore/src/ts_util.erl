@@ -20,6 +20,7 @@
 
 -export([get_call_duration/1
          ,lookup_user_flags/3
+         ,lookup_user_flags/4
          ,lookup_did/2
         ]).
 -export([invite_format/2]).
@@ -140,6 +141,35 @@ lookup_did(DID, AccountId) ->
                                {'ok', wh_json:object()} |
                                {'error', atom()}.
 lookup_user_flags(Name, Realm, AccountId) ->
+    lookup_user_flags(Name, Realm, AccountId, 'undefined').
+
+-spec lookup_user_flags(ne_binary(), ne_binary(), ne_binary(), api_binary()) ->
+                               {'ok', wh_json:object()} |
+                               {'error', atom()}.
+lookup_user_flags('undefined', _, _, 'undefined') ->
+    {'error', 'insufficient_info'};
+lookup_user_flags('undefined', _, AccountId, DID) ->
+    case lookup_did(DID, AccountId) of
+        {'error', _}=E -> E;
+        {'ok', JObj} ->
+            DIDs = wh_json:from_list([{DID, wh_json:get_value(<<"DID_Opts">>, JObj, wh_json:new())}]),
+            Server = wh_json:from_list(
+                       [{<<"DIDs">>, DIDs}
+                       ,{<<"options">>, wh_json:get_value(<<"server">>, JObj, wh_json:new())}
+                       ,{<<"permissions">>, wh_json:new()}
+                       ,{<<"monitor">>, wh_json:from_list([{<<"monitor_enabled">>, 'false'}])}
+                       ,{<<"auth">>, wh_json:get_value(<<"auth">>, JObj, wh_json:new())}
+                       ,{<<"server_name">>, <<>>}
+                       ,{<<"server_type">>, <<>>}
+                       ]),
+            {'ok', wh_json:from_list(
+                     [{<<"server">>, Server}
+                     ,{<<"account">>, wh_json:get_value(<<"account">>, JObj, wh_json:new())}
+                     ,{<<"call_restriction">>, wh_json:new()}
+                     ])
+            }
+    end;
+lookup_user_flags(Name, Realm, AccountId, _) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case wh_cache:fetch_local(?TRUNKSTORE_CACHE
                               ,{'lookup_user_flags', Realm, Name, AccountId}
@@ -159,7 +189,7 @@ lookup_user_flags(Name, Realm, AccountId) ->
                     E;
                 {'ok', []} ->
                     lager:info("cache miss for ~s@~s, no results", [Name, Realm]),
-					{'ok', wh_json:new()};
+                                        {'ok', wh_json:new()};
                 {'ok', [User|_]} ->
                     lager:info("cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
                     ValJObj = wh_json:get_value(<<"value">>, User),
