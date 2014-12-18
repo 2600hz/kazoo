@@ -483,13 +483,17 @@ read_system(Context, Id) ->
 -spec read_account(cb_context:context(), ne_binary(), load_from()) -> cb_context:context().
 read_account(Context, Id, LoadFrom) ->
     Context1 = crossbar_doc:load(Id, Context),
-    case cb_context:resp_error_code(Context1) of
-        404 when LoadFrom =:= 'system' -> read_system(Context, Id);
-        200 ->
+    case {cb_context:resp_error_code(Context1)
+          ,cb_context:resp_status(Context1)
+         }
+    of
+        {404, 'error'} when LoadFrom =:= 'system' -> read_system(Context, Id);
+        {_Code, 'success'} ->
+            lager:debug("loaded from account"),
             cb_context:set_resp_data(Context1
                                      ,note_account_override(cb_context:resp_data(Context1))
                                     );
-        _Code -> Context1
+        {_Code, _Status} -> Context1
     end.
 
 -spec note_account_override(wh_json:object()) -> wh_json:object().
