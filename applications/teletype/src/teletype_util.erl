@@ -376,7 +376,8 @@ init_template(Id, Macros, Text, HTML) ->
 
     lager:debug("looking for ~s", [DocId]),
     case couch_mgr:open_doc(MasterAccountDb, DocId) of
-        {'ok', TemplateJObj} -> update_template(TemplateJObj, Macros, Attachments);
+        {'ok', TemplateJObj} ->
+            maybe_update_template(TemplateJObj, Macros, Attachments);
         {'error', 'not_found'} -> create_template(MasterAccountDb, DocId, Macros, Attachments);
         {'error', _E} -> lager:warning("failed to find template ~s", [DocId])
     end.
@@ -435,6 +436,16 @@ does_attachment_exist(MasterAccountDb, DocId, AName) ->
 -spec does_attachment_exist(wh_json:object(), ne_binary()) -> boolean().
 does_attachment_exist(JObj, AName) ->
     wh_doc:attachment(JObj, cow_qs:urldecode(AName)) =/= 'undefined'.
+
+-spec maybe_update_template(wh_json:object(), wh_json:object(), wh_proplist()) ->
+                                   'ok' | couch_mgr:couchbeam_error().
+maybe_update_template(TemplateJObj, Macros, Attachments) ->
+    case wh_json:is_true(<<"pvt_deleted">>, TemplateJObj) of
+        'true' ->
+            lager:debug("template is soft-deleted");
+        'false' ->
+            update_template(TemplateJObj, Macros, Attachments)
+    end.
 
 -spec update_template(wh_json:object(), wh_json:object(), wh_proplist()) ->
                              'ok' | couch_mgr:couchbeam_error().
