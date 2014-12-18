@@ -192,15 +192,19 @@ find_channels(DeviceIds) ->
            ,{<<"Active-Only">>, 'true'}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_request(Req
+    case whapps_util:amqp_pool_collect(Req
                                        ,fun wapi_call:publish_query_user_channels_req/1
-                                       ,fun wapi_call:query_user_channels_resp_v/1
+                                       ,{'ecallmgr', 'true'}
                                       )
     of
-        {'ok', Resp} -> wh_json:get_value(<<"Channels">>, Resp, []);
         {'error', _E} ->
             lager:debug("failed to get channels: ~p", [_E]),
-            []
+            [];
+        {_, JObjs} ->
+            lists:foldl(fun(JObj, Channels) ->
+                                wh_json:get_value(<<"Channels">>, JObj, [])
+                                    ++ Channels
+                        end, [], JObjs)
     end.
 
 -spec find_sip_endpoints(wh_json:object(), whapps_call:call()) ->
