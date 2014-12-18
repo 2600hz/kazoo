@@ -129,7 +129,7 @@ attended_wait(?EVENT(Transferee, EventName, _Evt)
              )
   when EventName =:= <<"CHANNEL_DESTROY">>
        orelse EventName =:= <<"LEG_DESTROYED">> ->
-    lager:info("transferee ~s hungup before target could be reached"),
+    lager:info("transferee ~s hungup before target could be reached", [Transferee]),
     lager:info("transferor and target are on their own"),
     {'stop', 'normal', State};
 attended_wait(?EVENT(Transferor, EventName, _Evt)
@@ -275,9 +275,9 @@ attended_wait(?EVENT(Target, EventName, _Evt)
     lager:info("target ~s hungup, still have b-leg ~s (~p)", [Target, B, Bs]),
     TargetCall1 = whapps_call:set_call_id(B, TargetCall),
     connect_transferor_to_target(Transferor, TargetCall1),
-    lager:debug("connecting transferor ~s to target ~s", [Transferor, B]),
+    lager:debug("connecting transferor ~s to new target ~s", [Transferor, B]),
     {'next_state', 'attended_wait', State#state{target=B
-                                                ,target_b_legs=delete_all(Target, Bs)
+                                                ,target_b_legs=delete_all(B, delete_all(Target, Bs))
                                                 ,target_call=TargetCall1
                                                }};
 attended_wait(?EVENT(CallId, EventName, _Evt)
@@ -298,13 +298,6 @@ attended_wait(?EVENT(CallId, EventName, _Evt)
        orelse EventName =:= <<"LEG_DESTROYED">> ->
     lager:debug("leg ~s down, bs: ~p", [CallId, Bs]),
     {'next_state', 'attended_wait', State#state{target_b_legs=delete_all(CallId, Bs)}};
-attended_wait(?EVENT(CallId, EventName, _Evt)
-              ,#state{target_b_legs=[CallId|Bs]}=State
-             )
-  when EventName =:= <<"CHANNEL_DESTROY">>
-       orelse EventName =:= <<"LEG_DESTROYED">> ->
-    lager:info("target b-leg ~s finished", [CallId]),
-    {'next_state', 'attended_wait', State#state{target_b_legs=Bs}};
 attended_wait(?EVENT(CallId, <<"CHANNEL_BRIDGE">>, _Evt)
               ,#state{target_b_legs=Bs}=State
              ) ->
@@ -329,7 +322,7 @@ attended_wait(?EVENT(CallId, <<"CHANNEL_ANSWER">>, Evt)
     case lists:member(CallId, Bs) of
         'true' when OtherLeg =:= Target ->
             lager:debug("b leg ~s answered, bridged to target ~s", [CallId, Target]),
-            {'next_state', 'attended_wait', State#state{target=CallId}};
+            {'next_state', 'attended_wait', State};
         'true' when OtherLeg =/= 'undefined' ->
             lager:debug("b leg ~s answered (bridged to ~s)", [CallId, OtherLeg]),
             bind_target_call_events(OtherLeg),
