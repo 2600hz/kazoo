@@ -367,10 +367,21 @@ delete_doc(Context, _Id) ->
 
 -spec maybe_delete_template(cb_context:context(), ne_binary(), ne_binary()) ->
                                    cb_context:context().
+-spec maybe_delete_template(cb_context:context(), ne_binary(), ne_binary(), wh_json:object()) ->
+                                   cb_context:context().
 maybe_delete_template(Context, Id, ContentType) ->
+    maybe_delete_template(Context, Id, ContentType, cb_context:doc(Context)).
+
+maybe_delete_template(Context, Id, ContentType, TemplateJObj) ->
     AttachmentName = attachment_name_by_media_type(ContentType),
-    lager:debug("attempting to delete attachment ~s", [AttachmentName]),
-    crossbar_doc:delete_attachment(db_id(Id), AttachmentName, Context).
+    case wh_doc:attachment(TemplateJObj, AttachmentName) of
+        'undefined' ->
+            lager:debug("failed to find attachment ~s", [AttachmentName]),
+            cb_context:add_system_error('bad_identifier', [{'details', ContentType}],  Context);
+        _Attachment ->
+            lager:debug("attempting to delete attachment ~s", [AttachmentName]),
+            crossbar_doc:delete_attachment(db_id(Id), AttachmentName, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
