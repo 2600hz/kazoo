@@ -721,7 +721,7 @@ get_db(#server{}=Conn, DbName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_add_rev(couchbeam_db(), ne_binary(), wh_proplist()) -> wh_proplist().
-maybe_add_rev(Db, DocId, Options) ->
+maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
     case props:get_value('rev', Options) =:= 'undefined'
         andalso do_fetch_rev(Db, DocId)
     of
@@ -732,7 +732,7 @@ maybe_add_rev(Db, DocId, Options) ->
             lager:debug("rev is in options list: ~p", [Options]),
             Options;
         {'error', 'not_found'} ->
-            lager:debug("failed to find rev of ~s in ~p", [DocId, Db]),
+            lager:debug("failed to find rev of ~s in ~p, not_found in db", [DocId, _Name]),
             Options;
         {'error', 'empty_doc_id'} ->
             lager:debug("failed to find doc id ~p", [DocId]),
@@ -862,6 +862,8 @@ publish_doc(#db{name=DbName}, Doc, JObj) ->
 publish(Action, Db, Doc) ->
     Type = doc_type(Doc),
     Id = doc_id(Doc),
+
+    lager:debug("publish ~s ~s ~s ~s", [Action, Db, Type, Id]),
 
     Props =
         [{<<"ID">>, Id}
