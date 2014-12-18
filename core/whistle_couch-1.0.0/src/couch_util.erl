@@ -863,8 +863,6 @@ publish(Action, Db, Doc) ->
     Type = doc_type(Doc),
     Id = doc_id(Doc),
 
-    lager:debug("publish ~s ~s ~s ~s", [Action, Db, Type, Id]),
-
     Props =
         [{<<"ID">>, Id}
          ,{<<"Type">>, Type}
