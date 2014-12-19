@@ -152,7 +152,6 @@ dial_me(Call, Attrs, DialMe) ->
 
     OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
                    ,{<<"Media">>, media_processing(Call1)}
-                   ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"park_after_bridge">>, 'true'}])}
                    ,{<<"Force-Outbound">>, force_outbound(Props)}
                    ,{<<"Server-ID">>, whapps_call:controller_queue(Call1)}
                   ],

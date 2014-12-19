@@ -418,8 +418,7 @@ process_offnet_event(#dial_req{call=Call
         {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, CallId} ->
             case wh_json:get_value(<<"Other-Leg-Call-ID">>, JObj) of
                 CallBLeg ->
-                    HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
-                    lager:info("a-leg (~s) has unbridged from ~s(~s), continuing the call", [CallId, CallBLeg, HangupCause]);
+                    handle_hangup(Call, JObj);
                 _O ->
                     lager:info("unknown b-leg (~s) unbridged (waiting on ~s)", [_O, CallBLeg])
             end,
@@ -428,37 +427,27 @@ process_offnet_event(#dial_req{call=Call
         {{<<"call_event">>, <<"CHANNEL_EXECUTE">>}, CallId} ->
             wait_for_offnet_events(update_offnet_timers(OffnetReq));
 
-        {{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}, CallId} ->
-            case wh_json:get_value(<<"Application-Name">>, JObj) of
-                <<"bridge">> ->
-                    HangupCause = wh_json:get_value(<<"Application-Response">>, JObj),
-                    lager:debug("bridge completed: ~s", [HangupCause]),
-
-                    Updates = [{fun kzt_util:update_call_status/2, call_status(HangupCause)}
-                               ,{fun kzt_util:set_dial_call_status/2, dial_status(Call)}
-                              ],
-                    {'ok', whapps_call:exec(Updates, Call)};
-                _ -> wait_for_offnet_events(update_offnet_timers(OffnetReq))
-            end;
-
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
-            lager:debug("caller channel finished: ~s", [HangupCause]),
-
-            Updates = [{fun kzt_util:update_call_status/2, call_status(HangupCause)}
-                       ,{fun kzt_util:set_dial_call_status/2, dial_status(Call)}
-                      ],
-
-            {'ok', whapps_call:exec(Updates, Call)};
+            handle_hangup(Call, JObj);
         {{<<"call_event">>, <<"CHANNEL_PARK">>}, CallId} ->
             lager:debug("channel ~s has parked, probably means none of the bridge strings succeeded", [CallId]),
             {'ok', Call};
         {{_Cat, _Name}, _CallId} ->
-            lager:debug("unhandled event for ~s: ~s: ~s: ~s"
-                        ,[_CallId, _Cat, _Name, wh_json:get_value(<<"Application-Name">>, JObj)]
-                       ),
             wait_for_offnet_events(update_offnet_timers(OffnetReq))
     end.
+
+-spec handle_hangup(whapps_call:call(), wh_json:object()) -> {'ok', whapps_call:call()}.
+handle_hangup(Call, JObj) ->
+    HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj),
+    lager:debug("caller channel finished: ~s", [HangupCause]),
+
+    Updates = [{fun kzt_util:update_call_status/2, call_status(HangupCause)}
+               ,{fun kzt_util:set_dial_call_status/2, dial_status(Call)}
+              ],
+
+    whapps_call_command:hangup('true', Call),
+
+    {'ok', whapps_call:exec(Updates, Call)}.
 
 -spec dial_status(whapps_call:call() | ne_binary()) -> ne_binary().
 dial_status(?STATUS_ANSWERED) -> ?STATUS_COMPLETED;
