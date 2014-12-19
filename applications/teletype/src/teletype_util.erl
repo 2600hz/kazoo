@@ -20,6 +20,9 @@
          ,find_account_admin_email/1
          ,find_account_id/1
          ,is_notice_enabled/3
+
+         ,default_from_address/1
+         ,default_reply_to/1
         ]).
 
 -include("teletype.hrl").
@@ -327,17 +330,31 @@ default_support_email(JObj, ConfigCat) ->
                           ,<<"support_email">>, <<"default_support_email">>, <<"support@2600hz.com">>
                          ).
 
+-spec default_from_address(ne_binary()) -> ne_binary().
 -spec default_from_address(wh_json:object(), ne_binary()) -> ne_binary().
+default_from_address(ConfigCat) ->
+    default_from_address(wh_json:new(), ConfigCat).
 default_from_address(JObj, ConfigCat) ->
     default_service_value(JObj, ConfigCat
                           ,<<"send_from">>, <<"default_from">>
                           ,list_to_binary([<<"no_reply@">>, net_adm:localhost()])
                          ).
 
+-spec default_reply_to(ne_binary()) -> api_binary().
+-spec default_reply_to(wh_json:object(), ne_binary()) -> api_binary().
+default_reply_to(ConfigCat) ->
+    default_reply_to(wh_json:new(), ConfigCat).
+default_reply_to(JObj, ConfigCat) ->
+    default_service_value(JObj, ConfigCat
+                          ,<<"reply_to">>, <<"default_reply_to">>
+                          ,'undefined'
+                         ).
+
 -spec default_charset(wh_json:object(), ne_binary()) -> binary().
 default_charset(JObj, ConfigCat) ->
     default_service_value(JObj, ConfigCat
-                          ,<<"template_charset">>, <<"default_template_charset">>, <<>>
+                          ,<<"template_charset">>, <<"default_template_charset">>
+                          ,<<>>
                          ).
 
 -spec default_service_value(wh_json:object(), ne_binary(), wh_json:key(), wh_json:key(), wh_json:json_term()) ->
@@ -480,6 +497,9 @@ update_template_cc(CC, Acc) ->
 update_template_bcc(Bcc, Acc) ->
     update_template_field(Bcc, Acc, fun kz_notification:bcc/1, fun kz_notification:set_bcc/2).
 
+-spec update_template_field(api_object() | ne_binary(), update_template_acc(), fun(), fun()) ->
+                                   update_template_acc().
+update_template_field('undefined', Acc, _GetFun, _SetFun) -> Acc;
 update_template_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
     case GetFun(TemplateJObj) of
         'undefined' -> {'true', SetFun(TemplateJObj, Value)};
