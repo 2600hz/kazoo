@@ -733,8 +733,8 @@ start_call_recording(RecordCall, Call) ->
       ,[{'expires', 60}]
      ),
     Data = wh_json:set_value(<<"spawned">>, 'true', RecordCall),
-    _ = spawn('cf_record_call', 'handle', [Data, Call]),
-    'ok'.
+    _P = spawn('cf_record_call', 'handle', [Data, Call]),
+    lager:debug("spawned record_call handler in ~p", [_P]).
 
 -spec create_sip_endpoint(wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                  wh_json:object().
