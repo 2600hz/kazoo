@@ -126,12 +126,9 @@ maybe_authorize(Context) ->
 -spec is_auth_required(cb_context:context()) -> boolean().
 is_auth_required(Context) ->
     Nouns = cb_context:req_nouns(Context),
-    AccountDB = cb_context:account_db(Context),
     [C2CID, _] = props:get_value(<<"clicktocall">>, Nouns),
-    case couch_mgr:open_cache_doc(AccountDB, C2CID) of
-        {'ok', JObj} -> wh_json:is_true(<<"auth_required">>, JObj, 'true');
-        _ -> 'true'
-    end.
+    JObj = cb_context:doc(crossbar_doc:load(C2CID, Context)),
+    wh_json:is_true(<<"auth_required">>, JObj, 'true').
 
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
 is_c2c_url(Context, ?CONNECT_C2C_URL) ->
