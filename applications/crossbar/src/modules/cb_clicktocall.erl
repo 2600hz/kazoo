@@ -107,30 +107,30 @@ authorize(Context) ->
 
 -spec maybe_authenticate(cb_context:context()) -> boolean().
 maybe_authenticate(Context) ->
-    case auth_require(Context) of
+    case is_auth_required(Context) of
         'true' -> 'false';
-        _ ->
+        'false' ->
             lager:debug("authenticating request"),
             'true'
     end.
 
 -spec maybe_authorize(cb_context:context()) -> boolean().
 maybe_authorize(Context) ->
-    case auth_require(Context) of
+    case is_auth_required(Context) of
         'true' -> 'false';
-        _ ->
+        'false' ->
             lager:debug("authorizing request"),
             'true'
     end.
 
--spec auth_require(cb_context:context()) -> boolean().
-auth_require(Context) ->
+-spec is_auth_required(cb_context:context()) -> boolean().
+is_auth_required(Context) ->
     Nouns = cb_context:req_nouns(Context),
     AccountDB = cb_context:account_db(Context),
     [C2CID, _] = props:get_value(<<"clicktocall">>, Nouns),
     case couch_mgr:open_cache_doc(AccountDB, C2CID) of
         {'ok', JObj} -> wh_json:is_true(<<"auth_required">>, JObj, 'true');
-        _ -> true
+        _ -> 'true'
     end.
 
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
