@@ -94,24 +94,46 @@ resource_exists(_, ?HISTORY) ->
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
     case is_c2c_url(Context, cb_context:req_nouns(Context)) of
-        'true' ->
-            lager:debug("authenticating request"),
-            'true';
+        'true' -> maybe_authenticate(Context);
         'false' -> 'false'
     end.
 
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
     case is_c2c_url(Context, cb_context:req_nouns(Context)) of
-        'true' ->
-            lager:debug("authorizing request"),
-            'true';
+        'true' -> maybe_authorize(Context);
         'false' -> 'false'
     end.
 
+-spec maybe_authenticate(cb_context:context()) -> boolean().
+maybe_authenticate(Context) ->
+    case is_auth_required(Context) of
+        'true' -> 'false';
+        'false' ->
+            lager:debug("authenticating request"),
+            'true'
+    end.
+
+-spec maybe_authorize(cb_context:context()) -> boolean().
+maybe_authorize(Context) ->
+    case is_auth_required(Context) of
+        'true' -> 'false';
+        'false' ->
+            lager:debug("authorizing request"),
+            'true'
+    end.
+
+-spec is_auth_required(cb_context:context()) -> boolean().
+is_auth_required(Context) ->
+    Nouns = cb_context:req_nouns(Context),
+    [C2CID, _] = props:get_value(<<"clicktocall">>, Nouns),
+    JObj = cb_context:doc(crossbar_doc:load(C2CID, Context)),
+    wh_json:is_true(<<"auth_required">>, JObj, 'true').
+
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
 is_c2c_url(Context, ?CONNECT_C2C_URL) ->
-    cb_context:req_verb(Context) =:= ?HTTP_POST;
+    Verb = cb_context:req_verb(Context),
+    (Verb =:= ?HTTP_GET) orelse (Verb =:= ?HTTP_POST);
 is_c2c_url(_Context, _Nouns) -> 'false'.
 
 %%--------------------------------------------------------------------
