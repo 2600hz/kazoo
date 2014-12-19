@@ -395,7 +395,7 @@ init_template(Id, Params) ->
     end.
 
 -spec create_template(ne_binary(), ne_binary(), init_params()) ->
-                             'ok' |
+                             {'ok', wh_json:object()} |
                              couch_mgr:couchbeam_error().
 create_template(MasterAccountDb, DocId, Params) ->
     {'ok', MasterAccountId} = whapps_util:get_master_account_id(),
@@ -408,18 +408,26 @@ create_template(MasterAccountDb, DocId, Params) ->
             ,{'account_id', MasterAccountId}
             ,{'type', ?PVT_TYPE}
            ]),
-    update_template(MasterAccountDb, TemplateJObj, Params).
 
--spec maybe_update_template(ne_binary(), wh_json:object(), init_params()) ->
-                                   'ok' | {'error', _}.
+    {'ok', UpdatedTemplateJObj} = save_template(MasterAccountDb, TemplateJObj),
+    case update_template(MasterAccountDb, UpdatedTemplateJObj, Params) of
+        {'ok', _} -> lager:debug("template created");
+        {'error', _E} -> lager:debug("failed template update: ~p", [_E])
+    end.
+
+-spec maybe_update_template(ne_binary(), wh_json:object(), init_params()) -> 'ok'.
 maybe_update_template(MasterAccountDb, TemplateJObj, Params) ->
     case wh_json:is_true(<<"pvt_deleted">>, TemplateJObj) of
         'true' -> lager:debug("template is currently soft-deleted");
-        'false' -> update_template(MasterAccountDb, TemplateJObj, Params)
+        'false' ->
+            case update_template(MasterAccountDb, TemplateJObj, Params) of
+                {'ok', _} -> lager:debug("template updated");
+                {'error', _E} -> lager:debug("failed to update template: ~p", [_E])
+            end
     end.
 
 -spec update_template(ne_binary(), wh_json:object(), init_params()) ->
-                             'ok' | {'error', _}.
+                             {'ok', wh_json:object()} | {'error', _}.
 update_template(MasterAccountDb, TemplateJObj, Params) ->
     case update_template_from_params(MasterAccountDb, TemplateJObj, Params) of
         {'false', _} -> lager:debug("no updates to template");
@@ -429,13 +437,16 @@ update_template(MasterAccountDb, TemplateJObj, Params) ->
     end.
 
 -spec save_template(ne_binary(), wh_json:object()) ->
-                           'ok' | {'error', _}.
+                           {'ok', wh_json:object()} |
+                           {'error', _}.
 save_template(MasterAccountDb, TemplateJObj) ->
-    case couch_mgr:save_doc(MasterAccountDb, TemplateJObj) of
-        {'ok', _JObj} ->
-            lager:debug("saved updated template");
+    SaveJObj = wh_doc:update_pvt_parameters(TemplateJObj, MasterAccountDb),
+    case couch_mgr:save_doc(MasterAccountDb, SaveJObj) of
+        {'ok', _JObj}=OK ->
+            lager:debug("saved updated template to ~s", [MasterAccountDb]),
+            OK;
         {'error', _E}=E ->
-            lager:debug("failed to save template: ~p", [_E]),
+            lager:debug("failed to save template to ~s: ~p", [MasterAccountDb, _E]),
             E
     end.
 
@@ -528,7 +539,8 @@ update_template_text_attachment(Text, Acc, MasterAccountDb) ->
                                              update_template_acc().
 update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, MasterAccountDb, ContentType) ->
     AttachmentName = template_attachment_name(ContentType),
-    Id = wh_json:get_value(<<"_id">>, TemplateJObj),
+    Id = wh_json:get_first_defined([<<"_id">>, <<"id">>], TemplateJObj),
+    lager:debug("id ~s for ~p", [Id, TemplateJObj]),
     case does_attachment_exist(MasterAccountDb, Id, AttachmentName) of
         'true' -> Acc;
         'false' -> update_template_attachment(Contents, Acc, MasterAccountDb, ContentType, Id, AttachmentName)
@@ -536,10 +548,17 @@ update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, MasterAccou
 
 -spec update_template_attachment(binary(), update_template_acc(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
                                         update_template_acc().
-update_template_attachment(Contents, Acc, MasterAccountDb, ContentType, Id, AName) ->
+update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc
+                           ,MasterAccountDb, ContentType, Id, AName
+                          ) ->
     lager:debug("attachment ~s doesn't exist for ~s", [AName, Id]),
     case save_attachment(MasterAccountDb, Id, AName, ContentType, Contents) of
-        {'ok', UpdatedTemplateJObj} -> {'true', UpdatedTemplateJObj};
+        {'ok', AttachmentJObj} -> {'true'
+                                   ,wh_json:set_value(<<"_rev">>
+                                                      ,wh_json:get_value(<<"rev">>, AttachmentJObj)
+                                                      ,TemplateJObj
+                                                     )
+                                  };
         {'error', _E} -> Acc
     end.
 
