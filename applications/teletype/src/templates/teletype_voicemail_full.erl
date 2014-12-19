@@ -68,10 +68,26 @@
 -define(TEMPLATE_HTML, <<"<html><body><h3>Your voicemail box '{{voicemail.name}}' is full.</h3></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Voicemail box {{voicemail.name}} is full">>).
 
+-define(TEMPLATE_TO, wh_json:new()).
+-define(TEMPLATE_FROM, <<>>).
+-define(TEMPLATE_CC, wh_json:new()).
+-define(TEMPLATE_BCC, wh_json:new()).
+-define(TEMPLATE_REPLY_TO, <<>>).
+
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML).
+
+    teletype_util:init_template(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+                                               ,{'text', ?TEMPLATE_TEXT}
+                                               ,{'html', ?TEMPLATE_HTML}
+                                               ,{'subject', ?TEMPLATE_SUBJECT}
+                                               ,{'to', ?TEMPLATE_TO}
+                                               ,{'from', ?TEMPLATE_FROM}
+                                               ,{'cc', ?TEMPLATE_CC}
+                                               ,{'bcc', ?TEMPLATE_BCC}
+                                               ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                              ]).
 
 -spec handle_full_voicemail(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_full_voicemail(JObj, _Props) ->
