@@ -44,12 +44,11 @@
                                    ,[<<"voicemail">>, <<"max_box_number_length">>]
                                    ,15
                                   )).
--define(MAILBOX_DEFAULT_EXTERNAL_STORAGE
+-define(MAILBOX_DEFAULT_STORAGE
         ,whapps_config:get_binary(?CF_CONFIG_CAT
                                   ,[<<"voicemail">>, <<"external_storage">>]
                                   ,'undefined'
                                  )).
-
 -define(DEFAULT_VM_EXTENSION
         ,whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
        ).
@@ -996,7 +995,7 @@ collect_pin(Interdigit, Call, NoopId) ->
 new_message(AttachmentName, Length, Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     MediaId = message_media_doc(whapps_call:account_db(Call), Box, AttachmentName),
-    case store_recording(AttachmentName, MediaId, Call, Box, get_storage_type()) of
+    case store_recording(AttachmentName, MediaId, Call, Box, ?MAILBOX_DEFAULT_STORAGE) of
         'true' -> update_mailbox(Box, Call, MediaId, Length);
         'false' ->
             lager:warning("failed to store media: ~p", [MediaId]),
@@ -1104,6 +1103,10 @@ maybe_save_meta(Length, #mailbox{delete_after_notify='true'}=Box, Call, MediaId,
 
 -spec save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary()) -> 'ok'.
 save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
+    ExternalMediaUrl = case couch_mgr:open_doc(whapps_call:account_db(Call), MediaId) of
+                           {'ok', JObj} -> wh_json:get_value(<<"external_media_url">>, JObj);
+                           {'error', _} -> 'undefined'
+                       end,
     Metadata = wh_json:from_list(
                  [{<<"timestamp">>, new_timestamp()}
                   ,{<<"from">>, whapps_call:from(Call)}
@@ -1114,6 +1117,7 @@ save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
                   ,{<<"folder">>, ?FOLDER_NEW}
                   ,{<<"length">>, Length}
                   ,{<<"media_id">>, MediaId}
+                  ,{<<"external_media_url">>, ExternalMediaUrl}
                  ]),
     {'ok', _BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
     lager:debug("stored voicemail metadata for ~s", [MediaId]).
@@ -1523,11 +1527,11 @@ store_recording(AttachmentName, DocId, Call) ->
         _Else -> 'false'
     end.
 
-store_recording(AttachmentName, DocId, Call, _OwnerId, 'internal') ->
+store_recording(AttachmentName, DocId, Call, _Box, 'undefined') ->
     store_recording(AttachmentName, DocId, Call);
 
-store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, 'external') ->
-    Url = get_media_url(AttachmentName, DocId, Call, OwnerId),
+store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, StorageUrl) ->
+    Url = get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl),
     lager:debug("storing recording ~s at ~s", [AttachmentName, Url]),
 
     whapps_call_command:b_store(AttachmentName
@@ -1540,19 +1544,11 @@ store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, 'extern
         {'error', _} -> 'false'
     end.
 
--spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), ne_binary()) -> ne_binary().
-get_media_url(AttachmentName, DocId, Call, OwnerId) ->
+-spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), ne_binary(), ne_binary()) -> ne_binary().
+get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl) ->
     AccountId = whapps_call:account_id(Call),
-    StorageUrl = ?MAILBOX_DEFAULT_EXTERNAL_STORAGE,
     <<StorageUrl/binary, "/", AccountId/binary, "/", OwnerId/binary, "/"
       ,DocId/binary, "/", AttachmentName/binary>>.
-
--spec get_storage_type() -> 'internal' | 'external'.
-get_storage_type() ->
-    case ?MAILBOX_DEFAULT_EXTERNAL_STORAGE of
-        'undefined' -> 'internal';
-        _Else -> 'external'
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1675,9 +1671,13 @@ get_messages(#mailbox{mailbox_id=Id}, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_message(wh_json:object(), whapps_call:call()) -> ne_binary().
-get_message(Message, Call) ->
-    MediaId = wh_json:get_value(<<"media_id">>, Message),
-    list_to_binary(["/", whapps_call:account_db(Call), "/", MediaId]).
+get_message(Message, Call) ->    
+    case wh_json:get_value(<<"external_media_url">>, Message) of
+        'undefined' -> 
+            MediaId = wh_json:get_value(<<"media_id">>, Message),
+            list_to_binary(["/", whapps_call:account_db(Call), "/", MediaId]);
+        ExternalMediaUrl -> ExternalMediaUrl
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
