@@ -24,7 +24,7 @@
                       {'cc', wh_json:object()} |
                       {'bcc', wh_json:object()} |
                       {'from', ne_binary()} |
-                      {'reply_to', ne_binary()}.
+                      {'reply_to', api_binary()}.
 -type init_params() :: [init_param(),...].
 
 -define(TEXT_PLAIN, <<"text/plain">>).
