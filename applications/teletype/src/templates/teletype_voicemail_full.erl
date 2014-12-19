@@ -68,11 +68,11 @@
 -define(TEMPLATE_HTML, <<"<html><body><h3>Your voicemail box '{{voicemail.name}}' is full.</h3></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Voicemail box {{voicemail.name}} is full">>).
 
--define(TEMPLATE_TO, wh_json:new()).
--define(TEMPLATE_FROM, <<>>).
--define(TEMPLATE_CC, wh_json:new()).
--define(TEMPLATE_BCC, wh_json:new()).
--define(TEMPLATE_REPLY_TO, <<>>).
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>, [])).
+-define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_CC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
+-define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(<<"specificed">>, [])).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
 
 -spec init() -> 'ok'.
 init() ->

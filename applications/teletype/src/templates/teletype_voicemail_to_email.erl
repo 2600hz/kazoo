@@ -96,10 +96,26 @@
 -define(TEMPLATE_HTML, <<"<html><body><h3>New Voicemail Message</h3><table><tr><td>Caller ID</td><td>{{caller_id.name}} ({{caller_id.number}})</td></tr><tr><td>Callee ID</td><td>{{to_user}} (originally dialed number)</td></tr><tr><td>Call received</td><td>{{date_called.local|date:\"l, F j, Y \\a\\t H:i\"}}</td></tr></table><p>For help or questions using your phone or voicemail, please contact {{service.support_number}} or email <a href=\"mailto:{{service.support_email}}\">Support</a></p><p style=\"font-size: 9px;color:#C0C0C0\">{{call_id}}</p><p>Transcription: {{voicemail.transcription|default:\"Not Enabled\"}}</p></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"New voicemail from {{caller_id.name}} ({{caller_id.number}})">>).
 
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>, [])).
+-define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
+-define(TEMPLATE_CC, ?CONFIGURED_EMAILS(<<"specified">>, [])).
+-define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(<<"specificed">>, [])).
+-define(TEMPLATE_REPLY_TO, teletype_util:default_reply_to(?MOD_CONFIG_CAT)).
+
 -spec init() -> 'ok'.
 init() ->
     wh_util:put_callid(?MODULE),
-    teletype_util:init_template(?TEMPLATE_ID, ?TEMPLATE_MACROS, ?TEMPLATE_TEXT, ?TEMPLATE_HTML).
+
+    teletype_util:init_template(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+                                               ,{'text', ?TEMPLATE_TEXT}
+                                               ,{'html', ?TEMPLATE_HTML}
+                                               ,{'subject', ?TEMPLATE_SUBJECT}
+                                               ,{'to', ?TEMPLATE_TO}
+                                               ,{'from', ?TEMPLATE_FROM}
+                                               ,{'cc', ?TEMPLATE_CC}
+                                               ,{'bcc', ?TEMPLATE_BCC}
+                                               ,{'reply_to', ?TEMPLATE_REPLY_TO}
+                                              ]).
 
 -spec handle_new_voicemail(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_new_voicemail(JObj, _Props) ->
