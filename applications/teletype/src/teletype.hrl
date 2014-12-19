@@ -20,6 +20,8 @@
                       {'text', ne_binary()} |
                       {'html', ne_binary()} |
                       {'subject', ne_binary()} |
+                      {'category', ne_binary()} |
+                      {'friendly_name', ne_binary()} |
                       {'to', wh_json:object()} |
                       {'cc', wh_json:object()} |
                       {'bcc', wh_json:object()} |

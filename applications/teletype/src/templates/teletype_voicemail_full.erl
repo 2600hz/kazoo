@@ -67,6 +67,8 @@
 -define(TEMPLATE_TEXT, <<"Your voicemail box '{{voicemail.name}}' is full.">>).
 -define(TEMPLATE_HTML, <<"<html><body><h3>Your voicemail box '{{voicemail.name}}' is full.</h3></body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Voicemail box {{voicemail.name}} is full">>).
+-define(TEMPLATE_CATEGORY, <<"voicemail">>).
+-define(TEMPLATE_NAME, <<"Full Voicemail Box">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(<<"original">>, [])).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -82,6 +84,8 @@ init() ->
                                                ,{'text', ?TEMPLATE_TEXT}
                                                ,{'html', ?TEMPLATE_HTML}
                                                ,{'subject', ?TEMPLATE_SUBJECT}
+                                               ,{'category', ?TEMPLATE_CATEGORY}
+                                               ,{'friendly_name', ?TEMPLATE_NAME}
                                                ,{'to', ?TEMPLATE_TO}
                                                ,{'from', ?TEMPLATE_FROM}
                                                ,{'cc', ?TEMPLATE_CC}

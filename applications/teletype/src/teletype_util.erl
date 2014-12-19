@@ -472,6 +472,10 @@ update_template_from_param({'html', HTML}, Acc, MasterAccountDb) ->
     update_template_html_attachment(HTML, Acc, MasterAccountDb);
 update_template_from_param({'subject', Subject}, Acc, _MasterAccountDb) ->
     update_template_subject(Subject, Acc);
+update_template_from_param({'category', Category}, Acc, _MasterAccountDb) ->
+    update_template_category(Category, Acc);
+update_template_from_param({'friendly_name', Name}, Acc, _MasterAccountDb) ->
+    update_template_name(Name, Acc);
 update_template_from_param({'to', To}, Acc, _MasterAccountDb) ->
     update_template_to(To, Acc);
 update_template_from_param({'cc', CC}, Acc, _MasterAccountDb) ->
@@ -482,6 +486,16 @@ update_template_from_param({'from', From}, Acc, _MasterAccountDb) ->
     update_template_from(From, Acc);
 update_template_from_param({'reply_to', ReplyTo}, Acc, _MasterAccountDb) ->
     update_template_reply_to(ReplyTo, Acc).
+
+-spec update_template_category(ne_binary(), update_template_acc()) ->
+                                      update_template_acc().
+update_template_category(Category, Acc) ->
+    update_template_field(Category, Acc, fun kz_notification:category/1, fun kz_notification:set_category/2).
+
+-spec update_template_name(ne_binary(), update_template_acc()) ->
+                                  update_template_acc().
+update_template_name(Name, Acc) ->
+    update_template_field(Name, Acc, fun kz_notification:name/1, fun kz_notification:set_name/2).
 
 -spec update_template_from(ne_binary(), update_template_acc()) ->
                                   update_template_acc().
@@ -513,17 +527,16 @@ update_template_bcc(Bcc, Acc) ->
 update_template_field('undefined', Acc, _GetFun, _SetFun) -> Acc;
 update_template_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
     case GetFun(TemplateJObj) of
-        'undefined' -> {'true', SetFun(TemplateJObj, Value)};
+        'undefined' ->
+            lager:debug("updating field to ~p: ~p", [Value, GetFun]),
+            {'true', SetFun(TemplateJObj, Value)};
         _V -> Acc
     end.
 
 -spec update_template_subject(ne_binary(), update_template_acc()) ->
                                      update_template_acc().
-update_template_subject(Subject, {_IsUpdated, TemplateJObj}=Acc) ->
-    case kz_notification:subject(TemplateJObj) of
-        'undefined' -> {'true', kz_notification:set_subject(TemplateJObj, Subject)};
-        _Subject -> Acc
-    end.
+update_template_subject(Subject, Acc) ->
+    update_template_field(Subject, Acc, fun kz_notification:subject/1, fun kz_notification:set_subject/2).
 
 -spec update_template_html_attachment(binary(), update_template_acc(), ne_binary()) ->
                                              update_template_acc().
@@ -540,7 +553,7 @@ update_template_text_attachment(Text, Acc, MasterAccountDb) ->
 update_template_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, MasterAccountDb, ContentType) ->
     AttachmentName = template_attachment_name(ContentType),
     Id = wh_json:get_first_defined([<<"_id">>, <<"id">>], TemplateJObj),
-    lager:debug("id ~s for ~p", [Id, TemplateJObj]),
+
     case does_attachment_exist(MasterAccountDb, Id, AttachmentName) of
         'true' -> Acc;
         'false' -> update_template_attachment(Contents, Acc, MasterAccountDb, ContentType, Id, AttachmentName)

@@ -11,6 +11,9 @@
 -export([macros/1, set_macros/2
          ,macro/2, set_macro/3
          ,subject/1, set_subject/2
+         ,category/1, set_category/2
+         ,name/1, set_name/2
+
          ,to/1, set_to/2, to_email_addresses/1, to_email_type/1
          ,cc/1, set_cc/2, cc_email_addresses/1, cc_email_type/1
          ,bcc/1, set_bcc/2, bcc_email_addresses/1, bcc_email_type/1
@@ -23,6 +26,8 @@
 
 -define(MACROS, <<"macros">>).
 -define(SUBJECT, <<"subject">>).
+-define(CATEGORY, <<"category">>).
+-define(NAME, <<"friendly_name">>).
 -define(TO, <<"to">>).
 -define(CC, <<"cc">>).
 -define(BCC, <<"bcc">>).
@@ -54,6 +59,22 @@ subject(JObj) ->
 -spec set_subject(wh_json:object(), ne_binary()) -> wh_json:object().
 set_subject(JObj, Subject) ->
     wh_json:set_value(?SUBJECT, Subject, JObj).
+
+-spec category(wh_json:object()) -> api_binary().
+category(JObj) ->
+    wh_json:get_value(?CATEGORY, JObj).
+
+-spec set_category(wh_json:object(), ne_binary()) -> wh_json:object().
+set_category(JObj, Category) ->
+    wh_json:set_value(?CATEGORY, Category, JObj).
+
+-spec name(wh_json:object()) -> api_binary().
+name(JObj) ->
+    wh_json:get_value(?NAME, JObj).
+
+-spec set_name(wh_json:object(), ne_binary()) -> wh_json:object().
+set_name(JObj, Name) ->
+    wh_json:set_value(?NAME, Name, JObj).
 
 -spec to(wh_json:object()) -> api_object().
 to(JObj) ->
