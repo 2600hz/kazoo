@@ -75,11 +75,7 @@
 -spec handle(wh_json:object(), whapps_call:call()) -> no_return().
 handle(Data, Call) ->
     TransferorLeg = wh_json:get_value(<<"dtmf_leg">>, Data),
-    TransfereeLeg =
-        case whapps_call:call_id(Call) of
-            TransferorLeg -> whapps_call:other_leg_call_id(Call);
-            CallId -> CallId
-        end,
+    TransfereeLeg = other_leg_call_id(Call),
 
     lager:info("first, we need to receive call events for our two legs"),
     add_transferor_bindings(TransferorLeg),
@@ -807,7 +803,7 @@ connect_transferor_to_target(Transferor, TargetCall) ->
 
 -spec connect_to_transferee(whapps_call:call()) -> 'ok'.
 connect_to_transferee(Call) ->
-    Flags = [{<<"Target-Call-ID">>, whapps_call:other_leg_call_id(Call)}
+    Flags = [{<<"Target-Call-ID">>, other_leg_call_id(Call)}
              ,{<<"Continue-On-Fail">>, 'false'}
              ,{<<"Continue-On-Cancel">>, 'false'}
              ,{<<"Park-After-Pickup">>, 'false'}
@@ -989,7 +985,7 @@ issue_transferee_event(Target, Call) ->
          ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
          ,{<<"Callee-ID-Name">>, whapps_call:callee_id_name(Call)}
          ,{<<"Callee-ID-Number">>, whapps_call:callee_id_number(Call)}
-         ,{<<"Other-Leg-Call-ID">>, whapps_call:other_leg_call_id(Call)}
+         ,{<<"Other-Leg-Call-ID">>, other_leg_call_id(Call)}
          ,{<<"Custom-Channel-Vars">>, whapps_call:custom_channel_vars(Call)}
          ,{<<"Target-Call-ID">>, Target}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -1021,3 +1017,24 @@ hangup_target(Call, [B|Bs]) ->
 -spec delete_all(ne_binary(), ne_binaries()) -> ne_binaries().
 delete_all(K, L) ->
     [V || V <- L, V =/= K].
+
+-spec other_leg_call_id(whapps_call:call()) -> ne_binary().
+other_leg_call_id(Call) ->
+    CallId = whapps_call:call_id(Call),
+    case whapps_call:other_leg_call_id(Call) of
+        'undefined' ->
+            Channels = cf_util:find_channels([whapps_call:from_user(Call),whapps_call:to_user(Call)], Call),
+            get_other_leg_call_id(Channels, CallId);
+        CallId ->
+            Channels = cf_util:find_channels([whapps_call:from_user(Call),whapps_call:to_user(Call)], Call),
+            get_other_leg_call_id(Channels, CallId);
+        OtherLegCallId -> OtherLegCallId
+    end.
+
+-spec get_other_leg_call_id(wh_proplist(), ne_binary()) -> ne_binary().
+get_other_leg_call_id([Channel|T], CallId) ->
+   case wh_json:get_value(<<"other_leg">>, Channel) of
+        CallId -> get_other_leg_call_id(T, CallId);
+        OtherLegCallId -> OtherLegCallId
+    end.
+
