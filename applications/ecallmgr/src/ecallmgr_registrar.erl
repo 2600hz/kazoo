@@ -66,7 +66,7 @@
 -define(REG_QUEUE_NAME, <<>>).
 -define(REG_QUEUE_OPTIONS, []).
 -define(REG_CONSUME_OPTIONS, []).
--define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;fs_path=.*?:([0-9.:]*))*">>).
+-define(SUMMARY_REGEX, <<"^.*?:.*@([0-9.:]*)(?:;transport=udp|tcp|tls)(?:;fs_path=.*?:([0-9.:]*);)*">>).
 
 -record(state, {started = wh_util:current_tstamp()}).
 
