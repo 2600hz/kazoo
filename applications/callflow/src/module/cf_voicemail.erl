@@ -47,7 +47,7 @@
 -define(MAILBOX_DEFAULT_STORAGE
         ,whapps_config:get_binary(?CF_CONFIG_CAT
                                   ,[<<"voicemail">>, <<"external_storage">>]
-                                  ,'undefined'
+                                  ,<<"undefined">>
                                  )).
 -define(DEFAULT_VM_EXTENSION
         ,whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
@@ -1527,7 +1527,7 @@ store_recording(AttachmentName, DocId, Call) ->
         _Else -> 'false'
     end.
 
-store_recording(AttachmentName, DocId, Call, _Box, 'undefined') ->
+store_recording(AttachmentName, DocId, Call, _Box, <<"undefined">>) ->
     store_recording(AttachmentName, DocId, Call);
 
 store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, StorageUrl) ->
@@ -1671,9 +1671,9 @@ get_messages(#mailbox{mailbox_id=Id}, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_message(wh_json:object(), whapps_call:call()) -> ne_binary().
-get_message(Message, Call) ->    
+get_message(Message, Call) ->
     case wh_json:get_value(<<"external_media_url">>, Message) of
-        'undefined' -> 
+        <<"undefined">> ->
             MediaId = wh_json:get_value(<<"media_id">>, Message),
             list_to_binary(["/", whapps_call:account_db(Call), "/", MediaId]);
         ExternalMediaUrl -> ExternalMediaUrl
