@@ -58,7 +58,6 @@ default_application_timeout() ->
 send_sms(Endpoints, Call) -> send_sms(Endpoints, ?DEFAULT_MESSAGE_TIMEOUT, Call).
 send_sms(Endpoints, Timeout, Call) -> send_sms(Endpoints, Timeout, 'undefined', Call).
 send_sms(Endpoints, _Timeout, _SIPHeaders, Call) ->
-    _CallId = whapps_call:call_id(Call),
     API = create_sms(Call, Endpoints),
     whapps_util:amqp_pool_send(API, fun wapi_sms:publish_message/1),
     'ok'.
@@ -69,7 +68,7 @@ b_send_sms(Endpoints, Timeout, _SIPHeaders, Call) ->
     CallId = whapps_call:call_id(Call),
     API = create_sms(Call, Endpoints),
     whapps_util:amqp_pool_send(API, fun wapi_sms:publish_message/1),
-    ReqResp = wait_for_correlated_message(Call, <<"delivery">>, <<"message">>, Timeout),
+    ReqResp = wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
     case ReqResp of
         {'error', _R}=E ->
@@ -103,7 +102,7 @@ create_sms(Call, Endpoints) ->
      ,{<<"Endpoints">>, Endpoints}
      ,{<<"Application-Name">>, <<"send">>}
      ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, wh_json:new())}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+     | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
     ].
 
 -spec get_correlated_msg_type(wh_json:object()) ->
@@ -116,11 +115,10 @@ get_correlated_msg_type(Key, JObj) ->
     {C, N} = wh_util:get_event_type(JObj),
     {C, N, wh_json:get_value(Key, JObj)}.
 
--spec wait_for_correlated_message(whapps_call:call(), ne_binary(), ne_binary(), wh_timeout()) ->
+-spec wait_for_correlated_message(ne_binary() | whapps_call:call(), ne_binary(), ne_binary(), wh_timeout()) ->
                                          whapps_api_std_return().
-wait_for_correlated_message(Call, Event, Type, Timeout) ->
+wait_for_correlated_message(CallId, Event, Type, Timeout) when is_binary(CallId) ->
     Start = os:timestamp(),
-    CallId = whapps_call:call_id(Call),
     case whapps_call_command:receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj} ->
@@ -132,6 +130,9 @@ wait_for_correlated_message(Call, Event, Type, Timeout) ->
                     {'ok', JObj};
                 {_Type, _Event, _CallId} ->
                     lager:debug("received message (~s , ~s, ~s)",[_Type, _Event, _CallId]),
-                    wait_for_correlated_message(Call, Event, Type, wh_util:decr_timeout(Timeout, Start))
+                    wait_for_correlated_message(CallId, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end
-    end.
+    end;
+wait_for_correlated_message(Call, Event, Type, Timeout) ->
+    CallId = whapps_call:call_id(Call),
+    wait_for_correlated_message(CallId, Event, Type, Timeout).
