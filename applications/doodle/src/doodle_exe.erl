@@ -72,8 +72,8 @@
 -spec start_link(whapps_call:call()) -> startlink_ret().
 start_link(Call) ->
     CallId = whapps_call:call_id(Call),
-    Bindings = [{'call', [{'callid', CallId}]}
-                ,{'sms', []}
+    Bindings = [%{'call', [{'callid', CallId}]}
+                {'sms', [{'message_id', CallId}, {'restrict_to', ['delivery']}]}
                 ,{'self', []}
                ],
     gen_listener:start_link(?MODULE, [{'responders', ?RESPONDERS}
@@ -95,6 +95,11 @@ set_call(Call) ->
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     gen_server:cast(Srv, {'set_call', Call}).
 
+-spec update_call(whapps_call:call()) -> 'ok'.
+update_call(Call) ->
+    Srv = whapps_call:kvs_fetch('consumer_pid', Call),
+    gen_server:cast(Srv, {'update_call', Call}).
+
 -spec continue(whapps_call:call() | pid()) -> 'ok'.
 -spec continue(ne_binary(), whapps_call:call() | pid()) -> 'ok'.
 continue(Srv) -> continue(<<"_">>, Srv).
@@ -102,6 +107,7 @@ continue(Srv) -> continue(<<"_">>, Srv).
 continue(Key, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'continue', Key});
 continue(Key, Call) ->
+    update_call(Call),
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     continue(Key, Srv).
 
@@ -109,6 +115,7 @@ continue(Key, Call) ->
 branch(Flow, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'branch', Flow});
 branch(Flow, Call) ->
+    update_call(Call),
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     branch(Flow, Srv).
 
@@ -121,6 +128,7 @@ add_event_listener(Call, {_,_}=SpawnInfo) ->
 stop(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'stop');
 stop(Call) ->
+    update_call(Call),
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     stop(Srv).
 
@@ -128,6 +136,7 @@ stop(Call) ->
 transfer(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'transfer');
 transfer(Call) ->
+    update_call(Call),
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     transfer(Srv).
 
@@ -135,6 +144,7 @@ transfer(Call) ->
 control_usurped(Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, 'control_usurped');
 control_usurped(Call) ->
+    update_call(Call),
     Srv = whapps_call:kvs_fetch('consumer_pid', Call),
     control_usurped(Srv).
 
@@ -311,6 +321,12 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
+handle_cast({'update_call', NewCall}, #state{call=OldCall, queue=Q}=State) ->
+    Action = whapps_call:kvs_fetch('cf_last_action', OldCall),
+    Call1 = whapps_call:set_controller_queue(Q, NewCall),
+    Call = whapps_call:kvs_store('cf_last_action', Action, Call1),
+    {'noreply', State#state{call=Call}};
+
 handle_cast({'continue', Key}, #state{flow=Flow
                                       ,cf_module_pid=OldPidRef
                                      }=State) ->
@@ -334,7 +350,8 @@ handle_cast({'continue', Key}, #state{flow=Flow
                     {'noreply', State}
             end
     end;
-handle_cast('stop', State) ->
+handle_cast('stop', #state{call=Call}=State) ->
+    spawn('doodle_util', 'save_sms', [whapps_call:clear_helpers(Call)]),
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
@@ -447,6 +464,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                           ,self=Self
                          }) ->
     CallId = whapps_call:call_id_direct(Call),
+    SmsId = whapps_call:kvs_fetch(<<"sms_docid">>, Call),
     Others = whapps_call:kvs_fetch('cf_event_pids', [], Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
@@ -488,6 +506,10 @@ handle_event(JObj, #state{cf_module_pid=PidRef
                 _Else -> 'ignore'
             end;
         {_, CallId} ->
+            {'reply', [{'cf_module_pid', get_pid(PidRef)}
+                       ,{'cf_event_pids', Others}
+                      ]};
+        {_, SmsId} ->
             {'reply', [{'cf_module_pid', get_pid(PidRef)}
                        ,{'cf_event_pids', Others}
                       ]};

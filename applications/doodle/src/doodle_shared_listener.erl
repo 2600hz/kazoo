@@ -23,12 +23,16 @@
 
 -record(state, {}).
 
+
+
 -define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume']}]}
                    ,{'registration',[{'restrict_to', ['reg_success']}]}
+                   ,{'conf',[{'action', 'created'}, {'doc_type', <<"sms">>}]}
                    ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
-                     ,{'doodle_notify_handler',[{<<"directory">>, <<"reg_success">>}]}
+                     ,{'doodle_notify_handler', [{<<"directory">>, <<"reg_success">>}]}
+                     ,{'doodle_api_handler', [{<<"configuration">>, <<"doc_created">>}]}
                     ]).
 -define(QUEUE_NAME, <<"doodle_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -46,7 +50,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [
+    gen_listener:start_link({'local', ?MODULE}, ?MODULE, [
                                       {'bindings', ?BINDINGS}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}       % optional to include

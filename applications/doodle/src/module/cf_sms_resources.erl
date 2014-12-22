@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   Luis Azedo
 %%%-------------------------------------------------------------------
 -module(cf_sms_resources).
 
@@ -21,23 +22,46 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
-handle(Data, Call) ->
-    'ok' = wapi_offnet_resource:publish_req(build_offnet_request(Data, Call)),
-    case wait_for_stepswitch(Call) of
-        {<<"SUCCESS">>, _} ->
-            lager:info("completed successful offnet request"),
-            doodle_exe:stop(Call);
-        {Cause, Code} -> handle_bridge_failure(Cause, Code, Call)
+handle(Data, Call1) ->
+    Call = doodle_util:set_caller_id(Data, Call1),
+    case whapps_util:amqp_pool_request(
+           build_offnet_request(Data, Call)
+           ,fun wapi_offnet_resource:publish_req/1
+           ,fun wapi_offnet_resource:resp_v/1
+           ,30000)
+    of
+        {'ok', Res} ->
+            handle_result(Res, Call);
+        {'error', E} ->
+            lager:debug("error executing offnet action : ~p",[E]),
+            doodle_exe:continue(doodle_util:set_flow_error(E, Call))
     end.
+
+handle_result(JObj, Call) ->
+    Message = wh_json:get_value(<<"Response-Message">>, JObj),
+    Code = wh_json:get_value(<<"Response-Code">>, JObj),
+    Response = wh_json:get_value(<<"Resource-Response">>, JObj),
+    handle_result(Message, Code, Response, JObj, Call).
+    
+handle_result(_Message, <<"sip:200">>, Response, _JObj, Call1) ->
+    Status = doodle_util:sms_status(Response),
+    Call = doodle_util:set_flow_status(Status, Call1),    
+    case Status of
+        <<"pending">> -> doodle_exe:stop(Call);
+        _ -> lager:info("completed successful message to the device"),
+             doodle_exe:continue(Call)
+    end;
+handle_result(Message, Code, _Response, _JObj, Call) ->
+    handle_bridge_failure(Message, Code, Call).
+    
 
 -spec handle_bridge_failure(api_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
-    case cf_util:handle_bridge_failure(Cause, Code, Call) of
+    case doodle_util:handle_bridge_failure(Cause, Code, Call) of
         'ok' -> lager:debug("found bridge failure child");
         'not_found' ->
-            cf_util:send_default_response(Cause, Call),
-            doodle_exe:stop(Call)
+            doodle_exe:stop(doodle_util:set_flow_error(<<"error">>, Cause, Call))
     end.
 
 %%--------------------------------------------------------------------
@@ -47,29 +71,20 @@ handle_bridge_failure(Cause, Code, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_offnet_request(wh_json:object(), whapps_call:call()) -> wh_proplist().
-build_offnet_request(Data, Call) ->
-    {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
-    {CIDNumber, CIDName} = get_caller_id(Data, Call),
+build_offnet_request(Data, Call) ->   
     props:filter_undefined([{<<"Resource-Type">>, <<"sms">>}
                             ,{<<"Application-Name">>, <<"sms">>}
-                            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
-                            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-                            ,{<<"Outbound-Caller-ID-Name">>, CIDName}
-                            ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
-                            ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
+                            ,{<<"Outbound-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+                            ,{<<"Outbound-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+                            ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
                             ,{<<"Call-ID">>, doodle_exe:callid(Call)}
-                            ,{<<"Control-Queue">>, doodle_exe:control_queue(Call)}
                             ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
                             ,{<<"Account-ID">>, whapps_call:account_id(Call)}
                             ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-                            ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
                             ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
-                            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
                             ,{<<"Format-From-URI">>, wh_json:is_true(<<"format_from_uri">>, Data)}
                             ,{<<"Hunt-Account-ID">>, get_hunt_account_id(Data, Call)}
                             ,{<<"Flags">>, get_flags(Data, Call)}
-                            ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Data)}
-                            ,{<<"Fax-T38-Enabled">>, get_t38_enabled(Call)}
                             ,{<<"Custom-SIP-Headers">>, get_sip_headers(Data, Call)}
                             ,{<<"To-DID">>, get_to_did(Data, Call)}
                             ,{<<"From-URI-Realm">>, get_from_uri_realm(Data, Call)}
@@ -107,11 +122,6 @@ get_account_realm(Call) ->
         {'ok', JObj} -> wh_json:get_value(<<"realm">>, JObj);
         {'error', _} -> 'undefined'
     end.
-
--spec get_caller_id(wh_json:object(), whapps_call:call()) -> {api_binary(), api_binary()}.
-get_caller_id(Data, Call) ->
-    Type = wh_json:get_value(<<"caller_id_type">>, Data, <<"external">>),
-    cf_attributes:caller_id(Type, Call).
 
 -spec get_hunt_account_id(wh_json:object(), whapps_call:call()) -> api_binary().
 get_hunt_account_id(Data, Call) ->
@@ -160,17 +170,6 @@ get_sip_headers(Data, Call) ->
         'false' -> JObj
     end.
 
--spec get_ignore_early_media(wh_json:object()) -> api_binary().
-get_ignore_early_media(Data) ->
-    wh_util:to_binary(wh_json:is_true(<<"ignore_early_media">>, Data, <<"false">>)).
-
--spec get_t38_enabled(whapps_call:call()) -> 'undefined' | boolean().
-get_t38_enabled(Call) ->
-    case cf_endpoint:get(Call) of
-        {'ok', JObj} -> wh_json:is_true([<<"media">>, <<"fax_option">>], JObj);
-        {'error', _} -> 'undefined'
-    end.
-
 -spec get_flags(wh_json:object(), whapps_call:call()) -> 'undefined' | ne_binaries().
 get_flags(Data, Call) ->
     Routines = [fun get_endpoint_flags/3
@@ -178,8 +177,17 @@ get_flags(Data, Call) ->
                 ,fun get_flow_dynamic_flags/3
                 ,fun get_endpoint_dynamic_flags/3
                 ,fun get_account_dynamic_flags/3
+                ,fun get_resource_flags/3
                ],
     lists:foldl(fun(F, A) -> F(Data, Call, A) end, [], Routines).
+
+-spec get_resource_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
+get_resource_flags(JObj, Call, Flags) ->
+    get_resource_type_flags(whapps_call:resource_type(Call), JObj, Call, Flags).
+
+-spec get_resource_type_flags(ne_binary(), wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
+get_resource_type_flags(<<"sms">>, _JObj, _Call, Flags) -> [<<"sms">> | Flags];
+get_resource_type_flags(_Other, _JObj, _Call, Flags) -> Flags.
 
 -spec get_endpoint_flags(wh_json:object(), whapps_call:call(), ne_binaries()) -> ne_binaries().
 get_endpoint_flags(_, Call, Flags) ->
@@ -253,27 +261,3 @@ is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
 get_inception(Call) ->
     wh_json:get_value(<<"Inception">>, whapps_call:custom_channel_vars(Call)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Consume Erlang messages and return on offnet response
-%% @end
-%%--------------------------------------------------------------------
--spec wait_for_stepswitch(whapps_call:call()) -> {ne_binary(), api_binary()}.
-wait_for_stepswitch(Call) ->
-    case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
-        {'ok', JObj} ->
-            case wh_util:get_event_type(JObj) of
-                {<<"resource">>, <<"offnet_resp">>} ->
-                    {wh_json:get_value(<<"Response-Message">>, JObj)
-                     ,wh_json:get_value(<<"Response-Code">>, JObj)
-                    };
-                {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-                    lager:info("recv channel destroy"),
-                    {wh_json:get_value(<<"Hangup-Cause">>, JObj)
-                     ,wh_json:get_value(<<"Hangup-Code">>, JObj)
-                    };
-                _ -> wait_for_stepswitch(Call)
-            end;
-        _ -> wait_for_stepswitch(Call)
-    end.

@@ -21,23 +21,31 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
-handle(Data, Call) ->
-    case bridge_to_endpoints(Data, Call) of
-        {'ok', _} ->
-            lager:info("completed successful bridge to the device"),
-            doodle_exe:continue(Call);
-        {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
-        {'error', _R} ->
-            lager:info("error bridging to device: ~s"
-                       ,[wh_json:get_value(<<"Error-Message">>, _R)]
-                      ),
-            doodle:continue(Call)
+handle(Data, Call1) ->
+    EndpointId = wh_json:get_value(<<"id">>, Data),
+    Call = doodle_util:set_callee_id(EndpointId, Call1),
+    case bridge_to_endpoint(EndpointId, Data, Call) of
+        {'ok', JObj} -> handle_result(JObj, Call);
+        {'fail', _} = Reason -> maybe_handle_bridge_failure(Reason, Call);
+        {'error', _} = Reason -> maybe_handle_bridge_failure(Reason, Call)
     end.
+
+-spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_result(JObj, Call1) ->
+    Status = doodle_util:sms_status(JObj),
+    Call = doodle_util:set_flow_status(Status, Call1),    
+    case Status of
+        <<"pending">> -> doodle_exe:stop(Call);
+        _ -> lager:info("completed successful message to the device"),
+             doodle_exe:continue(Call)
+    end.
+    
 
 -spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure(Reason, Call) ->
-    case cf_util:handle_bridge_failure(Reason, Call) of
-        'not_found' -> doodle_exe:continue(Call);
+    case doodle_util:handle_bridge_failure(Reason, Call) of
+        'not_found' ->
+            doodle_exe:stop(doodle_util:set_flow_status(<<"pending">>, Call));
         'ok' -> 'ok'
     end.
 
@@ -47,13 +55,13 @@ maybe_handle_bridge_failure(Reason, Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints(wh_json:object(), whapps_call:call()) ->
+-spec bridge_to_endpoint(binary(), wh_json:object(), whapps_call:call()) ->
                                  any().
-bridge_to_endpoints(Data, Call) ->
-    EndpointId = wh_json:get_value(<<"id">>, Data),
+bridge_to_endpoint(EndpointId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
+        {'ok', []} -> {'fail', <<"Endpoint not available ">>};
         {'ok', Endpoints} ->
             whapps_sms_command:b_send_sms(Endpoints, Call)
     end.

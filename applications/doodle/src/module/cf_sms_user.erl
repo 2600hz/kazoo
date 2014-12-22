@@ -23,29 +23,39 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(wh_json:object(), whapps_call:call()) -> 'ok'.
-handle(Data, Call) ->
+handle(Data, Call1) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
+    Call = doodle_util:set_callee_id(UserId, Call1),
     Endpoints = get_endpoints(UserId, Data, Call),
-
     case length(Endpoints) > 0
         andalso whapps_sms_command:b_send_sms(Endpoints, Call)
     of
         'false' ->
             lager:notice("user ~s has no endpoints", [UserId]),
-            doodle_exe:continue(Call);
-        {'ok', _} ->
-            lager:info("completed successful bridge to user"),
-            doodle_exe:stop(Call);
+            doodle_exe:continue(doodle_util:set_flow_status(<<"pending">>, Call));
+        {'ok', JObj} ->
+            handle_result(JObj, Call);
         {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
-        {'error', _R} ->
-            lager:info("error bridging to user: ~p", [_R]),
-            doodle_exe:continue(Call)
+        {'error', R} ->
+            lager:info("error bridging to user: ~p", [R]),
+            doodle_exe:stop(doodle_util:set_flow_error(R, Call))
+    end.
+
+-spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
+handle_result(JObj, Call1) ->
+    Status = doodle_util:sms_status(JObj),
+    Call = doodle_util:set_flow_status(Status, Call1),    
+    case Status of
+        <<"pending">> -> doodle_exe:stop(Call);
+        _ -> lager:info("completed successful message to the user"),
+             doodle_exe:continue(Call)
     end.
 
 -spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure(Reason, Call) ->
-    case cf_util:handle_bridge_failure(Reason, Call) of
-        'not_found' -> doodle_exe:continue(Call);
+    case doodle_util:handle_bridge_failure(Reason, Call) of
+        'not_found' ->
+            doodle_exe:stop(doodle_util:set_flow_status(Call, <<"pending">>));
         'ok' -> 'ok'
     end.
 

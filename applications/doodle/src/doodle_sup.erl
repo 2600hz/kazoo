@@ -31,9 +31,12 @@
                       {'origin_bindings', ?ORIGIN_BINDINGS}
                      ]).
 
+-define(WORKER_REG(I), {{'local', I}, {I, 'start_link', []}, 'permanent', 5000, 'worker', [I]}).
+
 -define(CHILDREN, [?CACHE_ARGS(?DOODLE_CACHE, ?CACHE_PROPS)
                    ,?WORKER('doodle_listener')
                    ,?WORKER('doodle_shared_listener')
+                   ,?WORKER('doodle_inbound_listener')
                    ,?SUPER('doodle_event_handler_sup')
                    ,?SUPER('doodle_exe_sup')
                   ]).

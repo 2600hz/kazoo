@@ -20,6 +20,7 @@
 -define(DEFAULT_LANGUAGE, <<"en-US">>).
 -define(DEFAULT_UNAVAILABLE_MESSAGE, <<"sms service unavailable">>).
 -define(DEFAULT_UNAVAILABLE_MESSAGE_NODE, wh_json:from_list([{?DEFAULT_LANGUAGE, ?DEFAULT_UNAVAILABLE_MESSAGE}])).
+-define(RESTRICTED_MSG, <<"endpoint is restricted from making this call">>).
 
 -export([handle_req/2
          ,maybe_restrict_call/2
@@ -32,9 +33,9 @@ handle_req(JObj, _Options) ->
     lager:info("doodle has received a route win, taking control of the call"),
     case whapps_call:retrieve(CallId) of
         {'ok', Call} ->
-            Call1 = whapps_call:from_route_win(JObj, Call),
-            doodle_util:save_sms(JObj, Call1),
-            maybe_restrict_call(JObj, Call1);
+%            Call1 = whapps_call:from_route_win(JObj, Call),
+%            Call2 = doodle_util:save_sms(JObj, doodle_util:set_flow_status(<<"started">>, Call1) ),
+            maybe_restrict_call(JObj, Call);
         {'error', R} ->
             lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.
@@ -45,6 +46,7 @@ maybe_restrict_call(JObj, Call) ->
         'true' ->
             lager:debug("endpoint is restricted from making this call, terminate", []),
             send_service_unavailable(JObj, Call),
+            doodle_util:save_sms(doodle_util:set_flow_error(<<"error">>, ?RESTRICTED_MSG, Call)),
             'ok';
         'false' ->
             lager:info("setting initial information about the call"),
@@ -66,7 +68,6 @@ maybe_service_unavailable(JObj, Call) ->
     Services = wh_json:merge_recursive(
                  wh_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES),
                  wh_json:get_value(<<"pvt_services">>, JObj, wh_json:new())),
-    lager:debug("SERVICES ~p", [Services]),
     case wh_json:is_true([<<"sms">>,<<"enabled">>], Services, 'true') of
         'true' ->
             maybe_account_service_unavailable(JObj, Call);
@@ -223,8 +224,7 @@ update_ccvs(Call) ->
     lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
                ,[CallerIdType, CIDName, CIDNumber]),
     Props = props:filter_undefined(
-              [{<<"Hold-Media">>, cf_attributes:moh_attributes(<<"media_id">>, Call)}
-               ,{<<"Caller-ID-Name">>, CIDName}
+              [{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}
                | get_incoming_security(Call)
               ]),
