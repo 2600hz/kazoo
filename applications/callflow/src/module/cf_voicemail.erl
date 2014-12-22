@@ -45,10 +45,9 @@
                                    ,15
                                   )).
 -define(MAILBOX_DEFAULT_STORAGE
-        ,whapps_config:get_binary(?CF_CONFIG_CAT
-                                  ,[<<"voicemail">>, <<"external_storage">>]
-                                  ,<<"undefined">>
-                                 )).
+        ,whapps_config:get(?CF_CONFIG_CAT
+                           ,[<<"voicemail">>, <<"external_storage">>]
+                          )).
 -define(DEFAULT_VM_EXTENSION
         ,whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
        ).
@@ -1107,7 +1106,7 @@ save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
                            {'ok', JObj} -> wh_json:get_value(<<"external_media_url">>, JObj);
                            {'error', _} -> 'undefined'
                        end,
-    Metadata = wh_json:from_list(
+    Metadata = wh_json:from_list(props:filter_undefined(
                  [{<<"timestamp">>, new_timestamp()}
                   ,{<<"from">>, whapps_call:from(Call)}
                   ,{<<"to">>, whapps_call:to(Call)}
@@ -1118,7 +1117,7 @@ save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
                   ,{<<"length">>, Length}
                   ,{<<"media_id">>, MediaId}
                   ,{<<"external_media_url">>, ExternalMediaUrl}
-                 ]),
+                 ])),
     {'ok', _BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
     lager:debug("stored voicemail metadata for ~s", [MediaId]).
 
@@ -1527,7 +1526,7 @@ store_recording(AttachmentName, DocId, Call) ->
         _Else -> 'false'
     end.
 
-store_recording(AttachmentName, DocId, Call, _Box, <<"undefined">>) ->
+store_recording(AttachmentName, DocId, Call, _Box, 'undefined') ->
     store_recording(AttachmentName, DocId, Call);
 
 store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, StorageUrl) ->
@@ -1610,7 +1609,7 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum
                                   ])
            end,
 
-    Props = [{<<"name">>, Name}
+    Props = props:filter_undefined([{<<"name">>, Name}
              ,{<<"description">>, <<"voicemail message media">>}
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
@@ -1619,8 +1618,8 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum
              ,{<<"media_filename">>, AttachmentName}
              ,{<<"streamable">>, 'true'}
              ,{<<"utc_seconds">>, UtcSeconds}
-             ,{<<"external_media_url">>, <<"undefined">>}
-            ],
+             ,{<<"external_media_url">>, ?MAILBOX_DEFAULT_STORAGE}
+            ]),
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{'type', <<"private_media">>}]),
     {'ok', JObj} = couch_mgr:save_doc(Db, Doc),
     wh_json:get_value(<<"_id">>, JObj).
@@ -1673,7 +1672,7 @@ get_messages(#mailbox{mailbox_id=Id}, Call) ->
 -spec get_message(wh_json:object(), whapps_call:call()) -> ne_binary().
 get_message(Message, Call) ->
     case wh_json:get_value(<<"external_media_url">>, Message) of
-        <<"undefined">> ->
+        'undefined' ->
             MediaId = wh_json:get_value(<<"media_id">>, Message),
             list_to_binary(["/", whapps_call:account_db(Call), "/", MediaId]);
         ExternalMediaUrl -> ExternalMediaUrl
