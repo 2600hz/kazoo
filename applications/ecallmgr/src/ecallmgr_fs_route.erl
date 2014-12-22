@@ -340,10 +340,10 @@ start_message_handling(_Node, _FetchId, CallId, JObj) ->
            ,{<<"Call-ID">>, CallId}
            ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
            ,{<<"Custom-Channel-Vars">>, CCVs}
-           | wh_api:default_headers(ServerQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
+           | wh_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ServerQ]),
-    wapi_route:publish_win(ServerQ, Win).
+    wh_amqp_worker:cast(Win, fun(Payload)-> wapi_route:publish_win(ServerQ, Payload) end).
 
 -spec route_req(ne_binary(), ne_binary(), wh_proplist(), atom()) -> wh_proplist().
 route_req(CallId, FetchId, Props, Node) ->
