@@ -76,6 +76,11 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
             CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
             wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
             {'ok', Endpoint};
+        <<"account">> = EndpointType ->
+            Endpoint = wh_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
+            CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
+            wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+            {'ok', Endpoint};
         _Else ->
             lager:info("endpoint module does not manage document type ~s", [_Else]),
             {'error', 'not_device_nor_user'}
@@ -707,7 +712,7 @@ get_clid(Endpoint, Properties, Call) ->
 
 -spec maybe_record_call(wh_json:object(), whapps_call:call()) -> 'ok'.
 maybe_record_call(Endpoint, Call) ->
-    case is_call_recording(Call) of
+    case is_call_recording(Call) orelse is_sms(Call) of
         'true' -> 'ok';
         'false' -> start_call_recording(wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()), Call)
     end.
@@ -724,7 +729,8 @@ is_call_recording(Call) ->
 call_recording_cache_key(Call) ->
     {?MODULE, 'recording', whapps_call:call_id(Call)}.
 
--spec start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
+-spec start_call_recording(api_object(), whapps_call:call()) -> 'ok'.
+start_call_recording('undefined', _Call) -> 'ok';
 start_call_recording(RecordCall, Call) ->
     wh_cache:store_local(
       ?CALLFLOW_CACHE
@@ -1191,3 +1197,7 @@ get_ignore_completed_elsewhere(JObj) ->
         'undefined' -> whapps_config:get_is_true(?CF_CONFIG_CAT, <<"default_ignore_completed_elsewhere">>, 'true');
         IgnoreCompletedElsewhere -> wh_util:is_true(IgnoreCompletedElsewhere)
     end.
+
+-spec is_sms(whapps_call:call()) -> boolean().
+is_sms(Call) ->
+    whapps_call:resource_type(Call) =:= <<"sms">>.
