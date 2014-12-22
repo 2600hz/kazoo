@@ -165,6 +165,7 @@ on_successful_validation(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_modb(Context),
+    kazoo_modb:create(AccountDb),
     ResellerId = cb_context:reseller_id(Context),
     Realm = wh_util:get_account_realm(AccountId),
     
@@ -172,7 +173,7 @@ on_successful_validation(Context) ->
         case { cb_context:user_id(Context), cb_context:auth_user_id(Context) } 
         of
             {'undefined', 'undefined'} ->
-                {<<"api">>, cb_context:auth_token(Context), 'undefined'};
+                {<<"account">>, AccountId, 'undefined'};
             {UserId, 'undefined'} ->
                 {<<"user">>, UserId, UserId};
             {'undefined', UserAuth} ->
