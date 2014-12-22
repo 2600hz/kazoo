@@ -56,10 +56,7 @@
 %%--------------------------------------------------------------------
 -spec start_link(wh_json:objects(), wh_json:object()) -> startlink_ret().
 start_link(Endpoints, JObj) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    Bindings = [{'sms', [{'call_id', CallId}]}
-                ,{'self', []}
-               ],
+    Bindings = [{'self', []}],
     gen_listener:start_link(?MODULE, [{'bindings', Bindings}
                                       ,{'responders', ?RESPONDERS}
                                       ,{'queue_name', ?QUEUE_NAME}
@@ -84,8 +81,11 @@ start_link(Endpoints, JObj) ->
 %%--------------------------------------------------------------------
 init([Endpoints, JObj]) ->
     wh_util:put_callid(JObj),
-    case wh_json:get_ne_value(<<"Control-Queue">>, JObj) of
-        'undefined' -> {'stop', 'normal'};
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    case wh_json:get_ne_value(<<"Control-Queue">>, JObj, <<>>) of
+        'undefined' ->
+            lager:debug("Control-Queue is undefined for Call-ID ~s, exiting.", [CallId]),
+            {'stop', 'normal'};
         ControlQ ->
             {'ok', #state{endpoints=Endpoints
                           ,resource_req=JObj
@@ -224,6 +224,7 @@ handle_message_delivery(JObj, Props) ->
 -spec build_sms(state()) -> wh_proplist().
 build_sms(#state{endpoints=Endpoints
                  ,resource_req=JObj
+                 ,queue=Q
                 }) ->
     {CIDNum, CIDName} = bridge_caller_id(Endpoints, JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
@@ -254,7 +255,7 @@ build_sms(#state{endpoints=Endpoints
        ,{<<"Outbound-Callee-ID-Name">>, wh_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj)}
        ,{<<"Message-ID">>, wh_json:get_value(<<"Message-ID">>, JObj)}
        ,{<<"Body">>, wh_json:get_value(<<"Body">>, JObj)}
-       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+       | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
       ]).
 
 -spec maybe_endpoints_format_from(wh_json:objects(), api_binary(), wh_json:object()) ->

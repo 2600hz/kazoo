@@ -83,9 +83,7 @@ handle_sms_req(JObj) ->
     lager:debug("received outbound sms resource request for ~s", [Number]),
     case stepswitch_util:lookup_number(Number) of
         {'ok', AccountId, Props} ->
-            maybe_force_outbound_sms([{'account_id', AccountId}
-                                      | Props
-                                     ], JObj);
+            maybe_force_outbound_sms(wh_number_properties:set_account_id(Props, AccountId), JObj);
         _ -> maybe_sms(Number, JObj)
     end.
 
@@ -176,17 +174,7 @@ local_extension(Props, JObj) -> stepswitch_request_sup:local_extension(Props, JO
 %% @end
 %%--------------------------------------------------------------------
 -spec local_sms(wh_proplist(), wh_json:object()) -> any().
-local_sms(Props, JObj) ->
-    AccountId = props:get_value('account_id', Props),
-    AccountRealm = wh_util:get_account_realm(AccountId),
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    Number = props:get_value('number', Props),
-    NewObj = wh_json:set_values(
-               [{<<"Bounce-Back">>, <<"true">>}
-                 ,{<<"Custom-Channel-Vars">>,
-                   wh_json:set_value(<<"Bounce-Realm">>, AccountRealm, CCVs)}
-               ], JObj),
-    maybe_sms(Number, NewObj).
+local_sms(Props, JObj) -> stepswitch_local_sms:local_message_handling(Props, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
