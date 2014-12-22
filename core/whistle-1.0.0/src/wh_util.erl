@@ -12,6 +12,7 @@
 -export([log_stacktrace/0, log_stacktrace/1
          ,format_account_id/1, format_account_id/2, format_account_id/3
          ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
+         ,format_account_db/1
          ,normalize_account_name/1
         ]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -262,6 +263,10 @@ format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
 
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
+
+-spec format_account_db(ne_binaries() | api_binary() | wh_json:object()) -> api_binary().
+format_account_db(AccountId) -> format_account_id(AccountId, 'encoded').
+
 
 -spec pad_month(wh_month() | ne_binary()) -> ne_binary().
 pad_month(<<_/binary>> = Month) ->
