@@ -1,10 +1,15 @@
-%% @author root
-%% @doc @todo Add description to doodle_maintenance.
-
-
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2014, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%-------------------------------------------------------------------
 -module(doodle_maintenance).
 
 -include("doodle.hrl").
+
+-export([send_outbound_sms/2, send_outbound_sms/3]).
 
 -export([flush/0]).
 -export([check_sms_by_device_id/2, check_sms_by_owner_id/2]).
@@ -63,3 +68,32 @@ check_pending_sms_for_outbound_delivery(AccountId) ->
         {'error', _R} ->
             lager:debug("unable to get sms list for offnet delivery in account ~s : ~p", [AccountId, _R])
     end.
+
+-define(DEFAULT_ROUTEID, <<"syneverse">>).
+-define(DEFAULT_FROM, <<"15552220001">>).
+
+send_outbound_sms(To, Msg) ->
+    send_outbound_sms(To, ?DEFAULT_FROM, ?DEFAULT_ROUTEID, Msg).
+
+send_outbound_sms(To, Msg, Times) ->
+    send_outbound_sms(To, ?DEFAULT_FROM, ?DEFAULT_ROUTEID, Msg, Times).
+
+send_outbound_sms(To, From, RouteId, Msg) ->
+    [Host, _Domain] = binary:split(wh_util:to_lower_binary(node()), <<"@">>),
+    Payload = [{<<"Message-ID">>, wh_util:rand_hex_binary(16)}
+               ,{<<"System-ID">>, Host }
+               ,{<<"Route-ID">>, RouteId }
+               ,{<<"From">>, From}
+               ,{<<"To">>, wh_util:to_binary(To)}
+               ,{<<"Body">>, Msg}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    wh_amqp_worker:cast(Payload, fun wapi_sms:publish_outbound/1).
+
+send_outbound_sms(To, From, RouteId, Msg, Times) ->
+    [begin
+      send_outbound_sms(To, From, RouteId, <<"MSG - ", (wh_util:to_binary(X))/binary, " => ", Msg/binary>>),
+      timer:sleep(2000)
+     end
+       || X <- lists:seq(1, wh_util:to_integer(Times))].
+
