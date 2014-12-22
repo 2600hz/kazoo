@@ -1526,7 +1526,7 @@ store_recording(AttachmentName, DocId, Call) ->
         _Else -> 'false'
     end.
 
-store_recording(AttachmentName, DocId, Call, _Box, 'undefined') ->
+store_recording(AttachmentName, DocId, Call, _Box, <<"undefined">>) ->
     store_recording(AttachmentName, DocId, Call);
 
 store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, StorageUrl) ->
