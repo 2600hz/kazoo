@@ -76,6 +76,7 @@ requisition() -> requisition(consumer_pid()).
 requisition(Consumer) when is_pid(Consumer) ->
     requisition(Consumer, consumer_broker());
 requisition(Broker) ->
+    put('$wh_amqp_consumer_broker', Broker),
     requisition(consumer_pid(), Broker).
 
 -spec requisition(pid(), api_binary()) -> boolean().
