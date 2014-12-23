@@ -39,7 +39,7 @@
 
 -include("ecallmgr.hrl").
 
--define(HTTP_GET_PREFIX, "${http_get(").
+-define(HTTP_GET_PREFIX, "http_cache://").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
@@ -923,7 +923,7 @@ maybe_playback_via_http_cache(URI) ->
             URI;
         'true' ->
             lager:debug("media is streamed via http_cache, using ~s", [URI]),
-            <<?HTTP_GET_PREFIX, URI/binary, ")}">>
+            <<?HTTP_GET_PREFIX, URI/binary>>
     end.
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
