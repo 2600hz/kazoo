@@ -68,7 +68,7 @@ clear_flow_error(Call) ->
 -spec get_sms_revision(whapps_call:call()) -> api_binary().
 get_sms_revision(Call) ->
     case whapps_call:kvs_fetch(<<"_rev">>, Call) of
-        'undefined' -> whapps_call:custom_channel_var(<<"api_rev">>, Call);
+        'undefined' -> whapps_call:custom_channel_var(<<"Doc-Revision">>, Call);
         Rev -> Rev
     end.
 
@@ -122,7 +122,6 @@ save_sms(JObj, DocId, Doc, Call) ->
     Rev = get_sms_revision(Call),
     Opts = props:filter_undefined([{'rev', Rev}]),   
     Props = props:filter_empty(
-              props:filter_undefined(
                 [{<<"_id">>, DocId}
                  ,{<<"pvt_type">>, <<"sms">> }
                  ,{<<"account_id">>, AccountId }
@@ -150,7 +149,7 @@ save_sms(JObj, DocId, Doc, Call) ->
                  ,{<<"call_id">>, whapps_call:call_id_direct(Call)}
                  ,{<<"pvt_call">>, whapps_call:to_json(whapps_call:kvs_erase(<<"_rev">>, Call))}
                  ,{<<"_rev">>, Rev}
-                ])),
+                ]),
     JObjDoc = wh_json:set_values(Props, Doc),
     case couch_mgr:save_doc(AccountDb, JObjDoc, Opts) of
         {'ok', Saved} ->
@@ -341,15 +340,7 @@ get_inbound_destination(JObj) ->
     Direction = wh_json:get_value(<<"Route-Type">>, JObj, ?DEFAULT_DIRECTION),
     NumberField = get_inbound_field(Direction),  
     Number = wh_json:get_value(NumberField, JObj),                 
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"assume_inbound_e164">>, 'false') of
-        'true' -> {assume_e164(Number), Direction} ;
-        'false' -> {wnm_util:to_e164(Number), Direction}
-    end.
-
--spec assume_e164(ne_binary()) -> ne_binary().
-assume_e164(<<$+, _/binary>> = Number) -> Number;
-assume_e164(Number) -> <<$+, Number/binary>>.
-
+    {wnm_util:to_e164(Number), Direction}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -412,6 +403,8 @@ fetch_mdn(Num) ->
             E
     end.
 
+-spec fetch_mdn_result(binary(), binary()) -> {'ok', binary(), binary()} 
+                                              | {'error', 'not_found'}. 
 fetch_mdn_result(AccountId, Num) ->
     AccountDb = wh_util:format_account_db(AccountId),
     ViewOptions = [{'key', mdn_from_e164(Num)}],
@@ -424,7 +417,8 @@ fetch_mdn_result(AccountId, Num) ->
             cache_mdn_result(AccountDb, Id, OwnerId);
         {'error', _}=E -> E
     end.
-    
+
+-spec cache_mdn_result(binary(), binary(), binary()) -> {'ok', binary(), binary()}.
 cache_mdn_result(AccountDb, Id, OwnerId) ->
     CacheProps = [{'origin', [{'db', AccountDb, Id}]}],
     wh_cache:store_local(?DOODLE_CACHE, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),
@@ -435,7 +429,6 @@ cache_key_mdn(Number) ->
     {'sms_mdn', Number}.
 
 -spec mdn_from_e164(binary()) -> binary().
-%mdn_from_e164(Number) -> Number;
 mdn_from_e164(<<"+1", Number/binary>>) -> Number;
 mdn_from_e164(<<"1", Number/binary>>) -> Number;
 mdn_from_e164(Number) -> Number.    

@@ -714,7 +714,7 @@ get_clid(Endpoint, Properties, Call) ->
 maybe_record_call(Endpoint, Call) ->
     case is_call_recording(Call) orelse is_sms(Call) of
         'true' -> 'ok';
-        'false' -> start_call_recording(wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()), Call)
+        'false' -> maybe_start_call_recording(wh_json:get_value(<<"record_call">>, Endpoint, wh_json:new()), Call)
     end.
 
 -spec is_call_recording(whapps_call:call()) -> boolean().
@@ -729,8 +729,14 @@ is_call_recording(Call) ->
 call_recording_cache_key(Call) ->
     {?MODULE, 'recording', whapps_call:call_id(Call)}.
 
--spec start_call_recording(api_object(), whapps_call:call()) -> 'ok'.
-start_call_recording('undefined', _Call) -> 'ok';
+-spec maybe_start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
+maybe_start_call_recording(RecordCall, Call) ->
+    case wh_util:is_empty(RecordCall) of
+        'true' -> 'ok';
+        'false' -> start_call_recording(RecordCall, Call)
+    end.
+
+-spec start_call_recording(wh_json:object(), whapps_call:call()) -> 'ok'.
 start_call_recording(RecordCall, Call) ->
     wh_cache:store_local(
       ?CALLFLOW_CACHE
@@ -921,7 +927,7 @@ create_mobile_endpoint(Endpoint, Properties, Call) ->
 maybe_build_mobile_route(Endpoint) ->
     case wh_json:get_ne_value([<<"mobile">>, <<"mdn">>], Endpoint) of
         'undefined' ->
-            lager:info("unable to build mobile endpoint, MDM missing", []),
+            lager:info("unable to build mobile endpoint, MDN missing", []),
             {'error', 'mdn_missing'};
         MDN -> build_mobile_route(MDN)
     end.
@@ -931,7 +937,7 @@ build_mobile_route(MDN) ->
     Regex = whapps_config:get_binary(?CF_MOBILE_CONFIG_CAT, <<"formatter">>, ?DEFAULT_MOBILE_FORMATER),
     case re:run(MDN, Regex, [{'capture', 'all', 'binary'}]) of
         'nomatch' ->
-            lager:info("unable to build mobile endpoint, invalid MDM ~s", [MDN]),
+            lager:info("unable to build mobile endpoint, invalid MDN ~s", [MDN]),
             {'error', 'invalid_mdm'};
         {'match', Captures} ->
             Root = lists:last(Captures),

@@ -37,12 +37,16 @@ handle(Data, Call1) ->
             doodle_exe:continue(doodle_util:set_flow_error(E, Call))
     end.
 
+-spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle_result(JObj, Call) ->
     Message = wh_json:get_value(<<"Response-Message">>, JObj),
     Code = wh_json:get_value(<<"Response-Code">>, JObj),
     Response = wh_json:get_value(<<"Resource-Response">>, JObj),
     handle_result(Message, Code, Response, JObj, Call).
     
+-spec handle_result(binary(), binary()
+                   , wh_json:object(), wh_json:object(), 
+                    whapps_call:call()) -> 'ok'.
 handle_result(_Message, <<"sip:200">>, Response, _JObj, Call1) ->
     Status = doodle_util:sms_status(Response),
     Call = doodle_util:set_flow_status(Status, Call1),    
@@ -59,7 +63,8 @@ handle_result(Message, Code, _Response, _JObj, Call) ->
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
     case doodle_util:handle_bridge_failure(Cause, Code, Call) of
-        'ok' -> lager:debug("found bridge failure child");
+        'ok' -> lager:debug("found bridge failure child"),
+                'ok';
         'not_found' ->
             doodle_exe:stop(doodle_util:set_flow_error(<<"error">>, Cause, Call))
     end.

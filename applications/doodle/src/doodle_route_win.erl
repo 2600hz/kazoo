@@ -32,10 +32,7 @@ handle_req(JObj, _Options) ->
     put('callid', CallId),
     lager:info("doodle has received a route win, taking control of the call"),
     case whapps_call:retrieve(CallId) of
-        {'ok', Call} ->
-%            Call1 = whapps_call:from_route_win(JObj, Call),
-%            Call2 = doodle_util:save_sms(JObj, doodle_util:set_flow_status(<<"started">>, Call1) ),
-            maybe_restrict_call(JObj, Call);
+        {'ok', Call} -> maybe_restrict_call(JObj, Call);
         {'error', R} ->
             lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.

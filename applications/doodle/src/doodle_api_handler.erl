@@ -24,12 +24,14 @@ handle_req(JObj, _Props) ->
     FetchId = wh_util:rand_hex_binary(16),
     maybe_handle_sms_document(Status, Origin, FetchId, Id, Doc).
 
+-spec maybe_handle_sms_document(binary(), binary(), binary(), binary(), wh_json:object()) -> 'ok'.
 maybe_handle_sms_document(<<"queued">>, <<"api">>, FetchId, Id, Doc) ->
-    spawn(fun() -> process_sms_api_document(FetchId, Id, Doc) end);
+    process_sms_api_document(FetchId, Id, Doc);
 maybe_handle_sms_document(_Status, _Origin, _FetchId, _Id, _Doc) -> 'ok'.   
                                                    
     
 
+-spec process_sms_api_document(binary(), binary(), wh_json:object()) -> 'ok'.
 process_sms_api_document(FetchId, Id, Doc) when not is_list(Doc) ->
     process_sms_api_document(FetchId, Id, wh_json:to_proplist(Doc));
 process_sms_api_document(FetchId, <<_:7/binary, CallId/binary>> = _Id, Props) ->
@@ -86,6 +88,6 @@ route_req_ccvs(FetchId, Props) ->
        ,{<<"Authorizing-ID">>, props:get_value(<<"pvt_authorization">>, Props)}
        ,{<<"Owner-ID">>, props:get_value(<<"pvt_owner_id">>, Props)}
        ,{<<"Channel-Authorized">>, 'true'}
-       ,{<<"api_rev">>, props:get_value(<<"_rev">>, Props)}
+       ,{<<"Doc-Revision">>, props:get_value(<<"_rev">>, Props)}
       ]
      ).
