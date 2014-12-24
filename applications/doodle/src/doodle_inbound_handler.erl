@@ -11,10 +11,6 @@
 -export([handle_req/3]).
 
 -include("doodle.hrl").
--include_lib("rabbitmq_client/include/amqp_client.hrl").
-
--type basic_deliver() :: #'basic.deliver'{}.
-
 
 -spec handle_req(wh_json:object(), wh_proplist(), basic_deliver()) -> 'ok'.
 handle_req(JObj, Props, Deliver) ->

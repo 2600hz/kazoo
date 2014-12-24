@@ -15,6 +15,8 @@ DIRS =  . \
     $(ROOT)/core/whistle_couch-1.0.0 \
     $(ROOT)/core/whistle_apps-1.0.0
 
+ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
+
 .PHONY: all compile clean
 
 all: compile
@@ -30,7 +32,7 @@ compile: ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: src/*.erl src/module/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \

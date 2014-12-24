@@ -9,6 +9,7 @@ PA = $(foreach EBIN,$(EBINS),-pa $(EBIN))
          # +bin_opt_info
 
 DIRS = .
+ERL_LIBS = $(subst $(eval) ,:,$(wildcard $(ROOT)/deps/rabbitmq_client-*/deps))
 
 .PHONY: all compile clean
 
@@ -24,7 +25,7 @@ compile: ebin/$(PROJECT).app
 
 ebin/$(PROJECT).app: src/*.erl
 	@mkdir -p ebin/
-	erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
+	ERL_LIBS=$(ERL_LIBS) erlc -v $(ERLC_OPTS) -o ebin/ -pa ebin/ $(PA) $?
 
 compile-test: test/$(PROJECT).app
 	@cat src/$(PROJECT).app.src \

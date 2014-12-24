@@ -15,11 +15,13 @@ all: compile
 compile: ACTION = all
 compile: $(MAKEDIRS)
 	cp -a rabbitmq_server-3.3.5/plugins-src/rabbitmq-erlang-client rabbitmq_client-3.3.5
+	cp -a rabbitmq_client-3.3.5/deps/rabbit_common-3.3.5 rabbit_common-3.3.5
 	rm -f rabbitmq_client-*/Makefile
 
 clean: ACTION = clean
 clean: $(MAKEDIRS)
 	rm -rf rabbitmq_client-*
+	rm -rf rabbit_common-*
 	rm -rf rabbitmq_server-3.2.0
 	rm -rf goldrush-0.1.0
 	rm -rf cowboy-0.9.0

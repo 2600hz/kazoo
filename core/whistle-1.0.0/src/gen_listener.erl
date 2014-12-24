@@ -126,8 +126,6 @@
 
 -type state() :: #state{}.
 
--type basic_deliver() :: #'basic.deliver'{}.
-
 -type handle_event_return() :: {'reply', wh_proplist()} | 'ignore'.
 
 -type binding_module() :: atom() | ne_binary().

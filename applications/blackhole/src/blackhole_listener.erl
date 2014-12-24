@@ -24,7 +24,6 @@
         ]).
 
 -include("blackhole.hrl").
--include_lib("rabbitmq_server/include/rabbit_framing.hrl").
 
 -record(state, {}).
 -type state() :: #state{}.
