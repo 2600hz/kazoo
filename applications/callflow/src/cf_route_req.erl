@@ -52,7 +52,7 @@ maybe_exec_preflow(JObj, Props, Call, Flow, NoMatch) ->
     AccountDb = wh_util:format_account_id(AccountId, 'encoded'),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {'error', _E} ->
-            lager:warning("coudl not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
+            lager:warning("could not open ~s in ~s : ~p", [AccountId, AccountDb, _E]),
             maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch);
         {'ok', Doc} ->
             case wh_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
