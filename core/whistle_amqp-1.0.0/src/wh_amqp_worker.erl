@@ -303,7 +303,9 @@ cast(Req, PubFun) ->
 cast(Req, PubFun, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
         {'error', _}=E -> E;
-        Worker -> cast(Req, PubFun, Worker)
+        Worker -> 
+            cast(Req, PubFun, Worker),
+            checkin_worker(Worker)
     end;
 cast(Req, PubFun, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
@@ -313,8 +315,6 @@ cast(Req, PubFun, Worker) ->
         _E:R ->
             lager:debug("request failed: ~s: ~p", [_E, R]),
             {'error', R}
-    after
-        checkin_worker(Worker)
     end.
 
 -spec collect_until_timeout() -> collect_until_fun().
