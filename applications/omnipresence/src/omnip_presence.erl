@@ -321,11 +321,11 @@ send_update(User, Props, Subscriptions) ->
 send_update(_, _User, _Props, []) -> 'ok';
 send_update(<<"amqp">>, _User, Props, Subscriptions) ->
     Stalkers = lists:usort([St || #omnip_subscription{stalker=St} <- Subscriptions]),
-    [whapps_util:amqp_pool_send(Props
-                                ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
-                               )
-     || S <- Stalkers
-    ];
+    {'ok', Worker} = wh_amqp_worker:checkout_worker(),
+    [wh_amqp_worker:cast(Props
+                         ,fun(P) -> wapi_omnipresence:publish_update(S, P) end
+                         ,Worker) || S <- Stalkers ],
+    wh_amqp_worker:checkin_worker(Worker);
 send_update(<<"sip">>, User, Props, Subscriptions) ->
     Options = [{'body', build_body(User, Props)}
                ,{'content_type', <<"application/pidf+xml">>}
