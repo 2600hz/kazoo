@@ -314,9 +314,10 @@ handle_reg_success(Node, Props) ->
 
 -spec get_fs_contact(wh_proplist()) -> ne_binary().
 get_fs_contact(Props) ->
-    Contact = props:get_first_defined([<<"Contact">>, <<"contact">>], Props),
-    [User, AfterAt] = binary:split(Contact, <<"@">>), % only one @ allowed
-    <<User/binary, "@", (wh_util:to_binary(mochiweb_util:unquote(AfterAt)))/binary>>.
+    FromUser = props:get_first_defined([<<"From-User">>, <<"from-user">>], Props),
+    NetworkIP = props:get_first_defined([<<"Network-IP">>, <<"network-ip">>], Props),
+    NetworkPort = props:get_first_defined([<<"Network-Port">>, <<"network-port">>], Props),
+    <<"<sip:", FromUser/binary, "@", NetworkIP/binary, ":", NetworkPort/binary, ">">>.
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -719,7 +720,7 @@ create_registration(JObj) ->
                      ,contact=fix_contact(OriginalContact)
                      ,original_contact=OriginalContact
                      ,last_registration=wh_util:current_tstamp()
-                     ,registrar_node=wh_json:get_value(<<"Node">>, JObj)
+                     ,registrar_node=wh_json:get_first_defined([<<"FreeSWITCH-Nodename">>, <<"Node">>], JObj)
                      ,registrar_hostname=wh_json:get_value(<<"Hostname">>, JObj)
                     }.
 
@@ -931,6 +932,8 @@ to_props(Reg) ->
      ,{<<"Authorizing-Type">>, Reg#registration.authorizing_type}
      ,{<<"Suppress-Unregister-Notify">>, Reg#registration.suppress_unregister}
      ,{<<"Owner-ID">>, Reg#registration.owner_id}
+     ,{<<"Registrar-Node">>, Reg#registration.registrar_node}
+     ,{<<"Registrar-Hostname">>, Reg#registration.registrar_hostname}
     ].
 
 -spec filter(wh_json:keys(), wh_json:object()) -> wh_json:object().
