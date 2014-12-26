@@ -768,6 +768,8 @@ registration_notify(#registration{previous_contact=PrevContact
     wapi_presence:publish_register_overwrite(Props).
 
 -spec maybe_initial_registration(registration()) -> 'ok'.
+maybe_initial_registration(#registration{account_id='undefined'}=Reg) ->
+    initial_registration(Reg);
 maybe_initial_registration(#registration{initial='false'}) -> 'ok';
 maybe_initial_registration(#registration{initial='true'}=Reg) ->
     initial_registration(Reg).
