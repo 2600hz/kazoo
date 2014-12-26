@@ -536,12 +536,12 @@ get_sip_headers(JObj) ->
     case get_diversions(JObj) of
         'undefined' ->
             wh_json:delete_key(<<"Diversion">>
-                               ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj)
+                               ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new())
                               );
         Diversion ->
             wh_json:set_value(<<"Diversion">>
                               ,Diversion
-                              ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj)
+                              ,wh_json:get_value(<<"Custom-SIP-Headers">>, JObj, wh_json:new())
                              )
     end.
 
