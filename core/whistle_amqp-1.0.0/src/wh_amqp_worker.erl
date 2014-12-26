@@ -304,8 +304,9 @@ cast(Req, PubFun, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
         {'error', _}=E -> E;
         Worker -> 
-            cast(Req, PubFun, Worker),
-            checkin_worker(Worker)
+            Resp = cast(Req, PubFun, Worker),
+            checkin_worker(Worker),
+            Resp
     end;
 cast(Req, PubFun, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
