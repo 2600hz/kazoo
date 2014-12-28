@@ -178,7 +178,7 @@ handle_resource_response(JObj, Props) ->
             CallUpdate = whapps_call:kvs_store('consumer_pid', self(), Call),
             whapps_call:cache(CallUpdate, ?APP_NAME),
             gen_listener:add_binding(Srv, {'call',[{'callid', CallId}]}),
-            gen_listener:add_responder(Srv, {'cccp_util', 'handle_callinfo'}, [{<<"*">>, <<"*">>}]),
+            gen_listener:add_responder(Srv, {'cccp_util', 'relay_amqp'}, [{<<"*">>, <<"*">>}]),
             {'num_to_dial', Number} = cccp_util:get_number(CallUpdate),
             gen_listener:cast(Srv, {'parked', CallId, Number});
         {<<"call_event">>,<<"CHANNEL_DESTROY">>} ->

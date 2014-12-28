@@ -18,6 +18,8 @@
 
 -include("cccp.hrl").
 
+-define(DEFAULT_CALLEE_REGEX, <<"^\\+?\\d{7,}$">>).
+
 -spec relay_amqp(wh_json:object(), wh_proplist()) -> 'ok'.
 relay_amqp(JObj, _Props) ->
     case whapps_call:retrieve(wh_json:get_value(<<"Call-ID">>, JObj), ?APP_NAME) of
@@ -113,7 +115,7 @@ ensure_valid_caller_id(OutboundCID, AccountId) ->
                         'ok'.
 get_number(Call) ->
     RedialCode = whapps_config:get(?CCCP_CONFIG_CAT, <<"last_number_redial_code">>, <<"*0">>),
-    case whapps_call_command:b_prompt_and_collect_digits(2, 13, <<"cf-enter_number">>, 3, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(2, 17, <<"cf-enter_number">>, 3, Call) of
         {'ok', RedialCode} ->
             get_last_dialed_number(Call);
         {'ok', EnteredNumber} ->
@@ -126,9 +128,8 @@ get_number(Call) ->
 
 -spec verify_entered_number(ne_binary(), whapps_call:call()) -> 'ok'.
 verify_entered_number(EnteredNumber, Call) ->
-    CleanedNumber = re:replace(EnteredNumber, "[^0-9]", "", ['global', {'return', 'binary'}]),
-    Number = re:replace(wnm_util:to_e164(CleanedNumber), "[^0-9]", "", ['global', {'return', 'binary'}]),
-    case wnm_util:is_reconcilable(Number) of
+    Number = wnm_util:to_e164(re:replace(EnteredNumber, "[^0-9]", "", ['global', {'return', 'binary'}])),
+    case cccp_allowed_callee(Number) of
         'true' ->
             check_restrictions(Number, Call);
         _ ->
@@ -145,7 +146,7 @@ get_last_dialed_number(Call) ->
     DocId = whapps_call:kvs_fetch('auth_doc_id', CachedCall),
     {'ok', Doc} = couch_mgr:open_doc(<<"cccps">>, DocId),
     LastDialed = wh_json:get_value(<<"pvt_last_dialed">>, Doc),
-    case wnm_util:is_reconcilable(LastDialed) of
+    case cccp_allowed_callee(LastDialed) of
        'false' ->
             whapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
             whapps_call_command:queued_hangup(Call);
@@ -214,8 +215,22 @@ build_bridge_request(CallId, ToDID, Q, CtrlQ, AccountId, OutboundCID) ->
        ,{<<"To-DID">>, ToDID}
        ,{<<"Resource-Type">>, <<"originate">>}
        ,{<<"Outbound-Caller-ID-Number">>, OutboundCID}
+       ,{<<"Outbound-Caller-ID-Name">>, OutboundCID}
        ,{<<"Originate-Immediate">>, 'true'}
        ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
        ,{<<"Account-ID">>, AccountId}
        | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
       ]).
+
+-spec cccp_allowed_callee(ne_binary()) -> boolean().
+cccp_allowed_callee(Number) ->
+    Regex = whapps_config:get_binary(?CCCP_CONFIG_CAT, <<"allowed_callee_regex">>, ?DEFAULT_CALLEE_REGEX),
+    case re:run(Number, Regex) of
+        'nomatch' ->
+            lager:debug("number '~s' is not allowed to call through cccp", [Number]),
+            'false';
+        _ ->
+            lager:debug("number '~s' is allowed to call through cccp, proceeding", [Number]),
+            'true'
+    end.
+
