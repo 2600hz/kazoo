@@ -1098,7 +1098,6 @@ node_hostname() ->
     [_Name, Host] = binary:split(to_binary(node()), <<"@">>),
     Host.
 
-
 -ifdef(TEST).
 
 %% PROPER TESTING

@@ -33,13 +33,13 @@ handle(Data, Call1) ->
 -spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle_result(JObj, Call1) ->
     Status = doodle_util:sms_status(JObj),
-    Call = doodle_util:set_flow_status(Status, Call1),    
+    Call = doodle_util:set_flow_status(Status, Call1),
     case Status of
         <<"pending">> -> doodle_exe:stop(Call);
         _ -> lager:info("completed successful message to the device"),
              doodle_exe:continue(Call)
     end.
-    
+
 
 -spec maybe_handle_bridge_failure(_, whapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure(Reason, Call) ->
@@ -55,13 +55,15 @@ maybe_handle_bridge_failure(Reason, Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoint(binary(), wh_json:object(), whapps_call:call()) ->
-                                 any().
+-spec bridge_to_endpoint(ne_binary(), wh_json:object(), whapps_call:call()) ->
+                                {'error', atom() | wh_json:object()} |
+                                {'fail', ne_binary() | wh_json:object()} |
+                                {'ok', wh_json:object()}.
 bridge_to_endpoint(EndpointId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
-        {'ok', []} -> {'fail', <<"Endpoint not available ">>};
+        {'ok', []} -> {'fail', <<"Endpoint not available">>};
         {'ok', Endpoints} ->
             whapps_sms_command:b_send_sms(Endpoints, Call)
     end.

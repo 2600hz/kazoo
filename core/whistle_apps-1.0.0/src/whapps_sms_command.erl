@@ -109,7 +109,7 @@ send_and_wait(<<"sip">>, API, Endpoint, Timeout) ->
     lager:debug("sending sms and waiting for response ~s", [CallId]),
     whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_message/1),
     wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout);
-send_and_wait(<<"amqp">>, API, Endpoint, _Timeout) ->    
+send_and_wait(<<"amqp">>, API, Endpoint, Timeout) ->    
     CallId = props:get_value(<<"Call-ID">>, API),
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Props = wh_json:to_proplist(Endpoint) ++ Options,

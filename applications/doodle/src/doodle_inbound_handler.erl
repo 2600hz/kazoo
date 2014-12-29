@@ -21,7 +21,7 @@ handle_req(JObj, Props, Deliver) ->
                 'ack' -> gen_listener:ack(Srv, Deliver);
                 'nack' -> gen_listener:nack(Srv, Deliver)
             end;
-        'false' -> 
+        'false' ->
             lager:debug("error validating inbound message : ~p", [JObj]),
              gen_listener:ack(Srv, Deliver)
     end.
@@ -45,19 +45,18 @@ maybe_relay_request(JObj) ->
                        ],
             Fun = fun(F, J) -> F(Inception, NumberProps, J) end,
             JObjReq = lists:foldl(Fun, JObj, Routines),
-            process_sms_req(FetchId, CallId, JObjReq)            
+            process_sms_req(FetchId, CallId, JObjReq)
     end.
 
--spec process_sms_req(binary(), binary(), wh_json:object()) -> 'ack' | 'nack'.
-process_sms_req(FetchId, CallId, JObj) when not is_list(JObj) ->
+-spec process_sms_req(ne_binary(), ne_binary(), wh_json:object()) -> 'ack' | 'nack'.
+process_sms_req(FetchId, CallId, JObj) ->
     Req = wh_json:set_values([{<<"Msg-ID">>, FetchId}
                               ,{<<"Call-ID">>, CallId}
                               ,{<<"Channel-Authorized">>, 'true'}
-                              ,{?CCV(<<"Fetch-ID">>), FetchId}                       
-                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)                       
+                              ,{?CCV(<<"Fetch-ID">>), FetchId}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ], JObj),
-    process_sms_req(FetchId, CallId, wh_json:to_proplist(Req));
-process_sms_req(FetchId, CallId, Req) ->
+
     ReqResp = wh_amqp_worker:call(Req
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1
@@ -71,7 +70,6 @@ process_sms_req(FetchId, CallId, Req) ->
             send_route_win(FetchId, CallId, JObj)
     end.
 
-
 -spec send_route_win(ne_binary(), ne_binary(), wh_json:object()) -> 'ack'.
 send_route_win(FetchId, CallId, JObj) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, JObj),
@@ -81,7 +79,7 @@ send_route_win(FetchId, CallId, JObj) ->
            ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
            ,{<<"Custom-Channel-Vars">>, CCVs}
            | wh_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
-          ],    
+          ],
     lager:debug("sms inbound handler sending route_win to ~s", [ServerQ]),
     wh_amqp_worker:cast(Win, fun(Payload) -> wapi_route:publish_win(ServerQ, Payload) end),
     'ack'.
@@ -103,34 +101,32 @@ set_account_id(_Inception, NumberProps, JObj) ->
 
 -spec set_inception(ne_binary(), wh_proplist(), wh_json:object()) ->
                            wh_json:object().
-set_inception(Inception, _, JObj) ->
-    case Inception of
-        <<"off-net">> ->
-            Request = wh_json:get_value(<<"From">>, JObj),
-            wh_json:set_value(?CCV(<<"Inception">>), Request, JObj);
-        _ -> wh_json:delete_keys([<<"Inception">>, ?CCV(<<"Inception">>)], JObj)
-    end.
+set_inception(<<"off-net">>, _, JObj) ->
+    Request = wh_json:get_value(<<"From">>, JObj),
+    wh_json:set_value(?CCV(<<"Inception">>), Request, JObj);
+set_inception(_Inception, _, JObj) ->
+    wh_json:delete_keys([<<"Inception">>, ?CCV(<<"Inception">>)], JObj).
 
 -spec set_mdn(ne_binary(), wh_proplist(), wh_json:object()) ->
-          wh_json:object().
-set_mdn(Inception, NumberProps, JObj) ->
+                     wh_json:object().
+set_mdn(<<"on-net">>, NumberProps, JObj) ->
     Number = wh_number_properties:number(NumberProps),
-    case Inception of
-        <<"on-net">> ->
-            case doodle_util:lookup_mdn(Number) of
-                {'ok', Id, OwnerId} ->
-                    wh_json:set_values( props:filter_undefined(
-                                          [{?CCV(<<"Authorizing-Type">>), <<"device">>}
-                                           ,{?CCV(<<"Authorizing-ID">>), Id}
-                                           ,{?CCV(<<"Owner-ID">>), OwnerId}
-                                          ]), JObj);
-                _ -> JObj
-            end;
-        _ -> JObj
-    end.
+    case doodle_util:lookup_mdn(Number) of
+        {'ok', Id, OwnerId} ->
+            wh_json:set_values(
+              props:filter_undefined(
+                [{?CCV(<<"Authorizing-Type">>), <<"device">>}
+                 ,{?CCV(<<"Authorizing-ID">>), Id}
+                 ,{?CCV(<<"Owner-ID">>), OwnerId}
+                ])
+              ,JObj
+             );
+        {'error', _} -> JObj
+    end;
+set_mdn(_Inception, _NumberProps, JObj) -> JObj.
 
 -spec set_static(ne_binary(), wh_proplist(), wh_json:object()) ->
-                           wh_json:object().
+                        wh_json:object().
 set_static(_Inception, _, JObj) ->
     wh_json:set_values([{<<"Resource-Type">>, <<"sms">>}
                         ,{<<"Call-Direction">>, <<"inbound">>}
@@ -138,7 +134,7 @@ set_static(_Inception, _, JObj) ->
                        ], JObj).
 
 -spec delete_headers(ne_binary(), wh_proplist(), wh_json:object()) ->
-                           wh_json:object().
+                            wh_json:object().
 delete_headers(_, _, JObj) ->
     Keys = [<<"Server-ID">>
             ,<<"App-Name">>
@@ -150,7 +146,7 @@ delete_headers(_, _, JObj) ->
     wh_json:delete_keys(Keys, JObj).
 
 -spec set_realm(ne_binary(), wh_proplist(), wh_json:object()) ->
-                           wh_json:object().
+                       wh_json:object().
 set_realm(_, _, JObj) ->
     Realm = wh_json:get_value(?CCV(<<"Account-Realm">>), JObj),
     Keys = [<<"To">>, <<"From">>, {<<"To">>, <<"Request">>}],
@@ -164,6 +160,6 @@ set_realm(_, _, JObj) ->
                       end, [], Keys),
     wh_json:set_values(KVs, JObj).
 
--spec set_realm_value(binary(), binary(), binary()) -> binary().
+-spec set_realm_value(K, ne_binary(), ne_binary()) -> {K, ne_binary()}.
 set_realm_value(K, Value, Realm) ->
     {K, <<Value/binary, "@", Realm/binary>>}.

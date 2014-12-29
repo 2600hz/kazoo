@@ -544,8 +544,8 @@ maybe_do_not_disturb(Endpoint, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_endpoints(wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                    {'ok', wh_json:objects()} |
-                                    {'error', 'no_endpoints'}.
+                              {'ok', wh_json:objects()} |
+                              {'error', 'no_endpoints'}.
 create_endpoints(Endpoint, Properties, Call) ->
     Routines = [fun maybe_create_fwd_endpoint/3
                 ,fun maybe_create_endpoint/3
