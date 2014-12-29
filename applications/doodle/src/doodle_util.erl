@@ -151,6 +151,7 @@ save_sms(JObj, DocId, Doc, Call) ->
                  ,{<<"_rev">>, Rev}
                 ]),
     JObjDoc = wh_json:set_values(Props, Doc),
+    kazoo_modb:create(AccountDb),
     case couch_mgr:save_doc(AccountDb, JObjDoc, Opts) of
         {'ok', Saved} ->
             whapps_call:kvs_store(<<"_rev">>, wh_json:get_value(<<"_rev">>, Saved), Call);
@@ -293,16 +294,17 @@ handle_bridge_failure(Cause, Code, Call) ->
 
 -spec get_caller_id(wh_json:object(), whapps_call:call()) -> {api_binary(), api_binary()}.
 get_caller_id(Data, Call) ->
-    get_caller_id(Data, Call, <<"external">>).
+    get_caller_id(Data, <<"external">>, Call).
     
-get_caller_id(Data, Call, Default) ->
+-spec get_caller_id(wh_json:object(), binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+get_caller_id(Data, Default, Call) ->
     Type = wh_json:get_value(<<"caller_id_type">>, Data, Default),
     cf_attributes:caller_id(Type, Call).
 
 -spec set_caller_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
 set_caller_id(Data, Call) ->
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
-    Props = props:filter_undefined(
+    Props = props:filter_empty(
               [{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}
               ]),
@@ -313,17 +315,17 @@ set_caller_id(Data, Call) ->
     Fun = fun(F, C) -> F(C) end,
     lists:foldl(Fun, Call, Routines).
 
--spec get_callee_id(api_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec get_callee_id(binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 get_callee_id(EndpointId, Call) ->
     cf_attributes:callee_id(EndpointId, Call).
 
--spec set_callee_id(wh_json:object(), whapps_call:call()) -> whapps_call:call().
-set_callee_id(Data, Call) ->
-    {CIDNumber, CIDName} = get_callee_id(Data, Call),
-    Props = props:filter_undefined(
+-spec set_callee_id(binary(), whapps_call:call()) -> whapps_call:call().
+set_callee_id(EndpointId, Call) ->
+    {CIDNumber, CIDName} = get_callee_id(EndpointId, Call),
+    Props = props:filter_empty(
               [{<<"Callee-ID-Name">>, CIDName}
                ,{<<"Callee-ID-Number">>, CIDNumber}
-              ]),    
+              ]),
     whapps_call:set_custom_channel_vars(Props, Call).
 
   
