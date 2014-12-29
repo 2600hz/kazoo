@@ -589,21 +589,25 @@ launch_cf_module(#state{call=Call
     Module = <<(cf_module_prefix(Call))/binary, (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
     {PidRef, Action} = maybe_start_cf_module(Module, Data, Call),
-    cf_link(PidRef),
+    _ = cf_link(PidRef),
     State#state{cf_module_pid=PidRef
                 ,call=whapps_call:kvs_store('cf_last_action', Action, Call)
                }.
 
-cf_link('undefined') -> 'ok';
+-spec cf_link('undefined' | pid_ref()) -> 'true'.
+cf_link('undefined') -> 'true';
 cf_link(PidRef) ->
     link(get_pid(PidRef)).
 
+-spec cf_module_prefix(whapps_call:call()) -> ne_binary().
 cf_module_prefix(Call) ->
     cf_module_prefix(Call, whapps_call:resource_type(Call)).
 
+-spec cf_module_prefix(whapps_call:call(), ne_binary()) -> ne_binary().
 cf_module_prefix(_Call, <<"sms">>) -> <<"cf_sms_">>;
 cf_module_prefix(_Call, _) -> <<"cf_">>.
 
+-spec maybe_stop_caring('undefined' | pid_ref()) -> 'ok'.
 maybe_stop_caring('undefined') -> 'ok';
 maybe_stop_caring({P, R}) ->
     unlink(P),
@@ -611,7 +615,7 @@ maybe_stop_caring({P, R}) ->
     lager:debug("stopped caring about ~p(~p)", [P, R]).
 
 -spec maybe_start_cf_module(ne_binary(), wh_proplist(), whapps_call:call()) ->
-                                   {{pid(), reference()} | 'undefined', atom()}.
+                                   {pid_ref() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = wh_util:to_atom(ModuleBin, 'true'),
     try CFModule:module_info('imports') of
@@ -623,10 +627,10 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
             cf_module_skip(ModuleBin, Call)
     end.
 
--spec cf_module_skip(ne_binary(), whapps_call:call()) ->
-                                 {'undefined', atom()}.
+-spec cf_module_skip(CFModule, whapps_call:call()) ->
+                            {'undefined', CFModule}.
 cf_module_skip(CFModule, _Call) ->
-    lager:error("unknown callflow action '~s', skipping to next action",[CFModule]),
+    lager:error("unknown callflow action '~s', skipping to next action", [CFModule]),
     ?MODULE:continue(self()),
     {'undefined', CFModule}.
 
@@ -638,15 +642,15 @@ cf_module_skip(CFModule, _Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec spawn_cf_module(CFModule, list(), whapps_call:call()) ->
-                             {{pid(), reference()}, CFModule}.
+                             {pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = wh_amqp_channel:consumer_pid(),
     {spawn_monitor(
        fun() ->
                _ = wh_amqp_channel:consumer_pid(AMQPConsumer),
                put('callid', whapps_call:call_id_direct(Call)),
-               try
-                   CFModule:handle(Data, Call)
+               try CFModule:handle(Data, Call) of
+                   _ -> 'ok'
                catch
                    _E:R ->
                        ST = erlang:get_stacktrace(),

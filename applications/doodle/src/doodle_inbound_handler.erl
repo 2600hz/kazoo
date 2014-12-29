@@ -21,7 +21,7 @@ handle_req(JObj, Props, Deliver) ->
                 'ack' -> gen_listener:ack(Srv, Deliver);
                 'nack' -> gen_listener:ack(Srv, Deliver)
             end;
-        'false' -> 
+        'false' ->
             lager:debug("error validating inbound message : ~p", [JObj]),
              gen_listener:ack(Srv, Deliver)
     end.
@@ -46,7 +46,7 @@ maybe_relay_request(JObj) ->
                        ],
             Fun = fun(F, J) -> F(Inception, NumberProps, J) end,
             JObjReq = lists:foldl(Fun, JObj, Routines),
-            process_sms_req(FetchId, CallId, JObjReq)            
+            process_sms_req(FetchId, CallId, JObjReq)
     end.
 
 -spec process_sms_req(binary(), binary(), wh_json:object()) -> 'ack' | 'nack'.
@@ -54,8 +54,8 @@ process_sms_req(FetchId, CallId, JObj) when not is_list(JObj) ->
     Req = wh_json:set_values([{<<"Msg-ID">>, FetchId}
                               ,{<<"Call-ID">>, CallId}
                               ,{<<"Channel-Authorized">>, 'true'}
-                              ,{?CCV(<<"Fetch-ID">>), FetchId}                       
-                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)                       
+                              ,{?CCV(<<"Fetch-ID">>), FetchId}
+                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ], JObj),
     process_sms_req(FetchId, CallId, wh_json:to_proplist(Req));
 process_sms_req(FetchId, CallId, Req) ->
@@ -82,7 +82,7 @@ send_route_win(FetchId, CallId, JObj) ->
            ,{<<"Control-Queue">>, <<"chatplan_ignored">>}
            ,{<<"Custom-Channel-Vars">>, CCVs}
            | wh_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
-          ],    
+          ],
     lager:debug("sms inbound handler sending route_win to ~s", [ServerQ]),
     wh_amqp_worker:cast(Win, fun(Payload) -> wapi_route:publish_win(ServerQ, Payload) end),
     'ack'.
@@ -165,6 +165,6 @@ set_realm(_, _, JObj) ->
                       end, [], Keys),
     wh_json:set_values(KVs, JObj).
 
--spec set_realm_value(binary(), binary(), binary()) -> binary().
+-spec set_realm_value(K, ne_binary(), ne_binary()) -> {K, ne_binary()}.
 set_realm_value(K, Value, Realm) ->
     {K, <<Value/binary, "@", Realm/binary>>}.

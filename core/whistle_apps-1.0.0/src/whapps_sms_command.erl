@@ -109,7 +109,7 @@ create_sms(Call, TargetEndpoints) ->
     ].
 
 -spec create_sms_endpoints(whapps_call:call(), wh_proplist(), wh_proplist()) -> wh_proplist().
-create_sms_endpoints(Call, [], Endpoints) -> Endpoints;
+create_sms_endpoints(_Call, [], Endpoints) -> Endpoints;
 create_sms_endpoints(Call, [Endpoint | Others], Endpoints) ->
     Realm = wh_json:get_value(<<"To-Realm">>, Endpoint),
     Username = wh_json:get_value(<<"To-User">>, Endpoint),
@@ -117,12 +117,12 @@ create_sms_endpoints(Call, [Endpoint | Others], Endpoints) ->
         {'ok', Node} ->
             List = [ wh_json:set_value(<<"Route-ID">>, Node, Endpoint) | Endpoints],
             create_sms_endpoints(Call, Others, List);
-        {'error', _E} ->            
+        {'error', _E} ->
             create_sms_endpoints(Call, Others, Endpoints)
     end.
-            
 
-                                                       
+
+
 
 -spec lookup_reg(ne_binary(), ne_binary()) -> wh_json:objects().
 lookup_reg(Username, Realm) ->
