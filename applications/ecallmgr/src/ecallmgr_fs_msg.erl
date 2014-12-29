@@ -32,14 +32,17 @@
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [{'sms', []}
-                   ,{'self', []}
-                  ]).
+-define(BINDINGS(Node), [{'sms', [{'route_id', Node}
+                                  ,{'restrict_to', ['route']}
+                                 ]
+                         }
+                         ,{'self', []}                  
+                        ]).
 -define(RESPONDERS, [
                      {{?MODULE, 'handle_message_route'}, [{<<"message">>, <<"route">>}]}
                     ]).
 
--define(QUEUE_NAME, <<"ecallmgr_fs_msg">>).
+-define(QUEUE_NAME(N), <<"ecallmgr_fs_msg_", N/binary>>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
 
@@ -62,10 +65,11 @@ start_link(Node) ->
     start_link(Node, []).
 
 start_link(Node, Options) ->
+    NodeBin = wh_util:to_binary(Node),
     gen_listener:start_link(?MODULE
                             ,[{'responders', ?RESPONDERS}
-                              ,{'bindings', ?BINDINGS}
-                              ,{'queue_name', ?QUEUE_NAME}
+                              ,{'bindings', ?BINDINGS(NodeBin)}
+                              ,{'queue_name', ?QUEUE_NAME(NodeBin)}
                               ,{'queue_options', ?QUEUE_OPTIONS}
                               ,{'consume_options', ?CONSUME_OPTIONS}
                              ]
@@ -298,7 +302,7 @@ format_endpoint(Endpoint, Props, JObj, <<"route">>) ->
 format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
     Realm = wh_json:get_value(<<"To-Realm">>, Endpoint),
     Username = wh_json:get_value(<<"To-Username">>, Endpoint),
-    ToURI = wh_json:get_value(<<"Presence-ID">>, Endpoint),
+    ToURI = <<Username/binary, "@", Realm/binary>>,
     case ecallmgr_registrar:lookup_original_contact(Realm, Username) of
         {'ok', Contact} ->
             [#uri{user=_ToUser
