@@ -78,10 +78,10 @@ b_send_sms(Endpoints, Timeout, _SIPHeaders, Call) ->
              Ret
     end.
 
--spec create_sms(whapps_call:call(), wh_proplist()) -> wh_proplist().
+-spec create_sms(whapps_call:call(), wh_json:objects()) -> wh_proplist().
 create_sms(Call, TargetEndpoints) ->
-    Endpoints = create_sms_endpoints(Call, TargetEndpoints, []),
-    [Endpoint] = Endpoints,
+    [Endpoint] = Endpoints = create_sms_endpoints(Call, TargetEndpoints, []),
+
     AccountId = whapps_call:account_id(Call),
     AccountRealm =  whapps_call:to_realm(Call),
     CCVUpdates = props:filter_undefined(
@@ -107,7 +107,7 @@ create_sms(Call, TargetEndpoints) ->
      | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
     ].
 
--spec create_sms_endpoints(whapps_call:call(), wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec create_sms_endpoints(whapps_call:call(), wh_json:objects(), wh_json:objects()) -> wh_json:objects().
 create_sms_endpoints(_Call, [], Endpoints) -> Endpoints;
 create_sms_endpoints(Call, [Endpoint | Others], Endpoints) ->
     Realm = wh_json:get_value(<<"To-Realm">>, Endpoint),
@@ -120,10 +120,8 @@ create_sms_endpoints(Call, [Endpoint | Others], Endpoints) ->
             create_sms_endpoints(Call, Others, Endpoints)
     end.
 
-
-
-
--spec lookup_reg(ne_binary(), ne_binary()) -> wh_json:objects().
+-spec lookup_reg(ne_binary(), ne_binary()) -> {'ok', ne_binary()} |
+                                              {'error', _}.
 lookup_reg(Username, Realm) ->
     Req = [{<<"Realm">>, Realm}
            ,{<<"Username">>, Username}
@@ -139,7 +137,7 @@ lookup_reg(Username, Realm) ->
             lager:debug("error getting registration: ~p", [_E]),
             E;
         {_, JObjs} ->
-            [FirstNode] = [Node || Node <- extract_device_registrations(JObjs)],
+            [FirstNode] = extract_device_registrations(JObjs),
             {'ok', FirstNode}
     end.
 
@@ -151,14 +149,15 @@ extract_device_registrations(JObjs) ->
 extract_device_registrations([], Set) -> Set;
 extract_device_registrations([JObj|JObjs], Set) ->
     Fields = wh_json:get_value(<<"Fields">>, JObj, []),
-    S = lists:foldl(fun(J, S) ->
-                            case wh_json:get_ne_value(<<"Registrar-Node">>, J) of
-                                'undefined' -> S;
-                                AuthId -> sets:add_element(AuthId, S)
-                            end
-                    end, Set, Fields),
+    S = lists:foldl(fun extract_fold/2, Set, Fields),
     extract_device_registrations(JObjs, S).
 
+-spec extract_fold(wh_json:object(), set()) -> set().
+extract_fold(JObj, Set) ->
+    case wh_json:get_ne_value(<<"Registrar-Node">>, JObj) of
+        'undefined' -> Set;
+        AuthId -> sets:add_element(AuthId, Set)
+    end.
 
 -spec get_correlated_msg_type(wh_json:object()) ->
                                      {api_binary(), api_binary(), api_binary()}.
