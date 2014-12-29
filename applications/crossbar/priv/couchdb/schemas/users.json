@@ -169,6 +169,22 @@
             },
             "default": {}
         },
+        "pronounced_name": {
+            "type": "object",
+            "required": false,
+            "name": "Pronounced name",
+            "description": "Name pronounced by user to introduce himself to conference members",
+            "properties": {
+                "media_id": {
+                    "type": "string",
+                    "required": false,
+                    "name": "Media ID",
+                    "description": "The ID of a media object that should be used as the music on hold",
+                    "maxLength": 128
+                }
+            },
+            "default": {}
+        },
         "media": {
             "type": "object",
             "required": false,
