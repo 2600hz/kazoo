@@ -27,9 +27,9 @@
 -export([sms_status/1, sms_status/2]).
 -export([get_callee_id/2 , set_callee_id/2]).
 -export([get_caller_id/2 , get_caller_id/3, set_caller_id/2]).
--export([lookup_number/1]). 
--export([get_inbound_destination/1]). 
--export([lookup_mdn/1]). 
+-export([lookup_number/1]).
+-export([get_inbound_destination/1]).
+-export([lookup_mdn/1]).
 
 %% ====================================================================
 %% API functions
@@ -47,7 +47,7 @@ set_flow_status(Status, Call) ->
 set_flow_status(Status, Message, Call) ->
     Props = [{<<"flow_status">>, Status}
              ,{<<"flow_message">>, Message}
-            ],   
+            ],
     whapps_call:kvs_store_proplist(Props, Call).
 
 -spec set_flow_error(ne_binary(), whapps_call:call()) -> whapps_call:call().
@@ -58,7 +58,7 @@ set_flow_error(Error, Call) ->
 set_flow_error(Status, Error, Call) ->
     Props = [{<<"flow_status">>, Status}
              ,{<<"flow_error">>, Error}
-            ],   
+            ],
     whapps_call:kvs_store_proplist(Props, Call).
 
 -spec clear_flow_error(whapps_call:call()) -> whapps_call:call().
@@ -102,7 +102,7 @@ save_sms(JObj, DocId, Call) ->
     <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
     {'ok', Doc} = kazoo_modb:open_doc(AccountId, DocId, Year, Month),
     save_sms(JObj, DocId, Doc, Call).
-    
+
 -spec save_sms(wh_json:object(), api_binary(), wh_json:object(), whapps_call:call()) -> whapps_call:call().
 save_sms(JObj, DocId, Doc, Call) ->
     <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId,
@@ -121,7 +121,7 @@ save_sms(JObj, DocId, Doc, Call) ->
     MessageId = wh_json:get_value(<<"Message-ID">>, JObj),
     Status = whapps_call:kvs_fetch(<<"flow_status">>, <<"queued">>, Call),
     Rev = get_sms_revision(Call),
-    Opts = props:filter_undefined([{'rev', Rev}]),   
+    Opts = props:filter_undefined([{'rev', Rev}]),
     Props = props:filter_empty(
                 [{<<"_id">>, DocId}
                  ,{<<"pvt_type">>, <<"sms">> }
@@ -156,7 +156,7 @@ save_sms(JObj, DocId, Doc, Call) ->
     case couch_mgr:save_doc(AccountDb, JObjDoc, Opts) of
         {'ok', Saved} ->
             whapps_call:kvs_store(<<"_rev">>, wh_json:get_value(<<"_rev">>, Saved), Call);
-        {'error', E} -> 
+        {'error', E} ->
             lager:debug("error saving sms doc , wazzup ? ~p", [E]),
             Call
     end.
@@ -233,17 +233,16 @@ replay_sms(AccountId, DocId) ->
 replay_sms_flow(_AccountId, _DocId, _Rev, 'undefined') -> 'ok';
 replay_sms_flow(AccountId, <<_:7/binary, CallId/binary>> = DocId, Rev, JObj) ->
     lager:debug("replaying sms ~s for account ~s",[DocId, AccountId]),
-    Routines = [ fun(C) -> whapps_call:set_call_id(CallId, C) end
-                 ,fun(C) -> set_sms_revision(Rev , C) end
-                 ,fun(C) -> set_flow_status(<<"resumed">> , C) end
-                 ,fun(C) -> save_sms(C) end
+    Routines = [{fun whapps_call:set_call_id/2, CallId}
+                ,fun(C) -> set_sms_revision(Rev, C) end
+                ,fun(C) -> set_flow_status(<<"resumed">>, C) end
+                ,fun save_sms/2
                ],
-    Fun = fun(Routine, Call) ->
-                  Routine(Call)
-          end,
-    Call = lists:foldl(Fun, whapps_call:from_json(JObj), Routines),
+
+    Call = whapps_call:exec(Routines, whapps_call:from_json(JObj)),
     whapps_call:put_callid(Call),
-    lager:info("doodle received sms resume for ~s of account ~s, taking control",[DocId, AccountId]),
+
+    lager:info("doodle received sms resume for ~s of account ~s, taking control", [DocId, AccountId]),
     doodle_route_win:maybe_restrict_call(JObj, Call).
 
 -spec sms_status(api_object()) -> binary().
@@ -259,7 +258,7 @@ sms_status(<<"200">>, _) -> <<"delivered">>;
 sms_status(<<"202">>, _) -> <<"accepted">>;
 sms_status(_, <<"Success">>) -> <<"completed">>;
 sms_status(_, _) -> <<"pending">>.
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -296,7 +295,7 @@ handle_bridge_failure(Cause, Code, Call) ->
 -spec get_caller_id(wh_json:object(), whapps_call:call()) -> {api_binary(), api_binary()}.
 get_caller_id(Data, Call) ->
     get_caller_id(Data, <<"external">>, Call).
-    
+
 -spec get_caller_id(wh_json:object(), binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 get_caller_id(Data, Default, Call) ->
     Type = wh_json:get_value(<<"caller_id_type">>, Data, Default),
@@ -309,12 +308,11 @@ set_caller_id(Data, Call) ->
               [{<<"Caller-ID-Name">>, CIDName}
                ,{<<"Caller-ID-Number">>, CIDNumber}
               ]),
-    Routines = [fun(C) -> whapps_call:set_caller_id_number(CIDNumber, C) end
-                ,fun(C) -> whapps_call:set_caller_id_name(CIDName, C) end
-                ,fun(C) -> whapps_call:set_custom_channel_vars(Props, C) end
+    Routines = [{fun whapps_call:set_caller_id_number/2, CIDNumber}
+                ,{fun whapps_call:set_caller_id_name/2, CIDName}
+                ,{fun whapps_call:set_custom_channel_vars/2, Props}
                ],
-    Fun = fun(F, C) -> F(C) end,
-    lists:foldl(Fun, Call, Routines).
+    whapps_call:exec(Routines, Call).
 
 -spec get_callee_id(binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 get_callee_id(EndpointId, Call) ->
@@ -329,7 +327,6 @@ set_callee_id(EndpointId, Call) ->
               ]),
     whapps_call:set_custom_channel_vars(Props, Call).
 
-  
 -spec get_inbound_field(ne_binary()) -> ne_binary().
 get_inbound_field(Inception) ->
     case Inception of
@@ -383,8 +380,8 @@ cache_key_number(Number) ->
     {'sms_number', Number}.
 
 -spec lookup_mdn(ne_binary()) ->
-                           {'ok', binary(), binary()} |
-                           {'error', term()}.
+                        {'ok', binary(), binary()} |
+                        {'error', term()}.
 lookup_mdn(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?DOODLE_CACHE, cache_key_mdn(Num)) of
@@ -395,8 +392,8 @@ lookup_mdn(Number) ->
     end.
 
 -spec fetch_mdn(ne_binary()) ->
-                          {'ok', binary(), binary()} |
-                          {'error', term()}.
+                       {'ok', binary(), binary()} |
+                       {'error', term()}.
 fetch_mdn(Num) ->
     case lookup_number(Num) of
         {'ok', AccountId, _Props} ->
@@ -406,8 +403,9 @@ fetch_mdn(Num) ->
             E
     end.
 
--spec fetch_mdn_result(binary(), binary()) -> {'ok', binary(), binary()} 
-                                              | {'error', 'not_found'}. 
+-spec fetch_mdn_result(binary(), binary()) ->
+                              {'ok', binary(), binary()} |
+                              {'error', 'not_found'}.
 fetch_mdn_result(AccountId, Num) ->
     AccountDb = wh_util:format_account_db(AccountId),
     ViewOptions = [{'key', mdn_from_e164(Num)}],
@@ -436,4 +434,4 @@ cache_key_mdn(Number) ->
 -spec mdn_from_e164(binary()) -> binary().
 mdn_from_e164(<<"+1", Number/binary>>) -> Number;
 mdn_from_e164(<<"1", Number/binary>>) -> Number;
-mdn_from_e164(Number) -> Number.    
+mdn_from_e164(Number) -> Number.
