@@ -95,6 +95,8 @@
 -export([format_time/0, format_time/1]).
 -export([format_datetime/0, format_datetime/1]).
 
+-export([node_name/0, node_hostname/0]).
+
 -include_lib("kernel/include/inet.hrl").
 
 -ifdef(TEST).
@@ -1086,6 +1088,16 @@ format_datetime() ->
 
 format_datetime(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
+
+-spec node_name() -> binary().
+-spec node_hostname() -> binary().
+node_name() ->
+    [Name, Host] = binary:split(to_binary(node()), <<"@">>),
+    Name.
+node_hostname() ->
+    [Name, Host] = binary:split(to_binary(node()), <<"@">>),
+    Host.
+
 
 -ifdef(TEST).
 
