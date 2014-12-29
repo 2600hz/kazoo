@@ -56,8 +56,8 @@ maybe_handle_bridge_failure(Reason, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bridge_to_endpoint(ne_binary(), wh_json:object(), whapps_call:call()) ->
-                                {'error', atom()} |
-                                {'fail', ne_binary()} |
+                                {'error', atom() | wh_json:object()} |
+                                {'fail', ne_binary() | wh_json:object()} |
                                 {'ok', wh_json:object()}.
 bridge_to_endpoint(EndpointId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),

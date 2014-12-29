@@ -27,7 +27,7 @@ handle(Data, Call1) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
     Call = doodle_util:set_callee_id(UserId, Call1),
     Endpoints = get_endpoints(UserId, Data, Call),
-    case length(Endpoints) > 0
+    case Endpoints =/= []
         andalso whapps_sms_command:b_send_sms(Endpoints, Call)
     of
         'false' ->
@@ -44,7 +44,7 @@ handle(Data, Call1) ->
 -spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
 handle_result(JObj, Call1) ->
     Status = doodle_util:sms_status(JObj),
-    Call = doodle_util:set_flow_status(Status, Call1),    
+    Call = doodle_util:set_flow_status(Status, Call1),
     case Status of
         <<"pending">> -> doodle_exe:stop(Call);
         _ -> lager:info("completed successful message to the user"),
