@@ -109,15 +109,20 @@ send_and_wait(<<"sip">>, API, Endpoint, Timeout) ->
     lager:debug("sending sms and waiting for response ~s", [CallId]),
     whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_message/1),
     wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout);
-send_and_wait(<<"amqp">>, API, Endpoint, Timeout) ->    
+send_and_wait(<<"amqp">>, API, Endpoint, _Timeout) ->    
     CallId = props:get_value(<<"Call-ID">>, API),
     Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
     Props = wh_json:to_proplist(Endpoint) ++ Options,
     Payload = props:set_values( Props, API),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
     whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_outbound/1),
-    wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout).
-
+    %% Message delivered
+    DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }    
+                     ,{<<"Status">>, <<"Success">>}
+                     ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
+                    | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
+                     ],
+    {'ok', wh_json:set_values(DeliveryProps, wh_json:new())}.
 
 -spec create_sms(whapps_call:call()) -> wh_proplist().
 create_sms(Call) ->
