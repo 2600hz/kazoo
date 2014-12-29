@@ -27,8 +27,9 @@ handle(Data, Call1) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
     Call = doodle_util:set_callee_id(UserId, Call1),
     Endpoints = get_endpoints(UserId, Data, Call),
+    Strategy = wh_json:get_binary_value(<<"sms_strategy">>, Data, <<"single">>),
     case length(Endpoints) > 0
-        andalso whapps_sms_command:b_send_sms(Endpoints, Call)
+        andalso whapps_sms_command:b_send_sms(Endpoints, Strategy, Call)
     of
         'false' ->
             lager:notice("user ~s has no endpoints", [UserId]),

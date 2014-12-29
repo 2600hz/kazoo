@@ -28,7 +28,6 @@ handle_req(JObj, Props, Deliver) ->
 
 -spec maybe_relay_request(wh_json:object()) -> 'ack' | 'nack'.
 maybe_relay_request(JObj) ->
-    lager:debug("DOODLE INBOUND ~p", [JObj]),
     FetchId = wh_util:rand_hex_binary(16),
     CallId =  wh_util:rand_hex_binary(16),
     {Number, Inception} = doodle_util:get_inbound_destination(JObj),

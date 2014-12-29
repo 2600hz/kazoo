@@ -70,9 +70,12 @@ b_send_sms(EndpointList, Strategy, Timeout, Call) ->
 
 
 send(<<"single">>, API, [Endpoint | Others]) ->
-    Payload = wh_json:set_values(
+    Payload = props:set_values(
                 [{<<"Endpoints">>, [Endpoint]}
-                  | wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])
+                 ,{<<"Callee-ID-Name">>, wh_json:get_value(<<"Callee-ID-Name">>, Endpoint)}
+                 ,{<<"Callee-ID-Number">>, wh_json:get_value(<<"Callee-ID-Number">>, Endpoint)}
+                 ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, Endpoint)}
+                   | wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])
                 ], API),
     whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_message/1),
     send(<<"single">>, API, Others);
@@ -84,14 +87,10 @@ send_and_wait(<<"single">>, _API, [], _Timeout, Count) when Count =:= 0 ->
     {'error', <<"no endpoints available">>};
 send_and_wait(<<"single">>, _API, [], _Timeout, Count) when Count > 0 ->
     {'error', <<"no endpoints responded">>};
-send_and_wait(<<"single">>, API,[Endpoint| Others], Timeout, Count) ->
-    Payload = wh_json:set_values(
-                [{<<"Endpoints">>, [Endpoint]}
-                  | wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])
-                ], API),
-    CallId = wh_json:get_value(<<"Call-ID">>, Payload),
+send_and_wait(<<"single">>, API, [Endpoint| Others], Timeout, Count) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, API),
     Type = wh_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
-    ReqResp = send_and_wait(Type, Payload, Timeout),
+    ReqResp = send_and_wait(Type, API, Endpoint, Timeout),
     case ReqResp of
         {'error', _R} ->
             lager:info("recieved error while sending msg ~s: ~-800p", [CallId, _R]),
@@ -103,13 +102,18 @@ send_and_wait(<<"single">>, API,[Endpoint| Others], Timeout, Count) ->
 send_and_wait(Strategy, _API, _Endpoints, _Timeout, _Count) ->
     lager:debug("Strategy ~s not implemented", [Strategy]).
 
-send_and_wait(<<"sip">>, Payload, Timeout) ->    
-    CallId = wh_json:get_value(<<"Call-ID">>, Payload),
+send_and_wait(<<"sip">>, API, Endpoint, Timeout) ->    
+    Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
+    Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
+    CallId = props:get_value(<<"Call-ID">>, Payload),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
     whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_message/1),
     wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout);
-send_and_wait(<<"amqp">>, Payload, Timeout) ->    
-    CallId = wh_json:get_value(<<"Call-ID">>, Payload),
+send_and_wait(<<"amqp">>, API, Endpoint, Timeout) ->    
+    CallId = props:get_value(<<"Call-ID">>, API),
+    Options = wh_json:to_proplist(wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])),
+    Props = wh_json:to_proplist(Endpoint) ++ Options,
+    Payload = props:set_values( Props, API),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
     whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_outbound/1),
     wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout).
@@ -140,7 +144,7 @@ create_sms(Call) ->
      | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
     ].
 
--spec create_sms_endpoints(wh_proplist(), wh_proplist()) -> wh_proplist().
+-spec create_sms_endpoints(wh_json:objects(), wh_json:objects()) -> wh_json:objects().
 create_sms_endpoints([], Endpoints) -> Endpoints;
 create_sms_endpoints([Endpoint | Others], Endpoints) ->
     EndpointType = wh_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
@@ -155,7 +159,12 @@ create_sms_endpoint(Endpoint, <<"sip">>) ->
     Realm = wh_json:get_value(<<"To-Realm">>, Endpoint),
     Username = wh_json:get_value(<<"To-User">>, Endpoint),
     case lookup_reg(Username, Realm) of
-        {'ok', Node} -> wh_json:set_value(<<"Route-ID">>, Node, Endpoint);
+        {'ok', Node} ->
+            Options = wh_json:get_value(<<"Endpoint-Options">>, Endpoint, []),
+            wh_json:set_values(
+              [{<<"Route-ID">>, Node}
+               ,{<<"Endpoint-Options">>, wh_json:from_list([{<<"Route-ID">>, Node} | Options])}
+              ], Endpoint);
         {'error', _E} -> 'undefined'
     end.
 
