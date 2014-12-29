@@ -56,4 +56,9 @@
 -define(DEFAULT_CHAT_CONFIG, 'undefined').
 
 -define(CONFERENCE_HRL, 'true').
+
+-type name_pronounced() :: 'undefined'
+                           | {'temp_doc_id', ne_binary(), ne_binary()}
+                           | {'media_doc_id', ne_binary(), ne_binary()}.
+
 -endif.

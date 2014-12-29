@@ -14,6 +14,13 @@
       "minLength": 1,
       "maxLength": 128
     },
+    "play_name":{
+      "name": "Play name",
+      "description": "Does we need to announce new conference members?",
+      "type":"boolean",
+      "required": false,
+      "default": false
+    },
     "profile": {
       "type": "string",
       "required": false,

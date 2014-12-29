@@ -11,6 +11,8 @@
 
 -export([handle_req/2]).
 
+-define(PRONOUNCED_NAME_KEY, [<<"name_pronounced">>, <<"media_id">>]).
+
 -spec handle_req(wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, _Options) ->
     'true' = wapi_conference:discovery_req_v(JObj),
@@ -207,8 +209,177 @@ handle_search_resp(JObj, Conference, Call, Srv) ->
             whapps_call_command:hangup(Call)
     end.
 
+-spec get_user_id(whapps_call:call()) -> api_binary().
+get_user_id(Call) ->
+    AuthoringId = whapps_call:authorizing_id(Call),
+    AccountDB = whapps_call:account_db(Call),
+    case whapps_call:authorizing_type(Call) of
+        <<"user">> -> AuthoringId;
+        <<"device">> ->
+            case couch_mgr:open_cache_doc(AccountDB, AuthoringId) of
+                {'ok', DeviceDoc} -> wh_json:get_value(<<"owner_id">>, DeviceDoc);
+                _ -> 'undefined'
+            end;
+        _ -> 'undefined'
+    end.
+
+-spec pronounced_name_object(whapps_call:call()) -> name_pronounced().
+pronounced_name_object(Call) ->
+    AccountDB = whapps_call:account_db(Call),
+    case get_user_id(Call) of
+        'undefined' -> 'undefined';
+        UserId ->
+            case couch_mgr:open_cache_doc(AccountDB, UserId) of
+                {'ok', UserDoc} ->
+                    case wh_json:get_value(?PRONOUNCED_NAME_KEY, UserDoc) of
+                        'undefined' -> 'undefined';
+                        DocId -> {'media_doc_id', whapps_call:account_db(Call), DocId}
+                    end;
+                _ -> 'undefined'
+            end
+    end.
+
+-type predicate() :: fun((any()) -> boolean()).
+-type loop_body() :: fun(() -> any()).
+-spec while(predicate(), loop_body()) -> any().
+while(Predicate, LoopBody) ->
+    Value = LoopBody(),
+    while(Predicate, LoopBody, Value, Predicate(Value)).
+while(Predicate, LoopBody, _, 'true') ->
+    Value = LoopBody(),
+    while(Predicate, LoopBody, Value, Predicate(Value));
+while(_, _, Value, 'false') ->
+    Value.
+
+-spec review(ne_binary(), whapps_call:call()) -> {'digit', ne_binary()} | 'error'.
+review(RecordName, Call) ->
+    lager:debug("review record"),
+    NoopId = whapps_call_command:audio_macro([{'prompt', <<"conf-your_announcment">>}
+                                              ,{'play', RecordName}
+                                              ,{'prompt', <<"conf-review">>}
+                                             ], Call),
+
+    case whapps_call_command:collect_digits(1
+                                            ,whapps_call_command:default_collect_timeout()
+                                            ,whapps_call_command:default_interdigit_timeout()
+                                            ,NoopId
+                                            ,Call
+                                           )
+    of
+        {'ok', Digit} ->
+            {'digit', Digit};
+        {'error', _} ->
+            'error'
+    end.
+
+
+-spec record_name(ne_binary(), whapps_call:call()) -> {'digit', ne_binary()} | 'error'.
+record_name(RecordName, Call) ->
+    lager:debug("recording name"),
+    Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
+                              ,{<<"Duration-ON">>, <<"500">>}
+                              ,{<<"Duration-OFF">>, <<"100">>}
+                             ]),
+    _ = whapps_call_command:audio_macro([{'prompt', <<"conf-announce_your_name">>}
+                                         ,{'tones', [Tone]}
+                                        ], Call),
+    whapps_call_command:b_record(RecordName, ?ANY_DIGIT, <<"60">>, Call),
+    Force = whapps_config:get(<<"conferences">>, <<"review_name">>, 'false'),
+    case Force of
+        'true' ->
+            review(RecordName, Call);
+        'false' ->
+            {'digit', <<"1">>}
+    end.
+
+-spec user_discards_or_not_error({'digit', ne_binary()} | 'error') -> boolean().
+user_discards_or_not_error({'digit', Digit}) ->
+    Digit =/= <<"1">>;
+user_discards_or_not_error('error') ->
+    'false'.
+
+-spec record_prononced_name(whapps_call:call()) -> name_pronounced().
+record_prononced_name(Call) ->
+    RecordName = list_to_binary(["conf_announce_",couch_mgr:get_uuid(), ".mp3"]),
+
+    Choice = while(fun user_discards_or_not_error/1
+                   ,fun () -> record_name(RecordName, Call) end
+                  ),
+
+    case Choice of
+        'error' -> 'undefined';
+        {'digit', <<"1">>} -> save_pronounced_name(RecordName, Call)
+    end.
+
+-spec get_new_attachment_url(ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+get_new_attachment_url(AttachmentName, MediaId, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    _ = case couch_mgr:open_doc(AccountDb, MediaId) of
+            {'ok', JObj} ->
+                case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
+                    [] -> 'ok';
+                    Existing ->
+                        [begin
+                             lager:debug("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
+                             couch_mgr:delete_attachment(AccountDb, MediaId, Attach)
+                         end
+                         || Attach <- Existing
+                        ]
+                end;
+            {'error', _} -> 'ok'
+        end,
+    {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
+    URL.
+
+-spec save_pronounced_name(ne_binary(), whapps_call:call()) -> name_pronounced().
+save_pronounced_name(RecordName, Call) ->
+    UserId = get_user_id(Call),
+    AccountDb = whapps_call:account_db(Call),
+    Props = props:filter_undefined(
+              [{<<"name">>, RecordName}
+               ,{<<"description">>, <<"conference: user's pronounced name">>}
+               ,{<<"source_type">>, <<"call to conference">>}
+               ,{<<"source_id">>, whapps_call:fetch_id(Call)}
+               ,{<<"owner_id">>, UserId}
+               ,{<<"media_source">>, <<"recording">>}
+               ,{<<"streamable">>, 'true'}
+              ]),
+    Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{'type', <<"media">>}]),
+    {'ok', MediaJObj} = couch_mgr:save_doc(AccountDb, Doc),
+    MediaDocId = wh_json:get_value(<<"_id">>, MediaJObj),
+    whapps_call_command:b_store(RecordName, get_new_attachment_url(RecordName, MediaDocId, Call), Call),
+    case couch_mgr:open_cache_doc(AccountDb, UserId) of
+        {'ok', UserJObj} ->
+            lager:debug("Updating user's doc"),
+            JObj1 = wh_json:set_value(?PRONOUNCED_NAME_KEY, MediaDocId, UserJObj),
+            couch_mgr:save_doc(AccountDb, JObj1),
+            {'media_doc_id', AccountDb, MediaDocId};
+        {'error', _Err} ->
+            lager:info("Can't update user's doc due to error ~p", [_Err]),
+            {'temp_doc_id', AccountDb, MediaDocId}
+    end.
+
+-spec maybe_play_name(whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
+maybe_play_name(Conference, Call, Srv) ->
+    case whapps_conference:play_name_on_join(Conference) of
+        'true' ->
+            PronouncedName = case pronounced_name_object(Call) of
+                                 'undefined' ->
+                                     lager:debug("Recording pronunciation of the name"),
+                                     record_prononced_name(Call);
+                                 Value ->
+                                     lager:debug("has pronounced name: ~p", [Value]),
+                                     Value
+                             end,
+            conf_participant:set_name_pronounced(PronouncedName, Srv);
+        'false' -> 'ok'
+    end.
+
 -spec add_participant_to_conference(wh_json:object(), whapps_conference:conference(), whapps_call:call(), pid()) -> 'ok'.
 add_participant_to_conference(JObj, Conference, Call, Srv) ->
+
+    maybe_play_name(Conference, Call, Srv),
+
     _ = case whapps_conference:play_entry_prompt(Conference) of
             'false' -> 'ok';
             'true' -> whapps_call_command:prompt(<<"conf-joining_conference">>, Call)

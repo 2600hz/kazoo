@@ -26,6 +26,8 @@
 
 -export([join_local/1, join_remote/2]).
 
+-export([set_name_pronounced/2]).
+
 -export([mute/1, unmute/1, toggle_mute/1]).
 -export([deaf/1, undeaf/1, toggle_deaf/1]).
 -export([hangup/1]).
@@ -71,6 +73,7 @@
                       ,last_dtmf = <<>> :: binary()
                       ,queue :: api_binary()
                       ,server = self() :: pid()
+                      ,name_pronounced = 'undefined' :: name_pronounced()
                      }).
 -type participant() :: #participant{}.
 
@@ -108,6 +111,9 @@ discovery_event(Srv) -> gen_listener:call(Srv, {'get_discovery_event'}).
 
 -spec set_discovery_event(wh_json:object(), pid()) -> 'ok'.
 set_discovery_event(DE, Srv) -> gen_listener:cast(Srv, {'set_discovery_event', DE}).
+
+-spec set_name_pronounced(name_pronounced(), pid()) -> 'ok'.
+set_name_pronounced(Name, Srv) -> gen_listener:cast(Srv, {'set_name_pronounced', Name}).
 
 -spec call(pid()) -> {'ok', whapps_call:call()}.
 call(Srv) -> gen_listener:call(Srv, {'get_call'}).
@@ -275,10 +281,22 @@ handle_cast({'set_conference', Conference}, Participant) ->
     {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
+handle_cast({'set_name_pronounced', Name}, #participant{}=Participant) ->
+    {'noreply', Participant#participant{name_pronounced = Name}};
 handle_cast(_Message, #participant{conference='undefined'}=Participant) ->
     %% ALL MESSAGES BELLOW THIS ARE CONSUMED HERE UNTIL THE CONFERENCE IS KNOWN
     lager:debug("ignoring message prior to conference discovery: ~p"
                 ,[_Message]),
+    {'noreply', Participant};
+handle_cast('play_announce', #participant{name_pronounced = 'undefuned'} = Participant) ->
+    lager:debug("Skipping announce"),
+    {'noreply', Participant};
+handle_cast('play_announce', #participant{conference = Conference
+                                           ,name_pronounced = {_, AccountDb, MediaId}
+                                          }=Participant) ->
+    lager:debug("Make announce from couch media"),
+    Recording = wh_media_util:media_path(MediaId, AccountDb),
+    whapps_conference_command:play(Recording, Conference),
     {'noreply', Participant};
 handle_cast('join_local', #participant{call=Call
                                        ,conference=Conference
@@ -396,10 +414,18 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
             lager:debug("received channel hangup event, terminate"),
-            gen_listener:cast(Srv, 'hungup'),
-            {'reply', [{'call_event_consumers', Consumers}]};
-        {_Else, _} -> {'reply', [{'call_event_consumers', Consumers}]}
-    end.
+            gen_listener:cast(Srv, 'hungup');
+        {{<<"call_event">>, <<"CHANNEL_BRIDGE">>}, CallId} ->
+            gen_listener:cast(Srv, 'play_announce');
+        {{<<"call_event">>,<<"CHANNEL_EXECUTE">>}, CallId} ->
+            case wh_json:get_value(<<"Application-Name">>, JObj) of
+                <<"conference">> -> gen_listener:cast(Srv, 'play_announce');
+                _ -> 'ok'
+            end;
+        {_Else, _} ->
+            lager:debug("unhandled event: ~p", [_Else])
+    end,
+    {'reply', [{'call_event_consumers', Consumers}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -412,8 +438,19 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _Participant) ->
+terminate(_Reason, #participant{name_pronounced = Name}) ->
+    maybe_clear(Name),
     lager:debug("conference participant execution has been stopped: ~p", [_Reason]).
+
+-spec maybe_clear(name_pronounced()) -> 'ok'.
+maybe_clear('undefined') ->
+    'ok';
+maybe_clear({'temp_doc_id', AccountDb, MediaId}) ->
+    lager:debug("Deleting doc: ~s/~s", [AccountDb, MediaId]),
+    couch_mgr:del_doc(AccountDb, MediaId),
+    'ok';
+maybe_clear(_) ->
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private
