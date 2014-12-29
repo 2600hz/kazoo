@@ -26,7 +26,6 @@ handle(Data, Call1) ->
     Call = doodle_util:set_callee_id(EndpointId, Call1),
     case bridge_to_endpoint(EndpointId, Data, Call) of
         {'ok', JObj} -> handle_result(JObj, Call);
-        {'fail', _} = Reason -> maybe_handle_bridge_failure(Reason, Call);
         {'error', _} = Reason -> maybe_handle_bridge_failure(Reason, Call)
     end.
 
@@ -63,7 +62,6 @@ bridge_to_endpoint(EndpointId, Data, Call) ->
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     case cf_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
-        {'ok', []} -> {'fail', <<"Endpoint not available">>};
         {'ok', Endpoints} ->
             whapps_sms_command:b_send_sms(Endpoints, Call)
     end.

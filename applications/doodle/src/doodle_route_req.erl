@@ -132,9 +132,7 @@ cache_call(Flow, NoMatch, ControllerQ, Call, JObj) ->
 
 -spec cache_resource_types(wh_json:object(), whapps_call:call(), wh_json:object()) -> whapps_call:call().
 cache_resource_types(Flow, Call, JObj) ->
-    lists:foldl(fun([_K | _K1]=KL , C1) ->
-                        whapps_call:kvs_store(lists:nthtail(1, KL), wh_json:get_value(KL, JObj), C1);
-                   (K, C1) ->
+    lists:foldl(fun(K, C1) ->
                         whapps_call:kvs_store(K, wh_json:get_value(K, JObj), C1)
                 end
                 ,Call

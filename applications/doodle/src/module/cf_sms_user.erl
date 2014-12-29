@@ -36,10 +36,9 @@ handle(Data, Call1) ->
             doodle_exe:continue(doodle_util:set_flow_status(<<"pending">>, Call));
         {'ok', JObj} ->
             handle_result(JObj, Call);
-        {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
-        {'error', R} ->
-            lager:info("error bridging to user: ~p", [R]),
-            doodle_exe:stop(doodle_util:set_flow_error(R, Call))
+        {'error', _R}=Reason -> 
+            lager:info("error bridging to user: ~p", [_R]),
+            maybe_handle_bridge_failure(Reason, Call)
     end.
 
 -spec handle_result(wh_json:object(), whapps_call:call()) -> 'ok'.
