@@ -49,3 +49,4 @@ applications/*/priv/archive_data/*
 /deps/erlang-localtime-1.0.0/include/tz_index.hrl
 .project
 .settings
+/deps/rabbit_common-3.3.5/
