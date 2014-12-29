@@ -365,7 +365,7 @@ route_req(CallId, FetchId, Props, Node) ->
      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"Body">>, props:get_value(<<"body">>, Props)}
+     ,{<<"Body">>, get_body(Props) }
      ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
      ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
@@ -388,6 +388,16 @@ route_req_ccvs(FetchId, Props) ->
        | ecallmgr_util:custom_channel_vars(Props)
       ]
      ).
+
+%% TODO
+%% check content-type and decode properly
+%% some sip clients send text/html with entities encoded
+-spec get_body(wh_proplist()) -> api_binary().
+get_body(Props) ->
+    case props:get_value(<<"body">>, Props) of
+        'undefined' -> 'undefined';
+        Body -> Body
+    end.
 
 -spec get_redirected(wh_proplist()) ->
                             {api_binary(), api_binary()}.
