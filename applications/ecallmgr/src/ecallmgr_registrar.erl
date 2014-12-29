@@ -720,7 +720,9 @@ create_registration(JObj) ->
                      ,contact=fix_contact(OriginalContact)
                      ,original_contact=OriginalContact
                      ,last_registration=wh_util:current_tstamp()
-                     ,registrar_node=wh_json:get_first_defined([<<"FreeSWITCH-Nodename">>, <<"Node">>], JObj)
+                     ,registrar_node=wh_json:get_first_defined([<<"Registrar-Node">>
+                                                                ,<<"FreeSWITCH-Nodename">>
+                                                                ,<<"Node">>], JObj)
                      ,registrar_hostname=wh_json:get_value(<<"Hostname">>, JObj)
                     }.
 
