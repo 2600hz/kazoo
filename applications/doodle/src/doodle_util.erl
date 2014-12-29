@@ -73,7 +73,7 @@ get_sms_revision(Call) ->
         Rev -> Rev
     end.
 
--spec set_sms_revision(api_object(), whapps_call:call()) -> api_binary().
+-spec set_sms_revision(api_binary(), whapps_call:call()) -> whapps_call:call().
 set_sms_revision(Rev, Call) ->
     whapps_call:kvs_store(<<"_rev">>, Rev, Call).
 
@@ -123,34 +123,34 @@ save_sms(JObj, DocId, Doc, Call) ->
     Rev = get_sms_revision(Call),
     Opts = props:filter_undefined([{'rev', Rev}]),
     Props = props:filter_empty(
-                [{<<"_id">>, DocId}
-                 ,{<<"pvt_type">>, <<"sms">> }
-                 ,{<<"account_id">>, AccountId }
-                 ,{<<"pvt_account_id">>, AccountId }
-                 ,{<<"pvt_account_db">>, AccountDb }
-                 ,{<<"owner_id">>, OwnerId }
-                 ,{<<"pvt_owner_id">>, OwnerId }
-                 ,{<<"authorization_type">>, AuthType }
-                 ,{<<"authorization_id">>, AuthId }
-                 ,{<<"pvt_authorization_type">>, AuthType }
-                 ,{<<"pvt_authorization_id">>, AuthId }
-                 ,{<<"to">>, To }
-                 ,{<<"to_user">>, ToUser }
-                 ,{<<"to_realm">>, ToRealm }
-                 ,{<<"from">>, From }
-                 ,{<<"from_user">>, FromUser }
-                 ,{<<"from_realm">>, FromRealm }
-                 ,{<<"request">>, Request }
-                 ,{<<"request_user">>, RequestUser }
-                 ,{<<"request_realm">>, RequestRealm }
-                 ,{<<"body">>, Body }
-                 ,{<<"message_id">>, MessageId}
-                 ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                 ,{<<"pvt_status">>, Status}
-                 ,{<<"call_id">>, whapps_call:call_id_direct(Call)}
-                 ,{<<"pvt_call">>, whapps_call:to_json(whapps_call:kvs_erase(<<"_rev">>, Call))}
-                 ,{<<"_rev">>, Rev}
-                ]),
+              [{<<"_id">>, DocId}
+               ,{<<"pvt_type">>, <<"sms">> }
+               ,{<<"account_id">>, AccountId }
+               ,{<<"pvt_account_id">>, AccountId }
+               ,{<<"pvt_account_db">>, AccountDb }
+               ,{<<"owner_id">>, OwnerId }
+               ,{<<"pvt_owner_id">>, OwnerId }
+               ,{<<"authorization_type">>, AuthType }
+               ,{<<"authorization_id">>, AuthId }
+               ,{<<"pvt_authorization_type">>, AuthType }
+               ,{<<"pvt_authorization_id">>, AuthId }
+               ,{<<"to">>, To }
+               ,{<<"to_user">>, ToUser }
+               ,{<<"to_realm">>, ToRealm }
+               ,{<<"from">>, From }
+               ,{<<"from_user">>, FromUser }
+               ,{<<"from_realm">>, FromRealm }
+               ,{<<"request">>, Request }
+               ,{<<"request_user">>, RequestUser }
+               ,{<<"request_realm">>, RequestRealm }
+               ,{<<"body">>, Body }
+               ,{<<"message_id">>, MessageId}
+               ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+               ,{<<"pvt_status">>, Status}
+               ,{<<"call_id">>, whapps_call:call_id_direct(Call)}
+               ,{<<"pvt_call">>, whapps_call:to_json(whapps_call:kvs_erase(<<"_rev">>, Call))}
+               ,{<<"_rev">>, Rev}
+              ]),
     JObjDoc = wh_json:set_values(Props, Doc),
     kazoo_modb:create(AccountDb),
     case couch_mgr:save_doc(AccountDb, JObjDoc, Opts) of
@@ -168,7 +168,7 @@ endpoint_id_from_sipdb(Realm, Username) ->
     case wh_cache:peek_local(?DOODLE_CACHE, ?SIP_ENDPOINT_ID_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-           get_endpoint_id_from_sipdb(Realm, Username)
+            get_endpoint_id_from_sipdb(Realm, Username)
     end.
 
 -spec get_endpoint_id_from_sipdb(ne_binary(), ne_binary()) ->
@@ -198,7 +198,7 @@ endpoint_from_sipdb(Realm, Username) ->
     case wh_cache:peek_local(?DOODLE_CACHE, ?SIP_ENDPOINT_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-           get_endpoint_from_sipdb(Realm, Username)
+            get_endpoint_from_sipdb(Realm, Username)
     end.
 
 -spec get_endpoint_from_sipdb(ne_binary(), ne_binary()) ->

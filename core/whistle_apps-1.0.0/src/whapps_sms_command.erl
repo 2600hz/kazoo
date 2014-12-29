@@ -170,9 +170,9 @@ get_correlated_msg_type(Key, JObj) ->
     {C, N} = wh_util:get_event_type(JObj),
     {C, N, wh_json:get_value(Key, JObj)}.
 
--spec wait_for_correlated_message(ne_binary() | whapps_call:call(), ne_binary(), ne_binary(), wh_timeout()) ->
+-spec wait_for_correlated_message(ne_binary(), api_binary(), ne_binary(), wh_timeout()) ->
                                          whapps_api_std_return().
-wait_for_correlated_message(CallId, Event, Type, Timeout) when is_binary(CallId) ->
+wait_for_correlated_message(<<_/binary>> = CallId, Event, Type, Timeout) ->
     Start = os:timestamp(),
     case whapps_call_command:receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
@@ -187,7 +187,4 @@ wait_for_correlated_message(CallId, Event, Type, Timeout) when is_binary(CallId)
                     lager:debug("received message (~s , ~s, ~s)",[_Type, _Event, _CallId]),
                     wait_for_correlated_message(CallId, Event, Type, wh_util:decr_timeout(Timeout, Start))
             end
-    end;
-wait_for_correlated_message(Call, Event, Type, Timeout) ->
-    CallId = whapps_call:call_id(Call),
-    wait_for_correlated_message(CallId, Event, Type, Timeout).
+    end.
