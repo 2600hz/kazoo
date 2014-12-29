@@ -1092,12 +1092,11 @@ format_datetime(Timestamp) ->
 -spec node_name() -> binary().
 -spec node_hostname() -> binary().
 node_name() ->
-    [Name, Host] = binary:split(to_binary(node()), <<"@">>),
+    [Name, _Host] = binary:split(to_binary(node()), <<"@">>),
     Name.
 node_hostname() ->
-    [Name, Host] = binary:split(to_binary(node()), <<"@">>),
+    [_Name, Host] = binary:split(to_binary(node()), <<"@">>),
     Host.
-
 
 -ifdef(TEST).
 

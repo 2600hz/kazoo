@@ -192,7 +192,7 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
     end.
 
 -spec endpoint_from_sipdb(ne_binary(), ne_binary()) ->
-                                 {'ok', ne_binary()} |
+                                 {'ok', wh_json:object()} |
                                  {'error', _}.
 endpoint_from_sipdb(Realm, Username) ->
     case wh_cache:peek_local(?DOODLE_CACHE, ?SIP_ENDPOINT_KEY(Realm, Username)) of
@@ -202,10 +202,12 @@ endpoint_from_sipdb(Realm, Username) ->
     end.
 
 -spec get_endpoint_from_sipdb(ne_binary(), ne_binary()) ->
-                                     {'ok', ne_binary(), ne_binary()} |
+                                     {'ok', wh_json:object()} |
                                      {'error', _}.
 get_endpoint_from_sipdb(Realm, Username) ->
-    ViewOptions = [{'key', [wh_util:to_lower_binary(Realm), wh_util:to_lower_binary(Username)]}, 'include_docs'],
+    ViewOptions = [{'key', [wh_util:to_lower_binary(Realm), wh_util:to_lower_binary(Username)]}
+                   ,'include_docs'
+                  ],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {'ok', [JObj]} ->
             EndpointId = wh_json:get_value(<<"id">>, JObj),
@@ -380,7 +382,7 @@ cache_key_number(Number) ->
     {'sms_number', Number}.
 
 -spec lookup_mdn(ne_binary()) ->
-                        {'ok', binary(), binary()} |
+                        {'ok', ne_binary(), api_binary()} |
                         {'error', term()}.
 lookup_mdn(Number) ->
     Num = wnm_util:normalize_number(Number),
@@ -392,7 +394,7 @@ lookup_mdn(Number) ->
     end.
 
 -spec fetch_mdn(ne_binary()) ->
-                       {'ok', binary(), binary()} |
+                       {'ok', ne_binary(), api_binary()} |
                        {'error', term()}.
 fetch_mdn(Num) ->
     case lookup_number(Num) of
@@ -403,8 +405,8 @@ fetch_mdn(Num) ->
             E
     end.
 
--spec fetch_mdn_result(binary(), binary()) ->
-                              {'ok', binary(), binary()} |
+-spec fetch_mdn_result(ne_binary(), ne_binary()) ->
+                              {'ok', ne_binary(), api_binary()} |
                               {'error', 'not_found'}.
 fetch_mdn_result(AccountId, Num) ->
     AccountDb = wh_util:format_account_db(AccountId),
@@ -419,7 +421,8 @@ fetch_mdn_result(AccountId, Num) ->
         {'error', _}=E -> E
     end.
 
--spec cache_mdn_result(binary(), binary(), binary()) -> {'ok', binary(), binary()}.
+-spec cache_mdn_result(ne_binary(), ne_binary(), api_binary()) ->
+                              {'ok', ne_binary(), api_binary()}.
 cache_mdn_result(AccountDb, Id, OwnerId) ->
     CacheProps = [{'origin', [{'db', AccountDb, Id}]}],
     wh_cache:store_local(?DOODLE_CACHE, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),
