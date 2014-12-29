@@ -1501,12 +1501,13 @@ review_recording(AttachmentName, AllowOperator
 %% @end
 %%--------------------------------------------------------------------
 -spec store_recording(ne_binary(), ne_binary(), whapps_call:call()) -> boolean().
--spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), ne_binary(), atom()) -> boolean().
+-spec store_recording(ne_binary(), ne_binary(), whapps_call:call(), mailbox(), api_binary()) -> boolean().
 store_recording(AttachmentName, DocId, Call) ->
     lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
     _ = whapps_call_command:b_store(AttachmentName
                                     ,get_new_attachment_url(AttachmentName, DocId, Call)
-                                    ,Call),
+                                    ,Call
+                                   ),
     timer:sleep(5000),
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, DocId) of
@@ -1535,7 +1536,8 @@ store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, Storage
 
     whapps_call_command:b_store(AttachmentName
                                 ,Url
-                                ,Call),
+                                ,Call
+                               ),
     timer:sleep(5000),
 
     case update_doc(<<"external_media_url">>, Url, DocId, Call) of
@@ -1546,8 +1548,12 @@ store_recording(AttachmentName, DocId, Call, #mailbox{owner_id=OwnerId}, Storage
 -spec get_media_url(ne_binary(), ne_binary(), whapps_call:call(), ne_binary(), ne_binary()) -> ne_binary().
 get_media_url(AttachmentName, DocId, Call, OwnerId, StorageUrl) ->
     AccountId = whapps_call:account_id(Call),
-    <<StorageUrl/binary, "/", AccountId/binary, "/", OwnerId/binary, "/"
-      ,DocId/binary, "/", AttachmentName/binary>>.
+    <<StorageUrl/binary
+      ,"/", AccountId/binary
+      ,"/", OwnerId/binary
+      ,"/", DocId/binary
+      ,"/", AttachmentName/binary
+    >>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1559,20 +1565,21 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
     _ = case couch_mgr:open_doc(AccountDb, MediaId) of
             {'ok', JObj} ->
-                case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
-                    [] -> 'ok';
-                    Existing ->
-                        [begin
-                             lager:info("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
-                             couch_mgr:delete_attachment(AccountDb, MediaId, Attach)
-                         end
-                         || Attach <- Existing
-                        ]
-                end;
+                maybe_remove_attachments(AccountDb, MediaId, JObj);
             {'error', _} -> 'ok'
         end,
     {'ok', URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
     URL.
+
+-spec maybe_remove_attachments(ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_remove_attachments(AccountDb, MediaId, JObj) ->
+    case wh_json:get_keys(wh_doc:attachments(JObj, wh_json:new())) of
+        [] -> 'ok';
+        _Existing ->
+            Removed = wh_json:delete_key(<<"_attachments">>, JObj),
+            couch_mgr:save_doc(AccountDb, Removed),
+            lager:debug("doc ~s has existing attachments, removing", [MediaId])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
