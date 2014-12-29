@@ -63,7 +63,9 @@
                         ,{<<"Message-ID">>, fun is_binary/1}
                         ,{<<"Body">>, fun is_binary/1}
                        ]).
--define(SMS_ROUTING_KEY(CallId), <<"message.route.", (amqp_util:encode(CallId))/binary>>).
+-define(SMS_ROUTING_KEY(RouteId,CallId), <<"message.route."
+                                           ,(amqp_util:encode(RouteId))/binary, "."
+                                           ,(amqp_util:encode(CallId))/binary>>).
 
 %% SMS Endpoints
 -define(SMS_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
@@ -300,13 +302,13 @@ bind_q(Queue, Props) ->
 
 -spec bind_q(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, CallId, SystemId, RouteId, 'undefined') ->
-    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), ?SMS_EXCHANGE),
     amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
     amqp_util:bind_q_to_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
     amqp_util:bind_q_to_exchange(Queue, ?INBOUND_ROUTING_KEY(SystemId, RouteId, CallId), ?SMS_EXCHANGE),
     amqp_util:bind_q_to_exchange(Queue, ?OUTBOUND_ROUTING_KEY(SystemId, RouteId, CallId), ?SMS_EXCHANGE);
 bind_q(Queue, CallId, SystemId, RouteId, ['route'|Restrict]) ->
-    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:bind_q_to_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), ?SMS_EXCHANGE),
     bind_q(Queue, CallId, SystemId, RouteId, Restrict);
 bind_q(Queue, CallId, SystemId, RouteId, ['delivery'|Restrict]) ->
     amqp_util:bind_q_to_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
@@ -331,13 +333,13 @@ unbind_q(Queue, Props) ->
 
 -spec unbind_q(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, CallId, SystemId, RouteId, 'undefined') ->
-    amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), ?SMS_EXCHANGE),
     amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
     amqp_util:unbind_q_from_exchange(Queue, ?RESUME_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
     amqp_util:unbind_q_from_exchange(Queue, ?INBOUND_ROUTING_KEY(SystemId, RouteId, CallId), ?SMS_EXCHANGE),
     amqp_util:unbind_q_from_exchange(Queue, ?OUTBOUND_ROUTING_KEY(SystemId, RouteId, CallId), ?SMS_EXCHANGE);
 unbind_q(Queue, CallId, SystemId, RouteId, ['route'|Restrict]) ->
-    amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
+    amqp_util:unbind_q_from_exchange(Queue, ?SMS_ROUTING_KEY(RouteId,CallId), ?SMS_EXCHANGE),
     unbind_q(Queue, CallId, SystemId, RouteId, Restrict);
 unbind_q(Queue, CallId, SystemId, RouteId, ['delivery'|Restrict]) ->
     amqp_util:unbind_q_from_exchange(Queue, ?DELIVERY_ROUTING_KEY(CallId), ?SMS_EXCHANGE),
@@ -369,7 +371,8 @@ publish_message(JObj) ->
 publish_message(Req, ContentType) ->
     {'ok', Payload} = wh_api:prepare_api_payload(Req, ?SMS_REQ_VALUES, fun message/1),
     CallId = props:get_value(<<"Call-ID">>, Req),
-    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_ROUTING_KEY(CallId), Payload, ContentType).
+    RouteId = props:get_value(<<"Route-ID">>, Req, <<"*">>),
+    amqp_util:basic_publish(?SMS_EXCHANGE, ?SMS_ROUTING_KEY(RouteId, CallId), Payload, ContentType).
 
 -spec publish_inbound(api_terms()) -> 'ok'.
 -spec publish_inbound(api_terms(), binary()) -> 'ok'.

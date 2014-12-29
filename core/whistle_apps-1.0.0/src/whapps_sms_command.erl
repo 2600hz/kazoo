@@ -80,7 +80,9 @@ b_send_sms(Endpoints, Timeout, _SIPHeaders, Call) ->
     end.
 
 -spec create_sms(whapps_call:call(), wh_proplist()) -> wh_proplist().
-create_sms(Call, Endpoints) ->
+create_sms(Call, TargetEndpoints) ->
+    Endpoints = create_sms_endpoints(Call, TargetEndpoints, []),
+    [Endpoint] = Endpoints,
     AccountId = whapps_call:account_id(Call),
     AccountRealm =  whapps_call:to_realm(Call),
     CCVUpdates = props:filter_undefined(
@@ -97,6 +99,7 @@ create_sms(Call, Endpoints) ->
      ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
      ,{<<"From">>, whapps_call:from(Call)}
      ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+     ,{<<"Route-ID">>, wh_json:get_value(<<"Route-ID">>, Endpoint)}
      ,{<<"To">>, whapps_call:to(Call)}
      ,{<<"Request">>, whapps_call:request(Call) }
      ,{<<"Endpoints">>, Endpoints}
@@ -104,6 +107,59 @@ create_sms(Call, Endpoints) ->
      ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, wh_json:new())}
      | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
     ].
+
+-spec create_sms_endpoints(whapps_call:call(), wh_proplist(), wh_proplist()) -> wh_proplist().
+create_sms_endpoints(Call, [], Endpoints) -> Endpoints;
+create_sms_endpoints(Call, [Endpoint | Others], Endpoints) ->
+    Realm = wh_json:get_value(<<"To-Realm">>, Endpoint),
+    Username = wh_json:get_value(<<"To-User">>, Endpoint),
+    case lookup_reg(Username, Realm) of
+        {'ok', Node} ->
+            List = [ wh_json:set_value(<<"Route-ID">>, Node, Endpoint) | Endpoints],
+            create_sms_endpoints(Call, Others, List);
+        {'error', _E} ->            
+            create_sms_endpoints(Call, Others, Endpoints)
+    end.
+            
+
+                                                       
+
+-spec lookup_reg(ne_binary(), ne_binary()) -> wh_json:objects().
+lookup_reg(Username, Realm) ->
+    Req = [{<<"Realm">>, Realm}
+           ,{<<"Username">>, Username}
+           ,{<<"Fields">>, [<<"Registrar-Node">>]}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_collect(Req
+                                       ,fun wapi_registration:publish_query_req/1
+                                       ,{'ecallmgr', 'true'}
+                                      )
+    of
+        {'error', _E}=E ->
+            lager:debug("error getting registration: ~p", [_E]),
+            E;
+        {_, JObjs} ->
+            [FirstNode] = [Node || Node <- extract_device_registrations(JObjs)],
+            {'ok', FirstNode}
+    end.
+
+-spec extract_device_registrations(wh_json:objects()) -> ne_binaries().
+extract_device_registrations(JObjs) ->
+    sets:to_list(extract_device_registrations(JObjs, sets:new())).
+
+-spec extract_device_registrations(wh_json:objects(), set()) -> set().
+extract_device_registrations([], Set) -> Set;
+extract_device_registrations([JObj|JObjs], Set) ->
+    Fields = wh_json:get_value(<<"Fields">>, JObj, []),
+    S = lists:foldl(fun(J, S) ->
+                            case wh_json:get_ne_value(<<"Registrar-Node">>, J) of
+                                'undefined' -> S;
+                                AuthId -> sets:add_element(AuthId, S)
+                            end
+                    end, Set, Fields),
+    extract_device_registrations(JObjs, S).
+
 
 -spec get_correlated_msg_type(wh_json:object()) ->
                                      {api_binary(), api_binary(), api_binary()}.
