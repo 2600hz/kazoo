@@ -69,8 +69,8 @@ check_pending_sms_for_outbound_delivery(AccountId) ->
             lager:debug("unable to get sms list for offnet delivery in account ~s : ~p", [AccountId, _R])
     end.
 
--define(DEFAULT_ROUTEID, <<"syneverse">>).
--define(DEFAULT_FROM, <<"15552220001">>).
+-define(DEFAULT_ROUTEID, whapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_route_id">>, <<"syneverse">>)).
+-define(DEFAULT_FROM, whapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_from_number">>, <<"15552220001">>)).
 
 send_outbound_sms(To, Msg) ->
     send_outbound_sms(To, ?DEFAULT_FROM, ?DEFAULT_ROUTEID, Msg).
@@ -79,9 +79,8 @@ send_outbound_sms(To, Msg, Times) ->
     send_outbound_sms(To, ?DEFAULT_FROM, ?DEFAULT_ROUTEID, Msg, Times).
 
 send_outbound_sms(To, From, RouteId, Msg) ->
-    [Host, _Domain] = binary:split(wh_util:to_lower_binary(node()), <<"@">>),
     Payload = [{<<"Message-ID">>, wh_util:rand_hex_binary(16)}
-               ,{<<"System-ID">>, Host }
+               ,{<<"System-ID">>, wh_util:node_name() }
                ,{<<"Route-ID">>, RouteId }
                ,{<<"From">>, From}
                ,{<<"To">>, wh_util:to_binary(To)}
