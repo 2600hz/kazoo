@@ -20,10 +20,10 @@
          ,declare_exchanges/0
          ,publish_message/1, publish_message/2
          ,publish_delivery/1, publish_delivery/2
-         ,publish_targeted_delivery/2, publish_targeted_delivery/3 
+         ,publish_targeted_delivery/2, publish_targeted_delivery/3
          ,publish_resume/1, publish_resume/2
          ,publish_inbound/1, publish_inbound/2
-         ,publish_outbound/1, publish_outbound/2        
+         ,publish_outbound/1, publish_outbound/2
         ]).
 
 -define(LOWER(X), wh_util:to_lower_binary(X)).
@@ -65,7 +65,8 @@
                        ]).
 -define(SMS_ROUTING_KEY(RouteId,CallId), <<"message.route."
                                            ,(amqp_util:encode(RouteId))/binary, "."
-                                           ,(amqp_util:encode(CallId))/binary>>).
+                                           ,(amqp_util:encode(CallId))/binary
+                                         >>).
 
 %% SMS Endpoints
 -define(SMS_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
@@ -122,38 +123,39 @@
 -define(INBOUND_REQ_EVENT_NAME, <<"inbound">>).
 -define(INBOUND_HEADERS, [<<"Message-ID">>, <<"System-ID">>]).
 -define(OPTIONAL_INBOUND_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
-                                    ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
-                                    ,<<"From-Network-Addr">>
-                                    ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
-                                    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                    ,<<"Contact">>, <<"User-Agent">>
-                                    ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
-                                    ,<<"To">>, <<"From">>, <<"Request">>
-                                    ,<<"Body">>, <<"Account-ID">>
-                                    ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
-                                    ,<<"Route-ID">>, <<"Route-Type">>
-                                   ]).
+                                   ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+                                   ,<<"From-Network-Addr">>
+                                   ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+                                   ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                   ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                   ,<<"Contact">>, <<"User-Agent">>
+                                   ,<<"Contact-IP">>, <<"Contact-Port">>, <<"Contact-Username">>
+                                   ,<<"To">>, <<"From">>, <<"Request">>
+                                   ,<<"Body">>, <<"Account-ID">>
+                                   ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
+                                   ,<<"Route-ID">>, <<"Route-Type">>
+                                  ]).
 -define(INBOUND_TYPES, [{<<"To">>, fun is_binary/1}
-                         ,{<<"From">>, fun is_binary/1}
-                         ,{<<"Request">>, fun is_binary/1}
-                         ,{<<"Message-ID">>, fun is_binary/1}
-                         ,{<<"Event-Queue">>, fun is_binary/1}
-                         ,{<<"Caller-ID-Name">>, fun is_binary/1}
-                         ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                         ,{<<"Callee-ID-Name">>, fun is_binary/1}
-                         ,{<<"Callee-ID-Number">>, fun is_binary/1}
-                         ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                         ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
-                        ]).
+                        ,{<<"From">>, fun is_binary/1}
+                        ,{<<"Request">>, fun is_binary/1}
+                        ,{<<"Message-ID">>, fun is_binary/1}
+                        ,{<<"Event-Queue">>, fun is_binary/1}
+                        ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                        ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                        ,{<<"Callee-ID-Name">>, fun is_binary/1}
+                        ,{<<"Callee-ID-Number">>, fun is_binary/1}
+                        ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                        ,{<<"Custom-SIP-Headers">>, fun wh_json:is_json_object/1}
+                       ]).
 -define(INBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                              ,{<<"Event-Name">>, ?INBOUND_REQ_EVENT_NAME}
                              ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
-                             ]).
+                            ]).
 -define(INBOUND_ROUTING_KEY(SystemId, RouteId, CallId), <<"message.inbound."
-                                                      , (amqp_util:encode(?LOWER(SystemId)))/binary, "."
-                                                      , (amqp_util:encode(?LOWER(RouteId)))/binary, "."
-                                                      , (amqp_util:encode(CallId))/binary>>).
+                                                          ,(amqp_util:encode(?LOWER(SystemId)))/binary, "."
+                                                          ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
+                                                          ,(amqp_util:encode(CallId))/binary
+                                                        >>).
 
 %% Outbound
 -define(OUTBOUND_REQ_EVENT_NAME, <<"outbound">>).
@@ -189,10 +191,10 @@
                               ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                              ]).
 -define(OUTBOUND_ROUTING_KEY(SystemId, RouteId, CallId), <<"message.outbound."
-                                                      , (amqp_util:encode(?LOWER(SystemId)))/binary, "."
-                                                      , (amqp_util:encode(?LOWER(RouteId)))/binary, "."
-                                                       , (amqp_util:encode(CallId))/binary>>).
-
+                                                           ,(amqp_util:encode(?LOWER(SystemId)))/binary, "."
+                                                           ,(amqp_util:encode(?LOWER(RouteId)))/binary, "."
+                                                           ,(amqp_util:encode(CallId))/binary
+                                                         >>).
 
 -spec message(api_terms()) -> api_formatter_return().
 message(Prop) when is_list(Prop) ->
@@ -244,9 +246,8 @@ delivery_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?DELIVERY_HEADERS, ?DELIVERY_REQ_VALUES, ?DELIVERY_TYPES);
 delivery_v(JObj) -> delivery_v(wh_json:to_proplist(JObj)).
 
-
 -spec inbound(api_terms()) -> {'ok', iolist()} |
-                               {'error', string()}.
+                              {'error', string()}.
 inbound(Prop) when is_list(Prop) ->
     case inbound_v(Prop) of
         'true' -> wh_api:build_message(Prop, ?INBOUND_HEADERS, ?OPTIONAL_INBOUND_HEADERS);
@@ -258,7 +259,6 @@ inbound(JObj) -> inbound(wh_json:to_proplist(JObj)).
 inbound_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?INBOUND_HEADERS, ?INBOUND_REQ_VALUES, ?INBOUND_TYPES);
 inbound_v(JObj) -> inbound_v(wh_json:to_proplist(JObj)).
-
 
 -spec outbound(api_terms()) -> {'ok', iolist()} |
                                {'error', string()}.
@@ -273,7 +273,6 @@ outbound(JObj) -> outbound(wh_json:to_proplist(JObj)).
 outbound_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?OUTBOUND_HEADERS, ?OUTBOUND_REQ_VALUES, ?OUTBOUND_TYPES);
 outbound_v(JObj) -> outbound_v(wh_json:to_proplist(JObj)).
-
 
 -spec resume(api_terms()) -> {'ok', iolist()} |
                              {'error', string()}.
