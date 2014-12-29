@@ -804,10 +804,14 @@ validate(Context) ->
 
 validate(Context, ReqNouns) ->
     Context1 = validate_resources(Context, ReqNouns),
-    Context2 = validate_data(Context1, ReqNouns),
-    case succeeded(Context2) of
-        'true' -> process_billing(Context2);
-        'false' -> Context2
+    case succeeded(Context1) of
+        'true' ->
+            Context2 = validate_data(Context1, ReqNouns),
+            case succeeded(Context2) of
+                'true' -> process_billing(Context2);
+                'false' -> Context2
+            end;
+        'false' -> Context1
     end.
 
 -spec validate_data(cb_context:context(), list()) -> cb_context:context().
@@ -821,7 +825,7 @@ validate_resources(Context, ReqNouns) ->
     cb_context:import_errors(
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
             Event = api_util:create_event_name(Context, <<"validate_resource.", Mod/binary>>),
-            Payload = [cb_context:set_resp_status(ContextAcc, 'fatal') | Params],
+            Payload = [ContextAcc, | Params],
             crossbar_bindings:fold(Event, Payload)
         end
         ,Context
