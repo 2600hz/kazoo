@@ -9,7 +9,7 @@
 
 -include("doodle.hrl").
 
--export([send_outbound_sms/2, send_outbound_sms/3]).
+-export([send_outbound_sms/2, send_outbound_sms/3, send_outbound_sms/4, send_outbound_sms/5]).
 
 -export([flush/0]).
 -export([check_sms_by_device_id/2, check_sms_by_owner_id/2]).

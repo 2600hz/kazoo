@@ -53,7 +53,7 @@
                          ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
                          ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
                          ,{<<"Application-Name">>, [<<"send">>]}
-                         ,{<<"Route-Type">>, [<<"inbound">>, <<"outbound">>]}
+                         ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                         ]).
 -define(SMS_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
                         ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
@@ -148,7 +148,7 @@
                         ]).
 -define(INBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                              ,{<<"Event-Name">>, ?INBOUND_REQ_EVENT_NAME}
-                             ,{<<"Route-Type">>, [<<"inbound">>, <<"outbound">>]}
+                             ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                              ]).
 -define(INBOUND_ROUTING_KEY(SystemId, RouteId, CallId), <<"message.inbound."
                                                       , (amqp_util:encode(?LOWER(SystemId)))/binary, "."
@@ -186,7 +186,7 @@
                         ]).
 -define(OUTBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                               ,{<<"Event-Name">>, ?OUTBOUND_REQ_EVENT_NAME}
-                              ,{<<"Route-Type">>, [<<"inbound">>, <<"outbound">>]}
+                              ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
                              ]).
 -define(OUTBOUND_ROUTING_KEY(SystemId, RouteId, CallId), <<"message.outbound."
                                                       , (amqp_util:encode(?LOWER(SystemId)))/binary, "."

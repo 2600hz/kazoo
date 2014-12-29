@@ -12,8 +12,7 @@
 
 -define(SIP_ENDPOINT_ID_KEY(Realm, User), {?MODULE, 'sip_endpoint_id', Realm, User}).
 -define(SIP_ENDPOINT_KEY(Realm, User), {?MODULE, 'sip_endpoint', Realm, User}).
--define(DEFAULT_INBOUND_FIELD, <<"inbound">>).
--define(DEFAULT_DIRECTION, <<"inbound">>).
+-define(DEFAULT_INCEPTION, <<"off-net">>).
 -define(MDN_VIEW, <<"mobile/listing_by_mdn">>).
 -define(CONVERT_MDN, 'true').
 
@@ -25,10 +24,12 @@
 -export([set_flow_status/2, set_flow_status/3]).
 -export([set_flow_error/2, set_flow_error/3, clear_flow_error/1]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
--export([sms_status/1, sms_status/2]). 
+-export([sms_status/1, sms_status/2]).
 -export([get_callee_id/2 , set_callee_id/2]).
 -export([get_caller_id/2 , get_caller_id/3, set_caller_id/2]).
--export([lookup_number/1, lookup_mdn/1, get_inbound_destination/1]). 
+-export([lookup_number/1]). 
+-export([get_inbound_destination/1]). 
+-export([lookup_mdn/1]). 
 
 %% ====================================================================
 %% API functions
@@ -330,19 +331,19 @@ set_callee_id(EndpointId, Call) ->
 
   
 -spec get_inbound_field(ne_binary()) -> ne_binary().
-get_inbound_field(Direction) ->
-    case Direction of
-        <<"outbound">> -> <<"Caller-ID-Number">>;
-        <<"inbound">> -> <<"Callee-ID-Number">>;
-        _ -> ?DEFAULT_INBOUND_FIELD
+get_inbound_field(Inception) ->
+    case Inception of
+        <<"on-net">> -> <<"Caller-ID-Number">>;
+        <<"off-net">> -> <<"Callee-ID-Number">>;
+        _ -> get_inbound_field(?DEFAULT_INCEPTION)
     end.
 
 -spec get_inbound_destination(wh_json:object()) -> {ne_binary(), ne_binary()}.
 get_inbound_destination(JObj) ->
-    Direction = wh_json:get_value(<<"Route-Type">>, JObj, ?DEFAULT_DIRECTION),
-    NumberField = get_inbound_field(Direction),  
-    Number = wh_json:get_value(NumberField, JObj),                 
-    {wnm_util:to_e164(Number), Direction}.
+    Inception = wh_json:get_value(<<"Route-Type">>, JObj, ?DEFAULT_INCEPTION),
+    NumberField = get_inbound_field(Inception),
+    Number = wh_json:get_value(NumberField, JObj),
+    {wnm_util:to_e164(Number), Inception}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -357,7 +358,7 @@ lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?DOODLE_CACHE, cache_key_number(Num)) of
         {'ok', {AccountId, Props}} ->
-            lager:debug("found number properties in doodle cache"),
+            lager:debug("found number properties in doodle cache : Account is ~s", [AccountId]),
             {'ok', AccountId, Props};
         {'error', 'not_found'} -> fetch_number(Num)
     end.
@@ -382,7 +383,7 @@ cache_key_number(Number) ->
     {'sms_number', Number}.
 
 -spec lookup_mdn(ne_binary()) ->
-                           {'ok', wh_json:object()} |
+                           {'ok', binary(), binary()} |
                            {'error', term()}.
 lookup_mdn(Number) ->
     Num = wnm_util:normalize_number(Number),
@@ -394,12 +395,12 @@ lookup_mdn(Number) ->
     end.
 
 -spec fetch_mdn(ne_binary()) ->
-                          {'ok', wh_json:object()} |
+                          {'ok', binary(), binary()} |
                           {'error', term()}.
 fetch_mdn(Num) ->
     case lookup_number(Num) of
         {'ok', AccountId, _Props} ->
-            fetch_mdn_result(AccountId, Num);            
+            fetch_mdn_result(AccountId, Num);
         {'error', Reason}=E ->
             lager:debug("~s is not associated with any account, ~p", [Num, Reason]),
             E
@@ -430,6 +431,8 @@ cache_mdn_result(AccountDb, Id, OwnerId) ->
 cache_key_mdn(Number) ->
     {'sms_mdn', Number}.
 
+%% TODO
+%% MDN should be stored in e164 format
 -spec mdn_from_e164(binary()) -> binary().
 mdn_from_e164(<<"+1", Number/binary>>) -> Number;
 mdn_from_e164(<<"1", Number/binary>>) -> Number;

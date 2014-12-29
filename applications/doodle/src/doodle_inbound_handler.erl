@@ -19,18 +19,19 @@ handle_req(JObj, Props, Deliver) ->
         'true' ->
             case maybe_relay_request(JObj) of
                 'ack' -> gen_listener:ack(Srv, Deliver);
-                'nack' -> gen_listener:nack(Srv, Deliver)
+                'nack' -> gen_listener:ack(Srv, Deliver)
             end;
         'false' -> 
             lager:debug("error validating inbound message : ~p", [JObj]),
-             gen_listener:nack(Srv, Deliver)            
+             gen_listener:ack(Srv, Deliver)
     end.
 
 -spec maybe_relay_request(wh_json:object()) -> 'ack' | 'nack'.
 maybe_relay_request(JObj) ->
+    lager:debug("DOODLE INBOUND ~p", [JObj]),
     FetchId = wh_util:rand_hex_binary(16),
     CallId =  wh_util:rand_hex_binary(16),
-    {Number, Direction} = doodle_util:get_inbound_destination(JObj),
+    {Number, Inception} = doodle_util:get_inbound_destination(JObj),
     case doodle_util:lookup_number(Number) of
         {'error', _R} ->
             lager:info("unable to determine account for ~s: ~p", [Number, _R]),
@@ -43,7 +44,7 @@ maybe_relay_request(JObj) ->
                         ,fun delete_headers/3
                         ,fun set_realm/3
                        ],
-            Fun = fun(F, J) -> F(Direction, NumberProps, J) end,
+            Fun = fun(F, J) -> F(Inception, NumberProps, J) end,
             JObjReq = lists:foldl(Fun, JObj, Routines),
             process_sms_req(FetchId, CallId, JObjReq)            
     end.
@@ -94,7 +95,7 @@ send_route_win(FetchId, CallId, JObj) ->
 %%--------------------------------------------------------------------
 -spec set_account_id(ne_binary(), wh_proplist(), wh_json:object()) ->
                             wh_json:object().
-set_account_id(_Direction, NumberProps, JObj) ->
+set_account_id(_Inception, NumberProps, JObj) ->
     AccountId = wh_number_properties:account_id(NumberProps),
     AccountRealm = wh_util:get_account_realm(AccountId),
     wh_json:set_values([{?CCV(<<"Account-ID">>), AccountId}
@@ -103,9 +104,9 @@ set_account_id(_Direction, NumberProps, JObj) ->
 
 -spec set_inception(ne_binary(), wh_proplist(), wh_json:object()) ->
                            wh_json:object().
-set_inception(Direction, _, JObj) ->
-    case Direction of
-        <<"inbound">> ->
+set_inception(Inception, _, JObj) ->
+    case Inception of
+        <<"off-net">> ->
             Request = wh_json:get_value(<<"From">>, JObj),
             wh_json:set_value(?CCV(<<"Inception">>), Request, JObj);
         _ -> wh_json:delete_keys([<<"Inception">>, ?CCV(<<"Inception">>)], JObj)
@@ -113,10 +114,10 @@ set_inception(Direction, _, JObj) ->
 
 -spec set_mdn(ne_binary(), wh_proplist(), wh_json:object()) ->
           wh_json:object().
-set_mdn(Direction, NumberProps, JObj) ->
+set_mdn(Inception, NumberProps, JObj) ->
     Number = wh_number_properties:number(NumberProps),
-    case Direction of
-        <<"outbound">> ->
+    case Inception of
+        <<"on-net">> ->
             case doodle_util:lookup_mdn(Number) of
                 {'ok', Id, OwnerId} ->
                     wh_json:set_values( props:filter_undefined(
@@ -131,7 +132,7 @@ set_mdn(Direction, NumberProps, JObj) ->
 
 -spec set_static(ne_binary(), wh_proplist(), wh_json:object()) ->
                            wh_json:object().
-set_static(_Direction, _, JObj) ->
+set_static(_Inception, _, JObj) ->
     wh_json:set_values([{<<"Resource-Type">>, <<"sms">>}
                         ,{<<"Call-Direction">>, <<"inbound">>}
                         ,{?CCV(<<"Channel-Authorized">>), 'true'}
