@@ -11,7 +11,7 @@
 
 -include("./whapps_call_command.hrl").
 
--export([send_sms/2, send_sms/3, send_sms/4]).
+-export([send_sms/2, send_sms/3]).
 -export([b_send_sms/2, b_send_sms/3, b_send_sms/4]).
 
 -export([default_collect_timeout/0
@@ -25,7 +25,8 @@
 
 -define(DEFAULT_MESSAGE_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"message_timeout">>, 60000)).
 -define(DEFAULT_APPLICATION_TIMEOUT, whapps_config:get_integer(?CONFIG_CAT, <<"application_timeout">>, 500000)).
-
+-define(DEFAULT_STRATEGY, <<"single">>).
+  
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
     ?DEFAULT_COLLECT_TIMEOUT.
@@ -48,41 +49,74 @@ default_application_timeout() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec send_sms(wh_json:objects(), whapps_call:call()) -> 'ok'.
--spec send_sms(wh_json:objects(), integer(), whapps_call:call()) -> 'ok'.
--spec send_sms(wh_json:objects(), integer(), api_binary(), whapps_call:call()) -> 'ok'.
+-spec send_sms(wh_json:objects(), binary(), whapps_call:call()) -> 'ok'.
 
 -spec b_send_sms(wh_json:objects(), whapps_call:call()) -> whapps_api_sms_return().
--spec b_send_sms(wh_json:objects(), integer(), whapps_call:call()) -> whapps_api_sms_return().
--spec b_send_sms(wh_json:objects(), integer(), api_binary(), whapps_call:call()) -> whapps_api_sms_return().
+-spec b_send_sms(wh_json:objects(), binary(), whapps_call:call()) -> whapps_api_sms_return().
+-spec b_send_sms(wh_json:objects(), binary(), integer(), whapps_call:call()) -> whapps_api_sms_return().
 
-send_sms(Endpoints, Call) -> send_sms(Endpoints, ?DEFAULT_MESSAGE_TIMEOUT, Call).
-send_sms(Endpoints, Timeout, Call) -> send_sms(Endpoints, Timeout, 'undefined', Call).
-send_sms(Endpoints, _Timeout, _SIPHeaders, Call) ->
-    API = create_sms(Call, Endpoints),
-    whapps_util:amqp_pool_send(API, fun wapi_sms:publish_message/1),
-    'ok'.
+send_sms(Endpoints, Call) -> send_sms(Endpoints, ?DEFAULT_STRATEGY, Call).
+send_sms(EndpointList, Strategy, Call) ->
+    Endpoints = create_sms_endpoints(EndpointList, []),
+    API = create_sms(Call),
+    send(Strategy, API, Endpoints).
 
-b_send_sms(Endpoints, Call) -> b_send_sms(Endpoints, ?DEFAULT_MESSAGE_TIMEOUT, Call).
-b_send_sms(Endpoints, Timeout, Call) -> b_send_sms(Endpoints, Timeout, 'undefined', Call).
-b_send_sms(Endpoints, Timeout, _SIPHeaders, Call) ->
-    CallId = whapps_call:call_id(Call),
-    API = create_sms(Call, Endpoints),
-    whapps_util:amqp_pool_send(API, fun wapi_sms:publish_message/1),
-    ReqResp = wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout),
-    lager:debug("sending sms and waiting for response ~s", [CallId]),
+b_send_sms(Endpoints, Call) -> b_send_sms(Endpoints, ?DEFAULT_STRATEGY, Call).
+b_send_sms(Endpoints, Strategy, Call) -> b_send_sms(Endpoints, Strategy, ?DEFAULT_MESSAGE_TIMEOUT, Call).
+b_send_sms(EndpointList, Strategy, Timeout, Call) ->
+    Endpoints = create_sms_endpoints(EndpointList, []),
+    API = create_sms(Call),
+    send_and_wait(Strategy, API, Endpoints, Timeout, 0).
+
+
+send(<<"single">>, API, [Endpoint | Others]) ->
+    Payload = wh_json:set_values(
+                [{<<"Endpoints">>, [Endpoint]}
+                  | wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])
+                ], API),
+    whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_message/1),
+    send(<<"single">>, API, Others);
+send(Strategy, _API, _Endpoints) ->
+    lager:debug("Strategy ~s not implemented", [Strategy]).
+    
+
+send_and_wait(<<"single">>, _API, [], _Timeout, Count) when Count =:= 0 ->
+    {'error', <<"no endpoints available">>};
+send_and_wait(<<"single">>, _API, [], _Timeout, Count) when Count > 0 ->
+    {'error', <<"no endpoints responded">>};
+send_and_wait(<<"single">>, API,[Endpoint| Others], Timeout, Count) ->
+    Payload = wh_json:set_values(
+                [{<<"Endpoints">>, [Endpoint]}
+                  | wh_json:get_value(<<"Endpoint-Options">>, Endpoint, [])
+                ], API),
+    CallId = wh_json:get_value(<<"Call-ID">>, Payload),
+    Type = wh_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
+    ReqResp = send_and_wait(Type, Payload, Timeout),
     case ReqResp of
-        {'error', _R}=E ->
+        {'error', _R} ->
             lager:info("recieved error while sending msg ~s: ~-800p", [CallId, _R]),
-            E;
+            send_and_wait(<<"single">>, API, Others, Timeout, Count+1);
         {_, _JObjs} = Ret ->
              lager:debug("received sms delivery result for msg ~s", [CallId]),
              Ret
-    end.
+    end;
+send_and_wait(Strategy, _API, _Endpoints, _Timeout, _Count) ->
+    lager:debug("Strategy ~s not implemented", [Strategy]).
 
--spec create_sms(whapps_call:call(), wh_proplist()) -> wh_proplist().
-create_sms(Call, TargetEndpoints) ->
-    Endpoints = create_sms_endpoints(Call, TargetEndpoints, []),
-    [Endpoint] = Endpoints,
+send_and_wait(<<"sip">>, Payload, Timeout) ->    
+    CallId = wh_json:get_value(<<"Call-ID">>, Payload),
+    lager:debug("sending sms and waiting for response ~s", [CallId]),
+    whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_message/1),
+    wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout);
+send_and_wait(<<"amqp">>, Payload, Timeout) ->    
+    CallId = wh_json:get_value(<<"Call-ID">>, Payload),
+    lager:debug("sending sms and waiting for response ~s", [CallId]),
+    whapps_util:amqp_pool_send(Payload, fun wapi_sms:publish_outbound/1),
+    wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout).
+
+
+-spec create_sms(whapps_call:call()) -> wh_proplist().
+create_sms(Call) ->
     AccountId = whapps_call:account_id(Call),
     AccountRealm =  whapps_call:to_realm(Call),
     CCVUpdates = props:filter_undefined(
@@ -99,30 +133,31 @@ create_sms(Call, TargetEndpoints) ->
      ,{<<"Body">>, whapps_call:kvs_fetch(<<"Body">>, Call)}
      ,{<<"From">>, whapps_call:from(Call)}
      ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-     ,{<<"Route-ID">>, wh_json:get_value(<<"Route-ID">>, Endpoint)}
      ,{<<"To">>, whapps_call:to(Call)}
      ,{<<"Request">>, whapps_call:request(Call) }
-     ,{<<"Endpoints">>, Endpoints}
      ,{<<"Application-Name">>, <<"send">>}
      ,{<<"Custom-Channel-Vars">>, wh_json:set_values(CCVUpdates, wh_json:new())}
      | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
     ].
 
--spec create_sms_endpoints(whapps_call:call(), wh_proplist(), wh_proplist()) -> wh_proplist().
-create_sms_endpoints(Call, [], Endpoints) -> Endpoints;
-create_sms_endpoints(Call, [Endpoint | Others], Endpoints) ->
+-spec create_sms_endpoints(wh_proplist(), wh_proplist()) -> wh_proplist().
+create_sms_endpoints([], Endpoints) -> Endpoints;
+create_sms_endpoints([Endpoint | Others], Endpoints) ->
+    EndpointType = wh_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
+    case create_sms_endpoint(Endpoint, EndpointType) of
+        'undefined' -> create_sms_endpoints(Others, Endpoints);
+        NewEndpoint -> create_sms_endpoints(Others, [NewEndpoint | Endpoints])
+    end.
+    
+-spec create_sms_endpoint(wh_json:object(), binary()) -> api_object().
+create_sms_endpoint(Endpoint, <<"amqp">>) -> Endpoint;
+create_sms_endpoint(Endpoint, <<"sip">>) ->
     Realm = wh_json:get_value(<<"To-Realm">>, Endpoint),
     Username = wh_json:get_value(<<"To-User">>, Endpoint),
     case lookup_reg(Username, Realm) of
-        {'ok', Node} ->
-            List = [ wh_json:set_value(<<"Route-ID">>, Node, Endpoint) | Endpoints],
-            create_sms_endpoints(Call, Others, List);
-        {'error', _E} ->            
-            create_sms_endpoints(Call, Others, Endpoints)
+        {'ok', Node} -> wh_json:set_value(<<"Route-ID">>, Node, Endpoint);
+        {'error', _E} -> 'undefined'
     end.
-            
-
-                                                       
 
 -spec lookup_reg(ne_binary(), ne_binary()) -> wh_json:objects().
 lookup_reg(Username, Realm) ->
