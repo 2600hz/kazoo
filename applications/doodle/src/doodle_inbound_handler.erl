@@ -151,7 +151,6 @@ set_realm(_, _, JObj) ->
     Realm = wh_json:get_value(?CCV(<<"Account-Realm">>), JObj),
     Keys = [<<"To">>, <<"From">>, {<<"To">>, <<"Request">>}],
     KVs = lists:foldl(fun({K1, K2}, Acc) ->
-                              lager:debug("~p , ~p", [K1, K2]),
                               V = wh_json:get_value(K1, JObj),
                               [ set_realm_value(K2, V, Realm) | Acc];
                          (K, Acc) ->

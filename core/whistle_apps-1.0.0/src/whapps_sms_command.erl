@@ -88,7 +88,7 @@ send_and_wait(<<"single">>, _API, [], _Timeout, Count) when Count =:= 0 ->
 send_and_wait(<<"single">>, _API, [], _Timeout, Count) when Count > 0 ->
     {'error', <<"no endpoints responded">>};
 send_and_wait(<<"single">>, API, [Endpoint| Others], Timeout, Count) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, API),
+    CallId = props:get_value(<<"Call-ID">>, API),
     Type = wh_json:get_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>),
     ReqResp = send_and_wait(Type, API, Endpoint, Timeout),
     case ReqResp of
@@ -120,6 +120,7 @@ send_and_wait(<<"amqp">>, API, Endpoint, _Timeout) ->
     DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:200">> }    
                      ,{<<"Status">>, <<"Success">>}
                      ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API) }
+                     ,{<<"Call-ID">>, CallId }
                     | wh_api:default_headers(<<"message">>, <<"delivery">>, ?APP_NAME, ?APP_VERSION)
                      ],
     {'ok', wh_json:set_values(DeliveryProps, wh_json:new())}.
