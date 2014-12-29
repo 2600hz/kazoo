@@ -851,7 +851,7 @@ validate_resources(Context, ReqNouns) ->
     cb_context:import_errors(
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
             Event = api_util:create_event_name(Context, <<"validate_resource.", Mod/binary>>),
-            Payload = [ContextAcc, | Params],
+            Payload = [ContextAcc | Params],
             crossbar_bindings:fold(Event, Payload)
         end
         ,Context
