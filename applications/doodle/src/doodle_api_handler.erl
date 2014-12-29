@@ -14,14 +14,14 @@
 
 -spec handle_req(wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    'true' = wapi_conf:doc_update_v(JObj),
+    'true' = wapi_conf:doc_update_v(JObj),    
     Id = wh_json:get_value(<<"ID">>, JObj),
     Db = wh_json:get_value(<<"Database">>, JObj),
-    {'ok', JObj} = couch_mgr:open_doc(Db, Id),
-    Status = wh_json:get_value(<<"pvt_status">>, JObj),
-    Origin = wh_json:get_value(<<"pvt_origin">>, JObj),
+    {'ok', Doc} = couch_mgr:open_doc(Db, Id),
+    Status = wh_json:get_value(<<"pvt_status">>, Doc),
+    Origin = wh_json:get_value(<<"pvt_origin">>, Doc),
     FetchId = wh_util:rand_hex_binary(16),
-    maybe_handle_sms_document(Status, Origin, FetchId, Id, JObj).
+    maybe_handle_sms_document(Status, Origin, FetchId, Id, Doc).
 
 -spec maybe_handle_sms_document(ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_handle_sms_document(<<"queued">>, <<"api">>, FetchId, Id, JObj) ->
