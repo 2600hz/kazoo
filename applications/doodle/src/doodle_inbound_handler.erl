@@ -19,7 +19,7 @@ handle_req(JObj, Props, Deliver) ->
         'true' ->
             case maybe_relay_request(JObj) of
                 'ack' -> gen_listener:ack(Srv, Deliver);
-                'nack' -> gen_listener:ack(Srv, Deliver)
+                'nack' -> gen_listener:nack(Srv, Deliver)
             end;
         'false' -> 
             lager:debug("error validating inbound message : ~p", [JObj]),
